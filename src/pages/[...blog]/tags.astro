@@ -9,12 +9,12 @@ import { getPermalink } from '../../utils/permalinks';
 export const prerender = true;
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  return [{
-    params: { blog: undefined },
-    props: {
-      
-    }
-  }];
+  return [
+    {
+      params: { blog: undefined },
+      props: {},
+    },
+  ];
 };
 
 const tags = await getAllTags();

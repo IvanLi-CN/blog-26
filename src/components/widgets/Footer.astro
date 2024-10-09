@@ -1,7 +1,6 @@
 ---
 import { SITE } from 'astrowind:config';
 import { Icon } from 'astro-icon/components';
-import { getHomePermalink } from '~/utils/permalinks';
 
 interface Link {
   text?: string;
@@ -23,7 +22,7 @@ export interface Props {
   theme?: string;
 }
 
-const { socialLinks = [], secondaryLinks = [], links = [], footNote = '' } = Astro.props;
+const { socialLinks = [] } = Astro.props;
 ---
 
 <footer class="bg-neutral text-neutral-content">

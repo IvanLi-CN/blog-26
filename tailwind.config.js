@@ -24,10 +24,7 @@ export default {
   plugins: [typographyPlugin, daisyui],
   darkMode: ['selector', '[data-theme="night"]'],
   daisyui: {
-    themes: [
-      'light',
-      'dark',
-    ],
+    themes: ['light', 'dark'],
     darkTheme: 'dark',
-  }
+  },
 };

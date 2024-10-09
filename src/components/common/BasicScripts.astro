@@ -127,7 +127,7 @@ import { UI } from 'astrowind:config';
       document.querySelector('#header .actions')?.classList.add('hidden');
     });
 
-    attachEvent('[data-aw-toggle-menu]', 'click', function (_, elem) {
+    attachEvent('[data-aw-toggle-menu]', 'click', function () {
       if (toggleMenuState.expanded) {
         menuCollapse();
       } else {

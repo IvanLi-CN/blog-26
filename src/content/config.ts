@@ -49,15 +49,19 @@ const postCollection = defineCollection({
   schema: z.object({
     publishDate: z.date().optional(),
     updateDate: z.date().optional(),
-    date: z.string().refine(
-      (val) => {
-        const date = new Date(val);
-        return !isNaN(date.getTime());
-      },
-      {
-        message: "Invalid date format"
-      }
-    ).transform((val) => new Date(val)).optional(),
+    date: z
+      .string()
+      .refine(
+        (val) => {
+          const date = new Date(val);
+          return !isNaN(date.getTime());
+        },
+        {
+          message: 'Invalid date format',
+        }
+      )
+      .transform((val) => new Date(val))
+      .optional(),
     draft: z.boolean().optional(),
 
     title: z.string(),

@@ -64,9 +64,9 @@ const getNormalizedPost = async (post: CollectionEntry<'post'>): Promise<Post> =
 
   const category = rawCategory
     ? {
-      slug: cleanSlug(rawCategory),
-      title: rawCategory,
-    }
+        slug: cleanSlug(rawCategory),
+        title: rawCategory,
+      }
     : undefined;
 
   const tags = rawTags.map((tag: string) => ({
@@ -236,7 +236,7 @@ export const getAllTags = async () => {
     }
   });
   return Array.from(tags.values());
-}
+};
 
 /** */
 export const getStaticPathsBlogTag = async ({ paginate }: { paginate: PaginateFunction }) => {
@@ -245,14 +245,11 @@ export const getStaticPathsBlogTag = async ({ paginate }: { paginate: PaginateFu
   const tags = await getAllTags();
 
   return tags.flatMap((tag) =>
-    paginate(
-      tag.posts || [],
-      {
-        params: { tag: tag.slug, blog: TAG_BASE || undefined },
-        pageSize: blogPostsPerPage,
-        props: { tag },
-      }
-    )
+    paginate(tag.posts || [], {
+      params: { tag: tag.slug, blog: TAG_BASE || undefined },
+      pageSize: blogPostsPerPage,
+      props: { tag },
+    })
   );
 };
 
