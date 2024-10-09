@@ -1,0 +1,51 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { blogTagRobots, getAllTags } from '~/utils/blog';
+
+import Layout from '~/layouts/PageLayout.astro';
+import Headline from '../../components/ui/Headline.astro';
+import { getPermalink } from '../../utils/permalinks';
+
+export const prerender = true;
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  return [{
+    params: { blog: undefined },
+    props: {
+      
+    }
+  }];
+};
+
+const tags = await getAllTags();
+
+const metadata = {
+  title: `Tags`,
+  robots: {
+    index: blogTagRobots?.index,
+    follow: blogTagRobots?.follow,
+  },
+};
+---
+
+<Layout metadata={metadata}>
+  <main class="max-w-7xl mx-auto my-32">
+    <Headline
+      subtitle="A list of all the tags used in the blog posts."
+      title='Tags'
+    >
+    </Headline>
+    <ol class="flex flex-wrap gap-4 justify-between mx-4 md:mx-12 text-base md:text-lg lg:text-xl">
+      {
+        tags.map((tag) => (
+          <li class="">
+            <a class="btn" href={getPermalink(tag.slug, 'tag')}>
+              {tag.title}
+              <span class="ml-2 badge">{tag.posts.length}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+  </main>
+</Layout>

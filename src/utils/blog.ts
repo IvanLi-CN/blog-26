@@ -2,7 +2,7 @@ import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 import { APP_BLOG } from 'astrowind:config';
 import type { PaginateFunction } from 'astro';
-import type { Post } from '~/types';
+import type { Post, Taxonomy } from '~/types';
 import { BLOG_BASE, CATEGORY_BASE, POST_PERMALINK_PATTERN, TAG_BASE, cleanSlug, trimSlash } from './permalinks';
 
 const generatePermalink = async ({
@@ -45,8 +45,9 @@ const getNormalizedPost = async (post: CollectionEntry<'post'>): Promise<Post> =
   const { Content, remarkPluginFrontmatter } = await post.render();
 
   const {
-    publishDate: rawPublishDate = new Date(),
+    publishDate: rawPublishDate,
     updateDate: rawUpdateDate,
+    date,
     title,
     excerpt,
     image,
@@ -58,14 +59,14 @@ const getNormalizedPost = async (post: CollectionEntry<'post'>): Promise<Post> =
   } = data;
 
   const slug = cleanSlug(rawSlug); // cleanSlug(rawSlug.split('/').pop());
-  const publishDate = new Date(rawPublishDate);
+  const publishDate = new Date(rawPublishDate ?? date ?? new Date());
   const updateDate = rawUpdateDate ? new Date(rawUpdateDate) : undefined;
 
   const category = rawCategory
     ? {
-        slug: cleanSlug(rawCategory),
-        title: rawCategory,
-      }
+      slug: cleanSlug(rawCategory),
+      title: rawCategory,
+    }
     : undefined;
 
   const tags = rawTags.map((tag: string) => ({
@@ -217,27 +218,39 @@ export const getStaticPathsBlogCategory = async ({ paginate }: { paginate: Pagin
   );
 };
 
+export const getAllTags = async () => {
+  const posts = await fetchPosts();
+  const tags = new Map<string, Taxonomy & { posts: Array<Post> }>();
+  posts.map((post) => {
+    if (Array.isArray(post.tags)) {
+      for (const tag of post.tags) {
+        if (!tags.has(tag.slug)) {
+          tags.set(tag.slug, {
+            ...tag,
+            posts: [post],
+          });
+        } else {
+          tags.get(tag.slug)!.posts.push(post);
+        }
+      }
+    }
+  });
+  return Array.from(tags.values());
+}
+
 /** */
 export const getStaticPathsBlogTag = async ({ paginate }: { paginate: PaginateFunction }) => {
   if (!isBlogEnabled || !isBlogTagRouteEnabled) return [];
 
-  const posts = await fetchPosts();
-  const tags = {};
-  posts.map((post) => {
-    if (Array.isArray(post.tags)) {
-      post.tags.map((tag) => {
-        tags[tag?.slug] = tag;
-      });
-    }
-  });
+  const tags = await getAllTags();
 
-  return Array.from(Object.keys(tags)).flatMap((tagSlug) =>
+  return tags.flatMap((tag) =>
     paginate(
-      posts.filter((post) => Array.isArray(post.tags) && post.tags.find((elem) => elem.slug === tagSlug)),
+      tag.posts || [],
       {
-        params: { tag: tagSlug, blog: TAG_BASE || undefined },
+        params: { tag: tag.slug, blog: TAG_BASE || undefined },
         pageSize: blogPostsPerPage,
-        props: { tag: tags[tagSlug] },
+        props: { tag },
       }
     )
   );

@@ -1,22 +1,23 @@
 site:
-  name: AstroWind
-  site: 'https://astrowind.vercel.app'
+  name: Ivan's Blog
+  site: 'https://ivanli.cc'
   base: '/'
   trailingSlash: false
+  owner: 'Ivan Li'
 
-  googleSiteVerificationId: orcPxI47GSa-cRvY11tUe6iGg2IO_RPvnA1q95iEM3M
+  googleSiteVerificationId: ''
 
 # Default SEO metadata
 metadata:
   title:
-    default: AstroWind
-    template: '%s — AstroWind'
+    default: Ivan's Blog
+    template: "%s — Ivan's Blog"
   description: "\U0001F680 Suitable for Startups, Small Business, Sass Websites, Professional Portfolios, Marketing Websites, Landing Pages & Blogs."
   robots:
     index: true
     follow: true
   openGraph:
-    site_name: AstroWind
+    site_name: Ivan's Blog
     images:
       - url: '~/assets/images/default.png'
         width: 1200
@@ -34,7 +35,7 @@ i18n:
 apps:
   blog:
     isEnabled: true
-    postsPerPage: 6
+    postsPerPage: 7
 
     post:
       isEnabled: true

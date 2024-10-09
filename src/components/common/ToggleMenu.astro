@@ -1,4 +1,6 @@
 ---
+import { Icon } from 'astro-icon/components';
+
 export interface Props {
   label?: string;
   class?: string;
@@ -6,24 +8,31 @@ export interface Props {
 
 const {
   label = 'Toggle Menu',
-  class: className = 'flex flex-col h-12 w-12 rounded justify-center items-center cursor-pointer group',
+  class: className = 'btn btn-ghost btn-circle cursor-pointer group',
 } = Astro.props;
 ---
 
 <button type="button" class={className} aria-label={label} data-aw-toggle-menu>
   <span class="sr-only">{label}</span>
   <slot>
-    <span
-      aria-hidden="true"
-      class="h-0.5 w-6 my-1 rounded-full bg-black dark:bg-white transition ease transform duration-200 opacity-80 group-[.expanded]:rotate-45 group-[.expanded]:translate-y-2.5"
-    ></span>
-    <span
-      aria-hidden="true"
-      class="h-0.5 w-6 my-1 rounded-full bg-black dark:bg-white transition ease transform duration-200 opacity-80 group-[.expanded]:opacity-0"
-    ></span>
-    <span
-      aria-hidden="true"
-      class="h-0.5 w-6 my-1 rounded-full bg-black dark:bg-white transition ease transform duration-200 opacity-80 group-[.expanded]:-rotate-45 group-[.expanded]:-translate-y-2.5"
-    ></span>
+    <Icon
+      name="line-md:menu"
+      class="w-6 h-6"
+      data-aw-menu-default
+    />
+
+
+    <Icon
+      name="line-md:menu-to-close-transition"
+      class="w-6 h-6 hidden"
+      data-aw-menu-expanded
+    />
+
+
+    <Icon
+      name="line-md:close-to-menu-transition"
+      class="w-6 h-6 hidden"
+      data-aw-menu-collapsed
+    />
   </slot>
 </button>

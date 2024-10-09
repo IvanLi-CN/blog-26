@@ -19,6 +19,9 @@
         },
         "googleSiteVerificationId": {
           "type": "string"
+        },
+        "owner": {
+          "type": "string"
         }
       },
       "required": ["name", "site", "base", "trailingSlash"],
