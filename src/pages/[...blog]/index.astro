@@ -12,6 +12,7 @@ import type { MetaData } from '~/types';
 import { blogPostRobots, getStaticPathsBlogPost } from '~/utils/blog';
 import { findImage } from '~/utils/images';
 import { getCanonical, getPermalink } from '~/utils/permalinks';
+import Comment from '../../components/widgets/Comment.astro';
 
 export const prerender = true;
 
@@ -49,6 +50,7 @@ const metadata = merge(
   <SinglePost post={{ ...post, image: image }} url={url}>
     {post.Content ? <post.Content /> : <Fragment set:html={post.content || ''} />}
   </SinglePost>
+  <Comment post={post} />
   <ToBlogLink />
   <RelatedPosts post={post} />
 </Layout>

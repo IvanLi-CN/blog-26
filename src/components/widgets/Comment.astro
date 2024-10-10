@@ -1,0 +1,38 @@
+---
+import { SITE } from 'astrowind:config';
+import type { Post } from '../../types';
+
+export interface Props {
+  post: Post;
+}
+
+const { post } = Astro.props;
+const host = `${SITE.site}/remark42`;
+---
+
+{
+  <script async lang="javascript" define:vars={{ host, post }}>
+    console.log({ host, post });
+    window.remark_config = {
+      host,
+      site_id: "blog",
+      components: ["embed"],
+      show_rss_subsription: true,
+      page_title: post.title,
+      theme: localStorage.getItem("color-theme") ?? "light",
+    };
+    !(function (e, n) {
+      for (var o = 0; o < e.length; o++) {
+        var r = n.createElement("script"),
+          c = ".js",
+          d = n.head || n.body;
+        "noModule" in r ? ((r.type = "module"), (c = ".mjs")) : (r.async = !0),
+          (r.defer = !0),
+          (r.src = remark_config.host + "/web/" + e[o] + c),
+          d.appendChild(r);
+      }
+    })(remark_config.components || ["embed"], document);
+  </script>
+}
+
+<div id="remark42"></div>
