@@ -143,6 +143,8 @@ import { UI } from 'astrowind:config';
         document.documentElement.dataset.theme = 'light';
         localStorage.theme = 'light';
       }
+
+      window.REMARK42?.changeTheme(localStorage.theme)
     });
 
     attachEvent('[data-aw-social-share]', 'click', function (_, elem) {

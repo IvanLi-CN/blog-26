@@ -1,6 +1,6 @@
 site:
   name: Ivan's Blog
-  site: 'https://ivanli.cc'
+  site: 'https://blog-dev.ivanli.cc'
   base: '/'
   trailingSlash: false
   owner: 'Ivan Li'
