@@ -9,7 +9,6 @@
   "yaml.schemas": {
     "./.vscode/astrowind/config-schema.json": "/src/config.yaml"
   },
-  "eslint.useFlatConfig": true,
   "biome.enabled": true,
   "editor.defaultFormatter": "biomejs.biome",
   "editor.codeActionsOnSave": {
