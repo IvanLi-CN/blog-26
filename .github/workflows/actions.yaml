@@ -64,3 +64,4 @@ jobs:
         with:
           image_name: ${{ github.repository }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          repository: git.ivanli.cc
