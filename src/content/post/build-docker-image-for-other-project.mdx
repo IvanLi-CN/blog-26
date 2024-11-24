@@ -4,7 +4,7 @@ date: '2023-07-09'
 tags: ['Github Actions', 'CI/CD', 'Docker']
 draft: false
 summary: 使用 Github Actions，为自己喜爱的 Github 开源项目，快速、独立、自动化地构建 Docker 镜像，并推送到 ghcr (GitHub Container Registry)。
-images: ['https://minio.ivanli.cc/ivan-public/uPic/2023/DZhPx7.jpg']
+images: ['https://s3.ivanli.cc/ivan-public/uPic/2023/DZhPx7.jpg']
 ---
 
 ## 背景
@@ -44,7 +44,7 @@ on:
 那么第二步就是获取上游最新的发布版本了。
 上游使用 “Github Releases” 发布版本：
 
-![Github Releases for VueTorrent](https://minio.ivanli.cc/ivan-public/uPic/2023/bHrczD.png)
+![Github Releases for VueTorrent](https://s3.ivanli.cc/ivan-public/uPic/2023/bHrczD.png)
 
 所以这里使用了 [git-get-release-action](https://github.com/marketplace/actions/git-get-release-action)，获取最新的版本号和 commitish hash。
 其中版本号就是 tag name，而 commit-ish hash 就是平常使用的 commit hash 了。
@@ -136,7 +136,7 @@ _这里使用了 `working-directory` 更改执行目录到子模块中，用 `cd
 
 这就没什么好说的了，需要注意的一点就是权限问题。因为我们是 push 到当前的 repo 上，所以可以直接使用自动注入的 `GITHUB_TOKEN`，不过需要在 repo 的设置页面更改下权限：
 
-![Github Actions Permissions Setting](https://minio.ivanli.cc/ivan-public/uPic/2023/QPvf6R.png)
+![Github Actions Permissions Setting](https://s3.ivanli.cc/ivan-public/uPic/2023/QPvf6R.png)
 
 选择 “Read and write permissions"，这样就能写入当前的 repo。
 

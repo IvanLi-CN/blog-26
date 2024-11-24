@@ -39,7 +39,7 @@ useEffect(() => {
 
 ### 在 React 18 的测试代码
 
-![React 18 Stricter Strict Mode.png](https://minio.ivanli.cc/ivan-public/uPic/2023/TWVx7v.png)
+![React 18 Stricter Strict Mode.png](https://s3.ivanli.cc/ivan-public/uPic/2023/TWVx7v.png)
 
 代码：[Code Sandbox](https://codesandbox.io/p/sandbox/clever-cache-pm1oct?file=%2Fsrc%2FApp.tsx&selection=%5B%7B%22endColumn%22%3A20%2C%22endLineNumber%22%3A33%2C%22startColumn%22%3A20%2C%22startLineNumber%22%3A33%7D%5D)
 
@@ -51,7 +51,7 @@ useEffect(() => {
 2. `useEffect(() => /* */, [])`执行一此后，以新的严格模式的规则，调用了 `destructor` 后，进行了二次调用。
 
 在第 2 点中，两次 useEffect 都是使用同一个值，是因为严格模式的二次调用按钩子分别执行两次，所以 useMemo 两次的调用都完毕后，得到的值再被 useEffect 执行两次。我调整了一下代码，将测试代码复制了一份在后面，可以看到 “useMemo” 和 “useMemo 2” 先执行了一次，又再执行了一次，然后再到 “useEffect“ 和 “useEffect 2"：
-![加倍快乐](https://minio.ivanli.cc/ivan-public/uPic/2023/OwlDG6.png)
+![加倍快乐](https://s3.ivanli.cc/ivan-public/uPic/2023/OwlDG6.png)
 
 ## 结论
 
