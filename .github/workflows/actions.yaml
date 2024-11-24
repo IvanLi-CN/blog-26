@@ -12,7 +12,7 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         bun-version:
@@ -38,7 +38,7 @@ jobs:
       - run: bun run check
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         bun-version:
@@ -68,9 +68,9 @@ jobs:
           path: dist/
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
-      image: catthehacker/ubuntu:act-22.04
+      image: ghcr.io/catthehacker/ubuntu:full-22.04
     needs: build
     permissions:
       contents: read
