@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Bun.js v1.1.29
+      - name: Use Bun.js v1.1.36
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.29
+          bun-version: 1.1.36
       - run: bun install
       - run: bun run check
 
@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         bun-version:
-          - '1.1.29'
+          - '1.1.36'
     steps:
       - uses: actions/checkout@v4
       - name: Use Bun.js v${{ matrix.bun-version }}
