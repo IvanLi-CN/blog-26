@@ -13,21 +13,27 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        bun-version:
+          - '1.1.36'
+        node-version:
+          - 22
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Use Bun.js v1.1.36
+      - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.1.36
+          bun-version: ${{ matrix.bun-version }}
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-${{ matrix.bun }}-bun-${{ hashFiles('**/bun.lockb') }}
+          key: ${{ runner.os }}-${{ matrix.bun-version }}-bun-${{ hashFiles('**/bun.lockb') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.bun }}-bun-
+            ${{ runner.os }}-${{ matrix.bun-version }}-bun-
       - run: bun install
       - run: bun run check
 
@@ -37,6 +43,8 @@ jobs:
       matrix:
         bun-version:
           - '1.1.36'
+        node-version:
+          - 22
     steps:
       - uses: actions/checkout@v4
       - name: Use Bun.js v${{ matrix.bun-version }}
@@ -45,13 +53,13 @@ jobs:
           bun-version: ${{ matrix.bun-version }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-${{ matrix.bun }}-bun-${{ hashFiles('**/bun.lockb') }}
+          key: ${{ runner.os }}-${{ matrix.bun-version }}-bun-${{ hashFiles('**/bun.lockb') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.bun }}-bun-
+            ${{ runner.os }}-${{ matrix.bun-version }}-bun-
       - run: bun install
       - run: bun run build
       - uses: christopherhx/gitea-upload-artifact@v4
