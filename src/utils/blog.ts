@@ -56,7 +56,7 @@ const getNormalizedPost = async (post: CollectionEntry<'post'>): Promise<Post> =
     tags: rawTags = [],
     category: rawCategory,
     author,
-    draft = false,
+    draft,
     metadata = {},
   } = data;
 
@@ -104,7 +104,12 @@ const getNormalizedPost = async (post: CollectionEntry<'post'>): Promise<Post> =
 };
 
 const load = async function (): Promise<Array<Post>> {
-  const posts = await getCollection('post');
+  const posts = await Promise.all(
+    [
+      getCollection('post'),
+      getCollection('notes'),
+    ]
+  ).then(([posts, notes]) => [...posts, ...notes]);
   const normalizedPosts = posts.map(async (post) => await getNormalizedPost(post));
 
   const results = (await Promise.all(normalizedPosts))

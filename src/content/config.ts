@@ -1,4 +1,4 @@
-import { defineCollection, z } from 'astro:content';
+import { type SchemaContext, defineCollection, z } from 'astro:content';
 
 const metadataDefinition = () =>
   z
@@ -45,39 +45,54 @@ const metadataDefinition = () =>
     })
     .optional();
 
-const postCollection = defineCollection({
-  schema: z.object({
+const postSchema = ({ image }: SchemaContext) => {
+  return z.object({
     publishDate: z.date().optional(),
     updateDate: z.date().optional(),
-    date: z
-      .string()
-      .refine(
-        (val) => {
-          const date = new Date(val);
-          return !isNaN(date.getTime());
-        },
-        {
-          message: 'Invalid date format',
-        }
-      )
-      .transform((val) => new Date(val))
-      .optional(),
-    draft: z.boolean().optional(),
+    date: z.union([
+      z
+        .string()
+        .refine(
+          (val) => {
+            const date = new Date(val);
+            return !isNaN(date.getTime());
+          },
+          {
+            message: 'Invalid date format',
+          }
+        )
+        .transform((val) => new Date(val)),
+      z.date(),
+    ]).optional(),
+    draft: z.boolean().default(true),
 
     title: z.string(),
     excerpt: z.string().optional(),
     summary: z.string().optional(),
-    image: z.string().optional(),
-    images: z.array(z.string()).optional(),
+    image: z.union([
+      z.preprocess(val => typeof val === 'string' ? decodeURIComponent(val) : val, image()), z.string().regex(/^(https?:)?\/\//)
+    ]).optional(),
+    images: z.array(z.union([
+      z.preprocess(val => typeof val === 'string' ? decodeURIComponent(val) : val, image()), z.string().regex(/^(https?:)?\/\//)
+    ])).optional(),
 
     category: z.string().optional(),
     tags: z.array(z.string()).optional(),
     author: z.string().optional(),
 
     metadata: metadataDefinition(),
-  }),
+  });
+}
+
+const postCollection = defineCollection({
+  schema: postSchema,
 });
 
 export const collections = {
   post: postCollection,
+  notes: defineCollection({
+    schema: (ctx) => postSchema(ctx).extend({
+      title: z.string().optional(),
+    })
+  }),
 };
