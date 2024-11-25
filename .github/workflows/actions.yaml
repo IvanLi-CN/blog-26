@@ -53,6 +53,7 @@ jobs:
           path: src/contents/notes
           token: ${{ secrets.USER_TOKEN }}
           github-server-url: https://git.ivanli.cc
+          ref: main
       - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
