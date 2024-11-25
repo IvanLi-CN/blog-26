@@ -47,6 +47,9 @@ jobs:
           - '22'
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.USER_TOKEN }}
+          submodules: true
       - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
@@ -77,7 +80,6 @@ jobs:
       REGISTRY: git.ivanli.cc
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
       - uses: christopherhx/gitea-download-artifact@v4
         with:
           name: dist
@@ -100,10 +102,22 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - uses: actions/checkout@v4
       -
         name: Build and push
         uses: docker/build-push-action@v6
         with:
           push: true
+          context: .
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  rerun-failed-jobs:
+    runs-on: ubuntu-22.04
+    needs: [ check, build, docker ]
+    if: failure()
+    steps:
+      - name: Rerun failed jobs in the current workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run rerun ${{ github.run_id }} --failed
