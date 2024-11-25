@@ -69,8 +69,6 @@ jobs:
 
   docker:
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/catthehacker/ubuntu:full-22.04
     needs: build
     permissions:
       contents: read
