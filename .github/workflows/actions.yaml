@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/Notes
-          path: src/contents/notes
+          path: src/content/notes
           token: ${{ secrets.USER_TOKEN }}
           github-server-url: https://git.ivanli.cc
           ref: main
@@ -116,7 +116,7 @@ jobs:
           context: .
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-        
+
   deploy:
     runs-on: ubuntu-22.04
     needs: docker
