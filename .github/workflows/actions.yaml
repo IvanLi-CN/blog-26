@@ -47,9 +47,10 @@ jobs:
           - '22'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.USER_TOKEN }}
-          submodules: true
+          repository: https://git.ivanli.cc/Ivan/Notes.git
+          path: src/contents/notes
       - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
