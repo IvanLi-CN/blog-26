@@ -1,6 +1,6 @@
 site:
   name: Ivan's Blog
-  site: 'https://blog-dev.ivanli.cc'
+  site: 'https://blog.ivanli.cc'
   base: '/'
   trailingSlash: false
   owner: 'Ivan Li'
@@ -12,7 +12,7 @@ metadata:
   title:
     default: Ivan's Blog
     template: "%s — Ivan's Blog"
-  description: "\U0001F680 Suitable for Startups, Small Business, Sass Websites, Professional Portfolios, Marketing Websites, Landing Pages & Blogs."
+  description: "Ivan's Blog"
   robots:
     index: true
     follow: true
