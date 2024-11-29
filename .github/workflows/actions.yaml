@@ -129,7 +129,7 @@ jobs:
     steps:
       - name: Notify Watchtower
         run: |
-          curl --max-time 30 --oauth2-bearer ${{ secrets.WATCHTOWER_TOKEN }} 'https://watchtower.ivanli.cc/v1/update?images=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}'
+          curl --oauth2-bearer ${{ secrets.WATCHTOWER_TOKEN }} 'https://watchtower.ivanli.cc/v1/update?images=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}'
 
         env:
           WATCHTOWER_HOST: ${{ secrets.WATCHTOWER_HOST }}  # Watchtower 主机地址
