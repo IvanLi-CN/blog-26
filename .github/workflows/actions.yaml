@@ -62,7 +62,7 @@ jobs:
         with:
           submodules: true
           ssh-key: ${{ secrets.SSH_KEY }}
-          ssh-known-hosts: git.ivanli.cc ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEMK9lLBpsD7gIv8UdSMM+V07KTQ4voWm1qsqzrPCS9g
+          ssh-known-hosts: '[git.ivanli.cc]:7018 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEMK9lLBpsD7gIv8UdSMM+V07KTQ4voWm1qsqzrPCS9g'
       - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
