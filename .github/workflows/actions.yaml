@@ -10,6 +10,7 @@ on:
   release:
     types: [ published ]
 
+
 env:
   REGISTRY: git.ivanli.cc
   IMAGE_NAME: ${{ github.repository }}
@@ -51,13 +52,9 @@ jobs:
           - '22'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/Notes
-          path: src/content/notes
-          token: ${{ secrets.USER_TOKEN }}
-          github-server-url: https://git.ivanli.cc
-          ref: main
+          submodules: true
+          ssh-key: ${{ secrets.SSH_KEY }}
       - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
@@ -123,7 +120,7 @@ jobs:
     steps:
       - name: Notify Watchtower
         run: |
-          curl --oauth2-bearer ${{ secrets.WATCHTOWER_TOKEN }} 'https://watchtower.ivanli.cc/v1/update?images=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}'
+          curl --max-time 30 --oauth2-bearer ${{ secrets.WATCHTOWER_TOKEN }} 'https://watchtower.ivanli.cc/v1/update?images=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}'
 
         env:
           WATCHTOWER_HOST: ${{ secrets.WATCHTOWER_HOST }}  # Watchtower 主机地址
