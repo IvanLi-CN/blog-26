@@ -63,6 +63,7 @@ jobs:
           submodules: true
           ssh-key: ${{ secrets.SSH_KEY }}
           ssh-known-hosts: '[git.ivanli.cc]:7018 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMiGxrZtYUwNcqesZDeJMnTkyNze4Ds7ms9Xu6rmUbCc'
+          ssh-user: gitea
       - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
