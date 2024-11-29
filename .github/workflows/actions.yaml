@@ -51,6 +51,13 @@ jobs:
         node-version:
           - '22'
     steps:
+      - name: Git Setup
+        run: |
+          mkdir -p ~/.ssh
+          echo 'Host git.ivanli.cc ' >> ~/.ssh/config
+          echo '    HostName git.ivanli.cc' >> ~/.ssh/config
+          echo '    Port 7018' >> ~/.ssh/config
+          cat  ~/.ssh/config
       - uses: actions/checkout@v4
         with:
           submodules: true
