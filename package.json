@@ -30,6 +30,8 @@
     "lefthook": "^1.9.2",
     "limax": "4.1.0",
     "lodash.merge": "^4.6.2",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
     "unpic": "^3.20.0"
   },
   "devDependencies": {

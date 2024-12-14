@@ -10,6 +10,8 @@ import tailwind from '@astrojs/tailwind';
 import type { AstroIntegration } from 'astro';
 import compress from 'astro-compress';
 import icon from 'astro-icon';
+import rehypeKatex from 'rehype-katex';
+import remarkMath from 'remark-math';
 
 import astrowind from './vendor/integration';
 
@@ -76,8 +78,8 @@ export default defineConfig({
   },
 
   markdown: {
-    remarkPlugins: [readingTimeRemarkPlugin],
-    rehypePlugins: [responsiveTablesRehypePlugin, lazyImagesRehypePlugin],
+    remarkPlugins: [readingTimeRemarkPlugin, remarkMath],
+    rehypePlugins: [responsiveTablesRehypePlugin, lazyImagesRehypePlugin, rehypeKatex],
   },
 
   vite: {
