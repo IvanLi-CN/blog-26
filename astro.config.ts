@@ -78,6 +78,12 @@ export default defineConfig({
   },
 
   markdown: {
+    shikiConfig: {
+      themes: {
+        light: 'github-light',
+        dark: 'dracula',
+      },
+    },
     remarkPlugins: [readingTimeRemarkPlugin, remarkMath],
     rehypePlugins: [responsiveTablesRehypePlugin, lazyImagesRehypePlugin, rehypeKatex],
   },
