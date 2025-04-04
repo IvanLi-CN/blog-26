@@ -40,7 +40,9 @@ const generatePermalink = async ({
     .join('/');
 };
 
-const getNormalizedPost = async (post: CollectionEntry<'post'> | CollectionEntry<'notes'>): Promise<Post> => {
+const getNormalizedPost = async (
+  post: CollectionEntry<'post'> | CollectionEntry<'notes'> | CollectionEntry<'local-notes'>
+): Promise<Post> => {
   const { id, slug: rawSlug = '', data } = post;
   const { Content, remarkPluginFrontmatter } = await post.render();
 
@@ -61,7 +63,7 @@ const getNormalizedPost = async (post: CollectionEntry<'post'> | CollectionEntry
   } = data;
 
   const slug = cleanSlug(rawSlug); // cleanSlug(rawSlug.split('/').pop());
-  const publishDate = new Date(rawPublishDate ?? date ?? new Date());
+  const publishDate = new Date(rawPublishDate ?? date ?? new Date('2017-08-01'));
   const updateDate = rawUpdateDate ? new Date(rawUpdateDate) : undefined;
 
   const category = rawCategory
@@ -104,15 +106,14 @@ const getNormalizedPost = async (post: CollectionEntry<'post'> | CollectionEntry
 };
 
 const load = async function (): Promise<Array<Post>> {
-  const posts = await Promise.all([getCollection('post'), getCollection('notes')]).then(([posts, notes]) => [
-    ...posts,
-    ...notes,
-  ]);
+  const posts = await Promise.all([getCollection('post'), getCollection('notes'), getCollection('local-notes')]).then(
+    ([posts, notes, localNotes]) => [...posts, ...notes, ...localNotes]
+  );
   const normalizedPosts = posts.map(async (post) => await getNormalizedPost(post));
 
   const results = (await Promise.all(normalizedPosts))
     .sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf())
-    .filter((post) => !post.draft);
+    .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true');
 
   return results;
 };

@@ -106,4 +106,10 @@ export const collections = {
         title: z.string().optional(),
       }),
   }),
+  ['local-notes']: defineCollection({
+    schema: (ctx) =>
+      postSchema(ctx).extend({
+        title: z.string().optional(),
+      }),
+  }),
 };

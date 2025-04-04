@@ -1,73 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer utilities {
-  .bg-page {
-    background-color: var(--aw-color-bg-page);
-  }
-  .bg-dark {
-    background-color: var(--aw-color-bg-page-dark);
-  }
-  .bg-light {
-    background-color: var(--aw-color-bg-page);
-  }
-  .text-page {
-    color: var(--aw-color-text-page);
-  }
-  .text-muted {
-    color: var(--aw-color-text-muted);
-  }
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+  themes: silk --default, dracula --prefersdark;
 }
 
-@layer components {
-}
+@custom-variant dark (&:where([data-theme=night], [data-theme=night] *));
 
-#header.scroll > div:first-child {
-  @apply bg-base-100 md:bg-base-100/90 md:backdrop-blur-md shadow shadow-neutral/5 dark:shadow-none;
-}
-/* #header.scroll > div:last-child {
-  @apply py-3;
-} */
-
-#header.expanded nav {
-  position: fixed;
-  top: 70px;
-  left: 0;
-  right: 0;
-  bottom: 70px !important;
-  padding: 0 5px;
-}
-
-#header.expanded .actions {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 20px;
-  padding: 0 5px;
-}
-
-[astro-icon].icon-light > * {
-  stroke-width: 1.2;
-}
-
-[astro-icon].icon-bold > * {
-  stroke-width: 2.4;
-}
-
-[data-aw-toggle-menu] path {
-  @apply transition;
-}
-[data-aw-toggle-menu].expanded g > path:first-child {
-  @apply -rotate-45 translate-y-[15px] translate-x-[-3px];
-}
-
-[data-aw-toggle-menu].expanded g > path:last-child {
-  @apply rotate-45 translate-y-[-8px] translate-x-[14px];
-}
-
-/* To deprecated */
-
-.dd *:first-child {
-  margin-top: 0;
+.text-muted {
+  color: var(--aw-color-text-muted);
 }

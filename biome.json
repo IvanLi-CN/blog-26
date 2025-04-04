@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [".astro", "src/content/notes", "dist"]
+    "ignore": [".astro", "src/content/notes", "src/content/local-notes", "dist"]
   },
   "formatter": {
     "enabled": true,

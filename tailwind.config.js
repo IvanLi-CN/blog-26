@@ -1,5 +1,3 @@
-import typographyPlugin from '@tailwindcss/typography';
-import daisyui from 'daisyui';
 import defaultTheme from 'tailwindcss/defaultTheme';
 
 /** @type {import('tailwindcss').Config} */
@@ -15,10 +13,5 @@ export default {
       },
     },
   },
-  plugins: [typographyPlugin, daisyui],
   darkMode: ['selector', '[data-theme="night"]'],
-  daisyui: {
-    themes: ['light', 'dark'],
-    darkTheme: 'dark',
-  },
 };
