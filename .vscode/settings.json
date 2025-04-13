@@ -17,6 +17,9 @@
   },
   "cSpell.words": ["astro", "mdast"],
   "[markdown]": {
-    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
-  }
+			"editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+		},
+		"[dotenv]": {
+			"editor.defaultFormatter": "foxundermoon.shell-format"
+		}
 }
