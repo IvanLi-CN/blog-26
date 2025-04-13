@@ -1,0 +1,231 @@
+---
+import { UI } from 'astrowind:config';
+---
+
+<script is:inline define:vars={{ defaultTheme: UI.theme }}>
+
+  if (window.basic_script) {
+    return;
+  }
+
+  window.basic_script = true;
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    localStorage.theme = theme;
+
+    const matches = document.querySelectorAll('input.theme-controller');
+
+    if (matches && matches.length) {
+      matches.forEach((elem) => {
+        elem.checked = theme === 'dark';
+      });
+    }
+  }
+
+  const initTheme = function () {
+    if (
+      localStorage.theme === 'dark' ||
+      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    ) {
+      applyTheme('dark');
+    } else {
+      applyTheme('light');
+    }
+  };
+  initTheme();
+
+  function attachEvent(selector, event, fn) {
+    const matches = typeof selector === 'string' ? document.querySelectorAll(selector) : selector;
+    if (matches && matches.length) {
+      matches.forEach((elem) => {
+        elem.addEventListener(event, (e) => fn(e, elem), false);
+      });
+    }
+  }
+
+  const toggleMenuState = {
+    expanded: false,
+    collapsedIcon: undefined,
+    expandedIcon: undefined,
+  }
+
+  function menuExpand() {
+    toggleMenuState.expanded = true;
+
+    const expandedIcon = document.querySelector('[data-aw-toggle-menu] [data-aw-menu-expanded]');
+    if (expandedIcon) {
+      expandedIcon.classList.remove('hidden');
+      expandedIcon.remove();
+      toggleMenuState.expandedIcon = expandedIcon.cloneNode(true);
+    }
+
+    const collapsedIcon = document.querySelector('[data-aw-toggle-menu] [data-aw-menu-collapsed]');
+    if (collapsedIcon) {
+      collapsedIcon.classList.remove('hidden');
+      collapsedIcon.remove();
+      toggleMenuState.collapsedIcon = collapsedIcon.cloneNode(true);
+    }
+
+    document.querySelector('[data-aw-toggle-menu] [data-aw-menu-default]')?.remove();
+
+    if (toggleMenuState.expandedIcon) {
+      document.querySelector('[data-aw-toggle-menu]').appendChild(toggleMenuState.expandedIcon);
+    }
+
+    document.body.classList.add('overflow-hidden');
+    document.getElementById('header')?.classList.add('h-screen');
+    document.getElementById('header')?.classList.add('expanded');
+    document.getElementById('header')?.classList.add('bg-base-100');
+    document.querySelector('#header nav')?.classList.remove('hidden');
+    document.querySelector('#header .actions')?.classList.remove('hidden');
+  }
+
+  function menuCollapse() {
+    toggleMenuState.expanded = false;
+
+    const expandedIcon = document.querySelector('[data-aw-toggle-menu] [data-aw-menu-expanded]');
+    if (expandedIcon) {
+      expandedIcon.classList.remove('hidden');
+      expandedIcon.remove();
+      toggleMenuState.expandedIcon = expandedIcon.cloneNode(true);
+    }
+
+    const collapsedIcon = document.querySelector('[data-aw-toggle-menu] [data-aw-menu-collapsed]');
+    if (collapsedIcon) {
+      collapsedIcon.classList.remove('hidden');
+      collapsedIcon.remove();
+      toggleMenuState.collapsedIcon = collapsedIcon.cloneNode(true);
+    }
+
+    document.querySelector('[data-aw-toggle-menu] [data-aw-menu-default]')?.remove();
+
+    if (toggleMenuState.collapsedIcon) {
+      document.querySelector('[data-aw-toggle-menu]').appendChild(toggleMenuState.collapsedIcon);
+    }
+
+    document.body.classList.remove('overflow-hidden');
+    document.getElementById('header')?.classList.remove('h-screen');
+    document.getElementById('header')?.classList.remove('expanded');
+    document.getElementById('header')?.classList.remove('bg-base-100');
+    document.querySelector('#header nav')?.classList.add('hidden');
+    document.querySelector('#header .actions')?.classList.add('hidden');
+  }
+
+  const onLoad = function () {
+    let lastKnownScrollPosition = window.scrollY;
+    let ticking = true;
+
+    attachEvent('#header nav', 'click', function () {
+      menuCollapse();
+      // document.querySelector('[data-aw-toggle-menu]')?.classList.remove('expanded');
+      document.body.classList.remove('overflow-hidden');
+      document.getElementById('header')?.classList.remove('h-screen');
+      document.getElementById('header')?.classList.remove('expanded');
+      document.getElementById('header')?.classList.remove('bg-base-100');
+      document.querySelector('#header nav')?.classList.add('hidden');
+      document.querySelector('#header .actions')?.classList.add('hidden');
+    });
+
+    attachEvent('[data-aw-toggle-menu]', 'click', function () {
+      if (toggleMenuState.expanded) {
+        menuCollapse();
+      } else {
+        menuExpand();
+      }
+    });
+
+    attachEvent('.theme-controller', 'change', function (_, elem) {
+      if (elem.checked) {
+        document.documentElement.dataset.theme = 'dark';
+        localStorage.theme = 'dark';
+      } else {
+        document.documentElement.dataset.theme = 'light';
+        localStorage.theme = 'light';
+      }
+
+      window.REMARK42?.changeTheme(localStorage.theme)
+    });
+
+    attachEvent('[data-aw-social-share]', 'click', function (_, elem) {
+      const network = elem.getAttribute('data-aw-social-share');
+      const url = encodeURIComponent(elem.getAttribute('data-aw-url'));
+      const text = encodeURIComponent(elem.getAttribute('data-aw-text'));
+
+      let href;
+      switch (network) {
+        case 'facebook':
+          href = `https://www.facebook.com/sharer.php?u=${url}`;
+          break;
+        case 'twitter':
+          href = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+          break;
+        case 'linkedin':
+          href = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${text}`;
+          break;
+        case 'whatsapp':
+          href = `https://wa.me/?text=${text}%20${url}`;
+          break;
+        case 'mail':
+          href = `mailto:?subject=%22${text}%22&body=${text}%20${url}`;
+          break;
+
+        default:
+          return;
+      }
+
+      const newlink = document.createElement('a');
+      newlink.target = '_blank';
+      newlink.href = href;
+      newlink.click();
+    });
+
+    const screenSize = window.matchMedia('(max-width: 767px)');
+    screenSize.addEventListener('change', function () {
+      menuCollapse();
+    });
+
+    function applyHeaderStylesOnScroll() {
+      const header = document.querySelector('#header[data-aw-sticky-header]');
+      if (!header) return;
+      if (lastKnownScrollPosition > 60 && !header.classList.contains('scroll')) {
+        header.classList.add('scroll');
+      } else if (lastKnownScrollPosition <= 60 && header.classList.contains('scroll')) {
+        header.classList.remove('scroll');
+      }
+      ticking = false;
+    }
+    applyHeaderStylesOnScroll();
+
+    attachEvent([document], 'scroll', function () {
+      lastKnownScrollPosition = window.scrollY;
+
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          applyHeaderStylesOnScroll();
+        });
+        ticking = true;
+      }
+    });
+  };
+  const onPageShow = function () {
+    document.documentElement.classList.add('motion-safe:scroll-smooth');
+    const elem = document.querySelector('[data-aw-toggle-menu]');
+    if (elem) {
+      elem.classList.remove('expanded');
+    }
+    document.body.classList.remove('overflow-hidden');
+    document.getElementById('header')?.classList.remove('h-screen');
+    document.getElementById('header')?.classList.remove('expanded');
+    document.querySelector('#header nav')?.classList.add('hidden');
+  };
+
+  window.onload = onLoad;
+  window.onpageshow = onPageShow;
+
+  document.addEventListener('astro:after-swap', () => {
+    initTheme();
+    onLoad();
+    onPageShow();
+  });
+</script>

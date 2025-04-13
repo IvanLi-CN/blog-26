@@ -1,0 +1,43 @@
+---
+import { getPermalink } from '~/utils/permalinks';
+
+import { APP_BLOG } from 'astrowind:config';
+import type { Post } from '~/types';
+
+export interface Props {
+  tags: Post['tags'];
+  class?: string;
+  title?: string | undefined;
+  isCategory?: boolean;
+}
+
+const { tags, class: className = 'flex gap-1 flex-wrap', title = undefined, isCategory = false } = Astro.props;
+---
+
+{
+  tags && Array.isArray(tags) && (
+    <>
+      {title !== undefined && (
+        <span class="align-super font-normal underline underline-offset-4 decoration-2">
+          {title}
+        </span>
+      )}
+      <ul class={className}>
+        {tags.map((tag) => (
+          <li class="inline">
+            {!APP_BLOG?.tag?.isEnabled ? (
+              <span class="badge badge-ghost">tag.title</span>
+            ) : (
+              <a
+                href={getPermalink(tag.slug, isCategory ? 'category' : 'tag')}
+                class="badge badge-ghost"
+              >
+                {tag.title}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}

@@ -1,0 +1,29 @@
+---
+import { Icon } from 'astro-icon/components';
+
+export interface Props {
+  label?: string;
+  class?: string;
+  iconClass?: string;
+  iconName?: string;
+}
+
+const { iconClass = 'w-6 h-6' } = Astro.props;
+---
+
+{
+  <label class="swap swap-rotate btn-ghost btn-circle">
+    <!-- this hidden checkbox controls the state -->
+    <input type="checkbox" class="theme-controller" value="dracula" />
+
+    <Icon name="line-md:sunny" class:list={[
+      iconClass,
+      'swap-off'
+    ]} title='Toggle to dark mode' />
+
+    <Icon name="line-md:moon" class:list={[
+      iconClass,
+      'swap-on'
+    ]} title='Toggle to light mode' />
+  </label>
+}
