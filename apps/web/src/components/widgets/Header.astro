@@ -1,0 +1,117 @@
+---
+import { Icon } from 'astro-icon/components';
+import ToggleMenu from '~/components/common/ToggleMenu.astro';
+import ToggleTheme from '~/components/common/ToggleTheme.astro';
+
+import type { CallToAction } from '~/types';
+import { getAsset, trimSlash } from '~/utils/permalinks';
+
+interface Link {
+  text?: string;
+  href?: string;
+  ariaLabel?: string;
+  icon?: string;
+}
+
+interface MenuLink extends Link {
+  links?: Array<MenuLink>;
+}
+
+export interface Props {
+  id?: string;
+  links?: Array<MenuLink>;
+  actions?: Array<CallToAction>;
+  isSticky?: boolean;
+  isDark?: boolean;
+  isFullWidth?: boolean;
+  showToggleTheme?: boolean;
+  showRssFeed?: boolean;
+  position?: string;
+}
+
+const { id = 'header', links = [], isSticky = false } = Astro.props;
+
+const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
+---
+
+
+<header
+  class:list={[
+    { sticky: isSticky, relative: !isSticky },
+    'top-0 z-40 flex-none mx-auto w-full border-b border-gray-50/0 transition-[opacity] ease-in-out',
+  ]}
+  {...isSticky ? { 'data-aw-sticky-header': true } : {}}
+  {...id ? { id } : {}}
+>
+  <div class="navbar bg-base-100 max-w-7xl mx-auto">
+    <div class="flex-1">
+      <a class:list={[
+        "inline-block px-4 font-bold text-xl 2xl:text-2xl",
+        "hover:text-primary drop-shadow drop-shadow-secondary/30 transition-colors",
+        "cursor-pointer"
+      ]}>Ivan's Blog</a>
+    </div>
+    <nav
+        class="items-center w-full md:w-auto hidden md:flex md:mx-5 overflow-y-auto overflow-x-hidden md:overflow-y-visible md:overflow-x-visible md:justify-self-center"
+        aria-label="Main navigation"
+      >
+        <ul
+          class="flex flex-col md:flex-row md:self-center w-full md:w-auto text-xl md:text-[0.9375rem] tracking-[0.01rem] font-medium md:justify-center"
+        >
+          {
+            links.map(({ text, href, links }) => (
+              <li class={links?.length ? 'dropdown' : ''}>
+                {links?.length ? (
+                    <div class="dropdown dropdown-hover">
+                      <div tabindex="0" class="btn btn-ghost flex flex-nowrap">
+                        {text}{' '}
+                        <Icon name="tabler:chevron-down" class="w-3.5 h-3.5 hidden md:inline" />
+                      </div>
+                      <ul class="dropdown-content menu md:bg-base-100/95 rounded-box z-[1] w-52 shadow md:absolute pl-4 md:pl-0 font-medium md:min-w-[200px] drop-shadow-xl">
+                        {links.map(({ text: text2, href: href2 }) => (
+                          <li>
+                            <a
+                              class:list={[
+                                '',
+                                { 'aw-link-active': href2 === currentPath },
+                              ]}
+                              href={href2}
+                            >
+                              {text2}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                ) : (
+                  <a
+                    class:list={[
+                      'btn btn-ghost',
+                      { 'aw-link-active': href === currentPath },
+                    ]}
+                    href={href}
+                  >
+                    {text}
+                  </a>
+                )}
+              </li>
+            ))
+          }
+        </ul>
+    </nav>
+    <div class="actions md:flex hidden">
+      <ToggleTheme iconClass="w-5 h-5" />
+      <a
+        class="btn btn-ghost btn-circle"
+        aria-label="RSS Feed"
+        title="RSS Feed"
+        href={getAsset('/rss.xml')}
+      >
+        <Icon name="tabler:rss" class="w-5 h-5" />
+      </a>
+    </div>
+    <div class="flex items-center md:hidden">
+      <ToggleMenu />
+    </div>
+  </div>
+</header>
