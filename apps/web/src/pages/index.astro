@@ -1,17 +1,34 @@
 ---
-import Header from '../components/widgets/Header.astro';
-import Layout from '../layouts/Layout.astro';
-import { headerData } from '../navigation';
+import { Icon } from "astro-icon/components";
+import Header from "../components/widgets/Header.astro";
+import Layout from "../layouts/Layout.astro";
+import { headerData } from "../navigation";
 
 const metadata = {
-  title: 'AstroWind — Free template for creating websites with Astro + Tailwind CSS',
+  title:
+    "AstroWind — Free template for creating websites with Astro + Tailwind CSS",
   ignoreTitleTemplate: true,
 };
 ---
 
 <Layout metadata={metadata}>
-  <Header showToggleTheme showRssFeed isSticky {...headerData}  />
+  <Header showToggleTheme showRssFeed isSticky {...headerData} />
   <div class="container px-4 mx-auto">
-    <h1 class="text-4xl font-bold">Welcome to AstroWind</h1>
+    <div role="alert" class="alert alert-vertical sm:alert-horizontal">
+      <Icon name="line-md:bell-alert-twotone-loop" class="w-5 h-5 inline" />
+      <div>
+        <h3 class="font-bold">站点完善中</h3>
+        <div class="text-xs">
+          <p>
+            反正博客页面能用了，剩下的就靠最近能不能挤出时间填这个坑了
+            <Icon
+              name="fluent-emoji-flat:face-with-tears-of-joy"
+              class="w-5 h-5 inline"
+            />
+          </p>
+          <p>目前首页和搜索还没做</p>
+        </div>
+      </div>
+    </div>
   </div>
 </Layout>
