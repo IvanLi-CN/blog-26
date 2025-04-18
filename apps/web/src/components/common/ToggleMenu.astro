@@ -1,12 +1,12 @@
 ---
-import { Icon } from 'astro-icon/components';
+import { Icon } from "astro-icon/components";
 
 export interface Props {
   label?: string;
   class?: string;
 }
 
-const { label = 'Toggle Menu', class: className = 'btn btn-ghost btn-circle cursor-pointer group' } = Astro.props;
+const { label = "Toggle Menu", class: className = "btn btn-ghost btn-circle cursor-pointer group" } = Astro.props;
 ---
 
 <button type="button" class={className} aria-label={label} data-aw-toggle-menu>
