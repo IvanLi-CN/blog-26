@@ -1,0 +1,102 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  placeholder?: string;
+  buttonLabel?: string;
+}
+
+const {
+  placeholder = "搜索文章...",
+  buttonLabel = "搜索",
+} = Astro.props;
+---
+
+<div class="relative">
+  <!-- 大屏搜索框 -->
+  <form action="/search" method="GET" class="hidden md:flex items-center">
+    <div class="relative">
+      <input
+        type="text"
+        name="q"
+        placeholder={placeholder}
+        class="input input-bordered w-64 pr-10"
+      />
+      <button
+        type="submit"
+        class="btn btn-ghost btn-circle absolute right-0 top-0"
+        aria-label={buttonLabel}
+      >
+        <Icon name="tabler:search" class="w-5 h-5" />
+      </button>
+    </div>
+  </form>
+
+  <!-- 小屏搜索按钮 -->
+  <button
+    type="button"
+    class="btn btn-ghost btn-circle md:hidden search-trigger"
+    aria-label={buttonLabel}
+  >
+    <Icon name="tabler:search" class="w-5 h-5" />
+  </button>
+
+  <!-- 小屏搜索弹出层 -->
+  <div class="search-modal fixed inset-0 z-50 bg-base-100/95 hidden md:!hidden">
+    <div class="container mx-auto px-4 h-full flex items-center justify-center">
+      <form action="/search" method="GET" class="w-full max-w-lg">
+        <div class="relative">
+          <input
+            type="text"
+            name="q"
+            placeholder={placeholder}
+            class="input input-bordered w-full pr-10 text-lg"
+          />
+          <button
+            type="submit"
+            class="btn btn-ghost btn-circle absolute right-0 top-0"
+            aria-label={buttonLabel}
+          >
+            <Icon name="tabler:search" class="w-6 h-6" />
+          </button>
+        </div>
+      </form>
+      <button
+        type="button"
+        class="btn btn-ghost btn-circle absolute right-4 top-4 search-close"
+        aria-label="关闭搜索"
+      >
+        <Icon name="tabler:x" class="w-6 h-6" />
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 搜索框交互逻辑
+  const searchTrigger = document.querySelector('.search-trigger');
+  const searchModal = document.querySelector('.search-modal');
+  const searchClose = document.querySelector('.search-close');
+  const searchInput = searchModal?.querySelector('input');
+
+  searchTrigger?.addEventListener('click', () => {
+    searchModal?.classList.remove('hidden');
+    searchInput?.focus();
+    // 禁止背景滚动
+    document.body.style.overflow = 'hidden';
+  });
+
+  searchClose?.addEventListener('click', () => {
+    searchModal?.classList.add('hidden');
+    // 恢复背景滚动
+    document.body.style.overflow = '';
+  });
+
+  // ESC 键关闭搜索
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !searchModal?.classList.contains('hidden')) {
+      searchModal?.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+  });
+</script>

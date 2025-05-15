@@ -6,6 +6,7 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import partytown from '@astrojs/partytown';
 import sitemap from '@astrojs/sitemap';
+import node from '@astrojs/node'; // Import the Node.js adapter
 
 import tailwindcss from '@tailwindcss/vite';
 import type { AstroIntegration } from 'astro';
@@ -25,7 +26,12 @@ const whenExternalScripts = (items: (() => AstroIntegration) | (() => AstroInteg
   hasExternalScripts ? (Array.isArray(items) ? items.map((item) => item()) : [items()]) : [];
 
 export default defineConfig({
-  output: 'static',
+  adapter: node({ // Add the Node.js adapter
+    mode: 'standalone'
+  }),
+  session: {
+    driver: "lru-cache",
+  },
 
   integrations: [
     sitemap(),
