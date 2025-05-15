@@ -117,7 +117,11 @@ export async function findSimilarFiles(queryVector: Buffer, limit: number = 5): 
 
   results.sort((a, b) => b.score - a.score); // Sort by score descending
 
-  return results.slice(0, limit); // Return top N results
+  // 返回 top N results
+  return results.slice(0, limit).map(result => ({
+    ...result,
+    content: "This is a placeholder content." // 添加 content 属性
+  }));
 }
 
 // Optional: Close the database connection when the application exits

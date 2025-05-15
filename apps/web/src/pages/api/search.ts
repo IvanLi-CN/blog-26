@@ -6,8 +6,6 @@ export const prerender = false
 
 export const GET: APIRoute = async ({ url }: { url: URL }) => {
   try {
-    console.log('Search API received URL:', url.toString()); // Added for debugging
-    console.log('Search API searchParams:', url.searchParams); // Added for debugging
     // 获取查询参数
     const query = url.searchParams.get('q');
     console.log('Search API received query:', query); // Added for debugging

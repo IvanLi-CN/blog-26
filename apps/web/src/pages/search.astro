@@ -1,119 +1,37 @@
 ---
 import Layout from '../layouts/Layout.astro';
 
+import SearchAndChat from '../components/SearchAndChat.tsx';
+import { initializeDB } from '../lib/db';
+import { performRAGQuery } from '../lib/rag';
+
+export const prerender = false;
+
 const query = Astro.url.searchParams.get('q');
 const metadata = {
   title: `Search Results${query ? ` for "${query}"` : ''}`,
 };
+
+ // 初始化数据库
+ await initializeDB(); // Initialize the database
+
+// 执行 RAG 查询
+const result = query ? await performRAGQuery(query).then(r => ({ query, ...r })) : null;
+
+console.log(result);
+
 ---
 
 <Layout metadata={metadata}>
-  <section class="px-4 py-16 sm:px-6 mx-auto lg:px-8 lg:py-20 max-w-4xl">
+  <section class="px-4 py-8 sm:px-6 mx-auto lg:px-8 lg:py-20 max-w-4xl">
     <div class="mb-12 text-center">
-      <h2 class="text-4xl md:text-5xl font-bold leading-tighter tracking-tighter mb-4 font-heading">
+      <h2 class="text-4xl md:text-5xl font-bold leading-tighter tracking-tighter font-heading">
         Search Results
       </h2>
-      {query && (
-        <p class="text-xl text-gray-600 dark:text-slate-400">
-          Results for: "{query}"
-        </p>
-      )}
     </div>
 
-    <div id="searchResults" class="space-y-8">
-      <div class="flex justify-center">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
-      </div>
     </div>
   </section>
 
-  <script>
-    async function performSearch() {
-      console.log('performSearch function started');
-      const query = new URLSearchParams(window.location.search).get('q');
-      if (!query) {
-        console.log('Query is empty, returning.');
-        return;
-      }
-      console.log('Client-side query (from window.location):', query);
-
-      const resultsContainer = document.getElementById('searchResults');
-      if (!resultsContainer) return;
-
-      console.log('Attempting to fetch search results...');
-      const requestUrl = `/api/search?q=${encodeURIComponent(query)}`;
-      console.log('Request URL:', requestUrl); // Added for debugging
-      try {
-        const response = await fetch(requestUrl);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Search failed');
-        }
-
-        let html = '';
-
-        if (data.answer) {
-          html += `
-            <div class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 mb-8">
-              <h3 class="text-xl font-semibold mb-4">Answer</h3>
-              <div class="prose dark:prose-invert max-w-none">
-                ${data.answer}
-              </div>
-            </div>
-          `;
-        }
-
-        if (data.sources && data.sources.length > 0) {
-          html += `
-            <div>
-              <h3 class="text-xl font-semibold mb-4">Related Articles</h3>
-              <div class="space-y-6">
-          `;
-
-          for (const source of data.sources) {
-            html += `
-              <article class="border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-                <h3 class="text-lg font-semibold mb-2">
-                  <a href="${source.permalink}" class="hover:text-primary">
-                    ${source.title}
-                  </a>
-                </h3>
-                ${source.score ? `
-                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    Relevance: ${Math.round(source.score * 100)}%
-                  </p>
-                ` : ''}
-              </article>
-            `;
-          }
-
-          html += `
-              </div>
-            </div>
-          `;
-        }
-
-        if (!data.answer && (!data.sources || data.sources.length === 0)) {
-          html = `
-            <div class="text-center text-gray-600 dark:text-slate-400">
-              No results found for "${query}"
-            </div>
-          `;
-        }
-
-        resultsContainer.innerHTML = html;
-
-      } catch (error) {
-        resultsContainer.innerHTML = `
-          <div class="text-center text-red-600 dark:text-red-400">
-            Error: ${error.message || 'Failed to perform search'}
-          </div>
-        `;
-      }
-    }
-
-    // 页面加载完成后执行搜索
-    document.addEventListener('DOMContentLoaded', performSearch);
-  </script>
+  <SearchAndChat query={query} defaultResult={result} client:load />
 </Layout>

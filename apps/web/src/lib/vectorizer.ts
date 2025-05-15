@@ -4,7 +4,6 @@ import { Settings, OpenAIEmbedding, OpenAI } from 'llamaindex';
 import { initializeDB, getAllFileRecords, upsertFileRecord, deleteFileRecord } from './db';
 import type { DBRecord } from './db';
 import { processAllContent } from './contentProcessor';
-import type { ProcessedContent } from './contentProcessor';
 import { getCollection } from 'astro:content';
 
 /**
@@ -31,7 +30,7 @@ export function configureLlamaIndex(): void {
 
   // 配置 LLM 模型
   Settings.llm = new OpenAI({
-    model: "o4-mini",
+    model: "deepseek-v3",
     apiKey,
     baseURL,
   });
