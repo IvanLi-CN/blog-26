@@ -13,6 +13,8 @@ COPY ./scripts ./scripts
 COPY ./dist/server ./dist/server
 COPY ./dist/client ./dist/client
 
+ENV HOST=${HOST:-0.0.0.0}
+
 EXPOSE 4321
 
 ENTRYPOINT ["./entrypoint.sh"]
