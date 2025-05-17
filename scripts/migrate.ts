@@ -1,16 +1,12 @@
 import { Database } from 'bun:sqlite';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const DB_PATH_RELATIVE = '../sqlite.db';
-const DB_PATH_ABSOLUTE = path.resolve(__dirname, DB_PATH_RELATIVE);
-const MIGRATIONS_FOLDER_RELATIVE = '../drizzle';
-const MIGRATIONS_FOLDER_ABSOLUTE = path.resolve(__dirname, MIGRATIONS_FOLDER_RELATIVE);
+const DB_PATH_RELATIVE = process.env.DB_PATH || './sqlite.db';
+const DB_PATH_ABSOLUTE = path.resolve(process.cwd(), DB_PATH_RELATIVE);
+const MIGRATIONS_FOLDER_RELATIVE = './drizzle';
+const MIGRATIONS_FOLDER_ABSOLUTE = path.resolve(process.cwd(), MIGRATIONS_FOLDER_RELATIVE);
 
 async function runMigrations() {
   try {
