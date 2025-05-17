@@ -48,8 +48,6 @@ jobs:
       matrix:
         bun-version:
           - '1.1.36'
-        node-version:
-          - '22'
     steps:
       - name: Git Setup
         run: |
@@ -68,9 +66,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ matrix.bun-version }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
