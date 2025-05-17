@@ -1,8 +1,8 @@
 ---
 import { Icon } from "astro-icon/components";
+import SearchBox from "~/components/common/SearchBox.astro";
 import ToggleMenu from "~/components/common/ToggleMenu.astro";
 import ToggleTheme from "~/components/common/ToggleTheme.astro";
-import SearchBox from "~/components/common/SearchBox.astro";
 
 import type { CallToAction } from "~/types";
 import { getAsset, trimSlash } from "~/utils/permalinks";
@@ -22,6 +22,7 @@ export interface Props {
   id?: string;
   links?: Array<MenuLink>;
   actions?: Array<CallToAction>;
+  showSearchBox?: boolean;
   isSticky?: boolean;
   isDark?: boolean;
   isFullWidth?: boolean;
@@ -30,7 +31,7 @@ export interface Props {
   position?: string;
 }
 
-const { id = "header", links = [], isSticky = false } = Astro.props;
+const { id = "header", links = [], isSticky = false, showSearchBox = true } = Astro.props;
 
 const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
 ---
@@ -102,7 +103,7 @@ const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
     </nav>
     <div class="actions md:flex hidden">
       <ToggleTheme iconClass="w-5 h-5" />
-      <SearchBox />
+      {showSearchBox && <SearchBox />}
       <a
         class="btn btn-ghost btn-circle"
         aria-label="RSS Feed"
@@ -113,7 +114,7 @@ const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
       </a>
     </div>
     <div class="flex items-center md:hidden">
-      <SearchBox />
+      {showSearchBox && <SearchBox />}
       <ToggleMenu />
     </div>
   </div>

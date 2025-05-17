@@ -1,16 +1,35 @@
-import { performChatQuery } from '../../lib/rag';
-import { initializeDB } from '../../lib/db';
 import type { APIRoute } from 'astro';
+import { initializeDB } from '../../lib/db';
+import { performChatQuery } from '../../lib/rag';
+import { rateLimiter, rateLimiterHourly } from '../../lib/rateLimiter'; // 导入 rateLimiter
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    // 1. 解析请求体
+    // 1. 速率限制
+    try {
+      await rateLimiter.consume('global');
+      await rateLimiterHourly.consume('global');
+    } catch (rejRes) {
+      return new Response(
+        JSON.stringify({
+          error: 'Too Many Requests',
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    // 2. 解析请求体
     const body = await request.json();
     const { query, history } = body; // 将 message 替换为 query
 
-    // 2. 验证输入参数
+    // 3. 验证输入参数
     if (!query || !history || !Array.isArray(history)) { // 将 message 替换为 query
       return new Response(
         JSON.stringify({
@@ -25,13 +44,13 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // 3. 初始化数据库
+    // 4. 初始化数据库
     await initializeDB();
 
-    // 4. 调用 RAG 函数 (使用 performChatQuery)
+    // 5. 调用 RAG 函数 (使用 performChatQuery)
     const result = await performChatQuery(query, history); // 传递 query 和 history
 
-    // 5. 构建 JSON 响应
+    // 6. 构建 JSON 响应
     const responseData = {
       text: result.answer,
       sources: result.sources,
