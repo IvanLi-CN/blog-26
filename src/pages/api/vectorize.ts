@@ -1,5 +1,7 @@
 import { processAndVectorizeAllContent } from '../../lib/vectorizer';
 
+export const prerender = false;
+
 export async function GET() {
   try {
     console.log('触发向量化 API...');

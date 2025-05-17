@@ -23,4 +23,5 @@ COPY --from=builder /app/bun.lockb ./bun.lockb
 EXPOSE 4321
 
 # 运行 Astro 预览服务器
-CMD ["bun", "./dist/server/entry.mjs"]
+COPY entrypoint.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
