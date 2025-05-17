@@ -1,9 +1,9 @@
-import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { vectorizedFiles, type VectorizedFile, type NewVectorizedFile } from './schema';
 import { eq, isNotNull } from 'drizzle-orm'; // Import isNotNull
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { type NewVectorizedFile, type VectorizedFile, vectorizedFiles } from './schema';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,7 +29,7 @@ export async function initializeDB(): Promise<void> {
 
 export async function getFileRecord(filepath: string): Promise<VectorizedFile | null> {
   if (!db) {
-    throw new Error("Database not initialized. Call initializeDB() first.");
+    throw new Error('Database not initialized. Call initializeDB() first.');
   }
   const record = await db.select().from(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath)).get();
   return record || null;
@@ -37,9 +37,10 @@ export async function getFileRecord(filepath: string): Promise<VectorizedFile | 
 
 export async function upsertFileRecord(record: NewVectorizedFile): Promise<void> {
   if (!db) {
-    throw new Error("Database not initialized. Call initializeDB() first.");
+    throw new Error('Database not initialized. Call initializeDB() first.');
   }
-  await db.insert(vectorizedFiles)
+  await db
+    .insert(vectorizedFiles)
     .values(record)
     .onConflictDoUpdate({
       target: vectorizedFiles.filepath,
@@ -56,14 +57,14 @@ export async function upsertFileRecord(record: NewVectorizedFile): Promise<void>
 
 export async function deleteFileRecord(filepath: string): Promise<void> {
   if (!db) {
-    throw new Error("Database not initialized. Call initializeDB() first.");
+    throw new Error('Database not initialized. Call initializeDB() first.');
   }
   await db.delete(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath));
 }
 
 export async function getAllFileRecords(): Promise<VectorizedFile[]> {
   if (!db) {
-    throw new Error("Database not initialized. Call initializeDB() first.");
+    throw new Error('Database not initialized. Call initializeDB() first.');
   }
   const records = await db.select().from(vectorizedFiles).all();
   return records;
@@ -72,7 +73,7 @@ export async function getAllFileRecords(): Promise<VectorizedFile[]> {
 // Helper function to calculate cosine similarity between two vectors (Buffers)
 function cosineSimilarity(vec1: Buffer, vec2: Buffer): number {
   if (vec1.length !== vec2.length) {
-    throw new Error("Vectors must have the same dimension for cosine similarity.");
+    throw new Error('Vectors must have the same dimension for cosine similarity.');
   }
 
   const arr1 = new Float32Array(vec1.buffer, vec1.byteOffset, vec1.byteLength / 4);
@@ -95,9 +96,12 @@ function cosineSimilarity(vec1: Buffer, vec2: Buffer): number {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-export async function findSimilarFiles(queryVector: Buffer, limit: number = 5): Promise<(VectorizedFile & { score: number })[]> {
+export async function findSimilarFiles(
+  queryVector: Buffer,
+  limit: number = 5
+): Promise<(VectorizedFile & { score: number })[]> {
   if (!db) {
-    throw new Error("Database not initialized. Call initializeDB() first.");
+    throw new Error('Database not initialized. Call initializeDB() first.');
   }
 
   // Fetch all records with vectors
@@ -105,22 +109,22 @@ export async function findSimilarFiles(queryVector: Buffer, limit: number = 5): 
 
   // Calculate similarity and sort
   const results = recordsWithVectors
-    .map(row => {
+    .map((row) => {
       // Ensure row.vector is a Buffer before calculating similarity
       if (row.vector instanceof Buffer) {
-         const score = cosineSimilarity(queryVector, row.vector);
-         return { ...row, score };
+        const score = cosineSimilarity(queryVector, row.vector);
+        return { ...row, score };
       }
       return null; // Skip records without a vector
     })
-    .filter(row => row !== null) as (VectorizedFile & { score: number })[]; // Filter out nulls and assert type
+    .filter((row) => row !== null) as (VectorizedFile & { score: number })[]; // Filter out nulls and assert type
 
   results.sort((a, b) => b.score - a.score); // Sort by score descending
 
   // 返回 top N results
-  return results.slice(0, limit).map(result => ({
+  return results.slice(0, limit).map((result) => ({
     ...result,
-    content: "This is a placeholder content." // 添加 content 属性
+    content: 'This is a placeholder content.', // 添加 content 属性
   }));
 }
 

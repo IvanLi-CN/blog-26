@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, blob } from 'drizzle-orm/sqlite-core';
+import { blob, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const vectorizedFiles = sqliteTable('vectorized_files', {
   filepath: text('filepath').primaryKey(),

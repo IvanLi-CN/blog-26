@@ -1,30 +1,29 @@
 ---
 import { footerData, headerData } from "~/navigation";
-import SearchAndChat from '../components/SearchAndChat.tsx';
-import Footer from '../components/widgets/Footer.astro';
-import Header from '../components/widgets/Header.astro';
-import Layout from '../layouts/Layout.astro';
-import { initializeDB } from '../lib/db';
-import { performRAGQuery } from '../lib/rag';
-import { rateLimiter, rateLimiterHourly } from '../lib/rateLimiter';
+import SearchAndChat from "../components/SearchAndChat.tsx";
+import Footer from "../components/widgets/Footer.astro";
+import Header from "../components/widgets/Header.astro";
+import Layout from "../layouts/Layout.astro";
+import { initializeDB } from "../lib/db";
+import { performRAGQuery } from "../lib/rag";
+import { rateLimiter, rateLimiterHourly } from "../lib/rateLimiter";
 
 export const prerender = false;
 
-const query = Astro.url.searchParams.get('q');
+const query = Astro.url.searchParams.get("q");
 const metadata = {
-  title: `Search Results${query ? ` for "${query}"` : ''}`,
+  title: `Search Results${query ? ` for "${query}"` : ""}`,
 };
 
 let errorMessage: string | null = null;
 let result: any = null;
 
-
 try {
-  await rateLimiter.consume('global');
-  await rateLimiterHourly.consume('global');
+  await rateLimiter.consume("global");
+  await rateLimiterHourly.consume("global");
 } catch (rejRes) {
-    // 如果超出限制，设置一个标志，以便在页面中显示错误消息
-    errorMessage = 'Too Many Requests';
+  // 如果超出限制，设置一个标志，以便在页面中显示错误消息
+  errorMessage = "Too Many Requests";
 }
 
 // 执行 RAG 查询
@@ -32,7 +31,7 @@ if (!errorMessage) {
   // 初始化数据库
   await initializeDB(); // Initialize the database
 
-  result = query ? await performRAGQuery(query).then(r => ({ query, ...r })) : null;
+  result = query ? await performRAGQuery(query).then((r) => ({ query, ...r })) : null;
 }
 ---
 

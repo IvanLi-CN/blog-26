@@ -30,7 +30,8 @@ export const POST: APIRoute = async ({ request }) => {
     const { query, history } = body; // 将 message 替换为 query
 
     // 3. 验证输入参数
-    if (!query || !history || !Array.isArray(history)) { // 将 message 替换为 query
+    if (!query || !history || !Array.isArray(history)) {
+      // 将 message 替换为 query
       return new Response(
         JSON.stringify({
           error: 'Missing or invalid parameters',
@@ -56,15 +57,12 @@ export const POST: APIRoute = async ({ request }) => {
       sources: result.sources,
     };
 
-    return new Response(
-      JSON.stringify(responseData),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    return new Response(JSON.stringify(responseData), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
   } catch (error) {
     console.error('Chat API error:', error);
     return new Response(

@@ -3,7 +3,7 @@ import { initializeDB } from '../../lib/db'; // Import initializeDB
 import { performRAGQuery } from '../../lib/rag';
 import { rateLimiter, rateLimiterHourly } from '../../lib/rateLimiter'; // 导入 rateLimiter
 
-export const prerender = false
+export const prerender = false;
 
 export const GET: APIRoute = async ({ url }: { url: URL }) => {
   try {
@@ -53,16 +53,12 @@ export const GET: APIRoute = async ({ url }: { url: URL }) => {
     const result = await performRAGQuery(query);
 
     // 返回结果
-    return new Response(
-      JSON.stringify(result),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
   } catch (error) {
     console.error('Search API error:', error);
 
@@ -78,4 +74,4 @@ export const GET: APIRoute = async ({ url }: { url: URL }) => {
       }
     );
   }
-}
+};

@@ -15,8 +15,6 @@ import Metadata from "~/components/common/Metadata.astro";
 import SiteVerification from "~/components/common/SiteVerification.astro";
 
 // Comment the line below to disable View Transitions
-import { ViewTransitions } from "astro:transitions";
-
 import type { MetaData as MetaDataType } from "~/types";
 
 export interface Props {
@@ -38,8 +36,7 @@ const { language, textDirection } = I18N;
     <SiteVerification />
     <Analytics />
 
-    <!-- Comment the line below to disable View Transitions -->
-    <ViewTransitions fallback="swap" />
+    <!-- View Transitions disabled -->
   </head>
 
   <body class="antialiased text-base bg-base-100 tracking-tight h-full flex flex-col">

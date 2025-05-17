@@ -1,10 +1,10 @@
 import { Buffer } from 'node:buffer';
-import { Settings, OpenAIEmbedding, OpenAI } from 'llamaindex';
+import { OpenAI, OpenAIEmbedding, Settings } from 'llamaindex';
 
-import { initializeDB, getAllFileRecords, upsertFileRecord, deleteFileRecord } from './db';
-import type { DBRecord } from './db';
-import { processAllContent } from './contentProcessor';
 import { getCollection } from 'astro:content';
+import { processAllContent } from './contentProcessor';
+import { deleteFileRecord, getAllFileRecords, initializeDB, upsertFileRecord } from './db';
+import type { DBRecord } from './db';
 
 /**
  * 配置 LlamaIndex 的环境和模型设置
@@ -16,21 +16,21 @@ export function configureLlamaIndex(): void {
   if (!apiKey || !baseURL) {
     console.error('Missing required environment variables:', {
       OPENAI_API_KEY: apiKey ? 'set' : 'missing',
-      OPENAI_API_BASE_URL: baseURL ? 'set' : 'missing'
+      OPENAI_API_BASE_URL: baseURL ? 'set' : 'missing',
     });
     throw new Error('Missing required environment variables');
   }
 
   // 配置 embedding 模型
   Settings.embedModel = new OpenAIEmbedding({
-    model: "text-embedding-3-small",
+    model: 'text-embedding-3-small',
     apiKey,
     baseURL,
   });
 
   // 配置 LLM 模型
   Settings.llm = new OpenAI({
-    model: "deepseek-v3",
+    model: 'deepseek-v3',
     apiKey,
     baseURL,
   });
@@ -48,7 +48,7 @@ export async function processAndVectorizeAllContent(): Promise<void> {
 
   // 1. 获取所有当前内容文件的 ID
   const allPosts = await getCollection('post');
-  const currentFilepaths = new Set(allPosts.map(post => post.id));
+  const currentFilepaths = new Set(allPosts.map((post) => post.id));
   console.log(`找到 ${currentFilepaths.size} 篇当前文章.`);
 
   // 2. 获取需要更新或新增的内容

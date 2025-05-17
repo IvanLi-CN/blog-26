@@ -1,7 +1,7 @@
 import { Settings } from 'llamaindex';
-import { configureLlamaIndex } from '../src/lib/vectorizer';
 import { processAllContent, updateContentRecord } from '../src/lib/contentProcessor';
-import { initializeDB, closeDB } from '../src/lib/db';
+import { closeDB, initializeDB } from '../src/lib/db';
+import { configureLlamaIndex } from '../src/lib/vectorizer';
 
 async function main() {
   try {
@@ -21,17 +21,17 @@ async function main() {
     for (const content of contents) {
       try {
         console.log(`正在处理: ${content.filepath}`);
-        
+
         // 提取正文（移除 frontmatter）
         const mainContent = content.rawContent.replace(/^---\n[\s\S]*?\n---/, '').trim();
-        
+
         // 获取向量表示
         const embeddings = await Settings.embedModel.getTextEmbeddings([mainContent]);
         const vector = Buffer.from(new Float32Array(embeddings[0]).buffer);
-        
+
         // 更新数据库记录
         await updateContentRecord(content, vector);
-        
+
         console.log(`✓ 完成: ${content.filepath}`);
       } catch (error) {
         console.error(`处理 ${content.filepath} 时出错:`, error);

@@ -106,7 +106,6 @@ export default ({ config: _themeConfig = 'src/config.yaml' } = {}): AstroIntegra
               });
             }
           }
-          // biome-ignore lint: placeholder
         } catch (error) {
           /* empty */
         }

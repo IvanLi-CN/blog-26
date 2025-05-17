@@ -1,7 +1,7 @@
-import { getCollection, type CollectionEntry } from 'astro:content';
-import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
+import { type CollectionEntry, getCollection } from 'astro:content';
 import type { DBRecord } from './db';
 import { getFileRecord, upsertFileRecord } from './db';
 
@@ -13,13 +13,6 @@ export interface ProcessedContent {
   contentHash: string;
   lastModified: number; // File system last modified time
   effectiveContentUpdatedAt: number; // Timestamp when content hash last changed (or from DB if no change)
-}
-
-/**
- * Represents the result of processing content.
- */
-interface ContentProcessingResult {
-  contentHash: string;
 }
 
 /**
@@ -47,16 +40,11 @@ export async function processContentFile(filepath: string): Promise<FileDetailsF
   const absolutePath = path.resolve(process.cwd(), filepath);
 
   // 读取文件内容和状态
-  const [content, stats] = await Promise.all([
-    readFile(absolutePath, 'utf-8'),
-    stat(absolutePath)
-  ]);
+  const [content, stats] = await Promise.all([readFile(absolutePath, 'utf-8'), stat(absolutePath)]);
 
   // 提取 frontmatter
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  const frontmatter = frontmatterMatch
-    ? JSON.parse(JSON.stringify(frontmatterMatch[1]))
-    : {};
+  const frontmatter = frontmatterMatch ? JSON.parse(JSON.stringify(frontmatterMatch[1])) : {};
 
   // 提取正文
   const mainContent = content.replace(/^---\n[\s\S]*?\n---/, '').trim();
@@ -69,17 +57,14 @@ export async function processContentFile(filepath: string): Promise<FileDetailsF
     rawContent: content,
     frontmatter,
     contentHash,
-    lastModified: stats.mtimeMs
+    lastModified: stats.mtimeMs,
   };
 }
 
 /**
  * 更新数据库记录
  */
-export async function updateContentRecord(
-  processed: ProcessedContent,
-  vector?: Buffer
-): Promise<void> {
+export async function updateContentRecord(processed: ProcessedContent, vector?: Buffer): Promise<void> {
   const record: DBRecord = {
     filepath: processed.filepath,
     slug: processed.slug, // Include slug
@@ -87,7 +72,7 @@ export async function updateContentRecord(
     lastModifiedTime: processed.lastModified,
     contentUpdatedAt: processed.effectiveContentUpdatedAt, // Include content_updated_at
     indexedAt: Date.now(),
-    vector
+    vector,
   };
 
   await upsertFileRecord(record);
@@ -96,7 +81,10 @@ export async function updateContentRecord(
 /**
  * 处理单个内容文件，并确定是否需要向量化
  */
-export async function processContent(post: CollectionEntry<'post'>, force: boolean = false): Promise<ProcessedContent | undefined> {
+export async function processContent(
+  post: CollectionEntry<'post'>,
+  force: boolean = false
+): Promise<ProcessedContent | undefined> {
   try {
     const filepath = post.id; // Use post.id as filepath
     const slug = post.slug; // Get slug from post object
@@ -125,36 +113,34 @@ export async function processContent(post: CollectionEntry<'post'>, force: boole
 
     // Determine if needs vectorization
     if (force) {
-        console.log(`强制处理文件 ${filepath}.`);
-        needsVectorization = true;
+      console.log(`强制处理文件 ${filepath}.`);
+      needsVectorization = true;
     } else if (!existingRecord) {
-        console.log(`文件 ${filepath} 是新文件，需要向量化.`);
-        needsVectorization = true;
+      console.log(`文件 ${filepath} 是新文件，需要向量化.`);
+      needsVectorization = true;
     } else if (existingRecord.indexedAt <= effectiveContentUpdatedAt) {
-           console.log(`文件 ${filepath} 需要重新向量化 (indexed_at <= effectiveContentUpdatedAt).`);
-           needsVectorization = true;
+      console.log(`文件 ${filepath} 需要重新向量化 (indexed_at <= effectiveContentUpdatedAt).`);
+      needsVectorization = true;
     } else {
-           console.log(`文件 ${filepath} 未修改且向量化已是最新，跳过处理.`);
+      console.log(`文件 ${filepath} 未修改且向量化已是最新，跳过处理.`);
     }
 
-
     if (needsVectorization) {
-       console.log(`处理文件 ${filepath} 并添加到向量化列表.`);
+      console.log(`处理文件 ${filepath} 并添加到向量化列表.`);
       // Create ProcessedContent object by combining data
       return {
-          filepath: filepath,
-          slug: slug,
-          rawContent: rawContent,
-          frontmatter: frontmatter,
-          contentHash: contentHash,
-          // lastModified is not used as per user request
-          lastModified: existingRecord?.lastModifiedTime || Date.now(), // Use existing or current time if new
-          effectiveContentUpdatedAt: effectiveContentUpdatedAt,
+        filepath: filepath,
+        slug: slug,
+        rawContent: rawContent,
+        frontmatter: frontmatter,
+        contentHash: contentHash,
+        // lastModified is not used as per user request
+        lastModified: existingRecord?.lastModifiedTime || Date.now(), // Use existing or current time if new
+        effectiveContentUpdatedAt: effectiveContentUpdatedAt,
       };
     } else {
       return undefined; // No vectorization needed
     }
-
   } catch (error) {
     console.error(`Error processing ${post.id}:`, error);
     return undefined; // Return undefined on error

@@ -5,11 +5,11 @@ import { findSimilarFiles } from './db';
 import { configureLlamaIndex } from './vectorizer';
 
 export interface RAGSource {
-  id: string;      // filepath from DBRecord
+  id: string; // filepath from DBRecord
   title: string;
   slug: string;
   permalink: string;
-  score?: number;  // from findSimilarFiles
+  score?: number; // from findSimilarFiles
 }
 
 export interface RAGResult {
@@ -42,7 +42,7 @@ export async function performRAGQuery(userQuery: string): Promise<RAGResult> {
       console.log('No similar documents found');
       return {
         answer: "I couldn't find any relevant information to answer your question.",
-        sources: []
+        sources: [],
       };
     }
 
@@ -54,7 +54,7 @@ export async function performRAGQuery(userQuery: string): Promise<RAGResult> {
     console.log('Building context from similar documents...');
     let context = '';
     const contextPromises = similarDocs.map(async (record) => {
-      const post = posts.find(p => p.id === record.filepath);
+      const post = posts.find((p) => p.id === record.filepath);
       if (post && post.Content) {
         // Use the rendered content directly from the post object
         // post.Content is an Astro component factory, we need the rendered string content property (post.content)
@@ -66,20 +66,19 @@ export async function performRAGQuery(userQuery: string): Promise<RAGResult> {
         const safeContent = typeof content === 'string' ? content : String(content ?? '');
 
         return `Source: ${permalink}\n\n${safeContent}\n\n`;
-
       }
       console.warn(`Could not find post or content for record with filepath: ${record.filepath}`);
       return ''; // Skip records without a corresponding post or content
     });
 
     const contexts = await Promise.all(contextPromises);
-    context = contexts.filter(c => c !== '').join('---\n'); // Filter out empty contexts
+    context = contexts.filter((c) => c !== '').join('---\n'); // Filter out empty contexts
 
     if (!context) {
       console.log('No context could be built from similar documents');
       return {
         answer: "I couldn't find any relevant information to answer your question.",
-        sources: []
+        sources: [],
       };
     }
 
@@ -99,8 +98,8 @@ Answer:`;
 
     // 丰富来源信息
     console.log('Enriching source information...');
-    const sources: RAGSource[] = similarDocs.map(record => {
-      const post = posts.find(p => p.id === record.filepath);
+    const sources: RAGSource[] = similarDocs.map((record) => {
+      const post = posts.find((p) => p.id === record.filepath);
       if (!post) {
         // Fallback if post not found (shouldn't happen if context was built)
         return {
@@ -108,7 +107,7 @@ Answer:`;
           title: record.filepath,
           slug: record.filepath,
           permalink: `/${record.filepath}`,
-          score: record.score
+          score: record.score,
         };
       }
 
@@ -117,16 +116,15 @@ Answer:`;
         title: post.title,
         slug: post.slug,
         permalink: post.permalink,
-        score: record.score
+        score: record.score,
       };
     });
 
     console.log('RAG query completed successfully');
     return {
       answer,
-      sources
+      sources,
     };
-
   } catch (error) {
     console.error('Error performing RAG query:', error);
     throw error;
@@ -139,13 +137,16 @@ Answer:`;
  * @param history 对话历史 (例如: { role: "user", content: "你好" }[])
  * @returns 包含答案和来源信息的 RAGResult
  */
-export async function performChatQuery(message: string, history: { role: string; content: string }[]): Promise<RAGResult> {
+export async function performChatQuery(
+  message: string,
+  history: { role: string; content: string }[]
+): Promise<RAGResult> {
   try {
     console.log('performChatQuery called with message:', message, 'and history:', history);
 
     // 1. 验证输入参数
     if (!message) {
-      throw new Error("User message cannot be empty.");
+      throw new Error('User message cannot be empty.');
     }
     // 初始化 LlamaIndex
     configureLlamaIndex();
@@ -157,14 +158,13 @@ export async function performChatQuery(message: string, history: { role: string;
 
     // 3. 获取相似文档
     console.log('Finding similar documents...');
-    //const similarDocs = await findSimilarFiles(queryVector, 3);
-    const similarDocs = []
+    const similarDocs = await findSimilarFiles(queryVector, 3);
 
     if (similarDocs.length === 0) {
       console.log('No similar documents found');
       return {
         answer: "I couldn't find any relevant information to answer your question.",
-        sources: []
+        sources: [],
       };
     }
 
@@ -176,13 +176,13 @@ export async function performChatQuery(message: string, history: { role: string;
     });
 
     const contexts = await Promise.all(contextPromises);
-    context = contexts.filter(c => c !== '').join('---\n'); // Filter out empty contexts
+    context = contexts.filter((c) => c !== '').join('---\n'); // Filter out empty contexts
 
     if (!context) {
       console.log('No context could be built from similar documents');
       return {
         answer: "I couldn't find any relevant information to answer your question.",
-        sources: []
+        sources: [],
       };
     }
 
@@ -195,23 +195,21 @@ export async function performChatQuery(message: string, history: { role: string;
 
     // 6. 丰富来源信息
     console.log('Enriching source information...');
-    const sources: RAGSource[] = similarDocs.map(record => ({
+    const sources: RAGSource[] = similarDocs.map((record) => ({
       id: record.filepath,
       title: record.filepath, // Replace with actual title if available
       slug: record.filepath, // Replace with actual slug if available
       permalink: record.filepath, // Replace with actual permalink if available
-      score: record.score
+      score: record.score,
     }));
 
     console.log('RAG query completed successfully');
     return {
       answer,
-      sources
+      sources,
     };
-
   } catch (error) {
     console.error('Error performing RAG query:', error);
     throw error;
   }
 }
-

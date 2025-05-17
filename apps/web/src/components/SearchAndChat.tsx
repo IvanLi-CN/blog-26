@@ -14,14 +14,16 @@ interface Message {
 
 interface SearchAndChatProps {
   query: string | null;
-  defaultResult: { query: string, answer?: string; sources?: Source[] } | null;
+  defaultResult: { query: string; answer?: string; sources?: Source[] } | null;
 }
 
 const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) => {
   const [mode, setMode] = useState<'search' | 'chat'>('search');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [searchResults, setSearchResults] = useState<{ query: string; answer?: string; sources?: Source[] } | null>(defaultResult);
+  const [searchResults, setSearchResults] = useState<{ query: string; answer?: string; sources?: Source[] } | null>(
+    defaultResult
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +50,6 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
       }
 
       setSearchResults(data);
-
     } catch (err: any) {
       setError(err.message || 'Failed to perform search');
       setSearchResults(null);
@@ -69,7 +70,7 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
 
   const sendChatMessage = async (text: string) => {
     const userMessage: Message = { type: 'user', text };
-    setMessages(prevMessages => [...prevMessages, userMessage].slice(-10));
+    setMessages((prevMessages) => [...prevMessages, userMessage].slice(-10));
     setInput('');
 
     setLoading(true);
@@ -96,14 +97,13 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
         text: data.text || 'No answer received.',
         sources: data.sources || [],
       };
-      setMessages(prevMessages => [...prevMessages, aiMessage].slice(-10));
-
+      setMessages((prevMessages) => [...prevMessages, aiMessage].slice(-10));
     } catch (err: any) {
       setError(err.message || 'Failed to send message');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const handleKeyPress: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === 'Enter') {
@@ -131,7 +131,10 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
 
   return (
     <React.Fragment>
-      <div className="container mx-auto px-4 py-4" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div
+        className="container mx-auto px-4 py-4"
+        style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}
+      >
         <div id="searchResults" className="space-y-8" style={{ flex: 1 }}>
           {mode === 'search' && (
             <React.Fragment>
@@ -140,17 +143,17 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
                 </div>
               )}
-              {error && (
-                <div className="text-center text-red-600 dark:text-red-400">
-                  Error: {error}
-                </div>
-              )}
-              {searchResults && (searchResults.answer || (searchResults.sources && searchResults.sources.length > 0)) ? (
+              {error && <div className="text-center text-red-600 dark:text-red-400">Error: {error}</div>}
+              {searchResults &&
+              (searchResults.answer || (searchResults.sources && searchResults.sources.length > 0)) ? (
                 <React.Fragment>
                   {searchResults.answer && (
                     <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 mb-8">
                       <h3 className="text-xl font-semibold mb-4">Answer</h3>
-                      <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: searchResults.answer }} />
+                      <div
+                        className="prose dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{ __html: searchResults.answer }}
+                      />
                     </div>
                   )}
 
@@ -176,10 +179,12 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
                     </div>
                   )}
                 </React.Fragment>
-              ) : (searchResults && !loading && !error) && (
-                <div className="text-center text-gray-600 dark:text-slate-400">
-                  No results found for "{query}"
-                </div>
+              ) : (
+                searchResults &&
+                !loading &&
+                !error && (
+                  <div className="text-center text-gray-600 dark:text-slate-400">No results found for "{query}"</div>
+                )
               )}
             </React.Fragment>
           )}
@@ -188,9 +193,7 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
         {mode === 'chat' && (
           <div className="chat-history space-y-4">
             {messages.length === 0 && !loading && (
-              <div className="text-center text-gray-600 dark:text-slate-400">
-                开始对话吧！
-              </div>
+              <div className="text-center text-gray-600 dark:text-slate-400">开始对话吧！</div>
             )}
             {loading && mode === 'chat' && (
               <div className="flex justify-center">
@@ -198,8 +201,8 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
               </div>
             )}
             {messages.map((msg, index) => (
-              <div key={index} className={`chat ${msg.type === 'user' ? 'chat-end' : 'chat-start'}`} >
-                <div className={`chat-bubble ${msg.type === 'ai' ? 'chat-bubble-primary' : ''}`} >
+              <div key={index} className={`chat ${msg.type === 'user' ? 'chat-end' : 'chat-start'}`}>
+                <div className={`chat-bubble ${msg.type === 'ai' ? 'chat-bubble-primary' : ''}`}>
                   <div dangerouslySetInnerHTML={{ __html: msg.text }} />
                   {msg.type === 'ai' && msg.sources && msg.sources.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600">
@@ -219,9 +222,7 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
               </div>
             ))}
             {error && mode === 'chat' && (
-              <div className="text-center text-red-600 dark:text-red-400">
-                Error: {error}
-              </div>
+              <div className="text-center text-red-600 dark:text-red-400">Error: {error}</div>
             )}
           </div>
         )}
@@ -241,11 +242,7 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
           >
             搜索
           </a>
-          <a
-            role="tab"
-            className={`tab ${mode === 'chat' ? 'tab-active' : ''}`}
-            onClick={handleModeSwitch}
-          >
+          <a role="tab" className={`tab ${mode === 'chat' ? 'tab-active' : ''}`} onClick={handleModeSwitch}>
             对话
           </a>
         </div>
@@ -258,11 +255,7 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
           />
-          <button
-            className="btn btn-primary"
-            onClick={handleSendMessage}
-            disabled={loading || !input.trim()}
-          >
+          <button className="btn btn-primary" onClick={handleSendMessage} disabled={loading || !input.trim()}>
             发送
           </button>
         </div>

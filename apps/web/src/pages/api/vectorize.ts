@@ -22,7 +22,6 @@ export async function GET() {
         },
       }
     );
-
   } catch (error) {
     console.error('向量化 API 过程出错:', error);
     return new Response(
