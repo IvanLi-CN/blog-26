@@ -1,26 +1,18 @@
-FROM oven/bun:1 as builder
+FROM oven/bun:1
 
 WORKDIR /app
 
-COPY package.json bun.lockb ./
+COPY ./package.json ./package.json
+COPY ./bun.lockb ./bun.lockb
 
-RUN bun install --frozen-lockfile
+RUN bun install --frozen --no-cache
 
-COPY . .
-
-RUN bun run build
-
-FROM oven/bun:1 as runner
-
-WORKDIR /app
-
-COPY --from=builder /app/dist/server ./dist/server
-COPY --from=builder /app/dist/client ./dist/client
+COPY ./entrypoint.sh ./entrypoint.sh
+COPY ./drizzle ./drizzle
 COPY ./scripts ./scripts
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/bun.lockb ./bun.lockb
+COPY ./dist/server ./dist/server
+COPY ./dist/client ./dist/client
 
 EXPOSE 4321
 
-COPY entrypoint.sh /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]
