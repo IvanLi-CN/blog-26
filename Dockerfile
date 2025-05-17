@@ -20,9 +20,7 @@ COPY ./scripts ./scripts
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/bun.lockb ./bun.lockb
 
-# 暴露 Astro 默认的预览端口
 EXPOSE 4321
 
-# 运行 Astro 预览服务器
 COPY entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

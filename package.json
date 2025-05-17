@@ -1,5 +1,5 @@
 {
-  "name": "@blog/web",
+  "name": "@ivanli-cn/blog",
   "version": "0.0.0",
   "description": "Ivan's Blog. Powered by Astro.",
   "type": "module",
@@ -13,7 +13,7 @@
     "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
     "astro": "astro",
-    "check": "bun run check:astro && bunx biome check",
+    "check": "bun --bun run check:astro && bunx biome check",
     "check:astro": "astro check",
     "migrate": "bun ./scripts/migrate.ts",
     "fix": "bunx biome check --write"
@@ -34,6 +34,7 @@
     "astro": "5.7.13",
     "astro-embed": "^0.9.0",
     "astro-icon": "^1.1.5",
+    "bun-types": "^1.2.13",
     "dotenv": "^16.5.0",
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.43.1",
@@ -62,6 +63,7 @@
     "@iconify-json/tabler": "^1.2.17",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.6",
+    "@types/bun": "^1.2.13",
     "@types/js-yaml": "^4.0.9",
     "@types/lodash.merge": "^4.6.9",
     "@types/mdx": "^2.0.13",
