@@ -1,14 +1,26 @@
-FROM svenstaro/miniserve:alpine AS runner
+FROM oven/bun:1 as builder
 
-RUN adduser -D www
+WORKDIR /app
 
-COPY ./dist /app
-RUN chown -R www:www /app
+COPY package.json bun.lockb ./
 
-USER www
+RUN bun install --frozen-lockfile
 
-# 暴露端口
-EXPOSE 8080
+COPY . .
 
-# 运行 miniserve
-CMD ["--port", "8080", "--index", "index.html", "-v", "/app"]
+RUN bun run build
+
+FROM oven/bun:1 as runner
+
+WORKDIR /app
+
+COPY --from=builder /app/dist/server ./dist/server
+COPY --from=builder /app/dist/client ./dist/client
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/bun.lockb ./bun.lockb
+
+# 暴露 Astro 默认的预览端口
+EXPOSE 4321
+
+# 运行 Astro 预览服务器
+CMD ["bun", "./dist/server/entry.mjs"]

@@ -1,12 +1,10 @@
 import { Buffer } from 'node:buffer';
-import { promises as fs } from 'fs';
-import path from 'path';
 import { Settings } from 'llamaindex';
-import { configureLlamaIndex } from './vectorizer';
-import { findSimilarFiles } from './db';
 import { fetchPosts } from '../utils/blog';
+import { findSimilarFiles } from './db';
+import { configureLlamaIndex } from './vectorizer';
 
-interface RAGSource {
+export interface RAGSource {
   id: string;      // filepath from DBRecord
   title: string;
   slug: string;
@@ -14,7 +12,7 @@ interface RAGSource {
   score?: number;  // from findSimilarFiles
 }
 
-interface RAGResult {
+export interface RAGResult {
   answer: string;
   sources: RAGSource[];
 }
@@ -159,7 +157,8 @@ export async function performChatQuery(message: string, history: { role: string;
 
     // 3. 获取相似文档
     console.log('Finding similar documents...');
-    const similarDocs = await findSimilarFiles(queryVector, 3);
+    //const similarDocs = await findSimilarFiles(queryVector, 3);
+    const similarDocs = []
 
     if (similarDocs.length === 0) {
       console.log('No similar documents found');
@@ -216,8 +215,3 @@ export async function performChatQuery(message: string, history: { role: string;
   }
 }
 
-// 定义 RAGResult 接口
-interface RAGResult {
-  answer: string;
-  sources: RAGSource[];
-}

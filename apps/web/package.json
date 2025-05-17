@@ -1,7 +1,7 @@
 {
   "name": "@blog/web",
   "version": "0.0.0",
-  "description": "AstroWind: A free template using Astro 4.0 and Tailwind CSS. Astro starter theme.",
+  "description": "Ivan's Blog. Powered by Astro.",
   "type": "module",
   "private": true,
   "engines": {
