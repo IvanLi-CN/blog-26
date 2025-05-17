@@ -82,7 +82,7 @@ jobs:
       - uses: christopherhx/gitea-upload-artifact@v4
         with:
           name: web-dist
-          path: apps/web/dist/
+          path: dist/
 
   docker:
     runs-on: ubuntu-22.04
@@ -95,7 +95,7 @@ jobs:
       - uses: christopherhx/gitea-download-artifact@v4
         with:
           name: web-dist
-          path: apps/web/dist/
+          path: dist/
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -119,8 +119,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          context: ./apps/web
-          file: ./apps/web/Dockerfile
+          context: .
+          file: ./Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 

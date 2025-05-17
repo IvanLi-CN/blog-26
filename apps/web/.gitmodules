@@ -1,3 +1,0 @@
-[submodule "src/content/notes"]
-	path = src/content/notes
-	url = ssh://gitea@git.ivanli.cc:7018/Ivan/Notes.git

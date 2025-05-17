@@ -7,12 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "apps/web/.astro",
-      "apps/web/src/content/notes",
-      "apps/web/src/content/local-notes",
-      "apps/web/dist"
-    ]
+    "ignore": [".astro", "src/content/notes", "src/content/local-notes", "dist"]
   },
   "formatter": {
     "enabled": true,
@@ -24,12 +19,7 @@
     "lineWidth": 120,
     "attributePosition": "auto",
     "bracketSpacing": true,
-    "ignore": [
-      "**/dist",
-      "**/node_modules",
-      "**/.github",
-      "**/.changeset"
-    ]
+    "ignore": ["**/dist", "**/node_modules", "**/.github", "**/.changeset"]
   },
   "organizeImports": {
     "enabled": true
@@ -39,14 +29,7 @@
     "rules": {
       "recommended": false
     },
-    "ignore": [
-      "dist",
-      "node_modules",
-      ".github",
-      "types.generated.d.ts",
-      ".astro",
-      "**/*.astro"
-    ]
+    "ignore": ["dist", "node_modules", ".github", "types.generated.d.ts", ".astro", "**/*.astro"]
   },
   "javascript": {
     "formatter": {
@@ -63,9 +46,7 @@
   },
   "overrides": [
     {
-      "include": [
-        "**/*.{ts,tsx}"
-      ],
+      "include": ["**/*.{ts,tsx}"],
       "linter": {
         "rules": {
           "correctness": {
@@ -78,9 +59,7 @@
       }
     },
     {
-      "include": [
-        "*.astro"
-      ],
+      "include": ["*.astro"],
       "javascript": {
         "formatter": {
           "quoteStyle": "double"

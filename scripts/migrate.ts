@@ -20,7 +20,7 @@ async function runMigrations() {
     console.log('Database connection successful.');
 
     console.log(`Running migrations from folder: ${MIGRATIONS_FOLDER_ABSOLUTE}`);
-    await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER_ABSOLUTE });
+    migrate(db, { migrationsFolder: MIGRATIONS_FOLDER_ABSOLUTE });
 
     console.log('Migrations finished successfully.');
   } catch (error) {

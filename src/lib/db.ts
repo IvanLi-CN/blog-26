@@ -31,7 +31,7 @@ export async function getFileRecord(filepath: string): Promise<VectorizedFile | 
   if (!db) {
     throw new Error('Database not initialized. Call initializeDB() first.');
   }
-  const record = await db.select().from(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath)).get();
+  const record = db.select().from(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath)).get();
   return record || null;
 }
 
@@ -66,7 +66,7 @@ export async function getAllFileRecords(): Promise<VectorizedFile[]> {
   if (!db) {
     throw new Error('Database not initialized. Call initializeDB() first.');
   }
-  const records = await db.select().from(vectorizedFiles).all();
+  const records = db.select().from(vectorizedFiles).all();
   return records;
 }
 
@@ -105,7 +105,7 @@ export async function findSimilarFiles(
   }
 
   // Fetch all records with vectors
-  const recordsWithVectors = await db.select().from(vectorizedFiles).where(isNotNull(vectorizedFiles.vector)).all(); // Use isNotNull function
+  const recordsWithVectors = db.select().from(vectorizedFiles).where(isNotNull(vectorizedFiles.vector)).all(); // Use isNotNull function
 
   // Calculate similarity and sort
   const results = recordsWithVectors
