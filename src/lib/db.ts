@@ -8,7 +8,8 @@ import { type NewVectorizedFile, type VectorizedFile, vectorizedFiles } from './
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Store sqlite.db in apps/web/
-const DB_PATH = path.resolve(__dirname, '../../sqlite.db');
+const DB_PATH = process.env.DB_PATH || `${process.cwd()}/sqlite.db`;
+const resolvedDBPath = path.resolve(__dirname, DB_PATH);
 
 export type DBRecord = VectorizedFile; // Use Drizzle's inferred type
 
@@ -16,9 +17,9 @@ let db: ReturnType<typeof drizzle<Record<string, never>>>;
 
 export async function initializeDB(): Promise<void> {
   try {
-    const sqlite = new Database(DB_PATH);
+    const sqlite = new Database(resolvedDBPath);
     db = drizzle(sqlite);
-    console.log('Connected to the SQLite database at', DB_PATH);
+    console.log('Connected to the SQLite database at', resolvedDBPath);
     // Drizzle-kit will handle table creation/migrations
     console.log('Drizzle ORM initialized.');
   } catch (err) {
