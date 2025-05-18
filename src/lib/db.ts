@@ -1,15 +1,11 @@
 import { Database } from 'bun:sqlite';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { eq, isNotNull } from 'drizzle-orm'; // Import isNotNull
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { type NewVectorizedFile, type VectorizedFile, vectorizedFiles } from './schema';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// Store sqlite.db in apps/web/
-const DB_PATH = process.env.DB_PATH || `${process.cwd()}/sqlite.db`;
-const resolvedDBPath = path.resolve(__dirname, DB_PATH);
+const DB_PATH = process.env.DB_PATH || './sqlite.db';
+const resolvedDBPath = path.resolve(process.cwd(), DB_PATH);
 
 export type DBRecord = VectorizedFile; // Use Drizzle's inferred type
 

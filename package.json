@@ -13,7 +13,7 @@
     "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
     "astro": "astro",
-    "check": "bun --bun run check:astro && bunx biome check",
+    "check": "bun run check:astro && bunx biome check",
     "check:astro": "astro check",
     "migrate": "bun ./scripts/migrate.ts",
     "fix": "bunx biome check --write"
