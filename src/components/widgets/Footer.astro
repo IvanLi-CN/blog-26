@@ -22,7 +22,7 @@ export interface Props {
   theme?: string;
 }
 
-const { socialLinks = [] } = Astro.props;
+const { socialLinks = [], links = [], secondaryLinks = [], footNote = "" } = Astro.props;
 ---
 
 <footer class="bg-neutral text-neutral-content">

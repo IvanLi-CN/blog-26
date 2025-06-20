@@ -13,6 +13,8 @@ import BasicScripts from "~/components/common/BasicScripts.astro";
 import CommonMeta from "~/components/common/CommonMeta.astro";
 import Metadata from "~/components/common/Metadata.astro";
 import SiteVerification from "~/components/common/SiteVerification.astro";
+import Footer from "~/components/widgets/Footer.astro";
+import { footerData } from "~/navigation";
 
 // Comment the line below to disable View Transitions
 import type { MetaData as MetaDataType } from "~/types";
@@ -39,9 +41,12 @@ const { language, textDirection } = I18N;
     <!-- View Transitions disabled -->
   </head>
 
-  <body class="antialiased text-base bg-base-100 tracking-tight h-full flex flex-col">
-    <slot />
+  <body class="antialiased text-base bg-base-100 tracking-tight min-h-screen flex flex-col">
+    <main class="flex-grow">
+      <slot />
+    </main>
 
+    <Footer {...footerData} />
     <BasicScripts />
   </body>
 </html>

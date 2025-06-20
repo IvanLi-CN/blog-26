@@ -1,7 +1,6 @@
 ---
-import { footerData, headerData } from "~/navigation";
+import { headerData } from "~/navigation";
 import SearchAndChat from "../components/SearchAndChat.tsx";
-import Footer from "../components/widgets/Footer.astro";
 import Header from "../components/widgets/Header.astro";
 import Layout from "../layouts/Layout.astro";
 import { initializeDB } from "../lib/db";
@@ -52,5 +51,4 @@ if (!errorMessage) {
       <span class="text-lg">智能搜索服务限流中，请稍后再试</span>
     </div>
   )}
-  <Footer links={footerData.links} secondaryLinks={footerData.secondaryLinks} socialLinks={footerData.socialLinks} />
 </Layout>
