@@ -5,5 +5,6 @@ CREATE TABLE `vectorized_files` (
 	`last_modified_time` integer NOT NULL,
 	`content_updated_at` integer NOT NULL,
 	`indexed_at` integer NOT NULL,
+	`model_name` text NOT NULL,
 	`vector` blob
 );

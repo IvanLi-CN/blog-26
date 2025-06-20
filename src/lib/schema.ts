@@ -7,6 +7,7 @@ export const vectorizedFiles = sqliteTable('vectorized_files', {
   lastModifiedTime: integer('last_modified_time').notNull(),
   contentUpdatedAt: integer('content_updated_at').notNull(),
   indexedAt: integer('indexed_at').notNull(),
+  modelName: text('model_name').notNull(),
   vector: blob('vector'), // BLOB type for vector embeddings
 });
 

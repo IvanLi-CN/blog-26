@@ -47,6 +47,7 @@ export async function upsertFileRecord(record: NewVectorizedFile): Promise<void>
         lastModifiedTime: record.lastModifiedTime,
         contentUpdatedAt: record.contentUpdatedAt,
         indexedAt: record.indexedAt,
+        modelName: record.modelName,
         vector: record.vector,
       },
     });

@@ -1,42 +1,41 @@
 import { processAndVectorizeAllContent } from '../../lib/vectorizer';
+import type { VectorizationProgress } from '../../lib/vectorizer';
 
 export const prerender = false;
 
 export async function GET() {
-  try {
-    console.log('触发向量化 API...');
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const sendProgress = (progress: VectorizationProgress) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(progress)}\n\n`));
+      };
 
-    // 调用主向量化函数
-    await processAndVectorizeAllContent();
+      try {
+        console.log('触发向量化 API...');
+        sendProgress({ stage: 'info', message: '向量化过程开始' });
 
-    console.log('向量化 API 完成.');
+        // 调用主向量化函数并传入进度回调
+        await processAndVectorizeAllContent(sendProgress);
 
-    // 返回成功响应
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: '向量化过程已触发并完成。',
-      }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        console.log('向量化 API 完成.');
+        sendProgress({ stage: 'done', message: '向量化过程成功完成' });
+        controller.close();
+      } catch (error) {
+        console.error('向量化 API 过程出错:', error);
+        const errorMessage = error instanceof Error ? error.message : '向量化 API 过程出错';
+        sendProgress({ stage: 'error', message: errorMessage });
+        controller.close();
       }
-    );
-  } catch (error) {
-    console.error('向量化 API 过程出错:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : '向量化 API 过程出错',
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-  }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
 }

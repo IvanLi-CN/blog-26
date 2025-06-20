@@ -11,6 +11,7 @@ async function main() {
 
     // 2. 配置 LlamaIndex
     configureLlamaIndex();
+    const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
     console.log('LlamaIndex 配置完成');
 
     // 3. 获取需要处理的内容
@@ -30,7 +31,7 @@ async function main() {
         const vector = Buffer.from(new Float32Array(embeddings[0]).buffer);
 
         // 更新数据库记录
-        await updateContentRecord(content, vector);
+        await updateContentRecord(content, embeddingModelName, vector);
 
         console.log(`✓ 完成: ${content.filepath}`);
       } catch (error) {

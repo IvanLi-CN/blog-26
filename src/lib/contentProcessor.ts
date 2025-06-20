@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { type CollectionEntry, getCollection } from 'astro:content';
-import type { DBRecord } from './db';
 import { getFileRecord, upsertFileRecord } from './db';
+import type { NewVectorizedFile } from './schema';
 
 export interface ProcessedContent {
   filepath: string;
@@ -64,14 +64,19 @@ export async function processContentFile(filepath: string): Promise<FileDetailsF
 /**
  * 更新数据库记录
  */
-export async function updateContentRecord(processed: ProcessedContent, vector?: Buffer): Promise<void> {
-  const record: DBRecord = {
+export async function updateContentRecord(
+  processed: ProcessedContent,
+  modelName: string,
+  vector?: Buffer
+): Promise<void> {
+  const record: NewVectorizedFile = {
     filepath: processed.filepath,
-    slug: processed.slug, // Include slug
+    slug: processed.slug,
     contentHash: processed.contentHash,
     lastModifiedTime: processed.lastModified,
-    contentUpdatedAt: processed.effectiveContentUpdatedAt, // Include content_updated_at
+    contentUpdatedAt: processed.effectiveContentUpdatedAt,
     indexedAt: Date.now(),
+    modelName: modelName,
     vector,
   };
 

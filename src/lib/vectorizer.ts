@@ -6,12 +6,27 @@ import { processAllContent } from './contentProcessor';
 import { deleteFileRecord, getAllFileRecords, initializeDB, upsertFileRecord } from './db';
 import type { DBRecord } from './db';
 
+export type VectorizationProgress = {
+  stage: 'vectorizing' | 'deleting' | 'done' | 'error' | 'info';
+  message: string;
+  total?: number;
+  current?: number;
+  percentage?: number;
+};
+
 /**
  * 配置 LlamaIndex 的环境和模型设置
  */
 export function configureLlamaIndex(): void {
   const apiKey = process.env.OPENAI_API_KEY;
   const baseURL = process.env.OPENAI_API_BASE_URL;
+
+  // 从环境变量中读取模型配置，并提供默认值
+  const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
+  const embeddingDimension = process.env.EMBEDDING_DIMENSION
+    ? Number.parseInt(process.env.EMBEDDING_DIMENSION, 10)
+    : 1536;
+  const chatModelName = process.env.CHAT_MODEL_NAME ?? 'deepseek-v3';
 
   if (!apiKey || !baseURL) {
     console.error('Missing required environment variables:', {
@@ -23,79 +38,151 @@ export function configureLlamaIndex(): void {
 
   // 配置 embedding 模型
   Settings.embedModel = new OpenAIEmbedding({
-    model: 'text-embedding-3-small',
+    model: embeddingModelName,
+    dimensions: embeddingDimension,
     apiKey,
     baseURL,
   });
 
   // 配置 LLM 模型
   Settings.llm = new OpenAI({
-    model: 'deepseek-v3',
+    model: chatModelName,
     apiKey,
     baseURL,
   });
 
-  console.log('LlamaIndex 配置已初始化');
+  console.log('LlamaIndex Configuration Initialized:', {
+    embeddingModelName,
+    embeddingDimension,
+    chatModelName,
+  });
 }
 
 /**
  * 处理所有内容文件，进行增量向量化
  */
-export async function processAndVectorizeAllContent(): Promise<void> {
+export async function processAndVectorizeAllContent(
+  onProgress?: (progress: VectorizationProgress) => void
+): Promise<void> {
+  onProgress?.({ stage: 'info', message: '开始向量化内容...' });
   console.log('开始向量化内容...');
   configureLlamaIndex();
   await initializeDB();
 
+  const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
+
+  // 检查现有记录的模型是否与当前配置一致
+  const existingRecords = await getAllFileRecords();
+  if (existingRecords.length > 0) {
+    const firstRecordModel = existingRecords[0].modelName;
+    if (firstRecordModel !== embeddingModelName) {
+      const message = `模型配置已更改 (之前: ${firstRecordModel}, 当前: ${embeddingModelName}). 将重新向量化所有内容.`;
+      onProgress?.({ stage: 'info', message });
+      console.warn(message);
+      for (const record of existingRecords) {
+        await deleteFileRecord(record.filepath);
+      }
+    }
+  }
+
   // 1. 获取所有当前内容文件的 ID
   const allPosts = await getCollection('post');
   const currentFilepaths = new Set(allPosts.map((post) => post.id));
-  console.log(`找到 ${currentFilepaths.size} 篇当前文章.`);
+  const message1 = `找到 ${currentFilepaths.size} 篇当前文章.`;
+  onProgress?.({ stage: 'info', message: message1 });
+  console.log(message1);
 
   // 2. 获取需要更新或新增的内容
   const contentToVectorize = await processAllContent();
-  console.log(`需要向量化 ${contentToVectorize.length} 篇文章.`);
+  const totalToVectorize = contentToVectorize.length;
+  const message2 = `需要向量化 ${totalToVectorize} 篇文章.`;
+  onProgress?.({ stage: 'info', message: message2 });
+  console.log(message2);
 
   // 3. 向量化并更新/插入数据库
+  let vectorizedCount = 0;
   for (const item of contentToVectorize) {
+    vectorizedCount++;
+    const percentage = totalToVectorize > 0 ? Math.round((vectorizedCount / totalToVectorize) * 100) : 0;
     try {
-      console.log(`正在向量化: ${item.filepath}`);
-      // LlamaIndex getTextEmbeddings expects an array of strings
+      const message = `正在向量化: ${item.filepath}`;
+      onProgress?.({
+        stage: 'vectorizing',
+        message,
+        total: totalToVectorize,
+        current: vectorizedCount,
+        percentage,
+      });
+      console.log(message);
       const embeddings = await Settings.embedModel.getTextEmbeddings([item.rawContent]);
-      const vector = Buffer.from(new Float32Array(embeddings[0]).buffer); // Convert Float32Array to Buffer
+      const vector = Buffer.from(new Float32Array(embeddings[0]).buffer);
 
       const record: DBRecord = {
         filepath: item.filepath,
-        slug: item.slug, // Include slug from ProcessedContent
+        slug: item.slug,
         contentHash: item.contentHash,
         lastModifiedTime: item.lastModified,
-        contentUpdatedAt: item.effectiveContentUpdatedAt, // Include effectiveContentUpdatedAt
+        contentUpdatedAt: item.effectiveContentUpdatedAt,
         indexedAt: Date.now(),
+        modelName: embeddingModelName,
         vector: vector,
       };
       await upsertFileRecord(record);
       console.log(`成功向量化并更新: ${item.filepath}`);
     } catch (error) {
-      console.error(`向量化失败: ${item.filepath}`, error);
+      const errorMessage = `向量化失败: ${item.filepath}`;
+      onProgress?.({
+        stage: 'error',
+        message: errorMessage,
+        total: totalToVectorize,
+        current: vectorizedCount,
+        percentage,
+      });
+      console.error(errorMessage, error);
     }
   }
 
   // 4. 删除数据库中不再存在的内容
-  const existingRecords = await getAllFileRecords();
-  console.log(`数据库中共有 ${existingRecords.length} 条记录.`);
+  const freshExistingRecords = await getAllFileRecords(); // Re-fetch to get the most current state
+  const message3 = `数据库中共有 ${freshExistingRecords.length} 条记录.`;
+  onProgress?.({ stage: 'info', message: message3 });
+  console.log(message3);
 
-  for (const record of existingRecords) {
-    if (!currentFilepaths.has(record.filepath)) {
-      try {
-        console.log(`正在删除不再存在的记录: ${record.filepath}`);
-        await deleteFileRecord(record.filepath);
-        console.log(`成功删除记录: ${record.filepath}`);
-      } catch (error) {
-        console.error(`删除记录失败: ${record.filepath}`, error);
-      }
+  const recordsToDelete = freshExistingRecords.filter((record) => !currentFilepaths.has(record.filepath));
+  const totalToDelete = recordsToDelete.length;
+  let deletedCount = 0;
+
+  for (const record of recordsToDelete) {
+    deletedCount++;
+    const percentage = totalToDelete > 0 ? Math.round((deletedCount / totalToDelete) * 100) : 0;
+    try {
+      const message = `正在删除不再存在的记录: ${record.filepath}`;
+      onProgress?.({
+        stage: 'deleting',
+        message,
+        total: totalToDelete,
+        current: deletedCount,
+        percentage,
+      });
+      console.log(message);
+      await deleteFileRecord(record.filepath);
+      console.log(`成功删除记录: ${record.filepath}`);
+    } catch (error) {
+      const errorMessage = `删除记录失败: ${record.filepath}`;
+      onProgress?.({
+        stage: 'error',
+        message: errorMessage,
+        total: totalToDelete,
+        current: deletedCount,
+        percentage,
+      });
+      console.error(errorMessage, error);
     }
   }
 
-  console.log('内容向量化完成.');
+  const finalMessage = '内容向量化完成.';
+  onProgress?.({ stage: 'done', message: finalMessage });
+  console.log(finalMessage);
   // Note: We don't close the DB here as it might be used by the API route later in hybrid mode.
   // The script execution will handle process exit.
 }
