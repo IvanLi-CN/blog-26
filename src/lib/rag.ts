@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
-import { Settings } from 'llamaindex';
+import { type ChatMessage, Settings } from 'llamaindex';
 import { fetchPosts } from '../utils/blog';
+import { getCanonical } from '../utils/permalinks';
 import { findSimilarFiles } from './db';
 import { configureLlamaIndex } from './vectorizer';
 
@@ -41,7 +42,7 @@ export async function performRAGQuery(userQuery: string): Promise<RAGResult> {
     if (similarDocs.length === 0) {
       console.log('No similar documents found');
       return {
-        answer: "I couldn't find any relevant information to answer your question.",
+        answer: '抱歉，我找不到相关信息来回答您的问题。',
         sources: [],
       };
     }
@@ -60,7 +61,7 @@ export async function performRAGQuery(userQuery: string): Promise<RAGResult> {
         // post.Content is an Astro component factory, we need the rendered string content property (post.content)
         const content = post.content;
 
-        const permalink = post?.permalink ?? '未知来源'; // Handle potential null/undefined permalink
+        const permalink = getCanonical(post?.permalink ?? '').toString();
 
         // Ensure content is a string, handle null/undefined return from post.content
         const safeContent = typeof content === 'string' ? content : String(content ?? '');
@@ -77,21 +78,21 @@ export async function performRAGQuery(userQuery: string): Promise<RAGResult> {
     if (!context) {
       console.log('No context could be built from similar documents');
       return {
-        answer: "I couldn't find any relevant information to answer your question.",
+        answer: '抱歉，我找不到相关信息来回答您的问题。',
         sources: [],
       };
     }
 
     // 构建 prompt 并生成回答
     console.log('Generating answer...');
-    const prompt = `Based on the following context, answer the query:
+    const prompt = `请根据以下上下文，用中文回答问题。当你在回答中需要引用上下文中的来源时，必须使用来源中提供的完整 URL 链接（例如 'https://example.com/some-post'），而不是仅仅使用文章的标题或者 slug。请使用 Markdown 格式化你的回答，例如使用代码块包裹代码。
 
-Context:
+上下文:
 ${context}
 
-Query: ${userQuery}
+问题: ${userQuery}
 
-Answer:`;
+回答:`;
 
     const response = await Settings.llm.complete({ prompt });
     const answer = response.text;
@@ -115,7 +116,7 @@ Answer:`;
         id: record.filepath,
         title: post.title,
         slug: post.slug,
-        permalink: post.permalink,
+        permalink: getCanonical(post.permalink).toString(),
         score: record.score,
       };
     });
@@ -163,7 +164,7 @@ export async function performChatQuery(
     if (similarDocs.length === 0) {
       console.log('No similar documents found');
       return {
-        answer: "I couldn't find any relevant information to answer your question.",
+        answer: '抱歉，我找不到相关信息来回答您的问题。',
         sources: [],
       };
     }
@@ -181,14 +182,21 @@ export async function performChatQuery(
     if (!context) {
       console.log('No context could be built from similar documents');
       return {
-        answer: "I couldn't find any relevant information to answer your question.",
+        answer: '抱歉，我找不到相关信息来回答您的问题。',
         sources: [],
       };
     }
 
     // 5. 构建 prompt 并生成回答
     console.log('Generating answer...');
-    const prompt = `Based on the following context, answer the query:\n\nContext:\n${context}\n\nQuery: ${message}\n\nAnswer:`;
+    const prompt = `请根据以下上下文和对话历史，用中文回答问题。
+
+上下文:
+${context}
+
+问题: ${message}
+
+回答:`;
 
     const response = await Settings.llm.complete({ prompt });
     const answer = response.text;
@@ -210,6 +218,113 @@ export async function performChatQuery(
     };
   } catch (error) {
     console.error('Error performing RAG query:', error);
+    throw error;
+  }
+}
+
+/**
+ * 执行 AI 对话查询的流式版本
+ * @param message 用户消息
+ * @param history 对话历史
+ * @returns 返回一个异步生成器，持续产生回答的文本片段
+ */
+export async function* streamChatQuery(
+  message: string,
+  history: { type: 'user' | 'ai'; text: string }[]
+): AsyncGenerator<string> {
+  try {
+    console.log('streamChatQuery called with message:', message, 'and history:', history);
+
+    // 1. 验证输入参数
+    if (!message) {
+      throw new Error('User message cannot be empty.');
+    }
+    // 初始化 LlamaIndex
+    configureLlamaIndex();
+
+    // 2. 向量化查询
+    console.log('Vectorizing query...');
+    const queryEmbedding = await Settings.embedModel.getTextEmbeddings([message]);
+    const queryVector = Buffer.from(new Float32Array(queryEmbedding[0]).buffer);
+
+    // 3. 获取相似文档
+    console.log('Finding similar documents...');
+    const similarDocs = await findSimilarFiles(queryVector, 3);
+
+    if (similarDocs.length === 0) {
+      console.log('No similar documents found');
+      yield '抱歉，我找不到相关信息来回答您的问题。';
+      return;
+    }
+
+    // 4. 获取所有文章用于构建上下文
+    const posts = await fetchPosts();
+
+    // 5. 构建上下文
+    console.log('Building context from similar documents...');
+    const contextPromises = similarDocs.map(async (record) => {
+      const post = posts.find((p) => p.id === record.filepath);
+      if (post && post.content) {
+        const permalink = getCanonical(post.permalink ?? '').toString();
+        const safeContent = typeof post.content === 'string' ? post.content : String(post.content ?? '');
+        return `Source: ${permalink}\n\n${safeContent}\n\n`;
+      }
+      return '';
+    });
+
+    const contexts = await Promise.all(contextPromises);
+    const context = contexts.filter((c) => c !== '').join('---\n');
+
+    if (!context) {
+      console.log('No context could be built from similar documents');
+      yield '抱歉，我找不到相关信息来回答您的问题。';
+      return;
+    }
+
+    // 6. 构建聊天消息
+    const typedHistory: ChatMessage[] = history.map((msg) => ({
+      role: msg.type === 'ai' ? 'assistant' : 'user',
+      content: msg.text,
+    }));
+
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: `请根据以下上下文和对话历史，用中文回答问题。当你在回答中需要引用上下文中的来源时，必须使用来源中提供的完整 URL 链接（例如 'https://example.com/some-post'），而不是仅仅使用文章的标题或者 slug。请使用 Markdown 格式化你的回答，例如使用代码块包裹代码。\n\n上下文:\n${context}`,
+      },
+      ...typedHistory,
+      {
+        role: 'user',
+        content: message,
+      },
+    ];
+
+    // 7. 生成流式回答
+    const responseStream = await Settings.llm.chat({ messages, stream: true });
+
+    // 8. 返回流
+    for await (const chunk of responseStream) {
+      yield chunk.delta;
+    }
+
+    // 9. 构建并附加来源信息
+    const sources: RAGSource[] = similarDocs.map((record) => {
+      const post = posts.find((p) => p.id === record.filepath);
+      return {
+        id: record.filepath,
+        title: post?.title ?? record.filepath,
+        slug: post?.slug ?? record.filepath,
+        permalink: post ? getCanonical(post.permalink).toString() : getCanonical(`/${record.filepath}`).toString(),
+        score: record.score,
+      };
+    });
+
+    // 在流末尾附加一个特殊标记和 JSON 数据
+    const sourcesJson = JSON.stringify(sources);
+    yield `\n\n__END_OF_STREAM__${sourcesJson}`;
+  } catch (error) {
+    console.error('Error performing streaming RAG query:', error);
+    // 在流中抛出错误，以便上层可以捕获
     throw error;
   }
 }
