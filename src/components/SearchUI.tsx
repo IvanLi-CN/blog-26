@@ -198,7 +198,7 @@ const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
               {answer || sources.length > 0 ? (
                 <React.Fragment>
                   {answer && (
-                    <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 mb-8">
+                    <div className="bg-base-200 border border-gray-200 dark:border-slate-700 rounded-xl p-6 mb-8">
                       <h3 className="text-xl font-semibold mb-4">Answer</h3>
                       <div className="prose dark:prose-invert max-w-none">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer}</ReactMarkdown>
@@ -243,7 +243,7 @@ const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
             <div className="chat-history space-y-4">
               {messages.map((msg, index) => (
                 <div key={index} className={`chat ${msg.type === 'user' ? 'chat-end' : 'chat-start'}`}>
-                  <div className={`chat-bubble ${msg.type === 'ai' ? 'chat-bubble-primary' : ''}`}>
+                  <div className="chat-bubble">
                     <div className="prose dark:prose-invert max-w-none">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                     </div>
@@ -272,7 +272,7 @@ const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
           )}
         </div>
       </main>
-      <footer className="p-4 border-t border-base-200 bg-base-100 flex-shrink-0">
+      <footer className="p-4 border-t border-base-200 flex-shrink-0">
         <div className="max-w-4xl mx-auto">
           <div role="tablist" className="tabs tabs-boxed mx-auto mb-4">
             <a role="tab" className={`tab ${mode === 'search' ? 'tab-active' : ''}`} onClick={() => setMode('search')}>
