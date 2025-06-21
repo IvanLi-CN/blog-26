@@ -1,54 +1,18 @@
 ---
+import SearchUI from "~/components/SearchUI.tsx";
+import Header from "~/components/widgets/Header.astro";
+import SearchLayout from "~/layouts/SearchLayout.astro";
 import { headerData } from "~/navigation";
-import SearchAndChat from "../components/SearchAndChat.tsx";
-import Header from "../components/widgets/Header.astro";
-import Layout from "../layouts/Layout.astro";
-import { initializeDB } from "../lib/db";
-import { performRAGQuery } from "../lib/rag";
-import { rateLimiter, rateLimiterHourly } from "../lib/rateLimiter";
 
 export const prerender = false;
 
 const query = Astro.url.searchParams.get("q");
-const metadata = {
-  title: `Search Results${query ? ` for "${query}"` : ""}`,
-};
-
-let errorMessage: string | null = null;
-let result: any = null;
-
-try {
-  await rateLimiter.consume("global");
-  await rateLimiterHourly.consume("global");
-} catch (rejRes) {
-  // 如果超出限制，设置一个标志，以便在页面中显示错误消息
-  errorMessage = "Too Many Requests";
-}
-
-// 执行 RAG 查询
-if (!errorMessage) {
-  // 初始化数据库
-  await initializeDB(); // Initialize the database
-
-  result = query ? await performRAGQuery(query).then((r) => ({ query, ...r })) : null;
-}
 ---
 
-<Layout metadata={metadata}>
-  <Header showSearchBox={false} {...headerData} />
-  <section class="px-4 py-8 sm:px-6 mx-auto lg:px-8 lg:py-20 max-w-4xl">
-    <div class="mb-12  text-center">
-      <h2 class="text-4xl md:text-5xl font-bold leading-tighter tracking-tighter font-heading">
-        Search Results
-      </h2>
-    </div>
-  </section>
-
-  {errorMessage ? null : <SearchAndChat query={query} defaultResult={result} client:load />}
-  {errorMessage && (
-    <div class="alert alert-error rounded-box shadow-lg max-w-xl w-full mx-auto mt-8 mb-auto">
-      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-      <span class="text-lg">智能搜索服务限流中，请稍后再试</span>
-    </div>
-  )}
-</Layout>
+<SearchLayout metadata={{ title: `Search Results${query ? ` for "${query}"` : ""}` }}>
+  <div slot="header">
+    <Header showSearchBox={false} {...headerData} />
+  </div>
+  
+  <SearchUI client:load initialQuery={query} />
+</SearchLayout>

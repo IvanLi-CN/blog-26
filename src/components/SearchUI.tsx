@@ -1,48 +1,39 @@
-import React, { useState, useEffect, type MouseEventHandler, type KeyboardEventHandler, type ChangeEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-// 注意: highlight.js 的样式需要全局引入，或者在这里动态引入
-// 例如: import 'highlight.js/styles/github.css';
-// 为了简单起见，我们假设样式已在全局（例如 CustomStyles.astro）引入
 
+// Interfaces
 interface Source {
   permalink: string;
   title: string;
   slug: string;
   score?: number;
 }
-
 interface Message {
   type: 'user' | 'ai';
   text: string;
   sources?: Source[];
 }
-
-interface SearchAndChatProps {
-  query: string | null;
-  defaultResult: { query: string; answer?: string; sources?: Source[] } | null;
+interface SearchUIProps {
+  initialQuery: string | null;
 }
 
-const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) => {
+const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
   const [mode, setMode] = useState<'search' | 'chat'>('search');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialQuery || '');
   const [searchResults, setSearchResults] = useState<{ query: string; answer?: string; sources?: Source[] } | null>(
-    defaultResult
+    null
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && mode === 'search' && query) {
-      if (searchResults?.query.trim().toLocaleLowerCase() === query.trim().toLocaleLowerCase()) {
-        return;
-      }
-      performSearch(query);
+    if (initialQuery && !searchResults) {
+      handlePerformSearch(initialQuery);
     }
-  }, [mode, query]);
+  }, [initialQuery]);
 
-  // 当从搜索模式切换到对话模式时，预填入第一条消息
   useEffect(() => {
     if (mode === 'chat' && searchResults && searchResults.answer && messages.length === 0) {
       const aiMessage: Message = {
@@ -52,33 +43,17 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
       };
       setMessages([aiMessage]);
     }
-  }, [mode, searchResults, messages]);
+  }, [mode, searchResults]);
 
-  const performSearch = async (searchQuery: string) => {
+  const handlePerformSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
     setLoading(true);
     setError(null);
     try {
       const requestUrl = `/api/search?q=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(requestUrl);
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Search failed');
-      }
-
-      // --- BEGIN FRONTEND REPLACEMENT LOGIC ---
-      if (data.answer && data.sources) {
-        let finalAnswer = data.answer;
-        data.sources.forEach((source: Source) => {
-          if (source.slug) {
-            const slugRegex = new RegExp(`《(${source.slug})》`, 'g');
-            finalAnswer = finalAnswer.replace(slugRegex, `[${source.title}](${source.permalink})`);
-          }
-        });
-        data.answer = finalAnswer;
-      }
-      // --- END FRONTEND REPLACEMENT LOGIC ---
-
+      if (!response.ok) throw new Error(data.error || 'Search failed');
       setSearchResults(data);
     } catch (err: any) {
       setError(err.message || 'Failed to perform search');
@@ -90,29 +65,26 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
+    const currentInput = input;
 
     if (mode === 'search') {
-      // 更新 URL 并触发搜索
+      setInput('');
       const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('q', input);
+      newUrl.searchParams.set('q', currentInput);
       window.history.pushState({}, '', newUrl);
-      await performSearch(input);
-    } else if (mode === 'chat') {
-      await sendChatMessage(input);
+      await handlePerformSearch(currentInput);
+    } else {
+      setInput('');
+      await handleSendChatMessage(currentInput);
     }
-    setInput('');
   };
 
-  const sendChatMessage = async (text: string) => {
+  const handleSendChatMessage = async (text: string) => {
     const userMessage: Message = { type: 'user', text };
-    // 在发送时，保留最近的 9 条消息，为 AI 的回复留出位置
     const currentHistory = messages.slice(-9);
     setMessages([...currentHistory, userMessage]);
-    setInput('');
     setLoading(true);
     setError(null);
-
-    // 立即添加一个空的 AI 消息占位符
     const aiMessagePlaceholder: Message = { type: 'ai', text: '...' };
     setMessages((prev) => [...prev, aiMessagePlaceholder]);
 
@@ -122,52 +94,30 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text, history: currentHistory }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Chat failed');
       }
-
-      if (!response.body) {
-        throw new Error('Response body is empty');
-      }
-
+      if (!response.body) throw new Error('Response body is empty');
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullText = '';
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n\n').filter((line) => line.startsWith('data: '));
-
         for (const line of lines) {
           const jsonStr = line.substring('data: '.length);
           const data = JSON.parse(jsonStr);
-
           if (data.text) {
             const endOfStreamMarker = '__END_OF_STREAM__';
             if (data.text.includes(endOfStreamMarker)) {
               const parts = data.text.split(endOfStreamMarker);
               fullText += parts[0];
               const sources: Source[] = JSON.parse(parts[1]);
-              let finalRenderText = fullText.trim();
-
-              sources.forEach((source) => {
-                if (source.slug) {
-                  // 用 slug 创建一个正则表达式来查找 (slug) 格式的文本
-                  const slugRegex = new RegExp(`\\((${source.slug})\\)`, 'g');
-                  // 将其替换为完整的 Markdown 链接
-                  finalRenderText = finalRenderText.replace(slugRegex, `[${source.title}](${source.permalink})`);
-                }
-              });
-
               setMessages((prev) =>
-                prev.map((msg, i) =>
-                  i === prev.length - 1 ? { ...msg, text: finalRenderText, sources: sources } : msg
-                )
+                prev.map((msg, i) => (i === prev.length - 1 ? { ...msg, text: fullText, sources: sources } : msg))
               );
             } else {
               fullText += data.text;
@@ -178,31 +128,23 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
       }
     } catch (err: any) {
       setError(err.message || 'Failed to send message');
-      setMessages((prev) => prev.slice(0, -1)); // 移除 AI 消息占位符
+      setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const handleModeSwitch: MouseEventHandler<HTMLAnchorElement> = (e) => {
-    const newMode = e.currentTarget.textContent === '搜索' ? 'search' : 'chat';
-    setMode(newMode);
-  };
-
   return (
-    <React.Fragment>
-      <div
-        className="container mx-auto px-4 py-4"
-        style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)' }}
-      >
-        <div id="results-or-chat" className="space-y-8" style={{ flex: 1, overflowY: 'auto' }}>
+    <div className="flex flex-col h-full">
+      <main className="flex-grow overflow-y-auto p-4">
+        <div className="w-full max-w-4xl mx-auto">
           {mode === 'search' && (
             <React.Fragment>
               {loading && (
@@ -248,7 +190,9 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
                 searchResults &&
                 !loading &&
                 !error && (
-                  <div className="text-center text-gray-600 dark:text-slate-400">No results found for "{query}"</div>
+                  <div className="text-center text-gray-600 dark:text-slate-400">
+                    No results found for "{initialQuery}"
+                  </div>
                 )
               )}
             </React.Fragment>
@@ -286,17 +230,17 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
             </div>
           )}
         </div>
-
-        <div className="mt-auto pt-4">
+      </main>
+      <footer className="p-4 border-t border-base-200 bg-base-100 flex-shrink-0">
+        <div className="max-w-4xl mx-auto">
           <div role="tablist" className="tabs tabs-boxed mx-auto mb-4">
             <a role="tab" className={`tab ${mode === 'search' ? 'tab-active' : ''}`} onClick={() => setMode('search')}>
               搜索
             </a>
-            <a role="tab" className={`tab ${mode === 'chat' ? 'tab-active' : ''}`} onClick={handleModeSwitch}>
+            <a role="tab" className={`tab ${mode === 'chat' ? 'tab-active' : ''}`} onClick={() => setMode('chat')}>
               对话
             </a>
           </div>
-
           <div className="flex items-center space-x-4">
             <textarea
               className="textarea textarea-bordered w-full"
@@ -309,10 +253,19 @@ const SearchAndChat: React.FC<SearchAndChatProps> = ({ query, defaultResult }) =
               发送
             </button>
           </div>
+          <div className="text-center text-xs text-base-content/50 mt-4">
+            <p>
+              Copyright &copy; {new Date().getFullYear()} Ivan Li. All rights reserved.
+              <br />
+              <a target="_blank" rel="nofollow" href="https://beian.miit.gov.cn" className="hover:underline">
+                闽ICP备2023000043号
+              </a>
+            </p>
+          </div>
         </div>
-      </div>
-    </React.Fragment>
+      </footer>
+    </div>
   );
 };
 
-export default SearchAndChat;
+export default SearchUI;
