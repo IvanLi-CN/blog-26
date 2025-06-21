@@ -22,42 +22,84 @@ const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
   const [mode, setMode] = useState<'search' | 'chat'>('search');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(initialQuery || '');
-  const [searchResults, setSearchResults] = useState<{ query: string; answer?: string; sources?: Source[] } | null>(
-    null
-  );
+  const [answer, setAnswer] = useState<string>('');
+  const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialQuery && !searchResults) {
+    if (initialQuery && !answer && !loading) {
       handlePerformSearch(initialQuery);
     }
   }, [initialQuery]);
 
   useEffect(() => {
-    if (mode === 'chat' && searchResults && searchResults.answer && messages.length === 0) {
+    if (mode === 'chat' && answer && messages.length === 0) {
       const aiMessage: Message = {
         type: 'ai',
-        text: searchResults.answer,
-        sources: searchResults.sources,
+        text: answer,
+        sources: sources,
       };
       setMessages([aiMessage]);
     }
-  }, [mode, searchResults]);
+  }, [mode, answer, sources]);
 
   const handlePerformSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
     setLoading(true);
     setError(null);
+    setAnswer('');
+    setSources([]);
+
     try {
-      const requestUrl = `/api/search?q=${encodeURIComponent(searchQuery)}`;
+      const requestUrl = `/api/search-stream?q=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(requestUrl);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Search failed');
-      setSearchResults(data);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Search failed');
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is empty');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n\n').filter((line) => line.startsWith('data: '));
+
+        for (const line of lines) {
+          const jsonStr = line.substring('data: '.length);
+          const data = JSON.parse(jsonStr);
+
+          if (data.text) {
+            const endOfStreamMarker = '__END_OF_STREAM__';
+            if (data.text.includes(endOfStreamMarker)) {
+              const parts = data.text.split(endOfStreamMarker);
+              fullText += parts[0];
+              setAnswer(fullText);
+              const sourcesData: Source[] = JSON.parse(parts[1]);
+              setSources(sourcesData);
+              // End of stream
+              break;
+            } else {
+              fullText += data.text;
+              setAnswer(fullText);
+            }
+          }
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to perform search');
-      setSearchResults(null);
+      setAnswer('');
+      setSources([]);
     } finally {
       setLoading(false);
     }
@@ -153,22 +195,21 @@ const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
                 </div>
               )}
               {error && <div className="text-center text-red-600 dark:text-red-400">Error: {error}</div>}
-              {searchResults &&
-              (searchResults.answer || (searchResults.sources && searchResults.sources.length > 0)) ? (
+              {answer || sources.length > 0 ? (
                 <React.Fragment>
-                  {searchResults.answer && (
+                  {answer && (
                     <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 mb-8">
                       <h3 className="text-xl font-semibold mb-4">Answer</h3>
                       <div className="prose dark:prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{searchResults.answer}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer}</ReactMarkdown>
                       </div>
                     </div>
                   )}
-                  {searchResults.sources && searchResults.sources.length > 0 && (
+                  {sources.length > 0 && (
                     <div>
                       <h3 className="text-xl font-semibold mb-4">Related Articles</h3>
                       <div className="space-y-6">
-                        {searchResults.sources.map((source, index) => (
+                        {sources.map((source, index) => (
                           <article key={index} className="border border-gray-200 dark:border-slate-700 rounded-xl p-5">
                             <h3 className="text-lg font-semibold mb-2">
                               <a href={source.permalink} className="hover:text-primary">
@@ -187,9 +228,9 @@ const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
                   )}
                 </React.Fragment>
               ) : (
-                searchResults &&
                 !loading &&
-                !error && (
+                !error &&
+                initialQuery && (
                   <div className="text-center text-gray-600 dark:text-slate-400">
                     No results found for "{initialQuery}"
                   </div>

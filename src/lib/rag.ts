@@ -57,16 +57,11 @@ export async function performRAGQuery(userQuery: string): Promise<RAGResult> {
     const contextPromises = similarDocs.map(async (record) => {
       const post = posts.find((p) => p.id === record.filepath);
       if (post && post.Content) {
-        // Use the rendered content directly from the post object
-        // post.Content is an Astro component factory, we need the rendered string content property (post.content)
-        const content = post.content;
-
         const permalink = getCanonical(post?.permalink ?? '').toString();
 
-        // Ensure content is a string, handle null/undefined return from post.content
-        const safeContent = typeof content === 'string' ? content : String(content ?? '');
-
-        return `Source: ${permalink}\n\n${safeContent}\n\n`;
+        if (post.body) {
+          return `Source: ${permalink}\n\n${post.body}\n\n`;
+        }
       }
       console.warn(`Could not find post or content for record with filepath: ${record.filepath}`);
       return ''; // Skip records without a corresponding post or content
@@ -133,6 +128,103 @@ ${context}
 }
 
 /**
+ * 执行 RAG 查询的流式版本
+ * @param userQuery 用户查询文本
+ * @returns 返回一个异步生成器，持续产生回答的文本片段
+ */
+export async function* streamRAGQuery(userQuery: string): AsyncGenerator<string> {
+  try {
+    console.log('Starting streaming RAG query:', userQuery);
+
+    // 1. 验证输入
+    if (!userQuery) {
+      throw new Error('User query cannot be empty.');
+    }
+
+    // 2. 初始化 LlamaIndex
+    configureLlamaIndex();
+
+    // 3. 向量化查询
+    console.log('Vectorizing query...');
+    const queryEmbedding = await Settings.embedModel.getTextEmbeddings([userQuery]);
+    const queryVector = Buffer.from(new Float32Array(queryEmbedding[0]).buffer);
+
+    // 4. 获取相似文档
+    console.log('Finding similar documents...');
+    const similarDocs = await findSimilarFiles(queryVector, 3);
+
+    if (similarDocs.length === 0) {
+      console.log('No similar documents found');
+      yield '抱歉，我找不到相关信息来回答您的问题。';
+      return;
+    }
+
+    // 5. 获取所有文章用于构建上下文
+    const posts = await fetchPosts();
+
+    // 6. 构建上下文
+    console.log('Building context from similar documents...');
+    const contextPromises = similarDocs.map(async (record) => {
+      const post = posts.find((p) => p.id === record.filepath);
+      if (post && post.body) {
+        const permalink = getCanonical(post.permalink ?? '').toString();
+        return `Source: ${permalink}\n\n${post.body}\n\n`;
+      }
+      return '';
+    });
+
+    const contexts = await Promise.all(contextPromises);
+    const context = contexts.filter((c) => c !== '').join('---\n');
+
+    if (!context) {
+      console.log('No context could be built from similar documents');
+      yield '抱歉，我找不到相关信息来回答您的问题。';
+      return;
+    }
+
+    // 7. 构建聊天消息 (无历史记录)
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: `请根据以下上下文，用中文回答问题。当你在回答中需要引用上下文中的来源时，必须使用来源中提供的完整 URL 链接（例如 'https://example.com/some-post'），而不是仅仅使用文章的标题或者 slug。请使用 Markdown 格式化你的回答，例如使用代码块包裹代码。\n\n上下文:\n${context}`,
+      },
+      {
+        role: 'user',
+        content: userQuery,
+      },
+    ];
+
+    // 8. 生成流式回答
+    const responseStream = await Settings.llm.chat({ messages, stream: true });
+
+    // 9. 返回流
+    for await (const chunk of responseStream) {
+      yield chunk.delta;
+    }
+
+    // 10. 构建并附加来源信息
+    const sources: RAGSource[] = similarDocs.map((record) => {
+      const post = posts.find((p) => p.id === record.filepath);
+      return {
+        id: record.filepath,
+        title: post?.title ?? record.filepath,
+        slug: post?.slug ?? record.filepath,
+        permalink: post ? getCanonical(post.permalink).toString() : getCanonical(`/${record.filepath}`).toString(),
+        score: record.score,
+      };
+    });
+
+    // 在流末尾附加一个特殊标记和 JSON 数据
+    const sourcesJson = JSON.stringify(sources);
+    yield `\n\n__END_OF_STREAM__${sourcesJson}`;
+  } catch (error) {
+    console.error('Error performing streaming RAG query:', error);
+    // 在流中抛出错误，以便上层可以捕获
+    throw error;
+  }
+}
+
+/**
  * 执行 AI 对话查询，返回基于对话历史和用户消息的回答
  * @param message 用户消息
  * @param history 对话历史 (例如: { role: "user", content: "你好" }[])
@@ -172,8 +264,14 @@ export async function performChatQuery(
     // 4. 构建上下文
     console.log('Building context from similar documents...');
     let context = '';
+    const posts = await fetchPosts(); // 获取所有文章
     const contextPromises = similarDocs.map(async (record) => {
-      return `Source: ${record.filepath}\n\nThis is a placeholder content\n\n`; // Placeholder
+      const post = posts.find((p) => p.id === record.filepath);
+      if (post && post.body) {
+        const permalink = getCanonical(post.permalink ?? '').toString();
+        return `Source: ${permalink}\n\n${post.body}\n\n`;
+      }
+      return '';
     });
 
     const contexts = await Promise.all(contextPromises);
@@ -264,10 +362,9 @@ export async function* streamChatQuery(
     console.log('Building context from similar documents...');
     const contextPromises = similarDocs.map(async (record) => {
       const post = posts.find((p) => p.id === record.filepath);
-      if (post && post.content) {
+      if (post && post.body) {
         const permalink = getCanonical(post.permalink ?? '').toString();
-        const safeContent = typeof post.content === 'string' ? post.content : String(post.content ?? '');
-        return `Source: ${permalink}\n\n${safeContent}\n\n`;
+        return `Source: ${permalink}\n\n${post.body}\n\n`;
       }
       return '';
     });

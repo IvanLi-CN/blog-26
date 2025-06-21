@@ -43,7 +43,7 @@ const generatePermalink = async ({
 const getNormalizedPost = async (
   post: CollectionEntry<'post'> | CollectionEntry<'notes'> | CollectionEntry<'local-notes'>
 ): Promise<Post> => {
-  const { id, slug: rawSlug = '', data } = post;
+  const { id, slug: rawSlug = '', data, body } = post;
   const { Content, remarkPluginFrontmatter } = await post.render();
 
   const {
@@ -99,6 +99,7 @@ const getNormalizedPost = async (
     metadata,
 
     Content: Content,
+    body: body,
     // or 'content' in case you consume from API
 
     readingTime: remarkPluginFrontmatter?.readingTime,
