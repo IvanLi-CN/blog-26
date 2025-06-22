@@ -1,25 +1,20 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-import { defineConfig } from 'astro/config';
-
 import mdx from '@astrojs/mdx';
 import node from '@astrojs/node'; // Import the Node.js adapter
 import partytown from '@astrojs/partytown';
+import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
-
 import tailwindcss from '@tailwindcss/vite';
 import type { AstroIntegration } from 'astro';
+import { defineConfig } from 'astro/config';
 import compress from 'astro-compress';
 import icon from 'astro-icon';
+import path from 'path';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
-
-import astrowind from './vendor/integration';
+import { fileURLToPath } from 'url';
 
 import { lazyImagesRehypePlugin, readingTimeRemarkPlugin, responsiveTablesRehypePlugin } from './src/utils/frontmatter';
-
-import react from '@astrojs/react';
+import astrowind from './vendor/integration';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
