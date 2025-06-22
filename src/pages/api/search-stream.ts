@@ -5,7 +5,7 @@ import { rateLimiter, rateLimiterHourly } from '../../lib/rateLimiter';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ url, request }) => {
+export const GET: APIRoute = async ({ url }) => {
   try {
     // 1. 速率限制
     try {

@@ -5,6 +5,7 @@ export const headerData = {
     {
       text: 'Post',
       href: getBlogPermalink(),
+      icon: 'tabler:notebook',
     },
     // {
     //   text: 'About',
@@ -13,6 +14,7 @@ export const headerData = {
     {
       text: 'Tag',
       href: getPermalink('/tags'),
+      icon: 'tabler:tag',
     },
   ],
 };

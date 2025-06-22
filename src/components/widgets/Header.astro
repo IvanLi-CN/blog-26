@@ -3,6 +3,7 @@ import { Icon } from "astro-icon/components";
 import SearchBox from "~/components/common/SearchBox.astro";
 import ToggleMenu from "~/components/common/ToggleMenu.astro";
 import ToggleTheme from "~/components/common/ToggleTheme.astro";
+import { footerData } from "~/navigation";
 
 import type { CallToAction } from "~/types";
 import { getAsset, trimSlash } from "~/utils/permalinks";
@@ -39,6 +40,7 @@ const {
 } = Astro.props;
 
 const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
+const socialLinks = footerData.socialLinks;
 ---
 
 <header
@@ -60,17 +62,19 @@ const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
         ]}>Ivan's Blog</a
       >
     </div>
+
+    <!-- Desktop Navigation -->
     <nav
-      class="items-center w-full md:w-auto hidden md:flex md:mx-5 overflow-y-auto overflow-x-hidden md:overflow-y-visible md:overflow-x-visible md:justify-self-center"
+      class="items-center w-full md:w-auto hidden md:flex md:mx-5"
       aria-label="Main navigation"
     >
       <ul
         class="flex flex-col md:flex-row md:self-center w-full md:w-auto text-xl md:text-[0.9375rem] tracking-[0.01rem] font-medium md:justify-center"
       >
         {
-          links.map(({ text, href, links }) => (
-            <li class={links?.length ? "dropdown" : ""}>
-              {links?.length ? (
+          links.map(({ text, href, links: subLinks }) => (
+            <li class={subLinks?.length ? "dropdown" : ""}>
+              {subLinks?.length ? (
                 <div class="dropdown dropdown-hover">
                   <div tabindex="0" class="btn btn-ghost flex flex-nowrap">
                     {text}{" "}
@@ -80,7 +84,7 @@ const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
                     />
                   </div>
                   <ul class="dropdown-content menu md:bg-base-100/95 rounded-box z-[1] w-52 shadow md:absolute pl-4 md:pl-0 font-medium md:min-w-[200px] drop-shadow-xl">
-                    {links.map(({ text: text2, href: href2 }) => (
+                    {subLinks.map(({ text: text2, href: href2 }) => (
                       <li>
                         <a
                           class:list={[
@@ -111,20 +115,124 @@ const currentPath = `/${trimSlash(new URL(Astro.url).pathname)}`;
         }
       </ul>
     </nav>
-    {showSearchBox && <SearchBox />}
-    <div class="actions md:flex hidden ml-6">
-      <ToggleTheme iconClass="w-5 h-5" />
-      <a
-        class="btn btn-ghost btn-circle"
-        aria-label="RSS Feed"
-        title="RSS Feed"
-        href={getAsset("/rss.xml")}
-      >
-        <Icon name="tabler:rss" class="w-5 h-5" />
-      </a>
+
+    <!-- Desktop Search & Actions -->
+    <div class="hidden md:flex items-center ml-4">
+      {showSearchBox && <SearchBox />}
+      <div class="ml-6 flex">
+        <ToggleTheme iconClass="w-5 h-5" />
+        <a
+          class="btn btn-ghost btn-circle"
+          aria-label="RSS Feed"
+          title="RSS Feed"
+          href={getAsset("/rss.xml")}
+        >
+          <Icon name="tabler:rss" class="w-5 h-5" />
+        </a>
+      </div>
     </div>
+
+    <!-- Mobile Menu Toggle -->
     <div class="flex items-center md:hidden">
       <ToggleMenu />
     </div>
   </div>
 </header>
+
+<!-- Mobile Fullscreen Menu Modal -->
+<div
+  id="menu-modal"
+  class="fixed inset-0 z-50 bg-base-100 hidden md:hidden flex flex-col"
+>
+  <!-- Top bar with logo and close button -->
+  <div class="navbar bg-base-100 max-w-7xl mx-auto">
+    <div class="flex-1">
+      <a
+        href="/"
+        class:list={[
+          "inline-block px-4 font-bold text-xl 2xl:text-2xl",
+          "hover:text-primary drop-shadow drop-shadow-secondary/30 transition-colors",
+          "cursor-pointer",
+        ]}>Ivan's Blog</a
+      >
+    </div>
+    <div class="flex items-center">
+      <button
+        class="btn btn-ghost btn-circle"
+        aria-label="Close menu"
+        data-aw-toggle-menu
+      >
+        <Icon name="tabler:x" class="w-6 h-6" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Area -->
+  <div class="flex-grow flex flex-col container mx-auto px-8">
+    <!-- Search Form (at the top) -->
+    <div class="pt-8">
+      <form action="/search" method="GET" class="w-full">
+        <label class="input input-bordered flex items-center gap-2 text-lg">
+          <Icon name="tabler:search" class="w-5 h-5 opacity-50" />
+          <input type="text" name="q" placeholder="搜索文章..." class="grow" />
+        </label>
+      </form>
+    </div>
+
+    <!-- Main Content (grows to take space and centers nav) -->
+    <div class="flex-grow flex flex-col justify-center items-center">
+      <nav>
+        <ul class="text-3xl font-bold space-y-4">
+          {
+            links.map(({ text, href, icon }) => (
+              <li>
+                <a
+                  href={href}
+                  class="hover:text-primary transition-colors flex items-center gap-3"
+                >
+                  {icon && <Icon name={icon} class="w-8 h-8" />}
+                  <span>{text}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Bottom Actions (pushed to the bottom) -->
+    <div class="py-8">
+      <!-- Social Links -->
+      <div class="grid justify-center gap-y-4 mb-6">
+        {
+          socialLinks.map((social) => (
+            <a
+              class="inline-grid grid-cols-[auto_1fr] items-center gap-x-3 text-gray-600 dark:text-gray-400 hover:text-primary"
+              href={social.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Icon name={social.icon} class="w-6 h-6" />
+              <span class="text-left">{social.ariaLabel}</span>
+            </a>
+          ))
+        }
+      </div>
+      <!-- Copyright & Toggles -->
+      <div class="flex justify-between items-center w-full">
+        <div class="text-sm text-gray-500">&copy; 2025 Ivan's Blog</div>
+        <div class="flex items-center gap-4">
+          <ToggleTheme iconClass="w-6 h-6" />
+          <a
+            class="btn btn-ghost btn-circle"
+            aria-label="RSS Feed"
+            title="RSS Feed"
+            href={getAsset("/rss.xml")}
+          >
+            <Icon name="tabler:rss" class="w-6 h-6" />
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
