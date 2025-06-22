@@ -11,7 +11,7 @@ export const GET: APIRoute = async ({ url }) => {
     try {
       await rateLimiter.consume('global');
       await rateLimiterHourly.consume('global');
-    } catch (rejRes) {
+    } catch (_rejRes) {
       return new Response(JSON.stringify({ error: 'Too Many Requests' }), {
         status: 429,
         headers: { 'Content-Type': 'application/json' },

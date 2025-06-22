@@ -1,10 +1,10 @@
-import { Buffer } from 'node:buffer';
-import { OpenAI, OpenAIEmbedding, Settings } from 'llamaindex';
-
 import { getCollection } from 'astro:content';
+import { Buffer } from 'node:buffer';
+import { OpenAI, OpenAIEmbedding } from '@llamaindex/openai';
+import { Settings } from 'llamaindex';
 import { processAllContent } from './contentProcessor';
-import { deleteFileRecord, getAllFileRecords, initializeDB, upsertFileRecord } from './db';
 import type { DBRecord } from './db';
+import { deleteFileRecord, getAllFileRecords, initializeDB, upsertFileRecord } from './db';
 
 export type VectorizationProgress = {
   stage: 'vectorizing' | 'deleting' | 'done' | 'error' | 'info';

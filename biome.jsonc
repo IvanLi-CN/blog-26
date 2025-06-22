@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.0.4/schema.json",
   "vcs": {
     "enabled": false,
     "clientKind": "git",
@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [".astro", "src/content/notes", "src/content/local-notes", "dist"]
+    "includes": ["**", "!**/.astro", "!**/src/content/notes", "!**/src/content/local-notes", "!**/dist"]
   },
   "formatter": {
     "enabled": true,
@@ -19,17 +19,23 @@
     "lineWidth": 120,
     "attributePosition": "auto",
     "bracketSpacing": true,
-    "ignore": ["**/dist", "**/node_modules", "**/.github", "**/.changeset", "**/*.astro"]
+    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.github", "!**/.changeset", "!**/*.astro"]
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": false
     },
-    "ignore": ["dist", "node_modules", ".github", "types.generated.d.ts", ".astro", "**/*.astro"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.github",
+      "!**/types.generated.d.ts",
+      "!**/.astro",
+      "!**/*.astro"
+    ]
   },
   "javascript": {
     "formatter": {
@@ -46,7 +52,7 @@
   },
   "overrides": [
     {
-      "include": ["**/*.{ts,tsx}"],
+      "includes": ["**/*.{ts,tsx}"],
       "linter": {
         "rules": {
           "correctness": {
@@ -59,7 +65,7 @@
       }
     },
     {
-      "include": ["*.astro"],
+      "includes": ["**/*.astro"],
       "javascript": {
         "formatter": {
           "quoteStyle": "double"
