@@ -4,9 +4,11 @@ import { Icon } from "astro-icon/components";
 import PostTags from "~/components/blog/Tags.astro";
 import Image from "~/components/common/Image.astro";
 import SocialShare from "~/components/common/SocialShare.astro";
-import type { Post } from "~/types";
+
 import { getPermalink } from "~/utils/permalinks";
 import { getFormattedDate } from "~/utils/utils";
+
+import type { Post } from "~/types";
 
 export interface Props {
   post: Post;
@@ -18,27 +20,16 @@ const { post, url } = Astro.props;
 
 <section class="py-8 sm:py-16 lg:py-20 mx-auto">
   <article>
-    <header class={post.image ? "" : ""}>
-      <div
-        class="flex justify-between flex-col sm:flex-row max-w-3xl mx-auto mt-0 mb-2 px-4 sm:px-6 sm:items-center"
-      >
+    <header class={post.image ? '' : ''}>
+      <div class="flex justify-between flex-col sm:flex-row max-w-3xl mx-auto mt-0 mb-2 px-4 sm:px-6 sm:items-center">
         <p>
-          <Icon
-            name="tabler:clock"
-            class="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
-          />
-          <time datetime={String(post.publishDate)} class="inline-block"
-            >{getFormattedDate(post.publishDate)}</time
-          >
+          <Icon name="tabler:clock" class="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400" />
+          <time datetime={String(post.publishDate)} class="inline-block">{getFormattedDate(post.publishDate)}</time>
           {
             post.author && (
               <>
-                {" "}
-                ·{" "}
-                <Icon
-                  name="tabler:user"
-                  class="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
-                />
+                {' '}
+                · <Icon name="tabler:user" class="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400" />
                 <span class="inline-block">{post.author}</span>
               </>
             )
@@ -46,12 +37,9 @@ const { post, url } = Astro.props;
           {
             post.category && (
               <>
-                {" "}
-                ·{" "}
-                <a
-                  class="hover:underline inline-block"
-                  href={getPermalink(post.category.slug, "category")}
-                >
+                {' '}
+                ·{' '}
+                <a class="hover:underline inline-block" href={getPermalink(post.category.slug, 'category')}>
                   {post.category.title}
                 </a>
               </>
@@ -85,7 +73,7 @@ const { post, url } = Astro.props;
             class="max-w-full lg:max-w-[900px] mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700"
             widths={[400, 900]}
             sizes="(max-width: 900px) 400px, 900px"
-            alt={post?.excerpt || ""}
+            alt={post?.excerpt || ''}
             width={900}
             height={506}
             loading="eager"
@@ -103,75 +91,9 @@ const { post, url } = Astro.props;
     >
       <slot />
     </div>
-    <div
-      class="mx-auto px-6 sm:px-6 max-w-3xl mt-8 flex justify-between flex-col sm:flex-row"
-    >
+    <div class="mx-auto px-6 sm:px-6 max-w-3xl mt-8 flex justify-between flex-col sm:flex-row">
       <PostTags tags={post.tags} class="mr-5 rtl:mr-0 rtl:ml-5" />
-      <SocialShare
-        url={url}
-        text={post.title}
-        class="mt-5 sm:mt-1 align-middle text-gray-500 dark:text-slate-600"
-      />
+      <SocialShare url={url} text={post.title} class="mt-5 sm:mt-1 align-middle text-gray-500 dark:text-slate-600" />
     </div>
   </article>
-  <script is:inline src="/api/mermaid.js"></script>
-  <script is:inline>
-    const initMermaid = () => {
-      try {
-        // @ts-ignore
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: document.documentElement.classList.contains("dark")
-            ? "dark"
-            : "neutral",
-        });
-
-        document
-          .querySelectorAll('pre[data-language="mermaid"]')
-          .forEach((preElement) => {
-            const codeElement = preElement.querySelector("code");
-            if (!codeElement) return;
-
-            const lines = codeElement.querySelectorAll(".line");
-            const rawMermaidText = Array.from(lines)
-              .map((line) => line.textContent)
-              .join("\n");
-
-            if (rawMermaidText) {
-              // @ts-ignore
-              mermaid
-                .render(`mermaid-graph-${Date.now()}`, rawMermaidText)
-                .then(({ svg }) => {
-                  const svgContainer = document.createElement("div");
-                  svgContainer.innerHTML = svg;
-                  svgContainer.style.display = "flex";
-                  svgContainer.style.justifyContent = "center";
-                  preElement.parentNode?.replaceChild(svgContainer, preElement);
-                })
-                .catch((error) => {
-                  console.error(
-                    "Mermaid render error on element:",
-                    preElement,
-                    error,
-                  );
-                });
-            }
-          });
-      } catch (error) {
-        console.error("Mermaid initialization error:", error);
-      }
-    };
-
-    const run = () => {
-      if ("requestIdleCallback" in window) {
-        // @ts-ignore
-        window.requestIdleCallback(initMermaid, { timeout: 2000 });
-      } else {
-        setTimeout(initMermaid, 200);
-      }
-    };
-
-    run();
-    document.addEventListener("astro:after-swap", run);
-  </script>
 </section>
