@@ -51,45 +51,47 @@ const { iconClass = "w-6 h-6" } = Astro.props;
     <Icon name="line-md:moon" class:list={[iconClass, "swap-on"]} />
   </label>
 
-  <ul
+  <div
     tabindex="0"
-    class="dropdown-content z-[1] p-2 shadow-2xl bg-base-300 rounded-box w-52 max-h-96 overflow-y-auto"
+    class="dropdown-content z-[1] py-2 shadow-2xl bg-base-300 rounded-box w-52"
   >
-    <!-- Main Themes -->
-    {
-      mainThemes.map((theme) => (
-        <li>
-          <a
-            class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"
-            data-set-theme={theme}
-          >
-            <span class="flex-grow text-sm capitalize">{theme}</span>
-          </a>
-        </li>
-      ))
-    }
+    <ul class="max-h-96 overflow-y-auto px-2 flex flex-col gap-1">
+      <!-- Main Themes -->
+      {
+        mainThemes.map((theme) => (
+          <li>
+            <a
+              class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"
+              data-set-theme={theme}
+            >
+              <span class="flex-grow text-sm capitalize">{theme}</span>
+            </a>
+          </li>
+        ))
+      }
 
-    <!-- Divider -->
-    <li class="border-t border-base-content/20 my-1"></li>
+      <!-- Divider -->
+      <li class="border-t border-base-content/20 my-1"></li>
 
-    <!-- All Other Themes -->
-    {
-      allThemes.map((theme) => (
-        <li data-theme={theme}>
-          <a
-            class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"
-            data-set-theme={theme}
-          >
-            <span class="flex-grow text-sm capitalize">{theme}</span>
-            <span class="flex items-center gap-1">
-              <span class="h-4 w-4 rounded-full bg-primary ring-1 ring-inset ring-black/10" />
-              <span class="h-4 w-4 rounded-full bg-secondary ring-1 ring-inset ring-black/10" />
-            </span>
-          </a>
-        </li>
-      ))
-    }
-  </ul>
+      <!-- All Other Themes -->
+      {
+        allThemes.map((theme) => (
+          <li data-theme={theme}>
+            <a
+              class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"
+              data-set-theme={theme}
+            >
+              <span class="flex-grow text-sm capitalize">{theme}</span>
+              <span class="flex items-center gap-1">
+                <span class="h-4 w-4 rounded-full bg-primary ring-1 ring-inset ring-black/10" />
+                <span class="h-4 w-4 rounded-full bg-secondary ring-1 ring-inset ring-black/10" />
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
 </div>
 
 <script is:inline>
