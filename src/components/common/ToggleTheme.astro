@@ -1,29 +1,169 @@
 ---
 import { Icon } from "astro-icon/components";
 
-export interface Props {
-  label?: string;
-  class?: string;
-  iconClass?: string;
-  iconName?: string;
-}
+const mainThemes = ["system", "light", "dark"];
+const allThemes = [
+  "cupcake",
+  "bumblebee",
+  "emerald",
+  "corporate",
+  "synthwave",
+  "retro",
+  "cyberpunk",
+  "valentine",
+  "halloween",
+  "garden",
+  "forest",
+  "aqua",
+  "lofi",
+  "pastel",
+  "fantasy",
+  "wireframe",
+  "black",
+  "luxury",
+  "dracula",
+  "cmyk",
+  "autumn",
+  "business",
+  "acid",
+  "lemonade",
+  "night",
+  "coffee",
+  "winter",
+  "dim",
+  "nord",
+  "sunset",
+  "caramellatte",
+  "abyss",
+  "silk",
+];
 
 const { iconClass = "w-6 h-6" } = Astro.props;
 ---
 
-{
-  <label class="swap swap-rotate btn-ghost btn-circle">
-    <!-- this hidden checkbox controls the state -->
-    <input type="checkbox" class="theme-controller" value="dracula" />
-
-    <Icon name="line-md:sunny" class:list={[
-      iconClass,
-      'swap-off'
-    ]} title='Toggle to dark mode' />
-
-    <Icon name="line-md:moon" class:list={[
-      iconClass,
-      'swap-on'
-    ]} title='Toggle to light mode' />
+<div
+  class="dropdown dropdown-end dropdown-top md:dropdown-bottom dropdown-hover"
+  id={`theme-toggle-${Astro.props.id || Math.random().toString(36).substr(2, 9)}`}
+>
+  <label class="swap swap-rotate btn btn-ghost btn-circle" tabindex="0">
+    <input type="checkbox" class="theme-controller" value="dark" />
+    <Icon name="line-md:sunny-outline" class:list={[iconClass, "swap-off"]} />
+    <Icon name="line-md:moon" class:list={[iconClass, "swap-on"]} />
   </label>
-}
+
+  <ul
+    tabindex="0"
+    class="dropdown-content z-[1] p-2 shadow-2xl bg-base-300 rounded-box w-52 max-h-96 overflow-y-auto"
+  >
+    <!-- Main Themes -->
+    {
+      mainThemes.map((theme) => (
+        <li>
+          <a
+            class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"
+            data-set-theme={theme}
+          >
+            <span class="flex-grow text-sm capitalize">{theme}</span>
+          </a>
+        </li>
+      ))
+    }
+
+    <!-- Divider -->
+    <li class="border-t border-base-content/20 my-1"></li>
+
+    <!-- All Other Themes -->
+    {
+      allThemes.map((theme) => (
+        <li data-theme={theme}>
+          <a
+            class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"
+            data-set-theme={theme}
+          >
+            <span class="flex-grow text-sm capitalize">{theme}</span>
+            <span class="flex items-center gap-1">
+              <span class="h-4 w-4 rounded-full bg-primary ring-1 ring-inset ring-black/10" />
+              <span class="h-4 w-4 rounded-full bg-secondary ring-1 ring-inset ring-black/10" />
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<script is:inline>
+  function H() {
+    const o = document.documentElement,
+      m = [
+        "dark",
+        "synthwave",
+        "halloween",
+        "forest",
+        "black",
+        "luxury",
+        "dracula",
+        "night",
+        "coffee",
+        "dim",
+        "sunset",
+        "abyss",
+      ],
+      g = () => {
+        const e = document.querySelectorAll('[id^="theme-toggle-"]');
+        e.forEach((t) => {
+          const c = t.querySelector(".theme-controller");
+          p(c);
+        });
+      },
+      p = (e) => {
+        if (!e) return;
+        const t = o.getAttribute("data-theme"),
+          c = localStorage.getItem("theme");
+        let a = m.includes(t);
+        c === "system"
+          ? (a = window.matchMedia("(prefers-color-scheme: dark)").matches)
+          : c ||
+            (a = window.matchMedia("(prefers-color-scheme: dark)").matches),
+          (e.checked = a);
+      },
+      y = (e) => {
+        e === "system"
+          ? (localStorage.removeItem("theme"),
+            (o.dataset.theme = window.matchMedia("(prefers-color-scheme: dark)")
+              .matches
+              ? "dark"
+              : "light"))
+          : (localStorage.setItem("theme", e), (o.dataset.theme = e)),
+          g();
+      };
+    document.querySelectorAll('[id^="theme-toggle-"]').forEach((e) => {
+      const t = e.querySelector(".theme-controller");
+      e.querySelectorAll("[data-set-theme]").forEach((a) => {
+        a.addEventListener("click", (r) => {
+          r.preventDefault();
+          const n = a.getAttribute("data-set-theme");
+          y(n),
+            document.activeElement instanceof HTMLElement &&
+              document.activeElement.blur();
+        });
+      });
+      const c = e.querySelector(".swap");
+      c &&
+        c.addEventListener("click", (a) => {
+          a.target.closest(".dropdown-content") ||
+            y(t.checked ? "light" : "dark");
+        }),
+        p(t);
+    }),
+      window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .addEventListener("change", (e) => {
+          localStorage.getItem("theme") ||
+            ((o.dataset.theme = e.matches ? "dark" : "light"), g());
+        });
+    const l = localStorage.getItem("theme");
+    l && y(l);
+  }
+  document.addEventListener("DOMContentLoaded", H);
+</script>
