@@ -9,31 +9,6 @@ import { UI } from "astrowind:config";
 
   window.basic_script = true;
 
-  function applyTheme(theme) {
-    document.documentElement.dataset.theme = theme;
-    localStorage.theme = theme;
-
-    const matches = document.querySelectorAll("input.theme-controller");
-
-    if (matches && matches.length) {
-      matches.forEach((elem) => {
-        elem.checked = theme === "dark";
-      });
-    }
-  }
-
-  const initTheme = function () {
-    if (
-      localStorage.theme === "dark" ||
-      (!("theme" in localStorage) &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches)
-    ) {
-      applyTheme("dark");
-    } else {
-      applyTheme("light");
-    }
-  };
-  initTheme();
 
   function attachEvent(selector, event, fn) {
     const matches =
@@ -67,17 +42,6 @@ import { UI } from "astrowind:config";
 
     attachEvent("[data-aw-toggle-menu]", "click", toggleMenu);
 
-    attachEvent(".theme-controller", "change", function (_, elem) {
-      if (elem.checked) {
-        document.documentElement.dataset.theme = "dark";
-        localStorage.theme = "dark";
-      } else {
-        document.documentElement.dataset.theme = "light";
-        localStorage.theme = "light";
-      }
-
-      window.REMARK42?.changeTheme(localStorage.theme);
-    });
 
     attachEvent("[data-aw-social-share]", "click", function (_, elem) {
       const network = elem.getAttribute("data-aw-social-share");
@@ -162,7 +126,6 @@ import { UI } from "astrowind:config";
   window.onpageshow = onPageShow;
 
   document.addEventListener("astro:after-swap", () => {
-    initTheme();
     onLoad();
     onPageShow();
   });
