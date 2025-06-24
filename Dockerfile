@@ -5,7 +5,8 @@ WORKDIR /app
 COPY ./package.json ./package.json
 COPY ./bun.lockb ./bun.lockb
 
-RUN bun install --frozen --no-cache
+RUN bun install --frozen --no-cache && \
+    bunx playwright install --with-deps
 
 COPY ./entrypoint.sh ./entrypoint.sh
 COPY ./drizzle ./drizzle
