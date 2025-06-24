@@ -2,6 +2,8 @@ import type { APIRoute } from 'astro';
 import type { UserInfo } from '~/components/comments/types';
 import { verifyJwt } from '~/lib/jwt';
 
+export const prerender = false;
+
 export const GET: APIRoute = async ({ cookies }) => {
   const token = cookies.get('token');
 
