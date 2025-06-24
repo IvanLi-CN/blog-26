@@ -1,6 +1,7 @@
 export interface Author {
   id: string;
   nickname: string;
+  avatarUrl: string;
 }
 
 export interface Comment {
@@ -17,4 +18,5 @@ export interface UserInfo {
   id: string;
   nickname: string;
   email: string;
+  avatarUrl: string;
 }

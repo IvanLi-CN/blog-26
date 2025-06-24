@@ -10,7 +10,7 @@ interface CommentFormProps {
     postSlug: string;
     content: string;
     parentId?: string;
-    author?: Omit<UserInfo, 'id'>;
+    author?: Omit<UserInfo, 'id' | 'avatarUrl'>;
   }) => Promise<any>;
   isPosting: boolean;
   error: string | null;
@@ -28,11 +28,11 @@ export default function CommentForm({
   onLogout,
 }: CommentFormProps) {
   const [content, setContent] = useState('');
-  const [nickname, setNickname] = useState(userInfo?.nickname || 'Test User');
-  const [email, setEmail] = useState(userInfo?.email || 'test@example.com');
+  const [nickname, setNickname] = useState('Test User');
+  const [email, setEmail] = useState('test@example.com');
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // This is the key to preventing page reloads.
+    e.preventDefault();
 
     if (!content.trim() || (!userInfo && (!nickname.trim() || !email.trim()))) {
       return;
@@ -53,20 +53,23 @@ export default function CommentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
-      <textarea
-        className="textarea textarea-bordered w-full"
-        placeholder="发表你的评论..."
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        required
-        disabled={isPosting}
-      />
-      {!userInfo && (
-        <div className="flex gap-4 mt-2">
+    <div className="mt-4">
+      {userInfo ? (
+        <div className="flex items-center gap-4 mb-4">
+          <img src={userInfo.avatarUrl} alt={userInfo.nickname} className="w-10 h-10 rounded-full" />
+          <div>
+            <p className="font-bold">{userInfo.nickname}</p>
+            <p className="text-sm text-gray-500">{userInfo.email}</p>
+          </div>
+          <button type="button" className="btn btn-ghost ml-auto" onClick={onLogout}>
+            登出
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
           <input
             type="text"
-            placeholder="昵称"
+            placeholder="昵称 (必填)"
             className="input input-bordered w-full"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
@@ -75,7 +78,7 @@ export default function CommentForm({
           />
           <input
             type="email"
-            placeholder="邮箱"
+            placeholder="邮箱 (必填)"
             className="input input-bordered w-full"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -84,17 +87,22 @@ export default function CommentForm({
           />
         </div>
       )}
-      <div className="flex justify-end items-center mt-2 gap-4">
-        {error && <p className="text-error text-sm">{error}</p>}
-        {userInfo && (
-          <button type="button" className="btn btn-ghost" onClick={onLogout}>
-            登出
+      <form onSubmit={handleSubmit}>
+        <textarea
+          className="textarea textarea-bordered w-full"
+          placeholder="发表你的评论..."
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          required
+          disabled={isPosting}
+        />
+        <div className="flex justify-end items-center mt-2 gap-4">
+          {error && <p className="text-error text-sm">{error}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isPosting || !content.trim()}>
+            {isPosting ? <span className="loading loading-spinner" /> : '提交'}
           </button>
-        )}
-        <button type="submit" className="btn btn-primary" disabled={isPosting}>
-          {isPosting ? <span className="loading loading-spinner" /> : '提交'}
-        </button>
-      </div>
-    </form>
+        </div>
+      </form>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ interface CommentListProps {
     postSlug: string;
     content: string;
     parentId?: string;
-    author?: Omit<UserInfo, 'id'>;
+    author?: Omit<UserInfo, 'id' | 'avatarUrl'>;
   }) => Promise<any>;
   isPosting: boolean;
   error: string | null;
@@ -28,7 +28,7 @@ export default function CommentList({
   onLogout,
 }: CommentListProps) {
   return (
-    <div className="space-y-4">
+    <div className="list">
       {comments.map((comment) => (
         <CommentItem
           key={comment.id}

@@ -100,7 +100,12 @@ export function usePostComment() {
   const [error, setError] = useState<string | null>(null);
 
   const postComment = useCallback(
-    async (commentData: { postSlug: string; content: string; parentId?: string; author?: Omit<UserInfo, 'id'> }) => {
+    async (commentData: {
+      postSlug: string;
+      content: string;
+      parentId?: string;
+      author?: Omit<UserInfo, 'id' | 'avatarUrl'>;
+    }) => {
       setIsPosting(true);
       setError(null);
       try {

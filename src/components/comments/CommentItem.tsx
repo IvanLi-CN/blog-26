@@ -12,7 +12,7 @@ interface CommentItemProps {
     postSlug: string;
     content: string;
     parentId?: string;
-    author?: Omit<UserInfo, 'id'>;
+    author?: Omit<UserInfo, 'id' | 'avatarUrl'>;
   }) => Promise<any>;
   isPosting: boolean;
   error: string | null;
@@ -45,21 +45,36 @@ export default function CommentItem({
   };
 
   return (
-    <div id={`comment-${comment.id}`} className="py-2">
-      <div className="flex items-center">
-        <span className="font-bold">{comment.author.nickname}</span>
-        <time className="text-xs text-gray-500 ml-2">{formatDate(comment.createdAt)}</time>
-        {comment.status === 'pending' && <span className="badge badge-warning ml-2">审核中</span>}
-      </div>
-      <div className="prose prose-sm dark:prose-invert max-w-none mt-1">{comment.content}</div>
-      <div className="mt-1">
-        <button onClick={handleReplyClick} className="text-xs btn btn-ghost btn-sm">
-          回复
-        </button>
+    <>
+      <div
+        id={`comment-${comment.id}`}
+        className="list-row rounded-lg bg-base-100 p-4 shadow-sm border border-transparent dark:border-base-300"
+      >
+        {/* Avatar */}
+        <div className="flex-shrink-0">
+          <img src={comment.author.avatarUrl} alt={comment.author.nickname} className="w-10 h-10 rounded-full" />
+        </div>
+
+        {/* Main Content */}
+        <div className="list-col-grow">
+          <div className="flex items-center">
+            <span className="font-bold">{comment.author.nickname}</span>
+            {comment.status === 'pending' && <span className="badge badge-warning badge-sm ml-3">审核中</span>}
+          </div>
+          <time className="text-xs text-gray-500">{formatDate(comment.createdAt)}</time>
+          <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{comment.content}</div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex-shrink-0">
+          <button onClick={handleReplyClick} className="text-xs btn btn-ghost btn-sm">
+            {isReplying ? '取消回复' : '回复'}
+          </button>
+        </div>
       </div>
 
       {isReplying && (
-        <div className="ml-4">
+        <div className="pl-14 mt-2 mb-4">
           <CommentForm
             postSlug={postSlug}
             parentId={comment.id}
@@ -74,7 +89,7 @@ export default function CommentItem({
       )}
 
       {comment.replies && comment.replies.length > 0 && (
-        <div className="pl-4 border-l-2 border-base-300">
+        <div className="pl-14">
           <CommentList
             comments={comment.replies}
             postSlug={postSlug}
@@ -87,6 +102,6 @@ export default function CommentItem({
           />
         </div>
       )}
-    </div>
+    </>
   );
 }

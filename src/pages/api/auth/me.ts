@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import type { UserInfo } from '~/components/comments/types';
+import { getAvatarUrl } from '~/lib/avatar';
 import { verifyJwt } from '~/lib/jwt';
 
 export const prerender = false;
@@ -18,6 +19,7 @@ export const GET: APIRoute = async ({ cookies }) => {
         id: payload.sub,
         nickname: payload.nickname,
         email: payload.email,
+        avatarUrl: getAvatarUrl(payload.email),
       };
       return new Response(JSON.stringify(userInfo), {
         status: 200,

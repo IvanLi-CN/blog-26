@@ -35,6 +35,11 @@ const darkThemes = [
     d.dataset.theme = currentTheme;
 
     const isDark = darkThemes.includes(currentTheme);
+    if (isDark) {
+      d.classList.add('dark');
+    } else {
+      d.classList.remove('dark');
+    }
 
     document.querySelectorAll(".theme-controller").forEach((controller) => {
       controller.checked = isDark;

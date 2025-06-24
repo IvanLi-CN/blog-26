@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 export const prerender = false;
 
 import { z } from 'zod';
+import { getAvatarUrl } from '~/lib/avatar';
 import { db, initializeDB } from '~/lib/db';
 import { signJwt, verifyJwt } from '~/lib/jwt';
 import { comments, users } from '~/lib/schema';
@@ -148,6 +149,7 @@ export async function getComments(slug: string, currentUserId?: string) {
       author: {
         id: users.id,
         nickname: users.nickname,
+        email: users.email,
       },
     })
     .from(comments)
@@ -155,11 +157,24 @@ export async function getComments(slug: string, currentUserId?: string) {
     .where(and(...whereClauses))
     .orderBy(comments.createdAt);
 
-  return allCommentsForPost.filter((c) => c.author !== null) as Array<
-    Omit<(typeof allCommentsForPost)[number], 'author'> & {
-      author: NonNullable<(typeof allCommentsForPost)[number]['author']>;
-    }
-  >;
+  return allCommentsForPost
+    .filter(
+      (
+        c
+      ): c is Omit<typeof c, 'author'> & {
+        author: NonNullable<(typeof c)['author']>;
+      } => c.author !== null
+    )
+    .map((c) => {
+      const { email, ...authorWithoutEmail } = c.author;
+      return {
+        ...c,
+        author: {
+          ...authorWithoutEmail,
+          avatarUrl: getAvatarUrl(email),
+        },
+      };
+    });
 }
 
 export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {

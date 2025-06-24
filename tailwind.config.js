@@ -13,5 +13,5 @@ export default {
       },
     },
   },
-  darkMode: ['selector', '[data-theme="night"]'],
+  darkMode: 'class',
 };
