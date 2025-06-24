@@ -112,13 +112,13 @@ web:
 
 创建文件：`verdaccio/htpasswd`:
 
-```htpasswd
+```apache
 admin:$2a$12$9xxxxxxxxxxxxxxlO.slh2k2
 ```
 
 ### 配置 Caddy
 
-```Caddyfile
+```caddy
 http://node-registry.ivanli.cc, https://node-registry.ivanli.cc {
   encode zstd gzip
   reverse_proxy verdaccio:4873 {

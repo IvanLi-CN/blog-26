@@ -133,7 +133,7 @@ services:
 
 文件位于 `sniproxy/sniproxy.conf
 
-```conf
+```ini
 user nobody
 group nogroup
 
@@ -173,7 +173,7 @@ table https_hosts {
 
 文件位于 `caddy/Caddyfile`。
 
-```caddyfile
+```caddy
 www.example.com {
   encode zstd gzip
   reverse_proxy some-host:80
