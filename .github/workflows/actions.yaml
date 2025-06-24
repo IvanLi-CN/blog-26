@@ -73,6 +73,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.bun-version }}-bun-
       - run: bun install
+      - name: Install Playwright Browsers
+        run: bunx playwright install --with-deps
       - run: bun run build
       - uses: christopherhx/gitea-upload-artifact@v4
         with:
