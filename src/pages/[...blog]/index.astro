@@ -1,31 +1,38 @@
 ---
-import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
-
 import type { ImageMetadata } from "astro";
 import merge from "lodash.merge";
+import RelatedPosts from "~/components/blog/RelatedPosts.astro";
 import SinglePost from "~/components/blog/SinglePost.astro";
 import ToBlogLink from "~/components/blog/ToBlogLink.astro";
 import Layout from "~/layouts/PageLayout.astro";
-
-import RelatedPosts from "~/components/blog/RelatedPosts.astro";
 import type { MetaData } from "~/types";
-import { blogPostRobots, getStaticPathsBlogPost } from "~/utils/blog";
+import {
+  blogPostRobots,
+  getPostBySlug,
+  getStaticPathsBlogPost,
+} from "~/utils/blog";
 import { findImage } from "~/utils/images";
 import { getCanonical, getPermalink } from "~/utils/permalinks";
-import Comment from "../../components/widgets/Comment.astro";
 
-export const prerender = true;
+export const getStaticPaths = getStaticPathsBlogPost;
+// type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 
-export const getStaticPaths = (async () => {
-  return await getStaticPathsBlogPost();
-}) satisfies GetStaticPaths;
+const { blog: slug } = Astro.params;
 
-type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+if (!slug) {
+  return Astro.redirect("/404");
+}
+const post = await getPostBySlug(slug);
 
-const { post } = Astro.props as Props;
+if (!post) {
+  return Astro.redirect("/404");
+}
 
 const url = getCanonical(getPermalink(post.permalink, "post"));
-const image = (await findImage(post.image)) as ImageMetadata | string | undefined;
+const image = (await findImage(post.image)) as
+  | ImageMetadata
+  | string
+  | undefined;
 
 const metadata = merge(
   {
@@ -38,19 +45,36 @@ const metadata = merge(
     openGraph: {
       type: "article",
       ...(image
-        ? { images: [{ url: image, width: (image as ImageMetadata)?.width, height: (image as ImageMetadata)?.height }] }
+        ? {
+            images: [
+              {
+                url: image,
+                width: (image as ImageMetadata)?.width,
+                height: (image as ImageMetadata)?.height,
+              },
+            ],
+          }
         : {}),
     },
   },
-  { ...(post?.metadata ? { ...post.metadata, canonical: post.metadata?.canonical || url } : {}) }
+  {
+    ...(post?.metadata
+      ? { ...post.metadata, canonical: post.metadata?.canonical || url }
+      : {}),
+  },
 ) as MetaData;
 ---
 
 <Layout metadata={metadata}>
   <SinglePost post={{ ...post, image: image }} url={url}>
-    {post.Content ? <post.Content /> : <Fragment set:html={post.content || ''} />}
+    {
+      post.Content ? (
+        <post.Content />
+      ) : (
+        <Fragment set:html={post.content || ""} />
+      )
+    }
   </SinglePost>
-  <Comment post={post} />
   <ToBlogLink />
   <RelatedPosts post={post} />
 </Layout>

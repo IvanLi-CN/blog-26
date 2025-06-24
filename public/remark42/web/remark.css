@@ -177,7 +177,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
   box-sizing: border-box;
   color: rgb(var(--primary-text-color));
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    sans-serif;
   font-size: 14px;
   margin: 0;
   padding: 6px;
@@ -201,7 +209,7 @@ button {
   border: 0;
   margin: 0;
   padding: 0;
-  transition-duration: .15s;
+  transition-duration: 0.15s;
   transition-property: color, background, border-color;
   transition-timing-function: linear;
 }
@@ -244,8 +252,8 @@ a:hover {
 }
 
 .preloader {
-  -webkit-animation-delay: -.16s;
-  animation-delay: -.16s;
+  -webkit-animation-delay: -0.16s;
+  animation-delay: -0.16s;
   color: #fff;
   color: var(--color6, #fff);
   position: relative;
@@ -260,8 +268,8 @@ a:hover {
 }
 
 .preloader:before {
-  -webkit-animation-delay: -.32s;
-  animation-delay: -.32s;
+  -webkit-animation-delay: -0.32s;
+  animation-delay: -0.32s;
   transform: translate3d(-15px, 0, 0);
 }
 
@@ -469,7 +477,7 @@ a:hover {
 
 .settings__list-item {
   cursor: default;
-  margin-bottom: .5em;
+  margin-bottom: 0.5em;
   position: relative;
 }
 
@@ -496,7 +504,7 @@ a:hover {
 }
 
 .settings__user-id {
-  font-size: .8em;
+  font-size: 0.8em;
   font-style: italic;
   word-break: break-all;
 }
@@ -684,8 +692,12 @@ a:hover {
 }
 
 .S_A:-webkit-autofill:focus {
-  box-shadow: inset 0 0 0 1000px #fff, 0 0 0 2px rgba(37, 156, 154, 0.4);
-  box-shadow: 0 0 0 1000px rgb(var(--white-color)) inset, 0 0 0 2px var(--color47);
+  box-shadow:
+    inset 0 0 0 1000px #fff,
+    0 0 0 2px rgba(37, 156, 154, 0.4);
+  box-shadow:
+    0 0 0 1000px rgb(var(--white-color)) inset,
+    0 0 0 2px var(--color47);
 }
 
 .S_A:-webkit-autofill::placeholder {
@@ -729,8 +741,12 @@ a:hover {
 }
 
 .dark .S_A:-webkit-autofill:focus {
-  box-shadow: inset 0 0 0 1000px #2d2d2c, 0 0 0 2px rgba(37, 156, 154, 0.4);
-  box-shadow: 0 0 0 1000px var(--color22) inset, 0 0 0 2px var(--color47);
+  box-shadow:
+    inset 0 0 0 1000px #2d2d2c,
+    0 0 0 2px rgba(37, 156, 154, 0.4);
+  box-shadow:
+    0 0 0 1000px var(--color22) inset,
+    0 0 0 2px var(--color47);
 }
 
 .dark .S_A:-webkit-autofill::placeholder {
@@ -924,8 +940,12 @@ a:hover {
   background-color: #fff;
   background-color: rgb(var(--primary-background-color));
   border-radius: 6px;
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 -1px 6px rgba(0, 0, 0, 0.05);
-  box-shadow: 0 10px 15px rgba(var(--black-color), 0.1), 0 -1px 6px rgba(var(--black-color), 0.05);
+  box-shadow:
+    0 10px 15px rgba(0, 0, 0, 0.1),
+    0 -1px 6px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px rgba(var(--black-color), 0.1),
+    0 -1px 6px rgba(var(--black-color), 0.05);
   left: 0;
   min-width: 240px;
   padding: 16px;
@@ -1139,12 +1159,12 @@ a:hover {
   display: inline-flex;
   margin: 0;
   padding: 4px;
-  transition: transfrom .15s ease-out;
+  transition: transfrom 0.15s ease-out;
 }
 
 .E_A:hover {
   transform: scale(1.06);
-  transition: transfrom .15s ease-in;
+  transition: transfrom 0.15s ease-in;
 }
 
 .E_A:active {
@@ -1170,7 +1190,7 @@ a:hover {
   color: #64748b;
   color: rgb(var(--secondary-text-color));
   font-weight: 700;
-  transition: color .15s;
+  transition: color 0.15s;
 }
 
 .G_B:hover {
@@ -1223,7 +1243,7 @@ a:hover {
 }
 
 .M_E {
-  margin-left: .4em;
+  margin-left: 0.4em;
 }
 
 .comment-form {
@@ -1454,7 +1474,7 @@ a:hover {
 .comment-form__subscribe-by-email__token-input {
   border: 1px solid var(--color31);
   font-family: inherit;
-  font-size: .8em;
+  font-size: 0.8em;
   font-weight: 400;
   line-height: 1.5;
   padding: 4px;
@@ -1639,7 +1659,7 @@ a:hover {
   padding: 0 0 5px;
   position: absolute;
   top: 100%;
-  transform: translate(-.5em, 5px);
+  transform: translate(-0.5em, 5px);
   z-index: 20;
 }
 
@@ -1865,7 +1885,7 @@ a:hover {
 
 .raw-content blockquote,
 .raw-content p {
-  margin: .5rem 0;
+  margin: 0.5rem 0;
 }
 
 .raw-content table {
@@ -1911,7 +1931,7 @@ a:hover {
   color: var(--chroma-base);
   margin: 0;
   overflow: visible;
-  padding: .05em .3em;
+  padding: 0.05em 0.3em;
 }
 
 .raw-content code,
@@ -1925,7 +1945,7 @@ a:hover {
 .raw-content pre {
   overflow-x: auto;
   overflow-y: hidden;
-  padding: .75em 1em;
+  padding: 0.75em 1em;
   -moz-tab-size: 2;
   -o-tab-size: 2;
   tab-size: 2;
@@ -2076,7 +2096,7 @@ a:hover {
   font-size: 16px;
   line-height: 1.4;
   padding: 12px 0 8px;
-  transition: background .3s ease-in-out;
+  transition: background 0.3s ease-in-out;
 }
 
 @media (hover: hover) {
@@ -2310,7 +2330,7 @@ a:hover {
 }
 
 .comment_view_user .comment__title {
-  margin-bottom: .2rem;
+  margin-bottom: 0.2rem;
 }
 
 .comment_view_user .comment__body {
@@ -2520,7 +2540,7 @@ a:hover {
   display: flex;
   opacity: 0.4;
   padding: 2px;
-  transition: opacity color .15s .15s;
+  transition: opacity color 0.15s 0.15s;
 }
 
 .I_A:hover .I_C {
@@ -2643,7 +2663,7 @@ a:hover {
 
 .J_A > * + *,
 .J_B > * + * {
-  margin-left: .5em;
+  margin-left: 0.5em;
 }
 
 .J_C {
@@ -2654,7 +2674,7 @@ a:hover {
 @media (hover: hover) {
   .J_B {
     opacity: 0;
-    transition: opacity .15s;
+    transition: opacity 0.15s;
   }
 
   .J_A:hover .J_B {
@@ -2666,7 +2686,7 @@ a:hover {
   color: #64748b;
   color: rgb(var(--secondary-text-color));
   content: "•";
-  margin-right: .5em;
+  margin-right: 0.5em;
 }
 
 .F_A {
@@ -2694,7 +2714,7 @@ a:hover {
 .F_D {
   color: #aaa;
   color: var(--color1);
-  transition: opacity .15s;
+  transition: opacity 0.15s;
 }
 
 .F_D:hover {
@@ -2744,7 +2764,7 @@ a:hover {
   height: 100%;
   justify-content: flex-end;
   transform: translateX(100%);
-  transition: transform .5s ease-out;
+  transition: transform 0.5s ease-out;
   width: 100%;
 }
 
@@ -2759,7 +2779,7 @@ a:hover {
 }
 
 .B_C {
-  transition: transform .5s ease-in;
+  transition: transform 0.5s ease-in;
 }
 
 .B_D {

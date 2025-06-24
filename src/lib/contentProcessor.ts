@@ -1,7 +1,7 @@
+import { type CollectionEntry, getCollection } from 'astro:content';
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { type CollectionEntry, getCollection } from 'astro:content';
 import { getFileRecord, upsertFileRecord } from './db';
 import type { NewVectorizedFile } from './schema';
 

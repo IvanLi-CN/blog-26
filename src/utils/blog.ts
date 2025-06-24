@@ -1,9 +1,9 @@
-import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
+import { getCollection } from 'astro:content';
 import { APP_BLOG } from 'astrowind:config';
 import type { PaginateFunction } from 'astro';
 import type { Post, Taxonomy } from '~/types';
-import { BLOG_BASE, CATEGORY_BASE, POST_PERMALINK_PATTERN, TAG_BASE, cleanSlug, trimSlash } from './permalinks';
+import { BLOG_BASE, CATEGORY_BASE, cleanSlug, POST_PERMALINK_PATTERN, TAG_BASE, trimSlash } from './permalinks';
 
 const generatePermalink = async ({
   id,
@@ -159,6 +159,11 @@ export const findPostsBySlugs = async (slugs: Array<string>): Promise<Array<Post
   }, []);
 };
 
+/** */
+export const getPostBySlug = async (slug: string): Promise<Post | undefined> => {
+  const posts = await fetchPosts();
+  return posts.find((post) => post.slug === slug);
+};
 /** */
 export const findPostsByIds = async (ids: Array<string>): Promise<Array<Post>> => {
   if (!Array.isArray(ids)) return [];

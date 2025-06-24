@@ -1,49 +1,55 @@
 ---
+import { UI } from "astrowind:config";
 import { Icon } from "astro-icon/components";
 
-const mainThemes = ["system", "light", "dark"];
-const allThemes = [
-  "cupcake",
-  "bumblebee",
-  "emerald",
-  "corporate",
-  "synthwave",
-  "retro",
-  "cyberpunk",
-  "valentine",
-  "halloween",
-  "garden",
-  "forest",
-  "aqua",
-  "lofi",
-  "pastel",
-  "fantasy",
-  "wireframe",
-  "black",
-  "luxury",
-  "dracula",
-  "cmyk",
-  "autumn",
-  "business",
-  "acid",
-  "lemonade",
-  "night",
-  "coffee",
-  "winter",
-  "dim",
-  "nord",
-  "sunset",
-  "caramellatte",
-  "abyss",
-  "silk",
-];
+const {
+  theme: defaultTheme = "system",
+  mainThemes = ["light", "dark"],
+  allThemes = [
+    "light",
+    "dark",
+    "cupcake",
+    "bumblebee",
+    "emerald",
+    "corporate",
+    "synthwave",
+    "retro",
+    "cyberpunk",
+    "valentine",
+    "halloween",
+    "garden",
+    "forest",
+    "aqua",
+    "lofi",
+    "pastel",
+    "fantasy",
+    "wireframe",
+    "black",
+    "luxury",
+    "dracula",
+    "cmyk",
+    "autumn",
+    "business",
+    "acid",
+    "lemonade",
+    "night",
+    "coffee",
+    "winter",
+    "dim",
+    "nord",
+    "sunset",
+    "caramellatte",
+    "abyss",
+    "silk",
+  ],
+} = UI;
 
 const { iconClass = "w-6 h-6" } = Astro.props;
 ---
 
 <div
   class="dropdown dropdown-end dropdown-top md:dropdown-bottom dropdown-hover"
-  id={`theme-toggle-${Astro.props.id || Math.random().toString(36).substr(2, 9)}`}
+  id={`theme-toggle-${Astro.props.id || Math.random().toString(36).slice(2, 11)}`}
 >
   <label class="swap swap-rotate btn btn-ghost btn-circle" tabindex="0">
     <input type="checkbox" class="theme-controller" value="dark" />
@@ -85,6 +91,8 @@ const { iconClass = "w-6 h-6" } = Astro.props;
               <span class="flex items-center gap-1">
                 <span class="h-4 w-4 rounded-full bg-primary ring-1 ring-inset ring-black/10" />
                 <span class="h-4 w-4 rounded-full bg-secondary ring-1 ring-inset ring-black/10" />
+                <span class="h-4 w-4 rounded-full bg-accent ring-1 ring-inset ring-black/10" />
+                <span class="h-4 w-4 rounded-full bg-neutral ring-1 ring-inset ring-black/10" />
               </span>
             </a>
           </li>
@@ -93,4 +101,3 @@ const { iconClass = "w-6 h-6" } = Astro.props;
     </ul>
   </div>
 </div>
-

@@ -56,7 +56,12 @@
       "linter": {
         "rules": {
           "correctness": {
-            "noUnusedVariables": "error"
+            "noUnusedVariables": {
+              "level": "error",
+              "options": {
+                "ignoreRestSiblings": true
+              }
+            }
           },
           "style": {
             "noNonNullAssertion": "off"

@@ -1,4 +1,4 @@
-import { type SchemaContext, defineCollection, z } from 'astro:content';
+import { defineCollection, type SchemaContext, z } from 'astro:content';
 
 const metadataDefinition = () =>
   z

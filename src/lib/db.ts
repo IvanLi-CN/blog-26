@@ -9,9 +9,10 @@ const resolvedDBPath = path.resolve(process.cwd(), DB_PATH);
 
 export type DBRecord = VectorizedFile; // Use Drizzle's inferred type
 
-let db: ReturnType<typeof drizzle<Record<string, never>>>;
+export let db: ReturnType<typeof drizzle<Record<string, never>>>;
 
 export async function initializeDB(): Promise<void> {
+  if (db) return; // Already initialized
   try {
     const sqlite = new Database(resolvedDBPath);
     db = drizzle(sqlite);

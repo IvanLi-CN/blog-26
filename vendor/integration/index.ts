@@ -106,7 +106,7 @@ export default ({ config: _themeConfig = 'src/config.yaml' } = {}): AstroIntegra
               });
             }
           }
-        } catch (error) {
+        } catch (_error) {
           /* empty */
         }
       },

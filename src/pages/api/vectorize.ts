@@ -1,5 +1,5 @@
-import { processAndVectorizeAllContent } from '../../lib/vectorizer';
 import type { VectorizationProgress } from '../../lib/vectorizer';
+import { processAndVectorizeAllContent } from '../../lib/vectorizer';
 
 export const prerender = false;
 
