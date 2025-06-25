@@ -4,7 +4,7 @@ import type { Comment, UserInfo } from './types';
 interface CommentListProps {
   comments: Comment[];
   postSlug: string;
-  onCommentPosted: () => void;
+  onCommentPosted: (message?: string) => void;
   userInfo: UserInfo | null;
   postComment: (commentData: {
     postSlug: string;
@@ -16,6 +16,7 @@ interface CommentListProps {
   error: string | null;
   onLogout: () => void;
   onLoginSuccess: () => Promise<void>;
+  isAdmin: boolean;
 }
 
 export default function CommentList({
@@ -28,6 +29,7 @@ export default function CommentList({
   error,
   onLogout,
   onLoginSuccess,
+  isAdmin,
 }: CommentListProps) {
   return (
     <div className="list">
@@ -43,6 +45,7 @@ export default function CommentList({
           error={error}
           onLogout={onLogout}
           onLoginSuccess={onLoginSuccess}
+          isAdmin={isAdmin}
         />
       ))}
     </div>

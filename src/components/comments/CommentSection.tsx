@@ -18,6 +18,7 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
     totalPages: liveTotalPages,
     loadMore,
     refetch,
+    isAdmin,
   } = useComments({
     postSlug,
   });
@@ -25,8 +26,8 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
   const { postComment, isPosting, error: postError } = usePostComment();
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleCommentPosted = async () => {
-    setSuccessMessage('评论已提交，正在等待审核。');
+  const handleCommentPosted = async (message: string = '评论已提交，正在等待审核。') => {
+    setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(''), 5000);
     refetch(); // Refetch comments to show the new one
   };
@@ -89,6 +90,7 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
           error={postError}
           onLogout={logout}
           onLoginSuccess={refetchUserInfo}
+          isAdmin={isAdmin}
         />
 
         {page < liveTotalPages && (

@@ -129,7 +129,10 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
       });
     }
     console.error('Failed to post comment:', error);
-    return new Response('Internal Server Error', { status: 500 });
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   if (newJwt) {
@@ -142,7 +145,10 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
     });
   }
 
-  return new Response(JSON.stringify({ message: 'Comment submitted and awaiting approval.' }), { status: 201 });
+  return new Response(JSON.stringify({ message: 'Comment submitted and awaiting approval.' }), {
+    status: 201,
+    headers: { 'Content-Type': 'application/json' },
+  });
 };
 
 async function sendNotifications(
@@ -188,7 +194,6 @@ async function sendNotifications(
         .all();
 
       for (const user of mentionedUsers) {
-        // Avoid sending a 'mention' notification if they're already getting a 'reply' one
         if (!notificationRecipients.has(user.email)) {
           notificationRecipients.set(user.email, { nickname: user.nickname, type: 'mention' });
         }
@@ -216,7 +221,6 @@ async function sendNotifications(
       }
     }
   } catch (error) {
-    // Log the error but do not block the response
     console.error('Failed to send comment notifications:', error);
   }
 }
@@ -229,17 +233,23 @@ const getCommentsSchema = z.object({
 
 export type CommentWithAuthorAndReplies = Awaited<ReturnType<typeof getComments>>[0];
 
-export async function getComments(slug: string, currentUserId?: string) {
+export async function getComments(slug: string, currentUserId?: string, isAdmin: boolean = false) {
   const whereClauses = [eq(comments.postSlug, slug)];
-  const statusClauses = [eq(comments.status, 'approved')];
 
-  if (currentUserId) {
-    statusClauses.push(eq(comments.authorId, currentUserId));
-  }
-
-  const statusCondition = or(...statusClauses);
-  if (statusCondition) {
-    whereClauses.push(statusCondition);
+  if (isAdmin) {
+    whereClauses.push(inArray(comments.status, ['approved', 'pending']));
+  } else {
+    const statusClauses = [eq(comments.status, 'approved')];
+    if (currentUserId) {
+      const userPending = and(eq(comments.authorId, currentUserId), eq(comments.status, 'pending'));
+      if (userPending) {
+        statusClauses.push(userPending);
+      }
+    }
+    const finalStatusCondition = or(...statusClauses.filter(Boolean));
+    if (finalStatusCondition) {
+      whereClauses.push(finalStatusCondition);
+    }
   }
 
   const allCommentsForPost = await db
@@ -305,6 +315,7 @@ export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {
   const offset = (page - 1) * limit;
 
   let currentUserId: string | undefined;
+  let isAdmin = false;
   const tokenFromCookie = astroCookies.get('token');
   if (tokenFromCookie?.value) {
     try {
@@ -312,14 +323,15 @@ export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {
       if (typeof payload.sub === 'string') {
         currentUserId = payload.sub;
       }
+      if (typeof payload.email === 'string' && payload.email === import.meta.env.ADMIN_EMAIL) {
+        isAdmin = true;
+      }
     } catch (_e) {
       // Invalid or expired token. Treat as guest.
-      // To be strict, you could return a 401 here if a token exists but is invalid.
-      // For now, we'll just ignore it.
     }
   }
 
-  const allComments = await getComments(slug, currentUserId);
+  const allComments = await getComments(slug, currentUserId, isAdmin);
   const topLevelComments = allComments.filter((c) => !c.parentId);
 
   const paginatedTopLevelComments = topLevelComments.slice(offset, offset + limit);
@@ -340,7 +352,8 @@ export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {
     JSON.stringify({
       comments: finalComments,
       totalPages: Math.ceil(topLevelComments.length / limit),
+      isAdmin,
     }),
-    { status: 200 }
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
   );
 };

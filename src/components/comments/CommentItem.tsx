@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
+import { useModerateComment } from './hooks';
 import type { Comment, UserInfo } from './types';
 
 interface CommentItemProps {
   comment: Comment;
   postSlug: string;
-  onCommentPosted: () => void;
+  onCommentPosted: (message?: string) => void;
   userInfo: UserInfo | null;
   postComment: (commentData: {
     postSlug: string;
@@ -18,6 +19,7 @@ interface CommentItemProps {
   error: string | null;
   onLogout: () => void;
   onLoginSuccess: () => Promise<void>;
+  isAdmin: boolean;
 }
 
 function formatDate(timestamp: number) {
@@ -34,12 +36,24 @@ export default function CommentItem({
   error,
   onLogout,
   onLoginSuccess,
+  isAdmin,
 }: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
+  const { moderateComment, isModerating, error: moderateError } = useModerateComment();
 
   const handleReplyPosted = () => {
     setIsReplying(false);
     onCommentPosted();
+  };
+
+  const handleModerate = async (status: 'approved' | 'rejected') => {
+    try {
+      await moderateComment(comment.id, status);
+      onCommentPosted(`评论已成功 ${status === 'approved' ? '批准' : '拒绝'}.`);
+    } catch (e) {
+      // error is already set in the hook, maybe show a toast here
+      console.error(e);
+    }
   };
 
   const handleReplyClick = () => {
@@ -50,7 +64,9 @@ export default function CommentItem({
     <>
       <div
         id={`comment-${comment.id}`}
-        className="list-row rounded-lg bg-base-100 p-4 shadow-sm border border-transparent dark:border-base-300"
+        className={`list-row rounded-lg p-4 shadow-sm border border-transparent dark:border-base-300 ${
+          comment.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-base-100'
+        }`}
       >
         {/* Avatar */}
         <div className="flex-shrink-0">
@@ -65,6 +81,30 @@ export default function CommentItem({
           </div>
           <time className="text-xs text-gray-500">{formatDate(comment.createdAt)}</time>
           <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{comment.content}</div>
+
+          {isAdmin && (
+            <div className="mt-2 space-y-2">
+              {comment.status === 'pending' && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleModerate('approved')}
+                    className="btn btn-success btn-xs"
+                    disabled={isModerating}
+                  >
+                    {isModerating ? '...' : '批准'}
+                  </button>
+                  <button
+                    onClick={() => handleModerate('rejected')}
+                    className="btn btn-error btn-xs"
+                    disabled={isModerating}
+                  >
+                    {isModerating ? '...' : '拒绝'}
+                  </button>
+                </div>
+              )}
+              {moderateError && <p className="text-error text-xs">{moderateError}</p>}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -103,6 +143,7 @@ export default function CommentItem({
             error={error}
             onLogout={onLogout}
             onLoginSuccess={onLoginSuccess}
+            isAdmin={isAdmin}
           />
         </div>
       )}

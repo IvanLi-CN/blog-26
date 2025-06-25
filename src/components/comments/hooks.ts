@@ -53,6 +53,7 @@ export function useComments({ postSlug }: UseCommentsProps) {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchComments = useCallback(
     async (pageNum: number, refresh = false) => {
@@ -66,6 +67,7 @@ export function useComments({ postSlug }: UseCommentsProps) {
         const data = await response.json();
         setComments((prev) => (pageNum === 1 || refresh ? data.comments : [...prev, ...data.comments]));
         setTotalPages(data.totalPages);
+        setIsAdmin(data.isAdmin || false);
         setPage(pageNum); // Update page state
       } catch (err: any) {
         setError(err.message);
@@ -92,7 +94,36 @@ export function useComments({ postSlug }: UseCommentsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postSlug]);
 
-  return { comments, isLoading, error, totalPages, page, loadMore, refetch };
+  return { comments, isLoading, error, totalPages, page, loadMore, refetch, isAdmin };
+}
+
+export function useModerateComment() {
+  const [isModerating, setIsModerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const moderateComment = useCallback(async (commentId: string, status: 'approved' | 'rejected') => {
+    setIsModerating(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
+        throw new Error(result.error || 'Failed to moderate comment');
+      }
+      return await response.json();
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsModerating(false);
+    }
+  }, []);
+
+  return { moderateComment, isModerating, error };
 }
 
 export function usePostComment() {

@@ -19,4 +19,5 @@ export interface UserInfo {
   nickname: string;
   email: string;
   avatarUrl: string;
+  isAdmin?: boolean;
 }
