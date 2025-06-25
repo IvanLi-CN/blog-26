@@ -15,6 +15,7 @@ interface CommentListProps {
   isPosting: boolean;
   error: string | null;
   onLogout: () => void;
+  onLoginSuccess: () => Promise<void>;
 }
 
 export default function CommentList({
@@ -26,6 +27,7 @@ export default function CommentList({
   isPosting,
   error,
   onLogout,
+  onLoginSuccess,
 }: CommentListProps) {
   return (
     <div className="list">
@@ -40,6 +42,7 @@ export default function CommentList({
           isPosting={isPosting}
           error={error}
           onLogout={onLogout}
+          onLoginSuccess={onLoginSuccess}
         />
       ))}
     </div>

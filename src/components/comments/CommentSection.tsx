@@ -21,7 +21,7 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
   } = useComments({
     postSlug,
   });
-  const { userInfo, logout, isLoading: isUserLoading } = useUserInfo();
+  const { userInfo, logout, isLoading: isUserLoading, refetchUserInfo } = useUserInfo();
   const { postComment, isPosting, error: postError } = usePostComment();
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -67,6 +67,7 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
           isPosting={isPosting}
           error={postError}
           onLogout={logout}
+          onLoginSuccess={refetchUserInfo}
         />
       )}
 
@@ -87,6 +88,7 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
           isPosting={isPosting}
           error={postError}
           onLogout={logout}
+          onLoginSuccess={refetchUserInfo}
         />
 
         {page < liveTotalPages && (

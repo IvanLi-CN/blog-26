@@ -43,6 +43,13 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
   }),
 }));
 
+export const emailVerificationCodes = sqliteTable('email_verification_codes', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull(),
+  code: text('code').notNull(),
+  expiresAt: integer('expires_at').notNull(), // UNIX timestamp
+});
+
 export const vectorizedFiles = sqliteTable('vectorized_files', {
   filepath: text('filepath').primaryKey(),
   slug: text('slug').notNull(),

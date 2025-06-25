@@ -15,6 +15,7 @@ interface CommentFormProps {
   isPosting: boolean;
   error: string | null;
   onLogout: () => void;
+  onLoginSuccess: () => Promise<void>; // Added this line
 }
 
 export default function CommentForm({
@@ -26,31 +27,115 @@ export default function CommentForm({
   isPosting,
   error,
   onLogout,
+  onLoginSuccess, // Added this line
 }: CommentFormProps) {
   const [content, setContent] = useState('');
   const [nickname, setNickname] = useState('Test User');
   const [email, setEmail] = useState('test@example.com');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // --- Verification Flow State ---
+  const [verificationNeeded, setVerificationNeeded] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  // ---
+
+  const handleInitialSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
     if (!content.trim() || (!userInfo && (!nickname.trim() || !email.trim()))) {
       return;
     }
 
-    try {
-      await postComment({
-        postSlug,
-        content,
-        parentId,
-        ...(!userInfo && { author: { nickname, email } }),
-      });
+    setVerificationError(null);
+
+    const response = await postComment({
+      postSlug,
+      content,
+      parentId,
+      ...(!userInfo && { author: { nickname, email } }),
+    });
+
+    if (response instanceof Response) {
+      if (response.status === 403) {
+        setVerificationNeeded(true);
+        fetch('/api/auth/send-verification-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+      }
+    } else if (response) {
       setContent('');
+      setVerificationNeeded(false);
       onCommentPosted();
-    } catch {
-      // Error is handled in the usePostComment hook.
     }
   };
+
+  const handleVerifyAndSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsVerifying(true);
+    setVerificationError(null);
+
+    try {
+      const response = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: verificationCode }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Verification failed.');
+      }
+
+      // Verification successful, refetch user info to update login state
+      await onLoginSuccess();
+
+      setVerificationNeeded(false);
+      setVerificationCode('');
+
+      // Re-submit the original comment automatically
+      await handleInitialSubmit();
+    } catch (err: any) {
+      setVerificationError(err.message);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  if (verificationNeeded) {
+    return (
+      <div className="mt-4 p-4 border border-primary/20 rounded-lg bg-base-200/50">
+        <h3 className="font-bold text-lg">验证您的邮箱</h3>
+        <p className="text-sm text-base-content/80 mt-1">
+          我们已向 <span className="font-bold">{email}</span> 发送了一个 6 位数的验证码。请输入验证码以继续。
+        </p>
+        <form onSubmit={handleVerifyAndSubmit} className="mt-4">
+          <input
+            type="text"
+            placeholder="6 位数的验证码"
+            className="input input-bordered w-full"
+            value={verificationCode}
+            onChange={(e) => setVerificationCode(e.target.value)}
+            required
+            maxLength={6}
+            pattern="\d{6}"
+            title="请输入 6 位数字验证码"
+          />
+          <div className="flex justify-end items-center mt-2 gap-4">
+            {verificationError && <p className="text-error text-sm mr-auto">{verificationError}</p>}
+            <button type="button" className="btn btn-ghost" onClick={() => setVerificationNeeded(false)}>
+              取消
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={isVerifying || verificationCode.length !== 6}>
+              {isVerifying ? <span className="loading loading-spinner" /> : '验证并提交'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4">
@@ -87,7 +172,7 @@ export default function CommentForm({
           />
         </div>
       )}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleInitialSubmit}>
         <textarea
           className="textarea textarea-bordered w-full"
           placeholder="发表你的评论..."
@@ -97,7 +182,7 @@ export default function CommentForm({
           disabled={isPosting}
         />
         <div className="flex justify-end items-center mt-2 gap-4">
-          {error && <p className="text-error text-sm">{error}</p>}
+          {error && !verificationNeeded && <p className="text-error text-sm">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isPosting || !content.trim()}>
             {isPosting ? <span className="loading loading-spinner" /> : '提交'}
           </button>

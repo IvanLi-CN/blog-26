@@ -6,26 +6,26 @@ export function useUserInfo() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          setUserInfo(data);
-        } else {
-          setUserInfo(null);
-        }
-      } catch {
+  const fetchUserInfo = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUserInfo(data);
+      } else {
         setUserInfo(null);
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    fetchUserInfo();
+    } catch {
+      setUserInfo(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUserInfo();
+  }, [fetchUserInfo]);
 
   const logout = useCallback(async () => {
     try {
@@ -39,7 +39,7 @@ export function useUserInfo() {
     }
   }, []);
 
-  return { userInfo, logout, isLoading };
+  return { userInfo, logout, isLoading, refetchUserInfo: fetchUserInfo };
 }
 
 // --- API Hooks ---
@@ -117,17 +117,18 @@ export function usePostComment() {
           body: JSON.stringify(commentData),
         });
 
-        const result = await response.json();
-
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to post comment');
+          const result = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
+          setError(result.error || 'Failed to post comment');
+          // Return the raw response so the caller can check the status code
+          return response;
         }
 
-        return result;
+        return response.json();
       } catch (err: any) {
         setError(err.message);
-        // Do not re-throw the error, as it will prevent the form's state from updating.
-        // The error is handled by setting the state, which is then displayed in the UI.
+        // We throw here to let the caller know the request failed at a network level
+        throw err;
       } finally {
         setIsPosting(false);
       }

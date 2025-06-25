@@ -17,6 +17,7 @@ interface CommentItemProps {
   isPosting: boolean;
   error: string | null;
   onLogout: () => void;
+  onLoginSuccess: () => Promise<void>;
 }
 
 function formatDate(timestamp: number) {
@@ -32,6 +33,7 @@ export default function CommentItem({
   isPosting,
   error,
   onLogout,
+  onLoginSuccess,
 }: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
 
@@ -84,6 +86,7 @@ export default function CommentItem({
             isPosting={isPosting}
             error={error}
             onLogout={onLogout}
+            onLoginSuccess={onLoginSuccess}
           />
         </div>
       )}
@@ -99,6 +102,7 @@ export default function CommentItem({
             isPosting={isPosting}
             error={error}
             onLogout={onLogout}
+            onLoginSuccess={onLoginSuccess}
           />
         </div>
       )}

@@ -60,8 +60,8 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
         }
         const existingUser = tx.select().from(users).where(eq(users.email, author.email)).get();
         if (existingUser) {
-          userId = existingUser.id;
-          userNickname = existingUser.nickname;
+          // If user exists, they must verify via email to log in.
+          throw new Error('Email verification required');
         } else {
           // Check for nickname uniqueness
           const nicknameExists = tx.select().from(users).where(eq(users.nickname, author.nickname)).get();
@@ -77,9 +77,9 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
             ipAddress,
             createdAt: Date.now(),
           });
+          // Sign a new JWT for the new user
+          newJwt = await signJwt({ sub: userId, nickname: userNickname, email: author.email });
         }
-        // Sign a new JWT for the user
-        newJwt = await signJwt({ sub: userId, nickname: userNickname, email: author.email });
       }
 
       // 4. Insert the comment
@@ -95,6 +95,9 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
       });
     });
   } catch (error: any) {
+    if (error.message.includes('Email verification required')) {
+      return new Response(JSON.stringify({ error: 'Email verification required' }), { status: 403 });
+    }
     if (
       error.message.includes('UNIQUE constraint failed: users.nickname') ||
       error.message.includes('Nickname is already taken.')
