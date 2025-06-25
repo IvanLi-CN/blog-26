@@ -19,7 +19,10 @@ export const POST: APIRoute = async ({ request, cookies: astroCookies }) => {
   const validation = verifyCodeSchema.safeParse(body);
 
   if (!validation.success) {
-    return new Response(JSON.stringify(validation.error.flatten()), { status: 400 });
+    return new Response(JSON.stringify(validation.error.flatten()), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const { email, code } = validation.data;
@@ -38,7 +41,10 @@ export const POST: APIRoute = async ({ request, cookies: astroCookies }) => {
       .get();
 
     if (!verificationRecord) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired verification code.' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Invalid or expired verification code.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     let newJwt: string | undefined;
@@ -56,6 +62,7 @@ export const POST: APIRoute = async ({ request, cookies: astroCookies }) => {
 
       if (!user) {
         // This case should not happen if send-code logic is correct (as it only sends to existing users)
+        // For now, we will throw an error to be safe. In the future, you might want to handle this more gracefully.
         throw new Error('User not found after verification.');
       }
 

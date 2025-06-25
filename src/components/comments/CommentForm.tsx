@@ -66,9 +66,17 @@ export default function CommentForm({
         });
       }
     } else if (response) {
-      setContent('');
-      setVerificationNeeded(false);
-      onCommentPosted();
+      // If the user was not logged in, this means they just successfully posted
+      // as a new user, and the server has set a login cookie. Reload the page
+      // to reflect the new logged-in state.
+      if (!userInfo) {
+        window.location.reload();
+      } else {
+        // If they were already logged in, just clear the form and refetch comments.
+        setContent('');
+        setVerificationNeeded(false);
+        onCommentPosted();
+      }
     }
   };
 

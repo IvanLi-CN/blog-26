@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq, inArray, ne, or } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 export const prerender = false;
@@ -7,13 +7,14 @@ export const prerender = false;
 import { z } from 'zod';
 import { getAvatarUrl } from '~/lib/avatar';
 import { db, initializeDB } from '~/lib/db';
+import { generateMentionNotificationEmailHTML, generateReplyNotificationEmailHTML, sendEmail } from '~/lib/email';
 import { signJwt, verifyJwt } from '~/lib/jwt';
 import { comments, users } from '~/lib/schema';
 
 const postCommentSchema = z.object({
   postSlug: z.string(),
   content: z.string().min(1).max(1000),
-  parentId: z.string().uuid().optional(),
+  parentId: z.string().optional(),
   author: z
     .object({
       nickname: z.string().min(2).max(50),
@@ -26,15 +27,22 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
   await initializeDB();
   const ipAddress = clientAddress;
   let userId: string | undefined;
-  let userNickname: string | undefined;
+  let authorNickname: string | undefined;
+  let authorEmail: string | undefined;
 
   // 1. Check for existing JWT from cookie
   const tokenFromCookie = astroCookies.get('token');
   if (tokenFromCookie?.value) {
     try {
       const payload = await verifyJwt(tokenFromCookie.value);
-      if (typeof payload.sub === 'string') {
+      if (
+        typeof payload.sub === 'string' &&
+        typeof payload.nickname === 'string' &&
+        typeof payload.email === 'string'
+      ) {
         userId = payload.sub;
+        authorNickname = payload.nickname;
+        authorEmail = payload.email;
       }
     } catch (_error) {
       // Invalid or expired token, proceed as a guest.
@@ -45,7 +53,10 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
   const body = await request.json();
   const validation = postCommentSchema.safeParse(body);
   if (!validation.success) {
-    return new Response(JSON.stringify(validation.error.flatten()), { status: 400 });
+    return new Response(JSON.stringify(validation.error.flatten()), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   const { postSlug, content, parentId, author } = validation.data;
 
@@ -69,7 +80,8 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
             throw new Error('Nickname is already taken.');
           }
           userId = `user_${uuidv4()}`;
-          userNickname = author.nickname;
+          authorNickname = author.nickname;
+          authorEmail = author.email;
           await tx.insert(users).values({
             id: userId,
             nickname: author.nickname,
@@ -78,13 +90,14 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
             createdAt: Date.now(),
           });
           // Sign a new JWT for the new user
-          newJwt = await signJwt({ sub: userId, nickname: userNickname, email: author.email });
+          newJwt = await signJwt({ sub: userId, nickname: authorNickname, email: authorEmail });
         }
       }
 
       // 4. Insert the comment
+      const commentId = `comm_${uuidv4()}`;
       await tx.insert(comments).values({
-        id: `comm_${uuidv4()}`,
+        id: commentId,
         postSlug,
         content,
         parentId,
@@ -94,15 +107,26 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
         createdAt: Date.now(),
       });
     });
+
+    // 5. Send notifications asynchronously
+    if (userId && authorNickname) {
+      sendNotifications(postSlug, content, parentId, userId, authorNickname);
+    }
   } catch (error: any) {
     if (error.message.includes('Email verification required')) {
-      return new Response(JSON.stringify({ error: 'Email verification required' }), { status: 403 });
+      return new Response(JSON.stringify({ error: 'Email verification required' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     if (
       error.message.includes('UNIQUE constraint failed: users.nickname') ||
       error.message.includes('Nickname is already taken.')
     ) {
-      return new Response(JSON.stringify({ error: 'Nickname is already taken.' }), { status: 409 });
+      return new Response(JSON.stringify({ error: 'Nickname is already taken.' }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     console.error('Failed to post comment:', error);
     return new Response('Internal Server Error', { status: 500 });
@@ -120,6 +144,82 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
 
   return new Response(JSON.stringify({ message: 'Comment submitted and awaiting approval.' }), { status: 201 });
 };
+
+async function sendNotifications(
+  postSlug: string,
+  content: string,
+  parentId: string | undefined,
+  authorId: string,
+  authorNickname: string
+) {
+  try {
+    const notificationRecipients = new Map<string, { nickname: string; type: 'reply' | 'mention' }>();
+
+    // a. Handle reply notifications
+    if (parentId) {
+      const parentComment = await db
+        .select({
+          author: {
+            id: users.id,
+            nickname: users.nickname,
+            email: users.email,
+          },
+        })
+        .from(comments)
+        .leftJoin(users, eq(comments.authorId, users.id))
+        .where(eq(comments.id, parentId))
+        .get();
+
+      if (parentComment?.author && parentComment.author.id !== authorId) {
+        notificationRecipients.set(parentComment.author.email, {
+          nickname: parentComment.author.nickname,
+          type: 'reply',
+        });
+      }
+    }
+
+    // b. Handle @mention notifications
+    const mentionedNicknames = [...content.matchAll(/@(\w+)/g)].map((match) => match[1]);
+    if (mentionedNicknames.length > 0) {
+      const mentionedUsers = await db
+        .select({ nickname: users.nickname, email: users.email })
+        .from(users)
+        .where(and(inArray(users.nickname, mentionedNicknames), ne(users.id, authorId)))
+        .all();
+
+      for (const user of mentionedUsers) {
+        // Avoid sending a 'mention' notification if they're already getting a 'reply' one
+        if (!notificationRecipients.has(user.email)) {
+          notificationRecipients.set(user.email, { nickname: user.nickname, type: 'mention' });
+        }
+      }
+    }
+
+    // c. Send emails
+    for (const [email, recipient] of notificationRecipients.entries()) {
+      if (recipient.type === 'reply') {
+        const html = generateReplyNotificationEmailHTML(recipient.nickname, postSlug, authorNickname, content);
+        await sendEmail({
+          to: email,
+          subject: `您在文章的评论收到了新的回复`,
+          text: `${authorNickname} 回复了您的评论: ${content}`,
+          html,
+        });
+      } else {
+        const html = generateMentionNotificationEmailHTML(recipient.nickname, postSlug, authorNickname, content);
+        await sendEmail({
+          to: email,
+          subject: `有人在评论中提及了您`,
+          text: `${authorNickname} 在评论中提及了您: ${content}`,
+          html,
+        });
+      }
+    }
+  } catch (error) {
+    // Log the error but do not block the response
+    console.error('Failed to send comment notifications:', error);
+  }
+}
 
 const getCommentsSchema = z.object({
   slug: z.string().min(1, { message: 'Slug is required.' }),
@@ -195,7 +295,10 @@ export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {
 
   if (!validation.success) {
     console.error('GET /api/comments validation failed:', validation.error.flatten());
-    return new Response(JSON.stringify(validation.error.flatten()), { status: 400 });
+    return new Response(JSON.stringify(validation.error.flatten()), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const { slug, page, limit } = validation.data;
