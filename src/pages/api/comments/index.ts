@@ -6,6 +6,7 @@ export const prerender = false;
 
 import { z } from 'zod';
 import { getAvatarUrl } from '~/lib/avatar';
+import { verifyCaptcha } from '~/lib/captcha';
 import { db, initializeDB } from '~/lib/db';
 import { generateMentionNotificationEmailHTML, generateReplyNotificationEmailHTML, sendEmail } from '~/lib/email';
 import { signJwt, verifyJwt } from '~/lib/jwt';
@@ -15,6 +16,7 @@ const postCommentSchema = z.object({
   postSlug: z.string(),
   content: z.string().min(1).max(1000),
   parentId: z.string().optional(),
+  captchaResponse: z.string().optional(),
   author: z
     .object({
       nickname: z.string().min(2).max(50),
@@ -58,7 +60,24 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  const { postSlug, content, parentId, author } = validation.data;
+  const { postSlug, content, parentId, author, captchaResponse } = validation.data;
+
+  // 3a. Verify Captcha for anonymous users, before any DB transaction
+  if (!userId) {
+    if (!captchaResponse) {
+      return new Response(JSON.stringify({ error: 'Captcha response is required.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const isHuman = await verifyCaptcha(captchaResponse);
+    if (!isHuman) {
+      return new Response(JSON.stringify({ error: 'Captcha verification failed.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
 
   let newJwt: string | undefined;
 

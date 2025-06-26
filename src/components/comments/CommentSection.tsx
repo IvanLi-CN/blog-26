@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
 import { useComments, usePostComment, useUserInfo } from './hooks';
@@ -10,6 +10,27 @@ interface CommentSectionProps {
 }
 
 export default function CommentSection({ postSlug }: CommentSectionProps) {
+  useEffect(() => {
+    const scriptId = 'luosimao-captcha-script';
+    if (document.getElementById(scriptId)) {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = '//captcha.luosimao.com/static/dist/api.js';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    return () => {
+      const scriptElement = document.getElementById(scriptId);
+      if (scriptElement) {
+        document.body.removeChild(scriptElement);
+      }
+    };
+  }, []);
+
   const {
     comments,
     isLoading: isCommentsLoading,

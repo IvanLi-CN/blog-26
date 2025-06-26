@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { UserInfo } from './types';
 
 interface CommentFormProps {
@@ -10,12 +10,13 @@ interface CommentFormProps {
     postSlug: string;
     content: string;
     parentId?: string;
+    captchaResponse?: string;
     author?: Omit<UserInfo, 'id' | 'avatarUrl'>;
   }) => Promise<any>;
   isPosting: boolean;
   error: string | null;
   onLogout: () => void;
-  onLoginSuccess: () => Promise<void>; // Added this line
+  onLoginSuccess: () => Promise<void>;
 }
 
 export default function CommentForm({
@@ -27,37 +28,55 @@ export default function CommentForm({
   isPosting,
   error,
   onLogout,
-  onLoginSuccess, // Added this line
+  onLoginSuccess,
 }: CommentFormProps) {
   const [content, setContent] = useState('');
   const [nickname, setNickname] = useState('Test User');
   const [email, setEmail] = useState('test@example.com');
 
-  // --- Verification Flow State ---
+  const [captchaResponse, setCaptchaResponse] = useState<string | null>(null);
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
+
   const [verificationNeeded, setVerificationNeeded] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  // ---
+
+  const handleCaptchaSuccess = (response: string) => {
+    setCaptchaResponse(response);
+    setCaptchaError(null);
+  };
+
+  useEffect(() => {
+    // @ts-ignore
+    window.handleCaptchaSuccess = handleCaptchaSuccess;
+    return () => {
+      // @ts-ignore
+      delete window.handleCaptchaSuccess;
+    };
+  }, [handleCaptchaSuccess]);
 
   const handleInitialSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-
     if (!content.trim() || (!userInfo && (!nickname.trim() || !email.trim()))) {
       return;
     }
-
     setVerificationError(null);
+    setCaptchaError(null);
 
     const response = await postComment({
       postSlug,
       content,
       parentId,
-      ...(!userInfo && { author: { nickname, email } }),
+      ...(!userInfo && { author: { nickname, email }, captchaResponse: captchaResponse ?? '' }),
     });
 
     if (response instanceof Response) {
-      if (response.status === 403) {
+      if (response.status === 401) {
+        setCaptchaError('人机验证失败，请重试。');
+        // @ts-ignore
+        window.LUOCAPTCHA?.reset();
+      } else if (response.status === 403) {
         setVerificationNeeded(true);
         fetch('/api/auth/send-verification-code', {
           method: 'POST',
@@ -66,13 +85,9 @@ export default function CommentForm({
         });
       }
     } else if (response) {
-      // If the user was not logged in, this means they just successfully posted
-      // as a new user, and the server has set a login cookie. Reload the page
-      // to reflect the new logged-in state.
       if (!userInfo) {
         window.location.reload();
       } else {
-        // If they were already logged in, just clear the form and refetch comments.
         setContent('');
         setVerificationNeeded(false);
         onCommentPosted();
@@ -91,19 +106,13 @@ export default function CommentForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: verificationCode }),
       });
-
       if (!response.ok) {
         const result = await response.json();
         throw new Error(result.error || 'Verification failed.');
       }
-
-      // Verification successful, refetch user info to update login state
       await onLoginSuccess();
-
       setVerificationNeeded(false);
       setVerificationCode('');
-
-      // Re-submit the original comment automatically
       await handleInitialSubmit();
     } catch (err: any) {
       setVerificationError(err.message);
@@ -159,26 +168,29 @@ export default function CommentForm({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-          <input
-            type="text"
-            placeholder="昵称 (必填)"
-            className="input input-bordered w-full"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            required
-            disabled={isPosting}
-          />
-          <input
-            type="email"
-            placeholder="邮箱 (必填)"
-            className="input input-bordered w-full"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={isPosting}
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+            <input
+              type="text"
+              placeholder="昵称 (必填)"
+              className="input input-bordered w-full"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              required
+              disabled={isPosting}
+            />
+            <input
+              type="email"
+              placeholder="邮箱 (必填)"
+              className="input input-bordered w-full"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isPosting}
+            />
+          </div>
+          {captchaError && <p className="text-error text-sm mb-2">{captchaError}</p>}
+        </>
       )}
       <form onSubmit={handleInitialSubmit}>
         <textarea
@@ -189,9 +201,22 @@ export default function CommentForm({
           required
           disabled={isPosting}
         />
-        <div className="flex justify-end items-center mt-2 gap-4">
-          {error && !verificationNeeded && <p className="text-error text-sm">{error}</p>}
-          <button type="submit" className="btn btn-primary" disabled={isPosting || !content.trim()}>
+        <div className="flex items-center mt-2 gap-4 md:justify-end">
+          {error && !verificationNeeded && <p className="text-error text-sm mr-auto">{error}</p>}
+          {!userInfo && (
+            <div className="mr-auto md:mr-0">
+              <div
+                className="l-captcha"
+                data-site-key={import.meta.env.PUBLIC_LUOSIMAO_SITE_KEY}
+                data-callback="handleCaptchaSuccess"
+              ></div>
+            </div>
+          )}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={isPosting || !content.trim() || (!userInfo && !captchaResponse)}
+          >
             {isPosting ? <span className="loading loading-spinner" /> : '提交'}
           </button>
         </div>
