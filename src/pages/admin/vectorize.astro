@@ -1,0 +1,312 @@
+---
+import { Icon } from "astro-icon/components";
+import Layout from "~/layouts/PageLayout.astro";
+import { forbiddenResponse, isAdminFromCookies } from "~/lib/auth";
+
+export const prerender = false;
+
+// 权限检查
+const isUserAdmin = await isAdminFromCookies(Astro.cookies);
+
+if (!isUserAdmin) {
+  return forbiddenResponse();
+}
+
+const metadata = {
+  title: "文章向量化 - 管理员操作界面",
+  description: "对博客文章进行向量化处理",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+---
+
+<Layout metadata={metadata}>
+  <div class="container mx-auto px-4 py-8">
+    <!-- 页面标题 -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-4xl font-bold">
+          <Icon name="mingcute:ai-line" class="w-10 h-10 inline-block mr-2" />
+          文章向量化
+        </h1>
+        <a href="/admin" class="btn btn-outline">
+          <Icon name="tabler:arrow-left" class="w-4 h-4 mr-1" />
+          返回管理界面
+        </a>
+      </div>
+      <p class="text-muted">
+        对博客文章进行向量化处理，用于智能搜索和相关文章推荐功能。
+      </p>
+    </div>
+
+    <!-- 操作控制区域 -->
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <h2 class="card-title mb-4">
+          <Icon name="tabler:play" class="w-6 h-6 mr-2" />
+          向量化控制
+        </h2>
+        
+        <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <button id="startVectorization" class="btn btn-primary">
+            <Icon name="tabler:play" class="w-4 h-4 mr-1" />
+            开始向量化
+          </button>
+          
+          <button id="stopVectorization" class="btn btn-error" disabled>
+            <Icon name="tabler:square" class="w-4 h-4 mr-1" />
+            停止向量化
+          </button>
+          
+          <div class="flex-grow"></div>
+          
+          <div class="text-sm text-muted">
+            状态: <span id="status" class="font-medium">就绪</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 进度显示区域 -->
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <h2 class="card-title mb-4">
+          <Icon name="tabler:progress" class="w-6 h-6 mr-2" />
+          进度信息
+        </h2>
+        
+        <!-- 总体进度条 -->
+        <div class="mb-4">
+          <div class="flex justify-between text-sm mb-2">
+            <span>总体进度</span>
+            <span id="progressText">0%</span>
+          </div>
+          <progress id="progressBar" class="progress progress-primary w-full" value="0" max="100"></progress>
+        </div>
+        
+        <!-- 当前处理信息 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div class="stat bg-base-200 rounded-lg p-4">
+            <div class="stat-title">已处理</div>
+            <div class="stat-value text-lg" id="processedCount">0</div>
+          </div>
+          <div class="stat bg-base-200 rounded-lg p-4">
+            <div class="stat-title">总数量</div>
+            <div class="stat-value text-lg" id="totalCount">0</div>
+          </div>
+          <div class="stat bg-base-200 rounded-lg p-4">
+            <div class="stat-title">当前阶段</div>
+            <div class="stat-value text-lg" id="currentStage">等待中</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日志显示区域 -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="card-title">
+            <Icon name="tabler:file-text" class="w-6 h-6 mr-2" />
+            实时日志
+          </h2>
+          <button id="clearLogs" class="btn btn-outline btn-sm">
+            <Icon name="tabler:trash" class="w-4 h-4 mr-1" />
+            清空日志
+          </button>
+        </div>
+        
+        <div id="logContainer" class="bg-base-300 rounded-lg p-4 h-96 overflow-y-auto font-mono text-sm">
+          <div class="text-muted">等待开始向量化...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class VectorizationManager {
+      private eventSource: EventSource | null = null;
+      private isRunning = false;
+
+      constructor() {
+        this.initializeElements();
+        this.bindEvents();
+      }
+
+      private initializeElements() {
+        this.startBtn = document.getElementById('startVectorization') as HTMLButtonElement;
+        this.stopBtn = document.getElementById('stopVectorization') as HTMLButtonElement;
+        this.statusEl = document.getElementById('status') as HTMLElement;
+        this.progressBar = document.getElementById('progressBar') as HTMLProgressElement;
+        this.progressText = document.getElementById('progressText') as HTMLElement;
+        this.processedCount = document.getElementById('processedCount') as HTMLElement;
+        this.totalCount = document.getElementById('totalCount') as HTMLElement;
+        this.currentStage = document.getElementById('currentStage') as HTMLElement;
+        this.logContainer = document.getElementById('logContainer') as HTMLElement;
+        this.clearLogsBtn = document.getElementById('clearLogs') as HTMLButtonElement;
+      }
+
+      private bindEvents() {
+        this.startBtn?.addEventListener('click', () => this.startVectorization());
+        this.stopBtn?.addEventListener('click', () => this.stopVectorization());
+        this.clearLogsBtn?.addEventListener('click', () => this.clearLogs());
+      }
+
+      private startVectorization() {
+        if (this.isRunning) return;
+
+        this.isRunning = true;
+        this.updateUI();
+        this.clearLogs();
+        this.addLog('开始向量化过程...', 'info');
+
+        this.eventSource = new EventSource('/api/vectorize');
+        
+        this.eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            this.handleProgressUpdate(data);
+          } catch (error) {
+            console.error('解析进度数据失败:', error);
+            this.addLog(`解析数据失败: ${error}`, 'error');
+          }
+        };
+
+        this.eventSource.onerror = (error) => {
+          console.error('EventSource 错误:', error);
+          this.addLog('连接中断，向量化可能已完成或出现错误', 'warning');
+          this.stopVectorization();
+        };
+      }
+
+      private stopVectorization() {
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+
+        this.isRunning = false;
+        this.updateUI();
+        this.addLog('向量化过程已停止', 'warning');
+      }
+
+      private completeVectorization() {
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+
+        this.isRunning = false;
+        this.updateUI();
+        this.addLog('向量化过程已完成！', 'success');
+      }
+
+      private handleProgressUpdate(data: any) {
+        const { stage, message, current, total, percentage } = data;
+
+        // 更新状态
+        this.currentStage.textContent = this.getStageText(stage);
+        
+        // 更新进度
+        if (typeof percentage === 'number') {
+          this.progressBar.value = percentage;
+          this.progressText.textContent = `${percentage.toFixed(1)}%`;
+        }
+        
+        if (typeof current === 'number') {
+          this.processedCount.textContent = current.toString();
+        }
+        
+        if (typeof total === 'number') {
+          this.totalCount.textContent = total.toString();
+        }
+
+        // 添加日志
+        this.addLog(message, this.getLogType(stage));
+
+        // 处理完成
+        if (stage === 'done') {
+          this.completeVectorization();
+          this.statusEl.textContent = '完成';
+        } else if (stage === 'error') {
+          this.stopVectorization();
+          this.statusEl.textContent = '错误';
+        }
+      }
+
+      private getStageText(stage: string): string {
+        const stageMap: Record<string, string> = {
+          'info': '处理中',
+          'progress': '向量化中',
+          'done': '已完成',
+          'error': '错误'
+        };
+        return stageMap[stage] || stage;
+      }
+
+      private getLogType(stage: string): string {
+        const typeMap: Record<string, string> = {
+          'info': 'info',
+          'progress': 'success',
+          'done': 'success',
+          'error': 'error'
+        };
+        return typeMap[stage] || 'info';
+      }
+
+      private addLog(message: string, type: string = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = `mb-1 ${this.getLogClass(type)}`;
+        logEntry.innerHTML = `<span class="text-muted">[${timestamp}]</span> ${message}`;
+        
+        this.logContainer.appendChild(logEntry);
+        this.logContainer.scrollTop = this.logContainer.scrollHeight;
+      }
+
+      private getLogClass(type: string): string {
+        const classMap: Record<string, string> = {
+          'info': 'text-info',
+          'success': 'text-success',
+          'warning': 'text-warning',
+          'error': 'text-error'
+        };
+        return classMap[type] || '';
+      }
+
+      private clearLogs() {
+        this.logContainer.innerHTML = '<div class="text-muted">日志已清空</div>';
+      }
+
+      private updateUI() {
+        if (this.isRunning) {
+          this.startBtn.disabled = true;
+          this.stopBtn.disabled = false;
+          this.statusEl.textContent = '运行中';
+        } else {
+          this.startBtn.disabled = false;
+          this.stopBtn.disabled = true;
+          this.statusEl.textContent = '就绪';
+        }
+      }
+
+      private startBtn!: HTMLButtonElement;
+      private stopBtn!: HTMLButtonElement;
+      private statusEl!: HTMLElement;
+      private progressBar!: HTMLProgressElement;
+      private progressText!: HTMLElement;
+      private processedCount!: HTMLElement;
+      private totalCount!: HTMLElement;
+      private currentStage!: HTMLElement;
+      private logContainer!: HTMLElement;
+      private clearLogsBtn!: HTMLButtonElement;
+    }
+
+    // 初始化向量化管理器
+    document.addEventListener('DOMContentLoaded', () => {
+      new VectorizationManager();
+    });
+  </script>
+</Layout>
