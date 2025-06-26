@@ -17,31 +17,54 @@ export interface Props {
 const { post } = Astro.props;
 const image = (await findImage(post.image)) as ImageMetadata | undefined;
 
-const link = APP_BLOG?.post?.isEnabled ? getPermalink(post.permalink, "post") : "";
+const link = APP_BLOG?.post?.isEnabled
+  ? getPermalink(post.permalink, "post")
+  : "";
+
+// 在SSG构建时不获取向量化状态，将通过客户端JavaScript动态加载
 ---
 
-<article class={`max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2`}>
-  <div class:list={["mt-2", image ? "md:col-start-2 md:row-start-1" : "md:col-span-2"]}>
+<article
+  class={`max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative`}
+>
+  <div
+    class:list={[
+      "mt-2",
+      image ? "md:col-start-2 md:row-start-1" : "md:col-span-2",
+    ]}
+  >
     <header>
       <div class="mb-1">
         <span class="text-sm">
-          <Icon name="tabler:clock" class="w-3.5 h-3.5 inline-block -mt-0.5 dark:text-gray-400" />
-          <time datetime={String(post.publishDate)} class="inline-block">{getFormattedDate(post.publishDate)}</time>
+          <Icon
+            name="tabler:clock"
+            class="w-3.5 h-3.5 inline-block -mt-0.5 dark:text-gray-400"
+          />
+          <time datetime={String(post.publishDate)} class="inline-block"
+            >{getFormattedDate(post.publishDate)}</time
+          >
           {
             post.author && (
               <>
-                {' '}
-                · <Icon name="tabler:user" class="w-3.5 h-3.5 inline-block -mt-0.5 dark:text-gray-400" />
-                <span>{post.author.replaceAll('-', ' ')}</span>
+                {" "}
+                ·{" "}
+                <Icon
+                  name="tabler:user"
+                  class="w-3.5 h-3.5 inline-block -mt-0.5 dark:text-gray-400"
+                />
+                <span>{post.author.replaceAll("-", " ")}</span>
               </>
             )
           }
           {
             post.category && (
               <>
-                {' '}
-                ·{' '}
-                <a class="hover:underline" href={getPermalink(post.category.slug, 'category')}>
+                {" "}
+                ·{" "}
+                <a
+                  class="hover:underline"
+                  href={getPermalink(post.category.slug, "category")}
+                >
                   {post.category.title}
                 </a>
               </>
@@ -49,7 +72,9 @@ const link = APP_BLOG?.post?.isEnabled ? getPermalink(post.permalink, "post") : 
           }
         </span>
       </div>
-      <h2 class="text-xl sm:text-2xl font-bold leading-tight mb-2 font-heading dark:text-slate-300">
+      <h2
+        class="text-xl sm:text-2xl font-bold leading-tight mb-2 font-heading dark:text-slate-300"
+      >
         {
           link ? (
             <a
@@ -65,7 +90,11 @@ const link = APP_BLOG?.post?.isEnabled ? getPermalink(post.permalink, "post") : 
       </h2>
     </header>
 
-    {post.excerpt && <p class="flex-grow text-base-content/70 text-lg">{post.excerpt}</p>}
+    {
+      post.excerpt && (
+        <p class="flex-grow text-base-content/70 text-lg">{post.excerpt}</p>
+      )
+    }
     {
       post.tags && Array.isArray(post.tags) ? (
         <footer class="mt-5">
@@ -79,7 +108,7 @@ const link = APP_BLOG?.post?.isEnabled ? getPermalink(post.permalink, "post") : 
   {
     image &&
       (link ? (
-        <a class="relative block group" href={link ?? 'javascript:void(0)'}>
+        <a class="relative block group" href={link ?? "javascript:void(0)"}>
           <div class="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg">
             {image && (
               <Image
@@ -114,4 +143,118 @@ const link = APP_BLOG?.post?.isEnabled ? getPermalink(post.permalink, "post") : 
         </div>
       ))
   }
+
+  <!-- 向量化状态标记 -->
+  <div
+    class="vectorization-status absolute bottom-2 right-2"
+    data-slug={post.slug}
+    style="display: none;"
+  >
+    <!-- 正确向量化图标 -->
+    <Icon
+      name="mingcute:ai-line"
+      class="vectorization-correct w-4 h-4 text-current opacity-70"
+      style="display: none;"
+    />
+    <!-- 不匹配向量化图标 -->
+    <Icon
+      name="mingcute:ai-line"
+      class="vectorization-mismatch w-4 h-4 text-yellow-500"
+      style="display: none;"
+    />
+  </div>
 </article>
+
+<script>
+  // 向量化状态缓存
+  let vectorizationCache = new Map();
+  let cacheTimestamp = 0;
+  const CACHE_DURATION = 60000; // 1分钟缓存
+
+  // 获取当前页面文章的向量化状态
+  async function fetchVectorizationStatus(slugs: string[]) {
+    const now = Date.now();
+
+    // 检查缓存中是否已有所有需要的数据
+    const uncachedSlugs = slugs.filter(
+      (slug: string) =>
+        !vectorizationCache.has(slug) || now - cacheTimestamp > CACHE_DURATION,
+    );
+
+    if (uncachedSlugs.length === 0) {
+      return vectorizationCache;
+    }
+
+    try {
+      // 只查询未缓存的文章
+      const queryParams = new URLSearchParams();
+      uncachedSlugs.forEach((slug: string) =>
+        queryParams.append("slugs", slug),
+      );
+
+      const response = await fetch(`/api/vectorization-status?${queryParams}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+
+      // 更新缓存 - data 现在是 {slug: status} 格式的对象
+      Object.entries(data).forEach(([slug, status]) => {
+        vectorizationCache.set(slug, {
+          status: status as string,
+        });
+      });
+
+      cacheTimestamp = now;
+      return vectorizationCache;
+    } catch (error) {
+      console.error("获取向量化状态失败:", error);
+      return vectorizationCache;
+    }
+  }
+
+  // 更新向量化状态标记
+  async function updateVectorizationStatus() {
+    const statusElements = document.querySelectorAll(".vectorization-status");
+    const slugs = Array.from(statusElements)
+      .map((el) => el.getAttribute("data-slug"))
+      .filter((slug): slug is string => slug !== null);
+
+    if (slugs.length === 0) return;
+
+    const statusMap = await fetchVectorizationStatus(slugs);
+
+    statusElements.forEach((element) => {
+      const slug = element.getAttribute("data-slug");
+      if (!slug) return;
+
+      const status = statusMap.get(slug);
+
+      if (status && status.status === "correct") {
+        const correctIcon = element.querySelector(
+          ".vectorization-correct",
+        ) as HTMLElement;
+        if (correctIcon) {
+          correctIcon.style.display = "block";
+          (element as HTMLElement).style.display = "block";
+        }
+      } else if (status && status.status === "mismatch") {
+        const mismatchIcon = element.querySelector(
+          ".vectorization-mismatch",
+        ) as HTMLElement;
+        if (mismatchIcon) {
+          mismatchIcon.style.display = "block";
+          (element as HTMLElement).style.display = "block";
+        }
+      }
+      // notvectorized 状态不显示任何标记
+    });
+  }
+
+  // 页面加载完成后更新向量化状态
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateVectorizationStatus);
+  } else {
+    updateVectorizationStatus();
+  }
+</script>

@@ -38,6 +38,7 @@ export default defineConfig({
     icon({
       include: {
         tabler: ['*'],
+        mingcute: ['ai-line'],
         'flat-color-icons': [
           'template',
           'gallery',
