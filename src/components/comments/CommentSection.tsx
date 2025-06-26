@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
 import { useComments, usePostComment, useUserInfo } from './hooks';
+import Reactions from './Reactions';
 
 interface CommentSectionProps {
   postSlug: string;
@@ -55,7 +56,12 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
 
   return (
     <section className="mt-8">
-      <h2 className="text-2xl font-bold">评论</h2>
+      <div className="border-b dark:border-slate-700 pb-8">
+        <h2 className="text-2xl font-bold">表态</h2>
+        <Reactions targetType="post" targetId={postSlug} userInfo={userInfo} />
+      </div>
+
+      <h2 className="text-2xl font-bold mt-8">评论</h2>
 
       {successMessage && (
         <div role="alert" className="alert alert-success mt-4">

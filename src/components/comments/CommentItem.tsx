@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
 import { useModerateComment } from './hooks';
+import Reactions from './Reactions';
 import type { Comment, UserInfo } from './types';
 
 interface CommentItemProps {
@@ -81,6 +82,8 @@ export default function CommentItem({
           </div>
           <time className="text-xs text-gray-500">{formatDate(comment.createdAt)}</time>
           <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{comment.content}</div>
+
+          <Reactions targetType="comment" targetId={comment.id} userInfo={userInfo} />
 
           {isAdmin && (
             <div className="mt-2 space-y-2">

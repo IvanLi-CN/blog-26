@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { blob, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { blob, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -63,3 +63,26 @@ export const vectorizedFiles = sqliteTable('vectorized_files', {
 
 export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data
 export type NewVectorizedFile = typeof vectorizedFiles.$inferInsert; // Infer type for inserting data
+
+export const reactions = sqliteTable(
+  'reactions',
+  {
+    id: text('id').primaryKey(),
+    targetType: text('target_type', { enum: ['post', 'comment'] }).notNull(),
+    targetId: text('target_id').notNull(),
+    emoji: text('emoji').notNull(),
+    userId: text('user_id').references(() => users.id),
+    fingerprint: text('fingerprint'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => ({
+    unq: unique().on(table.targetType, table.targetId, table.emoji, table.userId, table.fingerprint),
+  })
+);
+
+export const reactionsRelations = relations(reactions, ({ one }) => ({
+  author: one(users, {
+    fields: [reactions.userId],
+    references: [users.id],
+  }),
+}));
