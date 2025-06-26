@@ -27,6 +27,8 @@
     "@astrolib/seo": "^1.0.0-beta.8",
     "@fingerprintjs/fingerprintjs": "^4.6.2",
     "@fontsource-variable/inter": "^5.2.6",
+    "@iconify-json/carbon": "^1.2.10",
+    "@iconify-json/lucide": "^1.2.52",
     "@iconify-json/simple-icons": "^1.2.39",
     "@llamaindex/core": "^0.6.11",
     "@llamaindex/env": "^0.1.30",

@@ -1,8 +1,8 @@
 ---
 import type { GetStaticPaths } from "astro";
+import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
 import { blogTagRobots, getAllTags } from "~/utils/blog";
-import Headline from "../../components/ui/Headline.astro";
 import { getPermalink } from "../../utils/permalinks";
 
 export const prerender = true;
@@ -16,7 +16,164 @@ export const getStaticPaths: GetStaticPaths = async () => {
   ];
 };
 
-const tags = await getAllTags();
+const allTags = await getAllTags();
+
+// 创建标签树结构
+interface TagNode {
+  title: string;
+  slug: string;
+  count: number;
+  children: TagNode[];
+  isLeaf: boolean;
+  icon?: string;
+}
+
+// 标签分类映射 - 使用更精确的匹配规则和图标
+const tagCategories: Record<string, { exact: string[], contains: string[], priority: number, icon: string }> = {
+  "前端技术": {
+    exact: ["React", "Next.js", "Vue", "Angular", "Tailwind CSS"],
+    contains: ["css", "html", "frontend", "前端"],
+    priority: 1,
+    icon: "lucide:palette"
+  },
+  "编程语言": {
+    exact: ["TypeScript", "JavaScript", "Python", "Rust", "Go", "Java", "PHP"],
+    contains: ["typescript", "javascript", "python", "rust"],
+    priority: 2,
+    icon: "lucide:code"
+  },
+  "系统运维": {
+    exact: ["Arch Linux", "Linux", "VPS", "Docker"],
+    contains: ["linux", "arch", "vps", "docker", "运维", "ops"],
+    priority: 3,
+    icon: "lucide:server"
+  },
+  "开发工具": {
+    exact: ["Github Actions", "CI/CD", "Git"],
+    contains: ["github", "git", "ci", "cd", "actions"],
+    priority: 4,
+    icon: "lucide:wrench"
+  },
+  "后端服务": {
+    exact: ["Node.js", "API Gateway", "BaaS", "Self-Hosted"],
+    contains: ["api", "gateway", "baas", "backend", "后端", "服务", "hosted"],
+    priority: 5,
+    icon: "lucide:database"
+  },
+  "环境配置": {
+    exact: ["环境搭建"],
+    contains: ["环境", "配置", "setup", "installation", "搭建"],
+    priority: 6,
+    icon: "lucide:settings"
+  },
+  "博客相关": {
+    exact: ["Blog", "Markdown"],
+    contains: ["blog", "markdown", "博客"],
+    priority: 7,
+    icon: "lucide:book-open"
+  }
+};
+
+// 构建标签树
+function buildTagTree(): TagNode[] {
+  const tree: TagNode[] = [];
+  const usedTags = new Set<string>();
+
+  // 按优先级排序分类
+  const sortedCategories = Object.entries(tagCategories).sort(([,a], [,b]) => a.priority - b.priority);
+
+  // 为每个分类创建节点
+  for (const [category, config] of sortedCategories) {
+    const categoryTags = allTags.filter(tag => {
+      const tagTitle = tag.title.toLowerCase();
+
+      // 精确匹配优先
+      if (config.exact.some(exact => exact.toLowerCase() === tagTitle)) {
+        return true;
+      }
+
+      // 包含匹配
+      return config.contains.some(keyword =>
+        tagTitle.includes(keyword.toLowerCase()) ||
+        keyword.toLowerCase().includes(tagTitle)
+      );
+    });
+
+    if (categoryTags.length > 0) {
+      // 按文章数量和字母顺序排序
+      categoryTags.sort((a, b) => {
+        if (b.posts.length !== a.posts.length) {
+          return b.posts.length - a.posts.length;
+        }
+        return a.title.localeCompare(b.title, 'zh-CN', { numeric: true });
+      });
+
+      const categoryNode: TagNode = {
+        title: category,
+        slug: '',
+        count: categoryTags.reduce((sum, tag) => sum + tag.posts.length, 0),
+        icon: config.icon,
+        children: categoryTags.map(tag => {
+          usedTags.add(tag.slug);
+          return {
+            title: tag.title,
+            slug: tag.slug,
+            count: tag.posts.length,
+            children: [],
+            isLeaf: true
+          };
+        }),
+        isLeaf: false
+      };
+
+      tree.push(categoryNode);
+    }
+  }
+
+  // 处理未分类的标签
+  const uncategorizedTags = allTags.filter(tag => !usedTags.has(tag.slug));
+  if (uncategorizedTags.length > 0) {
+    uncategorizedTags.sort((a, b) => {
+      if (b.posts.length !== a.posts.length) {
+        return b.posts.length - a.posts.length;
+      }
+      return a.title.localeCompare(b.title, 'zh-CN', { numeric: true });
+    });
+
+    const otherNode: TagNode = {
+      title: "其他",
+      slug: '',
+      count: uncategorizedTags.reduce((sum, tag) => sum + tag.posts.length, 0),
+      icon: "lucide:folder",
+      children: uncategorizedTags.map(tag => ({
+        title: tag.title,
+        slug: tag.slug,
+        count: tag.posts.length,
+        children: [],
+        isLeaf: true
+      })),
+      isLeaf: false
+    };
+
+    tree.push(otherNode);
+  }
+
+  // 按分类的文章总数排序，但保持优先级高的在前
+  tree.sort((a, b) => {
+    const aPriority = Object.entries(tagCategories).find(([name]) => name === a.title)?.[1].priority || 999;
+    const bPriority = Object.entries(tagCategories).find(([name]) => name === b.title)?.[1].priority || 999;
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    return b.count - a.count;
+  });
+
+  return tree;
+}
+
+const tagTree = buildTagTree();
 
 const metadata = {
   title: `Tags`,
@@ -28,23 +185,127 @@ const metadata = {
 ---
 
 <Layout metadata={metadata}>
-  <main class="max-w-7xl mx-auto my-32">
-    <Headline
-      subtitle="文章标签列表"
-      title='标签'
-    >
-    </Headline>
-    <ol class="flex flex-wrap gap-4 justify-between mx-4 md:mx-12 text-base md:text-lg lg:text-xl">
-      {
-        tags.map((tag) => (
-          <li class="">
-            <a class="btn" href={getPermalink(tag.slug, 'tag')}>
-              {tag.title}
-              <span class="ml-2 badge">{tag.posts.length}</span>
-            </a>
-          </li>
-        ))
+  <style>
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
       }
-    </ol>
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fade-in-up {
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    .animate-delay-100 { animation-delay: 0.1s; }
+    .animate-delay-200 { animation-delay: 0.2s; }
+    .animate-delay-300 { animation-delay: 0.3s; }
+    .animate-delay-400 { animation-delay: 0.4s; }
+  </style>
+
+  <main class="container mx-auto my-16 px-4">
+    <div class="hero bg-base-200 rounded-box mb-12">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h1 class="text-5xl font-bold text-base-content">标签</h1>
+          <p class="py-6 text-base-content/70">按分类组织的标签树，快速找到您感兴趣的内容</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-12 space-y-6">
+      {tagTree.map((category, index) => (
+        <div class={`card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 animate-fade-in-up animate-delay-${Math.min(index * 100 + 100, 400)}`}>
+          <!-- 分类标题 -->
+          <div class="bg-base-200 px-6 py-5 border-b border-base-300 rounded-t-2xl">
+            <h2 class="text-xl font-bold text-base-content flex items-center justify-between">
+              <span class="flex items-center">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mr-3">
+                  <Icon name={category.icon || "lucide:tag"} class="w-4 h-4 text-primary-content" />
+                </div>
+                <span class="text-base-content font-bold">
+                  {category.title}
+                </span>
+              </span>
+              <div class="flex items-center space-x-2">
+                <span class="text-sm font-medium text-base-content/80">
+                  {category.children.length} 个标签
+                </span>
+                <span class="badge badge-primary badge-sm text-primary-content">
+                  {category.count} 篇文章
+                </span>
+              </div>
+            </h2>
+          </div>
+
+          <!-- 标签列表 -->
+          <div class="p-6 rounded-b-2xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {category.children.map((tag, tagIndex) => (
+                <a
+                  href={getPermalink(tag.slug, 'tag')}
+                  class="btn btn-outline btn-sm justify-between hover:btn-primary hover:text-primary-content transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group normal-case border-base-300 text-base-content"
+                  style={`animation-delay: ${tagIndex * 50}ms`}
+                >
+                  <span class="font-semibold text-sm truncate flex-1 text-left">
+                    {tag.title}
+                  </span>
+                  <div class="badge badge-neutral badge-sm group-hover:badge-primary group-hover:text-primary-content ml-2 text-neutral-content">
+                    {tag.count}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="mt-16 mb-8">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h3 class="card-title text-center justify-center text-base-content mb-6">标签统计</h3>
+          <div class="stats stats-vertical lg:stats-horizontal shadow">
+            <div class="stat">
+              <div class="stat-figure text-primary">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                </svg>
+              </div>
+              <div class="stat-title">标签总数</div>
+              <div class="stat-value text-primary">{allTags.length}</div>
+              <div class="stat-desc">个不同标签</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-secondary">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+              </div>
+              <div class="stat-title">分类数量</div>
+              <div class="stat-value text-secondary">{tagTree.length}</div>
+              <div class="stat-desc">个主要分类</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-accent">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+              </div>
+              <div class="stat-title">文章总数</div>
+              <div class="stat-value text-accent">{new Set(allTags.flatMap(tag => tag.posts.map(post => post.slug))).size}</div>
+              <div class="stat-desc">篇已发布文章</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 </Layout>

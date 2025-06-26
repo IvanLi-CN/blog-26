@@ -5,6 +5,7 @@ import PostTags from "~/components/blog/Tags.astro";
 import CommentSection from "~/components/comments/CommentSection";
 import Image from "~/components/common/Image.astro";
 import SocialShare from "~/components/common/SocialShare.astro";
+import { isAdminFromCookies } from "~/lib/auth";
 import type { Post } from "~/types";
 import { getPermalink } from "~/utils/permalinks";
 import { getFormattedDate } from "~/utils/utils";
@@ -15,6 +16,11 @@ export interface Props {
 }
 
 const { post, url } = Astro.props;
+
+// Check if user is admin
+const isUserAdmin =
+  process.env.ADMIN_MODE === "true" ||
+  (await isAdminFromCookies(Astro.cookies));
 ---
 
 <section class="py-8 sm:py-16 lg:py-20 mx-auto">
@@ -73,6 +79,40 @@ const { post, url } = Astro.props;
       >
         {post.title}
       </h1>
+
+      {
+        isUserAdmin && (
+          <div class="max-w-3xl mx-auto mt-4 px-4 sm:px-6">
+            <div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+              <div class="flex items-center gap-3">
+                <Icon
+                  name="tabler:shield-check"
+                  class="w-5 h-5 text-blue-600 dark:text-blue-400"
+                />
+                <span class="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                  管理员视图
+                </span>
+                <div class="ml-auto">
+                  {post.draft ? (
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700">
+                      草稿
+                    </span>
+                  ) : post.public === false ? (
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-300 dark:border-orange-700">
+                      私有
+                    </span>
+                  ) : (
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-300 dark:border-green-700">
+                      已发布
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
       <p
         class="max-w-3xl mx-auto mt-4 mb-8 px-4 sm:px-6 text-md font-serif font-light text-justify"
       >

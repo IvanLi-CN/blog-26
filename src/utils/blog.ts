@@ -40,7 +40,7 @@ const generatePermalink = async ({
     .join('/');
 };
 
-const getNormalizedPost = async (
+export const getNormalizedPost = async (
   post: CollectionEntry<'post'> | CollectionEntry<'notes'> | CollectionEntry<'local-notes'>
 ): Promise<Post> => {
   const { id, slug: rawSlug = '', data, body } = post;
@@ -59,6 +59,7 @@ const getNormalizedPost = async (
     category: rawCategory,
     author,
     draft,
+    public: isPublic = true,
     metadata = {},
   } = data;
 
@@ -95,6 +96,7 @@ const getNormalizedPost = async (
     author: author,
 
     draft: draft,
+    public: isPublic,
 
     metadata,
 

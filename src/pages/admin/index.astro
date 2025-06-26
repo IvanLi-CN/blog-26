@@ -23,7 +23,7 @@ const metadata = {
 ---
 
 <Layout metadata={metadata}>
-  <div class="container mx-auto px-4 py-8">
+  <div class="max-w-7xl mx-auto px-4 py-8">
     <!-- 页面标题 -->
     <div class="mb-8">
       <h1 class="text-4xl font-bold text-center mb-4">
@@ -36,10 +36,13 @@ const metadata = {
     </div>
 
     <!-- 操作卡片网格 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-      
+    <div
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"
+    >
       <!-- 文章向量化卡片 -->
-      <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
         <div class="card-body">
           <div class="flex items-center mb-4">
             <Icon name="mingcute:ai-line" class="w-8 h-8 text-primary mr-3" />
@@ -57,11 +60,37 @@ const metadata = {
         </div>
       </div>
 
-      <!-- 评论管理卡片 -->
-      <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+      <!-- 文章管理卡片 -->
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
         <div class="card-body">
           <div class="flex items-center mb-4">
-            <Icon name="tabler:message-circle" class="w-8 h-8 text-secondary mr-3" />
+            <Icon name="tabler:article" class="w-8 h-8 text-info mr-3" />
+            <h2 class="card-title text-xl">文章管理</h2>
+          </div>
+          <p class="text-muted mb-4">
+            查看和管理所有文章，包括草稿和已发布的文章。可以查看文章状态、发布日期等信息。
+          </p>
+          <div class="card-actions justify-end">
+            <a href="/admin/posts" class="btn btn-info">
+              <Icon name="tabler:list" class="w-4 h-4 mr-1" />
+              管理文章
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 评论管理卡片 -->
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
+        <div class="card-body">
+          <div class="flex items-center mb-4">
+            <Icon
+              name="tabler:message-circle"
+              class="w-8 h-8 text-secondary mr-3"
+            />
             <h2 class="card-title text-xl">评论管理</h2>
           </div>
           <p class="text-muted mb-4">
@@ -77,15 +106,15 @@ const metadata = {
       </div>
 
       <!-- 系统状态卡片 -->
-      <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
         <div class="card-body">
           <div class="flex items-center mb-4">
             <Icon name="tabler:activity" class="w-8 h-8 text-accent mr-3" />
             <h2 class="card-title text-xl">系统状态</h2>
           </div>
-          <p class="text-muted mb-4">
-            查看系统运行状态、性能指标和日志信息。
-          </p>
+          <p class="text-muted mb-4">查看系统运行状态、性能指标和日志信息。</p>
           <div class="card-actions justify-end">
             <button class="btn btn-accent" disabled>
               <Icon name="tabler:chart-line" class="w-4 h-4 mr-1" />
@@ -96,7 +125,9 @@ const metadata = {
       </div>
 
       <!-- 内容管理卡片 -->
-      <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
         <div class="card-body">
           <div class="flex items-center mb-4">
             <Icon name="tabler:file-text" class="w-8 h-8 text-info mr-3" />
@@ -115,15 +146,15 @@ const metadata = {
       </div>
 
       <!-- 用户管理卡片 -->
-      <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
         <div class="card-body">
           <div class="flex items-center mb-4">
             <Icon name="tabler:users" class="w-8 h-8 text-warning mr-3" />
             <h2 class="card-title text-xl">用户管理</h2>
           </div>
-          <p class="text-muted mb-4">
-            管理注册用户、权限设置和用户行为分析。
-          </p>
+          <p class="text-muted mb-4">管理注册用户、权限设置和用户行为分析。</p>
           <div class="card-actions justify-end">
             <button class="btn btn-warning" disabled>
               <Icon name="tabler:user-cog" class="w-4 h-4 mr-1" />
@@ -134,7 +165,9 @@ const metadata = {
       </div>
 
       <!-- 设置卡片 -->
-      <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
         <div class="card-body">
           <div class="flex items-center mb-4">
             <Icon name="tabler:settings-cog" class="w-8 h-8 text-error mr-3" />
@@ -151,7 +184,6 @@ const metadata = {
           </div>
         </div>
       </div>
-
     </div>
 
     <!-- 快速操作区域 -->

@@ -67,6 +67,7 @@ const postSchema = ({ image }: SchemaContext) => {
       ])
       .optional(),
     draft: z.boolean().default(true),
+    public: z.boolean().default(true),
 
     title: z.string(),
     excerpt: z.string().optional(),
