@@ -1,7 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
-import { forbiddenResponse, isAdminFromCookies } from "~/lib/auth";
+import { isAdminFromCookies, redirectToAdminLogin } from "~/lib/auth";
 
 export const prerender = false;
 
@@ -9,7 +9,7 @@ export const prerender = false;
 const isUserAdmin = await isAdminFromCookies(Astro.cookies);
 
 if (!isUserAdmin) {
-  return forbiddenResponse();
+  return redirectToAdminLogin();
 }
 
 const metadata = {

@@ -49,6 +49,18 @@ export async function isAdminFromCookies(cookies: AstroCookies): Promise<boolean
 }
 
 /**
+ * 重定向到管理员登录页面的响应
+ */
+export function redirectToAdminLogin(): Response {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: '/admin/login',
+    },
+  });
+}
+
+/**
  * 重定向到登录页面的响应
  */
 export function redirectToLogin(): Response {

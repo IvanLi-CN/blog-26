@@ -1,7 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
-import { forbiddenResponse, isAdminFromCookies } from "~/lib/auth";
+import { isAdminFromCookies, redirectToAdminLogin } from "~/lib/auth";
 
 export const prerender = false;
 
@@ -9,7 +9,7 @@ export const prerender = false;
 const isUserAdmin = await isAdminFromCookies(Astro.cookies);
 
 if (!isUserAdmin) {
-  return forbiddenResponse();
+  return redirectToAdminLogin();
 }
 
 const metadata = {
@@ -26,10 +26,16 @@ const metadata = {
   <div class="max-w-7xl mx-auto px-4 py-8">
     <!-- 页面标题 -->
     <div class="mb-8">
-      <h1 class="text-4xl font-bold text-center mb-4">
-        <Icon name="tabler:settings" class="w-10 h-10 inline-block mr-2" />
-        管理员操作界面
-      </h1>
+      <div class="flex justify-between items-center mb-4">
+        <h1 class="text-4xl font-bold">
+          <Icon name="tabler:settings" class="w-10 h-10 inline-block mr-2" />
+          管理员操作界面
+        </h1>
+        <button id="logout-btn" class="btn btn-outline btn-error">
+          <Icon name="tabler:logout" class="w-4 h-4 mr-1" />
+          登出
+        </button>
+      </div>
       <p class="text-center text-muted">
         欢迎使用管理员操作界面，请选择您要执行的操作
       </p>
@@ -201,4 +207,27 @@ const metadata = {
       </div>
     </div>
   </div>
+
+  <script>
+    // 登出功能
+    document
+      .getElementById("logout-btn")
+      .addEventListener("click", async () => {
+        try {
+          const response = await fetch("/api/auth/logout", {
+            method: "POST",
+          });
+
+          if (response.ok) {
+            // 登出成功，重定向到登录页面
+            window.location.href = "/admin/login";
+          } else {
+            alert("登出失败，请重试");
+          }
+        } catch (error) {
+          console.error("登出错误:", error);
+          alert("登出失败，请重试");
+        }
+      });
+  </script>
 </Layout>
