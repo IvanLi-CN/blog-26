@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { getVisitorId } from '~/lib/fingerprint';
 import type { UserInfo } from './types';
@@ -95,7 +95,7 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
   }
 
   return (
-    <div className="flex items-center gap-2 mt-2">
+    <div className="flex items-center gap-2">
       {EMOJI_OPTIONS.map((emoji) => {
         const reaction = displayedReactions.find((r) => r.emoji === emoji);
         const userReacted = reaction?.userReacted ?? false;

@@ -1,6 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
-
+import PostReactions from "~/components/blog/PostReactions";
 import PostTags from "~/components/blog/Tags.astro";
 import CommentSection from "~/components/comments/CommentSection";
 import Image from "~/components/common/Image.astro";
@@ -144,15 +144,24 @@ const isUserAdmin =
     >
       <slot />
     </div>
-    <div
-      class="mx-auto px-6 sm:px-6 max-w-3xl mt-8 flex justify-between flex-col sm:flex-row"
-    >
-      <PostTags tags={post.tags} class="mr-5 rtl:mr-0 rtl:ml-5" />
-      <SocialShare
-        url={url}
-        text={post.title}
-        class="mt-5 sm:mt-1 align-middle text-gray-500 dark:text-slate-600"
-      />
+    <div class="mx-auto px-6 sm:px-6 max-w-3xl mt-8">
+      <!-- 标签单独一行 -->
+      <div class="mb-4">
+        <PostTags tags={post.tags} class="flex gap-1 flex-wrap" />
+      </div>
+      <!-- 表态和分享在同一行，两端对齐 -->
+      <div class="flex justify-between items-center">
+        <div class="flex items-center">
+          <PostReactions postSlug={post.slug} client:load />
+        </div>
+        <div class="flex items-center">
+          <SocialShare
+            url={url}
+            text={post.title}
+            class="text-gray-500 dark:text-slate-600"
+          />
+        </div>
+      </div>
     </div>
   </article>
   <div class="max-w-3xl mx-auto px-4 sm:px-6">
