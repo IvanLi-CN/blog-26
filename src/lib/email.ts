@@ -41,7 +41,7 @@ export function generateVerificationEmailHTML(code: string): string {
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <h2 style="color: #333;">您的验证码</h2>
         <p>您好！</p>
-        <p>感谢您使用我们的评论功能。您的临时登录验证码是：</p>
+        <p>感谢您使用我们的留言功能。您的临时登录验证码是：</p>
         <p style="font-size: 24px; font-weight: bold; color: #444; letter-spacing: 2px; border: 1px solid #ddd; padding: 10px 15px; display: inline-block;">
           ${code}
         </p>
@@ -64,14 +64,14 @@ export function generateReplyNotificationEmailHTML(
 
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-      <h2 style="color: #333;">您在文章上的评论有了新回复</h2>
+      <h2 style="color: #333;">您在文章上的留言有了新回复</h2>
       <p>您好, ${parentAuthorNickname}！</p>
-      <p><b>${replyAuthorNickname}</b> 回复了您的评论:</p>
+      <p><b>${replyAuthorNickname}</b> 给您留了个言:</p>
       <div style="border-left: 3px solid #ddd; padding-left: 15px; margin: 15px 0;">
         <p>${contentPreview}</p>
       </div>
       <p>您可以点击下方链接查看完整的对话：</p>
-      <p><a href="${postUrl}" style="color: #007bff; text-decoration: none;">点击这里查看回复</a></p>
+      <p><a href="${postUrl}" style="color: #007bff; text-decoration: none;">点击这里查看留言</a></p>
       <hr style="border: none; border-top: 1px solid #eee;" />
       <p style="font-size: 0.9em; color: #888;">此邮件为系统自动发送，请勿直接回复。</p>
     </div>
@@ -89,14 +89,14 @@ export function generateMentionNotificationEmailHTML(
 
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-      <h2 style="color: #333;">有人在评论中提及了您</h2>
+      <h2 style="color: #333;">有人在留言中提及了您</h2>
       <p>您好, ${mentionedUserNickname}！</p>
-      <p><b>${mentionAuthorNickname}</b> 在一篇文章的评论中提及了您:</p>
+      <p><b>${mentionAuthorNickname}</b> 在一篇文章的留言中提及了您:</p>
       <div style="border-left: 3px solid #ddd; padding-left: 15px; margin: 15px 0;">
         <p>${contentPreview}</p>
       </div>
-      <p>您可以点击下方链接查看该评论：</p>
-      <p><a href="${postUrl}" style="color: #007bff; text-decoration: none;">点击这里查看评论</a></p>
+      <p>您可以点击下方链接查看该留言：</p>
+      <p><a href="${postUrl}" style="color: #007bff; text-decoration: none;">点击这里查看留言</a></p>
       <hr style="border: none; border-top: 1px solid #eee;" />
       <p style="font-size: 0.9em; color: #888;">此邮件为系统自动发送，请勿直接回复。</p>
     </div>

@@ -5,12 +5,29 @@ import CommentForm from './CommentForm';
 import CommentList from './CommentList';
 import { useComments, usePostComment, useUserInfo } from './hooks';
 
+// 文本配置
+const DEFAULT_TEXTS = {
+  title: '留言',
+  submitSuccess: '留言已提交，正在等待审核。',
+  loadingText: '加载中...',
+  loadMoreText: '加载更多',
+};
+
 interface CommentSectionProps {
   postSlug: string;
+  title?: string;
+  texts?: Partial<typeof DEFAULT_TEXTS>;
 }
 
-export default function CommentSection({ postSlug }: CommentSectionProps) {
+export default function CommentSection({ postSlug, title, texts = {} }: CommentSectionProps) {
+  const finalTexts = { ...DEFAULT_TEXTS, ...texts };
+  const displayTitle = title || finalTexts.title;
+  const [isClient, setIsClient] = useState(false);
+
   useEffect(() => {
+    // 标记为客户端环境
+    setIsClient(true);
+
     const scriptId = 'luosimao-captcha-script';
     if (document.getElementById(scriptId)) {
       return;
@@ -47,15 +64,20 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
   const { postComment, isPosting, error: postError } = usePostComment();
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleCommentPosted = async (message: string = '评论已提交，正在等待审核。') => {
+  const handleCommentPosted = async (message: string = finalTexts.submitSuccess) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(''), 5000);
     refetch(); // Refetch comments to show the new one
   };
 
+  // 只有在客户端环境才渲染组件
+  if (!isClient) {
+    return null;
+  }
+
   return (
     <section className="mt-8">
-      <h2 className="text-2xl font-bold">评论</h2>
+      <h2 className="text-2xl font-bold">{displayTitle}</h2>
 
       {successMessage && (
         <div role="alert" className="alert alert-success mt-4">
@@ -117,7 +139,7 @@ export default function CommentSection({ postSlug }: CommentSectionProps) {
         {page < liveTotalPages && (
           <div className="text-center mt-4">
             <button onClick={loadMore} className="btn btn-primary" disabled={isCommentsLoading}>
-              {isCommentsLoading ? '加载中...' : '加载更多'}
+              {isCommentsLoading ? finalTexts.loadingText : finalTexts.loadMoreText}
             </button>
           </div>
         )}

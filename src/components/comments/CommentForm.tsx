@@ -31,8 +31,8 @@ export default function CommentForm({
   onLoginSuccess,
 }: CommentFormProps) {
   const [content, setContent] = useState('');
-  const [nickname, setNickname] = useState('Test User');
-  const [email, setEmail] = useState('test@example.com');
+  const [nickname, setNickname] = useState('');
+  const [email, setEmail] = useState('');
 
   const [captchaResponse, setCaptchaResponse] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
@@ -195,7 +195,7 @@ export default function CommentForm({
       <form onSubmit={handleInitialSubmit}>
         <textarea
           className="textarea textarea-bordered w-full"
-          placeholder="发表你的评论..."
+          placeholder="留个言..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
           required

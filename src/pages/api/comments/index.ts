@@ -225,22 +225,22 @@ async function sendNotifications(
         const html = generateReplyNotificationEmailHTML(recipient.nickname, postSlug, authorNickname, content);
         await sendEmail({
           to: email,
-          subject: `您在文章的评论收到了新的回复`,
-          text: `${authorNickname} 回复了您的评论: ${content}`,
+          subject: `您在文章的留言收到了新的回复`,
+          text: `${authorNickname} 给您留了个言: ${content}`,
           html,
         });
       } else {
         const html = generateMentionNotificationEmailHTML(recipient.nickname, postSlug, authorNickname, content);
         await sendEmail({
           to: email,
-          subject: `有人在评论中提及了您`,
-          text: `${authorNickname} 在评论中提及了您: ${content}`,
+          subject: `有人在留言中提及了您`,
+          text: `${authorNickname} 在留言中提及了您: ${content}`,
           html,
         });
       }
     }
   } catch (error) {
-    console.error('Failed to send comment notifications:', error);
+    console.error('Failed to send message notifications:', error);
   }
 }
 

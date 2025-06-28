@@ -85,6 +85,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
       await sendEmail({
         to: email,
         subject: '管理员登录验证码',
+        text: `您的管理员登录验证码是: ${code}`,
         html: emailHTML,
       });
     } else {

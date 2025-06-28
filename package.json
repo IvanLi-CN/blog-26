@@ -84,6 +84,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/lodash.merge": "^4.6.9",
     "@types/mdx": "^2.0.13",
+    "@types/nodemailer": "^6.4.17",
     "astro-compress": "2.3.8",
     "daisyui": "^5.0.43",
     "globals": "^16.2.0",

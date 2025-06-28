@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
 import { useModerateComment } from './hooks';
@@ -50,7 +50,7 @@ export default function CommentItem({
   const handleModerate = async (status: 'approved' | 'rejected') => {
     try {
       await moderateComment(comment.id, status);
-      onCommentPosted(`评论已成功 ${status === 'approved' ? '批准' : '拒绝'}.`);
+      onCommentPosted(`留言已成功 ${status === 'approved' ? '批准' : '拒绝'}.`);
     } catch (e) {
       // error is already set in the hook, maybe show a toast here
       console.error(e);
@@ -113,7 +113,7 @@ export default function CommentItem({
         {/* Actions */}
         <div className="flex-shrink-0">
           <button onClick={handleReplyClick} className="text-xs btn btn-ghost btn-sm">
-            {isReplying ? '取消回复' : '回复'}
+            {isReplying ? '取消留言' : '给 TA 留个言'}
           </button>
         </div>
       </div>

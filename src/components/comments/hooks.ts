@@ -62,7 +62,7 @@ export function useComments({ postSlug }: UseCommentsProps) {
       try {
         const response = await fetch(`/api/comments?slug=${postSlug}&page=${pageNum}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch comments');
+          throw new Error('Failed to fetch messages');
         }
         const data = await response.json();
         setComments((prev) => (pageNum === 1 || refresh ? data.comments : [...prev, ...data.comments]));
@@ -112,7 +112,7 @@ export function useModerateComment() {
       });
       if (!response.ok) {
         const result = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
-        throw new Error(result.error || 'Failed to moderate comment');
+        throw new Error(result.error || 'Failed to moderate message');
       }
       return await response.json();
     } catch (err: any) {
@@ -150,7 +150,7 @@ export function usePostComment() {
 
         if (!response.ok) {
           const result = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
-          setError(result.error || 'Failed to post comment');
+          setError(result.error || 'Failed to post message');
           // Return the raw response so the caller can check the status code
           return response;
         }
