@@ -205,11 +205,13 @@ export default function CommentForm({
           {error && !verificationNeeded && <p className="text-error text-sm mr-auto">{error}</p>}
           {!userInfo && (
             <div className="mr-auto md:mr-0">
-              <div
-                className="l-captcha"
-                data-site-key={import.meta.env.PUBLIC_LUOSIMAO_SITE_KEY}
-                data-callback="handleCaptchaSuccess"
-              ></div>
+              <div className="comment-captcha-container h-12 inline-flex items-center border border-base-300 rounded-lg bg-base-100 overflow-hidden">
+                <div
+                  className="l-captcha w-full h-full flex items-center justify-center"
+                  data-site-key={import.meta.env.PUBLIC_LUOSIMAO_SITE_KEY}
+                  data-callback="handleCaptchaSuccess"
+                ></div>
+              </div>
             </div>
           )}
           <button

@@ -90,3 +90,14 @@
     transform: none;
   }
 }
+
+.comment-captcha-container {
+  border: none !important;
+  .l-captcha {
+    border: none !important;
+
+    iframe {
+      border-radius: 0.375rem !important;
+    }
+  }
+}
