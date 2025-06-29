@@ -25,7 +25,7 @@ const link = APP_BLOG?.post?.isEnabled
 ---
 
 <article
-  class={`max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative`}
+  class={`max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-lg p-4 hover:bg-base-100/50`}
 >
   <div
     class:list={[
@@ -78,7 +78,7 @@ const link = APP_BLOG?.post?.isEnabled
         {
           link ? (
             <a
-              class="inline-block hover:text-primary dark:hover:text-blue-700 transition ease-in duration-200"
+              class="inline-block hover:text-primary dark:hover:text-blue-700 transition-all duration-300 group-hover:translate-x-1"
               href={link}
             >
               {post.title}
@@ -109,11 +109,11 @@ const link = APP_BLOG?.post?.isEnabled
     image &&
       (link ? (
         <a class="relative block group" href={link ?? "javascript:void(0)"}>
-          <div class="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg">
+          <div class="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg transition-all duration-300 group-hover:shadow-xl">
             {image && (
               <Image
                 src={image}
-                class="absolute inset-0 object-cover w-full h-full mb-6 rounded shadow-lg bg-gray-400 dark:bg-slate-700"
+                class="absolute inset-0 object-cover w-full h-full mb-6 rounded shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-105"
                 widths={[400, 900]}
                 width={900}
                 sizes="(max-width: 900px) 400px, 900px"
@@ -126,11 +126,11 @@ const link = APP_BLOG?.post?.isEnabled
           </div>
         </a>
       ) : (
-        <div class="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg">
+        <div class="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg transition-all duration-300 group-hover:shadow-xl">
           {image && (
             <Image
               src={image}
-              class="absolute inset-0 object-cover w-full h-full mb-6 rounded shadow-lg bg-gray-400 dark:bg-slate-700"
+              class="absolute inset-0 object-cover w-full h-full mb-6 rounded shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-105"
               widths={[400, 900]}
               width={900}
               sizes="(max-width: 900px) 400px, 900px"
