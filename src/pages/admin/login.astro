@@ -69,19 +69,23 @@ const metadata = {
     }
 
     /* 确保输入框和按钮有统一的样式 */
-    .input, .btn {
+    .input,
+    .btn {
       height: 48px;
       box-sizing: border-box;
     }
   </style>
-  <div class="min-h-screen flex items-center justify-center bg-base-200 py-12 px-4 sm:px-6 lg:px-8">
+  <div
+    class="min-h-screen flex items-center justify-center bg-base-200 py-12 px-4 sm:px-6 lg:px-8"
+  >
     <div class="max-w-sm w-full space-y-8">
       <!-- Logo和标题 -->
       <div class="text-center">
-        <Icon name="tabler:shield-lock" class="mx-auto h-16 w-16 text-primary" />
-        <h2 class="mt-6 text-3xl font-bold text-base-content">
-          管理员登录
-        </h2>
+        <Icon
+          name="tabler:shield-lock"
+          class="mx-auto h-16 w-16 text-primary"
+        />
+        <h2 class="mt-6 text-3xl font-bold text-base-content">管理员登录</h2>
         <p class="mt-2 text-sm text-base-content/70">
           请输入邮箱并完成人机验证以接收验证码
         </p>
@@ -117,7 +121,8 @@ const metadata = {
                     class="l-captcha"
                     data-site-key={import.meta.env.PUBLIC_LUOSIMAO_SITE_KEY}
                     data-callback="handleCaptchaSuccess"
-                  ></div>
+                  >
+                  </div>
                 </div>
               </div>
 
@@ -129,7 +134,9 @@ const metadata = {
                 class="btn btn-primary w-full"
               >
                 <span id="send-code-text">发送验证码</span>
-                <span id="send-code-loading" class="loading loading-spinner loading-sm hidden"></span>
+                <span
+                  id="send-code-loading"
+                  class="loading loading-spinner loading-sm hidden"></span>
               </button>
             </form>
           </div>
@@ -170,7 +177,9 @@ const metadata = {
                 class="btn btn-primary w-full"
               >
                 <span id="verify-code-text">验证并登录</span>
-                <span id="verify-code-loading" class="loading loading-spinner loading-sm hidden"></span>
+                <span
+                  id="verify-code-loading"
+                  class="loading loading-spinner loading-sm hidden"></span>
               </button>
 
               <button
@@ -197,11 +206,11 @@ const metadata = {
 
   <script>
     // 加载螺丝帽验证码脚本
-    const scriptId = 'luosimao-captcha-script';
+    const scriptId = "luosimao-captcha-script";
     if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script');
+      const script = document.createElement("script");
       script.id = scriptId;
-      script.src = '//captcha.luosimao.com/static/dist/api.js';
+      script.src = "//captcha.luosimao.com/static/dist/api.js";
       script.async = true;
       script.defer = true;
       document.body.appendChild(script);
@@ -209,72 +218,125 @@ const metadata = {
 
     // 管理员登录逻辑
     class AdminLogin {
+      emailStep: HTMLElement | null;
+      codeStep: HTMLElement | null;
+      emailForm: HTMLFormElement | null;
+      codeForm: HTMLFormElement | null;
+      emailInput: HTMLInputElement | null;
+      codeInput: HTMLInputElement | null;
+      emailError: HTMLElement | null;
+      codeError: HTMLElement | null;
+      captchaResponse: string | null;
+      sendCodeBtn: HTMLButtonElement | null;
+      sendCodeText: HTMLElement | null;
+      sendCodeLoading: HTMLElement | null;
+      verifyCodeBtn: HTMLButtonElement | null;
+      verifyCodeText: HTMLElement | null;
+      verifyCodeLoading: HTMLElement | null;
+      resendCodeBtn: HTMLButtonElement | null;
+      backToEmailBtn: HTMLButtonElement | null;
+      currentEmail: string;
+
       constructor() {
-        this.emailStep = document.getElementById('email-step');
-        this.codeStep = document.getElementById('code-step');
-        this.emailForm = document.getElementById('email-form');
-        this.codeForm = document.getElementById('code-form');
-        this.emailInput = document.getElementById('email');
-        this.codeInput = document.getElementById('code');
-        this.emailError = document.getElementById('email-error');
-        this.codeError = document.getElementById('code-error');
+        this.emailStep = document.getElementById("email-step");
+        this.codeStep = document.getElementById("code-step");
+        this.emailForm = document.getElementById(
+          "email-form",
+        ) as HTMLFormElement;
+        this.codeForm = document.getElementById("code-form") as HTMLFormElement;
+        this.emailInput = document.getElementById("email") as HTMLInputElement;
+        this.codeInput = document.getElementById("code") as HTMLInputElement;
+        this.emailError = document.getElementById("email-error");
+        this.codeError = document.getElementById("code-error");
 
         // 人机验证相关
         this.captchaResponse = null;
-        
-        this.sendCodeBtn = document.getElementById('send-code-btn');
-        this.sendCodeText = document.getElementById('send-code-text');
-        this.sendCodeLoading = document.getElementById('send-code-loading');
-        
-        this.verifyCodeBtn = document.getElementById('verify-code-btn');
-        this.verifyCodeText = document.getElementById('verify-code-text');
-        this.verifyCodeLoading = document.getElementById('verify-code-loading');
-        
-        this.resendCodeBtn = document.getElementById('resend-code');
-        this.backToEmailBtn = document.getElementById('back-to-email');
-        
-        this.currentEmail = '';
+
+        this.sendCodeBtn = document.getElementById(
+          "send-code-btn",
+        ) as HTMLButtonElement;
+        this.sendCodeText = document.getElementById("send-code-text");
+        this.sendCodeLoading = document.getElementById("send-code-loading");
+
+        this.verifyCodeBtn = document.getElementById(
+          "verify-code-btn",
+        ) as HTMLButtonElement;
+        this.verifyCodeText = document.getElementById("verify-code-text");
+        this.verifyCodeLoading = document.getElementById("verify-code-loading");
+
+        this.resendCodeBtn = document.getElementById(
+          "resend-code",
+        ) as HTMLButtonElement;
+        this.backToEmailBtn = document.getElementById(
+          "back-to-email",
+        ) as HTMLButtonElement;
+
+        this.currentEmail = "";
 
         this.bindEvents();
         this.setupCaptcha();
       }
 
       bindEvents() {
-        this.emailForm.addEventListener('submit', this.handleEmailSubmit.bind(this));
-        this.codeForm.addEventListener('submit', this.handleCodeSubmit.bind(this));
-        this.resendCodeBtn.addEventListener('click', this.handleResendCode.bind(this));
-        this.backToEmailBtn.addEventListener('click', this.handleBackToEmail.bind(this));
+        this.emailForm?.addEventListener(
+          "submit",
+          this.handleEmailSubmit.bind(this),
+        );
+        this.codeForm?.addEventListener(
+          "submit",
+          this.handleCodeSubmit.bind(this),
+        );
+        this.resendCodeBtn?.addEventListener(
+          "click",
+          this.handleResendCode.bind(this),
+        );
+        this.backToEmailBtn?.addEventListener(
+          "click",
+          this.handleBackToEmail.bind(this),
+        );
 
         // 验证码输入自动格式化
-        this.codeInput.addEventListener('input', (e) => {
-          e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+        this.codeInput?.addEventListener("input", (e: Event) => {
+          const target = e.target as HTMLInputElement;
+          target.value = target.value.replace(/\D/g, "").slice(0, 6);
         });
       }
 
-      showError(element, message) {
-        element.textContent = message;
-        element.classList.remove('hidden');
+      showError(element: HTMLElement | null, message: string) {
+        if (element) {
+          element.textContent = message;
+          element.classList.remove("hidden");
+        }
       }
 
-      hideError(element) {
-        element.classList.add('hidden');
+      hideError(element: HTMLElement | null) {
+        if (element) {
+          element.classList.add("hidden");
+        }
       }
 
-      setLoading(button, textElement, loadingElement, isLoading) {
+      setLoading(
+        button: HTMLButtonElement | null,
+        textElement: HTMLElement | null,
+        loadingElement: HTMLElement | null,
+        isLoading: boolean,
+      ) {
+        if (!button || !textElement || !loadingElement) return;
+
         if (isLoading) {
           button.disabled = true;
-          textElement.classList.add('hidden');
-          loadingElement.classList.remove('hidden');
+          textElement.classList.add("hidden");
+          loadingElement.classList.remove("hidden");
         } else {
           button.disabled = false;
-          textElement.classList.remove('hidden');
-          loadingElement.classList.add('hidden');
+          textElement.classList.remove("hidden");
+          loadingElement.classList.add("hidden");
         }
       }
 
       setupCaptcha() {
         // 设置螺丝帽验证码回调
-        window.handleCaptchaSuccess = (response) => {
+        (window as any).handleCaptchaSuccess = (response: string) => {
           this.captchaResponse = response;
         };
 
@@ -285,29 +347,34 @@ const metadata = {
       forceCaptchaWidth() {
         // 等待验证码加载完成后强制调整宽度
         const checkAndResize = () => {
-          const container = document.querySelector('.captcha-container');
-          const captcha = document.querySelector('.l-captcha');
-          const iframe = document.querySelector('.l-captcha iframe');
+          const container = document.querySelector(
+            ".captcha-container",
+          ) as HTMLElement;
+          const captcha = document.querySelector(".l-captcha") as HTMLElement;
+          const iframe = document.querySelector(
+            ".l-captcha iframe",
+          ) as HTMLIFrameElement;
 
           if (container && captcha) {
             const containerWidth = container.offsetWidth;
 
             // 强制设置验证码宽度
-            captcha.style.width = containerWidth + 'px';
-            captcha.style.maxWidth = containerWidth + 'px';
-            captcha.style.minWidth = containerWidth + 'px';
+            captcha.style.width = containerWidth + "px";
+            captcha.style.maxWidth = containerWidth + "px";
+            captcha.style.minWidth = containerWidth + "px";
 
             if (iframe) {
-              iframe.style.width = containerWidth + 'px';
-              iframe.style.maxWidth = containerWidth + 'px';
-              iframe.style.minWidth = containerWidth + 'px';
+              iframe.style.width = containerWidth + "px";
+              iframe.style.maxWidth = containerWidth + "px";
+              iframe.style.minWidth = containerWidth + "px";
             }
 
             // 查找所有子元素并强制设置宽度
-            const allElements = captcha.querySelectorAll('*');
-            allElements.forEach(el => {
-              el.style.width = containerWidth + 'px';
-              el.style.maxWidth = containerWidth + 'px';
+            const allElements = captcha.querySelectorAll("*");
+            allElements.forEach((el) => {
+              const element = el as HTMLElement;
+              element.style.width = containerWidth + "px";
+              element.style.maxWidth = containerWidth + "px";
             });
           }
         };
@@ -319,41 +386,46 @@ const metadata = {
         setTimeout(checkAndResize, 2000);
 
         // 监听窗口大小变化
-        window.addEventListener('resize', checkAndResize);
+        window.addEventListener("resize", checkAndResize);
       }
 
       resetCaptcha() {
         this.captchaResponse = null;
         // 重置螺丝帽验证码
-        if (window.LUOCAPTCHA) {
-          window.LUOCAPTCHA.reset();
+        if ((window as any).LUOCAPTCHA) {
+          (window as any).LUOCAPTCHA.reset();
         }
       }
 
-      async handleEmailSubmit(e) {
+      async handleEmailSubmit(e: Event) {
         e.preventDefault();
 
-        const email = this.emailInput.value.trim();
+        const email = this.emailInput?.value.trim();
 
         if (!email) return;
 
         if (!this.captchaResponse) {
-          this.showError(this.emailError, '请完成人机验证');
+          this.showError(this.emailError, "请完成人机验证");
           return;
         }
 
         this.hideError(this.emailError);
-        this.setLoading(this.sendCodeBtn, this.sendCodeText, this.sendCodeLoading, true);
+        this.setLoading(
+          this.sendCodeBtn,
+          this.sendCodeText,
+          this.sendCodeLoading,
+          true,
+        );
 
         try {
-          const response = await fetch('/api/auth/admin-send-code', {
-            method: 'POST',
+          const response = await fetch("/api/auth/admin-send-code", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               email,
-              captchaResponse: this.captchaResponse
+              captchaResponse: this.captchaResponse,
             }),
           });
 
@@ -362,92 +434,125 @@ const metadata = {
             this.showCodeStep();
           } else {
             const error = await response.text();
-            this.showError(this.emailError, error || '发送验证码失败，请重试');
+            this.showError(this.emailError, error || "发送验证码失败，请重试");
             // 验证失败时重置验证码
             this.resetCaptcha();
           }
         } catch (error) {
-          this.showError(this.emailError, '网络错误，请重试');
+          this.showError(this.emailError, "网络错误，请重试");
           this.resetCaptcha();
         } finally {
-          this.setLoading(this.sendCodeBtn, this.sendCodeText, this.sendCodeLoading, false);
+          this.setLoading(
+            this.sendCodeBtn,
+            this.sendCodeText,
+            this.sendCodeLoading,
+            false,
+          );
         }
       }
 
-      async handleCodeSubmit(e) {
+      async handleCodeSubmit(e: Event) {
         e.preventDefault();
-        
-        const code = this.codeInput.value.trim();
+
+        const code = this.codeInput?.value.trim();
         if (!code || code.length !== 6) {
-          this.showError(this.codeError, '请输入6位验证码');
+          this.showError(this.codeError, "请输入6位验证码");
           return;
         }
 
         this.hideError(this.codeError);
-        this.setLoading(this.verifyCodeBtn, this.verifyCodeText, this.verifyCodeLoading, true);
+        this.setLoading(
+          this.verifyCodeBtn,
+          this.verifyCodeText,
+          this.verifyCodeLoading,
+          true,
+        );
 
         try {
-          const response = await fetch('/api/auth/verify-code', {
-            method: 'POST',
+          const response = await fetch("/api/auth/verify-code", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
-            body: JSON.stringify({ 
-              email: this.currentEmail, 
-              code 
+            body: JSON.stringify({
+              email: this.currentEmail,
+              code,
             }),
           });
 
           if (response.ok) {
             // 登录成功，重定向到管理界面
-            window.location.href = '/admin';
+            window.location.href = "/admin";
           } else {
             const error = await response.text();
-            this.showError(this.codeError, error || '验证码错误，请重试');
+            this.showError(this.codeError, error || "验证码错误，请重试");
           }
         } catch (error) {
-          this.showError(this.codeError, '网络错误，请重试');
+          this.showError(this.codeError, "网络错误，请重试");
         } finally {
-          this.setLoading(this.verifyCodeBtn, this.verifyCodeText, this.verifyCodeLoading, false);
+          this.setLoading(
+            this.verifyCodeBtn,
+            this.verifyCodeText,
+            this.verifyCodeLoading,
+            false,
+          );
         }
       }
 
       async handleResendCode() {
         // 重新发送需要重新验证人机验证，所以返回到邮箱步骤
         this.handleBackToEmail();
-        this.showError(this.emailError, '请重新完成人机验证以重新发送验证码');
-        this.emailError.classList.remove('text-error');
-        this.emailError.classList.add('text-warning');
+        this.showError(this.emailError, "请重新完成人机验证以重新发送验证码");
+        if (this.emailError) {
+          this.emailError.classList.remove("text-error");
+          this.emailError.classList.add("text-warning");
+        }
 
         setTimeout(() => {
           this.hideError(this.emailError);
-          this.emailError.classList.remove('text-warning');
-          this.emailError.classList.add('text-error');
+          if (this.emailError) {
+            this.emailError.classList.remove("text-warning");
+            this.emailError.classList.add("text-error");
+          }
         }, 5000);
       }
 
       handleBackToEmail() {
         this.showEmailStep();
-        this.codeInput.value = '';
+        if (this.codeInput) {
+          this.codeInput.value = "";
+        }
         this.hideError(this.codeError);
         this.resetCaptcha(); // 重置验证码
       }
 
       showCodeStep() {
-        this.emailStep.classList.add('hidden');
-        this.codeStep.classList.remove('hidden');
-        this.codeInput.focus();
+        if (this.emailStep) {
+          this.emailStep.classList.add("hidden");
+        }
+        if (this.codeStep) {
+          this.codeStep.classList.remove("hidden");
+        }
+        if (this.codeInput) {
+          this.codeInput.focus();
+        }
       }
 
       showEmailStep() {
-        this.codeStep.classList.add('hidden');
-        this.emailStep.classList.remove('hidden');
-        this.emailInput.focus();
+        if (this.codeStep) {
+          this.codeStep.classList.add("hidden");
+        }
+        if (this.emailStep) {
+          this.emailStep.classList.remove("hidden");
+        }
+        if (this.emailInput) {
+          this.emailInput.focus();
+        }
       }
     }
 
     // 初始化登录功能
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener("DOMContentLoaded", () => {
       new AdminLogin();
     });
   </script>

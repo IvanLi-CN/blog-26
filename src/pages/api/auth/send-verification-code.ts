@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
-import { eq } from 'drizzle-orm';
+// import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { db, initializeDB } from '~/lib/db';
 import { generateVerificationEmailHTML, sendEmail } from '~/lib/email';
-import { emailVerificationCodes, users } from '~/lib/schema';
+import { emailVerificationCodes } from '~/lib/schema';
 
 export const prerender = false;
 

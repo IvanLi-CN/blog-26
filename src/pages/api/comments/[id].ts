@@ -29,7 +29,7 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
     });
   }
 
-  let payload;
+  let payload: any;
   try {
     payload = await verifyJwt(token);
   } catch (_err) {

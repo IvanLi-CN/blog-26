@@ -3,7 +3,7 @@ import { UI } from "astrowind:config";
 import { Icon } from "astro-icon/components";
 
 const {
-  theme: defaultTheme = "system",
+  theme: _defaultTheme = "system",
   mainThemes = ["system", "light", "dark"],
   allThemes = [
     "light",
@@ -64,7 +64,7 @@ const { iconClass = "w-6 h-6" } = Astro.props;
     <ul class="max-h-96 overflow-y-auto px-2 flex flex-col gap-1">
       <!-- Main Themes -->
       {
-        mainThemes.map((theme) => (
+        mainThemes.map((theme: string) => (
           <li>
             <a
               class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"
@@ -81,7 +81,7 @@ const { iconClass = "w-6 h-6" } = Astro.props;
 
       <!-- All Other Themes -->
       {
-        allThemes.map((theme) => (
+        allThemes.map((theme: string) => (
           <li data-theme={theme}>
             <a
               class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100"

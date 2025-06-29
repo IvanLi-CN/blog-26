@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
-import { and, count, eq, sql } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { db, initializeDB } from '~/lib/db';
 import { verifyJwt } from '~/lib/jwt';
-import { reactions, users } from '~/lib/schema';
+import { reactions } from '~/lib/schema';
 
 export const prerender = false;
 

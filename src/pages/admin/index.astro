@@ -1,7 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
-import { isAdminFromCookies, redirectToAdminLogin } from "~/lib/auth";
+import { isAdminFromCookies } from "~/lib/auth";
 
 export const prerender = false;
 
@@ -212,7 +212,7 @@ const metadata = {
     // 登出功能
     document
       .getElementById("logout-btn")
-      .addEventListener("click", async () => {
+      ?.addEventListener("click", async () => {
         try {
           const response = await fetch("/api/auth/logout", {
             method: "POST",

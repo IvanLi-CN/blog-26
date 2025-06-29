@@ -1,7 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import Layout from "~/layouts/PageLayout.astro";
-import { isAdminFromCookies, redirectToAdminLogin } from "~/lib/auth";
+import { isAdminFromCookies } from "~/lib/auth";
 import { getNormalizedPost } from "~/utils/blog";
 
 export const prerender = false;

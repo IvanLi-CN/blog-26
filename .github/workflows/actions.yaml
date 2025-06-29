@@ -76,6 +76,8 @@ jobs:
       - name: Install Playwright Browsers
         run: bunx playwright install --with-deps
       - run: bun run build
+        env:
+          PUBLIC_LUOSIMAO_SITE_KEY: ${{ secrets.PUBLIC_LUOSIMAO_SITE_KEY }}
       - uses: christopherhx/gitea-upload-artifact@v4
         with:
           name: web-dist

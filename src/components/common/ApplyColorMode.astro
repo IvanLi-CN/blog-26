@@ -19,11 +19,8 @@ const darkThemes = [
 ];
 ---
 
-<script
-  is:inline
-  define:vars={{ defaultTheme, darkThemes }}
->
-  function applyTheme(theme, defaultTheme, darkThemes) {
+<script is:inline define:vars={{ defaultTheme, darkThemes }}>
+  function applyTheme(theme, _defaultTheme, darkThemes) {
     const d = document.documentElement;
     let currentTheme = theme;
 
@@ -36,9 +33,9 @@ const darkThemes = [
 
     const isDark = darkThemes.includes(currentTheme);
     if (isDark) {
-      d.classList.add('dark');
+      d.classList.add("dark");
     } else {
-      d.classList.remove('dark');
+      d.classList.remove("dark");
     }
 
     document.querySelectorAll(".theme-controller").forEach((controller) => {
@@ -48,19 +45,17 @@ const darkThemes = [
 
   function attachThemeToggleListeners(defaultTheme, darkThemes) {
     document.querySelectorAll('[id^="theme-toggle-"]').forEach((container) => {
-      container
-        .querySelectorAll("[data-set-theme]")
-        .forEach((link) => {
-          if (link.dataset.listenerAttached) return;
-          link.dataset.listenerAttached = "true";
-          link.addEventListener("click", (event) => {
-            event.preventDefault();
-            const newTheme = link.getAttribute("data-set-theme");
-            localStorage.setItem("theme", newTheme);
-            applyTheme(newTheme, defaultTheme, darkThemes);
-            document.activeElement?.blur();
-          });
+      container.querySelectorAll("[data-set-theme]").forEach((link) => {
+        if (link.dataset.listenerAttached) return;
+        link.dataset.listenerAttached = "true";
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          const newTheme = link.getAttribute("data-set-theme");
+          localStorage.setItem("theme", newTheme);
+          applyTheme(newTheme, defaultTheme, darkThemes);
+          document.activeElement?.blur();
         });
+      });
 
       const swap = container.querySelector(".swap");
       const checkbox = container.querySelector("input.theme-controller");
@@ -82,10 +77,10 @@ const darkThemes = [
   applyTheme(theme, defaultTheme, darkThemes);
 
   // Attach listeners on initial page load
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener("DOMContentLoaded", () => {
     attachThemeToggleListeners(defaultTheme, darkThemes);
   });
-  
+
   // Re-apply and re-attach on page transitions
   document.addEventListener("astro:after-swap", () => {
     const theme = localStorage.getItem("theme") || defaultTheme;
