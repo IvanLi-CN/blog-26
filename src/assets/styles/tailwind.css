@@ -47,7 +47,7 @@
 }
 
 /* 文章列表动画增强 */
-  .animate-fade-in-up {
+.animate-fade-in-up {
   animation: fadeInUp 0.6s ease-out forwards;
   animation-fill-mode: both;
 }
