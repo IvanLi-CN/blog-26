@@ -1,12 +1,10 @@
 import * as jose from 'jose';
+import { config } from './config';
 
 const alg = 'HS256';
 
 async function getSecretKey() {
-  const secretString = import.meta.env.JWT_SECRET;
-  if (!secretString) {
-    throw new Error('JWT_SECRET environment variable not set');
-  }
+  const { secret: secretString } = config.jwt;
   const secret = new TextEncoder().encode(secretString);
   return secret;
 }

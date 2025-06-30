@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
+import { config } from '~/lib/config';
 import { db, initializeDB } from '~/lib/db';
 import { signJwt } from '~/lib/jwt';
 import { emailVerificationCodes, users } from '~/lib/schema';
@@ -78,7 +79,7 @@ export const POST: APIRoute = async ({ request, cookies: astroCookies }) => {
         httpOnly: true,
         path: '/',
         maxAge: 31536000, // 1 year
-        secure: import.meta.env.PROD,
+        secure: config.env.isProduction,
         sameSite: 'lax',
       });
       return new Response(JSON.stringify({ message: 'Email verified successfully.' }), { status: 200 });

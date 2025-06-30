@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { config } from '~/lib/config';
 import { getAllFileRecords, initializeDB } from '~/lib/db';
 
 export const prerender = false;
@@ -12,8 +13,8 @@ export const GET: APIRoute = async ({ request }) => {
   try {
     await initializeDB();
 
-    const modelName = import.meta.env.EMBEDDING_MODEL_NAME;
-    const modelDimension = Number(import.meta.env.EMBEDDING_DIMENSION);
+    const { modelName } = config.embedding;
+    const { dimension: modelDimension } = config.embedding;
 
     if (!modelName || !modelDimension) {
       console.error('Embedding model environment variables are not set.');

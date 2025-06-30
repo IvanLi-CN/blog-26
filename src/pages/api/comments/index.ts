@@ -7,6 +7,7 @@ export const prerender = false;
 import { z } from 'zod';
 import { getAvatarUrl } from '~/lib/avatar';
 import { verifyCaptcha } from '~/lib/captcha';
+import { config } from '~/lib/config';
 import { db, initializeDB } from '~/lib/db';
 import { generateMentionNotificationEmailHTML, generateReplyNotificationEmailHTML, sendEmail } from '~/lib/email';
 import { signJwt, verifyJwt } from '~/lib/jwt';
@@ -159,7 +160,7 @@ export const POST: APIRoute = async ({ request, clientAddress, cookies: astroCoo
       httpOnly: true,
       path: '/',
       maxAge: 31536000, // 1 year
-      secure: import.meta.env.PROD,
+      secure: config.env.isProduction,
       sameSite: 'lax',
     });
   }
@@ -342,7 +343,7 @@ export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {
       if (typeof payload.sub === 'string') {
         currentUserId = payload.sub;
       }
-      if (typeof payload.email === 'string' && payload.email === import.meta.env.ADMIN_EMAIL) {
+      if (typeof payload.email === 'string' && payload.email === config.admin.email) {
         isAdmin = true;
       }
     } catch (_e) {

@@ -1,9 +1,34 @@
 {
   "name": "@ivanli-cn/blog",
-  "version": "0.0.0",
-  "description": "Ivan's Blog. Powered by Astro.",
+  "version": "1.0.0",
+  "description": "Ivan's Blog - A modern personal blog system built with Astro 5.0",
   "type": "module",
   "private": true,
+  "author": {
+    "name": "Ivan Li",
+    "email": "ivanli2048@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://gitea@git.ivanli.cc:7018/Ivan/blog-astrowind.git"
+  },
+  "homepage": "https://git.ivanli.cc/Ivan/blog-astrowind",
+  "bugs": {
+    "url": "https://git.ivanli.cc/Ivan/blog-astrowind/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "blog",
+    "astro",
+    "react",
+    "typescript",
+    "tailwindcss",
+    "sqlite",
+    "ai",
+    "vector-search",
+    "comments",
+    "admin"
+  ],
   "engines": {
     "node": "^18.17.1 || ^20.3.0 || >= 21.0.0"
   },

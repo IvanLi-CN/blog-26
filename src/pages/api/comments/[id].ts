@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { config } from '~/lib/config';
 import { db, initializeDB } from '~/lib/db';
 import { verifyJwt } from '~/lib/jwt';
 import { comments } from '~/lib/schema';
@@ -40,7 +41,7 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   }
 
   const userEmail = payload.email;
-  const adminEmail = import.meta.env.ADMIN_EMAIL;
+  const { email: adminEmail } = config.admin;
 
   if (!adminEmail || userEmail !== adminEmail) {
     return new Response(JSON.stringify({ error: 'Forbidden: User is not an administrator' }), {

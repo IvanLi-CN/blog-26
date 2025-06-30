@@ -1,295 +1,339 @@
-# 🚀 AstroWind
+# 📝 Ivan's Blog
 
-<img src="https://raw.githubusercontent.com/onwidget/.github/main/resources/astrowind/lighthouse-score.png" align="right"
-     alt="AstroWind Lighthouse Score" width="100" height="358">
+A modern personal blog system built with **[Astro 5.0](https://astro.build/)**, featuring complete content management, comment system, AI enhancements, and vector search capabilities.
 
-🌟 _Most *starred* & *forked* Astro theme in 2022 & 2023_. 🌟
+## ✨ Key Features
 
-**AstroWind** is a free and open-source template to make your website using **[Astro 4.0](https://astro.build/) + [Tailwind CSS](https://tailwindcss.com/)**. Ready to start a new project and designed taking into account web best practices.
+- 🚀 **High Performance**: Static site generation with Astro 5.0, excellent PageSpeed Insights scores
+- 🎨 **Modern Design**: Built with Tailwind CSS and daisyUI, supports dark mode
+- 💬 **Complete Comment System**: Nested replies, email notifications, admin moderation
+- 🔐 **Admin Features**: JWT authentication, content management, comment moderation
+- 🤖 **AI Enhanced**: OpenAI integration for intelligent content processing
+- 🔍 **Vector Search**: Semantic search with SQLite-stored embeddings
+- 📧 **Email System**: SMTP notifications, verification code login
+- 🛡️ **Security**: Luosimao CAPTCHA, rate limiting, XSS protection
+- 🐳 **Containerized**: One-click deployment with Docker Compose
+- 📱 **Responsive**: Perfect adaptation to all devices
 
-- ✅ **Production-ready** scores in **PageSpeed Insights** reports.
-- ✅ Integration with **Tailwind CSS** supporting **Dark mode** and **_RTL_**.
-- ✅ **Fast and SEO friendly blog** with automatic **RSS feed**, **MDX** support, **Categories & Tags**, **Social Share**, ...
-- ✅ **Image Optimization** (using new **Astro Assets** and **Unpic** for Universal image CDN).
-- ✅ Generation of **project sitemap** based on your routes.
-- ✅ **Open Graph tags** for social media sharing.
-- ✅ **Analytics** built-in Google Analytics, and Splitbee integration.
+## 📋 Table of Contents
 
-<br>
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+- [Project Structure](#-project-structure)
+- [Configuration](#-configuration)
+- [Deployment](#-deployment)
+- [Development Commands](#-development-commands)
+- [Features](#-features)
+- [Environment Variables](#-environment-variables)
+- [Troubleshooting](#-troubleshooting)
 
-<img src="https://raw.githubusercontent.com/onwidget/.github/main/resources/astrowind/screenshot-astrowind-1.png" alt="AstroWind Theme Screenshot">
+## 🛠 Tech Stack
 
-[![onWidget](https://custom-icon-badges.demolab.com/badge/made%20by%20-onWidget-556bf2?style=flat-square&logo=onwidget&logoColor=white&labelColor=101827)](https://onwidget.com)
-[![License](https://img.shields.io/github/license/onwidget/astrowind?style=flat-square&color=dddddd&labelColor=000000)](https://github.com/onwidget/astrowind/blob/main/LICENSE.md)
-[![Maintained](https://img.shields.io/badge/maintained%3F-yes-brightgreen.svg?style=flat-square)](https://github.com/onwidget)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat-square)](https://github.com/onwidget/astrowind#contributing)
-[![Known Vulnerabilities](https://snyk.io/test/github/onwidget/astrowind/badge.svg?style=flat-square)](https://snyk.io/test/github/onwidget/astrowind)
-[![Stars](https://img.shields.io/github/stars/onwidget/astrowind.svg?style=social&label=stars&maxAge=86400&color=ff69b4)](https://github.com/onwidget/astrowind)
-[![Forks](https://img.shields.io/github/forks/onwidget/astrowind.svg?style=social&label=forks&maxAge=86400&color=ff69b4)](https://github.com/onwidget/astrowind)
+- **Frontend**: [Astro 5.0](https://astro.build/) + [React](https://reactjs.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [daisyUI](https://daisyui.com/)
+- **Database**: [SQLite](https://sqlite.org/) + [Drizzle ORM](https://orm.drizzle.team/)
+- **Cache**: [Redis](https://redis.io/)
+- **Vector Storage**: SQLite with embedding vectors for semantic search
+- **AI Service**: [OpenAI API](https://openai.com/api/) + [LlamaIndex](https://www.llamaindex.ai/)
+- **Authentication**: [JWT](https://jwt.io/) + Email verification
+- **Email**: [Nodemailer](https://nodemailer.com/)
+- **CAPTCHA**: [Luosimao](https://captcha.luosimao.com/)
+- **Package Manager**: [Bun](https://bun.sh/)
+- **Deployment**: [Docker](https://docker.com/) + [Docker Compose](https://docs.docker.com/compose/)
 
-<br>
+## 🚀 Quick Start
 
-<details open>
-<summary>Table of Contents</summary>
+### Prerequisites
 
-- [Demo](#demo)
-- [Upcoming: AstroWind 2.0 – We Need Your Vision!](#-upcoming-astrowind-20--we-need-your-vision)
-- [Getting started](#getting-started)
-  - [Project structure](#project-structure)
-  - [Commands](#commands)
-  - [Configuration](#configuration)
-  - [Deploy](#deploy)
-- [Frequently Asked Questions](#frequently-asked-questions)
-- [Related Projects](#related-projects)
-- [Contributing](#contributing)
-- [Acknowledgements](#acknowledgements)
-- [License](#license)
+- Node.js 18+ or Bun 1.0+
+- Docker and Docker Compose (for deployment)
 
-</details>
+### Local Development
 
-<br>
+```bash
+# Clone the repository
+git clone ssh://gitea@git.ivanli.cc:7018/Ivan/blog-astrowind.git
+cd blog-astrowind
 
-## Demo
+# Install dependencies
+bun install
 
-📌 [https://astrowind.vercel.app/](https://astrowind.vercel.app/)
+# Configure environment variables
+cp .env.example .env
+# Edit .env file with your configuration
 
-<br>
+# Run database migrations
+bun run migrate
 
-## 🔔 Upcoming: AstroWind 2.0 – We Need Your Vision!
+# Start development server
+bun run dev
+```
 
-We're embarking on an exciting journey with **AstroWind 2.0**, and we want you to be a part of it! We're currently taking the first steps in developing this new version and your insights are invaluable. Join the discussion and share your feedback, ideas, and suggestions to help shape the future of **AstroWind**. Let's make **AstroWind 2.0** even better, together!
+### Docker Deployment
 
-[Share Your Feedback in Our Discussion!](https://github.com/onwidget/astrowind/discussions/392)
+```bash
+# Build the application
+bun run build
 
-<br>
+# Deploy with Docker Compose
+docker-compose up -d --build
 
-## Getting started
+# Or use the deployment script
+./deploy.sh
+```
 
-**AstroWind** tries to give you quick access to creating a website using [Astro 4.0](https://astro.build/) + [Tailwind CSS](https://tailwindcss.com/). It's a free theme which focuses on simplicity, good practices and high performance.
-
-Very little vanilla javascript is used only to provide basic functionality so that each developer decides which framework (React, Vue, Svelte, Solid JS...) to use and how to approach their goals.
-
-In this version the template supports all the options in the `output` configuration, `static`, `hybrid` and `server`, but the blog only works with `prerender = true`. We are working on the next version and aim to make it fully compatible with SSR.
-
-### Project structure
-
-Inside **AstroWind** template, you'll see the following folders and files:
+## 📁 Project Structure
 
 ```
-/
-├── public/
-│   ├── _headers
-│   └── robots.txt
 ├── src/
-│   ├── assets/
-│   │   ├── favicons/
-│   │   ├── images/
-│   │   └── styles/
-│   │       └── tailwind.css
-│   ├── components/
-│   │   ├── blog/
-│   │   ├── common/
-│   │   ├── ui/
-│   │   ├── widgets/
-│   │   │   ├── Header.astro
-│   │   │   └── ...
-│   │   ├── CustomStyles.astro
-│   │   ├── Favicons.astro
-│   │   └── Logo.astro
-│   ├── content/
-│   │   ├── post/
-│   │   │   ├── post-slug-1.md
-│   │   │   ├── post-slug-2.mdx
-│   │   │   └── ...
-│   │   └-- config.ts
-│   ├── layouts/
-│   │   ├── Layout.astro
-│   │   ├── MarkdownLayout.astro
-│   │   └── PageLayout.astro
-│   ├── pages/
-│   │   ├── [...blog]/
-│   │   │   ├── [category]/
-│   │   │   ├── [tag]/
-│   │   │   ├── [...page].astro
-│   │   │   └── index.astro
-│   │   ├── index.astro
-│   │   ├── 404.astro
-│   │   ├-- rss.xml.ts
-│   │   └── ...
-│   ├── utils/
-│   ├── config.yaml
-│   └── navigation.js
-├── package.json
-├── astro.config.ts
-└── ...
+│   ├── components/          # React/Astro components
+│   │   ├── comments/        # Comment system components
+│   │   ├── admin/           # Admin interface components
+│   │   └── ui/              # Common UI components
+│   ├── content/             # Content files
+│   │   ├── post/            # Blog posts (MDX)
+│   │   └── notes/           # Note files
+│   ├── layouts/             # Page layouts
+│   ├── lib/                 # Core libraries
+│   │   ├── config.ts        # Unified configuration management
+│   │   ├── db.ts            # Database connection
+│   │   ├── auth.ts          # Authentication logic
+│   │   ├── email.ts         # Email service
+│   │   └── captcha.ts       # CAPTCHA service
+│   ├── pages/               # Page routes
+│   │   ├── api/             # API routes
+│   │   ├── admin/           # Admin pages
+│   │   └── blog/            # Blog pages
+│   └── utils/               # Utility functions
+├── docker-compose.yml       # Docker deployment config
+├── Dockerfile              # Docker image config
+├── drizzle/                # Database migration files
+└── scripts/                # Script files
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## ⚙️ Configuration
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+The project uses a unified configuration management system with Zod validation for type safety and data validation.
 
-Any static assets, like images, can be placed in the `public/` directory if they do not require any transformation or in the `assets/` directory if they are imported directly.
+### Configuration System
 
-[![Edit AstroWind on CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://githubbox.com/onwidget/astrowind/tree/main) [![Open in Gitpod](https://svgshare.com/i/xdi.svg)](https://gitpod.io/?on=gitpod#https://github.com/onwidget/astrowind) [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/onwidget/astrowind)
+- **File**: `src/lib/config.ts`
+- **Features**:
+  - Zod schema validation for all environment variables
+  - Type-safe configuration access
+  - Dual fallback mechanism (process.env → import.meta.env)
+  - Configuration caching
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file `README.md`. Update `src/config.yaml` and contents. Have fun!
+### Usage Example
 
-<br>
+```typescript
+import { config } from '~/lib/config';
 
-### Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command             | Action                                             |
-| :------------------ | :------------------------------------------------- |
-| `npm install`       | Installs dependencies                              |
-| `npm run dev`       | Starts local dev server at `localhost:3000`        |
-| `npm run build`     | Build your production site to `./dist/`            |
-| `npm run preview`   | Preview your build locally, before deploying       |
-| `npm run check`     | Check your project for errors                      |
-| `npm run fix`       | Run Eslint and format codes with Prettier          |
-| `npm run astro ...` | Run CLI commands like `astro add`, `astro preview` |
-
-<br>
-
-### Configuration
-
-Basic configuration file: `./src/config.yaml`
-
-```yaml
-site:
-  name: 'Example'
-  site: 'https://example.com'
-  base: '/' # Change this if you need to deploy to Github Pages, for example
-  trailingSlash: false # Generate permalinks with or without "/" at the end
-
-  googleSiteVerificationId: false # Or some value,
-
-# Default SEO metadata
-metadata:
-  title:
-    default: 'Example'
-    template: '%s — Example'
-  description: 'This is the default meta description of Example website'
-  robots:
-    index: true
-    follow: true
-  openGraph:
-    site_name: 'Example'
-    images:
-      - url: '~/assets/images/default.png'
-        width: 1200
-        height: 628
-    type: website
-  twitter:
-    handle: '@twitter_user'
-    site: '@twitter_user'
-    cardType: summary_large_image
-
-i18n:
-  language: en
-  textDirection: ltr
-
-apps:
-  blog:
-    isEnabled: true # If the blog will be enabled
-    postsPerPage: 6 # Number of posts per page
-
-    post:
-      isEnabled: true
-      permalink: '/blog/%slug%' # Variables: %slug%, %year%, %month%, %day%, %hour%, %minute%, %second%, %category%
-      robots:
-        index: true
-
-    list:
-      isEnabled: true
-      pathname: 'blog' # Blog main path, you can change this to "articles" (/articles)
-      robots:
-        index: true
-
-    category:
-      isEnabled: true
-      pathname: 'category' # Category main path /category/some-category, you can change this to "group" (/group/some-category)
-      robots:
-        index: true
-
-    tag:
-      isEnabled: true
-      pathname: 'tag' # Tag main path /tag/some-tag, you can change this to "topics" (/topics/some-category)
-      robots:
-        index: false
-
-    isRelatedPostsEnabled: true # If a widget with related posts is to be displayed below each post
-    relatedPostsCount: 4 # Number of related posts to display
-
-analytics:
-  vendors:
-    googleAnalytics:
-      id: null # or "G-XXXXXXXXXX"
-
-ui:
-  theme: 'system' # Values: "system" | "light" | "dark" | "light:only" | "dark:only"
+// Type-safe, automatically validated
+const { secretKey } = config.captcha;
+const { email } = config.admin;
+const { host, port } = config.smtp;
 ```
 
-<br>
+### Test Configuration
 
-#### Customize Design
+```bash
+# Test configuration validation
+bun test-config.ts
 
-To customize Font families, Colors or more Elements refer to the following files:
-
-- `src/components/CustomStyles.astro`
-- `src/assets/styles/tailwind.css`
-
-### Deploy
-
-#### Deploy to production (manual)
-
-You can create an optimized production build with:
-
-```shell
-npm run build
+# In Docker environment
+docker-compose exec blog bun test-config.ts
 ```
 
-Now, your website is ready to be deployed. All generated files are located at
-`dist` folder, which you can deploy the folder to any hosting service you
-prefer.
+## 🚀 Deployment
 
-#### Deploy to Netlify
+### Production Deployment
 
-Clone this repository on your own GitHub account and deploy it to Netlify:
+1. **Configure Environment Variables**
 
-[![Netlify Deploy button](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/onwidget/astrowind)
+   ```bash
+   cp .env.example .env
+   # Edit .env with your production values
+   ```
 
-#### Deploy to Vercel
+2. **Build and Deploy**
 
-Clone this repository on your own GitHub account and deploy to Vercel:
+   ```bash
+   bun run build
+   docker-compose up -d --build
+   ```
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fonwidget%2Fastrowind)
+3. **Use Deployment Script**
 
-<br>
+   ```bash
+   ./deploy.sh
+   ```
 
-## Frequently Asked Questions
+### Services Included
 
-- Why?
--
--
+- **Blog Application**: Main Astro application with SQLite database
+- **Redis**: Caching and session storage
 
-<br>
+## 💻 Development Commands
 
-## Related projects
+| Command | Description |
+|---------|-------------|
+| `bun install` | Install dependencies |
+| `bun run dev` | Start development server |
+| `bun run build` | Build for production |
+| `bun run preview` | Preview production build |
+| `bun run migrate` | Run database migrations |
+| `bun run check` | Type checking |
+| `bun test-config.ts` | Test configuration |
 
-- [TailNext](https://tailnext.vercel.app/) - Free template using Next.js 14 and Tailwind CSS with the new App Router.
-- [Qwind](https://qwind.pages.dev/) - Free template to make your website using Qwik + Tailwind CSS.
+## 🎯 Features
 
-## Contributing
+### Comment System
 
-If you have any ideas, suggestions or find any bugs, feel free to open a discussion, an issue or create a pull request.
-That would be very useful for all of us and we would be happy to listen and take action.
+- Nested replies with unlimited depth
+- Email notifications for new comments
+- Admin moderation and approval
+- CAPTCHA protection against spam
+- Real-time updates
 
-## Acknowledgements
+### Admin Panel
 
-Initially created by [onWidget](https://onwidget.com) and maintained by a community of [contributors](https://github.com/onwidget/astrowind/graphs/contributors).
+- JWT-based authentication
+- Email verification code login
+- Content management interface
+- Comment moderation tools
+- Vectorization status monitoring
 
-## License
+### AI Integration
 
-**AstroWind** is licensed under the MIT license — see the [LICENSE](./LICENSE.md) file for details.
+- OpenAI API integration with LlamaIndex
+- Intelligent content processing and RAG queries
+- Vector embeddings stored in SQLite
+- Semantic similarity search with cosine similarity
+
+### Security
+
+- Luosimao CAPTCHA integration
+- Rate limiting on API endpoints
+- XSS protection
+- CSRF protection
+- Input validation with Zod
+
+## 🔧 Environment Variables
+
+### Required Variables
+
+| Variable | Type | Description | Example |
+|----------|------|-------------|---------|
+| `LUOSIMAO_SECRET_KEY` | string | Luosimao CAPTCHA secret key | `"abc123..."` |
+| `JWT_SECRET` | string (≥32 chars) | JWT signing secret | `"your-32-char-secret..."` |
+| `ADMIN_EMAIL` | email | Administrator email | `"admin@example.com"` |
+| `OPENAI_API_KEY` | string | OpenAI API key | `"sk-..."` |
+| `SMTP_HOST` | string | SMTP server host | `"smtp.gmail.com"` |
+| `SMTP_FROM_EMAIL` | email | Sender email address | `"noreply@example.com"` |
+| `SITE_URL` | URL | Site base URL | `"https://example.com"` |
+| `PUBLIC_LUOSIMAO_SITE_KEY` | string | Luosimao site key | `"def456..."` |
+
+### Optional Variables (with defaults)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_PATH` | `"./sqlite.db"` | Database file path |
+| `REDIS_HOST` | `"localhost"` | Redis host |
+| `REDIS_PORT` | `6379` | Redis port |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_FROM_NAME` | `"Blog"` | Sender name |
+| `NODE_ENV` | `"development"` | Environment type |
+
+### Configuration Example
+
+```bash
+# Database
+DB_PATH=./sqlite.db
+
+# OpenAI
+OPENAI_API_KEY=sk-your-openai-key
+OPENAI_API_BASE_URL=https://api.openai.com/v1
+
+# Site
+SITE_URL=https://yourdomain.com
+JWT_SECRET=your-very-long-jwt-secret-key-here
+
+# SMTP
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM_NAME=Your Blog Name
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+
+# Admin
+ADMIN_EMAIL=admin@yourdomain.com
+
+# CAPTCHA
+PUBLIC_LUOSIMAO_SITE_KEY=your-site-key
+LUOSIMAO_SECRET_KEY=your-secret-key
+```
+
+## 🔍 Troubleshooting
+
+### Configuration Issues
+
+**Problem**: `LUOSIMAO_SECRET_KEY is not set in environment variables`
+
+**Solution**:
+
+1. Check your `.env` file exists and contains the variable
+2. Verify Docker Compose environment configuration
+3. Run configuration test: `bun test-config.ts`
+4. Rebuild containers: `docker-compose build --no-cache`
+
+### Common Issues
+
+1. **Configuration Validation Failed**
+   - Check environment variable formats (URL, email, numbers)
+   - Ensure all required variables are set
+   - Verify variable types match schema requirements
+
+2. **Container Startup Failed**
+   - Check logs: `docker-compose logs blog`
+   - Verify port availability: `lsof -i :4321`
+   - Check configuration validation in logs
+
+3. **Database Issues**
+   - Run migrations: `bun run migrate`
+   - Check SQLite file permissions
+   - Verify database path in configuration
+
+### Useful Commands
+
+```bash
+# Check configuration
+bun test-config.ts
+
+# View container logs
+docker-compose logs -f blog
+
+# Check container status
+docker-compose ps
+
+# Restart services
+docker-compose restart
+
+# Rebuild and restart
+docker-compose down && docker-compose up -d --build
+
+# Run troubleshooting script
+./troubleshoot.sh
+```
+
+## 👨‍💻 Author
+
+**Ivan Li**
+
+- Email: <ivanli2048@gmail.com>
+- Repository: [git.ivanli.cc/Ivan/blog-astrowind](https://git.ivanli.cc/Ivan/blog-astrowind)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

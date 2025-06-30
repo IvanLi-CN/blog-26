@@ -1,4 +1,5 @@
 import type { AstroCookies } from 'astro';
+import { config } from './config';
 import { verifyJwt } from './jwt';
 
 export interface UserInfo {
@@ -36,8 +37,8 @@ export async function getUserFromCookies(cookies: AstroCookies): Promise<UserInf
  * 检查用户是否为管理员
  */
 export function isAdmin(userEmail: string): boolean {
-  const adminEmail = import.meta.env.ADMIN_EMAIL;
-  return adminEmail && userEmail === adminEmail;
+  const { email: adminEmail } = config.admin;
+  return Boolean(adminEmail && userEmail === adminEmail);
 }
 
 /**

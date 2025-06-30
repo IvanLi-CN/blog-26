@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { verifyCaptcha } from '~/lib/captcha';
+import { config } from '~/lib/config';
 import { db, initializeDB } from '~/lib/db';
 import { generateVerificationEmailHTML, sendEmail } from '~/lib/email';
 import { emailVerificationCodes, users } from '~/lib/schema';
@@ -38,7 +39,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   }
 
   // 检查是否为管理员邮箱
-  const adminEmail = import.meta.env.ADMIN_EMAIL;
+  const { email: adminEmail } = config.admin;
   const isAdminEmail = adminEmail && email === adminEmail;
 
   try {

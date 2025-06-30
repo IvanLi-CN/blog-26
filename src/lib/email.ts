@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { config } from './config';
 
 interface EmailOptions {
   to: string;
@@ -8,18 +9,18 @@ interface EmailOptions {
 }
 
 const transporter = nodemailer.createTransport({
-  host: import.meta.env.SMTP_HOST,
-  port: Number(import.meta.env.SMTP_PORT),
-  secure: Number(import.meta.env.SMTP_PORT) === 465, // true for 465, false for other ports
+  host: config.smtp.host,
+  port: config.smtp.port,
+  secure: config.smtp.port === 465, // true for 465, false for other ports
   auth: {
-    user: import.meta.env.SMTP_USER,
-    pass: import.meta.env.SMTP_PASSWORD,
+    user: config.smtp.user,
+    pass: config.smtp.password,
   },
 });
 
 export async function sendEmail({ to, subject, text, html }: EmailOptions) {
   const mailOptions = {
-    from: `"${import.meta.env.SMTP_FROM_NAME}" <${import.meta.env.SMTP_FROM_EMAIL}>`,
+    from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
     to,
     subject,
     text,
@@ -59,7 +60,7 @@ export function generateReplyNotificationEmailHTML(
   replyAuthorNickname: string,
   replyContent: string
 ): string {
-  const postUrl = `${import.meta.env.SITE_URL}/blog/${postSlug}`;
+  const postUrl = `${config.site.url}/blog/${postSlug}`;
   const contentPreview = replyContent.length > 100 ? `${replyContent.substring(0, 100)}...` : replyContent;
 
   return `
@@ -84,7 +85,7 @@ export function generateMentionNotificationEmailHTML(
   mentionAuthorNickname: string,
   mentionContent: string
 ): string {
-  const postUrl = `${import.meta.env.SITE_URL}/blog/${postSlug}`;
+  const postUrl = `${config.site.url}/blog/${postSlug}`;
   const contentPreview = mentionContent.length > 100 ? `${mentionContent.substring(0, 100)}...` : mentionContent;
 
   return `

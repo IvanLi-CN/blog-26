@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "Running database migrations..."
+echo "🔍 Validating configuration..."
+bun test-config.ts
+
+echo "🗄️ Running database migrations..."
 bun run migrate
 
-echo "Starting application..."
+echo "🚀 Starting application..."
 bun ./dist/server/entry.mjs
