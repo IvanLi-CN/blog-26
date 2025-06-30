@@ -96,9 +96,9 @@ const metadata = {
         <div class="card-body">
           <!-- 邮箱输入阶段 -->
           <div id="email-step">
-            <form id="email-form" class="space-y-6">
+            <form id="email-form" class="space-y-4">
               <div>
-                <label for="email" class="label">
+                <label for="email" class="label pb-1">
                   <span class="label-text font-medium">邮箱地址</span>
                 </label>
                 <input
@@ -113,7 +113,7 @@ const metadata = {
 
               <!-- 人机验证 -->
               <div>
-                <label class="label">
+                <label class="label pb-1">
                   <span class="label-text font-medium">人机验证</span>
                 </label>
                 <div class="captcha-container">
@@ -128,24 +128,26 @@ const metadata = {
 
               <div id="email-error" class="text-error text-sm hidden"></div>
 
-              <button
-                type="submit"
-                id="send-code-btn"
-                class="btn btn-primary w-full"
-              >
-                <span id="send-code-text">发送验证码</span>
-                <span
-                  id="send-code-loading"
-                  class="loading loading-spinner loading-sm hidden"></span>
-              </button>
+              <div>
+                <button
+                  type="submit"
+                  id="send-code-btn"
+                  class="btn btn-primary w-full"
+                >
+                  <span id="send-code-text">发送验证码</span>
+                  <span
+                    id="send-code-loading"
+                    class="loading loading-spinner loading-sm hidden"></span>
+                </button>
+              </div>
             </form>
           </div>
 
           <!-- 验证码输入阶段 -->
           <div id="code-step" class="hidden">
-            <form id="code-form" class="space-y-6">
+            <form id="code-form" class="space-y-4">
               <div>
-                <label for="code" class="label">
+                <label for="code" class="label pb-1">
                   <span class="label-text font-medium">验证码</span>
                 </label>
                 <input
@@ -157,7 +159,7 @@ const metadata = {
                   class="input input-bordered w-full text-center text-2xl tracking-widest"
                   placeholder="000000"
                 />
-                <div class="label">
+                <div class="label mt-1">
                   <span class="label-text-alt">验证码已发送到您的邮箱</span>
                   <button
                     type="button"
@@ -171,31 +173,35 @@ const metadata = {
 
               <div id="code-error" class="text-error text-sm hidden"></div>
 
-              <button
-                type="submit"
-                id="verify-code-btn"
-                class="btn btn-primary w-full"
-              >
-                <span id="verify-code-text">验证并登录</span>
-                <span
-                  id="verify-code-loading"
-                  class="loading loading-spinner loading-sm hidden"></span>
-              </button>
+              <div>
+                <button
+                  type="submit"
+                  id="verify-code-btn"
+                  class="btn btn-primary w-full"
+                >
+                  <span id="verify-code-text">验证并登录</span>
+                  <span
+                    id="verify-code-loading"
+                    class="loading loading-spinner loading-sm hidden"></span>
+                </button>
+              </div>
 
-              <button
-                type="button"
-                id="back-to-email"
-                class="btn btn-ghost w-full"
-              >
-                返回修改邮箱
-              </button>
+              <div>
+                <button
+                  type="button"
+                  id="back-to-email"
+                  class="btn btn-ghost w-full"
+                >
+                  返回修改邮箱
+                </button>
+              </div>
             </form>
           </div>
         </div>
       </div>
 
       <!-- 返回首页链接 -->
-      <div class="text-center">
+      <div class="text-center mt-8">
         <a href="/" class="link link-primary text-sm">
           <Icon name="tabler:arrow-left" class="w-4 h-4 inline mr-1" />
           返回首页
