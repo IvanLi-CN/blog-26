@@ -1,6 +1,7 @@
 ---
 import type { GetStaticPaths } from "astro";
 import { Icon } from "astro-icon/components";
+import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 import { blogTagRobots, getAllTags } from "~/utils/blog";
 import { getPermalink } from "../../utils/permalinks";
@@ -207,15 +208,8 @@ const metadata = {
     .animate-delay-400 { animation-delay: 0.4s; }
   </style>
 
-  <main class="container mx-auto my-16 px-4">
-    <div class="hero bg-base-200 rounded-box mb-12">
-      <div class="hero-content text-center">
-        <div class="max-w-md">
-          <h1 class="text-5xl font-bold text-base-content">标签</h1>
-          <p class="py-6 text-base-content/70">按分类组织的标签树，快速找到您感兴趣的内容</p>
-        </div>
-      </div>
-    </div>
+  <section class="px-6 sm:px-6 py-12 sm:py-16 lg:py-20 mx-auto max-w-4xl">
+    <Headline title="标签" subtitle="按分类组织的标签树，快速找到您感兴趣的内容"> 标签 </Headline>
 
     <div class="mt-12 space-y-6">
       {tagTree.map((category, index) => (
@@ -307,5 +301,5 @@ const metadata = {
         </div>
       </div>
     </div>
-  </main>
+  </section>
 </Layout>
