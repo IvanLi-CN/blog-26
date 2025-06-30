@@ -12,6 +12,7 @@ COPY ./entrypoint.sh ./entrypoint.sh
 COPY ./test-config.ts ./test-config.ts
 COPY ./drizzle ./drizzle
 COPY ./scripts ./scripts
+COPY ./src/lib/config.ts ./src/lib/config.ts
 COPY ./dist/server ./dist/server
 COPY ./dist/client ./dist/client
 
