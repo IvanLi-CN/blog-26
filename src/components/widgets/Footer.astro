@@ -26,37 +26,78 @@ const { socialLinks = [] } = Astro.props;
 ---
 
 <footer class="bg-neutral text-neutral-content">
-  <div
-    class="footer p-10 lg:px-5 mx-auto max-w-4xl flex justify-between flex-col sm:flex-row"
-  >
-    <aside>
-      <svg
-        width="50"
-        height="50"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-        fill-rule="evenodd"
-        clip-rule="evenodd"
-        class="fill-current"
+  <div class="mx-auto max-w-4xl px-6 py-8">
+    <!-- 主要内容区域 -->
+    <div
+      class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-8"
+    >
+      <!-- 左侧：Logo 和版权信息 -->
+      <div class="flex flex-col gap-4">
+        <!-- Logo -->
+        <div class="flex items-center gap-3">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            class="fill-current opacity-80"
+          >
+            <path
+              d="M22.672 15.226l-2.432.811.841 2.515c.33 1.019-.209 2.127-1.23 2.456-1.15.325-2.148-.321-2.463-1.226l-.84-2.518-5.013 1.677.84 2.517c.391 1.203-.434 2.542-1.831 2.542-.88 0-1.601-.564-1.86-1.314l-.842-2.516-2.431.809c-1.135.328-2.145-.317-2.463-1.229-.329-1.018.211-2.127 1.231-2.456l2.432-.809-1.621-4.823-2.432.808c-1.355.384-2.558-.59-2.558-1.839 0-.817.509-1.582 1.327-1.846l2.433-.809-.842-2.515c-.33-1.02.211-2.129 1.232-2.458 1.02-.329 2.13.209 2.461 1.229l.842 2.515 5.011-1.677-.839-2.517c-.403-1.238.484-2.553 1.843-2.553.819 0 1.585.509 1.85 1.326l.841 2.517 2.431-.81c1.02-.33 2.131.211 2.461 1.229.332 1.018-.21 2.126-1.23 2.456l-2.433.809 1.622 4.823 2.433-.809c1.242-.401 2.557.484 2.557 1.838 0 .819-.51 1.583-1.328 1.847m-8.992-6.428l-5.01 1.675 1.619 4.828 5.011-1.674-1.62-4.829z"
+            ></path>
+          </svg>
+          <span class="text-lg font-medium">{SITE.name}</span>
+        </div>
+
+        <!-- 版权信息 -->
+        <div class="text-sm opacity-75 space-y-1">
+          <div>Copyright © {new Date().getFullYear()} {SITE.owner}</div>
+        </div>
+      </div>
+
+      <!-- 右侧：社交链接 -->
+      <div class="flex flex-col gap-4">
+        <h6 class="text-sm font-medium opacity-75">Social</h6>
+        {
+          socialLinks?.length ? (
+            <div class="flex gap-2">
+              {socialLinks.map(({ ariaLabel, href, text, icon }) => (
+                <a
+                  class="btn btn-circle btn-ghost btn-sm"
+                  aria-label={ariaLabel}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {icon && <Icon name={icon} class="text-lg" />}
+                  <Fragment set:html={text} />
+                </a>
+              ))}
+            </div>
+          ) : (
+            ""
+          )
+        }
+      </div>
+    </div>
+
+    <!-- 底部分隔线和次要信息 -->
+    <div class="mt-8 pt-6 border-t border-neutral-content/10">
+      <div
+        class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 text-xs opacity-60"
       >
-        <path
-          d="M22.672 15.226l-2.432.811.841 2.515c.33 1.019-.209 2.127-1.23 2.456-1.15.325-2.148-.321-2.463-1.226l-.84-2.518-5.013 1.677.84 2.517c.391 1.203-.434 2.542-1.831 2.542-.88 0-1.601-.564-1.86-1.314l-.842-2.516-2.431.809c-1.135.328-2.145-.317-2.463-1.229-.329-1.018.211-2.127 1.231-2.456l2.432-.809-1.621-4.823-2.432.808c-1.355.384-2.558-.59-2.558-1.839 0-.817.509-1.582 1.327-1.846l2.433-.809-.842-2.515c-.33-1.02.211-2.129 1.232-2.458 1.02-.329 2.13.209 2.461 1.229l.842 2.515 5.011-1.677-.839-2.517c-.403-1.238.484-2.553 1.843-2.553.819 0 1.585.509 1.85 1.326l.841 2.517 2.431-.81c1.02-.33 2.131.211 2.461 1.229.332 1.018-.21 2.126-1.23 2.456l-2.433.809 1.622 4.823 2.433-.809c1.242-.401 2.557.484 2.557 1.838 0 .819-.51 1.583-1.328 1.847m-8.992-6.428l-5.01 1.675 1.619 4.828 5.011-1.674-1.62-4.829z"
-        ></path>
-      </svg>
-      <p class="leading-6">
-        Copyright &copy;
-        {new Date().getFullYear()}
-        {SITE.owner}
-        <br />
-        Code: MIT | Content:
-        <a
-          href="https://creativecommons.org/licenses/by-nc-nd/4.0/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-1 text-neutral-content hover:text-blue-300 underline"
-        >
-          <div class="flex items-center gap-0.5">
-            <!-- CC Icon -->
+        <!-- 许可证信息 -->
+        <div class="flex flex-wrap items-center gap-4">
+          <span>Code: MIT</span>
+          <span class="hidden sm:inline">|</span>
+          <a
+            href="https://creativecommons.org/licenses/by-nc-nd/4.0/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
+          >
             <svg class="w-3 h-3" viewBox="0 0 64 64" fill="currentColor">
               <circle
                 cx="32"
@@ -71,88 +112,20 @@ const { socialLinks = [] } = Astro.props;
                 stroke-width="3"
                 fill="none"></path>
             </svg>
+            <span>Content: CC BY-NC-ND 4.0</span>
+          </a>
+        </div>
 
-            <!-- BY Icon -->
-            <svg class="w-3 h-3" viewBox="0 0 64 64" fill="currentColor">
-              <circle
-                cx="32"
-                cy="32"
-                r="30"
-                stroke="currentColor"
-                stroke-width="4"
-                fill="none"></circle>
-              <circle cx="32" cy="25" r="6" fill="currentColor"></circle>
-              <path d="M20 35h24v12H20z" fill="currentColor"></path>
-            </svg>
-
-            <!-- NC Icon -->
-            <svg class="w-3 h-3" viewBox="0 0 64 64" fill="currentColor">
-              <circle
-                cx="32"
-                cy="32"
-                r="30"
-                stroke="currentColor"
-                stroke-width="4"
-                fill="none"></circle>
-              <circle
-                cx="32"
-                cy="32"
-                r="12"
-                stroke="currentColor"
-                stroke-width="6"
-                fill="none"></circle>
-              <line
-                x1="20"
-                y1="20"
-                x2="44"
-                y2="44"
-                stroke="currentColor"
-                stroke-width="4"></line>
-            </svg>
-
-            <!-- ND Icon -->
-            <svg class="w-3 h-3" viewBox="0 0 64 64" fill="currentColor">
-              <circle
-                cx="32"
-                cy="32"
-                r="30"
-                stroke="currentColor"
-                stroke-width="4"
-                fill="none"></circle>
-              <path d="M20 28h24v8H20z" fill="currentColor"></path>
-              <path d="M28 20v24h8V20z" fill="currentColor"></path>
-            </svg>
-          </div>
-          <span class="ml-1">CC BY-NC-ND 4.0</span>
-        </a>
-        <br />
-        <a target="_blank" rel="nofollow" href="https://beian.miit.gov.cn"
-          >闽ICP备2023000043号</a
+        <!-- 备案信息 -->
+        <a
+          target="_blank"
+          rel="nofollow"
+          href="https://beian.miit.gov.cn"
+          class="hover:opacity-80 transition-opacity"
         >
-      </p>
-    </aside>
-    <nav>
-      <h6 class="footer-title">Social</h6>
-      {
-        socialLinks?.length ? (
-          <ul class="flex md:items-center md:justify-between py-4 md:py-6">
-            {socialLinks.map(({ ariaLabel, href, text, icon }) => (
-              <li>
-                <a
-                  class="btn btn-circle btn-ghost"
-                  aria-label={ariaLabel}
-                  href={href}
-                >
-                  {icon && <Icon name={icon} class="text-3xl md:4xl" />}
-                  <Fragment set:html={text} />
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          ""
-        )
-      }
-    </nav>
+          闽ICP备2023000043号
+        </a>
+      </div>
+    </div>
   </div>
 </footer>
