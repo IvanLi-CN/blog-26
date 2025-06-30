@@ -336,4 +336,7 @@ docker-compose down && docker-compose up -d --build
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project uses dual licensing:
+
+- **Code**: MIT License - see the [LICENSE.md](LICENSE.md) file for details
+- **Content**: All blog articles and written content are licensed under [CC BY-NC-ND 4.0](http://creativecommons.org/licenses/by-nc-nd/4.0/)

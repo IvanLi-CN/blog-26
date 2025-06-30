@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import ArticleLicense from "~/components/blog/ArticleLicense.astro";
 import PostReactions from "~/components/blog/PostReactions";
 import PostTags from "~/components/blog/Tags.astro";
 import CommentSection from "~/components/comments/CommentSection";
@@ -145,8 +146,14 @@ const isUserAdmin =
       <slot />
     </div>
     <div class="mx-auto px-6 sm:px-6 max-w-3xl mt-8">
+      <!-- 许可证信息 -->
+      <ArticleLicense
+        author={post.author || "Ivan Li"}
+        year={new Date(post.publishDate).getFullYear()}
+      />
+
       <!-- 标签单独一行 -->
-      <div class="mb-4">
+      <div class="mb-4 mt-6">
         <PostTags tags={post.tags} class="flex gap-1 flex-wrap" />
       </div>
       <!-- 表态和分享在同一行，两端对齐 -->
