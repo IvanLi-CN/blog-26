@@ -1,12 +1,15 @@
 ---
 import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
-import { isAdminFromCookies, redirectToAdminLogin } from "~/lib/auth";
+import { isAdminFromRequest, redirectToAdminLogin } from "~/lib/auth";
 
 export const prerender = false;
 
 // 权限检查
-const isUserAdmin = await isAdminFromCookies(Astro.cookies);
+const isUserAdmin = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
 
 if (!isUserAdmin) {
   return redirectToAdminLogin();

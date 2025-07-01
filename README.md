@@ -145,6 +145,45 @@ bun test-config.ts
 docker-compose exec blog bun test-config.ts
 ```
 
+### Admin Authentication
+
+The system supports two authentication methods for admin access:
+
+#### 1. Traditional Email Verification (Default)
+
+- Admin logs in via `/admin/login` with email verification
+- Uses JWT tokens stored in cookies
+- Requires SMTP configuration for sending verification codes
+
+#### 2. Traefik SSO Integration (Recommended for Production)
+
+- Integrates with Traefik reverse proxy and SSO providers
+- Automatically recognizes admin users via request headers
+- No additional login required if already authenticated via SSO
+
+**Environment Variables:**
+
+```bash
+# Admin email (required for both methods)
+ADMIN_EMAIL="your-admin@example.com"
+
+# Traefik SSO configuration
+ADMIN_EMAIL_HEADER_NAME="Remote-Email"  # Default: Remote-Email
+```
+
+**Traefik Configuration:**
+
+```yaml
+# Ensure Traefik forwards authentication headers
+traefik.http.middlewares.authelia.forwardAuth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email
+```
+
+**Testing SSO Authentication:**
+
+- Visit `/admin/test-sso` to check authentication status
+- View all received headers and authentication results
+- Verify both SSO and cookie-based authentication
+
 ## 🚀 Deployment
 
 ### Production Deployment
@@ -198,11 +237,13 @@ docker-compose exec blog bun test-config.ts
 
 ### Admin Panel
 
-- JWT-based authentication
+- Dual authentication support (JWT + Traefik SSO)
 - Email verification code login
+- Traefik SSO integration for seamless access
 - Content management interface
 - Comment moderation tools
 - Vectorization status monitoring
+- Authentication testing tools (`/admin/test-sso`)
 
 ### AI Integration
 
@@ -244,6 +285,7 @@ docker-compose exec blog bun test-config.ts
 | `SMTP_PORT` | `587` | SMTP port |
 | `SMTP_FROM_NAME` | `"Blog"` | Sender name |
 | `NODE_ENV` | `"development"` | Environment type |
+| `ADMIN_EMAIL_HEADER_NAME` | `"Remote-Email"` | Traefik SSO email header name |
 
 ### Configuration Example
 

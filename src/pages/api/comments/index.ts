@@ -336,6 +336,15 @@ export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {
 
   let currentUserId: string | undefined;
   let isAdmin = false;
+
+  // 首先检查 Traefik SSO 请求头
+  const { email: adminEmail, emailHeaderName } = config.admin;
+  const emailFromHeader = request.headers.get(emailHeaderName);
+  if (adminEmail && emailFromHeader === adminEmail) {
+    isAdmin = true;
+  }
+
+  // 然后检查 JWT token
   const tokenFromCookie = astroCookies.get('token');
   if (tokenFromCookie?.value) {
     try {
@@ -343,7 +352,7 @@ export const GET: APIRoute = async ({ request, cookies: astroCookies }) => {
       if (typeof payload.sub === 'string') {
         currentUserId = payload.sub;
       }
-      if (typeof payload.email === 'string' && payload.email === config.admin.email) {
+      if (typeof payload.email === 'string' && payload.email === adminEmail) {
         isAdmin = true;
       }
     } catch (_e) {

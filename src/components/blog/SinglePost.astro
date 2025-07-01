@@ -6,7 +6,7 @@ import PostTags from "~/components/blog/Tags.astro";
 import CommentSection from "~/components/comments/CommentSection";
 import Image from "~/components/common/Image.astro";
 import SocialShare from "~/components/common/SocialShare.astro";
-import { isAdminFromCookies } from "~/lib/auth";
+import { isAdminFromRequest } from "~/lib/auth";
 import type { Post } from "~/types";
 import { getPermalink } from "~/utils/permalinks";
 import { getFormattedDate } from "~/utils/utils";
@@ -21,7 +21,7 @@ const { post, url } = Astro.props;
 // Check if user is admin
 const isUserAdmin =
   process.env.ADMIN_MODE === "true" ||
-  (await isAdminFromCookies(Astro.cookies));
+  (await isAdminFromRequest(Astro.cookies, Astro.request.headers));
 ---
 
 <section class="py-8 sm:py-16 lg:py-20 mx-auto">

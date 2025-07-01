@@ -34,11 +34,25 @@ export async function getUserFromCookies(cookies: AstroCookies): Promise<UserInf
 }
 
 /**
- * 检查用户是否为管理员
+ * 检查用户是否为管理员（通过邮箱）
  */
 export function isAdmin(userEmail: string): boolean {
   const { email: adminEmail } = config.admin;
   return Boolean(adminEmail && userEmail === adminEmail);
+}
+
+/**
+ * 从请求头中检查当前用户是否为管理员（Traefik SSO）
+ */
+export function isAdminFromHeaders(headers: Headers): boolean {
+  const { email: adminEmail, emailHeaderName } = config.admin;
+
+  if (!adminEmail || !emailHeaderName) {
+    return false;
+  }
+
+  const emailFromHeader = headers.get(emailHeaderName);
+  return Boolean(emailFromHeader && emailFromHeader === adminEmail);
 }
 
 /**
@@ -47,6 +61,19 @@ export function isAdmin(userEmail: string): boolean {
 export async function isAdminFromCookies(cookies: AstroCookies): Promise<boolean> {
   const user = await getUserFromCookies(cookies);
   return user ? isAdmin(user.email) : false;
+}
+
+/**
+ * 综合检查当前用户是否为管理员（支持 cookies 和 headers）
+ */
+export async function isAdminFromRequest(cookies: AstroCookies, headers: Headers): Promise<boolean> {
+  // 首先检查 Traefik SSO 请求头
+  if (isAdminFromHeaders(headers)) {
+    return true;
+  }
+
+  // 回退到传统的 cookie 认证
+  return await isAdminFromCookies(cookies);
 }
 
 /**

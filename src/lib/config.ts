@@ -40,6 +40,9 @@ const envSchema = z.object({
   // 管理员配置
   ADMIN_EMAIL: z.string().email(),
 
+  // Traefik SSO 管理员配置
+  ADMIN_EMAIL_HEADER_NAME: z.string().default('Remote-Email'),
+
   // 螺丝帽验证码配置
   PUBLIC_LUOSIMAO_SITE_KEY: z.string().min(1, 'Luosimao site key is required'),
   LUOSIMAO_SECRET_KEY: z.string().min(1, 'Luosimao secret key is required'),
@@ -163,8 +166,10 @@ export const config = {
   },
 
   get admin() {
+    const cfg = getConfig();
     return {
-      email: getConfig().ADMIN_EMAIL,
+      email: cfg.ADMIN_EMAIL,
+      emailHeaderName: cfg.ADMIN_EMAIL_HEADER_NAME,
     };
   },
 
