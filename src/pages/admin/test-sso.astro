@@ -1,7 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
-import { isAdminFromRequest, isAdminFromHeaders, isAdminFromCookies } from "~/lib/auth";
+import { isAdminFromCookies, isAdminFromHeaders, isAdminFromRequest } from "~/lib/auth";
 import { config } from "~/lib/config";
 
 export const prerender = false;

@@ -8,7 +8,7 @@ export interface Comment {
   id: string;
   content: string;
   parentId: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status?: 'pending' | 'approved' | 'rejected'; // 可选，因为 tRPC 可能不返回这个字段
   createdAt: number;
   author: Author;
   replies: Comment[];

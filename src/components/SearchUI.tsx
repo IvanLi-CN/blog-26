@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { trpcVanilla } from '~/lib/trpc';
 
 // Interfaces
 interface Source {
@@ -52,54 +53,13 @@ const SearchUI: React.FC<SearchUIProps> = ({ initialQuery }) => {
     setSources([]);
 
     try {
-      const requestUrl = `/api/search-stream?q=${encodeURIComponent(searchQuery)}`;
-      const response = await fetch(requestUrl);
+      // 使用 tRPC 进行搜索
+      const result = await trpcVanilla.search.query.query({ query: searchQuery });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Search failed');
-      }
-
-      if (!response.body) {
-        throw new Error('Response body is empty');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n\n').filter((line) => line.startsWith('data: '));
-
-        for (const line of lines) {
-          const jsonStr = line.substring('data: '.length);
-          const data = JSON.parse(jsonStr);
-
-          if (data.text) {
-            const endOfStreamMarker = '__END_OF_STREAM__';
-            if (data.text.includes(endOfStreamMarker)) {
-              const parts = data.text.split(endOfStreamMarker);
-              fullText += parts[0];
-              setAnswer(fullText);
-              const sourcesData: Source[] = JSON.parse(parts[1]);
-              setSources(sourcesData);
-              // End of stream
-              break;
-            } else {
-              fullText += data.text;
-              setAnswer(fullText);
-            }
-          }
-        }
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to perform search');
-      setAnswer('');
-      setSources([]);
+      setAnswer(result.answer || '');
+      setSources(result.sources || []);
+    } catch (error: any) {
+      setError(error.message || 'Search failed');
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { type Comment, type UserInfo } from './types';
+import { trpcVanilla } from '~/lib/trpc';
+import { type UserInfo } from './types';
+
+// 使用 tRPC 推导的类型
+type CommentWithAuthorAndReplies = Awaited<ReturnType<typeof trpcVanilla.comments.getComments.query>>['comments'][0];
 
 // --- User Info Hook ---
 export function useUserInfo() {
@@ -9,13 +13,8 @@ export function useUserInfo() {
   const fetchUserInfo = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        setUserInfo(data);
-      } else {
-        setUserInfo(null);
-      }
+      const data = await trpcVanilla.auth.me.query();
+      setUserInfo(data);
     } catch {
       setUserInfo(null);
     } finally {
@@ -29,8 +28,8 @@ export function useUserInfo() {
 
   const logout = useCallback(async () => {
     try {
-      // This will request the server to clear the HttpOnly cookie
-      await fetch('/api/auth/logout', { method: 'POST' });
+      // Use tRPC for logout
+      await trpcVanilla.auth.logout.mutate();
     } finally {
       // Regardless of server outcome, update UI state
       setUserInfo(null);
@@ -48,7 +47,7 @@ interface UseCommentsProps {
 }
 
 export function useComments({ postSlug }: UseCommentsProps) {
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<CommentWithAuthorAndReplies[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -60,11 +59,11 @@ export function useComments({ postSlug }: UseCommentsProps) {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/comments?slug=${postSlug}&page=${pageNum}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch messages');
-        }
-        const data = await response.json();
+        const data = await trpcVanilla.comments.getComments.query({
+          slug: postSlug,
+          page: pageNum,
+          limit: 10,
+        });
         setComments((prev) => (pageNum === 1 || refresh ? data.comments : [...prev, ...data.comments]));
         setTotalPages(data.totalPages);
         setIsAdmin(data.isAdmin || false);
@@ -105,16 +104,11 @@ export function useModerateComment() {
     setIsModerating(true);
     setError(null);
     try {
-      const response = await fetch(`/api/comments/${commentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+      const result = await trpcVanilla.comments.moderateComment.mutate({
+        commentId,
+        status,
       });
-      if (!response.ok) {
-        const result = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
-        throw new Error(result.error || 'Failed to moderate message');
-      }
-      return await response.json();
+      return result;
     } catch (err: any) {
       setError(err.message);
       throw err;
@@ -140,26 +134,17 @@ export function usePostComment() {
       setIsPosting(true);
       setError(null);
       try {
-        const response = await fetch('/api/comments', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(commentData),
+        const result = await trpcVanilla.comments.createComment.mutate({
+          postSlug: commentData.postSlug,
+          content: commentData.content,
+          parentId: commentData.parentId,
+          author: commentData.author,
         });
 
-        if (!response.ok) {
-          const result = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
-          setError(result.error || 'Failed to post message');
-          // Return the raw response so the caller can check the status code
-          return response;
-        }
-
-        return response.json();
+        return { ok: true, json: () => Promise.resolve(result) };
       } catch (err: any) {
-        setError(err.message);
-        // We throw here to let the caller know the request failed at a network level
-        throw err;
+        setError(err.message || 'Failed to post message');
+        return { ok: false, json: () => Promise.resolve({ error: err.message }) };
       } finally {
         setIsPosting(false);
       }

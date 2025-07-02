@@ -1,0 +1,216 @@
+---
+import Layout from '~/layouts/PageLayout.astro';
+import { isAdminFromRequest } from '~/lib/auth';
+
+export const prerender = false;
+
+// 检查管理员权限
+const isAdmin = await isAdminFromRequest(Astro.cookies, Astro.request.headers);
+if (!isAdmin) {
+  return Astro.redirect('/admin/login');
+}
+---
+
+<Layout metadata={{ title: 'tRPC 测试页面' }}>
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">tRPC 集成测试</h1>
+    
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-4">集成状态</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 bg-green-100 rounded-lg">
+          <h3 class="font-semibold text-green-800">✅ 服务器端</h3>
+          <ul class="text-sm text-green-700 mt-2">
+            <li>• tRPC 路由器已配置</li>
+            <li>• 评论 API 已迁移</li>
+            <li>• 类型安全的上下文</li>
+            <li>• 认证中间件</li>
+          </ul>
+        </div>
+        
+        <div class="p-4 bg-blue-100 rounded-lg">
+          <h3 class="font-semibold text-blue-800">🔄 客户端</h3>
+          <ul class="text-sm text-blue-700 mt-2">
+            <li>• React Query 集成</li>
+            <li>• tRPC React hooks</li>
+            <li>• 端到端类型安全</li>
+            <li>• 自动补全支持</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- React 组件测试 -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-4">React 组件测试</h2>
+      <div class="border rounded-lg p-4">
+        <div id="trpc-test-container"></div>
+      </div>
+    </div>
+
+    <!-- Vanilla JS 测试 -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-4">Vanilla JS 测试</h2>
+      <div class="border rounded-lg p-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+          <button id="test-health" class="bg-blue-500 text-white px-4 py-2 rounded">
+            健康检查
+          </button>
+          <button id="test-me" class="bg-green-500 text-white px-4 py-2 rounded">
+            用户信息
+          </button>
+          <button id="test-comments" class="bg-purple-500 text-white px-4 py-2 rounded">
+            评论查询
+          </button>
+          <button id="test-search-suggestions" class="bg-orange-500 text-white px-4 py-2 rounded">
+            搜索建议
+          </button>
+          <button id="test-auth-me" class="bg-indigo-500 text-white px-4 py-2 rounded">
+            认证状态
+          </button>
+          <button id="test-logout" class="bg-red-500 text-white px-4 py-2 rounded">
+            登出测试
+          </button>
+        </div>
+        <div id="test-results" class="mt-4 p-4 bg-gray-100 rounded">
+          <p class="text-gray-600">点击按钮测试 tRPC API</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- API 文档 -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-4">可用的 tRPC 端点</h2>
+      <div class="bg-gray-50 p-4 rounded-lg">
+        <pre class="text-sm"><code>
+// 基础功能
+GET /api/trpc/health
+GET /api/trpc/me
+
+// 评论相关
+GET /api/trpc/comments.getComments?input=%7B%22slug%22%3A%22test%22%7D
+POST /api/trpc/comments.createComment
+POST /api/trpc/comments.moderateComment
+
+// 搜索相关
+GET /api/trpc/search.suggestions?input=%7B%22query%22%3A%22test%22%7D
+POST /api/trpc/search.query
+POST /api/trpc/search.streamQuery
+POST /api/trpc/search.chat
+
+// 认证相关
+GET /api/trpc/auth.me
+POST /api/trpc/auth.logout
+POST /api/trpc/auth.sendVerificationCode
+POST /api/trpc/auth.sendAdminCode
+POST /api/trpc/auth.verifyCode
+
+// 反应相关
+GET /api/trpc/reactions.getReactions?input=%7B%22targetType%22%3A%22post%22%2C%22targetId%22%3A%22test%22%7D
+POST /api/trpc/reactions.toggle
+
+// 向量化相关
+GET /api/trpc/vectorization.getStatus
+POST /api/trpc/vectorization.startVectorization
+GET /api/trpc/vectorization.getProgress
+
+// 受保护的路由
+GET /api/trpc/protected (需要登录)
+POST /api/trpc/admin (需要管理员权限)
+        </code></pre>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { trpcVanilla } from '~/lib/trpc';
+  import { CommentsTest } from '~/components/CommentsTest';
+  import { createRoot } from 'react-dom/client';
+
+  // 渲染 React 组件
+  const container = document.getElementById('trpc-test-container');
+  if (container) {
+    const root = createRoot(container);
+    root.render(CommentsTest());
+  }
+
+  // Vanilla JS 测试
+  const resultsDiv = document.getElementById('test-results');
+  
+  function displayResult(title: string, data: any) {
+    if (resultsDiv) {
+      resultsDiv.innerHTML = `
+        <h4 class="font-semibold mb-2">${title}</h4>
+        <pre class="text-sm bg-white p-2 rounded border overflow-auto">${JSON.stringify(data, null, 2)}</pre>
+      `;
+    }
+  }
+
+  // 健康检查测试
+  document.getElementById('test-health')?.addEventListener('click', async () => {
+    try {
+      const result = await trpcVanilla.health.query();
+      displayResult('健康检查结果', result);
+    } catch (error) {
+      displayResult('健康检查错误', { error: error.message });
+    }
+  });
+
+  // 用户信息测试
+  document.getElementById('test-me')?.addEventListener('click', async () => {
+    try {
+      const result = await trpcVanilla.me.query();
+      displayResult('用户信息结果', result);
+    } catch (error) {
+      displayResult('用户信息错误', { error: error.message });
+    }
+  });
+
+  // 评论测试
+  document.getElementById('test-comments')?.addEventListener('click', async () => {
+    try {
+      const result = await trpcVanilla.comments.getComments.query({
+        slug: 'test-post',
+        page: 1,
+        limit: 5,
+      });
+      displayResult('评论查询结果', result);
+    } catch (error) {
+      displayResult('评论查询错误', { error: error.message });
+    }
+  });
+
+  // 搜索建议测试
+  document.getElementById('test-search-suggestions')?.addEventListener('click', async () => {
+    try {
+      const result = await trpcVanilla.search.suggestions.query({
+        query: 'tRPC',
+        limit: 5,
+      });
+      displayResult('搜索建议结果', result);
+    } catch (error) {
+      displayResult('搜索建议错误', { error: error.message });
+    }
+  });
+
+  // 认证状态测试
+  document.getElementById('test-auth-me')?.addEventListener('click', async () => {
+    try {
+      const result = await trpcVanilla.auth.me.query();
+      displayResult('认证状态结果', result);
+    } catch (error) {
+      displayResult('认证状态错误', { error: error.message });
+    }
+  });
+
+  // 登出测试
+  document.getElementById('test-logout')?.addEventListener('click', async () => {
+    try {
+      const result = await trpcVanilla.auth.logout.mutate();
+      displayResult('登出结果', result);
+    } catch (error) {
+      displayResult('登出错误', { error: error.message });
+    }
+  });
+</script>
