@@ -154,3 +154,50 @@ export function usePostComment() {
 
   return { postComment, isPosting, error };
 }
+
+export function useEditComment() {
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const editComment = useCallback(async (commentId: string, content: string) => {
+    setIsEditing(true);
+    setError(null);
+    try {
+      const result = await trpcVanilla.comments.editComment.mutate({
+        commentId,
+        content,
+      });
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsEditing(false);
+    }
+  }, []);
+
+  return { editComment, isEditing, error };
+}
+
+export function useDeleteComment() {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const deleteComment = useCallback(async (commentId: string) => {
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const result = await trpcVanilla.comments.deleteComment.mutate({
+        commentId,
+      });
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsDeleting(false);
+    }
+  }, []);
+
+  return { deleteComment, isDeleting, error };
+}

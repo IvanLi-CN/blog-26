@@ -58,14 +58,27 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
   }
 
   // 2. 检查是否为管理员（从 Traefik headers 或配置）
-  const remoteEmail = req.headers.get('Remote-Email');
+  let remoteEmail = req.headers.get('Remote-Email');
   const _remoteUser = req.headers.get('Remote-User');
 
-  // 如果有 Traefik 传递的邮箱信息，优先使用
+  // 在开发环境中，如果设置了ADMIN_MODE环境变量，模拟管理员邮箱头
+  if (process.env.ADMIN_MODE === 'true' && !remoteEmail) {
+    remoteEmail = process.env.ADMIN_EMAIL || 'ivanli2048@gmail.com';
+  }
+
+  // 如果有 Traefik 传递的邮箱信息，检查是否为管理员
   if (remoteEmail) {
-    // 这里可以添加管理员邮箱检查逻辑
-    // 暂时简化处理
-    isAdmin = true;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    isAdmin = adminEmail ? remoteEmail === adminEmail : false;
+
+    // 在开发环境中，如果是管理员且没有用户信息，创建临时用户对象
+    if (isAdmin && !user && process.env.ADMIN_MODE === 'true') {
+      user = {
+        id: 'admin-dev-user',
+        nickname: 'Admin',
+        email: remoteEmail,
+      };
+    }
   }
 
   // 3. 获取客户端 IP 地址

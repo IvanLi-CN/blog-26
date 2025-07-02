@@ -34,12 +34,22 @@ const moderateCommentSchema = z.object({
   status: z.enum(['approved', 'rejected']),
 });
 
+const editCommentSchema = z.object({
+  commentId: z.string(),
+  content: z.string().min(1).max(1000),
+});
+
+const deleteCommentSchema = z.object({
+  commentId: z.string(),
+});
+
 // 类型定义
 interface CommentWithAuthor {
   id: string;
   content: string;
   createdAt: number; // UNIX timestamp
   parentId: string | null;
+  authorId: string; // 添加authorId字段用于权限判断
   author: {
     id: string;
     nickname: string;
@@ -59,6 +69,7 @@ async function getComments(postSlug: string, currentUserId?: string, isAdmin = f
       content: comments.content,
       createdAt: comments.createdAt,
       parentId: comments.parentId,
+      authorId: comments.authorId, // 添加authorId字段
       author: {
         id: users.id,
         nickname: users.nickname,
@@ -232,6 +243,101 @@ export const commentsRouter = createTRPCRouter({
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: '审核评论失败',
+      });
+    }
+  }),
+
+  // 编辑评论（作者或管理员）
+  editComment: publicProcedure.input(editCommentSchema).mutation(async ({ input, ctx }) => {
+    const { commentId, content } = input;
+
+    // 获取评论信息
+    const comment = await db
+      .select({
+        id: comments.id,
+        authorId: comments.authorId,
+        postSlug: comments.postSlug,
+      })
+      .from(comments)
+      .where(eq(comments.id, commentId))
+      .get();
+
+    if (!comment) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: '评论不存在',
+      });
+    }
+
+    // 权限检查：只有评论作者或管理员可以编辑
+    if (!ctx.user || (comment.authorId !== ctx.user.id && !ctx.isAdmin)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: '没有权限编辑此评论',
+      });
+    }
+
+    try {
+      // 更新评论内容
+      await db.update(comments).set({ content }).where(eq(comments.id, commentId));
+
+      return {
+        success: true,
+        message: '评论已更新',
+      };
+    } catch (error) {
+      console.error('Failed to edit comment:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: '编辑评论失败',
+      });
+    }
+  }),
+
+  // 删除评论（作者或管理员）
+  deleteComment: publicProcedure.input(deleteCommentSchema).mutation(async ({ input, ctx }) => {
+    const { commentId } = input;
+
+    // 获取评论信息
+    const comment = await db
+      .select({
+        id: comments.id,
+        authorId: comments.authorId,
+        postSlug: comments.postSlug,
+      })
+      .from(comments)
+      .where(eq(comments.id, commentId))
+      .get();
+
+    if (!comment) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: '评论不存在',
+      });
+    }
+
+    // 权限检查：只有评论作者或管理员可以删除
+    if (!ctx.user || (comment.authorId !== ctx.user.id && !ctx.isAdmin)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: '没有权限删除此评论',
+      });
+    }
+
+    try {
+      // 删除评论（这里可以选择软删除或硬删除）
+      // 硬删除：直接从数据库中删除
+      await db.delete(comments).where(eq(comments.id, commentId));
+
+      return {
+        success: true,
+        message: '评论已删除',
+      };
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: '删除评论失败',
       });
     }
   }),

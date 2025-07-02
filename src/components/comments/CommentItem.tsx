@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import CommentEditForm from './CommentEditForm';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
-import { useModerateComment } from './hooks';
+import { useDeleteComment, useEditComment, useModerateComment } from './hooks';
 import Reactions from './Reactions';
 import type { Comment, UserInfo } from './types';
 
@@ -40,7 +41,10 @@ export default function CommentItem({
   isAdmin,
 }: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const { moderateComment, isModerating, error: moderateError } = useModerateComment();
+  const { editComment, isEditing: isEditingComment, error: editError } = useEditComment();
+  const { deleteComment, isDeleting, error: deleteError } = useDeleteComment();
 
   const handleReplyPosted = () => {
     setIsReplying(false);
@@ -60,6 +64,40 @@ export default function CommentItem({
   const handleReplyClick = () => {
     setIsReplying(!isReplying);
   };
+
+  const handleEditClick = () => {
+    setIsEditing(!isEditing);
+  };
+
+  const handleEditSave = async (content: string) => {
+    try {
+      await editComment(comment.id, content);
+      setIsEditing(false);
+      onCommentPosted('评论已更新');
+    } catch (e) {
+      // error is already set in the hook
+      console.error(e);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
+  };
+
+  const handleDeleteClick = async () => {
+    if (window.confirm('确定要删除这条留言吗？')) {
+      try {
+        await deleteComment(comment.id);
+        onCommentPosted('评论已删除');
+      } catch (e) {
+        // error is already set in the hook
+        console.error(e);
+      }
+    }
+  };
+
+  // 判断当前用户是否可以编辑/删除评论
+  const canEditDelete = userInfo && (userInfo.id === comment.authorId || isAdmin);
 
   return (
     <>
@@ -81,7 +119,19 @@ export default function CommentItem({
             {comment.status === 'pending' && <span className="badge badge-warning badge-sm ml-3">审核中</span>}
           </div>
           <time className="text-xs text-gray-500">{formatDate(comment.createdAt)}</time>
-          <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{comment.content}</div>
+          {isEditing ? (
+            <div className="mt-2">
+              <CommentEditForm
+                initialContent={comment.content}
+                onSave={handleEditSave}
+                onCancel={handleEditCancel}
+                isEditing={isEditingComment}
+                error={editError}
+              />
+            </div>
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{comment.content}</div>
+          )}
 
           <Reactions targetType="comment" targetId={comment.id} userInfo={userInfo} />
 
@@ -108,13 +158,32 @@ export default function CommentItem({
               {moderateError && <p className="text-error text-xs">{moderateError}</p>}
             </div>
           )}
+
+          {/* 显示编辑/删除错误 */}
+          {deleteError && <p className="text-error text-xs mt-2">{deleteError}</p>}
         </div>
 
         {/* Actions */}
         <div className="flex-shrink-0">
-          <button onClick={handleReplyClick} className="text-xs btn btn-ghost btn-sm">
-            {isReplying ? '取消留言' : '给 TA 留个言'}
-          </button>
+          <div className="flex flex-col gap-1">
+            <button onClick={handleReplyClick} className="text-xs btn btn-ghost btn-sm">
+              {isReplying ? '取消留言' : '给 TA 留个言'}
+            </button>
+            {canEditDelete && !isEditing && (
+              <div className="flex gap-1">
+                <button onClick={handleEditClick} className="text-xs btn btn-ghost btn-sm" disabled={isDeleting}>
+                  编辑
+                </button>
+                <button
+                  onClick={handleDeleteClick}
+                  className="text-xs btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? '删除中...' : '删除'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
