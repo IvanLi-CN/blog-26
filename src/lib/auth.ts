@@ -37,22 +37,32 @@ export async function getUserFromCookies(cookies: AstroCookies): Promise<UserInf
  * 检查用户是否为管理员（通过邮箱）
  */
 export function isAdmin(userEmail: string): boolean {
-  const { email: adminEmail } = config.admin;
-  return Boolean(adminEmail && userEmail === adminEmail);
+  try {
+    const { email: adminEmail } = config.admin;
+    return Boolean(adminEmail && userEmail === adminEmail);
+  } catch {
+    // Configuration not available (e.g., during prerender)
+    return false;
+  }
 }
 
 /**
  * 从请求头中检查当前用户是否为管理员（Traefik SSO）
  */
 export function isAdminFromHeaders(headers: Headers): boolean {
-  const { email: adminEmail, emailHeaderName } = config.admin;
+  try {
+    const { email: adminEmail, emailHeaderName } = config.admin;
 
-  if (!adminEmail || !emailHeaderName) {
+    if (!adminEmail || !emailHeaderName) {
+      return false;
+    }
+
+    const emailFromHeader = headers.get(emailHeaderName);
+    return Boolean(emailFromHeader && emailFromHeader === adminEmail);
+  } catch {
+    // Configuration not available (e.g., during prerender)
     return false;
   }
-
-  const emailFromHeader = headers.get(emailHeaderName);
-  return Boolean(emailFromHeader && emailFromHeader === adminEmail);
 }
 
 /**
