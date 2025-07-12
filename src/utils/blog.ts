@@ -188,6 +188,20 @@ export const findLatestPosts = async ({ count }: { count?: number }): Promise<Ar
   return posts ? posts.slice(0, _count) : [];
 };
 
+/** 获取所有项目 */
+export const fetchProjects = async (): Promise<Array<Post>> => {
+  const posts = await fetchPosts();
+  return posts.filter((post) => post.id.startsWith('Project/'));
+};
+
+/** 获取精选项目（用于首页展示） */
+export const findFeaturedProjects = async ({ count }: { count?: number }): Promise<Array<Post>> => {
+  const _count = count || 6;
+  const projects = await fetchProjects();
+
+  return projects ? projects.slice(0, _count) : [];
+};
+
 /** */
 export const getStaticPathsBlogList = async ({ paginate }: { paginate: PaginateFunction }) => {
   if (!isBlogEnabled || !isBlogListRouteEnabled) return [];

@@ -1,0 +1,186 @@
+---
+import { Icon } from "astro-icon/components";
+import ProjectCard from "~/components/project/ProjectCard.astro";
+import Headline from "~/components/ui/Headline.astro";
+import Layout from "~/layouts/PageLayout.astro";
+import type { Post } from "~/types";
+import { findFeaturedProjects } from "~/utils/blog";
+
+export const prerender = true;
+
+// 获取精选项目
+const featuredProjects = await findFeaturedProjects({ count: 6 });
+
+// 硬编码的占位项目数据
+const placeholderProjects: Post[] = [
+  {
+    id: "placeholder-1",
+    title: "智能家居控制系统",
+    excerpt: "基于 ESP32 的智能家居控制系统，支持语音控制、远程监控和自动化场景。集成了温湿度传感器、智能插座和照明控制。",
+    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
+    tags: [
+      { slug: "hardware", title: "Hardware" },
+      { slug: "iot", title: "IoT" },
+      { slug: "esp32", title: "ESP32" }
+    ],
+    permalink: "/placeholder-smart-home",
+    publishDate: new Date("2024-01-15"),
+    updateDate: new Date("2024-01-15"),
+    category: undefined,
+    author: "Ivan Li",
+    draft: false,
+    public: true,
+    metadata: {},
+    Content: undefined,
+    body: "",
+    readingTime: 5,
+    slug: "placeholder-smart-home"
+  },
+  {
+    id: "placeholder-2",
+    title: "个人博客系统",
+    excerpt: "使用 Astro + React 构建的现代化博客系统，支持 MDX、评论系统、搜索功能和管理后台。采用 SSG 优化性能。",
+    image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=300&fit=crop",
+    tags: [
+      { slug: "software", title: "Software" },
+      { slug: "web", title: "Web" },
+      { slug: "astro", title: "Astro" },
+      { slug: "react", title: "React" }
+    ],
+    permalink: "/placeholder-blog-system",
+    publishDate: new Date("2024-02-20"),
+    updateDate: new Date("2024-02-20"),
+    category: undefined,
+    author: "Ivan Li",
+    draft: false,
+    public: true,
+    metadata: {},
+    Content: undefined,
+    body: "",
+    readingTime: 8,
+    slug: "placeholder-blog-system"
+  },
+  {
+    id: "placeholder-3",
+    title: "机械键盘固件",
+    excerpt: "为自制机械键盘开发的 QMK 固件，支持多层布局、RGB 灯效、旋转编码器和 OLED 显示屏。",
+    image: "https://images.unsplash.com/photo-1541140532154-b024d705b90a?w=400&h=300&fit=crop",
+    tags: [
+      { slug: "hardware", title: "Hardware" },
+      { slug: "firmware", title: "Firmware" },
+      { slug: "qmk", title: "QMK" }
+    ],
+    permalink: "/placeholder-keyboard-firmware",
+    publishDate: new Date("2024-03-10"),
+    updateDate: new Date("2024-03-10"),
+    category: undefined,
+    author: "Ivan Li",
+    draft: false,
+    public: true,
+    metadata: {},
+    Content: undefined,
+    body: "",
+    readingTime: 6,
+    slug: "placeholder-keyboard-firmware"
+  }
+];
+
+// 合并真实项目和占位项目
+const allProjects = [...featuredProjects, ...placeholderProjects].slice(0, 6);
+
+const metadata = {
+  title: "项目展示",
+  description: "Ivan 的个人项目展示，探索创新的硬件设计与软件开发项目。",
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+---
+
+<Layout metadata={metadata}>
+  <section class="px-4 md:px-6 py-12 sm:py-16 lg:py-20 mx-auto max-w-7xl">
+    <!-- 页面标题 -->
+    <div class="text-center mb-16">
+      <Headline>
+        <Fragment slot="title">项目展示</Fragment>
+        <Fragment slot="subtitle">
+          Ivan 的个人项目作品集，记录创新的硬件设计与软件开发历程
+        </Fragment>
+      </Headline>
+    </div>
+
+    <!-- 精选项目 -->
+    <div class="mb-16">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="text-2xl font-bold flex items-center gap-2">
+          <Icon name="tabler:star" class="w-6 h-6 text-yellow-500" />
+          精选项目
+        </h2>
+        <a href="/projects/all" class="btn btn-outline btn-sm">
+          查看全部
+          <Icon name="tabler:arrow-right" class="w-4 h-4" />
+        </a>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {allProjects.map((project, index) => (
+          <div
+            class="animate-fade-in-up h-full"
+            style={`animation-delay: ${index * 100}ms`}
+          >
+            <ProjectCard project={project} />
+          </div>
+        ))}
+      </div>
+    </div>
+
+
+
+    <!-- 技术栈 -->
+    <div class="text-center">
+      <h2 class="text-2xl font-bold mb-8">常用技术栈</h2>
+      <div class="flex flex-wrap justify-center gap-3">
+        {[
+          { name: "Rust", icon: "tabler:brand-rust" },
+          { name: "TypeScript", icon: "tabler:brand-typescript" },
+          { name: "React", icon: "tabler:brand-react" },
+          { name: "Astro", icon: "tabler:rocket" },
+          { name: "STM32", icon: "tabler:cpu" },
+          { name: "ESP32", icon: "tabler:wifi" },
+          { name: "KiCad", icon: "tabler:cpu" },
+          { name: "3D Printing", icon: "tabler:printer" }
+        ].map((tech) => (
+          <div class="badge badge-lg badge-outline gap-2">
+            <Icon name={tech.icon} class="w-4 h-4" />
+            {tech.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
