@@ -1,0 +1,61 @@
+---
+import BlogList from "~/components/blog/List.astro";
+import Pagination from "~/components/blog/Pagination.astro";
+import Headline from "~/components/ui/Headline.astro";
+import Layout from "~/layouts/PageLayout.astro";
+import { blogListRobots, blogPostsPerPage, fetchPosts } from "~/utils/blog";
+
+export const prerender = false;
+
+// 获取分页参数
+const pageParam = Astro.params.page;
+const currentPage = pageParam ? parseInt(pageParam) : 1;
+
+// 获取所有文章
+const allPosts = await fetchPosts();
+
+// 计算分页
+const postsPerPage = blogPostsPerPage || 10;
+const totalPosts = allPosts.length;
+const totalPages = Math.ceil(totalPosts / postsPerPage);
+const startIndex = (currentPage - 1) * postsPerPage;
+const endIndex = startIndex + postsPerPage;
+const posts = allPosts.slice(startIndex, endIndex);
+
+// 构建分页对象
+const page = {
+  data: posts,
+  start: startIndex,
+  end: Math.min(endIndex - 1, totalPosts - 1),
+  size: postsPerPage,
+  total: totalPosts,
+  currentPage: currentPage,
+  lastPage: totalPages,
+  url: {
+    current: Astro.url.pathname,
+    prev: currentPage > 1 ? (currentPage === 2 ? `/blog` : `/blog/${currentPage - 1}`) : undefined,
+    next: currentPage < totalPages ? `/blog/${currentPage + 1}` : undefined,
+  },
+};
+
+const metadata = {
+  title: `Blog${currentPage > 1 ? ` — Page ${currentPage}` : ""}`,
+  robots: {
+    index: blogListRobots?.index && currentPage === 1,
+    follow: blogListRobots?.follow,
+  },
+  openGraph: {
+    type: "blog",
+  },
+};
+---
+
+<Layout metadata={metadata}>
+  <section class="px-6 sm:px-6 py-12 sm:py-16 lg:py-20 mx-auto max-w-4xl">
+    <Headline title="文章" subtitle="一些想法、记录、分享"> 文章 </Headline>
+    <BlogList posts={page.data} />
+    <div class="mt-12 md:mt-16">
+      <Pagination prevUrl={page.url.prev} nextUrl={page.url.next} />
+    </div>
+  </section>
+</Layout>
