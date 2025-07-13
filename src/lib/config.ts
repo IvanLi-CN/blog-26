@@ -14,9 +14,11 @@ const envSchema = z.object({
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
 
   // WebDAV 配置
-  WEBdav_URL: z.string().url().optional(),
-  WEBdav_USERNAME: z.string().optional(),
-  WEBdav_PASSWORD: z.string().optional(),
+  WEBDAV_URL: z.string().url().optional(),
+  WEBDAV_USERNAME: z.string().optional(),
+  WEBDAV_PASSWORD: z.string().optional(),
+  WEBDAV_EXCLUDE_PATHS: z.string().default(''),
+  WEBDAV_PROJECTS_PATH: z.string().default('/projects'),
 
   // 模型配置
   EMBEDDING_MODEL_NAME: z.string().default('BAAI/bge-m3'),
@@ -122,9 +124,13 @@ export const config = {
   get webdav() {
     const cfg = getConfig();
     return {
-      url: cfg.WEBdav_URL,
-      username: cfg.WEBdav_USERNAME,
-      password: cfg.WEBdav_PASSWORD,
+      url: cfg.WEBDAV_URL,
+      username: cfg.WEBDAV_USERNAME,
+      password: cfg.WEBDAV_PASSWORD,
+      excludePaths: cfg.WEBDAV_EXCLUDE_PATHS.split(',')
+        .map((p) => p.trim())
+        .filter(Boolean),
+      projectsPath: cfg.WEBDAV_PROJECTS_PATH,
     };
   },
 
