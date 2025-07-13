@@ -101,6 +101,7 @@ const postCollection = defineCollection({
 
 export const collections = {
   post: postCollection,
+  // 保留 notes 和 local-notes 集合定义以支持类型系统，但目录可能不存在
   notes: defineCollection({
     schema: (ctx) =>
       postSchema(ctx).extend({
