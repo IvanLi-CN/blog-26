@@ -1,8 +1,7 @@
 ---
-import { getCollection } from "astro:content";
 import Layout from "~/layouts/PageLayout.astro";
 import { isAdminFromRequest, redirectToAdminLogin } from "~/lib/auth";
-import { getNormalizedPost } from "~/utils/blog";
+import { fetchPosts } from "~/utils/blog";
 
 export const prerender = false;
 
@@ -15,20 +14,10 @@ if (!isUserAdmin) {
   return redirectToAdminLogin();
 }
 
-// Get all posts including drafts
-const allPosts = await Promise.all([
-  getCollection("post"),
-  getCollection("notes"),
-  getCollection("local-notes"),
-]).then(([posts, notes, localNotes]) => [...posts, ...notes, ...localNotes]);
-
-const normalizedPosts = await Promise.all(
-  allPosts.map(async (post) => await getNormalizedPost(post)),
-);
-
-const sortedPosts = normalizedPosts.sort(
-  (a, b) => b.publishDate.valueOf() - a.publishDate.valueOf(),
-);
+// Get all posts including drafts from both local collections and WebDAV
+// Set ADMIN_MODE to true to include draft posts
+process.env.ADMIN_MODE = "true";
+const sortedPosts = await fetchPosts();
 
 const metadata = {
   title: "文章管理 - 管理员面板",
@@ -274,6 +263,41 @@ const metadata = {
                             无简介
                           </div>
                         )}
+                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center">
+                          {post.id.startsWith("/") ? (
+                            <span class="inline-flex items-center">
+                              <svg
+                                class="w-3 h-3 mr-1 text-green-500"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                              </svg>
+                              WebDAV
+                            </span>
+                          ) : (
+                            <span class="inline-flex items-center">
+                              <svg
+                                class="w-3 h-3 mr-1 text-blue-500"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path
+                                  fill-rule="evenodd"
+                                  d="M4 5a2 2 0 012-2v1a1 1 0 102 0V3a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 2a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                  clip-rule="evenodd"
+                                />
+                              </svg>
+                              本地
+                            </span>
+                          )}
+                          <span class="ml-2 truncate" title={post.id}>
+                            {post.id.length > 50
+                              ? post.id.substring(0, 50) + "..."
+                              : post.id}
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td class="px-2 py-4">
@@ -308,6 +332,7 @@ const metadata = {
                         ))}
                       </div>
                     </td>
+
                     <td class="px-2 py-4 text-xs">
                       <a
                         href={`/${post.permalink}`}
@@ -381,7 +406,7 @@ const metadata = {
           const emptyRow = document.createElement("tr");
           emptyRow.className = "empty-state";
           emptyRow.innerHTML = `
-            <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+            <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
               <div class="flex flex-col items-center">
                 <svg class="w-12 h-12 mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
