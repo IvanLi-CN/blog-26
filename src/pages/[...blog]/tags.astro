@@ -1,21 +1,12 @@
 ---
-import type { GetStaticPaths } from "astro";
+
 import { Icon } from "astro-icon/components";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 import { blogTagRobots, getAllTags } from "~/utils/blog";
 import { getPermalink } from "../../utils/permalinks";
 
-export const prerender = true;
-
-export const getStaticPaths: GetStaticPaths = async () => {
-  return [
-    {
-      params: { blog: undefined },
-      props: {},
-    },
-  ];
-};
+export const prerender = false;
 
 const allTags = await getAllTags();
 
