@@ -4,6 +4,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getFileRecord, upsertFileRecord } from './db';
 import type { NewVectorizedFile } from './schema';
+import { getWebDAVClient, isWebDAVEnabled, type WebDAVPost } from './webdav';
 
 export interface ProcessedContent {
   filepath: string;
@@ -152,18 +153,109 @@ export async function processContent(
   }
 }
 /**
+ * 处理 WebDAV 内容文件
+ */
+export async function processWebDAVContent(
+  post: WebDAVPost,
+  force: boolean = false
+): Promise<ProcessedContent | undefined> {
+  try {
+    const filepath = post.id;
+    const slug = post.slug;
+    const rawContent = post.body;
+    const frontmatter = post.data;
+
+    // Calculate content hash from rawContent
+    const contentHash = calculateContentHash(rawContent);
+
+    // Try to get existing record from DB
+    const existingRecord = await getFileRecord(filepath);
+
+    let effectiveContentUpdatedAt: number;
+    let needsVectorization = false;
+
+    // Determine effectiveContentUpdatedAt based on content hash change
+    if (existingRecord && existingRecord.contentHash === contentHash) {
+      // Content hash hasn't changed, use the existing contentUpdatedAt from DB
+      effectiveContentUpdatedAt = existingRecord.contentUpdatedAt;
+      console.log(`WebDAV 文件 ${filepath} 内容未修改，沿用数据库中的 content_updated_at.`);
+    } else {
+      // New file or content hash changed, set content_updated_at to now
+      effectiveContentUpdatedAt = Date.now();
+      console.log(`WebDAV 文件 ${filepath} 内容已修改或为新文件，设置 content_updated_at 为当前时间.`);
+    }
+
+    // Determine if needs vectorization
+    if (force) {
+      console.log(`强制处理 WebDAV 文件 ${filepath}.`);
+      needsVectorization = true;
+    } else if (!existingRecord) {
+      console.log(`WebDAV 文件 ${filepath} 是新文件，需要向量化.`);
+      needsVectorization = true;
+    } else if (existingRecord.indexedAt <= effectiveContentUpdatedAt) {
+      console.log(`WebDAV 文件 ${filepath} 需要重新向量化 (indexed_at <= effectiveContentUpdatedAt).`);
+      needsVectorization = true;
+    } else {
+      console.log(`WebDAV 文件 ${filepath} 未修改且向量化已是最新，跳过处理.`);
+    }
+
+    if (needsVectorization) {
+      console.log(`处理 WebDAV 文件 ${filepath} 并添加到向量化列表.`);
+      return {
+        filepath: filepath,
+        slug: slug,
+        rawContent: rawContent,
+        frontmatter: frontmatter,
+        contentHash: contentHash,
+        lastModified: existingRecord?.lastModifiedTime || Date.now(),
+        effectiveContentUpdatedAt: effectiveContentUpdatedAt,
+      };
+    } else {
+      return undefined; // No vectorization needed
+    }
+  } catch (error) {
+    console.error(`Error processing WebDAV ${post.id}:`, error);
+    return undefined;
+  }
+}
+
+/**
  * 批量处理内容文件
  */
 export async function processAllContent(force: boolean = false): Promise<ProcessedContent[]> {
   console.log(`开始处理所有内容文件 (force: ${force})...`);
-  // 获取所有博客文章
-  const posts = await getCollection('post');
   const results: ProcessedContent[] = [];
 
-  for (const post of posts) {
-    const processed = await processContent(post, force);
-    if (processed) {
-      results.push(processed);
+  // 始终处理本地内容
+  try {
+    console.log('处理本地内容...');
+    const posts = await getCollection('post');
+
+    for (const post of posts) {
+      const processed = await processContent(post, force);
+      if (processed) {
+        results.push(processed);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to process local content:', error);
+  }
+
+  // 如果启用了 WebDAV，处理 WebDAV 内容并合并
+  if (isWebDAVEnabled()) {
+    try {
+      console.log('处理 WebDAV 内容...');
+      const webdavClient = getWebDAVClient();
+      const webdavPosts = await webdavClient.getAllPosts();
+
+      for (const post of webdavPosts) {
+        const processed = await processWebDAVContent(post, force);
+        if (processed) {
+          results.push(processed);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to process WebDAV content:', error);
     }
   }
 
