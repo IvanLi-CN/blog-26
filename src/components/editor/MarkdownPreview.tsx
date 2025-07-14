@@ -138,7 +138,7 @@ export function MarkdownPreview({ content, filePath }: MarkdownPreviewProps) {
           img: ({ src, alt }) => {
             const convertedSrc = convertImagePathForPreview(src || '', filePath);
             return (
-              <div className="my-4">
+              <span className="inline-block my-4 w-full">
                 <img
                   src={convertedSrc}
                   alt={alt || '图片'}
@@ -153,16 +153,16 @@ export function MarkdownPreview({ content, filePath }: MarkdownPreviewProps) {
                     }
                   }}
                 />
-                <div
+                <span
                   style={{ display: 'none' }}
-                  className="bg-gray-100 dark:bg-gray-800 border border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500"
+                  className="inline-block w-full bg-gray-100 dark:bg-gray-800 border border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500"
                 >
-                  <div className="text-sm">📷 图片加载失败</div>
-                  <div className="text-xs mt-1 text-gray-400">{alt || '未命名图片'}</div>
-                  <div className="text-xs mt-1 font-mono text-gray-400 break-all">原始路径: {src}</div>
-                  <div className="text-xs mt-1 font-mono text-gray-400 break-all">转换路径: {convertedSrc}</div>
-                </div>
-              </div>
+                  <span className="block text-sm">📷 图片加载失败</span>
+                  <span className="block text-xs mt-1 text-gray-400">{alt || '未命名图片'}</span>
+                  <span className="block text-xs mt-1 font-mono text-gray-400 break-all">原始路径: {src}</span>
+                  <span className="block text-xs mt-1 font-mono text-gray-400 break-all">转换路径: {convertedSrc}</span>
+                </span>
+              </span>
             );
           },
           hr: () => <hr className="border-t border-gray-300 my-6" />,
