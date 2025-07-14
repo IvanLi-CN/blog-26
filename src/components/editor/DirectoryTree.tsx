@@ -30,9 +30,23 @@ function TreeNode({
   onCreateDirectory,
   onDeleteDirectory,
   onRenameFile,
-  onDeleteFile
+  onDeleteFile,
 }: TreeNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(level === 0);
+  // 从localStorage获取展开状态，默认全部折叠
+  const getExpandedState = () => {
+    try {
+      const saved = localStorage.getItem('directoryTree-expanded');
+      if (saved) {
+        const expandedPaths = JSON.parse(saved) as string[];
+        return expandedPaths.includes(node.path);
+      }
+    } catch (error) {
+      console.warn('Failed to load expanded state from localStorage:', error);
+    }
+    return false; // 默认折叠全部目录
+  };
+
+  const [isExpanded, setIsExpanded] = useState(getExpandedState);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [isEditing, setIsEditing] = useState(false);
@@ -43,6 +57,32 @@ function TreeNode({
   const isDirectory = node.type === 'directory';
   const hasChildren = node.children && node.children.length > 0;
   const isSelected = selectedPath === node.path;
+
+  // 保存展开状态到localStorage
+  const saveExpandedState = (expanded: boolean) => {
+    try {
+      const saved = localStorage.getItem('directoryTree-expanded');
+      let expandedPaths: string[] = [];
+
+      if (saved) {
+        expandedPaths = JSON.parse(saved) as string[];
+      }
+
+      if (expanded) {
+        // 添加到展开列表
+        if (!expandedPaths.includes(node.path)) {
+          expandedPaths.push(node.path);
+        }
+      } else {
+        // 从展开列表中移除
+        expandedPaths = expandedPaths.filter((path) => path !== node.path);
+      }
+
+      localStorage.setItem('directoryTree-expanded', JSON.stringify(expandedPaths));
+    } catch (error) {
+      console.warn('Failed to save expanded state to localStorage:', error);
+    }
+  };
 
   // 关闭上下文菜单
   useEffect(() => {
@@ -68,7 +108,9 @@ function TreeNode({
 
   const handleClick = () => {
     if (isDirectory) {
-      setIsExpanded(!isExpanded);
+      const newExpanded = !isExpanded;
+      setIsExpanded(newExpanded);
+      saveExpandedState(newExpanded);
     } else {
       // 点击文件时直接编辑
       onSelectFile(node.path);
@@ -86,7 +128,15 @@ function TreeNode({
 
   const handleRenameSubmit = () => {
     if (editingName.trim() && editingName !== node.name) {
-      const newPath = node.path.replace(node.name, editingName.trim());
+      const trimmedName = editingName.trim();
+      // 检查新名称是否以 . 或 _ 开头
+      if (trimmedName.startsWith('.') || trimmedName.startsWith('_')) {
+        alert('文件/目录名不能以 . 或 _ 开头');
+        setEditingName(node.name);
+        setIsEditing(false);
+        return;
+      }
+      const newPath = node.path.replace(node.name, trimmedName);
       onRenameFile(node.path, newPath);
     }
     setIsEditing(false);
@@ -108,7 +158,14 @@ function TreeNode({
   const handleCreateDirectory = () => {
     const name = prompt('请输入目录名称:');
     if (name && name.trim()) {
-      const newPath = node.path === '/' ? `/${name.trim()}` : `${node.path}/${name.trim()}`;
+      const trimmedName = name.trim();
+      // 检查目录名是否以 . 或 _ 开头
+      if (trimmedName.startsWith('.') || trimmedName.startsWith('_')) {
+        alert('目录名不能以 . 或 _ 开头');
+        setShowContextMenu(false);
+        return;
+      }
+      const newPath = node.path === '/' ? `/${trimmedName}` : `${node.path}/${trimmedName}`;
       onCreateDirectory(newPath);
     }
     setShowContextMenu(false);
@@ -117,7 +174,14 @@ function TreeNode({
   const handleCreateFile = () => {
     const name = prompt('请输入文件名称:');
     if (name && name.trim()) {
-      const newPath = node.path === '/' ? `/${name.trim()}` : `${node.path}/${name.trim()}`;
+      const trimmedName = name.trim();
+      // 检查文件名是否以 . 或 _ 开头
+      if (trimmedName.startsWith('.') || trimmedName.startsWith('_')) {
+        alert('文件名不能以 . 或 _ 开头');
+        setShowContextMenu(false);
+        return;
+      }
+      const newPath = node.path === '/' ? `/${trimmedName}` : `${node.path}/${trimmedName}`;
       onCreateFile(newPath);
     }
     setShowContextMenu(false);
@@ -140,21 +204,15 @@ function TreeNode({
   return (
     <div>
       <div
-        className={`flex items-center py-1 px-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
-          isSelected ? 'bg-blue-100 dark:bg-blue-900' : ''
+        className={`flex items-center py-2 px-2 cursor-pointer hover:bg-base-300 transition-colors ${
+          isSelected ? 'bg-primary/10 border-r-2 border-primary font-medium text-primary' : 'text-base-content'
         }`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
       >
-        {isDirectory && (
-          <span className="mr-1 text-gray-500 select-none">
-            {isExpanded ? '▼' : '▶'}
-          </span>
-        )}
-        <span className="mr-2">
-          {isDirectory ? '📁' : '📄'}
-        </span>
+        {isDirectory && <span className="mr-1 text-gray-500 select-none">{isExpanded ? '▼' : '▶'}</span>}
+        <span className="mr-2">{isDirectory ? '📁' : '📄'}</span>
         {isEditing ? (
           <input
             ref={editInputRef}
@@ -173,7 +231,7 @@ function TreeNode({
       {showContextMenu && (
         <div
           ref={contextMenuRef}
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg py-1 min-w-[120px]"
+          className="fixed z-50 menu bg-base-100 border border-base-300 rounded-box shadow-lg py-1 min-w-[120px]"
           style={{
             left: contextMenuPosition.x,
             top: contextMenuPosition.y,
@@ -181,41 +239,36 @@ function TreeNode({
         >
           {isDirectory ? (
             <>
-              <button
-                className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={handleCreateFile}
-              >
-                新建文件
-              </button>
-              <button
-                className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={handleCreateDirectory}
-              >
-                新建目录
-              </button>
-              {node.path !== '/' && (
-                <button
-                  className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
-                  onClick={handleDeleteDirectory}
-                >
-                  删除目录
+              <li>
+                <button className="text-sm" onClick={handleCreateFile}>
+                  新建文件
                 </button>
+              </li>
+              <li>
+                <button className="text-sm" onClick={handleCreateDirectory}>
+                  新建目录
+                </button>
+              </li>
+              {node.path !== '/' && (
+                <li>
+                  <button className="text-sm text-error" onClick={handleDeleteDirectory}>
+                    删除目录
+                  </button>
+                </li>
               )}
             </>
           ) : (
             <>
-              <button
-                className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={handleRename}
-              >
-                重命名
-              </button>
-              <button
-                className="w-full text-left px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
-                onClick={handleDeleteFile}
-              >
-                删除文件
-              </button>
+              <li>
+                <button className="text-sm" onClick={handleRename}>
+                  重命名
+                </button>
+              </li>
+              <li>
+                <button className="text-sm text-error" onClick={handleDeleteFile}>
+                  删除文件
+                </button>
+              </li>
             </>
           )}
         </div>
@@ -316,7 +369,13 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath, onRefr
   const handleCreateRootFile = () => {
     const name = prompt('请输入文件名称:');
     if (name && name.trim()) {
-      onCreateFile(`/${name.trim()}`);
+      const trimmedName = name.trim();
+      // 检查文件名是否以 . 或 _ 开头
+      if (trimmedName.startsWith('.') || trimmedName.startsWith('_')) {
+        alert('文件名不能以 . 或 _ 开头');
+        return;
+      }
+      onCreateFile(`/${trimmedName}`);
     }
     setShowRootContextMenu(false);
   };
@@ -324,7 +383,13 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath, onRefr
   const handleCreateRootDirectory = () => {
     const name = prompt('请输入目录名称:');
     if (name && name.trim()) {
-      handleCreateDirectory(`/${name.trim()}`);
+      const trimmedName = name.trim();
+      // 检查目录名是否以 . 或 _ 开头
+      if (trimmedName.startsWith('.') || trimmedName.startsWith('_')) {
+        alert('目录名不能以 . 或 _ 开头');
+        return;
+      }
+      handleCreateDirectory(`/${trimmedName}`);
     }
     setShowRootContextMenu(false);
   };
@@ -356,10 +421,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath, onRefr
     return (
       <div className="p-4 text-center text-gray-500 dark:text-gray-400">
         <p>无法加载目录树</p>
-        <button
-          onClick={() => refetch()}
-          className="mt-2 text-blue-500 hover:text-blue-600 text-sm"
-        >
+        <button onClick={() => refetch()} className="mt-2 text-blue-500 hover:text-blue-600 text-sm">
           重试
         </button>
       </div>

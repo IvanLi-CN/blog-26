@@ -440,7 +440,7 @@ export class WebDAVClient {
       // 如果提供了自定义路径，使用自定义路径
       filePath = customPath.endsWith('/') ? `${customPath}${filename}` : `${customPath}/${filename}`;
     } else {
-    // 使用默认的collection逻辑
+      // 使用默认的collection逻辑
       switch (collection) {
         case 'notes':
           filePath = `/notes/${filename}`;
@@ -532,10 +532,28 @@ export class WebDAVClient {
             continue;
           }
 
+          // 获取文件/目录名称
+          const basename = item.basename || item.filename.split('/').pop() || '';
+
+          // 跳过以 . 和 _ 开头的文件和目录
+          if (basename.startsWith('.') || basename.startsWith('_')) {
+            continue;
+          }
+
           // 标准化路径
           let normalizedPath = item.filename;
           if (!normalizedPath.startsWith('/')) {
             normalizedPath = `/${normalizedPath}`;
+          }
+
+          // 检查是否在排除路径中
+          const relativePath = normalizedPath.replace(/^\//, '');
+          const shouldExclude = this.excludePaths.some(
+            (excludePath) => relativePath.startsWith(excludePath + '/') || relativePath === excludePath
+          );
+
+          if (shouldExclude) {
+            continue;
           }
 
           allFiles.push({
@@ -615,7 +633,7 @@ export class WebDAVClient {
           // 同类型按自然语言顺序排序
           return a.name.localeCompare(b.name, 'zh-CN', {
             numeric: true,
-            sensitivity: 'base'
+            sensitivity: 'base',
           });
         });
       }
@@ -633,7 +651,7 @@ export class WebDAVClient {
         // 同类型按自然语言顺序排序
         return a.name.localeCompare(b.name, 'zh-CN', {
           numeric: true,
-          sensitivity: 'base'
+          sensitivity: 'base',
         });
       });
     }
@@ -663,7 +681,7 @@ export class WebDAVClient {
   async deleteDirectory(path: string): Promise<void> {
     // 首先检查目录是否为空
     const files = await this.propfind(path, 1);
-    const hasChildren = files.some(file => file.filename !== path && !file.filename.endsWith('/'));
+    const hasChildren = files.some((file) => file.filename !== path && !file.filename.endsWith('/'));
 
     if (hasChildren) {
       throw new Error('Cannot delete non-empty directory');
@@ -692,7 +710,7 @@ export class WebDAVClient {
       method: 'MOVE',
       headers: {
         ...this.getAuthHeaders(),
-        'Destination': destinationUrl,
+        Destination: destinationUrl,
       },
     });
 
