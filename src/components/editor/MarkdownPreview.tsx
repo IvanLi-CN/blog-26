@@ -85,6 +85,11 @@ export function MarkdownPreview({ content, filePath }: MarkdownPreviewProps) {
     return <div className="text-gray-500 italic text-center py-8">开始写作以查看预览...</div>;
   }
 
+  // 解析frontmatter，只预览body部分
+  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+  const match = content.match(frontmatterRegex);
+  const bodyContent = match ? match[2] : content;
+
   return (
     <div className="markdown-preview">
       <ReactMarkdown
@@ -174,7 +179,7 @@ export function MarkdownPreview({ content, filePath }: MarkdownPreviewProps) {
           td: ({ children }) => <td className="border border-gray-300 px-4 py-2">{children}</td>,
         }}
       >
-        {content}
+        {bodyContent}
       </ReactMarkdown>
     </div>
   );

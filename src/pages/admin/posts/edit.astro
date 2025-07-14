@@ -30,16 +30,18 @@ const metadata = {
 ---
 
 <Layout metadata={metadata}>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- 页面标题 -->
-      <div class="mb-8">
+  <div class="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <!-- 页面标题栏 -->
+    <div
+      class="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+    >
+      <div class="px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
               {isNewPost ? "新建文章" : "编辑文章"}
             </h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
               {isNewPost ? "创建一篇新的文章" : "编辑现有文章内容"}
             </p>
           </div>
@@ -53,8 +55,10 @@ const metadata = {
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 编辑器容器 -->
+    <!-- 编辑器容器 - 填充剩余空间 -->
+    <div class="flex-1 overflow-hidden">
       <PostEditorWrapper postId={postId || undefined} isNewPost={isNewPost} />
     </div>
   </div>

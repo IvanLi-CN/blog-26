@@ -1,7 +1,8 @@
+import yaml from 'js-yaml';
 import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
 import { MarkdownEditor } from './MarkdownEditor';
-import { type PostMetadata, PostMetadataForm } from './PostMetadataForm';
+import { type PostMetadata } from './PostMetadataForm';
 
 interface PostEditorProps {
   postId?: string;
@@ -9,8 +10,7 @@ interface PostEditorProps {
 }
 
 export function PostEditor({ postId, isNewPost }: PostEditorProps) {
-  const [activeTab, setActiveTab] = useState<'content' | 'metadata'>('content');
-  const [content, setContent] = useState('');
+  const [fullContent, setFullContent] = useState('');
   const [metadata, setMetadata] = useState<PostMetadata>({
     title: '',
     description: '',
@@ -27,6 +27,86 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // 解析frontmatter和内容
+  const parseFrontmatter = (content: string): { frontmatter: PostMetadata; body: string } => {
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+    const match = content.match(frontmatterRegex);
+
+    if (!match) {
+      return {
+        frontmatter: {
+          title: '',
+          description: '',
+          publishDate: new Date().toISOString(),
+          draft: true,
+          public: true,
+          tags: [],
+          category: '',
+          author: '',
+          image: '',
+          excerpt: '',
+          slug: '',
+        },
+        body: content,
+      };
+    }
+
+    const frontmatterText = match[1];
+    const body = match[2];
+
+    try {
+      const parsedFrontmatter = (yaml.load(frontmatterText) as Record<string, any>) || {};
+
+      return {
+        frontmatter: {
+          title: parsedFrontmatter.title || '',
+          description: parsedFrontmatter.description || '',
+          publishDate: parsedFrontmatter.publishDate || new Date().toISOString(),
+          updateDate: parsedFrontmatter.updateDate,
+          draft: parsedFrontmatter.draft !== false,
+          public: parsedFrontmatter.public !== false,
+          tags: Array.isArray(parsedFrontmatter.tags) ? parsedFrontmatter.tags : [],
+          category: parsedFrontmatter.category || '',
+          author: parsedFrontmatter.author || '',
+          image: parsedFrontmatter.image || '',
+          excerpt: parsedFrontmatter.excerpt || '',
+          slug: parsedFrontmatter.slug || '',
+        },
+        body: body,
+      };
+    } catch (error) {
+      console.warn('Failed to parse frontmatter as YAML:', error);
+      return {
+        frontmatter: {
+          title: '',
+          description: '',
+          publishDate: new Date().toISOString(),
+          draft: true,
+          public: true,
+          tags: [],
+          category: '',
+          author: '',
+          image: '',
+          excerpt: '',
+          slug: '',
+        },
+        body: content,
+      };
+    }
+  };
+
+  // 序列化frontmatter和内容
+  const serializeFrontmatter = (frontmatter: PostMetadata, body: string): string => {
+    const yamlContent = yaml.dump(frontmatter, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true,
+      sortKeys: false,
+    });
+
+    return `---\n${yamlContent}---\n\n${body}`;
+  };
 
   // 获取现有文章数据
   const {
@@ -70,20 +150,40 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
   // 加载现有文章数据
   useEffect(() => {
     if (post) {
-      setContent(post.body);
+      // 构建完整的markdown内容（包含frontmatter）
+      const fullMarkdownContent = serializeFrontmatter(
+        {
+          title: post.data.title || '',
+          description: post.data.description || '',
+          publishDate: post.data.publishDate || new Date().toISOString(),
+          updateDate: post.data.updateDate,
+          draft: post.data.draft ?? true,
+          public: post.data.public ?? true,
+          tags: post.data.tags || [],
+          category: post.data.category || '',
+          author: post.data.author || '',
+          image: post.data.image || '',
+          excerpt: post.data.excerpt || '',
+          slug: post.data.slug || post.slug,
+        },
+        post.body
+      );
+
+      setFullContent(fullMarkdownContent);
+
       setMetadata({
         title: post.data.title || '',
         description: post.data.description || '',
         publishDate: post.data.publishDate || new Date().toISOString(),
         updateDate: post.data.updateDate,
-        draft: post.data.draft ?? true,
-        public: post.data.public ?? true,
-        tags: post.data.tags || [],
+        draft: post.data.draft !== false,
+        public: post.data.public !== false,
+        tags: Array.isArray(post.data.tags) ? post.data.tags : [],
         category: post.data.category || '',
         author: post.data.author || '',
         image: post.data.image || '',
         excerpt: post.data.excerpt || '',
-        slug: post.data.slug || post.slug,
+        slug: post.data.slug || '',
       });
     }
   }, [post]);
@@ -99,7 +199,18 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
     }
   }, [metadata.title, isNewPost, metadata.slug]);
 
+  // 处理内容变化，同时更新metadata
+  const handleContentChange = (newContent: string) => {
+    setFullContent(newContent);
+
+    // 解析新的frontmatter
+    const { frontmatter } = parseFrontmatter(newContent);
+    setMetadata(frontmatter);
+  };
+
   const handleSave = async () => {
+    // 从完整内容中解析frontmatter和body
+    const { frontmatter, body } = parseFrontmatter(fullContent);
     if (!metadata.title.trim()) {
       setErrorMessage('标题不能为空');
       setSaveStatus('error');
@@ -135,27 +246,27 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
             excerpt: metadata.excerpt,
             slug: metadata.slug,
           },
-          body: content,
+          body: body,
           collection: 'post',
         });
       } else {
         await updatePostMutation.mutateAsync({
           id: postId!,
           frontmatter: {
-            title: metadata.title,
-            description: metadata.description,
-            publishDate: metadata.publishDate,
+            title: frontmatter.title,
+            description: frontmatter.description,
+            publishDate: frontmatter.publishDate,
             updateDate: new Date().toISOString(), // 自动更新修改时间
-            draft: metadata.draft,
-            public: metadata.public,
-            tags: metadata.tags,
-            category: metadata.category,
-            author: metadata.author,
-            image: metadata.image,
-            excerpt: metadata.excerpt,
-            slug: metadata.slug,
+            draft: frontmatter.draft,
+            public: frontmatter.public,
+            tags: frontmatter.tags,
+            category: frontmatter.category,
+            author: frontmatter.author,
+            image: frontmatter.image,
+            excerpt: frontmatter.excerpt,
+            slug: frontmatter.slug,
           },
-          body: content,
+          body: body,
         });
       }
     } catch (_error) {
@@ -175,7 +286,7 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [metadata, content]);
+  }, [fullContent]);
 
   if (isLoading) {
     return (
@@ -202,46 +313,19 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-      {/* 标签页导航 */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-8 px-6">
-          <button
-            onClick={() => setActiveTab('content')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'content'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-          >
-            内容编辑
-          </button>
-          <button
-            onClick={() => setActiveTab('metadata')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'metadata'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-          >
-            文章信息
-          </button>
-        </nav>
-      </div>
-
-      {/* 内容区域 */}
-      <div className="p-6">
-        {activeTab === 'content' ? (
-          <MarkdownEditor
-            content={content}
-            onChange={setContent}
-            placeholder="开始写作..."
-            className="min-h-[500px]"
-            filePath={postId}
-          />
-        ) : (
-          <PostMetadataForm metadata={metadata} onChange={setMetadata} />
-        )}
+    <div className="h-screen flex flex-col bg-white dark:bg-gray-800">
+      {/* 编辑器区域 - 填充整个视口 */}
+      <div className="flex-1 overflow-hidden">
+        <MarkdownEditor
+          content={fullContent}
+          onChange={handleContentChange}
+          placeholder="---\ntitle: 文章标题\ndescription: 文章描述\npublishDate: 2024-01-01\ndraft: true\npublic: true\ntags: []\ncategory: ''\nauthor: ''\nimage: ''\nexcerpt: ''\nslug: ''\n---\n\n开始写作..."
+          className="h-full"
+          filePath={postId}
+          onSave={handleSave}
+          isSaving={isSaving}
+          saveStatus={saveStatus}
+        />
       </div>
 
       {/* 底部操作栏 */}

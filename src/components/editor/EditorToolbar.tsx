@@ -2,9 +2,19 @@ interface EditorToolbarProps {
   onInsertMarkdown: (before: string, after?: string) => void;
   onInsertAtCursor: (text: string) => void;
   onGetMarkdown: () => string;
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
 }
 
-export function EditorToolbar({ onInsertMarkdown, onInsertAtCursor, onGetMarkdown }: EditorToolbarProps) {
+export function EditorToolbar({
+  onInsertMarkdown,
+  onInsertAtCursor,
+  onGetMarkdown,
+  onSave,
+  isSaving,
+  saveStatus,
+}: EditorToolbarProps) {
   const ToolbarButton = ({
     onClick,
     isActive = false,
@@ -140,8 +150,19 @@ export function EditorToolbar({ onInsertMarkdown, onInsertAtCursor, onGetMarkdow
         </ToolbarButton>
       </div>
 
-      {/* 导出 Markdown */}
+      {/* 保存和导出 */}
       <div className="flex items-center gap-1 ml-auto">
+        {onSave && (
+          <ToolbarButton
+            onClick={onSave}
+            disabled={isSaving}
+            title={isSaving ? '保存中...' : '保存 (Ctrl/Cmd + S)'}
+            isActive={saveStatus === 'saved'}
+          >
+            {isSaving ? '⏳' : saveStatus === 'saved' ? '✅' : saveStatus === 'error' ? '❌' : '💾'}
+          </ToolbarButton>
+        )}
+
         <ToolbarButton
           onClick={() => {
             const content = onGetMarkdown();

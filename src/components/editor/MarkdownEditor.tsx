@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { EditorToolbar } from './EditorToolbar';
+import { EditorToolbar } from './EditorToolbar.tsx';
 import { MarkdownPreview } from './MarkdownPreview';
 
 interface MarkdownEditorProps {
@@ -8,6 +8,9 @@ interface MarkdownEditorProps {
   placeholder?: string;
   className?: string;
   filePath?: string; // 当前文件路径，用于解析相对图片路径
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
 }
 
 export function MarkdownEditor({
@@ -16,6 +19,9 @@ export function MarkdownEditor({
   placeholder = 'Start writing...',
   className = '',
   filePath,
+  onSave,
+  isSaving,
+  saveStatus,
 }: MarkdownEditorProps) {
   const [markdownContent, setMarkdownContent] = useState(content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -73,35 +79,37 @@ export function MarkdownEditor({
   };
 
   return (
-    <div className={`border rounded-lg ${className}`}>
+    <div className={`flex flex-col h-full ${className}`}>
       <EditorToolbar
         onInsertMarkdown={insertMarkdown}
         onInsertAtCursor={insertAtCursor}
         onGetMarkdown={() => markdownContent}
+        onSave={onSave}
+        isSaving={isSaving}
+        saveStatus={saveStatus}
       />
 
-      <div className="border-t flex" style={{ height: '500px' }}>
+      <div className="flex flex-1 border-t">
         {/* 左侧编辑器 */}
-        <div className="w-1/2 border-r">
+        <div className="w-1/2 border-r flex flex-col">
           <div className="p-2 bg-gray-50 dark:bg-gray-800 border-b text-sm font-medium text-gray-700 dark:text-gray-300">
-            Markdown 源码
+            Markdown 源码（包含 Frontmatter）
           </div>
           <textarea
             ref={textareaRef}
             value={markdownContent}
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full h-full p-4 font-mono text-sm resize-none border-0 focus:outline-none bg-transparent"
-            style={{ height: 'calc(100% - 40px)' }}
+            className="flex-1 w-full p-4 font-mono text-sm resize-none border-0 focus:outline-none bg-transparent"
           />
         </div>
 
         {/* 右侧预览 */}
-        <div className="w-1/2">
+        <div className="w-1/2 flex flex-col">
           <div className="p-2 bg-gray-50 dark:bg-gray-800 border-b text-sm font-medium text-gray-700 dark:text-gray-300">
             实时预览
           </div>
-          <div className="h-full overflow-y-auto p-4" style={{ height: 'calc(100% - 40px)' }}>
+          <div className="flex-1 overflow-y-auto p-4">
             <div className="prose prose-lg max-w-none dark:prose-invert">
               <MarkdownPreview content={markdownContent} filePath={filePath} />
             </div>
