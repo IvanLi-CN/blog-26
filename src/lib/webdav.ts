@@ -258,7 +258,7 @@ export class WebDAVClient {
     const match = content.match(frontmatterRegex);
 
     if (!match) {
-      return { frontmatter: {}, body: this.processImagePaths(content) };
+      return { frontmatter: {}, body: content };
     }
 
     const frontmatterText = match[1];
@@ -267,109 +267,11 @@ export class WebDAVClient {
     try {
       const frontmatter = (yaml.load(frontmatterText) as Record<string, any>) || {};
 
-      // 处理 frontmatter 中的图片路径
-      this.processFrontmatterImagePaths(frontmatter);
-
-      // 处理 WebDAV 文章中的图片路径，避免 Astro 图片优化错误
-      body = this.processImagePaths(body);
-
       return { frontmatter, body };
     } catch (error) {
       console.warn('Failed to parse frontmatter as YAML:', error);
-      return { frontmatter: {}, body: this.processImagePaths(content) };
+      return { frontmatter: {}, body: content };
     }
-  }
-
-  /**
-   * 处理 frontmatter 中的图片路径
-   */
-  private processFrontmatterImagePaths(frontmatter: Record<string, any>): void {
-    // 处理常见的图片字段
-    const imageFields = ['image', 'images', 'cover', 'thumbnail', 'hero'];
-
-    for (const field of imageFields) {
-      if (frontmatter[field]) {
-        if (typeof frontmatter[field] === 'string') {
-          frontmatter[field] = this.convertImagePath(frontmatter[field]);
-        } else if (Array.isArray(frontmatter[field])) {
-          frontmatter[field] = frontmatter[field].map((img: any) =>
-            typeof img === 'string' ? this.convertImagePath(img) : img
-          );
-        }
-      }
-    }
-  }
-
-  /**
-   * 转换单个图片路径
-   */
-  private convertImagePath(imagePath: string): string {
-    // 如果是相对路径（不是 http/https URL），转换为代理 API 路径
-    if (imagePath && !imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
-      // 处理以 assets/ 开头的路径
-      let processedPath = imagePath;
-      if (imagePath.startsWith('assets/')) {
-        processedPath = imagePath;
-      } else if (imagePath.startsWith('./assets/')) {
-        processedPath = imagePath.substring(2); // 移除 ./
-      } else if (imagePath.startsWith('../assets/')) {
-        processedPath = imagePath.substring(3); // 移除 ../
-      } else {
-        // 其他相对路径，假设是 assets 目录下的文件
-        processedPath = `assets/${imagePath}`;
-      }
-
-      // 使用代理 API 路径而不是直接的 WebDAV URL
-      return `/api/webdav-image/${processedPath}`;
-    }
-
-    return imagePath;
-  }
-
-  /**
-   * 处理图片路径，将相对路径转换为 WebDAV URL
-   */
-  private processImagePaths(content: string): string {
-    // 匹配多种图片格式：
-    // 1. Markdown 图片语法: ![alt](path)
-    // 2. HTML img 标签: <img src="path" />
-    // 3. 直接的图片路径引用（可能在某些 Markdown 扩展中使用）
-    const imageRegex =
-      /!\[([^\]]*)\]\(([^)]+)\)|<img[^>]+src=["']([^"']+)["'][^>]*>|(?:^|\s)(assets\/[^\s\)]+\.(?:png|jpg|jpeg|gif|webp|svg))(?=\s|$|\))/gm;
-
-    let processedContent = content.replace(imageRegex, (match, alt, mdPath, htmlPath, directPath) => {
-      const imagePath = mdPath || htmlPath || directPath;
-
-      // 如果是相对路径（不是 http/https URL），转换为 WebDAV URL
-      if (imagePath && !imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
-        const webdavImageUrl = this.convertImagePath(imagePath);
-
-        if (mdPath) {
-          // Markdown 格式
-          return `![${alt || ''}](${webdavImageUrl})`;
-        } else if (htmlPath) {
-          // HTML 格式
-          return match.replace(imagePath, webdavImageUrl);
-        } else if (directPath) {
-          // 直接路径引用
-          return match.replace(imagePath, webdavImageUrl);
-        }
-      }
-
-      return match;
-    });
-
-    // 额外处理：查找所有可能的 assets/ 路径并替换
-    const assetsRegex = /assets\/[^\s\)'"]+\.(?:png|jpg|jpeg|gif|webp|svg)/g;
-    processedContent = processedContent.replace(assetsRegex, (match) => {
-      // 如果这个路径还没有被转换为完整 URL
-      if (!match.startsWith('http://') && !match.startsWith('https://')) {
-        return this.convertImagePath(match);
-      }
-      return match;
-    });
-
-    return processedContent;
   }
 
   /**
@@ -461,6 +363,138 @@ export class WebDAVClient {
       lastModified,
       effectiveContentUpdatedAt: lastModified,
     };
+  }
+
+  /**
+   * 创建或更新文件
+   */
+  async putFile(filePath: string, content: string): Promise<void> {
+    const url = `${this.baseUrl}${filePath}`;
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
+      body: content,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to put file ${filePath}: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * 删除文件
+   */
+  async deleteFile(filePath: string): Promise<void> {
+    const url = `${this.baseUrl}${filePath}`;
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete file ${filePath}: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * 序列化 frontmatter 和内容为完整的 Markdown 文件内容
+   */
+  serializeMarkdownContent(frontmatter: Record<string, any>, body: string): string {
+    const yamlContent = yaml.dump(frontmatter, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true,
+      sortKeys: false,
+    });
+
+    return `---\n${yamlContent}---\n\n${body}`;
+  }
+
+  /**
+   * 创建新文章
+   */
+  async createPost(
+    slug: string,
+    frontmatter: Record<string, any>,
+    body: string,
+    collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post'
+  ): Promise<WebDAVPost> {
+    // 生成文件路径
+    let filePath: string;
+    const filename = `${slug}.md`;
+
+    switch (collection) {
+      case 'notes':
+        filePath = `/notes/${filename}`;
+        break;
+      case 'local-notes':
+        filePath = `/local-notes/${filename}`;
+        break;
+      case 'projects':
+        filePath = `${this.projectsPath}/${filename}`;
+        break;
+      default:
+        filePath = `/${filename}`;
+        break;
+    }
+
+    // 序列化内容
+    const content = this.serializeMarkdownContent(frontmatter, body);
+
+    // 上传文件
+    await this.putFile(filePath, content);
+
+    // 返回创建的文章对象
+    return {
+      id: filePath,
+      slug,
+      data: frontmatter,
+      body,
+      collection,
+    };
+  }
+
+  /**
+   * 更新现有文章
+   */
+  async updatePost(id: string, frontmatter: Record<string, any>, body: string): Promise<WebDAVPost> {
+    // 序列化内容
+    const content = this.serializeMarkdownContent(frontmatter, body);
+
+    // 更新文件
+    await this.putFile(id, content);
+
+    // 确定集合类型
+    let collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post';
+    if (id.includes('/notes/')) {
+      collection = 'notes';
+    } else if (id.includes('/local-notes/')) {
+      collection = 'local-notes';
+    } else if (id.includes(this.projectsPath + '/') || id.startsWith(this.projectsPath + '/')) {
+      collection = 'projects';
+    }
+
+    const slug = this.generateSlug(id, frontmatter);
+
+    return {
+      id,
+      slug,
+      data: frontmatter,
+      body,
+      collection,
+    };
+  }
+
+  /**
+   * 删除文章
+   */
+  async deletePost(id: string): Promise<void> {
+    await this.deleteFile(id);
   }
 }
 
