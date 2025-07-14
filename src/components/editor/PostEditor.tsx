@@ -1,6 +1,7 @@
 import yaml from 'js-yaml';
 import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
+import { DirectoryTree } from './DirectoryTree';
 import { MarkdownEditor } from './MarkdownEditor';
 import { type PostMetadata } from './PostMetadataForm';
 
@@ -27,6 +28,18 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDirectoryTree, setShowDirectoryTree] = useState(true);
+  const [originalPostPath, setOriginalPostPath] = useState<string | null>(null);
+  const [currentEditingFile, setCurrentEditingFile] = useState<string | null>(postId || null);
+  const [clientRouteFileId, setClientRouteFileId] = useState<string | null>(null);
+
+  // 客户端路由加载文件内容
+  const loadFileContent = (filePath: string) => {
+    setClientRouteFileId(filePath);
+    setCurrentEditingFile(filePath);
+  };
+
+
 
   // 解析frontmatter和内容
   const parseFrontmatter = (content: string): { frontmatter: PostMetadata; body: string } => {
@@ -108,18 +121,34 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
     return `---\n${yamlContent}---\n\n${body}`;
   };
 
-  // 获取现有文章数据
+  // 获取现有文章数据 - 支持客户端路由
+  const effectiveFileId = clientRouteFileId || postId;
   const {
     data: post,
     isLoading,
     error,
+    refetch,
   } = trpc.posts.getById.useQuery(
-    { id: postId! },
+    { id: effectiveFileId! },
     {
-      enabled: !isNewPost && !!postId,
+      enabled: !isNewPost && !!effectiveFileId,
       retry: false,
     }
   );
+
+  // 监听浏览器前进/后退按钮
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const fileId = urlParams.get('id');
+      if (fileId && fileId !== effectiveFileId) {
+        loadFileContent(fileId);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [effectiveFileId]);
 
   // 创建文章 mutation
   const createPostMutation = trpc.posts.create.useMutation({
@@ -147,9 +176,31 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
     },
   });
 
+  // 创建文件 mutation
+  const createFileMutation = trpc.posts.createFile.useMutation({
+    onSuccess: (_, variables) => {
+      setSaveStatus('saved');
+      // 创建成功后直接在当前界面打开新文件（客户端路由）
+      setCurrentEditingFile(variables.path);
+      // 更新URL但不刷新页面
+      const newUrl = `/admin/posts/edit?id=${encodeURIComponent(variables.path)}`;
+      window.history.pushState({}, '', newUrl);
+      // 客户端路由：直接加载新文件内容
+      loadFileContent(variables.path);
+    },
+    onError: (error) => {
+      setSaveStatus('error');
+      setErrorMessage(error.message);
+      setTimeout(() => setSaveStatus('idle'), 5000);
+    },
+  });
+
   // 加载现有文章数据
   useEffect(() => {
     if (post) {
+      // 记录原始文章路径
+      setOriginalPostPath(post.id);
+
       // 构建完整的markdown内容（包含frontmatter）
       const fullMarkdownContent = serializeFrontmatter(
         {
@@ -230,6 +281,17 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
 
     try {
       if (isNewPost) {
+        // 新建文章：根据当前编辑文件路径确定collection
+        const currentPath = currentEditingFile || '/';
+        let collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post';
+        if (currentPath.includes('/notes/')) {
+          collection = 'notes';
+        } else if (currentPath.includes('/local-notes/')) {
+          collection = 'local-notes';
+        } else if (currentPath.includes('/Project/') || currentPath === '/Project') {
+          collection = 'projects';
+        }
+
         await createPostMutation.mutateAsync({
           slug: metadata.slug!,
           frontmatter: {
@@ -247,11 +309,13 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
             slug: metadata.slug,
           },
           body: body,
-          collection: 'post',
+          collection: collection,
+          customPath: currentPath,
         });
       } else {
+        // 编辑文章：使用原始路径更新
         await updatePostMutation.mutateAsync({
-          id: postId!,
+          id: originalPostPath || postId!,
           frontmatter: {
             title: frontmatter.title,
             description: frontmatter.description,
@@ -313,44 +377,117 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-gray-800">
-      {/* 编辑器区域 - 填充整个视口 */}
-      <div className="flex-1 overflow-hidden">
-        <MarkdownEditor
-          content={fullContent}
-          onChange={handleContentChange}
-          placeholder="---\ntitle: 文章标题\ndescription: 文章描述\npublishDate: 2024-01-01\ndraft: true\npublic: true\ntags: []\ncategory: ''\nauthor: ''\nimage: ''\nexcerpt: ''\nslug: ''\n---\n\n开始写作..."
-          className="h-full"
-          filePath={postId}
-          onSave={handleSave}
-          isSaving={isSaving}
-          saveStatus={saveStatus}
-        />
-      </div>
-
-      {/* 底部操作栏 */}
-      <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            {saveStatus === 'saving' && <span className="text-sm text-gray-600 dark:text-gray-400">保存中...</span>}
-            {saveStatus === 'saved' && <span className="text-sm text-green-600 dark:text-green-400">已保存</span>}
-            {saveStatus === 'error' && (
-              <span className="text-sm text-red-600 dark:text-red-400">保存失败: {errorMessage}</span>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-3">
+    <div className="h-full flex bg-white dark:bg-gray-800">
+      {/* 左侧目录树面板 - 始终显示 */}
+      {showDirectoryTree && (
+        <div className="w-64 border-r border-gray-200 dark:border-gray-600 flex flex-col">
+          <div className="flex items-center justify-between p-2 border-b bg-gray-50 dark:bg-gray-800">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">文件管理器</h3>
             <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setShowDirectoryTree(false)}
+              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+              title="隐藏文件管理器"
             >
-              {isSaving ? '保存中...' : '保存'}
+              ✕
             </button>
           </div>
+          <div className="flex-1 overflow-hidden">
+            <DirectoryTree
+              onSelectFile={(filePath) => {
+                // 点击文件时在当前界面打开该文件（客户端路由）
+                const newUrl = `/admin/posts/edit?id=${encodeURIComponent(filePath)}`;
+                window.history.pushState({}, '', newUrl);
+                loadFileContent(filePath);
+              }}
+              onCreateFile={async (filePath) => {
+                // 创建新文件
+                try {
+                  await createFileMutation.mutateAsync({
+                    path: filePath,
+                    content: ''
+                  });
+                } catch (error) {
+                  console.error('Failed to create file:', error);
+                }
+              }}
+              selectedPath={currentEditingFile || postId || '/'}
+              onRefresh={() => {
+                // 刷新目录树后可能需要重新加载当前文件
+                if (effectiveFileId) {
+                  refetch();
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 主编辑器区域 */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* 工具栏 - 显示文件管理器切换按钮和当前文件信息 */}
+        {!showDirectoryTree && (
+          <div className="flex items-center justify-between p-2 border-b bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowDirectoryTree(true)}
+                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                显示文件管理器
+              </button>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                当前文件: {currentEditingFile || postId || '新文件'}
+              </span>
+            </div>
+            <a
+              href="/admin/posts"
+              className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              返回列表
+            </a>
+          </div>
+        )}
+
+        {/* 编辑器区域 */}
+        <div className="flex-1 overflow-hidden">
+          <MarkdownEditor
+            content={fullContent}
+            onChange={handleContentChange}
+            placeholder="开始写作你的文章内容..."
+            className="h-full"
+            filePath={postId}
+            onSave={handleSave}
+            isSaving={isSaving}
+            saveStatus={saveStatus}
+          />
         </div>
 
-        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">提示: 使用 Ctrl+S (或 Cmd+S) 快速保存</div>
+        {/* 底部操作栏 */}
+        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {saveStatus === 'saving' && <span className="text-sm text-gray-600 dark:text-gray-400">保存中...</span>}
+              {saveStatus === 'saved' && <span className="text-sm text-green-600 dark:text-green-400">已保存</span>}
+              {saveStatus === 'error' && (
+                <span className="text-sm text-red-600 dark:text-red-400">保存失败: {errorMessage}</span>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            提示: 使用 Ctrl+S (或 Cmd+S) 快速保存
+            {(currentEditingFile || postId) && ` | 文件路径: ${currentEditingFile || postId}`}
+          </div>
+        </div>
       </div>
     </div>
   );

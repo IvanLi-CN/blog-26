@@ -17,7 +17,8 @@ if (!isUserAdmin) {
 // Get post ID from URL params
 const url = new URL(Astro.request.url);
 const postId = url.searchParams.get("id");
-const isNewPost = !postId;
+const isNewFile = url.searchParams.get("new") === "true";
+const isNewPost = !postId || isNewFile;
 
 const metadata = {
   title: isNewPost ? "新建文章 - 管理员面板" : "编辑文章 - 管理员面板",

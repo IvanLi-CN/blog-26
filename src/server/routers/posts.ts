@@ -24,6 +24,7 @@ const CreatePostSchema = z.object({
   frontmatter: PostFrontmatterSchema,
   body: z.string(),
   collection: z.enum(['post', 'notes', 'local-notes', 'projects']).default('post'),
+  customPath: z.string().optional(),
 });
 
 const UpdatePostSchema = z.object({
@@ -164,7 +165,7 @@ export const postsRouter = createTRPCRouter({
       }
 
       // 创建文章
-      const post = await webdavClient.createPost(input.slug, input.frontmatter, input.body, input.collection);
+      const post = await webdavClient.createPost(input.slug, input.frontmatter, input.body, input.collection, input.customPath);
 
       return post;
     } catch (error) {
@@ -258,4 +259,181 @@ export const postsRouter = createTRPCRouter({
       });
     }
   }),
+
+  /**
+   * 获取目录树（仅管理员）
+   */
+  getDirectoryTree: adminProcedure.query(async () => {
+    if (!isWebDAVEnabled()) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'WebDAV is not enabled',
+      });
+    }
+
+    try {
+      const webdavClient = getWebDAVClient();
+      return await webdavClient.getDirectoryTree();
+    } catch (error) {
+      console.error('Failed to get directory tree:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to get directory tree',
+      });
+    }
+  }),
+
+  /**
+   * 创建目录（仅管理员）
+   */
+  createDirectory: adminProcedure
+    .input(z.object({ path: z.string() }))
+    .mutation(async ({ input }) => {
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+        await webdavClient.createDirectory(input.path);
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to create directory:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to create directory',
+        });
+      }
+    }),
+
+  /**
+   * 删除目录（仅管理员）
+   */
+  deleteDirectory: adminProcedure
+    .input(z.object({ path: z.string() }))
+    .mutation(async ({ input }) => {
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+        await webdavClient.deleteDirectory(input.path);
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to delete directory:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to delete directory',
+        });
+      }
+    }),
+
+  /**
+   * 重命名文件（仅管理员）
+   */
+  renameFile: adminProcedure
+    .input(z.object({ oldPath: z.string(), newPath: z.string() }))
+    .mutation(async ({ input }) => {
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+        await webdavClient.renameFile(input.oldPath, input.newPath);
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to rename file:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to rename file',
+        });
+      }
+    }),
+
+  /**
+   * 删除文件（仅管理员）
+   */
+  deleteFile: adminProcedure
+    .input(z.object({ path: z.string() }))
+    .mutation(async ({ input }) => {
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+        await webdavClient.deleteFile(input.path);
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to delete file:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to delete file',
+        });
+      }
+    }),
+
+  /**
+   * 创建新文件（仅管理员）
+   */
+  createFile: adminProcedure
+    .input(z.object({
+      path: z.string(),
+      content: z.string().optional().default('')
+    }))
+    .mutation(async ({ input }) => {
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+
+        // 创建默认的Markdown文件内容
+        const defaultContent = input.content || `---
+title: 新文章
+description:
+publishDate: ${new Date().toISOString().split('T')[0]}
+draft: true
+public: true
+tags: []
+category: ''
+author: ''
+image: ''
+excerpt: ''
+slug: ''
+---
+
+# 新文章
+
+开始写作...
+`;
+
+        await webdavClient.putFile(input.path, defaultContent);
+        return { success: true };
+      } catch (error) {
+        console.error('Failed to create file:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to create file',
+        });
+      }
+    }),
 });

@@ -100,7 +100,8 @@ export function MarkdownEditor({
             value={markdownContent}
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 w-full p-4 font-mono text-sm resize-none border-0 focus:outline-none bg-transparent"
+            className="w-full p-4 font-mono text-sm resize-none border-0 focus:outline-none bg-transparent overflow-y-scroll"
+            style={{ height: '600px' }}
           />
         </div>
 
@@ -109,7 +110,7 @@ export function MarkdownEditor({
           <div className="p-2 bg-gray-50 dark:bg-gray-800 border-b text-sm font-medium text-gray-700 dark:text-gray-300">
             实时预览
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="overflow-y-scroll p-4" style={{ height: '600px' }}>
             <div className="prose prose-lg max-w-none dark:prose-invert">
               <MarkdownPreview content={markdownContent} filePath={filePath} />
             </div>

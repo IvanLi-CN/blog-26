@@ -25,10 +25,12 @@ export function PostEditorProvider({ postId, isNewPost }: PostEditorProviderProp
   const [trpcClient] = React.useState(() => createTRPCClientInstance());
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <PostEditor postId={postId} isNewPost={isNewPost} />
-      </QueryClientProvider>
-    </trpc.Provider>
+    <div className="h-full">
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <PostEditor postId={postId} isNewPost={isNewPost} />
+        </QueryClientProvider>
+      </trpc.Provider>
+    </div>
   );
 }

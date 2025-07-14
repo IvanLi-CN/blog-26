@@ -29,6 +29,13 @@ export interface ProcessedWebDAVContent {
   effectiveContentUpdatedAt: number;
 }
 
+export interface DirectoryTreeNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  children?: DirectoryTreeNode[];
+}
+
 /**
  * WebDAV 客户端类
  */
@@ -422,25 +429,32 @@ export class WebDAVClient {
     slug: string,
     frontmatter: Record<string, any>,
     body: string,
-    collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post'
+    collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post',
+    customPath?: string
   ): Promise<WebDAVPost> {
     // 生成文件路径
     let filePath: string;
     const filename = `${slug}.md`;
 
-    switch (collection) {
-      case 'notes':
-        filePath = `/notes/${filename}`;
-        break;
-      case 'local-notes':
-        filePath = `/local-notes/${filename}`;
-        break;
-      case 'projects':
-        filePath = `${this.projectsPath}/${filename}`;
-        break;
-      default:
-        filePath = `/${filename}`;
-        break;
+    if (customPath) {
+      // 如果提供了自定义路径，使用自定义路径
+      filePath = customPath.endsWith('/') ? `${customPath}${filename}` : `${customPath}/${filename}`;
+    } else {
+    // 使用默认的collection逻辑
+      switch (collection) {
+        case 'notes':
+          filePath = `/notes/${filename}`;
+          break;
+        case 'local-notes':
+          filePath = `/local-notes/${filename}`;
+          break;
+        case 'projects':
+          filePath = `${this.projectsPath}/${filename}`;
+          break;
+        default:
+          filePath = `/${filename}`;
+          break;
+      }
     }
 
     // 序列化内容
@@ -495,6 +509,196 @@ export class WebDAVClient {
    */
   async deletePost(id: string): Promise<void> {
     await this.deleteFile(id);
+  }
+
+  /**
+   * 获取目录树
+   */
+  async getDirectoryTree(): Promise<DirectoryTreeNode[]> {
+    const allFiles: WebDAVFile[] = [];
+    const processedPaths = new Set<string>();
+
+    // 递归获取所有目录和文件
+    const processDirectory = async (currentPath: string): Promise<void> => {
+      if (processedPaths.has(currentPath)) return;
+      processedPaths.add(currentPath);
+
+      try {
+        const items = await this.propfind(currentPath, 1);
+
+        for (const item of items) {
+          // 跳过自引用和根路径
+          if (!item.filename || item.filename === currentPath || item.filename === '/' || item.filename === '//') {
+            continue;
+          }
+
+          // 标准化路径
+          let normalizedPath = item.filename;
+          if (!normalizedPath.startsWith('/')) {
+            normalizedPath = `/${normalizedPath}`;
+          }
+
+          allFiles.push({
+            ...item,
+            filename: normalizedPath,
+          });
+
+          // 如果是目录，递归处理
+          if (item.type === 'directory') {
+            await processDirectory(normalizedPath);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to process directory ${currentPath}:`, error);
+      }
+    };
+
+    // 从根目录开始处理
+    await processDirectory('/');
+
+    // 构建目录树
+    const pathMap = new Map<string, DirectoryTreeNode>();
+    const rootNode: DirectoryTreeNode = {
+      name: '/',
+      path: '/',
+      type: 'directory',
+      children: [],
+    };
+    pathMap.set('/', rootNode);
+
+    // 处理所有文件和目录
+    for (const file of allFiles) {
+      const path = file.filename;
+      const pathParts = path.split('/').filter(Boolean);
+
+      // 跳过根目录本身
+      if (pathParts.length === 0) continue;
+
+      let currentPath = '';
+      let currentParent = rootNode;
+
+      // 为每个路径部分创建节点
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        currentPath += `/${part}`;
+
+        if (!pathMap.has(currentPath)) {
+          const isLastPart = i === pathParts.length - 1;
+          const node: DirectoryTreeNode = {
+            name: part,
+            path: currentPath,
+            type: isLastPart ? file.type : 'directory',
+            children: file.type === 'directory' || !isLastPart ? [] : undefined,
+          };
+
+          pathMap.set(currentPath, node);
+          currentParent.children!.push(node);
+        }
+
+        currentParent = pathMap.get(currentPath)!;
+      }
+    }
+
+    // 递归排序所有节点的子节点：目录在前，文件在后，按自然语言顺序排序
+    const sortChildren = (node: DirectoryTreeNode) => {
+      if (node.children && node.children.length > 0) {
+        // 先递归排序子节点
+        node.children.forEach(sortChildren);
+
+        // 排序当前节点的子节点
+        node.children.sort((a, b) => {
+          // 目录优先于文件
+          if (a.type !== b.type) {
+            return a.type === 'directory' ? -1 : 1;
+          }
+
+          // 同类型按自然语言顺序排序
+          return a.name.localeCompare(b.name, 'zh-CN', {
+            numeric: true,
+            sensitivity: 'base'
+          });
+        });
+      }
+    };
+
+    // 对根节点的子节点进行排序
+    if (rootNode.children) {
+      rootNode.children.forEach(sortChildren);
+      rootNode.children.sort((a, b) => {
+        // 目录优先于文件
+        if (a.type !== b.type) {
+          return a.type === 'directory' ? -1 : 1;
+        }
+
+        // 同类型按自然语言顺序排序
+        return a.name.localeCompare(b.name, 'zh-CN', {
+          numeric: true,
+          sensitivity: 'base'
+        });
+      });
+    }
+
+    return rootNode.children || [];
+  }
+
+  /**
+   * 创建目录
+   */
+  async createDirectory(path: string): Promise<void> {
+    const url = `${this.baseUrl}${path}`;
+
+    const response = await fetch(url, {
+      method: 'MKCOL',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create directory ${path}: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * 删除目录（仅删除空目录）
+   */
+  async deleteDirectory(path: string): Promise<void> {
+    // 首先检查目录是否为空
+    const files = await this.propfind(path, 1);
+    const hasChildren = files.some(file => file.filename !== path && !file.filename.endsWith('/'));
+
+    if (hasChildren) {
+      throw new Error('Cannot delete non-empty directory');
+    }
+
+    const url = `${this.baseUrl}${path}`;
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete directory ${path}: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * 重命名文件
+   */
+  async renameFile(oldPath: string, newPath: string): Promise<void> {
+    const sourceUrl = `${this.baseUrl}${oldPath}`;
+    const destinationUrl = `${this.baseUrl}${newPath}`;
+
+    const response = await fetch(sourceUrl, {
+      method: 'MOVE',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Destination': destinationUrl,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to rename file from ${oldPath} to ${newPath}: ${response.status} ${response.statusText}`);
+    }
   }
 }
 
