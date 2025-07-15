@@ -22,13 +22,8 @@ jobs:
       matrix:
         bun-version:
           - '1.2.13'
-        node-version:
-          - '22'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
       - name: Use Bun.js v${{ matrix.bun-version }}
         uses: oven-sh/setup-bun@v2
         with:
@@ -47,7 +42,7 @@ jobs:
     strategy:
       matrix:
         bun-version:
-          - '1.1.36'
+          - '1.2.13'
     steps:
       - name: Git Setup
         run: |

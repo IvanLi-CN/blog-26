@@ -11,6 +11,8 @@ const MIGRATIONS_FOLDER_ABSOLUTE = path.resolve(process.cwd(), MIGRATIONS_FOLDER
 async function runMigrations() {
   try {
     console.log(`Attempting to connect to database at: ${DB_PATH_ABSOLUTE}`);
+
+    // Use Bun's built-in SQLite driver
     const sqlite = new Database(DB_PATH_ABSOLUTE);
     const db = drizzle(sqlite);
     console.log('Database connection successful.');

@@ -13,11 +13,12 @@ export let db: ReturnType<typeof drizzle<Record<string, never>>>;
 
 export async function initializeDB(): Promise<void> {
   if (db) return; // Already initialized
+
   try {
+    // Use Bun's built-in SQLite driver
     const sqlite = new Database(resolvedDBPath);
     db = drizzle(sqlite);
     console.log('Connected to the SQLite database at', resolvedDBPath);
-    // Drizzle-kit will handle table creation/migrations
     console.log('Drizzle ORM initialized.');
   } catch (err) {
     console.error('Error initializing database with Drizzle', (err as Error).message);
@@ -127,10 +128,7 @@ export async function findSimilarFiles(
   }));
 }
 
-// Optional: Close the database connection when the application exits
-// This might be more relevant for long-running services.
-// For a script, it might not be strictly necessary if the process exits cleanly.
-// Drizzle with bun:sqlite might not need explicit close in this context.
+// Close the database connection when the application exits
 export async function closeDB(): Promise<void> {
   // No explicit close needed for bun:sqlite in this usage
   console.log('closeDB called, but no explicit close needed for bun:sqlite.');

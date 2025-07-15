@@ -30,22 +30,20 @@
     "admin"
   ],
   "engines": {
-    "node": "^18.17.1 || ^20.3.0 || >= 21.0.0"
+    "bun": "^1.0.0"
   },
   "scripts": {
-    "dev": "ADMIN_MODE=true astro dev --host",
-    "dev:bun": "ADMIN_MODE=true bunx --bun astro dev --host",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro",
+    "dev": "ADMIN_MODE=true bunx --bun astro dev --host",
+    "start": "bunx --bun astro dev",
+    "build": "bunx --bun astro build",
+    "preview": "bunx --bun astro preview",
+    "astro": "bunx --bun astro",
     "check": "bunx biome check && bun run check:astro",
-    "check:astro": "astro check",
+    "check:astro": "bunx --bun astro check",
     "migrate": "bun ./scripts/migrate.ts",
     "fix": "bunx biome check --write"
   },
   "dependencies": {
-    "@astrojs/node": "^9.2.2",
     "@astrojs/react": "^4.3.0",
     "@astrojs/rss": "^4.0.12",
     "@astrojs/sitemap": "3.4.1",
@@ -80,6 +78,7 @@
     "@types/react-dom": "^19.1.6",
     "@types/uuid": "^10.0.0",
     "astro": "5.10.0",
+    "astro-bun-adapter": "^1.0.2",
     "astro-embed": "^0.9.0",
     "astro-icon": "^1.1.5",
     "dotenv": "^17.2.0",

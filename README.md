@@ -45,7 +45,7 @@ A modern personal blog system built with **[Astro 5.0](https://astro.build/)**, 
 
 ### Prerequisites
 
-- Node.js 18+ or Bun 1.0+
+- Bun 1.0+
 - Docker and Docker Compose (for deployment)
 
 ### Local Development

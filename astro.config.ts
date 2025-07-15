@@ -1,11 +1,11 @@
 import mdx from '@astrojs/mdx';
-import node from '@astrojs/node'; // Import the Node.js adapter
 import partytown from '@astrojs/partytown';
 import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import type { AstroIntegration } from 'astro';
 import { defineConfig } from 'astro/config';
+import bun from 'astro-bun-adapter';
 import compress from 'astro-compress';
 import icon from 'astro-icon';
 import path from 'path';
@@ -29,10 +29,8 @@ const whenExternalScripts = (items: (() => AstroIntegration) | (() => AstroInteg
   hasExternalScripts ? (Array.isArray(items) ? items.map((item) => item()) : [items()]) : [];
 
 export default defineConfig({
-  adapter: node({
-    // Add the Node.js adapter
-    mode: 'standalone',
-  }),
+  output: 'server',
+  adapter: bun(),
   session: {
     driver: 'lru-cache',
   },
@@ -82,6 +80,9 @@ export default defineConfig({
 
   image: {
     domains: ['cdn.pixabay.com'],
+    service: {
+      entrypoint: 'astro/assets/services/noop',
+    },
   },
 
   markdown: {
