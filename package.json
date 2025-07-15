@@ -33,10 +33,11 @@
     "node": "^18.17.1 || ^20.3.0 || >= 21.0.0"
   },
   "scripts": {
-    "dev": "ADMIN_MODE=true bunx --bun astro dev --host",
-    "start": "bunx --bun astro dev",
-    "build": "bunx --bun astro build",
-    "preview": "bunx --bun astro preview",
+    "dev": "ADMIN_MODE=true astro dev --host",
+    "dev:bun": "ADMIN_MODE=true bunx --bun astro dev --host",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
     "astro": "astro",
     "check": "bunx biome check && bun run check:astro",
     "check:astro": "astro check",

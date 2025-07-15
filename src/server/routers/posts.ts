@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
+import { processAndVectorizeAllContent } from '~/lib/vectorizer';
 import { getWebDAVClient, isWebDAVEnabled } from '~/lib/webdav';
 import { clearPostsCache } from '~/utils/blog';
 import { adminProcedure, createTRPCRouter } from '../trpc';
@@ -166,10 +167,28 @@ export const postsRouter = createTRPCRouter({
       }
 
       // 创建文章
-      const post = await webdavClient.createPost(input.slug, input.frontmatter, input.body, input.collection, input.customPath);
+      const post = await webdavClient.createPost(
+        input.slug,
+        input.frontmatter,
+        input.body,
+        input.collection,
+        input.customPath
+      );
 
       // 清除缓存以确保新文章能被立即获取
       clearPostsCache();
+
+      // 触发向量化处理
+      try {
+        // 使用非阻塞方式触发向量化，不等待完成
+        processAndVectorizeAllContent().catch((err) => {
+          console.error('文章创建后向量化处理失败:', err);
+        });
+        console.log('已触发文章创建后的向量化处理');
+      } catch (vectorizeError) {
+        console.error('触发向量化处理失败:', vectorizeError);
+        // 不阻止API返回，即使向量化触发失败
+      }
 
       return post;
     } catch (error) {
@@ -213,6 +232,18 @@ export const postsRouter = createTRPCRouter({
 
       // 清除缓存以确保更新的文章能被立即获取
       clearPostsCache();
+
+      // 触发向量化处理
+      try {
+        // 使用非阻塞方式触发向量化，不等待完成
+        processAndVectorizeAllContent().catch((err) => {
+          console.error('文章更新后向量化处理失败:', err);
+        });
+        console.log('已触发文章更新后的向量化处理');
+      } catch (vectorizeError) {
+        console.error('触发向量化处理失败:', vectorizeError);
+        // 不阻止API返回，即使向量化触发失败
+      }
 
       return updatedPost;
     } catch (error) {
@@ -296,54 +327,50 @@ export const postsRouter = createTRPCRouter({
   /**
    * 创建目录（仅管理员）
    */
-  createDirectory: adminProcedure
-    .input(z.object({ path: z.string() }))
-    .mutation(async ({ input }) => {
-      if (!isWebDAVEnabled()) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'WebDAV is not enabled',
-        });
-      }
+  createDirectory: adminProcedure.input(z.object({ path: z.string() })).mutation(async ({ input }) => {
+    if (!isWebDAVEnabled()) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'WebDAV is not enabled',
+      });
+    }
 
-      try {
-        const webdavClient = getWebDAVClient();
-        await webdavClient.createDirectory(input.path);
-        return { success: true };
-      } catch (error) {
-        console.error('Failed to create directory:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to create directory',
-        });
-      }
-    }),
+    try {
+      const webdavClient = getWebDAVClient();
+      await webdavClient.createDirectory(input.path);
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to create directory:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to create directory',
+      });
+    }
+  }),
 
   /**
    * 删除目录（仅管理员）
    */
-  deleteDirectory: adminProcedure
-    .input(z.object({ path: z.string() }))
-    .mutation(async ({ input }) => {
-      if (!isWebDAVEnabled()) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'WebDAV is not enabled',
-        });
-      }
+  deleteDirectory: adminProcedure.input(z.object({ path: z.string() })).mutation(async ({ input }) => {
+    if (!isWebDAVEnabled()) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'WebDAV is not enabled',
+      });
+    }
 
-      try {
-        const webdavClient = getWebDAVClient();
-        await webdavClient.deleteDirectory(input.path);
-        return { success: true };
-      } catch (error) {
-        console.error('Failed to delete directory:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to delete directory',
-        });
-      }
-    }),
+    try {
+      const webdavClient = getWebDAVClient();
+      await webdavClient.deleteDirectory(input.path);
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to delete directory:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to delete directory',
+      });
+    }
+  }),
 
   /**
    * 重命名文件（仅管理员）
@@ -378,41 +405,53 @@ export const postsRouter = createTRPCRouter({
   /**
    * 删除文件（仅管理员）
    */
-  deleteFile: adminProcedure
-    .input(z.object({ path: z.string() }))
-    .mutation(async ({ input }) => {
-      if (!isWebDAVEnabled()) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'WebDAV is not enabled',
-        });
-      }
+  deleteFile: adminProcedure.input(z.object({ path: z.string() })).mutation(async ({ input }) => {
+    if (!isWebDAVEnabled()) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'WebDAV is not enabled',
+      });
+    }
 
+    try {
+      const webdavClient = getWebDAVClient();
+      await webdavClient.deleteFile(input.path);
+
+      // 清除缓存以确保删除的文件不再被获取
+      clearPostsCache();
+
+      // 触发向量化处理，清理已删除文件的向量索引
       try {
-        const webdavClient = getWebDAVClient();
-        await webdavClient.deleteFile(input.path);
-
-        // 清除缓存以确保删除的文件不再被获取
-        clearPostsCache();
-
-        return { success: true };
-      } catch (error) {
-        console.error('Failed to delete file:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to delete file',
+        // 使用非阻塞方式触发向量化，不等待完成
+        processAndVectorizeAllContent().catch((err) => {
+          console.error('文件删除后向量化处理失败:', err);
         });
+        console.log('已触发文件删除后的向量化处理');
+      } catch (vectorizeError) {
+        console.error('触发向量化处理失败:', vectorizeError);
+        // 不阻止API返回，即使向量化触发失败
       }
-    }),
+
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to delete file',
+      });
+    }
+  }),
 
   /**
    * 创建新文件（仅管理员）
    */
   createFile: adminProcedure
-    .input(z.object({
-      path: z.string(),
-      content: z.string().optional().default('')
-    }))
+    .input(
+      z.object({
+        path: z.string(),
+        content: z.string().optional().default(''),
+      })
+    )
     .mutation(async ({ input }) => {
       if (!isWebDAVEnabled()) {
         throw new TRPCError({
@@ -425,7 +464,9 @@ export const postsRouter = createTRPCRouter({
         const webdavClient = getWebDAVClient();
 
         // 创建默认的Markdown文件内容
-        const defaultContent = input.content || `---
+        const defaultContent =
+          input.content ||
+          `---
 title: 新文章
 description:
 publishDate: ${new Date().toISOString().split('T')[0]}

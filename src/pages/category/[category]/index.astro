@@ -4,6 +4,7 @@ import Pagination from "~/components/blog/Pagination.astro";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 import { blogCategoryRobots, blogPostsPerPage, fetchPosts } from "~/utils/blog";
+import { create404Response } from "~/utils/error-handler";
 
 export const prerender = false;
 
@@ -17,7 +18,7 @@ const categoryPosts = allPosts.filter(
 );
 
 if (categoryPosts.length === 0) {
-  return Astro.redirect("/404");
+  return create404Response(Astro.request, "Category not found");
 }
 
 // 获取分类信息
