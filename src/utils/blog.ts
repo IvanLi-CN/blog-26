@@ -218,6 +218,11 @@ const load = async function (): Promise<Array<Post>> {
 
 let _posts: Array<Post>;
 
+/** 清除文章缓存 */
+export const clearPostsCache = (): void => {
+  _posts = undefined as any;
+};
+
 /** */
 export const isBlogEnabled = APP_BLOG.isEnabled;
 export const isRelatedPostsEnabled = APP_BLOG.isRelatedPostsEnabled;

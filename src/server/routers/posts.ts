@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { getWebDAVClient, isWebDAVEnabled } from '~/lib/webdav';
+import { clearPostsCache } from '~/utils/blog';
 import { adminProcedure, createTRPCRouter } from '../trpc';
 
 // 文章数据验证模式
@@ -167,6 +168,9 @@ export const postsRouter = createTRPCRouter({
       // 创建文章
       const post = await webdavClient.createPost(input.slug, input.frontmatter, input.body, input.collection, input.customPath);
 
+      // 清除缓存以确保新文章能被立即获取
+      clearPostsCache();
+
       return post;
     } catch (error) {
       console.error('Failed to create post:', error);
@@ -207,6 +211,9 @@ export const postsRouter = createTRPCRouter({
       // 更新文章
       const updatedPost = await webdavClient.updatePost(input.id, input.frontmatter, input.body);
 
+      // 清除缓存以确保更新的文章能被立即获取
+      clearPostsCache();
+
       return updatedPost;
     } catch (error) {
       console.error('Failed to update post:', error);
@@ -246,6 +253,9 @@ export const postsRouter = createTRPCRouter({
 
       // 删除文章
       await webdavClient.deletePost(input.id);
+
+      // 清除缓存以确保删除的文章不再被获取
+      clearPostsCache();
 
       return { success: true };
     } catch (error) {
@@ -351,6 +361,10 @@ export const postsRouter = createTRPCRouter({
       try {
         const webdavClient = getWebDAVClient();
         await webdavClient.renameFile(input.oldPath, input.newPath);
+
+        // 清除缓存以确保重命名的文件能被正确获取
+        clearPostsCache();
+
         return { success: true };
       } catch (error) {
         console.error('Failed to rename file:', error);
@@ -377,6 +391,10 @@ export const postsRouter = createTRPCRouter({
       try {
         const webdavClient = getWebDAVClient();
         await webdavClient.deleteFile(input.path);
+
+        // 清除缓存以确保删除的文件不再被获取
+        clearPostsCache();
+
         return { success: true };
       } catch (error) {
         console.error('Failed to delete file:', error);
@@ -427,6 +445,10 @@ slug: ''
 `;
 
         await webdavClient.putFile(input.path, defaultContent);
+
+        // 清除缓存以确保新文件能被立即获取
+        clearPostsCache();
+
         return { success: true };
       } catch (error) {
         console.error('Failed to create file:', error);
