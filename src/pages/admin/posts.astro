@@ -398,6 +398,28 @@ const metadata = {
                               />
                             </svg>
                           </a>
+                          {post.id.startsWith("/") && (
+                            <button
+                              class="btn btn-ghost btn-xs text-error hover:bg-error hover:text-error-content delete-post-btn"
+                              title="删除文章"
+                              data-post-id={post.id}
+                              data-post-title={post.title}
+                            >
+                              <svg
+                                class="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -411,6 +433,47 @@ const metadata = {
     </div>
   </div>
 
+  <!-- 删除确认对话框 -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">确认删除文章</h3>
+      <p class="py-4">
+        您确定要删除文章 "<span id="deletePostTitle" class="font-semibold"
+        ></span>" 吗？
+      </p>
+      <p class="text-sm text-warning mb-4">
+        ⚠️ 此操作不可撤销，文章将被永久删除。
+      </p>
+      <div class="modal-action">
+        <button id="confirmDelete" class="btn btn-error">
+          <svg
+            class="w-4 h-4 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            ></path>
+          </svg>
+          确认删除
+        </button>
+        <button id="cancelDelete" class="btn">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加载提示 -->
+  <div id="loadingToast" class="toast toast-center hidden">
+    <div class="alert alert-info">
+      <span class="loading loading-spinner"></span>
+      正在删除文章...
+    </div>
+  </div>
+
   <style>
     .filter-card.active {
       border: 2px solid hsl(var(--p));
@@ -421,9 +484,31 @@ const metadata = {
   </style>
 
   <script>
+    import { trpcVanilla } from "~/lib/trpc";
+
     document.addEventListener("DOMContentLoaded", function () {
       const filterCards = document.querySelectorAll(".filter-card");
       const postRows = document.querySelectorAll(".post-row");
+
+      // 删除功能相关元素
+      const deleteModal = document.getElementById("deleteModal");
+      const deletePostTitle = document.getElementById("deletePostTitle");
+      const confirmDeleteBtn = document.getElementById("confirmDelete");
+      const cancelDeleteBtn = document.getElementById("cancelDelete");
+      const loadingToast = document.getElementById("loadingToast");
+      let currentPostId = null;
+
+      // 检查必要元素是否存在
+      if (
+        !deleteModal ||
+        !deletePostTitle ||
+        !confirmDeleteBtn ||
+        !cancelDeleteBtn ||
+        !loadingToast
+      ) {
+        console.error("删除功能相关元素未找到");
+        return;
+      }
 
       filterCards.forEach((card) => {
         card.addEventListener("click", function () {
@@ -483,6 +568,98 @@ const metadata = {
             emptyState.remove();
           }
         }
+      }
+
+      // 删除文章功能
+      const deleteButtons = document.querySelectorAll(".delete-post-btn");
+      deleteButtons.forEach((button) => {
+        button.addEventListener("click", function () {
+          currentPostId = this.getAttribute("data-post-id");
+          const postTitle = this.getAttribute("data-post-title");
+
+          deletePostTitle.textContent = postTitle;
+          deleteModal.classList.add("modal-open");
+        });
+      });
+
+      // 取消删除
+      cancelDeleteBtn.addEventListener("click", function () {
+        deleteModal.classList.remove("modal-open");
+        currentPostId = null;
+      });
+
+      // 点击模态框背景关闭
+      deleteModal.addEventListener("click", function (e) {
+        if (e.target === deleteModal) {
+          deleteModal.classList.remove("modal-open");
+          currentPostId = null;
+        }
+      });
+
+      // 确认删除
+      confirmDeleteBtn.addEventListener("click", async function () {
+        if (!currentPostId) return;
+
+        try {
+          // 显示加载状态
+          loadingToast.classList.remove("hidden");
+          (confirmDeleteBtn as HTMLButtonElement).disabled = true;
+          confirmDeleteBtn.innerHTML =
+            '<span class="loading loading-spinner loading-sm"></span> 删除中...';
+
+          // 调用删除API
+          await trpcVanilla.posts.delete.mutate({
+            id: currentPostId,
+          });
+
+          // 删除成功，移除对应的行
+          const postRow = document
+            .querySelector(`[data-post-id="${currentPostId}"]`)
+            ?.closest("tr");
+          if (postRow) {
+            postRow.remove();
+          }
+
+          // 关闭模态框
+          deleteModal.classList.remove("modal-open");
+
+          // 显示成功消息
+          showToast("文章删除成功", "success");
+
+          // 更新表格显示状态
+          updateTableVisibility();
+        } catch (error) {
+          console.error("删除文章失败:", error);
+          showToast((error as Error).message || "删除文章失败", "error");
+        } finally {
+          // 恢复按钮状态
+          loadingToast.classList.add("hidden");
+          (confirmDeleteBtn as HTMLButtonElement).disabled = false;
+          confirmDeleteBtn.innerHTML = `
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            确认删除
+          `;
+          currentPostId = null;
+        }
+      });
+
+      // 显示提示消息的函数
+      function showToast(message: string, type: string = "info") {
+        const toast = document.createElement("div");
+        toast.className = "toast toast-top toast-center";
+        toast.innerHTML = `
+          <div class="alert alert-${type}">
+            <span>${message}</span>
+          </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          toast.remove();
+        }, 3000);
       }
     });
   </script>
