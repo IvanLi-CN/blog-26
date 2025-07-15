@@ -14,7 +14,12 @@ import rehypeMermaid from 'rehype-mermaid';
 import remarkMath from 'remark-math';
 import { fileURLToPath } from 'url';
 
-import { lazyImagesRehypePlugin, readingTimeRemarkPlugin, responsiveTablesRehypePlugin } from './src/utils/frontmatter';
+import {
+  lazyImagesRehypePlugin,
+  readingTimeRemarkPlugin,
+  responsiveTablesRehypePlugin,
+  webdavImagesRehypePlugin,
+} from './src/utils/frontmatter';
 import astrowind from './vendor/integration';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -94,6 +99,7 @@ export default defineConfig({
     rehypePlugins: [
       responsiveTablesRehypePlugin,
       lazyImagesRehypePlugin,
+      webdavImagesRehypePlugin,
       rehypeKatex,
       [
         rehypeMermaid,

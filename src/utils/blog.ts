@@ -148,8 +148,8 @@ export const getNormalizedWebDAVPost = async (post: WebDAVPost): Promise<Post> =
     title: tag,
   }));
 
-  // 解析 Markdown 内容为 HTML
-  const parsedContent = await parseMarkdownToHTML(post.body);
+  // 解析 Markdown 内容为 HTML，传递文章路径信息
+  const parsedContent = await parseMarkdownToHTML(post.body, post.id);
   const readingTime = calculateReadingTime(post.body);
 
   return {

@@ -6,13 +6,33 @@ import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
-import { lazyImagesRehypePlugin, readingTimeRemarkPlugin, responsiveTablesRehypePlugin } from './frontmatter';
+import {
+  lazyImagesRehypePlugin,
+  readingTimeRemarkPlugin,
+  responsiveTablesRehypePlugin,
+  webdavImagesRehypePlugin,
+} from './frontmatter';
 
 /**
  * 解析 Markdown 内容为 HTML
  * 使用与 Astro 配置相同的插件来保持一致性
  */
-export async function parseMarkdownToHTML(markdown: string): Promise<string> {
+export async function parseMarkdownToHTML(markdown: string, articlePath?: string): Promise<string> {
+  // 创建一个虚拟文件对象
+  const vfile = {
+    value: markdown,
+    data: {} as any,
+  };
+
+  // 如果提供了文章路径，将其添加到文件数据中
+  if (articlePath) {
+    vfile.data.astro = {
+      frontmatter: {
+        id: articlePath,
+      },
+    };
+  }
+
   const processor = unified()
     .use(remarkParse)
     .use(remarkMath)
@@ -21,11 +41,12 @@ export async function parseMarkdownToHTML(markdown: string): Promise<string> {
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(responsiveTablesRehypePlugin)
     .use(lazyImagesRehypePlugin)
+    .use(webdavImagesRehypePlugin)
     .use(rehypeKatex)
     .use(rehypeHighlight)
     .use(rehypeStringify, { allowDangerousHtml: true });
 
-  const result = await processor.process(markdown);
+  const result = await processor.process(vfile);
   return String(result);
 }
 
