@@ -1,0 +1,113 @@
+---
+import { MemosAppWithProviders } from "~/components/memos/MemosApp";
+import Headline from "~/components/ui/Headline.astro";
+import Layout from "~/layouts/PageLayout.astro";
+import { isAdminFromRequest } from "~/lib/auth";
+
+export const prerender = false;
+
+// 检查用户是否为管理员
+const isUserAdmin =
+  process.env.ADMIN_MODE === "true" ||
+  (await isAdminFromRequest(Astro.cookies, Astro.request.headers));
+
+const metadata = {
+  title: "Memos - 快速笔记",
+  description: "记录想法、灵感和日常思考的快速笔记",
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+  },
+};
+---
+
+<Layout metadata={metadata}>
+  <section class="px-6 sm:px-6 py-12 sm:py-16 lg:py-20 mx-auto max-w-4xl">
+    <Headline 
+      title="Memos" 
+      subtitle="记录想法、灵感和日常思考的快速笔记"
+    >
+      Memos
+    </Headline>
+
+    <!-- 直接使用 React 组件 -->
+    <MemosAppWithProviders client:load isAdmin={isUserAdmin} />
+  </section>
+</Layout>
+
+<style>
+  /* 确保 React 组件的样式正确加载 */
+  #memos-container {
+    min-height: 400px;
+  }
+
+  /* 时间线样式增强 */
+  .timeline-dot {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Markdown 内容样式 */
+  .prose {
+    max-width: none;
+  }
+
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .prose p {
+    margin-bottom: 1em;
+  }
+
+  .prose ul,
+  .prose ol {
+    margin-bottom: 1em;
+  }
+
+  .prose blockquote {
+    border-left: 4px solid #e5e7eb;
+    padding-left: 1em;
+    margin: 1em 0;
+    font-style: italic;
+    color: #6b7280;
+  }
+
+  .dark .prose blockquote {
+    border-left-color: #374151;
+    color: #9ca3af;
+  }
+
+  .prose code {
+    background-color: #f3f4f6;
+    padding: 0.125em 0.25em;
+    border-radius: 0.25em;
+    font-size: 0.875em;
+  }
+
+  .dark .prose code {
+    background-color: #374151;
+  }
+
+  .prose pre {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5em;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+
+  .dark .prose pre {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+</style>

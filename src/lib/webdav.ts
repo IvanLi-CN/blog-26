@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import * as yaml from 'js-yaml';
+import { nanoid } from 'nanoid';
 import { config } from './config';
 
 export interface WebDAVFile {
@@ -16,7 +17,16 @@ export interface WebDAVPost {
   slug: string; // 从文件名或 frontmatter 生成
   data: Record<string, any>; // frontmatter 数据
   body: string; // 正文内容
-  collection: 'post' | 'notes' | 'local-notes' | 'projects'; // 集合类型
+  collection: 'post' | 'notes' | 'local-notes' | 'projects' | 'memos'; // 集合类型
+}
+
+export interface WebDAVMemo {
+  id: string; // 相对路径作为 ID
+  slug: string; // 从文件名或 frontmatter 生成
+  data: Record<string, any>; // frontmatter 数据
+  body: string; // 正文内容
+  createdAt: Date; // 创建时间
+  updatedAt: Date; // 更新时间
 }
 
 export interface ProcessedWebDAVContent {
@@ -45,6 +55,7 @@ export class WebDAVClient {
   private password: string;
   private excludePaths: string[];
   private projectsPath: string;
+  private memosPath: string;
 
   constructor() {
     const webdavConfig = config.webdav;
@@ -60,6 +71,7 @@ export class WebDAVClient {
     this.password = webdavConfig.password;
     this.excludePaths = webdavConfig.excludePaths;
     this.projectsPath = webdavConfig.projectsPath;
+    this.memosPath = webdavConfig.memosPath;
   }
 
   /**
@@ -676,6 +688,59 @@ export class WebDAVClient {
   }
 
   /**
+   * 确保目录存在，如果不存在则创建
+   */
+  async ensureDirectoryExists(path: string): Promise<void> {
+    try {
+      // 尝试获取目录信息
+      await this.propfind(path, 0);
+    } catch (error) {
+      // 如果目录不存在，创建它
+      if (error instanceof Error && error.message.includes('404')) {
+        await this.createDirectory(path);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * 从内容中提取第一个标题
+   */
+  private extractFirstHeading(content: string): string | null {
+    // 匹配任何级别的 Markdown 标题
+    const headingMatch = content.match(/^#{1,6}\s+(.+)$/m);
+    if (headingMatch) {
+      return headingMatch[1].trim();
+    }
+    return null;
+  }
+
+  /**
+   * 生成 Memo 文件名
+   */
+  private generateMemoFilename(content: string): string {
+    const now = new Date();
+    const datePrefix = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+
+    // 尝试从内容中提取第一个标题
+    const firstHeading = this.extractFirstHeading(content);
+
+    if (firstHeading) {
+      // 清理标题，只保留字母数字和中文字符
+      const cleanTitle = firstHeading
+        .replace(/[^\w\u4e00-\u9fff\s-]/g, '') // 只保留字母数字、中文、空格和连字符
+        .replace(/\s+/g, '_') // 空格替换为下划线
+        .slice(0, 50); // 限制长度
+
+      return `${datePrefix}_${cleanTitle}.md`;
+    } else {
+      // 如果没有标题，使用 nanoid
+      return `${datePrefix}_${nanoid(8)}.md`;
+    }
+  }
+
+  /**
    * 删除目录（仅删除空目录）
    */
   async deleteDirectory(path: string): Promise<void> {
@@ -717,6 +782,167 @@ export class WebDAVClient {
     if (!response.ok) {
       throw new Error(`Failed to rename file from ${oldPath} to ${newPath}: ${response.status} ${response.statusText}`);
     }
+  }
+
+  /**
+   * 获取所有 Memos
+   */
+  async getAllMemos(): Promise<WebDAVMemo[]> {
+    try {
+      // 确保 Memos 目录存在
+      await this.ensureDirectoryExists(this.memosPath);
+
+      // 获取 Memos 目录下的所有文件
+      const files = await this.propfind(this.memosPath, 1);
+
+      // 过滤出 Markdown 文件并排除目录本身
+      const memoFiles = files.filter(
+        (file) => file.type === 'file' && file.filename.endsWith('.md') && file.filename !== this.memosPath
+      );
+
+      // 并行获取所有 Memo 内容
+      const memos = await Promise.all(
+        memoFiles.map(async (file) => {
+          try {
+            const relativePath = file.filename;
+            const content = await this.getFileContent(relativePath);
+            const { frontmatter, body } = this.parseFrontmatter(content);
+
+            // 从文件名或 frontmatter 生成 slug
+            const slug = this.generateSlug(relativePath, frontmatter);
+
+            // 获取创建和更新时间
+            const createdAt = frontmatter.date ? new Date(frontmatter.date) : new Date(file.lastmod);
+            const updatedAt = frontmatter.updatedAt ? new Date(frontmatter.updatedAt) : new Date(file.lastmod);
+
+            // 从内容中提取标题用于显示
+            const displayTitle = this.extractFirstHeading(body) || '无标题 Memo';
+
+            return {
+              id: relativePath,
+              slug,
+              data: { ...frontmatter, title: displayTitle },
+              body,
+              createdAt,
+              updatedAt,
+            };
+          } catch (error) {
+            console.error(`Error processing memo file ${file.filename}:`, error);
+            return null;
+          }
+        })
+      );
+
+      // 过滤掉处理失败的 Memo 并按创建时间降序排序
+      const validMemos = memos.filter((memo): memo is NonNullable<typeof memo> => memo !== null);
+      return validMemos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } catch (error) {
+      console.error('Failed to get memos:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 创建新的 Memo
+   */
+  async createMemo(content: string, isPublic: boolean = true): Promise<WebDAVMemo> {
+    // 确保 Memos 目录存在
+    await this.ensureDirectoryExists(this.memosPath);
+
+    // 创建 frontmatter（不包含标题字段）
+    const now = new Date();
+    const frontmatter = {
+      date: now.toISOString(),
+      updatedAt: now.toISOString(),
+      public: isPublic,
+    };
+
+    // 生成文件名
+    const filename = this.generateMemoFilename(content);
+    const filePath = `${this.memosPath}/${filename}`;
+
+    // 序列化内容
+    const fileContent = this.serializeMarkdownContent(frontmatter, content);
+
+    // 保存文件
+    await this.putFile(filePath, fileContent);
+
+    // 从内容中提取标题用于显示
+    const displayTitle = this.extractFirstHeading(content) || '无标题 Memo';
+
+    // 返回创建的 Memo
+    return {
+      id: filePath,
+      slug: this.generateSlug(filePath, frontmatter),
+      data: { ...frontmatter, title: displayTitle },
+      body: content,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  /**
+   * 更新 Memo
+   */
+  async updateMemo(id: string, content: string): Promise<WebDAVMemo> {
+    // 获取当前内容
+    const currentContent = await this.getFileContent(id);
+    const { frontmatter } = this.parseFrontmatter(currentContent);
+
+    // 更新 frontmatter（不包含标题字段）
+    const now = new Date();
+    const updatedFrontmatter = {
+      ...frontmatter,
+      updatedAt: now.toISOString(),
+    };
+
+    // 序列化内容
+    const fileContent = this.serializeMarkdownContent(updatedFrontmatter, content);
+
+    // 检查是否需要重命名文件（如果内容的第一个标题改变了）
+    const newFilename = this.generateMemoFilename(content);
+    const currentFilename = id.split('/').pop();
+
+    if (newFilename !== currentFilename) {
+      // 需要重命名文件
+      const newId = id.replace(currentFilename!, newFilename);
+      await this.putFile(newId, fileContent);
+      await this.deleteFile(id);
+
+      // 从内容中提取标题用于显示
+      const displayTitle = this.extractFirstHeading(content) || '无标题 Memo';
+
+      return {
+        id: newId,
+        slug: this.generateSlug(newId, updatedFrontmatter),
+        data: { ...updatedFrontmatter, title: displayTitle },
+        body: content,
+        createdAt: frontmatter.date ? new Date(frontmatter.date) : now,
+        updatedAt: now,
+      };
+    } else {
+      // 不需要重命名，直接更新
+      await this.putFile(id, fileContent);
+
+      // 从内容中提取标题用于显示
+      const displayTitle = this.extractFirstHeading(content) || '无标题 Memo';
+
+      return {
+        id,
+        slug: this.generateSlug(id, updatedFrontmatter),
+        data: { ...updatedFrontmatter, title: displayTitle },
+        body: content,
+        createdAt: frontmatter.date ? new Date(frontmatter.date) : now,
+        updatedAt: now,
+      };
+    }
+  }
+
+  /**
+   * 删除 Memo
+   */
+  async deleteMemo(id: string): Promise<void> {
+    await this.deleteFile(id);
   }
 }
 

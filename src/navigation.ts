@@ -3,6 +3,11 @@ import { getAsset, getBlogPermalink, getPermalink } from './utils/permalinks';
 export const headerData = {
   links: [
     {
+      text: '闪念',
+      href: getPermalink('/memos'),
+      icon: 'tabler:notes',
+    },
+    {
       text: '文章',
       href: getBlogPermalink(),
       icon: 'tabler:notebook',

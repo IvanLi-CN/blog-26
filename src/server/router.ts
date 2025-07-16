@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { authRouter } from './routers/auth';
 import { commentsRouter } from './routers/comments';
+import { memosRouter } from './routers/memos';
 import { postsRouter } from './routers/posts';
 import { reactionsRouter } from './routers/reactions';
 import { searchRouter } from './routers/search';
@@ -30,6 +31,9 @@ export const appRouter = createTRPCRouter({
 
   // 文章管理相关路由
   posts: postsRouter,
+
+  // Memos 相关路由
+  memos: memosRouter,
 
   // 搜索相关路由
   search: searchRouter,

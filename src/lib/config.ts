@@ -19,6 +19,7 @@ const envSchema = z.object({
   WEBDAV_PASSWORD: z.string().optional(),
   WEBDAV_EXCLUDE_PATHS: z.string().default(''),
   WEBDAV_PROJECTS_PATH: z.string().default('/projects'),
+  WEBDAV_MEMOS_PATH: z.string().default('/Memos'),
 
   // 模型配置
   EMBEDDING_MODEL_NAME: z.string().default('BAAI/bge-m3'),
@@ -131,6 +132,7 @@ export const config = {
         .map((p) => p.trim())
         .filter(Boolean),
       projectsPath: cfg.WEBDAV_PROJECTS_PATH,
+      memosPath: cfg.WEBDAV_MEMOS_PATH,
     };
   },
 
