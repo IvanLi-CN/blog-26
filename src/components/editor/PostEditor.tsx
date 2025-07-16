@@ -39,8 +39,6 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
     setCurrentEditingFile(filePath);
   };
 
-
-
   // 解析frontmatter和内容
   const parseFrontmatter = (content: string): { frontmatter: PostMetadata; body: string } => {
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
@@ -404,7 +402,7 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
                 try {
                   await createFileMutation.mutateAsync({
                     path: filePath,
-                    content: ''
+                    content: '',
                   });
                 } catch (error) {
                   console.error('Failed to create file:', error);
