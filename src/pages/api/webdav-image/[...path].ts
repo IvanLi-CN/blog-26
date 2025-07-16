@@ -17,9 +17,15 @@ export const GET: APIRoute = async ({ params, request }) => {
       return new Response('WebDAV not configured', { status: 500 });
     }
 
-    // 构建 WebDAV 图片 URL
-    const imageUrl = `${webdavConfig.url}/${path}`;
-    console.log(`WebDAV image proxy: Fetching image from ${imageUrl}`);
+    // 处理路径：确保正确拼接
+    const cleanPath = Array.isArray(path) ? path.join('/') : path;
+    // 移除开头的斜杠，避免双斜杠
+    const normalizedPath = cleanPath.replace(/^\/+/, '');
+    const imageUrl = `${webdavConfig.url}/${normalizedPath}`;
+    console.log(`WebDAV image proxy: Original path:`, path);
+    console.log(`WebDAV image proxy: Clean path:`, cleanPath);
+    console.log(`WebDAV image proxy: Normalized path:`, normalizedPath);
+    console.log(`WebDAV image proxy: Final URL:`, imageUrl);
 
     // 从 WebDAV 获取图片
     const response = await fetch(imageUrl, {

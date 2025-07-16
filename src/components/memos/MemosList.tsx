@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
+import { type Attachment, AttachmentGrid } from './AttachmentGrid';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
 interface Memo {
   id: string;
   slug: string;
-  title: string;
+  title?: string;
   content: string;
   createdAt: string;
   updatedAt: string;
   data: Record<string, any>;
   isPublic: boolean;
+  attachments?: Attachment[];
+  tags?: string[];
 }
 
 interface MemosListProps {
@@ -246,6 +249,27 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                 <div className="prose prose-sm max-w-none dark:prose-invert prose-gray dark:prose-gray prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-a:text-primary prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-primary prose-code:bg-gray-100 dark:prose-code:bg-gray-700 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-800 prose-p:my-2 prose-headings:my-2">
                   <SimpleMarkdownPreview content={memo.content} />
                 </div>
+
+                {/* 标签显示 */}
+                {memo.tags && memo.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-3">
+                    {memo.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* 附件显示 */}
+                {memo.attachments && memo.attachments.length > 0 && (
+                  <div className="mt-3">
+                    <AttachmentGrid attachments={memo.attachments} editable={false} />
+                  </div>
+                )}
               </div>
             </div>
           </div>

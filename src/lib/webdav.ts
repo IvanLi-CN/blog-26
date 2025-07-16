@@ -20,6 +20,14 @@ export interface WebDAVPost {
   collection: 'post' | 'notes' | 'local-notes' | 'projects' | 'memos'; // 集合类型
 }
 
+export interface MemoAttachment {
+  filename: string; // 文件名
+  path: string; // WebDAV 中的完整路径
+  contentType?: string; // MIME 类型
+  size?: number; // 文件大小（字节）
+  isImage: boolean; // 是否为图片类型
+}
+
 export interface WebDAVMemo {
   id: string; // 相对路径作为 ID
   slug: string; // 从文件名或 frontmatter 生成
@@ -27,6 +35,8 @@ export interface WebDAVMemo {
   body: string; // 正文内容
   createdAt: Date; // 创建时间
   updatedAt: Date; // 更新时间
+  attachments?: MemoAttachment[]; // 附件列表
+  tags?: string[]; // 标签列表
 }
 
 export interface ProcessedWebDAVContent {
@@ -401,6 +411,32 @@ export class WebDAVClient {
 
     if (!response.ok) {
       throw new Error(`Failed to put file ${filePath}: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * 上传二进制文件（如图片、附件等）
+   */
+  async putBinaryFile(filePath: string, content: ArrayBuffer, contentType?: string): Promise<void> {
+    const url = `${this.baseUrl}${filePath}`;
+
+    const headers: Record<string, string> = {
+      ...this.getAuthHeaders(),
+    };
+
+    // 如果提供了 contentType，则设置 Content-Type
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: content,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to put binary file ${filePath}: ${response.status} ${response.statusText}`);
     }
   }
 
@@ -818,6 +854,12 @@ export class WebDAVClient {
             // 从内容中提取标题用于显示
             const displayTitle = this.extractFirstHeading(body) || '无标题 Memo';
 
+            // 提取标签（如果 frontmatter 中没有的话）
+            const tags = frontmatter.tags || this.extractTagsFromContent(body);
+
+            // 获取附件信息（如果有的话）
+            const attachments = frontmatter.attachments || [];
+
             return {
               id: relativePath,
               slug,
@@ -825,6 +867,8 @@ export class WebDAVClient {
               body,
               createdAt,
               updatedAt,
+              attachments,
+              tags,
             };
           } catch (error) {
             console.error(`Error processing memo file ${file.filename}:`, error);
@@ -845,9 +889,39 @@ export class WebDAVClient {
   /**
    * 创建新的 Memo
    */
-  async createMemo(content: string, isPublic: boolean = true): Promise<WebDAVMemo> {
+  async createMemo(content: string, isPublic: boolean = true, attachments: MemoAttachment[] = []): Promise<WebDAVMemo> {
     // 确保 Memos 目录存在
     await this.ensureDirectoryExists(this.memosPath);
+
+    // 解析标签
+    const tags = this.extractTagsFromContent(content);
+
+    // 生成文件名
+    const filename = this.generateMemoFilename(content);
+    const filePath = `${this.memosPath}/${filename}`;
+
+    // 处理附件：将临时附件移动到正式位置
+    const finalAttachments: MemoAttachment[] = [];
+    for (const attachment of attachments) {
+      try {
+        // 检查是否是临时文件路径
+        if (attachment.path.includes('/assets/tmp/')) {
+          // 移动临时文件到正式位置
+          const finalPath = await this.moveTemporaryAttachment(attachment.path, filePath, attachment.filename);
+          finalAttachments.push({
+            ...attachment,
+            path: finalPath,
+          });
+        } else {
+          // 已经是正式路径，直接使用
+          finalAttachments.push(attachment);
+        }
+      } catch (error) {
+        console.error(`Failed to move attachment ${attachment.filename}:`, error);
+        // 如果移动失败，仍然保留原路径（临时路径）
+        finalAttachments.push(attachment);
+      }
+    }
 
     // 创建 frontmatter（不包含标题字段）
     const now = new Date();
@@ -855,11 +929,9 @@ export class WebDAVClient {
       date: now.toISOString(),
       updatedAt: now.toISOString(),
       public: isPublic,
+      attachments: finalAttachments.length > 0 ? finalAttachments : undefined,
+      tags: tags.length > 0 ? tags : undefined,
     };
-
-    // 生成文件名
-    const filename = this.generateMemoFilename(content);
-    const filePath = `${this.memosPath}/${filename}`;
 
     // 序列化内容
     const fileContent = this.serializeMarkdownContent(frontmatter, content);
@@ -878,22 +950,30 @@ export class WebDAVClient {
       body: content,
       createdAt: now,
       updatedAt: now,
+      attachments: finalAttachments,
+      tags,
     };
   }
 
   /**
    * 更新 Memo
    */
-  async updateMemo(id: string, content: string): Promise<WebDAVMemo> {
+  async updateMemo(id: string, content: string, attachments?: MemoAttachment[]): Promise<WebDAVMemo> {
     // 获取当前内容
     const currentContent = await this.getFileContent(id);
     const { frontmatter } = this.parseFrontmatter(currentContent);
+
+    // 解析标签
+    const tags = this.extractTagsFromContent(content);
 
     // 更新 frontmatter（不包含标题字段）
     const now = new Date();
     const updatedFrontmatter = {
       ...frontmatter,
       updatedAt: now.toISOString(),
+      attachments:
+        attachments !== undefined ? (attachments.length > 0 ? attachments : undefined) : frontmatter.attachments,
+      tags: tags.length > 0 ? tags : undefined,
     };
 
     // 序列化内容
@@ -919,6 +999,8 @@ export class WebDAVClient {
         body: content,
         createdAt: frontmatter.date ? new Date(frontmatter.date) : now,
         updatedAt: now,
+        attachments: attachments || updatedFrontmatter.attachments || [],
+        tags: tags,
       };
     } else {
       // 不需要重命名，直接更新
@@ -934,6 +1016,8 @@ export class WebDAVClient {
         body: content,
         createdAt: frontmatter.date ? new Date(frontmatter.date) : now,
         updatedAt: now,
+        attachments: attachments || updatedFrontmatter.attachments || [],
+        tags: tags,
       };
     }
   }
@@ -943,6 +1027,129 @@ export class WebDAVClient {
    */
   async deleteMemo(id: string): Promise<void> {
     await this.deleteFile(id);
+  }
+
+  /**
+   * 为 Memo 附件生成存储路径
+   */
+  generateAttachmentPath(memoId: string, filename: string, isTemporary: boolean = false): string {
+    if (isTemporary) {
+      // 临时文件存储在 assets/tmp 目录下
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      return `${this.memosPath}/assets/tmp/${timestamp}_${randomId}/${filename}`;
+    }
+
+    // 从 memo ID 中提取文件名（不含扩展名）
+    const memoBasename = memoId.substring(memoId.lastIndexOf('/') + 1, memoId.lastIndexOf('.'));
+
+    // 正式附件存储在 assets 目录下，按 memo 文件名分组
+    return `${this.memosPath}/assets/${memoBasename}/${filename}`;
+  }
+
+  /**
+   * 上传 Memo 附件
+   */
+  async uploadMemoAttachment(
+    memoId: string,
+    filename: string,
+    content: ArrayBuffer,
+    contentType?: string,
+    isTemporary: boolean = false
+  ): Promise<string> {
+    const attachmentPath = this.generateAttachmentPath(memoId, filename, isTemporary);
+
+    // 确保附件目录存在
+    const attachmentDir = attachmentPath.substring(0, attachmentPath.lastIndexOf('/'));
+    await this.ensureDirectoryExists(attachmentDir);
+
+    // 上传附件文件
+    await this.putBinaryFile(attachmentPath, content, contentType);
+
+    return attachmentPath;
+  }
+
+  /**
+   * 将临时附件移动到正式位置
+   */
+  async moveTemporaryAttachment(tempPath: string, memoId: string, filename: string): Promise<string> {
+    const finalPath = this.generateAttachmentPath(memoId, filename, false);
+
+    // 确保目标目录存在
+    const finalDir = finalPath.substring(0, finalPath.lastIndexOf('/'));
+    await this.ensureDirectoryExists(finalDir);
+
+    try {
+      // 尝试使用 WebDAV MOVE 方法
+      const tempUrl = `${this.baseUrl}${tempPath}`;
+      const finalUrl = `${this.baseUrl}${finalPath}`;
+
+      const response = await fetch(tempUrl, {
+        method: 'MOVE',
+        headers: {
+          ...this.getAuthHeaders(),
+          Destination: finalUrl,
+        },
+      });
+
+      if (response.ok) {
+        return finalPath;
+      }
+
+      // 如果 MOVE 失败，回退到复制+删除的方式
+      console.warn('WebDAV MOVE failed, falling back to copy+delete');
+    } catch (error) {
+      console.warn('WebDAV MOVE error, falling back to copy+delete:', error);
+    }
+
+    // 回退方案：先获取文件内容，然后复制到新位置，最后删除原文件
+    // 注意：这里需要处理二进制文件
+    const tempUrl = `${this.baseUrl}${tempPath}`;
+    const response = await fetch(tempUrl, {
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to read temporary file ${tempPath}: ${response.status} ${response.statusText}`);
+    }
+
+    const fileContent = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || undefined;
+
+    // 上传到最终位置
+    await this.putBinaryFile(finalPath, fileContent, contentType);
+
+    // 删除临时文件
+    await this.deleteFile(tempPath);
+
+    return finalPath;
+  }
+
+  /**
+   * 从内容中提取标签
+   * 标签格式：#标签名 或 #父标签/子标签
+   * 标签以空格或标点符号分隔，但 / 用于表示层级关系
+   */
+  extractTagsFromContent(content: string): string[] {
+    const tags: Set<string> = new Set();
+
+    // 匹配以 # 开头的标签，支持中文、英文、数字、下划线、连字符和斜杠
+    // 标签可以包含 / 来表示层级关系
+    const tagRegex = /#([a-zA-Z0-9\u4e00-\u9fa5_\-\/]+)/g;
+
+    let match;
+    while ((match = tagRegex.exec(content)) !== null) {
+      const tag = match[1];
+
+      // 过滤掉空标签或只包含斜杠的标签
+      if (tag && tag !== '/' && !tag.startsWith('/') && !tag.endsWith('/')) {
+        // 清理标签：移除连续的斜杠
+        const cleanedTag = tag.replace(/\/+/g, '/');
+        tags.add(cleanedTag);
+      }
+    }
+
+    return Array.from(tags).sort();
   }
 }
 
