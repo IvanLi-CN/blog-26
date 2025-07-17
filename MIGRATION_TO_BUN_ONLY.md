@@ -20,7 +20,7 @@
 
 ### 2. Astro 配置更新
 
-- **适配器**: 从 `@astrojs/node` 改为 `astro-bun-adapter`
+- **适配器**: 从 `@astrojs/node` 改为 `@nurodev/astro-bun`
 - **输出模式**: 添加 `output: 'server'`
 - **图像服务**: 配置为 `noop` 以避免 sharp 兼容性问题
 
