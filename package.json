@@ -128,6 +128,7 @@
     "@iconify-json/line-md": "^1.2.8",
     "@iconify-json/mingcute": "^1.2.3",
     "@iconify-json/tabler": "^1.2.19",
+    "@playwright/test": "^1.54.1",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.10",
     "@types/bun": "^1.2.17",

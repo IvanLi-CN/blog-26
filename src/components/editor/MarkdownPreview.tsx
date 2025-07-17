@@ -109,13 +109,27 @@ export function MarkdownPreview({ content, filePath }: MarkdownPreviewProps) {
               {children}
             </blockquote>
           ),
-          code: ({ children, ...props }) => {
-            const isInline = !props.className;
+          code: ({ children, className, ...props }) => {
+            const isInline = !className;
+            const isMermaid = className === 'language-mermaid';
+
             if (isInline) {
               return (
                 <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">{children}</code>
               );
             }
+
+            if (isMermaid) {
+              return (
+                <div className="relative bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4">
+                  <div className="absolute top-2 right-2 text-xs text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
+                    Mermaid 图表 (发布后渲染)
+                  </div>
+                  <code className="block font-mono text-sm text-gray-700 dark:text-gray-300">{children}</code>
+                </div>
+              );
+            }
+
             return (
               <code className="block bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto font-mono text-sm">
                 {children}

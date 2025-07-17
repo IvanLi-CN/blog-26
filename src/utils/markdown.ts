@@ -1,5 +1,6 @@
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
+import rehypeMermaid from 'rehype-mermaid';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -43,6 +44,10 @@ export async function parseMarkdownToHTML(markdown: string, articlePath?: string
     .use(lazyImagesRehypePlugin)
     .use(webdavImagesRehypePlugin)
     .use(rehypeKatex)
+    .use(rehypeMermaid, {
+      strategy: 'img-svg',
+      dark: true,
+    })
     .use(rehypeHighlight)
     .use(rehypeStringify, { allowDangerousHtml: true });
 
