@@ -250,6 +250,8 @@ const metadata = {
           if (task && task.progress) {
             this.handleProgressUpdate(task.progress);
             if (task.status === "completed" || task.status === "failed") {
+              // 在停止轮询之前，最后再更新一次进度，以确保显示最终状态
+              this.handleProgressUpdate(task.progress);
               this.addLog(
                 `任务 ${task.status === "completed" ? "完成" : "失败"}。`,
                 task.status === "completed" ? "success" : "error",

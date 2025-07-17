@@ -77,10 +77,12 @@ export const vectorizationRouter = createTRPCRouter({
 
         await processAndVectorizeAllContent(onProgress);
 
-        taskManager.update(taskId, 'completed', {
+        // 使用 lastProgress 作为最终状态，以保留最终的统计数据
+        const finalProgress = lastProgress ?? {
           stage: 'done',
           message: '向量化过程成功完成',
-        });
+        };
+        taskManager.update(taskId, 'completed', finalProgress);
       } catch (error) {
         console.error(`Task ${taskId} failed:`, error);
         const finalMessage = lastProgress?.message || (error instanceof Error ? error.message : '未知错误');

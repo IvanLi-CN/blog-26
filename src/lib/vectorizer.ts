@@ -194,7 +194,13 @@ export async function processAndVectorizeAllContent(
   }
 
   const finalMessage = '内容向量化完成.';
-  onProgress?.({ stage: 'done', message: finalMessage });
+  onProgress?.({
+    stage: 'done',
+    message: finalMessage,
+    total: totalFiles,
+    current: totalFiles, // 在完成时，已处理数应等于总数
+    percentage: 100,
+  });
   console.log(finalMessage);
   // Note: We don't close the DB here as it might be used by the API route later in hybrid mode.
   // The script execution will handle process exit.
