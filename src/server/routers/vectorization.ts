@@ -68,8 +68,10 @@ export const vectorizationRouter = createTRPCRouter({
 
     // 异步执行，不阻塞返回
     (async () => {
+      let lastProgress: VectorizationProgress | undefined;
       try {
         const onProgress = (progress: VectorizationProgress) => {
+          lastProgress = progress;
           taskManager.update(taskId, 'running', progress);
         };
 
@@ -81,9 +83,10 @@ export const vectorizationRouter = createTRPCRouter({
         });
       } catch (error) {
         console.error(`Task ${taskId} failed:`, error);
+        const finalMessage = lastProgress?.message || (error instanceof Error ? error.message : '未知错误');
         taskManager.update(taskId, 'failed', {
           stage: 'error',
-          message: error instanceof Error ? error.message : '未知错误',
+          message: finalMessage,
         });
       }
     })();

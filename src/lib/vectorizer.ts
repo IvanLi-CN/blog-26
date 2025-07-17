@@ -1,7 +1,6 @@
-import { getCollection } from 'astro:content';
 import { Buffer } from 'node:buffer';
 import { OpenAI, OpenAIEmbedding } from '@llamaindex/openai';
-import { Settings } from 'llamaindex';
+import { Document, Settings, SimpleNodeParser } from 'llamaindex';
 import { processAllContent } from './contentProcessor';
 import type { DBRecord } from './db';
 import { deleteFileRecord, getAllFileRecords, initializeDB, upsertFileRecord } from './db';
@@ -85,23 +84,17 @@ export async function processAndVectorizeAllContent(
     }
   }
 
-  // 1. 获取所有当前内容文件的 ID
-  const allPosts = await getCollection('post');
-  const currentFilepaths = new Set(allPosts.map((post) => post.id));
-  const message1 = `找到 ${currentFilepaths.size} 篇当前文章.`;
-  onProgress?.({ stage: 'info', message: message1 });
+  // 1. 获取所有需要处理的文件及所有有效的文件路径
+  const { filesToProcess, allFilepaths } = await processAllContent();
+  const totalToVectorize = filesToProcess.length;
+  const totalFiles = allFilepaths.size;
+  const message1 = `找到 ${totalFiles} 篇文章，其中 ${totalToVectorize} 篇需要处理。`;
+  onProgress?.({ stage: 'info', message: message1, total: totalFiles, current: 0 });
   console.log(message1);
 
-  // 2. 获取需要更新或新增的内容
-  const contentToVectorize = await processAllContent();
-  const totalToVectorize = contentToVectorize.length;
-  const message2 = `需要向量化 ${totalToVectorize} 篇文章.`;
-  onProgress?.({ stage: 'info', message: message2 });
-  console.log(message2);
-
-  // 3. 向量化并更新/插入数据库
+  // 2. 向量化并更新/插入数据库
   let vectorizedCount = 0;
-  for (const item of contentToVectorize) {
+  for (const item of filesToProcess) {
     vectorizedCount++;
     const percentage = totalToVectorize > 0 ? Math.round((vectorizedCount / totalToVectorize) * 100) : 0;
     try {
@@ -114,8 +107,28 @@ export async function processAndVectorizeAllContent(
         percentage,
       });
       console.log(message);
-      const embeddings = await Settings.embedModel.getTextEmbeddings([item.rawContent]);
-      const vector = Buffer.from(new Float32Array(embeddings[0]).buffer);
+
+      const document = new Document({ text: item.rawContent });
+      const nodeParser = new SimpleNodeParser({
+        chunkSize: 4096, // Use a more conservative chunk size
+        chunkOverlap: 200,
+      });
+      const nodes = nodeParser.getNodesFromDocuments([document]);
+      const textChunks = nodes.map((node) => node.getText());
+
+      const embeddings = await Settings.embedModel.getTextEmbeddings(textChunks);
+
+      const averageVector = new Float32Array(embeddings[0].length).fill(0);
+      for (const embedding of embeddings) {
+        for (let i = 0; i < embedding.length; i++) {
+          averageVector[i] += embedding[i];
+        }
+      }
+      for (let i = 0; i < averageVector.length; i++) {
+        averageVector[i] /= embeddings.length;
+      }
+
+      const vector = Buffer.from(averageVector.buffer);
 
       const record: DBRecord = {
         filepath: item.filepath,
@@ -130,7 +143,7 @@ export async function processAndVectorizeAllContent(
       await upsertFileRecord(record);
       console.log(`成功向量化并更新: ${item.filepath}`);
     } catch (error) {
-      const errorMessage = `向量化失败: ${item.filepath}`;
+      const errorMessage = `向量化失败: ${item.filepath}. 原因: ${error instanceof Error ? error.message : String(error)}`;
       onProgress?.({
         stage: 'error',
         message: errorMessage,
@@ -138,7 +151,7 @@ export async function processAndVectorizeAllContent(
         current: vectorizedCount,
         percentage,
       });
-      console.error(errorMessage, error);
+      console.error(`向量化失败: ${item.filepath}`, error);
     }
   }
 
@@ -148,7 +161,7 @@ export async function processAndVectorizeAllContent(
   onProgress?.({ stage: 'info', message: message3 });
   console.log(message3);
 
-  const recordsToDelete = freshExistingRecords.filter((record) => !currentFilepaths.has(record.filepath));
+  const recordsToDelete = freshExistingRecords.filter((record) => !allFilepaths.has(record.filepath));
   const totalToDelete = recordsToDelete.length;
   let deletedCount = 0;
 

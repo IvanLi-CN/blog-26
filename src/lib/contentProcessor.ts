@@ -97,6 +97,11 @@ export async function processContent(
     const rawContent = post.body; // Use post.body directly
     const frontmatter = post.data; // Use post.data directly
 
+    if (typeof rawContent !== 'string') {
+      console.error(`Error processing ${post.id}: content body is not a string, skipping.`);
+      return undefined;
+    }
+
     // Calculate content hash from rawContent (post.body)
     const contentHash = calculateContentHash(rawContent);
 
@@ -171,6 +176,11 @@ export async function processWebDAVContent(
     const rawContent = post.body;
     const frontmatter = post.data;
 
+    if (typeof rawContent !== 'string') {
+      console.error(`Error processing WebDAV ${post.id}: content body is not a string, skipping.`);
+      return undefined;
+    }
+
     // Calculate content hash from rawContent
     const contentHash = calculateContentHash(rawContent);
 
@@ -237,9 +247,10 @@ export async function processWebDAVContent(
 export async function processAllContent(
   force: boolean = false,
   onProgress?: (message: string) => void
-): Promise<ProcessedContent[]> {
+): Promise<{ filesToProcess: ProcessedContent[]; allFilepaths: Set<string> }> {
   onProgress?.(`开始处理所有内容文件 (force: ${force})...`);
-  const results: ProcessedContent[] = [];
+  const filesToProcess: ProcessedContent[] = [];
+  const allFilepaths = new Set<string>();
 
   // 始终处理本地内容
   try {
@@ -248,9 +259,10 @@ export async function processAllContent(
     onProgress?.(`找到 ${posts.length} 篇本地文章。`);
 
     for (const post of posts) {
+      allFilepaths.add(post.id); // Add all found files to the set
       const processed = await processContent(post, force);
       if (processed) {
-        results.push(processed);
+        filesToProcess.push(processed);
       }
     }
   } catch (error) {
@@ -266,9 +278,10 @@ export async function processAllContent(
       onProgress?.(`找到 ${webdavPosts.length} 篇 WebDAV 文章。`);
 
       for (const post of webdavPosts) {
+        allFilepaths.add(post.id); // Add all found files to the set
         const processed = await processWebDAVContent(post, force);
         if (processed) {
-          results.push(processed);
+          filesToProcess.push(processed);
         }
       }
     } catch (error) {
@@ -279,5 +292,5 @@ export async function processAllContent(
     onProgress?.('WebDAV 未配置，跳过处理。');
   }
 
-  return results;
+  return { filesToProcess, allFilepaths };
 }
