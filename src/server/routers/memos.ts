@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
+import { fetchContent } from '~/lib/content';
 import { getWebDAVClient, isWebDAVEnabled } from '~/lib/webdav';
 import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
 
@@ -58,31 +59,22 @@ export const memosRouter = createTRPCRouter({
    * 获取所有 Memos（公开访问）
    */
   getAll: publicProcedure.query(async ({ ctx }) => {
-    if (!isWebDAVEnabled()) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'WebDAV is not enabled',
-      });
-    }
-
     try {
-      const webdavClient = getWebDAVClient();
-      const allMemos = await webdavClient.getAllMemos();
-
+      const allMemos = await fetchContent(['memo']);
       // 如果不是管理员，只返回公开的 Memo
-      const filteredMemos = ctx.isAdmin ? allMemos : allMemos.filter((memo) => memo.data.public !== false);
+      const filteredMemos = ctx.isAdmin ? allMemos : allMemos.filter((memo) => memo.public !== false);
 
       return filteredMemos.map((memo) => ({
         id: memo.id,
         slug: memo.slug,
-        title: memo.data.title || '无标题 Memo',
+        title: memo.title,
         content: memo.body,
-        createdAt: memo.createdAt.toISOString(),
-        updatedAt: memo.updatedAt.toISOString(),
-        data: memo.data,
-        isPublic: memo.data.public !== false, // 默认为 true
-        attachments: memo.attachments || [],
-        tags: memo.tags || [],
+        createdAt: memo.publishDate.toISOString(),
+        updatedAt: memo.updateDate?.toISOString() || memo.publishDate.toISOString(),
+        data: memo.raw?.data || {},
+        isPublic: memo.public !== false, // 默认为 true
+        attachments: memo.raw?.attachments || [],
+        tags: memo.tags?.map((t) => t.title) || [],
       }));
     } catch (error) {
       console.error('Failed to get memos:', error);

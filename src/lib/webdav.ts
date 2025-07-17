@@ -64,7 +64,7 @@ export class WebDAVClient {
   private username: string;
   private password: string;
   private excludePaths: string[];
-  private projectsPath: string;
+  public projectsPath: string;
   private memosPath: string;
 
   constructor() {

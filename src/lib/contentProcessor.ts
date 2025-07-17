@@ -1,10 +1,9 @@
-import { type CollectionEntry, getCollection } from 'astro:content';
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { fetchContent } from '~/lib/content';
 import { getFileRecord, upsertFileRecord } from './db';
 import type { NewVectorizedFile } from './schema';
-import { getWebDAVClient, isWebDAVEnabled, type WebDAVPost } from './webdav';
 
 export interface ProcessedContent {
   filepath: string;
@@ -88,7 +87,7 @@ export async function updateContentRecord(
  * 处理单个内容文件，并确定是否需要向量化
  */
 export async function processContent(
-  post: CollectionEntry<'post'>,
+  post: any, // 使用 any 类型以接纳来自 ContentItem 的 raw 数据
   force: boolean = false
 ): Promise<ProcessedContent | undefined> {
   try {
@@ -167,7 +166,7 @@ export async function processContent(
  * 处理 WebDAV 内容文件
  */
 export async function processWebDAVContent(
-  post: WebDAVPost,
+  post: any, // 使用 any 类型以接纳来自 ContentItem 的 raw 数据
   force: boolean = false
 ): Promise<ProcessedContent | undefined> {
   try {
@@ -252,44 +251,19 @@ export async function processAllContent(
   const filesToProcess: ProcessedContent[] = [];
   const allFilepaths = new Set<string>();
 
-  // 始终处理本地内容
-  try {
-    onProgress?.('处理本地内容...');
-    const posts = await getCollection('post');
-    onProgress?.(`找到 ${posts.length} 篇本地文章。`);
+  // 使用新的统一方法获取所有内容
+  const allContent = await fetchContent(['all'], true); // 强制刷新缓存
+  onProgress?.(`共找到 ${allContent.length} 篇内容。`);
 
-    for (const post of posts) {
-      allFilepaths.add(post.id); // Add all found files to the set
-      const processed = await processContent(post, force);
-      if (processed) {
-        filesToProcess.push(processed);
-      }
+  for (const item of allContent) {
+    allFilepaths.add(item.id); // Add all found files to the set
+    // 根据 item.raw 的存在和结构来判断来源
+    const isLocal = 'render' in item.raw;
+    const processed = isLocal ? await processContent(item.raw, force) : await processWebDAVContent(item.raw, force);
+
+    if (processed) {
+      filesToProcess.push(processed);
     }
-  } catch (error) {
-    console.warn('Failed to process local content:', error);
-  }
-
-  // 如果启用了 WebDAV，处理 WebDAV 内容并合并
-  if (isWebDAVEnabled()) {
-    try {
-      onProgress?.('处理 WebDAV 内容...');
-      const webdavClient = getWebDAVClient();
-      const webdavPosts = await webdavClient.getAllPosts();
-      onProgress?.(`找到 ${webdavPosts.length} 篇 WebDAV 文章。`);
-
-      for (const post of webdavPosts) {
-        allFilepaths.add(post.id); // Add all found files to the set
-        const processed = await processWebDAVContent(post, force);
-        if (processed) {
-          filesToProcess.push(processed);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to process WebDAV content:', error);
-      onProgress?.(`处理 WebDAV 内容失败: ${error.message}`);
-    }
-  } else {
-    onProgress?.('WebDAV 未配置，跳过处理。');
   }
 
   return { filesToProcess, allFilepaths };
