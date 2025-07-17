@@ -30,7 +30,9 @@ const whenExternalScripts = (items: (() => AstroIntegration) | (() => AstroInteg
 
 export default defineConfig({
   output: 'server',
-  adapter: bun(),
+  adapter: bun({
+    assets: 'dist/client',
+  }),
   session: {
     driver: 'lru-cache',
   },
