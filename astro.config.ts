@@ -105,7 +105,7 @@ export default defineConfig({
       [
         rehypeMermaid,
         {
-          strategy: 'img-svg',
+          strategy: 'pre-mermaid',
           dark: true,
         },
       ],
