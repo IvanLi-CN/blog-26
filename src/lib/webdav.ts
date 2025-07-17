@@ -848,7 +848,7 @@ export class WebDAVClient {
             const slug = this.generateSlug(relativePath, frontmatter);
 
             // 获取创建和更新时间
-            const createdAt = frontmatter.date ? new Date(frontmatter.date) : new Date(file.lastmod);
+            const createdAt = frontmatter.createdAt ? new Date(frontmatter.createdAt) : new Date(file.lastmod);
             const updatedAt = frontmatter.updatedAt ? new Date(frontmatter.updatedAt) : new Date(file.lastmod);
 
             // 从内容中提取标题用于显示
@@ -926,7 +926,7 @@ export class WebDAVClient {
     // 创建 frontmatter（不包含标题字段）
     const now = new Date();
     const frontmatter = {
-      date: now.toISOString(),
+      createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       public: isPublic,
       attachments: finalAttachments.length > 0 ? finalAttachments : undefined,
