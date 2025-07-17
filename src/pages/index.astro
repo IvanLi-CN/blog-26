@@ -2,13 +2,14 @@
 import { Icon } from "astro-icon/components";
 import Footer from "~/components/widgets/Footer.astro";
 import { footerData } from "~/navigation";
+import type { MetaData } from "~/types";
 import Header from "../components/widgets/Header.astro";
 import Layout from "../layouts/Layout.astro";
 import { headerData } from "../navigation";
 
-const metadata = {
-  title:
-    "AstroWind — Free template for creating websites with Astro + Tailwind CSS",
+const metadata: MetaData = {
+  title: "首页",
+  description: "这是 Ivan 的个人博客，记录和分享有关技术、生活和想法的内容。",
   ignoreTitleTemplate: true,
 };
 ---
