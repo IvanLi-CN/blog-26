@@ -117,12 +117,18 @@ export async function processContent(
       console.log(`文件 ${filepath} 内容已修改或为新文件，设置 content_updated_at 为当前时间.`);
     }
 
+    const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
     // Determine if needs vectorization
     if (force) {
       console.log(`强制处理文件 ${filepath}.`);
       needsVectorization = true;
-    } else if (!existingRecord) {
-      console.log(`文件 ${filepath} 是新文件，需要向量化.`);
+    } else if (
+      !existingRecord ||
+      !existingRecord.vector ||
+      (existingRecord.vector as Uint8Array).length === 0 ||
+      existingRecord.modelName !== embeddingModelName
+    ) {
+      console.log(`文件 ${filepath} 是新文件、缺少向量或模型不匹配，需要向量化.`);
       needsVectorization = true;
     } else if (existingRecord.indexedAt <= effectiveContentUpdatedAt) {
       console.log(`文件 ${filepath} 需要重新向量化 (indexed_at <= effectiveContentUpdatedAt).`);
@@ -185,12 +191,18 @@ export async function processWebDAVContent(
       console.log(`WebDAV 文件 ${filepath} 内容已修改或为新文件，设置 content_updated_at 为当前时间.`);
     }
 
+    const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
     // Determine if needs vectorization
     if (force) {
       console.log(`强制处理 WebDAV 文件 ${filepath}.`);
       needsVectorization = true;
-    } else if (!existingRecord) {
-      console.log(`WebDAV 文件 ${filepath} 是新文件，需要向量化.`);
+    } else if (
+      !existingRecord ||
+      !existingRecord.vector ||
+      (existingRecord.vector as Uint8Array).length === 0 ||
+      existingRecord.modelName !== embeddingModelName
+    ) {
+      console.log(`WebDAV 文件 ${filepath} 是新文件、缺少向量或模型不匹配，需要向量化.`);
       needsVectorization = true;
     } else if (existingRecord.indexedAt <= effectiveContentUpdatedAt) {
       console.log(`WebDAV 文件 ${filepath} 需要重新向量化 (indexed_at <= effectiveContentUpdatedAt).`);
@@ -222,14 +234,18 @@ export async function processWebDAVContent(
 /**
  * 批量处理内容文件
  */
-export async function processAllContent(force: boolean = false): Promise<ProcessedContent[]> {
-  console.log(`开始处理所有内容文件 (force: ${force})...`);
+export async function processAllContent(
+  force: boolean = false,
+  onProgress?: (message: string) => void
+): Promise<ProcessedContent[]> {
+  onProgress?.(`开始处理所有内容文件 (force: ${force})...`);
   const results: ProcessedContent[] = [];
 
   // 始终处理本地内容
   try {
-    console.log('处理本地内容...');
+    onProgress?.('处理本地内容...');
     const posts = await getCollection('post');
+    onProgress?.(`找到 ${posts.length} 篇本地文章。`);
 
     for (const post of posts) {
       const processed = await processContent(post, force);
@@ -244,9 +260,10 @@ export async function processAllContent(force: boolean = false): Promise<Process
   // 如果启用了 WebDAV，处理 WebDAV 内容并合并
   if (isWebDAVEnabled()) {
     try {
-      console.log('处理 WebDAV 内容...');
+      onProgress?.('处理 WebDAV 内容...');
       const webdavClient = getWebDAVClient();
       const webdavPosts = await webdavClient.getAllPosts();
+      onProgress?.(`找到 ${webdavPosts.length} 篇 WebDAV 文章。`);
 
       for (const post of webdavPosts) {
         const processed = await processWebDAVContent(post, force);
@@ -256,7 +273,10 @@ export async function processAllContent(force: boolean = false): Promise<Process
       }
     } catch (error) {
       console.warn('Failed to process WebDAV content:', error);
+      onProgress?.(`处理 WebDAV 内容失败: ${error.message}`);
     }
+  } else {
+    onProgress?.('WebDAV 未配置，跳过处理。');
   }
 
   return results;
