@@ -49,7 +49,7 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
     },
     onError: (error) => {
       if (error.message.includes('WebDAV is not enabled')) {
-        alert('WebDAV 未配置，无法创建 Memo。请联系管理员配置 WebDAV 连接。');
+        alert('WebDAV 服务未配置，无法创建 Memo。请检查服务器配置。');
       } else {
         alert(`创建失败: ${error.message}`);
       }

@@ -110,18 +110,10 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
 
   if (error) {
     return (
-      <div className="alert alert-warning">
-        <div>
-          <h3 className="font-bold">Memos 功能暂不可用</h3>
-          <div className="text-sm">
-            <p>请配置 WebDAV 连接以使用 Memos 功能。</p>
-            <p className="mt-2">需要配置以下环境变量：</p>
-            <ul className="list-disc list-inside mt-1 ml-4">
-              <li>WEBDAV_URL</li>
-              <li>WEBDAV_USERNAME</li>
-              <li>WEBDAV_PASSWORD</li>
-            </ul>
-          </div>
+      <div className="text-center py-12">
+        <div className="text-gray-500 dark:text-gray-400">
+          <p className="text-lg mb-2">Memos 功能暂时不可用</p>
+          <p className="text-sm">请稍后再试，或联系管理员</p>
         </div>
       </div>
     );
