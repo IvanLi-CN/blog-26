@@ -162,6 +162,12 @@ const link = APP_BLOG?.post?.isEnabled
       class="vectorization-mismatch w-4 h-4 text-yellow-500"
       style="display: none;"
     />
+    <!-- 向量化失败图标 -->
+    <Icon
+      name="mingcute:warning-line"
+      class="vectorization-error w-4 h-4 text-red-500"
+      style="display: none;"
+    />
   </div>
 </article>
 
@@ -198,10 +204,17 @@ const link = APP_BLOG?.post?.isEnabled
       }
       const data = await response.json();
 
-      // 更新缓存 - data 现在是 {slug: status} 格式的对象
-      Object.entries(data).forEach(([slug, status]) => {
+      // 更新缓存 - data 现在是 {slug: statusInfo} 格式的对象
+      Object.entries(data).forEach(([slug, statusInfo]) => {
         vectorizationCache.set(slug, {
-          status: status as string,
+          status:
+            typeof statusInfo === "string"
+              ? statusInfo
+              : (statusInfo as any)?.status || "notvectorized",
+          errorMessage:
+            typeof statusInfo === "object" && statusInfo !== null
+              ? (statusInfo as any)?.errorMessage
+              : undefined,
         });
       });
 
@@ -237,6 +250,7 @@ const link = APP_BLOG?.post?.isEnabled
         if (correctIcon) {
           correctIcon.style.display = "block";
           (element as HTMLElement).style.display = "block";
+          (element as HTMLElement).title = "内容已成功向量化，可用于智能搜索";
         }
       } else if (status && status.status === "mismatch") {
         const mismatchIcon = element.querySelector(
@@ -245,9 +259,25 @@ const link = APP_BLOG?.post?.isEnabled
         if (mismatchIcon) {
           mismatchIcon.style.display = "block";
           (element as HTMLElement).style.display = "block";
+          (element as HTMLElement).title =
+            "向量化模型已更新，需要重新向量化此内容";
+        }
+      } else if (
+        status &&
+        status.status === "notvectorized" &&
+        status.errorMessage
+      ) {
+        // 对于有错误信息的未索引状态，显示错误图标和提示
+        const errorIcon = element.querySelector(
+          ".vectorization-error",
+        ) as HTMLElement;
+        if (errorIcon) {
+          errorIcon.style.display = "block";
+          (element as HTMLElement).style.display = "block";
+          (element as HTMLElement).title = `向量化失败: ${status.errorMessage}`;
         }
       }
-      // notvectorized 状态不显示任何标记
+      // 其他 notvectorized 状态不显示任何标记
     });
   }
 

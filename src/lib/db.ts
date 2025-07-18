@@ -51,6 +51,7 @@ export async function upsertFileRecord(record: NewVectorizedFile): Promise<void>
         indexedAt: record.indexedAt,
         modelName: record.modelName,
         vector: record.vector,
+        errorMessage: record.errorMessage,
       },
     });
 }
@@ -60,6 +61,41 @@ export async function deleteFileRecord(filepath: string): Promise<void> {
     throw new Error('Database not initialized. Call initializeDB() first.');
   }
   await db.delete(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath));
+}
+
+export async function recordVectorizationError(filepath: string, slug: string, errorMessage: string): Promise<void> {
+  if (!db) {
+    throw new Error('Database not initialized. Call initializeDB() first.');
+  }
+
+  // 尝试获取现有记录
+  const existingRecord = await getFileRecord(filepath);
+
+  if (existingRecord) {
+    // 更新现有记录，清除向量数据并记录错误
+    await db
+      .update(vectorizedFiles)
+      .set({
+        vector: null,
+        errorMessage: errorMessage,
+        indexedAt: Date.now(),
+      })
+      .where(eq(vectorizedFiles.filepath, filepath));
+  } else {
+    // 创建新记录，只记录错误信息
+    const record: NewVectorizedFile = {
+      filepath: filepath,
+      slug: slug,
+      contentHash: '', // 空的内容哈希，表示未成功处理
+      lastModifiedTime: Date.now(),
+      contentUpdatedAt: Date.now(),
+      indexedAt: Date.now(),
+      modelName: process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small',
+      vector: null,
+      errorMessage: errorMessage,
+    };
+    await db.insert(vectorizedFiles).values(record);
+  }
 }
 
 export async function getAllFileRecords(): Promise<VectorizedFile[]> {

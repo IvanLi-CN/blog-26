@@ -4,7 +4,7 @@ import { Document, Settings, SimpleNodeParser } from 'llamaindex';
 import { fetchContent } from './content';
 import { processAllContent } from './contentProcessor';
 import type { DBRecord } from './db';
-import { deleteFileRecord, getAllFileRecords, initializeDB, upsertFileRecord } from './db';
+import { deleteFileRecord, getAllFileRecords, initializeDB, recordVectorizationError, upsertFileRecord } from './db';
 
 export type VectorizationProgress = {
   stage: 'vectorizing' | 'deleting' | 'done' | 'error' | 'info';
@@ -148,6 +148,7 @@ export async function processAndVectorizeAllContent(
         indexedAt: Date.now(),
         modelName: embeddingModelName,
         vector: vector,
+        errorMessage: null, // 成功时清除错误信息
       };
       await upsertFileRecord(record);
       console.log(`成功向量化并更新: ${item.filepath}`);
@@ -161,6 +162,17 @@ export async function processAndVectorizeAllContent(
         percentage,
       });
       console.error(`向量化失败: ${item.filepath}`, error);
+
+      // 记录向量化失败原因到数据库
+      try {
+        await recordVectorizationError(
+          item.filepath,
+          item.slug,
+          error instanceof Error ? error.message : String(error)
+        );
+      } catch (dbError) {
+        console.error(`记录向量化错误失败: ${item.filepath}`, dbError);
+      }
     }
   }
 
@@ -306,6 +318,7 @@ export async function processAndVectorizeBatchContent(
         indexedAt: Date.now(),
         modelName: embeddingModelName,
         vector: vector,
+        errorMessage: null, // 成功时清除错误信息
       };
 
       await upsertFileRecord(record);
@@ -320,6 +333,13 @@ export async function processAndVectorizeBatchContent(
         percentage,
       });
       console.error(`向量化失败: ${item.slug}`, error);
+
+      // 记录向量化失败原因到数据库
+      try {
+        await recordVectorizationError(item.id, item.slug, error instanceof Error ? error.message : String(error));
+      } catch (dbError) {
+        console.error(`记录向量化错误失败: ${item.slug}`, dbError);
+      }
     }
   }
 

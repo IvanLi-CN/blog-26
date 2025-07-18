@@ -38,14 +38,21 @@ export const vectorizationRouter = createTRPCRouter({
       const filteredRecords =
         requestedSlugs.length > 0 ? records.filter((record) => requestedSlugs.includes(record.slug)) : records;
 
-      const statusObject: Record<string, 'correct' | 'mismatch' | 'notvectorized'> = {};
+      const statusObject: Record<string, { status: 'correct' | 'mismatch' | 'notvectorized'; errorMessage?: string }> =
+        {};
 
       filteredRecords.forEach((record) => {
         const dimension = record.vector ? (record.vector as Buffer).length / 4 : 0;
         if (record.modelName === modelName && dimension === modelDimension) {
-          statusObject[record.slug] = 'correct';
+          statusObject[record.slug] = { status: 'correct' };
+        } else if (record.vector) {
+          statusObject[record.slug] = { status: 'mismatch' };
         } else {
-          statusObject[record.slug] = 'mismatch';
+          // 没有向量数据，可能是向量化失败
+          statusObject[record.slug] = {
+            status: 'notvectorized',
+            errorMessage: record.errorMessage || undefined,
+          };
         }
       });
 
@@ -54,7 +61,7 @@ export const vectorizationRouter = createTRPCRouter({
         const missingSlugs = requestedSlugs.filter((slug) => !existingSlugs.includes(slug));
 
         missingSlugs.forEach((slug) => {
-          statusObject[slug] = 'notvectorized';
+          statusObject[slug] = { status: 'notvectorized' };
         });
       }
 

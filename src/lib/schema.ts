@@ -59,6 +59,7 @@ export const vectorizedFiles = sqliteTable('vectorized_files', {
   indexedAt: integer('indexed_at').notNull(),
   modelName: text('model_name').notNull(),
   vector: blob('vector'), // BLOB type for vector embeddings
+  errorMessage: text('error_message'), // 向量化失败原因
 });
 
 export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data

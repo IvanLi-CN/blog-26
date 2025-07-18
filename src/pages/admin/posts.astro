@@ -674,7 +674,9 @@ const metadata = {
             const slug = element.getAttribute("data-slug");
             if (!slug || !statusData[slug]) return;
 
-            const status = statusData[slug];
+            const statusInfo = statusData[slug];
+            const status = statusInfo.status || statusInfo; // 兼容旧格式
+            const errorMessage = statusInfo.errorMessage;
             const statusElement = element as HTMLElement;
 
             // 根据状态设置样式和内容
@@ -692,7 +694,12 @@ const metadata = {
               statusElement.className =
                 "vectorization-status badge badge-xs badge-ghost text-error";
               statusElement.textContent = "未索引";
-              statusElement.title = "内容尚未向量化，无法用于智能搜索";
+              // 如果有错误信息，显示在 title 中
+              if (errorMessage) {
+                statusElement.title = `向量化失败: ${errorMessage}`;
+              } else {
+                statusElement.title = "内容尚未向量化，无法用于智能搜索";
+              }
             }
           });
         } catch (error) {

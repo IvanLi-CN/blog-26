@@ -1,0 +1,1 @@
+ALTER TABLE `vectorized_files` ADD `error_message` text;
