@@ -47,7 +47,7 @@ const FrontmatterSchema = z.object({
   publishDate: z.any().optional(),
   updateDate: z.any().optional(),
   date: z.any().optional(),
-  draft: z.boolean().default(true),
+  draft: z.boolean().default(true), // 默认为非草稿
   public: z.boolean().default(true),
   excerpt: z.string().optional(),
   summary: z.string().optional(),

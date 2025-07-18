@@ -14,14 +14,23 @@ const allProjects = await fetchProjects();
 const filteredProjects = allProjects;
 
 // 获取所有标签用于过滤
-const allTags = [...new Set(allProjects.flatMap(project =>
-  (project.tags || []).map(tag => typeof tag === 'string' ? tag : tag.title)
-))];
-const projectTags = allTags.filter(tag => tag.startsWith('Project/')).map(tag => tag.replace('Project/', ''));
+const allTags = [
+  ...new Set(
+    allProjects.flatMap((project) =>
+      (project.tags || []).map((tag) =>
+        typeof tag === "string" ? tag : tag.title,
+      ),
+    ),
+  ),
+];
+const projectTags = allTags
+  .filter((tag) => tag.startsWith("Project/"))
+  .map((tag) => tag.replace("Project/", ""));
 
 const metadata = {
   title: "所有项目",
-  description: "Ivan 的所有个人项目列表，包括硬件设计、软件开发和创意实验项目。",
+  description:
+    "Ivan 的所有个人项目列表，包括硬件设计、软件开发和创意实验项目。",
   robots: {
     index: true,
     follow: true,
@@ -42,44 +51,47 @@ const metadata = {
     </div>
 
     <!-- 项目网格 -->
-    {filteredProjects.length > 0 ? (
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        {filteredProjects.map((project, index) => (
-          <div 
-            class="animate-fade-in-up"
-            style={`animation-delay: ${index * 100}ms`}
-          >
-            <ProjectCard project={project} />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div class="text-center py-16">
-        <Icon name="tabler:folder-open" class="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-        <h3 class="text-xl font-semibold mb-2">暂无项目</h3>
-        <p class="text-base-content/70 mb-6">
-          还没有添加任何项目
-        </p>
-        <a href="/projects" class="btn btn-primary">
-          <Icon name="tabler:arrow-left" class="w-4 h-4" />
-          返回项目首页
-        </a>
-      </div>
-    )}
-
-    <!-- 项目标签云 -->
-    {projectTags.length > 0 && (
-      <div class="border-t border-base-300 pt-12">
-        <h3 class="text-xl font-bold text-center mb-6">项目标签</h3>
-        <div class="flex flex-wrap justify-center gap-2">
-          {projectTags.map((tag) => (
-            <div class="badge badge-outline badge-lg">
-              {tag}
+    {
+      filteredProjects.length > 0 ? (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {filteredProjects.map((project, index) => (
+            <div
+              class="animate-fade-in-up"
+              style={`animation-delay: ${index * 100}ms`}
+            >
+              <ProjectCard project={project} />
             </div>
           ))}
         </div>
-      </div>
-    )}
+      ) : (
+        <div class="text-center py-16">
+          <Icon
+            name="tabler:folder-open"
+            class="w-16 h-16 mx-auto text-base-content/30 mb-4"
+          />
+          <h3 class="text-xl font-semibold mb-2">暂无项目</h3>
+          <p class="text-base-content/70 mb-6">还没有添加任何项目</p>
+          <a href="/projects" class="btn btn-primary">
+            <Icon name="tabler:arrow-left" class="w-4 h-4" />
+            返回项目首页
+          </a>
+        </div>
+      )
+    }
+
+    <!-- 项目标签云 -->
+    {
+      projectTags.length > 0 && (
+        <div class="border-t border-base-300 pt-12">
+          <h3 class="text-xl font-bold text-center mb-6">项目标签</h3>
+          <div class="flex flex-wrap justify-center gap-2">
+            {projectTags.map((tag) => (
+              <div class="badge badge-outline badge-lg">{tag}</div>
+            ))}
+          </div>
+        </div>
+      )
+    }
 
     <!-- 返回按钮 -->
     <div class="text-center mt-12">
@@ -96,7 +108,7 @@ const metadata = {
     animation: fadeInUp 0.6s ease-out forwards;
     opacity: 0;
   }
-  
+
   @keyframes fadeInUp {
     from {
       opacity: 0;

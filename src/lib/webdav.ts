@@ -365,8 +365,17 @@ export class WebDAVClient {
 
         // 确定集合类型
         let collection: 'posts' | 'projects' = 'posts'; // Default to 'posts'
-        if (this.projectsPath && file.filename.toLowerCase().startsWith(this.projectsPath.toLowerCase())) {
-          collection = 'projects';
+        if (this.projectsPath) {
+          // 处理路径匹配，支持有无前导斜杠的情况
+          const normalizedFilename = file.filename.toLowerCase();
+          const normalizedProjectsPath = this.projectsPath.toLowerCase();
+
+          if (
+            normalizedFilename.startsWith(`/${normalizedProjectsPath}/`) ||
+            normalizedFilename.startsWith(`${normalizedProjectsPath}/`)
+          ) {
+            collection = 'projects';
+          }
         }
 
         // Memos are handled separately, so we only care about posts and projects here.
