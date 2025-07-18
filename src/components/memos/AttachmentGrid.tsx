@@ -267,7 +267,7 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
               <button
                 type="button"
                 onClick={() => onRemove(index)}
-                className="absolute top-2 right-2 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                className="absolute top-2 right-2 z-10 btn btn-circle btn-xs btn-error opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                 title="删除附件"
               >
                 ×
@@ -276,8 +276,8 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
 
             {/* 1:1 比例的附件容器 */}
             <div
-              className={`aspect-square border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow relative ${
-                attachment.isImage ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'
+              className={`aspect-square border border-base-300 rounded-lg overflow-hidden hover:shadow-md transition-shadow relative ${
+                attachment.isImage ? 'bg-base-100' : 'bg-base-200'
               }`}
             >
               {attachment.isImage ? (
@@ -294,7 +294,7 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                   }}
                 >
                   {/* 默认显示占位符，图片加载成功后隐藏 */}
-                  <div className="absolute inset-0 bg-gray-100 dark:bg-gray-700 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 z-10">
+                  <div className="absolute inset-0 bg-base-200 flex flex-col items-center justify-center text-base-content/60 z-10">
                     <div className="text-2xl mb-2">🖼️</div>
                     <div className="text-xs text-center px-2">{attachment.filename}</div>
                     {attachment.size && (
@@ -371,14 +371,16 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                     minHeight: '100%',
                   }}
                 >
-                  <div className="text-4xl mb-2 text-gray-600">{getFileIcon(attachment.filename)}</div>
-                  <div className="text-xs font-medium truncate w-full px-1 text-gray-700">{attachment.filename}</div>
+                  <div className="text-4xl mb-2 text-base-content/60">{getFileIcon(attachment.filename)}</div>
+                  <div className="text-xs font-medium truncate w-full px-1 text-base-content">
+                    {attachment.filename}
+                  </div>
                   {attachment.size && (
-                    <div className="text-xs mt-1 text-gray-500">{formatFileSize(attachment.size)}</div>
+                    <div className="text-xs mt-1 text-base-content/60">{formatFileSize(attachment.size)}</div>
                   )}
 
                   {/* 悬停效果 */}
-                  <div className="absolute inset-0 bg-white opacity-0 group-hover/file:opacity-10 transition-all duration-200 rounded-lg"></div>
+                  <div className="absolute inset-0 bg-base-content opacity-0 group-hover/file:opacity-10 transition-all duration-200 rounded-lg"></div>
                 </div>
               )}
             </div>

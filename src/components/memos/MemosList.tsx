@@ -122,7 +122,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
   if (memos.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-500 dark:text-gray-400">
+        <div className="text-base-content/60">
           <p className="text-lg mb-2">还没有任何 Memo</p>
           {isAdmin && <p className="text-sm">使用上方的编辑器创建第一条 Memo 吧！</p>}
         </div>
@@ -142,7 +142,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
           {/* Memo 卡片 */}
           <div className="flex items-start space-x-5">
             {/* 时间线圆点 */}
-            <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white dark:ring-gray-900">
+            <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-lg ring-4 ring-base-100">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -154,10 +154,10 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
             </div>
 
             {/* Memo 内容 */}
-            <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden">
               {/* 头部信息 */}
-              <div className="flex items-center justify-between px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-600">
-                <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-300">
+              <div className="flex items-center justify-between px-6 py-3 bg-base-200 border-b border-base-300">
+                <div className="flex items-center space-x-3 text-sm text-base-content/70">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -171,7 +171,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                   </span>
                   {memo.updatedAt !== memo.createdAt && (
                     <>
-                      <span className="text-gray-400">•</span>
+                      <span className="text-base-content/40">•</span>
                       <span title={formatFullDate(memo.updatedAt)} className="cursor-help">
                         已编辑
                       </span>
@@ -184,7 +184,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                   {isAdmin && (
                     <div className="flex items-center">
                       {memo.isPublic ? (
-                        <div className="flex items-center space-x-1 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium border border-blue-200 dark:border-blue-800">
+                        <div className="badge badge-info badge-sm gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                               strokeLinecap="round"
@@ -196,7 +196,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                           <span>公开</span>
                         </div>
                       ) : (
-                        <div className="flex items-center space-x-1 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-medium border border-amber-200 dark:border-amber-800">
+                        <div className="badge badge-warning badge-sm gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                               strokeLinecap="round"
@@ -216,11 +216,11 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                     <button
                       onClick={() => handleDelete(memo.id)}
                       disabled={deleteMemoMutation.isPending}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-200"
+                      className="btn btn-ghost btn-sm btn-circle text-error hover:bg-error/10"
                       title="删除"
                     >
                       {deleteMemoMutation.isPending ? (
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin"></div>
+                        <span className="loading loading-spinner loading-xs"></span>
                       ) : (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -237,8 +237,8 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
               </div>
 
               {/* Memo 内容 */}
-              <div className="px-6 pb-4">
-                <div className="prose prose-sm max-w-none dark:prose-invert prose-gray dark:prose-gray prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-a:text-primary prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-primary prose-code:bg-gray-100 dark:prose-code:bg-gray-700 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-800 prose-p:my-2 prose-headings:my-2">
+              <div className="card-body">
+                <div className="prose prose-sm max-w-none">
                   <SimpleMarkdownPreview content={memo.content} />
                 </div>
 
@@ -246,10 +246,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                 {memo.tags && memo.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-3">
                     {memo.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
-                      >
+                      <span key={index} className="badge badge-outline badge-sm">
                         #{tag}
                       </span>
                     ))}

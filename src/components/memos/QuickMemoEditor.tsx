@@ -227,11 +227,11 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+      <div className="card bg-base-100 shadow-xl mb-6">
         {/* 头部 */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 border-b border-base-300">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-medium text-gray-900 dark:text-white">快速发布 Memo</h2>
+            <h2 className="text-base font-medium">快速发布 Memo</h2>
             <div className="flex items-center space-x-2">
               <button
                 type="button"
@@ -250,8 +250,8 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
             {/* 内容输入 */}
             <div className="relative">
               {isPreview ? (
-                <div className="min-h-[120px] p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900">
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="min-h-[120px] p-3 border border-base-300 rounded-md bg-base-200">
+                  <div className="prose prose-sm max-w-none">
                     <SimpleMarkdownPreview content={content} />
                   </div>
                 </div>
@@ -282,8 +282,8 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
 
               {/* 上传状态提示 */}
               {isUploading && (
-                <div className="text-sm text-gray-500 mt-2 flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                <div className="text-sm text-base-content/60 mt-2 flex items-center">
+                  <span className="loading loading-spinner loading-xs mr-2"></span>
                   正在上传附件...
                 </div>
               )}
@@ -301,7 +301,7 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
                     className="tooltip tooltip-top mr-2"
                     data-tip="支持 Markdown 格式，第一个标题（# 标题）将作为 Memo 标题。支持拖拽、粘贴上传文件"
                   >
-                    <div className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help">
+                    <div className="w-4 h-4 text-base-content/40 hover:text-base-content/60 cursor-help">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           strokeLinecap="round"
@@ -412,7 +412,7 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
               <div className="flex items-center space-x-3">
                 {/* 公开/私有开关 */}
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{isPublic ? '公开' : '私有'}</span>
+                  <span className="text-sm text-base-content/70">{isPublic ? '公开' : '私有'}</span>
                   <input
                     type="checkbox"
                     className="toggle toggle-sm toggle-primary"

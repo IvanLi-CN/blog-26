@@ -48,5 +48,13 @@ export default {
       },
     },
   },
+  plugins: [require('daisyui')],
   darkMode: 'class',
+  daisyui: {
+    themes: ['light', 'dark'],
+    darkTheme: 'dark',
+    base: true,
+    styled: true,
+    utils: true,
+  },
 };
