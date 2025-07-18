@@ -3,7 +3,7 @@ import { config } from '../../../lib/config';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params, request }) => {
+export const GET: APIRoute = async ({ params }) => {
   try {
     const path = params.path;
     if (!path) {

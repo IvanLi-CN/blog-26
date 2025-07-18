@@ -85,6 +85,7 @@
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.44.2",
     "event-source-polyfill": "^1.0.31",
+    "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "ioredis": "^5.6.1",
     "jose": "^6.0.11",

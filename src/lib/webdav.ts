@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import * as yaml from 'js-yaml';
-import { nanoid } from 'nanoid';
 import { config } from './config';
 
 export interface WebDAVFile {

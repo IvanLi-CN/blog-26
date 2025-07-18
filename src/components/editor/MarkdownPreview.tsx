@@ -109,7 +109,7 @@ export function MarkdownPreview({ content, filePath }: MarkdownPreviewProps) {
               {children}
             </blockquote>
           ),
-          code: ({ children, className, ...props }) => {
+          code: ({ children, className }) => {
             const isInline = !className;
             const isMermaid = className === 'language-mermaid';
 

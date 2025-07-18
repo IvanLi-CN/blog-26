@@ -22,7 +22,7 @@ const getReactionsSchema = z.object({
 });
 
 // 用户识别辅助函数
-async function identifyUser(ctx: any, fingerprint?: string): Promise<string | undefined> {
+async function identifyUser(ctx: any): Promise<string | undefined> {
   // 1. 尝试从 JWT token 获取用户 ID
   const cookieHeader = ctx.req.headers.get('cookie');
   if (cookieHeader) {
@@ -64,7 +64,7 @@ export const reactionsRouter = createTRPCRouter({
     const { targetType, targetId, emoji, fingerprint } = input;
 
     // 识别用户
-    const userId = await identifyUser(ctx, fingerprint);
+    const userId = await identifyUser(ctx);
 
     if (!userId && !fingerprint) {
       throw new TRPCError({
@@ -129,7 +129,7 @@ export const reactionsRouter = createTRPCRouter({
     const { targetType, targetId, fingerprint } = input;
 
     // 识别用户
-    const userId = await identifyUser(ctx, fingerprint);
+    const userId = await identifyUser(ctx);
 
     try {
       // 获取所有反应，按 emoji 分组

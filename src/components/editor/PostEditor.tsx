@@ -1,5 +1,3 @@
-import matter from 'gray-matter';
-import yaml from 'js-yaml';
 import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc';
 import { DirectoryTree } from './DirectoryTree';

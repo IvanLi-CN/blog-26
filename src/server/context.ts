@@ -59,7 +59,6 @@ export async function createContext({ req, resHeaders }: FetchCreateContextFnOpt
 
   // 2. 检查是否为管理员（从 Traefik headers 或配置）
   let remoteEmail = req.headers.get('Remote-Email');
-  const _remoteUser = req.headers.get('Remote-User');
 
   // 在开发环境中，如果设置了ADMIN_MODE环境变量，模拟管理员邮箱头
   if (process.env.ADMIN_MODE === 'true' && !remoteEmail) {

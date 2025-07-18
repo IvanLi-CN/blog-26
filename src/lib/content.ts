@@ -6,7 +6,6 @@
  */
 
 import matter from 'gray-matter';
-import yaml from 'js-yaml';
 import { z } from 'zod';
 import { getWebDAVClient, isWebDAVEnabled, type WebDAVMemo, type WebDAVPost } from '~/lib/webdav';
 import { calculateReadingTime, parseMarkdownToHTML } from '~/utils/markdown';

@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import matter from 'gray-matter';
-import yaml, { Schema, Type } from 'js-yaml';
+import yaml from 'js-yaml';
 import { z } from 'zod';
 import { processAndVectorizeAllContent } from '~/lib/vectorizer';
 import { getWebDAVClient, isWebDAVEnabled } from '~/lib/webdav';
@@ -232,7 +232,7 @@ export const postsRouter = createTRPCRouter({
       // 在服务器端解析和更新 frontmatter，同时保留原始格式
       const { data: frontmatter, content: body } = matter(input.content, {
         engines: {
-          yaml: (s) => yaml.load(s, { schema: yaml.JSON_SCHEMA }) as object,
+          yaml: (s: string) => yaml.load(s, { schema: yaml.JSON_SCHEMA }) as object,
         },
       });
 
@@ -246,7 +246,7 @@ export const postsRouter = createTRPCRouter({
       // 2. 从正文更新 tags
       const tagMatches = body.match(/#([^\s#]+)/g);
       if (tagMatches) {
-        const newTags = tagMatches.map((tag) => tag.substring(1));
+        const newTags = tagMatches.map((tag: string) => tag.substring(1));
         const existingTags = frontmatter.tags || [];
         frontmatter.tags = [...new Set([...existingTags, ...newTags])];
       }

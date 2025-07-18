@@ -2,7 +2,6 @@ import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import type { APIRoute } from 'astro';
 import { createContext } from '~/server/context';
 import { appRouter } from '~/server/router';
-import { isHtmlAccepted } from '~/utils/error-handler';
 
 // 禁用预渲染，因为这是一个动态 API 路由
 export const prerender = false;
