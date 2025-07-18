@@ -47,10 +47,10 @@
 }
 
 /* 文章列表动画增强 */
-    .animate-fade-in-up {
-    animation: fadeInUp 0.6s ease-out forwards;
-    animation-fill-mode: both;
-  }
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+  animation-fill-mode: both;
+}
 
 /* 定义动画关键帧 */
 @keyframes fadeInUp {
@@ -103,7 +103,7 @@
 }
 
 /* Mermaid 图表样式 */
-  .mermaid {
+.mermaid {
   display: flex;
   justify-content: center;
   margin: 1.5rem 0;
