@@ -60,6 +60,41 @@ const metadata = {
           <p class="text-muted mb-4">
             对博客文章进行向量化处理，用于智能搜索和相关文章推荐功能。
           </p>
+
+          <!-- 向量化状态概览 -->
+          <div
+            id="vectorizationOverview"
+            class="mb-4 p-3 bg-base-200 rounded-lg"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium">向量化状态</span>
+              <span
+                id="vectorizationStatusBadge"
+                class="badge badge-ghost badge-sm">检查中...</span
+              >
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div class="text-center">
+                <div id="indexedCount" class="font-semibold text-success">
+                  -
+                </div>
+                <div class="text-base-content/60">已索引</div>
+              </div>
+              <div class="text-center">
+                <div id="mismatchCount" class="font-semibold text-warning">
+                  -
+                </div>
+                <div class="text-base-content/60">需更新</div>
+              </div>
+              <div class="text-center">
+                <div id="notIndexedCount" class="font-semibold text-error">
+                  -
+                </div>
+                <div class="text-base-content/60">未索引</div>
+              </div>
+            </div>
+          </div>
+
           <div class="card-actions justify-end">
             <a href="/admin/vectorize" class="btn btn-primary">
               <Icon name="tabler:play" class="w-4 h-4 mr-1" />
@@ -232,5 +267,89 @@ const metadata = {
           alert("登出失败，请重试");
         }
       });
+
+    // 向量化状态概览功能
+    async function updateVectorizationOverview() {
+      try {
+        const statusBadge = document.getElementById("vectorizationStatusBadge");
+        const indexedCount = document.getElementById("indexedCount");
+        const mismatchCount = document.getElementById("mismatchCount");
+        const notIndexedCount = document.getElementById("notIndexedCount");
+
+        if (
+          !statusBadge ||
+          !indexedCount ||
+          !mismatchCount ||
+          !notIndexedCount
+        ) {
+          return;
+        }
+
+        // 获取向量化状态
+        const response = await fetch("/api/trpc/vectorization.getStatus");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const statusData = data.result?.data || {};
+
+        // 统计各种状态的数量
+        let indexed = 0;
+        let mismatch = 0;
+        let notIndexed = 0;
+
+        Object.values(statusData).forEach((status: any) => {
+          switch (status) {
+            case "correct":
+              indexed++;
+              break;
+            case "mismatch":
+              mismatch++;
+              break;
+            case "notvectorized":
+              notIndexed++;
+              break;
+          }
+        });
+
+        const total = indexed + mismatch + notIndexed;
+
+        // 更新显示
+        indexedCount.textContent = indexed.toString();
+        mismatchCount.textContent = mismatch.toString();
+        notIndexedCount.textContent = notIndexed.toString();
+
+        // 更新状态徽章
+        if (total === 0) {
+          statusBadge.textContent = "无文章";
+          statusBadge.className = "badge badge-ghost badge-sm";
+        } else if (indexed === total) {
+          statusBadge.textContent = "全部已索引";
+          statusBadge.className = "badge badge-success badge-sm";
+        } else if (notIndexed === 0 && mismatch > 0) {
+          statusBadge.textContent = "需要更新";
+          statusBadge.className = "badge badge-warning badge-sm";
+        } else {
+          statusBadge.textContent = "部分已索引";
+          statusBadge.className = "badge badge-info badge-sm";
+        }
+      } catch (error) {
+        console.error("获取向量化状态失败:", error);
+        const statusBadge = document.getElementById("vectorizationStatusBadge");
+        if (statusBadge) {
+          statusBadge.textContent = "获取失败";
+          statusBadge.className = "badge badge-error badge-sm";
+        }
+      }
+    }
+
+    // 页面加载完成后更新状态
+    document.addEventListener("DOMContentLoaded", () => {
+      updateVectorizationOverview();
+
+      // 每30秒更新一次状态
+      setInterval(updateVectorizationOverview, 30000);
+    });
   </script>
 </Layout>

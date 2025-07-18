@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { OpenAI, OpenAIEmbedding } from '@llamaindex/openai';
 import { Document, Settings, SimpleNodeParser } from 'llamaindex';
+import { fetchContent } from './content';
 import { processAllContent } from './contentProcessor';
 import type { DBRecord } from './db';
 import { deleteFileRecord, getAllFileRecords, initializeDB, upsertFileRecord } from './db';
@@ -108,6 +109,14 @@ export async function processAndVectorizeAllContent(
       });
       console.log(message);
 
+      // 增加内容校验，如果内容为空或只包含空格，则跳过
+      if (!item.rawContent || item.rawContent.trim() === '') {
+        const warningMessage = `跳过向量化: ${item.filepath}，因为内容为空.`;
+        onProgress?.({ stage: 'info', message: warningMessage });
+        console.warn(warningMessage);
+        continue;
+      }
+
       const document = new Document({ text: item.rawContent });
       const nodeParser = new SimpleNodeParser({
         chunkSize: 4096, // Use a more conservative chunk size
@@ -204,4 +213,123 @@ export async function processAndVectorizeAllContent(
   console.log(finalMessage);
   // Note: We don't close the DB here as it might be used by the API route later in hybrid mode.
   // The script execution will handle process exit.
+}
+
+/**
+ * 批量向量化特定文章
+ */
+export async function processAndVectorizeBatchContent(
+  slugs: string[],
+  onProgress?: (progress: VectorizationProgress) => void
+): Promise<void> {
+  onProgress?.({ stage: 'info', message: `开始向量化 ${slugs.length} 篇指定文章...` });
+  console.log(`开始向量化 ${slugs.length} 篇指定文章...`);
+  configureLlamaIndex();
+  await initializeDB();
+
+  const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
+
+  // 获取指定slug的文章
+  const allContent = await fetchContent(['all'], true);
+  const targetContent = allContent.filter((item) => slugs.includes(item.slug));
+
+  if (targetContent.length === 0) {
+    const message = '未找到指定的文章';
+    onProgress?.({ stage: 'error', message });
+    throw new Error(message);
+  }
+
+  const foundSlugs = targetContent.map((item) => item.slug);
+  const missingSlugs = slugs.filter((slug) => !foundSlugs.includes(slug));
+
+  if (missingSlugs.length > 0) {
+    const message = `以下文章未找到: ${missingSlugs.join(', ')}`;
+    onProgress?.({ stage: 'info', message });
+    console.warn(message);
+  }
+
+  onProgress?.({ stage: 'info', message: `找到 ${targetContent.length} 篇文章，开始向量化处理...` });
+
+  // 处理每篇文章
+  let vectorizedCount = 0;
+  for (const item of targetContent) {
+    vectorizedCount++;
+    const percentage = Math.round((vectorizedCount / targetContent.length) * 100);
+
+    try {
+      const message = `正在向量化: ${item.title} (${item.slug})`;
+      onProgress?.({
+        stage: 'vectorizing',
+        message,
+        total: targetContent.length,
+        current: vectorizedCount,
+        percentage,
+      });
+      console.log(message);
+
+      // 检查内容是否为空
+      if (!item.body || item.body.trim() === '') {
+        const warningMessage = `跳过向量化: ${item.slug}，因为内容为空`;
+        onProgress?.({ stage: 'info', message: warningMessage });
+        console.warn(warningMessage);
+        continue;
+      }
+
+      const document = new Document({ text: item.body });
+      const nodeParser = new SimpleNodeParser({
+        chunkSize: 4096,
+        chunkOverlap: 200,
+      });
+      const nodes = nodeParser.getNodesFromDocuments([document]);
+      const textChunks = nodes.map((node) => node.getText());
+
+      const embeddings = await Settings.embedModel.getTextEmbeddings(textChunks);
+
+      const averageVector = new Float32Array(embeddings[0].length).fill(0);
+      for (const embedding of embeddings) {
+        for (let i = 0; i < embedding.length; i++) {
+          averageVector[i] += embedding[i];
+        }
+      }
+      for (let i = 0; i < averageVector.length; i++) {
+        averageVector[i] /= embeddings.length;
+      }
+
+      const vector = Buffer.from(averageVector.buffer);
+
+      const record: DBRecord = {
+        filepath: item.id,
+        slug: item.slug,
+        contentHash: require('crypto').createHash('md5').update(item.body).digest('hex'),
+        lastModifiedTime: item.updateDate?.getTime() || item.publishDate.getTime(),
+        contentUpdatedAt: Date.now(),
+        indexedAt: Date.now(),
+        modelName: embeddingModelName,
+        vector: vector,
+      };
+
+      await upsertFileRecord(record);
+      console.log(`成功向量化并更新: ${item.slug}`);
+    } catch (error) {
+      const errorMessage = `向量化失败: ${item.slug}. 原因: ${error instanceof Error ? error.message : String(error)}`;
+      onProgress?.({
+        stage: 'error',
+        message: errorMessage,
+        total: targetContent.length,
+        current: vectorizedCount,
+        percentage,
+      });
+      console.error(`向量化失败: ${item.slug}`, error);
+    }
+  }
+
+  const finalMessage = `批量向量化完成，处理了 ${targetContent.length} 篇文章`;
+  onProgress?.({
+    stage: 'done',
+    message: finalMessage,
+    total: targetContent.length,
+    current: targetContent.length,
+    percentage: 100,
+  });
+  console.log(finalMessage);
 }

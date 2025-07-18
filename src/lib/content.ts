@@ -60,12 +60,12 @@ const FrontmatterSchema = z.object({
 });
 
 async function loadLocalContent(): Promise<ContentItem[]> {
-  const files = import.meta.glob('/src/content/**/*.{md,mdx}', { as: 'raw' });
+  const files = import.meta.glob('/src/content/**/*.{md,mdx}', { query: '?raw', import: 'default' });
   const items: ContentItem[] = [];
 
   for (const path in files) {
     const rawContent = await files[path]();
-    const { data: frontmatter, content: body } = matter(rawContent);
+    const { data: frontmatter, content: body } = matter(rawContent as string);
 
     const parsedFrontmatter = FrontmatterSchema.parse(frontmatter);
 

@@ -1,370 +1,196 @@
 ---
-import { Icon } from "astro-icon/components";
-import { TRPCProvider } from "~/components/TRPCProvider.tsx";
+import VectorizeView from "~/components/vectorization/VectorizeView";
 import Layout from "~/layouts/PageLayout.astro";
-import { isAdminFromRequest, redirectToAdminLogin } from "~/lib/auth";
-
-export const prerender = false;
-
-// 权限检查
-const isUserAdmin = await isAdminFromRequest(
-  Astro.cookies,
-  Astro.request.headers,
-);
-
-if (!isUserAdmin) {
-  return redirectToAdminLogin();
-}
 
 const metadata = {
-  title: "文章向量化 - 管理员操作界面",
-  description: "对博客文章进行向量化处理",
-  robots: {
-    index: false,
-    follow: false,
-  },
+  title: "向量化管理",
 };
 ---
 
 <Layout metadata={metadata}>
-  <TRPCProvider client:load>
-    <div class="max-w-7xl mx-auto px-4 py-8">
-      <!-- 页面标题 -->
-      <div class="mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h1 class="text-4xl font-bold">
-            <Icon name="mingcute:ai-line" class="w-10 h-10 inline-block mr-2" />
-            文章向量化
-          </h1>
-          <a href="/admin" class="btn btn-outline">
-            <Icon name="tabler:arrow-left" class="w-4 h-4 mr-1" />
-            返回管理界面
+  <div class="container mx-auto py-8 px-4">
+    <!-- 页面头部 -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h1 class="text-3xl font-bold">内容向量化管理</h1>
+          <p class="text-base-content/70 mt-2">
+            管理和监控博客内容的向量化过程，提升智能搜索体验
+          </p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <a href="/admin/posts" class="btn btn-outline btn-sm">
+            <svg
+              class="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
+            </svg>
+            文章管理
+          </a>
+          <a href="/admin" class="btn btn-ghost btn-sm">
+            <svg
+              class="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+              ></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 5a2 2 0 012-2h2a2 2 0 012 2v0H8v0z"></path>
+            </svg>
+            管理首页
           </a>
         </div>
-        <p class="text-muted">
-          对博客文章进行向量化处理，用于智能搜索和相关文章推荐功能。
-        </p>
       </div>
 
-      <!-- 操作控制区域 -->
-      <div class="card bg-base-100 shadow-xl mb-8">
-        <div class="card-body">
-          <h2 class="card-title mb-4">
-            <Icon name="tabler:play" class="w-6 h-6 mr-2" />
-            向量化控制
-          </h2>
-
-          <div
-            class="flex flex-col sm:flex-row gap-4 items-start sm:items-center"
-          >
-            <button id="startVectorization" class="btn btn-primary">
-              <Icon name="tabler:play" class="w-4 h-4 mr-1" />
-              开始向量化
-            </button>
-
-            <button id="stopVectorization" class="btn btn-error" disabled>
-              <Icon name="tabler:square" class="w-4 h-4 mr-1" />
-              停止向量化
-            </button>
-
-            <div class="flex-grow"></div>
-
-            <div class="text-sm text-muted">
-              状态: <span id="status" class="font-medium">就绪</span>
+      <!-- 快速状态概览 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+          <div class="flex items-center space-x-3">
+            <div
+              class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center"
+            >
+              <div class="w-4 h-4 rounded-full bg-success"></div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs text-base-content/60 font-medium">已索引</div>
+              <div
+                id="quickIndexedCount"
+                class="text-2xl font-bold text-success"
+              >
+                -
+              </div>
+              <div class="text-xs text-base-content/50">可用于搜索</div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 进度显示区域 -->
-      <div class="card bg-base-100 shadow-xl mb-8">
-        <div class="card-body">
-          <h2 class="card-title mb-4">
-            <Icon name="tabler:progress" class="w-6 h-6 mr-2" />
-            进度信息
-          </h2>
-
-          <!-- 总体进度条 -->
-          <div class="mb-4">
-            <div class="flex justify-between text-sm mb-2">
-              <span>总体进度</span>
-              <span id="progressText">0%</span>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+          <div class="flex items-center space-x-3">
+            <div
+              class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center"
+            >
+              <div class="w-4 h-4 rounded-full bg-warning"></div>
             </div>
-            <progress
-              id="progressBar"
-              class="progress progress-primary w-full"
-              value="0"
-              max="100"></progress>
-          </div>
-
-          <!-- 当前处理信息 -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div class="stat bg-base-200 rounded-lg p-4">
-              <div class="stat-title">已处理</div>
-              <div class="stat-value text-lg" id="processedCount">0</div>
-            </div>
-            <div class="stat bg-base-200 rounded-lg p-4">
-              <div class="stat-title">总数量</div>
-              <div class="stat-value text-lg" id="totalCount">0</div>
-            </div>
-            <div class="stat bg-base-200 rounded-lg p-4">
-              <div class="stat-title">当前阶段</div>
-              <div class="stat-value text-lg" id="currentStage">等待中</div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs text-base-content/60 font-medium">需更新</div>
+              <div
+                id="quickMismatchCount"
+                class="text-2xl font-bold text-warning"
+              >
+                -
+              </div>
+              <div class="text-xs text-base-content/50">模型已更新</div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 日志显示区域 -->
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="card-title">
-              <Icon name="tabler:file-text" class="w-6 h-6 mr-2" />
-              实时日志
-            </h2>
-            <button id="clearLogs" class="btn btn-outline btn-sm">
-              <Icon name="tabler:trash" class="w-4 h-4 mr-1" />
-              清空日志
-            </button>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+          <div class="flex items-center space-x-3">
+            <div
+              class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center"
+            >
+              <div class="w-4 h-4 rounded-full bg-error"></div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs text-base-content/60 font-medium">未索引</div>
+              <div
+                id="quickNotIndexedCount"
+                class="text-2xl font-bold text-error"
+              >
+                -
+              </div>
+              <div class="text-xs text-base-content/50">待处理</div>
+            </div>
           </div>
+        </div>
 
-          <div
-            id="logContainer"
-            class="bg-base-300 rounded-lg p-4 h-96 overflow-y-auto font-mono text-sm"
-          >
-            <div class="text-muted">等待开始向量化...</div>
+        <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+          <div class="flex items-center space-x-3">
+            <div
+              class="w-10 h-10 rounded-full bg-info/10 flex items-center justify-center"
+            >
+              <div class="w-4 h-4 rounded-full bg-info"></div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs text-base-content/60 font-medium">总计</div>
+              <div id="quickTotalCount" class="text-2xl font-bold text-info">
+                -
+              </div>
+              <div class="text-xs text-base-content/50">文章数量</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </TRPCProvider>
+
+    <!-- 向量化控制台 -->
+    <VectorizeView client:load />
+  </div>
+
   <script>
-    import { createTRPCClientInstance } from "~/lib/trpc-client";
+    // 快速状态更新
+    async function updateQuickStats() {
+      try {
+        const response = await fetch("/api/trpc/vectorization.getStatus");
+        if (!response.ok) return;
 
-    class VectorizationManager {
-      private trpcClient = createTRPCClientInstance();
-      private isRunning = false;
-      private pollingIntervalId: number | null = null;
-      private currentTaskId: string | null = null;
-      private lastLogMessage: string = "";
+        const data = await response.json();
+        const statusData = data.result?.data || {};
 
-      constructor() {
-        this.initializeElements();
-        this.bindEvents();
-        this.init();
-      }
+        let indexed = 0;
+        let mismatch = 0;
+        let notIndexed = 0;
 
-      private init() {
-        this.addLog("页面已就绪。请点击“开始向量化”启动任务。", "info");
-      }
-
-      private initializeElements() {
-        this.startBtn = document.getElementById(
-          "startVectorization",
-        ) as HTMLButtonElement;
-        this.stopBtn = document.getElementById(
-          "stopVectorization",
-        ) as HTMLButtonElement;
-        this.statusEl = document.getElementById("status") as HTMLElement;
-        this.progressBar = document.getElementById(
-          "progressBar",
-        ) as HTMLProgressElement;
-        this.progressText = document.getElementById(
-          "progressText",
-        ) as HTMLElement;
-        this.processedCount = document.getElementById(
-          "processedCount",
-        ) as HTMLElement;
-        this.totalCount = document.getElementById("totalCount") as HTMLElement;
-        this.currentStage = document.getElementById(
-          "currentStage",
-        ) as HTMLElement;
-        this.logContainer = document.getElementById(
-          "logContainer",
-        ) as HTMLElement;
-        this.clearLogsBtn = document.getElementById(
-          "clearLogs",
-        ) as HTMLButtonElement;
-      }
-
-      private bindEvents() {
-        this.startBtn?.addEventListener(
-          "click",
-          () => this.startVectorization(),
-        );
-        this.stopBtn?.addEventListener("click", () => this.stopPolling());
-        this.clearLogsBtn?.addEventListener("click", () => this.clearLogs());
-      }
-
-      private async startVectorization() {
-        if (this.isRunning) return;
-
-        this.isRunning = true;
-        this.updateUI();
-        this.clearLogs();
-        this.addLog("正在请求启动向量化任务...", "info");
-
-        try {
-          const result =
-            await this.trpcClient.vectorization.startVectorization.mutate();
-          this.currentTaskId = result.taskId;
-          this.addLog(`任务已创建，ID: ${this.currentTaskId}`, "success");
-          this.addLog("开始轮询实时进度...", "info");
-          this.startPolling();
-        } catch (error) {
-          this.addLog(`启动向量化任务失败: ${error.message}`, "error");
-          this.isRunning = false;
-          this.updateUI();
-        }
-      }
-
-      private startPolling() {
-        if (this.pollingIntervalId) return;
-        // 立即执行一次，然后开始轮询
-        this.updateProgress();
-        this.pollingIntervalId = window.setInterval(
-          () => this.updateProgress(),
-          2000,
-        );
-      }
-
-      private stopPolling() {
-        if (this.pollingIntervalId) {
-          clearInterval(this.pollingIntervalId);
-          this.pollingIntervalId = null;
-        }
-        this.isRunning = false;
-        this.updateUI();
-        this.addLog("已停止监控进度。", "warning");
-      }
-
-      private async updateProgress() {
-        if (!this.currentTaskId) return;
-
-        try {
-          const task = await this.trpcClient.vectorization.getProgress.query({
-            taskId: this.currentTaskId,
-          });
-
-          if (task && task.progress) {
-            this.handleProgressUpdate(task.progress);
-            if (task.status === "completed" || task.status === "failed") {
-              // 在停止轮询之前，最后再更新一次进度，以确保显示最终状态
-              this.handleProgressUpdate(task.progress);
-              this.addLog(
-                `任务 ${task.status === "completed" ? "完成" : "失败"}。`,
-                task.status === "completed" ? "success" : "error",
-              );
-              this.stopPolling();
-            }
+        Object.values(statusData).forEach((status: any) => {
+          switch (status) {
+            case "correct":
+              indexed++;
+              break;
+            case "mismatch":
+              mismatch++;
+              break;
+            case "notvectorized":
+              notIndexed++;
+              break;
           }
-        } catch (error) {
-          this.addLog(`轮询进度失败: ${error.message}`, "error");
-          this.stopPolling();
-        }
+        });
+
+        const total = indexed + mismatch + notIndexed;
+
+        document.getElementById("quickIndexedCount")!.textContent =
+          indexed.toString();
+        document.getElementById("quickMismatchCount")!.textContent =
+          mismatch.toString();
+        document.getElementById("quickNotIndexedCount")!.textContent =
+          notIndexed.toString();
+        document.getElementById("quickTotalCount")!.textContent =
+          total.toString();
+      } catch (error) {
+        console.error("获取快速状态失败:", error);
       }
-
-      private handleProgressUpdate(data: any) {
-        const { stage, message, current, total, percentage } = data;
-
-        if (message && message !== this.lastLogMessage) {
-          this.addLog(message, this.getLogType(stage));
-          this.lastLogMessage = message;
-        }
-
-        if (typeof percentage === "number") {
-          this.progressBar.value = percentage;
-          this.progressText.textContent = `${percentage.toFixed(1)}%`;
-        }
-        if (typeof current === "number") {
-          this.processedCount.textContent = current.toString();
-        }
-        if (typeof total === "number") {
-          this.totalCount.textContent = total.toString();
-        }
-        if (stage) {
-          this.currentStage.textContent = this.getStageText(stage);
-        }
-      }
-
-      private getStageText(stage: string): string {
-        const stageMap: Record<string, string> = {
-          info: "处理中",
-          vectorizing: "向量化中",
-          deleting: "删除中",
-          done: "已完成",
-          error: "错误",
-        };
-        return stageMap[stage] || stage;
-      }
-
-      private getLogType(stage: string): string {
-        const typeMap: Record<string, string> = {
-          info: "info",
-          vectorizing: "info",
-          deleting: "warning",
-          done: "success",
-          error: "error",
-        };
-        return typeMap[stage] || "info";
-      }
-
-      private addLog(message: string, type: string = "info") {
-        const timestamp = new Date().toLocaleTimeString();
-        const logEntry = document.createElement("div");
-        logEntry.className = `mb-1 ${this.getLogClass(type)}`;
-        logEntry.innerHTML = `<span class="text-muted">[${timestamp}]</span> ${message}`;
-
-        if (this.logContainer.firstChild?.textContent === "日志已清空") {
-          this.logContainer.innerHTML = "";
-        }
-        this.logContainer.appendChild(logEntry);
-        this.logContainer.scrollTop = this.logContainer.scrollHeight;
-      }
-
-      private getLogClass(type: string): string {
-        const classMap: Record<string, string> = {
-          info: "text-info",
-          success: "text-success",
-          warning: "text-warning",
-          error: "text-error",
-        };
-        return classMap[type] || "";
-      }
-
-      private clearLogs() {
-        this.logContainer.innerHTML =
-          '<div class="text-muted">日志已清空</div>';
-      }
-
-      private updateUI() {
-        if (this.isRunning) {
-          this.startBtn.disabled = true;
-          this.stopBtn.disabled = false;
-          this.statusEl.textContent = "运行中";
-        } else {
-          this.startBtn.disabled = false;
-          this.stopBtn.disabled = true;
-          this.statusEl.textContent = "就绪";
-        }
-      }
-
-      private startBtn!: HTMLButtonElement;
-      private stopBtn!: HTMLButtonElement;
-      private statusEl!: HTMLElement;
-      private progressBar!: HTMLProgressElement;
-      private progressText!: HTMLElement;
-      private processedCount!: HTMLElement;
-      private totalCount!: HTMLElement;
-      private currentStage!: HTMLElement;
-      private logContainer!: HTMLElement;
-      private clearLogsBtn!: HTMLButtonElement;
     }
 
-    // 初始化向量化管理器
+    // 页面加载时更新状态
     document.addEventListener("DOMContentLoaded", () => {
-      new VectorizationManager();
+      updateQuickStats();
+      setInterval(updateQuickStats, 10000); // 每10秒更新一次
     });
   </script>
 </Layout>

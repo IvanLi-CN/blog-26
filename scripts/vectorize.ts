@@ -1,53 +1,69 @@
-import { Settings } from 'llamaindex';
-import { processAllContent, updateContentRecord } from '../src/lib/contentProcessor';
-import { closeDB, initializeDB } from '../src/lib/db';
-import { configureLlamaIndex } from '../src/lib/vectorizer';
+import { createTRPCProxyClient, httpBatchLink, httpSubscriptionLink, splitLink } from '@trpc/client';
+import { EventSourcePolyfill } from 'event-source-polyfill';
+import type { AppRouter } from '~/server/router';
 
-async function main() {
-  try {
-    // 1. 初始化数据库
-    await initializeDB();
-    console.log('数据库初始化完成');
-
-    // 2. 配置 LlamaIndex
-    configureLlamaIndex();
-    const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
-    console.log('LlamaIndex 配置完成');
-
-    // 3. 获取需要处理的内容
-    const contents = await processAllContent();
-    console.log(`找到 ${contents.length} 个需要处理的文件`);
-
-    // 4. 处理每个文件
-    for (const content of contents) {
-      try {
-        console.log(`正在处理: ${content.filepath}`);
-
-        // 提取正文（移除 frontmatter）
-        const mainContent = content.rawContent.replace(/^---\n[\s\S]*?\n---/, '').trim();
-
-        // 获取向量表示
-        const embeddings = await Settings.embedModel.getTextEmbeddings([mainContent]);
-        const vector = Buffer.from(new Float32Array(embeddings[0]).buffer);
-
-        // 更新数据库记录
-        await updateContentRecord(content, embeddingModelName, vector);
-
-        console.log(`✓ 完成: ${content.filepath}`);
-      } catch (error) {
-        console.error(`处理 ${content.filepath} 时出错:`, error);
-      }
-    }
-
-    console.log('\n向量化处理完成！');
-  } catch (error) {
-    console.error('执行过程中出错:', error);
-    process.exit(1);
-  } finally {
-    // 关闭数据库连接
-    await closeDB();
-  }
+// Polyfill fetch for Node.js environment
+if (typeof fetch === 'undefined') {
+  global.fetch = require('node-fetch');
+}
+// Polyfill EventSource for Node.js environment
+if (typeof EventSource === 'undefined') {
+  global.EventSource = EventSourcePolyfill;
 }
 
-// 执行主函数
+function getAbsoluteUrl() {
+  if (typeof window !== 'undefined') {
+    return '';
+  }
+  // 根据你的开发服务器地址进行修改
+  return 'http://localhost:4321';
+}
+
+const trpc = createTRPCProxyClient<AppRouter>({
+  links: [
+    splitLink({
+      condition: (op) => op.type === 'subscription',
+      true: httpSubscriptionLink({
+        url: `${getAbsoluteUrl()}/api/trpc`,
+      }),
+      false: httpBatchLink({
+        url: `${getAbsoluteUrl()}/api/trpc`,
+      }),
+    }),
+  ],
+});
+
+async function main() {
+  console.log('🚀 开始订阅向量化日志...');
+
+  const subscription = trpc.vectorization.startVectorization.subscribe(undefined, {
+    onStarted: () => {
+      console.log('✅ 连接已建立，等待日志...');
+    },
+    onData: (log) => {
+      const percentage = log.percentage ? `${log.percentage.toFixed(2)}%` : '';
+      console.log(`[${new Date().toLocaleTimeString()}] [${log.stage}] ${log.message} ${percentage}`);
+    },
+    onError: (err) => {
+      console.error('🔴 订阅出错:', err);
+    },
+    onComplete: () => {
+      console.log('🏁 订阅完成，连接已关闭。');
+    },
+  });
+
+  // Keep the script running until the subscription is closed.
+  // This is a simple way to prevent the script from exiting immediately.
+  process.stdin.resume();
+
+  const cleanup = () => {
+    console.log('手动断开连接...');
+    subscription.unsubscribe();
+    process.exit();
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+}
+
 main();

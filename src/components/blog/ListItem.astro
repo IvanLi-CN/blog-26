@@ -251,10 +251,49 @@ const link = APP_BLOG?.post?.isEnabled
     });
   }
 
-  // 页面加载完成后更新向量化状态
+  // 实时状态更新功能
+  let statusUpdateInterval: number | null = null;
+
+  // 启动定期更新
+  function startPeriodicUpdates() {
+    if (statusUpdateInterval) return;
+
+    statusUpdateInterval = window.setInterval(() => {
+      updateVectorizationStatus();
+    }, 30000); // 每30秒更新一次（比管理页面频率低）
+  }
+
+  // 停止定期更新
+  function stopPeriodicUpdates() {
+    if (statusUpdateInterval) {
+      clearInterval(statusUpdateInterval);
+      statusUpdateInterval = null;
+    }
+  }
+
+  // 页面可见性变化时的处理
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopPeriodicUpdates();
+    } else {
+      updateVectorizationStatus();
+      startPeriodicUpdates();
+    }
+  });
+
+  // 页面卸载时清理
+  window.addEventListener("beforeunload", () => {
+    stopPeriodicUpdates();
+  });
+
+  // 页面加载完成后更新向量化状态并启动定期更新
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", updateVectorizationStatus);
+    document.addEventListener("DOMContentLoaded", () => {
+      updateVectorizationStatus();
+      startPeriodicUpdates();
+    });
   } else {
     updateVectorizationStatus();
+    startPeriodicUpdates();
   }
 </script>

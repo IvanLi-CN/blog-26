@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { httpBatchLink } from '@trpc/client';
+import { httpBatchLink, httpSubscriptionLink, splitLink } from '@trpc/client';
 import { useState } from 'react';
 import { trpc } from '~/lib/trpc';
 
@@ -37,15 +37,20 @@ export function TRPCProvider({ children }: TRPCProviderProps) {
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        httpBatchLink({
-          url: '/api/trpc',
-          maxURLLength: 2048,
-          // 可选：添加自定义 headers
-          headers() {
-            return {
-              // 可以在这里添加认证 headers
-            };
-          },
+        splitLink({
+          condition: (op) => op.type === 'subscription',
+          true: httpSubscriptionLink({
+            url: '/api/trpc',
+          }),
+          false: httpBatchLink({
+            url: '/api/trpc',
+            maxURLLength: 2048,
+            headers() {
+              return {
+                // 可以在这里添加认证 headers
+              };
+            },
+          }),
         }),
       ],
     })

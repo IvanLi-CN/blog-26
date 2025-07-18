@@ -1,15 +1,22 @@
 import { TRPCError } from '@trpc/server';
-import { nanoid } from 'nanoid';
+import { observable } from '@trpc/server/observable';
+import { EventEmitter } from 'events';
 import { z } from 'zod';
 import { config } from '~/lib/config';
 import { getAllFileRecords } from '~/lib/db';
-import { taskManager } from '~/lib/task-manager';
 import type { VectorizationProgress } from '~/lib/vectorizer';
-import { processAndVectorizeAllContent } from '~/lib/vectorizer';
+import { processAndVectorizeAllContent, processAndVectorizeBatchContent } from '~/lib/vectorizer';
 import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
+
+// 1. 创建一个事件发射器实例
+const vectorizationEvents = new EventEmitter();
 
 const getStatusSchema = z.object({
   slugs: z.array(z.string()).optional(),
+});
+
+const batchVectorizeSchema = z.object({
+  slugs: z.array(z.string()),
 });
 
 export const vectorizationRouter = createTRPCRouter({
@@ -61,61 +68,53 @@ export const vectorizationRouter = createTRPCRouter({
     }
   }),
 
-  // 开始向量化过程
-  startVectorization: adminProcedure.mutation(() => {
-    const taskId = nanoid();
-    taskManager.create(taskId);
+  // 2. 将 startVectorization 更改为 mutation
+  startVectorization: adminProcedure.mutation(async () => {
+    // 在后台运行向量化，不阻塞 mutation 返回
+    processAndVectorizeAllContent((progress) => {
+      vectorizationEvents.emit('progress', progress);
+    }).catch((error) => {
+      console.error('Vectorization failed in background:', error);
+      const message = error instanceof Error ? error.message : '未知错误';
+      vectorizationEvents.emit('progress', {
+        stage: 'error',
+        message: `向量化失败: ${message}`,
+      });
+    });
 
-    // 异步执行，不阻塞返回
-    (async () => {
-      let lastProgress: VectorizationProgress | undefined;
-      try {
-        const onProgress = (progress: VectorizationProgress) => {
-          lastProgress = progress;
-          taskManager.update(taskId, 'running', progress);
-        };
-
-        await processAndVectorizeAllContent(onProgress);
-
-        // 使用 lastProgress 作为最终状态，以保留最终的统计数据
-        const finalProgress = lastProgress ?? {
-          stage: 'done',
-          message: '向量化过程成功完成',
-        };
-        taskManager.update(taskId, 'completed', finalProgress);
-      } catch (error) {
-        console.error(`Task ${taskId} failed:`, error);
-        const finalMessage = lastProgress?.message || (error instanceof Error ? error.message : '未知错误');
-        taskManager.update(taskId, 'failed', {
-          stage: 'error',
-          message: finalMessage,
-        });
-      }
-    })();
-
-    return { taskId };
+    return { success: true, message: '向量化过程已启动' };
   }),
 
-  // 获取向量化进度
-  getProgress: adminProcedure
-    .input(
-      z.object({
-        taskId: z.string(),
-      })
-    )
-    .query(async ({ input }) => {
-      const task = taskManager.get(input.taskId);
+  // 批量向量化特定文章
+  batchVectorize: adminProcedure.input(batchVectorizeSchema).mutation(async ({ input }) => {
+    // 在后台运行批量向量化，不阻塞 mutation 返回
+    processAndVectorizeBatchContent(input.slugs, (progress) => {
+      vectorizationEvents.emit('progress', progress);
+    }).catch((error) => {
+      console.error('Batch vectorization failed in background:', error);
+      const message = error instanceof Error ? error.message : '未知错误';
+      vectorizationEvents.emit('progress', {
+        stage: 'error',
+        message: `批量向量化失败: ${message}`,
+      });
+    });
 
-      if (!task) {
-        return {
-          status: 'not_found',
-          progress: {
-            stage: 'error',
-            message: `任务 ID ${input.taskId} 未找到`,
-          },
-        };
-      }
+    return { success: true, message: `已启动 ${input.slugs.length} 篇文章的向量化过程` };
+  }),
 
-      return task;
-    }),
+  // 3. 创建一个新的 onProgress subscription
+  onProgress: publicProcedure.subscription(() => {
+    return observable<VectorizationProgress>((emit) => {
+      const onProgress = (progress: VectorizationProgress) => {
+        emit.next(progress);
+      };
+
+      vectorizationEvents.on('progress', onProgress);
+
+      // 清理函数
+      return () => {
+        vectorizationEvents.off('progress', onProgress);
+      };
+    });
+  }),
 });

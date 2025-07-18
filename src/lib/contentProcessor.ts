@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import type { ContentItem } from '~/lib/content';
 import { fetchContent } from '~/lib/content';
 import { getFileRecord, upsertFileRecord } from './db';
 import type { NewVectorizedFile } from './schema';
@@ -84,45 +85,48 @@ export async function updateContentRecord(
 }
 
 /**
- * 处理单个内容文件，并确定是否需要向量化
+ * 统一处理任何来源的内容项，并确定是否需要向量化
  */
-export async function processContent(
-  post: any, // 使用 any 类型以接纳来自 ContentItem 的 raw 数据
+async function determineVectorizationStatus(
+  item: ContentItem,
   force: boolean = false
 ): Promise<ProcessedContent | undefined> {
   try {
-    const filepath = post.id; // Use post.id as filepath
-    const slug = post.slug; // Get slug from post object
-    const rawContent = post.body; // Use post.body directly
-    const frontmatter = post.data; // Use post.data directly
+    // 从 ContentItem 安全地提取数据
+    const filepath = item.id;
+    const slug = item.slug;
+    const rawContent = item.body;
+    const frontmatter = item.raw?.frontmatter || item.raw?.data || {};
 
+    // 验证基本数据
+    if (!filepath || !slug) {
+      console.error(`Error processing item: 'id' or 'slug' is missing.`, item);
+      return undefined;
+    }
     if (typeof rawContent !== 'string') {
-      console.error(`Error processing ${post.id}: content body is not a string, skipping.`);
+      console.error(`Error processing ${filepath}: content body is not a string, skipping.`);
       return undefined;
     }
 
-    // Calculate content hash from rawContent (post.body)
+    // 计算内容哈希
     const contentHash = calculateContentHash(rawContent);
 
-    // Try to get existing record from DB
+    // 检查数据库中的现有记录
     const existingRecord = await getFileRecord(filepath);
 
     let effectiveContentUpdatedAt: number;
     let needsVectorization = false;
 
-    // Determine effectiveContentUpdatedAt based on content hash change
+    // 确定内容的有效更新时间
     if (existingRecord && existingRecord.contentHash === contentHash) {
-      // Content hash hasn't changed, use the existing contentUpdatedAt from DB
       effectiveContentUpdatedAt = existingRecord.contentUpdatedAt;
-      console.log(`文件 ${filepath} 内容未修改，沿用数据库中的 content_updated_at.`);
     } else {
-      // New file or content hash changed, set content_updated_at to now
       effectiveContentUpdatedAt = Date.now();
-      console.log(`文件 ${filepath} 内容已修改或为新文件，设置 content_updated_at 为当前时间.`);
     }
 
     const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
-    // Determine if needs vectorization
+
+    // 判断是否需要向量化
     if (force) {
       console.log(`强制处理文件 ${filepath}.`);
       needsVectorization = true;
@@ -134,108 +138,29 @@ export async function processContent(
     ) {
       console.log(`文件 ${filepath} 是新文件、缺少向量或模型不匹配，需要向量化.`);
       needsVectorization = true;
-    } else if (existingRecord.indexedAt <= effectiveContentUpdatedAt) {
-      console.log(`文件 ${filepath} 需要重新向量化 (indexed_at <= effectiveContentUpdatedAt).`);
+    } else if (existingRecord.indexedAt < effectiveContentUpdatedAt) {
+      console.log(`文件 ${filepath} 内容已更新，需要重新向量化 (indexed_at < effectiveContentUpdatedAt).`);
       needsVectorization = true;
     } else {
       console.log(`文件 ${filepath} 未修改且向量化已是最新，跳过处理.`);
     }
 
     if (needsVectorization) {
-      console.log(`处理文件 ${filepath} 并添加到向量化列表.`);
-      // Create ProcessedContent object by combining data
+      console.log(`准备向量化文件: ${filepath}`);
       return {
-        filepath: filepath,
-        slug: slug,
-        rawContent: rawContent,
-        frontmatter: frontmatter,
-        contentHash: contentHash,
-        // lastModified is not used as per user request
-        lastModified: existingRecord?.lastModifiedTime || Date.now(), // Use existing or current time if new
-        effectiveContentUpdatedAt: effectiveContentUpdatedAt,
+        filepath,
+        slug,
+        rawContent,
+        frontmatter,
+        contentHash,
+        lastModified: item.updateDate?.getTime() || item.publishDate.getTime(),
+        effectiveContentUpdatedAt,
       };
-    } else {
-      return undefined; // No vectorization needed
     }
+
+    return undefined; // 不需要向量化
   } catch (error) {
-    console.error(`Error processing ${post.id}:`, error);
-    return undefined; // Return undefined on error
-  }
-}
-/**
- * 处理 WebDAV 内容文件
- */
-export async function processWebDAVContent(
-  post: any, // 使用 any 类型以接纳来自 ContentItem 的 raw 数据
-  force: boolean = false
-): Promise<ProcessedContent | undefined> {
-  try {
-    const filepath = post.id;
-    const slug = post.slug;
-    const rawContent = post.body;
-    const frontmatter = post.data;
-
-    if (typeof rawContent !== 'string') {
-      console.error(`Error processing WebDAV ${post.id}: content body is not a string, skipping.`);
-      return undefined;
-    }
-
-    // Calculate content hash from rawContent
-    const contentHash = calculateContentHash(rawContent);
-
-    // Try to get existing record from DB
-    const existingRecord = await getFileRecord(filepath);
-
-    let effectiveContentUpdatedAt: number;
-    let needsVectorization = false;
-
-    // Determine effectiveContentUpdatedAt based on content hash change
-    if (existingRecord && existingRecord.contentHash === contentHash) {
-      // Content hash hasn't changed, use the existing contentUpdatedAt from DB
-      effectiveContentUpdatedAt = existingRecord.contentUpdatedAt;
-      console.log(`WebDAV 文件 ${filepath} 内容未修改，沿用数据库中的 content_updated_at.`);
-    } else {
-      // New file or content hash changed, set content_updated_at to now
-      effectiveContentUpdatedAt = Date.now();
-      console.log(`WebDAV 文件 ${filepath} 内容已修改或为新文件，设置 content_updated_at 为当前时间.`);
-    }
-
-    const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
-    // Determine if needs vectorization
-    if (force) {
-      console.log(`强制处理 WebDAV 文件 ${filepath}.`);
-      needsVectorization = true;
-    } else if (
-      !existingRecord ||
-      !existingRecord.vector ||
-      (existingRecord.vector as Uint8Array).length === 0 ||
-      existingRecord.modelName !== embeddingModelName
-    ) {
-      console.log(`WebDAV 文件 ${filepath} 是新文件、缺少向量或模型不匹配，需要向量化.`);
-      needsVectorization = true;
-    } else if (existingRecord.indexedAt <= effectiveContentUpdatedAt) {
-      console.log(`WebDAV 文件 ${filepath} 需要重新向量化 (indexed_at <= effectiveContentUpdatedAt).`);
-      needsVectorization = true;
-    } else {
-      console.log(`WebDAV 文件 ${filepath} 未修改且向量化已是最新，跳过处理.`);
-    }
-
-    if (needsVectorization) {
-      console.log(`处理 WebDAV 文件 ${filepath} 并添加到向量化列表.`);
-      return {
-        filepath: filepath,
-        slug: slug,
-        rawContent: rawContent,
-        frontmatter: frontmatter,
-        contentHash: contentHash,
-        lastModified: existingRecord?.lastModifiedTime || Date.now(),
-        effectiveContentUpdatedAt: effectiveContentUpdatedAt,
-      };
-    } else {
-      return undefined; // No vectorization needed
-    }
-  } catch (error) {
-    console.error(`Error processing WebDAV ${post.id}:`, error);
+    console.error(`处理 ${item.id} 时发生错误:`, error);
     return undefined;
   }
 }
@@ -256,13 +181,14 @@ export async function processAllContent(
   onProgress?.(`共找到 ${allContent.length} 篇内容。`);
 
   for (const item of allContent) {
-    allFilepaths.add(item.id); // Add all found files to the set
-    // 根据 item.raw 的存在和结构来判断来源
-    const isLocal = 'render' in item.raw;
-    const processed = isLocal ? await processContent(item.raw, force) : await processWebDAVContent(item.raw, force);
-
-    if (processed) {
-      filesToProcess.push(processed);
+    if (item && item.id) {
+      allFilepaths.add(item.id);
+      const processed = await determineVectorizationStatus(item, force);
+      if (processed) {
+        filesToProcess.push(processed);
+      }
+    } else {
+      console.warn('发现一个缺少 id 的内容项，已跳过:', item);
     }
   }
 

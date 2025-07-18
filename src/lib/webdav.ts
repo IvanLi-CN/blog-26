@@ -98,7 +98,7 @@ export class WebDAVClient {
   /**
    * 发送 PROPFIND 请求获取文件列表
    */
-  private async propfind(path: string, depth: number = 1): Promise<WebDAVFile[]> {
+  private async propfind(path: string, depth: number | 'Infinity' = 1): Promise<WebDAVFile[]> {
     // 如果 path 已经是完整的 URL，直接使用；否则拼接基础 URL
     const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
 
@@ -147,38 +147,51 @@ export class WebDAVClient {
       const hrefMatch = /<D:href[^>]*>(.*?)<\/D:href>/s.exec(responseContent);
       if (!hrefMatch) continue;
 
-      let href = decodeURIComponent(hrefMatch[1]);
+      const rawHref = decodeURIComponent(hrefMatch[1]);
 
-      // 移除 WebDAV 基础 URL 路径，只保留相对路径
-      const baseUrlPath = new URL(this.baseUrl).pathname;
-      if (href.startsWith(baseUrlPath)) {
-        href = href.substring(baseUrlPath.length);
+      // --- 健壮的路径解析逻辑 ---
+      let relativePath: string;
+      const base = new URL(this.baseUrl);
+
+      // Case 1: href 是一个完整的 URL
+      if (rawHref.startsWith('http://') || rawHref.startsWith('https://')) {
+        const hrefUrl = new URL(rawHref);
+        // 确保 href 与 baseUrl 在同一个源下
+        if (hrefUrl.origin === base.origin) {
+          relativePath = hrefUrl.pathname.substring(base.pathname.length);
+        } else {
+          // 跨域的 href，直接跳过
+          continue;
+        }
+      } else {
+        // Case 2: href 是一个绝对或相对路径
+        relativePath = rawHref;
       }
 
-      // 确保路径以 / 开头（如果不为空）
-      if (href && !href.startsWith('/')) {
-        href = '/' + href;
+      // 规范化路径，确保它以 / 开头，并移除 base 路径前缀（如果存在）
+      if (relativePath.startsWith(base.pathname)) {
+        relativePath = relativePath.substring(base.pathname.length);
       }
-
-      // 跳过空路径、根路径和自引用
-      if (!href || href === '/' || href === '//' || href === baseUrlPath) {
-        continue;
+      if (!relativePath.startsWith('/')) {
+        relativePath = '/' + relativePath;
       }
+      // -------------------------
 
-      const filename = href.split('/').pop() || '';
-
-      // 如果文件名为空（通常是目录本身），则跳过此条目
-      if (!filename) {
+      // 跳过根路径自身
+      if (relativePath === '/') {
         continue;
       }
 
       // 标准化路径（移除末尾斜杠）进行去重
-      const normalizedPath = href.replace(/\/$/, '');
+      const normalizedPath = relativePath.replace(/\/$/, '');
       if (seenPaths.has(normalizedPath)) continue;
       seenPaths.add(normalizedPath);
 
+      const filename = normalizedPath.split('/').pop() || '';
+
       // 检查是否为目录
-      const isDirectory = /<D:resourcetype[^>]*>.*?<D:collection.*?<\/D:resourcetype>/s.test(responseContent);
+      const isDirectory =
+        /<D:resourcetype[^>]*>.*?<D:collection.*?<\/D:resourcetype>/s.test(responseContent) || rawHref.endsWith('/');
 
       // 提取最后修改时间
       const lastmodMatch = /<D:getlastmodified[^>]*>(.*?)<\/D:getlastmodified>/s.exec(responseContent);
@@ -193,7 +206,7 @@ export class WebDAVClient {
       const etag = etagMatch ? etagMatch[1].replace(/"/g, '') : undefined;
 
       files.push({
-        filename: href,
+        filename: relativePath,
         basename: filename,
         lastmod,
         size,
@@ -266,9 +279,8 @@ export class WebDAVClient {
           }
 
           if (item.type === 'directory') {
-            // 递归处理子目录 - 构建完整的 URL
-            const subDirUrl = `${this.baseUrl}${item.filename}`;
-            await processDirectory(subDirUrl);
+            // 递归处理子目录
+            await processDirectory(item.filename);
           } else if (item.type === 'file' && (item.basename.endsWith('.md') || item.basename.endsWith('.mdx'))) {
             files.push(item);
           }
@@ -278,8 +290,8 @@ export class WebDAVClient {
       }
     };
 
-    // 初始调用，如果 dirPath 为空，使用基础 URL
-    const initialPath = dirPath || this.baseUrl;
+    // 初始调用，如果 dirPath 为空，使用根路径
+    const initialPath = dirPath || '/';
     await processDirectory(initialPath);
     return files;
   }
@@ -335,7 +347,7 @@ export class WebDAVClient {
    * 获取所有博客文章
    */
   async getAllPosts(): Promise<WebDAVPost[]> {
-    const files = await this.getAllMarkdownFiles();
+    const files = await this.getAllMarkdownFiles('/');
     const posts: WebDAVPost[] = [];
     const processedSlugs = new Set<string>(); // 用于去重
 
@@ -353,7 +365,7 @@ export class WebDAVClient {
 
         // 确定集合类型
         let collection: 'posts' | 'projects' = 'posts'; // Default to 'posts'
-        if (file.filename.startsWith(this.projectsPath)) {
+        if (this.projectsPath && file.filename.toLowerCase().startsWith(this.projectsPath.toLowerCase())) {
           collection = 'projects';
         }
 
