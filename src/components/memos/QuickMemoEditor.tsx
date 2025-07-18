@@ -87,7 +87,7 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
                 contentType: file.type,
                 isTemporary: true, // 标记为临时文件
               });
-              resolve(result);
+              resolve(result as Attachment);
             } catch (error) {
               reject(error);
             }

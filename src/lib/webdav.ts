@@ -17,7 +17,7 @@ export interface WebDAVPost {
   slug: string; // 从文件名或 frontmatter 生成
   data: Record<string, any>; // frontmatter 数据
   body: string; // 正文内容
-  collection: 'post' | 'notes' | 'local-notes' | 'projects' | 'memos'; // 集合类型
+  collection: 'posts' | 'projects'; // 集合类型
 }
 
 export interface MemoAttachment {
@@ -167,6 +167,11 @@ export class WebDAVClient {
 
       const filename = href.split('/').pop() || '';
 
+      // 如果文件名为空（通常是目录本身），则跳过此条目
+      if (!filename) {
+        continue;
+      }
+
       // 标准化路径（移除末尾斜杠）进行去重
       const normalizedPath = href.replace(/\/$/, '');
       if (seenPaths.has(normalizedPath)) continue;
@@ -291,15 +296,21 @@ export class WebDAVClient {
     }
 
     const frontmatterText = match[1];
-    let body = match[2];
+    const body = match[2];
 
     try {
-      const frontmatter = (yaml.load(frontmatterText) as Record<string, any>) || {};
-
+      // Use JSON_SCHEMA to prevent automatic type conversion (e.g., for dates)
+      const frontmatter = (yaml.load(frontmatterText, { schema: yaml.JSON_SCHEMA }) as Record<string, any>) || {};
       return { frontmatter, body };
     } catch (error) {
       console.warn('Failed to parse frontmatter as YAML:', error);
-      return { frontmatter: {}, body: content };
+      // Fallback to default loader on error
+      try {
+        const frontmatter = (yaml.load(frontmatterText) as Record<string, any>) || {};
+        return { frontmatter, body };
+      } catch {
+        return { frontmatter: {}, body: content };
+      }
     }
   }
 
@@ -341,31 +352,87 @@ export class WebDAVClient {
         processedSlugs.add(slug);
 
         // 确定集合类型
-        let collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post';
-        if (file.filename.includes('/notes/')) {
-          collection = 'notes';
-        } else if (file.filename.includes('/local-notes/')) {
-          collection = 'local-notes';
-        } else if (
-          file.filename.includes(this.projectsPath + '/') ||
-          file.filename.startsWith(this.projectsPath + '/')
-        ) {
+        let collection: 'posts' | 'projects' = 'posts'; // Default to 'posts'
+        if (file.filename.startsWith(this.projectsPath)) {
           collection = 'projects';
         }
 
-        posts.push({
-          id: file.filename,
-          slug,
-          data: frontmatter,
-          body,
-          collection,
-        });
+        // Memos are handled separately, so we only care about posts and projects here.
+        if (!file.filename.startsWith(this.memosPath)) {
+          posts.push({
+            id: file.filename,
+            slug,
+            data: frontmatter,
+            body,
+            collection,
+          });
+        }
       } catch (error) {
         console.warn(`Failed to process file ${file.filename}:`, error);
       }
     }
 
     return posts;
+  }
+
+  /**
+   * 获取目录树
+   */
+  async getDirectoryTree(): Promise<DirectoryTreeNode[]> {
+    const allFiles = await this.getAllMarkdownFiles('/');
+    const root: DirectoryTreeNode = { name: 'root', path: '/', type: 'directory', children: [] };
+
+    for (const file of allFiles) {
+      const pathParts = file.filename.split('/').filter((p) => p);
+      let currentNode = root;
+
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        let childNode = currentNode.children?.find((c) => c.name === part);
+
+        if (!childNode) {
+          const isDirectory = i < pathParts.length - 1 || file.type === 'directory';
+          childNode = {
+            name: part,
+            path: '/' + pathParts.slice(0, i + 1).join('/'),
+            type: isDirectory ? 'directory' : 'file',
+            children: isDirectory ? [] : undefined,
+          };
+          currentNode.children?.push(childNode);
+        }
+        currentNode = childNode;
+      }
+    }
+    return root.children || [];
+  }
+
+  /**
+   * 获取所有闪念
+   */
+  async getAllMemos(): Promise<WebDAVMemo[]> {
+    const memoFiles = await this.getAllMarkdownFiles(this.memosPath);
+    const memos: WebDAVMemo[] = [];
+
+    for (const file of memoFiles) {
+      try {
+        const content = await this.getFileContent(file.filename);
+        const { frontmatter, body } = this.parseFrontmatter(content);
+        const slug = this.generateSlug(file.filename, frontmatter);
+
+        memos.push({
+          id: file.filename,
+          slug,
+          data: frontmatter,
+          body,
+          createdAt: new Date(frontmatter.createdAt || file.lastmod),
+          updatedAt: new Date(frontmatter.updatedAt || file.lastmod),
+          tags: frontmatter.tags || [],
+        });
+      } catch (error) {
+        console.warn(`Failed to process memo file ${file.filename}:`, error);
+      }
+    }
+    return memos;
   }
 
   /**
@@ -477,7 +544,7 @@ export class WebDAVClient {
     slug: string,
     frontmatter: Record<string, any>,
     body: string,
-    collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post',
+    collection: 'posts' | 'projects' = 'posts',
     customPath?: string
   ): Promise<WebDAVPost> {
     // 生成文件路径
@@ -487,22 +554,10 @@ export class WebDAVClient {
     if (customPath) {
       // 如果提供了自定义路径，使用自定义路径
       filePath = customPath.endsWith('/') ? `${customPath}${filename}` : `${customPath}/${filename}`;
+    } else if (collection === 'projects') {
+      filePath = `${this.projectsPath}/${filename}`;
     } else {
-      // 使用默认的collection逻辑
-      switch (collection) {
-        case 'notes':
-          filePath = `/notes/${filename}`;
-          break;
-        case 'local-notes':
-          filePath = `/local-notes/${filename}`;
-          break;
-        case 'projects':
-          filePath = `${this.projectsPath}/${filename}`;
-          break;
-        default:
-          filePath = `/${filename}`;
-          break;
-      }
+      filePath = `/${filename}`;
     }
 
     // 序列化内容
@@ -532,12 +587,8 @@ export class WebDAVClient {
     await this.putFile(id, content);
 
     // 确定集合类型
-    let collection: 'post' | 'notes' | 'local-notes' | 'projects' = 'post';
-    if (id.includes('/notes/')) {
-      collection = 'notes';
-    } else if (id.includes('/local-notes/')) {
-      collection = 'local-notes';
-    } else if (id.includes(this.projectsPath + '/') || id.startsWith(this.projectsPath + '/')) {
+    let collection: 'posts' | 'projects' = 'posts';
+    if (id.startsWith(this.projectsPath)) {
       collection = 'projects';
     }
 
@@ -552,474 +603,97 @@ export class WebDAVClient {
     };
   }
 
-  /**
-   * 删除文章
-   */
   async deletePost(id: string): Promise<void> {
     await this.deleteFile(id);
   }
 
-  /**
-   * 获取目录树
-   */
-  async getDirectoryTree(): Promise<DirectoryTreeNode[]> {
-    const allFiles: WebDAVFile[] = [];
-    const processedPaths = new Set<string>();
-
-    // 递归获取所有目录和文件
-    const processDirectory = async (currentPath: string): Promise<void> => {
-      if (processedPaths.has(currentPath)) return;
-      processedPaths.add(currentPath);
-
-      try {
-        const items = await this.propfind(currentPath, 1);
-
-        for (const item of items) {
-          // 跳过自引用和根路径
-          if (!item.filename || item.filename === currentPath || item.filename === '/' || item.filename === '//') {
-            continue;
-          }
-
-          // 获取文件/目录名称
-          const basename = item.basename || item.filename.split('/').pop() || '';
-
-          // 跳过以 . 和 _ 开头的文件和目录
-          if (basename.startsWith('.') || basename.startsWith('_')) {
-            continue;
-          }
-
-          // 标准化路径
-          let normalizedPath = item.filename;
-          if (!normalizedPath.startsWith('/')) {
-            normalizedPath = `/${normalizedPath}`;
-          }
-
-          // 检查是否在排除路径中
-          const relativePath = normalizedPath.replace(/^\//, '');
-          const shouldExclude = this.excludePaths.some(
-            (excludePath) => relativePath.startsWith(excludePath + '/') || relativePath === excludePath
-          );
-
-          if (shouldExclude) {
-            continue;
-          }
-
-          allFiles.push({
-            ...item,
-            filename: normalizedPath,
-          });
-
-          // 如果是目录，递归处理
-          if (item.type === 'directory') {
-            await processDirectory(normalizedPath);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to process directory ${currentPath}:`, error);
-      }
-    };
-
-    // 从根目录开始处理
-    await processDirectory('/');
-
-    // 构建目录树
-    const pathMap = new Map<string, DirectoryTreeNode>();
-    const rootNode: DirectoryTreeNode = {
-      name: '/',
-      path: '/',
-      type: 'directory',
-      children: [],
-    };
-    pathMap.set('/', rootNode);
-
-    // 处理所有文件和目录
-    for (const file of allFiles) {
-      const path = file.filename;
-      const pathParts = path.split('/').filter(Boolean);
-
-      // 跳过根目录本身
-      if (pathParts.length === 0) continue;
-
-      let currentPath = '';
-      let currentParent = rootNode;
-
-      // 为每个路径部分创建节点
-      for (let i = 0; i < pathParts.length; i++) {
-        const part = pathParts[i];
-        currentPath += `/${part}`;
-
-        if (!pathMap.has(currentPath)) {
-          const isLastPart = i === pathParts.length - 1;
-          const node: DirectoryTreeNode = {
-            name: part,
-            path: currentPath,
-            type: isLastPart ? file.type : 'directory',
-            children: file.type === 'directory' || !isLastPart ? [] : undefined,
-          };
-
-          pathMap.set(currentPath, node);
-          currentParent.children!.push(node);
-        }
-
-        currentParent = pathMap.get(currentPath)!;
-      }
-    }
-
-    // 递归排序所有节点的子节点：目录在前，文件在后，按自然语言顺序排序
-    const sortChildren = (node: DirectoryTreeNode) => {
-      if (node.children && node.children.length > 0) {
-        // 先递归排序子节点
-        node.children.forEach(sortChildren);
-
-        // 排序当前节点的子节点
-        node.children.sort((a, b) => {
-          // 目录优先于文件
-          if (a.type !== b.type) {
-            return a.type === 'directory' ? -1 : 1;
-          }
-
-          // 同类型按自然语言顺序排序
-          return a.name.localeCompare(b.name, 'zh-CN', {
-            numeric: true,
-            sensitivity: 'base',
-          });
-        });
-      }
-    };
-
-    // 对根节点的子节点进行排序
-    if (rootNode.children) {
-      rootNode.children.forEach(sortChildren);
-      rootNode.children.sort((a, b) => {
-        // 目录优先于文件
-        if (a.type !== b.type) {
-          return a.type === 'directory' ? -1 : 1;
-        }
-
-        // 同类型按自然语言顺序排序
-        return a.name.localeCompare(b.name, 'zh-CN', {
-          numeric: true,
-          sensitivity: 'base',
-        });
-      });
-    }
-
-    return rootNode.children || [];
-  }
-
-  /**
-   * 创建目录
-   */
   async createDirectory(path: string): Promise<void> {
-    const url = `${this.baseUrl}${path}`;
-
-    const response = await fetch(url, {
-      method: 'MKCOL',
-      headers: this.getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create directory ${path}: ${response.status} ${response.statusText}`);
-    }
+    await this.putFile(`${path}/`, '');
   }
 
-  /**
-   * 确保目录存在，如果不存在则创建
-   */
-  async ensureDirectoryExists(path: string): Promise<void> {
-    try {
-      // 尝试获取目录信息
-      await this.propfind(path, 0);
-    } catch (error) {
-      // 如果目录不存在，创建它
-      if (error instanceof Error && error.message.includes('404')) {
-        await this.createDirectory(path);
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  /**
-   * 从内容中提取第一个标题
-   */
-  private extractFirstHeading(content: string): string | null {
-    // 匹配任何级别的 Markdown 标题
-    const headingMatch = content.match(/^#{1,6}\s+(.+)$/m);
-    if (headingMatch) {
-      return headingMatch[1].trim();
-    }
-    return null;
-  }
-
-  /**
-   * 生成 Memo 文件名
-   */
-  private generateMemoFilename(content: string): string {
-    const now = new Date();
-    const datePrefix = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
-
-    // 尝试从内容中提取第一个标题
-    const firstHeading = this.extractFirstHeading(content);
-
-    if (firstHeading) {
-      // 清理标题，只保留字母数字和中文字符
-      const cleanTitle = firstHeading
-        .replace(/[^\w\u4e00-\u9fff\s-]/g, '') // 只保留字母数字、中文、空格和连字符
-        .replace(/\s+/g, '_') // 空格替换为下划线
-        .slice(0, 50); // 限制长度
-
-      return `${datePrefix}_${cleanTitle}.md`;
-    } else {
-      // 如果没有标题，使用 nanoid
-      return `${datePrefix}_${nanoid(8)}.md`;
-    }
-  }
-
-  /**
-   * 删除目录（仅删除空目录）
-   */
   async deleteDirectory(path: string): Promise<void> {
-    // 首先检查目录是否为空
-    const files = await this.propfind(path, 1);
-    const hasChildren = files.some((file) => file.filename !== path && !file.filename.endsWith('/'));
-
-    if (hasChildren) {
-      throw new Error('Cannot delete non-empty directory');
-    }
-
-    const url = `${this.baseUrl}${path}`;
-
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete directory ${path}: ${response.status} ${response.statusText}`);
-    }
+    await this.deleteFile(path);
   }
 
-  /**
-   * 重命名文件
-   */
   async renameFile(oldPath: string, newPath: string): Promise<void> {
-    const sourceUrl = `${this.baseUrl}${oldPath}`;
-    const destinationUrl = `${this.baseUrl}${newPath}`;
-
-    const response = await fetch(sourceUrl, {
+    const headers = {
+      ...this.getAuthHeaders(),
+      Destination: `${this.baseUrl}${newPath}`,
+      Overwrite: 'T',
+    };
+    const response = await fetch(`${this.baseUrl}${oldPath}`, {
       method: 'MOVE',
-      headers: {
-        ...this.getAuthHeaders(),
-        Destination: destinationUrl,
-      },
+      headers,
     });
-
     if (!response.ok) {
-      throw new Error(`Failed to rename file from ${oldPath} to ${newPath}: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to rename file: ${response.status} ${response.statusText}`);
     }
   }
 
   /**
-   * 获取所有 Memos
+   * 创建新 Memo
    */
-  async getAllMemos(): Promise<WebDAVMemo[]> {
-    try {
-      // 确保 Memos 目录存在
-      await this.ensureDirectoryExists(this.memosPath);
-
-      // 获取 Memos 目录下的所有文件
-      const files = await this.propfind(this.memosPath, 1);
-
-      // 过滤出 Markdown 文件并排除目录本身
-      const memoFiles = files.filter(
-        (file) => file.type === 'file' && file.filename.endsWith('.md') && file.filename !== this.memosPath
-      );
-
-      // 并行获取所有 Memo 内容
-      const memos = await Promise.all(
-        memoFiles.map(async (file) => {
-          try {
-            const relativePath = file.filename;
-            const content = await this.getFileContent(relativePath);
-            const { frontmatter, body } = this.parseFrontmatter(content);
-
-            // 从文件名或 frontmatter 生成 slug
-            const slug = this.generateSlug(relativePath, frontmatter);
-
-            // 获取创建和更新时间
-            const createdAt = frontmatter.createdAt ? new Date(frontmatter.createdAt) : new Date(file.lastmod);
-            const updatedAt = frontmatter.updatedAt ? new Date(frontmatter.updatedAt) : new Date(file.lastmod);
-
-            // 从内容中提取标题用于显示
-            const displayTitle = this.extractFirstHeading(body) || '无标题 Memo';
-
-            // 提取标签（如果 frontmatter 中没有的话）
-            const tags = frontmatter.tags || this.extractTagsFromContent(body);
-
-            // 获取附件信息（如果有的话）
-            const attachments = frontmatter.attachments || [];
-
-            return {
-              id: relativePath,
-              slug,
-              data: { ...frontmatter, title: displayTitle },
-              body,
-              createdAt,
-              updatedAt,
-              attachments,
-              tags,
-            };
-          } catch (error) {
-            console.error(`Error processing memo file ${file.filename}:`, error);
-            return null;
-          }
-        })
-      );
-
-      // 过滤掉处理失败的 Memo 并按创建时间降序排序
-      const validMemos = memos.filter((memo): memo is NonNullable<typeof memo> => memo !== null);
-      return validMemos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    } catch (error) {
-      console.error('Failed to get memos:', error);
-      return [];
-    }
-  }
-
-  /**
-   * 创建新的 Memo
-   */
-  async createMemo(content: string, isPublic: boolean = true, attachments: MemoAttachment[] = []): Promise<WebDAVMemo> {
-    // 确保 Memos 目录存在
-    await this.ensureDirectoryExists(this.memosPath);
-
-    // 解析标签
-    const tags = this.extractTagsFromContent(content);
-
-    // 生成文件名
-    const filename = this.generateMemoFilename(content);
-    const filePath = `${this.memosPath}/${filename}`;
-
-    // 处理附件：将临时附件移动到正式位置
-    const finalAttachments: MemoAttachment[] = [];
-    for (const attachment of attachments) {
-      try {
-        // 检查是否是临时文件路径
-        if (attachment.path.includes('/assets/tmp/')) {
-          // 移动临时文件到正式位置
-          const finalPath = await this.moveTemporaryAttachment(attachment.path, filePath, attachment.filename);
-          finalAttachments.push({
-            ...attachment,
-            path: finalPath,
-          });
-        } else {
-          // 已经是正式路径，直接使用
-          finalAttachments.push(attachment);
-        }
-      } catch (error) {
-        console.error(`Failed to move attachment ${attachment.filename}:`, error);
-        // 如果移动失败，仍然保留原路径（临时路径）
-        finalAttachments.push(attachment);
-      }
-    }
-
-    // 创建 frontmatter（不包含标题字段）
+  async createMemo(content: string, isPublic: boolean, attachments: MemoAttachment[] = []): Promise<WebDAVMemo> {
     const now = new Date();
-    const frontmatter = {
+    const id = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now
+      .getDate()
+      .toString()
+      .padStart(2, '0')}-${now.getTime()}.md`;
+    const filePath = `${this.memosPath}/${id}`;
+
+    const frontmatter: Record<string, any> = {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       public: isPublic,
-      attachments: finalAttachments.length > 0 ? finalAttachments : undefined,
-      tags: tags.length > 0 ? tags : undefined,
+      attachments: attachments.map((a) => ({
+        filename: a.filename,
+        path: a.path,
+        contentType: a.contentType,
+        size: a.size,
+        isImage: a.isImage,
+      })),
     };
 
-    // 序列化内容
-    const fileContent = this.serializeMarkdownContent(frontmatter, content);
+    const fullContent = this.serializeMarkdownContent(frontmatter, content);
+    await this.putFile(filePath, fullContent);
 
-    // 保存文件
-    await this.putFile(filePath, fileContent);
+    const slug = this.generateSlug(filePath, frontmatter);
 
-    // 从内容中提取标题用于显示
-    const displayTitle = this.extractFirstHeading(content) || '无标题 Memo';
-
-    // 返回创建的 Memo
     return {
       id: filePath,
-      slug: this.generateSlug(filePath, frontmatter),
-      data: { ...frontmatter, title: displayTitle },
+      slug,
+      data: frontmatter,
       body: content,
       createdAt: now,
       updatedAt: now,
-      attachments: finalAttachments,
-      tags,
+      attachments,
     };
   }
 
   /**
    * 更新 Memo
    */
-  async updateMemo(id: string, content: string, attachments?: MemoAttachment[]): Promise<WebDAVMemo> {
-    // 获取当前内容
-    const currentContent = await this.getFileContent(id);
-    const { frontmatter } = this.parseFrontmatter(currentContent);
-
-    // 解析标签
-    const tags = this.extractTagsFromContent(content);
-
-    // 更新 frontmatter（不包含标题字段）
+  async updateMemo(id: string, content: string): Promise<WebDAVMemo> {
+    const fileContent = await this.getFileContent(id);
+    const { frontmatter } = this.parseFrontmatter(fileContent);
     const now = new Date();
-    const updatedFrontmatter = {
-      ...frontmatter,
-      updatedAt: now.toISOString(),
-      attachments:
-        attachments !== undefined ? (attachments.length > 0 ? attachments : undefined) : frontmatter.attachments,
-      tags: tags.length > 0 ? tags : undefined,
+
+    frontmatter.updatedAt = now.toISOString();
+
+    const fullContent = this.serializeMarkdownContent(frontmatter, content);
+    await this.putFile(id, fullContent);
+
+    const slug = this.generateSlug(id, frontmatter);
+
+    return {
+      id,
+      slug,
+      data: frontmatter,
+      body: content,
+      createdAt: new Date(frontmatter.createdAt || now),
+      updatedAt: now,
+      attachments: frontmatter.attachments || [],
     };
-
-    // 序列化内容
-    const fileContent = this.serializeMarkdownContent(updatedFrontmatter, content);
-
-    // 检查是否需要重命名文件（如果内容的第一个标题改变了）
-    const newFilename = this.generateMemoFilename(content);
-    const currentFilename = id.split('/').pop();
-
-    if (newFilename !== currentFilename) {
-      // 需要重命名文件
-      const newId = id.replace(currentFilename!, newFilename);
-      await this.putFile(newId, fileContent);
-      await this.deleteFile(id);
-
-      // 从内容中提取标题用于显示
-      const displayTitle = this.extractFirstHeading(content) || '无标题 Memo';
-
-      return {
-        id: newId,
-        slug: this.generateSlug(newId, updatedFrontmatter),
-        data: { ...updatedFrontmatter, title: displayTitle },
-        body: content,
-        createdAt: frontmatter.date ? new Date(frontmatter.date) : now,
-        updatedAt: now,
-        attachments: attachments || updatedFrontmatter.attachments || [],
-        tags: tags,
-      };
-    } else {
-      // 不需要重命名，直接更新
-      await this.putFile(id, fileContent);
-
-      // 从内容中提取标题用于显示
-      const displayTitle = this.extractFirstHeading(content) || '无标题 Memo';
-
-      return {
-        id,
-        slug: this.generateSlug(id, updatedFrontmatter),
-        data: { ...updatedFrontmatter, title: displayTitle },
-        body: content,
-        createdAt: frontmatter.date ? new Date(frontmatter.date) : now,
-        updatedAt: now,
-        attachments: attachments || updatedFrontmatter.attachments || [],
-        tags: tags,
-      };
-    }
   }
 
   /**
@@ -1027,24 +701,6 @@ export class WebDAVClient {
    */
   async deleteMemo(id: string): Promise<void> {
     await this.deleteFile(id);
-  }
-
-  /**
-   * 为 Memo 附件生成存储路径
-   */
-  generateAttachmentPath(memoId: string, filename: string, isTemporary: boolean = false): string {
-    if (isTemporary) {
-      // 临时文件存储在 assets/tmp 目录下
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2, 8);
-      return `${this.memosPath}/assets/tmp/${timestamp}_${randomId}/${filename}`;
-    }
-
-    // 从 memo ID 中提取文件名（不含扩展名）
-    const memoBasename = memoId.substring(memoId.lastIndexOf('/') + 1, memoId.lastIndexOf('.'));
-
-    // 正式附件存储在 assets 目录下，按 memo 文件名分组
-    return `${this.memosPath}/assets/${memoBasename}/${filename}`;
   }
 
   /**
@@ -1057,114 +713,35 @@ export class WebDAVClient {
     contentType?: string,
     isTemporary: boolean = false
   ): Promise<string> {
-    const attachmentPath = this.generateAttachmentPath(memoId, filename, isTemporary);
+    const assetsPath = isTemporary ? `${this.memosPath}/assets/tmp` : `${this.memosPath}/assets/${memoId}`;
+    const filePath = `${assetsPath}/${filename}`;
 
-    // 确保附件目录存在
-    const attachmentDir = attachmentPath.substring(0, attachmentPath.lastIndexOf('/'));
-    await this.ensureDirectoryExists(attachmentDir);
-
-    // 上传附件文件
-    await this.putBinaryFile(attachmentPath, content, contentType);
-
-    return attachmentPath;
-  }
-
-  /**
-   * 将临时附件移动到正式位置
-   */
-  async moveTemporaryAttachment(tempPath: string, memoId: string, filename: string): Promise<string> {
-    const finalPath = this.generateAttachmentPath(memoId, filename, false);
-
-    // 确保目标目录存在
-    const finalDir = finalPath.substring(0, finalPath.lastIndexOf('/'));
-    await this.ensureDirectoryExists(finalDir);
-
+    // 确保目录存在
     try {
-      // 尝试使用 WebDAV MOVE 方法
-      const tempUrl = `${this.baseUrl}${tempPath}`;
-      const finalUrl = `${this.baseUrl}${finalPath}`;
-
-      const response = await fetch(tempUrl, {
-        method: 'MOVE',
-        headers: {
-          ...this.getAuthHeaders(),
-          Destination: finalUrl,
-        },
-      });
-
-      if (response.ok) {
-        return finalPath;
-      }
-
-      // 如果 MOVE 失败，回退到复制+删除的方式
-      console.warn('WebDAV MOVE failed, falling back to copy+delete');
+      await this.propfind(assetsPath);
     } catch (error) {
-      console.warn('WebDAV MOVE error, falling back to copy+delete:', error);
-    }
-
-    // 回退方案：先获取文件内容，然后复制到新位置，最后删除原文件
-    // 注意：这里需要处理二进制文件
-    const tempUrl = `${this.baseUrl}${tempPath}`;
-    const response = await fetch(tempUrl, {
-      headers: this.getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to read temporary file ${tempPath}: ${response.status} ${response.statusText}`);
-    }
-
-    const fileContent = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type') || undefined;
-
-    // 上传到最终位置
-    await this.putBinaryFile(finalPath, fileContent, contentType);
-
-    // 删除临时文件
-    await this.deleteFile(tempPath);
-
-    return finalPath;
-  }
-
-  /**
-   * 从内容中提取标签
-   * 标签格式：#标签名 或 #父标签/子标签
-   * 标签以空格或标点符号分隔，但 / 用于表示层级关系
-   */
-  extractTagsFromContent(content: string): string[] {
-    const tags: Set<string> = new Set();
-
-    // 匹配以 # 开头的标签，支持中文、英文、数字、下划线、连字符和斜杠
-    // 标签可以包含 / 来表示层级关系
-    const tagRegex = /#([a-zA-Z0-9\u4e00-\u9fa5_\-\/]+)/g;
-
-    let match;
-    while ((match = tagRegex.exec(content)) !== null) {
-      const tag = match[1];
-
-      // 过滤掉空标签或只包含斜杠的标签
-      if (tag && tag !== '/' && !tag.startsWith('/') && !tag.endsWith('/')) {
-        // 清理标签：移除连续的斜杠
-        const cleanedTag = tag.replace(/\/+/g, '/');
-        tags.add(cleanedTag);
+      // @ts-ignore
+      if (error.message.includes('404')) {
+        await this.createDirectory(assetsPath);
+      } else {
+        throw error;
       }
     }
 
-    return Array.from(tags).sort();
+    await this.putBinaryFile(filePath, content, contentType);
+    return filePath;
   }
 }
 
-// 导出单例实例
-let webdavClient: WebDAVClient | null = null;
+let _webdavClient: WebDAVClient | undefined;
 
 export function getWebDAVClient(): WebDAVClient {
-  if (!webdavClient) {
-    webdavClient = new WebDAVClient();
+  if (!_webdavClient) {
+    _webdavClient = new WebDAVClient();
   }
-  return webdavClient;
+  return _webdavClient;
 }
 
-// 检查 WebDAV 是否可用
 export function isWebDAVEnabled(): boolean {
-  const webdavConfig = config.webdav;
-  return !!(webdavConfig.url && webdavConfig.username && webdavConfig.password);
+  return !!(config.webdav.url && config.webdav.username && config.webdav.password);
 }

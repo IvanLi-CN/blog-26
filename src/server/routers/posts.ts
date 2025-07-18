@@ -1,4 +1,6 @@
 import { TRPCError } from '@trpc/server';
+import matter from 'gray-matter';
+import yaml, { Schema, Type } from 'js-yaml';
 import { z } from 'zod';
 import { processAndVectorizeAllContent } from '~/lib/vectorizer';
 import { getWebDAVClient, isWebDAVEnabled } from '~/lib/webdav';
@@ -25,14 +27,13 @@ const CreatePostSchema = z.object({
   slug: z.string().min(1, 'Slug is required'),
   frontmatter: PostFrontmatterSchema,
   body: z.string(),
-  collection: z.enum(['post', 'notes', 'local-notes', 'projects']).default('post'),
+  collection: z.enum(['posts', 'projects']).default('posts'),
   customPath: z.string().optional(),
 });
 
 const UpdatePostSchema = z.object({
   id: z.string().min(1, 'Post ID is required'),
-  frontmatter: PostFrontmatterSchema,
-  body: z.string(),
+  content: z.string(),
 });
 
 const DeletePostSchema = z.object({
@@ -95,7 +96,8 @@ export const postsRouter = createTRPCRouter({
         });
       }
 
-      return post;
+      const fullContent = getWebDAVClient().serializeMarkdownContent(post.data, post.body);
+      return { ...post, fullContent };
     } catch (error) {
       console.error('Failed to get post:', error);
       if (error instanceof TRPCError) {
@@ -227,8 +229,47 @@ export const postsRouter = createTRPCRouter({
         });
       }
 
+      // 在服务器端解析和更新 frontmatter，同时保留原始格式
+      const { data: frontmatter, content: body } = matter(input.content, {
+        engines: {
+          yaml: (s) => yaml.load(s, { schema: yaml.JSON_SCHEMA }) as object,
+        },
+      });
+
+      // --- 自动更新字段 ---
+      // 1. 从正文更新 title
+      const titleMatch = body.match(/^#\s+(.*)/m);
+      if (titleMatch && titleMatch[1]) {
+        frontmatter.title = titleMatch[1];
+      }
+
+      // 2. 从正文更新 tags
+      const tagMatches = body.match(/#([^\s#]+)/g);
+      if (tagMatches) {
+        const newTags = tagMatches.map((tag) => tag.substring(1));
+        const existingTags = frontmatter.tags || [];
+        frontmatter.tags = [...new Set([...existingTags, ...newTags])];
+      }
+
+      // 3. 更新 updateDate
+      frontmatter.updateDate = new Date().toISOString();
+
+      // --- 确保规范中要求的字段存在 (如果缺失) ---
+      if (frontmatter.publishDate === undefined) {
+        frontmatter.publishDate = new Date().toISOString();
+      }
+      if (frontmatter.draft === undefined) {
+        frontmatter.draft = true;
+      }
+      if (frontmatter.public === undefined) {
+        frontmatter.public = true;
+      }
+      if (frontmatter.slug === undefined) {
+        frontmatter.slug = frontmatter.title?.toLowerCase().replace(/\s+/g, '-') || '';
+      }
+
       // 更新文章
-      const updatedPost = await webdavClient.updatePost(input.id, input.frontmatter, input.body);
+      const updatedPost = await webdavClient.updatePost(input.id, frontmatter, body);
 
       // 清除缓存以确保更新的文章能被立即获取
       clearPostsCache();

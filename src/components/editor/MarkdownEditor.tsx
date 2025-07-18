@@ -33,6 +33,21 @@ export function MarkdownEditor({
     }
   }, [content]);
 
+  // Handle Ctrl+S or Cmd+S for saving
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault();
+        onSave?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onSave]);
+
   const handleContentChange = (newContent: string) => {
     setMarkdownContent(newContent);
     onChange(newContent);

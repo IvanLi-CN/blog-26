@@ -5,164 +5,142 @@
  * It aims to centralize data fetching logic and provide a consistent data structure.
  */
 
-import type { CollectionEntry } from 'astro:content';
-import { getCollection } from 'astro:content';
-
+import matter from 'gray-matter';
+import yaml from 'js-yaml';
+import { z } from 'zod';
 import { getWebDAVClient, isWebDAVEnabled, type WebDAVMemo, type WebDAVPost } from '~/lib/webdav';
 import { calculateReadingTime, parseMarkdownToHTML } from '~/utils/markdown';
 import { cleanSlug, getPermalink } from '~/utils/permalinks';
 
-// 1. 定义内容类型和统一的数据结构
-// =================================================================================================
-
-/**
- * 定义支持的内容类型
- */
 export type ContentType = 'post' | 'project' | 'memo';
 
-/**
- * 定义分类和标签的通用结构
- */
 export interface Taxonomy {
   slug: string;
   title: string;
 }
 
-/**
- * 统一的内容项接口
- * 所有来源（本地文件、WebDAV）的内容都将被规范化为此格式
- */
 export interface ContentItem {
-  permalink?: string; // 永久链接
-  id: string; // 唯一标识符（例如，文件路径）
-  slug: string; // URL友好的 slug
-  type: ContentType; // 内容类型
-
-  // 核心元数据
+  permalink?: string;
+  id: string;
+  slug: string;
+  type: ContentType;
   title: string;
   publishDate: Date;
   updateDate?: Date;
   draft?: boolean;
   public?: boolean;
-
-  // 内容
-  excerpt?: string; // 摘要
-  body: string; // 原始 Markdown 内容
-  content?: any; // 渲染后的 HTML 内容或 Astro 组件
-  readingTime?: number; // 阅读时间（分钟）
-
-  // 关联数据
+  excerpt?: string;
+  body: string;
+  content?: any;
+  readingTime?: number;
   category?: Taxonomy;
   tags?: Taxonomy[];
   author?: string;
-  image?: string | { src: string; [key: string]: any }; // 图像可以是字符串或对象
-
-  // 原始数据
-  raw?: any; // 用于存储特定于源的原始数据
+  image?: string | { src: string; [key: string]: any };
+  metadata?: any;
+  raw?: any;
 }
 
-// 后续将在此处添加获取逻辑
+const FrontmatterSchema = z.object({
+  title: z.string(),
+  slug: z.string().optional(),
+  publishDate: z.any().optional(),
+  updateDate: z.any().optional(),
+  date: z.any().optional(),
+  draft: z.boolean().default(true),
+  public: z.boolean().default(true),
+  excerpt: z.string().optional(),
+  summary: z.string().optional(),
+  image: z.any().optional(),
+  images: z.array(z.any()).optional(),
+  category: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  author: z.string().optional(),
+  metadata: z.any().optional(),
+});
 
-// 2. 内容规范化函数
-// =================================================================================================
+async function loadLocalContent(): Promise<ContentItem[]> {
+  const files = import.meta.glob('/src/content/**/*.{md,mdx}', { as: 'raw' });
+  const items: ContentItem[] = [];
 
-/**
- * 将 Astro 本地内容集合的条目规范化为 ContentItem
- */
-const normalizeLocalPost = async (
-  post: CollectionEntry<'post'> | CollectionEntry<'notes'> | CollectionEntry<'local-notes'>
-): Promise<ContentItem> => {
-  const { id, slug: rawSlug = '', data, body } = post;
-  const { Content, remarkPluginFrontmatter } = await post.render();
+  for (const path in files) {
+    const rawContent = await files[path]();
+    const { data: frontmatter, content: body } = matter(rawContent);
 
-  const {
-    publishDate: rawPublishDate,
-    updateDate: rawUpdateDate,
-    date,
-    title,
-    excerpt,
-    summary,
-    image,
-    tags: rawTags = [],
-    category: rawCategory,
-    author,
-    draft = false,
-    public: isPublic = true,
-  } = data;
+    const parsedFrontmatter = FrontmatterSchema.parse(frontmatter);
 
-  const slug = cleanSlug(rawSlug);
-  const publishDate = new Date(rawPublishDate ?? date ?? new Date());
-  const updateDate = rawUpdateDate ? new Date(rawUpdateDate) : undefined;
+    const id = path;
+    const slug = cleanSlug(
+      parsedFrontmatter.slug ||
+        path
+          .split('/')
+          .pop()
+          ?.replace(/\.mdx?$/, '') ||
+        ''
+    );
+    const type: ContentType = path.startsWith('/src/content/projects/') ? 'project' : 'post';
 
-  const category = rawCategory
-    ? {
-        slug: cleanSlug(rawCategory),
-        title: rawCategory,
-      }
-    : undefined;
+    const publishDate = parsedFrontmatter.publishDate ? new Date(parsedFrontmatter.publishDate) : new Date();
+    const updateDate = parsedFrontmatter.updateDate
+      ? new Date(parsedFrontmatter.updateDate)
+      : parsedFrontmatter.date
+        ? new Date(parsedFrontmatter.date)
+        : undefined;
+    const excerpt = parsedFrontmatter.excerpt ?? parsedFrontmatter.summary;
 
-  const tags = rawTags.map((tag: string) => ({
-    slug: cleanSlug(tag),
-    title: tag,
-  }));
+    items.push({
+      id,
+      slug,
+      type,
+      permalink: getPermalink(slug, type),
+      title: parsedFrontmatter.title,
+      publishDate,
+      updateDate,
+      draft: parsedFrontmatter.draft,
+      public: parsedFrontmatter.public,
+      excerpt,
+      body,
+      // `content` would be rendered by Astro on the page, not here.
+      readingTime: calculateReadingTime(body),
+      category: parsedFrontmatter.category
+        ? { slug: cleanSlug(parsedFrontmatter.category), title: parsedFrontmatter.category }
+        : undefined,
+      tags: (parsedFrontmatter.tags || []).map((tag: string) => ({
+        slug: cleanSlug(tag),
+        title: tag,
+      })),
+      author: parsedFrontmatter.author,
+      image: parsedFrontmatter.image,
+      metadata: parsedFrontmatter.metadata,
+      raw: { frontmatter, body },
+    });
+  }
+  return items;
+}
 
-  // 判断类型
-  const type: ContentType = id.startsWith('Project/') ? 'project' : 'post';
-
-  const permalink = getPermalink(slug, 'post');
-
-  return {
-    id,
-    slug,
-    type,
-    permalink,
-    title: title ?? id,
-    publishDate,
-    updateDate,
-    draft,
-    public: isPublic,
-    excerpt: excerpt ?? summary,
-    body,
-    content: Content,
-    readingTime: remarkPluginFrontmatter?.readingTime,
-    category,
-    tags,
-    author,
-    image,
-    raw: post,
-  };
-};
-
-/**
- * 将 WebDAV 文章规范化为 ContentItem
- */
 const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
   const {
     publishDate: rawPublishDate,
     updateDate: rawUpdateDate,
     date,
     title,
-    excerpt,
+    excerpt: rawExcerpt,
     summary,
     image,
     tags: rawTags = [],
     category: rawCategory,
     author,
-    draft = false,
+    draft = true,
     public: isPublic = true,
+    metadata,
   } = post.data;
 
   const slug = cleanSlug(post.slug);
-  const publishDate = new Date(rawPublishDate ?? date ?? new Date());
-  const updateDate = rawUpdateDate ? new Date(rawUpdateDate) : undefined;
+  const publishDate = new Date(rawPublishDate ?? new Date());
+  const updateDate = rawUpdateDate ? new Date(rawUpdateDate) : date ? new Date(date) : undefined;
+  const excerpt = rawExcerpt ?? summary;
 
-  const category = rawCategory
-    ? {
-        slug: cleanSlug(rawCategory),
-        title: rawCategory,
-      }
-    : undefined;
-
+  const category = rawCategory ? { slug: cleanSlug(rawCategory), title: rawCategory } : undefined;
   const tags = rawTags.map((tag: string) => ({
     slug: cleanSlug(tag),
     title: tag,
@@ -170,15 +148,8 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
 
   const parsedContent = await parseMarkdownToHTML(post.body, post.id);
   const readingTime = calculateReadingTime(post.body);
-
-  // 判断类型
-  const projectsPath = getWebDAVClient().projectsPath;
-  const type: ContentType =
-    post.id.startsWith('Project/') || post.id.startsWith(projectsPath + '/') || post.id.includes(projectsPath + '/')
-      ? 'project'
-      : 'post';
-
-  const permalink = getPermalink(slug, 'post');
+  const type: ContentType = post.collection === 'projects' ? 'project' : 'post';
+  const permalink = getPermalink(slug, type);
 
   return {
     id: post.id,
@@ -190,7 +161,7 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
     updateDate,
     draft,
     public: isPublic,
-    excerpt: excerpt ?? summary,
+    excerpt,
     body: post.body,
     content: parsedContent,
     readingTime,
@@ -198,34 +169,17 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
     tags,
     author,
     image,
+    metadata,
     raw: post,
   };
 };
 
-// 3. 数据加载器
-// =================================================================================================
-
-/**
- * 从所有来源（本地+WebDAV）加载文章和项目
- */
 async function loadPostsAndProjects(): Promise<ContentItem[]> {
   let allContent: ContentItem[] = [];
 
-  // 从本地 Content Collections 加载
-  try {
-    const collections = await Promise.all([
-      getCollection('post'),
-      getCollection('notes'),
-      getCollection('local-notes'),
-    ]).then((collections) => collections.flat());
+  const localContent = await loadLocalContent();
+  allContent.push(...localContent);
 
-    const normalizedItems = await Promise.all(collections.map(normalizeLocalPost));
-    allContent.push(...normalizedItems);
-  } catch (error) {
-    console.warn('Failed to load content from local collections:', error);
-  }
-
-  // 如果启用了 WebDAV，从 WebDAV 加载
   if (isWebDAVEnabled()) {
     try {
       const webdavClient = getWebDAVClient();
@@ -237,14 +191,13 @@ async function loadPostsAndProjects(): Promise<ContentItem[]> {
     }
   }
 
-  // 去重和排序
-  const uniqueContent = Array.from(new Map(allContent.map((item) => [item.id, item])).values());
+  // 确保所有内容都有有效的 ID，然后去重
+  const validContent = allContent.filter((item) => item && item.id);
+  const uniqueContent = Array.from(new Map(validContent.map((item) => [item.id, item])).values());
+
   return uniqueContent.sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 }
 
-/**
- * 将 WebDAV Memo 规范化为 ContentItem
- */
 const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
   return {
     id: memo.id,
@@ -260,14 +213,10 @@ const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
   };
 };
 
-/**
- * 从 WebDAV 加载闪念
- */
 async function loadMemos(): Promise<ContentItem[]> {
   if (!isWebDAVEnabled()) {
     return [];
   }
-
   try {
     const webdavClient = getWebDAVClient();
     const memos = await webdavClient.getAllMemos();
@@ -278,27 +227,15 @@ async function loadMemos(): Promise<ContentItem[]> {
   }
 }
 
-// 4. 核心获取函数和缓存
-// =================================================================================================
-
 let _contentCache: ContentItem[] | undefined;
 let _cacheTimestamp: number = 0;
-const CACHE_DURATION = 1000 * 60 * 5; // 5 分钟缓存
+const CACHE_DURATION = 1000 * 60 * 5;
 
-/**
- * 清除内容缓存
- */
 export function clearContentCache(): void {
   _contentCache = undefined;
   _cacheTimestamp = 0;
 }
 
-/**
- * 统一的内容获取函数
- * @param types 要获取的内容类型数组
- * @param forceRefresh 是否强制刷新缓存
- * @returns 内容项数组
- */
 export async function fetchContent(
   types: (ContentType | 'all')[] = ['all'],
   forceRefresh: boolean = false
