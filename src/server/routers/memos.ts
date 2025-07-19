@@ -51,6 +51,11 @@ const UploadAttachmentSchema = z.object({
   isTemporary: z.boolean().optional().default(true), // 默认为临时文件
 });
 
+const GetMemosSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
 /**
  * Memos 相关的 tRPC 路由
  */
@@ -76,6 +81,61 @@ export const memosRouter = createTRPCRouter({
         attachments: memo.raw?.attachments || [],
         tags: memo.tags?.map((t) => t.title) || [],
       }));
+    } catch (error) {
+      console.error('Failed to get memos:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to get memos',
+      });
+    }
+  }),
+
+  /**
+   * 获取分页 Memos（支持无限滚动）
+   */
+  getMemos: publicProcedure.input(GetMemosSchema).query(async ({ input, ctx }) => {
+    try {
+      const { page, limit } = input;
+      const offset = (page - 1) * limit;
+
+      const allMemos = await fetchContent(['memo']);
+      // 如果不是管理员，只返回公开的 Memo
+      const filteredMemos = ctx.isAdmin ? allMemos : allMemos.filter((memo) => memo.public !== false);
+
+      // 按创建时间倒序排序（最新的在前面）
+      const sortedMemos = filteredMemos.sort((a, b) => {
+        const dateA = a.publishDate || new Date(0);
+        const dateB = b.publishDate || new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      // 分页
+      const paginatedMemos = sortedMemos.slice(offset, offset + limit);
+      const totalMemos = sortedMemos.length;
+      const totalPages = Math.ceil(totalMemos / limit);
+      const hasMore = page < totalPages;
+
+      return {
+        memos: paginatedMemos.map((memo) => ({
+          id: memo.id,
+          slug: memo.slug,
+          title: memo.title,
+          content: memo.body,
+          createdAt: memo.publishDate.toISOString(),
+          updatedAt: memo.updateDate?.toISOString() || memo.publishDate.toISOString(),
+          data: memo.raw?.data || {},
+          isPublic: memo.public !== false, // 默认为 true
+          attachments: memo.raw?.attachments || [],
+          tags: memo.tags?.map((t) => t.title) || [],
+        })),
+        pagination: {
+          page,
+          limit,
+          total: totalMemos,
+          totalPages,
+          hasMore,
+        },
+      };
     } catch (error) {
       console.error('Failed to get memos:', error);
       throw new TRPCError({

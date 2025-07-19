@@ -45,7 +45,8 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
       setIsPreview(false);
       setAttachments([]);
       // 使用 React Query 的 invalidation 来刷新数据
-      utils.memos.getAll.invalidate();
+      utils.memos.getMemos.invalidate();
+      utils.memos.getAll.invalidate(); // 保持向后兼容
     },
     onError: (error) => {
       if (error.message.includes('WebDAV is not enabled')) {

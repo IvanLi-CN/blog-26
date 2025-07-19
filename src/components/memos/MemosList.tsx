@@ -1,43 +1,18 @@
-import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
 import { type Attachment, AttachmentGrid } from './AttachmentGrid';
+import { useInfiniteScroll, useMemos } from './hooks';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
-
-interface Memo {
-  id: string;
-  slug: string;
-  title?: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  data: Record<string, any>;
-  isPublic: boolean;
-  attachments?: Attachment[];
-  tags?: string[];
-}
 
 interface MemosListProps {
   isAdmin?: boolean;
 }
 
 export function MemosList({ isAdmin = false }: MemosListProps) {
-  const [memos, setMemos] = useState<Memo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 使用新的分页hook
+  const { memos, isLoading, isLoadingMore, error, hasMore, loadMore } = useMemos({ isAdmin });
 
-  // 获取 Memos 数据
-  const { data: memosData, isLoading, error: fetchError } = trpc.memos.getAll.useQuery();
-
-  useEffect(() => {
-    if (memosData) {
-      setMemos(memosData);
-      setLoading(false);
-    }
-    if (fetchError) {
-      setError(fetchError.message);
-      setLoading(false);
-    }
-  }, [memosData, fetchError]);
+  // 启用无限滚动
+  useInfiniteScroll(loadMore, hasMore, isLoadingMore);
 
   // 获取 tRPC 工具
   const utils = trpc.useUtils();
@@ -45,8 +20,8 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
   // 删除 Memo 的 mutation
   const deleteMemoMutation = trpc.memos.delete.useMutation({
     onSuccess: () => {
-      // 使用 React Query 的 invalidation 来刷新数据
-      utils.memos.getAll.invalidate();
+      // 刷新数据
+      utils.memos.getMemos.invalidate();
     },
     onError: (error) => {
       alert(`删除失败: ${error.message}`);
@@ -100,7 +75,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
     });
   };
 
-  if (loading || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="loading loading-spinner loading-lg"></div>
@@ -264,6 +239,23 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
           </div>
         </div>
       ))}
+
+      {/* 加载更多指示器 */}
+      {isLoadingMore && (
+        <div className="flex justify-center items-center py-8">
+          <div className="flex items-center space-x-2 text-base-content/60">
+            <span className="loading loading-spinner loading-sm"></span>
+            <span>加载更多...</span>
+          </div>
+        </div>
+      )}
+
+      {/* 没有更多数据的提示 */}
+      {!hasMore && memos.length > 0 && (
+        <div className="text-center py-8">
+          <div className="text-base-content/40 text-sm">已显示全部 {memos.length} 条闪念</div>
+        </div>
+      )}
     </div>
   );
 }
