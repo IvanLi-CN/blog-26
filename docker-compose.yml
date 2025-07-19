@@ -7,7 +7,7 @@ services:
       - "4321:4321"
     environment:
       # Database
-      - DB_PATH=./sqlite.db
+      - DB_PATH=/app/data/sqlite.db
       
       # OpenAI Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -18,9 +18,11 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       
       # WebDAV Configuration
-      - WEBdav_URL=${WEBdav_URL}
-      - WEBdav_USERNAME=${WEBdav_USERNAME}
-      - WEBdav_PASSWORD=${WEBdav_PASSWORD}
+      - WEBDAV_URL=${WEBDAV_URL}
+      - WEBDAV_USERNAME=${WEBDAV_USERNAME}
+      - WEBDAV_PASSWORD=${WEBDAV_PASSWORD}
+      - WEBDAV_PROJECTS_PATH=${WEBDAV_PROJECTS_PATH}
+      - WEBDAV_EXCLUDE_PATHS=${WEBDAV_EXCLUDE_PATHS}
       - WEBDAV_MEMOS_PATH=${WEBDAV_MEMOS_PATH}
       
       # Model Configuration
@@ -50,7 +52,7 @@ services:
       # Host Configuration
       - HOST=0.0.0.0
     volumes:
-      - ./sqlite.db:/app/sqlite.db
+      - ./data:/app/data
       - ./drizzle:/app/drizzle
     restart: unless-stopped
     depends_on:

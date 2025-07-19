@@ -43,7 +43,10 @@ export async function parseMarkdownToHTML(markdown: string, articlePath?: string
     .use(responsiveTablesRehypePlugin)
     .use(lazyImagesRehypePlugin)
     .use(webdavImagesRehypePlugin)
-    .use(rehypeKatex)
+    .use(rehypeKatex, {
+      strict: 'ignore', // 忽略严格模式警告
+      throwOnError: false, // 遇到错误时不抛出异常
+    } as any)
     .use(rehypeMermaid, {
       strategy: 'img-svg',
       dark: true,

@@ -103,7 +103,13 @@ export default defineConfig({
       responsiveTablesRehypePlugin,
       lazyImagesRehypePlugin,
       webdavImagesRehypePlugin,
-      rehypeKatex,
+      [
+        rehypeKatex,
+        {
+          strict: 'ignore', // 忽略严格模式警告
+          throwOnError: false, // 遇到错误时不抛出异常
+        } as any,
+      ],
       [
         rehypeMermaid,
         {
