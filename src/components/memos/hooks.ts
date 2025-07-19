@@ -1,15 +1,31 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
 
-// 使用 tRPC 推导的类型
-type MemoData = Awaited<ReturnType<typeof import('~/server/routers/memos').memosRouter.getMemos.query>>;
-type Memo = MemoData['memos'][0];
+// 定义Memo类型
+interface Memo {
+  id: string;
+  slug: string;
+  title?: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  data: Record<string, any>;
+  isPublic: boolean;
+  attachments?: Array<{
+    filename: string;
+    path: string;
+    size?: number;
+    isImage: boolean;
+  }>;
+  tags?: string[];
+}
 
 interface UseMemosProps {
   isAdmin?: boolean;
 }
 
 export function useMemos({ isAdmin = false }: UseMemosProps = {}) {
+  // Note: isAdmin is currently not used but kept for future admin-specific features
   const [allMemos, setAllMemos] = useState<Memo[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);

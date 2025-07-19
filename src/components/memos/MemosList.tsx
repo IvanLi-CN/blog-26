@@ -1,5 +1,5 @@
 import { trpc } from '~/lib/trpc-client';
-import { type Attachment, AttachmentGrid } from './AttachmentGrid';
+import { AttachmentGrid } from './AttachmentGrid';
 import { useInfiniteScroll, useMemos } from './hooks';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
@@ -220,7 +220,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                 {/* 标签显示 */}
                 {memo.tags && memo.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-3">
-                    {memo.tags.map((tag, index) => (
+                    {memo.tags.map((tag: string, index: number) => (
                       <span key={index} className="badge badge-outline badge-sm">
                         #{tag}
                       </span>
