@@ -5,19 +5,42 @@ WORKDIR /app
 COPY ./package.json ./package.json
 COPY ./bun.lockb ./bun.lockb
 
-RUN bun install --frozen --no-cache && \
-  bunx playwright install --with-deps && \
-  apt-get update && \
-  apt-get install -y curl && \
+# Install system dependencies for Chromium (minimal set)
+RUN apt-get update && \
+  apt-get install -y \
+  curl \
+  ca-certificates \
+  libnss3 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libxss1 \
+  libgconf-2-4 \
+  libxcomposite1 \
+  libxrandr2 \
+  libasound2 \
+  libpangocairo-1.0-0 \
+  libgtk-3-0 && \
   rm -rf /var/lib/apt/lists/*
 
-COPY ./entrypoint.sh ./entrypoint.sh
-COPY ./test-config.ts ./test-config.ts
-COPY ./drizzle ./drizzle
-COPY ./scripts ./scripts
-COPY ./src/lib/config.ts ./src/lib/config.ts
-COPY ./dist/server ./dist/server
-COPY ./dist/client ./dist/client
+# Install Node.js dependencies (including playwright for runtime Mermaid rendering)
+RUN bun install --frozen --no-cache
+
+# Install Playwright with non-interactive settings
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Install Playwright browsers with non-interactive flags and timeout
+RUN timeout 300 bunx playwright install chromium --with-deps --force || \
+  (echo "Retrying without deps..." && timeout 180 bunx playwright install chromium --force)
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN bun run build
 
 # Set default environment variables
 ENV HOST=${HOST:-0.0.0.0}

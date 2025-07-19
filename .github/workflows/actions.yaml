@@ -37,59 +37,13 @@ jobs:
       - run: bun install
       - run: bun run check
 
-  build:
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        bun-version:
-          - '1.2.13'
-    steps:
-      - name: Git Setup
-        run: |
-          mkdir -p ~/.ssh
-          echo 'Host git.ivanli.cc ' >> ~/.ssh/config
-          echo '    HostName git.ivanli.cc' >> ~/.ssh/config
-          echo '    Port 7018' >> ~/.ssh/config
-          cat  ~/.ssh/config
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          ssh-key: ${{ secrets.SSH_KEY }}
-          ssh-known-hosts: '[git.ivanli.cc]:7018 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMiGxrZtYUwNcqesZDeJMnTkyNze4Ds7ms9Xu6rmUbCc'
-          ssh-user: gitea
-      - name: Use Bun.js v${{ matrix.bun-version }}
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ matrix.bun-version }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-${{ matrix.bun-version }}-bun-${{ hashFiles('**/bun.lockb') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.bun-version }}-bun-
-      - run: bun install
-      - name: Install Playwright Browsers
-        run: bunx playwright install --with-deps
-      - run: bun run build
-        env:
-          PUBLIC_LUOSIMAO_SITE_KEY: ${{ secrets.PUBLIC_LUOSIMAO_SITE_KEY }}
-      - uses: christopherhx/gitea-upload-artifact@v4
-        with:
-          name: web-dist
-          path: dist/
-
   docker:
     runs-on: ubuntu-22.04
-    needs: build
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
-      - uses: christopherhx/gitea-download-artifact@v4
-        with:
-          name: web-dist
-          path: dist/
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3

@@ -4,6 +4,8 @@ set -e
 echo "🔍 Validating configuration..."
 bun test-config.ts
 
+# Playwright browsers are pre-installed during Docker build
+
 echo "🗄️ Running database migrations..."
 bun run migrate
 
