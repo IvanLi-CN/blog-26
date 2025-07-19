@@ -1,6 +1,6 @@
 ---
 import "@fontsource-variable/inter";
-import "highlight.js/styles/github-dark.css";
+import "highlight.js/styles/github.css";
 
 // 'DM Sans'
 // Nunito
@@ -22,9 +22,9 @@ import "highlight.js/styles/github-dark.css";
 
 <style is:inline>
   :root {
-    --aw-font-sans: 'Inter Variable';
-    --aw-font-serif: 'Inter Variable';
-    --aw-font-heading: 'Inter Variable';
+    --aw-font-sans: "Inter Variable";
+    --aw-font-serif: "Inter Variable";
+    --aw-font-heading: "Inter Variable";
 
     --aw-color-primary: rgb(1 97 239);
     --aw-color-secondary: rgb(1 84 207);
@@ -43,9 +43,9 @@ import "highlight.js/styles/github-dark.css";
   }
 
   .dark {
-    --aw-font-sans: 'Inter Variable';
-    --aw-font-serif: 'Inter Variable';
-    --aw-font-heading: 'Inter Variable';
+    --aw-font-sans: "Inter Variable";
+    --aw-font-serif: "Inter Variable";
+    --aw-font-heading: "Inter Variable";
 
     --aw-color-primary: rgb(1 97 239);
     --aw-color-secondary: rgb(1 84 207);
@@ -60,5 +60,172 @@ import "highlight.js/styles/github-dark.css";
       background-color: black;
       color: snow;
     }
+  }
+
+  /* 深色主题下的代码块样式 - 使用更高优先级 */
+  .dark pre,
+  .dark pre code,
+  .dark .hljs,
+  .dark pre.hljs {
+    background: #161b22 !important;
+    color: #e6edf3 !important;
+    border: none !important;
+  }
+
+  /* 行内代码在深色主题下的样式 */
+  .dark :not(pre) > code {
+    background: rgba(110, 118, 129, 0.4) !important;
+    color: #e6edf3 !important;
+    padding: 0.2em 0.4em !important;
+    border-radius: 3px !important;
+  }
+
+  /* 深色主题下的语法高亮 */
+  .dark .hljs-keyword,
+  .dark .hljs-selector-tag,
+  .dark .hljs-literal,
+  .dark .hljs-section,
+  .dark .hljs-link {
+    color: #ff7b72 !important;
+  }
+
+  .dark .hljs-string,
+  .dark .hljs-title,
+  .dark .hljs-name,
+  .dark .hljs-type,
+  .dark .hljs-attribute,
+  .dark .hljs-symbol,
+  .dark .hljs-bullet,
+  .dark .hljs-addition,
+  .dark .hljs-variable,
+  .dark .hljs-template-tag,
+  .dark .hljs-template-variable {
+    color: #a5d6ff !important;
+  }
+
+  .dark .hljs-comment,
+  .dark .hljs-quote,
+  .dark .hljs-deletion,
+  .dark .hljs-meta {
+    color: #8b949e !important;
+  }
+
+  .dark .hljs-number,
+  .dark .hljs-regexp {
+    color: #79c0ff !important;
+  }
+
+  .dark .hljs-function,
+  .dark .hljs-class,
+  .dark .hljs-title.class_ {
+    color: #d2a8ff !important;
+  }
+
+  .dark .hljs-built_in,
+  .dark .hljs-doctag {
+    color: #ffa657 !important;
+  }
+
+  /* 强制覆盖所有可能的代码块背景 */
+  .dark pre[class*="language-"],
+  .dark code[class*="language-"],
+  .dark .hljs-*,
+  .dark [class*="hljs"] {
+    background: #161b22 !important;
+  }
+
+  /* 确保 markdown 预览组件中的代码块样式 */
+  .dark .markdown-preview pre,
+  .dark .markdown-preview .hljs,
+  .dark .markdown-preview code {
+    background: #161b22 !important;
+    color: #e6edf3 !important;
+  }
+
+  /* 自定义代码块和行内代码样式 */
+  .code-block {
+    margin: 1rem 0;
+    border-radius: 6px;
+    overflow-x: auto;
+    background: #f6f8fa;
+  }
+
+  .dark .code-block {
+    background: #161b22 !important;
+  }
+
+  .inline-code {
+    background: rgba(175, 184, 193, 0.2);
+    color: #24292f;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.875em;
+  }
+
+  .dark .inline-code {
+    background: rgba(110, 118, 129, 0.4) !important;
+    color: #e6edf3 !important;
+  }
+
+  /* 表格样式 */
+  .markdown-table {
+    min-width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+  }
+
+  .dark .markdown-table {
+    border-color: #4b5563 !important;
+    background: #1f2937 !important;
+  }
+
+  .markdown-table-head {
+    background: #f9fafb;
+  }
+
+  .dark .markdown-table-head {
+    background: #374151 !important;
+  }
+
+  .markdown-table-body {
+    background: #ffffff;
+  }
+
+  .dark .markdown-table-body {
+    background: #1f2937 !important;
+  }
+
+  .markdown-table-row {
+    border-bottom: 1px solid #d1d5db;
+  }
+
+  .dark .markdown-table-row {
+    border-bottom-color: #4b5563 !important;
+  }
+
+  .markdown-table-header {
+    border: 1px solid #d1d5db;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .dark .markdown-table-header {
+    border-color: #4b5563 !important;
+    color: #f9fafb !important;
+  }
+
+  .markdown-table-cell {
+    border: 1px solid #d1d5db;
+    padding: 0.75rem 1rem;
+    color: #374151;
+  }
+
+  .dark .markdown-table-cell {
+    border-color: #4b5563 !important;
+    color: #d1d5db !important;
   }
 </style>

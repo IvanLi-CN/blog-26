@@ -2,7 +2,8 @@ import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-import 'highlight.js/styles/github.css';
+
+// 不需要重复导入样式，因为已经在 CustomStyles.astro 中全局导入了
 
 interface MarkdownPreviewProps {
   content: string;
