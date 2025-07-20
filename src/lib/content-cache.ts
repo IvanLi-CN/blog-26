@@ -6,7 +6,7 @@
 
 import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { type ContentItem, fetchContent } from './content';
+import { type ContentItem } from './content';
 import { db } from './db';
 import { type Memo, memos, type NewMemo, type NewPost, type Post, posts } from './schema';
 
@@ -223,8 +223,9 @@ async function refreshPostsCache(): Promise<void> {
       console.log(`📋 获取到 ${webdavPostsIndex.length} 个 WebDAV 文章索引`);
     }
 
-    // 获取本地内容
-    const localContent = await fetchContent(['post', 'project'], false);
+    // 获取本地内容（从 content collections）
+    const { loadPostsAndProjects } = await import('./content');
+    const localContent = await loadPostsAndProjects();
     console.log(`📋 获取到 ${localContent.length} 个本地文章`);
 
     // 获取现有缓存记录
@@ -358,7 +359,7 @@ async function refreshPostsCache(): Promise<void> {
 
     // 删除不再存在的记录（检查本地和 WebDAV 索引）
     const allValidIds = new Set([
-      ...localContent.map((item) => item.id),
+      ...localContent.map((item: ContentItem) => item.id),
       ...webdavPostsIndex.map((fileIndex) => fileIndex.path),
     ]);
 

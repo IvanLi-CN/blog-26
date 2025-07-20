@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { fetchContent } from '~/lib/content';
+import { getCachedMemos, refreshContentCache } from '~/lib/content-cache';
 import { getWebDAVClient, isWebDAVEnabled } from '~/lib/webdav';
 import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
 
@@ -65,21 +65,23 @@ export const memosRouter = createTRPCRouter({
    */
   getAll: publicProcedure.query(async ({ ctx }) => {
     try {
-      const allMemos = await fetchContent(['memo']);
+      const allMemos = await getCachedMemos();
       // 如果不是管理员，只返回公开的 Memo
       const filteredMemos = ctx.isAdmin ? allMemos : allMemos.filter((memo) => memo.public !== false);
 
       return filteredMemos.map((memo) => ({
         id: memo.id,
         slug: memo.slug,
-        title: memo.title,
+        title: memo.title || '无标题 Memo',
         content: memo.body,
-        createdAt: memo.publishDate.toISOString(),
-        updatedAt: memo.updateDate?.toISOString() || memo.publishDate.toISOString(),
-        data: memo.raw?.data || {},
-        isPublic: memo.public !== false, // 默认为 true
-        attachments: memo.raw?.attachments || [],
-        tags: memo.tags?.map((t) => t.title) || [],
+        createdAt: new Date(memo.publishDate * 1000).toISOString(),
+        updatedAt: memo.updateDate
+          ? new Date(memo.updateDate * 1000).toISOString()
+          : new Date(memo.publishDate * 1000).toISOString(),
+        data: {}, // 数据库缓存中没有存储完整的 frontmatter
+        isPublic: memo.public,
+        attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
+        tags: memo.tags ? JSON.parse(memo.tags) : [],
       }));
     } catch (error) {
       console.error('Failed to get memos:', error);
@@ -98,16 +100,14 @@ export const memosRouter = createTRPCRouter({
       const { page, limit } = input;
       const offset = (page - 1) * limit;
 
-      const allMemos = await fetchContent(['memo']);
+      // 使用数据库缓存而不是内存缓存，确保数据一致性
+      const allMemos = await getCachedMemos();
+
       // 如果不是管理员，只返回公开的 Memo
       const filteredMemos = ctx.isAdmin ? allMemos : allMemos.filter((memo) => memo.public !== false);
 
       // 按创建时间倒序排序（最新的在前面）
-      const sortedMemos = filteredMemos.sort((a, b) => {
-        const dateA = a.publishDate || new Date(0);
-        const dateB = b.publishDate || new Date(0);
-        return dateB.getTime() - dateA.getTime();
-      });
+      const sortedMemos = filteredMemos.sort((a, b) => b.publishDate - a.publishDate);
 
       // 分页
       const paginatedMemos = sortedMemos.slice(offset, offset + limit);
@@ -119,14 +119,16 @@ export const memosRouter = createTRPCRouter({
         memos: paginatedMemos.map((memo) => ({
           id: memo.id,
           slug: memo.slug,
-          title: memo.title,
+          title: memo.title || '无标题 Memo',
           content: memo.body,
-          createdAt: memo.publishDate.toISOString(),
-          updatedAt: memo.updateDate?.toISOString() || memo.publishDate.toISOString(),
-          data: memo.raw?.data || {},
-          isPublic: memo.public !== false, // 默认为 true
-          attachments: memo.raw?.attachments || [],
-          tags: memo.tags?.map((t) => t.title) || [],
+          createdAt: new Date(memo.publishDate * 1000).toISOString(),
+          updatedAt: memo.updateDate
+            ? new Date(memo.updateDate * 1000).toISOString()
+            : new Date(memo.publishDate * 1000).toISOString(),
+          data: {}, // 数据库缓存中没有存储完整的 frontmatter
+          isPublic: memo.public,
+          attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
+          tags: memo.tags ? JSON.parse(memo.tags) : [],
         })),
         pagination: {
           page,
@@ -159,6 +161,10 @@ export const memosRouter = createTRPCRouter({
     try {
       const webdavClient = getWebDAVClient();
       const memo = await webdavClient.createMemo(input.content, input.isPublic, input.attachments);
+
+      // 刷新数据库缓存，确保新创建的闪念立即添加到数据库
+      await refreshContentCache();
+      console.log('✅ 创建闪念后已刷新数据库缓存');
 
       return {
         id: memo.id,
@@ -195,6 +201,10 @@ export const memosRouter = createTRPCRouter({
       const webdavClient = getWebDAVClient();
       const memo = await webdavClient.updateMemo(input.id, input.content);
 
+      // 刷新数据库缓存，确保更新的闪念立即在数据库中更新
+      await refreshContentCache();
+      console.log('✅ 更新闪念后已刷新数据库缓存');
+
       return {
         id: memo.id,
         slug: memo.slug,
@@ -227,6 +237,10 @@ export const memosRouter = createTRPCRouter({
     try {
       const webdavClient = getWebDAVClient();
       await webdavClient.deleteMemo(input.id);
+
+      // 刷新数据库缓存，确保删除的闪念立即从数据库中移除
+      await refreshContentCache();
+      console.log('✅ 已刷新数据库缓存');
 
       return { success: true };
     } catch (error) {

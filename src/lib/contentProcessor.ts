@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { ContentItem } from '~/lib/content';
-import { fetchContent } from '~/lib/content';
+import { getCachedMemos, getCachedPosts } from '~/lib/content-cache';
 import { getFileRecord, upsertFileRecord } from './db';
 import type { NewVectorizedFile } from './schema';
 
@@ -176,8 +176,41 @@ export async function processAllContent(
   const filesToProcess: ProcessedContent[] = [];
   const allFilepaths = new Set<string>();
 
-  // 使用新的统一方法获取所有内容
-  const allContent = await fetchContent(['all'], true); // 强制刷新缓存
+  // 从数据库缓存获取所有内容
+  const [cachedPosts, cachedMemos] = await Promise.all([getCachedPosts(), getCachedMemos()]);
+
+  // 转换为 ContentItem 格式
+  const allContent: ContentItem[] = [
+    ...cachedPosts.map((post) => ({
+      id: post.id,
+      slug: post.slug,
+      type: post.type as ContentItem['type'],
+      title: post.title,
+      excerpt: post.excerpt || '',
+      body: post.body,
+      publishDate: new Date(post.publishDate * 1000),
+      updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
+      draft: post.draft,
+      public: post.public,
+      tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
+      raw: { data: post.metadata ? JSON.parse(post.metadata) : {} },
+    })),
+    ...cachedMemos.map((memo) => ({
+      id: memo.id,
+      slug: memo.slug,
+      type: 'memo' as const,
+      title: memo.title || '无标题 Memo',
+      excerpt: '',
+      body: memo.body,
+      publishDate: new Date(memo.publishDate * 1000),
+      updateDate: memo.updateDate ? new Date(memo.updateDate * 1000) : undefined,
+      draft: false,
+      public: memo.public,
+      tags: memo.tags ? JSON.parse(memo.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
+      raw: { data: {} },
+    })),
+  ];
+
   onProgress?.(`共找到 ${allContent.length} 篇内容。`);
 
   for (const item of allContent) {

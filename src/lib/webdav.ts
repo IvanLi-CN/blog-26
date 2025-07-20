@@ -661,8 +661,15 @@ export class WebDAVClient {
     });
 
     if (!response.ok) {
+      // 如果是 404 错误，说明文件已经不存在，视为删除成功
+      if (response.status === 404) {
+        console.log(`✅ 文件不存在 (404)，视为删除成功: ${filePath}`);
+        return;
+      }
       throw new Error(`Failed to delete file ${filePath}: ${response.status} ${response.statusText}`);
     }
+
+    console.log(`✅ 文件删除成功: ${filePath}`);
   }
 
   /**
@@ -842,6 +849,22 @@ export class WebDAVClient {
    * 删除 Memo
    */
   async deleteMemo(id: string): Promise<void> {
+    console.log(`🗑️ 删除闪念: ${id}`);
+
+    // 检查文件是否存在
+    try {
+      const allFiles = await this.getFileIndex();
+      const memoFiles = allFiles.filter((file) => file.contentType === 'memo');
+
+      const targetFile = memoFiles.find((f) => f.path === id);
+      if (!targetFile) {
+        console.log(`⚠️ 闪念文件不存在，视为删除成功: ${id}`);
+        return;
+      }
+    } catch (error) {
+      console.warn(`检查闪念文件时出错，仍然尝试删除:`, error.message);
+    }
+
     await this.deleteFile(id);
   }
 

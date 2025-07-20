@@ -173,7 +173,7 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
   };
 };
 
-async function loadPostsAndProjects(): Promise<ContentItem[]> {
+export async function loadPostsAndProjects(): Promise<ContentItem[]> {
   let allContent: ContentItem[] = [];
 
   const localContent = await loadLocalContent();
@@ -226,31 +226,20 @@ async function loadMemos(): Promise<ContentItem[]> {
   }
 }
 
-let _contentCache: ContentItem[] | undefined;
-let _cacheTimestamp: number = 0;
-const CACHE_DURATION = 1000 * 60 * 5;
+/**
+ * 直接获取内容，不使用缓存
+ * @deprecated 建议使用数据库缓存系统 (getCachedPosts, getCachedMemos)
+ * 仅用于向量化等需要实时数据的场景
+ */
+export async function fetchContent(types: (ContentType | 'all')[] = ['all']): Promise<ContentItem[]> {
+  console.warn('fetchContent() is deprecated, consider using database cache (getCachedPosts, getCachedMemos)');
 
-export function clearContentCache(): void {
-  _contentCache = undefined;
-  _cacheTimestamp = 0;
-}
-
-export async function fetchContent(
-  types: (ContentType | 'all')[] = ['all'],
-  forceRefresh: boolean = false
-): Promise<ContentItem[]> {
-  const now = Date.now();
-  const isCacheExpired = now - _cacheTimestamp > CACHE_DURATION;
-
-  if (forceRefresh || !_contentCache || isCacheExpired) {
-    const [postsAndProjects, memos] = await Promise.all([loadPostsAndProjects(), loadMemos()]);
-    _contentCache = [...postsAndProjects, ...memos].sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
-    _cacheTimestamp = now;
-  }
+  const [postsAndProjects, memos] = await Promise.all([loadPostsAndProjects(), loadMemos()]);
+  const allContent = [...postsAndProjects, ...memos].sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 
   if (types.includes('all')) {
-    return _contentCache;
+    return allContent;
   }
 
-  return _contentCache.filter((item) => types.includes(item.type));
+  return allContent.filter((item) => types.includes(item.type));
 }

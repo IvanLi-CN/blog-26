@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { OpenAI, OpenAIEmbedding } from '@llamaindex/openai';
 import { Document, Settings, SimpleNodeParser } from 'llamaindex';
-import { fetchContent } from './content';
+import { getCachedMemos, getCachedPosts } from './content-cache';
 import { processAllContent } from './contentProcessor';
 import type { DBRecord } from './db';
 import { deleteFileRecord, getAllFileRecords, initializeDB, recordVectorizationError, upsertFileRecord } from './db';
@@ -241,9 +241,15 @@ export async function processAndVectorizeBatchContent(
 
   const embeddingModelName = process.env.EMBEDDING_MODEL_NAME ?? 'text-embedding-3-small';
 
-  // 获取指定slug的文章
-  const allContent = await fetchContent(['all'], true);
-  const targetContent = allContent.filter((item) => slugs.includes(item.slug));
+  // 从数据库缓存获取指定slug的文章
+  const [cachedPosts, cachedMemos] = await Promise.all([getCachedPosts(), getCachedMemos()]);
+
+  const allContent = [
+    ...cachedPosts.filter((post) => slugs.includes(post.slug)),
+    ...cachedMemos.filter((memo) => slugs.includes(memo.slug)),
+  ];
+
+  const targetContent = allContent;
 
   if (targetContent.length === 0) {
     const message = '未找到指定的文章';
@@ -313,7 +319,7 @@ export async function processAndVectorizeBatchContent(
         filepath: item.id,
         slug: item.slug,
         contentHash: require('crypto').createHash('md5').update(item.body).digest('hex'),
-        lastModifiedTime: item.updateDate?.getTime() || item.publishDate.getTime(),
+        lastModifiedTime: item.updateDate ? item.updateDate * 1000 : item.publishDate * 1000,
         contentUpdatedAt: Date.now(),
         indexedAt: Date.now(),
         modelName: embeddingModelName,

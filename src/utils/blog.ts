@@ -1,12 +1,12 @@
 import { APP_BLOG } from 'astrowind:config';
 import type { PaginateFunction } from 'astro';
-import { clearContentCache, fetchContent } from '~/lib/content';
+import { getCachedPosts, refreshContentCache } from '~/lib/content-cache';
 import type { Post, Taxonomy } from '~/types';
-import { BLOG_BASE, CATEGORY_BASE, TAG_BASE } from './permalinks';
+import { BLOG_BASE, CATEGORY_BASE, getPermalink, TAG_BASE } from './permalinks';
 
-/** 清除文章缓存 */
-export const clearPostsCache = (): void => {
-  clearContentCache();
+/** 刷新文章缓存 */
+export const clearPostsCache = async (): Promise<void> => {
+  await refreshContentCache();
 };
 
 /** */
@@ -24,10 +24,29 @@ export const blogTagRobots = APP_BLOG.tag.robots;
 
 export const blogPostsPerPage = APP_BLOG?.postsPerPage;
 
-/** */
+/** 获取所有文章 */
 export const fetchPosts = async (): Promise<Array<Post>> => {
-  const content = await fetchContent(['post', 'project']);
-  return content.filter((item) => !item.draft || process.env.ADMIN_MODE === 'true') as Post[];
+  const cachedPosts = await getCachedPosts();
+  return cachedPosts
+    .filter((post) => post.type === 'post' || post.type === 'project')
+    .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
+    .map((post) => ({
+      id: post.id,
+      slug: post.slug,
+      permalink: getPermalink(post.slug, post.type),
+      title: post.title,
+      excerpt: post.excerpt || undefined,
+      body: post.body,
+      publishDate: new Date(post.publishDate * 1000),
+      updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
+      draft: post.draft,
+      public: post.public,
+      category: post.category ? { slug: post.category, title: post.category } : undefined,
+      tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
+      author: post.author || undefined,
+      image: post.image || undefined,
+      metadata: post.metadata ? JSON.parse(post.metadata) : undefined,
+    })) as Post[];
 };
 
 /** */
@@ -73,8 +92,27 @@ export const findLatestPosts = async ({ count }: { count?: number }): Promise<Ar
 
 /** 获取所有项目 */
 export const fetchProjects = async (): Promise<Array<Post>> => {
-  const projects = await fetchContent(['project']);
-  return projects.filter((item) => !item.draft || process.env.ADMIN_MODE === 'true') as Post[];
+  const cachedPosts = await getCachedPosts();
+  return cachedPosts
+    .filter((post) => post.type === 'project')
+    .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
+    .map((post) => ({
+      id: post.id,
+      slug: post.slug,
+      permalink: getPermalink(post.slug, 'project'),
+      title: post.title,
+      excerpt: post.excerpt || undefined,
+      body: post.body,
+      publishDate: new Date(post.publishDate * 1000),
+      updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
+      draft: post.draft,
+      public: post.public,
+      category: post.category ? { slug: post.category, title: post.category } : undefined,
+      tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
+      author: post.author || undefined,
+      image: post.image || undefined,
+      metadata: post.metadata ? JSON.parse(post.metadata) : undefined,
+    })) as Post[];
 };
 
 /** 获取精选项目（用于首页展示） */
