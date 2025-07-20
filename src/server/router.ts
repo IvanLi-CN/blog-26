@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { authRouter } from './routers/auth';
 import { commentsRouter } from './routers/comments';
+import { contentCacheRouter } from './routers/content-cache';
 import { memosRouter } from './routers/memos';
 import { postsRouter } from './routers/posts';
 import { reactionsRouter } from './routers/reactions';
@@ -46,6 +47,9 @@ export const appRouter = createTRPCRouter({
 
   // 向量化相关路由
   vectorization: vectorizationRouter,
+
+  // 内容缓存相关路由
+  contentCache: contentCacheRouter,
 
   // 示例：受保护的路由
   protected: protectedProcedure.input(z.object({ message: z.string() })).query(({ input, ctx }) => {

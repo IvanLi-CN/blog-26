@@ -2,6 +2,7 @@ import { Database } from 'bun:sqlite';
 import path from 'node:path';
 import { eq, isNotNull } from 'drizzle-orm'; // Import isNotNull
 import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { startContentCacheManager } from './content-cache';
 import { type NewVectorizedFile, type VectorizedFile, vectorizedFiles } from './schema';
 
 const DB_PATH = process.env.DB_PATH || './sqlite.db';
@@ -10,6 +11,8 @@ const resolvedDBPath = path.resolve(process.cwd(), DB_PATH);
 export type DBRecord = VectorizedFile; // Use Drizzle's inferred type
 
 export let db: ReturnType<typeof drizzle<Record<string, never>>>;
+
+let contentCacheStarted = false;
 
 export async function initializeDB(): Promise<void> {
   if (db) return; // Already initialized
@@ -20,6 +23,19 @@ export async function initializeDB(): Promise<void> {
     db = drizzle(sqlite);
     console.log('Connected to the SQLite database at', resolvedDBPath);
     console.log('Drizzle ORM initialized.');
+
+    // 启动内容缓存管理器（只启动一次）
+    if (!contentCacheStarted) {
+      contentCacheStarted = true;
+      // 在下一个事件循环中启动，确保数据库完全初始化
+      setImmediate(async () => {
+        try {
+          await startContentCacheManager();
+        } catch (error) {
+          console.error('Failed to start content cache manager:', error);
+        }
+      });
+    }
   } catch (err) {
     console.error('Error initializing database with Drizzle', (err as Error).message);
     throw err;

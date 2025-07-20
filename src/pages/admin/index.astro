@@ -104,6 +104,27 @@ const metadata = {
         </div>
       </div>
 
+      <!-- 缓存管理卡片 -->
+      <div
+        class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"
+      >
+        <div class="card-body">
+          <div class="flex items-center mb-4">
+            <Icon name="tabler:database" class="w-8 h-8 text-success mr-3" />
+            <h2 class="card-title text-xl">缓存管理</h2>
+          </div>
+          <p class="text-muted mb-4">
+            查看和管理内容缓存状态，包括文章和闪念的缓存统计。支持手动刷新缓存以获取最新内容。
+          </p>
+          <div class="card-actions justify-end">
+            <a href="/admin/cache" class="btn btn-success">
+              <Icon name="tabler:refresh" class="w-4 h-4 mr-1" />
+              管理缓存
+            </a>
+          </div>
+        </div>
+      </div>
+
       <!-- 文章管理卡片 -->
       <div
         class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow"

@@ -2,6 +2,58 @@ import { createHash } from 'node:crypto';
 import * as yaml from 'js-yaml';
 import { config } from './config';
 
+// WebDAV 请求配置
+const WEBDAV_RETRY_ATTEMPTS = 3;
+const WEBDAV_RETRY_BASE_DELAY = 1000; // 基础重试延迟 1 秒
+const WEBDAV_RATE_LIMIT_DELAY = 5000; // 429 错误的额外延迟 5 秒
+
+/**
+ * 延迟函数
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 带重试和流控的 HTTP 请求包装函数
+ */
+async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= WEBDAV_RETRY_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      // 如果是 429 错误，进行重试
+      if (response.status === 429) {
+        if (attempt < WEBDAV_RETRY_ATTEMPTS) {
+          const delayMs = WEBDAV_RETRY_BASE_DELAY * attempt + WEBDAV_RATE_LIMIT_DELAY;
+          console.warn(`⏳ WebDAV 速率限制 (429)，第 ${attempt} 次重试，等待 ${delayMs}ms...`);
+          await delay(delayMs);
+          continue;
+        } else {
+          throw new Error(
+            `WebDAV rate limited after ${WEBDAV_RETRY_ATTEMPTS} attempts: ${response.status} ${response.statusText}`
+          );
+        }
+      }
+
+      // 其他错误状态码直接返回，让调用者处理
+      return response;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < WEBDAV_RETRY_ATTEMPTS) {
+        const delayMs = WEBDAV_RETRY_BASE_DELAY * attempt;
+        console.warn(`⏳ WebDAV 请求失败，第 ${attempt} 次重试，等待 ${delayMs}ms...`, error.message);
+        await delay(delayMs);
+      }
+    }
+  }
+
+  throw lastError || new Error('WebDAV request failed after all retries');
+}
+
 export interface WebDAVFile {
   filename: string;
   basename: string;
@@ -9,6 +61,16 @@ export interface WebDAVFile {
   size: number;
   type: 'file' | 'directory';
   etag?: string;
+}
+
+export interface WebDAVFileIndex {
+  path: string;
+  basename: string;
+  lastmod: string;
+  size: number;
+  type: 'file' | 'directory';
+  etag?: string;
+  contentType?: 'post' | 'project' | 'memo' | 'other';
 }
 
 export interface WebDAVPost {
@@ -96,8 +158,10 @@ export class WebDAVClient {
 
   /**
    * 发送 PROPFIND 请求获取文件列表
+   * @param path 路径
+   * @param depth 深度，支持数字或 'infinity'
    */
-  private async propfind(path: string, depth: number | 'Infinity' = 1): Promise<WebDAVFile[]> {
+  private async propfind(path: string, depth: number | 'infinity' = 1): Promise<WebDAVFile[]> {
     // 如果 path 已经是完整的 URL，直接使用；否则拼接基础 URL
     const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
 
@@ -112,7 +176,7 @@ export class WebDAVClient {
   </D:prop>
 </D:propfind>`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       method: 'PROPFIND',
       headers: {
         ...this.getAuthHeaders(),
@@ -126,6 +190,7 @@ export class WebDAVClient {
     }
 
     const xmlText = await response.text();
+
     return this.parseWebDAVResponse(xmlText);
   }
 
@@ -219,11 +284,12 @@ export class WebDAVClient {
 
   /**
    * 获取文件内容
+   * @param filePath 文件路径
    */
-  private async getFileContent(filePath: string): Promise<string> {
+  async getFileContent(filePath: string): Promise<string> {
     const url = `${this.baseUrl}${filePath}`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       method: 'GET',
       headers: {
         Authorization: `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`,
@@ -238,15 +304,22 @@ export class WebDAVClient {
   }
 
   /**
-   * 递归获取所有 Markdown 文件
+   * 获取文件索引（不获取内容）
+   * 使用递归的深度为 1 的 PROPFIND 请求来遍历所有目录
+   * @param maxDepth 最大递归深度，默认为 10
    */
-  private async getAllMarkdownFiles(dirPath: string = ''): Promise<WebDAVFile[]> {
-    const files: WebDAVFile[] = [];
+  async getFileIndex(maxDepth: number = 10): Promise<WebDAVFileIndex[]> {
+    const files: WebDAVFileIndex[] = [];
     const processedPaths = new Set<string>(); // 用于去重
 
-    const processDirectory = async (currentPath: string): Promise<void> => {
+    const processDirectory = async (currentPath: string, currentDepth: number): Promise<void> => {
+      if (currentDepth > maxDepth) {
+        console.warn(`Reached max depth ${maxDepth} at path ${currentPath}`);
+        return;
+      }
+
       try {
-        const items = await this.propfind(currentPath);
+        const items = await this.propfind(currentPath, 1);
 
         for (const item of items) {
           // 跳过空路径、根路径和自引用
@@ -279,9 +352,28 @@ export class WebDAVClient {
 
           if (item.type === 'directory') {
             // 递归处理子目录
-            await processDirectory(item.filename);
+            await processDirectory(item.filename, currentDepth + 1);
           } else if (item.type === 'file' && (item.basename.endsWith('.md') || item.basename.endsWith('.mdx'))) {
-            files.push(item);
+            // 根据路径确定内容类型
+            let contentType: 'post' | 'project' | 'memo' | 'other' = 'other';
+
+            if (this.memosPath && relativePath.startsWith(this.memosPath.replace(/^\//, ''))) {
+              contentType = 'memo';
+            } else if (this.projectsPath && relativePath.startsWith(this.projectsPath.replace(/^\//, ''))) {
+              contentType = 'project';
+            } else {
+              contentType = 'post';
+            }
+
+            files.push({
+              path: item.filename,
+              basename: item.basename,
+              lastmod: item.lastmod,
+              size: item.size,
+              type: item.type,
+              etag: item.etag,
+              contentType,
+            });
           }
         }
       } catch (error) {
@@ -289,9 +381,13 @@ export class WebDAVClient {
       }
     };
 
-    // 初始调用，如果 dirPath 为空，使用根路径
-    const initialPath = dirPath || '/';
-    await processDirectory(initialPath);
+    try {
+      await processDirectory('/', 0);
+    } catch (error) {
+      console.error('Failed to get file index:', error);
+      throw error;
+    }
+
     return files;
   }
 
@@ -343,52 +439,47 @@ export class WebDAVClient {
   }
 
   /**
-   * 获取所有博客文章
+   * 获取所有博客文章（仅返回索引，不获取内容）
+   */
+  async getPostsIndex(): Promise<WebDAVFileIndex[]> {
+    const allFiles = await this.getFileIndex();
+    return allFiles.filter((file) => file.contentType === 'post' || file.contentType === 'project');
+  }
+
+  /**
+   * 根据文件索引获取单个文章内容
+   */
+  async getPostByIndex(fileIndex: WebDAVFileIndex): Promise<WebDAVPost> {
+    const content = await this.getFileContent(fileIndex.path);
+    const { frontmatter, body } = this.parseFrontmatter(content);
+    const slug = this.generateSlug(fileIndex.path, frontmatter);
+
+    const collection: 'posts' | 'projects' = fileIndex.contentType === 'project' ? 'projects' : 'posts';
+
+    return {
+      id: fileIndex.path,
+      slug,
+      data: frontmatter,
+      body,
+      collection,
+    };
+  }
+
+  /**
+   * 获取所有博客文章（包含内容，已废弃，请使用 getPostsIndex + getPostByIndex）
+   * @deprecated 使用 getPostsIndex() 和 getPostByIndex() 代替
    */
   async getAllPosts(): Promise<WebDAVPost[]> {
-    const files = await this.getAllMarkdownFiles('/');
+    console.warn('getAllPosts() is deprecated, use getPostsIndex() and getPostByIndex() instead');
+    const postsIndex = await this.getPostsIndex();
     const posts: WebDAVPost[] = [];
-    const processedSlugs = new Set<string>(); // 用于去重
 
-    for (const file of files) {
+    for (const fileIndex of postsIndex) {
       try {
-        const content = await this.getFileContent(file.filename);
-        const { frontmatter, body } = this.parseFrontmatter(content);
-        const slug = this.generateSlug(file.filename, frontmatter);
-
-        // 检查是否已经处理过相同的 slug
-        if (processedSlugs.has(slug)) {
-          continue;
-        }
-        processedSlugs.add(slug);
-
-        // 确定集合类型
-        let collection: 'posts' | 'projects' = 'posts'; // Default to 'posts'
-        if (this.projectsPath) {
-          // 处理路径匹配，支持有无前导斜杠的情况
-          const normalizedFilename = file.filename.toLowerCase();
-          const normalizedProjectsPath = this.projectsPath.toLowerCase();
-
-          if (
-            normalizedFilename.startsWith(`/${normalizedProjectsPath}/`) ||
-            normalizedFilename.startsWith(`${normalizedProjectsPath}/`)
-          ) {
-            collection = 'projects';
-          }
-        }
-
-        // Memos are handled separately, so we only care about posts and projects here.
-        if (!file.filename.startsWith(this.memosPath)) {
-          posts.push({
-            id: file.filename,
-            slug,
-            data: frontmatter,
-            body,
-            collection,
-          });
-        }
+        const post = await this.getPostByIndex(fileIndex);
+        posts.push(post);
       } catch (error) {
-        console.warn(`Failed to process file ${file.filename}:`, error);
+        console.warn(`Failed to process file ${fileIndex.path}:`, error);
       }
     }
 
@@ -399,11 +490,11 @@ export class WebDAVClient {
    * 获取目录树
    */
   async getDirectoryTree(): Promise<DirectoryTreeNode[]> {
-    const allFiles = await this.getAllMarkdownFiles('/');
+    const allFiles = await this.getFileIndex();
     const root: DirectoryTreeNode = { name: 'root', path: '/', type: 'directory', children: [] };
 
     for (const file of allFiles) {
-      const pathParts = file.filename.split('/').filter((p) => p);
+      const pathParts = file.path.split('/').filter((p: string) => p);
       let currentNode = root;
 
       for (let i = 0; i < pathParts.length; i++) {
@@ -427,29 +518,48 @@ export class WebDAVClient {
   }
 
   /**
-   * 获取所有闪念
+   * 获取所有闪念索引（仅返回索引，不获取内容）
+   */
+  async getMemosIndex(): Promise<WebDAVFileIndex[]> {
+    const allFiles = await this.getFileIndex();
+    return allFiles.filter((file) => file.contentType === 'memo');
+  }
+
+  /**
+   * 根据文件索引获取单个闪念内容
+   */
+  async getMemoByIndex(fileIndex: WebDAVFileIndex): Promise<WebDAVMemo> {
+    const content = await this.getFileContent(fileIndex.path);
+    const { frontmatter, body } = this.parseFrontmatter(content);
+    const slug = this.generateSlug(fileIndex.path, frontmatter);
+
+    return {
+      id: fileIndex.path,
+      slug,
+      data: frontmatter,
+      body,
+      createdAt: new Date(frontmatter.createdAt || fileIndex.lastmod),
+      updatedAt: new Date(frontmatter.updatedAt || fileIndex.lastmod),
+      tags: frontmatter.tags || [],
+      attachments: frontmatter.attachments || [],
+    };
+  }
+
+  /**
+   * 获取所有闪念（包含内容，已废弃，请使用 getMemosIndex + getMemoByIndex）
+   * @deprecated 使用 getMemosIndex() 和 getMemoByIndex() 代替
    */
   async getAllMemos(): Promise<WebDAVMemo[]> {
-    const memoFiles = await this.getAllMarkdownFiles(this.memosPath);
+    console.warn('getAllMemos() is deprecated, use getMemosIndex() and getMemoByIndex() instead');
+    const memosIndex = await this.getMemosIndex();
     const memos: WebDAVMemo[] = [];
 
-    for (const file of memoFiles) {
+    for (const fileIndex of memosIndex) {
       try {
-        const content = await this.getFileContent(file.filename);
-        const { frontmatter, body } = this.parseFrontmatter(content);
-        const slug = this.generateSlug(file.filename, frontmatter);
-
-        memos.push({
-          id: file.filename,
-          slug,
-          data: frontmatter,
-          body,
-          createdAt: new Date(frontmatter.createdAt || file.lastmod),
-          updatedAt: new Date(frontmatter.updatedAt || file.lastmod),
-          tags: frontmatter.tags || [],
-        });
+        const memo = await this.getMemoByIndex(fileIndex);
+        memos.push(memo);
       } catch (error) {
-        console.warn(`Failed to process memo file ${file.filename}:`, error);
+        console.warn(`Failed to process memo file ${fileIndex.path}:`, error);
       }
     }
     return memos;
@@ -459,8 +569,20 @@ export class WebDAVClient {
    * 根据 slug 获取单个文章
    */
   async getPostBySlug(slug: string): Promise<WebDAVPost | undefined> {
-    const posts = await this.getAllPosts();
-    return posts.find((post) => post.slug === slug);
+    const postsIndex = await this.getPostsIndex();
+
+    for (const fileIndex of postsIndex) {
+      try {
+        const post = await this.getPostByIndex(fileIndex);
+        if (post.slug === slug) {
+          return post;
+        }
+      } catch (error) {
+        console.warn(`Failed to process file ${fileIndex.path}:`, error);
+      }
+    }
+
+    return undefined;
   }
 
   /**

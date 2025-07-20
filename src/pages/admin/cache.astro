@@ -1,0 +1,336 @@
+---
+import Layout from "~/layouts/PageLayout.astro";
+
+const metadata = {
+  title: "内容缓存管理",
+  description: "查看和管理内容缓存状态",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+---
+
+<Layout metadata={metadata}>
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-3xl font-bold mb-8">内容缓存管理</h1>
+
+      <!-- 缓存状态卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title text-primary">文章缓存</h2>
+            <div class="stat">
+              <div class="stat-value" id="posts-count">-</div>
+              <div class="stat-desc">篇文章已缓存</div>
+            </div>
+            <div class="text-sm text-base-content/70">
+              最后更新: <span id="posts-last-updated">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title text-secondary">闪念缓存</h2>
+            <div class="stat">
+              <div class="stat-value" id="memos-count">-</div>
+              <div class="stat-desc">条闪念已缓存</div>
+            </div>
+            <div class="text-sm text-base-content/70">
+              最后更新: <span id="memos-last-updated">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title text-accent">总计</h2>
+            <div class="stat">
+              <div class="stat-value" id="total-count">-</div>
+              <div class="stat-desc">项内容已缓存</div>
+            </div>
+            <div class="mt-4">
+              <button class="btn btn-primary btn-sm" id="refresh-cache">
+                <span
+                  class="loading loading-spinner loading-sm hidden"
+                  id="refresh-loading"></span>
+                刷新缓存
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 文章列表 -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+          <h2 class="card-title mb-4">缓存的文章</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>标题</th>
+                  <th>类型</th>
+                  <th>发布日期</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="posts-table">
+                <tr>
+                  <td colspan="4" class="text-center">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flex justify-center mt-4">
+            <button class="btn btn-outline" id="load-more-posts"
+              >加载更多</button
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- 闪念列表 -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title mb-4">缓存的闪念</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>标题</th>
+                  <th>发布日期</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="memos-table">
+                <tr>
+                  <td colspan="3" class="text-center">加载中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flex justify-center mt-4">
+            <button class="btn btn-outline" id="load-more-memos"
+              >加载更多</button
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { createTRPCClient, httpBatchLink } from "@trpc/client";
+  import type { AppRouter } from "~/server/router";
+
+  const trpc = createTRPCClient<AppRouter>({
+    links: [
+      httpBatchLink({
+        url: "/api/trpc",
+      }),
+    ],
+  });
+
+  let postsOffset = 0;
+  let memosOffset = 0;
+  const pageSize = 10;
+
+  // 格式化日期
+  function formatDate(date: Date | null): string {
+    if (!date) return "-";
+    return new Intl.DateTimeFormat("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  }
+
+  // 加载缓存状态
+  async function loadCacheStatus() {
+    try {
+      const status = await trpc.contentCache.getStatus.query();
+
+      document.getElementById("posts-count")!.textContent =
+        status.posts.count.toString();
+      document.getElementById("memos-count")!.textContent =
+        status.memos.count.toString();
+      document.getElementById("total-count")!.textContent =
+        status.totalItems.toString();
+
+      document.getElementById("posts-last-updated")!.textContent = formatDate(
+        status.posts.lastUpdated ? new Date(status.posts.lastUpdated) : null,
+      );
+      document.getElementById("memos-last-updated")!.textContent = formatDate(
+        status.memos.lastUpdated ? new Date(status.memos.lastUpdated) : null,
+      );
+    } catch (error) {
+      console.error("Failed to load cache status:", error);
+    }
+  }
+
+  // 加载文章列表
+  async function loadPosts(reset = false) {
+    if (reset) postsOffset = 0;
+
+    try {
+      const result = await trpc.contentCache.getPosts.query({
+        limit: pageSize,
+        offset: postsOffset,
+      });
+
+      const tbody = document.getElementById("posts-table")!;
+
+      if (reset) {
+        tbody.innerHTML = "";
+      }
+
+      if (result.posts.length === 0 && reset) {
+        tbody.innerHTML =
+          '<tr><td colspan="4" class="text-center">暂无缓存的文章</td></tr>';
+        return;
+      }
+
+      result.posts.forEach((post) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>
+            <div class="font-medium">${post.title}</div>
+            <div class="text-sm text-base-content/70">${post.slug}</div>
+          </td>
+          <td>
+            <span class="badge ${post.type === "project" ? "badge-secondary" : "badge-primary"}">
+              ${post.type === "project" ? "项目" : "文章"}
+            </span>
+          </td>
+          <td>${formatDate(new Date(Number(post.publishDate) * 1000))}</td>
+          <td>
+            <span class="badge ${post.public ? "badge-success" : "badge-warning"}">
+              ${post.public ? "公开" : "草稿"}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      postsOffset += result.posts.length;
+
+      const loadMoreBtn = document.getElementById("load-more-posts")!;
+      loadMoreBtn.style.display = result.hasMore ? "block" : "none";
+    } catch (error) {
+      console.error("Failed to load posts:", error);
+    }
+  }
+
+  // 加载闪念列表
+  async function loadMemos(reset = false) {
+    if (reset) memosOffset = 0;
+
+    try {
+      const result = await trpc.contentCache.getMemos.query({
+        limit: pageSize,
+        offset: memosOffset,
+      });
+
+      const tbody = document.getElementById("memos-table")!;
+
+      if (reset) {
+        tbody.innerHTML = "";
+      }
+
+      if (result.memos.length === 0 && reset) {
+        tbody.innerHTML =
+          '<tr><td colspan="3" class="text-center">暂无缓存的闪念</td></tr>';
+        return;
+      }
+
+      result.memos.forEach((memo) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>
+            <div class="font-medium">${memo.title || "无标题"}</div>
+            <div class="text-sm text-base-content/70">${memo.slug}</div>
+          </td>
+          <td>${formatDate(new Date(Number(memo.publishDate) * 1000))}</td>
+          <td>
+            <span class="badge ${memo.public ? "badge-success" : "badge-warning"}">
+              ${memo.public ? "公开" : "私有"}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      memosOffset += result.memos.length;
+
+      const loadMoreBtn = document.getElementById("load-more-memos")!;
+      loadMoreBtn.style.display = result.hasMore ? "block" : "none";
+    } catch (error) {
+      console.error("Failed to load memos:", error);
+    }
+  }
+
+  // 刷新缓存
+  async function refreshCache() {
+    const btn = document.getElementById("refresh-cache")! as HTMLButtonElement;
+    const loading = document.getElementById("refresh-loading")!;
+
+    btn.disabled = true;
+    loading.classList.remove("hidden");
+
+    try {
+      await trpc.contentCache.refresh.mutate();
+      await loadCacheStatus();
+      await loadPosts(true);
+      await loadMemos(true);
+
+      // 显示成功消息
+      const toast = document.createElement("div");
+      toast.className = "toast toast-top toast-end";
+      toast.innerHTML = `
+        <div class="alert alert-success">
+          <span>缓存刷新成功！</span>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch (error) {
+      console.error("Failed to refresh cache:", error);
+
+      // 显示错误消息
+      const toast = document.createElement("div");
+      toast.className = "toast toast-top toast-end";
+      toast.innerHTML = `
+        <div class="alert alert-error">
+          <span>缓存刷新失败</span>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } finally {
+      btn.disabled = false;
+      loading.classList.add("hidden");
+    }
+  }
+
+  // 事件监听器
+  document
+    .getElementById("refresh-cache")!
+    .addEventListener("click", refreshCache);
+  document
+    .getElementById("load-more-posts")!
+    .addEventListener("click", () => loadPosts());
+  document
+    .getElementById("load-more-memos")!
+    .addEventListener("click", () => loadMemos());
+
+  // 初始化
+  loadCacheStatus();
+  loadPosts(true);
+  loadMemos(true);
+</script>
