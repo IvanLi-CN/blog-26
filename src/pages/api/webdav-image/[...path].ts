@@ -36,46 +36,64 @@ export const GET: APIRoute = async ({ params, request }) => {
     // 尝试在闪念的 assets 目录中查找
     if (!normalizedPath.includes('/') && normalizedPath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
       console.log(`WebDAV image proxy: Detected standalone image file: ${normalizedPath}`);
-      // 先尝试在 Memos/assets 目录中查找
-      const memosAssetsPath = `${webdavConfig.memosPath}/assets/${normalizedPath}`.replace(/^\/+/, '');
-      console.log(`WebDAV image proxy: Trying memos assets path: ${memosAssetsPath}`);
 
-      // 尝试访问闪念 assets 目录中的图片
-      try {
-        const encodedMemosPath = encodeURIComponent(memosAssetsPath);
-        const memosImageUrl = `${webdavConfig.url}/${encodedMemosPath}`;
-        console.log(`WebDAV image proxy: Trying URL: ${memosImageUrl}`);
+      // 尝试多个可能的路径
+      const possiblePaths = [
+        `${webdavConfig.memosPath}/assets/${normalizedPath}`,
+        `${webdavConfig.memosPath}/assets/tmp/${normalizedPath}`,
+        normalizedPath, // 直接在根目录查找
+      ];
 
-        const memosResponse = await fetch(memosImageUrl, {
-          headers: {
-            Authorization: `Basic ${Buffer.from(`${webdavConfig.username}:${webdavConfig.password}`).toString('base64')}`,
-          },
-        });
+      for (const possiblePath of possiblePaths) {
+        const cleanPossiblePath = possiblePath.replace(/^\/+/, '');
+        console.log(`WebDAV image proxy: Trying path: ${cleanPossiblePath}`);
 
-        if (memosResponse.ok) {
-          console.log(`WebDAV image proxy: Found image in memos assets: ${memosImageUrl}`);
-          const imageBuffer = await memosResponse.arrayBuffer();
-          const contentType = memosResponse.headers.get('content-type') || 'image/jpeg';
+        try {
+          // 对路径进行正确的编码，处理中文字符
+          const pathParts = cleanPossiblePath.split('/');
+          const encodedParts = pathParts.map((part) => encodeURIComponent(part));
+          const encodedPath = encodedParts.join('/');
+          const imageUrl = `${webdavConfig.url}/${encodedPath}`;
 
-          return new Response(imageBuffer, {
+          console.log(`WebDAV image proxy: Trying URL: ${imageUrl}`);
+
+          const response = await fetch(imageUrl, {
             headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'public, max-age=3600',
+              Authorization: `Basic ${Buffer.from(`${webdavConfig.username}:${webdavConfig.password}`).toString('base64')}`,
             },
           });
+
+          if (response.ok) {
+            console.log(`WebDAV image proxy: Found image at: ${imageUrl}`);
+            const imageBuffer = await response.arrayBuffer();
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+            return new Response(imageBuffer, {
+              headers: {
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=3600',
+              },
+            });
+          }
+        } catch (error) {
+          console.log(`WebDAV image proxy: Failed to fetch from ${cleanPossiblePath}:`, error.message);
         }
-      } catch {
-        console.log(`WebDAV image proxy: Failed to find in memos assets, trying original path`);
       }
+
+      console.log(`WebDAV image proxy: Failed to find standalone image file in any location`);
     }
 
-    // 重新编码路径以确保正确的 URL 格式
-    const encodedPath = encodeURIComponent(normalizedPath);
+    // 正确编码路径以确保中文字符的处理
+    const pathParts = normalizedPath.split('/');
+    const encodedParts = pathParts.map((part) => encodeURIComponent(part));
+    const encodedPath = encodedParts.join('/');
     const imageUrl = `${webdavConfig.url}/${encodedPath}`;
+
     console.log(`WebDAV image proxy: Original path:`, path);
     console.log(`WebDAV image proxy: Clean path:`, cleanPath);
     console.log(`WebDAV image proxy: Decoded path:`, decodedPath);
     console.log(`WebDAV image proxy: Normalized path:`, normalizedPath);
+    console.log(`WebDAV image proxy: Encoded path:`, encodedPath);
     console.log(`WebDAV image proxy: Final URL:`, imageUrl);
 
     // 从 WebDAV 获取图片
