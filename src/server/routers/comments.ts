@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, eq, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, like, lte, or } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { getAvatarUrl } from '~/lib/avatar';
@@ -41,6 +41,29 @@ const editCommentSchema = z.object({
 
 const deleteCommentSchema = z.object({
   commentId: z.string(),
+});
+
+// 管理员专用的评论查询schema
+const getAdminCommentsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(['pending', 'approved', 'rejected', 'all']).default('all'),
+  search: z.string().optional(),
+  postSlug: z.string().optional(),
+  startDate: z.string().optional(), // ISO date string
+  endDate: z.string().optional(), // ISO date string
+  sortBy: z.enum(['createdAt', 'postSlug', 'author']).default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+// 批量操作schema
+const batchModerateSchema = z.object({
+  commentIds: z.array(z.string()).min(1),
+  status: z.enum(['approved', 'rejected']),
+});
+
+const batchDeleteSchema = z.object({
+  commentIds: z.array(z.string()).min(1),
 });
 
 // 类型定义
@@ -356,6 +379,207 @@ export const commentsRouter = createTRPCRouter({
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: '删除评论失败',
+      });
+    }
+  }),
+
+  // 管理员专用：获取评论列表（支持复杂筛选）
+  getAdminComments: adminProcedure.input(getAdminCommentsSchema).query(async ({ input }) => {
+    const { page, limit, status, search, postSlug, startDate, endDate, sortBy, sortOrder } = input;
+    const offset = (page - 1) * limit;
+
+    // 构建查询条件
+    const conditions = [];
+
+    // 状态筛选
+    if (status !== 'all') {
+      conditions.push(eq(comments.status, status));
+    }
+
+    // 文章筛选
+    if (postSlug) {
+      conditions.push(eq(comments.postSlug, postSlug));
+    }
+
+    // 时间范围筛选（现有数据库使用秒级时间戳）
+    if (startDate) {
+      const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+      conditions.push(gte(comments.createdAt, startTimestamp));
+    }
+    if (endDate) {
+      const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+      conditions.push(lte(comments.createdAt, endTimestamp));
+    }
+
+    // 搜索条件（搜索评论内容或作者姓名）
+    if (search) {
+      conditions.push(or(like(comments.content, `%${search}%`), like(comments.authorName, `%${search}%`)));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // 排序
+    const orderBy =
+      sortBy === 'createdAt'
+        ? sortOrder === 'asc'
+          ? asc(comments.createdAt)
+          : desc(comments.createdAt)
+        : sortBy === 'postSlug'
+          ? sortOrder === 'asc'
+            ? asc(comments.postSlug)
+            : desc(comments.postSlug)
+          : sortOrder === 'asc'
+            ? asc(comments.authorName)
+            : desc(comments.authorName);
+
+    // 获取评论列表
+    const commentsData = await db
+      .select({
+        id: comments.id,
+        content: comments.content,
+        postSlug: comments.postSlug,
+        status: comments.status,
+        createdAt: comments.createdAt,
+        parentId: comments.parentId,
+        authorName: comments.authorName,
+        authorEmail: comments.authorEmail,
+      })
+      .from(comments)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset)
+      .all();
+
+    // 获取总数
+    const totalCountResult = await db.select({ count: count() }).from(comments).where(whereClause).get();
+
+    const totalCount = totalCountResult?.count || 0;
+
+    // 转换为前端期望的格式
+    const commentsWithAuthors = commentsData.map((comment) => ({
+      ...comment,
+      createdAt: comment.createdAt * 1000, // 转换为毫秒时间戳
+      ipAddress: 'unknown', // 现有schema没有这个字段
+      author: {
+        id: comment.authorEmail, // 使用email作为临时ID
+        nickname: comment.authorName,
+        email: comment.authorEmail,
+        avatarUrl: getAvatarUrl(comment.authorEmail),
+      },
+    }));
+
+    return {
+      comments: commentsWithAuthors,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: page,
+    };
+  }),
+
+  // 管理员专用：获取评论统计
+  getCommentStats: adminProcedure.query(async () => {
+    // 获取各状态评论数量
+    const statusStats = await db
+      .select({
+        status: comments.status,
+        count: count(),
+      })
+      .from(comments)
+      .groupBy(comments.status)
+      .all();
+
+    // 获取总评论数
+    const totalResult = await db.select({ count: count() }).from(comments).get();
+
+    // 获取今日评论数（转换为秒级时间戳）
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = Math.floor(today.getTime() / 1000);
+
+    const todayResult = await db
+      .select({ count: count() })
+      .from(comments)
+      .where(gte(comments.createdAt, todayTimestamp))
+      .get();
+
+    // 获取本周评论数（转换为秒级时间戳）
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    weekAgo.setHours(0, 0, 0, 0);
+    const weekTimestamp = Math.floor(weekAgo.getTime() / 1000);
+
+    const weekResult = await db
+      .select({ count: count() })
+      .from(comments)
+      .where(gte(comments.createdAt, weekTimestamp))
+      .get();
+
+    // 格式化状态统计
+    const stats = {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+    };
+
+    statusStats.forEach((stat) => {
+      if (stat.status in stats) {
+        stats[stat.status as keyof typeof stats] = stat.count;
+      }
+    });
+
+    return {
+      total: totalResult?.count || 0,
+      today: todayResult?.count || 0,
+      thisWeek: weekResult?.count || 0,
+      byStatus: stats,
+    };
+  }),
+
+  // 管理员专用：批量审核评论
+  batchModerate: adminProcedure.input(batchModerateSchema).mutation(async ({ input }) => {
+    const { commentIds, status } = input;
+
+    try {
+      // 批量更新评论状态
+      for (const commentId of commentIds) {
+        await db.update(comments).set({ status }).where(eq(comments.id, commentId));
+      }
+
+      return {
+        success: true,
+        message: `已${status === 'approved' ? '批准' : '拒绝'} ${commentIds.length} 条评论`,
+        updatedCount: commentIds.length,
+      };
+    } catch (error) {
+      console.error('Failed to batch moderate comments:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: '批量审核失败',
+      });
+    }
+  }),
+
+  // 管理员专用：批量删除评论
+  batchDelete: adminProcedure.input(batchDeleteSchema).mutation(async ({ input }) => {
+    const { commentIds } = input;
+
+    try {
+      // 批量删除评论
+      for (const commentId of commentIds) {
+        await db.delete(comments).where(eq(comments.id, commentId));
+      }
+
+      return {
+        success: true,
+        message: `已删除 ${commentIds.length} 条评论`,
+        deletedCount: commentIds.length,
+      };
+    } catch (error) {
+      console.error('Failed to batch delete comments:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: '批量删除失败',
       });
     }
   }),

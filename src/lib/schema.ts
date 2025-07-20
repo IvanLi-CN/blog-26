@@ -9,18 +9,17 @@ export const users = sqliteTable('users', {
   createdAt: integer('created_at').notNull(),
 });
 
+// 临时适配现有数据库schema
 export const comments = sqliteTable('comments', {
   id: text('id').primaryKey(),
   content: text('content').notNull(),
   postSlug: text('post_slug').notNull(),
-  authorId: text('author_id')
-    .notNull()
-    .references(() => users.id),
+  authorName: text('author_name').notNull(),
+  authorEmail: text('author_email').notNull(),
   parentId: text('parent_id'),
   status: text('status', { enum: ['pending', 'approved', 'rejected'] })
     .notNull()
     .default('pending'),
-  ipAddress: text('ip_address').notNull(),
   createdAt: integer('created_at').notNull(),
 });
 
@@ -29,10 +28,6 @@ export const usersRelations = relations(users, ({ many }) => ({
 }));
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
-  author: one(users, {
-    fields: [comments.authorId],
-    references: [users.id],
-  }),
   parent: one(comments, {
     fields: [comments.parentId],
     references: [comments.id],
