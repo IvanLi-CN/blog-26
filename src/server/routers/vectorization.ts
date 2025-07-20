@@ -6,7 +6,7 @@ import { config } from '~/lib/config';
 import { getAllFileRecords } from '~/lib/db';
 import type { VectorizationProgress } from '~/lib/vectorizer';
 import { processAndVectorizeAllContent, processAndVectorizeBatchContent } from '~/lib/vectorizer';
-import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
+import { adminProcedure, createTRPCRouter } from '../trpc';
 
 // 1. 创建一个事件发射器实例
 const vectorizationEvents = new EventEmitter();
@@ -20,8 +20,8 @@ const batchVectorizeSchema = z.object({
 });
 
 export const vectorizationRouter = createTRPCRouter({
-  // 获取向量化状态
-  getStatus: publicProcedure.input(getStatusSchema.optional()).query(async ({ input }) => {
+  // 获取向量化状态（仅管理员）
+  getStatus: adminProcedure.input(getStatusSchema.optional()).query(async ({ input }) => {
     try {
       const { modelName, dimension: modelDimension } = config.embedding;
 
@@ -109,8 +109,8 @@ export const vectorizationRouter = createTRPCRouter({
     return { success: true, message: `已启动 ${input.slugs.length} 篇文章的向量化过程` };
   }),
 
-  // 3. 创建一个新的 onProgress subscription
-  onProgress: publicProcedure.subscription(() => {
+  // 3. 创建一个新的 onProgress subscription（仅管理员）
+  onProgress: adminProcedure.subscription(() => {
     return observable<VectorizationProgress>((emit) => {
       const onProgress = (progress: VectorizationProgress) => {
         emit.next(progress);

@@ -7,7 +7,7 @@ import { verifyCaptcha } from '~/lib/captcha';
 import { db } from '~/lib/db';
 import { signJwt } from '~/lib/jwt';
 import { comments, users } from '~/lib/schema';
-import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
+import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from '../trpc';
 
 // 输入验证 schemas
 const postCommentSchema = z.object({
@@ -135,96 +135,114 @@ export const commentsRouter = createTRPCRouter({
   }),
 
   // 创建评论
-  createComment: publicProcedure.input(postCommentSchema).mutation(async ({ input, ctx }) => {
-    const { postSlug, content, parentId, captchaResponse, author } = input;
-    const ipAddress = ctx.clientAddress;
-    let userId: string | undefined = ctx.user?.id;
-    let authorNickname: string | undefined = ctx.user?.nickname;
-    let authorEmail: string | undefined = ctx.user?.email;
+  createComment: publicProcedure
+    .meta({
+      openapi: {
+        method: 'POST',
+        path: '/comments',
+        tags: ['comments'],
+        summary: '创建评论',
+        description: '为文章创建新评论，支持回复和访客评论',
+      },
+    })
+    .input(postCommentSchema)
+    .output(
+      z.object({
+        success: z.boolean(),
+        commentId: z.string(),
+        message: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { postSlug, content, parentId, captchaResponse, author } = input;
+      const ipAddress = ctx.clientAddress;
+      let userId: string | undefined = ctx.user?.id;
+      let authorNickname: string | undefined = ctx.user?.nickname;
+      let authorEmail: string | undefined = ctx.user?.email;
 
-    // 如果没有登录用户，处理访客评论
-    if (!ctx.user && author) {
-      // 验证人机验证码
-      if (!captchaResponse) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: '请完成人机验证',
-        });
-      }
+      // 如果没有登录用户，处理访客评论
+      if (!ctx.user && author) {
+        // 验证人机验证码
+        if (!captchaResponse) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: '请完成人机验证',
+          });
+        }
 
-      const isHuman = await verifyCaptcha(captchaResponse);
-      if (!isHuman) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: '人机验证失败，请重试',
-        });
-      }
+        const isHuman = await verifyCaptcha(captchaResponse);
+        if (!isHuman) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: '人机验证失败，请重试',
+          });
+        }
 
-      authorNickname = author.nickname;
-      authorEmail = author.email;
+        authorNickname = author.nickname;
+        authorEmail = author.email;
 
-      // 查找或创建用户
-      let user = await db.select().from(users).where(eq(users.email, authorEmail)).get();
+        // 查找或创建用户
+        let user = await db.select().from(users).where(eq(users.email, authorEmail)).get();
 
-      if (!user) {
-        userId = uuidv4();
-        await db.insert(users).values({
-          id: userId,
+        if (!user) {
+          userId = uuidv4();
+          await db.insert(users).values({
+            id: userId,
+            nickname: authorNickname,
+            email: authorEmail,
+            ipAddress: ipAddress || 'unknown',
+            createdAt: Date.now(),
+          });
+        } else {
+          userId = user.id;
+          // 更新昵称（如果不同）
+          if (user.nickname !== authorNickname) {
+            await db.update(users).set({ nickname: authorNickname }).where(eq(users.id, user.id));
+          }
+        }
+
+        // 为访客用户创建 JWT token
+        const token = await signJwt({
+          sub: userId,
           nickname: authorNickname,
           email: authorEmail,
-          ipAddress: ipAddress || 'unknown',
-          createdAt: Date.now(),
         });
-      } else {
-        userId = user.id;
-        // 更新昵称（如果不同）
-        if (user.nickname !== authorNickname) {
-          await db.update(users).set({ nickname: authorNickname }).where(eq(users.id, user.id));
-        }
+
+        // 设置 cookie（这里需要在响应中处理）
+        ctx.resHeaders.set('Set-Cookie', `token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`);
       }
 
-      // 为访客用户创建 JWT token
-      const token = await signJwt({
-        sub: userId,
-        nickname: authorNickname,
-        email: authorEmail,
+      if (!userId || !authorNickname || !authorEmail) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: '缺少必要的用户信息',
+        });
+      }
+
+      // 创建评论
+      const commentId = uuidv4();
+      const now = Date.now(); // UNIX timestamp
+
+      await db.insert(comments).values({
+        id: commentId,
+        postSlug,
+        content,
+        authorId: userId,
+        parentId: parentId || null,
+        status: 'approved', // 可以根据需要调整审核逻辑
+        createdAt: now,
+        ipAddress: ipAddress || 'unknown',
       });
 
-      // 设置 cookie（这里需要在响应中处理）
-      ctx.resHeaders.set('Set-Cookie', `token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`);
-    }
+      // 处理邮件通知逻辑（简化版本）
+      // 这里可以添加回复通知和提及通知的逻辑
 
-    if (!userId || !authorNickname || !authorEmail) {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: '缺少必要的用户信息',
-      });
-    }
-
-    // 创建评论
-    const commentId = uuidv4();
-    const now = Date.now(); // UNIX timestamp
-
-    await db.insert(comments).values({
-      id: commentId,
-      postSlug,
-      content,
-      authorId: userId,
-      parentId: parentId || null,
-      status: 'approved', // 可以根据需要调整审核逻辑
-      createdAt: now,
-      ipAddress: ipAddress || 'unknown',
-    });
-
-    // 处理邮件通知逻辑（简化版本）
-    // 这里可以添加回复通知和提及通知的逻辑
-
-    return {
-      success: true,
-      commentId,
-      message: '评论发布成功',
-    };
-  }),
+      return {
+        success: true,
+        commentId,
+        message: '评论发布成功',
+      };
+    }),
 
   // 审核评论（仅管理员）
   moderateComment: adminProcedure.input(moderateCommentSchema).mutation(async ({ input }) => {
@@ -248,7 +266,7 @@ export const commentsRouter = createTRPCRouter({
   }),
 
   // 编辑评论（作者或管理员）
-  editComment: publicProcedure.input(editCommentSchema).mutation(async ({ input, ctx }) => {
+  editComment: protectedProcedure.input(editCommentSchema).mutation(async ({ input, ctx }) => {
     const { commentId, content } = input;
 
     // 获取评论信息
@@ -270,7 +288,7 @@ export const commentsRouter = createTRPCRouter({
     }
 
     // 权限检查：只有评论作者或管理员可以编辑
-    if (!ctx.user || (comment.authorId !== ctx.user.id && !ctx.isAdmin)) {
+    if (comment.authorId !== ctx.user.id && !ctx.isAdmin) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: '没有权限编辑此评论',
@@ -295,7 +313,7 @@ export const commentsRouter = createTRPCRouter({
   }),
 
   // 删除评论（作者或管理员）
-  deleteComment: publicProcedure.input(deleteCommentSchema).mutation(async ({ input, ctx }) => {
+  deleteComment: protectedProcedure.input(deleteCommentSchema).mutation(async ({ input, ctx }) => {
     const { commentId } = input;
 
     // 获取评论信息
@@ -317,7 +335,7 @@ export const commentsRouter = createTRPCRouter({
     }
 
     // 权限检查：只有评论作者或管理员可以删除
-    if (!ctx.user || (comment.authorId !== ctx.user.id && !ctx.isAdmin)) {
+    if (comment.authorId !== ctx.user.id && !ctx.isAdmin) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: '没有权限删除此评论',

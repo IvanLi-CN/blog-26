@@ -1,0 +1,132 @@
+import { verifyJwt } from './jwt';
+
+export interface AuthResult {
+  user?: {
+    id: string;
+    nickname: string;
+    email: string;
+    avatarUrl?: string;
+  };
+  isAdmin: boolean;
+}
+
+/**
+ * 从请求中提取认证信息
+ * 用于非 tRPC 接口的权限验证
+ */
+export async function extractAuthFromRequest(request: Request): Promise<AuthResult> {
+  let user: AuthResult['user'] | undefined;
+  let isAdmin = false;
+
+  // 1. 尝试从 Cookie 中获取 JWT token
+  const cookieHeader = request.headers.get('cookie');
+  if (cookieHeader) {
+    const cookies = parseCookies(cookieHeader);
+    const token = cookies.token;
+
+    if (token) {
+      try {
+        const payload = await verifyJwt(token);
+        if (
+          typeof payload.sub === 'string' &&
+          typeof payload.nickname === 'string' &&
+          typeof payload.email === 'string'
+        ) {
+          user = {
+            id: payload.sub,
+            nickname: payload.nickname,
+            email: payload.email,
+            avatarUrl: payload.avatarUrl as string | undefined,
+          };
+        }
+      } catch (error) {
+        // Invalid or expired token, user remains undefined
+        console.warn('Invalid JWT token in auth utils:', error);
+      }
+    }
+  }
+
+  // 2. 检查是否为管理员（从 Traefik headers 或配置）
+  let remoteEmail = request.headers.get('Remote-Email');
+
+  // 在开发环境中，如果设置了ADMIN_MODE环境变量，模拟管理员邮箱头
+  if (process.env.ADMIN_MODE === 'true' && !remoteEmail) {
+    remoteEmail = process.env.ADMIN_EMAIL || 'ivanli2048@gmail.com';
+  }
+
+  // 如果有 Traefik 传递的邮箱信息，检查是否为管理员
+  if (remoteEmail) {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    isAdmin = adminEmail ? remoteEmail === adminEmail : false;
+
+    // 在开发环境中，如果是管理员且没有用户信息，创建临时用户对象
+    if (isAdmin && !user && process.env.ADMIN_MODE === 'true') {
+      user = {
+        id: 'admin-dev-user',
+        nickname: 'Admin',
+        email: remoteEmail,
+      };
+    }
+  }
+
+  return {
+    user,
+    isAdmin,
+  };
+}
+
+/**
+ * 检查是否为管理员
+ */
+export async function isAdminRequest(request: Request): Promise<boolean> {
+  const auth = await extractAuthFromRequest(request);
+  return auth.isAdmin;
+}
+
+/**
+ * 检查是否已认证
+ */
+export async function isAuthenticatedRequest(request: Request): Promise<boolean> {
+  const auth = await extractAuthFromRequest(request);
+  return !!auth.user;
+}
+
+/**
+ * 简单的 Cookie 解析函数
+ */
+function parseCookies(cookieHeader: string): Record<string, string> {
+  const cookies: Record<string, string> = {};
+
+  cookieHeader.split(';').forEach((cookie) => {
+    const [name, ...rest] = cookie.trim().split('=');
+    if (name && rest.length > 0) {
+      cookies[name] = rest.join('=');
+    }
+  });
+
+  return cookies;
+}
+
+/**
+ * 创建未授权响应
+ */
+export function createUnauthorizedResponse(message: string = 'Unauthorized'): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 401,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+/**
+ * 创建禁止访问响应
+ */
+export function createForbiddenResponse(message: string = 'Forbidden'): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 403,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}

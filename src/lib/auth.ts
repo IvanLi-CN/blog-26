@@ -77,6 +77,18 @@ export async function isAdminFromCookies(cookies: AstroCookies): Promise<boolean
  * 综合检查当前用户是否为管理员（支持 cookies 和 headers）
  */
 export async function isAdminFromRequest(cookies: AstroCookies, headers: Headers): Promise<boolean> {
+  // 开发环境特殊处理
+  if (process.env.ADMIN_MODE === 'true') {
+    try {
+      const { email: adminEmail } = config.admin;
+      if (adminEmail) {
+        return true; // 在开发模式下，如果配置了管理员邮箱就允许访问
+      }
+    } catch {
+      // 配置不可用时回退到其他检查
+    }
+  }
+
   // 首先检查 Traefik SSO 请求头
   if (isAdminFromHeaders(headers)) {
     return true;

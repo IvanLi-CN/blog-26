@@ -1,9 +1,17 @@
 import type { APIRoute } from 'astro';
+import { createForbiddenResponse, isAdminRequest } from '../../lib/auth-utils';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, request }) => {
   try {
+    // 权限检查：只有管理员可以访问文件重定向
+    const isAdmin = await isAdminRequest(request);
+    if (!isAdmin) {
+      console.warn('Files redirect: Unauthorized access attempt');
+      return createForbiddenResponse('Admin access required');
+    }
+
     const path = params.path;
     if (!path) {
       return new Response('Path is required', { status: 400 });

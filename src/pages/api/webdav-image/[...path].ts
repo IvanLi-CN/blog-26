@@ -1,10 +1,18 @@
 import type { APIRoute } from 'astro';
+import { createForbiddenResponse, isAdminRequest } from '../../../lib/auth-utils';
 import { config } from '../../../lib/config';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, request }) => {
   try {
+    // 权限检查：只有管理员可以访问 WebDAV 图片
+    const isAdmin = await isAdminRequest(request);
+    if (!isAdmin) {
+      console.warn('WebDAV image proxy: Unauthorized access attempt');
+      return createForbiddenResponse('Admin access required');
+    }
+
     const path = params.path;
     if (!path) {
       console.error('WebDAV image proxy: Path is required');

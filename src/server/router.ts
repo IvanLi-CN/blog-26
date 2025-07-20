@@ -7,6 +7,7 @@ import { postsRouter } from './routers/posts';
 import { reactionsRouter } from './routers/reactions';
 import { searchRouter } from './routers/search';
 import { vectorizationRouter } from './routers/vectorization';
+
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from './trpc';
 
 // 主应用路由器

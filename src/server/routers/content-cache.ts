@@ -4,8 +4,8 @@ import { getCachedMemos, getCachedPosts, refreshContentCache } from '~/lib/conte
 import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
 
 export const contentCacheRouter = createTRPCRouter({
-  // 获取缓存状态
-  getStatus: publicProcedure.query(async () => {
+  // 获取缓存状态（仅管理员）
+  getStatus: adminProcedure.query(async () => {
     try {
       const [posts, memos] = await Promise.all([getCachedPosts(), getCachedMemos()]);
 
