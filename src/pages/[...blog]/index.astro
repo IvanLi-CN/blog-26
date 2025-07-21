@@ -5,6 +5,7 @@ import RelatedPosts from "~/components/blog/RelatedPosts.astro";
 import SinglePost from "~/components/blog/SinglePost.astro";
 import ToBlogLink from "~/components/blog/ToBlogLink.astro";
 import Layout from "~/layouts/PageLayout.astro";
+import { isAdminFromRequest } from "~/lib/auth";
 import type { MetaData } from "~/types";
 import { blogPostRobots, getPostBySlug } from "~/utils/blog";
 import { create404Response } from "~/utils/error-handler";
@@ -18,9 +19,26 @@ const { blog: slug } = Astro.params;
 if (!slug) {
   return create404Response(Astro.request, "Blog post not found");
 }
+
+// 检查用户是否为管理员
+const isUserAdmin = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
+
+// 如果是管理员，设置 ADMIN_MODE 以获取所有文章（包括私有和草稿）
+if (isUserAdmin) {
+  process.env.ADMIN_MODE = "true";
+}
+
 const post = await getPostBySlug(slug);
 
 if (!post) {
+  return create404Response(Astro.request, "Blog post not found");
+}
+
+// 权限检查：如果文章是私有的或者是草稿，且用户不是管理员，则返回404
+if (!isUserAdmin && (post.draft || !post.public)) {
   return create404Response(Astro.request, "Blog post not found");
 }
 
