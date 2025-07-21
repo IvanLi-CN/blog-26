@@ -2,16 +2,13 @@
 import { MemosAppWithProviders } from "~/components/memos/MemosApp";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
-import { isAdminFromRequest } from "~/lib/auth";
+
 import { getCachedMemos } from "~/lib/content-cache";
 
 export const prerender = false;
 
-// 检查用户是否为管理员
-const isUserAdmin = await isAdminFromRequest(
-  Astro.cookies,
-  Astro.request.headers,
-);
+// 从 Astro.locals 获取管理员状态
+const isUserAdmin = Astro.locals.isAdmin || false;
 
 // 获取第一页的闪念数据（服务端渲染）
 const limit = 10;

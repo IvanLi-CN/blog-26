@@ -1,7 +1,17 @@
 import { defineMiddleware } from 'astro:middleware';
+import { isAdminFromRequest } from './lib/auth';
 import { create404Response, isHtmlAccepted } from './utils/error-handler';
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  // 检查用户是否为管理员并设置到 locals
+  const isUserAdmin = await isAdminFromRequest(context.cookies, context.request.headers);
+
+  context.locals.isAdmin = isUserAdmin;
+
+  // 如果是管理员，设置 ADMIN_MODE 环境变量
+  if (isUserAdmin) {
+    process.env.ADMIN_MODE = 'true';
+  }
   try {
     // 继续处理请求
     const response = await next();

@@ -11,6 +11,9 @@ export interface Props {
 
 const { post, size = "md", showText = true, className = "" } = Astro.props;
 
+// 从 Astro.locals 获取管理员状态
+const isAdmin = Astro.locals.isAdmin || false;
+
 // 根据优先级确定状态：私有 > 草稿 > 公开
 function getPostStatus(post: Post) {
   // 私有状态：public 明确为 false 或者未设置（默认为 false）
@@ -69,13 +72,24 @@ const sizeClasses = {
 const sizeClass = sizeClasses[size];
 ---
 
-{showText ? (
-  <span class={`badge ${status.badgeClass} ${sizeClass.badge} gap-1 ${className}`}>
-    <Icon name={status.icon} class={sizeClass.icon} />
-    <span class={sizeClass.text}>{status.label}</span>
-  </span>
-) : (
-  <div class={`tooltip tooltip-bottom ${className}`} data-tip={status.label}>
-    <Icon name={status.icon} class={`${sizeClass.icon} ${status.iconClass}`} />
-  </div>
-)}
+{
+  isAdmin &&
+    (showText ? (
+      <span
+        class={`badge ${status.badgeClass} ${sizeClass.badge} gap-1 ${className}`}
+      >
+        <Icon name={status.icon} class={sizeClass.icon} />
+        <span class={sizeClass.text}>{status.label}</span>
+      </span>
+    ) : (
+      <div
+        class={`tooltip tooltip-bottom ${className}`}
+        data-tip={status.label}
+      >
+        <Icon
+          name={status.icon}
+          class={`${sizeClass.icon} ${status.iconClass}`}
+        />
+      </div>
+    ))
+}
