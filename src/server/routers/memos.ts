@@ -104,7 +104,7 @@ export const memosRouter = createTRPCRouter({
       const allMemos = await getCachedMemos();
 
       // 如果不是管理员，只返回公开的 Memo
-      const filteredMemos = ctx.isAdmin ? allMemos : allMemos.filter((memo) => memo.public !== false);
+      const filteredMemos = ctx.isAdmin ? allMemos : allMemos.filter((memo) => memo.public === true);
 
       // 按创建时间倒序排序（最新的在前面）
       const sortedMemos = filteredMemos.sort((a, b) => b.publishDate - a.publishDate);

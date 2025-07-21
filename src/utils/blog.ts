@@ -68,7 +68,12 @@ export const fetchPosts = async (): Promise<Array<Post>> => {
 
   return cachedPosts
     .filter((post) => post.type === 'post' || post.type === 'project')
-    .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
+    .filter((post) => {
+      // 管理员模式下显示所有文章
+      if (process.env.ADMIN_MODE === 'true') return true;
+      // 非管理员模式下只显示公开且非草稿的文章
+      return !post.draft && post.public === true;
+    })
     .filter((post) => post.title && post.title.trim() !== '') // 过滤掉空标题的文章
     .map((post) => {
       const vectorizationStatus = vectorizationStatusMap[post.slug];
@@ -142,7 +147,12 @@ export const fetchProjects = async (): Promise<Array<Post>> => {
 
   return cachedPosts
     .filter((post) => post.type === 'project')
-    .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
+    .filter((post) => {
+      // 管理员模式下显示所有项目
+      if (process.env.ADMIN_MODE === 'true') return true;
+      // 非管理员模式下只显示公开且非草稿的项目
+      return !post.draft && post.public === true;
+    })
     .filter((post) => post.title && post.title.trim() !== '') // 过滤掉空标题的文章
     .map((post) => {
       const vectorizationStatus = vectorizationStatusMap[post.slug];

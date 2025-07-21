@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import PostStatus from "~/components/common/PostStatus.astro";
 import type { Post } from "~/types";
 import { findImage } from "~/utils/images";
 import { getPermalink } from "~/utils/permalinks";
@@ -45,18 +46,21 @@ const link = getPermalink(project.permalink, "post");
       <h2 class="card-title text-lg flex-grow">
         {project.title}
       </h2>
-      {
-        !imageUrl && project.vectorizationStatus === 'correct' && (
-          <!-- 向量化状态标记（无图片时显示在标题旁） -->
-          <div
-            class="vectorization-status flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-            title="内容已成功向量化，可用于智能搜索"
-          >
-            <!-- 正确向量化图标 -->
-            <Icon name="mingcute:ai-line" class="w-4 h-4 text-base-content/60" />
-          </div>
-        )
-      }
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <PostStatus post={project} size="sm" showText={false} />
+        {
+          !imageUrl && project.vectorizationStatus === 'correct' && (
+            <!-- 向量化状态标记（无图片时显示在标题旁） -->
+            <div
+              class="vectorization-status opacity-50 hover:opacity-100 transition-opacity"
+              title="内容已成功向量化，可用于智能搜索"
+            >
+              <!-- 正确向量化图标 -->
+              <Icon name="mingcute:ai-line" class="w-4 h-4 text-base-content/60" />
+            </div>
+          )
+        }
+      </div>
     </div>
 
     {

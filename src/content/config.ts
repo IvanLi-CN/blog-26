@@ -9,7 +9,7 @@ const postSchema = z.object({
   updateDate: z.any().optional(),
   date: z.any().optional(), // Alias for updateDate
   draft: z.boolean().optional(),
-  public: z.boolean().optional(),
+  public: z.boolean().default(false),
   excerpt: z.string().optional(),
   summary: z.string().optional(), // Alias for excerpt
   image: z.any().optional(),

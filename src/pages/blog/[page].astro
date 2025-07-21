@@ -3,6 +3,7 @@ import BlogList from "~/components/blog/List.astro";
 import Pagination from "~/components/blog/Pagination.astro";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
+import { isAdminFromRequest } from "~/lib/auth";
 import { blogListRobots, blogPostsPerPage, fetchPosts } from "~/utils/blog";
 
 export const prerender = false;
@@ -10,6 +11,17 @@ export const prerender = false;
 // 获取分页参数
 const pageParam = Astro.params.page;
 const currentPage = pageParam ? parseInt(pageParam) : 1;
+
+// 检查是否为管理员
+const isUserAdmin = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
+
+// 如果是管理员，设置 ADMIN_MODE 以显示所有文章
+if (isUserAdmin) {
+  process.env.ADMIN_MODE = "true";
+}
 
 // 获取所有文章
 const allPosts = await fetchPosts();
@@ -33,7 +45,12 @@ const page = {
   lastPage: totalPages,
   url: {
     current: Astro.url.pathname,
-    prev: currentPage > 1 ? (currentPage === 2 ? `/blog` : `/blog/${currentPage - 1}`) : undefined,
+    prev:
+      currentPage > 1
+        ? currentPage === 2
+          ? `/blog`
+          : `/blog/${currentPage - 1}`
+        : undefined,
     next: currentPage < totalPages ? `/blog/${currentPage + 1}` : undefined,
   },
 };

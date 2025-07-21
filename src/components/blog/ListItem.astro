@@ -4,6 +4,7 @@ import type { ImageMetadata } from "astro";
 import { Icon } from "astro-icon/components";
 import PostTags from "~/components/blog/Tags.astro";
 import Image from "~/components/common/Image.astro";
+import PostStatus from "~/components/common/PostStatus.astro";
 import type { Post } from "~/types";
 
 import { findImage } from "~/utils/images";
@@ -72,22 +73,25 @@ const link = APP_BLOG?.post?.isEnabled
           }
         </span>
       </div>
-      <h2
-        class="text-xl sm:text-2xl font-bold leading-tight mb-2 font-heading dark:text-slate-300"
-      >
-        {
-          link ? (
-            <a
-              class="inline-block hover:text-primary dark:hover:text-blue-700 transition-all duration-300 group-hover:translate-x-1"
-              href={link}
-            >
-              {post.title}
-            </a>
-          ) : (
-            post.title
-          )
-        }
-      </h2>
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <h2
+          class="text-xl sm:text-2xl font-bold leading-tight font-heading dark:text-slate-300 flex-grow"
+        >
+          {
+            link ? (
+              <a
+                class="inline-block hover:text-primary dark:hover:text-blue-700 transition-all duration-300 group-hover:translate-x-1"
+                href={link}
+              >
+                {post.title}
+              </a>
+            ) : (
+              post.title
+            )
+          }
+        </h2>
+        <PostStatus post={post} size="sm" className="flex-shrink-0" />
+      </div>
     </header>
 
     {

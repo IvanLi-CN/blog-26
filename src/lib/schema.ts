@@ -94,7 +94,7 @@ export const posts = sqliteTable('posts', {
   publishDate: integer('publish_date').notNull(), // UNIX timestamp
   updateDate: integer('update_date'), // UNIX timestamp
   draft: integer('draft', { mode: 'boolean' }).notNull().default(false),
-  public: integer('public', { mode: 'boolean' }).notNull().default(true),
+  public: integer('public', { mode: 'boolean' }).notNull().default(false),
   category: text('category'),
   tags: text('tags'), // JSON 字符串存储标签数组
   author: text('author'),
@@ -115,7 +115,7 @@ export const memos = sqliteTable('memos', {
   body: text('body').notNull(), // markdown 纯文本内容
   publishDate: integer('publish_date').notNull(), // UNIX timestamp，通常是创建时间
   updateDate: integer('update_date'), // UNIX timestamp
-  public: integer('public', { mode: 'boolean' }).notNull().default(true),
+  public: integer('public', { mode: 'boolean' }).notNull().default(false),
   tags: text('tags'), // JSON 字符串存储标签数组
   attachments: text('attachments'), // JSON 字符串存储附件信息
   contentHash: text('content_hash').notNull(), // 内容哈希，用于检测变更

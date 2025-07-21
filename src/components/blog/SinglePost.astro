@@ -5,6 +5,7 @@ import PostReactions from "~/components/blog/PostReactions";
 import PostTags from "~/components/blog/Tags.astro";
 import CommentSectionWithProvider from "~/components/comments/CommentSectionWithProvider";
 import Image from "~/components/common/Image.astro";
+import PostStatus from "~/components/common/PostStatus.astro";
 import SocialShare from "~/components/common/SocialShare.astro";
 import { isAdminFromRequest } from "~/lib/auth";
 import type { Post } from "~/types";
@@ -89,11 +90,16 @@ const isUserAdmin = await isAdminFromRequest(Astro.cookies, Astro.request.header
         )}
       </div>
 
-      <h1
-        class="px-4 sm:px-6 max-w-3xl mx-auto text-4xl md:text-5xl font-bold leading-tighter tracking-tighter font-heading"
-      >
-        {post.title}
-      </h1>
+      <div class="px-4 sm:px-6 max-w-3xl mx-auto">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <h1
+            class="text-4xl md:text-5xl font-bold leading-tighter tracking-tighter font-heading flex-grow"
+          >
+            {post.title}
+          </h1>
+          <PostStatus post={post} size="md" className="flex-shrink-0 mt-2" />
+        </div>
+      </div>
 
       {
         isUserAdmin && (

@@ -3,10 +3,22 @@ import { Icon } from "astro-icon/components";
 import ProjectCard from "~/components/project/ProjectCard.astro";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
+import { isAdminFromRequest } from "~/lib/auth";
 import type { Post } from "~/types";
 import { findFeaturedProjects } from "~/utils/blog";
 
 export const prerender = false;
+
+// 检查是否为管理员
+const isUserAdmin = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
+
+// 如果是管理员，设置 ADMIN_MODE 以显示所有项目
+if (isUserAdmin) {
+  process.env.ADMIN_MODE = "true";
+}
 
 // 获取精选项目
 let featuredProjects: Post[] = [];
