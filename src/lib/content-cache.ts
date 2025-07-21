@@ -216,6 +216,151 @@ function contentItemToMemo(item: ContentItem): NewMemo {
 }
 
 /**
+ * 强制刷新文章缓存（忽略 ETag 和修改时间检测）
+ */
+async function forceRefreshPostsCache(): Promise<void> {
+  console.log('🔄 开始强制刷新文章缓存...');
+
+  try {
+    // 获取 WebDAV 文件索引
+    const { getWebDAVClient, isWebDAVEnabled } = await import('./webdav');
+    let webdavPostsIndex: any[] = [];
+    let webdavClient: any = null;
+
+    if (isWebDAVEnabled()) {
+      webdavClient = getWebDAVClient();
+      webdavPostsIndex = await webdavClient.getPostsIndex();
+      console.log(`📋 获取到 ${webdavPostsIndex.length} 个 WebDAV 文章索引`);
+    }
+
+    // 获取本地内容（从 content collections）
+    const { loadPostsAndProjects } = await import('./content');
+    const localContent = await loadPostsAndProjects();
+    console.log(`📋 获取到 ${localContent.length} 个本地文章`);
+
+    // 获取现有缓存记录
+    const db = await getDB();
+    const existingPosts = await db.select().from(posts);
+    const existingPostsMap = new Map(existingPosts.map((p) => [p.id, p]));
+
+    const toInsert: NewPost[] = [];
+    const toUpdate: { id: string; data: Partial<NewPost> }[] = [];
+    const processedIds = new Set<string>();
+
+    // 强制处理本地文章（忽略内容哈希检测）
+    for (const item of localContent) {
+      const newPost = contentItemToPost(item);
+      const existing = existingPostsMap.get(item.id);
+
+      processedIds.add(item.id);
+
+      if (!existing) {
+        toInsert.push(newPost);
+      } else {
+        // 强制更新，忽略内容哈希检测
+        toUpdate.push({
+          id: item.id,
+          data: {
+            ...newPost,
+            createdAt: existing.createdAt,
+            updatedAt: Date.now(),
+          },
+        });
+      }
+    }
+
+    // 强制处理所有 WebDAV 文章（忽略修改时间检测）
+    console.log(`🔄 强制更新所有 ${webdavPostsIndex.length} 个 WebDAV 文章`);
+
+    // 处理需要更新的文章（带速率控制）
+    for (let i = 0; i < webdavPostsIndex.length; i++) {
+      const fileIndex = webdavPostsIndex[i];
+      try {
+        const post = await webdavClient.getPostByIndex(fileIndex);
+
+        // 转换为 ContentItem 格式，并添加 ETag 信息
+        const contentItem: ContentItem = {
+          id: post.id,
+          slug: post.slug,
+          type: post.type,
+          title: post.data.title || post.id,
+          excerpt: post.data.excerpt || '',
+          body: post.body,
+          publishDate: post.createdAt,
+          updateDate: post.updatedAt,
+          draft: post.data.draft || false,
+          public: post.data.public !== false,
+          category: post.data.category ? { title: post.data.category, slug: post.data.category } : undefined,
+          tags: post.tags ? post.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
+          author: post.data.author || null,
+          image: post.data.image || null,
+          metadata: { ...post.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
+        };
+
+        const newPost = contentItemToPost(contentItem);
+        const existing = existingPostsMap.get(fileIndex.path);
+
+        processedIds.add(fileIndex.path);
+
+        if (!existing) {
+          toInsert.push(newPost);
+        } else {
+          // 强制更新，忽略修改时间检测
+          toUpdate.push({
+            id: fileIndex.path,
+            data: {
+              ...newPost,
+              createdAt: existing.createdAt,
+              updatedAt: Date.now(),
+            },
+          });
+        }
+
+        // 添加小延迟以避免速率限制
+        if (i < webdavPostsIndex.length - 1) {
+          await delay(WEBDAV_REQUEST_DELAY);
+        }
+      } catch (error) {
+        console.error(`❌ 处理文章 ${fileIndex.path} 失败:`, error);
+        // 继续处理其他文章
+      }
+    }
+
+    // 批量插入新记录
+    if (toInsert.length > 0) {
+      await db.insert(posts).values(toInsert);
+      console.log(`✅ 插入了 ${toInsert.length} 条新文章记录`);
+    }
+
+    // 批量更新现有记录
+    for (const update of toUpdate) {
+      await db.update(posts).set(update.data).where(eq(posts.id, update.id));
+    }
+    if (toUpdate.length > 0) {
+      console.log(`✅ 更新了 ${toUpdate.length} 条文章记录`);
+    }
+
+    // 删除不再存在的记录（检查本地和 WebDAV 索引）
+    const allValidIds = new Set([
+      ...localContent.map((item) => item.id),
+      ...webdavPostsIndex.map((fileIndex) => fileIndex.path),
+    ]);
+
+    const toDelete = existingPosts.filter((p) => !allValidIds.has(p.id));
+    for (const post of toDelete) {
+      await db.delete(posts).where(eq(posts.id, post.id));
+    }
+    if (toDelete.length > 0) {
+      console.log(`✅ 删除了 ${toDelete.length} 条过期文章记录`);
+    }
+
+    console.log('✅ 文章缓存强制刷新完成');
+  } catch (error) {
+    console.error('❌ 文章缓存强制刷新失败:', error);
+  }
+}
+
+/**
  * 基于 ETag 的智能文章缓存刷新
  */
 async function refreshPostsCache(): Promise<void> {
@@ -388,6 +533,120 @@ async function refreshPostsCache(): Promise<void> {
 }
 
 /**
+ * 强制刷新闪念缓存（忽略修改时间检测）
+ */
+async function forceRefreshMemosCache(): Promise<void> {
+  console.log('🔄 开始强制刷新闪念缓存...');
+
+  try {
+    // 获取数据库实例
+    const db = await getDB();
+
+    // 获取 WebDAV 闪念索引
+    const { getWebDAVClient, isWebDAVEnabled } = await import('./webdav');
+    let webdavMemosIndex: any[] = [];
+    let webdavClient: any = null;
+
+    if (isWebDAVEnabled()) {
+      webdavClient = getWebDAVClient();
+      webdavMemosIndex = await webdavClient.getMemosIndex();
+      console.log(`📋 获取到 ${webdavMemosIndex.length} 个 WebDAV 闪念索引`);
+    }
+
+    // 获取现有缓存记录
+    const existingMemos = await db.select().from(memos);
+    const existingMemosMap = new Map(existingMemos.map((m) => [m.id, m]));
+
+    const toInsert: NewMemo[] = [];
+    const toUpdate: { id: string; data: Partial<NewMemo> }[] = [];
+    const processedIds = new Set<string>();
+
+    // 强制处理所有 WebDAV 闪念（忽略修改时间检测）
+    console.log(`🔄 强制更新所有 ${webdavMemosIndex.length} 条 WebDAV 闪念`);
+
+    // 处理需要更新的闪念（带速率控制）
+    for (let i = 0; i < webdavMemosIndex.length; i++) {
+      const fileIndex = webdavMemosIndex[i];
+      try {
+        const memo = await webdavClient.getMemoByIndex(fileIndex);
+
+        // 转换为 ContentItem 格式，并添加 ETag 信息
+        const contentItem: ContentItem = {
+          id: memo.id,
+          slug: memo.slug,
+          type: 'memo',
+          title: memo.data.title || memo.id,
+          excerpt: '',
+          body: memo.body,
+          publishDate: memo.createdAt,
+          updateDate: memo.updatedAt,
+          draft: false,
+          public: memo.data.public !== false,
+          tags: memo.tags ? memo.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
+          metadata: { ...memo.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
+        };
+
+        const newMemo = contentItemToMemo(contentItem);
+        const existing = existingMemosMap.get(fileIndex.path);
+
+        processedIds.add(fileIndex.path);
+
+        if (!existing) {
+          toInsert.push(newMemo);
+        } else {
+          // 强制更新，忽略修改时间检测
+          toUpdate.push({
+            id: fileIndex.path,
+            data: {
+              ...newMemo,
+              createdAt: existing.createdAt,
+              updatedAt: Date.now(),
+            },
+          });
+        }
+
+        // 添加小延迟以避免速率限制
+        if (i < webdavMemosIndex.length - 1) {
+          await delay(WEBDAV_REQUEST_DELAY);
+        }
+      } catch (error) {
+        console.error(`❌ 处理闪念 ${fileIndex.path} 失败:`, error);
+        // 继续处理其他闪念
+      }
+    }
+
+    // 批量插入新记录
+    if (toInsert.length > 0) {
+      await db.insert(memos).values(toInsert);
+      console.log(`✅ 插入了 ${toInsert.length} 条新闪念记录`);
+    }
+
+    // 批量更新现有记录
+    for (const update of toUpdate) {
+      await db.update(memos).set(update.data).where(eq(memos.id, update.id));
+    }
+    if (toUpdate.length > 0) {
+      console.log(`✅ 更新了 ${toUpdate.length} 条闪念记录`);
+    }
+
+    // 删除不再存在的记录（检查 WebDAV 索引）
+    const allValidIds = new Set(webdavMemosIndex.map((fileIndex) => fileIndex.path));
+
+    const toDelete = existingMemos.filter((m) => !allValidIds.has(m.id));
+    for (const memo of toDelete) {
+      await db.delete(memos).where(eq(memos.id, memo.id));
+    }
+    if (toDelete.length > 0) {
+      console.log(`✅ 删除了 ${toDelete.length} 条过期闪念记录`);
+    }
+
+    console.log('✅ 闪念缓存强制刷新完成');
+  } catch (error) {
+    console.error('❌ 闪念缓存强制刷新失败:', error);
+  }
+}
+
+/**
  * 基于 ETag 的智能闪念缓存刷新
  */
 async function refreshMemosCache(): Promise<void> {
@@ -540,6 +799,19 @@ export async function refreshContentCache(): Promise<void> {
 
   const duration = Date.now() - startTime;
   console.log(`✅ 内容缓存刷新完成，耗时 ${duration}ms`);
+}
+
+/**
+ * 强制刷新所有内容缓存（忽略 ETag 和修改时间检测）
+ */
+export async function forceRefreshContentCache(): Promise<void> {
+  console.log('🚀 开始强制刷新内容缓存...');
+  const startTime = Date.now();
+
+  await Promise.all([forceRefreshPostsCache(), forceRefreshMemosCache()]);
+
+  const duration = Date.now() - startTime;
+  console.log(`✅ 强制刷新内容缓存完成，耗时 ${duration}ms`);
 }
 
 /**

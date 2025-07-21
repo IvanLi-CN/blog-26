@@ -27,7 +27,24 @@ const metadata = {
 <Layout metadata={metadata}>
   <div class="container mx-auto px-4 py-8">
     <div class="max-w-6xl mx-auto">
-      <h1 class="text-3xl font-bold mb-8">内容缓存管理</h1>
+      <h1 class="text-3xl font-bold mb-4">内容缓存管理</h1>
+
+      <!-- 说明区域 -->
+      <div class="alert alert-info mb-8">
+        <div>
+          <h3 class="font-bold">缓存刷新说明</h3>
+          <div class="text-sm mt-2">
+            <p>
+              <strong>智能刷新：</strong
+              >只更新有变化的内容（基于文件修改时间和内容哈希），速度快，适合日常使用。
+            </p>
+            <p>
+              <strong>强制刷新：</strong
+              >重新处理所有内容，忽略变更检测，速度较慢，适合解决缓存问题或确保数据一致性。
+            </p>
+          </div>
+        </div>
+      </div>
 
       <!-- 缓存状态卡片 -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -64,12 +81,18 @@ const metadata = {
               <div class="stat-value" id="total-count">-</div>
               <div class="stat-desc">项内容已缓存</div>
             </div>
-            <div class="mt-4">
+            <div class="mt-4 flex gap-2">
               <button class="btn btn-primary btn-sm" id="refresh-cache">
                 <span
                   class="loading loading-spinner loading-sm hidden"
                   id="refresh-loading"></span>
-                刷新缓存
+                智能刷新
+              </button>
+              <button class="btn btn-warning btn-sm" id="force-refresh-cache">
+                <span
+                  class="loading loading-spinner loading-sm hidden"
+                  id="force-refresh-loading"></span>
+                强制刷新
               </button>
             </div>
           </div>
@@ -288,7 +311,7 @@ const metadata = {
     }
   }
 
-  // 刷新缓存
+  // 智能刷新缓存
   async function refreshCache() {
     const btn = document.getElementById("refresh-cache")! as HTMLButtonElement;
     const loading = document.getElementById("refresh-loading")!;
@@ -307,7 +330,7 @@ const metadata = {
       toast.className = "toast toast-top toast-end";
       toast.innerHTML = `
         <div class="alert alert-success">
-          <span>缓存刷新成功！</span>
+          <span>智能缓存刷新成功！</span>
         </div>
       `;
       document.body.appendChild(toast);
@@ -320,7 +343,52 @@ const metadata = {
       toast.className = "toast toast-top toast-end";
       toast.innerHTML = `
         <div class="alert alert-error">
-          <span>缓存刷新失败</span>
+          <span>智能缓存刷新失败</span>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } finally {
+      btn.disabled = false;
+      loading.classList.add("hidden");
+    }
+  }
+
+  // 强制刷新缓存
+  async function forceRefreshCache() {
+    const btn = document.getElementById(
+      "force-refresh-cache",
+    )! as HTMLButtonElement;
+    const loading = document.getElementById("force-refresh-loading")!;
+
+    btn.disabled = true;
+    loading.classList.remove("hidden");
+
+    try {
+      await trpc.contentCache.forceRefresh.mutate();
+      await loadCacheStatus();
+      await loadPosts(true);
+      await loadMemos(true);
+
+      // 显示成功消息
+      const toast = document.createElement("div");
+      toast.className = "toast toast-top toast-end";
+      toast.innerHTML = `
+        <div class="alert alert-success">
+          <span>强制缓存刷新成功！</span>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } catch (error) {
+      console.error("Failed to force refresh cache:", error);
+
+      // 显示错误消息
+      const toast = document.createElement("div");
+      toast.className = "toast toast-top toast-end";
+      toast.innerHTML = `
+        <div class="alert alert-error">
+          <span>强制缓存刷新失败</span>
         </div>
       `;
       document.body.appendChild(toast);
@@ -335,6 +403,9 @@ const metadata = {
   document
     .getElementById("refresh-cache")!
     .addEventListener("click", refreshCache);
+  document
+    .getElementById("force-refresh-cache")!
+    .addEventListener("click", forceRefreshCache);
   document
     .getElementById("load-more-posts")!
     .addEventListener("click", () => loadPosts());

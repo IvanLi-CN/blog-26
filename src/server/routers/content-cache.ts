@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { getCachedMemos, getCachedPosts, refreshContentCache } from '~/lib/content-cache';
+import { forceRefreshContentCache, getCachedMemos, getCachedPosts, refreshContentCache } from '~/lib/content-cache';
 import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
 
 export const contentCacheRouter = createTRPCRouter({
@@ -130,6 +130,20 @@ export const contentCacheRouter = createTRPCRouter({
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to refresh content cache.',
+      });
+    }
+  }),
+
+  // 强制刷新缓存（仅管理员）
+  forceRefresh: adminProcedure.mutation(async () => {
+    try {
+      await forceRefreshContentCache();
+      return { success: true, message: '内容缓存强制刷新成功' };
+    } catch (error) {
+      console.error('Error force refreshing content cache:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to force refresh content cache.',
       });
     }
   }),
