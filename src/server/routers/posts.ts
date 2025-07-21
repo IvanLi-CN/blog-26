@@ -62,8 +62,18 @@ export const postsRouter = createTRPCRouter({
 
     try {
       const webdavClient = getWebDAVClient();
-      const posts = await webdavClient.getAllPosts();
-      return posts;
+      const postsIndex = await webdavClient.getPostsIndex();
+      const posts = await Promise.all(
+        postsIndex.map(async (fileIndex) => {
+          try {
+            return await webdavClient.getPostByIndex(fileIndex);
+          } catch (error) {
+            console.warn(`Failed to process file ${fileIndex.path}:`, error);
+            return null;
+          }
+        })
+      );
+      return posts.filter((post): post is NonNullable<typeof post> => post !== null);
     } catch (error) {
       console.error('Failed to get posts:', error);
       throw new TRPCError({
@@ -86,8 +96,21 @@ export const postsRouter = createTRPCRouter({
 
     try {
       const webdavClient = getWebDAVClient();
-      const posts = await webdavClient.getAllPosts();
-      const post = posts.find((p) => p.id === input.id);
+      const postsIndex = await webdavClient.getPostsIndex();
+      let post: any = null;
+
+      // 查找匹配的文章
+      for (const fileIndex of postsIndex) {
+        try {
+          const currentPost = await webdavClient.getPostByIndex(fileIndex);
+          if (currentPost.id === input.id) {
+            post = currentPost;
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to process file ${fileIndex.path}:`, error);
+        }
+      }
 
       if (!post) {
         throw new TRPCError({
@@ -220,8 +243,21 @@ export const postsRouter = createTRPCRouter({
       const webdavClient = getWebDAVClient();
 
       // 检查文章是否存在
-      const posts = await webdavClient.getAllPosts();
-      const existingPost = posts.find((p) => p.id === input.id);
+      const postsIndex = await webdavClient.getPostsIndex();
+      let existingPost: any = null;
+
+      for (const fileIndex of postsIndex) {
+        try {
+          const currentPost = await webdavClient.getPostByIndex(fileIndex);
+          if (currentPost.id === input.id) {
+            existingPost = currentPost;
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to process file ${fileIndex.path}:`, error);
+        }
+      }
+
       if (!existingPost) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -314,8 +350,21 @@ export const postsRouter = createTRPCRouter({
       const webdavClient = getWebDAVClient();
 
       // 检查文章是否存在
-      const posts = await webdavClient.getAllPosts();
-      const existingPost = posts.find((p) => p.id === input.id);
+      const postsIndex = await webdavClient.getPostsIndex();
+      let existingPost: any = null;
+
+      for (const fileIndex of postsIndex) {
+        try {
+          const currentPost = await webdavClient.getPostByIndex(fileIndex);
+          if (currentPost.id === input.id) {
+            existingPost = currentPost;
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to process file ${fileIndex.path}:`, error);
+        }
+      }
+
       if (!existingPost) {
         throw new TRPCError({
           code: 'NOT_FOUND',

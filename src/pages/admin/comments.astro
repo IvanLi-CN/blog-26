@@ -31,7 +31,10 @@ const metadata = {
     <div class="mb-8">
       <div class="flex justify-between items-center mb-4">
         <h1 class="text-4xl font-bold">
-          <Icon name="tabler:message-circle" class="w-10 h-10 inline-block mr-2" />
+          <Icon
+            name="tabler:message-circle"
+            class="w-10 h-10 inline-block mr-2"
+          />
           评论管理
         </h1>
         <div class="flex gap-2">
@@ -62,7 +65,7 @@ const metadata = {
           <Icon name="tabler:filter" class="w-5 h-5 mr-2" />
           筛选和搜索
         </h2>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- 状态筛选 -->
           <div>
@@ -97,10 +100,10 @@ const metadata = {
             <label class="label">
               <span class="label-text">搜索</span>
             </label>
-            <input 
-              id="search-input" 
-              type="text" 
-              placeholder="搜索评论内容或作者..." 
+            <input
+              id="search-input"
+              type="text"
+              placeholder="搜索评论内容或作者..."
               class="input input-bordered w-full"
             />
           </div>
@@ -157,7 +160,11 @@ const metadata = {
           </h2>
           <div class="flex items-center gap-2">
             <label class="label cursor-pointer">
-              <input id="select-all" type="checkbox" class="checkbox checkbox-sm mr-2" />
+              <input
+                id="select-all"
+                type="checkbox"
+                class="checkbox checkbox-sm mr-2"
+              />
               <span class="label-text">全选</span>
             </label>
           </div>
@@ -181,7 +188,10 @@ const metadata = {
 
         <!-- 空状态 -->
         <div id="empty-state" class="text-center py-12 hidden">
-          <Icon name="tabler:message-off" class="w-16 h-16 mx-auto text-base-300 mb-4" />
+          <Icon
+            name="tabler:message-off"
+            class="w-16 h-16 mx-auto text-base-300 mb-4"
+          />
           <h3 class="text-lg font-medium mb-2">暂无评论</h3>
           <p class="text-muted">当前筛选条件下没有找到评论</p>
         </div>
@@ -197,16 +207,27 @@ const metadata = {
 
 <script>
   // 评论管理页面的JavaScript逻辑
+  // @ts-ignore
   class CommentManager {
+    currentPage: number;
+    totalPages: number;
+    selectedComments: Set<string>;
+    currentFilters: {
+      status: string;
+      search: string;
+      sortBy: string;
+      sortOrder: string;
+    };
+
     constructor() {
       this.currentPage = 1;
       this.totalPages = 1;
       this.selectedComments = new Set();
       this.currentFilters = {
-        status: 'all',
-        search: '',
-        sortBy: 'createdAt',
-        sortOrder: 'desc'
+        status: "all",
+        search: "",
+        sortBy: "createdAt",
+        sortOrder: "desc",
       };
 
       this.init();
@@ -220,85 +241,115 @@ const metadata = {
 
     bindEvents() {
       // 筛选和搜索
-      document.getElementById('status-filter')?.addEventListener('change', (e) => {
-        this.currentFilters.status = e.target.value;
+      document
+        .getElementById("status-filter")
+        ?.addEventListener("change", (e) => {
+          const target = e.target as HTMLSelectElement;
+          if (target) {
+            this.currentFilters.status = target.value;
+            this.currentPage = 1;
+            this.loadComments();
+          }
+        });
+
+      document
+        .getElementById("sort-filter")
+        ?.addEventListener("change", (e) => {
+          const target = e.target as HTMLSelectElement;
+          if (target) {
+            const [sortBy, sortOrder] = target.value.split("-");
+            this.currentFilters.sortBy = sortBy;
+            this.currentFilters.sortOrder = sortOrder;
+            this.currentPage = 1;
+            this.loadComments();
+          }
+        });
+
+      document.getElementById("search-btn")?.addEventListener("click", () => {
+        const searchInput = document.getElementById(
+          "search-input",
+        ) as HTMLInputElement;
+        this.currentFilters.search = searchInput?.value || "";
         this.currentPage = 1;
         this.loadComments();
       });
 
-      document.getElementById('sort-filter')?.addEventListener('change', (e) => {
-        const [sortBy, sortOrder] = e.target.value.split('-');
-        this.currentFilters.sortBy = sortBy;
-        this.currentFilters.sortOrder = sortOrder;
-        this.currentPage = 1;
-        this.loadComments();
-      });
+      document
+        .getElementById("search-input")
+        ?.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            const target = e.target as HTMLInputElement;
+            if (target) {
+              this.currentFilters.search = target.value;
+              this.currentPage = 1;
+              this.loadComments();
+            }
+          }
+        });
 
-      document.getElementById('search-btn')?.addEventListener('click', () => {
-        this.currentFilters.search = document.getElementById('search-input')?.value || '';
-        this.currentPage = 1;
-        this.loadComments();
-      });
-
-      document.getElementById('search-input')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          this.currentFilters.search = e.target.value;
-          this.currentPage = 1;
-          this.loadComments();
+      document.getElementById("clear-btn")?.addEventListener("click", () => {
+        const searchInput = document.getElementById(
+          "search-input",
+        ) as HTMLInputElement;
+        if (searchInput) {
+          searchInput.value = "";
         }
-      });
-
-      document.getElementById('clear-btn')?.addEventListener('click', () => {
-        document.getElementById('search-input').value = '';
-        this.currentFilters.search = '';
+        this.currentFilters.search = "";
         this.currentPage = 1;
         this.loadComments();
       });
 
-      document.getElementById('refresh-btn')?.addEventListener('click', () => {
+      document.getElementById("refresh-btn")?.addEventListener("click", () => {
         this.loadStats();
         this.loadComments();
       });
 
       // 全选
-      document.getElementById('select-all')?.addEventListener('change', (e) => {
-        this.toggleSelectAll(e.target.checked);
+      document.getElementById("select-all")?.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target) {
+          this.toggleSelectAll(target.checked);
+        }
       });
 
       // 批量操作
-      document.getElementById('batch-approve')?.addEventListener('click', () => {
-        this.batchModerate('approved');
+      document
+        .getElementById("batch-approve")
+        ?.addEventListener("click", () => {
+          this.batchModerate("approved");
+        });
+
+      document.getElementById("batch-reject")?.addEventListener("click", () => {
+        this.batchModerate("rejected");
       });
 
-      document.getElementById('batch-reject')?.addEventListener('click', () => {
-        this.batchModerate('rejected');
-      });
-
-      document.getElementById('batch-delete')?.addEventListener('click', () => {
+      document.getElementById("batch-delete")?.addEventListener("click", () => {
         this.batchDelete();
       });
 
-      document.getElementById('clear-selection')?.addEventListener('click', () => {
-        this.clearSelection();
-      });
+      document
+        .getElementById("clear-selection")
+        ?.addEventListener("click", () => {
+          this.clearSelection();
+        });
     }
 
     async loadStats() {
       try {
-        const response = await fetch('/api/trpc/comments.getCommentStats');
+        const response = await fetch("/api/trpc/comments.getCommentStats");
         const result = await response.json();
 
         if (result.result?.data) {
           this.renderStats(result.result.data);
         }
       } catch (error) {
-        console.error('Failed to load stats:', error);
-        this.showToast('加载统计数据失败', 'error');
+        console.error("Failed to load stats:", error);
+        this.showToast("加载统计数据失败", "error");
       }
     }
 
-    renderStats(stats) {
-      const statsPanel = document.getElementById('stats-panel');
+    renderStats(stats: any) {
+      const statsPanel = document.getElementById("stats-panel");
       if (!statsPanel) return;
 
       statsPanel.innerHTML = `
@@ -354,17 +405,19 @@ const metadata = {
       try {
         const params = new URLSearchParams({
           page: this.currentPage.toString(),
-          limit: '20',
+          limit: "20",
           status: this.currentFilters.status,
           sortBy: this.currentFilters.sortBy,
           sortOrder: this.currentFilters.sortOrder,
         });
 
         if (this.currentFilters.search) {
-          params.append('search', this.currentFilters.search);
+          params.append("search", this.currentFilters.search);
         }
 
-        const response = await fetch(`/api/trpc/comments.getAdminComments?input=${encodeURIComponent(JSON.stringify(Object.fromEntries(params)))}`);
+        const response = await fetch(
+          `/api/trpc/comments.getAdminComments?input=${encodeURIComponent(JSON.stringify(Object.fromEntries(params)))}`,
+        );
         const result = await response.json();
 
         if (result.result?.data) {
@@ -373,17 +426,17 @@ const metadata = {
           this.renderPagination();
         }
       } catch (error) {
-        console.error('Failed to load comments:', error);
-        this.showToast('加载评论失败', 'error');
+        console.error("Failed to load comments:", error);
+        this.showToast("加载评论失败", "error");
         this.showEmptyState();
       } finally {
         this.showLoading(false);
       }
     }
 
-    renderComments(data) {
-      const container = document.getElementById('comments-container');
-      const emptyState = document.getElementById('empty-state');
+    renderComments(data: any) {
+      const container = document.getElementById("comments-container");
+      const emptyState = document.getElementById("empty-state");
 
       if (!container) return;
 
@@ -392,18 +445,20 @@ const metadata = {
         return;
       }
 
-      container.classList.remove('hidden');
-      emptyState?.classList.add('hidden');
+      container.classList.remove("hidden");
+      emptyState?.classList.add("hidden");
 
-      container.innerHTML = data.comments.map(comment => this.renderCommentItem(comment)).join('');
+      container.innerHTML = data.comments
+        .map((comment) => this.renderCommentItem(comment))
+        .join("");
 
       // 绑定评论项事件
       this.bindCommentEvents();
     }
 
-    renderCommentItem(comment) {
+    renderCommentItem(comment: any) {
       const statusBadge = this.getStatusBadge(comment.status);
-      const formattedDate = new Date(comment.createdAt).toLocaleString('zh-CN');
+      const formattedDate = new Date(comment.createdAt).toLocaleString("zh-CN");
 
       return `
         <div class="comment-item border border-base-300 rounded-lg p-4 mb-4" data-comment-id="${comment.id}">
@@ -429,7 +484,7 @@ const metadata = {
 
               <div class="text-sm text-base-content/70 mb-2">
                 文章: <span class="font-medium">${comment.postSlug}</span>
-                ${comment.parentId ? ' • <span class="text-warning">回复</span>' : ''}
+                ${comment.parentId ? ' • <span class="text-warning">回复</span>' : ""}
               </div>
 
               <div class="prose prose-sm max-w-none">
@@ -452,7 +507,9 @@ const metadata = {
                   </svg>
                 </label>
                 <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
-                  ${comment.status === 'pending' ? `
+                  ${
+                    comment.status === "pending"
+                      ? `
                     <li><a class="approve-comment" data-comment-id="${comment.id}">
                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
@@ -465,7 +522,9 @@ const metadata = {
                       </svg>
                       拒绝
                     </a></li>
-                  ` : ''}
+                  `
+                      : ""
+                  }
                   <li><a class="delete-comment" data-comment-id="${comment.id}">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path>
@@ -488,23 +547,23 @@ const metadata = {
       `;
     }
 
-    getStatusBadge(status) {
+    getStatusBadge(status: string) {
       switch (status) {
-        case 'pending':
+        case "pending":
           return '<span class="badge badge-warning badge-sm">待审核</span>';
-        case 'approved':
+        case "approved":
           return '<span class="badge badge-success badge-sm">已批准</span>';
-        case 'rejected':
+        case "rejected":
           return '<span class="badge badge-error badge-sm">已拒绝</span>';
         default:
-          return '';
+          return "";
       }
     }
 
     bindCommentEvents() {
       // 绑定复选框事件
-      document.querySelectorAll('.comment-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
+      document.querySelectorAll(".comment-checkbox").forEach((checkbox) => {
+        checkbox.addEventListener("change", (e) => {
           const commentId = e.target.dataset.commentId;
           if (e.target.checked) {
             this.selectedComments.add(commentId);
@@ -517,155 +576,168 @@ const metadata = {
       });
 
       // 绑定单个操作事件
-      document.querySelectorAll('.approve-comment').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const commentId = e.target.closest('[data-comment-id]').dataset.commentId;
-          this.moderateComment(commentId, 'approved');
+      document.querySelectorAll(".approve-comment").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const commentId =
+            e.target.closest("[data-comment-id]").dataset.commentId;
+          this.moderateComment(commentId, "approved");
         });
       });
 
-      document.querySelectorAll('.reject-comment').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const commentId = e.target.closest('[data-comment-id]').dataset.commentId;
-          this.moderateComment(commentId, 'rejected');
+      document.querySelectorAll(".reject-comment").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const commentId =
+            e.target.closest("[data-comment-id]").dataset.commentId;
+          this.moderateComment(commentId, "rejected");
         });
       });
 
-      document.querySelectorAll('.delete-comment').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const commentId = e.target.closest('[data-comment-id]').dataset.commentId;
+      document.querySelectorAll(".delete-comment").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const commentId =
+            e.target.closest("[data-comment-id]").dataset.commentId;
           this.deleteComment(commentId);
         });
       });
     }
 
-    async moderateComment(commentId, status) {
+    async moderateComment(commentId: string, status: string) {
       try {
-        const response = await fetch('/api/trpc/comments.moderateComment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ commentId, status })
+        const response = await fetch("/api/trpc/comments.moderateComment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ commentId, status }),
         });
 
         const result = await response.json();
         if (result.result?.data?.success) {
-          this.showToast(result.result.data.message, 'success');
+          this.showToast(result.result.data.message, "success");
           this.loadComments();
           this.loadStats();
         } else {
-          throw new Error(result.error?.message || '操作失败');
+          throw new Error(result.error?.message || "操作失败");
         }
       } catch (error) {
-        console.error('Failed to moderate comment:', error);
-        this.showToast('操作失败: ' + error.message, 'error');
+        console.error("Failed to moderate comment:", error);
+        this.showToast("操作失败: " + error.message, "error");
       }
     }
 
-    async deleteComment(commentId) {
-      if (!confirm('确定要删除这条评论吗？此操作不可撤销。')) {
+    async deleteComment(commentId: string) {
+      if (!confirm("确定要删除这条评论吗？此操作不可撤销。")) {
         return;
       }
 
       try {
-        const response = await fetch('/api/trpc/comments.deleteComment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ commentId })
+        const response = await fetch("/api/trpc/comments.deleteComment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ commentId }),
         });
 
         const result = await response.json();
         if (result.result?.data?.success) {
-          this.showToast(result.result.data.message, 'success');
+          this.showToast(result.result.data.message, "success");
           this.loadComments();
           this.loadStats();
         } else {
-          throw new Error(result.error?.message || '删除失败');
+          throw new Error(result.error?.message || "删除失败");
         }
       } catch (error) {
-        console.error('Failed to delete comment:', error);
-        this.showToast('删除失败: ' + error.message, 'error');
+        console.error("Failed to delete comment:", error);
+        this.showToast("删除失败: " + error.message, "error");
       }
     }
 
-    async batchModerate(status) {
+    async batchModerate(status: string) {
       if (this.selectedComments.size === 0) {
-        this.showToast('请先选择要操作的评论', 'warning');
+        this.showToast("请先选择要操作的评论", "warning");
         return;
       }
 
-      const action = status === 'approved' ? '批准' : '拒绝';
-      if (!confirm(`确定要${action}选中的 ${this.selectedComments.size} 条评论吗？`)) {
+      const action = status === "approved" ? "批准" : "拒绝";
+      if (
+        !confirm(
+          `确定要${action}选中的 ${this.selectedComments.size} 条评论吗？`,
+        )
+      ) {
         return;
       }
 
       try {
-        const response = await fetch('/api/trpc/comments.batchModerate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/trpc/comments.batchModerate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             commentIds: Array.from(this.selectedComments),
-            status
-          })
+            status,
+          }),
         });
 
         const result = await response.json();
         if (result.result?.data?.success) {
-          this.showToast(result.result.data.message, 'success');
+          this.showToast(result.result.data.message, "success");
           this.clearSelection();
           this.loadComments();
           this.loadStats();
         } else {
-          throw new Error(result.error?.message || '批量操作失败');
+          throw new Error(result.error?.message || "批量操作失败");
         }
       } catch (error) {
-        console.error('Failed to batch moderate:', error);
-        this.showToast('批量操作失败: ' + error.message, 'error');
+        console.error("Failed to batch moderate:", error);
+        this.showToast("批量操作失败: " + error.message, "error");
       }
     }
 
     async batchDelete() {
       if (this.selectedComments.size === 0) {
-        this.showToast('请先选择要删除的评论', 'warning');
+        this.showToast("请先选择要删除的评论", "warning");
         return;
       }
 
-      if (!confirm(`确定要删除选中的 ${this.selectedComments.size} 条评论吗？此操作不可撤销。`)) {
+      if (
+        !confirm(
+          `确定要删除选中的 ${this.selectedComments.size} 条评论吗？此操作不可撤销。`,
+        )
+      ) {
         return;
       }
 
       try {
-        const response = await fetch('/api/trpc/comments.batchDelete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/trpc/comments.batchDelete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            commentIds: Array.from(this.selectedComments)
-          })
+            commentIds: Array.from(this.selectedComments),
+          }),
         });
 
         const result = await response.json();
         if (result.result?.data?.success) {
-          this.showToast(result.result.data.message, 'success');
+          this.showToast(result.result.data.message, "success");
           this.clearSelection();
           this.loadComments();
           this.loadStats();
         } else {
-          throw new Error(result.error?.message || '批量删除失败');
+          throw new Error(result.error?.message || "批量删除失败");
         }
       } catch (error) {
-        console.error('Failed to batch delete:', error);
-        this.showToast('批量删除失败: ' + error.message, 'error');
+        console.error("Failed to batch delete:", error);
+        this.showToast("批量删除失败: " + error.message, "error");
       }
     }
 
-    toggleSelectAll(checked) {
-      const checkboxes = document.querySelectorAll('.comment-checkbox');
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = checked;
-        const commentId = checkbox.dataset.commentId;
-        if (checked) {
-          this.selectedComments.add(commentId);
-        } else {
-          this.selectedComments.delete(commentId);
+    toggleSelectAll(checked: boolean) {
+      const checkboxes = document.querySelectorAll(".comment-checkbox");
+      checkboxes.forEach((checkbox) => {
+        (checkbox as HTMLInputElement).checked = checked;
+        const commentId = (checkbox as HTMLInputElement).dataset.commentId;
+        if (commentId) {
+          if (checked) {
+            this.selectedComments.add(commentId);
+          } else {
+            this.selectedComments.delete(commentId);
+          }
         }
       });
       this.updateBatchPanel();
@@ -673,55 +745,66 @@ const metadata = {
 
     clearSelection() {
       this.selectedComments.clear();
-      document.querySelectorAll('.comment-checkbox').forEach(checkbox => {
-        checkbox.checked = false;
+      document.querySelectorAll(".comment-checkbox").forEach((checkbox) => {
+        (checkbox as HTMLInputElement).checked = false;
       });
-      document.getElementById('select-all').checked = false;
+      const selectAllElement = document.getElementById(
+        "select-all",
+      ) as HTMLInputElement;
+      if (selectAllElement) {
+        selectAllElement.checked = false;
+      }
       this.updateBatchPanel();
     }
 
     updateSelectAllState() {
-      const checkboxes = document.querySelectorAll('.comment-checkbox');
-      const checkedBoxes = document.querySelectorAll('.comment-checkbox:checked');
-      const selectAllCheckbox = document.getElementById('select-all');
+      const checkboxes = document.querySelectorAll(".comment-checkbox");
+      const checkedBoxes = document.querySelectorAll(
+        ".comment-checkbox:checked",
+      );
+      const selectAllCheckbox = document.getElementById(
+        "select-all",
+      ) as HTMLInputElement;
 
-      if (checkboxes.length === 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
-      } else if (checkedBoxes.length === checkboxes.length) {
-        selectAllCheckbox.checked = true;
-        selectAllCheckbox.indeterminate = false;
-      } else if (checkedBoxes.length > 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = true;
-      } else {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
+      if (selectAllCheckbox) {
+        if (checkboxes.length === 0) {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = false;
+        } else if (checkedBoxes.length === checkboxes.length) {
+          selectAllCheckbox.checked = true;
+          selectAllCheckbox.indeterminate = false;
+        } else if (checkedBoxes.length > 0) {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = true;
+        } else {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = false;
+        }
       }
     }
 
     updateBatchPanel() {
-      const batchPanel = document.getElementById('batch-panel');
-      const selectedCount = document.getElementById('selected-count');
+      const batchPanel = document.getElementById("batch-panel");
+      const selectedCount = document.getElementById("selected-count");
 
       if (this.selectedComments.size > 0) {
-        batchPanel?.classList.remove('hidden');
+        batchPanel?.classList.remove("hidden");
         if (selectedCount) {
           selectedCount.textContent = `已选择 ${this.selectedComments.size} 条评论`;
         }
       } else {
-        batchPanel?.classList.add('hidden');
+        batchPanel?.classList.add("hidden");
       }
     }
 
     renderPagination() {
-      const pagination = document.getElementById('pagination');
+      const pagination = document.getElementById("pagination");
       if (!pagination || this.totalPages <= 1) {
-        pagination?.classList.add('hidden');
+        pagination?.classList.add("hidden");
         return;
       }
 
-      pagination.classList.remove('hidden');
+      pagination.classList.remove("hidden");
 
       let paginationHTML = '<div class="btn-group">';
 
@@ -736,7 +819,7 @@ const metadata = {
 
       for (let i = startPage; i <= endPage; i++) {
         const isActive = i === this.currentPage;
-        paginationHTML += `<button class="btn ${isActive ? 'btn-active' : 'btn-outline'}" onclick="commentManager.goToPage(${i})">${i}</button>`;
+        paginationHTML += `<button class="btn ${isActive ? "btn-active" : "btn-outline"}" onclick="commentManager.goToPage(${i})">${i}</button>`;
       }
 
       // 下一页
@@ -744,51 +827,56 @@ const metadata = {
         paginationHTML += `<button class="btn btn-outline" onclick="commentManager.goToPage(${this.currentPage + 1})">»</button>`;
       }
 
-      paginationHTML += '</div>';
+      paginationHTML += "</div>";
       pagination.innerHTML = paginationHTML;
     }
 
-    goToPage(page) {
+    goToPage(page: number) {
       this.currentPage = page;
       this.loadComments();
     }
 
-    showLoading(show) {
-      const loading = document.getElementById('loading');
-      const container = document.getElementById('comments-container');
-      const emptyState = document.getElementById('empty-state');
+    showLoading(show: boolean) {
+      const loading = document.getElementById("loading");
+      const container = document.getElementById("comments-container");
+      const emptyState = document.getElementById("empty-state");
 
       if (show) {
-        loading?.classList.remove('hidden');
-        container?.classList.add('hidden');
-        emptyState?.classList.add('hidden');
+        loading?.classList.remove("hidden");
+        container?.classList.add("hidden");
+        emptyState?.classList.add("hidden");
       } else {
-        loading?.classList.add('hidden');
+        loading?.classList.add("hidden");
       }
     }
 
     showEmptyState() {
-      const loading = document.getElementById('loading');
-      const container = document.getElementById('comments-container');
-      const emptyState = document.getElementById('empty-state');
-      const pagination = document.getElementById('pagination');
+      const loading = document.getElementById("loading");
+      const container = document.getElementById("comments-container");
+      const emptyState = document.getElementById("empty-state");
+      const pagination = document.getElementById("pagination");
 
-      loading?.classList.add('hidden');
-      container?.classList.add('hidden');
-      emptyState?.classList.remove('hidden');
-      pagination?.classList.add('hidden');
+      loading?.classList.add("hidden");
+      container?.classList.add("hidden");
+      emptyState?.classList.remove("hidden");
+      pagination?.classList.add("hidden");
     }
 
-    showToast(message, type = 'info') {
-      const toastContainer = document.getElementById('toast-container');
+    showToast(message: string, type: string = "info") {
+      const toastContainer = document.getElementById("toast-container");
       if (!toastContainer) return;
 
-      const toastId = 'toast-' + Date.now();
-      const alertClass = type === 'success' ? 'alert-success' :
-                        type === 'error' ? 'alert-error' :
-                        type === 'warning' ? 'alert-warning' : 'alert-info';
+      const toastId = "toast-" + Date.now();
+      const alertClass =
+        type === "success"
+          ? "alert-success"
+          : type === "error"
+            ? "alert-error"
+            : type === "warning"
+              ? "alert-warning"
+              : "alert-info";
 
-      const toast = document.createElement('div');
+      const toast = document.createElement("div");
       toast.id = toastId;
       toast.className = `alert ${alertClass} shadow-lg mb-2`;
       toast.innerHTML = `
@@ -810,10 +898,10 @@ const metadata = {
   }
 
   // 全局变量，用于分页按钮调用
-  let commentManager;
+  let commentManager: CommentManager;
 
   // 初始化评论管理器
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener("DOMContentLoaded", () => {
     commentManager = new CommentManager();
   });
 </script>
@@ -823,12 +911,12 @@ const metadata = {
   .comment-item {
     transition: all 0.2s ease;
   }
-  
+
   .comment-item:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
-  
+
   .comment-item.selected {
     border-color: hsl(var(--p));
     background-color: hsl(var(--p) / 0.05);

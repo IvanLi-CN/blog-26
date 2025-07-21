@@ -97,7 +97,7 @@ export default function CommentItem({
   };
 
   // 判断当前用户是否可以编辑/删除评论
-  const canEditDelete = userInfo && (userInfo.id === comment.authorId || isAdmin);
+  const canEditDelete = userInfo && (userInfo.email === comment.authorEmail || isAdmin);
 
   return (
     <>

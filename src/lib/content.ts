@@ -228,8 +228,19 @@ export async function loadPostsAndProjects(): Promise<ContentItem[]> {
   if (isWebDAVEnabled()) {
     try {
       const webdavClient = getWebDAVClient();
-      const webdavPosts = await webdavClient.getAllPosts();
-      const normalizedItems = await Promise.all(webdavPosts.map(normalizeWebDAVPost));
+      const postsIndex = await webdavClient.getPostsIndex();
+      const webdavPosts = await Promise.all(
+        postsIndex.map(async (fileIndex) => {
+          try {
+            return await webdavClient.getPostByIndex(fileIndex);
+          } catch (error) {
+            console.warn(`Failed to process file ${fileIndex.path}:`, error);
+            return null;
+          }
+        })
+      );
+      const validPosts = webdavPosts.filter((post): post is NonNullable<typeof post> => post !== null);
+      const normalizedItems = await Promise.all(validPosts.map(normalizeWebDAVPost));
       allContent.push(...normalizedItems);
     } catch (error) {
       console.warn('Failed to load content from WebDAV:', error);
@@ -264,8 +275,19 @@ async function loadMemos(): Promise<ContentItem[]> {
   }
   try {
     const webdavClient = getWebDAVClient();
-    const memos = await webdavClient.getAllMemos();
-    return memos.map(normalizeWebDAVMemo);
+    const memosIndex = await webdavClient.getMemosIndex();
+    const memos = await Promise.all(
+      memosIndex.map(async (fileIndex) => {
+        try {
+          return await webdavClient.getMemoByIndex(fileIndex);
+        } catch (error) {
+          console.warn(`Failed to process memo file ${fileIndex.path}:`, error);
+          return null;
+        }
+      })
+    );
+    const validMemos = memos.filter((memo): memo is NonNullable<typeof memo> => memo !== null);
+    return validMemos.map(normalizeWebDAVMemo);
   } catch (error) {
     console.warn('Failed to load memos from WebDAV:', error);
     return [];

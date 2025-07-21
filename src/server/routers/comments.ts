@@ -72,7 +72,7 @@ interface CommentWithAuthor {
   content: string;
   createdAt: number; // UNIX timestamp
   parentId: string | null;
-  authorId: string; // 添加authorId字段用于权限判断
+  authorEmail: string; // 使用authorEmail字段用于权限判断
   author: {
     id: string;
     nickname: string;
@@ -85,14 +85,14 @@ interface CommentWithAuthorAndReplies extends CommentWithAuthor {
 }
 
 // 获取评论的辅助函数
-async function getComments(postSlug: string, currentUserId?: string, isAdmin = false): Promise<CommentWithAuthor[]> {
+async function getComments(postSlug: string, currentUserEmail?: string, isAdmin = false): Promise<CommentWithAuthor[]> {
   const commentsWithAuthors = await db
     .select({
       id: comments.id,
       content: comments.content,
       createdAt: comments.createdAt,
       parentId: comments.parentId,
-      authorId: comments.authorId, // 添加authorId字段
+      authorEmail: comments.authorEmail, // 使用authorEmail字段
       author: {
         id: users.id,
         nickname: users.nickname,
@@ -100,11 +100,11 @@ async function getComments(postSlug: string, currentUserId?: string, isAdmin = f
       },
     })
     .from(comments)
-    .innerJoin(users, eq(comments.authorId, users.id))
+    .innerJoin(users, eq(comments.authorEmail, users.email))
     .where(
       and(
         eq(comments.postSlug, postSlug),
-        or(eq(comments.status, 'approved'), isAdmin ? undefined : eq(comments.authorId, currentUserId || ''))
+        or(eq(comments.status, 'approved'), isAdmin ? undefined : eq(comments.authorEmail, currentUserEmail || ''))
       )
     )
     .orderBy(comments.createdAt)
@@ -128,7 +128,7 @@ export const commentsRouter = createTRPCRouter({
     const { slug, page, limit } = input;
     const offset = (page - 1) * limit;
 
-    const allComments = await getComments(slug, ctx.user?.id, ctx.isAdmin);
+    const allComments = await getComments(slug, ctx.user?.email, ctx.isAdmin);
     const topLevelComments = allComments.filter((c) => !c.parentId);
 
     const paginatedTopLevelComments = topLevelComments.slice(offset, offset + limit);
@@ -250,11 +250,11 @@ export const commentsRouter = createTRPCRouter({
         id: commentId,
         postSlug,
         content,
-        authorId: userId,
+        authorName: authorNickname,
+        authorEmail: authorEmail,
         parentId: parentId || null,
         status: 'approved', // 可以根据需要调整审核逻辑
         createdAt: now,
-        ipAddress: ipAddress || 'unknown',
       });
 
       // 处理邮件通知逻辑（简化版本）
@@ -296,7 +296,7 @@ export const commentsRouter = createTRPCRouter({
     const comment = await db
       .select({
         id: comments.id,
-        authorId: comments.authorId,
+        authorEmail: comments.authorEmail,
         postSlug: comments.postSlug,
       })
       .from(comments)
@@ -311,7 +311,7 @@ export const commentsRouter = createTRPCRouter({
     }
 
     // 权限检查：只有评论作者或管理员可以编辑
-    if (comment.authorId !== ctx.user.id && !ctx.isAdmin) {
+    if (comment.authorEmail !== ctx.user.email && !ctx.isAdmin) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: '没有权限编辑此评论',
@@ -343,7 +343,7 @@ export const commentsRouter = createTRPCRouter({
     const comment = await db
       .select({
         id: comments.id,
-        authorId: comments.authorId,
+        authorEmail: comments.authorEmail,
         postSlug: comments.postSlug,
       })
       .from(comments)
@@ -358,7 +358,7 @@ export const commentsRouter = createTRPCRouter({
     }
 
     // 权限检查：只有评论作者或管理员可以删除
-    if (comment.authorId !== ctx.user.id && !ctx.isAdmin) {
+    if (comment.authorEmail !== ctx.user.email && !ctx.isAdmin) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: '没有权限删除此评论',
@@ -389,7 +389,7 @@ export const commentsRouter = createTRPCRouter({
     const offset = (page - 1) * limit;
 
     // 构建查询条件
-    const conditions = [];
+    const conditions: any[] = [];
 
     // 状态筛选
     if (status !== 'all') {
