@@ -173,8 +173,8 @@ function contentItemToPost(item: ContentItem): NewPost {
     title: item.title || '',
     excerpt: item.excerpt || null,
     body: item.body,
-    publishDate: item.publishDate.getTime(),
-    updateDate: item.updateDate?.getTime() || null,
+    publishDate: Math.floor(item.publishDate.getTime() / 1000), // 转换为秒时间戳
+    updateDate: item.updateDate ? Math.floor(item.updateDate.getTime() / 1000) : null, // 转换为秒时间戳
     draft: item.draft || false,
     public: item.public !== false, // 默认为 true
     category: item.category?.title || null,
@@ -202,8 +202,8 @@ function contentItemToMemo(item: ContentItem): NewMemo {
     slug: item.slug,
     title: item.title || null,
     body: item.body,
-    publishDate: item.publishDate.getTime(),
-    updateDate: item.updateDate?.getTime() || null,
+    publishDate: Math.floor(item.publishDate.getTime() / 1000), // 转换为秒时间戳
+    updateDate: item.updateDate ? Math.floor(item.updateDate.getTime() / 1000) : null, // 转换为秒时间戳
     public: item.public !== false, // 默认为 true
     tags: item.tags && item.tags.length > 0 ? JSON.stringify(item.tags.map((t) => t.title)) : null,
     attachments: null, // TODO: 从 raw 数据中提取附件信息

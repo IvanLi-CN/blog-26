@@ -533,13 +533,36 @@ export class WebDAVClient {
     const { frontmatter, body } = this.parseFrontmatter(content);
     const slug = this.generateSlug(fileIndex.path, frontmatter);
 
+    // 改进时间解析逻辑
+    let createdAt: Date;
+    if (frontmatter.createdAt) {
+      createdAt = new Date(frontmatter.createdAt);
+      if (isNaN(createdAt.getTime())) {
+        console.warn(`Invalid createdAt for memo ${fileIndex.path}:`, frontmatter.createdAt);
+        createdAt = new Date(fileIndex.lastmod);
+      }
+    } else {
+      createdAt = new Date(fileIndex.lastmod);
+    }
+
+    let updatedAt: Date;
+    if (frontmatter.updatedAt) {
+      updatedAt = new Date(frontmatter.updatedAt);
+      if (isNaN(updatedAt.getTime())) {
+        console.warn(`Invalid updatedAt for memo ${fileIndex.path}:`, frontmatter.updatedAt);
+        updatedAt = new Date(fileIndex.lastmod);
+      }
+    } else {
+      updatedAt = new Date(fileIndex.lastmod);
+    }
+
     return {
       id: fileIndex.path,
       slug,
       data: frontmatter,
       body,
-      createdAt: new Date(frontmatter.createdAt || fileIndex.lastmod),
-      updatedAt: new Date(frontmatter.updatedAt || fileIndex.lastmod),
+      createdAt,
+      updatedAt,
       tags: frontmatter.tags || [],
       attachments: frontmatter.attachments || [],
     };

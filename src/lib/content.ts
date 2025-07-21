@@ -79,12 +79,32 @@ async function loadLocalContent(): Promise<ContentItem[]> {
     );
     const type: ContentType = path.startsWith('/src/content/projects/') ? 'project' : 'post';
 
-    const publishDate = parsedFrontmatter.publishDate ? new Date(parsedFrontmatter.publishDate) : new Date();
-    const updateDate = parsedFrontmatter.updateDate
-      ? new Date(parsedFrontmatter.updateDate)
-      : parsedFrontmatter.date
-        ? new Date(parsedFrontmatter.date)
-        : undefined;
+    // 改进本地文件的时间解析逻辑
+    let publishDate: Date;
+    if (parsedFrontmatter.publishDate) {
+      publishDate = new Date(parsedFrontmatter.publishDate);
+      if (isNaN(publishDate.getTime())) {
+        console.warn(`Invalid publishDate for local post ${path}:`, parsedFrontmatter.publishDate);
+        publishDate = new Date();
+      }
+    } else {
+      publishDate = new Date();
+    }
+
+    let updateDate: Date | undefined;
+    if (parsedFrontmatter.updateDate) {
+      updateDate = new Date(parsedFrontmatter.updateDate);
+      if (isNaN(updateDate.getTime())) {
+        console.warn(`Invalid updateDate for local post ${path}:`, parsedFrontmatter.updateDate);
+        updateDate = undefined;
+      }
+    } else if (parsedFrontmatter.date) {
+      updateDate = new Date(parsedFrontmatter.date);
+      if (isNaN(updateDate.getTime())) {
+        console.warn(`Invalid date for local post ${path}:`, parsedFrontmatter.date);
+        updateDate = undefined;
+      }
+    }
     const excerpt = parsedFrontmatter.excerpt ?? parsedFrontmatter.summary;
 
     items.push({
@@ -135,8 +155,34 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
   } = post.data;
 
   const slug = cleanSlug(post.slug);
-  const publishDate = new Date(rawPublishDate ?? new Date());
-  const updateDate = rawUpdateDate ? new Date(rawUpdateDate) : date ? new Date(date) : undefined;
+
+  // 改进时间解析逻辑
+  let publishDate: Date;
+  if (rawPublishDate) {
+    publishDate = new Date(rawPublishDate);
+    // 检查日期是否有效
+    if (isNaN(publishDate.getTime())) {
+      console.warn(`Invalid publishDate for post ${post.slug}:`, rawPublishDate);
+      publishDate = new Date();
+    }
+  } else {
+    publishDate = new Date();
+  }
+
+  let updateDate: Date | undefined;
+  if (rawUpdateDate) {
+    updateDate = new Date(rawUpdateDate);
+    if (isNaN(updateDate.getTime())) {
+      console.warn(`Invalid updateDate for post ${post.slug}:`, rawUpdateDate);
+      updateDate = undefined;
+    }
+  } else if (date) {
+    updateDate = new Date(date);
+    if (isNaN(updateDate.getTime())) {
+      console.warn(`Invalid date for post ${post.slug}:`, date);
+      updateDate = undefined;
+    }
+  }
   const excerpt = rawExcerpt ?? summary;
 
   const category = rawCategory ? { slug: cleanSlug(rawCategory), title: rawCategory } : undefined;

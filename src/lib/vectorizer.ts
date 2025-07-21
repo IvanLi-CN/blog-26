@@ -319,7 +319,7 @@ export async function processAndVectorizeBatchContent(
         filepath: item.id,
         slug: item.slug,
         contentHash: require('crypto').createHash('md5').update(item.body).digest('hex'),
-        lastModifiedTime: item.updateDate ? item.updateDate * 1000 : item.publishDate * 1000,
+        lastModifiedTime: Date.now(), // 使用当前时间作为修改时间
         contentUpdatedAt: Date.now(),
         indexedAt: Date.now(),
         modelName: embeddingModelName,
