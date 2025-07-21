@@ -51,14 +51,8 @@ const sizeClasses = {
   lg: 'w-5 h-5',
 };
 
-export function VectorizationStatus({ 
-  slug, 
-  className = '', 
-  showText = false, 
-  size = 'md' 
-}: VectorizationStatusProps) {
+export function VectorizationStatus({ slug, className = '', showText = false, size = 'md' }: VectorizationStatusProps) {
   const [status, setStatus] = useState<VectorizationStatusType>('loading');
-  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // 使用 tRPC 查询向量化状态
   const { data: statusData, isLoading } = trpc.vectorization.getStatus.useQuery(
@@ -79,10 +73,8 @@ export function VectorizationStatus({
     if (statusData && statusData[slug]) {
       const statusInfo = statusData[slug];
       setStatus(statusInfo.status as VectorizationStatusType);
-      setErrorMessage(statusInfo.errorMessage || '');
     } else {
       setStatus('notvectorized');
-      setErrorMessage('');
     }
   }, [statusData, isLoading, slug]);
 
@@ -94,36 +86,22 @@ export function VectorizationStatus({
   const config = statusConfigs[status];
   const iconSizeClass = sizeClasses[size];
 
-  // 构建 title，如果有错误信息则显示
-  const title = status === 'notvectorized' && errorMessage 
-    ? `向量化失败: ${errorMessage}` 
-    : config.title;
+  // 构建 title，对于 correct 状态使用默认 title
+  const title = config.title;
 
   // 只渲染正确向量化的图标
   const renderIcon = () => {
     const iconClassName = `${iconSizeClass} ${config.className} flex-shrink-0`;
 
-    return (
-      <Icon
-        icon={config.icon}
-        className={iconClassName}
-      />
-    );
+    return <Icon icon={config.icon} className={iconClassName} />;
   };
 
   return (
-    <div
-      className={`flex items-center gap-1 ${className}`}
-      title={title}
-    >
+    <div className={`flex items-center gap-1 ${className}`} title={title}>
       {renderIcon()}
 
       {/* 文本（可选） */}
-      {showText && (
-        <span className={`text-xs ${config.className}`}>
-          {config.text}
-        </span>
-      )}
+      {showText && <span className={`text-xs ${config.className}`}>{config.text}</span>}
     </div>
   );
 }

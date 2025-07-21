@@ -12,7 +12,9 @@ export const clearPostsCache = async (): Promise<void> => {
 };
 
 /** 获取向量化状态映射 */
-const getVectorizationStatusMap = async (): Promise<Record<string, { status: 'correct' | 'mismatch' | 'notvectorized'; errorMessage?: string }>> => {
+const getVectorizationStatusMap = async (): Promise<
+  Record<string, { status: 'correct' | 'mismatch' | 'notvectorized'; errorMessage?: string }>
+> => {
   try {
     const { modelName, dimension: modelDimension } = config.embedding;
 
@@ -62,10 +64,7 @@ export const blogPostsPerPage = APP_BLOG?.postsPerPage;
 
 /** 获取所有文章 */
 export const fetchPosts = async (): Promise<Array<Post>> => {
-  const [cachedPosts, vectorizationStatusMap] = await Promise.all([
-    getCachedPosts(),
-    getVectorizationStatusMap()
-  ]);
+  const [cachedPosts, vectorizationStatusMap] = await Promise.all([getCachedPosts(), getVectorizationStatusMap()]);
 
   return cachedPosts
     .filter((post) => post.type === 'post' || post.type === 'project')
@@ -138,10 +137,7 @@ export const findLatestPosts = async ({ count }: { count?: number }): Promise<Ar
 
 /** 获取所有项目 */
 export const fetchProjects = async (): Promise<Array<Post>> => {
-  const [cachedPosts, vectorizationStatusMap] = await Promise.all([
-    getCachedPosts(),
-    getVectorizationStatusMap()
-  ]);
+  const [cachedPosts, vectorizationStatusMap] = await Promise.all([getCachedPosts(), getVectorizationStatusMap()]);
 
   return cachedPosts
     .filter((post) => post.type === 'project')

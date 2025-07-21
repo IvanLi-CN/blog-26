@@ -9,9 +9,9 @@ try {
   const sqlite = new Database(DB_PATH_ABSOLUTE, { readonly: true });
 
   // 检查评论表是否存在
-  const tables = sqlite
-    .query("SELECT name FROM sqlite_master WHERE type='table' AND name='comments'")
-    .all() as { name: string }[];
+  const tables = sqlite.query("SELECT name FROM sqlite_master WHERE type='table' AND name='comments'").all() as {
+    name: string;
+  }[];
 
   if (tables.length === 0) {
     console.log('❌ Comments table does not exist');
@@ -22,9 +22,9 @@ try {
   console.log('✅ Comments table exists');
 
   // 获取评论表的schema
-  const schema = sqlite
-    .query("SELECT sql FROM sqlite_master WHERE type='table' AND name='comments'")
-    .get() as { sql: string } | null;
+  const schema = sqlite.query("SELECT sql FROM sqlite_master WHERE type='table' AND name='comments'").get() as {
+    sql: string;
+  } | null;
 
   if (schema) {
     console.log('\n📋 Comments table schema:');
@@ -32,28 +32,25 @@ try {
   }
 
   // 检查评论数量
-  const countResult = sqlite
-    .query('SELECT COUNT(*) as count FROM comments')
-    .get() as { count: number };
+  const countResult = sqlite.query('SELECT COUNT(*) as count FROM comments').get() as { count: number };
 
   console.log(`\n📊 Total comments: ${countResult.count}`);
 
   if (countResult.count > 0) {
     // 显示前几条评论
-    const comments = sqlite
-      .query('SELECT * FROM comments LIMIT 5')
-      .all();
+    const comments = sqlite.query('SELECT * FROM comments LIMIT 5').all();
 
     console.log('\n📝 Sample comments:');
     console.log(JSON.stringify(comments, null, 2));
 
     // 按状态统计
-    const statusStats = sqlite
-      .query('SELECT status, COUNT(*) as count FROM comments GROUP BY status')
-      .all() as { status: string; count: number }[];
+    const statusStats = sqlite.query('SELECT status, COUNT(*) as count FROM comments GROUP BY status').all() as {
+      status: string;
+      count: number;
+    }[];
 
     console.log('\n📈 Comments by status:');
-    statusStats.forEach(stat => {
+    statusStats.forEach((stat) => {
       console.log(`  ${stat.status}: ${stat.count}`);
     });
   } else {
@@ -61,9 +58,7 @@ try {
   }
 
   // 检查用户表
-  const userCount = sqlite
-    .query('SELECT COUNT(*) as count FROM users')
-    .get() as { count: number };
+  const userCount = sqlite.query('SELECT COUNT(*) as count FROM users').get() as { count: number };
 
   console.log(`\n👥 Total users: ${userCount.count}`);
 

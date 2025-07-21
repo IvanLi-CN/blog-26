@@ -426,13 +426,7 @@
       "indexes": {
         "reactions_target_type_target_id_emoji_user_id_fingerprint_unique": {
           "name": "reactions_target_type_target_id_emoji_user_id_fingerprint_unique",
-          "columns": [
-            "target_type",
-            "target_id",
-            "emoji",
-            "user_id",
-            "fingerprint"
-          ],
+          "columns": ["target_type", "target_id", "emoji", "user_id", "fingerprint"],
           "isUnique": true
         }
       },
@@ -441,12 +435,8 @@
           "name": "reactions_user_id_users_id_fk",
           "tableFrom": "reactions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -497,16 +487,12 @@
       "indexes": {
         "users_nickname_unique": {
           "name": "users_nickname_unique",
-          "columns": [
-            "nickname"
-          ],
+          "columns": ["nickname"],
           "isUnique": true
         },
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
