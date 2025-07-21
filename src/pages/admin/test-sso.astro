@@ -1,7 +1,11 @@
 ---
 import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
-import { isAdminFromCookies, isAdminFromHeaders, isAdminFromRequest } from "~/lib/auth";
+import {
+  isAdminFromCookies,
+  isAdminFromHeaders,
+  isAdminFromRequest,
+} from "~/lib/auth";
 import { config } from "~/lib/config";
 
 export const prerender = false;
@@ -9,14 +13,17 @@ export const prerender = false;
 // 获取各种认证状态用于测试
 const isAdminViaHeaders = isAdminFromHeaders(Astro.request.headers);
 const isAdminViaCookies = await isAdminFromCookies(Astro.cookies);
-const isAdminOverall = await isAdminFromRequest(Astro.cookies, Astro.request.headers);
+const isAdminOverall = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
 
 // 获取请求头信息
 const headers = Astro.request.headers;
 const remoteEmail = headers.get(config.admin.emailHeaderName);
-const remoteUser = headers.get('Remote-User');
-const remoteName = headers.get('Remote-Name');
-const remoteGroups = headers.get('Remote-Groups');
+const remoteUser = headers.get("Remote-User");
+const remoteName = headers.get("Remote-Name");
+const remoteGroups = headers.get("Remote-Groups");
 
 const metadata = {
   title: "SSO 认证测试",
@@ -32,35 +39,64 @@ const metadata = {
   <div class="max-w-4xl mx-auto px-4 py-8">
     <div class="card bg-base-100 shadow-xl">
       <div class="card-body">
-        <h1 class="card-title text-2xl mb-6">
-          <Icon name="tabler:test-pipe" class="w-8 h-8 mr-2" />
-          SSO 认证测试
-        </h1>
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="card-title text-2xl">
+            <Icon name="tabler:test-pipe" class="w-8 h-8 mr-2" />
+            SSO 认证测试
+          </h1>
+          <a href="/admin" class="btn btn-outline btn-sm">
+            <Icon name="tabler:arrow-left" class="w-4 h-4 mr-1" />
+            返回管理面板
+          </a>
+        </div>
 
         <div class="space-y-6">
           <!-- 认证状态总览 -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="alert {isAdminViaHeaders ? 'alert-success' : 'alert-warning'}">
-              <Icon name={isAdminViaHeaders ? "tabler:check" : "tabler:x"} class="w-6 h-6" />
+            <div
+              class="alert {isAdminViaHeaders ? 'alert-success' : 'alert-warning'}"
+            >
+              <Icon
+                name={isAdminViaHeaders ? "tabler:check" : "tabler:x"}
+                class="w-6 h-6"
+              />
               <div>
                 <div class="font-bold">Headers 认证</div>
-                <div class="text-sm">{isAdminViaHeaders ? "管理员" : "非管理员"}</div>
+                <div class="text-sm">
+                  {isAdminViaHeaders ? "管理员" : "非管理员"}
+                </div>
               </div>
             </div>
 
-            <div class="alert {isAdminViaCookies ? 'alert-success' : 'alert-warning'}">
-              <Icon name={isAdminViaCookies ? "tabler:check" : "tabler:x"} class="w-6 h-6" />
+            <div
+              class="alert {isAdminViaCookies ? 'alert-success' : 'alert-warning'}"
+            >
+              <Icon
+                name={isAdminViaCookies ? "tabler:check" : "tabler:x"}
+                class="w-6 h-6"
+              />
               <div>
                 <div class="font-bold">Cookies 认证</div>
-                <div class="text-sm">{isAdminViaCookies ? "管理员" : "非管理员"}</div>
+                <div class="text-sm">
+                  {isAdminViaCookies ? "管理员" : "非管理员"}
+                </div>
               </div>
             </div>
 
-            <div class="alert {isAdminOverall ? 'alert-success' : 'alert-error'}">
-              <Icon name={isAdminOverall ? "tabler:shield-check" : "tabler:shield-x"} class="w-6 h-6" />
+            <div
+              class="alert {isAdminOverall ? 'alert-success' : 'alert-error'}"
+            >
+              <Icon
+                name={isAdminOverall
+                  ? "tabler:shield-check"
+                  : "tabler:shield-x"}
+                class="w-6 h-6"
+              />
               <div>
                 <div class="font-bold">综合认证</div>
-                <div class="text-sm">{isAdminOverall ? "管理员权限" : "无管理员权限"}</div>
+                <div class="text-sm">
+                  {isAdminOverall ? "管理员权限" : "无管理员权限"}
+                </div>
               </div>
             </div>
           </div>
@@ -70,7 +106,10 @@ const metadata = {
             <h3 class="font-semibold mb-3">配置信息:</h3>
             <div class="space-y-2 text-sm">
               <p><strong>管理员邮箱:</strong> {config.admin.email}</p>
-              <p><strong>邮箱请求头字段:</strong> {config.admin.emailHeaderName}</p>
+              <p>
+                <strong>邮箱请求头字段:</strong>
+                {config.admin.emailHeaderName}
+              </p>
             </div>
           </div>
 
@@ -92,9 +131,13 @@ const metadata = {
             </summary>
             <div class="collapse-content">
               <div class="space-y-1 text-sm font-mono">
-                {Array.from(headers.entries()).map(([key, value]) => (
-                  <p><strong>{key}:</strong> {value}</p>
-                ))}
+                {
+                  Array.from(headers.entries()).map(([key, value]) => (
+                    <p>
+                      <strong>{key}:</strong> {value}
+                    </p>
+                  ))
+                }
               </div>
             </div>
           </details>

@@ -23,10 +23,16 @@ const metadata = {
   <div class="max-w-4xl mx-auto px-4 py-8">
     <div class="card bg-base-100 shadow-xl">
       <div class="card-body">
-        <h1 class="card-title text-2xl mb-6">
-          <Icon name="tabler:test-pipe" class="w-8 h-8 mr-2" />
-          登录状态测试
-        </h1>
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="card-title text-2xl">
+            <Icon name="tabler:test-pipe" class="w-8 h-8 mr-2" />
+            登录状态测试
+          </h1>
+          <a href="/admin" class="btn btn-outline btn-sm">
+            <Icon name="tabler:arrow-left" class="w-4 h-4 mr-1" />
+            返回管理面板
+          </a>
+        </div>
 
         <div class="space-y-4">
           <!-- 登录状态 -->
@@ -39,30 +45,47 @@ const metadata = {
 
           <!-- 管理员状态 -->
           <div class="alert {isAdmin ? 'alert-success' : 'alert-error'}">
-            <Icon name={isAdmin ? "tabler:shield-check" : "tabler:shield-x"} class="w-6 h-6" />
+            <Icon
+              name={isAdmin ? "tabler:shield-check" : "tabler:shield-x"}
+              class="w-6 h-6"
+            />
             <span>
               {isAdmin ? "管理员权限" : "非管理员"}
             </span>
           </div>
 
           <!-- 用户信息 -->
-          {user && (
-            <div class="bg-base-200 p-4 rounded-lg">
-              <h3 class="font-semibold mb-2">用户信息:</h3>
-              <div class="space-y-1 text-sm">
-                <p><strong>ID:</strong> {user.id}</p>
-                <p><strong>昵称:</strong> {user.nickname}</p>
-                <p><strong>邮箱:</strong> {user.email}</p>
+          {
+            user && (
+              <div class="bg-base-200 p-4 rounded-lg">
+                <h3 class="font-semibold mb-2">用户信息:</h3>
+                <div class="space-y-1 text-sm">
+                  <p>
+                    <strong>ID:</strong> {user.id}
+                  </p>
+                  <p>
+                    <strong>昵称:</strong> {user.nickname}
+                  </p>
+                  <p>
+                    <strong>邮箱:</strong> {user.email}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          }
 
           <!-- 环境变量检查 -->
           <div class="bg-base-200 p-4 rounded-lg">
             <h3 class="font-semibold mb-2">环境配置:</h3>
             <div class="space-y-1 text-sm">
-              <p><strong>JWT密钥:</strong> {import.meta.env.JWT_SECRET ? "已设置" : "未设置"}</p>
-              <p><strong>邮件服务:</strong> {import.meta.env.SMTP_HOST ? "已配置" : "未配置"}</p>
+              <p>
+                <strong>JWT密钥:</strong>
+                {import.meta.env.JWT_SECRET ? "已设置" : "未设置"}
+              </p>
+              <p>
+                <strong>邮件服务:</strong>
+                {import.meta.env.SMTP_HOST ? "已配置" : "未配置"}
+              </p>
             </div>
           </div>
 
@@ -72,18 +95,20 @@ const metadata = {
               <Icon name="tabler:login" class="w-4 h-4 mr-1" />
               管理员登录
             </a>
-            
+
             <a href="/admin" class="btn btn-secondary">
               <Icon name="tabler:dashboard" class="w-4 h-4 mr-1" />
               管理界面
             </a>
 
-            {user && (
-              <button id="logout-btn" class="btn btn-outline btn-error">
-                <Icon name="tabler:logout" class="w-4 h-4 mr-1" />
-                登出
-              </button>
-            )}
+            {
+              user && (
+                <button id="logout-btn" class="btn btn-outline btn-error">
+                  <Icon name="tabler:logout" class="w-4 h-4 mr-1" />
+                  登出
+                </button>
+              )
+            }
 
             <a href="/" class="btn btn-ghost">
               <Icon name="tabler:home" class="w-4 h-4 mr-1" />
@@ -97,22 +122,22 @@ const metadata = {
 
   <script>
     // 登出功能
-    const logoutBtn = document.getElementById('logout-btn');
+    const logoutBtn = document.getElementById("logout-btn");
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
+      logoutBtn.addEventListener("click", async () => {
         try {
-          const response = await fetch('/api/auth/logout', {
-            method: 'POST',
+          const response = await fetch("/api/auth/logout", {
+            method: "POST",
           });
-          
+
           if (response.ok) {
             window.location.reload();
           } else {
-            alert('登出失败，请重试');
+            alert("登出失败，请重试");
           }
         } catch (error) {
-          console.error('登出错误:', error);
-          alert('登出失败，请重试');
+          console.error("登出错误:", error);
+          alert("登出失败，请重试");
         }
       });
     }
