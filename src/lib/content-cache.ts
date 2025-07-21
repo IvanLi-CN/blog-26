@@ -131,7 +131,7 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
         id: memo.id,
         slug: memo.slug,
         type: 'memo',
-        title: memo.data.title || '',
+        title: memo.data.title || memo.id,
         excerpt: '',
         body: memo.body,
         publishDate: memo.createdAt,
@@ -170,7 +170,7 @@ function contentItemToPost(item: ContentItem): NewPost {
     id: item.id,
     slug: item.slug,
     type: item.type as 'post' | 'project',
-    title: item.title || '',
+    title: item.title || item.id,
     excerpt: item.excerpt || null,
     body: item.body,
     publishDate: Math.floor(item.publishDate.getTime() / 1000), // 转换为秒时间戳
@@ -200,7 +200,7 @@ function contentItemToMemo(item: ContentItem): NewMemo {
   return {
     id: item.id,
     slug: item.slug,
-    title: item.title || null,
+    title: item.title || item.id,
     body: item.body,
     publishDate: Math.floor(item.publishDate.getTime() / 1000), // 转换为秒时间戳
     updateDate: item.updateDate ? Math.floor(item.updateDate.getTime() / 1000) : null, // 转换为秒时间戳
@@ -295,7 +295,7 @@ async function refreshPostsCache(): Promise<void> {
             id: post.id,
             slug: post.slug,
             type: post.collection === 'projects' ? 'project' : 'post',
-            title: post.data.title || '',
+            title: post.data.title || post.id,
             excerpt: post.data.excerpt || post.data.description || '',
             body: post.body,
             publishDate: new Date(post.data.publishDate || post.data.date || Date.now()),
@@ -443,7 +443,7 @@ async function refreshMemosCache(): Promise<void> {
             id: memo.id,
             slug: memo.slug,
             type: 'memo',
-            title: memo.data.title || '',
+            title: memo.data.title || memo.id,
             excerpt: '',
             body: memo.body,
             publishDate: memo.createdAt,

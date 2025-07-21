@@ -248,7 +248,7 @@ const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
     id: memo.id,
     slug: memo.slug,
     type: 'memo',
-    title: memo.data.title || '无标题 Memo',
+    title: memo.data.title || memo.id,
     publishDate: memo.createdAt,
     updateDate: memo.updatedAt,
     public: memo.data.public !== false,

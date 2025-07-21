@@ -69,6 +69,7 @@ export const fetchPosts = async (): Promise<Array<Post>> => {
   return cachedPosts
     .filter((post) => post.type === 'post' || post.type === 'project')
     .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
+    .filter((post) => post.title && post.title.trim() !== '') // 过滤掉空标题的文章
     .map((post) => {
       const vectorizationStatus = vectorizationStatusMap[post.slug];
       return {
@@ -142,6 +143,7 @@ export const fetchProjects = async (): Promise<Array<Post>> => {
   return cachedPosts
     .filter((post) => post.type === 'project')
     .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
+    .filter((post) => post.title && post.title.trim() !== '') // 过滤掉空标题的文章
     .map((post) => {
       const vectorizationStatus = vectorizationStatusMap[post.slug];
       return {
