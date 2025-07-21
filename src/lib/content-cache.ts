@@ -28,9 +28,9 @@ export interface ContentCacheProgress {
  * 获取数据库实例（确保已初始化）
  */
 async function getDB() {
-  const { initializeDB, db } = await import('./db');
-  await initializeDB();
-  return db;
+  const dbModule = await import('./db');
+  await dbModule.initializeDB();
+  return dbModule.db;
 }
 
 /**

@@ -4,6 +4,7 @@ import { config } from '~/lib/config';
 import { getCachedPosts, refreshContentCache } from '~/lib/content-cache';
 import { getAllFileRecords } from '~/lib/db';
 import type { Post, Taxonomy } from '~/types';
+import { parseMarkdownToHTML } from '~/utils/markdown';
 import { BLOG_BASE, CATEGORY_BASE, getPermalink, TAG_BASE } from './permalinks';
 
 /** 刷新文章缓存 */
@@ -21,6 +22,10 @@ const getVectorizationStatusMap = async (): Promise<
     if (!modelName || !modelDimension) {
       return {};
     }
+
+    // 确保数据库已初始化
+    const { initializeDB } = await import('~/lib/db');
+    await initializeDB();
 
     const records = await getAllFileRecords();
     const statusMap: Record<string, { status: 'correct' | 'mismatch' | 'notvectorized'; errorMessage?: string }> = {};
@@ -66,7 +71,7 @@ export const blogPostsPerPage = APP_BLOG?.postsPerPage;
 export const fetchPosts = async (): Promise<Array<Post>> => {
   const [cachedPosts, vectorizationStatusMap] = await Promise.all([getCachedPosts(), getVectorizationStatusMap()]);
 
-  return cachedPosts
+  const filteredPosts = cachedPosts
     .filter((post) => post.type === 'post' || post.type === 'project')
     .filter((post) => {
       // 管理员模式下显示所有文章
@@ -74,9 +79,16 @@ export const fetchPosts = async (): Promise<Array<Post>> => {
       // 非管理员模式下只显示公开且非草稿的文章
       return !post.draft && post.public === true;
     })
-    .filter((post) => post.title && post.title.trim() !== '') // 过滤掉空标题的文章
-    .map((post) => {
+    .filter((post) => post.title && post.title.trim() !== ''); // 过滤掉空标题的文章
+
+  // 为每个文章生成渲染后的 HTML 内容
+  const postsWithContent = await Promise.all(
+    filteredPosts.map(async (post) => {
       const vectorizationStatus = vectorizationStatusMap[post.slug];
+
+      // 渲染 markdown 为 HTML
+      const content = await parseMarkdownToHTML(post.body, post.id);
+
       return {
         id: post.id,
         slug: post.slug,
@@ -84,6 +96,7 @@ export const fetchPosts = async (): Promise<Array<Post>> => {
         title: post.title,
         excerpt: post.excerpt || undefined,
         body: post.body,
+        content, // 添加渲染后的 HTML 内容
         publishDate: new Date(post.publishDate * 1000),
         updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
         draft: post.draft,
@@ -97,7 +110,9 @@ export const fetchPosts = async (): Promise<Array<Post>> => {
         vectorizationError: vectorizationStatus?.errorMessage,
       };
     })
-    .sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
+  );
+
+  return postsWithContent.sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 };
 
 /** */
