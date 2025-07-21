@@ -1,10 +1,19 @@
 import * as jose from 'jose';
-import { config } from './config';
 
 const alg = 'HS256';
 
 async function getSecretKey() {
-  const { secret: secretString } = config.jwt;
+  // 在测试环境中直接使用环境变量，避免配置系统的依赖问题
+  let secretString: string;
+
+  if (process.env.NODE_ENV === 'test') {
+    secretString = process.env.JWT_SECRET || 'test-jwt-secret-key-for-testing-only-32-chars';
+  } else {
+    // 在生产环境中使用配置系统
+    const { config } = await import('./config');
+    secretString = config.jwt.secret;
+  }
+
   const secret = new TextEncoder().encode(secretString);
   return secret;
 }

@@ -38,6 +38,11 @@ jobs:
       - run: bun install
       - name: Run unit tests
         run: bun test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-jwt-secret-key-for-testing-only-32-chars
+          ADMIN_EMAIL: admin@test.com
+          DB_PATH: ':memory:'
       - name: Run code quality checks
         run: bun run check
 
