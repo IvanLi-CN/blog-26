@@ -1,12 +1,48 @@
 import { APP_BLOG } from 'astrowind:config';
 import type { PaginateFunction } from 'astro';
+import { config } from '~/lib/config';
 import { getCachedPosts, refreshContentCache } from '~/lib/content-cache';
+import { getAllFileRecords } from '~/lib/db';
 import type { Post, Taxonomy } from '~/types';
 import { BLOG_BASE, CATEGORY_BASE, getPermalink, TAG_BASE } from './permalinks';
 
 /** 刷新文章缓存 */
 export const clearPostsCache = async (): Promise<void> => {
   await refreshContentCache();
+};
+
+/** 获取向量化状态映射 */
+const getVectorizationStatusMap = async (): Promise<Record<string, { status: 'correct' | 'mismatch' | 'notvectorized'; errorMessage?: string }>> => {
+  try {
+    const { modelName, dimension: modelDimension } = config.embedding;
+
+    if (!modelName || !modelDimension) {
+      return {};
+    }
+
+    const records = await getAllFileRecords();
+    const statusMap: Record<string, { status: 'correct' | 'mismatch' | 'notvectorized'; errorMessage?: string }> = {};
+
+    records.forEach((record) => {
+      const dimension = record.vector ? (record.vector as Buffer).length / 4 : 0;
+      if (record.modelName === modelName && dimension === modelDimension) {
+        statusMap[record.slug] = { status: 'correct' };
+      } else if (record.vector) {
+        statusMap[record.slug] = { status: 'mismatch' };
+      } else {
+        // 没有向量数据，可能是向量化失败
+        statusMap[record.slug] = {
+          status: 'notvectorized',
+          errorMessage: record.errorMessage || undefined,
+        };
+      }
+    });
+
+    return statusMap;
+  } catch (error) {
+    console.error('Error fetching vectorization status:', error);
+    return {};
+  }
 };
 
 /** */
@@ -26,27 +62,37 @@ export const blogPostsPerPage = APP_BLOG?.postsPerPage;
 
 /** 获取所有文章 */
 export const fetchPosts = async (): Promise<Array<Post>> => {
-  const cachedPosts = await getCachedPosts();
+  const [cachedPosts, vectorizationStatusMap] = await Promise.all([
+    getCachedPosts(),
+    getVectorizationStatusMap()
+  ]);
+
   return cachedPosts
     .filter((post) => post.type === 'post' || post.type === 'project')
     .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
-    .map((post) => ({
-      id: post.id,
-      slug: post.slug,
-      permalink: getPermalink(post.slug, post.type),
-      title: post.title,
-      excerpt: post.excerpt || undefined,
-      body: post.body,
-      publishDate: new Date(post.publishDate * 1000),
-      updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
-      draft: post.draft,
-      public: post.public,
-      category: post.category ? { slug: post.category, title: post.category } : undefined,
-      tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
-      author: post.author || undefined,
-      image: post.image || undefined,
-      metadata: post.metadata ? JSON.parse(post.metadata) : undefined,
-    })) as Post[];
+    .map((post) => {
+      const vectorizationStatus = vectorizationStatusMap[post.slug];
+      return {
+        id: post.id,
+        slug: post.slug,
+        permalink: getPermalink(post.slug, post.type),
+        title: post.title,
+        excerpt: post.excerpt || undefined,
+        body: post.body,
+        publishDate: new Date(post.publishDate * 1000),
+        updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
+        draft: post.draft,
+        public: post.public,
+        category: post.category ? { slug: post.category, title: post.category } : undefined,
+        tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
+        author: post.author || undefined,
+        image: post.image || undefined,
+        metadata: post.metadata ? JSON.parse(post.metadata) : undefined,
+        vectorizationStatus: vectorizationStatus?.status || 'notvectorized',
+        vectorizationError: vectorizationStatus?.errorMessage,
+      };
+    })
+    .sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 };
 
 /** */
@@ -92,27 +138,37 @@ export const findLatestPosts = async ({ count }: { count?: number }): Promise<Ar
 
 /** 获取所有项目 */
 export const fetchProjects = async (): Promise<Array<Post>> => {
-  const cachedPosts = await getCachedPosts();
+  const [cachedPosts, vectorizationStatusMap] = await Promise.all([
+    getCachedPosts(),
+    getVectorizationStatusMap()
+  ]);
+
   return cachedPosts
     .filter((post) => post.type === 'project')
     .filter((post) => !post.draft || process.env.ADMIN_MODE === 'true')
-    .map((post) => ({
-      id: post.id,
-      slug: post.slug,
-      permalink: getPermalink(post.slug, 'project'),
-      title: post.title,
-      excerpt: post.excerpt || undefined,
-      body: post.body,
-      publishDate: new Date(post.publishDate * 1000),
-      updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
-      draft: post.draft,
-      public: post.public,
-      category: post.category ? { slug: post.category, title: post.category } : undefined,
-      tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
-      author: post.author || undefined,
-      image: post.image || undefined,
-      metadata: post.metadata ? JSON.parse(post.metadata) : undefined,
-    })) as Post[];
+    .map((post) => {
+      const vectorizationStatus = vectorizationStatusMap[post.slug];
+      return {
+        id: post.id,
+        slug: post.slug,
+        permalink: getPermalink(post.slug, 'project'),
+        title: post.title,
+        excerpt: post.excerpt || undefined,
+        body: post.body,
+        publishDate: new Date(post.publishDate * 1000),
+        updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
+        draft: post.draft,
+        public: post.public,
+        category: post.category ? { slug: post.category, title: post.category } : undefined,
+        tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
+        author: post.author || undefined,
+        image: post.image || undefined,
+        metadata: post.metadata ? JSON.parse(post.metadata) : undefined,
+        vectorizationStatus: vectorizationStatus?.status || 'notvectorized',
+        vectorizationError: vectorizationStatus?.errorMessage,
+      };
+    })
+    .sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 };
 
 /** 获取精选项目（用于首页展示） */

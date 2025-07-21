@@ -45,6 +45,11 @@ export interface Post {
 
   /**  */
   readingTime?: number;
+
+  /** 向量化状态 */
+  vectorizationStatus?: 'correct' | 'mismatch' | 'notvectorized';
+  /** 向量化错误信息 */
+  vectorizationError?: string;
 }
 
 export interface Taxonomy {

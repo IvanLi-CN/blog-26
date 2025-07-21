@@ -73,6 +73,22 @@ const isUserAdmin =
             )
           }
         </p>
+
+        <!-- 向量化状态（仅显示已正确向量化的内容） -->
+        {post.vectorizationStatus === 'correct' && (
+          <div class="vectorization-status-container">
+            <div
+              class="vectorization-status opacity-70 hover:opacity-100 transition-opacity"
+              title="内容已成功向量化，可用于智能搜索"
+            >
+              <!-- 正确向量化图标 -->
+              <Icon
+                name="mingcute:ai-line"
+                class="w-4 h-4 text-base-content/60"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <h1
@@ -175,3 +191,5 @@ const isUserAdmin =
     <CommentSectionWithProvider postSlug={post.slug} client:idle />
   </div>
 </section>
+
+

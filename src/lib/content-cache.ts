@@ -7,7 +7,6 @@
 import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { type ContentItem } from './content';
-import { db } from './db';
 import { type Memo, memos, type NewMemo, type NewPost, type Post, posts } from './schema';
 
 // 缓存刷新间隔：10 分钟
@@ -17,6 +16,15 @@ const CACHE_REFRESH_INTERVAL = 10 * 60 * 1000;
 const WEBDAV_REQUEST_DELAY = 100; // 每个请求之间的延迟（毫秒）
 
 let refreshTimer: NodeJS.Timeout | null = null;
+
+/**
+ * 获取数据库实例（确保已初始化）
+ */
+async function getDB() {
+  const { initializeDB, db } = await import('./db');
+  await initializeDB();
+  return db;
+}
 
 /**
  * 计算内容哈希
@@ -55,6 +63,7 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
   console.log(`📋 获取到 ${memosIndex.length} 个闪念索引`);
 
   // 获取现有缓存的 ETag 信息
+  const db = await getDB();
   const existingPosts = await db.select({ id: posts.id, etag: posts.etag }).from(posts);
   const existingMemos = await db.select({ id: memos.id, etag: memos.etag }).from(memos);
 
@@ -229,6 +238,7 @@ async function refreshPostsCache(): Promise<void> {
     console.log(`📋 获取到 ${localContent.length} 个本地文章`);
 
     // 获取现有缓存记录
+    const db = await getDB();
     const existingPosts = await db.select().from(posts);
     const existingPostsMap = new Map(existingPosts.map((p) => [p.id, p]));
 
@@ -384,6 +394,9 @@ async function refreshMemosCache(): Promise<void> {
   console.log('🔄 开始刷新闪念缓存...');
 
   try {
+    // 获取数据库实例
+    const db = await getDB();
+
     // 获取 WebDAV 闪念索引
     const { getWebDAVClient, isWebDAVEnabled } = await import('./webdav');
     let webdavMemosIndex: any[] = [];
@@ -566,6 +579,7 @@ export function stopContentCacheManager(): void {
  * 从缓存中获取文章
  */
 export async function getCachedPosts(): Promise<Post[]> {
+  const db = await getDB();
   return await db.select().from(posts);
 }
 
@@ -573,6 +587,7 @@ export async function getCachedPosts(): Promise<Post[]> {
  * 从缓存中获取闪念
  */
 export async function getCachedMemos(): Promise<Memo[]> {
+  const db = await getDB();
   return await db.select().from(memos);
 }
 
@@ -580,6 +595,7 @@ export async function getCachedMemos(): Promise<Memo[]> {
  * 从缓存中根据 slug 获取文章
  */
 export async function getCachedPostBySlug(slug: string): Promise<Post | null> {
+  const db = await getDB();
   const result = await db.select().from(posts).where(eq(posts.slug, slug)).limit(1);
   return result[0] || null;
 }
@@ -588,6 +604,7 @@ export async function getCachedPostBySlug(slug: string): Promise<Post | null> {
  * 从缓存中根据 slug 获取闪念
  */
 export async function getCachedMemoBySlug(slug: string): Promise<Memo | null> {
+  const db = await getDB();
   const result = await db.select().from(memos).where(eq(memos.slug, slug)).limit(1);
   return result[0] || null;
 }

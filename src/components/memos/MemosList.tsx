@@ -1,3 +1,4 @@
+import { VectorizationStatus } from '~/components/common/VectorizationStatus';
 import { trpc } from '~/lib/trpc-client';
 import { AttachmentGrid } from './AttachmentGrid';
 import { useInfiniteScroll, useMemos } from './hooks';
@@ -129,7 +130,7 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
             </div>
 
             {/* Memo 内容 */}
-            <div className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden">
+            <div className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden relative">
               {/* 头部信息 */}
               <div className="flex items-center justify-between px-6 py-3 bg-base-200 border-b border-base-300">
                 <div className="flex items-center space-x-3 text-sm text-base-content/70">
@@ -234,6 +235,15 @@ export function MemosList({ isAdmin = false }: MemosListProps) {
                     <AttachmentGrid attachments={memo.attachments} editable={false} />
                   </div>
                 )}
+              </div>
+
+              {/* 向量化状态 - 右下角 */}
+              <div className="absolute bottom-3 right-3">
+                <VectorizationStatus
+                  slug={memo.slug}
+                  size="sm"
+                  className="opacity-40 hover:opacity-70 transition-opacity"
+                />
               </div>
             </div>
           </div>

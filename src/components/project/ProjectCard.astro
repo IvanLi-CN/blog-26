@@ -11,45 +11,83 @@ export interface Props {
 const { project } = Astro.props;
 
 const image = await findImage(project.image);
-const imageUrl = typeof image === 'string' ? image : image?.src;
+const imageUrl = typeof image === "string" ? image : image?.src;
 const link = getPermalink(project.permalink, "post");
 ---
 
-<div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 h-full flex flex-col">
-  {imageUrl && (
-    <figure class="aspect-video overflow-hidden">
-      <img
-        src={imageUrl}
-        alt={project.title}
-        class="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-      />
-    </figure>
-  )}
+<div
+  class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 h-full flex flex-col relative"
+>
+  {
+    imageUrl && (
+      <figure class="aspect-video overflow-hidden relative">
+        <img
+          src={imageUrl}
+          alt={project.title}
+          class="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+        />
+        <!-- 向量化状态标记（仅显示已正确向量化的内容） -->
+        {project.vectorizationStatus === 'correct' && (
+          <div
+            class="vectorization-status absolute top-2 right-2 opacity-60 hover:opacity-100 transition-opacity"
+            title="内容已成功向量化，可用于智能搜索"
+          >
+            <!-- 正确向量化图标 -->
+            <Icon name="mingcute:ai-line" class="w-4 h-4 text-base-content/50" />
+          </div>
+        )}
+      </figure>
+    )
+  }
 
   <div class="card-body flex-grow flex flex-col">
-    <h2 class="card-title text-lg">
-      {project.title}
-    </h2>
-    
-    {project.excerpt && (
-      <p class="text-sm text-base-content/70 line-clamp-3 flex-grow">
-        {project.excerpt}
-      </p>
-    )}
+    <div class="flex items-start justify-between gap-2">
+      <h2 class="card-title text-lg flex-grow">
+        {project.title}
+      </h2>
+      {
+        !imageUrl && project.vectorizationStatus === 'correct' && (
+          <!-- 向量化状态标记（无图片时显示在标题旁） -->
+          <div
+            class="vectorization-status flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+            title="内容已成功向量化，可用于智能搜索"
+          >
+            <!-- 正确向量化图标 -->
+            <Icon name="mingcute:ai-line" class="w-4 h-4 text-base-content/60" />
+          </div>
+        )
+      }
+    </div>
+
+    {
+      project.excerpt && (
+        <p class="text-sm text-base-content/70 line-clamp-3 flex-grow">
+          {project.excerpt}
+        </p>
+      )
+    }
 
     <div class="card-actions justify-between items-center mt-auto pt-4">
       <div class="flex flex-wrap gap-1">
-        {project.tags?.slice(0, 2).map((tag) => (
-          <div class="badge badge-outline badge-sm">
-            {(typeof tag === 'string' ? tag : tag.title).split('/').pop()}
-          </div>
-        ))}
+        {
+          project.tags
+            ?.slice(0, 2)
+            .map((tag) => (
+              <div class="badge badge-outline badge-sm">
+                {(typeof tag === "string" ? tag : tag.title).split("/").pop()}
+              </div>
+            ))
+        }
       </div>
-      
+
       <a href={link} class="btn btn-primary btn-sm">
         查看详情
         <Icon name="tabler:arrow-right" class="w-4 h-4" />
       </a>
     </div>
   </div>
+
+
 </div>
+
+

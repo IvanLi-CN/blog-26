@@ -158,7 +158,9 @@ const metadata = {
         let mismatch = 0;
         let notIndexed = 0;
 
-        Object.values(statusData).forEach((status: any) => {
+        // 正确处理API响应格式
+        Object.values(statusData).forEach((statusInfo: any) => {
+          const status = statusInfo.status || statusInfo;
           switch (status) {
             case "correct":
               indexed++;
