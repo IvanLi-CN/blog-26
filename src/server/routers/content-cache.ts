@@ -1,7 +1,12 @@
 import { TRPCError } from '@trpc/server';
+import { observable } from '@trpc/server/observable';
+import { EventEmitter } from 'events';
 import { z } from 'zod';
-import { forceRefreshContentCache, getCachedMemos, getCachedPosts, refreshContentCache } from '~/lib/content-cache';
+import { type ContentCacheProgress, getCachedMemos, getCachedPosts, refreshContentCache } from '~/lib/content-cache';
 import { adminProcedure, createTRPCRouter, publicProcedure } from '../trpc';
+
+// 创建内容缓存事件发射器
+const contentCacheEvents = new EventEmitter();
 
 export const contentCacheRouter = createTRPCRouter({
   // 获取缓存状态（仅管理员）
@@ -121,30 +126,42 @@ export const contentCacheRouter = createTRPCRouter({
     }),
 
   // 手动刷新缓存（仅管理员）
-  refresh: adminProcedure.mutation(async () => {
-    try {
-      await refreshContentCache();
-      return { success: true, message: '内容缓存刷新成功' };
-    } catch (error) {
-      console.error('Error refreshing content cache:', error);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to refresh content cache.',
-      });
-    }
-  }),
+  refresh: adminProcedure
+    .input(z.object({ force: z.boolean().default(false) }).optional())
+    .mutation(async ({ input }) => {
+      const force = input?.force ?? false;
 
-  // 强制刷新缓存（仅管理员）
-  forceRefresh: adminProcedure.mutation(async () => {
-    try {
-      await forceRefreshContentCache();
-      return { success: true, message: '内容缓存强制刷新成功' };
-    } catch (error) {
-      console.error('Error force refreshing content cache:', error);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to force refresh content cache.',
+      // 在后台运行缓存刷新，不阻塞 mutation 返回
+      refreshContentCache(force, (progress) => {
+        contentCacheEvents.emit('progress', progress);
+      }).catch((error) => {
+        console.error('Content cache refresh failed in background:', error);
+        const message = error instanceof Error ? error.message : '未知错误';
+        contentCacheEvents.emit('progress', {
+          stage: 'error',
+          message: `内容缓存刷新失败: ${message}`,
+        });
       });
-    }
+
+      return {
+        success: true,
+        message: force ? '强制缓存刷新过程已启动' : '智能缓存刷新过程已启动',
+      };
+    }),
+
+  // 订阅刷新进度（仅管理员）
+  onProgress: adminProcedure.subscription(() => {
+    return observable<ContentCacheProgress>((emit) => {
+      const onProgress = (progress: ContentCacheProgress) => {
+        emit.next(progress);
+      };
+
+      contentCacheEvents.on('progress', onProgress);
+
+      // 清理函数
+      return () => {
+        contentCacheEvents.off('progress', onProgress);
+      };
+    });
   }),
 });

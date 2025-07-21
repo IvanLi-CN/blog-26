@@ -1,4 +1,5 @@
 ---
+import ContentCacheView from "~/components/content-cache/ContentCacheView";
 import Layout from "~/layouts/PageLayout.astro";
 import { isAdminFromRequest, redirectToAdminLogin } from "~/lib/auth";
 
@@ -81,23 +82,12 @@ const metadata = {
               <div class="stat-value" id="total-count">-</div>
               <div class="stat-desc">项内容已缓存</div>
             </div>
-            <div class="mt-4 flex gap-2">
-              <button class="btn btn-primary btn-sm" id="refresh-cache">
-                <span
-                  class="loading loading-spinner loading-sm hidden"
-                  id="refresh-loading"></span>
-                智能刷新
-              </button>
-              <button class="btn btn-warning btn-sm" id="force-refresh-cache">
-                <span
-                  class="loading loading-spinner loading-sm hidden"
-                  id="force-refresh-loading"></span>
-                强制刷新
-              </button>
-            </div>
           </div>
         </div>
       </div>
+
+      <!-- 缓存刷新控制台 -->
+      <ContentCacheView client:load />
     </div>
   </div>
 </Layout>
@@ -148,98 +138,6 @@ const metadata = {
       console.error("Failed to load cache status:", error);
     }
   }
-
-  // 智能刷新缓存
-  async function refreshCache() {
-    const btn = document.getElementById("refresh-cache")! as HTMLButtonElement;
-    const loading = document.getElementById("refresh-loading")!;
-
-    btn.disabled = true;
-    loading.classList.remove("hidden");
-
-    try {
-      await trpc.contentCache.refresh.mutate();
-      await loadCacheStatus();
-
-      // 显示成功消息
-      const toast = document.createElement("div");
-      toast.className = "toast toast-top toast-end";
-      toast.innerHTML = `
-        <div class="alert alert-success">
-          <span>智能缓存刷新成功！</span>
-        </div>
-      `;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    } catch (error) {
-      console.error("Failed to refresh cache:", error);
-
-      // 显示错误消息
-      const toast = document.createElement("div");
-      toast.className = "toast toast-top toast-end";
-      toast.innerHTML = `
-        <div class="alert alert-error">
-          <span>智能缓存刷新失败</span>
-        </div>
-      `;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    } finally {
-      btn.disabled = false;
-      loading.classList.add("hidden");
-    }
-  }
-
-  // 强制刷新缓存
-  async function forceRefreshCache() {
-    const btn = document.getElementById(
-      "force-refresh-cache",
-    )! as HTMLButtonElement;
-    const loading = document.getElementById("force-refresh-loading")!;
-
-    btn.disabled = true;
-    loading.classList.remove("hidden");
-
-    try {
-      await trpc.contentCache.forceRefresh.mutate();
-      await loadCacheStatus();
-
-      // 显示成功消息
-      const toast = document.createElement("div");
-      toast.className = "toast toast-top toast-end";
-      toast.innerHTML = `
-        <div class="alert alert-success">
-          <span>强制缓存刷新成功！</span>
-        </div>
-      `;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    } catch (error) {
-      console.error("Failed to force refresh cache:", error);
-
-      // 显示错误消息
-      const toast = document.createElement("div");
-      toast.className = "toast toast-top toast-end";
-      toast.innerHTML = `
-        <div class="alert alert-error">
-          <span>强制缓存刷新失败</span>
-        </div>
-      `;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    } finally {
-      btn.disabled = false;
-      loading.classList.add("hidden");
-    }
-  }
-
-  // 事件监听器
-  document
-    .getElementById("refresh-cache")!
-    .addEventListener("click", refreshCache);
-  document
-    .getElementById("force-refresh-cache")!
-    .addEventListener("click", forceRefreshCache);
 
   // 初始化
   loadCacheStatus();

@@ -17,6 +17,13 @@ const WEBDAV_REQUEST_DELAY = 100; // 每个请求之间的延迟（毫秒）
 
 let refreshTimer: NodeJS.Timeout | null = null;
 
+// 定义进度类型
+export interface ContentCacheProgress {
+  stage: 'start' | 'posts' | 'memos' | 'done' | 'error';
+  message: string;
+  percentage?: number;
+}
+
 /**
  * 获取数据库实例（确保已初始化）
  */
@@ -91,6 +98,22 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
       const post = await webdavClient.getPostByIndex(fileIndex);
 
       // 转换为 ContentItem 格式，并添加 ETag 信息
+      // 安全处理日期字段
+      let publishDate = new Date(post.data.publishDate || post.data.date || Date.now());
+      if (isNaN(publishDate.getTime())) {
+        console.warn(`Invalid publishDate for post ${post.id}, using current time`);
+        publishDate = new Date();
+      }
+
+      let updateDate: Date | undefined;
+      if (post.data.updateDate) {
+        updateDate = new Date(post.data.updateDate);
+        if (isNaN(updateDate.getTime())) {
+          console.warn(`Invalid updateDate for post ${post.id}, ignoring`);
+          updateDate = undefined;
+        }
+      }
+
       const contentItem: ContentItem = {
         id: post.id,
         slug: post.slug,
@@ -98,8 +121,8 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
         title: post.data.title || '',
         excerpt: post.data.excerpt || post.data.description || '',
         body: post.body,
-        publishDate: new Date(post.data.publishDate || post.data.date || Date.now()),
-        updateDate: post.data.updateDate ? new Date(post.data.updateDate) : undefined,
+        publishDate,
+        updateDate,
         draft: post.data.draft || false,
         public: post.data.public !== false,
         category: post.data.category ? { title: post.data.category, slug: post.data.category } : undefined,
@@ -127,6 +150,19 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
       const memo = await webdavClient.getMemoByIndex(fileIndex);
 
       // 转换为 ContentItem 格式，并添加 ETag 信息
+      // 安全处理日期字段
+      let publishDate = memo.createdAt;
+      if (!publishDate || !(publishDate instanceof Date) || isNaN(publishDate.getTime())) {
+        console.warn(`Invalid createdAt for memo ${memo.id}, using current time`);
+        publishDate = new Date();
+      }
+
+      let updateDate: Date | undefined = memo.updatedAt;
+      if (updateDate && (!(updateDate instanceof Date) || isNaN(updateDate.getTime()))) {
+        console.warn(`Invalid updatedAt for memo ${memo.id}, ignoring`);
+        updateDate = undefined;
+      }
+
       const contentItem: ContentItem = {
         id: memo.id,
         slug: memo.slug,
@@ -134,8 +170,8 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
         title: memo.data.title || memo.id,
         excerpt: '',
         body: memo.body,
-        publishDate: memo.createdAt,
-        updateDate: memo.updatedAt,
+        publishDate,
+        updateDate,
         draft: false,
         public: memo.data.public !== false,
         tags: memo.tags ? memo.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
@@ -166,6 +202,21 @@ function contentItemToPost(item: ContentItem): NewPost {
   // 如果 metadata 中有 lastmod（来自 WebDAV），使用它；否则使用当前时间
   const lastModified = item.metadata?.lastmod ? new Date(item.metadata.lastmod).getTime() : now;
 
+  // 安全处理 publishDate，确保它是有效的 Date 对象
+  let publishDate: Date;
+  if (item.publishDate && item.publishDate instanceof Date && !isNaN(item.publishDate.getTime())) {
+    publishDate = item.publishDate;
+  } else {
+    console.warn(`Invalid or missing publishDate for item ${item.id}, using current time`);
+    publishDate = new Date();
+  }
+
+  // 安全处理 updateDate
+  let updateDate: Date | null = null;
+  if (item.updateDate && item.updateDate instanceof Date && !isNaN(item.updateDate.getTime())) {
+    updateDate = item.updateDate;
+  }
+
   return {
     id: item.id,
     slug: item.slug,
@@ -173,8 +224,8 @@ function contentItemToPost(item: ContentItem): NewPost {
     title: item.title || item.id,
     excerpt: item.excerpt || null,
     body: item.body,
-    publishDate: Math.floor(item.publishDate.getTime() / 1000), // 转换为秒时间戳
-    updateDate: item.updateDate ? Math.floor(item.updateDate.getTime() / 1000) : null, // 转换为秒时间戳
+    publishDate: Math.floor(publishDate.getTime() / 1000), // 转换为秒时间戳
+    updateDate: updateDate ? Math.floor(updateDate.getTime() / 1000) : null, // 转换为秒时间戳
     draft: item.draft || false,
     public: item.public !== false, // 默认为 true
     category: item.category?.title || null,
@@ -197,13 +248,28 @@ function contentItemToMemo(item: ContentItem): NewMemo {
   // 如果 metadata 中有 lastmod（来自 WebDAV），使用它；否则使用当前时间
   const lastModified = item.metadata?.lastmod ? new Date(item.metadata.lastmod).getTime() : now;
 
+  // 安全处理 publishDate，确保它是有效的 Date 对象
+  let publishDate: Date;
+  if (item.publishDate && item.publishDate instanceof Date && !isNaN(item.publishDate.getTime())) {
+    publishDate = item.publishDate;
+  } else {
+    console.warn(`Invalid or missing publishDate for memo ${item.id}, using current time`);
+    publishDate = new Date();
+  }
+
+  // 安全处理 updateDate
+  let updateDate: Date | null = null;
+  if (item.updateDate && item.updateDate instanceof Date && !isNaN(item.updateDate.getTime())) {
+    updateDate = item.updateDate;
+  }
+
   return {
     id: item.id,
     slug: item.slug,
     title: item.title || item.id,
     body: item.body,
-    publishDate: Math.floor(item.publishDate.getTime() / 1000), // 转换为秒时间戳
-    updateDate: item.updateDate ? Math.floor(item.updateDate.getTime() / 1000) : null, // 转换为秒时间戳
+    publishDate: Math.floor(publishDate.getTime() / 1000), // 转换为秒时间戳
+    updateDate: updateDate ? Math.floor(updateDate.getTime() / 1000) : null, // 转换为秒时间戳
     public: item.public !== false, // 默认为 true
     tags: item.tags && item.tags.length > 0 ? JSON.stringify(item.tags.map((t) => t.title)) : null,
     attachments: null, // TODO: 从 raw 数据中提取附件信息
@@ -218,8 +284,9 @@ function contentItemToMemo(item: ContentItem): NewMemo {
 /**
  * 强制刷新文章缓存（忽略 ETag 和修改时间检测）
  */
-async function forceRefreshPostsCache(): Promise<void> {
+async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgress) => void): Promise<void> {
   console.log('🔄 开始强制刷新文章缓存...');
+  onProgress?.({ stage: 'posts', message: '开始强制刷新文章缓存...' });
 
   try {
     // 获取 WebDAV 文件索引
@@ -248,7 +315,15 @@ async function forceRefreshPostsCache(): Promise<void> {
     const processedIds = new Set<string>();
 
     // 强制处理本地文章（忽略内容哈希检测）
-    for (const item of localContent) {
+    for (let i = 0; i < localContent.length; i++) {
+      const item = localContent[i];
+      const progress = Math.round(((i + 1) / localContent.length) * 20); // 本地文章占20%进度 (5-25%)
+      onProgress?.({
+        stage: 'posts',
+        message: `处理本地文章: ${item.title || item.id}`,
+        percentage: 5 + progress,
+      });
+
       const newPost = contentItemToPost(item);
       const existing = existingPostsMap.get(item.id);
 
@@ -256,6 +331,7 @@ async function forceRefreshPostsCache(): Promise<void> {
 
       if (!existing) {
         toInsert.push(newPost);
+        console.log(`✅ 准备插入本地文章: ${item.title || item.id}`);
       } else {
         // 强制更新，忽略内容哈希检测
         toUpdate.push({
@@ -266,17 +342,27 @@ async function forceRefreshPostsCache(): Promise<void> {
             updatedAt: Date.now(),
           },
         });
+        console.log(`🔄 准备更新本地文章: ${item.title || item.id}`);
       }
     }
 
     // 强制处理所有 WebDAV 文章（忽略修改时间检测）
     console.log(`🔄 强制更新所有 ${webdavPostsIndex.length} 个 WebDAV 文章`);
+    onProgress?.({ stage: 'posts', message: `开始处理 ${webdavPostsIndex.length} 个 WebDAV 文章...`, percentage: 25 });
 
     // 处理需要更新的文章（带速率控制）
     for (let i = 0; i < webdavPostsIndex.length; i++) {
       const fileIndex = webdavPostsIndex[i];
+      const progress = Math.round(((i + 1) / webdavPostsIndex.length) * 20); // WebDAV文章占20%进度 (25-45%)
+      onProgress?.({
+        stage: 'posts',
+        message: `处理 WebDAV 文章 (${i + 1}/${webdavPostsIndex.length}): ${fileIndex.path}`,
+        percentage: 25 + progress,
+      });
+
       try {
         const post = await webdavClient.getPostByIndex(fileIndex);
+        console.log(`✅ 成功获取 WebDAV 文章: ${post.data.title || fileIndex.path}`);
 
         // 转换为 ContentItem 格式，并添加 ETag 信息
         const contentItem: ContentItem = {
@@ -304,6 +390,7 @@ async function forceRefreshPostsCache(): Promise<void> {
 
         if (!existing) {
           toInsert.push(newPost);
+          console.log(`✅ 准备插入 WebDAV 文章: ${post.data.title || fileIndex.path}`);
         } else {
           // 强制更新，忽略修改时间检测
           toUpdate.push({
@@ -314,6 +401,7 @@ async function forceRefreshPostsCache(): Promise<void> {
               updatedAt: Date.now(),
             },
           });
+          console.log(`🔄 准备更新 WebDAV 文章: ${post.data.title || fileIndex.path}`);
         }
 
         // 添加小延迟以避免速率限制
@@ -322,22 +410,31 @@ async function forceRefreshPostsCache(): Promise<void> {
         }
       } catch (error) {
         console.error(`❌ 处理文章 ${fileIndex.path} 失败:`, error);
+        onProgress?.({
+          stage: 'posts',
+          message: `❌ 处理文章失败: ${fileIndex.path} - ${error.message}`,
+          percentage: 25 + Math.round(((i + 1) / webdavPostsIndex.length) * 20),
+        });
         // 继续处理其他文章
       }
     }
 
     // 批量插入新记录
     if (toInsert.length > 0) {
+      onProgress?.({ stage: 'posts', message: `正在插入 ${toInsert.length} 条新文章记录...`, percentage: 45 });
       await db.insert(posts).values(toInsert);
       console.log(`✅ 插入了 ${toInsert.length} 条新文章记录`);
+      onProgress?.({ stage: 'posts', message: `✅ 成功插入 ${toInsert.length} 条新文章记录`, percentage: 46 });
     }
 
     // 批量更新现有记录
-    for (const update of toUpdate) {
-      await db.update(posts).set(update.data).where(eq(posts.id, update.id));
-    }
     if (toUpdate.length > 0) {
+      onProgress?.({ stage: 'posts', message: `正在更新 ${toUpdate.length} 条文章记录...`, percentage: 47 });
+      for (const update of toUpdate) {
+        await db.update(posts).set(update.data).where(eq(posts.id, update.id));
+      }
       console.log(`✅ 更新了 ${toUpdate.length} 条文章记录`);
+      onProgress?.({ stage: 'posts', message: `✅ 成功更新 ${toUpdate.length} 条文章记录`, percentage: 48 });
     }
 
     // 删除不再存在的记录（检查本地和 WebDAV 索引）
@@ -347,14 +444,17 @@ async function forceRefreshPostsCache(): Promise<void> {
     ]);
 
     const toDelete = existingPosts.filter((p) => !allValidIds.has(p.id));
-    for (const post of toDelete) {
-      await db.delete(posts).where(eq(posts.id, post.id));
-    }
     if (toDelete.length > 0) {
+      onProgress?.({ stage: 'posts', message: `正在删除 ${toDelete.length} 条过期文章记录...`, percentage: 49 });
+      for (const post of toDelete) {
+        await db.delete(posts).where(eq(posts.id, post.id));
+      }
       console.log(`✅ 删除了 ${toDelete.length} 条过期文章记录`);
+      onProgress?.({ stage: 'posts', message: `✅ 成功删除 ${toDelete.length} 条过期文章记录`, percentage: 49.5 });
     }
 
     console.log('✅ 文章缓存强制刷新完成');
+    onProgress?.({ stage: 'posts', message: '✅ 文章缓存强制刷新完成', percentage: 50 });
   } catch (error) {
     console.error('❌ 文章缓存强制刷新失败:', error);
   }
@@ -363,8 +463,9 @@ async function forceRefreshPostsCache(): Promise<void> {
 /**
  * 基于 ETag 的智能文章缓存刷新
  */
-async function refreshPostsCache(): Promise<void> {
+async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) => void): Promise<void> {
   console.log('🔄 开始刷新文章缓存...');
+  onProgress?.({ stage: 'posts', message: '开始刷新文章缓存...' });
 
   try {
     // 获取 WebDAV 文件索引
@@ -535,8 +636,9 @@ async function refreshPostsCache(): Promise<void> {
 /**
  * 强制刷新闪念缓存（忽略修改时间检测）
  */
-async function forceRefreshMemosCache(): Promise<void> {
+async function forceRefreshMemosCache(onProgress?: (progress: ContentCacheProgress) => void): Promise<void> {
   console.log('🔄 开始强制刷新闪念缓存...');
+  onProgress?.({ stage: 'memos', message: '开始强制刷新闪念缓存...' });
 
   try {
     // 获取数据库实例
@@ -563,12 +665,21 @@ async function forceRefreshMemosCache(): Promise<void> {
 
     // 强制处理所有 WebDAV 闪念（忽略修改时间检测）
     console.log(`🔄 强制更新所有 ${webdavMemosIndex.length} 条 WebDAV 闪念`);
+    onProgress?.({ stage: 'memos', message: `开始处理 ${webdavMemosIndex.length} 条 WebDAV 闪念...`, percentage: 50 });
 
     // 处理需要更新的闪念（带速率控制）
     for (let i = 0; i < webdavMemosIndex.length; i++) {
       const fileIndex = webdavMemosIndex[i];
+      const progress = Math.round(((i + 1) / webdavMemosIndex.length) * 30); // 闪念处理占30%进度 (50-80%)
+      onProgress?.({
+        stage: 'memos',
+        message: `处理闪念 (${i + 1}/${webdavMemosIndex.length}): ${fileIndex.path}`,
+        percentage: 50 + progress,
+      });
+
       try {
         const memo = await webdavClient.getMemoByIndex(fileIndex);
+        console.log(`✅ 成功获取闪念: ${memo.data.title || fileIndex.path}`);
 
         // 转换为 ContentItem 格式，并添加 ETag 信息
         const contentItem: ContentItem = {
@@ -593,6 +704,7 @@ async function forceRefreshMemosCache(): Promise<void> {
 
         if (!existing) {
           toInsert.push(newMemo);
+          console.log(`✅ 准备插入闪念: ${memo.data.title || fileIndex.path}`);
         } else {
           // 强制更新，忽略修改时间检测
           toUpdate.push({
@@ -603,6 +715,7 @@ async function forceRefreshMemosCache(): Promise<void> {
               updatedAt: Date.now(),
             },
           });
+          console.log(`🔄 准备更新闪念: ${memo.data.title || fileIndex.path}`);
         }
 
         // 添加小延迟以避免速率限制
@@ -611,36 +724,48 @@ async function forceRefreshMemosCache(): Promise<void> {
         }
       } catch (error) {
         console.error(`❌ 处理闪念 ${fileIndex.path} 失败:`, error);
+        onProgress?.({
+          stage: 'memos',
+          message: `❌ 处理闪念失败: ${fileIndex.path} - ${error.message}`,
+          percentage: 50 + Math.round(((i + 1) / webdavMemosIndex.length) * 30),
+        });
         // 继续处理其他闪念
       }
     }
 
     // 批量插入新记录
     if (toInsert.length > 0) {
+      onProgress?.({ stage: 'memos', message: `正在插入 ${toInsert.length} 条新闪念记录...`, percentage: 80 });
       await db.insert(memos).values(toInsert);
       console.log(`✅ 插入了 ${toInsert.length} 条新闪念记录`);
+      onProgress?.({ stage: 'memos', message: `✅ 成功插入 ${toInsert.length} 条新闪念记录`, percentage: 85 });
     }
 
     // 批量更新现有记录
-    for (const update of toUpdate) {
-      await db.update(memos).set(update.data).where(eq(memos.id, update.id));
-    }
     if (toUpdate.length > 0) {
+      onProgress?.({ stage: 'memos', message: `正在更新 ${toUpdate.length} 条闪念记录...`, percentage: 87 });
+      for (const update of toUpdate) {
+        await db.update(memos).set(update.data).where(eq(memos.id, update.id));
+      }
       console.log(`✅ 更新了 ${toUpdate.length} 条闪念记录`);
+      onProgress?.({ stage: 'memos', message: `✅ 成功更新 ${toUpdate.length} 条闪念记录`, percentage: 90 });
     }
 
     // 删除不再存在的记录（检查 WebDAV 索引）
     const allValidIds = new Set(webdavMemosIndex.map((fileIndex) => fileIndex.path));
 
     const toDelete = existingMemos.filter((m) => !allValidIds.has(m.id));
-    for (const memo of toDelete) {
-      await db.delete(memos).where(eq(memos.id, memo.id));
-    }
     if (toDelete.length > 0) {
+      onProgress?.({ stage: 'memos', message: `正在删除 ${toDelete.length} 条过期闪念记录...`, percentage: 92 });
+      for (const memo of toDelete) {
+        await db.delete(memos).where(eq(memos.id, memo.id));
+      }
       console.log(`✅ 删除了 ${toDelete.length} 条过期闪念记录`);
+      onProgress?.({ stage: 'memos', message: `✅ 成功删除 ${toDelete.length} 条过期闪念记录`, percentage: 94 });
     }
 
     console.log('✅ 闪念缓存强制刷新完成');
+    onProgress?.({ stage: 'memos', message: '✅ 闪念缓存强制刷新完成', percentage: 95 });
   } catch (error) {
     console.error('❌ 闪念缓存强制刷新失败:', error);
   }
@@ -649,8 +774,9 @@ async function forceRefreshMemosCache(): Promise<void> {
 /**
  * 基于 ETag 的智能闪念缓存刷新
  */
-async function refreshMemosCache(): Promise<void> {
+async function refreshMemosCache(onProgress?: (progress: ContentCacheProgress) => void): Promise<void> {
   console.log('🔄 开始刷新闪念缓存...');
+  onProgress?.({ stage: 'memos', message: '开始刷新闪念缓存...' });
 
   try {
     // 获取数据库实例
@@ -790,28 +916,58 @@ async function refreshMemosCache(): Promise<void> {
 
 /**
  * 刷新所有内容缓存
+ * @param force 是否强制刷新（忽略 ETag 和修改时间检测）
+ * @param onProgress 进度回调函数
  */
-export async function refreshContentCache(): Promise<void> {
-  console.log('🚀 开始刷新内容缓存...');
+export async function refreshContentCache(
+  force: boolean = false,
+  onProgress?: (progress: ContentCacheProgress) => void
+): Promise<void> {
+  const logPrefix = force ? '🚀 开始强制刷新内容缓存...' : '🚀 开始刷新内容缓存...';
+  console.log(logPrefix);
+  onProgress?.({ stage: 'start', message: force ? '开始强制刷新内容缓存...' : '开始刷新内容缓存...', percentage: 0 });
+
   const startTime = Date.now();
 
-  await Promise.all([refreshPostsCache(), refreshMemosCache()]);
+  try {
+    // 刷新文章缓存 (0-50%)
+    onProgress?.({ stage: 'posts', message: '正在刷新文章缓存...', percentage: 5 });
+    if (force) {
+      await forceRefreshPostsCache(onProgress);
+    } else {
+      await refreshPostsCache(onProgress);
+    }
 
-  const duration = Date.now() - startTime;
-  console.log(`✅ 内容缓存刷新完成，耗时 ${duration}ms`);
+    // 刷新闪念缓存 (50-95%)
+    onProgress?.({ stage: 'memos', message: '正在刷新闪念缓存...', percentage: 50 });
+    if (force) {
+      await forceRefreshMemosCache(onProgress);
+    } else {
+      await refreshMemosCache(onProgress);
+    }
+
+    const duration = (Date.now() - startTime) / 1000;
+    const successMessage = force
+      ? `强制刷新内容缓存完成，耗时 ${duration.toFixed(2)}s`
+      : `内容缓存刷新完成，耗时 ${duration.toFixed(2)}s`;
+
+    console.log(`✅ ${successMessage}`);
+    onProgress?.({ stage: 'done', message: successMessage, percentage: 100 });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    const fullErrorMessage = `内容缓存刷新失败: ${errorMessage}`;
+    console.error(`❌ ${fullErrorMessage}`);
+    onProgress?.({ stage: 'error', message: fullErrorMessage });
+    throw error;
+  }
 }
 
 /**
  * 强制刷新所有内容缓存（忽略 ETag 和修改时间检测）
+ * @deprecated 使用 refreshContentCache(true) 替代
  */
 export async function forceRefreshContentCache(): Promise<void> {
-  console.log('🚀 开始强制刷新内容缓存...');
-  const startTime = Date.now();
-
-  await Promise.all([forceRefreshPostsCache(), forceRefreshMemosCache()]);
-
-  const duration = Date.now() - startTime;
-  console.log(`✅ 强制刷新内容缓存完成，耗时 ${duration}ms`);
+  return refreshContentCache(true);
 }
 
 /**
