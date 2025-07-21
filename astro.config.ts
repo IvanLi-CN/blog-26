@@ -77,7 +77,9 @@ export default defineConfig({
     astrowind({
       config: './src/config.yaml',
     }),
-    react(),
+    react({
+      experimentalReactChildren: true,
+    }),
   ],
 
   image: {

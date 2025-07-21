@@ -4,13 +4,46 @@ import { AttachmentGrid } from './AttachmentGrid';
 import { useInfiniteScroll, useMemos } from './hooks';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
-interface MemosListProps {
-  isAdmin?: boolean;
+// 使用与hooks.ts相同的类型定义
+interface Memo {
+  id: string;
+  slug: string;
+  title?: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  data: Record<string, any>;
+  isPublic: boolean;
+  attachments?: Array<{
+    filename: string;
+    path: string;
+    size?: number;
+    isImage: boolean;
+  }>;
+  tags?: string[];
 }
 
-export function MemosList({ isAdmin = false }: MemosListProps) {
-  // 使用新的分页hook
-  const { memos, isLoading, isLoadingMore, error, hasMore, loadMore } = useMemos({ isAdmin });
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+interface MemosListProps {
+  isAdmin?: boolean;
+  initialMemos?: Memo[];
+  initialPagination?: Pagination;
+}
+
+export function MemosList({ isAdmin = false, initialMemos, initialPagination }: MemosListProps) {
+  // 使用新的分页hook，传递初始数据
+  const { memos, isLoading, isLoadingMore, error, hasMore, loadMore } = useMemos({
+    isAdmin,
+    initialMemos,
+    initialPagination,
+  });
 
   // 启用无限滚动
   useInfiniteScroll(loadMore, hasMore, isLoadingMore);

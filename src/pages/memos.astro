@@ -3,6 +3,7 @@ import { MemosAppWithProviders } from "~/components/memos/MemosApp";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 import { isAdminFromRequest } from "~/lib/auth";
+import { getCachedMemos } from "~/lib/content-cache";
 
 export const prerender = false;
 
@@ -11,6 +12,56 @@ const isUserAdmin = await isAdminFromRequest(
   Astro.cookies,
   Astro.request.headers,
 );
+
+// 获取第一页的闪念数据（服务端渲染）
+const limit = 10;
+let allMemos: any[] = [];
+
+try {
+  allMemos = await getCachedMemos();
+} catch (error) {
+  console.error("Failed to get cached memos:", error);
+  // 如果获取失败，使用空数组作为fallback
+  allMemos = [];
+}
+
+// 如果不是管理员，只返回公开的 Memo
+const filteredMemos = isUserAdmin
+  ? allMemos
+  : allMemos.filter((memo) => memo.public === true);
+
+// 按创建时间倒序排序（最新的在前面）
+const sortedMemos = filteredMemos.sort((a, b) => b.publishDate - a.publishDate);
+
+// 获取第一页数据
+const firstPageMemos = sortedMemos.slice(0, limit);
+const totalMemos = sortedMemos.length;
+const totalPages = Math.ceil(totalMemos / limit);
+const hasMore = totalPages > 1;
+
+// 转换为前端需要的格式
+const initialMemos = firstPageMemos.map((memo) => ({
+  id: memo.id,
+  slug: memo.slug,
+  title: memo.title || "无标题 Memo",
+  content: memo.body,
+  createdAt: new Date(memo.publishDate * 1000).toISOString(),
+  updatedAt: memo.updateDate
+    ? new Date(memo.updateDate * 1000).toISOString()
+    : new Date(memo.publishDate * 1000).toISOString(),
+  data: {}, // 数据库缓存中没有存储完整的 frontmatter
+  isPublic: memo.public,
+  attachments: memo.attachments ? JSON.parse(memo.attachments) : undefined,
+  tags: memo.tags ? JSON.parse(memo.tags) : undefined,
+}));
+
+const initialPagination = {
+  page: 1,
+  limit,
+  total: totalMemos,
+  totalPages,
+  hasMore,
+};
 
 const metadata = {
   title: "闪念",
@@ -32,8 +83,13 @@ const metadata = {
       Memos
     </Headline>
 
-    <!-- 直接使用 React 组件 -->
-    <MemosAppWithProviders client:load isAdmin={isUserAdmin} />
+    <!-- 使用 React 组件，传递服务端渲染的初始数据 -->
+    <MemosAppWithProviders
+      client:load
+      isAdmin={isUserAdmin}
+      initialMemos={initialMemos}
+      initialPagination={initialPagination}
+    />
   </section>
 </Layout>
 

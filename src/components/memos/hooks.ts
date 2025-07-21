@@ -20,22 +20,33 @@ interface Memo {
   tags?: string[];
 }
 
-interface UseMemosProps {
-  isAdmin?: boolean;
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
 }
 
-export function useMemos({ isAdmin = false }: UseMemosProps = {}) {
-  // Note: isAdmin is currently not used but kept for future admin-specific features
-  const [allMemos, setAllMemos] = useState<Memo[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+interface UseMemosProps {
+  isAdmin?: boolean;
+  initialMemos?: Memo[];
+  initialPagination?: Pagination;
+}
 
+export function useMemos({ isAdmin = false, initialMemos, initialPagination }: UseMemosProps = {}) {
+  // Note: isAdmin is currently not used but kept for future admin-specific features
+  const [allMemos, setAllMemos] = useState<Memo[]>(initialMemos || []);
+  const [page, setPage] = useState(initialPagination?.page || 1);
+  const [hasMore, setHasMore] = useState(initialPagination?.hasMore ?? true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   // 使用tRPC query获取当前页数据
+  // 如果有初始数据且是第一页，则不需要立即请求
+  const shouldFetch = !initialMemos || page > 1;
   const { data, isLoading, error, refetch } = trpc.memos.getMemos.useQuery(
     { page, limit: 10 },
     {
-      enabled: true,
+      enabled: shouldFetch,
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5, // 5分钟
     }
@@ -45,20 +56,22 @@ export function useMemos({ isAdmin = false }: UseMemosProps = {}) {
   useEffect(() => {
     if (data) {
       setAllMemos((prev) => {
-        if (page === 1) {
-          // 第一页，直接替换
+        if (page === 1 && !initialMemos) {
+          // 第一页且没有初始数据，直接替换
           return data.memos;
-        } else {
+        } else if (page > 1) {
           // 后续页，追加数据，避免重复
           const existingIds = new Set(prev.map((memo) => memo.id));
           const newMemos = data.memos.filter((memo) => !existingIds.has(memo.id));
           return [...prev, ...newMemos];
         }
+        // 如果有初始数据且是第一页，保持现有数据不变
+        return prev;
       });
       setHasMore(data.pagination.hasMore);
       setIsLoadingMore(false);
     }
-  }, [data, page]);
+  }, [data, page, initialMemos]);
 
   const loadMore = useCallback(() => {
     if (hasMore && !isLoading && !isLoadingMore) {
@@ -76,11 +89,11 @@ export function useMemos({ isAdmin = false }: UseMemosProps = {}) {
 
   return {
     memos: allMemos,
-    isLoading: isLoading && page === 1,
+    isLoading: isLoading && page === 1 && !initialMemos,
     isLoadingMore,
     error: error?.message || null,
     hasMore,
-    total: data?.pagination.total || 0,
+    total: data?.pagination.total || initialPagination?.total || 0,
     page,
     loadMore,
     refetch: refetchAll,
