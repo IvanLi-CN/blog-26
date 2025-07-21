@@ -98,63 +98,6 @@ const metadata = {
           </div>
         </div>
       </div>
-
-      <!-- 文章列表 -->
-      <div class="card bg-base-100 shadow-xl mb-8">
-        <div class="card-body">
-          <h2 class="card-title mb-4">缓存的文章</h2>
-          <div class="overflow-x-auto">
-            <table class="table table-zebra">
-              <thead>
-                <tr>
-                  <th>标题</th>
-                  <th>类型</th>
-                  <th>发布日期</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody id="posts-table">
-                <tr>
-                  <td colspan="4" class="text-center">加载中...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="flex justify-center mt-4">
-            <button class="btn btn-outline" id="load-more-posts"
-              >加载更多</button
-            >
-          </div>
-        </div>
-      </div>
-
-      <!-- 闪念列表 -->
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title mb-4">缓存的闪念</h2>
-          <div class="overflow-x-auto">
-            <table class="table table-zebra">
-              <thead>
-                <tr>
-                  <th>标题</th>
-                  <th>发布日期</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody id="memos-table">
-                <tr>
-                  <td colspan="3" class="text-center">加载中...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="flex justify-center mt-4">
-            <button class="btn btn-outline" id="load-more-memos"
-              >加载更多</button
-            >
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </Layout>
@@ -170,10 +113,6 @@ const metadata = {
       }),
     ],
   });
-
-  let postsOffset = 0;
-  let memosOffset = 0;
-  const pageSize = 10;
 
   // 格式化日期
   function formatDate(date: Date | null): string {
@@ -210,107 +149,6 @@ const metadata = {
     }
   }
 
-  // 加载文章列表
-  async function loadPosts(reset = false) {
-    if (reset) postsOffset = 0;
-
-    try {
-      const result = await trpc.contentCache.getPosts.query({
-        limit: pageSize,
-        offset: postsOffset,
-      });
-
-      const tbody = document.getElementById("posts-table")!;
-
-      if (reset) {
-        tbody.innerHTML = "";
-      }
-
-      if (result.posts.length === 0 && reset) {
-        tbody.innerHTML =
-          '<tr><td colspan="4" class="text-center">暂无缓存的文章</td></tr>';
-        return;
-      }
-
-      result.posts.forEach((post) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>
-            <div class="font-medium">${post.title}</div>
-            <div class="text-sm text-base-content/70">${post.slug}</div>
-          </td>
-          <td>
-            <span class="badge ${post.type === "project" ? "badge-secondary" : "badge-primary"}">
-              ${post.type === "project" ? "项目" : "文章"}
-            </span>
-          </td>
-          <td>${formatDate(new Date(Number(post.publishDate) * 1000))}</td>
-          <td>
-            <span class="badge ${post.public ? "badge-success" : "badge-warning"}">
-              ${post.public ? "公开" : "草稿"}
-            </span>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      postsOffset += result.posts.length;
-
-      const loadMoreBtn = document.getElementById("load-more-posts")!;
-      loadMoreBtn.style.display = result.hasMore ? "block" : "none";
-    } catch (error) {
-      console.error("Failed to load posts:", error);
-    }
-  }
-
-  // 加载闪念列表
-  async function loadMemos(reset = false) {
-    if (reset) memosOffset = 0;
-
-    try {
-      const result = await trpc.contentCache.getMemos.query({
-        limit: pageSize,
-        offset: memosOffset,
-      });
-
-      const tbody = document.getElementById("memos-table")!;
-
-      if (reset) {
-        tbody.innerHTML = "";
-      }
-
-      if (result.memos.length === 0 && reset) {
-        tbody.innerHTML =
-          '<tr><td colspan="3" class="text-center">暂无缓存的闪念</td></tr>';
-        return;
-      }
-
-      result.memos.forEach((memo) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>
-            <div class="font-medium">${memo.title || "无标题"}</div>
-            <div class="text-sm text-base-content/70">${memo.slug}</div>
-          </td>
-          <td>${formatDate(new Date(Number(memo.publishDate) * 1000))}</td>
-          <td>
-            <span class="badge ${memo.public ? "badge-success" : "badge-warning"}">
-              ${memo.public ? "公开" : "私有"}
-            </span>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      memosOffset += result.memos.length;
-
-      const loadMoreBtn = document.getElementById("load-more-memos")!;
-      loadMoreBtn.style.display = result.hasMore ? "block" : "none";
-    } catch (error) {
-      console.error("Failed to load memos:", error);
-    }
-  }
-
   // 智能刷新缓存
   async function refreshCache() {
     const btn = document.getElementById("refresh-cache")! as HTMLButtonElement;
@@ -322,8 +160,6 @@ const metadata = {
     try {
       await trpc.contentCache.refresh.mutate();
       await loadCacheStatus();
-      await loadPosts(true);
-      await loadMemos(true);
 
       // 显示成功消息
       const toast = document.createElement("div");
@@ -367,8 +203,6 @@ const metadata = {
     try {
       await trpc.contentCache.forceRefresh.mutate();
       await loadCacheStatus();
-      await loadPosts(true);
-      await loadMemos(true);
 
       // 显示成功消息
       const toast = document.createElement("div");
@@ -406,15 +240,7 @@ const metadata = {
   document
     .getElementById("force-refresh-cache")!
     .addEventListener("click", forceRefreshCache);
-  document
-    .getElementById("load-more-posts")!
-    .addEventListener("click", () => loadPosts());
-  document
-    .getElementById("load-more-memos")!
-    .addEventListener("click", () => loadMemos());
 
   // 初始化
   loadCacheStatus();
-  loadPosts(true);
-  loadMemos(true);
 </script>
