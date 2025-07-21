@@ -59,13 +59,21 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
     const adminEmail = process.env.ADMIN_EMAIL;
     isAdmin = adminEmail ? remoteEmail === adminEmail : false;
 
-    // 在开发环境中，如果是管理员且没有用户信息，创建临时用户对象
-    if (isAdmin && !user && process.env.ADMIN_MODE === 'true') {
+    // 如果是管理员且没有用户信息，创建临时用户对象（生产环境和开发环境都需要）
+    if (isAdmin && !user) {
       user = {
-        id: 'admin-dev-user',
+        id: 'admin-header-user',
         nickname: 'Admin',
         email: remoteEmail,
       };
+    }
+  }
+
+  // 如果有用户但还没有确定管理员状态，检查用户邮箱是否为管理员邮箱
+  if (user && !isAdmin) {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail && user.email === adminEmail) {
+      isAdmin = true;
     }
   }
 

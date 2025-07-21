@@ -1,4 +1,5 @@
 import type { AstroCookies } from 'astro';
+import { extractAuthFromRequest } from './auth-utils';
 import { config } from './config';
 import { verifyJwt } from './jwt';
 
@@ -38,7 +39,7 @@ export async function getUserFromCookies(cookies: AstroCookies): Promise<UserInf
  */
 export function isAdmin(userEmail: string): boolean {
   try {
-    const { email: adminEmail } = config.admin;
+    const adminEmail = process.env.ADMIN_EMAIL;
     return Boolean(adminEmail && userEmail === adminEmail);
   } catch {
     // Configuration not available (e.g., during prerender)
@@ -51,9 +52,10 @@ export function isAdmin(userEmail: string): boolean {
  */
 export function isAdminFromHeaders(headers: Headers): boolean {
   try {
-    const { email: adminEmail, emailHeaderName } = config.admin;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const emailHeaderName = process.env.ADMIN_EMAIL_HEADER_NAME || 'Remote-Email';
 
-    if (!adminEmail || !emailHeaderName) {
+    if (!adminEmail) {
       return false;
     }
 
@@ -75,27 +77,32 @@ export async function isAdminFromCookies(cookies: AstroCookies): Promise<boolean
 
 /**
  * 综合检查当前用户是否为管理员（支持 cookies 和 headers）
+ * 使用统一的认证逻辑
  */
 export async function isAdminFromRequest(cookies: AstroCookies, headers: Headers): Promise<boolean> {
-  // 开发环境特殊处理
-  if (process.env.ADMIN_MODE === 'true') {
-    try {
-      const { email: adminEmail } = config.admin;
-      if (adminEmail) {
-        return true; // 在开发模式下，如果配置了管理员邮箱就允许访问
-      }
-    } catch {
-      // 配置不可用时回退到其他检查
-    }
+  // 创建一个模拟的 Request 对象来复用 auth-utils 的逻辑
+  const mockRequest = new Request('http://localhost', {
+    headers: new Headers(headers),
+  });
+
+  // 将 Astro cookies 转换为 cookie 字符串
+  const cookiePairs: string[] = [];
+
+  // 获取 token cookie（主要的认证 cookie）
+  const token = cookies.get('token');
+  if (token?.value) {
+    cookiePairs.push(`token=${token.value}`);
   }
 
-  // 首先检查 Traefik SSO 请求头
-  if (isAdminFromHeaders(headers)) {
-    return true;
+  // 如果有其他 cookies，也可以添加
+  // 注意：Astro cookies 没有 getAll() 方法，我们只处理已知的认证相关 cookies
+
+  if (cookiePairs.length > 0) {
+    mockRequest.headers.set('cookie', cookiePairs.join('; '));
   }
 
-  // 回退到传统的 cookie 认证
-  return await isAdminFromCookies(cookies);
+  const { isAdmin } = await extractAuthFromRequest(mockRequest);
+  return isAdmin;
 }
 
 /**

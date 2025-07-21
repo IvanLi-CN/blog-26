@@ -7,9 +7,10 @@ import { isAdminFromRequest } from "~/lib/auth";
 export const prerender = false;
 
 // 检查用户是否为管理员
-const isUserAdmin =
-  process.env.ADMIN_MODE === "true" ||
-  (await isAdminFromRequest(Astro.cookies, Astro.request.headers));
+const isUserAdmin = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
 
 const metadata = {
   title: "闪念",

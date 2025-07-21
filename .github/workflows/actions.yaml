@@ -16,7 +16,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  check:
+  test:
+    name: Run Tests
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -35,10 +36,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.bun-version }}-bun-
       - run: bun install
-      - run: bun run check
+      - name: Run unit tests
+        run: bun test
+      - name: Run code quality checks
+        run: bun run check
 
   docker:
+    name: Build and Push Docker Image
     runs-on: ubuntu-22.04
+    needs: test
     permissions:
       contents: read
       packages: write
@@ -73,6 +79,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
+    name: Deploy to Production
     runs-on: ubuntu-22.04
     needs: docker
     steps:

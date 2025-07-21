@@ -1,6 +1,19 @@
 ---
 import VectorizeView from "~/components/vectorization/VectorizeView";
 import Layout from "~/layouts/PageLayout.astro";
+import { isAdminFromRequest, redirectToAdminLogin } from "~/lib/auth";
+
+export const prerender = false;
+
+// 权限检查
+const isUserAdmin = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
+
+if (!isUserAdmin) {
+  return redirectToAdminLogin();
+}
 
 const metadata = {
   title: "向量化管理",

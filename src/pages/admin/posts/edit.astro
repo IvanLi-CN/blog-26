@@ -6,9 +6,10 @@ import { isAdminFromRequest, redirectToAdminLogin } from "~/lib/auth";
 export const prerender = false;
 
 // Check if user is admin
-const isUserAdmin =
-  process.env.ADMIN_MODE === "true" ||
-  (await isAdminFromRequest(Astro.cookies, Astro.request.headers));
+const isUserAdmin = await isAdminFromRequest(
+  Astro.cookies,
+  Astro.request.headers,
+);
 
 if (!isUserAdmin) {
   return redirectToAdminLogin();

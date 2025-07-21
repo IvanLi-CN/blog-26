@@ -34,6 +34,7 @@
   },
   "scripts": {
     "dev": "ADMIN_MODE=true bunx --bun astro dev --host",
+    "dev:prod": "bunx --bun astro dev --host",
     "start": "bunx --bun astro dev",
     "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
@@ -41,7 +42,9 @@
     "check": "bunx biome check && bun run check:astro",
     "check:astro": "bunx --bun astro check",
     "migrate": "bun ./scripts/migrate.ts",
-    "fix": "bunx biome check --write"
+    "fix": "bunx biome check --write",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "dependencies": {
     "@astrojs/react": "^4.3.0",
