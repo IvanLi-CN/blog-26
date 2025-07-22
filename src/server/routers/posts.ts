@@ -298,7 +298,7 @@ export const postsRouter = createTRPCRouter({
         frontmatter.draft = true;
       }
       if (frontmatter.public === undefined) {
-        frontmatter.public = true;
+        frontmatter.public = false;
       }
       if (frontmatter.slug === undefined) {
         frontmatter.slug = frontmatter.title?.toLowerCase().replace(/\s+/g, '-') || '';

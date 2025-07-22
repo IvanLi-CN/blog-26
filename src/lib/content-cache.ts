@@ -367,22 +367,81 @@ async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgre
         const post = await webdavClient.getPostByIndex(fileIndex);
         console.log(`✅ 成功获取 WebDAV 文章: ${post.data.title || fileIndex.path}`);
 
+        // 使用与 normalizeWebDAVPost 相同的逻辑处理时间和状态
+        const {
+          publishDate: rawPublishDate,
+          updateDate: rawUpdateDate,
+          date,
+          title,
+          excerpt: rawExcerpt,
+          summary,
+          image,
+          tags: rawTags = [],
+          category: rawCategory,
+          author,
+          draft = true, // 默认为草稿
+          public: isPublic = false, // 默认为私有
+        } = post.data;
+
+        // 改进时间解析逻辑 - 按优先级尝试不同的时间字段
+        let publishDate: Date | null = null;
+
+        // 优先级：publishDate > date > updateDate
+        const timeFields = [rawPublishDate, date, rawUpdateDate];
+
+        for (const timeField of timeFields) {
+          if (timeField) {
+            const testDate = new Date(timeField);
+            if (!isNaN(testDate.getTime())) {
+              publishDate = testDate;
+              break;
+            }
+          }
+        }
+
+        // 如果没有找到有效时间，使用文件修改时间作为备选
+        if (!publishDate) {
+          publishDate = new Date(fileIndex.lastmod);
+          console.warn(
+            `No valid time field found for WebDAV post ${post.id}, using file modification time: ${fileIndex.lastmod}`
+          );
+        }
+
+        let updateDate: Date | undefined;
+        if (rawUpdateDate) {
+          updateDate = new Date(rawUpdateDate);
+          if (isNaN(updateDate.getTime())) {
+            console.warn(`Invalid updateDate for post ${post.id}:`, rawUpdateDate);
+            updateDate = undefined;
+          }
+        } else if (date) {
+          updateDate = new Date(date);
+          if (isNaN(updateDate.getTime())) {
+            console.warn(`Invalid date for post ${post.id}:`, date);
+            updateDate = undefined;
+          }
+        }
+
+        const excerpt = rawExcerpt ?? summary;
+        const category = rawCategory ? { title: rawCategory, slug: rawCategory } : undefined;
+        const tags = rawTags.map((tag: string) => ({ title: tag, slug: tag }));
+
         // 转换为 ContentItem 格式，并添加 ETag 信息
         const contentItem: ContentItem = {
           id: post.id,
           slug: post.slug,
-          type: post.type,
-          title: post.data.title || post.id,
-          excerpt: post.data.excerpt || '',
+          type: post.collection === 'projects' ? 'project' : 'post',
+          title: title || post.id,
+          excerpt,
           body: post.body,
-          publishDate: post.createdAt,
-          updateDate: post.updatedAt,
-          draft: post.data.draft !== false, // 默认为草稿，需要明确设置为 false 才发布
-          public: post.data.public === true, // 默认为私有，需要明确设置为 true 才公开
-          category: post.data.category ? { title: post.data.category, slug: post.data.category } : undefined,
-          tags: post.tags ? post.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
-          author: post.data.author || null,
-          image: post.data.image || null,
+          publishDate,
+          updateDate,
+          draft,
+          public: isPublic,
+          category,
+          tags,
+          author,
+          image,
           metadata: { ...post.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
         };
 
@@ -562,9 +621,12 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
             }
           }
 
+          // 如果没有找到有效时间，使用文件修改时间作为备选
           if (!publishDate) {
-            console.warn(`No valid time field found for WebDAV post ${post.slug}, skipping this file`);
-            continue; // 跳过没有有效时间的文章
+            publishDate = new Date(fileIndex.lastmod);
+            console.warn(
+              `No valid time field found for WebDAV post ${post.id}, using file modification time: ${fileIndex.lastmod}`
+            );
           }
 
           const contentItem: ContentItem = {
