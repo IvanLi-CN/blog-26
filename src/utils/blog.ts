@@ -1,7 +1,7 @@
 import { APP_BLOG } from 'astrowind:config';
 import type { PaginateFunction } from 'astro';
 import { config } from '~/lib/config';
-import { getCachedPosts, refreshContentCache } from '~/lib/content-cache';
+import { getCachedPosts, getCachedPostsPaginated, refreshContentCache } from '~/lib/content-cache';
 import { getAllFileRecords } from '~/lib/db';
 import type { Post, Taxonomy } from '~/types';
 import { parseMarkdownToHTML } from '~/utils/markdown';
@@ -113,6 +113,96 @@ export const fetchPosts = async (isAdmin: boolean = false): Promise<Array<Post>>
   );
 
   return postsWithContent.sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
+};
+
+/** 分页获取文章 */
+export const fetchPostsPaginated = async (options: {
+  page?: number;
+  limit?: number;
+  isAdmin?: boolean;
+  type?: 'post' | 'project' | 'all';
+}): Promise<{
+  posts: Array<Post>;
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}> => {
+  const result = await getCachedPostsPaginated(options);
+  const vectorizationStatusMap = await getVectorizationStatusMap();
+
+  // 为每个文章添加向量化状态和处理内容
+  const postsWithContent = await Promise.all(
+    result.posts.map(async (post) => {
+      const vectorizationStatus = vectorizationStatusMap[post.slug];
+
+      // 解析 markdown 内容为 HTML
+      let content = '';
+      if (post.body) {
+        try {
+          content = await parseMarkdownToHTML(post.body);
+        } catch (error) {
+          console.warn(`Failed to parse markdown for post ${post.slug}:`, error);
+          content = post.body; // 回退到原始内容
+        }
+      }
+
+      // 解析 category、tags 和 metadata
+      let category: Taxonomy | undefined = undefined;
+      let tags: Taxonomy[] | undefined = undefined;
+      let metadata: any = undefined;
+
+      if (post.category) {
+        try {
+          const categoryData = typeof post.category === 'string' ? JSON.parse(post.category) : post.category;
+          category = categoryData;
+        } catch {
+          // 如果解析失败，忽略 category
+        }
+      }
+
+      if (post.tags) {
+        try {
+          const tagsData = typeof post.tags === 'string' ? JSON.parse(post.tags) : post.tags;
+          if (Array.isArray(tagsData)) {
+            // 确保每个 tag 都有正确的结构
+            tags = tagsData.filter((tag) => tag && typeof tag === 'object' && tag.title && tag.slug);
+          }
+        } catch {
+          // 如果解析失败，忽略 tags
+        }
+      }
+
+      if (post.metadata) {
+        try {
+          metadata = typeof post.metadata === 'string' ? JSON.parse(post.metadata) : post.metadata;
+        } catch {
+          // 如果解析失败，忽略 metadata
+        }
+      }
+
+      return {
+        ...post,
+        content,
+        permalink: post.slug, // 使用 slug 作为 permalink
+        publishDate: new Date(post.publishDate), // 转换为 Date 对象
+        updateDate: post.updateDate ? new Date(post.updateDate) : undefined,
+        excerpt: post.excerpt || undefined, // 转换 null 为 undefined
+        author: post.author || undefined, // 转换 null 为 undefined
+        category,
+        tags,
+        metadata,
+        vectorizationStatus: vectorizationStatus?.status || 'notvectorized',
+        vectorizationError: vectorizationStatus?.errorMessage,
+      };
+    })
+  );
+
+  return {
+    ...result,
+    posts: postsWithContent,
+  };
 };
 
 /** */

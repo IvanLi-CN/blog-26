@@ -13,7 +13,6 @@ import rehypeKatex from 'rehype-katex';
 import rehypeMermaid from 'rehype-mermaid';
 import remarkMath from 'remark-math';
 import { fileURLToPath } from 'url';
-
 import {
   lazyImagesRehypePlugin,
   readingTimeRemarkPlugin,

@@ -5,7 +5,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { type ContentItem } from './content';
 import { type Memo, memos, type NewMemo, type NewPost, type Post, posts } from './schema';
 
@@ -1081,8 +1081,15 @@ export async function forceRefreshContentCache(): Promise<void> {
 export async function startContentCacheManager(): Promise<void> {
   console.log('🎯 启动内容缓存管理器...');
 
-  // 立即执行一次刷新
-  await refreshContentCache();
+  try {
+    // 立即执行一次智能刷新（不强制刷新，基于 ETag 和修改时间）
+    console.log('🔄 开始初始缓存刷新...');
+    await refreshContentCache(false);
+    console.log('✅ 初始缓存刷新完成');
+  } catch (error) {
+    console.error('❌ 初始缓存刷新失败:', error);
+    // 即使初始刷新失败，也继续设置定时器
+  }
 
   // 设置定时刷新
   if (refreshTimer) {
@@ -1090,7 +1097,11 @@ export async function startContentCacheManager(): Promise<void> {
   }
 
   refreshTimer = setInterval(async () => {
-    await refreshContentCache();
+    try {
+      await refreshContentCache(false);
+    } catch (error) {
+      console.error('❌ 定时缓存刷新失败:', error);
+    }
   }, CACHE_REFRESH_INTERVAL);
 
   console.log(`✅ 内容缓存管理器已启动，将每 ${CACHE_REFRESH_INTERVAL / 1000 / 60} 分钟刷新一次`);
@@ -1113,6 +1124,78 @@ export function stopContentCacheManager(): void {
 export async function getCachedPosts(): Promise<Post[]> {
   const db = await getDB();
   return await db.select().from(posts);
+}
+
+/**
+ * 分页获取文章
+ * @param options 分页选项
+ */
+export async function getCachedPostsPaginated(options: {
+  page?: number;
+  limit?: number;
+  isAdmin?: boolean;
+  type?: 'post' | 'project' | 'all';
+}): Promise<{
+  posts: Post[];
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}> {
+  const db = await getDB();
+  const { page = 1, limit = 10, isAdmin = false, type = 'all' } = options;
+
+  // 构建基础查询条件
+  let whereConditions: any[] = [];
+
+  // 类型过滤
+  if (type !== 'all') {
+    whereConditions.push(eq(posts.type, type));
+  } else {
+    // 只获取 post 和 project 类型
+    whereConditions.push(
+      // 使用 SQL 的 IN 操作符
+      sql`${posts.type} IN ('post', 'project')`
+    );
+  }
+
+  // 权限过滤
+  if (!isAdmin) {
+    whereConditions.push(eq(posts.draft, false));
+    whereConditions.push(eq(posts.public, true));
+  }
+
+  // 标题过滤（非空）
+  whereConditions.push(sql`${posts.title} IS NOT NULL AND trim(${posts.title}) != ''`);
+
+  // 计算总数
+  const totalResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(posts)
+    .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+  const total = totalResult[0]?.count || 0;
+  const totalPages = Math.ceil(total / limit);
+  const offset = (page - 1) * limit;
+
+  // 获取分页数据
+  const paginatedPosts = await db
+    .select()
+    .from(posts)
+    .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+    .orderBy(desc(posts.publishDate))
+    .limit(limit)
+    .offset(offset);
+
+  return {
+    posts: paginatedPosts,
+    total,
+    totalPages,
+    currentPage: page,
+    hasNext: page < totalPages,
+    hasPrev: page > 1,
+  };
 }
 
 /**

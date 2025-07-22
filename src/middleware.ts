@@ -2,7 +2,31 @@ import { defineMiddleware } from 'astro:middleware';
 import { isAdminFromRequest } from './lib/auth';
 import { create404Response, isHtmlAccepted } from './utils/error-handler';
 
+// 应用初始化状态（在第一次请求时触发）
+let initializationPromise: Promise<void> | null = null;
+
+async function ensureAppInitialized() {
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  initializationPromise = (async () => {
+    try {
+      console.log('🚀 第一次请求触发应用初始化...');
+      const { initializeApp } = await import('./lib/startup');
+      await initializeApp();
+    } catch (error) {
+      console.error('❌ 应用初始化失败:', error);
+    }
+  })();
+
+  return initializationPromise;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
+  // 确保应用已初始化（只在第一次请求时执行）
+  await ensureAppInitialized();
+
   // 检查用户是否为管理员并设置到 locals
   const isUserAdmin = await isAdminFromRequest(context.cookies, context.request.headers);
 

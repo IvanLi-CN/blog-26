@@ -4,7 +4,11 @@ import Pagination from "~/components/blog/Pagination.astro";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 
-import { blogListRobots, blogPostsPerPage, fetchPosts } from "~/utils/blog";
+import {
+  blogListRobots,
+  blogPostsPerPage,
+  fetchPostsPaginated,
+} from "~/utils/blog";
 
 export const prerender = false;
 
@@ -12,37 +16,35 @@ export const prerender = false;
 const pageParam = Astro.params.page;
 const currentPage = pageParam ? parseInt(pageParam) : 1;
 
-// 管理员状态已在 middleware 中设置
+// 从 Astro.locals 获取管理员状态
+const isUserAdmin = Astro.locals.isAdmin || false;
 
-// 获取所有文章
-const allPosts = await fetchPosts();
-
-// 计算分页
+// 获取分页文章
 const postsPerPage = blogPostsPerPage || 10;
-const totalPosts = allPosts.length;
-const totalPages = Math.ceil(totalPosts / postsPerPage);
-const startIndex = (currentPage - 1) * postsPerPage;
-const endIndex = startIndex + postsPerPage;
-const posts = allPosts.slice(startIndex, endIndex);
+const paginationResult = await fetchPostsPaginated({
+  page: currentPage,
+  limit: postsPerPage,
+  isAdmin: isUserAdmin,
+  type: "all",
+});
 
 // 构建分页对象
 const page = {
-  data: posts,
-  start: startIndex,
-  end: Math.min(endIndex - 1, totalPosts - 1),
+  data: paginationResult.posts,
+  start: (currentPage - 1) * postsPerPage,
+  end: Math.min(currentPage * postsPerPage - 1, paginationResult.total - 1),
   size: postsPerPage,
-  total: totalPosts,
+  total: paginationResult.total,
   currentPage: currentPage,
-  lastPage: totalPages,
+  lastPage: paginationResult.totalPages,
   url: {
     current: Astro.url.pathname,
-    prev:
-      currentPage > 1
-        ? currentPage === 2
-          ? `/blog`
-          : `/blog/${currentPage - 1}`
-        : undefined,
-    next: currentPage < totalPages ? `/blog/${currentPage + 1}` : undefined,
+    prev: paginationResult.hasPrev
+      ? currentPage === 2
+        ? `/blog`
+        : `/blog/${currentPage - 1}`
+      : undefined,
+    next: paginationResult.hasNext ? `/blog/${currentPage + 1}` : undefined,
   },
 };
 

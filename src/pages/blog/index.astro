@@ -4,35 +4,39 @@ import Pagination from "~/components/blog/Pagination.astro";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 
-import { blogListRobots, blogPostsPerPage, fetchPosts } from "~/utils/blog";
+import {
+  blogListRobots,
+  blogPostsPerPage,
+  fetchPostsPaginated,
+} from "~/utils/blog";
 
 export const prerender = false;
 
 // 从 Astro.locals 获取管理员状态
 const isUserAdmin = Astro.locals.isAdmin || false;
 
-// 获取所有文章
-const allPosts = await fetchPosts(isUserAdmin);
-
-// 计算分页
+// 获取分页文章
 const postsPerPage = blogPostsPerPage || 10;
-const totalPosts = allPosts.length;
-const totalPages = Math.ceil(totalPosts / postsPerPage);
-const posts = allPosts.slice(0, postsPerPage);
+const paginationResult = await fetchPostsPaginated({
+  page: 1,
+  limit: postsPerPage,
+  isAdmin: isUserAdmin,
+  type: "all",
+});
 
 // 构建分页对象
 const page = {
-  data: posts,
+  data: paginationResult.posts,
   start: 0,
-  end: Math.min(postsPerPage - 1, totalPosts - 1),
+  end: Math.min(postsPerPage - 1, paginationResult.total - 1),
   size: postsPerPage,
-  total: totalPosts,
+  total: paginationResult.total,
   currentPage: 1,
-  lastPage: totalPages,
+  lastPage: paginationResult.totalPages,
   url: {
     current: Astro.url.pathname,
     prev: undefined,
-    next: totalPages > 1 ? `/blog/2` : undefined,
+    next: paginationResult.hasNext ? `/blog/2` : undefined,
   },
 };
 

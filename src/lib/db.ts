@@ -27,12 +27,15 @@ export async function initializeDB(): Promise<void> {
     // 启动内容缓存管理器（只启动一次）
     if (!contentCacheStarted) {
       contentCacheStarted = true;
-      // 在下一个事件循环中启动，确保数据库完全初始化
+      console.log('🚀 启动内容缓存管理器（后台异步）...');
+
+      // 异步启动缓存管理器，不阻塞数据库初始化
       setImmediate(async () => {
         try {
           await startContentCacheManager();
+          console.log('✅ 内容缓存初始化完成');
         } catch (error) {
-          console.error('Failed to start content cache manager:', error);
+          console.error('❌ 内容缓存初始化失败:', error);
         }
       });
     }
