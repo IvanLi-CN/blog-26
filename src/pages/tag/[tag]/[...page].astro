@@ -12,8 +12,11 @@ const tagSlug = Astro.params.tag;
 const pageParam = Astro.params.page;
 const currentPage = pageParam ? parseInt(pageParam) : 1;
 
+// 从 Astro.locals 获取管理员状态
+const isUserAdmin = Astro.locals.isAdmin || false;
+
 // 获取所有文章并按标签过滤
-const allPosts = await fetchPosts();
+const allPosts = await fetchPosts(isUserAdmin);
 const tagPosts = allPosts.filter((post) =>
   post.tags?.some((tag) => tag.slug === tagSlug),
 );
@@ -44,8 +47,7 @@ const page = {
   lastPage: totalPages,
   url: {
     current: Astro.url.pathname,
-    prev:
-      currentPage > 1 ? `/tag/${tagSlug}/${currentPage - 1}` : undefined,
+    prev: currentPage > 1 ? `/tag/${tagSlug}/${currentPage - 1}` : undefined,
     next:
       currentPage < totalPages
         ? `/tag/${tagSlug}/${currentPage + 1}`

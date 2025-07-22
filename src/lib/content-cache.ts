@@ -123,8 +123,8 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
         body: post.body,
         publishDate,
         updateDate,
-        draft: post.data.draft || false,
-        public: post.data.public !== false,
+        draft: post.data.draft !== false, // 默认为草稿，需要明确设置为 false 才发布
+        public: post.data.public === true, // 默认为私有，需要明确设置为 true 才公开
         category: post.data.category ? { title: post.data.category, slug: post.data.category } : undefined,
         tags: post.data.tags ? post.data.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
         author: post.data.author || undefined,
@@ -174,8 +174,8 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
         body: memo.body,
         publishDate,
         updateDate,
-        draft: false,
-        public: memo.data.public !== false,
+        draft: false, // Memos 默认不是草稿
+        public: memo.data.public === true, // 默认为私有，需要明确设置为 true 才公开
         tags: memo.tags ? memo.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
         metadata: { ...memo.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
       };
@@ -226,8 +226,8 @@ function contentItemToPost(item: ContentItem): NewPost | null {
     body: item.body,
     publishDate: Math.floor(publishDate.getTime() / 1000), // 转换为秒时间戳
     updateDate: updateDate ? Math.floor(updateDate.getTime() / 1000) : null, // 转换为秒时间戳
-    draft: item.draft || false,
-    public: item.public !== false, // 默认为 true
+    draft: item.draft !== false, // 默认为草稿，需要明确设置为 false 才发布
+    public: item.public === true, // 默认为私有，需要明确设置为 true 才公开
     category: item.category?.title || null,
     tags: item.tags && item.tags.length > 0 ? JSON.stringify(item.tags.map((t) => t.title)) : null,
     author: item.author || null,
@@ -269,7 +269,7 @@ function contentItemToMemo(item: ContentItem): NewMemo | null {
     body: item.body,
     publishDate: Math.floor(publishDate.getTime() / 1000), // 转换为秒时间戳
     updateDate: updateDate ? Math.floor(updateDate.getTime() / 1000) : null, // 转换为秒时间戳
-    public: item.public !== false, // 默认为 true
+    public: item.public === true, // 默认为私有，需要明确设置为 true 才公开
     tags: item.tags && item.tags.length > 0 ? JSON.stringify(item.tags.map((t) => t.title)) : null,
     attachments: null, // TODO: 从 raw 数据中提取附件信息
     contentHash,
@@ -377,8 +377,8 @@ async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgre
           body: post.body,
           publishDate: post.createdAt,
           updateDate: post.updatedAt,
-          draft: post.data.draft || false,
-          public: post.data.public !== false,
+          draft: post.data.draft !== false, // 默认为草稿，需要明确设置为 false 才发布
+          public: post.data.public === true, // 默认为私有，需要明确设置为 true 才公开
           category: post.data.category ? { title: post.data.category, slug: post.data.category } : undefined,
           tags: post.tags ? post.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
           author: post.data.author || null,
@@ -548,6 +548,25 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
           const webdavClient = getWebDAVClient();
           const post = await webdavClient.getPostByIndex(fileIndex);
 
+          // 验证时间字段，与 normalizeWebDAVPost 保持一致
+          let publishDate: Date | null = null;
+          const timeFields = [post.data.publishDate, post.data.date, post.data.updateDate];
+
+          for (const timeField of timeFields) {
+            if (timeField) {
+              const testDate = new Date(timeField);
+              if (!isNaN(testDate.getTime())) {
+                publishDate = testDate;
+                break;
+              }
+            }
+          }
+
+          if (!publishDate) {
+            console.warn(`No valid time field found for WebDAV post ${post.slug}, skipping this file`);
+            continue; // 跳过没有有效时间的文章
+          }
+
           const contentItem: ContentItem = {
             id: post.id,
             slug: post.slug,
@@ -555,10 +574,10 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
             title: post.data.title || post.id,
             excerpt: post.data.excerpt || post.data.description || '',
             body: post.body,
-            publishDate: new Date(post.data.publishDate || post.data.date || Date.now()),
+            publishDate,
             updateDate: post.data.updateDate ? new Date(post.data.updateDate) : undefined,
-            draft: post.data.draft || false,
-            public: post.data.public !== false,
+            draft: post.data.draft !== false, // 默认为草稿，需要明确设置为 false 才发布
+            public: post.data.public === true, // 默认为私有，需要明确设置为 true 才公开
             category: post.data.category ? { title: post.data.category, slug: post.data.category } : undefined,
             tags: post.data.tags ? post.data.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
             author: post.data.author || undefined,
@@ -706,8 +725,8 @@ async function forceRefreshMemosCache(onProgress?: (progress: ContentCacheProgre
           body: memo.body,
           publishDate: memo.createdAt,
           updateDate: memo.updatedAt,
-          draft: false,
-          public: memo.data.public !== false,
+          draft: false, // Memos 默认不是草稿
+          public: memo.data.public === true, // 默认为私有，需要明确设置为 true 才公开
           tags: memo.tags ? memo.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
           metadata: { ...memo.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
         };
@@ -852,8 +871,8 @@ async function refreshMemosCache(onProgress?: (progress: ContentCacheProgress) =
             body: memo.body,
             publishDate: memo.createdAt,
             updateDate: memo.updatedAt,
-            draft: false,
-            public: memo.data.public !== false,
+            draft: false, // Memos 默认不是草稿
+            public: memo.data.public === true, // 默认为私有，需要明确设置为 true 才公开
             tags: memo.tags ? memo.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
             metadata: { ...memo.data, lastmod: fileIndex.lastmod },
           };

@@ -23,7 +23,7 @@ if (!slug) {
 // 从 Astro.locals 获取管理员状态
 const isUserAdmin = Astro.locals.isAdmin || false;
 
-const post = await getPostBySlug(slug);
+const post = await getPostBySlug(slug, isUserAdmin);
 
 if (!post) {
   return create404Response(Astro.request, "Blog post not found");

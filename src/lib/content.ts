@@ -158,8 +158,8 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem | null
     tags: rawTags = [],
     category: rawCategory,
     author,
-    draft = true,
-    public: isPublic = true,
+    draft = true, // 默认为草稿
+    public: isPublic = false, // 默认为私有
     metadata,
   } = post.data;
 
@@ -280,7 +280,7 @@ const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
     title: memo.data.title || memo.id,
     publishDate: memo.createdAt,
     updateDate: memo.updatedAt,
-    public: memo.data.public !== false,
+    public: memo.data.public === true, // 默认为私有，需要明确设置为 true 才公开
     body: memo.body,
     tags: memo.tags?.map((tag) => ({ slug: cleanSlug(tag), title: tag })) || [],
     raw: memo,

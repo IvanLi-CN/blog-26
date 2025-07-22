@@ -10,8 +10,11 @@ export const prerender = false;
 // 获取标签参数
 const tagSlug = Astro.params.tag;
 
+// 从 Astro.locals 获取管理员状态
+const isUserAdmin = Astro.locals.isAdmin || false;
+
 // 获取所有文章并按标签过滤
-const allPosts = await fetchPosts();
+const allPosts = await fetchPosts(isUserAdmin);
 const tagPosts = allPosts.filter((post) =>
   post.tags?.some((tag) => tag.slug === tagSlug),
 );

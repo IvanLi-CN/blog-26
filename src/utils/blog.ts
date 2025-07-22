@@ -68,14 +68,14 @@ export const blogTagRobots = APP_BLOG.tag.robots;
 export const blogPostsPerPage = APP_BLOG?.postsPerPage;
 
 /** 获取所有文章 */
-export const fetchPosts = async (): Promise<Array<Post>> => {
+export const fetchPosts = async (isAdmin: boolean = false): Promise<Array<Post>> => {
   const [cachedPosts, vectorizationStatusMap] = await Promise.all([getCachedPosts(), getVectorizationStatusMap()]);
 
   const filteredPosts = cachedPosts
     .filter((post) => post.type === 'post' || post.type === 'project')
     .filter((post) => {
       // 管理员模式下显示所有文章
-      if (process.env.ADMIN_MODE === 'true') return true;
+      if (isAdmin) return true;
       // 非管理员模式下只显示公开且非草稿的文章
       return !post.draft && post.public === true;
     })
@@ -116,10 +116,10 @@ export const fetchPosts = async (): Promise<Array<Post>> => {
 };
 
 /** */
-export const findPostsBySlugs = async (slugs: Array<string>): Promise<Array<Post>> => {
+export const findPostsBySlugs = async (slugs: Array<string>, isAdmin: boolean = false): Promise<Array<Post>> => {
   if (!Array.isArray(slugs)) return [];
 
-  const posts = await fetchPosts();
+  const posts = await fetchPosts(isAdmin);
 
   return slugs.reduce(function (r: Array<Post>, slug: string) {
     posts.some(function (post: Post) {
@@ -130,15 +130,15 @@ export const findPostsBySlugs = async (slugs: Array<string>): Promise<Array<Post
 };
 
 /** */
-export const getPostBySlug = async (slug: string): Promise<Post | undefined> => {
-  const posts = await fetchPosts();
+export const getPostBySlug = async (slug: string, isAdmin: boolean = false): Promise<Post | undefined> => {
+  const posts = await fetchPosts(isAdmin);
   return posts.find((post) => post.slug === slug);
 };
 /** */
-export const findPostsByIds = async (ids: Array<string>): Promise<Array<Post>> => {
+export const findPostsByIds = async (ids: Array<string>, isAdmin: boolean = false): Promise<Array<Post>> => {
   if (!Array.isArray(ids)) return [];
 
-  const posts = await fetchPosts();
+  const posts = await fetchPosts(isAdmin);
 
   return ids.reduce(function (r: Array<Post>, id: string) {
     posts.some(function (post: Post) {
@@ -149,22 +149,25 @@ export const findPostsByIds = async (ids: Array<string>): Promise<Array<Post>> =
 };
 
 /** */
-export const findLatestPosts = async ({ count }: { count?: number }): Promise<Array<Post>> => {
+export const findLatestPosts = async (
+  { count }: { count?: number },
+  isAdmin: boolean = false
+): Promise<Array<Post>> => {
   const _count = count || 4;
-  const posts = await fetchPosts();
+  const posts = await fetchPosts(isAdmin);
 
   return posts ? posts.slice(0, _count) : [];
 };
 
 /** 获取所有项目 */
-export const fetchProjects = async (): Promise<Array<Post>> => {
+export const fetchProjects = async (isAdmin: boolean = false): Promise<Array<Post>> => {
   const [cachedPosts, vectorizationStatusMap] = await Promise.all([getCachedPosts(), getVectorizationStatusMap()]);
 
   return cachedPosts
     .filter((post) => post.type === 'project')
     .filter((post) => {
       // 管理员模式下显示所有项目
-      if (process.env.ADMIN_MODE === 'true') return true;
+      if (isAdmin) return true;
       // 非管理员模式下只显示公开且非草稿的项目
       return !post.draft && post.public === true;
     })
@@ -195,9 +198,12 @@ export const fetchProjects = async (): Promise<Array<Post>> => {
 };
 
 /** 获取精选项目（用于首页展示） */
-export const findFeaturedProjects = async ({ count }: { count?: number }): Promise<Array<Post>> => {
+export const findFeaturedProjects = async (
+  { count }: { count?: number },
+  isAdmin: boolean = false
+): Promise<Array<Post>> => {
   const _count = count || 6;
-  const projects = await fetchProjects();
+  const projects = await fetchProjects(isAdmin);
 
   return projects ? projects.slice(0, _count) : [];
 };

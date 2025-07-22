@@ -16,9 +16,8 @@ if (!isUserAdmin) {
 }
 
 // Get all posts including drafts from both local collections and WebDAV
-// Set ADMIN_MODE to true to include draft posts
-process.env.ADMIN_MODE = "true";
-const sortedPosts = await fetchPosts();
+// Pass isAdmin=true to include draft posts
+const sortedPosts = await fetchPosts(true);
 
 const metadata = {
   title: "文章管理 - 管理员面板",

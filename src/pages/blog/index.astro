@@ -8,10 +8,11 @@ import { blogListRobots, blogPostsPerPage, fetchPosts } from "~/utils/blog";
 
 export const prerender = false;
 
-// 管理员状态已在 middleware 中设置
+// 从 Astro.locals 获取管理员状态
+const isUserAdmin = Astro.locals.isAdmin || false;
 
 // 获取所有文章
-const allPosts = await fetchPosts();
+const allPosts = await fetchPosts(isUserAdmin);
 
 // 计算分页
 const postsPerPage = blogPostsPerPage || 10;

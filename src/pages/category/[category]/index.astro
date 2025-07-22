@@ -11,8 +11,11 @@ export const prerender = false;
 // 获取分类参数
 const categorySlug = Astro.params.category;
 
+// 从 Astro.locals 获取管理员状态
+const isUserAdmin = Astro.locals.isAdmin || false;
+
 // 获取所有文章并按分类过滤
-const allPosts = await fetchPosts();
+const allPosts = await fetchPosts(isUserAdmin);
 const categoryPosts = allPosts.filter(
   (post) => post.category?.slug === categorySlug,
 );
