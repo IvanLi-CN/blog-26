@@ -4,6 +4,7 @@ import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 
 import { getCachedMemos } from "~/lib/content-cache";
+import { create404Response } from "~/utils/error-handler";
 
 export const prerender = false;
 
@@ -18,8 +19,7 @@ try {
   allMemos = await getCachedMemos();
 } catch (error) {
   console.error("Failed to get cached memos:", error);
-  // 如果获取失败，使用空数组作为fallback
-  allMemos = [];
+  return create404Response(Astro.request, "Memos not available");
 }
 
 // 如果不是管理员，只返回公开的 Memo
