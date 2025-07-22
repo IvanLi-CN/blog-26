@@ -93,7 +93,7 @@ export const authRouter = createTRPCRouter({
   // 发送管理员验证码
   sendAdminCode: publicProcedure.input(adminSendCodeSchema).mutation(async ({ input, ctx }) => {
     const { email, captchaResponse } = input;
-    const clientAddress = ctx.clientAddress;
+    const _clientAddress = ctx.clientAddress;
 
     // 验证人机验证码
     const isHuman = await verifyCaptcha(captchaResponse);
@@ -120,8 +120,7 @@ export const authRouter = createTRPCRouter({
           await db.insert(users).values({
             id: userId,
             email: email,
-            nickname: 'Admin', // 默认昵称
-            ipAddress: clientAddress || '127.0.0.1',
+            name: 'Admin', // 默认名称
             createdAt: Date.now(),
           });
 
@@ -215,8 +214,7 @@ export const authRouter = createTRPCRouter({
         await db.insert(users).values({
           id: userId,
           email,
-          nickname: email.split('@')[0], // 使用邮箱前缀作为默认昵称
-          ipAddress: ctx.clientAddress || 'unknown',
+          name: email.split('@')[0], // 使用邮箱前缀作为默认名称
           createdAt: Date.now(),
         });
 
@@ -230,7 +228,7 @@ export const authRouter = createTRPCRouter({
       // 生成 JWT token
       const token = await signJwt({
         sub: user.id,
-        nickname: user.nickname,
+        nickname: user.name || user.email.split('@')[0],
         email: user.email,
       });
 
@@ -245,7 +243,7 @@ export const authRouter = createTRPCRouter({
         message: '登录成功',
         user: {
           id: user.id,
-          nickname: user.nickname,
+          nickname: user.name || user.email.split('@')[0],
           email: user.email,
           avatarUrl: getAvatarUrl(user.email),
         },

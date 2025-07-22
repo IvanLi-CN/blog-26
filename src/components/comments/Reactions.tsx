@@ -27,7 +27,6 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
     {
       targetType,
       targetId,
-      fingerprint: fingerprint || undefined,
     },
     {
       enabled: !!canFetch,
@@ -51,7 +50,6 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
           targetType,
           targetId,
           emoji,
-          fingerprint: fingerprint || undefined,
         });
       } catch (error) {
         console.error('Failed to toggle reaction:', error);

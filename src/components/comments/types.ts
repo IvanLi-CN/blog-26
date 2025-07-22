@@ -1,6 +1,6 @@
 export interface Author {
   id: string;
-  nickname: string;
+  nickname: string | null;
   avatarUrl: string;
 }
 

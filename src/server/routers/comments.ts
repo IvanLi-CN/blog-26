@@ -75,7 +75,7 @@ interface CommentWithAuthor {
   authorEmail: string; // 使用authorEmail字段用于权限判断
   author: {
     id: string;
-    nickname: string;
+    nickname: string | null;
     avatarUrl: string;
   };
 }
@@ -95,7 +95,7 @@ async function getComments(postSlug: string, currentUserEmail?: string, isAdmin 
       authorEmail: comments.authorEmail, // 使用authorEmail字段
       author: {
         id: users.id,
-        nickname: users.nickname,
+        nickname: users.name, // 使用name字段作为nickname
         email: users.email,
       },
     })
@@ -178,7 +178,6 @@ export const commentsRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       const { postSlug, content, parentId, captchaResponse, author } = input;
-      const ipAddress = ctx.clientAddress;
       let userId: string | undefined = ctx.user?.id;
       let authorNickname: string | undefined = ctx.user?.nickname;
       let authorEmail: string | undefined = ctx.user?.email;
@@ -211,16 +210,15 @@ export const commentsRouter = createTRPCRouter({
           userId = uuidv4();
           await db.insert(users).values({
             id: userId,
-            nickname: authorNickname,
+            name: authorNickname,
             email: authorEmail,
-            ipAddress: ipAddress || 'unknown',
             createdAt: Date.now(),
           });
         } else {
           userId = user.id;
-          // 更新昵称（如果不同）
-          if (user.nickname !== authorNickname) {
-            await db.update(users).set({ nickname: authorNickname }).where(eq(users.id, user.id));
+          // 更新名称（如果不同）
+          if (user.name !== authorNickname) {
+            await db.update(users).set({ name: authorNickname }).where(eq(users.id, user.id));
           }
         }
 

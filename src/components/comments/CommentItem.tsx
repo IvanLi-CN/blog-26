@@ -109,7 +109,11 @@ export default function CommentItem({
       >
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <img src={comment.author.avatarUrl} alt={comment.author.nickname} className="w-10 h-10 rounded-full" />
+          <img
+            src={comment.author.avatarUrl}
+            alt={comment.author.nickname || 'User'}
+            className="w-10 h-10 rounded-full"
+          />
         </div>
 
         {/* Main Content */}

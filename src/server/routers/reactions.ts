@@ -12,18 +12,16 @@ const toggleReactionSchema = z.object({
   targetType: z.enum(['post', 'comment']),
   targetId: z.string(),
   emoji: z.string().min(1),
-  fingerprint: z.string().optional(),
 });
 
 const getReactionsSchema = z.object({
   targetType: z.enum(['post', 'comment']),
   targetId: z.string(),
-  fingerprint: z.string().optional(),
 });
 
 // 用户识别辅助函数
 async function identifyUser(ctx: any): Promise<string | undefined> {
-  // 1. 尝试从 JWT token 获取用户 ID
+  // 1. 尝试从 JWT token 获取用户 email
   const cookieHeader = ctx.req.headers.get('cookie');
   if (cookieHeader) {
     const cookies = parseCookies(cookieHeader);
@@ -32,16 +30,16 @@ async function identifyUser(ctx: any): Promise<string | undefined> {
     if (token) {
       try {
         const payload = await verifyJwt(token);
-        if (typeof payload.sub === 'string') {
-          return payload.sub;
+        if (typeof payload.email === 'string') {
+          return payload.email;
         }
       } catch {
-        // Invalid token, continue to fingerprint
+        // Invalid token
       }
     }
   }
 
-  // 2. 如果没有有效的 token，返回 undefined（将使用 fingerprint）
+  // 2. 如果没有有效的 token，返回 undefined
   return undefined;
 }
 
@@ -61,12 +59,12 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 export const reactionsRouter = createTRPCRouter({
   // 切换反应（添加或删除）
   toggle: publicProcedure.input(toggleReactionSchema).mutation(async ({ input, ctx }) => {
-    const { targetType, targetId, emoji, fingerprint } = input;
+    const { targetType, targetId, emoji } = input;
 
     // 识别用户
-    const userId = await identifyUser(ctx);
+    const userEmail = await identifyUser(ctx);
 
-    if (!userId && !fingerprint) {
+    if (!userEmail) {
       throw new TRPCError({
         code: 'UNAUTHORIZED',
         message: 'User identification is required.',
@@ -83,7 +81,7 @@ export const reactionsRouter = createTRPCRouter({
             eq(reactions.targetType, targetType),
             eq(reactions.targetId, targetId),
             eq(reactions.emoji, emoji),
-            userId ? eq(reactions.userId, userId) : eq(reactions.fingerprint, fingerprint!)
+            eq(reactions.userEmail, userEmail)
           )
         )
         .get();
@@ -98,8 +96,7 @@ export const reactionsRouter = createTRPCRouter({
           targetType,
           targetId,
           emoji,
-          userId,
-          fingerprint,
+          userEmail,
           createdAt: Date.now(),
         });
       }
@@ -126,10 +123,10 @@ export const reactionsRouter = createTRPCRouter({
 
   // 获取反应列表
   getReactions: publicProcedure.input(getReactionsSchema).query(async ({ input, ctx }) => {
-    const { targetType, targetId, fingerprint } = input;
+    const { targetType, targetId } = input;
 
     // 识别用户
-    const userId = await identifyUser(ctx);
+    const userEmail = await identifyUser(ctx);
 
     try {
       // 获取所有反应，按 emoji 分组
@@ -144,7 +141,7 @@ export const reactionsRouter = createTRPCRouter({
 
       // 获取当前用户的反应
       let userReactions: { emoji: string }[] = [];
-      if (userId || fingerprint) {
+      if (userEmail) {
         userReactions = await db
           .select({ emoji: reactions.emoji })
           .from(reactions)
@@ -152,7 +149,7 @@ export const reactionsRouter = createTRPCRouter({
             and(
               eq(reactions.targetType, targetType),
               eq(reactions.targetId, targetId),
-              userId ? eq(reactions.userId, userId) : eq(reactions.fingerprint, fingerprint!)
+              eq(reactions.userEmail, userEmail)
             )
           )
           .all();
