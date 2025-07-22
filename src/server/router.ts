@@ -6,6 +6,7 @@ import { memosRouter } from './routers/memos';
 import { postsRouter } from './routers/posts';
 import { reactionsRouter } from './routers/reactions';
 import { searchRouter } from './routers/search';
+import { statsRouter } from './routers/stats';
 import { vectorizationRouter } from './routers/vectorization';
 
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from './trpc';
@@ -51,6 +52,9 @@ export const appRouter = createTRPCRouter({
 
   // 内容缓存相关路由
   contentCache: contentCacheRouter,
+
+  // 统计相关路由
+  stats: statsRouter,
 
   // 示例：受保护的路由
   protected: protectedProcedure.input(z.object({ message: z.string() })).query(({ input, ctx }) => {

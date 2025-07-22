@@ -79,16 +79,25 @@ async function loadLocalContent(): Promise<ContentItem[]> {
     );
     const type: ContentType = path.startsWith('/src/content/projects/') ? 'project' : 'post';
 
-    // 改进本地文件的时间解析逻辑
-    let publishDate: Date;
-    if (parsedFrontmatter.publishDate) {
-      publishDate = new Date(parsedFrontmatter.publishDate);
-      if (isNaN(publishDate.getTime())) {
-        console.warn(`Invalid publishDate for local post ${path}:`, parsedFrontmatter.publishDate);
-        publishDate = new Date();
+    // 改进本地文件的时间解析逻辑 - 按优先级尝试不同的时间字段
+    let publishDate: Date | null = null;
+
+    // 优先级：publishDate > date > updateDate
+    const timeFields = [parsedFrontmatter.publishDate, parsedFrontmatter.date, parsedFrontmatter.updateDate];
+
+    for (const timeField of timeFields) {
+      if (timeField) {
+        const testDate = new Date(timeField);
+        if (!isNaN(testDate.getTime())) {
+          publishDate = testDate;
+          break;
+        }
       }
-    } else {
-      publishDate = new Date();
+    }
+
+    if (!publishDate) {
+      console.warn(`No valid time field found for local post ${path}, skipping this file`);
+      continue; // 跳过没有有效时间的文件
     }
 
     let updateDate: Date | undefined;
@@ -137,7 +146,7 @@ async function loadLocalContent(): Promise<ContentItem[]> {
   return items;
 }
 
-const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
+const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem | null> => {
   const {
     publishDate: rawPublishDate,
     updateDate: rawUpdateDate,
@@ -156,17 +165,25 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem> => {
 
   const slug = cleanSlug(post.slug);
 
-  // 改进时间解析逻辑
-  let publishDate: Date;
-  if (rawPublishDate) {
-    publishDate = new Date(rawPublishDate);
-    // 检查日期是否有效
-    if (isNaN(publishDate.getTime())) {
-      console.warn(`Invalid publishDate for post ${post.slug}:`, rawPublishDate);
-      publishDate = new Date();
+  // 改进时间解析逻辑 - 按优先级尝试不同的时间字段
+  let publishDate: Date | null = null;
+
+  // 优先级：publishDate > date > updateDate
+  const timeFields = [rawPublishDate, date, rawUpdateDate];
+
+  for (const timeField of timeFields) {
+    if (timeField) {
+      const testDate = new Date(timeField);
+      if (!isNaN(testDate.getTime())) {
+        publishDate = testDate;
+        break;
+      }
     }
-  } else {
-    publishDate = new Date();
+  }
+
+  if (!publishDate) {
+    console.warn(`No valid time field found for WebDAV post ${post.slug}, skipping this file`);
+    return null; // 返回 null 表示跳过这个文件
   }
 
   let updateDate: Date | undefined;
@@ -241,7 +258,8 @@ export async function loadPostsAndProjects(): Promise<ContentItem[]> {
       );
       const validPosts = webdavPosts.filter((post): post is NonNullable<typeof post> => post !== null);
       const normalizedItems = await Promise.all(validPosts.map(normalizeWebDAVPost));
-      allContent.push(...normalizedItems);
+      const validNormalizedItems = normalizedItems.filter((item): item is ContentItem => item !== null);
+      allContent.push(...validNormalizedItems);
     } catch (error) {
       console.warn('Failed to load content from WebDAV:', error);
     }

@@ -533,7 +533,7 @@ export class WebDAVClient {
     const { frontmatter, body } = this.parseFrontmatter(content);
     const slug = this.generateSlug(fileIndex.path, frontmatter);
 
-    // 改进时间解析逻辑
+    // 改进时间解析逻辑 - Memo 可以使用文件修改时间作为备选
     let createdAt: Date;
     if (frontmatter.createdAt) {
       createdAt = new Date(frontmatter.createdAt);

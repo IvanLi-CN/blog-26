@@ -117,6 +117,16 @@ export default defineConfig({
         {
           strategy: 'img-svg',
           dark: true,
+          // 添加错误处理和超时配置
+          launchOptions: {
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            timeout: 30000,
+          },
+          // 添加错误处理回调
+          errorFallback: (element: any, diagram: string, error: Error) => {
+            console.warn('Mermaid rendering error:', error.message);
+            return null; // 返回 null 表示跳过这个图表
+          },
         },
       ],
     ],

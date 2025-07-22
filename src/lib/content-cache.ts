@@ -150,11 +150,13 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
       const memo = await webdavClient.getMemoByIndex(fileIndex);
 
       // 转换为 ContentItem 格式，并添加 ETag 信息
-      // 安全处理日期字段
+      // 安全处理日期字段 - Memo 可以使用文件修改时间
       let publishDate = memo.createdAt;
       if (!publishDate || !(publishDate instanceof Date) || isNaN(publishDate.getTime())) {
-        console.warn(`Invalid createdAt for memo ${memo.id}, using current time`);
-        publishDate = new Date();
+        console.warn(
+          `Invalid createdAt for memo ${memo.id}, this should not happen as WebDAV should provide valid dates`
+        );
+        continue; // 跳过没有有效时间的 memo（理论上不应该发生）
       }
 
       let updateDate: Date | undefined = memo.updatedAt;
@@ -195,7 +197,7 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
 /**
  * 将 ContentItem 转换为数据库记录格式
  */
-function contentItemToPost(item: ContentItem): NewPost {
+function contentItemToPost(item: ContentItem): NewPost | null {
   const now = Date.now();
   const contentHash = calculateContentHash(item.body);
 
@@ -203,13 +205,11 @@ function contentItemToPost(item: ContentItem): NewPost {
   const lastModified = item.metadata?.lastmod ? new Date(item.metadata.lastmod).getTime() : now;
 
   // 安全处理 publishDate，确保它是有效的 Date 对象
-  let publishDate: Date;
-  if (item.publishDate && item.publishDate instanceof Date && !isNaN(item.publishDate.getTime())) {
-    publishDate = item.publishDate;
-  } else {
-    console.warn(`Invalid or missing publishDate for item ${item.id}, using current time`);
-    publishDate = new Date();
+  if (!item.publishDate || !(item.publishDate instanceof Date) || isNaN(item.publishDate.getTime())) {
+    console.warn(`Invalid or missing publishDate for item ${item.id}, skipping this item`);
+    return null; // 返回 null 表示跳过这个项目
   }
+  const publishDate = item.publishDate;
 
   // 安全处理 updateDate
   let updateDate: Date | null = null;
@@ -241,7 +241,7 @@ function contentItemToPost(item: ContentItem): NewPost {
   };
 }
 
-function contentItemToMemo(item: ContentItem): NewMemo {
+function contentItemToMemo(item: ContentItem): NewMemo | null {
   const now = Date.now();
   const contentHash = calculateContentHash(item.body);
 
@@ -249,13 +249,12 @@ function contentItemToMemo(item: ContentItem): NewMemo {
   const lastModified = item.metadata?.lastmod ? new Date(item.metadata.lastmod).getTime() : now;
 
   // 安全处理 publishDate，确保它是有效的 Date 对象
-  let publishDate: Date;
-  if (item.publishDate && item.publishDate instanceof Date && !isNaN(item.publishDate.getTime())) {
-    publishDate = item.publishDate;
-  } else {
-    console.warn(`Invalid or missing publishDate for memo ${item.id}, using current time`);
-    publishDate = new Date();
+  // 对于 memo，publishDate 应该总是有效的（因为 WebDAV 会提供备选时间）
+  if (!item.publishDate || !(item.publishDate instanceof Date) || isNaN(item.publishDate.getTime())) {
+    console.warn(`Invalid or missing publishDate for memo ${item.id}, this should not happen`);
+    return null; // 返回 null 表示跳过这个项目
   }
+  const publishDate = item.publishDate;
 
   // 安全处理 updateDate
   let updateDate: Date | null = null;
@@ -325,6 +324,10 @@ async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgre
       });
 
       const newPost = contentItemToPost(item);
+      if (!newPost) {
+        console.warn(`跳过无效时间的本地文章: ${item.title || item.id}`);
+        continue;
+      }
       const existing = existingPostsMap.get(item.id);
 
       processedIds.add(item.id);
@@ -384,6 +387,10 @@ async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgre
         };
 
         const newPost = contentItemToPost(contentItem);
+        if (!newPost) {
+          console.warn(`跳过无效时间的 WebDAV 文章: ${post.data.title || fileIndex.path}`);
+          continue;
+        }
         const existing = existingPostsMap.get(fileIndex.path);
 
         processedIds.add(fileIndex.path);
@@ -495,6 +502,10 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
     // 处理本地文章（总是更新，因为没有 ETag）
     for (const item of localContent) {
       const newPost = contentItemToPost(item);
+      if (!newPost) {
+        console.warn(`跳过无效时间的本地文章: ${item.title || item.id}`);
+        continue;
+      }
       const existing = existingPostsMap.get(item.id);
 
       processedIds.add(item.id);
@@ -556,6 +567,10 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
           };
 
           const newPost = contentItemToPost(contentItem);
+          if (!newPost) {
+            console.warn(`跳过无效时间的 WebDAV 文章: ${post.data.title || contentItem.id}`);
+            continue;
+          }
           const existing = existingPostsMap.get(contentItem.id);
 
           processedIds.add(contentItem.id);
@@ -698,6 +713,10 @@ async function forceRefreshMemosCache(onProgress?: (progress: ContentCacheProgre
         };
 
         const newMemo = contentItemToMemo(contentItem);
+        if (!newMemo) {
+          console.warn(`跳过无效时间的闪念: ${memo.data.title || fileIndex.path}`);
+          continue;
+        }
         const existing = existingMemosMap.get(fileIndex.path);
 
         processedIds.add(fileIndex.path);
@@ -840,6 +859,10 @@ async function refreshMemosCache(onProgress?: (progress: ContentCacheProgress) =
           };
 
           const newMemo = contentItemToMemo(contentItem);
+          if (!newMemo) {
+            console.warn(`跳过无效时间的闪念: ${memo.data.title || contentItem.id}`);
+            continue;
+          }
           const existing = existingMemosMap.get(contentItem.id);
 
           processedIds.add(contentItem.id);

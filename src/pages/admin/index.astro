@@ -34,14 +34,124 @@ const metadata = {
           <Icon name="tabler:settings" class="w-10 h-10 inline-block mr-2" />
           管理员操作界面
         </h1>
-        <button id="logout-btn" class="btn btn-outline btn-error">
-          <Icon name="tabler:logout" class="w-4 h-4 mr-1" />
-          登出
-        </button>
+        <div class="flex gap-2">
+          <button id="refresh-dashboard-btn" class="btn btn-primary">
+            <Icon name="tabler:refresh" class="w-4 h-4 mr-1" />
+            刷新数据
+          </button>
+          <button id="logout-btn" class="btn btn-outline btn-error">
+            <Icon name="tabler:logout" class="w-4 h-4 mr-1" />
+            登出
+          </button>
+        </div>
       </div>
       <p class="text-center text-muted">
-        欢迎使用管理员操作界面，请选择您要执行的操作
+        欢迎使用管理员操作界面，查看统计数据并选择您要执行的操作
       </p>
+    </div>
+
+    <!-- 仪表盘统计数据 -->
+    <div id="dashboard-stats" class="mb-12">
+      <!-- 加载状态 -->
+      <div id="stats-loading" class="flex justify-center items-center py-8">
+        <span class="loading loading-spinner loading-lg"></span>
+        <span class="ml-2">正在加载统计数据...</span>
+      </div>
+
+      <!-- 统计卡片 -->
+      <div id="stats-content" class="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <!-- 内容统计 -->
+          <div
+            class="card stat-card text-white shadow-xl"
+            style="--color-start: #3b82f6; --color-end: #1d4ed8;"
+          >
+            <div class="card-body">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold opacity-90">总文章数</h3>
+                  <p id="total-posts" class="text-3xl font-bold">-</p>
+                  <p class="text-sm opacity-75">
+                    已发布: <span id="published-posts">-</span> | 草稿: <span
+                      id="draft-posts">-</span
+                    >
+                  </p>
+                </div>
+                <Icon name="tabler:article" class="w-12 h-12 opacity-80" />
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="card stat-card text-white shadow-xl"
+            style="--color-start: #10b981; --color-end: #047857;"
+          >
+            <div class="card-body">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold opacity-90">总闪念数</h3>
+                  <p id="total-memos" class="text-3xl font-bold">-</p>
+                  <p class="text-sm opacity-75">
+                    公开: <span id="public-memos">-</span> | 私有: <span
+                      id="private-memos">-</span
+                    >
+                  </p>
+                </div>
+                <Icon name="tabler:notes" class="w-12 h-12 opacity-80" />
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="card stat-card text-white shadow-xl"
+            style="--color-start: #8b5cf6; --color-end: #5b21b6;"
+          >
+            <div class="card-body">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold opacity-90">总评论数</h3>
+                  <p id="total-comments" class="text-3xl font-bold">-</p>
+                  <p class="text-sm opacity-75">
+                    待审: <span id="pending-comments">-</span> | 已批准: <span
+                      id="approved-comments">-</span
+                    >
+                  </p>
+                </div>
+                <Icon
+                  name="tabler:message-circle"
+                  class="w-12 h-12 opacity-80"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="card stat-card text-white shadow-xl"
+            style="--color-start: #f59e0b; --color-end: #d97706;"
+          >
+            <div class="card-body">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold opacity-90">互动数据</h3>
+                  <p id="total-reactions" class="text-3xl font-bold">-</p>
+                  <p class="text-sm opacity-75">
+                    用户数: <span id="total-users">-</span>
+                  </p>
+                </div>
+                <Icon name="tabler:heart" class="w-12 h-12 opacity-80" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 快速链接到完整仪表盘 -->
+        <div class="text-center mb-8">
+          <a href="/admin/dashboard" class="btn btn-outline btn-primary">
+            <Icon name="tabler:chart-line" class="w-4 h-4 mr-1" />
+            查看完整仪表盘
+          </a>
+        </div>
+      </div>
     </div>
 
     <!-- 操作卡片网格 -->
@@ -289,6 +399,66 @@ const metadata = {
   </div>
 
   <script>
+    import { createTRPCClient, httpBatchLink } from "@trpc/client";
+    import type { AppRouter } from "~/server/router";
+
+    const trpc = createTRPCClient<AppRouter>({
+      links: [
+        httpBatchLink({
+          url: "/api/trpc",
+        }),
+      ],
+    });
+
+    // 加载仪表盘统计数据
+    async function loadDashboardStats() {
+      const statsLoading = document.getElementById("stats-loading");
+      const statsContent = document.getElementById("stats-content");
+
+      if (!statsLoading || !statsContent) return;
+
+      try {
+        statsLoading.classList.remove("hidden");
+        statsContent.classList.add("hidden");
+
+        const stats = await trpc.stats.getOverallStats.query();
+
+        // 更新统计数据
+        document.getElementById("total-posts")!.textContent =
+          stats.content.totalPosts.toString();
+        document.getElementById("published-posts")!.textContent =
+          stats.content.publishedPosts.toString();
+        document.getElementById("draft-posts")!.textContent =
+          stats.content.draftPosts.toString();
+
+        document.getElementById("total-memos")!.textContent =
+          stats.content.totalMemos.toString();
+        document.getElementById("public-memos")!.textContent =
+          stats.content.publicMemos.toString();
+        document.getElementById("private-memos")!.textContent =
+          stats.content.privateMemos.toString();
+
+        document.getElementById("total-comments")!.textContent =
+          stats.engagement.totalComments.toString();
+        document.getElementById("pending-comments")!.textContent =
+          stats.engagement.pendingComments.toString();
+        document.getElementById("approved-comments")!.textContent =
+          stats.engagement.approvedComments.toString();
+
+        document.getElementById("total-reactions")!.textContent =
+          stats.engagement.totalReactions.toString();
+        document.getElementById("total-users")!.textContent =
+          stats.users.totalUsers.toString();
+
+        statsLoading.classList.add("hidden");
+        statsContent.classList.remove("hidden");
+      } catch (error) {
+        console.error("Failed to load dashboard stats:", error);
+        statsLoading.innerHTML =
+          '<div class="text-center text-error">加载统计数据失败</div>';
+      }
+    }
+
     // 登出功能
     document
       .getElementById("logout-btn")
@@ -309,6 +479,11 @@ const metadata = {
           alert("登出失败，请重试");
         }
       });
+
+    // 刷新仪表盘数据
+    document
+      .getElementById("refresh-dashboard-btn")
+      ?.addEventListener("click", loadDashboardStats);
 
     // 向量化状态概览功能
     async function updateVectorizationOverview() {
@@ -388,10 +563,85 @@ const metadata = {
 
     // 页面加载完成后更新状态
     document.addEventListener("DOMContentLoaded", () => {
+      loadDashboardStats();
       updateVectorizationOverview();
 
       // 每30秒更新一次状态
       setInterval(updateVectorizationOverview, 30000);
     });
   </script>
+
+  <style>
+    /* 统计卡片渐变动画 */
+    .stat-card {
+      background: linear-gradient(135deg, var(--color-start), var(--color-end));
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+      );
+      transition: left 0.5s;
+    }
+
+    .stat-card:hover::before {
+      left: 100%;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 卡片悬停效果 */
+    .card {
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    /* 加载动画 */
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .loading-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+      .stat-card .card-body {
+        padding: 1rem;
+      }
+
+      .stat-card h3 {
+        font-size: 1rem;
+      }
+
+      .stat-card p {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
 </Layout>
