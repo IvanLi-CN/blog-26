@@ -2,17 +2,22 @@ import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
+import { removeTagsFromContent } from '~/utils/utils';
 
 // 不需要重复导入样式，因为已经在 CustomStyles.astro 中全局导入了
 
 interface SimpleMarkdownPreviewProps {
   content: string;
+  removeTags?: boolean; // 是否移除标签，默认为 false
 }
 
-export function SimpleMarkdownPreview({ content }: SimpleMarkdownPreviewProps) {
+export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMarkdownPreviewProps) {
   if (!content.trim()) {
     return <div className="text-gray-500 italic text-center py-8">开始写作以查看预览...</div>;
   }
+
+  // 如果需要移除标签，则处理内容
+  const processedContent = removeTags ? removeTagsFromContent(content) : content;
 
   return (
     <div className="markdown-preview">
@@ -71,7 +76,7 @@ export function SimpleMarkdownPreview({ content }: SimpleMarkdownPreviewProps) {
           hr: () => <hr className="my-6 border-gray-300 dark:border-gray-600" />,
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );

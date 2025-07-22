@@ -279,10 +279,11 @@ export const postsRouter = createTRPCRouter({
         frontmatter.title = titleMatch[1];
       }
 
-      // 2. 从正文更新 tags
-      const tagMatches = body.match(/#([^\s#]+)/g);
-      if (tagMatches) {
-        const newTags = tagMatches.map((tag: string) => tag.substring(1));
+      // 2. 从正文更新 tags - 使用统一的标签解析函数
+      const { parseTagsFromContent } = await import('~/utils/utils');
+      const parsedTags = parseTagsFromContent(body);
+      if (parsedTags.length > 0) {
+        const newTags = parsedTags.map((tag) => tag.content);
         const existingTags = frontmatter.tags || [];
         frontmatter.tags = [...new Set([...existingTags, ...newTags])];
       }

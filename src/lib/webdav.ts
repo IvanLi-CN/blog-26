@@ -813,10 +813,16 @@ export class WebDAVClient {
       .padStart(2, '0')}-${now.getTime()}.md`;
     const filePath = `${this.memosPath}/${id}`;
 
+    // 使用统一的标签解析函数从正文中提取标签
+    const { parseTagsFromContent } = await import('~/utils/utils');
+    const parsedTags = parseTagsFromContent(content);
+    const tags = parsedTags.map((tag) => tag.content);
+
     const frontmatter: Record<string, any> = {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       public: isPublic,
+      tags: tags.length > 0 ? tags : undefined, // 只有当有标签时才添加 tags 字段
       attachments: attachments.map((a) => ({
         filename: a.filename,
         path: a.path,
@@ -839,6 +845,7 @@ export class WebDAVClient {
       createdAt: now,
       updatedAt: now,
       attachments,
+      tags,
     };
   }
 
@@ -850,7 +857,13 @@ export class WebDAVClient {
     const { frontmatter } = this.parseFrontmatter(fileContent);
     const now = new Date();
 
+    // 使用统一的标签解析函数从正文中提取标签
+    const { parseTagsFromContent } = await import('~/utils/utils');
+    const parsedTags = parseTagsFromContent(content);
+    const tags = parsedTags.map((tag) => tag.content);
+
     frontmatter.updatedAt = now.toISOString();
+    frontmatter.tags = tags.length > 0 ? tags : undefined; // 更新标签
 
     const fullContent = this.serializeMarkdownContent(frontmatter, content);
     await this.putFile(id, fullContent);
@@ -865,6 +878,7 @@ export class WebDAVClient {
       createdAt: new Date(frontmatter.createdAt || now),
       updatedAt: now,
       attachments: frontmatter.attachments || [],
+      tags,
     };
   }
 

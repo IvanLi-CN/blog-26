@@ -248,7 +248,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination }: 
               {/* Memo 内容 */}
               <div className="card-body">
                 <div className="prose prose-sm max-w-none">
-                  <SimpleMarkdownPreview content={memo.content} />
+                  <SimpleMarkdownPreview content={memo.content} removeTags={true} />
                 </div>
 
                 {/* 标签显示 */}
