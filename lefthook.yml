@@ -13,4 +13,4 @@ commit-msg:
   commands:
     commitlint:
       run: bunx commitlint --edit {1}
-      fail_text: "Commit message does not follow conventional commits format. Please check .commitlintrc.yml for rules."
+      fail_text: "Commit message does not follow conventional commits format or contains non-English characters. Please check commitlint.config.cjs for rules."
