@@ -77,6 +77,33 @@ else
     echo "❌ Application is not responding on http://localhost:4321"
 fi
 
+# Test health endpoint specifically
+echo "8. Testing health endpoint..."
+if curl -f http://localhost:4321/api/trpc/health > /dev/null 2>&1; then
+    echo "✅ Health endpoint is responding"
+    echo "Health response:"
+    curl -s http://localhost:4321/api/trpc/health | head -3
+else
+    echo "❌ Health endpoint is not responding"
+    echo "This might indicate the Astro backend (port 4322) is not running"
+fi
+
+# Check for proxy errors in logs
+echo "9. Checking for proxy connection errors..."
+if docker-compose logs blog 2>/dev/null | grep -q "ConnectionRefused"; then
+    echo "⚠️  Found ConnectionRefused errors in logs"
+    echo "This indicates the proxy server cannot connect to the Astro backend"
+    echo "Recent ConnectionRefused errors:"
+    docker-compose logs blog | grep "ConnectionRefused" | tail -3
+    echo ""
+    echo "💡 Suggested actions:"
+    echo "   - Run './debug-health.sh' for detailed diagnosis"
+    echo "   - Check if Astro app is running on port 4322"
+    echo "   - Restart the container: docker-compose restart blog"
+else
+    echo "✅ No ConnectionRefused errors found in recent logs"
+fi
+
 echo ""
 echo "🔧 Common solutions:"
 echo "  - If LUOSIMAO_SECRET_KEY error: Check your .env file"

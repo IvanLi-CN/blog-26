@@ -32,9 +32,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Install Playwright browsers with non-interactive flags and timeout
-RUN timeout 300 bunx playwright install chromium --with-deps --force || \
-  (echo "Retrying without deps..." && timeout 180 bunx playwright install chromium --force)
+# Skip Playwright installation for now to focus on ConnectionRefused issue
+# RUN timeout 600 bunx playwright install chromium --force
 
 # Copy source code
 COPY . .
