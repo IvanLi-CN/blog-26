@@ -21,7 +21,8 @@ RUN apt-get update && \
   libxrandr2 \
   libasound2 \
   libpangocairo-1.0-0 \
-  libgtk-3-0 && \
+  libgtk-3-0 \
+  libgbm1 && \
   rm -rf /var/lib/apt/lists/*
 
 # Install Node.js dependencies (including playwright for runtime Mermaid rendering)
@@ -32,8 +33,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Skip Playwright installation for now to focus on ConnectionRefused issue
-# RUN timeout 600 bunx playwright install chromium --force
+# Install Playwright browsers with extended timeout
+RUN timeout 300 bunx playwright install chromium --force
 
 # Copy source code
 COPY . .
