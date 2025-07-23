@@ -144,6 +144,7 @@
     "@types/mdx": "^2.0.13",
     "@types/nodemailer": "^6.4.17",
     "astro-compress": "2.3.8",
+    "commitlint-plugin-function-rules": "^4.0.2",
     "daisyui": "^5.0.43",
     "globals": "^16.2.0",
     "js-yaml": "^4.1.0",
