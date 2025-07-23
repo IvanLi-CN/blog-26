@@ -62,14 +62,45 @@ import "highlight.js/styles/github.css";
     }
   }
 
-  /* 深色主题下的代码块样式 - 使用更高优先级 */
+  /* 代码块样式 - 强制移除所有边框和阴影，包括 prose 类的样式 */
+  pre,
+  pre code,
+  .hljs,
+  pre.hljs,
+  code[class*="language-"],
+  pre[class*="language-"],
+  .highlight,
+  .highlight pre,
+  .highlight code,
+  .prose pre,
+  .prose pre code,
+  .prose .hljs,
+  .prose code[class*="language-"],
+  .prose pre[class*="language-"] {
+    border: none !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    outline: none !important;
+    margin: 1rem 0 !important;
+    padding: 1rem !important;
+    background: #f6f8fa !important;
+  }
+
+  /* 深色主题下的代码块样式 - 使用更高优先级，包括 prose 类 */
   .dark pre,
   .dark pre code,
   .dark .hljs,
-  .dark pre.hljs {
+  .dark pre.hljs,
+  .dark .prose pre,
+  .dark .prose pre code,
+  .dark .prose .hljs,
+  .dark .prose code[class*="language-"],
+  .dark .prose pre[class*="language-"] {
     background: #161b22 !important;
     color: #e6edf3 !important;
     border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
   }
 
   /* 行内代码在深色主题下的样式 */
@@ -134,32 +165,60 @@ import "highlight.js/styles/github.css";
     background: #161b22 !important;
   }
 
+  /* 特别针对 prose 类的代码块样式覆盖 */
+  .prose pre {
+    background-color: #f6f8fa !important;
+    border: none !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  .dark .prose pre {
+    background-color: #161b22 !important;
+    border: none !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+  }
+
+  /* 确保行内代码也没有边框 */
+  .prose code {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .dark .prose code {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
   /* 确保 markdown 预览组件中的代码块样式 */
+  .markdown-preview pre,
+  .markdown-preview .hljs,
+  .markdown-preview code {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
   .dark .markdown-preview pre,
   .dark .markdown-preview .hljs,
   .dark .markdown-preview code {
     background: #161b22 !important;
     color: #e6edf3 !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
   }
 
-  /* 自定义代码块和行内代码样式 */
-  .code-block {
-    margin: 1rem 0;
-    border-radius: 6px;
-    overflow-x: auto;
-    background: #f6f8fa;
-  }
-
-  .dark .code-block {
-    background: #161b22 !important;
-  }
+  /* 自定义行内代码样式 */
 
   .inline-code {
     background: rgba(175, 184, 193, 0.2);
     color: #24292f;
     padding: 0.2em 0.4em;
     border-radius: 3px;
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
+      "Liberation Mono", Menlo, monospace;
     font-size: 0.875em;
   }
 

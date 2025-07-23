@@ -131,15 +131,10 @@ export function MarkdownPreview({ content, filePath }: MarkdownPreviewProps) {
               );
             }
 
-            return (
-              <code className="block bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto font-mono text-sm">
-                {children}
-              </code>
-            );
+            // 对于代码块，完全依赖 highlight.js 的样式
+            return <code className={className}>{children}</code>;
           },
-          pre: ({ children }) => (
-            <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4">{children}</pre>
-          ),
+          pre: ({ children }) => <pre className="my-4">{children}</pre>,
           a: ({ href, children }) => (
             <a
               href={href}

@@ -49,7 +49,7 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
             // 对于代码块，完全依赖 highlight.js 的样式
             return <code className={className}>{children}</code>;
           },
-          pre: ({ children }) => <pre className="code-block">{children}</pre>,
+          pre: ({ children }) => <pre className="my-4">{children}</pre>,
           table: ({ children }) => (
             <div className="overflow-x-auto my-4">
               <table className="markdown-table">{children}</table>

@@ -146,7 +146,7 @@ async function loadLocalContent(): Promise<ContentItem[]> {
   return items;
 }
 
-const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem | null> => {
+const normalizeWebDAVPost = async (post: WebDAVPost, fileLastMod?: string): Promise<ContentItem | null> => {
   const {
     publishDate: rawPublishDate,
     updateDate: rawUpdateDate,
@@ -179,6 +179,14 @@ const normalizeWebDAVPost = async (post: WebDAVPost): Promise<ContentItem | null
         break;
       }
     }
+  }
+
+  // 如果没有找到有效时间，使用文件修改时间作为备选
+  if (!publishDate && fileLastMod) {
+    publishDate = new Date(fileLastMod);
+    console.warn(
+      `No valid time field found for WebDAV post ${post.slug}, using file modification time: ${fileLastMod}`
+    );
   }
 
   if (!publishDate) {
@@ -246,18 +254,23 @@ export async function loadPostsAndProjects(): Promise<ContentItem[]> {
     try {
       const webdavClient = getWebDAVClient();
       const postsIndex = await webdavClient.getPostsIndex();
-      const webdavPosts = await Promise.all(
+      const webdavPostsWithIndex = await Promise.all(
         postsIndex.map(async (fileIndex) => {
           try {
-            return await webdavClient.getPostByIndex(fileIndex);
+            const post = await webdavClient.getPostByIndex(fileIndex);
+            return { post, fileIndex };
           } catch (error) {
             console.warn(`Failed to process file ${fileIndex.path}:`, error);
             return null;
           }
         })
       );
-      const validPosts = webdavPosts.filter((post): post is NonNullable<typeof post> => post !== null);
-      const normalizedItems = await Promise.all(validPosts.map(normalizeWebDAVPost));
+      const validPostsWithIndex = webdavPostsWithIndex.filter(
+        (item): item is NonNullable<typeof item> => item !== null
+      );
+      const normalizedItems = await Promise.all(
+        validPostsWithIndex.map(({ post, fileIndex }) => normalizeWebDAVPost(post, fileIndex.lastmod))
+      );
       const validNormalizedItems = normalizedItems.filter((item): item is ContentItem => item !== null);
       allContent.push(...validNormalizedItems);
     } catch (error) {
