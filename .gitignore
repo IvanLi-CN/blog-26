@@ -1,5 +1,5 @@
 # Databases
-sqlite.db
+*.db
 
 # Dumps
 *.sql.gz
