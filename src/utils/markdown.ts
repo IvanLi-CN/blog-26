@@ -52,24 +52,9 @@ export async function parseMarkdownToHTML(markdown: string, articlePath?: string
       dark: true,
       // 添加错误处理和超时配置
       launchOptions: {
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-        ],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
         timeout: 60000,
         headless: true,
-        env: {
-          ...process.env,
-          PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || '/Users/example/Library/Caches/ms-playwright',
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '0',
-        },
       },
       // 添加错误处理回调
       errorFallback: (_element: any, diagram: string, error: Error) => {
