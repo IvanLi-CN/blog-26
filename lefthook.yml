@@ -8,3 +8,9 @@ pre-commit:
       fail_text: "Tests failed. Please fix the failing tests before committing."
     checkBuild:
       run: bun run check:astro
+
+commit-msg:
+  commands:
+    commitlint:
+      run: bunx commitlint --edit {1}
+      fail_text: "Commit message does not follow conventional commits format. Please check .commitlintrc.yml for rules."
