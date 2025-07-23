@@ -112,19 +112,50 @@ export default defineConfig({
         } as any,
       ],
       [
-        rehypeMermaid,
+        rehypeMermaid as any,
         {
           strategy: 'img-svg',
           dark: true,
           // 添加错误处理和超时配置
           launchOptions: {
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            timeout: 30000,
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-gpu',
+              '--disable-web-security',
+              '--disable-features=VizDisplayCompositor',
+              '--disable-background-timer-throttling',
+              '--disable-backgrounding-occluded-windows',
+              '--disable-renderer-backgrounding',
+            ],
+            timeout: 60000,
+            headless: true,
+            env: {
+              ...process.env,
+              PLAYWRIGHT_BROWSERS_PATH:
+                process.env.PLAYWRIGHT_BROWSERS_PATH || '/Users/example/Library/Caches/ms-playwright',
+              PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '0',
+            },
           },
           // 添加错误处理回调
-          errorFallback: (element: any, diagram: string, error: Error) => {
+          errorFallback: (_element: any, diagram: string, error: Error) => {
             console.warn('Mermaid rendering error:', error.message);
-            return null; // 返回 null 表示跳过这个图表
+            console.warn('Diagram content:', diagram);
+            // 返回一个简单的代码块而不是 null
+            return {
+              type: 'element',
+              tagName: 'pre',
+              properties: { className: ['mermaid-error'] },
+              children: [
+                {
+                  type: 'element',
+                  tagName: 'code',
+                  properties: {},
+                  children: [{ type: 'text', value: diagram }],
+                },
+              ],
+            };
           },
         },
       ],
