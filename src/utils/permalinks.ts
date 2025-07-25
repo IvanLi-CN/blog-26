@@ -1,7 +1,85 @@
-import { APP_BLOG, SITE } from 'astrowind:config';
 import slugify from 'limax';
 
 import { trim } from '~/utils/utils';
+
+// 默认配置，用于非 Astro 环境
+const DEFAULT_APP_BLOG = {
+  isEnabled: true,
+  postsPerPage: 6,
+  isRelatedPostsEnabled: true,
+  relatedPostsCount: 4,
+  post: {
+    isEnabled: true,
+    permalink: '/%slug%',
+    robots: {
+      index: true,
+      follow: true,
+    },
+  },
+  list: {
+    isEnabled: true,
+    pathname: 'blog',
+    robots: {
+      index: true,
+      follow: true,
+    },
+  },
+  category: {
+    isEnabled: true,
+    pathname: 'category',
+    robots: {
+      index: true,
+      follow: true,
+    },
+  },
+  tag: {
+    isEnabled: true,
+    pathname: 'tag',
+    robots: {
+      index: true,
+      follow: true,
+    },
+  },
+};
+
+const DEFAULT_SITE = {
+  name: 'Blog',
+  site: 'https://example.com',
+  base: '/',
+  trailingSlash: false,
+};
+
+// 动态获取配置
+async function getConfig() {
+  try {
+    const config = await import('astrowind:config');
+    return {
+      APP_BLOG: config.APP_BLOG || DEFAULT_APP_BLOG,
+      SITE: config.SITE || DEFAULT_SITE,
+    };
+  } catch {
+    return {
+      APP_BLOG: DEFAULT_APP_BLOG,
+      SITE: DEFAULT_SITE,
+    };
+  }
+}
+
+// 导出配置获取器
+export const getAppBlog = async () => (await getConfig()).APP_BLOG;
+export const getSite = async () => (await getConfig()).SITE;
+
+// 为了向后兼容，尝试同步导入
+let APP_BLOG: any = DEFAULT_APP_BLOG;
+let SITE: any = DEFAULT_SITE;
+
+try {
+  const syncConfig = require('astrowind:config');
+  APP_BLOG = syncConfig.APP_BLOG || DEFAULT_APP_BLOG;
+  SITE = syncConfig.SITE || DEFAULT_SITE;
+} catch {
+  // 使用默认配置
+}
 
 export const trimSlash = (s: string) => trim(trim(s, '/'));
 const createPath = (...params: string[]) => {

@@ -59,6 +59,13 @@ const FrontmatterSchema = z.object({
 });
 
 async function loadLocalContent(): Promise<ContentItem[]> {
+  // 检查是否在 Vite 环境中
+  if (typeof import.meta.glob === 'undefined') {
+    // 在非 Vite 环境中，返回空数组
+    console.warn('import.meta.glob not available, skipping local content loading');
+    return [];
+  }
+
   const files = import.meta.glob('/src/content/**/*.{md,mdx}', { query: '?raw', import: 'default' });
   const items: ContentItem[] = [];
 

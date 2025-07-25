@@ -503,13 +503,28 @@ async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgre
       onProgress?.({ stage: 'posts', message: `✅ 成功更新 ${toUpdate.length} 条文章记录`, percentage: 48 });
     }
 
-    // 删除不再存在的记录（检查本地和 WebDAV 索引）
+    // 删除不再存在的记录（检查本地和 WebDAV 索引，但保护测试数据）
     const allValidIds = new Set([
       ...localContent.map((item) => item.id),
       ...webdavPostsIndex.map((fileIndex) => fileIndex.path),
     ]);
 
-    const toDelete = existingPosts.filter((p) => !allValidIds.has(p.id));
+    // 导入测试数据前缀，保护测试数据不被删除
+    let testDataPrefix = '';
+    try {
+      const { TEST_DATA_PREFIX } = await import('./seed/types');
+      testDataPrefix = TEST_DATA_PREFIX;
+    } catch (error) {
+      console.warn('Failed to load test data prefix:', error);
+    }
+
+    const toDelete = existingPosts.filter((p) => {
+      // 保护测试数据
+      if (testDataPrefix && p.id.startsWith(testDataPrefix)) {
+        return false;
+      }
+      return !allValidIds.has(p.id);
+    });
     if (toDelete.length > 0) {
       onProgress?.({ stage: 'posts', message: `正在删除 ${toDelete.length} 条过期文章记录...`, percentage: 49 });
       for (const post of toDelete) {
@@ -709,13 +724,28 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
       console.log(`✅ 更新了 ${toUpdate.length} 条文章记录`);
     }
 
-    // 删除不再存在的记录（检查本地和 WebDAV 索引）
+    // 删除不再存在的记录（检查本地和 WebDAV 索引，但保护测试数据）
     const allValidIds = new Set([
       ...localContent.map((item: ContentItem) => item.id),
       ...webdavPostsIndex.map((fileIndex) => fileIndex.path),
     ]);
 
-    const toDelete = existingPosts.filter((p) => !allValidIds.has(p.id));
+    // 导入测试数据前缀，保护测试数据不被删除
+    let testDataPrefix = '';
+    try {
+      const { TEST_DATA_PREFIX } = await import('./seed/types');
+      testDataPrefix = TEST_DATA_PREFIX;
+    } catch (error) {
+      console.warn('Failed to load test data prefix:', error);
+    }
+
+    const toDelete = existingPosts.filter((p) => {
+      // 保护测试数据
+      if (testDataPrefix && p.id.startsWith(testDataPrefix)) {
+        return false;
+      }
+      return !allValidIds.has(p.id);
+    });
     for (const post of toDelete) {
       await db.delete(posts).where(eq(posts.id, post.id));
     }
@@ -851,10 +881,25 @@ async function forceRefreshMemosCache(onProgress?: (progress: ContentCacheProgre
       onProgress?.({ stage: 'memos', message: `✅ 成功更新 ${toUpdate.length} 条闪念记录`, percentage: 90 });
     }
 
-    // 删除不再存在的记录（检查 WebDAV 索引）
+    // 删除不再存在的记录（检查 WebDAV 索引，但保护测试数据）
     const allValidIds = new Set(webdavMemosIndex.map((fileIndex) => fileIndex.path));
 
-    const toDelete = existingMemos.filter((m) => !allValidIds.has(m.id));
+    // 导入测试数据前缀，保护测试数据不被删除
+    let testDataPrefix = '';
+    try {
+      const { TEST_DATA_PREFIX } = await import('./seed/types');
+      testDataPrefix = TEST_DATA_PREFIX;
+    } catch (error) {
+      console.warn('Failed to load test data prefix:', error);
+    }
+
+    const toDelete = existingMemos.filter((m) => {
+      // 保护测试数据
+      if (testDataPrefix && m.id.startsWith(testDataPrefix)) {
+        return false;
+      }
+      return !allValidIds.has(m.id);
+    });
     if (toDelete.length > 0) {
       onProgress?.({ stage: 'memos', message: `正在删除 ${toDelete.length} 条过期闪念记录...`, percentage: 92 });
       for (const memo of toDelete) {
@@ -1001,10 +1046,25 @@ async function refreshMemosCache(onProgress?: (progress: ContentCacheProgress) =
       console.log(`✅ 更新了 ${toUpdate.length} 条闪念记录`);
     }
 
-    // 删除不再存在的记录（检查 WebDAV 索引）
+    // 删除不再存在的记录（检查 WebDAV 索引，但保护测试数据）
     const allValidIds = new Set(webdavMemosIndex.map((fileIndex) => fileIndex.path));
 
-    const toDelete = existingMemos.filter((m) => !allValidIds.has(m.id));
+    // 导入测试数据前缀，保护测试数据不被删除
+    let testDataPrefix = '';
+    try {
+      const { TEST_DATA_PREFIX } = await import('./seed/types');
+      testDataPrefix = TEST_DATA_PREFIX;
+    } catch (error) {
+      console.warn('Failed to load test data prefix:', error);
+    }
+
+    const toDelete = existingMemos.filter((m) => {
+      // 保护测试数据
+      if (testDataPrefix && m.id.startsWith(testDataPrefix)) {
+        return false;
+      }
+      return !allValidIds.has(m.id);
+    });
     for (const memo of toDelete) {
       await db.delete(memos).where(eq(memos.id, memo.id));
     }
@@ -1123,7 +1183,22 @@ export function stopContentCacheManager(): void {
  */
 export async function getCachedPosts(): Promise<Post[]> {
   const db = await getDB();
-  return await db.select().from(posts);
+
+  try {
+    // 导入过滤器（使用 try-catch 避免在配置加载时出错）
+    const { createTestDataFilter } = await import('./seed/filter');
+    const testDataFilter = createTestDataFilter(posts.id);
+
+    if (testDataFilter) {
+      return await db.select().from(posts).where(testDataFilter);
+    } else {
+      return await db.select().from(posts);
+    }
+  } catch (error) {
+    // 如果过滤器导入失败，返回所有数据
+    console.warn('Failed to load test data filter, returning all posts:', error);
+    return await db.select().from(posts);
+  }
 }
 
 /**
@@ -1148,6 +1223,18 @@ export async function getCachedPostsPaginated(options: {
 
   // 构建基础查询条件
   let whereConditions: any[] = [];
+
+  // 环境过滤（测试数据过滤）
+  try {
+    const { createTestDataFilter } = await import('./seed/filter');
+    const testDataFilter = createTestDataFilter(posts.id);
+    if (testDataFilter) {
+      whereConditions.push(testDataFilter);
+    }
+  } catch (error) {
+    // 如果过滤器导入失败，跳过过滤
+    console.warn('Failed to load test data filter for pagination:', error);
+  }
 
   // 类型过滤
   if (type !== 'all') {
@@ -1203,7 +1290,22 @@ export async function getCachedPostsPaginated(options: {
  */
 export async function getCachedMemos(): Promise<Memo[]> {
   const db = await getDB();
-  return await db.select().from(memos);
+
+  try {
+    // 导入过滤器（使用 try-catch 避免在配置加载时出错）
+    const { createTestDataFilter } = await import('./seed/filter');
+    const testDataFilter = createTestDataFilter(memos.id);
+
+    if (testDataFilter) {
+      return await db.select().from(memos).where(testDataFilter);
+    } else {
+      return await db.select().from(memos);
+    }
+  } catch (error) {
+    // 如果过滤器导入失败，返回所有数据
+    console.warn('Failed to load test data filter, returning all memos:', error);
+    return await db.select().from(memos);
+  }
 }
 
 /**

@@ -71,6 +71,7 @@ export const blogPostsPerPage = APP_BLOG?.postsPerPage;
 export const fetchPosts = async (isAdmin: boolean = false): Promise<Array<Post>> => {
   const [cachedPosts, vectorizationStatusMap] = await Promise.all([getCachedPosts(), getVectorizationStatusMap()]);
 
+  // 注意：getCachedPosts 已经包含了环境过滤逻辑
   const filteredPosts = cachedPosts
     .filter((post) => post.type === 'post' || post.type === 'project')
     .filter((post) => {

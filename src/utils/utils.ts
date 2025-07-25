@@ -1,4 +1,17 @@
-import { I18N } from 'astrowind:config';
+// 默认 I18N 配置
+const DEFAULT_I18N = {
+  language: 'en',
+  textDirection: 'ltr',
+};
+
+// 动态获取 I18N 配置
+let I18N = DEFAULT_I18N;
+try {
+  const config = require('astrowind:config');
+  I18N = config.I18N || DEFAULT_I18N;
+} catch {
+  // 使用默认配置
+}
 
 export const formatter: Intl.DateTimeFormat = new Intl.DateTimeFormat(I18N?.language, {
   year: 'numeric',

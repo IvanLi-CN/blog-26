@@ -298,8 +298,27 @@ bun run db:generate
 # Run migrations
 bun run migrate
 
-# Reset database
+# Reset database and seed test data
 bun run db:reset
+```
+
+### Database Seeding
+
+```bash
+# Seed test data for development
+bun run seed
+
+# Check if test data exists
+bun run seed:check
+
+# Clear all test data
+bun run seed:clear
+
+# Seed specific data types
+bun run seed --types posts,memos
+
+# Incremental seed (don't clear existing)
+bun run seed --no-clear
 ```
 
 ### Schema Definition
