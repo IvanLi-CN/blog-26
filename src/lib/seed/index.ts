@@ -33,30 +33,30 @@ async function clearTestData(dataTypes: string[], verbose: boolean = false): Pro
 
   try {
     if (dataTypes.includes('comments')) {
-      const deletedComments = await db.delete(comments).where(like(comments.id, `${TEST_DATA_PREFIX}%`));
+      await db.delete(comments).where(like(comments.id, `${TEST_DATA_PREFIX}%`));
       if (verbose) {
-        console.log(`   删除了 ${deletedComments.changes} 条测试评论`);
+        console.log(`   删除了测试评论`);
       }
     }
 
     if (dataTypes.includes('memos')) {
-      const deletedMemos = await db.delete(memos).where(like(memos.id, `${TEST_DATA_PREFIX}%`));
+      await db.delete(memos).where(like(memos.id, `${TEST_DATA_PREFIX}%`));
       if (verbose) {
-        console.log(`   删除了 ${deletedMemos.changes} 条测试闪念`);
+        console.log(`   删除了测试闪念`);
       }
     }
 
     if (dataTypes.includes('posts')) {
-      const deletedPosts = await db.delete(posts).where(like(posts.id, `${TEST_DATA_PREFIX}%`));
+      await db.delete(posts).where(like(posts.id, `${TEST_DATA_PREFIX}%`));
       if (verbose) {
-        console.log(`   删除了 ${deletedPosts.changes} 条测试文章`);
+        console.log(`   删除了测试文章`);
       }
     }
 
     if (dataTypes.includes('users')) {
-      const deletedUsers = await db.delete(users).where(like(users.id, `${TEST_DATA_PREFIX}%`));
+      await db.delete(users).where(like(users.id, `${TEST_DATA_PREFIX}%`));
       if (verbose) {
-        console.log(`   删除了 ${deletedUsers.changes} 个测试用户`);
+        console.log(`   删除了测试用户`);
       }
     }
 
@@ -127,12 +127,7 @@ async function insertSeedData(
  * 执行数据库 seed
  */
 export async function seedDatabase(options: SeedOptions = {}): Promise<SeedResult> {
-  const {
-    clearExisting = true,
-    developmentOnly = true,
-    dataTypes = ['posts', 'memos', 'comments', 'users'],
-    verbose = false,
-  } = options;
+  const { clearExisting = true, dataTypes = ['posts', 'memos', 'comments', 'users'], verbose = false } = options;
 
   try {
     // 检查是否应该运行 seed

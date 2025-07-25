@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, asc, count, desc, eq, gte, like, lte, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, like, lte, or } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { getAvatarUrl } from '~/lib/avatar';
@@ -41,6 +41,10 @@ const editCommentSchema = z.object({
 
 const deleteCommentSchema = z.object({
   commentId: z.string(),
+});
+
+const getCommentCountsSchema = z.object({
+  slugs: z.array(z.string()).max(50), // 限制最多50个slug
 });
 
 // 管理员专用的评论查询schema
@@ -155,6 +159,42 @@ export const commentsRouter = createTRPCRouter({
       totalPages: Math.ceil(topLevelComments.length / limit),
       isAdmin: ctx.isAdmin,
     };
+  }),
+
+  // 批量获取评论数
+  getCommentCounts: publicProcedure.input(getCommentCountsSchema).query(async ({ input, ctx }) => {
+    const { slugs } = input;
+
+    if (slugs.length === 0) {
+      return {};
+    }
+
+    try {
+      // 批量查询评论数，只统计已批准的评论
+      const commentCounts = await db
+        .select({
+          postSlug: comments.postSlug,
+          count: count(),
+        })
+        .from(comments)
+        .where(and(inArray(comments.postSlug, slugs), eq(comments.status, 'approved')))
+        .groupBy(comments.postSlug)
+        .all();
+
+      // 转换为 slug -> count 的映射
+      const result: Record<string, number> = {};
+      commentCounts.forEach(({ postSlug, count: commentCount }) => {
+        result[postSlug] = commentCount;
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Failed to get comment counts:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to get comment counts',
+      });
+    }
   }),
 
   // 创建评论

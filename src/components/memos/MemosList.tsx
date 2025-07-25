@@ -1,6 +1,7 @@
 import { VectorizationStatus } from '~/components/common/VectorizationStatus';
 import { trpc } from '~/lib/trpc-client';
 import { AttachmentGrid } from './AttachmentGrid';
+import CommentCountWithProvider from './CommentCountWithProvider';
 import { useInfiniteScroll, useMemos } from './hooks';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
@@ -164,120 +165,131 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination }: 
 
             {/* Memo 内容 */}
             <div className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden relative">
-              {/* 头部信息 */}
-              <div className="flex items-center justify-between px-6 py-3 bg-base-200 border-b border-base-300">
-                <div className="flex items-center space-x-3 text-sm text-base-content/70">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span title={formatFullDate(memo.createdAt)} className="cursor-help">
-                    {formatDate(memo.createdAt)}
-                  </span>
-                  {memo.updatedAt !== memo.createdAt && (
-                    <>
-                      <span className="text-base-content/40">•</span>
-                      <span title={formatFullDate(memo.updatedAt)} className="cursor-help">
-                        已编辑
-                      </span>
-                    </>
+              {/* 管理员删除按钮 - 绝对定位在右上角 */}
+              {isAdmin && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDelete(memo.id);
+                  }}
+                  disabled={deleteMemoMutation.isPending}
+                  className="absolute top-2 right-2 btn btn-ghost btn-sm btn-circle text-error hover:bg-error/10 z-20 opacity-60 hover:opacity-100"
+                  title="删除"
+                >
+                  {deleteMemoMutation.isPending ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
                   )}
+                </button>
+              )}
+
+              {/* 可点击的链接覆盖整个卡片 */}
+              <a href={`/memos/${memo.slug}`} className="block cursor-pointer">
+                {/* 头部信息 */}
+                <div className="flex items-center justify-between px-6 py-3 pr-12 bg-base-200 border-b border-base-300">
+                  <div className="flex items-center space-x-3 text-sm text-base-content/70">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span title={formatFullDate(memo.createdAt)} className="cursor-help">
+                      {formatDate(memo.createdAt)}
+                    </span>
+                    {memo.updatedAt !== memo.createdAt && (
+                      <>
+                        <span className="text-base-content/40">•</span>
+                        <span title={formatFullDate(memo.updatedAt)} className="cursor-help">
+                          已编辑
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {/* 公开/私有状态指示器 */}
+                    {isAdmin && (
+                      <div className="flex items-center">
+                        {memo.isPublic ? (
+                          <div className="badge badge-info badge-sm gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <span>公开</span>
+                          </div>
+                        ) : (
+                          <div className="badge badge-warning badge-sm gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                              />
+                            </svg>
+                            <span>私有</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  {/* 公开/私有状态指示器 */}
-                  {isAdmin && (
-                    <div className="flex items-center">
-                      {memo.isPublic ? (
-                        <div className="badge badge-info badge-sm gap-1">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          <span>公开</span>
-                        </div>
-                      ) : (
-                        <div className="badge badge-warning badge-sm gap-1">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                            />
-                          </svg>
-                          <span>私有</span>
-                        </div>
-                      )}
+                {/* Memo 内容 */}
+                <div className="card-body">
+                  <div className="prose prose-sm max-w-none">
+                    <SimpleMarkdownPreview content={memo.content} removeTags={true} />
+                  </div>
+
+                  {/* 标签显示 */}
+                  {memo.tags && memo.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-3">
+                      {memo.tags.map((tag: string, index: number) => (
+                        <span key={index} className="badge badge-outline badge-sm">
+                          #{tag}
+                        </span>
+                      ))}
                     </div>
                   )}
 
-                  {/* 管理员操作按钮 */}
-                  {isAdmin && (
-                    <button
-                      onClick={() => handleDelete(memo.id)}
-                      disabled={deleteMemoMutation.isPending}
-                      className="btn btn-ghost btn-sm btn-circle text-error hover:bg-error/10"
-                      title="删除"
-                    >
-                      {deleteMemoMutation.isPending ? (
-                        <span className="loading loading-spinner loading-xs"></span>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      )}
-                    </button>
+                  {/* 附件显示 */}
+                  {memo.attachments && memo.attachments.length > 0 && (
+                    <div className="mt-3">
+                      <AttachmentGrid attachments={memo.attachments} editable={false} />
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* Memo 内容 */}
-              <div className="card-body">
-                <div className="prose prose-sm max-w-none">
-                  <SimpleMarkdownPreview content={memo.content} removeTags={true} />
+                {/* 右下角状态信息 */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  {/* 评论数 */}
+                  <CommentCountWithProvider slug={memo.slug} />
+
+                  {/* 向量化状态 */}
+                  <VectorizationStatus
+                    slug={memo.slug}
+                    size="sm"
+                    className="opacity-40 hover:opacity-70 transition-opacity"
+                  />
                 </div>
-
-                {/* 标签显示 */}
-                {memo.tags && memo.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-3">
-                    {memo.tags.map((tag: string, index: number) => (
-                      <span key={index} className="badge badge-outline badge-sm">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* 附件显示 */}
-                {memo.attachments && memo.attachments.length > 0 && (
-                  <div className="mt-3">
-                    <AttachmentGrid attachments={memo.attachments} editable={false} />
-                  </div>
-                )}
-              </div>
-
-              {/* 向量化状态 - 右下角 */}
-              <div className="absolute bottom-3 right-3">
-                <VectorizationStatus
-                  slug={memo.slug}
-                  size="sm"
-                  className="opacity-40 hover:opacity-70 transition-opacity"
-                />
-              </div>
+              </a>
             </div>
           </div>
         </div>

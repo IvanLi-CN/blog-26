@@ -109,7 +109,8 @@ export function useInfiniteScroll(loadMore: () => void, hasMore: boolean, isLoad
   }, []);
 
   useEffect(() => {
-    if (!isMounted || !hasMore || isLoading) return;
+    // 确保在客户端环境中才执行
+    if (!isMounted || !hasMore || isLoading || typeof window === 'undefined') return;
 
     const handleScroll = () => {
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
@@ -132,7 +133,7 @@ export function useInfiniteScroll(loadMore: () => void, hasMore: boolean, isLoad
 
 // 简单的节流函数
 function throttle<T extends (...args: any[]) => any>(func: T, delay: number): T {
-  let timeoutId: NodeJS.Timeout | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let lastExecTime = 0;
 
   return ((...args: any[]) => {
