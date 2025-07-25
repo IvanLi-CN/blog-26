@@ -61,18 +61,56 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
           th: ({ children }) => <th className="markdown-table-header">{children}</th>,
           td: ({ children }) => <td className="markdown-table-cell">{children}</td>,
           a: ({ children, href }) => (
-            <a
-              href={href}
-              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {children}
-            </a>
+            <span className="text-blue-600 dark:text-blue-400 underline cursor-default">{children}</span>
           ),
-          img: ({ src, alt }) => (
-            <img src={src} alt={alt} className="max-w-full h-auto rounded-md my-3" loading="lazy" />
-          ),
+          img: ({ src, alt }) => {
+            // 转换图片路径为 WebDAV 代理路径
+            let convertedSrc = src;
+            if (
+              src &&
+              !src.startsWith('http://') &&
+              !src.startsWith('https://') &&
+              !src.startsWith('/api/webdav-image/')
+            ) {
+              let cleanPath = src;
+
+              // 处理相对路径 - 相对于闪念文件位置 (/Memos/)
+              let targetPath = cleanPath;
+
+              if (targetPath.startsWith('./assets/')) {
+                // ./assets/file.png -> Memos/assets/file.png
+                targetPath = `Memos/${targetPath.substring(2)}`;
+              } else if (targetPath.startsWith('assets/')) {
+                // assets/file.png -> Memos/assets/file.png
+                targetPath = `Memos/${targetPath}`;
+              } else if (targetPath.startsWith('./')) {
+                // 其他相对路径，如 ./file.png -> Memos/file.png
+                targetPath = `Memos/${targetPath.substring(2)}`;
+              } else if (targetPath.startsWith('/')) {
+                // 绝对路径，移除开头的斜杠
+                targetPath = targetPath.substring(1);
+              }
+              // 如果路径不以上述格式开头，保持原样，让WebDAV代理处理
+
+              // 使用WebDAV代理
+              convertedSrc = `/api/webdav-image/${targetPath}`;
+            }
+            return (
+              <img
+                src={convertedSrc}
+                alt={alt}
+                className="max-w-full h-auto rounded-md my-3"
+                loading="lazy"
+                onError={(e) => {
+                  console.error('Image failed to load in SimpleMarkdownPreview:', {
+                    originalSrc: src,
+                    convertedSrc: convertedSrc,
+                    alt: alt,
+                  });
+                }}
+              />
+            );
+          },
           hr: () => <hr className="my-6 border-gray-300 dark:border-gray-600" />,
         }}
       >

@@ -40,7 +40,7 @@ const UpdateMemoSchema = z.object({
 });
 
 const DeleteMemoSchema = z.object({
-  id: z.string().min(1, 'ID is required'),
+  slug: z.string().min(1, 'Slug is required'),
 });
 
 const UploadAttachmentSchema = z.object({
@@ -235,16 +235,36 @@ export const memosRouter = createTRPCRouter({
     }
 
     try {
-      const webdavClient = getWebDAVClient();
-      await webdavClient.deleteMemo(input.id);
+      // 先从缓存中获取所有 memos，找到对应的记录
+      const allMemos = await getCachedMemos();
+      const targetMemo = allMemos.find((memo) => memo.slug === input.slug);
 
-      // 刷新数据库缓存，确保删除的闪念立即从数据库中移除
-      await refreshContentCache();
-      console.log('✅ 已刷新数据库缓存');
+      if (!targetMemo) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Memo not found',
+        });
+      }
+
+      const webdavClient = getWebDAVClient();
+      // 先删除 WebDAV 文件
+      await webdavClient.deleteMemo(targetMemo.id);
+
+      // 再删除数据库记录
+      const { db } = await import('~/lib/db');
+      const { memos } = await import('~/lib/schema');
+      const { eq } = await import('drizzle-orm');
+
+      await db.delete(memos).where(eq(memos.slug, input.slug));
+
+      console.log('✅ 已删除闪念文件和数据库记录');
 
       return { success: true };
     } catch (error) {
       console.error('Failed to delete memo:', error);
+      if (error instanceof TRPCError) {
+        throw error;
+      }
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to delete memo',
