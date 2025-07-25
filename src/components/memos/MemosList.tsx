@@ -46,6 +46,17 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
   const [isHydrated, setIsHydrated] = useState(false);
   // 跟踪当前正在删除的闪念 slug
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  // 删除确认对话框状态
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; slug: string; title?: string }>({
+    show: false,
+    slug: '',
+    title: '',
+  });
+  // 错误提示对话框状态
+  const [errorDialog, setErrorDialog] = useState<{ show: boolean; message: string }>({
+    show: false,
+    message: '',
+  });
 
   useEffect(() => {
     setIsHydrated(true);
@@ -82,18 +93,40 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
 
       // 清除删除状态
       setDeletingSlug(null);
+      // 关闭确认对话框
+      setDeleteConfirm({ show: false, slug: '', title: '' });
     },
     onError: (error, variables) => {
-      alert(`删除失败: ${error.message}`);
+      // 显示错误对话框
+      setErrorDialog({ show: true, message: `删除失败: ${error.message}` });
       // 清除删除状态
       setDeletingSlug(null);
+      // 关闭确认对话框
+      setDeleteConfirm({ show: false, slug: '', title: '' });
     },
   });
 
-  const handleDelete = async (slug: string) => {
-    if (confirm('确定要删除这条 Memo 吗？')) {
-      deleteMemoMutation.mutate({ slug });
+  const handleDeleteClick = (slug: string) => {
+    const memo = memos.find((m) => m.slug === slug);
+    setDeleteConfirm({
+      show: true,
+      slug,
+      title: memo?.title || '这条 Memo',
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirm.slug) {
+      deleteMemoMutation.mutate({ slug: deleteConfirm.slug });
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirm({ show: false, slug: '', title: '' });
+  };
+
+  const handleCloseError = () => {
+    setErrorDialog({ show: false, message: '' });
   };
 
   // 格式化日期 - 友好显示
@@ -198,7 +231,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleDelete(memo.slug);
+                    handleDeleteClick(memo.slug);
                   }}
                   disabled={!isHydrated || deletingSlug === memo.slug}
                   className="absolute top-2 right-2 btn btn-ghost btn-sm btn-circle text-error hover:bg-error/10 z-20 opacity-60 hover:opacity-100"
@@ -341,6 +374,63 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
       {!hasMore && memos.length > 0 && (
         <div className="text-center py-8">
           <div className="text-base-content/40 text-sm">已显示全部 {memos.length} 条闪念</div>
+        </div>
+      )}
+
+      {/* 删除确认对话框 */}
+      {deleteConfirm.show && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">确认删除</h3>
+            <p className="py-4">
+              您确定要删除 "<span className="font-semibold">{deleteConfirm.title}</span>" 吗？
+            </p>
+            <p className="text-sm text-warning mb-4">⚠️ 此操作不可撤销，Memo 将被永久删除。</p>
+            <div className="modal-action">
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deletingSlug === deleteConfirm.slug}
+                className="btn btn-error"
+              >
+                {deletingSlug === deleteConfirm.slug ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs mr-2"></span>
+                    删除中...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    确认删除
+                  </>
+                )}
+              </button>
+              <button onClick={handleCancelDelete} disabled={deletingSlug === deleteConfirm.slug} className="btn">
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 错误提示对话框 */}
+      {errorDialog.show && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg text-error">操作失败</h3>
+            <p className="py-4">{errorDialog.message}</p>
+            <div className="modal-action">
+              <button onClick={handleCloseError} className="btn">
+                确定
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

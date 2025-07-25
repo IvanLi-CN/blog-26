@@ -512,6 +512,33 @@ const metadata = {
       ],
     });
 
+    // 错误对话框处理函数
+    function showError(message: string) {
+      const errorModal = document.getElementById("errorModal");
+      const errorMessage = document.getElementById("errorMessage");
+      if (errorModal && errorMessage) {
+        errorMessage.textContent = message;
+        errorModal.classList.add("modal-open");
+      }
+    }
+
+    function closeError() {
+      const errorModal = document.getElementById("errorModal");
+      if (errorModal) {
+        errorModal.classList.remove("modal-open");
+      }
+    }
+
+    // 绑定错误对话框关闭事件
+    document
+      .getElementById("closeErrorModal")
+      ?.addEventListener("click", closeError);
+    document.getElementById("errorModal")?.addEventListener("click", (e) => {
+      if (e.target === document.getElementById("errorModal")) {
+        closeError();
+      }
+    });
+
     // 加载仪表盘统计数据
     async function loadDashboardStats() {
       const statsLoading = document.getElementById("stats-loading");
@@ -574,11 +601,11 @@ const metadata = {
             // 登出成功，重定向到登录页面
             window.location.href = "/admin/login";
           } else {
-            alert("登出失败，请重试");
+            showError("登出失败，请重试");
           }
         } catch (error) {
           console.error("登出错误:", error);
-          alert("登出失败，请重试");
+          showError("登出失败，请重试");
         }
       });
 
@@ -871,4 +898,15 @@ const metadata = {
       }
     }
   </style>
+
+  <!-- 错误提示对话框 -->
+  <div id="errorModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg text-error">操作失败</h3>
+      <p class="py-4" id="errorMessage"></p>
+      <div class="modal-action">
+        <button id="closeErrorModal" class="btn">确定</button>
+      </div>
+    </div>
+  </div>
 </Layout>

@@ -203,6 +203,56 @@ const metadata = {
   <div id="toast-container" class="toast toast-top toast-end">
     <!-- Toast 消息将通过JavaScript动态添加 -->
   </div>
+
+  <!-- 删除单个评论确认对话框 -->
+  <div id="deleteCommentModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">确认删除评论</h3>
+      <p class="py-4">确定要删除这条评论吗？</p>
+      <p class="text-sm text-warning mb-4">
+        ⚠️ 此操作不可撤销，评论将被永久删除。
+      </p>
+      <div class="modal-action">
+        <button id="confirmDeleteComment" class="btn btn-error">
+          <Icon name="tabler:trash" class="w-4 h-4 mr-2" />
+          确认删除
+        </button>
+        <button id="cancelDeleteComment" class="btn">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量审核确认对话框 -->
+  <div id="batchModerateModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">确认批量操作</h3>
+      <p class="py-4" id="batchModerateMessage"></p>
+      <div class="modal-action">
+        <button id="confirmBatchModerate" class="btn btn-primary">
+          确认操作
+        </button>
+        <button id="cancelBatchModerate" class="btn">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量删除确认对话框 -->
+  <div id="batchDeleteModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">确认批量删除</h3>
+      <p class="py-4" id="batchDeleteMessage"></p>
+      <p class="text-sm text-warning mb-4">
+        ⚠️ 此操作不可撤销，所有选中的评论将被永久删除。
+      </p>
+      <div class="modal-action">
+        <button id="confirmBatchDelete" class="btn btn-error">
+          <Icon name="tabler:trash" class="w-4 h-4 mr-2" />
+          确认删除
+        </button>
+        <button id="cancelBatchDelete" class="btn">取消</button>
+      </div>
+    </div>
+  </div>
 </Layout>
 
 <script>
@@ -218,6 +268,8 @@ const metadata = {
       sortBy: string;
       sortOrder: string;
     };
+    pendingDeleteCommentId: string | null;
+    pendingBatchAction: string | null;
 
     constructor() {
       this.currentPage = 1;
@@ -229,12 +281,15 @@ const metadata = {
         sortBy: "createdAt",
         sortOrder: "desc",
       };
+      this.pendingDeleteCommentId = null;
+      this.pendingBatchAction = null;
 
       this.init();
     }
 
     init() {
       this.bindEvents();
+      this.bindModalEvents();
       this.loadStats();
       this.loadComments();
     }
@@ -332,6 +387,82 @@ const metadata = {
         ?.addEventListener("click", () => {
           this.clearSelection();
         });
+    }
+
+    bindModalEvents() {
+      // 删除单个评论对话框事件
+      document
+        .getElementById("confirmDeleteComment")
+        ?.addEventListener("click", () => {
+          if (this.pendingDeleteCommentId) {
+            this.performDeleteComment(this.pendingDeleteCommentId);
+            this.closeModal("deleteCommentModal");
+          }
+        });
+
+      document
+        .getElementById("cancelDeleteComment")
+        ?.addEventListener("click", () => {
+          this.closeModal("deleteCommentModal");
+          this.pendingDeleteCommentId = null;
+        });
+
+      // 批量审核对话框事件
+      document
+        .getElementById("confirmBatchModerate")
+        ?.addEventListener("click", () => {
+          if (this.pendingBatchAction) {
+            this.performBatchModerate(this.pendingBatchAction);
+            this.closeModal("batchModerateModal");
+          }
+        });
+
+      document
+        .getElementById("cancelBatchModerate")
+        ?.addEventListener("click", () => {
+          this.closeModal("batchModerateModal");
+          this.pendingBatchAction = null;
+        });
+
+      // 批量删除对话框事件
+      document
+        .getElementById("confirmBatchDelete")
+        ?.addEventListener("click", () => {
+          this.performBatchDelete();
+          this.closeModal("batchDeleteModal");
+        });
+
+      document
+        .getElementById("cancelBatchDelete")
+        ?.addEventListener("click", () => {
+          this.closeModal("batchDeleteModal");
+        });
+
+      // 点击模态框背景关闭
+      ["deleteCommentModal", "batchModerateModal", "batchDeleteModal"].forEach(
+        (modalId) => {
+          const modal = document.getElementById(modalId);
+          modal?.addEventListener("click", (e) => {
+            if (e.target === modal) {
+              this.closeModal(modalId);
+              if (modalId === "deleteCommentModal")
+                this.pendingDeleteCommentId = null;
+              if (modalId === "batchModerateModal")
+                this.pendingBatchAction = null;
+            }
+          });
+        },
+      );
+    }
+
+    openModal(modalId: string) {
+      const modal = document.getElementById(modalId);
+      modal?.classList.add("modal-open");
+    }
+
+    closeModal(modalId: string) {
+      const modal = document.getElementById(modalId);
+      modal?.classList.remove("modal-open");
     }
 
     async loadStats() {
@@ -623,11 +754,12 @@ const metadata = {
       }
     }
 
-    async deleteComment(commentId: string) {
-      if (!confirm("确定要删除这条评论吗？此操作不可撤销。")) {
-        return;
-      }
+    deleteComment(commentId: string) {
+      this.pendingDeleteCommentId = commentId;
+      this.openModal("deleteCommentModal");
+    }
 
+    async performDeleteComment(commentId: string) {
       try {
         const response = await fetch("/api/trpc/comments.deleteComment", {
           method: "POST",
@@ -646,24 +778,29 @@ const metadata = {
       } catch (error) {
         console.error("Failed to delete comment:", error);
         this.showToast("删除失败: " + error.message, "error");
+      } finally {
+        this.pendingDeleteCommentId = null;
       }
     }
 
-    async batchModerate(status: string) {
+    batchModerate(status: string) {
       if (this.selectedComments.size === 0) {
         this.showToast("请先选择要操作的评论", "warning");
         return;
       }
 
       const action = status === "approved" ? "批准" : "拒绝";
-      if (
-        !confirm(
-          `确定要${action}选中的 ${this.selectedComments.size} 条评论吗？`,
-        )
-      ) {
-        return;
+      this.pendingBatchAction = status;
+
+      const messageElement = document.getElementById("batchModerateMessage");
+      if (messageElement) {
+        messageElement.textContent = `确定要${action}选中的 ${this.selectedComments.size} 条评论吗？`;
       }
 
+      this.openModal("batchModerateModal");
+    }
+
+    async performBatchModerate(status: string) {
       try {
         const response = await fetch("/api/trpc/comments.batchModerate", {
           method: "POST",
@@ -686,23 +823,26 @@ const metadata = {
       } catch (error) {
         console.error("Failed to batch moderate:", error);
         this.showToast("批量操作失败: " + error.message, "error");
+      } finally {
+        this.pendingBatchAction = null;
       }
     }
 
-    async batchDelete() {
+    batchDelete() {
       if (this.selectedComments.size === 0) {
         this.showToast("请先选择要删除的评论", "warning");
         return;
       }
 
-      if (
-        !confirm(
-          `确定要删除选中的 ${this.selectedComments.size} 条评论吗？此操作不可撤销。`,
-        )
-      ) {
-        return;
+      const messageElement = document.getElementById("batchDeleteMessage");
+      if (messageElement) {
+        messageElement.textContent = `确定要删除选中的 ${this.selectedComments.size} 条评论吗？`;
       }
 
+      this.openModal("batchDeleteModal");
+    }
+
+    async performBatchDelete() {
       try {
         const response = await fetch("/api/trpc/comments.batchDelete", {
           method: "POST",

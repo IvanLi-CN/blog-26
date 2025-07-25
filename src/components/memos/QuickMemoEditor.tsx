@@ -25,6 +25,12 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showDragHint, setShowDragHint] = useState(false);
+  // 错误对话框状态
+  const [errorDialog, setErrorDialog] = useState<{ show: boolean; title: string; message: string }>({
+    show: false,
+    title: '',
+    message: '',
+  });
 
   // 检测操作系统
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -139,9 +145,17 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
       saveDraft(content, isPublic, attachments);
 
       if (error.message.includes('WebDAV is not enabled')) {
-        alert('WebDAV 服务未配置，无法创建 Memo。请检查服务器配置。\n\n内容已保存为草稿，下次打开时可继续编辑。');
+        setErrorDialog({
+          show: true,
+          title: '服务配置错误',
+          message: 'WebDAV 服务未配置，无法创建 Memo。请检查服务器配置。\n\n内容已保存为草稿，下次打开时可继续编辑。',
+        });
       } else {
-        alert(`创建失败: ${error.message}\n\n内容已保存为草稿，下次打开时可继续编辑。`);
+        setErrorDialog({
+          show: true,
+          title: '创建失败',
+          message: `创建失败: ${error.message}\n\n内容已保存为草稿，下次打开时可继续编辑。`,
+        });
       }
     },
   });
@@ -149,7 +163,11 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
   // 上传附件的 mutation
   const uploadAttachmentMutation = trpc.memos.uploadAttachment.useMutation({
     onError: (error) => {
-      alert(`附件上传失败: ${error.message}`);
+      setErrorDialog({
+        show: true,
+        title: '上传失败',
+        message: `附件上传失败: ${error.message}`,
+      });
       setIsUploading(false);
     },
   });
@@ -284,7 +302,11 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) {
-      alert('请输入内容');
+      setErrorDialog({
+        show: true,
+        title: '内容为空',
+        message: '请输入内容',
+      });
       return;
     }
 
@@ -571,6 +593,21 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
           </div>
         </form>
       </div>
+
+      {/* 错误提示对话框 */}
+      {errorDialog.show && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg text-error">{errorDialog.title}</h3>
+            <p className="py-4 whitespace-pre-line">{errorDialog.message}</p>
+            <div className="modal-action">
+              <button onClick={() => setErrorDialog({ show: false, title: '', message: '' })} className="btn">
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

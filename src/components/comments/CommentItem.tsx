@@ -42,6 +42,7 @@ export default function CommentItem({
 }: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { moderateComment, isModerating, error: moderateError } = useModerateComment();
   const { editComment, isEditing: isEditingComment, error: editError } = useEditComment();
   const { deleteComment, isDeleting, error: deleteError } = useDeleteComment();
@@ -84,16 +85,24 @@ export default function CommentItem({
     setIsEditing(false);
   };
 
-  const handleDeleteClick = async () => {
-    if (window.confirm('确定要删除这条留言吗？')) {
-      try {
-        await deleteComment(comment.id);
-        onCommentPosted('评论已删除');
-      } catch (e) {
-        // error is already set in the hook
-        console.error(e);
-      }
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteComment(comment.id);
+      onCommentPosted('评论已删除');
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      // error is already set in the hook
+      console.error(e);
+      setShowDeleteConfirm(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   // 判断当前用户是否可以编辑/删除评论
@@ -221,6 +230,42 @@ export default function CommentItem({
             onLoginSuccess={onLoginSuccess}
             isAdmin={isAdmin}
           />
+        </div>
+      )}
+
+      {/* 删除确认对话框 */}
+      {showDeleteConfirm && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">确认删除</h3>
+            <p className="py-4">确定要删除这条留言吗？</p>
+            <p className="text-sm text-warning mb-4">⚠️ 此操作不可撤销，留言将被永久删除。</p>
+            <div className="modal-action">
+              <button onClick={handleConfirmDelete} disabled={isDeleting} className="btn btn-error">
+                {isDeleting ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs mr-2"></span>
+                    删除中...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    确认删除
+                  </>
+                )}
+              </button>
+              <button onClick={handleCancelDelete} disabled={isDeleting} className="btn">
+                取消
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
