@@ -1,10 +1,11 @@
 import { TRPCError } from '@trpc/server';
+import { createHash } from 'crypto';
 import { and, count, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { db } from '~/lib/db';
 import { verifyJwt } from '~/lib/jwt';
-import { reactions } from '~/lib/schema';
+import { reactions, users } from '~/lib/schema';
 import { createTRPCRouter, publicProcedure } from '../trpc';
 
 // 输入验证 schemas
@@ -39,8 +40,36 @@ async function identifyUser(ctx: any): Promise<string | undefined> {
     }
   }
 
-  // 2. 如果没有有效的 token，返回 undefined
-  return undefined;
+  // 2. 如果没有有效的 token，尝试为访客用户创建临时用户
+  try {
+    // 获取访客的fingerprint（从请求头生成）
+    const userAgent = ctx.req.headers.get('user-agent') || '';
+    const xForwardedFor = ctx.req.headers.get('x-forwarded-for') || '';
+    const xRealIp = ctx.req.headers.get('x-real-ip') || '';
+
+    // 生成访客标识（使用请求头信息的哈希）
+    const fingerprint = userAgent + xForwardedFor + xRealIp;
+    const visitorId = createHash('sha256').update(fingerprint).digest('hex').substring(0, 16);
+    const guestEmail = `guest_${visitorId}@visitor.local`;
+
+    // 查找或创建访客用户
+    let user = await db.select().from(users).where(eq(users.email, guestEmail)).get();
+
+    if (!user) {
+      const userId = `guest_${uuidv4()}`;
+      await db.insert(users).values({
+        id: userId,
+        name: `访客_${visitorId.substring(0, 8)}`,
+        email: guestEmail,
+        createdAt: Date.now(),
+      });
+    }
+
+    return guestEmail;
+  } catch (error) {
+    console.error('Failed to create guest user:', error);
+    return undefined;
+  }
 }
 
 function parseCookies(cookieHeader: string): Record<string, string> {
@@ -66,8 +95,8 @@ export const reactionsRouter = createTRPCRouter({
 
     if (!userEmail) {
       throw new TRPCError({
-        code: 'UNAUTHORIZED',
-        message: 'User identification is required.',
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to identify user.',
       });
     }
 

@@ -4,6 +4,7 @@ import { trpc } from '~/lib/trpc-client';
 import { AttachmentGrid } from './AttachmentGrid';
 import CommentCountWithProvider from './CommentCountWithProvider';
 import { useInfiniteScroll, useMemos } from './hooks';
+import MemoReactionStatsWithProvider from './MemoReactionStatsWithProvider';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
 // 使用与hooks.ts相同的类型定义
@@ -297,6 +298,11 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination }: 
                       <AttachmentGrid attachments={memo.attachments} editable={false} />
                     </div>
                   )}
+
+                  {/* 表情反应统计 */}
+                  <div className="mt-3">
+                    <MemoReactionStatsWithProvider memoSlug={memo.slug} />
+                  </div>
                 </div>
 
                 {/* 右下角状态信息 */}
