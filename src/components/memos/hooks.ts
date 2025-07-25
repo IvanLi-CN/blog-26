@@ -87,6 +87,11 @@ export function useMemos({ isAdmin = false, initialMemos, initialPagination }: U
     refetch();
   }, [refetch]);
 
+  // 从本地状态中移除指定的闪念
+  const removeMemoFromLocal = useCallback((slug: string) => {
+    setAllMemos((prev) => prev.filter((memo) => memo.slug !== slug));
+  }, []);
+
   return {
     memos: allMemos,
     isLoading: isLoading && page === 1 && !initialMemos,
@@ -97,6 +102,7 @@ export function useMemos({ isAdmin = false, initialMemos, initialPagination }: U
     page,
     loadMore,
     refetch: refetchAll,
+    removeMemoFromLocal,
   };
 }
 

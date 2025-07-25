@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { VectorizationStatus } from '~/components/common/VectorizationStatus';
 import { trpc } from '~/lib/trpc-client';
 import { AttachmentGrid } from './AttachmentGrid';
@@ -39,8 +40,17 @@ interface MemosListProps {
 }
 
 export function MemosList({ isAdmin = false, initialMemos, initialPagination }: MemosListProps) {
+  // 水合状态检查
+  const [isHydrated, setIsHydrated] = useState(false);
+  // 跟踪当前正在删除的闪念 slug
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   // 使用新的分页hook，传递初始数据
-  const { memos, isLoading, isLoadingMore, error, hasMore, loadMore } = useMemos({
+  const { memos, isLoading, isLoadingMore, error, hasMore, loadMore, removeMemoFromLocal } = useMemos({
     isAdmin,
     initialMemos,
     initialPagination,
@@ -54,18 +64,30 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination }: 
 
   // 删除 Memo 的 mutation
   const deleteMemoMutation = trpc.memos.delete.useMutation({
-    onSuccess: () => {
-      // 刷新数据
-      utils.memos.getMemos.invalidate();
+    onMutate: (variables) => {
+      // 设置当前正在删除的闪念
+      setDeletingSlug(variables.slug);
     },
-    onError: (error) => {
+    onSuccess: (_, variables) => {
+      // 立即从本地状态中移除被删除的闪念，提供更好的用户体验
+      removeMemoFromLocal(variables.slug);
+
+      // 使查询缓存失效，确保下次加载时数据是最新的
+      utils.memos.getMemos.invalidate();
+
+      // 清除删除状态
+      setDeletingSlug(null);
+    },
+    onError: (error, variables) => {
       alert(`删除失败: ${error.message}`);
+      // 清除删除状态
+      setDeletingSlug(null);
     },
   });
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (slug: string) => {
     if (confirm('确定要删除这条 Memo 吗？')) {
-      deleteMemoMutation.mutate({ id });
+      deleteMemoMutation.mutate({ slug });
     }
   };
 
@@ -171,13 +193,13 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination }: 
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleDelete(memo.id);
+                    handleDelete(memo.slug);
                   }}
-                  disabled={deleteMemoMutation.isPending}
+                  disabled={!isHydrated || deletingSlug === memo.slug}
                   className="absolute top-2 right-2 btn btn-ghost btn-sm btn-circle text-error hover:bg-error/10 z-20 opacity-60 hover:opacity-100"
-                  title="删除"
+                  title={!isHydrated ? '正在加载...' : deletingSlug === memo.slug ? '删除中...' : '删除'}
                 >
-                  {deleteMemoMutation.isPending ? (
+                  {!isHydrated || deletingSlug === memo.slug ? (
                     <span className="loading loading-spinner loading-xs"></span>
                   ) : (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
