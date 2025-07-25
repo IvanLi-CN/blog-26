@@ -174,6 +174,7 @@ export const memosRouter = createTRPCRouter({
         createdAt: memo.createdAt.toISOString(),
         updatedAt: memo.updatedAt.toISOString(),
         data: memo.data,
+        isPublic: memo.data.public !== false, // 添加 isPublic 字段
         attachments: memo.attachments || [],
         tags: memo.tags || [],
       };

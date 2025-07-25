@@ -38,9 +38,10 @@ interface MemosListProps {
   isAdmin?: boolean;
   initialMemos?: Memo[];
   initialPagination?: Pagination;
+  memosHook?: ReturnType<typeof useMemos>;
 }
 
-export function MemosList({ isAdmin = false, initialMemos, initialPagination }: MemosListProps) {
+export function MemosList({ isAdmin = false, initialMemos, initialPagination, memosHook }: MemosListProps) {
   // 水合状态检查
   const [isHydrated, setIsHydrated] = useState(false);
   // 跟踪当前正在删除的闪念 slug
@@ -50,12 +51,15 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination }: 
     setIsHydrated(true);
   }, []);
 
-  // 使用新的分页hook，传递初始数据
-  const { memos, isLoading, isLoadingMore, error, hasMore, loadMore, removeMemoFromLocal } = useMemos({
+  // 使用传入的 memosHook 或创建新的
+  const defaultMemosHook = useMemos({
     isAdmin,
     initialMemos,
     initialPagination,
   });
+
+  const { memos, isLoading, isLoadingMore, error, hasMore, loadMore, removeMemoFromLocal } =
+    memosHook || defaultMemosHook;
 
   // 启用无限滚动
   useInfiniteScroll(loadMore, hasMore, isLoadingMore);

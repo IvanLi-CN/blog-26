@@ -3,9 +3,21 @@ import { trpc } from '~/lib/trpc-client';
 import { type Attachment, AttachmentGrid } from './AttachmentGrid';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
-interface QuickMemoEditorProps {}
+// 本地草稿存储的键名
+const DRAFT_STORAGE_KEY = 'memo-draft';
 
-export function QuickMemoEditor({}: QuickMemoEditorProps) {
+interface DraftData {
+  content: string;
+  isPublic: boolean;
+  attachments: Attachment[];
+  timestamp: number;
+}
+
+interface QuickMemoEditorProps {
+  onMemoCreated?: (memo: any) => void;
+}
+
+export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
@@ -17,6 +29,44 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
   // 检测操作系统
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const shortcutKey = isMac ? '⌘' : 'Ctrl';
+
+  // 加载本地草稿
+  useEffect(() => {
+    const loadDraft = () => {
+      try {
+        const draftStr = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (draftStr) {
+          const draft: DraftData = JSON.parse(draftStr);
+          // 只加载24小时内的草稿
+          if (Date.now() - draft.timestamp < 24 * 60 * 60 * 1000) {
+            setContent(draft.content);
+            // 确保草稿恢复时默认为公开状态，除非用户明确设置为私有
+            setIsPublic(draft.isPublic);
+            setAttachments(draft.attachments);
+          } else {
+            // 清除过期草稿
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
+          }
+        }
+      } catch (error) {
+        console.error('加载草稿失败:', error);
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    };
+
+    loadDraft();
+  }, []);
+
+  // 自动保存草稿
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (content.trim() || attachments.length > 0) {
+        saveDraft(content, isPublic, attachments);
+      }
+    }, 1000); // 1秒后保存
+
+    return () => clearTimeout(timer);
+  }, [content, isPublic, attachments]);
 
   // 设置全局拖拽事件监听器
   useEffect(() => {
@@ -35,24 +85,63 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
     };
   }, [showDragHint, isPreview]);
 
+  // 保存草稿到本地存储
+  const saveDraft = (draftContent: string, draftIsPublic: boolean, draftAttachments: Attachment[]) => {
+    if (!draftContent.trim()) {
+      // 如果内容为空，清除草稿
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      return;
+    }
+
+    try {
+      const draft: DraftData = {
+        content: draftContent,
+        isPublic: draftIsPublic,
+        attachments: draftAttachments,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    } catch (error) {
+      console.error('保存草稿失败:', error);
+    }
+  };
+
+  // 清除草稿
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  };
+
   // 获取 tRPC 工具
   const utils = trpc.useUtils();
 
   // 创建 Memo 的 mutation
   const createMemoMutation = trpc.memos.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (newMemo) => {
+      // 清除草稿
+      clearDraft();
+
+      // 清空编辑器
       setContent('');
       setIsPreview(false);
       setAttachments([]);
-      // 使用 React Query 的 invalidation 来刷新数据
-      utils.memos.getMemos.invalidate();
-      utils.memos.getAll.invalidate(); // 保持向后兼容
+
+      // 如果有回调函数，直接添加到列表中
+      if (onMemoCreated) {
+        onMemoCreated(newMemo);
+      } else {
+        // 否则使用 React Query 的 invalidation 来刷新数据
+        utils.memos.getMemos.invalidate();
+        utils.memos.getAll.invalidate(); // 保持向后兼容
+      }
     },
     onError: (error) => {
+      // 保存草稿
+      saveDraft(content, isPublic, attachments);
+
       if (error.message.includes('WebDAV is not enabled')) {
-        alert('WebDAV 服务未配置，无法创建 Memo。请检查服务器配置。');
+        alert('WebDAV 服务未配置，无法创建 Memo。请检查服务器配置。\n\n内容已保存为草稿，下次打开时可继续编辑。');
       } else {
-        alert(`创建失败: ${error.message}`);
+        alert(`创建失败: ${error.message}\n\n内容已保存为草稿，下次打开时可继续编辑。`);
       }
     },
   });
@@ -248,6 +337,26 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
         {/* 编辑器内容 */}
         <form onSubmit={handleSubmit}>
           <div className="p-4 space-y-3">
+            {/* 草稿提示 */}
+            {content && (
+              <div className="text-xs text-base-content/60 bg-base-200 px-2 py-1 rounded flex items-center justify-between">
+                <span>💾 内容会自动保存为草稿 ({isPublic ? '公开' : '私有'})</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContent('');
+                    setAttachments([]);
+                    setIsPublic(true); // 重置为默认公开状态
+                    clearDraft();
+                  }}
+                  className="text-xs text-base-content/40 hover:text-base-content/80 ml-2"
+                  title="清除草稿"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* 内容输入 */}
             <div className="relative">
               {isPreview ? (
@@ -426,6 +535,8 @@ export function QuickMemoEditor({}: QuickMemoEditorProps) {
                   type="button"
                   onClick={() => {
                     setContent('');
+                    setAttachments([]);
+                    clearDraft();
                   }}
                   className="btn btn-sm btn-ghost"
                   disabled={createMemoMutation.isPending}

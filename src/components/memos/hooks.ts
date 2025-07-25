@@ -92,6 +92,11 @@ export function useMemos({ isAdmin = false, initialMemos, initialPagination }: U
     setAllMemos((prev) => prev.filter((memo) => memo.slug !== slug));
   }, []);
 
+  // 添加新闪念到列表顶部
+  const addMemoToLocal = useCallback((newMemo: Memo) => {
+    setAllMemos((prev) => [newMemo, ...prev]);
+  }, []);
+
   return {
     memos: allMemos,
     isLoading: isLoading && page === 1 && !initialMemos,
@@ -103,6 +108,7 @@ export function useMemos({ isAdmin = false, initialMemos, initialPagination }: U
     loadMore,
     refetch: refetchAll,
     removeMemoFromLocal,
+    addMemoToLocal,
   };
 }
 
