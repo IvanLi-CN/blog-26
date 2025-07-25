@@ -1,6 +1,7 @@
 ---
 import type { ImageMetadata } from "astro";
 import merge from "lodash.merge";
+import CommentSectionWithProvider from "~/components/comments/CommentSectionWithProvider";
 import Layout from "~/layouts/PageLayout.astro";
 import { getCachedMemoBySlug } from "~/lib/content-cache";
 import type { MetaData } from "~/types";
@@ -8,6 +9,7 @@ import { create404Response } from "~/utils/error-handler";
 import { findImage } from "~/utils/images";
 import { parseMarkdownToHTML } from "~/utils/markdown";
 import { getCanonical, getPermalink } from "~/utils/permalinks";
+import { removeTagsFromContent } from "~/utils/utils";
 
 export const prerender = false;
 
@@ -38,8 +40,9 @@ if (!isUserAdmin && !memo.public) {
   return create404Response(Astro.request, "Memo not found");
 }
 
-// 渲染 markdown 内容
-const content = await parseMarkdownToHTML(memo.body, memo.id);
+// 移除标签并渲染 markdown 内容
+const bodyWithoutTags = removeTagsFromContent(memo.body);
+const content = await parseMarkdownToHTML(bodyWithoutTags, memo.id);
 
 const url = getCanonical(getPermalink(slug, "memo"));
 const image = (await findImage(memo.image)) as
@@ -201,8 +204,23 @@ const memoData = {
       )
     }
 
-    <!-- 返回链接 -->
+    <!-- 评论区域 -->
     <div class="mt-12 pt-8 border-t border-base-300">
+      <CommentSectionWithProvider
+        client:load
+        postSlug={memoData.slug}
+        title="评论"
+        texts={{
+          title: "评论",
+          submitSuccess: "评论已提交，正在等待审核。",
+          loadingText: "加载中...",
+          loadMoreText: "加载更多",
+        }}
+      />
+    </div>
+
+    <!-- 返回链接 -->
+    <div class="mt-8 pt-8 border-t border-base-300">
       <a href="/memos" class="btn btn-outline btn-sm"> ← 返回闪念列表 </a>
     </div>
   </article>
