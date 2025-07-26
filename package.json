@@ -47,6 +47,12 @@
     "seed:clear": "bun ./scripts/seed.ts --clear",
     "seed:check": "bun ./scripts/seed.ts --check",
     "db:reset": "bun run migrate && bun run seed",
+    "db:check": "bun ./scripts/db-tools.ts",
+    "db:schema": "bun ./scripts/db-tools.ts schema",
+    "db:posts": "bun ./scripts/db-tools.ts posts",
+    "db:comments": "bun ./scripts/db-tools.ts comments",
+    "webdav:list": "bun ./scripts/webdav-tools.ts list",
+    "webdav:check": "bun ./scripts/webdav-tools.ts check",
     "fix": "bunx biome check --write",
     "test": "bun test",
     "test:watch": "bun test --watch"
