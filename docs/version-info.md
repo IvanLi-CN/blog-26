@@ -33,8 +33,9 @@
 ### 3. 构建集成
 
 - 通过 `prebuild` 脚本自动在构建前生成版本信息
-- 支持 Docker 构建环境
+- 支持 Docker 构建环境，通过环境变量传递 Git 信息
 - 在开发环境中显示 fallback 版本信息
+- GitHub Actions 自动传递构建参数到 Docker
 
 ### 4. 未提交更改检测
 
@@ -72,6 +73,21 @@ bun scripts/generate-version.ts
 ```bash
 bun run build  # 会自动运行 prebuild 脚本生成版本信息
 ```
+
+### Docker 构建
+
+在 Docker 构建时，版本信息通过构建参数传递：
+
+```bash
+docker build \
+  --build-arg BUILD_DATE=20250726 \
+  --build-arg COMMIT_HASH=abc123def456 \
+  --build-arg COMMIT_SHORT_HASH=abc123 \
+  --build-arg REPOSITORY_URL=https://git.ivanli.cc/Ivan/blog-astrowind \
+  .
+```
+
+GitHub Actions 会自动设置这些参数。
 
 ### 在代码中使用
 

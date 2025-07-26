@@ -1,5 +1,11 @@
 FROM oven/bun:1
 
+# Build arguments for version information
+ARG BUILD_DATE
+ARG COMMIT_HASH
+ARG COMMIT_SHORT_HASH
+ARG REPOSITORY_URL
+
 WORKDIR /app
 
 COPY ./package.json ./package.json
@@ -38,6 +44,12 @@ RUN timeout 600 bunx playwright install chromium --force
 
 # Copy source code
 COPY . .
+
+# Set build-time environment variables for version generation
+ENV BUILD_DATE=${BUILD_DATE}
+ENV COMMIT_HASH=${COMMIT_HASH}
+ENV COMMIT_SHORT_HASH=${COMMIT_SHORT_HASH}
+ENV REPOSITORY_URL=${REPOSITORY_URL}
 
 # Build the application
 RUN bun run build
