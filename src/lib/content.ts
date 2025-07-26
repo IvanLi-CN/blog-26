@@ -5,6 +5,8 @@
  * It aims to centralize data fetching logic and provide a consistent data structure.
  */
 
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { extname, join } from 'node:path';
 import matter from 'gray-matter';
 import { z } from 'zod';
 import { getWebDAVClient, isWebDAVEnabled, type WebDAVMemo, type WebDAVPost } from '~/lib/webdav';
@@ -58,12 +60,117 @@ const FrontmatterSchema = z.object({
   metadata: z.any().optional(),
 });
 
+/**
+ * 使用 Node.js fs 模块递归加载本地内容文件
+ * 用于生产环境中 import.meta.glob 不可用的情况
+ */
+async function loadLocalContentWithFS(): Promise<ContentItem[]> {
+  const items: ContentItem[] = [];
+  const contentDir = join(process.cwd(), 'src', 'content');
+
+  function walkDirectory(dir: string, basePath: string = ''): void {
+    try {
+      const entries = readdirSync(dir);
+
+      for (const entry of entries) {
+        const fullPath = join(dir, entry);
+        const relativePath = join(basePath, entry);
+        const stat = statSync(fullPath);
+
+        if (stat.isDirectory()) {
+          // 递归处理子目录
+          walkDirectory(fullPath, relativePath);
+        } else if (stat.isFile()) {
+          const ext = extname(entry);
+          if (ext === '.md' || ext === '.mdx') {
+            try {
+              const rawContent = readFileSync(fullPath, 'utf-8');
+              const { data: frontmatter, content: body } = matter(rawContent);
+
+              const parsedFrontmatter = FrontmatterSchema.parse(frontmatter);
+
+              const id = `/src/content/${relativePath}`;
+              const slug = cleanSlug(parsedFrontmatter.slug || entry.replace(/\.mdx?$/, '') || '');
+              const type: ContentType = relativePath.startsWith('projects/') ? 'project' : 'post';
+
+              // 改进本地文件的时间解析逻辑 - 按优先级尝试不同的时间字段
+              let publishDate: Date | null = null;
+
+              // 优先级：publishDate > date > updateDate
+              const timeFields = [parsedFrontmatter.publishDate, parsedFrontmatter.date, parsedFrontmatter.updateDate];
+
+              for (const timeField of timeFields) {
+                if (timeField) {
+                  const testDate = new Date(timeField);
+                  if (!isNaN(testDate.getTime())) {
+                    publishDate = testDate;
+                    break;
+                  }
+                }
+              }
+
+              if (!publishDate) {
+                console.warn(`No valid time field found for local post ${relativePath}, skipping this file`);
+                return; // 跳过没有有效时间的文件
+              }
+
+              // 处理 updateDate
+              let updateDate: Date | undefined;
+              if (parsedFrontmatter.updateDate) {
+                const testUpdateDate = new Date(parsedFrontmatter.updateDate);
+                if (!isNaN(testUpdateDate.getTime())) {
+                  updateDate = testUpdateDate;
+                }
+              }
+
+              const excerpt = parsedFrontmatter.excerpt ?? parsedFrontmatter.summary;
+
+              items.push({
+                id,
+                slug,
+                type,
+                permalink: getPermalink(slug, type),
+                title: parsedFrontmatter.title,
+                publishDate,
+                updateDate,
+                draft: parsedFrontmatter.draft,
+                public: parsedFrontmatter.public,
+                excerpt,
+                body,
+                readingTime: calculateReadingTime(body),
+                category: parsedFrontmatter.category
+                  ? { slug: cleanSlug(parsedFrontmatter.category), title: parsedFrontmatter.category }
+                  : undefined,
+                tags: (parsedFrontmatter.tags || []).map((tag: string) => ({
+                  slug: cleanSlug(tag),
+                  title: tag,
+                })),
+                author: parsedFrontmatter.author,
+                image: parsedFrontmatter.image,
+                metadata: parsedFrontmatter.metadata,
+                raw: { frontmatter, body },
+              });
+            } catch (error) {
+              console.warn(`Failed to process local content file ${relativePath}:`, error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to read directory ${dir}:`, error);
+    }
+  }
+
+  walkDirectory(contentDir);
+  return items;
+}
+
 async function loadLocalContent(): Promise<ContentItem[]> {
   // 检查是否在 Vite 环境中
   if (typeof import.meta.glob === 'undefined') {
-    // 在非 Vite 环境中，返回空数组
-    console.warn('import.meta.glob not available, skipping local content loading');
-    return [];
+    // 在非 Vite 环境中，使用 Node.js fs 模块加载文件
+    console.log('import.meta.glob not available, using Node.js fs for local content loading');
+    return await loadLocalContentWithFS();
   }
 
   const files = import.meta.glob('/src/content/**/*.{md,mdx}', { query: '?raw', import: 'default' });
