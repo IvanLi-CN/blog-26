@@ -2,6 +2,7 @@
 import { Icon } from "astro-icon/components";
 import Layout from "~/layouts/PageLayout.astro";
 import { isAdminFromRequest, redirectToAdminLogin } from "~/lib/auth";
+import { formatVersionInfo, getVersionInfo } from "~/lib/version";
 
 export const prerender = false;
 
@@ -14,6 +15,10 @@ const isUserAdmin = await isAdminFromRequest(
 if (!isUserAdmin) {
   return redirectToAdminLogin();
 }
+
+// 获取版本信息
+const versionInfo = getVersionInfo();
+const formattedVersion = formatVersionInfo(versionInfo);
 
 const metadata = {
   title: "管理员操作界面",
@@ -48,6 +53,23 @@ const metadata = {
       <p class="text-center text-muted">
         欢迎使用管理员操作界面，查看统计数据并选择您要执行的操作
       </p>
+
+      <!-- 版本信息 -->
+      <div class="flex justify-center mt-4">
+        <div class="badge badge-outline badge-lg gap-2">
+          <Icon name="tabler:git-branch" class="w-4 h-4" />
+          <span>版本:</span>
+          <a
+            href={formattedVersion.commitLink.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="link link-primary font-mono"
+            title={`构建日期: ${formattedVersion.displayDate}`}
+          >
+            {formattedVersion.displayVersion}
+          </a>
+        </div>
+      </div>
     </div>
 
     <!-- 仪表盘统计数据 -->

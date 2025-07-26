@@ -49,6 +49,9 @@ public
 # Cloudflare
 .wrangler
 
+# Generated files
+/src/generated/
+
 # Misc
 .DS_Store
 *.pem

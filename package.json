@@ -36,6 +36,7 @@
     "dev": "ADMIN_MODE=true bunx --bun astro dev --host",
     "dev:prod": "bunx --bun astro dev --host",
     "start": "bunx --bun astro dev",
+    "prebuild": "bun scripts/generate-version.ts",
     "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
     "astro": "bunx --bun astro",
