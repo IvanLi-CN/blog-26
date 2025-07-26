@@ -187,8 +187,8 @@ export const fetchPostsPaginated = async (options: {
         ...post,
         content,
         permalink: post.slug, // 使用 slug 作为 permalink
-        publishDate: new Date(post.publishDate), // 转换为 Date 对象
-        updateDate: post.updateDate ? new Date(post.updateDate) : undefined,
+        publishDate: new Date(post.publishDate * 1000), // 转换 UNIX 时间戳为 Date 对象
+        updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
         excerpt: post.excerpt || undefined, // 转换 null 为 undefined
         author: post.author || undefined, // 转换 null 为 undefined
         category,
