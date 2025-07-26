@@ -252,8 +252,44 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                 </button>
               )}
 
-              {/* 可点击的链接覆盖整个卡片 */}
-              <a href={`/memos/${memo.slug}`} className="block cursor-pointer">
+              {/* 可点击的卡片内容 */}
+              <div
+                className="block cursor-pointer"
+                onMouseDown={(e) => {
+                  // 记录鼠标按下的位置
+                  const startX = e.clientX;
+                  const startY = e.clientY;
+                  const startTime = Date.now();
+
+                  const handleMouseUp = (upEvent: MouseEvent) => {
+                    // 移除事件监听器
+                    document.removeEventListener('mouseup', handleMouseUp);
+
+                    // 计算鼠标移动距离和时间
+                    const deltaX = Math.abs(upEvent.clientX - startX);
+                    const deltaY = Math.abs(upEvent.clientY - startY);
+                    const deltaTime = Date.now() - startTime;
+
+                    // 检查是否是文本选择（移动距离大于阈值或时间过长）
+                    const isTextSelection = deltaX > 5 || deltaY > 5 || deltaTime > 500;
+
+                    // 检查是否有文本被选中
+                    const hasSelection = (window.getSelection()?.toString().length ?? 0) > 0;
+
+                    // 检查是否点击了可交互元素
+                    const target = upEvent.target as HTMLElement;
+                    const isInteractiveElement = target.closest('button, a, .badge, [role="button"]');
+
+                    // 只有在没有文本选择、没有点击交互元素、且是简单点击时才导航
+                    if (!isTextSelection && !hasSelection && !isInteractiveElement) {
+                      window.location.href = `/memos/${memo.slug}`;
+                    }
+                  };
+
+                  // 添加鼠标松开事件监听器
+                  document.addEventListener('mouseup', handleMouseUp);
+                }}
+              >
                 {/* 头部信息 */}
                 <div className="flex items-center justify-between px-6 py-3 pr-12 bg-base-200 border-b border-base-300">
                   <div className="flex items-center space-x-3 text-sm text-base-content/70">
@@ -354,7 +390,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                     className="opacity-40 hover:opacity-70 transition-opacity"
                   />
                 </div>
-              </a>
+              </div>
             </div>
           </div>
         </div>
