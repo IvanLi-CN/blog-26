@@ -344,6 +344,12 @@ const metadata = {
       }
 
       setupCaptcha() {
+        // 在开发环境下，自动设置验证码响应以便测试
+        if (import.meta.env.DEV) {
+          console.log("Development mode: auto-setting captcha response");
+          this.captchaResponse = "development-bypass";
+        }
+
         // 设置螺丝帽验证码回调
         (window as any).handleCaptchaSuccess = (response: string) => {
           this.captchaResponse = response;
@@ -427,7 +433,7 @@ const metadata = {
         );
 
         try {
-          const response = await fetch("/api/auth/admin-send-code", {
+          const response = await fetch("/api/trpc/auth.sendAdminCode", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -438,12 +444,17 @@ const metadata = {
             }),
           });
 
-          if (response.ok) {
+          const result = await response.json();
+
+          if (response.ok && result.result?.data?.success) {
             this.currentEmail = email;
             this.showCodeStep();
           } else {
-            const error = await response.text();
-            this.showError(this.emailError, error || "发送验证码失败，请重试");
+            const errorMessage =
+              result.error?.message ||
+              result.result?.data?.message ||
+              "发送验证码失败，请重试";
+            this.showError(this.emailError, errorMessage);
             // 验证失败时重置验证码
             this.resetCaptcha();
           }
@@ -478,7 +489,7 @@ const metadata = {
         );
 
         try {
-          const response = await fetch("/api/auth/verify-code", {
+          const response = await fetch("/api/trpc/auth.verifyCode", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -489,12 +500,17 @@ const metadata = {
             }),
           });
 
-          if (response.ok) {
+          const result = await response.json();
+
+          if (response.ok && result.result?.data?.success) {
             // 登录成功，重定向到管理界面
             window.location.href = "/admin";
           } else {
-            const error = await response.text();
-            this.showError(this.codeError, error || "验证码错误，请重试");
+            const errorMessage =
+              result.error?.message ||
+              result.result?.data?.message ||
+              "验证码错误，请重试";
+            this.showError(this.codeError, errorMessage);
           }
         } catch (error) {
           this.showError(this.codeError, "网络错误，请重试");

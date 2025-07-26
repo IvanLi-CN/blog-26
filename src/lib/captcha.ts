@@ -13,6 +13,12 @@ const luosimaoResponseSchema = z.object({
  */
 export async function verifyCaptcha(response: string): Promise<boolean> {
   try {
+    // 在开发环境下，允许使用特殊的测试响应绕过验证
+    if (process.env.NODE_ENV === 'development' && response === 'development-bypass') {
+      console.log('Development mode: bypassing captcha verification');
+      return true;
+    }
+
     const { secretKey } = config.captcha;
 
     const formData = new URLSearchParams();

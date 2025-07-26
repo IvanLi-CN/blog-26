@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { getAvatarUrl } from '~/lib/avatar';
@@ -177,11 +177,12 @@ export const authRouter = createTRPCRouter({
     const { email, code } = input;
 
     try {
-      // 查找验证码记录
+      // 查找最新的验证码记录
       const verificationRecord = await db
         .select()
         .from(emailVerificationCodes)
         .where(eq(emailVerificationCodes.email, email))
+        .orderBy(desc(emailVerificationCodes.expiresAt))
         .get();
 
       if (!verificationRecord) {
