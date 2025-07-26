@@ -75,7 +75,15 @@ async function loadLocalContentWithFS(): Promise<ContentItem[]> {
       for (const entry of entries) {
         const fullPath = join(dir, entry);
         const relativePath = join(basePath, entry);
-        const stat = statSync(fullPath);
+
+        let stat;
+        try {
+          stat = statSync(fullPath);
+        } catch (error) {
+          // 跳过无法访问的文件/目录（如断开的符号链接）
+          console.warn(`Skipping inaccessible path ${fullPath}:`, error.message);
+          continue;
+        }
 
         if (stat.isDirectory()) {
           // 递归处理子目录

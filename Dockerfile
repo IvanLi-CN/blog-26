@@ -34,7 +34,7 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install Playwright browsers with extended timeout
-RUN timeout 300 bunx playwright install chromium --force
+RUN timeout 600 bunx playwright install chromium --force
 
 # Copy source code
 COPY . .
