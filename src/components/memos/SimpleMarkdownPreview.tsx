@@ -64,14 +64,9 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
             <span className="text-blue-600 dark:text-blue-400 underline cursor-default">{children}</span>
           ),
           img: ({ src, alt }) => {
-            // 转换图片路径为 WebDAV 代理路径
+            // 转换图片路径为文件代理路径
             let convertedSrc = src;
-            if (
-              src &&
-              !src.startsWith('http://') &&
-              !src.startsWith('https://') &&
-              !src.startsWith('/api/webdav-image/')
-            ) {
+            if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('/files/')) {
               let cleanPath = src;
 
               // 处理相对路径 - 相对于闪念文件位置 (/Memos/)
@@ -90,10 +85,10 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
                 // 绝对路径，移除开头的斜杠
                 targetPath = targetPath.substring(1);
               }
-              // 如果路径不以上述格式开头，保持原样，让WebDAV代理处理
+              // 如果路径不以上述格式开头，保持原样，让文件代理处理
 
-              // 使用WebDAV代理
-              convertedSrc = `/api/webdav-image/${targetPath}`;
+              // 使用文件代理
+              convertedSrc = `/files/${targetPath}`;
             }
             return (
               <img

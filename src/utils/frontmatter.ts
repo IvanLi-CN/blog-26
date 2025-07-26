@@ -76,11 +76,11 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
       if (node.tagName === 'img' && node.properties && node.properties.src) {
         const src = node.properties.src as string;
 
-        // 如果已经是完整的 URL 或已经是 WebDAV API 路径，跳过处理
+        // 如果已经是完整的 URL 或已经是文件代理路径，跳过处理
         if (
           src.startsWith('http://') ||
           src.startsWith('https://') ||
-          src.startsWith('/api/webdav-image/') ||
+          src.startsWith('/files/') ||
           src.startsWith('~/assets/')
         ) {
           return;
@@ -119,8 +119,8 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
         // 清理路径（移除多余的斜杠等）
         resolvedPath = resolvedPath.replace(/\/+/g, '/').replace(/^\//, '');
 
-        // 转换为 WebDAV API 路径
-        node.properties.src = `/api/webdav-image/${resolvedPath}`;
+        // 转换为文件代理路径
+        node.properties.src = `/files/${resolvedPath}`;
       }
     });
   };

@@ -440,6 +440,43 @@ const apiDocumentation = {
       example: "trpc.contentCache.refresh.useMutation()",
     },
   ],
+
+  // 文件访问端点（非 tRPC）
+  files: [
+    {
+      path: "/files/[...path]",
+      type: "endpoint",
+      method: "GET",
+      auth: "public",
+      description: "主要的文件代理端点，用于访问 WebDAV 存储的图片和文件",
+      input: "路径参数：文件在 WebDAV 中的相对路径",
+      output: "文件内容（图片、文档等）",
+      example: "GET /files/Project/assets/image.jpg",
+      notes: "支持中文文件名，自动处理路径编码，包含缓存控制",
+    },
+    {
+      path: "/api/webdav-image/[...path]",
+      type: "endpoint",
+      method: "GET",
+      auth: "public",
+      description: "旧的图片代理端点，现在重定向到 /files/（向后兼容）",
+      input: "路径参数：文件在 WebDAV 中的相对路径",
+      output: "301 重定向到 /files/",
+      example: "GET /api/webdav-image/image.jpg → 重定向到 /files/image.jpg",
+      notes: "已废弃，建议使用 /files/ 端点",
+    },
+    {
+      path: "/api/file/[...path]",
+      type: "endpoint",
+      method: "GET",
+      auth: "public",
+      description: "另一个旧的文件代理端点，现在重定向到 /files/（向后兼容）",
+      input: "路径参数：文件在 WebDAV 中的相对路径",
+      output: "301 重定向到 /files/",
+      example: "GET /api/file/image.jpg → 重定向到 /files/image.jpg",
+      notes: "已废弃，建议使用 /files/ 端点",
+    },
+  ],
 };
 
 // 计算总数和统计信息
@@ -451,7 +488,7 @@ const totalProcedures = Object.values(apiDocumentation).reduce(
 // 转换为展示格式
 const allEndpoints = Object.entries(apiDocumentation).flatMap(
   ([category, procedures]) =>
-    procedures.map((procedure) => ({
+    procedures.map((procedure: any) => ({
       path: procedure.path,
       method: procedure.method,
       summary: procedure.description,
@@ -462,6 +499,7 @@ const allEndpoints = Object.entries(apiDocumentation).flatMap(
       input: procedure.input,
       output: procedure.output,
       example: procedure.example,
+      notes: procedure.notes, // 添加 notes 字段支持
     })),
 );
 
@@ -487,6 +525,7 @@ const tagNameMap: Record<string, string> = {
   reactions: "反应系统",
   vectorization: "向量化",
   contentCache: "内容缓存",
+  files: "文件访问",
 };
 
 // 权限级别推断
@@ -725,6 +764,17 @@ function getAuthLevel(path: string): "public" | "protected" | "admin" {
                         {endpoint.example}
                       </code>
                     </div>
+
+                    {endpoint.notes && (
+                      <div class="mt-3">
+                        <p class="font-medium text-gray-700 mb-1 text-sm">
+                          备注:
+                        </p>
+                        <div class="text-xs bg-yellow-50 text-yellow-800 p-2 rounded border border-yellow-200">
+                          {endpoint.notes}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -736,7 +786,7 @@ function getAuthLevel(path: string): "public" | "protected" | "admin" {
       <!-- 文档说明 -->
       <div class="mb-8">
         <h2 class="text-2xl font-semibold mb-4">关于此文档</h2>
-        <div class="bg-blue-50 p-4 rounded-lg">
+        <div class="bg-blue-50 p-4 rounded-lg mb-4">
           <p class="text-sm text-blue-800 mb-2">
             <strong>✅ 特点:</strong>
           </p>
@@ -754,6 +804,29 @@ function getAuthLevel(path: string): "public" | "protected" | "admin" {
             <li>手动精心维护，确保准确性</li>
             <li>定期更新以保持与代码同步</li>
           </ul>
+        </div>
+
+        <!-- 文件访问端点变更说明 -->
+        <div class="bg-orange-50 p-4 rounded-lg">
+          <p class="text-sm text-orange-800 mb-2">
+            <strong>🔄 重要变更：文件访问端点统一</strong>
+          </p>
+          <div class="text-sm text-orange-700 mb-3">
+            <p class="mb-2">为了简化架构，我们已将图片和文件访问端点统一为：</p>
+            <div class="bg-orange-100 p-2 rounded font-mono text-xs mb-2">
+              <strong>主要端点：</strong> /files/[...path] （推荐使用）
+            </div>
+            <p class="mb-2">旧端点仍然可用，但会自动重定向：</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>/api/webdav-image/[...path] → /files/[...path]</li>
+              <li>/api/file/[...path] → /files/[...path]</li>
+            </ul>
+          </div>
+          <div class="text-xs text-orange-600 bg-orange-100 p-2 rounded">
+            <strong>注意：</strong
+            >所有文件访问现在都是公开的，不需要管理员权限。建议更新代码使用新的
+            /files/ 端点。
+          </div>
         </div>
       </div>
     </div>

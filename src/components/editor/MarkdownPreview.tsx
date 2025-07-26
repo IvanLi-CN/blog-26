@@ -12,10 +12,10 @@ interface MarkdownPreviewProps {
 
 // 转换图片路径用于预览显示
 function convertImagePathForPreview(imagePath: string, currentFilePath?: string): string {
-  // 如果已经是完整的 URL 或已经是 WebDAV API 路径，直接返回
+  // 如果已经是完整的 URL 或已经是文件代理路径，直接返回
   if (
     imagePath &&
-    (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('/api/webdav-image/'))
+    (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('/files/'))
   ) {
     return imagePath;
   }
@@ -60,8 +60,8 @@ function convertImagePathForPreview(imagePath: string, currentFilePath?: string)
     // 清理路径（移除开头的 /）
     resolvedPath = resolvedPath.replace(/^\/+/, '');
 
-    // 使用代理 API 路径
-    return `/api/webdav-image/${resolvedPath}`;
+    // 使用文件代理路径
+    return `/files/${resolvedPath}`;
   }
 
   // 如果没有文件路径信息，使用简单的转换逻辑
@@ -75,7 +75,7 @@ function convertImagePathForPreview(imagePath: string, currentFilePath?: string)
       processedPath = imagePath;
     }
 
-    return `/api/webdav-image/${processedPath}`;
+    return `/files/${processedPath}`;
   }
 
   return imagePath;

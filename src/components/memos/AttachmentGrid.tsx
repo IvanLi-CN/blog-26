@@ -284,7 +284,7 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                 <div
                   className="w-full h-full cursor-pointer relative group/image"
                   onClick={() => {
-                    const imageSrc = `/api/webdav-image/${attachment.path.replace(/^\//, '')}`;
+                    const imageSrc = `/files/${attachment.path.replace(/^\//, '')}`;
                     setSelectedImage({
                       src: imageSrc,
                       alt: attachment.filename,
@@ -303,14 +303,14 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                   </div>
 
                   <img
-                    src={`/api/webdav-image/${attachment.path.replace(/^\//, '')}`}
+                    src={`/files/${attachment.path.replace(/^\//, '')}`}
                     alt={attachment.filename}
                     className="w-full h-full object-cover relative z-10 opacity-0"
                     loading="lazy"
                     onError={(e) => {
                       console.error('Image failed to load:', {
                         path: attachment.path,
-                        src: `/api/webdav-image/${attachment.path.replace(/^\//, '')}`,
+                        src: `/files/${attachment.path.replace(/^\//, '')}`,
                         filename: attachment.filename,
                       });
                       // 图片加载失败时，保持占位符显示，但改变样式

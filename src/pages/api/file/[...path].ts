@@ -1,27 +1,20 @@
 import type { APIRoute } from 'astro';
-import { createForbiddenResponse, isAdminRequest } from '../../../lib/auth-utils';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ params, request }) => {
   try {
-    // 权限检查：只有管理员可以访问文件重定向
-    const isAdmin = await isAdminRequest(request);
-    if (!isAdmin) {
-      console.warn('File API redirect: Unauthorized access attempt');
-      return createForbiddenResponse('Admin access required');
-    }
+    // 移除权限检查：图片访问应该是公开的
+    // 图片资源不需要权限控制，任何人都可以访问
 
     const path = params.path;
     if (!path) {
       return new Response('Path is required', { status: 400 });
     }
 
-    // 将 /api/file/ 路径重定向到新的 /api/webdav-image/ 路径
+    // 将 /api/file/ 路径重定向到 /files/ 路径
     const cleanPath = Array.isArray(path) ? path.join('/') : path;
-
-    // 对于中文字符，不需要在这里编码，让 webdav-image 端点处理
-    const redirectUrl = `/api/webdav-image/${cleanPath}`;
+    const redirectUrl = `/files/${cleanPath}`;
 
     console.log(`Redirecting /api/file/${cleanPath} to ${redirectUrl}`);
 
