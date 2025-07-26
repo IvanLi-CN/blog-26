@@ -60,36 +60,41 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
 
     // 从文件数据中获取文章路径
     if (file.data?.astro?.frontmatter?.id) {
-      // WebDAV文章的ID就是它的完整路径
       articlePath = file.data.astro.frontmatter.id;
-      // 提取目录部分
-      articleDir = articlePath.substring(0, articlePath.lastIndexOf('/') + 1);
+
+      // WebDAV文章的ID是相对于WEBDAV_URL的路径，如 "/Project/ATX 取电转接板.md"
+      // 我们需要提取目录部分，并移除前导斜杠，使其成为相对路径
+      const rawDir = articlePath.substring(0, articlePath.lastIndexOf('/') + 1);
+      articleDir = rawDir.startsWith('/') ? rawDir.substring(1) : rawDir;
     } else if (file.path) {
       articlePath = file.path;
-      articleDir = articlePath.substring(0, articlePath.lastIndexOf('/') + 1);
+      const rawDir = articlePath.substring(0, articlePath.lastIndexOf('/') + 1);
+      articleDir = rawDir.startsWith('/') ? rawDir.substring(1) : rawDir;
     } else if (file.history && file.history.length > 0) {
       articlePath = file.history[0];
-      articleDir = articlePath.substring(0, articlePath.lastIndexOf('/') + 1);
+      const rawDir = articlePath.substring(0, articlePath.lastIndexOf('/') + 1);
+      articleDir = rawDir.startsWith('/') ? rawDir.substring(1) : rawDir;
     }
 
     visit(tree, 'element', function (node) {
+      // 处理 img 标签
       if (node.tagName === 'img' && node.properties && node.properties.src) {
         const src = node.properties.src as string;
 
         // 如果已经是完整的 URL 或已经是文件代理路径，跳过处理
-        if (
-          src.startsWith('http://') ||
-          src.startsWith('https://') ||
-          src.startsWith('/files/') ||
-          src.startsWith('~/assets/')
-        ) {
+        if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/files/')) {
           return;
         }
 
         // 根据文章的实际路径解析相对路径
         let resolvedPath = '';
 
-        if (src.startsWith('./')) {
+        if (src.startsWith('~/assets/')) {
+          // 处理 ~/assets/ 路径，这些可能是WebDAV上的资源
+          // 移除 ~/assets/ 前缀，然后根据文章路径解析
+          const assetPath = src.substring(9); // 移除 '~/assets/'
+          resolvedPath = `${articleDir}assets/${assetPath}`;
+        } else if (src.startsWith('./')) {
           // 相对于文章目录的路径
           resolvedPath = `${articleDir}${src.substring(2)}`;
         } else if (src.startsWith('../')) {
@@ -120,7 +125,50 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
         resolvedPath = resolvedPath.replace(/\/+/g, '/').replace(/^\//, '');
 
         // 转换为文件代理路径
-        node.properties.src = `/files/${resolvedPath}`;
+        const finalPath = `/files/${resolvedPath}`;
+        node.properties.src = finalPath;
+      }
+
+      // 处理 a 标签中指向图片文件的链接
+      if (node.tagName === 'a' && node.properties && node.properties.href) {
+        const href = node.properties.href as string;
+        // 检查是否是图片文件链接
+        if (href && /\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff)$/i.test(href)) {
+          // 如果已经是完整的 URL 或已经是文件代理路径，跳过处理
+          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('/files/')) {
+            return;
+          }
+
+          // 使用相同的路径解析逻辑
+          let resolvedPath = '';
+
+          if (href.startsWith('~/assets/')) {
+            const assetPath = href.substring(9);
+            resolvedPath = `${articleDir}assets/${assetPath}`;
+          } else if (href.startsWith('./')) {
+            resolvedPath = `${articleDir}${href.substring(2)}`;
+          } else if (href.startsWith('../')) {
+            const parts = articleDir.split('/').filter(Boolean);
+            let upCount = 0;
+            let srcParts = href.split('/');
+
+            while (srcParts.length > 0 && srcParts[0] === '..') {
+              upCount++;
+              srcParts.shift();
+            }
+
+            const newDirParts = parts.slice(0, Math.max(0, parts.length - upCount));
+            resolvedPath = `${newDirParts.join('/')}/${srcParts.join('/')}`;
+          } else if (href.startsWith('/')) {
+            resolvedPath = href.substring(1);
+          } else {
+            resolvedPath = `${articleDir}${href}`;
+          }
+
+          resolvedPath = resolvedPath.replace(/\/+/g, '/').replace(/^\//, '');
+          const finalPath = `/files/${resolvedPath}`;
+          node.properties.href = finalPath;
+        }
       }
     });
   };
