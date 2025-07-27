@@ -81,8 +81,8 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
       if (node.tagName === 'img' && node.properties && node.properties.src) {
         const src = node.properties.src as string;
 
-        // 如果已经是完整的 URL 或已经是文件代理路径，跳过处理
-        if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/files/')) {
+        // 如果已经是完整的 URL 或已经是优化图片端点，跳过处理
+        if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/api/render-image/')) {
           return;
         }
 
@@ -124,8 +124,8 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
         // 清理路径（移除多余的斜杠等）
         resolvedPath = resolvedPath.replace(/\/+/g, '/').replace(/^\//, '');
 
-        // 转换为文件代理路径
-        const finalPath = `/files/${resolvedPath}`;
+        // 转换为优化图片端点，添加水印和优化
+        const finalPath = `/api/render-image/${resolvedPath}?f=webp&q=85&s=1200&dpr=1`;
         node.properties.src = finalPath;
       }
 
@@ -134,8 +134,8 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
         const href = node.properties.href as string;
         // 检查是否是图片文件链接
         if (href && /\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff)$/i.test(href)) {
-          // 如果已经是完整的 URL 或已经是文件代理路径，跳过处理
-          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('/files/')) {
+          // 如果已经是完整的 URL 或已经是优化图片端点，跳过处理
+          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('/api/render-image/')) {
             return;
           }
 
@@ -166,7 +166,7 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
           }
 
           resolvedPath = resolvedPath.replace(/\/+/g, '/').replace(/^\//, '');
-          const finalPath = `/files/${resolvedPath}`;
+          const finalPath = `/api/render-image/${resolvedPath}?f=webp&q=85&s=1200&dpr=1`;
           node.properties.href = finalPath;
         }
       }

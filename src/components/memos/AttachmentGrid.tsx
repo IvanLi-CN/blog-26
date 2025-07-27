@@ -284,9 +284,9 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                 <div
                   className="w-full h-full cursor-pointer relative group/image"
                   onClick={() => {
-                    // 使用优化后的图片 URL
+                    // 使用优化后的图片 URL，指定显示尺寸为300x300（闪念附件1:1比例）
                     const imagePath = attachment.path.replace(/^\//, '');
-                    const optimizedSrc = `/api/render-image/${imagePath}?f=webp&q=90`;
+                    const optimizedSrc = `/api/render-image/${imagePath}?f=webp&q=90&display-w=300&display-h=300`;
                     setSelectedImage({
                       src: optimizedSrc,
                       alt: attachment.filename,
@@ -305,14 +305,14 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                   </div>
 
                   <img
-                    src={`/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85`}
+                    src={`/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85&display-w=300&display-h=300`}
                     alt={attachment.filename}
                     className="w-full h-full object-cover relative z-10 opacity-0"
                     loading="lazy"
                     onError={(e) => {
                       console.error('Image failed to load:', {
                         path: attachment.path,
-                        src: `/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85`,
+                        src: `/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85&display-w=300&display-h=300`,
                         filename: attachment.filename,
                       });
                       // 图片加载失败时，保持占位符显示，但改变样式

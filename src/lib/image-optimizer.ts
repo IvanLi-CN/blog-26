@@ -2,12 +2,12 @@ import path from 'path';
 import sharp from 'sharp';
 
 export interface ImageOptimizationOptions {
-  width?: number;
-  height?: number;
+  size?: number; // 单一尺寸参数，图片会等比缩放到这个尺寸
   quality?: number;
   format?: 'webp' | 'jpeg' | 'png';
   addWatermark?: boolean;
   removeMetadata?: boolean;
+  pixelRatio?: number; // 显示倍率，用于调整水印大小，默认1x
 }
 
 export interface OptimizedImageResult {
@@ -23,35 +23,47 @@ export const RESPONSIVE_BREAKPOINTS = [320, 480, 640, 768, 1024, 1280, 1536, 192
 
 // 默认优化选项
 export const DEFAULT_OPTIMIZATION_OPTIONS: Required<ImageOptimizationOptions> = {
-  width: 1920,
-  height: 1080,
+  size: 1920,
   quality: 85,
   format: 'webp',
   addWatermark: true,
   removeMetadata: true,
+  pixelRatio: 1,
 };
 
 /**
- * 创建水印文本
+ * 根据像素倍率创建水印文本
  */
-async function createWatermarkSvg(text: string, width: number, height: number): Promise<Buffer> {
+async function createWatermarkSvg(
+  text: string,
+  actualWidth: number,
+  actualHeight: number,
+  pixelRatio: number = 1
+): Promise<Buffer> {
   // 确保尺寸为正数且合理
-  const safeWidth = Math.max(1, Math.floor(width));
-  const safeHeight = Math.max(1, Math.floor(height));
+  const safeActualWidth = Math.max(1, Math.floor(actualWidth));
+  const safeActualHeight = Math.max(1, Math.floor(actualHeight));
 
-  // 计算字体大小，基于图片宽度，但设置合理的范围
-  const fontSize = Math.max(8, Math.min(32, safeWidth * 0.02));
+  // 水印默认高度20像素，根据像素倍率调整
+  const watermarkHeight = 20 * pixelRatio;
+
+  // 计算字体大小，保持水印高度一致
+  const fontSize = Math.max(8, Math.min(64, watermarkHeight));
 
   // 水印位置：右下角，留出一些边距
   const padding = Math.max(4, fontSize * 0.5);
-  const x = safeWidth - padding;
-  const y = safeHeight - padding;
+  const x = safeActualWidth - padding;
+  const y = safeActualHeight - padding;
+
+  // 阴影和描边效果基于字体大小
+  const shadowOffset = Math.max(1, fontSize * 0.08);
+  const strokeWidth = Math.max(0.5, fontSize * 0.04);
 
   const svg = `
-    <svg width="${safeWidth}" height="${safeHeight}" xmlns="http://www.w3.org/2000/svg">
+    <svg width="${safeActualWidth}" height="${safeActualHeight}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="rgba(0,0,0,0.5)"/>
+          <feDropShadow dx="${shadowOffset}" dy="${shadowOffset}" stdDeviation="${shadowOffset}" flood-color="rgba(0,0,0,0.5)"/>
         </filter>
       </defs>
       <text
@@ -62,7 +74,7 @@ async function createWatermarkSvg(text: string, width: number, height: number): 
         font-weight="500"
         fill="rgba(255,255,255,0.8)"
         stroke="rgba(128,128,128,0.6)"
-        stroke-width="0.5"
+        stroke-width="${strokeWidth}"
         text-anchor="end"
         dominant-baseline="bottom"
         filter="url(#shadow)"
@@ -86,37 +98,41 @@ export async function optimizeImage(
 
   // 获取原始图片信息
   const metadata = await pipeline.metadata();
-  const originalWidth = metadata.width || opts.width;
-  const originalHeight = metadata.height || opts.height;
+  const originalWidth = metadata.width;
+  const originalHeight = metadata.height;
 
   // 计算目标尺寸，保持宽高比
-  let targetWidth = opts.width;
-  let targetHeight = opts.height;
+  let targetWidth: number | undefined;
+  let targetHeight: number | undefined;
 
-  if (originalWidth && originalHeight) {
-    const aspectRatio = originalWidth / originalHeight;
+  if (opts.size && originalWidth && originalHeight) {
+    // 如果传入的尺寸大于原图的最大边，则不处理
+    const maxOriginalDimension = Math.max(originalWidth, originalHeight);
+    if (opts.size >= maxOriginalDimension) {
+      // 不缩放，保持原始尺寸
+      targetWidth = originalWidth;
+      targetHeight = originalHeight;
+    } else {
+      // 等比缩放到指定尺寸
+      const aspectRatio = originalWidth / originalHeight;
 
-    if (opts.width && !opts.height) {
-      targetWidth = opts.width;
-      targetHeight = Math.round(opts.width / aspectRatio);
-    } else if (opts.height && !opts.width) {
-      targetHeight = opts.height;
-      targetWidth = Math.round(opts.height * aspectRatio);
-    } else if (opts.width && opts.height) {
-      // 如果同时指定了宽高，保持宽高比，以较小的缩放比例为准
-      const widthRatio = opts.width / originalWidth;
-      const heightRatio = opts.height / originalHeight;
-      const ratio = Math.min(widthRatio, heightRatio);
-
-      targetWidth = Math.round(originalWidth * ratio);
-      targetHeight = Math.round(originalHeight * ratio);
+      if (originalWidth >= originalHeight) {
+        // 宽图：以宽度为准
+        targetWidth = opts.size;
+        targetHeight = Math.round(opts.size / aspectRatio);
+      } else {
+        // 高图：以高度为准
+        targetHeight = opts.size;
+        targetWidth = Math.round(opts.size * aspectRatio);
+      }
     }
   }
 
   // 调整尺寸
-  if (targetWidth && targetHeight) {
+  if (targetWidth && targetHeight && (targetWidth !== originalWidth || targetHeight !== originalHeight)) {
+    console.log('Resizing from', { originalWidth, originalHeight }, 'to', { targetWidth, targetHeight });
     pipeline = pipeline.resize(targetWidth, targetHeight, {
-      fit: 'inside',
+      fit: 'cover', // 使用cover确保输出尺寸准确
       withoutEnlargement: true,
     });
   }
@@ -127,17 +143,27 @@ export async function optimizeImage(
     pipeline = pipeline.keepMetadata();
   }
 
-  // 添加水印 - 需要先获取调整后的实际尺寸
+  // 添加水印 - 简化版本
   if (opts.addWatermark) {
     try {
-      // 获取当前 pipeline 的元数据以确定实际尺寸
-      const currentMetadata = await pipeline.metadata();
-      const actualWidth = currentMetadata.width || targetWidth || originalWidth;
-      const actualHeight = currentMetadata.height || targetHeight || originalHeight;
+      // 使用计算出的目标尺寸，如果没有缩放则使用原始尺寸
+      const finalWidth = targetWidth || originalWidth;
+      const finalHeight = targetHeight || originalHeight;
 
-      if (actualWidth && actualHeight) {
-        const watermarkSvg = await createWatermarkSvg('ivanli.cc', actualWidth, actualHeight);
-        pipeline = pipeline.composite([
+      if (finalWidth && finalHeight) {
+        // 先处理图片到最终尺寸，然后添加水印
+        const processedBuffer = await pipeline.toBuffer();
+        const processedMeta = await sharp(processedBuffer).metadata();
+
+        const watermarkSvg = await createWatermarkSvg(
+          'ivanli.cc',
+          processedMeta.width || finalWidth,
+          processedMeta.height || finalHeight,
+          opts.pixelRatio || 1
+        );
+
+        // 重新创建pipeline并添加水印
+        pipeline = sharp(processedBuffer).composite([
           {
             input: watermarkSvg,
             blend: 'over',
@@ -190,20 +216,19 @@ export async function generateResponsiveImages(
   const originalWidth = metadata.width || 1920;
 
   // 过滤掉大于原始宽度的断点
-  const validBreakpoints = breakpoints.filter((width) => width <= originalWidth);
+  const validBreakpoints = breakpoints.filter((size) => size <= originalWidth);
 
   // 为每个断点生成优化图片
-  for (const width of validBreakpoints) {
+  for (const size of validBreakpoints) {
     try {
       const result = await optimizeImage(inputBuffer, {
         ...options,
-        width,
-        height: undefined, // 让高度自动计算以保持宽高比
+        size,
       });
 
-      results.set(width, result);
+      results.set(size, result);
     } catch (error) {
-      console.error(`Failed to generate image for width ${width}:`, error);
+      console.error(`Failed to generate image for size ${size}:`, error);
     }
   }
 

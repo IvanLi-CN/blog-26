@@ -89,8 +89,8 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
                 targetPath = targetPath.substring(1);
               }
 
-              // 使用优化后的图片端点
-              convertedSrc = `/api/render-image/${targetPath}?f=webp&q=85`;
+              // 使用优化后的图片端点，指定尺寸和像素倍率
+              convertedSrc = `/api/render-image/${targetPath}?f=webp&q=85&s=1200&dpr=1`;
             }
             return (
               <img

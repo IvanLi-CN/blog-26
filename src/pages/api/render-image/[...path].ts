@@ -29,12 +29,12 @@ export const GET: APIRoute = async ({ params, request, url }) => {
 
     // 从查询参数获取优化选项
     const searchParams = url.searchParams;
-    const width = searchParams.get('w') ? parseInt(searchParams.get('w')!) : undefined;
-    const height = searchParams.get('h') ? parseInt(searchParams.get('h')!) : undefined;
+    const size = searchParams.get('s') ? parseInt(searchParams.get('s')!) : undefined; // 单一尺寸参数
     const quality = searchParams.get('q') ? parseInt(searchParams.get('q')!) : 85;
     const format = (searchParams.get('f') as 'webp' | 'jpeg' | 'png') || 'webp';
     const noWatermark = searchParams.get('no-watermark') === 'true';
     const keepMetadata = searchParams.get('keep-metadata') === 'true';
+    const pixelRatio = searchParams.get('dpr') ? parseFloat(searchParams.get('dpr')!) : 1; // 显示倍率，默认1x
 
     // 特殊处理：如果路径只是文件名，尝试在闪念的 assets 目录中查找
     if (!normalizedPath.includes('/') && normalizedPath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
@@ -89,17 +89,17 @@ export const GET: APIRoute = async ({ params, request, url }) => {
 
     // 优化图片
     const optimizedResult = await optimizeImage(originalBuffer, {
-      width,
-      height,
+      size,
       quality,
       format,
       addWatermark: !noWatermark,
       removeMetadata: !keepMetadata,
+      pixelRatio,
     });
 
-    // 生成更强的缓存键，包含文件修改时间
+    // 生成更强的缓存键，包含文件修改时间和优化参数
     const lastModified = response.headers.get('last-modified') || new Date().toISOString();
-    const cacheKey = `${normalizedPath}-${width}-${height}-${quality}-${format}-${lastModified}`;
+    const cacheKey = `${normalizedPath}-${size}-${quality}-${format}-${pixelRatio}-${!noWatermark}-${lastModified}`;
     const etag = `"${crypto.createHash('md5').update(cacheKey).digest('hex')}"`;
 
     // 设置缓存头

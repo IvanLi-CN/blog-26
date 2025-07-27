@@ -10,7 +10,10 @@ import {
   unpicOptimizer,
 } from "~/utils/images-optimization";
 
-type Props = ImageProps;
+type Props = ImageProps & {
+  displayWidth?: number;
+  displayHeight?: number;
+};
 type ImageType = {
   src: string;
   attributes: HTMLAttributes<"img">;
@@ -62,10 +65,16 @@ if (typeof _image === "string") {
 
     // 构建优化 URL
     const params = new URLSearchParams();
-    if (props.width) params.set("w", props.width.toString());
-    if (props.height) params.set("h", props.height.toString());
+    // 使用单一尺寸参数，取宽度和高度中的较大值
+    const size = Math.max(
+      typeof props.width === "number" ? props.width : parseInt(props.width || "0"),
+      typeof props.height === "number" ? props.height : parseInt(props.height || "0")
+    );
+    // 如果没有指定尺寸，使用默认值1200
+    params.set("s", (size > 0 ? size : 1200).toString());
     params.set("q", "85");
     params.set("f", "webp");
+    params.set("dpr", "1"); // 默认1x像素倍率
 
     const optimizedSrc = `/api/render-image/${imagePath}?${params.toString()}`;
 
@@ -83,9 +92,10 @@ if (typeof _image === "string") {
 
     const srcsetEntries = validBreakpoints.map((bp) => {
       const bpParams = new URLSearchParams();
-      bpParams.set("w", bp.toString());
+      bpParams.set("s", bp.toString());
       bpParams.set("q", "85");
       bpParams.set("f", "webp");
+      bpParams.set("dpr", "1");
       return `/api/render-image/${imagePath}?${bpParams.toString()} ${bp}w`;
     });
 
