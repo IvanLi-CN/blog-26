@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
 import { type Attachment, AttachmentGrid } from './AttachmentGrid';
+import { MilkdownEditor } from './MilkdownEditor';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
 // 本地草稿存储的键名
@@ -274,26 +275,6 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
     }
   };
 
-  // 处理粘贴事件
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = Array.from(e.clipboardData.items);
-    const files: File[] = [];
-
-    items.forEach((item) => {
-      if (item.kind === 'file') {
-        const file = item.getAsFile();
-        if (file) {
-          files.push(file);
-        }
-      }
-    });
-
-    if (files.length > 0) {
-      e.preventDefault();
-      handleFileUpload(files);
-    }
-  };
-
   // 移除附件
   const handleRemoveAttachment = (index: number) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
@@ -315,13 +296,6 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
       isPublic,
       attachments,
     });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
   };
 
   return (
@@ -394,15 +368,11 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                   onDragLeave={handleEditorDragLeave}
                   onDrop={handleEditorDrop}
                 >
-                  <textarea
-                    id="memo-content"
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onPaste={handlePaste}
+                  <MilkdownEditor
+                    content={content}
+                    onChange={setContent}
                     placeholder="写下你的想法..."
-                    className="textarea textarea-bordered w-full resize-none min-h-[120px]"
-                    rows={5}
+                    className="w-full"
                   />
                   {isDragOver && (
                     <div className="absolute inset-0 bg-primary bg-opacity-10 border-2 border-dashed border-primary rounded-md flex items-center justify-center">
