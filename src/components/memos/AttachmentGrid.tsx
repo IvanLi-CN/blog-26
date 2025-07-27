@@ -284,9 +284,11 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                 <div
                   className="w-full h-full cursor-pointer relative group/image"
                   onClick={() => {
-                    const imageSrc = `/files/${attachment.path.replace(/^\//, '')}`;
+                    // 使用优化后的图片 URL
+                    const imagePath = attachment.path.replace(/^\//, '');
+                    const optimizedSrc = `/api/render-image/${imagePath}?f=webp&q=90`;
                     setSelectedImage({
-                      src: imageSrc,
+                      src: optimizedSrc,
                       alt: attachment.filename,
                       filename: attachment.filename,
                       size: attachment.size,
@@ -303,14 +305,14 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                   </div>
 
                   <img
-                    src={`/files/${attachment.path.replace(/^\//, '')}`}
+                    src={`/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85`}
                     alt={attachment.filename}
                     className="w-full h-full object-cover relative z-10 opacity-0"
                     loading="lazy"
                     onError={(e) => {
                       console.error('Image failed to load:', {
                         path: attachment.path,
-                        src: `/files/${attachment.path.replace(/^\//, '')}`,
+                        src: `/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85`,
                         filename: attachment.filename,
                       });
                       // 图片加载失败时，保持占位符显示，但改变样式

@@ -1,5 +1,6 @@
 ---
 import type { HTMLAttributes } from "astro/types";
+import { isSupportedImageFormat } from "~/lib/image-optimizer";
 import { findImage } from "~/utils/images";
 import {
   astroAsseetsOptimizer,
@@ -42,7 +43,67 @@ const _image = await findImage(props.src);
 let image: ImageType | undefined = undefined;
 
 if (typeof _image === "string") {
-  if ((_image.startsWith("http://") || _image.startsWith("https://")) && isUnpicCompatible(_image)) {
+  // 检查是否为 WebDAV 图片（相对路径或 /files/ 路径）
+  const isWebDAVImage =
+    !_image.startsWith("http://") &&
+    !_image.startsWith("https://") &&
+    !_image.startsWith("~/assets/");
+
+  if (isWebDAVImage && isSupportedImageFormat(_image)) {
+    // 使用我们的优化端点处理 WebDAV 图片
+    let imagePath = _image;
+    if (_image.startsWith("./")) {
+      imagePath = _image.substring(2);
+    } else if (_image.startsWith("/files/")) {
+      imagePath = _image.substring(7);
+    } else if (_image.startsWith("/")) {
+      imagePath = _image.substring(1);
+    }
+
+    // 构建优化 URL
+    const params = new URLSearchParams();
+    if (props.width) params.set("w", props.width.toString());
+    if (props.height) params.set("h", props.height.toString());
+    params.set("q", "85");
+    params.set("f", "webp");
+
+    const optimizedSrc = `/api/render-image/${imagePath}?${params.toString()}`;
+
+    // 生成响应式 srcset
+    const breakpoints = [320, 480, 640, 768, 1024, 1280, 1536, 1920];
+    const widthNum =
+      typeof props.width === "number"
+        ? props.width
+        : typeof props.width === "string"
+          ? parseInt(props.width)
+          : undefined;
+    const validBreakpoints = widthNum
+      ? breakpoints.filter((bp) => bp <= widthNum)
+      : breakpoints;
+
+    const srcsetEntries = validBreakpoints.map((bp) => {
+      const bpParams = new URLSearchParams();
+      bpParams.set("w", bp.toString());
+      bpParams.set("q", "85");
+      bpParams.set("f", "webp");
+      return `/api/render-image/${imagePath}?${bpParams.toString()} ${bp}w`;
+    });
+
+    image = {
+      src: optimizedSrc,
+      attributes: {
+        ...props,
+        src: undefined,
+        srcset: srcsetEntries.join(", "),
+        sizes:
+          props.sizes ||
+          "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
+      },
+    };
+  } else if (
+    (_image.startsWith("http://") || _image.startsWith("https://")) &&
+    isUnpicCompatible(_image)
+  ) {
     image = await getImagesOptimized(_image, props, unpicOptimizer);
   } else {
     image = {

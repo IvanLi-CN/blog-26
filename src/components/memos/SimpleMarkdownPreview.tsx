@@ -64,9 +64,9 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
             <span className="text-blue-600 dark:text-blue-400 underline cursor-default">{children}</span>
           ),
           img: ({ src, alt }) => {
-            // 转换图片路径为文件代理路径
+            // 转换图片路径为优化后的图片路径
             let convertedSrc = src;
-            if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('/files/')) {
+            if (src && !src.startsWith('http://') && !src.startsWith('https://')) {
               let cleanPath = src;
 
               // 处理相对路径 - 相对于闪念文件位置 (/Memos/)
@@ -81,14 +81,16 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
               } else if (targetPath.startsWith('./')) {
                 // 其他相对路径，如 ./file.png -> Memos/file.png
                 targetPath = `Memos/${targetPath.substring(2)}`;
+              } else if (targetPath.startsWith('/files/')) {
+                // 移除 /files/ 前缀
+                targetPath = targetPath.substring(7);
               } else if (targetPath.startsWith('/')) {
                 // 绝对路径，移除开头的斜杠
                 targetPath = targetPath.substring(1);
               }
-              // 如果路径不以上述格式开头，保持原样，让文件代理处理
 
-              // 使用文件代理
-              convertedSrc = `/files/${targetPath}`;
+              // 使用优化后的图片端点
+              convertedSrc = `/api/render-image/${targetPath}?f=webp&q=85`;
             }
             return (
               <img
