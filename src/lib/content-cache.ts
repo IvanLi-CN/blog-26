@@ -16,6 +16,7 @@ const CACHE_REFRESH_INTERVAL = 10 * 60 * 1000;
 const WEBDAV_REQUEST_DELAY = 100; // 每个请求之间的延迟（毫秒）
 
 let refreshTimer: NodeJS.Timeout | null = null;
+let isRefreshing = false; // 并发保护标志
 
 // 定义进度类型
 export interface ContentCacheProgress {
@@ -538,6 +539,15 @@ async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgre
     onProgress?.({ stage: 'posts', message: '✅ 文章缓存强制刷新完成', percentage: 50 });
   } catch (error) {
     console.error('❌ 文章缓存强制刷新失败:', error);
+
+    // 检查是否为 Vite module runner 关闭错误
+    if (isViteModuleRunnerClosedError(error)) {
+      console.warn('⚠️ Vite module runner 已关闭，停止缓存管理器');
+      stopContentCacheManager();
+      return; // 不抛出错误，静默处理
+    }
+
+    throw error;
   }
 }
 
@@ -756,6 +766,15 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
     console.log('✅ 文章缓存刷新完成');
   } catch (error) {
     console.error('❌ 文章缓存刷新失败:', error);
+
+    // 检查是否为 Vite module runner 关闭错误
+    if (isViteModuleRunnerClosedError(error)) {
+      console.warn('⚠️ Vite module runner 已关闭，停止缓存管理器');
+      stopContentCacheManager();
+      return; // 不抛出错误，静默处理
+    }
+
+    throw error;
   }
 }
 
@@ -913,6 +932,15 @@ async function forceRefreshMemosCache(onProgress?: (progress: ContentCacheProgre
     onProgress?.({ stage: 'memos', message: '✅ 闪念缓存强制刷新完成', percentage: 95 });
   } catch (error) {
     console.error('❌ 闪念缓存强制刷新失败:', error);
+
+    // 检查是否为 Vite module runner 关闭错误
+    if (isViteModuleRunnerClosedError(error)) {
+      console.warn('⚠️ Vite module runner 已关闭，停止缓存管理器');
+      stopContentCacheManager();
+      return; // 不抛出错误，静默处理
+    }
+
+    throw error;
   }
 }
 
@@ -1075,7 +1103,23 @@ async function refreshMemosCache(onProgress?: (progress: ContentCacheProgress) =
     console.log('✅ 闪念缓存刷新完成');
   } catch (error) {
     console.error('❌ 闪念缓存刷新失败:', error);
+
+    // 检查是否为 Vite module runner 关闭错误
+    if (isViteModuleRunnerClosedError(error)) {
+      console.warn('⚠️ Vite module runner 已关闭，停止缓存管理器');
+      stopContentCacheManager();
+      return; // 不抛出错误，静默处理
+    }
+
+    throw error;
   }
+}
+
+/**
+ * 检查是否为 Vite module runner 关闭错误
+ */
+function isViteModuleRunnerClosedError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Vite module runner has been closed');
 }
 
 /**
@@ -1087,6 +1131,13 @@ export async function refreshContentCache(
   force: boolean = false,
   onProgress?: (progress: ContentCacheProgress) => void
 ): Promise<void> {
+  // 并发保护：如果已经在刷新中，直接返回
+  if (isRefreshing) {
+    console.log('⏳ 内容缓存正在刷新中，跳过本次请求');
+    return;
+  }
+
+  isRefreshing = true;
   const logPrefix = force ? '🚀 开始强制刷新内容缓存...' : '🚀 开始刷新内容缓存...';
   console.log(logPrefix);
   onProgress?.({ stage: 'start', message: force ? '开始强制刷新内容缓存...' : '开始刷新内容缓存...', percentage: 0 });
@@ -1118,11 +1169,22 @@ export async function refreshContentCache(
     console.log(`✅ ${successMessage}`);
     onProgress?.({ stage: 'done', message: successMessage, percentage: 100 });
   } catch (error) {
+    const duration = (Date.now() - startTime) / 1000;
     const errorMessage = error instanceof Error ? error.message : '未知错误';
-    const fullErrorMessage = `内容缓存刷新失败: ${errorMessage}`;
-    console.error(`❌ ${fullErrorMessage}`);
-    onProgress?.({ stage: 'error', message: fullErrorMessage });
+
+    // 检查是否为 Vite module runner 关闭错误
+    if (isViteModuleRunnerClosedError(error)) {
+      console.warn('⚠️ Vite module runner 已关闭，停止缓存管理器');
+      stopContentCacheManager();
+      return; // 不抛出错误，静默处理
+    }
+
+    const failureMessage = `内容缓存刷新失败，耗时 ${duration.toFixed(2)}s: ${errorMessage}`;
+    console.error(`❌ ${failureMessage}`);
+    onProgress?.({ stage: 'error', message: failureMessage });
     throw error;
+  } finally {
+    isRefreshing = false;
   }
 }
 
