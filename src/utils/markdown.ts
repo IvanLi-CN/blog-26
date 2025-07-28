@@ -92,3 +92,35 @@ export function calculateReadingTime(markdown: string): number {
   const words = markdown.split(/\s+/).length;
   return Math.ceil(words / wordsPerMinute);
 }
+
+/**
+ * 从 Markdown 内容中提取第一个标题（优先H1，备选H2）
+ */
+export function extractFirstH1Title(markdown: string): string | null {
+  // 优先匹配H1标题：# 标题
+  const h1Match = markdown.match(/^#\s+(.+)$/m);
+  if (h1Match) {
+    return h1Match[1].trim();
+  }
+
+  // 如果没有H1，尝试匹配H2标题：## 标题
+  const h2Match = markdown.match(/^##\s+(.+)$/m);
+  if (h2Match) {
+    return h2Match[1].trim();
+  }
+
+  return null;
+}
+
+/**
+ * 清理标题用作文件名
+ * 只保留字母数字、中文字符、空格和连字符，空格替换为下划线，限制50字符
+ */
+export function cleanTitleForFilename(title: string): string {
+  // 只保留字母数字、中文字符、空格和连字符
+  const cleaned = title.replace(/[^\w\u4e00-\u9fa5\s\-]/g, '');
+  // 空格替换为下划线
+  const withUnderscores = cleaned.replace(/\s+/g, '_');
+  // 限制50字符
+  return withUnderscores.substring(0, 50);
+}

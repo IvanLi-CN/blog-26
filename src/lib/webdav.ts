@@ -816,10 +816,25 @@ export class WebDAVClient {
    */
   async createMemo(content: string, isPublic: boolean, attachments: MemoAttachment[] = []): Promise<WebDAVMemo> {
     const now = new Date();
-    const id = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now
-      .getDate()
-      .toString()
-      .padStart(2, '0')}-${now.getTime()}.md`;
+
+    // 生成日期前缀：YYYYMMDD
+    const datePrefix = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+
+    // 尝试从内容中提取第一个标题
+    const { extractFirstH1Title, cleanTitleForFilename } = await import('~/utils/markdown');
+    const { nanoid } = await import('nanoid');
+
+    const title = extractFirstH1Title(content);
+    let filenamePart: string;
+
+    if (title) {
+      filenamePart = cleanTitleForFilename(title);
+    } else {
+      // 生成8位随机 nanoid
+      filenamePart = nanoid(8);
+    }
+
+    const id = `${datePrefix}_${filenamePart}.md`;
     const filePath = `${this.memosPath}/${id}`;
 
     // 使用统一的标签解析函数从正文中提取标签
