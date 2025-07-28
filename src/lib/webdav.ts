@@ -852,7 +852,7 @@ export class WebDAVClient {
   /**
    * 更新 Memo
    */
-  async updateMemo(id: string, content: string): Promise<WebDAVMemo> {
+  async updateMemo(id: string, content: string, isPublic?: boolean): Promise<WebDAVMemo> {
     const fileContent = await this.getFileContent(id);
     const { frontmatter } = this.parseFrontmatter(fileContent);
     const now = new Date();
@@ -864,6 +864,11 @@ export class WebDAVClient {
 
     frontmatter.updatedAt = now.toISOString();
     frontmatter.tags = tags.length > 0 ? tags : undefined; // 更新标签
+
+    // 如果提供了isPublic参数，则更新公开状态
+    if (isPublic !== undefined) {
+      frontmatter.public = isPublic;
+    }
 
     const fullContent = this.serializeMarkdownContent(frontmatter, content);
     await this.putFile(id, fullContent);

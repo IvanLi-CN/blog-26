@@ -25,6 +25,7 @@ const CreateMemoSchema = z.object({
 const UpdateMemoSchema = z.object({
   id: z.string().min(1, 'ID is required'),
   content: z.string().min(1, 'Content is required'),
+  isPublic: z.boolean().optional(),
   attachments: z
     .array(
       z.object({
@@ -200,7 +201,7 @@ export const memosRouter = createTRPCRouter({
 
     try {
       const webdavClient = getWebDAVClient();
-      const memo = await webdavClient.updateMemo(input.id, input.content);
+      const memo = await webdavClient.updateMemo(input.id, input.content, input.isPublic);
 
       // 刷新数据库缓存，确保更新的闪念立即在数据库中更新
       await refreshContentCache();
@@ -214,6 +215,9 @@ export const memosRouter = createTRPCRouter({
         createdAt: memo.createdAt.toISOString(),
         updatedAt: memo.updatedAt.toISOString(),
         data: memo.data,
+        isPublic: memo.data.public !== false, // 添加 isPublic 字段
+        attachments: memo.attachments || [],
+        tags: memo.tags || [],
       };
     } catch (error) {
       console.error('Failed to update memo:', error);

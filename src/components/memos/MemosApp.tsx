@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createQueryClient, createTRPCClientInstance, trpc } from '~/lib/trpc-client';
 import { useMemos } from './hooks';
 import { MemosList } from './MemosList';
@@ -45,6 +45,23 @@ export function MemosApp({ isAdmin, initialMemos, initialPagination }: MemosAppP
     initialMemos,
     initialPagination,
   });
+
+  // 监听来自抽屉编辑器的memo创建事件
+  useEffect(() => {
+    const handleMemoCreated = (event: CustomEvent) => {
+      if (event.detail) {
+        memosHook.addMemoToLocal(event.detail);
+      }
+    };
+
+    // 添加事件监听器
+    window.addEventListener('memoCreated', handleMemoCreated as EventListener);
+
+    // 清理函数
+    return () => {
+      window.removeEventListener('memoCreated', handleMemoCreated as EventListener);
+    };
+  }, [memosHook.addMemoToLocal]);
 
   return (
     <div>

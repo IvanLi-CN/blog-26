@@ -30,7 +30,6 @@ export function MilkdownEditor({
         const crepe = new Crepe({
           root: editorRef.current!,
           defaultValue: content,
-          placeholder,
         });
 
         // 添加监听器
@@ -75,7 +74,6 @@ export function MilkdownEditor({
           const newCrepe = new Crepe({
             root: editorRef.current,
             defaultValue: content,
-            placeholder,
           });
           newCrepe.on((listener) => {
             listener.markdownUpdated((_, markdown) => {
