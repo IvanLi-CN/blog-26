@@ -53,6 +53,11 @@
     "db:comments": "bun ./scripts/db-tools.ts comments",
     "webdav:list": "bun ./scripts/webdav-tools.ts list",
     "webdav:check": "bun ./scripts/webdav-tools.ts check",
+    "webdav:start": "bun ./scripts/webdav-server.ts",
+    "webdav:test": "bun ./scripts/test-webdav-connection.ts",
+    "test-data:generate": "bun ./scripts/generate-test-data.ts",
+    "test-data:clean": "bun ./scripts/generate-test-data.ts --clean",
+    "test-data:verify": "bun ./scripts/verify-test-data.ts",
     "fix": "bunx biome check --write",
     "test": "bun test",
     "test:watch": "bun test --watch"

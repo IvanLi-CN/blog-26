@@ -22,14 +22,14 @@ const envSchema = z.object({
   WEBDAV_MEMOS_PATH: z.string().default('/Memos'),
 
   // 内容缓存配置
-  CONTENT_CACHE_ENABLED: z.boolean().default(true),
+  CONTENT_CACHE_ENABLED: z.coerce.boolean().default(true),
   CONTENT_CACHE_TTL: z.coerce.number().default(600000),
   CONTENT_CACHE_REFRESH_INTERVAL: z.coerce.number().default(600000),
   CONTENT_CACHE_MAX_SIZE: z.coerce.number().default(1000),
 
   // 本地内容配置
   LOCAL_CONTENT_BASE_PATH: z.string().default('./src/content'),
-  LOCAL_CONTENT_WATCH_CHANGES: z.boolean().default(true),
+  LOCAL_CONTENT_WATCH_CHANGES: z.coerce.boolean().default(true),
   LOCAL_CONTENT_EXCLUDE_PATHS: z.string().default(''),
   LOCAL_CONTENT_PROJECTS_PATH: z.string().default('/projects'),
   LOCAL_CONTENT_MEMOS_PATH: z.string().default('/memos'),

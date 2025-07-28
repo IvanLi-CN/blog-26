@@ -46,11 +46,15 @@ const _image = await findImage(props.src);
 let image: ImageType | undefined = undefined;
 
 if (typeof _image === "string") {
-  // 检查是否为 WebDAV 图片（相对路径或 /files/ 路径）
+  // 检查是否为 WebDAV 图片（相对路径或 /files/ 路径，但排除 public 目录中的图片）
   const isWebDAVImage =
     !_image.startsWith("http://") &&
     !_image.startsWith("https://") &&
-    !_image.startsWith("~/assets/");
+    !_image.startsWith("~/assets/") &&
+    !_image.startsWith("/images/") && // 排除 public/images/ 目录中的图片
+    !_image.startsWith("/favicon") && // 排除 favicon 相关文件
+    !_image.startsWith("/robots") && // 排除 robots.txt 等
+    !_image.startsWith("/sitemap"); // 排除 sitemap 相关文件
 
   if (isWebDAVImage && isSupportedImageFormat(_image)) {
     // 使用我们的优化端点处理 WebDAV 图片
@@ -67,8 +71,12 @@ if (typeof _image === "string") {
     const params = new URLSearchParams();
     // 使用单一尺寸参数，取宽度和高度中的较大值
     const size = Math.max(
-      typeof props.width === "number" ? props.width : parseInt(props.width || "0"),
-      typeof props.height === "number" ? props.height : parseInt(props.height || "0")
+      typeof props.width === "number"
+        ? props.width
+        : parseInt(props.width || "0"),
+      typeof props.height === "number"
+        ? props.height
+        : parseInt(props.height || "0"),
     );
     // 如果没有指定尺寸，使用默认值1200
     params.set("s", (size > 0 ? size : 1200).toString());

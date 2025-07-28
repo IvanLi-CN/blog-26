@@ -58,7 +58,7 @@ export class WebDAVDataSource extends BaseContentDataSource {
     try {
       if (!isWebDAVEnabled()) {
         throw new ContentSourceError(
-          'WebDAV is not enabled. Please check WEBDAV_URL, WEBDAV_USERNAME, and WEBDAV_PASSWORD environment variables.',
+          'WebDAV is not enabled. Please check WEBDAV_URL environment variable.',
           this.name,
           'NOT_CONFIGURED'
         );

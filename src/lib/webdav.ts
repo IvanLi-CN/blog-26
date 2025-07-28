@@ -131,15 +131,13 @@ export class WebDAVClient {
   constructor() {
     const webdavConfig = config.webdav;
 
-    if (!webdavConfig.url || !webdavConfig.username || !webdavConfig.password) {
-      throw new Error(
-        'WebDAV configuration is incomplete. Please check WEBDAV_URL, WEBDAV_USERNAME, and WEBDAV_PASSWORD environment variables.'
-      );
+    if (!webdavConfig.url) {
+      throw new Error('WebDAV configuration is incomplete. Please check WEBDAV_URL environment variable.');
     }
 
     this.baseUrl = webdavConfig.url.replace(/\/$/, ''); // 移除末尾斜杠
-    this.username = webdavConfig.username;
-    this.password = webdavConfig.password;
+    this.username = webdavConfig.username || '';
+    this.password = webdavConfig.password || '';
     this.excludePaths = webdavConfig.excludePaths;
     this.projectsPath = webdavConfig.projectsPath;
     this.memosPath = webdavConfig.memosPath;
@@ -149,11 +147,17 @@ export class WebDAVClient {
    * 创建基础认证头
    */
   private getAuthHeaders(): Record<string, string> {
-    const credentials = Buffer.from(`${this.username}:${this.password}`).toString('base64');
-    return {
-      Authorization: `Basic ${credentials}`,
+    const headers: Record<string, string> = {
       'Content-Type': 'application/xml',
     };
+
+    // 只有在提供了用户名和密码时才添加认证头
+    if (this.username && this.password) {
+      const credentials = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+      headers.Authorization = `Basic ${credentials}`;
+    }
+
+    return headers;
   }
 
   /**
@@ -289,11 +293,16 @@ export class WebDAVClient {
   async getFileContent(filePath: string): Promise<string> {
     const url = `${this.baseUrl}${filePath}`;
 
+    const headers: Record<string, string> = {};
+
+    // 只有在提供了用户名和密码时才添加认证头
+    if (this.username && this.password) {
+      headers.Authorization = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`;
+    }
+
     const response = await fetchWithRetry(url, {
       method: 'GET',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -950,5 +959,5 @@ export function getWebDAVClient(): WebDAVClient {
 }
 
 export function isWebDAVEnabled(): boolean {
-  return !!(config.webdav.url && config.webdav.username && config.webdav.password);
+  return !!config.webdav.url;
 }

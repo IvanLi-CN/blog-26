@@ -161,8 +161,8 @@ async function checkConnection(): Promise<void> {
     console.log('');
     console.log('💡 请确保设置了以下环境变量:');
     console.log('   - WEBDAV_URL');
-    console.log('   - WEBDAV_USERNAME');
-    console.log('   - WEBDAV_PASSWORD');
+    console.log('   - WEBDAV_USERNAME (可选，用于需要认证的服务器)');
+    console.log('   - WEBDAV_PASSWORD (可选，用于需要认证的服务器)');
     return;
   }
 
