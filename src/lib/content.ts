@@ -268,7 +268,7 @@ async function loadLocalContent(): Promise<ContentItem[]> {
   return items;
 }
 
-const normalizeWebDAVPost = async (post: WebDAVPost, fileLastMod?: string): Promise<ContentItem | null> => {
+export const normalizeWebDAVPost = async (post: WebDAVPost, fileLastMod?: string): Promise<ContentItem | null> => {
   const {
     publishDate: rawPublishDate,
     updateDate: rawUpdateDate,
@@ -367,6 +367,21 @@ const normalizeWebDAVPost = async (post: WebDAVPost, fileLastMod?: string): Prom
 };
 
 export async function loadPostsAndProjects(): Promise<ContentItem[]> {
+  // 尝试使用新的多源管理器
+  try {
+    const { isMultiSourceManagerAvailable, loadPostsAndProjects: multiSourceLoad } = await import(
+      './content-sources/compat'
+    );
+
+    if (await isMultiSourceManagerAvailable()) {
+      console.log('使用多源管理器加载文章和项目');
+      return multiSourceLoad();
+    }
+  } catch (error) {
+    console.warn('多源管理器不可用，使用传统方式:', error);
+  }
+
+  // 降级到原有实现
   let allContent: ContentItem[] = [];
 
   const localContent = await loadLocalContent();
@@ -407,7 +422,7 @@ export async function loadPostsAndProjects(): Promise<ContentItem[]> {
   return uniqueContent.sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 }
 
-const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
+export const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
   return {
     id: memo.id,
     slug: memo.slug,
@@ -423,6 +438,19 @@ const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
 };
 
 async function loadMemos(): Promise<ContentItem[]> {
+  // 尝试使用新的多源管理器
+  try {
+    const { isMultiSourceManagerAvailable, loadMemos: multiSourceLoad } = await import('./content-sources/compat');
+
+    if (await isMultiSourceManagerAvailable()) {
+      console.log('使用多源管理器加载闪念');
+      return multiSourceLoad();
+    }
+  } catch (error) {
+    console.warn('多源管理器不可用，使用传统方式:', error);
+  }
+
+  // 降级到原有实现
   if (!isWebDAVEnabled()) {
     return [];
   }
@@ -455,6 +483,19 @@ async function loadMemos(): Promise<ContentItem[]> {
 export async function fetchContent(types: (ContentType | 'all')[] = ['all']): Promise<ContentItem[]> {
   console.warn('fetchContent() is deprecated, consider using database cache (getCachedPosts, getCachedMemos)');
 
+  // 尝试使用新的多源管理器
+  try {
+    const { isMultiSourceManagerAvailable, fetchContent: multiSourceFetch } = await import('./content-sources/compat');
+
+    if (await isMultiSourceManagerAvailable()) {
+      console.log('使用多源管理器获取内容');
+      return multiSourceFetch(types);
+    }
+  } catch (error) {
+    console.warn('多源管理器不可用，使用传统方式:', error);
+  }
+
+  // 降级到原有实现
   const [postsAndProjects, memos] = await Promise.all([loadPostsAndProjects(), loadMemos()]);
   const allContent = [...postsAndProjects, ...memos].sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 

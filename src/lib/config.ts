@@ -21,6 +21,19 @@ const envSchema = z.object({
   WEBDAV_PROJECTS_PATH: z.string().default('/projects'),
   WEBDAV_MEMOS_PATH: z.string().default('/Memos'),
 
+  // 内容缓存配置
+  CONTENT_CACHE_ENABLED: z.boolean().default(true),
+  CONTENT_CACHE_TTL: z.coerce.number().default(600000),
+  CONTENT_CACHE_REFRESH_INTERVAL: z.coerce.number().default(600000),
+  CONTENT_CACHE_MAX_SIZE: z.coerce.number().default(1000),
+
+  // 本地内容配置
+  LOCAL_CONTENT_BASE_PATH: z.string().default('./src/content'),
+  LOCAL_CONTENT_WATCH_CHANGES: z.boolean().default(true),
+  LOCAL_CONTENT_EXCLUDE_PATHS: z.string().default(''),
+  LOCAL_CONTENT_PROJECTS_PATH: z.string().default('/projects'),
+  LOCAL_CONTENT_MEMOS_PATH: z.string().default('/memos'),
+
   // 模型配置
   EMBEDDING_MODEL_NAME: z.string().default('BAAI/bge-m3'),
   EMBEDDING_DIMENSION: z.coerce.number().int().positive().default(1024),
@@ -185,6 +198,29 @@ export const config = {
     return {
       siteKey: getConfig().PUBLIC_LUOSIMAO_SITE_KEY,
       secretKey: getConfig().LUOSIMAO_SECRET_KEY,
+    };
+  },
+
+  get multiSource() {
+    const cfg = getConfig();
+    return {
+      cache: {
+        enabled: cfg.CONTENT_CACHE_ENABLED,
+        ttl: cfg.CONTENT_CACHE_TTL,
+        refreshInterval: cfg.CONTENT_CACHE_REFRESH_INTERVAL,
+        maxSize: cfg.CONTENT_CACHE_MAX_SIZE,
+      },
+    };
+  },
+
+  get localContent() {
+    const cfg = getConfig();
+    return {
+      basePath: cfg.LOCAL_CONTENT_BASE_PATH,
+      watchChanges: cfg.LOCAL_CONTENT_WATCH_CHANGES,
+      excludePaths: cfg.LOCAL_CONTENT_EXCLUDE_PATHS,
+      projectsPath: cfg.LOCAL_CONTENT_PROJECTS_PATH,
+      memosPath: cfg.LOCAL_CONTENT_MEMOS_PATH,
     };
   },
 

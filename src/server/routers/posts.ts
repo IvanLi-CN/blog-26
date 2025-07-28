@@ -53,33 +53,73 @@ export const postsRouter = createTRPCRouter({
    * 获取所有文章（仅管理员）
    */
   getAll: adminProcedure.query(async () => {
-    if (!isWebDAVEnabled()) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'WebDAV is not enabled',
-      });
-    }
-
     try {
-      const webdavClient = getWebDAVClient();
-      const postsIndex = await webdavClient.getPostsIndex();
-      const posts = await Promise.all(
-        postsIndex.map(async (fileIndex) => {
-          try {
-            return await webdavClient.getPostByIndex(fileIndex);
-          } catch (error) {
-            console.warn(`Failed to process file ${fileIndex.path}:`, error);
-            return null;
-          }
-        })
-      );
-      return posts.filter((post): post is NonNullable<typeof post> => post !== null);
-    } catch (error) {
-      console.error('Failed to get posts:', error);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch posts',
+      // 尝试使用新的多源管理器
+      const { getGlobalContentManager } = await import('~/lib/content-sources');
+      const manager = await getGlobalContentManager();
+
+      const content = await manager.listContent({
+        type: 'all',
+        includePrivate: true,
+        includeDrafts: true,
       });
+
+      // 过滤出posts和projects，转换为兼容格式
+      const posts = content
+        .filter((item) => item.type === 'post' || item.type === 'project')
+        .map((item) => ({
+          id: item.id,
+          slug: item.slug,
+          data: {
+            title: item.title,
+            publishDate: item.publishDate.toISOString(),
+            updateDate: item.updateDate?.toISOString(),
+            draft: item.draft,
+            public: item.public,
+            excerpt: item.excerpt,
+            category: item.category?.title,
+            tags: item.tags?.map((tag) => tag.title) || [],
+            author: item.author,
+            image: item.image,
+            ...item.metadata,
+          },
+          body: item.body,
+          collection: item.type === 'project' ? 'projects' : 'posts',
+        }));
+
+      return posts;
+    } catch (error) {
+      console.warn('多源管理器获取文章失败，降级到WebDAV:', error);
+
+      // 降级到原有实现
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+        const postsIndex = await webdavClient.getPostsIndex();
+        const posts = await Promise.all(
+          postsIndex.map(async (fileIndex) => {
+            try {
+              return await webdavClient.getPostByIndex(fileIndex);
+            } catch (error) {
+              console.warn(`Failed to process file ${fileIndex.path}:`, error);
+              return null;
+            }
+          })
+        );
+        return posts.filter((post): post is NonNullable<typeof post> => post !== null);
+      } catch (error) {
+        console.error('Failed to get posts:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to fetch posts',
+        });
+      }
     }
   }),
 
@@ -87,49 +127,103 @@ export const postsRouter = createTRPCRouter({
    * 根据 ID 获取单个文章（仅管理员）
    */
   getById: adminProcedure.input(GetPostSchema).query(async ({ input }) => {
-    if (!isWebDAVEnabled()) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'WebDAV is not enabled',
-      });
-    }
-
     try {
-      const webdavClient = getWebDAVClient();
-      const postsIndex = await webdavClient.getPostsIndex();
-      let post: any = null;
+      // 尝试使用新的多源管理器
+      const { getGlobalContentManager } = await import('~/lib/content-sources');
+      const manager = await getGlobalContentManager();
 
-      // 查找匹配的文章
-      for (const fileIndex of postsIndex) {
-        try {
-          const currentPost = await webdavClient.getPostByIndex(fileIndex);
-          if (currentPost.id === input.id) {
-            post = currentPost;
-            break;
-          }
-        } catch (error) {
-          console.warn(`Failed to process file ${fileIndex.path}:`, error);
-        }
-      }
+      const content = await manager.getContent(input.id);
 
-      if (!post) {
+      if (!content || (content.type !== 'post' && content.type !== 'project')) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Post not found',
         });
       }
 
-      const fullContent = getWebDAVClient().serializeMarkdownContent(post.data, post.body);
+      // 转换为兼容格式
+      const post = {
+        id: content.id,
+        slug: content.slug,
+        data: {
+          title: content.title,
+          publishDate: content.publishDate.toISOString(),
+          updateDate: content.updateDate?.toISOString(),
+          draft: content.draft,
+          public: content.public,
+          excerpt: content.excerpt,
+          category: content.category?.title,
+          tags: content.tags?.map((tag) => tag.title) || [],
+          author: content.author,
+          image: content.image,
+          ...content.metadata,
+        },
+        body: content.body,
+        collection: content.type === 'project' ? 'projects' : 'posts',
+      };
+
+      // 生成完整内容
+      const fullContent = `---
+${Object.entries(post.data)
+  .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+  .join('\n')}
+---
+
+${post.body}`;
+
       return { ...post, fullContent };
     } catch (error) {
-      console.error('Failed to get post:', error);
       if (error instanceof TRPCError) {
         throw error;
       }
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch post',
-      });
+
+      console.warn('多源管理器获取文章失败，降级到WebDAV:', error);
+
+      // 降级到原有实现
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+        const postsIndex = await webdavClient.getPostsIndex();
+        let post: any = null;
+
+        // 查找匹配的文章
+        for (const fileIndex of postsIndex) {
+          try {
+            const currentPost = await webdavClient.getPostByIndex(fileIndex);
+            if (currentPost.id === input.id) {
+              post = currentPost;
+              break;
+            }
+          } catch (error) {
+            console.warn(`Failed to process file ${fileIndex.path}:`, error);
+          }
+        }
+
+        if (!post) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Post not found',
+          });
+        }
+
+        const fullContent = getWebDAVClient().serializeMarkdownContent(post.data, post.body);
+        return { ...post, fullContent };
+      } catch (error) {
+        console.error('Failed to get post:', error);
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to fetch post',
+        });
+      }
     }
   }),
 
@@ -137,34 +231,79 @@ export const postsRouter = createTRPCRouter({
    * 根据 slug 获取单个文章（仅管理员）
    */
   getBySlug: adminProcedure.input(GetPostBySlugSchema).query(async ({ input }) => {
-    if (!isWebDAVEnabled()) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'WebDAV is not enabled',
-      });
-    }
-
     try {
-      const webdavClient = getWebDAVClient();
-      const post = await webdavClient.getPostBySlug(input.slug);
+      // 尝试使用新的多源管理器
+      const { getGlobalContentManager } = await import('~/lib/content-sources');
+      const manager = await getGlobalContentManager();
 
-      if (!post) {
+      const content = await manager.getContentBySlug(input.slug);
+
+      if (!content || (content.type !== 'post' && content.type !== 'project')) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Post not found',
         });
       }
 
+      // 转换为兼容格式
+      const post = {
+        id: content.id,
+        slug: content.slug,
+        data: {
+          title: content.title,
+          publishDate: content.publishDate.toISOString(),
+          updateDate: content.updateDate?.toISOString(),
+          draft: content.draft,
+          public: content.public,
+          excerpt: content.excerpt,
+          category: content.category?.title,
+          tags: content.tags?.map((tag) => tag.title) || [],
+          author: content.author,
+          image: content.image,
+          ...content.metadata,
+        },
+        body: content.body,
+        collection: content.type === 'project' ? 'projects' : 'posts',
+      };
+
       return post;
     } catch (error) {
-      console.error('Failed to get post by slug:', error);
       if (error instanceof TRPCError) {
         throw error;
       }
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to fetch post',
-      });
+
+      console.warn('多源管理器获取文章失败，降级到WebDAV:', error);
+
+      // 降级到原有实现
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+        const post = await webdavClient.getPostBySlug(input.slug);
+
+        if (!post) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Post not found',
+          });
+        }
+
+        return post;
+      } catch (error) {
+        console.error('Failed to get post by slug:', error);
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to fetch post',
+        });
+      }
     }
   }),
 
@@ -172,33 +311,53 @@ export const postsRouter = createTRPCRouter({
    * 创建新文章（仅管理员）
    */
   create: adminProcedure.input(CreatePostSchema).mutation(async ({ input }) => {
-    if (!isWebDAVEnabled()) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'WebDAV is not enabled',
-      });
-    }
-
     try {
-      const webdavClient = getWebDAVClient();
+      // 尝试使用新的多源管理器
+      const { getGlobalContentManager } = await import('~/lib/content-sources');
+      const manager = await getGlobalContentManager();
 
       // 检查 slug 是否已存在
-      const existingPost = await webdavClient.getPostBySlug(input.slug);
-      if (existingPost) {
+      const existingContent = await manager.getContentBySlug(input.slug);
+      if (existingContent) {
         throw new TRPCError({
           code: 'CONFLICT',
           message: 'A post with this slug already exists',
         });
       }
 
-      // 创建文章
-      const post = await webdavClient.createPost(
-        input.slug,
-        input.frontmatter,
-        input.body,
-        input.collection,
-        input.customPath
-      );
+      // 创建内容
+      const contentInput = {
+        slug: input.slug,
+        type: (input.collection === 'projects' ? 'project' : 'post') as any,
+        title: input.frontmatter.title || input.slug,
+        body: input.body,
+        frontmatter: input.frontmatter,
+        customPath: input.customPath,
+        collection: input.collection,
+      };
+
+      const content = await manager.createContent(contentInput);
+
+      // 转换为兼容格式
+      const post = {
+        id: content.id,
+        slug: content.slug,
+        data: {
+          title: content.title,
+          publishDate: content.publishDate.toISOString(),
+          updateDate: content.updateDate?.toISOString(),
+          draft: content.draft,
+          public: content.public,
+          excerpt: content.excerpt,
+          category: content.category?.title,
+          tags: content.tags?.map((tag) => tag.title) || [],
+          author: content.author,
+          image: content.image,
+          ...content.metadata,
+        },
+        body: content.body,
+        collection: content.type === 'project' ? 'projects' : 'posts',
+      };
 
       // 清除缓存以确保新文章能被立即获取
       clearPostsCache();
@@ -217,14 +376,67 @@ export const postsRouter = createTRPCRouter({
 
       return post;
     } catch (error) {
-      console.error('Failed to create post:', error);
       if (error instanceof TRPCError) {
         throw error;
       }
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to create post',
-      });
+
+      console.warn('多源管理器创建文章失败，降级到WebDAV:', error);
+
+      // 降级到原有实现
+      if (!isWebDAVEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'WebDAV is not enabled',
+        });
+      }
+
+      try {
+        const webdavClient = getWebDAVClient();
+
+        // 检查 slug 是否已存在
+        const existingPost = await webdavClient.getPostBySlug(input.slug);
+        if (existingPost) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'A post with this slug already exists',
+          });
+        }
+
+        // 创建文章
+        const post = await webdavClient.createPost(
+          input.slug,
+          input.frontmatter,
+          input.body,
+          input.collection,
+          input.customPath
+        );
+
+        // 清除缓存以确保新文章能被立即获取
+        clearPostsCache();
+
+        // 触发向量化处理
+        try {
+          // 使用非阻塞方式触发向量化，不等待完成
+          processAndVectorizeAllContent().catch((err) => {
+            console.error('文章创建后向量化处理失败:', err);
+          });
+          console.log('已触发文章创建后的向量化处理');
+        } catch (vectorizeError) {
+          console.error('触发向量化处理失败:', vectorizeError);
+          // 不阻止API返回，即使向量化触发失败
+        }
+
+        return post;
+      } catch (error) {
+        console.error('Failed to create post:', error);
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to create post',
+        });
+      }
     }
   }),
 
