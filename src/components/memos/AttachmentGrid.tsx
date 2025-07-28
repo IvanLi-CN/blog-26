@@ -259,7 +259,7 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 mt-2 sm:mt-3">
         {attachments.map((attachment, index) => (
           <div key={`${attachment.path}-${index}`} className="relative group">
             {/* 删除按钮 */}
@@ -267,7 +267,7 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
               <button
                 type="button"
                 onClick={() => onRemove(index)}
-                className="absolute top-2 right-2 z-10 btn btn-circle btn-xs btn-error opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                className="absolute top-1 right-1 sm:top-2 sm:right-2 z-10 btn btn-circle btn-xs btn-error opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                 title="删除附件"
               >
                 ×

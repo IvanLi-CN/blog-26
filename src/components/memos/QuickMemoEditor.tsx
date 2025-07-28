@@ -302,12 +302,14 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
     <div className="relative">
       {/* 全局拖拽提示 */}
       {showDragHint && !isPreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-xl border-2 border-dashed border-primary">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 sm:p-8 shadow-xl border-2 border-dashed border-primary max-w-sm sm:max-w-md">
             <div className="text-center">
-              <div className="text-4xl mb-4">📎</div>
-              <div className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">将文件拖拽到编辑器中上传</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">支持图片、文档等多种格式</div>
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">📎</div>
+              <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                将文件拖拽到编辑器中上传
+              </div>
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">支持图片、文档等多种格式</div>
             </div>
           </div>
         </div>
@@ -315,10 +317,10 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
 
       <div className="card bg-base-100 shadow-xl mb-6">
         {/* 头部 */}
-        <div className="px-4 py-3 border-b border-base-300">
+        <div className="px-3 py-2 sm:px-4 sm:py-3 border-b border-base-300">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-medium">快速发布 Memo</h2>
-            <div className="flex items-center space-x-2">
+            <h2 className="text-sm sm:text-base font-medium">快速发布 Memo</h2>
+            <div className="flex items-center space-x-1 sm:space-x-2">
               <button
                 type="button"
                 onClick={() => setIsPreview(!isPreview)}
@@ -332,7 +334,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
 
         {/* 编辑器内容 */}
         <form onSubmit={handleSubmit}>
-          <div className="p-4 space-y-3">
+          <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
             {/* 草稿提示 */}
             {content && (
               <div className="text-xs text-base-content/60 bg-base-200 px-2 py-1 rounded flex items-center justify-between">
@@ -356,7 +358,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
             {/* 内容输入 */}
             <div className="relative">
               {isPreview ? (
-                <div className="min-h-[120px] p-3 border border-base-300 rounded-md bg-base-200">
+                <div className="min-h-[100px] sm:min-h-[120px] p-2 sm:p-3 border border-base-300 rounded-md bg-base-200">
                   <div className="prose prose-sm max-w-none">
                     <SimpleMarkdownPreview content={content} />
                   </div>
@@ -416,91 +418,6 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      const textarea = document.getElementById('memo-content') as HTMLTextAreaElement;
-                      if (textarea) {
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const selectedText = content.substring(start, end);
-                        const newText = `**${selectedText}**`;
-                        const newContent = content.substring(0, start) + newText + content.substring(end);
-                        setContent(newContent);
-                        setTimeout(() => {
-                          textarea.focus();
-                          textarea.setSelectionRange(start + 2, start + 2 + selectedText.length);
-                        }, 0);
-                      }
-                    }}
-                    className="btn btn-xs btn-outline"
-                    title="粗体"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const textarea = document.getElementById('memo-content') as HTMLTextAreaElement;
-                      if (textarea) {
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const selectedText = content.substring(start, end);
-                        const newText = `*${selectedText}*`;
-                        const newContent = content.substring(0, start) + newText + content.substring(end);
-                        setContent(newContent);
-                        setTimeout(() => {
-                          textarea.focus();
-                          textarea.setSelectionRange(start + 1, start + 1 + selectedText.length);
-                        }, 0);
-                      }
-                    }}
-                    className="btn btn-xs btn-outline"
-                    title="斜体"
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const textarea = document.getElementById('memo-content') as HTMLTextAreaElement;
-                      if (textarea) {
-                        const start = textarea.selectionStart;
-                        const newContent = content.substring(0, start) + '\n- ' + content.substring(start);
-                        setContent(newContent);
-                        setTimeout(() => {
-                          textarea.focus();
-                          textarea.setSelectionRange(start + 3, start + 3);
-                        }, 0);
-                      }
-                    }}
-                    className="btn btn-xs btn-outline"
-                    title="列表"
-                  >
-                    列表
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const textarea = document.getElementById('memo-content') as HTMLTextAreaElement;
-                      if (textarea) {
-                        const start = textarea.selectionStart;
-                        const selectedText = content.substring(textarea.selectionStart, textarea.selectionEnd);
-                        const newText = `\`${selectedText}\``;
-                        const newContent =
-                          content.substring(0, start) + newText + content.substring(textarea.selectionEnd);
-                        setContent(newContent);
-                        setTimeout(() => {
-                          textarea.focus();
-                          textarea.setSelectionRange(start + 1, start + 1 + selectedText.length);
-                        }, 0);
-                      }
-                    }}
-                    className="btn btn-xs btn-outline"
-                    title="代码"
-                  >
-                    代码
-                  </button>
-                  <button
-                    type="button"
                     onClick={handleUploadButtonClick}
                     disabled={isUploading}
                     className="btn btn-xs btn-outline"
@@ -511,10 +428,10 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                 </div>
               )}
 
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
                 {/* 公开/私有开关 */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-base-content/70">{isPublic ? '公开' : '私有'}</span>
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <span className="text-xs sm:text-sm text-base-content/70">{isPublic ? '公开' : '私有'}</span>
                   <input
                     type="checkbox"
                     className="toggle toggle-sm toggle-primary"
@@ -567,9 +484,9 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
       {/* 错误提示对话框 */}
       {errorDialog.show && (
         <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg text-error">{errorDialog.title}</h3>
-            <p className="py-4 whitespace-pre-line">{errorDialog.message}</p>
+          <div className="modal-box max-w-sm sm:max-w-md">
+            <h3 className="font-bold text-base sm:text-lg text-error">{errorDialog.title}</h3>
+            <p className="py-3 sm:py-4 text-sm sm:text-base whitespace-pre-line">{errorDialog.message}</p>
             <div className="modal-action">
               <button onClick={() => setErrorDialog({ show: false, title: '', message: '' })} className="btn">
                 确定
