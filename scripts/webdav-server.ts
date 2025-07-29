@@ -11,7 +11,7 @@ import { join } from 'node:path';
 // WebDAV 服务器配置
 const WEBDAV_CONFIG = {
   port: 8080,
-  host: '127.0.0.1',
+  host: 'localhost',
   rootPath: join(process.cwd(), 'test-data', 'webdav'),
 };
 
@@ -107,14 +107,44 @@ class SimpleWebDAVServer {
 
     try {
       const file = Bun.file(fullPath);
-      const content = await file.text();
 
-      return new Response(content, {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Content-Length': content.length.toString(),
-        },
-      });
+      // 检查文件扩展名来确定内容类型
+      const ext = pathname.toLowerCase().split('.').pop();
+      let contentType = 'application/octet-stream';
+
+      if (ext === 'jpg' || ext === 'jpeg') {
+        contentType = 'image/jpeg';
+      } else if (ext === 'png') {
+        contentType = 'image/png';
+      } else if (ext === 'gif') {
+        contentType = 'image/gif';
+      } else if (ext === 'webp') {
+        contentType = 'image/webp';
+      } else if (ext === 'svg') {
+        contentType = 'image/svg+xml';
+      } else if (ext === 'md' || ext === 'txt') {
+        contentType = 'text/plain; charset=utf-8';
+      }
+
+      // 对于图片文件，使用 arrayBuffer() 来保持二进制数据
+      if (contentType.startsWith('image/')) {
+        const buffer = await file.arrayBuffer();
+        return new Response(buffer, {
+          headers: {
+            'Content-Type': contentType,
+            'Content-Length': buffer.byteLength.toString(),
+          },
+        });
+      } else {
+        // 对于文本文件，使用 text()
+        const content = await file.text();
+        return new Response(content, {
+          headers: {
+            'Content-Type': contentType,
+            'Content-Length': content.length.toString(),
+          },
+        });
+      }
     } catch (_error) {
       return new Response('Internal Server Error', { status: 500 });
     }

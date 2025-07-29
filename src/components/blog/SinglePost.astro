@@ -154,6 +154,7 @@ const isUserAdmin = Astro.locals.isAdmin || false;
             decoding="async"
             displayWidth={900}
             displayHeight={506}
+            dataSource={post.dataSource}
           />
         ) : (
           <div class="max-w-3xl mx-auto px-4 sm:px-6">

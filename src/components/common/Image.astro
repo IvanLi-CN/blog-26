@@ -13,6 +13,7 @@ import {
 type Props = ImageProps & {
   displayWidth?: number;
   displayHeight?: number;
+  dataSource?: "local" | "webdav" | "database" | string;
 };
 type ImageType = {
   src: string;
@@ -41,30 +42,94 @@ if (!props.decoding) {
   props.decoding = "async";
 }
 
-const _image = await findImage(props.src);
+// 强制使用统一文件服务以确保水印功能
+let processedImage: string | ImageMetadata | undefined | null;
+
+// 如果有数据源标识，优先使用统一文件服务
+if (props.dataSource && typeof props.src === "string") {
+  if (props.src.startsWith("./assets/")) {
+    // 将相对路径转换为统一的files路径格式：/files/<source>/<path>
+    const relativePath = props.src.replace("./", "");
+    processedImage = `/files/${props.dataSource}/${relativePath}`;
+  } else if (props.src.startsWith("~/assets/images/")) {
+    // 将 ~/assets/images/ 路径转换为统一文件服务路径
+    const relativePath = props.src.replace("~/assets/images/", "assets/");
+    processedImage = `/files/${props.dataSource}/${relativePath}`;
+  } else {
+    processedImage = props.src;
+  }
+} else {
+  // 没有数据源标识时，使用原有的 findImage 逻辑
+  try {
+    processedImage = await findImage(props.src);
+  } catch (error) {
+    console.warn(`Image not found: ${props.src}`, error);
+    processedImage = null;
+  }
+}
 
 let image: ImageType | undefined = undefined;
+let shouldRender = true;
 
-if (typeof _image === "string") {
-  // 检查是否为 WebDAV 图片（相对路径或 /files/ 路径，但排除 public 目录中的图片）
-  const isWebDAVImage =
-    !_image.startsWith("http://") &&
-    !_image.startsWith("https://") &&
-    !_image.startsWith("~/assets/") &&
-    !_image.startsWith("/images/") && // 排除 public/images/ 目录中的图片
-    !_image.startsWith("/favicon") && // 排除 favicon 相关文件
-    !_image.startsWith("/robots") && // 排除 robots.txt 等
-    !_image.startsWith("/sitemap"); // 排除 sitemap 相关文件
+// 如果图片为 null 或 undefined，不渲染任何内容
+if (!processedImage) {
+  shouldRender = false;
+}
 
-  if (isWebDAVImage && isSupportedImageFormat(_image)) {
-    // 使用我们的优化端点处理 WebDAV 图片
-    let imagePath = _image;
-    if (_image.startsWith("./")) {
-      imagePath = _image.substring(2);
-    } else if (_image.startsWith("/files/")) {
-      imagePath = _image.substring(7);
-    } else if (_image.startsWith("/")) {
-      imagePath = _image.substring(1);
+if (shouldRender && typeof processedImage === "string") {
+  // 检查是否使用统一的files服务
+  const shouldUseFilesService = (() => {
+    // 如果已经是/files/路径，直接使用
+    if (processedImage.startsWith("/files/")) {
+      return true;
+    }
+
+    // 绝对URL直接返回false，不需要特殊处理
+    if (
+      processedImage.startsWith("http://") ||
+      processedImage.startsWith("https://")
+    ) {
+      return false;
+    }
+
+    // ~/assets/ 路径始终使用本地assets处理
+    if (processedImage.startsWith("~/assets/")) {
+      return false;
+    }
+
+    // /images/ 等public目录路径使用本地处理
+    if (
+      processedImage.startsWith("/images/") ||
+      processedImage.startsWith("/favicon") ||
+      processedImage.startsWith("/robots") ||
+      processedImage.startsWith("/sitemap")
+    ) {
+      return false;
+    }
+
+    // 对于相对路径，如果有数据源标识，使用files服务
+    if (
+      processedImage.startsWith("./") ||
+      (!processedImage.startsWith("/") && !processedImage.startsWith("~/"))
+    ) {
+      return props.dataSource !== undefined;
+    }
+
+    return false;
+  })();
+
+  if (shouldUseFilesService && isSupportedImageFormat(processedImage)) {
+    // 构建统一的files服务URL
+    let filesPath = processedImage;
+
+    // 如果不是/files/路径，需要构建
+    if (!processedImage.startsWith("/files/")) {
+      if (processedImage.startsWith("./")) {
+        const relativePath = processedImage.substring(2);
+        filesPath = `/files/${props.dataSource}/${relativePath}`;
+      } else {
+        filesPath = `/files/${props.dataSource}/${processedImage}`;
+      }
     }
 
     // 构建优化 URL
@@ -84,7 +149,7 @@ if (typeof _image === "string") {
     params.set("f", "webp");
     params.set("dpr", "1"); // 默认1x像素倍率
 
-    const optimizedSrc = `/api/render-image/${imagePath}?${params.toString()}`;
+    const optimizedSrc = `${filesPath}?${params.toString()}`;
 
     // 生成响应式 srcset
     const breakpoints = [320, 480, 640, 768, 1024, 1280, 1536, 1920];
@@ -104,7 +169,7 @@ if (typeof _image === "string") {
       bpParams.set("q", "85");
       bpParams.set("f", "webp");
       bpParams.set("dpr", "1");
-      return `/api/render-image/${imagePath}?${bpParams.toString()} ${bp}w`;
+      return `${filesPath}?${bpParams.toString()} ${bp}w`;
     });
 
     image = {
@@ -119,23 +184,28 @@ if (typeof _image === "string") {
       },
     };
   } else if (
-    (_image.startsWith("http://") || _image.startsWith("https://")) &&
-    isUnpicCompatible(_image)
+    (processedImage.startsWith("http://") ||
+      processedImage.startsWith("https://")) &&
+    isUnpicCompatible(processedImage)
   ) {
-    image = await getImagesOptimized(_image, props, unpicOptimizer);
+    image = await getImagesOptimized(processedImage, props, unpicOptimizer);
   } else {
     image = {
-      src: _image,
+      src: processedImage,
       attributes: { ...props, src: undefined },
     };
   }
-} else if (_image) {
-  image = await getImagesOptimized(_image, props, astroAsseetsOptimizer);
+} else if (processedImage) {
+  image = await getImagesOptimized(
+    processedImage,
+    props,
+    astroAsseetsOptimizer,
+  );
 }
 ---
 
 {
-  !image ? (
+  !shouldRender || !image ? (
     <Fragment />
   ) : (
     <img src={image.src} referrerpolicy="no-referrer" {...image.attributes} />

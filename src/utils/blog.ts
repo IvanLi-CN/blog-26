@@ -108,6 +108,7 @@ export const fetchPosts = async (isAdmin: boolean = false): Promise<Array<Post>>
         image: post.image || undefined,
         metadata: post.metadata ? JSON.parse(post.metadata) : undefined,
         vectorizationStatus: vectorizationStatus?.status || 'notvectorized',
+        dataSource: post.dataSource || 'database', // 使用数据库中保存的数据源标识
         vectorizationError: vectorizationStatus?.errorMessage,
       };
     })
@@ -184,19 +185,27 @@ export const fetchPostsPaginated = async (options: {
       }
 
       return {
-        ...post,
+        id: post.id,
+        slug: post.slug,
         content,
         permalink: post.slug, // 使用 slug 作为 permalink
         publishDate: new Date(post.publishDate * 1000), // 转换 UNIX 时间戳为 Date 对象
         updateDate: post.updateDate ? new Date(post.updateDate * 1000) : undefined,
+        title: post.title,
         excerpt: post.excerpt || undefined, // 转换 null 为 undefined
         author: post.author || undefined, // 转换 null 为 undefined
+        image: post.image || undefined,
         category,
         tags,
         metadata,
+        draft: post.draft || false,
+        public: post.public !== false, // 默认为 true，除非明确设置为 false
+        body: post.body || undefined,
+        readingTime: undefined, // readingTime 字段暂时不可用
+        dataSource: post.dataSource || null,
         vectorizationStatus: vectorizationStatus?.status || 'notvectorized',
         vectorizationError: vectorizationStatus?.errorMessage,
-      };
+      } as Post;
     })
   );
 

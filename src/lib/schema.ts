@@ -96,6 +96,7 @@ export const posts = sqliteTable('posts', {
   author: text('author'),
   image: text('image'),
   metadata: text('metadata'), // JSON 字符串存储其他元数据
+  dataSource: text('data_source'), // 数据源标识：local, webdav, database
   contentHash: text('content_hash').notNull(), // 内容哈希，用于检测变更
   etag: text('etag'), // WebDAV ETag，用于检测文件变更
   lastModified: integer('last_modified').notNull(), // UNIX timestamp

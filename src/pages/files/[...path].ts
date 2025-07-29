@@ -1,164 +1,190 @@
 import type { APIRoute } from 'astro';
+import fs from 'fs';
+import path from 'path';
+import { optimizeImage } from '~/lib/image-optimizer';
 import { config } from '../../lib/config';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params, request }) => {
+// 支持的图片格式
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg'];
+
+// 获取本地文件
+async function getLocalFile(filePath: string): Promise<Buffer | null> {
   try {
-    // 图片访问是公开的，不需要权限控制
-
-    const path = params.path;
-    if (!path) {
-      console.error('Files proxy: Path is required');
-      return new Response('Path is required', { status: 400 });
+    const fullPath = path.join(process.cwd(), 'test-data/local', filePath);
+    if (!fs.existsSync(fullPath)) {
+      return null;
     }
+    return fs.readFileSync(fullPath);
+  } catch (error) {
+    console.error('Error reading local file:', error);
+    return null;
+  }
+}
 
+// 获取WebDAV文件
+async function getWebDAVFile(filePath: string): Promise<Buffer | null> {
+  try {
     const webdavConfig = config.webdav;
     if (!webdavConfig.url || !webdavConfig.username || !webdavConfig.password) {
-      console.error('Files proxy: WebDAV not configured');
-      return new Response('WebDAV not configured', { status: 500 });
+      console.error('WebDAV config missing:', {
+        url: !!webdavConfig.url,
+        username: !!webdavConfig.username,
+        password: !!webdavConfig.password,
+      });
+      return null;
     }
 
-    // 处理路径：确保正确拼接
-    const cleanPath = Array.isArray(path) ? path.join('/') : path;
-    // 解码 URL 编码的路径（处理中文字符）
-    const decodedPath = decodeURIComponent(cleanPath);
-    // 移除开头的斜杠，避免双斜杠
-    let normalizedPath = decodedPath.replace(/^\/+/, '');
+    const url = `${webdavConfig.url}/${filePath}`;
+    console.log(`WebDAV: Fetching ${url}`);
 
-    // 特殊处理：如果路径只是文件名（没有目录），可能是闪念中的图片
-    // 尝试在闪念的 assets 目录中查找
-    if (!normalizedPath.includes('/') && normalizedPath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
-      console.log(`Files proxy: Detected standalone image file: ${normalizedPath}`);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${webdavConfig.username}:${webdavConfig.password}`).toString('base64')}`,
+      },
+    });
 
-      // 确保memosPath不以斜杠开头，避免双斜杠
-      const cleanMemosPath = webdavConfig.memosPath.replace(/^\/+/, '');
+    console.log(`WebDAV: Response status ${response.status} for ${url}`);
 
-      // 尝试多个可能的路径
-      const possiblePaths = [
-        `${cleanMemosPath}/assets/${normalizedPath}`,
-        `${cleanMemosPath}/assets/tmp/${normalizedPath}`,
-        normalizedPath, // 直接在根目录查找
-      ];
-
-      for (const possiblePath of possiblePaths) {
-        const cleanPossiblePath = possiblePath.replace(/^\/+/, '');
-        console.log(`Files proxy: Trying path: ${cleanPossiblePath}`);
-
-        try {
-          // 对路径进行正确的编码，处理中文字符
-          const pathParts = cleanPossiblePath.split('/');
-          const encodedParts = pathParts.map((part) => encodeURIComponent(part));
-          const encodedPath = encodedParts.join('/');
-          const imageUrl = `${webdavConfig.url}/${encodedPath}`;
-
-          console.log(`Files proxy: Trying URL: ${imageUrl}`);
-
-          const response = await fetch(imageUrl, {
-            headers: {
-              Authorization: `Basic ${Buffer.from(`${webdavConfig.username}:${webdavConfig.password}`).toString('base64')}`,
-            },
-          });
-
-          if (response.ok) {
-            console.log(`Files proxy: Found image at: ${imageUrl}`);
-            const imageBuffer = await response.arrayBuffer();
-            const contentType = response.headers.get('content-type') || 'image/jpeg';
-
-            return new Response(imageBuffer, {
-              headers: {
-                'Content-Type': contentType,
-                'Cache-Control': 'public, max-age=3600',
-              },
-            });
-          }
-        } catch (error) {
-          console.log(`Files proxy: Failed to fetch from ${cleanPossiblePath}:`, error.message);
-        }
-      }
-
-      console.log(`Files proxy: Failed to find standalone image file in any location`);
+    if (!response.ok) {
+      return null;
     }
 
-    // 确保memosPath不以斜杠开头，避免双斜杠
-    const cleanMemosPath = webdavConfig.memosPath.replace(/^\/+/, '');
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    console.error('Error reading WebDAV file:', error);
+    return null;
+  }
+}
 
-    let allPossiblePaths: string[];
+// 检查是否为图片文件
+function isImageFile(filePath: string): boolean {
+  const ext = path.extname(filePath).toLowerCase();
+  return IMAGE_EXTENSIONS.includes(ext);
+}
 
-    // 如果路径已经以正确的Memos路径开头，直接使用
-    if (normalizedPath.startsWith(`${cleanMemosPath}/`)) {
-      allPossiblePaths = [normalizedPath]; // 直接使用已经正确的路径
-      console.log(`Files proxy: Using pre-formatted path: ${normalizedPath}`);
-    } else {
-      // 如果不是预格式化的路径，尝试多个可能的路径
-      let cleanFileName = normalizedPath;
+// 获取MIME类型
+function getMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.avif': 'image/avif',
+    '.svg': 'image/svg+xml',
+    '.pdf': 'application/pdf',
+    '.txt': 'text/plain',
+    '.md': 'text/markdown',
+    '.json': 'application/json',
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
+}
 
-      // 如果路径包含assets，提取assets后的部分
-      if (normalizedPath.includes('/assets/')) {
-        cleanFileName = normalizedPath.substring(normalizedPath.lastIndexOf('/assets/') + 8);
-      } else if (normalizedPath.startsWith('assets/')) {
-        cleanFileName = normalizedPath.substring(7);
-      }
+export const GET: APIRoute = async ({ params, url }) => {
+  try {
+    const pathSegments = params.path?.split('/') || [];
 
-      allPossiblePaths = [
-        normalizedPath, // 原始路径
-        `${cleanMemosPath}/assets/${cleanFileName}`, // 在assets目录中
-        `${cleanMemosPath}/assets/tmp/${cleanFileName}`, // 在tmp子目录中
-      ];
+    if (pathSegments.length < 2) {
+      return new Response('Invalid path format. Expected: /files/<source>/<...path>', {
+        status: 400,
+      });
     }
 
-    console.log(`Files proxy: Original path:`, path);
-    console.log(`Files proxy: Clean path:`, cleanPath);
-    console.log(`Files proxy: Decoded path:`, decodedPath);
-    console.log(`Files proxy: Normalized path:`, normalizedPath);
-    console.log(`Files proxy: Trying paths:`, allPossiblePaths);
+    const [source, ...filePathSegments] = pathSegments;
+    const filePath = filePathSegments.join('/');
 
-    // 尝试所有可能的路径
-    for (const tryPath of allPossiblePaths) {
+    if (!filePath) {
+      return new Response('File path is required', { status: 400 });
+    }
+
+    console.log(`Files service: Requesting ${source}/${filePath}`);
+
+    // 根据数据源获取文件
+    let fileBuffer: Buffer | null = null;
+
+    switch (source) {
+      case 'local':
+        fileBuffer = await getLocalFile(filePath);
+        break;
+      case 'webdav':
+        fileBuffer = await getWebDAVFile(filePath);
+        break;
+      default:
+        return new Response(`Unsupported source: ${source}`, { status: 400 });
+    }
+
+    if (!fileBuffer) {
+      console.log(`Files service: File not found: ${source}/${filePath}`);
+      return new Response('File not found', { status: 404 });
+    }
+
+    const mimeType = getMimeType(filePath);
+    console.log(`Files service: Found file ${source}/${filePath}, type: ${mimeType}, size: ${fileBuffer.length}`);
+
+    // 如果是图片文件，进行处理（加水印、优化等）
+    if (isImageFile(filePath)) {
       try {
-        // 正确编码路径以确保中文字符的处理，并避免双斜杠
-        const cleanTryPath = tryPath.replace(/^\/+/, ''); // 移除开头的斜杠
-        const pathParts = cleanTryPath.split('/');
-        const encodedParts = pathParts.map((part) => encodeURIComponent(part));
-        const encodedPath = encodedParts.join('/');
-        const imageUrl = `${webdavConfig.url}/${encodedPath}`;
+        const searchParams = url.searchParams;
+        const size = parseInt(searchParams.get('s') || '1200');
+        const quality = parseInt(searchParams.get('q') || '85');
+        const format = searchParams.get('f') || 'webp';
 
-        console.log(`Files proxy: Trying URL: ${imageUrl}`);
+        console.log(`Files service: Processing image with size=${size}, quality=${quality}, format=${format}`);
 
-        // 从 WebDAV 获取图片
-        const response = await fetch(imageUrl, {
-          headers: {
-            Authorization: `Basic ${Buffer.from(`${webdavConfig.username}:${webdavConfig.password}`).toString('base64')}`,
-          },
+        const result = await optimizeImage(fileBuffer, {
+          size,
+          quality,
+          format: format as 'webp' | 'jpeg' | 'png',
         });
 
-        if (response.ok) {
-          // 获取图片数据和内容类型
-          const imageBuffer = await response.arrayBuffer();
-          const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const processedBuffer = result.buffer;
 
-          console.log(
-            `Files proxy: Successfully fetched image from path: ${tryPath}, content-type: ${contentType}, size: ${imageBuffer.byteLength} bytes`
-          );
+        const outputMimeType =
+          format === 'webp'
+            ? 'image/webp'
+            : format === 'jpeg'
+              ? 'image/jpeg'
+              : format === 'png'
+                ? 'image/png'
+                : mimeType;
 
-          return new Response(imageBuffer, {
-            headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'public, max-age=3600',
-            },
-          });
-        } else {
-          console.log(`Files proxy: Failed to fetch from ${tryPath}: ${response.status} ${response.statusText}`);
-        }
+        console.log(`Files service: Image processed successfully, output size: ${processedBuffer.length}`);
+
+        return new Response(processedBuffer, {
+          headers: {
+            'Content-Type': outputMimeType,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Content-Length': processedBuffer.length.toString(),
+          },
+        });
       } catch (error) {
-        console.log(`Files proxy: Error trying path ${tryPath}:`, error.message);
+        console.error('Files service: Error processing image:', error);
+        // 如果图片处理失败，返回原始文件
+        return new Response(fileBuffer, {
+          headers: {
+            'Content-Type': mimeType,
+            'Cache-Control': 'public, max-age=31536000',
+            'Content-Length': fileBuffer.length.toString(),
+          },
+        });
       }
     }
 
-    console.error(`Files proxy: Failed to find image in any location for path: ${path}`);
-    return new Response('Image not found', { status: 404 });
+    // 对于非图片文件，直接返回
+    console.log(`Files service: Returning non-image file directly`);
+    return new Response(fileBuffer, {
+      headers: {
+        'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=3600',
+        'Content-Length': fileBuffer.length.toString(),
+      },
+    });
   } catch (error) {
-    console.error('Error proxying file:', error);
+    console.error('Files service: Error serving file:', error);
     return new Response('Internal server error', { status: 500 });
   }
 };

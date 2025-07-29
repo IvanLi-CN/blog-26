@@ -63,30 +63,37 @@ export const adaptOpenGraphImages = async (
   const adaptedImages = await Promise.all(
     images.map(async (image) => {
       if (image?.url) {
-        const resolvedImage = (await findImage(image.url)) as ImageMetadata | undefined;
-        if (!resolvedImage) {
+        try {
+          const resolvedImage = (await findImage(image.url)) as ImageMetadata | undefined;
+          if (!resolvedImage) {
+            return {
+              url: '',
+            };
+          }
+
+          const _image = await getImage({
+            src: resolvedImage,
+            alt: 'Placeholder alt',
+            width: image?.width || defaultWidth,
+            height: image?.height || defaultHeight,
+          });
+
+          if (typeof _image === 'object') {
+            return {
+              url: 'src' in _image && typeof _image.src === 'string' ? String(new URL(_image.src, astroSite)) : 'pepe',
+              width: 'width' in _image && typeof _image.width === 'number' ? _image.width : undefined,
+              height: 'height' in _image && typeof _image.height === 'number' ? _image.height : undefined,
+            };
+          }
+          return {
+            url: '',
+          };
+        } catch (error) {
+          console.warn(`Failed to process OpenGraph image: ${image.url}`, error);
           return {
             url: '',
           };
         }
-
-        const _image = await getImage({
-          src: resolvedImage,
-          alt: 'Placeholder alt',
-          width: image?.width || defaultWidth,
-          height: image?.height || defaultHeight,
-        });
-
-        if (typeof _image === 'object') {
-          return {
-            url: 'src' in _image && typeof _image.src === 'string' ? String(new URL(_image.src, astroSite)) : 'pepe',
-            width: 'width' in _image && typeof _image.width === 'number' ? _image.width : undefined,
-            height: 'height' in _image && typeof _image.height === 'number' ? _image.height : undefined,
-          };
-        }
-        return {
-          url: '',
-        };
       }
 
       return {

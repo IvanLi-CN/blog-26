@@ -46,6 +46,9 @@ export interface Post {
   /**  */
   readingTime?: number;
 
+  /** 数据源标识，用于正确解析相对路径 */
+  dataSource?: 'local' | 'webdav' | 'database' | string;
+
   /** 向量化状态 */
   vectorizationStatus?: 'correct' | 'mismatch' | 'notvectorized';
   /** 向量化错误信息 */

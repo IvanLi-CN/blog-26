@@ -165,18 +165,87 @@ const memoData = {
 
     <!-- 附件 -->
     {
-      memoData.attachments && memoData.attachments.length > 0 && (
+      (() => {
+        // 过滤掉已经在内容中使用的图片
+        const contentImagePaths = new Set();
+        const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
+        let match;
+        while ((match = imageRegex.exec(memo.body)) !== null) {
+          let imagePath = match[1];
+          // 标准化路径格式
+          if (imagePath.startsWith("./")) {
+            imagePath = imagePath.substring(2);
+          }
+          if (
+            !imagePath.startsWith("assets/") &&
+            !imagePath.startsWith("/") &&
+            !imagePath.startsWith("http")
+          ) {
+            imagePath = `assets/${imagePath}`;
+          }
+          contentImagePaths.add(imagePath);
+        }
+
+        // 过滤附件，只显示不在内容中的附件
+        const filteredAttachments =
+          memoData.attachments?.filter((attachment: any) => {
+            let attachmentPath = attachment.path;
+            // 标准化附件路径格式
+            if (attachmentPath.startsWith("./")) {
+              attachmentPath = attachmentPath.substring(2);
+            }
+            if (attachmentPath.startsWith("/")) {
+              attachmentPath = attachmentPath.substring(1);
+            }
+            return !contentImagePaths.has(attachmentPath);
+          }) || [];
+
+        return filteredAttachments.length > 0;
+      })() && (
         <div class="mt-8">
           <h3 class="text-lg font-semibold mb-4">附件</h3>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {memoData.attachments.map((attachment: any) => (
+            {(() => {
+              // 重复过滤逻辑（因为 Astro 模板限制）
+              const contentImagePaths = new Set();
+              const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
+              let match;
+              while ((match = imageRegex.exec(memo.body)) !== null) {
+                let imagePath = match[1];
+                if (imagePath.startsWith("./")) {
+                  imagePath = imagePath.substring(2);
+                }
+                if (
+                  !imagePath.startsWith("assets/") &&
+                  !imagePath.startsWith("/") &&
+                  !imagePath.startsWith("http")
+                ) {
+                  imagePath = `assets/${imagePath}`;
+                }
+                contentImagePaths.add(imagePath);
+              }
+
+              const filteredAttachments =
+                memoData.attachments?.filter((attachment: any) => {
+                  let attachmentPath = attachment.path;
+                  if (attachmentPath.startsWith("./")) {
+                    attachmentPath = attachmentPath.substring(2);
+                  }
+                  if (attachmentPath.startsWith("/")) {
+                    attachmentPath = attachmentPath.substring(1);
+                  }
+                  return !contentImagePaths.has(attachmentPath);
+                }) || [];
+
+              return filteredAttachments;
+            })().map((attachment: any) => (
               <div class="card bg-base-200 shadow-sm">
                 <div class="card-body p-4">
                   {attachment.isImage ? (
                     <img
-                      src={attachment.path}
+                      src={`/api/render-image/${attachment.path.replace(/^\//, "")}?w=300&f=webp&q=85&display-w=300&display-h=300`}
                       alt={attachment.filename}
-                      class="w-full h-32 object-cover rounded"
+                      class="w-full h-32 object-cover rounded bg-base-200"
                       loading="lazy"
                     />
                   ) : (

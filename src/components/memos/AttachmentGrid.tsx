@@ -283,7 +283,11 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
               {attachment.isImage ? (
                 <div
                   className="w-full h-full cursor-pointer relative group/image"
-                  onClick={() => {
+                  onClick={(e) => {
+                    // 阻止事件冒泡，防止触发父级的详情页跳转
+                    e.preventDefault();
+                    e.stopPropagation();
+
                     // 使用优化后的图片 URL，指定显示尺寸为300x300（闪念附件1:1比例）
                     const imagePath = attachment.path.replace(/^\//, '');
                     const optimizedSrc = `/api/render-image/${imagePath}?f=webp&q=90&display-w=300&display-h=300`;
@@ -295,75 +299,16 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
                     });
                   }}
                 >
-                  {/* 默认显示占位符，图片加载成功后隐藏 */}
-                  <div className="absolute inset-0 bg-base-200 flex flex-col items-center justify-center text-base-content/60 z-10">
-                    <div className="text-2xl mb-2">🖼️</div>
-                    <div className="text-xs text-center px-2">{attachment.filename}</div>
-                    {attachment.size && (
-                      <div className="text-xs text-center px-2 mt-1 opacity-75">{formatFileSize(attachment.size)}</div>
-                    )}
-                  </div>
-
                   <img
                     src={`/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85&display-w=300&display-h=300`}
                     alt={attachment.filename}
-                    className="w-full h-full object-cover relative z-10 opacity-0"
+                    className="w-full h-full object-cover bg-base-200"
                     loading="lazy"
-                    onError={(e) => {
-                      console.error('Image failed to load:', {
-                        path: attachment.path,
-                        src: `/api/render-image/${attachment.path.replace(/^\//, '')}?w=300&f=webp&q=85&display-w=300&display-h=300`,
-                        filename: attachment.filename,
-                      });
-                      // 图片加载失败时，保持占位符显示，但改变样式
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const parent = target.parentElement;
-                      const placeholder = parent?.querySelector('.absolute.inset-0.bg-gray-100') as HTMLElement;
-                      if (placeholder) {
-                        placeholder.style.display = 'flex';
-                        placeholder.innerHTML = `
-                          <div class="text-2xl mb-2 text-red-400">❌</div>
-                          <div class="text-xs text-center px-2 text-red-600 dark:text-red-400">图片加载失败</div>
-                          <div class="text-xs text-center px-2 mt-1 opacity-75">${attachment.filename}</div>
-                        `;
-                      }
-                    }}
-                    onLoad={(e) => {
-                      // 图片加载成功，显示图片并隐藏占位符
-                      const target = e.target as HTMLImageElement;
-                      target.style.opacity = '1';
-                      target.style.zIndex = '20';
-                      const parent = target.parentElement;
-                      const placeholder = parent?.querySelector('.absolute.inset-0.bg-gray-100') as HTMLElement;
-                      if (placeholder) {
-                        placeholder.style.display = 'none';
-                      }
-                    }}
                   />
 
-                  {/* 图片浮层信息 */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover/image:bg-opacity-30 transition-all duration-200 flex items-end">
-                    <div className="w-full p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-200">
-                      <div className="text-white text-xs font-medium truncate">{attachment.filename}</div>
-                      {attachment.size && (
-                        <div className="text-white/80 text-xs">{formatFileSize(attachment.size)}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 放大图标 */}
-                  <div className="absolute top-2 left-2 opacity-0 group-hover/image:opacity-100 transition-opacity duration-200">
-                    <div className="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
-                        />
-                      </svg>
-                    </div>
+                  {/* 文件名覆盖层 */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                    <div className="text-white text-xs truncate">{attachment.filename}</div>
                   </div>
                 </div>
               ) : (

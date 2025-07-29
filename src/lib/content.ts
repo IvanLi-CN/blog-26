@@ -40,6 +40,8 @@ export interface ContentItem {
   image?: string | { src: string; [key: string]: any };
   metadata?: any;
   raw?: any;
+  // 数据源标识，用于正确解析相对路径
+  dataSource?: 'local' | 'webdav' | 'database' | string;
 }
 
 const FrontmatterSchema = z.object({
@@ -157,6 +159,7 @@ async function loadLocalContentWithFS(): Promise<ContentItem[]> {
                 image: parsedFrontmatter.image,
                 metadata: parsedFrontmatter.metadata,
                 raw: { frontmatter, body },
+                dataSource: 'local', // 标识为本地文件系统来源
               });
             } catch (error) {
               console.warn(`Failed to process local content file ${relativePath}:`, error);
@@ -263,6 +266,7 @@ async function loadLocalContent(): Promise<ContentItem[]> {
       image: parsedFrontmatter.image,
       metadata: parsedFrontmatter.metadata,
       raw: { frontmatter, body },
+      dataSource: 'local', // 标识为本地文件系统来源
     });
   }
   return items;
@@ -363,6 +367,7 @@ export const normalizeWebDAVPost = async (post: WebDAVPost, fileLastMod?: string
     image,
     metadata,
     raw: post,
+    dataSource: 'webdav', // 标识为WebDAV来源
   };
 };
 
@@ -434,6 +439,7 @@ export const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
     body: memo.body,
     tags: memo.tags?.map((tag) => ({ slug: cleanSlug(tag), title: tag })) || [],
     raw: memo,
+    dataSource: 'webdav', // 标识为WebDAV来源
   };
 };
 

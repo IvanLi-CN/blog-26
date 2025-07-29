@@ -71,6 +71,13 @@
       "when": 1753306683644,
       "tag": "0009_broad_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1753766443927,
+      "tag": "0010_sturdy_praxagora",
+      "breakpoints": true
     }
   ]
 }

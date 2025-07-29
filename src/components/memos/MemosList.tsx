@@ -273,7 +273,9 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
 
                     // 检查是否点击了可交互元素
                     const target = upEvent.target as HTMLElement;
-                    const isInteractiveElement = target.closest('button, a, .badge, [role="button"]');
+                    const isInteractiveElement = target.closest(
+                      'button, a, .badge, [role="button"], .group\\/image, img[alt*=".jpg"], img[alt*=".png"], img[alt*=".jpeg"], img[alt*=".gif"], img[alt*=".webp"]'
+                    );
 
                     // 只有在没有文本选择、没有点击交互元素、且是简单点击时才导航
                     if (!isTextSelection && !hasSelection && !isInteractiveElement) {
@@ -439,11 +441,54 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                   )}
 
                   {/* 附件显示 */}
-                  {memo.attachments && memo.attachments.length > 0 && (
-                    <div className="mt-2 sm:mt-3">
-                      <AttachmentGrid attachments={memo.attachments} editable={false} />
-                    </div>
-                  )}
+                  {(() => {
+                    // 过滤掉已经在内容中使用的图片
+                    if (!memo.attachments || memo.attachments.length === 0) {
+                      return null;
+                    }
+
+                    const contentImagePaths = new Set();
+                    const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
+                    let match;
+                    while ((match = imageRegex.exec(memo.content)) !== null) {
+                      let imagePath = match[1];
+                      // 标准化路径格式
+                      if (imagePath.startsWith('./')) {
+                        imagePath = imagePath.substring(2);
+                      }
+                      if (
+                        !imagePath.startsWith('assets/') &&
+                        !imagePath.startsWith('/') &&
+                        !imagePath.startsWith('http')
+                      ) {
+                        imagePath = `assets/${imagePath}`;
+                      }
+                      contentImagePaths.add(imagePath);
+                    }
+
+                    // 过滤附件，只显示不在内容中的附件
+                    const filteredAttachments = memo.attachments.filter((attachment: any) => {
+                      let attachmentPath = attachment.path;
+                      // 标准化附件路径格式
+                      if (attachmentPath.startsWith('./')) {
+                        attachmentPath = attachmentPath.substring(2);
+                      }
+                      if (attachmentPath.startsWith('/')) {
+                        attachmentPath = attachmentPath.substring(1);
+                      }
+                      return !contentImagePaths.has(attachmentPath);
+                    });
+
+                    if (filteredAttachments.length === 0) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="mt-2 sm:mt-3">
+                        <AttachmentGrid attachments={filteredAttachments} editable={false} />
+                      </div>
+                    );
+                  })()}
 
                   {/* 表情反应统计 */}
                   <div className="mt-2 sm:mt-3">

@@ -131,6 +131,7 @@ async function _fetchWebDAVContentWithETag(): Promise<ContentItem[]> {
         author: post.data.author || undefined,
         image: post.data.image || undefined,
         metadata: { ...post.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
+        dataSource: 'webdav', // 标识为WebDAV来源
       };
 
       allContent.push(contentItem);
@@ -234,6 +235,7 @@ function contentItemToPost(item: ContentItem): NewPost | null {
     author: item.author || null,
     image: typeof item.image === 'string' ? item.image : item.image?.src || null,
     metadata: item.metadata ? JSON.stringify(item.metadata) : null,
+    dataSource: item.dataSource || null,
     contentHash,
     etag: null, // WebDAV 服务器不支持 ETag，使用修改时间进行变更检测
     lastModified, // 使用 WebDAV 文件的修改时间或当前时间
@@ -263,6 +265,41 @@ function contentItemToMemo(item: ContentItem): NewMemo | null {
     updateDate = item.updateDate;
   }
 
+  // 从 metadata 中提取 attachments 信息
+  let attachments: string | null = null;
+  if (item.metadata?.attachments && Array.isArray(item.metadata.attachments)) {
+    // 将 attachments 数组转换为 JSON 字符串存储
+    const attachmentObjects = item.metadata.attachments
+      .map((attachment: any) => {
+        // 处理两种格式：字符串路径或对象
+        if (typeof attachment === 'string') {
+          return {
+            filename: attachment.split('/').pop() || attachment,
+            path: attachment,
+            isImage: /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(attachment),
+            size: undefined, // 文件大小暂时不可用
+          };
+        } else if (typeof attachment === 'object' && attachment !== null) {
+          // 如果已经是对象格式，直接使用
+          return {
+            filename: attachment.filename || attachment.path?.split('/').pop() || 'unknown',
+            path: attachment.path || '',
+            isImage:
+              attachment.isImage !== undefined
+                ? attachment.isImage
+                : /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(attachment.path || attachment.filename || ''),
+            size: attachment.size,
+          };
+        } else {
+          // 无效的附件格式，跳过
+          return null;
+        }
+      })
+      .filter(Boolean); // 过滤掉 null 值
+
+    attachments = attachmentObjects.length > 0 ? JSON.stringify(attachmentObjects) : null;
+  }
+
   return {
     id: item.id,
     slug: item.slug,
@@ -272,7 +309,7 @@ function contentItemToMemo(item: ContentItem): NewMemo | null {
     updateDate: updateDate ? Math.floor(updateDate.getTime() / 1000) : null, // 转换为秒时间戳
     public: item.public === true, // 默认为私有，需要明确设置为 true 才公开
     tags: item.tags && item.tags.length > 0 ? JSON.stringify(item.tags.map((t) => t.title)) : null,
-    attachments: null, // TODO: 从 raw 数据中提取附件信息
+    attachments,
     contentHash,
     etag: null, // WebDAV 服务器不支持 ETag，使用修改时间进行变更检测
     lastModified, // 使用 WebDAV 文件的修改时间或当前时间
@@ -444,6 +481,7 @@ async function forceRefreshPostsCache(onProgress?: (progress: ContentCacheProgre
           author,
           image,
           metadata: { ...post.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
+          dataSource: 'webdav', // 标识为WebDAV来源
         };
 
         const newPost = contentItemToPost(contentItem);
@@ -669,6 +707,7 @@ async function refreshPostsCache(onProgress?: (progress: ContentCacheProgress) =
             tags: post.data.tags ? post.data.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
             author: post.data.author || undefined,
             image: post.data.image || undefined,
+            dataSource: 'webdav', // 标识为WebDAV来源
             metadata: { ...post.data, lastmod: fileIndex.lastmod },
           };
 
@@ -840,6 +879,7 @@ async function forceRefreshMemosCache(onProgress?: (progress: ContentCacheProgre
           public: memo.data.public === true, // 默认为私有，需要明确设置为 true 才公开
           tags: memo.tags ? memo.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
           metadata: { ...memo.data, etag: fileIndex.etag }, // 将 ETag 添加到 metadata 中
+          dataSource: 'webdav', // 标识为WebDAV来源
         };
 
         const newMemo = contentItemToMemo(contentItem);
@@ -1010,6 +1050,7 @@ async function refreshMemosCache(onProgress?: (progress: ContentCacheProgress) =
             public: memo.data.public === true, // 默认为私有，需要明确设置为 true 才公开
             tags: memo.tags ? memo.tags.map((tag: string) => ({ title: tag, slug: tag })) : [],
             metadata: { ...memo.data, lastmod: fileIndex.lastmod },
+            dataSource: 'webdav', // 标识为WebDAV来源
           };
 
           const newMemo = contentItemToMemo(contentItem);

@@ -1,13 +1,11 @@
 ---
 import { APP_BLOG } from "astrowind:config";
-import type { ImageMetadata } from "astro";
 import { Icon } from "astro-icon/components";
 import PostTags from "~/components/blog/Tags.astro";
 import Image from "~/components/common/Image.astro";
 import PostStatus from "~/components/common/PostStatus.astro";
 import type { Post } from "~/types";
 
-import { findImage } from "~/utils/images";
 import { getPermalink } from "~/utils/permalinks";
 import { getFormattedDate } from "~/utils/utils";
 
@@ -16,7 +14,8 @@ export interface Props {
 }
 
 const { post } = Astro.props;
-const image = (await findImage(post.image)) as ImageMetadata | undefined;
+// 直接使用原始图片路径，让 Image 组件处理路径解析和数据源选择
+const image = post.image;
 
 const link = APP_BLOG?.post?.isEnabled
   ? getPermalink(post.permalink, "post")
@@ -127,6 +126,7 @@ const link = APP_BLOG?.post?.isEnabled
                 decoding="async"
                 displayWidth={900}
                 displayHeight={506}
+                dataSource={post.dataSource}
               />
             )}
           </div>
@@ -146,6 +146,7 @@ const link = APP_BLOG?.post?.isEnabled
               decoding="async"
               displayWidth={900}
               displayHeight={506}
+              dataSource={post.dataSource}
             />
           )}
         </div>

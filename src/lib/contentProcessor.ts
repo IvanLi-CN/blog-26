@@ -194,6 +194,7 @@ export async function processAllContent(
       public: post.public,
       tags: post.tags ? JSON.parse(post.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
       raw: { data: post.metadata ? JSON.parse(post.metadata) : {} },
+      dataSource: post.dataSource || 'database', // 使用数据库中保存的数据源标识
     })),
     ...cachedMemos.map((memo) => ({
       id: memo.id,
@@ -208,6 +209,7 @@ export async function processAllContent(
       public: memo.public,
       tags: memo.tags ? JSON.parse(memo.tags).map((tag: string) => ({ slug: tag, title: tag })) : [],
       raw: { data: {} },
+      dataSource: 'database', // 标识为数据库来源
     })),
   ];
 

@@ -713,6 +713,7 @@ export class LocalFileSystemDataSource extends BaseContentDataSource {
       author: parsed.data.author,
       image: parsed.data.image,
       metadata: parsed.data,
+      dataSource: 'local', // 标识为本地文件系统来源
     };
   }
 

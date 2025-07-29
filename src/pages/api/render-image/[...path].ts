@@ -13,7 +13,7 @@ export const GET: APIRoute = async ({ params, request, url }) => {
     }
 
     const webdavConfig = config.webdav;
-    if (!webdavConfig.url || !webdavConfig.username || !webdavConfig.password) {
+    if (!webdavConfig.url) {
       return new Response('WebDAV not configured', { status: 500 });
     }
 
@@ -49,11 +49,16 @@ export const GET: APIRoute = async ({ params, request, url }) => {
       for (const testPath of possiblePaths) {
         try {
           const testUrl = `${webdavConfig.url}/${testPath}`;
+          const testHeaders: Record<string, string> = {};
+
+          // 只有在提供了用户名和密码时才添加认证头
+          if (webdavConfig.username && webdavConfig.password) {
+            testHeaders.Authorization = `Basic ${btoa(`${webdavConfig.username}:${webdavConfig.password}`)}`;
+          }
+
           const testResponse = await fetch(testUrl, {
             method: 'HEAD',
-            headers: {
-              Authorization: `Basic ${btoa(`${webdavConfig.username}:${webdavConfig.password}`)}`,
-            },
+            headers: testHeaders,
           });
           if (testResponse.ok) {
             foundPath = testPath;
@@ -71,10 +76,15 @@ export const GET: APIRoute = async ({ params, request, url }) => {
 
     // 从 WebDAV 获取原始图片
     const webdavUrl = `${webdavConfig.url}/${normalizedPath}`;
+    const headers: Record<string, string> = {};
+
+    // 只有在提供了用户名和密码时才添加认证头
+    if (webdavConfig.username && webdavConfig.password) {
+      headers.Authorization = `Basic ${btoa(`${webdavConfig.username}:${webdavConfig.password}`)}`;
+    }
+
     const response = await fetch(webdavUrl, {
-      headers: {
-        Authorization: `Basic ${btoa(`${webdavConfig.username}:${webdavConfig.password}`)}`,
-      },
+      headers,
     });
 
     if (!response.ok) {

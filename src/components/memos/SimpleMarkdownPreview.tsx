@@ -69,23 +69,26 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
             if (src && !src.startsWith('http://') && !src.startsWith('https://')) {
               let cleanPath = src;
 
-              // 处理相对路径 - 相对于闪念文件位置 (/Memos/)
+              // 处理相对路径和绝对路径
               let targetPath = cleanPath;
 
               if (targetPath.startsWith('./assets/')) {
-                // ./assets/file.png -> Memos/assets/file.png
-                targetPath = `Memos/${targetPath.substring(2)}`;
+                // ./assets/file.png -> assets/file.png (相对于WebDAV根目录)
+                targetPath = targetPath.substring(2);
               } else if (targetPath.startsWith('assets/')) {
-                // assets/file.png -> Memos/assets/file.png
-                targetPath = `Memos/${targetPath}`;
+                // assets/file.png -> assets/file.png (已经是正确的路径)
+                targetPath = targetPath;
               } else if (targetPath.startsWith('./')) {
-                // 其他相对路径，如 ./file.png -> Memos/file.png
+                // 其他相对路径，如 ./file.png -> Memos/file.png (相对于闪念目录)
                 targetPath = `Memos/${targetPath.substring(2)}`;
               } else if (targetPath.startsWith('/files/')) {
                 // 移除 /files/ 前缀
                 targetPath = targetPath.substring(7);
+              } else if (targetPath.startsWith('/assets/')) {
+                // /assets/file.png -> assets/file.png (绝对路径，相对于WebDAV根目录)
+                targetPath = targetPath.substring(1);
               } else if (targetPath.startsWith('/')) {
-                // 绝对路径，移除开头的斜杠
+                // 其他绝对路径，移除开头的斜杠
                 targetPath = targetPath.substring(1);
               }
 

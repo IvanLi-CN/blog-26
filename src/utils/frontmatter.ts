@@ -90,10 +90,10 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
         let resolvedPath = '';
 
         if (src.startsWith('~/assets/')) {
-          // 处理 ~/assets/ 路径，这些可能是WebDAV上的资源
-          // 移除 ~/assets/ 前缀，然后根据文章路径解析
+          // 处理 ~/assets/ 路径，这些是WebDAV上的全局资源
+          // 直接使用 assets/ 路径，不需要添加文章目录
           const assetPath = src.substring(9); // 移除 '~/assets/'
-          resolvedPath = `${articleDir}assets/${assetPath}`;
+          resolvedPath = `assets/${assetPath}`;
         } else if (src.startsWith('./')) {
           // 相对于文章目录的路径
           resolvedPath = `${articleDir}${src.substring(2)}`;
@@ -117,8 +117,19 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
           // 绝对路径（相对于WebDAV根目录）
           resolvedPath = src.substring(1);
         } else {
-          // 没有前缀的相对路径，视为相对于文章目录
-          resolvedPath = `${articleDir}${src}`;
+          // 没有前缀的相对路径
+          // 对于 Memos，图片通常在全局 assets 目录下
+          if (articleDir.startsWith('Memos/')) {
+            // 如果路径已经以 assets/ 开头，直接使用
+            if (src.startsWith('assets/')) {
+              resolvedPath = src;
+            } else {
+              resolvedPath = `assets/${src}`;
+            }
+          } else {
+            // 其他情况，视为相对于文章目录
+            resolvedPath = `${articleDir}${src}`;
+          }
         }
 
         // 清理路径（移除多余的斜杠等）
@@ -144,7 +155,7 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
 
           if (href.startsWith('~/assets/')) {
             const assetPath = href.substring(9);
-            resolvedPath = `${articleDir}assets/${assetPath}`;
+            resolvedPath = `assets/${assetPath}`;
           } else if (href.startsWith('./')) {
             resolvedPath = `${articleDir}${href.substring(2)}`;
           } else if (href.startsWith('../')) {
@@ -162,7 +173,18 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
           } else if (href.startsWith('/')) {
             resolvedPath = href.substring(1);
           } else {
-            resolvedPath = `${articleDir}${href}`;
+            // 没有前缀的相对路径
+            // 对于 Memos，图片通常在全局 assets 目录下
+            if (articleDir.startsWith('Memos/')) {
+              // 如果路径已经以 assets/ 开头，直接使用
+              if (href.startsWith('assets/')) {
+                resolvedPath = href;
+              } else {
+                resolvedPath = `assets/${href}`;
+              }
+            } else {
+              resolvedPath = `${articleDir}${href}`;
+            }
           }
 
           resolvedPath = resolvedPath.replace(/\/+/g, '/').replace(/^\//, '');

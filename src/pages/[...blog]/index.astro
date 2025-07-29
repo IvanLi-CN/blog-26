@@ -9,7 +9,7 @@ import Layout from "~/layouts/PageLayout.astro";
 import type { MetaData } from "~/types";
 import { blogPostRobots, getPostBySlug } from "~/utils/blog";
 import { create404Response } from "~/utils/error-handler";
-import { findImage } from "~/utils/images";
+
 import { getCanonical, getPermalink } from "~/utils/permalinks";
 
 export const prerender = false;
@@ -35,10 +35,8 @@ if (!isUserAdmin && (post.draft || !post.public)) {
 }
 
 const url = getCanonical(getPermalink(post.permalink, "post"));
-const image = (await findImage(post.image)) as
-  | ImageMetadata
-  | string
-  | undefined;
+// 不使用 findImage，直接传递图片路径和数据源信息
+const image = post.image;
 
 const metadata = merge(
   {
@@ -54,9 +52,9 @@ const metadata = merge(
         ? {
             images: [
               {
-                url: image,
-                width: (image as ImageMetadata)?.width,
-                height: (image as ImageMetadata)?.height,
+                url: typeof image === "string" ? image : image,
+                width: 1200, // 默认宽度
+                height: 630, // 默认高度
               },
             ],
           }
