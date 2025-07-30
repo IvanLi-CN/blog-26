@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ContentCacheProgress } from '~/lib/content-cache';
 import { trpc } from '~/lib/trpc';
 
@@ -10,18 +10,38 @@ export function ContentCacheLogger() {
 
   const mutation = trpc.contentCache.refresh.useMutation();
 
+  // 监听状态变化，当状态变为completed时刷新页面缓存状态
+  useEffect(() => {
+    if (status === 'completed') {
+      console.log('🎉 缓存刷新完成，触发页面状态更新');
+      // 延迟一秒确保服务器端数据已更新
+      setTimeout(() => {
+        if (typeof (window as any).refreshCacheStatus === 'function') {
+          console.log('🔄 调用页面刷新函数');
+          (window as any).refreshCacheStatus();
+        } else {
+          console.log('⚠️ 页面刷新函数不可用');
+        }
+        window.dispatchEvent(new CustomEvent('cache-refresh-completed'));
+      }, 1000);
+    }
+  }, [status]);
+
   trpc.contentCache.onProgress.useSubscription(undefined, {
     onData: (log) => {
+      console.log('📨 收到进度事件:', log);
       setLogs((prev) => [log, ...prev]);
       if (log.stage === 'error') {
         setError(log.message);
         setStatus('error');
       }
       if (log.stage === 'done') {
+        console.log('🎉 缓存刷新完成，状态设置为completed');
         setStatus('completed');
       }
     },
     onError: (err) => {
+      console.error('❌ tRPC订阅错误:', err);
       setError(err.message);
       setStatus('error');
     },

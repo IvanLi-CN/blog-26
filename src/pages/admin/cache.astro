@@ -99,6 +99,9 @@ const metadata = {
               <div class="stat-value" id="total-count">-</div>
               <div class="stat-desc">项内容已缓存</div>
             </div>
+            <div class="text-sm text-base-content/70">
+              最后更新: <span id="total-last-updated">-</span>
+            </div>
           </div>
         </div>
       </div>
@@ -136,6 +139,7 @@ const metadata = {
   // 加载缓存状态
   async function loadCacheStatus() {
     try {
+      console.log("🔄 开始加载缓存状态...");
       const status = await trpc.contentCache.getStatus.query();
 
       document.getElementById("posts-count")!.textContent =
@@ -151,11 +155,51 @@ const metadata = {
       document.getElementById("memos-last-updated")!.textContent = formatDate(
         status.memos.lastUpdated ? new Date(status.memos.lastUpdated) : null,
       );
+
+      // 计算总的最后更新时间（取两者中较新的时间）
+      const postsTime = status.posts.lastUpdated || 0;
+      const memosTime = status.memos.lastUpdated || 0;
+      const totalLastUpdated = Math.max(postsTime, memosTime);
+      document.getElementById("total-last-updated")!.textContent = formatDate(
+        totalLastUpdated ? new Date(totalLastUpdated) : null,
+      );
+
+      console.log("✅ 缓存状态加载完成:", {
+        posts: status.posts.count,
+        memos: status.memos.count,
+        total: status.totalItems,
+      });
     } catch (error) {
       console.error("Failed to load cache status:", error);
     }
   }
 
+  // 监听缓存刷新完成事件
+  function setupCacheRefreshListener() {
+    console.log("🔧 设置缓存刷新完成事件监听器");
+    // 监听来自 ContentCacheLogger 组件的缓存刷新完成事件
+    window.addEventListener("cache-refresh-completed", () => {
+      console.log("🎉 收到缓存刷新完成事件，重新加载缓存状态");
+      loadCacheStatus();
+    });
+    console.log("✅ 缓存刷新完成事件监听器已设置");
+  }
+
+  // 页面可见性变化时重新加载缓存状态
+  function setupVisibilityListener() {
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        console.log("页面重新可见，重新加载缓存状态");
+        loadCacheStatus();
+      }
+    });
+  }
+
+  // 将函数暴露到全局作用域，供React组件调用
+  (window as any).refreshCacheStatus = loadCacheStatus;
+
   // 初始化
   loadCacheStatus();
+  setupCacheRefreshListener();
+  setupVisibilityListener();
 </script>
