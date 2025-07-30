@@ -2,6 +2,7 @@
 import type { ImageMetadata } from "astro";
 import merge from "lodash.merge";
 import CommentSectionWithProvider from "~/components/comments/CommentSectionWithProvider";
+import ContentImageHandler from "~/components/common/ContentImageHandler";
 import MemoReactionsWithProvider from "~/components/memos/MemoReactionsWithProvider";
 import Layout from "~/layouts/PageLayout.astro";
 import { getCachedMemoBySlug } from "~/lib/content-cache";
@@ -159,9 +160,11 @@ const memoData = {
     }
 
     <!-- 内容 -->
-    <div class="prose prose-lg max-w-none">
-      <Fragment set:html={memoData.content} />
-    </div>
+    <ContentImageHandler client:load>
+      <div class="prose prose-lg max-w-none">
+        <Fragment set:html={memoData.content} />
+      </div>
+    </ContentImageHandler>
 
     <!-- 附件 -->
     {
@@ -204,72 +207,76 @@ const memoData = {
       })() && (
         <div class="mt-8">
           <h3 class="text-lg font-semibold mb-4">附件</h3>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {(() => {
-              // 重复过滤逻辑（因为 Astro 模板限制）
-              const contentImagePaths = new Set();
-              const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
-              let match;
-              while ((match = imageRegex.exec(memo.body)) !== null) {
-                let imagePath = match[1];
-                if (imagePath.startsWith("./")) {
-                  imagePath = imagePath.substring(2);
-                }
-                if (
-                  !imagePath.startsWith("assets/") &&
-                  !imagePath.startsWith("/") &&
-                  !imagePath.startsWith("http")
-                ) {
-                  imagePath = `assets/${imagePath}`;
-                }
-                contentImagePaths.add(imagePath);
-              }
-
-              const filteredAttachments =
-                memoData.attachments?.filter((attachment: any) => {
-                  let attachmentPath = attachment.path;
-                  if (attachmentPath.startsWith("./")) {
-                    attachmentPath = attachmentPath.substring(2);
+          <ContentImageHandler client:load>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {(() => {
+                // 重复过滤逻辑（因为 Astro 模板限制）
+                const contentImagePaths = new Set();
+                const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
+                let match;
+                while ((match = imageRegex.exec(memo.body)) !== null) {
+                  let imagePath = match[1];
+                  if (imagePath.startsWith("./")) {
+                    imagePath = imagePath.substring(2);
                   }
-                  if (attachmentPath.startsWith("/")) {
-                    attachmentPath = attachmentPath.substring(1);
+                  if (
+                    !imagePath.startsWith("assets/") &&
+                    !imagePath.startsWith("/") &&
+                    !imagePath.startsWith("http")
+                  ) {
+                    imagePath = `assets/${imagePath}`;
                   }
-                  return !contentImagePaths.has(attachmentPath);
-                }) || [];
+                  contentImagePaths.add(imagePath);
+                }
 
-              return filteredAttachments;
-            })().map((attachment: any) => (
-              <div class="card bg-base-200 shadow-sm">
-                <div class="card-body p-4">
-                  {attachment.isImage ? (
-                    <img
-                      src={`/api/render-image/${attachment.path.replace(/^\//, "")}?w=300&f=webp&q=85&display-w=300&display-h=300`}
-                      alt={attachment.filename}
-                      class="w-full h-32 object-cover rounded bg-base-200"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div class="flex items-center justify-center h-32 bg-base-300 rounded">
-                      <span class="text-2xl">📄</span>
-                    </div>
-                  )}
-                  <div class="mt-2">
-                    <p
-                      class="text-sm font-medium truncate"
-                      title={attachment.filename}
-                    >
-                      {attachment.filename}
-                    </p>
-                    {attachment.size && (
-                      <p class="text-xs text-base-content/60">
-                        {(attachment.size / 1024).toFixed(1)} KB
-                      </p>
+                const filteredAttachments =
+                  memoData.attachments?.filter((attachment: any) => {
+                    let attachmentPath = attachment.path;
+                    if (attachmentPath.startsWith("./")) {
+                      attachmentPath = attachmentPath.substring(2);
+                    }
+                    if (attachmentPath.startsWith("/")) {
+                      attachmentPath = attachmentPath.substring(1);
+                    }
+                    return !contentImagePaths.has(attachmentPath);
+                  }) || [];
+
+                return filteredAttachments;
+              })().map((attachment: any) => (
+                <div class="card bg-base-200 shadow-sm">
+                  <div class="card-body p-4">
+                    {attachment.isImage ? (
+                      <img
+                        src={`/api/render-image/${attachment.path.replace(/^\//, "")}?w=300&f=webp&q=85&display-w=300&display-h=300`}
+                        alt={attachment.filename}
+                        class="w-full h-32 object-cover rounded bg-base-200 content-image cursor-pointer"
+                        loading="lazy"
+                        data-lightbox="true"
+                        data-original-src={`/api/render-image/${attachment.path.replace(/^\//, "")}?f=webp&q=95&s=2048`}
+                      />
+                    ) : (
+                      <div class="flex items-center justify-center h-32 bg-base-300 rounded">
+                        <span class="text-2xl">📄</span>
+                      </div>
                     )}
+                    <div class="mt-2">
+                      <p
+                        class="text-sm font-medium truncate"
+                        title={attachment.filename}
+                      >
+                        {attachment.filename}
+                      </p>
+                      {attachment.size && (
+                        <p class="text-xs text-base-content/60">
+                          {(attachment.size / 1024).toFixed(1)} KB
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </ContentImageHandler>
         </div>
       )
     }

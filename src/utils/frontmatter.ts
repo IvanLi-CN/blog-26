@@ -44,6 +44,16 @@ export const lazyImagesRehypePlugin: RehypePlugin = () => {
     visit(tree, 'element', function (node) {
       if (node.tagName === 'img') {
         node.properties.loading = 'lazy';
+        // 添加图片全屏浏览功能的 class 和属性
+        const existingClasses = Array.isArray(node.properties.className)
+          ? node.properties.className
+          : node.properties.className && typeof node.properties.className !== 'boolean'
+            ? [String(node.properties.className)]
+            : [];
+        node.properties.className = [...existingClasses, 'content-image', 'cursor-pointer'];
+        node.properties['data-lightbox'] = 'true';
+        // 保存原始 src 用于全屏显示
+        node.properties['data-original-src'] = node.properties.src;
       }
     });
   };
