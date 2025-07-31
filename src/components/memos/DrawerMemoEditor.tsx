@@ -228,7 +228,7 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
   };
 
   return (
-    <div className="w-full" onPaste={handlePaste}>
+    <div className="w-full" onPaste={handlePaste} data-testid="drawer-memo-editor">
       {/* 编辑器内容 */}
       <form onSubmit={handleSubmit}>
         <div className="space-y-3">
@@ -266,12 +266,14 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
                 onDragOver={handleEditorDragOver}
                 onDragLeave={handleEditorDragLeave}
                 onDrop={handleEditorDrop}
+                data-testid="drop-zone"
               >
                 <MilkdownEditor
                   content={content}
                   onChange={setContent}
                   placeholder="写下你的想法..."
                   className="w-full"
+                  data-testid="content-editor"
                 />
                 {isDragOver && (
                   <div className="absolute inset-0 bg-primary bg-opacity-10 border-2 border-dashed border-primary rounded-md flex items-center justify-center">
@@ -291,6 +293,7 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
                 onRemove={(index) => {
                   setAttachments((prev) => prev.filter((_, i) => i !== index));
                 }}
+                data-testid="attachment-grid"
               />
             </div>
           )}
@@ -324,6 +327,7 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
                     className="toggle toggle-primary toggle-sm"
                     checked={isPublic}
                     onChange={(e) => setIsPublic(e.target.checked)}
+                    data-testid="public-toggle"
                   />
                 </label>
               </div>
@@ -333,6 +337,7 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
                 type="button"
                 onClick={() => setIsPreview(!isPreview)}
                 className={`btn btn-sm ${isPreview ? 'btn-primary' : 'btn-outline'}`}
+                data-testid={isPreview ? 'edit-button' : 'preview-button'}
               >
                 {isPreview ? '编辑' : '预览'}
               </button>
@@ -342,6 +347,7 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
                 type="submit"
                 disabled={createMemoMutation.isPending || !content.trim()}
                 className="btn btn-primary btn-sm"
+                data-testid="submit-button"
               >
                 {createMemoMutation.isPending ? (
                   <>

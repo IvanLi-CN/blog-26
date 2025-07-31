@@ -217,17 +217,10 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
 
   // 处理按钮点击上传
   const handleUploadButtonClick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.accept = 'image/*,.pdf,.doc,.docx,.txt,.md';
-    input.onchange = (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files) {
-        handleFileUpload(Array.from(files));
-      }
-    };
-    input.click();
+    const input = document.querySelector('[data-testid="attachment-input"]') as HTMLInputElement;
+    if (input) {
+      input.click();
+    }
   };
 
   // 处理全局拖拽事件
@@ -315,7 +308,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
         </div>
       )}
 
-      <div className="card bg-base-100 shadow-xl mb-6">
+      <div className="card bg-base-100 shadow-xl mb-6" data-testid="quick-memo-editor">
         {/* 头部 */}
         <div className="px-3 py-2 sm:px-4 sm:py-3 border-b border-base-300">
           <div className="flex items-center justify-between">
@@ -325,6 +318,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                 type="button"
                 onClick={() => setIsPreview(!isPreview)}
                 className={`btn btn-xs ${isPreview ? 'btn-primary' : 'btn-outline'}`}
+                data-testid={isPreview ? 'edit-button' : 'preview-button'}
               >
                 {isPreview ? '编辑' : '预览'}
               </button>
@@ -375,6 +369,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                     onChange={setContent}
                     placeholder="写下你的想法..."
                     className="w-full"
+                    data-testid="content-input"
                   />
                   {isDragOver && (
                     <div className="absolute inset-0 bg-primary bg-opacity-10 border-2 border-dashed border-primary rounded-md flex items-center justify-center">
@@ -393,8 +388,28 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
               )}
             </div>
 
+            {/* 隐藏的文件输入 */}
+            <input
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt,.md"
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files) {
+                  handleFileUpload(Array.from(files));
+                }
+              }}
+              className="hidden"
+              data-testid="attachment-input"
+            />
+
             {/* 附件预览 */}
-            <AttachmentGrid attachments={attachments} onRemove={handleRemoveAttachment} editable={!isPreview} />
+            <AttachmentGrid
+              attachments={attachments}
+              onRemove={handleRemoveAttachment}
+              editable={!isPreview}
+              data-testid="attachment-grid"
+            />
 
             {/* 工具栏和按钮 */}
             <div className="flex items-center justify-between">
@@ -422,6 +437,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                     disabled={isUploading}
                     className="btn btn-xs btn-outline"
                     title="上传附件"
+                    data-testid="upload-button"
                   >
                     📎
                   </button>
@@ -437,6 +453,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                     className="toggle toggle-sm toggle-primary"
                     checked={isPublic}
                     onChange={(e) => setIsPublic(e.target.checked)}
+                    data-testid="public-toggle"
                   />
                 </div>
 
@@ -457,6 +474,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                   type="submit"
                   disabled={!content.trim() || createMemoMutation.isPending || isUploading}
                   className="btn btn-sm btn-primary"
+                  data-testid="submit-button"
                 >
                   {createMemoMutation.isPending ? (
                     <>

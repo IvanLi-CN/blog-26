@@ -213,7 +213,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
 
   if (memos.length === 0) {
     return (
-      <div className="text-center py-8 sm:py-12">
+      <div className="text-center py-8 sm:py-12" data-testid="memos-list">
         <div className="text-base-content/60">
           <p className="text-base sm:text-lg mb-2">还没有任何 Memo</p>
           {isAdmin && <p className="text-xs sm:text-sm">使用上方的编辑器创建第一条 Memo 吧！</p>}
@@ -223,9 +223,9 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8" data-testid="memos-list">
       {memos.map((memo, index) => (
-        <div key={memo.id} className="relative">
+        <div key={memo.id} className="relative" data-testid="memo-item">
           {/* 时间线连接线 */}
           {index < memos.length - 1 && (
             <div className="absolute left-4 sm:left-5 top-10 sm:top-12 w-0.5 h-full bg-gradient-to-b from-primary/30 to-transparent -z-10 hidden sm:block"></div>
@@ -304,7 +304,11 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    <span title={formatFullDate(memo.createdAt)} className="cursor-help truncate">
+                    <span
+                      title={formatFullDate(memo.createdAt)}
+                      className="cursor-help truncate"
+                      data-testid="memo-time"
+                    >
                       {formatDate(memo.createdAt)}
                     </span>
                     {memo.updatedAt !== memo.createdAt && (
@@ -323,7 +327,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                     {isAdmin && (
                       <div className="flex items-center">
                         {memo.isPublic ? (
-                          <div className="badge badge-info badge-xs sm:badge-sm gap-1">
+                          <div className="badge badge-info badge-xs sm:badge-sm gap-1" data-testid="public-indicator">
                             <svg
                               className="w-2.5 h-2.5 sm:w-3 sm:h-3"
                               fill="none"
@@ -340,7 +344,10 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                             <span className="hidden sm:inline">公开</span>
                           </div>
                         ) : (
-                          <div className="badge badge-warning badge-xs sm:badge-sm gap-1">
+                          <div
+                            className="badge badge-warning badge-xs sm:badge-sm gap-1"
+                            data-testid="private-indicator"
+                          >
                             <svg
                               className="w-2.5 h-2.5 sm:w-3 sm:h-3"
                               fill="none"
@@ -516,7 +523,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
 
       {/* 加载更多指示器 */}
       {isLoadingMore && (
-        <div className="flex justify-center items-center py-6 sm:py-8">
+        <div className="flex justify-center items-center py-6 sm:py-8" data-testid="loading-more">
           <div className="flex items-center space-x-2 text-base-content/60">
             <span className="loading loading-spinner loading-xs sm:loading-sm"></span>
             <span className="text-sm">加载更多...</span>

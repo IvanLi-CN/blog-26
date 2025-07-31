@@ -46,10 +46,64 @@ jobs:
       - name: Run code quality checks
         run: bun run check
 
+  e2e-test:
+    name: Run E2E Tests
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        bun-version:
+          - '1.2.13'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Bun.js v${{ matrix.bun-version }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.bun-version }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-${{ matrix.bun-version }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.bun-version }}-bun-
+      - run: bun install
+      - name: Install Playwright Browsers
+        run: bunx playwright install --with-deps chromium
+      - name: Generate test images
+        run: bun tests/e2e/utils/generate-test-images.ts
+      - name: Run E2E tests
+        run: bun run test:e2e
+        env:
+          NODE_ENV: test
+          ADMIN_MODE: true
+          JWT_SECRET: test-jwt-secret-key-for-testing-only-32-chars
+          ADMIN_EMAIL: admin@test.com
+          DB_PATH: ':memory:'
+          WEBDAV_URL: http://localhost:8080
+          WEBDAV_USERNAME: ''
+          WEBDAV_PASSWORD: ''
+          WEBDAV_MEMOS_PATH: /Memos
+          WEBDAV_ASSETS_PATH: /assets
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            !test-results/html-report/
+          retention-days: 7
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-html-report
+          path: test-results/html-report/
+          retention-days: 7
+
   docker:
     name: Build and Push Docker Image
     runs-on: ubuntu-22.04
-    needs: test
+    needs: [test, e2e-test]
     permissions:
       contents: read
       packages: write

@@ -19,7 +19,8 @@ try {
   allMemos = await getCachedMemos();
 } catch (error) {
   console.error("Failed to get cached memos:", error);
-  return create404Response(Astro.request, "Memos not available");
+  // 不返回404，而是使用空数组继续渲染页面
+  allMemos = [];
 }
 
 // 如果不是管理员，只返回公开的 Memo

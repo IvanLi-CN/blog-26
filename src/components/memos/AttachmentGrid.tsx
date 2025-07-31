@@ -12,6 +12,7 @@ interface AttachmentGridProps {
   attachments: Attachment[];
   onRemove?: (index: number) => void;
   editable?: boolean;
+  'data-testid'?: string;
 }
 
 // 图片放大模态框组件
@@ -207,7 +208,12 @@ function ImageModal({
   );
 }
 
-export function AttachmentGrid({ attachments, onRemove, editable = false }: AttachmentGridProps) {
+export function AttachmentGrid({
+  attachments,
+  onRemove,
+  editable = false,
+  'data-testid': dataTestId,
+}: AttachmentGridProps) {
   const [selectedImage, setSelectedImage] = useState<{
     src: string;
     alt: string;
@@ -259,9 +265,12 @@ export function AttachmentGrid({ attachments, onRemove, editable = false }: Atta
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 mt-2 sm:mt-3">
+      <div
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 mt-2 sm:mt-3"
+        data-testid={dataTestId || 'attachment-grid'}
+      >
         {attachments.map((attachment, index) => (
-          <div key={`${attachment.path}-${index}`} className="relative group">
+          <div key={`${attachment.path}-${index}`} className="relative group" data-testid="attachment-item">
             {/* 删除按钮 */}
             {editable && onRemove && (
               <button
