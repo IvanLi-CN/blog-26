@@ -69,14 +69,21 @@ jobs:
           bun run test-data:generate
           
       - name: Start WebDAV server
-        run: bun run webdav:start &
+        run: bun run webdav:test &
         
       - name: Wait for WebDAV server
         run: |
           timeout 30 bash -c 'until curl -f http://localhost:8080; do sleep 1; done'
-          
+
+      - name: Start Astro server
+        run: bunx --bun astro dev --host &
+
+      - name: Wait for Astro server
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:4321; do sleep 2; done'
+
       - name: Run E2E tests
-        run: bunx playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        run: bunx playwright test --config=playwright.ci.config.ts --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
           PLAYWRIGHT_HTML_REPORT: test-results/html-report-${{ matrix.shard }}
           
@@ -217,14 +224,21 @@ jobs:
           bun run test-data:generate
           
       - name: Start WebDAV server
-        run: bun run webdav:start &
+        run: bun run webdav:test &
         
       - name: Wait for WebDAV server
         run: |
           timeout 30 bash -c 'until curl -f http://localhost:8080; do sleep 1; done'
-          
+
+      - name: Start Astro server
+        run: bunx --bun astro dev --host &
+
+      - name: Wait for Astro server
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:4321; do sleep 2; done'
+
       - name: Run performance tests
-        run: bunx playwright test --grep "性能|performance" --reporter=json
+        run: bunx playwright test --config=playwright.ci.config.ts --grep "性能|performance" --reporter=json
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: performance-results.json
           

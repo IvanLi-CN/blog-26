@@ -63,7 +63,7 @@
     "dev-data:generate": "bun ./scripts/generate-test-data.ts --dev",
     "dev-data:clean": "bun ./scripts/generate-test-data.ts --dev --clean",
     "fix": "bunx biome check --write",
-    "test": "bun test src tests/integration tests/lib tests/server",
+    "test": "bun test src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*'",
     "test:watch": "bun test --watch",
     "dev:test": "concurrently --names \"WebDAV,Astro\" --prefix-colors \"cyan,magenta\" \"bun ./scripts/start-test-webdav.ts\" \"ADMIN_MODE=true NODE_ENV=test bunx --bun astro dev --host\"",
     "test:e2e": "playwright test",
@@ -193,7 +193,8 @@
       "exclude": [
         "tests/e2e/**/*",
         "**/e2e/**/*",
-        "**/*.spec.ts"
+        "**/*.spec.ts",
+        "**/specs/**/*"
       ]
     }
   }
