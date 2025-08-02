@@ -21,10 +21,10 @@ export default defineConfig({
   },
 
   // 测试配置
-  fullyParallel: true, // 并行运行测试
+  fullyParallel: false, // 禁用并行运行，避免测试干扰
   forbidOnly: !!process.env.CI, // CI环境禁止only
   retries: process.env.CI ? 2 : 0, // CI环境重试2次
-  workers: process.env.CI ? 1 : undefined, // CI环境使用1个worker
+  workers: 1, // 使用单个worker确保测试隔离
 
   // 报告配置
   reporter: [
@@ -43,7 +43,8 @@ export default defineConfig({
     baseURL: 'http://localhost:4321',
 
     // 浏览器配置
-    headless: !!process.env.CI,
+    // 默认无头模式，可通过 HEADLESS=false 环境变量或 --headed 参数控制
+    headless: process.env.HEADLESS !== 'false' && (!!process.env.CI || process.env.HEADLESS !== 'false'),
     viewport: { width: 1280, height: 720 },
 
     // 截图和视频
@@ -79,7 +80,7 @@ export default defineConfig({
 
   // 开发服务器配置
   webServer: {
-    command: 'bun run dev:test',
+    command: 'bun ./scripts/start-test-servers.ts',
     url: 'http://localhost:4321',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000, // 2分钟启动超时
@@ -87,7 +88,7 @@ export default defineConfig({
       // 测试环境变量
       NODE_ENV: 'test',
       ADMIN_MODE: 'true',
-      DB_PATH: ':memory:',
+      DB_PATH: './test-results/test.db', // 使用临时文件而不是内存数据库
       WEBDAV_URL: 'http://localhost:8080',
       WEBDAV_USERNAME: '',
       WEBDAV_PASSWORD: '',
@@ -95,6 +96,13 @@ export default defineConfig({
       WEBDAV_ASSETS_PATH: '/assets',
       JWT_SECRET: 'test-jwt-secret-key-for-testing-only-32-chars',
       ADMIN_EMAIL: 'admin@test.com',
+      // 其他必需的环境变量
+      OPENAI_API_KEY: 'test-key',
+      SITE_URL: 'http://localhost:4321',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_FROM_EMAIL: 'test@example.com',
+      PUBLIC_LUOSIMAO_SITE_KEY: 'test-site-key',
+      LUOSIMAO_SECRET_KEY: 'test-secret-key',
     },
   },
 });

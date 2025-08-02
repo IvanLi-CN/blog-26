@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
@@ -12,12 +13,28 @@ interface SimpleMarkdownPreviewProps {
 }
 
 export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMarkdownPreviewProps) {
+  const [isClient, setIsClient] = useState(false);
+
+  // 检测是否在客户端
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   if (!content.trim()) {
     return <div className="text-gray-500 italic text-center py-8">开始写作以查看预览...</div>;
   }
 
   // 如果需要移除标签，则处理内容
   const processedContent = removeTags ? removeTagsFromContent(content) : content;
+
+  // 在服务器端渲染时，显示原始内容以避免水合问题
+  if (!isClient) {
+    return (
+      <div className="markdown-preview">
+        <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">{processedContent}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="markdown-preview">

@@ -201,7 +201,7 @@ export const memosRouter = createTRPCRouter({
 
     try {
       const webdavClient = getWebDAVClient();
-      const memo = await webdavClient.updateMemo(input.id, input.content, input.isPublic);
+      const memo = await webdavClient.updateMemo(input.id, input.content, input.isPublic, input.attachments);
 
       // 刷新数据库缓存，确保更新的闪念立即在数据库中更新
       await refreshContentCache();

@@ -640,18 +640,30 @@ export class WebDAVClient {
    */
   async putFile(filePath: string, content: string): Promise<void> {
     const url = `${this.baseUrl}${filePath}`;
+    console.log(`🔄 WebDAV PUT 请求: ${url}`);
 
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        ...this.getAuthHeaders(),
-        'Content-Type': 'text/plain; charset=utf-8',
-      },
-      body: content,
-    });
+    try {
+      const response = await fetchWithRetry(url, {
+        method: 'PUT',
+        headers: {
+          ...this.getAuthHeaders(),
+          'Content-Type': 'text/plain; charset=utf-8',
+        },
+        body: content,
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to put file ${filePath}: ${response.status} ${response.statusText}`);
+      console.log(`📡 WebDAV PUT 响应: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error(`❌ WebDAV PUT 失败: ${response.status} ${response.statusText}`, responseText);
+        throw new Error(`Failed to put file ${filePath}: ${response.status} ${response.statusText}`);
+      }
+
+      console.log(`✅ WebDAV PUT 成功: ${filePath}`);
+    } catch (error) {
+      console.error(`❌ WebDAV PUT 异常: ${filePath}`, error);
+      throw error;
     }
   }
 
@@ -789,7 +801,30 @@ export class WebDAVClient {
   }
 
   async createDirectory(path: string): Promise<void> {
-    await this.putFile(`${path}/`, '');
+    const url = `${this.baseUrl}${path}`;
+    console.log(`📁 创建目录: ${url}`);
+
+    try {
+      const response = await fetchWithRetry(url, {
+        method: 'MKCOL',
+        headers: {
+          ...this.getAuthHeaders(),
+        },
+      });
+
+      console.log(`📡 MKCOL 响应: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error(`❌ MKCOL 失败: ${response.status} ${response.statusText}`, responseText);
+        throw new Error(`Failed to create directory ${path}: ${response.status} ${response.statusText}`);
+      }
+
+      console.log(`✅ 目录创建成功: ${path}`);
+    } catch (error) {
+      console.error(`❌ 创建目录异常: ${path}`, error);
+      throw error;
+    }
   }
 
   async deleteDirectory(path: string): Promise<void> {
@@ -815,68 +850,93 @@ export class WebDAVClient {
    * 创建新 Memo
    */
   async createMemo(content: string, isPublic: boolean, attachments: MemoAttachment[] = []): Promise<WebDAVMemo> {
+    console.log(`🚀 开始创建闪念，内容长度: ${content.length}, 公开: ${isPublic}, 附件数量: ${attachments.length}`);
+
     const now = new Date();
 
     // 生成日期前缀：YYYYMMDD
     const datePrefix = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
 
-    // 尝试从内容中提取第一个标题
-    const { extractFirstH1Title, cleanTitleForFilename } = await import('~/utils/markdown');
-    const { nanoid } = await import('nanoid');
+    try {
+      // 尝试从内容中提取第一个标题
+      const { extractFirstH1Title, cleanTitleForFilename } = await import('~/utils/markdown');
+      const { nanoid } = await import('nanoid');
 
-    const title = extractFirstH1Title(content);
-    let filenamePart: string;
+      const title = extractFirstH1Title(content);
+      let filenamePart: string;
 
-    if (title) {
-      filenamePart = cleanTitleForFilename(title);
-    } else {
-      // 生成8位随机 nanoid
-      filenamePart = nanoid(8);
+      if (title) {
+        filenamePart = cleanTitleForFilename(title);
+        console.log(`📝 使用标题作为文件名: ${title} -> ${filenamePart}`);
+      } else {
+        // 生成8位随机 nanoid
+        filenamePart = nanoid(8);
+        console.log(`🎲 生成随机文件名: ${filenamePart}`);
+      }
+
+      const id = `${datePrefix}_${filenamePart}.md`;
+      const filePath = `${this.memosPath}/${id}`;
+      console.log(`📁 文件路径: ${filePath}`);
+
+      // 使用统一的标签解析函数从正文中提取标签
+      const { parseTagsFromContent } = await import('~/utils/utils');
+      const parsedTags = parseTagsFromContent(content);
+      const tags = parsedTags.map((tag) => tag.content);
+      console.log(`🏷️ 解析到标签: ${tags.join(', ')}`);
+
+      const frontmatter: Record<string, any> = {
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+        public: isPublic,
+        tags: tags.length > 0 ? tags : undefined, // 只有当有标签时才添加 tags 字段
+        attachments: attachments.map((a) => ({
+          filename: a.filename,
+          path: a.path,
+          contentType: a.contentType,
+          size: a.size,
+          isImage: a.isImage,
+        })),
+      };
+
+      console.log(`📋 生成 frontmatter:`, frontmatter);
+
+      const fullContent = this.serializeMarkdownContent(frontmatter, content);
+      console.log(`📄 完整内容长度: ${fullContent.length}`);
+
+      await this.putFile(filePath, fullContent);
+      console.log(`✅ 文件上传完成`);
+
+      const slug = this.generateSlug(filePath, frontmatter);
+      console.log(`🔗 生成 slug: ${slug}`);
+
+      const result = {
+        id: filePath,
+        slug,
+        data: frontmatter,
+        body: content,
+        createdAt: now,
+        updatedAt: now,
+        attachments,
+        tags,
+      };
+
+      console.log(`🎉 闪念创建成功: ${filePath}`);
+      return result;
+    } catch (error) {
+      console.error(`❌ 创建闪念失败:`, error);
+      throw error;
     }
-
-    const id = `${datePrefix}_${filenamePart}.md`;
-    const filePath = `${this.memosPath}/${id}`;
-
-    // 使用统一的标签解析函数从正文中提取标签
-    const { parseTagsFromContent } = await import('~/utils/utils');
-    const parsedTags = parseTagsFromContent(content);
-    const tags = parsedTags.map((tag) => tag.content);
-
-    const frontmatter: Record<string, any> = {
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-      public: isPublic,
-      tags: tags.length > 0 ? tags : undefined, // 只有当有标签时才添加 tags 字段
-      attachments: attachments.map((a) => ({
-        filename: a.filename,
-        path: a.path,
-        contentType: a.contentType,
-        size: a.size,
-        isImage: a.isImage,
-      })),
-    };
-
-    const fullContent = this.serializeMarkdownContent(frontmatter, content);
-    await this.putFile(filePath, fullContent);
-
-    const slug = this.generateSlug(filePath, frontmatter);
-
-    return {
-      id: filePath,
-      slug,
-      data: frontmatter,
-      body: content,
-      createdAt: now,
-      updatedAt: now,
-      attachments,
-      tags,
-    };
   }
 
   /**
    * 更新 Memo
    */
-  async updateMemo(id: string, content: string, isPublic?: boolean): Promise<WebDAVMemo> {
+  async updateMemo(
+    id: string,
+    content: string,
+    isPublic?: boolean,
+    attachments?: MemoAttachment[]
+  ): Promise<WebDAVMemo> {
     const fileContent = await this.getFileContent(id);
     const { frontmatter } = this.parseFrontmatter(fileContent);
     const now = new Date();
@@ -894,6 +954,17 @@ export class WebDAVClient {
       frontmatter.public = isPublic;
     }
 
+    // 如果提供了attachments参数，则更新附件
+    if (attachments !== undefined) {
+      frontmatter.attachments = attachments.map((a) => ({
+        filename: a.filename,
+        path: a.path,
+        contentType: a.contentType,
+        size: a.size,
+        isImage: a.isImage,
+      }));
+    }
+
     const fullContent = this.serializeMarkdownContent(frontmatter, content);
     await this.putFile(id, fullContent);
 
@@ -906,7 +977,7 @@ export class WebDAVClient {
       body: content,
       createdAt: new Date(frontmatter.createdAt || now),
       updatedAt: now,
-      attachments: frontmatter.attachments || [],
+      attachments: attachments || frontmatter.attachments || [],
       tags,
     };
   }

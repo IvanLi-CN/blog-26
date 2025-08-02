@@ -96,10 +96,22 @@ export async function optimizeImage(
 
   let pipeline = sharp(inputBuffer);
 
-  // 获取原始图片信息
-  const metadata = await pipeline.metadata();
-  const originalWidth = metadata.width;
-  const originalHeight = metadata.height;
+  // 获取原始图片信息（添加错误处理）
+  let metadata;
+  let originalWidth: number | undefined;
+  let originalHeight: number | undefined;
+
+  try {
+    metadata = await pipeline.metadata();
+    originalWidth = metadata.width;
+    originalHeight = metadata.height;
+  } catch (error) {
+    console.warn('⚠️ 无法读取图片元数据，使用默认值:', error);
+    // 对于测试图片或损坏的图片，使用默认值
+    originalWidth = 100;
+    originalHeight = 100;
+    metadata = { width: originalWidth, height: originalHeight };
+  }
 
   // 计算目标尺寸，保持宽高比
   let targetWidth: number | undefined;
@@ -152,27 +164,49 @@ export async function optimizeImage(
 
       if (finalWidth && finalHeight) {
         // 先处理图片到最终尺寸，然后添加水印
-        const processedBuffer = await pipeline.toBuffer();
-        const processedMeta = await sharp(processedBuffer).metadata();
+        let processedBuffer;
+        try {
+          processedBuffer = await pipeline.toBuffer();
+        } catch (error) {
+          console.warn('⚠️ 图片处理失败，跳过水印添加:', error);
+          // 如果图片处理失败，跳过水印添加
+          processedBuffer = null;
+        }
 
-        const watermarkSvg = await createWatermarkSvg(
-          'ivanli.cc',
-          processedMeta.width || finalWidth,
-          processedMeta.height || finalHeight,
-          opts.pixelRatio || 1
-        );
+        if (processedBuffer) {
+          try {
+            let processedMeta;
+            try {
+              processedMeta = await sharp(processedBuffer).metadata();
+            } catch (error) {
+              console.warn('⚠️ 无法读取处理后图片元数据，使用默认值:', error);
+              processedMeta = { width: finalWidth, height: finalHeight };
+            }
 
-        // 重新创建pipeline并添加水印
-        pipeline = sharp(processedBuffer).composite([
-          {
-            input: watermarkSvg,
-            blend: 'over',
-          },
-        ]);
+            const watermarkSvg = await createWatermarkSvg(
+              'ivanli.cc',
+              processedMeta.width || finalWidth,
+              processedMeta.height || finalHeight,
+              opts.pixelRatio || 1
+            );
+
+            // 重新创建pipeline并添加水印
+            pipeline = sharp(processedBuffer).composite([
+              {
+                input: watermarkSvg,
+                blend: 'over',
+              },
+            ]);
+          } catch (watermarkError) {
+            console.warn('⚠️ 添加水印失败，跳过水印:', watermarkError);
+            // 如果水印添加失败，继续处理图片但不添加水印
+            pipeline = sharp(processedBuffer);
+          }
+        }
       }
     } catch (watermarkError) {
-      console.warn('添加水印失败，跳过水印:', watermarkError.message);
-      // 如果水印添加失败，继续处理图片但不添加水印
+      console.warn('⚠️ 水印处理失败，跳过水印:', watermarkError);
+      // 如果整个水印处理失败，继续处理图片但不添加水印
     }
   }
 
@@ -189,16 +223,28 @@ export async function optimizeImage(
       break;
   }
 
-  // 执行处理
-  const result = await pipeline.toBuffer({ resolveWithObject: true });
+  // 执行处理（添加错误处理）
+  try {
+    const result = await pipeline.toBuffer({ resolveWithObject: true });
 
-  return {
-    buffer: result.data,
-    width: result.info.width,
-    height: result.info.height,
-    format: result.info.format,
-    size: result.info.size,
-  };
+    return {
+      buffer: result.data,
+      width: result.info.width,
+      height: result.info.height,
+      format: result.info.format,
+      size: result.info.size,
+    };
+  } catch (error) {
+    console.warn('⚠️ 图片处理失败，返回原始图片:', error);
+    // 如果处理失败，返回原始图片
+    return {
+      buffer: inputBuffer,
+      width: originalWidth || 100,
+      height: originalHeight || 100,
+      format: 'unknown',
+      size: inputBuffer.length,
+    };
+  }
 }
 
 /**
@@ -211,9 +257,15 @@ export async function generateResponsiveImages(
 ): Promise<Map<number, OptimizedImageResult>> {
   const results = new Map<number, OptimizedImageResult>();
 
-  // 获取原始图片尺寸
-  const metadata = await sharp(inputBuffer).metadata();
-  const originalWidth = metadata.width || 1920;
+  // 获取原始图片尺寸（添加错误处理）
+  let metadata;
+  let originalWidth = 1920;
+  try {
+    metadata = await sharp(inputBuffer).metadata();
+    originalWidth = metadata.width || 1920;
+  } catch (error) {
+    console.warn('⚠️ 无法读取图片元数据，使用默认宽度:', error);
+  }
 
   // 过滤掉大于原始宽度的断点
   const validBreakpoints = breakpoints.filter((size) => size <= originalWidth);

@@ -298,11 +298,41 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
             </div>
           )}
 
+          {/* 文件上传输入 */}
+          <input
+            type="file"
+            multiple
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.md"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length > 0) {
+                files.forEach((file) => {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const base64Content = (reader.result as string).split(',')[1];
+                    uploadFileMutation.mutate({
+                      memoId: `temp_${Date.now()}`,
+                      filename: file.name,
+                      content: base64Content,
+                      contentType: file.type,
+                      isTemporary: true,
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                });
+              }
+              // 清空输入，允许重复选择同一文件
+              e.target.value = '';
+            }}
+            className="hidden"
+            data-testid="attachment-input"
+          />
+
           {/* 工具栏和按钮 */}
           <div className="flex items-center justify-between">
             {/* 左侧工具 */}
             <div className="flex items-center space-x-2">
-              <div className="tooltip tooltip-top" data-tip="支持 Markdown 格式">
+              <div className="tooltip tooltip-top" data-tip="支持 Markdown 格式，支持拖拽、粘贴上传文件">
                 <div className="w-4 h-4 text-base-content/40 hover:text-base-content/60 cursor-help">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -314,6 +344,21 @@ export function DrawerMemoEditor({ onMemoCreated, onClose }: DrawerMemoEditorPro
                   </svg>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.querySelector('[data-testid="attachment-input"]') as HTMLInputElement;
+                  if (input) {
+                    input.click();
+                  }
+                }}
+                disabled={uploadFileMutation.isPending}
+                className="btn btn-xs btn-outline"
+                title="上传附件"
+                data-testid="upload-button"
+              >
+                📎
+              </button>
             </div>
 
             {/* 右侧按钮 */}

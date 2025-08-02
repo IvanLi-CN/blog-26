@@ -151,15 +151,48 @@ class SimpleWebDAVServer {
   }
 
   // 处理 PUT 请求
-  private async handlePut(request: Request, pathname: string): Promise<Response> {
+  private async handlePut(request: Request, pathname: string): Response {
     const fullPath = join(this.rootPath, pathname);
+    console.log(`📝 PUT 请求: ${pathname} -> ${fullPath}`);
 
     try {
-      const content = await request.text();
+      // 确保目录存在
+      const { mkdirSync } = await import('node:fs');
+      const { dirname } = await import('node:path');
+      const dir = dirname(fullPath);
+
+      if (!existsSync(dir)) {
+        console.log(`📁 创建目录: ${dir}`);
+        mkdirSync(dir, { recursive: true });
+      }
+
+      // 检查Content-Type来决定如何处理内容
+      const contentType = request.headers.get('Content-Type') || '';
+      console.log(`📋 Content-Type: ${contentType}`);
+
+      let content: string | Uint8Array;
+      let contentLength: number;
+
+      if (contentType.startsWith('image/') || contentType.startsWith('application/')) {
+        // 处理二进制内容（图片、文件等）
+        const arrayBuffer = await request.arrayBuffer();
+        content = new Uint8Array(arrayBuffer);
+        contentLength = arrayBuffer.byteLength;
+        console.log(`💾 写入二进制文件，大小: ${contentLength} 字节`);
+      } else {
+        // 处理文本内容
+        content = await request.text();
+        contentLength = content.length;
+        console.log(`💾 写入文本文件，大小: ${contentLength} 字符`);
+        console.log(`📄 文件内容预览: ${content.substring(0, 200)}...`);
+      }
+
       await Bun.write(fullPath, content);
+      console.log(`✅ 文件写入成功: ${fullPath}`);
 
       return new Response('Created', { status: 201 });
-    } catch (_error) {
+    } catch (error) {
+      console.error(`❌ PUT 请求失败: ${pathname}`, error);
       return new Response('Internal Server Error', { status: 500 });
     }
   }
@@ -176,6 +209,39 @@ class SimpleWebDAVServer {
       await Bun.write(fullPath, ''); // 简化删除操作
       return new Response('No Content', { status: 204 });
     } catch (_error) {
+      return new Response('Internal Server Error', { status: 500 });
+    }
+  }
+
+  // 处理 MKCOL 请求（创建目录）
+  private async handleMkcol(pathname: string): Promise<Response> {
+    const fullPath = join(this.rootPath, pathname);
+    console.log(`📁 MKCOL 请求: ${pathname} -> ${fullPath}`);
+
+    try {
+      // 检查父目录是否存在
+      const { dirname } = await import('node:path');
+      const parentDir = dirname(fullPath);
+
+      if (!existsSync(parentDir)) {
+        console.log(`❌ 父目录不存在: ${parentDir}`);
+        return new Response('Conflict', { status: 409 });
+      }
+
+      // 检查目录是否已存在
+      if (existsSync(fullPath)) {
+        console.log(`❌ 目录已存在: ${fullPath}`);
+        return new Response('Method Not Allowed', { status: 405 });
+      }
+
+      // 创建目录
+      const { mkdirSync } = await import('node:fs');
+      mkdirSync(fullPath, { recursive: false });
+      console.log(`✅ 目录创建成功: ${fullPath}`);
+
+      return new Response('Created', { status: 201 });
+    } catch (error) {
+      console.error(`❌ MKCOL 请求失败: ${pathname}`, error);
       return new Response('Internal Server Error', { status: 500 });
     }
   }
@@ -217,39 +283,88 @@ class SimpleWebDAVServer {
         return this.handlePut(request, pathname);
       case 'DELETE':
         return this.handleDelete(pathname);
+      case 'MKCOL':
+        return this.handleMkcol(pathname);
       default:
         return new Response('Method Not Allowed', { status: 405 });
     }
   }
 
-  // 启动服务器
-  async start(): Promise<void> {
-    // 检查测试数据目录
-    if (!existsSync(this.rootPath)) {
-      console.error(`❌ 测试数据目录不存在: ${this.rootPath}`);
-      console.log('请先运行 "bun run test-data:generate" 生成测试数据');
-      process.exit(1);
+  // 检查端口是否可用
+  private async isPortAvailable(port: number): Promise<boolean> {
+    try {
+      const testServer = Bun.serve({
+        port,
+        hostname: this.host,
+        fetch: () => new Response('test'),
+      });
+      testServer.stop();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // 等待端口可用
+  private async waitForPortAvailable(maxRetries = 10): Promise<number> {
+    let currentPort = this.port;
+
+    for (let i = 0; i < maxRetries; i++) {
+      if (await this.isPortAvailable(currentPort)) {
+        return currentPort;
+      }
+
+      console.log(`⚠️ 端口 ${currentPort} 被占用，尝试端口 ${currentPort + 1}`);
+      currentPort++;
     }
 
-    const server = Bun.serve({
-      port: this.port,
-      hostname: this.host,
-      fetch: (request) => this.handleRequest(request),
-    });
+    throw new Error(`无法找到可用端口，已尝试 ${this.port} 到 ${currentPort - 1}`);
+  }
 
-    console.log('🚀 WebDAV 测试服务器已启动');
-    console.log(`📍 地址: http://${this.host}:${this.port}`);
-    console.log(`📁 根目录: ${this.rootPath}`);
-    console.log('\n📋 环境变量配置:');
-    console.log(`WEBDAV_URL=http://localhost:${this.port}`);
-    console.log('\n按 Ctrl+C 停止服务器');
+  // 启动服务器
+  async start(): Promise<void> {
+    try {
+      // 检查测试数据目录
+      if (!existsSync(this.rootPath)) {
+        console.error(`❌ 测试数据目录不存在: ${this.rootPath}`);
+        console.log('请先运行 "bun run test-data:generate" 生成测试数据');
+        process.exit(1);
+      }
 
-    // 优雅关闭
-    process.on('SIGINT', () => {
-      console.log('\n👋 正在关闭 WebDAV 服务器...');
-      server.stop();
-      process.exit(0);
-    });
+      // 等待端口可用
+      const availablePort = await this.waitForPortAvailable();
+      this.port = availablePort;
+
+      const server = Bun.serve({
+        port: this.port,
+        hostname: this.host,
+        fetch: (request) => this.handleRequest(request),
+      });
+
+      console.log('🚀 WebDAV 测试服务器已启动');
+      console.log(`📍 地址: http://${this.host}:${this.port}`);
+      console.log(`📁 根目录: ${this.rootPath}`);
+      console.log('\n📋 环境变量配置:');
+      console.log(`WEBDAV_URL=http://localhost:${this.port}`);
+      console.log('\n按 Ctrl+C 停止服务器');
+
+      // 优雅关闭
+      process.on('SIGINT', () => {
+        console.log('\n👋 正在关闭 WebDAV 服务器...');
+        server.stop();
+        process.exit(0);
+      });
+
+      // 处理未捕获的异常
+      process.on('uncaughtException', (error) => {
+        console.error('❌ WebDAV 服务器发生未捕获异常:', error);
+        server.stop();
+        process.exit(1);
+      });
+    } catch (error) {
+      console.error('❌ WebDAV 服务器启动失败:', error);
+      process.exit(1);
+    }
   }
 }
 

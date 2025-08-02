@@ -10,6 +10,7 @@ interface MilkdownEditorProps {
   onChange: (content: string) => void;
   placeholder?: string;
   className?: string;
+  'data-testid'?: string;
 }
 
 export function MilkdownEditor({
@@ -17,6 +18,7 @@ export function MilkdownEditor({
   onChange,
   placeholder = '写下你的想法...',
   className = '',
+  'data-testid': dataTestId,
 }: MilkdownEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
@@ -90,5 +92,5 @@ export function MilkdownEditor({
     }
   }, [content, onChange, placeholder]);
 
-  return <div ref={editorRef} className={`milkdown-editor ${className}`} />;
+  return <div ref={editorRef} className={`milkdown-editor ${className}`} data-testid={dataTestId} />;
 }

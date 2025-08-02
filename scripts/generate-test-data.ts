@@ -2182,6 +2182,7 @@ function createDirectories() {
     WEBDAV_DIR,
     join(WEBDAV_DIR, 'projects'),
     join(WEBDAV_DIR, 'Memos'),
+    join(WEBDAV_DIR, 'Memos', 'assets'), // Memos 附件目录
     join(WEBDAV_DIR, 'assets'), // WebDAV图片目录
     LOCAL_DIR,
     join(LOCAL_DIR, 'projects'),

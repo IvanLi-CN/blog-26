@@ -30,6 +30,12 @@ async function globalTeardown() {
       // 忽略目录不存在的错误
     });
 
+    // 4. 清理测试数据库
+    console.log('🗄️ 清理测试数据库...');
+    await fs.unlink('./test-results/test.db').catch(() => {
+      // 忽略文件不存在的错误
+    });
+
     console.log('✅ 全局清理完成');
   } catch (error) {
     console.error('❌ 全局清理失败:', error);
