@@ -6,8 +6,8 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { TEST_WEBDAV_CONFIG, TestWebDAVServer } from './start-test-webdav-dufs.ts';
 
 // 配置
 const CONFIG = {
@@ -26,105 +26,31 @@ const CONFIG = {
 
 // 服务器管理器
 class TestServerManager {
-  private webdavServer: any = null;
+  private webdavServer: TestWebDAVServer | null = null;
   private astroProcess: any = null;
   private webdavPort: number = CONFIG.webdav.startPort;
 
-  // 检查端口是否可用
-  private async isPortAvailable(port: number): Promise<boolean> {
-    try {
-      const testServer = Bun.serve({
-        port,
-        hostname: CONFIG.webdav.host,
-        fetch: () => new Response('test'),
-      });
-      testServer.stop();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  // 找到可用的 WebDAV 端口
-  private async findWebDAVPort(): Promise<number> {
-    for (let i = 0; i < CONFIG.webdav.maxPortTries; i++) {
-      const testPort = CONFIG.webdav.startPort + i;
-      if (await this.isPortAvailable(testPort)) {
-        return testPort;
-      }
-    }
-    throw new Error(`无法找到可用的 WebDAV 端口`);
-  }
-
   // 启动 WebDAV 服务器
   private async startWebDAV(): Promise<void> {
-    console.log('🚀 启动 WebDAV 服务器...');
-
-    // 确保测试数据目录存在
-    if (!existsSync(CONFIG.webdav.rootPath)) {
-      const { mkdirSync } = await import('node:fs');
-      mkdirSync(CONFIG.webdav.rootPath, { recursive: true });
-      console.log(`📁 创建测试数据目录: ${CONFIG.webdav.rootPath}`);
-    }
-
-    // 找到可用端口
-    this.webdavPort = await this.findWebDAVPort();
-
-    // 启动 WebDAV 服务器
-    this.webdavServer = Bun.serve({
-      port: this.webdavPort,
-      hostname: CONFIG.webdav.host,
-      fetch: (request) => this.handleWebDAVRequest(request),
-    });
-
-    // 设置环境变量
-    process.env.WEBDAV_URL = `http://localhost:${this.webdavPort}`;
-
-    console.log(`✅ WebDAV 服务器已启动: http://localhost:${this.webdavPort}`);
-  }
-
-  // 处理 WebDAV 请求
-  private async handleWebDAVRequest(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    const pathname = decodeURIComponent(url.pathname);
+    console.log('🚀 启动测试环境 WebDAV 服务器 (dufs)...');
 
     try {
-      // 健康检查
-      if (pathname === '/' || pathname === '/health') {
-        return new Response('WebDAV Server OK', {
-          status: 200,
-          headers: { 'Content-Type': 'text/plain' },
-        });
-      }
+      // 创建 dufs WebDAV 服务器实例
+      this.webdavServer = new TestWebDAVServer(TEST_WEBDAV_CONFIG);
 
-      // PROPFIND 请求
-      if (request.method === 'PROPFIND') {
-        return new Response(
-          `<?xml version="1.0" encoding="utf-8"?>
-<D:multistatus xmlns:D="DAV:">
-  <D:response>
-    <D:href>${pathname}</D:href>
-    <D:propstat>
-      <D:prop>
-        <D:resourcetype><D:collection/></D:resourcetype>
-        <D:getlastmodified>${new Date().toUTCString()}</D:getlastmodified>
-      </D:prop>
-      <D:status>HTTP/1.1 200 OK</D:status>
-    </D:propstat>
-  </D:response>
-</D:multistatus>`,
-          {
-            status: 207,
-            headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-          }
-        );
-      }
+      // 启动服务器
+      await this.webdavServer.start();
 
-      return new Response('OK', { status: 200 });
+      // 获取实际使用的端口
+      this.webdavPort = this.webdavServer.getPort();
+
+      // 设置环境变量
+      process.env.WEBDAV_URL = `http://localhost:${this.webdavPort}`;
+
+      console.log(`✅ 测试环境 WebDAV 服务器已启动: http://localhost:${this.webdavPort}`);
     } catch (error) {
-      console.error('WebDAV 请求处理错误:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      console.error('❌ WebDAV 服务器启动失败:', error);
+      throw error;
     }
   }
 
@@ -189,9 +115,9 @@ class TestServerManager {
   private async verifyServers(): Promise<void> {
     console.log('🔍 验证服务器状态...');
 
-    // 验证 WebDAV
+    // 验证 WebDAV - 使用根路径而不是 /health
     try {
-      const webdavResponse = await fetch(`http://localhost:${this.webdavPort}/health`);
+      const webdavResponse = await fetch(`http://localhost:${this.webdavPort}/`);
       if (!webdavResponse.ok) {
         throw new Error(`WebDAV 响应异常: ${webdavResponse.status}`);
       }

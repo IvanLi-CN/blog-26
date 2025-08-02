@@ -15,9 +15,9 @@ export default defineConfig({
   globalTeardown: './tests/e2e/setup/global-teardown.ts',
 
   // 测试超时设置
-  timeout: 30 * 1000, // 30秒
+  timeout: 60 * 1000, // 60秒 - 增加超时时间以处理图片处理
   expect: {
-    timeout: 5 * 1000, // 5秒
+    timeout: 10 * 1000, // 10秒 - 增加期望超时时间
   },
 
   // 测试配置

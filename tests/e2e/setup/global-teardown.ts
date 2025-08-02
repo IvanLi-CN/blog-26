@@ -26,7 +26,7 @@ async function globalTeardown() {
 
     // 3. 清理临时文件
     console.log('🗂️ 清理临时文件...');
-    await fs.rmdir('test-data/webdav/assets/tmp', { recursive: true }).catch(() => {
+    await fs.rm('test-data/webdav/assets/tmp', { recursive: true, force: true }).catch(() => {
       // 忽略目录不存在的错误
     });
 

@@ -337,9 +337,10 @@ test.describe('闪念附件上传测试', () => {
     await memosPage.uploadAttachment(TestFiles.pngImage);
     await memosPage.page.waitForTimeout(2000); // 等待上传完成
 
-    // 验证附件存在
-    const attachmentGrid = memosPage.page.locator('[data-testid="attachment-grid"]');
-    const attachmentItem = memosPage.page.locator('[data-testid="attachment-item"]');
+    // 验证附件存在 - 使用更具体的选择器
+    const quickEditor = memosPage.page.getByTestId('quick-memo-editor');
+    const attachmentGrid = quickEditor.getByTestId('attachment-grid');
+    const attachmentItem = quickEditor.getByTestId('attachment-item');
 
     try {
       await expect(attachmentGrid).toBeVisible({ timeout: 10000 });
@@ -347,17 +348,17 @@ test.describe('闪念附件上传测试', () => {
 
       console.log('✅ 附件上传成功，开始删除...');
 
-      // 查找删除按钮（使用多种选择器）
+      // 查找删除按钮（使用更具体的选择器）
       const deleteSelectors = [
-        '[data-testid="attachment-item"] .btn-error',
-        '[data-testid="attachment-item"] button[title*="删除"]',
-        '[data-testid="attachment-item"] button:has-text("×")',
-        '[data-testid="attachment-item"] button:has-text("删除")',
+        '.btn-error',
+        'button[title*="删除"]',
+        'button:has-text("×")',
+        'button:has-text("删除")',
       ];
 
       let deleteButton = null;
       for (const selector of deleteSelectors) {
-        const button = memosPage.page.locator(selector).first();
+        const button = attachmentItem.locator(selector).first();
         if (await button.isVisible()) {
           deleteButton = button;
           console.log(`🔍 找到删除按钮: ${selector}`);

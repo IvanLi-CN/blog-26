@@ -50,10 +50,13 @@ async function downloadImage(url: string, filePath: string, maxRetries: number =
 }
 
 // 测试数据配置
-const TEST_DATA_DIR = 'test-data';
-const WEBDAV_DIR = join(TEST_DATA_DIR, 'webdav');
-const LOCAL_DIR = join(TEST_DATA_DIR, 'local');
-// const SRC_CONTENT_DIR = join('src', 'content'); // 暂时未使用
+function getDataDirectories(environment: 'dev' | 'test' = 'test') {
+  const baseDir = environment === 'dev' ? 'dev-data' : 'test-data';
+  return {
+    WEBDAV_DIR: join(baseDir, 'webdav'),
+    LOCAL_DIR: join(baseDir, 'local'),
+  };
+}
 
 // 生成随机日期（过去30天内）
 function generateRandomDate(): Date {
@@ -2177,16 +2180,16 @@ function generateMemos() {
 }
 
 // 创建目录
-function createDirectories() {
+function createDirectories(webdavDir: string, localDir: string) {
   const dirs = [
-    WEBDAV_DIR,
-    join(WEBDAV_DIR, 'projects'),
-    join(WEBDAV_DIR, 'Memos'),
-    join(WEBDAV_DIR, 'Memos', 'assets'), // Memos 附件目录
-    join(WEBDAV_DIR, 'assets'), // WebDAV图片目录
-    LOCAL_DIR,
-    join(LOCAL_DIR, 'projects'),
-    join(LOCAL_DIR, 'assets'), // 本地图片目录
+    webdavDir,
+    join(webdavDir, 'projects'),
+    join(webdavDir, 'Memos'),
+    join(webdavDir, 'Memos', 'assets'), // Memos 附件目录
+    join(webdavDir, 'assets'), // WebDAV图片目录
+    localDir,
+    join(localDir, 'projects'),
+    join(localDir, 'assets'), // 本地图片目录
   ];
 
   dirs.forEach((dir) => {
@@ -2237,7 +2240,7 @@ function writeMarkdownFile(filePath: string, frontmatter: any, body: string) {
 }
 
 // 下载测试图片
-async function downloadTestImages() {
+async function downloadTestImages(webdavDir: string, localDir: string) {
   console.log('\n📸 下载测试图片...');
 
   const images = [
@@ -2299,13 +2302,13 @@ async function downloadTestImages() {
     // WebDAV 图片下载任务
     ...webdavImages.map((image) => ({
       url: image.url,
-      filePath: join(WEBDAV_DIR, 'assets', image.filename),
+      filePath: join(webdavDir, 'assets', image.filename),
       filename: image.filename,
     })),
     // 本地图片下载任务
     ...localImages.map((image) => ({
       url: image.url,
-      filePath: join(LOCAL_DIR, 'assets', image.filename),
+      filePath: join(localDir, 'assets', image.filename),
       filename: image.filename,
     })),
   ];
@@ -2348,21 +2351,28 @@ async function downloadTestImages() {
 async function main() {
   const args = process.argv.slice(2);
 
+  // 确定环境
+  const environment: 'dev' | 'test' = args.includes('--dev') ? 'dev' : 'test';
+  const { WEBDAV_DIR, LOCAL_DIR } = getDataDirectories(environment);
+
+  const envName = environment === 'dev' ? '开发环境' : '测试环境';
+
   if (args.includes('--clean')) {
-    if (existsSync(TEST_DATA_DIR)) {
-      rmSync(TEST_DATA_DIR, { recursive: true, force: true });
-      console.log(`清理测试数据目录: ${TEST_DATA_DIR}`);
+    const baseDir = environment === 'dev' ? 'dev-data' : 'test-data';
+    if (existsSync(baseDir)) {
+      rmSync(baseDir, { recursive: true, force: true });
+      console.log(`清理${envName}数据目录: ${baseDir}`);
     }
     return;
   }
 
-  console.log('开始生成测试数据...');
+  console.log(`开始生成${envName}测试数据...`);
 
   // 创建目录结构
-  createDirectories();
+  createDirectories(WEBDAV_DIR, LOCAL_DIR);
 
   // 下载测试图片
-  await downloadTestImages();
+  await downloadTestImages(WEBDAV_DIR, LOCAL_DIR);
 
   // 生成数据
   const webdavPosts = generateWebDAVPosts();
@@ -2371,7 +2381,7 @@ async function main() {
   const localProjects = generateLocalProjects();
   const memos = generateMemos();
 
-  console.log('\n生成 WebDAV 测试数据...');
+  console.log(`\n生成 ${envName} WebDAV 测试数据...`);
 
   // WebDAV 文章
   webdavPosts.forEach((post, index) => {
@@ -2395,7 +2405,7 @@ async function main() {
     writeMarkdownFile(join(WEBDAV_DIR, 'Memos', fileName), frontmatter, body);
   });
 
-  console.log('\n生成本地测试数据...');
+  console.log(`\n生成 ${envName} 本地测试数据...`);
 
   // 本地文章
   localPosts.forEach((post, index) => {
@@ -2411,12 +2421,13 @@ async function main() {
     writeMarkdownFile(join(LOCAL_DIR, 'projects', fileName), frontmatter, body);
   });
 
-  console.log('\n✅ 测试数据生成完成！');
+  console.log(`\n✅ ${envName}测试数据生成完成！`);
   console.log(`\n📁 数据位置:`);
   console.log(`  - WebDAV 数据: ${WEBDAV_DIR}`);
   console.log(`  - 本地数据: ${LOCAL_DIR}`);
   console.log(`\n🚀 下一步:`);
-  console.log(`  1. 运行 'bun run webdav:start' 启动 WebDAV 服务器`);
+  const webdavCommand = environment === 'dev' ? 'bun run webdav:dev' : 'bun run webdav:test';
+  console.log(`  1. 运行 '${webdavCommand}' 启动 WebDAV 服务器`);
   console.log(`  2. 配置环境变量指向本地 WebDAV 服务器`);
   console.log(`  3. 运行 'bun run dev' 启动开发服务器`);
 }
