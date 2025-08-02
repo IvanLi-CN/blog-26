@@ -28,5 +28,4 @@ export const collections = {
   posts: defineCollection({ schema: postSchema }),
   projects: defineCollection({ schema: postSchema }),
   notes: defineCollection({ schema: notesSchema }),
-  'local-notes': defineCollection({ schema: notesSchema }),
 };
