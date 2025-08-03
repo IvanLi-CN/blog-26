@@ -19,9 +19,21 @@ import {
  * 使用与 Astro 配置相同的插件来保持一致性
  */
 export async function parseMarkdownToHTML(markdown: string, articlePath?: string): Promise<string> {
+  // 处理Milkdown编辑器输出的HTML转义问题
+  // Milkdown有时会对markdown语法进行HTML转义，我们需要反转义
+  let processedMarkdown = markdown
+    .replace(/\\#/g, '#') // 反转义标题
+    .replace(/!\\\[/g, '![') // 反转义图片开始
+    .replace(/\\\]/g, ']') // 反转义右方括号
+    .replace(/\\\(/g, '(') // 反转义左圆括号
+    .replace(/\\`/g, '`') // 反转义代码
+    .replace(/\\\*/g, '*') // 反转义粗体/斜体
+    .replace(/\\\_/g, '_') // 反转义下划线
+    .replace(/<br\s*\/?>/gi, '\n\n'); // 将HTML换行转换为markdown换行
+
   // 创建一个虚拟文件对象
   const vfile = {
-    value: markdown,
+    value: processedMarkdown,
     data: {} as any,
   };
 

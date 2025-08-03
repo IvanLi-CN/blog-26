@@ -39,7 +39,13 @@ export default function ContentImageHandler({ children }: ContentImageHandlerPro
         let fullSizeSrc = originalSrc;
 
         // 处理不同类型的图片路径
-        if (originalSrc.includes('/api/render-image/')) {
+        if (originalSrc.startsWith('data:')) {
+          // Base64 数据 URL，直接使用
+          fullSizeSrc = originalSrc;
+        } else if (originalSrc.startsWith('http://') || originalSrc.startsWith('https://')) {
+          // 外部 URL，直接使用
+          fullSizeSrc = originalSrc;
+        } else if (originalSrc.includes('/api/render-image/')) {
           // 如果已经是 /api/render-image/ 路径，提取路径部分并获取高质量版本
           const pathMatch = originalSrc.match(/\/api\/render-image\/(.+?)(?:\?|$)/);
           if (pathMatch) {
@@ -58,11 +64,7 @@ export default function ContentImageHandler({ children }: ContentImageHandlerPro
           // 如果是相对路径（如 assets/xxx.jpg 或 ./assets/xxx.jpg），转换为 /api/render-image/ 路径
           const cleanPath = originalSrc.replace(/^\.\//, '');
           fullSizeSrc = `/api/render-image/${cleanPath}?f=webp&q=95&s=2048`;
-        } else if (
-          !originalSrc.startsWith('http://') &&
-          !originalSrc.startsWith('https://') &&
-          !originalSrc.startsWith('/')
-        ) {
+        } else if (!originalSrc.startsWith('/')) {
           // 如果是其他相对路径，也转换为 /api/render-image/ 路径
           fullSizeSrc = `/api/render-image/assets/${originalSrc}?f=webp&q=95&s=2048`;
         }

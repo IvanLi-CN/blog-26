@@ -143,7 +143,7 @@ const isUserAdmin = Astro.locals.isAdmin || false;
 
       {
         post.image ? (
-          <ContentImageHandler client:load>
+          <ContentImageHandler client:only="react">
             <Image
               src={post.image}
               class="max-w-full lg:max-w-[900px] mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer"
@@ -167,7 +167,7 @@ const isUserAdmin = Astro.locals.isAdmin || false;
         )
       }
     </header>
-    <ContentImageHandler client:load>
+    <ContentImageHandler client:only="react">
       <div
         class="mx-auto px-6 sm:px-6 max-w-3xl prose prose-md xl:text-lg dark:prose-invert dark:prose-headings:text-slate-300 prose-headings:font-heading prose-headings:leading-tighter prose-headings:tracking-tighter prose-headings:font-bold prose-a:text-primary dark:prose-a:text-blue-400 prose-img:rounded-md prose-img:shadow-lg mt-8 prose-headings:scroll-mt-[80px] prose-li:my-0"
       >

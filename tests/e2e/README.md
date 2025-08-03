@@ -15,6 +15,8 @@ tests/e2e/
 │   ├── memo-publish.spec.ts    # 基础发布测试
 │   ├── memo-markdown.spec.ts   # Markdown格式测试
 │   ├── memo-attachments.spec.ts # 附件上传测试
+│   ├── memo-base64-preview.spec.ts # Base64图片预览功能测试
+│   ├── memo-milkdown-escape.spec.ts # Milkdown编辑器转义处理测试
 │   ├── memo-mixed-content.spec.ts # 混合内容测试
 │   ├── memo-editing.spec.ts    # 编辑功能测试
 │   └── memo-persistence.spec.ts # 数据持久化测试
@@ -86,6 +88,39 @@ bun run test:e2e && bun run test:e2e:report
 - ✅ 键盘快捷键发布
 - ✅ 表单验证
 - ✅ 网络错误处理
+
+### Markdown渲染功能
+
+- ✅ 基本Markdown语法（标题、粗体、斜体、列表等）
+- ✅ 代码块语法高亮
+- ✅ 链接和引用块
+- ✅ 表格渲染
+- ✅ 标签识别和显示
+
+### Base64图片预览功能
+
+- ✅ 编辑器预览模式中的Base64图片显示
+- ✅ 发布后的Base64图片正确渲染
+- ✅ 多种图片格式支持（PNG、GIF、WebP、SVG）
+- ✅ 复杂内容中的Base64图片处理
+- ✅ 无效Base64图片错误处理
+
+### Milkdown编辑器转义处理
+
+- ✅ 标题转义处理（\# → #）
+- ✅ 图片转义处理（!\[alt]\(url) → ![alt](url)）
+- ✅ 文本格式转义（\*\* → **, \_ → _）
+- ✅ 代码转义处理（\` → `）
+- ✅ HTML换行转换（<br /> → \n\n）
+- ✅ 混合转义内容处理
+
+### 附件上传功能
+
+- ✅ PNG/JPG/GIF图片上传
+- ✅ 多个附件上传
+- ✅ 附件预览显示
+- ✅ 附件文件路径处理
+- ✅ 图片点击放大功能
 
 ### 实现状态
 - **基础框架**: ✅ 完成 - Playwright配置、页面对象模式、测试工具完整

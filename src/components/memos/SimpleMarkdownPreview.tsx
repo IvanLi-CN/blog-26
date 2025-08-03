@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { removeTagsFromContent } from '~/utils/utils';
 
@@ -13,34 +11,31 @@ interface SimpleMarkdownPreviewProps {
 }
 
 export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMarkdownPreviewProps) {
-  const [isClient, setIsClient] = useState(false);
-
-  // 检测是否在客户端
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   if (!content.trim()) {
     return <div className="text-gray-500 italic text-center py-8">开始写作以查看预览...</div>;
   }
 
   // 如果需要移除标签，则处理内容
-  const processedContent = removeTags ? removeTagsFromContent(content) : content;
+  let processedContent = removeTags ? removeTagsFromContent(content) : content;
 
-  // 在服务器端渲染时，显示原始内容以避免水合问题
-  if (!isClient) {
-    return (
-      <div className="markdown-preview">
-        <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">{processedContent}</div>
-      </div>
-    );
-  }
+  // 处理Milkdown编辑器输出的HTML转义问题
+  // Milkdown有时会对markdown语法进行HTML转义，我们需要反转义
+  processedContent = processedContent
+    .replace(/\\#/g, '#') // 反转义标题
+    .replace(/!\\\[/g, '![') // 反转义图片开始
+    .replace(/\\\]/g, ']') // 反转义右方括号
+    .replace(/\\\(/g, '(') // 反转义左圆括号
+    .replace(/\\`/g, '`') // 反转义代码
+    .replace(/\\\*/g, '*') // 反转义粗体/斜体
+    .replace(/\\\_/g, '_') // 反转义下划线
+    .replace(/<br\s*\/?>/gi, '\n\n'); // 将HTML换行转换为markdown换行
 
   return (
     <div className="markdown-preview">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight, rehypeRaw]}
+        rehypePlugins={[rehypeHighlight]}
+        urlTransform={(url) => url}
         components={{
           // 自定义组件样式，适配闪念的紧凑布局
           h1: ({ children }) => <h1 className="text-xl font-bold mt-6 mb-3 first:mt-0">{children}</h1>,
@@ -77,13 +72,20 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
           tr: ({ children }) => <tr className="markdown-table-row">{children}</tr>,
           th: ({ children }) => <th className="markdown-table-header">{children}</th>,
           td: ({ children }) => <td className="markdown-table-cell">{children}</td>,
-          a: ({ children, href }) => (
+          a: ({ children }) => (
             <span className="text-blue-600 dark:text-blue-400 underline cursor-default">{children}</span>
           ),
           img: ({ src, alt }) => {
             // 转换图片路径为优化后的图片路径
             let convertedSrc = src;
-            if (src && !src.startsWith('http://') && !src.startsWith('https://')) {
+            // 如果是base64图片、HTTP/HTTPS URL或已经是render-image端点，直接使用
+            if (
+              src &&
+              !src.startsWith('http://') &&
+              !src.startsWith('https://') &&
+              !src.startsWith('data:') &&
+              !src.startsWith('/api/render-image/')
+            ) {
               let cleanPath = src;
 
               // 处理相对路径和绝对路径
@@ -118,7 +120,7 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
                 alt={alt}
                 className="max-w-full h-auto rounded-md my-3"
                 loading="lazy"
-                onError={(e) => {
+                onError={() => {
                   console.error('Image failed to load in SimpleMarkdownPreview:', {
                     originalSrc: src,
                     convertedSrc: convertedSrc,

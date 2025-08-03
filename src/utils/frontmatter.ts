@@ -91,8 +91,13 @@ export const webdavImagesRehypePlugin: RehypePlugin = () => {
       if (node.tagName === 'img' && node.properties && node.properties.src) {
         const src = node.properties.src as string;
 
-        // 如果已经是完整的 URL 或已经是优化图片端点，跳过处理
-        if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/api/render-image/')) {
+        // 如果已经是完整的 URL、base64图片或已经是优化图片端点，跳过处理
+        if (
+          src.startsWith('http://') ||
+          src.startsWith('https://') ||
+          src.startsWith('data:') ||
+          src.startsWith('/api/render-image/')
+        ) {
           return;
         }
 

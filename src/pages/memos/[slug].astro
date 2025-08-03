@@ -160,7 +160,7 @@ const memoData = {
     }
 
     <!-- 内容 -->
-    <ContentImageHandler client:load>
+    <ContentImageHandler client:only="react">
       <div class="prose prose-lg max-w-none">
         <Fragment set:html={memoData.content} />
       </div>
@@ -172,7 +172,7 @@ const memoData = {
         // 过滤掉已经在内容中使用的图片
         const contentImagePaths = new Set();
         const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
-        let match;
+        let match: RegExpExecArray | null;
         while ((match = imageRegex.exec(memo.body)) !== null) {
           let imagePath = match[1];
           // 标准化路径格式
@@ -207,13 +207,13 @@ const memoData = {
       })() && (
         <div class="mt-8">
           <h3 class="text-lg font-semibold mb-4">附件</h3>
-          <ContentImageHandler client:load>
+          <ContentImageHandler client:only="react">
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {(() => {
                 // 重复过滤逻辑（因为 Astro 模板限制）
                 const contentImagePaths = new Set();
                 const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
-                let match;
+                let match: RegExpExecArray | null;
                 while ((match = imageRegex.exec(memo.body)) !== null) {
                   let imagePath = match[1];
                   if (imagePath.startsWith("./")) {
@@ -242,8 +242,11 @@ const memoData = {
                   }) || [];
 
                 return filteredAttachments;
-              })().map((attachment: any) => (
-                <div class="card bg-base-200 shadow-sm">
+              })().map((attachment: any, attachmentIndex: number) => (
+                <div
+                  class="card bg-base-200 shadow-sm"
+                  data-attachment-key={`attachment-${attachmentIndex}-${attachment.filename}`}
+                >
                   <div class="card-body p-4">
                     {attachment.isImage ? (
                       <img
