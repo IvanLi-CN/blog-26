@@ -12,7 +12,7 @@ const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.s
 // 获取本地文件
 async function getLocalFile(filePath: string): Promise<Buffer | null> {
   try {
-    const fullPath = path.join(process.cwd(), 'test-data/local', filePath);
+    const fullPath = path.join(process.cwd(), 'dev-data/local', filePath);
     if (!fs.existsSync(fullPath)) {
       return null;
     }
@@ -27,22 +27,22 @@ async function getLocalFile(filePath: string): Promise<Buffer | null> {
 async function getWebDAVFile(filePath: string): Promise<Buffer | null> {
   try {
     const webdavConfig = config.webdav;
-    if (!webdavConfig.url || !webdavConfig.username || !webdavConfig.password) {
-      console.error('WebDAV config missing:', {
-        url: !!webdavConfig.url,
-        username: !!webdavConfig.username,
-        password: !!webdavConfig.password,
-      });
+    if (!webdavConfig.url) {
+      console.error('WebDAV config missing: URL is required');
       return null;
     }
 
     const url = `${webdavConfig.url}/${filePath}`;
     console.log(`WebDAV: Fetching ${url}`);
 
+    // 构建请求头，只在有用户名和密码时才添加认证
+    const headers: Record<string, string> = {};
+    if (webdavConfig.username && webdavConfig.password) {
+      headers.Authorization = `Basic ${Buffer.from(`${webdavConfig.username}:${webdavConfig.password}`).toString('base64')}`;
+    }
+
     const response = await fetch(url, {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${webdavConfig.username}:${webdavConfig.password}`).toString('base64')}`,
-      },
+      headers,
     });
 
     console.log(`WebDAV: Response status ${response.status} for ${url}`);
