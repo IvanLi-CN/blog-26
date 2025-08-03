@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export interface Attachment {
   filename: string;
@@ -38,6 +38,55 @@ function ImageModal({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
+  // 重置状态
+  const resetImageState = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+    setIsDragging(false);
+    setImageLoaded(false);
+    setImageDimensions({ width: 0, height: 0 });
+  };
+
+  // 关闭模态框时重置状态
+  const handleClose = () => {
+    resetImageState();
+    onClose();
+  };
+
+  // 处理键盘事件
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      } else if (e.key === '0' || e.key === 'Home') {
+        // 重置缩放和位置
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  // 监听浏览器后退/前进按钮
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePopState = () => {
+      // 如果URL中没有图片hash，关闭灯箱
+      const hash = window.location.hash;
+      if (!hash.match(/^#image-.+$/)) {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const formatFileSize = (bytes?: number): string => {
@@ -45,14 +94,6 @@ function ImageModal({
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // 重置状态
-  const resetImageState = () => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-    setImageLoaded(false);
-    setImageDimensions({ width: 0, height: 0 });
   };
 
   // 处理图片加载
@@ -103,12 +144,6 @@ function ImageModal({
       setScale(1);
       setPosition({ x: 0, y: 0 });
     }
-  };
-
-  // 关闭模态框时重置状态
-  const handleClose = () => {
-    resetImageState();
-    onClose();
   };
 
   return (
@@ -219,7 +254,83 @@ export function AttachmentGrid({
     alt: string;
     filename: string;
     size?: number;
+    imageId?: string;
   } | null>(null);
+
+  // 生成图片唯一标识符
+  const generateImageId = (src: string): string => {
+    // 使用图片路径的简化版本作为ID，移除查询参数和协议
+    const cleanSrc = src
+      .replace(/\?.*$/, '')
+      .replace(/^https?:\/\//, '')
+      .replace(/^\//, '');
+    // 使用简单的哈希函数生成短ID
+    let hash = 0;
+    for (let i = 0; i < cleanSrc.length; i++) {
+      const char = cleanSrc.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    return Math.abs(hash).toString(36);
+  };
+
+  // 从URL hash中解析图片ID
+  const parseImageIdFromHash = (): string | null => {
+    const hash = window.location.hash;
+    const match = hash.match(/^#image-(.+)$/);
+    return match ? match[1] : null;
+  };
+
+  // 设置URL hash
+  const setImageHash = (imageId: string) => {
+    window.history.pushState(null, '', `#image-${imageId}`);
+  };
+
+  // 清除URL hash
+  const clearImageHash = () => {
+    window.history.pushState(null, '', window.location.pathname + window.location.search);
+  };
+
+  // 处理URL hash变化，支持通过URL直接打开灯箱
+  useEffect(() => {
+    const handleHashChange = () => {
+      const imageId = parseImageIdFromHash();
+      if (imageId && !selectedImage) {
+        // 查找对应的附件
+        for (const attachment of attachments) {
+          if (attachment.isImage) {
+            const imagePath = attachment.path.replace(/^\//, '');
+            const optimizedSrc = `/api/render-image/${imagePath}?f=webp&q=90&display-w=300&display-h=300`;
+            const generatedId = generateImageId(optimizedSrc);
+
+            if (generatedId === imageId) {
+              setSelectedImage({
+                src: optimizedSrc,
+                alt: attachment.filename,
+                filename: attachment.filename,
+                size: attachment.size,
+                imageId,
+              });
+              break;
+            }
+          }
+        }
+      } else if (!imageId && selectedImage) {
+        // 如果hash被清除且灯箱是打开的，关闭灯箱
+        setSelectedImage(null);
+      }
+    };
+
+    // 监听hash变化
+    window.addEventListener('hashchange', handleHashChange);
+
+    // 页面加载时检查hash
+    handleHashChange();
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [attachments, selectedImage]);
 
   if (attachments.length === 0) {
     return null;
@@ -300,11 +411,17 @@ export function AttachmentGrid({
                     // 使用优化后的图片 URL，指定显示尺寸为300x300（闪念附件1:1比例）
                     const imagePath = attachment.path.replace(/^\//, '');
                     const optimizedSrc = `/api/render-image/${imagePath}?f=webp&q=90&display-w=300&display-h=300`;
+
+                    // 生成图片ID并设置URL hash
+                    const imageId = generateImageId(optimizedSrc);
+                    setImageHash(imageId);
+
                     setSelectedImage({
                       src: optimizedSrc,
                       alt: attachment.filename,
                       filename: attachment.filename,
                       size: attachment.size,
+                      imageId,
                     });
                   }}
                 >
@@ -351,7 +468,11 @@ export function AttachmentGrid({
         filename={selectedImage?.filename || ''}
         size={selectedImage?.size}
         isOpen={!!selectedImage}
-        onClose={() => setSelectedImage(null)}
+        onClose={() => {
+          // 清除URL hash
+          clearImageHash();
+          setSelectedImage(null);
+        }}
       />
     </>
   );

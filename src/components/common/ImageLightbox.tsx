@@ -105,7 +105,11 @@ export default function ImageLightbox({ isOpen, src, alt, onClose }: ImageLightb
       {/* 关闭按钮 */}
       <button
         className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10"
-        onClick={handleClose}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleClose();
+        }}
         aria-label="关闭"
       >
         ✕
