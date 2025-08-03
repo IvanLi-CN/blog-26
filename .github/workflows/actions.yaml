@@ -122,7 +122,7 @@ jobs:
           timeout 60 bash -c 'until curl -f http://localhost:4321; do sleep 2; done'
 
       - name: Run E2E tests
-        run: bunx playwright test --config=playwright.ci.config.ts --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        run: bunx playwright test --config=playwright.ci.config.ts --shard=${{ matrix.shard }}/3
         env:
           PLAYWRIGHT_HTML_REPORT: test-results/html-report-${{ matrix.shard }}
 
