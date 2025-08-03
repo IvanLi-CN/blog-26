@@ -115,7 +115,7 @@ jobs:
           timeout 30 bash -c 'until curl -f http://localhost:8080; do sleep 1; done'
 
       - name: Start Astro server
-        run: bunx --bun astro dev --host &
+        run: ADMIN_MODE=true NODE_ENV=test bunx --bun astro dev --host &
 
       - name: Wait for Astro server
         run: |
