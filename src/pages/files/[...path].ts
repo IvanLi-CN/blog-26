@@ -7,7 +7,7 @@ import { config } from '../../lib/config';
 export const prerender = false;
 
 // 支持的图片格式
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg'];
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg', '.tiff', '.bmp'];
 
 // 获取本地文件
 async function getLocalFile(filePath: string): Promise<Buffer | null> {
@@ -131,14 +131,26 @@ export const GET: APIRoute = async ({ params, url }) => {
         const searchParams = url.searchParams;
         const size = parseInt(searchParams.get('s') || '1200');
         const quality = parseInt(searchParams.get('q') || '85');
-        const format = searchParams.get('f') || 'webp';
+        let format = searchParams.get('f') || 'webp';
 
-        console.log(`Files service: Processing image with size=${size}, quality=${quality}, format=${format}`);
+        // 检查是否为 SVG 文件
+        const isSvg = path.extname(filePath).toLowerCase() === '.svg';
+
+        // 对于 SVG 文件，强制转换为 PNG 格式以支持水印
+        if (isSvg && (format === 'webp' || format === 'jpeg')) {
+          format = 'png';
+          console.log(`Files service: SVG detected, forcing PNG format for watermark support`);
+        }
+
+        console.log(
+          `Files service: Processing image with size=${size}, quality=${quality}, format=${format}, isSvg=${isSvg}`
+        );
 
         const result = await optimizeImage(fileBuffer, {
           size,
           quality,
           format: format as 'webp' | 'jpeg' | 'png',
+          addWatermark: true, // 确保 SVG 也添加水印
         });
 
         const processedBuffer = result.buffer;

@@ -94,7 +94,24 @@ export async function optimizeImage(
 ): Promise<OptimizedImageResult> {
   const opts = { ...DEFAULT_OPTIMIZATION_OPTIONS, ...options };
 
-  let pipeline = sharp(inputBuffer);
+  // 检查是否为 SVG 文件
+  const isSvg = inputBuffer.toString('utf8', 0, 100).includes('<svg');
+
+  let pipeline: sharp.Sharp;
+
+  // 对于 SVG 文件，需要特殊处理
+  if (isSvg) {
+    // SVG 转换为 PNG，确保有足够的分辨率
+    const svgDensity = 300; // DPI
+    pipeline = sharp(inputBuffer, { density: svgDensity });
+
+    // 强制 SVG 输出为 PNG 格式
+    if (opts.format === 'webp' || opts.format === 'jpeg') {
+      opts.format = 'png';
+    }
+  } else {
+    pipeline = sharp(inputBuffer);
+  }
 
   // 获取原始图片信息（添加错误处理）
   let metadata;
@@ -291,7 +308,7 @@ export async function generateResponsiveImages(
  * 检查文件是否为支持的图片格式
  */
 export function isSupportedImageFormat(filename: string): boolean {
-  const supportedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.tiff', '.bmp'];
+  const supportedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.tiff', '.bmp', '.svg'];
   const ext = path.extname(filename).toLowerCase();
   return supportedExtensions.includes(ext);
 }
@@ -309,6 +326,7 @@ export function getMimeTypeFromExtension(filename: string): string {
     '.gif': 'image/gif',
     '.tiff': 'image/tiff',
     '.bmp': 'image/bmp',
+    '.svg': 'image/svg+xml',
   };
 
   return mimeTypes[ext] || 'application/octet-stream';

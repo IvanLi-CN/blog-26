@@ -718,6 +718,96 @@ server {
 安全是一个持续的过程，需要在整个开发生命周期中贯彻执行。
 `,
     },
+    {
+      title: 'SVG 图片渲染功能测试',
+      slug: 'svg-image-test',
+      publishDate: new Date('2025-08-03T22:10:00+08:00'),
+      updateDate: new Date('2025-08-03T22:10:00+08:00'),
+      draft: false,
+      public: true,
+      excerpt: '测试博客系统对SVG矢量图形的支持，包括自动转换为PNG格式和水印添加功能',
+      category: '技术测试',
+      tags: ['SVG', '图片处理', '功能测试'],
+      author: 'Ivan Li',
+      image: './assets/svg-test-diagram.svg',
+      body: `# SVG 图片渲染功能测试
+
+这篇文章用于测试博客系统对 SVG 矢量图形的支持功能。系统应该能够：
+
+1. 正确识别和处理 SVG 文件
+2. 自动将 SVG 转换为 PNG 格式
+3. 为转换后的图片添加水印
+4. 支持不同尺寸的图片优化
+
+## 测试图片展示
+
+下面是一个包含流程图和饼图的 SVG 图片：
+
+![SVG测试图表](./assets/svg-test-diagram.svg)
+
+## 功能验证要点
+
+### 1. 格式转换
+- ✅ SVG 文件应该被自动识别
+- ✅ 转换为 PNG 格式输出
+- ✅ 保持高质量（300 DPI）
+
+### 2. 水印功能
+- ✅ 转换后的图片应该包含 "ivanli.cc" 水印
+- ✅ 水印位置在右下角
+- ✅ 水印具有适当的透明度和阴影效果
+
+### 3. 尺寸优化
+- ✅ 支持通过参数调整输出尺寸
+- ✅ 保持图片比例
+- ✅ 适配响应式显示
+
+### 4. 缓存机制
+- ✅ 处理后的图片支持浏览器缓存
+- ✅ 包含适当的缓存头信息
+- ✅ 支持 ETag 和 Last-Modified
+
+## 技术实现细节
+
+系统使用 Sharp 库处理 SVG 文件：
+
+\`\`\`javascript
+// SVG 检测和处理
+const isSvg = inputBuffer.toString('utf8', 0, 100).includes('<svg');
+
+if (isSvg) {
+  // 使用高密度设置确保质量
+  pipeline = sharp(inputBuffer, { density: 300 });
+
+  // 强制输出为 PNG 格式以支持水印
+  if (opts.format === 'webp' || opts.format === 'jpeg') {
+    opts.format = 'png';
+  }
+}
+\`\`\`
+
+## 预期结果
+
+如果功能正常工作，你应该能看到：
+
+1. **文章头图**：SVG 图片作为 heroImage 正确显示
+2. **内容图片**：文章中的 SVG 图片转换为 PNG 并显示水印
+3. **点击放大**：支持点击图片放大查看功能
+4. **响应式**：在不同设备上正确缩放显示
+
+## 测试状态
+
+- [x] SVG 文件创建完成
+- [x] 测试文章发布完成
+- [x] 图片渲染验证
+- [x] 水印效果确认
+- [x] 响应式显示测试
+
+---
+
+*本文档用于验证 SVG 图片处理功能的完整性和正确性。*
+`,
+    },
   ];
 }
 
@@ -2285,6 +2375,65 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
     { url: 'https://picsum.photos/id/38/800/400', filename: 'memo-attachment-6.jpg' },
   ];
 
+  // 创建 SVG 测试图片
+  const svgTestDiagram = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+
+  <!-- 标题 -->
+  <text x="200" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#212529">SVG 图片渲染测试</text>
+
+  <!-- 流程图 -->
+  <g transform="translate(50, 60)">
+    <!-- 开始节点 -->
+    <ellipse cx="50" cy="30" rx="40" ry="20" fill="#28a745" stroke="#1e7e34" stroke-width="2"/>
+    <text x="50" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">开始</text>
+
+    <!-- 箭头1 -->
+    <line x1="50" y1="50" x2="50" y2="80" stroke="#6c757d" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- 处理节点 -->
+    <rect x="10" y="90" width="80" height="40" rx="5" fill="#007bff" stroke="#0056b3" stroke-width="2"/>
+    <text x="50" y="115" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">SVG处理</text>
+
+    <!-- 箭头2 -->
+    <line x1="50" y1="130" x2="50" y2="160" stroke="#6c757d" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- 结束节点 -->
+    <ellipse cx="50" cy="180" rx="40" ry="20" fill="#dc3545" stroke="#c82333" stroke-width="2"/>
+    <text x="50" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">完成</text>
+  </g>
+
+  <!-- 右侧图表 -->
+  <g transform="translate(200, 60)">
+    <!-- 饼图 -->
+    <circle cx="75" cy="75" r="50" fill="#ffc107" stroke="#e0a800" stroke-width="2"/>
+    <path d="M 75 25 A 50 50 0 0 1 125 75 L 75 75 Z" fill="#17a2b8" stroke="#138496" stroke-width="2"/>
+    <path d="M 125 75 A 50 50 0 0 1 75 125 L 75 75 Z" fill="#6f42c1" stroke="#5a32a3" stroke-width="2"/>
+
+    <!-- 图例 -->
+    <rect x="20" y="140" width="15" height="15" fill="#ffc107"/>
+    <text x="40" y="152" font-family="Arial, sans-serif" font-size="12" fill="#212529">数据A (50%)</text>
+
+    <rect x="20" y="160" width="15" height="15" fill="#17a2b8"/>
+    <text x="40" y="172" font-family="Arial, sans-serif" font-size="12" fill="#212529">数据B (25%)</text>
+
+    <rect x="20" y="180" width="15" height="15" fill="#6f42c1"/>
+    <text x="40" y="192" font-family="Arial, sans-serif" font-size="12" fill="#212529">数据C (25%)</text>
+  </g>
+
+  <!-- 箭头标记定义 -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6c757d"/>
+    </marker>
+  </defs>
+
+  <!-- 底部说明 -->
+  <text x="200" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6c757d">这是一个SVG矢量图形，应该被转换为PNG并添加水印</text>
+</svg>`;
+
   // 准备所有下载任务
   const webdavImages = [
     ...images.slice(0, 5), // WebDAV 文章图片 (ID 1-5)
@@ -2345,6 +2494,12 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
   const failCount = results.filter((r) => !r.success).length;
 
   console.log(`\n📸 图片下载完成: 成功 ${successCount} 张, 失败 ${failCount} 张`);
+
+  // 创建 SVG 测试图片
+  console.log('\n🎨 创建 SVG 测试图片...');
+  const svgFilePath = join(webdavDir, 'assets', 'svg-test-diagram.svg');
+  writeFileSync(svgFilePath, svgTestDiagram, 'utf-8');
+  console.log(`✅ svg-test-diagram.svg`);
 }
 
 // 主函数
