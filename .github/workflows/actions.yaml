@@ -52,7 +52,7 @@ jobs:
         run: bun install --frozen
 
       - name: Run unit tests
-        run: bun test
+        run: bun run test
         env:
           NODE_ENV: test
           JWT_SECRET: test-jwt-secret-key-for-testing-only-32-chars
@@ -95,6 +95,12 @@ jobs:
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
+
+      - name: Install dufs for WebDAV server
+        run: |
+          curl -fsSL https://github.com/sigoden/dufs/releases/download/v0.43.0/dufs-v0.43.0-x86_64-unknown-linux-musl.tar.gz | tar -xz
+          sudo mv dufs /usr/local/bin/
+          dufs --version
 
       - name: Generate test data
         run: |

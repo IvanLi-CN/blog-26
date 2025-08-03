@@ -4,7 +4,7 @@ pre-commit:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
       run: bunx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files} && git update-index --again
     test:
-      run: bun test src tests/integration tests/lib tests/server
+      run: bun run test
       fail_text: "Tests failed. Please fix the failing tests before committing."
     checkBuild:
       run: bun run check:astro
