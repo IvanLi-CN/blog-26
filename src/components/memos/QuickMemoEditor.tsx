@@ -161,17 +161,62 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
     },
   });
 
-  // 上传附件的 mutation
-  const uploadAttachmentMutation = trpc.memos.uploadAttachment.useMutation({
-    onError: (error) => {
-      setErrorDialog({
-        show: true,
-        title: '上传失败',
-        message: `附件上传失败: ${error.message}`,
+  // 处理图片上传（用于 Milkdown 编辑器）
+  const handleImageUpload = async (file: File): Promise<string> => {
+    console.log('🖼️ [QuickMemoEditor] 开始处理图片上传:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      // 生成唯一文件名，避免冲突
+      const timestamp = Date.now();
+      const uniqueFileName = `${timestamp}_${file.name}`;
+
+      // 构建上传路径：Memos/assets/tmp/filename
+      const uploadPath = `Memos/assets/tmp/${uniqueFileName}`;
+
+      console.log('📦 [QuickMemoEditor] 准备上传到路径:', uploadPath);
+
+      // 使用 /api/files/webdav/<path> API 上传
+      const response = await fetch(`/api/files/webdav/${uploadPath}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': file.type,
+        },
+        body: file,
       });
-      setIsUploading(false);
-    },
-  });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`上传失败: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [QuickMemoEditor] 图片上传成功:', {
+        originalFileName: file.name,
+        uniqueFileName,
+        uploadPath,
+        result,
+      });
+
+      // 返回相对路径，相对于 Memos 目录
+      // 这个路径会被 frontmatter.ts 正确解析
+      const relativePath = `assets/tmp/${uniqueFileName}`;
+      console.log('🔗 [QuickMemoEditor] 生成相对路径:', relativePath);
+
+      return relativePath;
+    } catch (error) {
+      console.error('❌ [QuickMemoEditor] 图片上传异常:', {
+        fileName: file.name,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
+  };
 
   // 处理文件上传
   const handleFileUpload = async (files: File[]) => {
@@ -180,30 +225,51 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
     setIsUploading(true);
 
     try {
-      // 使用临时 memo ID 上传到 assets/tmp 目录
-      const tempMemoId = `temp_${Date.now()}.md`;
-
       const uploadPromises = files.map(async (file) => {
-        return new Promise<Attachment>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = async () => {
-            try {
-              const base64Content = (reader.result as string).split(',')[1];
-              const result = await uploadAttachmentMutation.mutateAsync({
-                memoId: tempMemoId,
-                filename: file.name,
-                content: base64Content,
-                contentType: file.type,
-                isTemporary: true, // 标记为临时文件
-              });
-              resolve(result as Attachment);
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
+        // 生成唯一文件名，避免冲突
+        const timestamp = Date.now();
+        const uniqueFileName = `${timestamp}_${file.name}`;
+
+        // 构建上传路径：Memos/assets/tmp/filename
+        const uploadPath = `Memos/assets/tmp/${uniqueFileName}`;
+
+        console.log('📦 [QuickMemoEditor] 上传附件到路径:', uploadPath);
+
+        // 使用 /api/files/webdav/<path> API 上传
+        const response = await fetch(`/api/files/webdav/${uploadPath}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': file.type,
+          },
+          body: file,
         });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`上传失败: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ [QuickMemoEditor] 附件上传成功:', {
+          originalFileName: file.name,
+          uniqueFileName,
+          uploadPath,
+          result,
+        });
+
+        // 检测文件类型
+        const isImage = file.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
+
+        // 返回附件信息
+        const attachment: Attachment = {
+          filename: file.name,
+          path: `assets/tmp/${uniqueFileName}`, // 相对路径
+          contentType: file.type,
+          size: file.size,
+          isImage,
+        };
+
+        return attachment;
       });
 
       const uploadedAttachments = await Promise.all(uploadPromises);
@@ -273,6 +339,82 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // 提取并上传内联 base64 图片
+  const processInlineImages = async (markdownContent: string): Promise<string> => {
+    console.log('🔍 [QuickMemoEditor] 开始处理内联图片...');
+
+    // 匹配 base64 图片的正则表达式
+    const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
+    const matches = Array.from(markdownContent.matchAll(base64ImageRegex));
+
+    if (matches.length === 0) {
+      console.log('✅ [QuickMemoEditor] 没有发现内联 base64 图片');
+      return markdownContent;
+    }
+
+    console.log(`📸 [QuickMemoEditor] 发现 ${matches.length} 个内联 base64 图片，开始处理...`);
+
+    let processedContent = markdownContent;
+
+    // 从内容中提取标题（第一个 # 标题）
+    const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
+    const contentTitle = titleMatch ? titleMatch[1].trim() : 'Memo';
+
+    // 处理每个 base64 图片
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const [fullMatch, altText, imageFormat, base64Data] = match;
+
+      console.log(`🖼️ [QuickMemoEditor] 处理第 ${i + 1} 个图片:`, {
+        altText,
+        imageFormat,
+        base64Length: base64Data.length,
+      });
+
+      try {
+        // 将 base64 转换为 File 对象
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let j = 0; j < byteCharacters.length; j++) {
+          byteNumbers[j] = byteCharacters.charCodeAt(j);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        // 生成文件名：内容标题-图片标题.扩展名
+        const imageTitle = altText || `图片${i + 1}`;
+        const fileName = `${contentTitle}-${imageTitle}.${imageFormat}`;
+
+        const file = new File([byteArray], fileName, {
+          type: `image/${imageFormat}`,
+        });
+
+        console.log(`⬆️ [QuickMemoEditor] 开始上传图片: ${fileName}`);
+
+        // 上传图片
+        const uploadedUrl = await handleImageUpload(file);
+
+        console.log(`✅ [QuickMemoEditor] 图片上传成功:`, {
+          fileName,
+          uploadedUrl,
+        });
+
+        // 替换 base64 图片为上传后的 URL
+        processedContent = processedContent.replace(fullMatch, `![${altText}](${uploadedUrl})`);
+      } catch (error) {
+        console.error(`❌ [QuickMemoEditor] 图片上传失败:`, {
+          fileName: `${contentTitle}-${altText || `图片${i + 1}`}.${imageFormat}`,
+          error: error.message,
+        });
+
+        // 上传失败时保持原始 base64 图片
+        console.log('🔄 [QuickMemoEditor] 保持原始 base64 图片');
+      }
+    }
+
+    console.log('✅ [QuickMemoEditor] 内联图片处理完成');
+    return processedContent;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) {
@@ -284,11 +426,31 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
       return;
     }
 
-    createMemoMutation.mutate({
-      content: content.trim(),
-      isPublic,
-      attachments,
-    });
+    try {
+      console.log('🚀 [QuickMemoEditor] 开始提交 Memo...');
+
+      // 处理内联 base64 图片
+      const processedContent = await processInlineImages(content.trim());
+
+      console.log('📝 [QuickMemoEditor] 提交处理后的内容:', {
+        originalLength: content.trim().length,
+        processedLength: processedContent.length,
+        hasImages: processedContent.includes('!['),
+      });
+
+      createMemoMutation.mutate({
+        content: processedContent,
+        isPublic,
+        attachments,
+      });
+    } catch (error) {
+      console.error('❌ [QuickMemoEditor] 提交失败:', error);
+      setErrorDialog({
+        show: true,
+        title: '提交失败',
+        message: `处理内容时发生错误: ${error.message}`,
+      });
+    }
   };
 
   return (
@@ -370,6 +532,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                     placeholder="写下你的想法..."
                     className="w-full"
                     data-testid="content-input"
+                    onImageUpload={handleImageUpload}
                   />
                   {isDragOver && (
                     <div className="absolute inset-0 bg-primary bg-opacity-10 border-2 border-dashed border-primary rounded-md flex items-center justify-center">

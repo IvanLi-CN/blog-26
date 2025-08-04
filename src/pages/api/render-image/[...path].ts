@@ -36,36 +36,49 @@ export const GET: APIRoute = async ({ params, request, url }) => {
     const keepMetadata = searchParams.get('keep-metadata') === 'true';
     const pixelRatio = searchParams.get('dpr') ? parseFloat(searchParams.get('dpr')!) : 1; // 显示倍率，默认1x
 
-    // 特殊处理：如果路径只是文件名，尝试在闪念的 assets 目录中查找
-    if (!normalizedPath.includes('/') && normalizedPath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
+    // 特殊处理：处理闪念相关的图片路径
+    if (normalizedPath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
       const cleanMemosPath = webdavConfig.memosPath.replace(/^\/+/, '');
-      const possiblePaths = [
-        `${cleanMemosPath}/assets/${normalizedPath}`,
-        `${cleanMemosPath}/assets/tmp/${normalizedPath}`,
-        normalizedPath,
-      ];
+      let possiblePaths: string[] = [];
+
+      if (normalizedPath.startsWith('assets/')) {
+        // 对于 assets/ 开头的路径，尝试在 Memos 目录中查找
+        possiblePaths = [
+          `${cleanMemosPath}/${normalizedPath}`, // Memos/assets/...
+          normalizedPath, // 直接使用原路径
+        ];
+      } else if (!normalizedPath.includes('/')) {
+        // 如果路径只是文件名，尝试在闪念的 assets 目录中查找
+        possiblePaths = [
+          `${cleanMemosPath}/assets/${normalizedPath}`,
+          `${cleanMemosPath}/assets/tmp/${normalizedPath}`,
+          normalizedPath,
+        ];
+      }
 
       let foundPath: string | null = null;
-      for (const testPath of possiblePaths) {
-        try {
-          const testUrl = `${webdavConfig.url}/${testPath}`;
-          const testHeaders: Record<string, string> = {};
+      if (possiblePaths.length > 0) {
+        for (const testPath of possiblePaths) {
+          try {
+            const testUrl = `${webdavConfig.url}/${testPath}`;
+            const testHeaders: Record<string, string> = {};
 
-          // 只有在提供了用户名和密码时才添加认证头
-          if (webdavConfig.username && webdavConfig.password) {
-            testHeaders.Authorization = `Basic ${btoa(`${webdavConfig.username}:${webdavConfig.password}`)}`;
-          }
+            // 只有在提供了用户名和密码时才添加认证头
+            if (webdavConfig.username && webdavConfig.password) {
+              testHeaders.Authorization = `Basic ${btoa(`${webdavConfig.username}:${webdavConfig.password}`)}`;
+            }
 
-          const testResponse = await fetch(testUrl, {
-            method: 'HEAD',
-            headers: testHeaders,
-          });
-          if (testResponse.ok) {
-            foundPath = testPath;
-            break;
+            const testResponse = await fetch(testUrl, {
+              method: 'HEAD',
+              headers: testHeaders,
+            });
+            if (testResponse.ok) {
+              foundPath = testPath;
+              break;
+            }
+          } catch {
+            continue;
           }
-        } catch {
-          continue;
         }
       }
 

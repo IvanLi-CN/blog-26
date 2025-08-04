@@ -87,7 +87,9 @@ async function createWebDAVFile(filePath: string, content: Buffer | string): Pro
     const webdavClient = getWebDAVClient();
 
     if (content instanceof Buffer) {
-      await webdavClient.putBinaryFile(filePath, content.buffer as ArrayBuffer);
+      // 正确地将 Buffer 转换为 ArrayBuffer
+      const arrayBuffer = content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength);
+      await webdavClient.putBinaryFile(filePath, arrayBuffer);
     } else {
       await webdavClient.putFile(filePath, content);
     }

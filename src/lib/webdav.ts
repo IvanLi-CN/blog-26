@@ -671,7 +671,9 @@ export class WebDAVClient {
    * 上传二进制文件（如图片、附件等）
    */
   async putBinaryFile(filePath: string, content: ArrayBuffer, contentType?: string): Promise<void> {
-    const url = `${this.baseUrl}${filePath}`;
+    // 确保路径以 / 开头
+    const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+    const url = `${this.baseUrl}${normalizedPath}`;
 
     const headers: Record<string, string> = {
       ...this.getAuthHeaders(),

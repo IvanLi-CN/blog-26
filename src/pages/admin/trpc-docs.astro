@@ -444,37 +444,28 @@ const apiDocumentation = {
   // 文件访问端点（非 tRPC）
   files: [
     {
-      path: "/files/[...path]",
+      path: "/files/<source>/<...path>",
       type: "endpoint",
       method: "GET",
       auth: "public",
-      description: "主要的文件代理端点，用于访问 WebDAV 存储的图片和文件",
-      input: "路径参数：文件在 WebDAV 中的相对路径",
-      output: "文件内容（图片、文档等）",
-      example: "GET /files/Project/assets/image.jpg",
-      notes: "支持中文文件名，自动处理路径编码，包含缓存控制",
+      description: "公开文件访问端点，支持图片处理（水印、缩放等）",
+      input:
+        "路径参数：<source> 为数据源（local/webdav），<...path> 为文件路径",
+      output: "文件内容（图片、文档等），图片会自动处理",
+      example: "GET /files/webdav/Project/assets/image.jpg",
+      notes: "支持中文文件名，自动处理路径编码，包含缓存控制和图片优化",
     },
     {
-      path: "/api/webdav-image/[...path]",
+      path: "/api/files/<source>/<...path>",
       type: "endpoint",
-      method: "GET",
-      auth: "public",
-      description: "旧的图片代理端点，现在重定向到 /files/（向后兼容）",
-      input: "路径参数：文件在 WebDAV 中的相对路径",
-      output: "301 重定向到 /files/",
-      example: "GET /api/webdav-image/image.jpg → 重定向到 /files/image.jpg",
-      notes: "已废弃，建议使用 /files/ 端点",
-    },
-    {
-      path: "/api/file/[...path]",
-      type: "endpoint",
-      method: "GET",
-      auth: "public",
-      description: "另一个旧的文件代理端点，现在重定向到 /files/（向后兼容）",
-      input: "路径参数：文件在 WebDAV 中的相对路径",
-      output: "301 重定向到 /files/",
-      example: "GET /api/file/image.jpg → 重定向到 /files/image.jpg",
-      notes: "已废弃，建议使用 /files/ 端点",
+      method: "GET/POST/PUT/DELETE",
+      auth: "admin",
+      description: "RESTful 文件管理 API，支持完整的 CRUD 操作",
+      input:
+        "路径参数：<source> 为数据源（local/webdav），<...path> 为文件路径",
+      output: "GET: 文件内容；POST/PUT: 创建/更新结果；DELETE: 删除结果",
+      example: "GET /api/files/webdav/Project/test.md",
+      notes: "仅管理员可访问，支持文本和二进制文件的完整管理",
     },
   ],
 };
@@ -650,7 +641,7 @@ function getAuthLevel(path: string): "public" | "protected" | "admin" {
             </h2>
             <div class="space-y-4">
               {endpoints.map((endpoint) => {
-                const authLevel = getAuthLevel(endpoint.path);
+                const authLevel = endpoint.auth || getAuthLevel(endpoint.path);
                 const authColor =
                   authLevel === "admin"
                     ? "red"
@@ -807,25 +798,29 @@ function getAuthLevel(path: string): "public" | "protected" | "admin" {
         </div>
 
         <!-- 文件访问端点变更说明 -->
-        <div class="bg-orange-50 p-4 rounded-lg">
-          <p class="text-sm text-orange-800 mb-2">
-            <strong>🔄 重要变更：文件访问端点统一</strong>
+        <div class="bg-green-50 p-4 rounded-lg">
+          <p class="text-sm text-green-800 mb-2">
+            <strong>✅ 重要更新：文件访问 API 重构完成</strong>
           </p>
-          <div class="text-sm text-orange-700 mb-3">
-            <p class="mb-2">为了简化架构，我们已将图片和文件访问端点统一为：</p>
-            <div class="bg-orange-100 p-2 rounded font-mono text-xs mb-2">
-              <strong>主要端点：</strong> /files/[...path] （推荐使用）
+          <div class="text-sm text-green-700 mb-3">
+            <p class="mb-2">文件访问 API 已重构为更清晰的架构：</p>
+            <div class="bg-green-100 p-2 rounded font-mono text-xs mb-2">
+              <strong>公开访问：</strong> /files/&lt;source&gt;/&lt;...path&gt; （支持图片处理）
             </div>
-            <p class="mb-2">旧端点仍然可用，但会自动重定向：</p>
-            <ul class="list-disc list-inside ml-4 space-y-1">
-              <li>/api/webdav-image/[...path] → /files/[...path]</li>
-              <li>/api/file/[...path] → /files/[...path]</li>
+            <div class="bg-green-100 p-2 rounded font-mono text-xs mb-2">
+              <strong>管理员 API：</strong> /api/files/&lt;source&gt;/&lt;...path&gt;
+              （RESTful CRUD）
+            </div>
+            <p class="mb-2">过时的重定向端点已删除：</p>
+            <ul class="list-disc list-inside ml-4 space-y-1 text-red-600">
+              <li><del>/api/webdav-image/[...path]</del> （已删除）</li>
+              <li><del>/api/file/[...path]</del> （已删除）</li>
             </ul>
           </div>
-          <div class="text-xs text-orange-600 bg-orange-100 p-2 rounded">
-            <strong>注意：</strong
-            >所有文件访问现在都是公开的，不需要管理员权限。建议更新代码使用新的
-            /files/ 端点。
+          <div class="text-xs text-green-600 bg-green-100 p-2 rounded">
+            <strong>说明：</strong>
+            公开端点支持图片优化，管理员 API 支持完整的文件 CRUD 操作。数据源包括
+            local 和 webdav。
           </div>
         </div>
       </div>
