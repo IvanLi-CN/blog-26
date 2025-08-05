@@ -15,29 +15,55 @@ interface Props {
 const { memo } = Astro.props;
 ---
 
-<div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+<a
+  href={`/memos/${memo.slug}`}
+  class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200 block"
+>
   <div class="card-body p-4">
     <div class="flex items-start justify-between mb-2">
       <time class="text-xs text-muted">
-        {memo.publishDate.toLocaleDateString()}
+        {
+          memo.publishDate
+            .toLocaleDateString("zh-CN", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            })
+            .replace(/\//g, "/")
+        }
       </time>
-      <Icon name="tabler:message-circle" class="w-4 h-4 text-muted flex-shrink-0" />
+      <Icon
+        name="tabler:message-circle"
+        class="w-4 h-4 text-muted flex-shrink-0"
+      />
     </div>
 
     <div class="prose prose-sm max-w-none">
       <p class="text-sm leading-relaxed line-clamp-2">
-        {memo.content.replace(/[#*`]/g, '').substring(0, 150)}...
+        {
+          memo.content
+            .replace(/^#+\s+/gm, "") // 移除标题标记
+            .replace(/\*\*(.*?)\*\*/g, "$1") // 移除粗体标记
+            .replace(/\*(.*?)\*/g, "$1") // 移除斜体标记
+            .replace(/`(.*?)`/g, "$1") // 移除行内代码标记
+            .replace(/```[\s\S]*?```/g, "[代码块]") // 替换代码块
+            .replace(/!\[.*?\]\(.*?\)/g, "[图片]") // 替换图片
+            .replace(/\[.*?\]\(.*?\)/g, "[链接]") // 替换链接
+            .replace(/\n+/g, " ") // 替换换行为空格
+            .trim()
+            .substring(0, 150)
+        }...
       </p>
     </div>
 
-    {memo.tags && memo.tags.length > 0 && (
-      <div class="flex flex-wrap gap-1 mt-2">
-        {memo.tags.slice(0, 3).map((tag: string) => (
-          <span class="badge badge-outline badge-xs">
-            #{tag}
-          </span>
-        ))}
-      </div>
-    )}
+    {
+      memo.tags && memo.tags.length > 0 && (
+        <div class="flex flex-wrap gap-1 mt-2">
+          {memo.tags.slice(0, 3).map((tag: string) => (
+            <span class="badge badge-outline badge-xs">#{tag}</span>
+          ))}
+        </div>
+      )
+    }
   </div>
-</div>
+</a>

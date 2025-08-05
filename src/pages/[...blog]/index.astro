@@ -7,6 +7,7 @@ import Layout from "~/layouts/PageLayout.astro";
 
 import type { MetaData } from "~/types";
 import { blogPostRobots, getPostBySlug } from "~/utils/blog";
+import { create404Response } from "~/utils/error-handler";
 
 import { getCanonical, getPermalink } from "~/utils/permalinks";
 

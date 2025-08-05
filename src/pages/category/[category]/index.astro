@@ -4,6 +4,7 @@ import Pagination from "~/components/blog/Pagination.astro";
 import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 import { blogCategoryRobots, blogPostsPerPage, fetchPosts } from "~/utils/blog";
+import { create404Response } from "~/utils/error-handler";
 
 export const prerender = false;
 
