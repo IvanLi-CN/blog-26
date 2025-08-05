@@ -1,0 +1,43 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  memo: {
+    id: string;
+    slug: string;
+    title: string;
+    content: string;
+    publishDate: Date;
+    tags: string[];
+  };
+}
+
+const { memo } = Astro.props;
+---
+
+<div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+  <div class="card-body p-4">
+    <div class="flex items-start justify-between mb-2">
+      <time class="text-xs text-muted">
+        {memo.publishDate.toLocaleDateString()}
+      </time>
+      <Icon name="tabler:message-circle" class="w-4 h-4 text-muted flex-shrink-0" />
+    </div>
+
+    <div class="prose prose-sm max-w-none">
+      <p class="text-sm leading-relaxed line-clamp-2">
+        {memo.content.replace(/[#*`]/g, '').substring(0, 150)}...
+      </p>
+    </div>
+
+    {memo.tags && memo.tags.length > 0 && (
+      <div class="flex flex-wrap gap-1 mt-2">
+        {memo.tags.slice(0, 3).map((tag: string) => (
+          <span class="badge badge-outline badge-xs">
+            #{tag}
+          </span>
+        ))}
+      </div>
+    )}
+  </div>
+</div>

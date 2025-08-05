@@ -1,0 +1,55 @@
+---
+interface Props {
+  post: any;
+}
+
+const { post } = Astro.props;
+---
+
+<article class="card bg-base-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+  {post.image && (
+    <figure class="aspect-video overflow-hidden">
+      <img
+        src={`/files/${post.dataSource}/assets/${post.image}`}
+        alt={post.title}
+        class="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+      />
+    </figure>
+  )}
+  
+  <div class="card-body p-4">
+    <div class="flex items-center gap-2 text-xs text-muted mb-2">
+      <time>
+        {post.publishDate.toLocaleDateString()}
+      </time>
+      {post.category && (
+        <>
+          <span>·</span>
+          <span>{post.category.title}</span>
+        </>
+      )}
+    </div>
+    
+    <h3 class="card-title text-base mb-2 line-clamp-2">
+      <a href={`/${post.slug}`} class="hover:text-primary transition-colors">
+        {post.title}
+      </a>
+    </h3>
+    
+    {post.excerpt && (
+      <p class="text-sm text-muted line-clamp-2 mb-3">
+        {post.excerpt}
+      </p>
+    )}
+    
+    {post.tags && post.tags.length > 0 && (
+      <div class="flex flex-wrap gap-1">
+        {post.tags.slice(0, 2).map((tag) => (
+          <span class="badge badge-outline badge-xs">
+            {typeof tag === 'string' ? tag : tag.title}
+          </span>
+        ))}
+      </div>
+    )}
+  </div>
+</article>
