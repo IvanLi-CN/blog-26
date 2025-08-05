@@ -1,6 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
-import ContentImageHandler from "~/components/common/ContentImageHandler";
+
 import Image from "~/components/common/Image.astro";
 import { parseMarkdownToHTML } from "~/utils/markdown";
 
@@ -28,15 +28,7 @@ const { item, isLast = false, loading = false } = Astro.props;
 // 根据类型确定链接
 const itemUrl = item.type === 'memo' ? `/memos/${item.slug}` : item.permalink || `/${item.type}s/${item.slug}`;
 
-// 处理内容
-let processedContent = '';
-if (item.type === 'memo') {
-  // 闪念需要完整渲染 Markdown
-  processedContent = await parseMarkdownToHTML(item.body || item.content || '', item.id);
-} else {
-  // 文章只显示摘要
-  processedContent = item.excerpt || '';
-}
+
 
 // 格式化时间
 const formatDate = (date: Date) => {
@@ -165,7 +157,7 @@ const getTypeColor = (type: string) => {
               <!-- 闪念完整内容 -->
               {(item.content || item.body) && (
                 <div class="prose prose-sm max-w-none text-sm">
-                  <Fragment set:html={await parseMarkdownToHTML(item.content || item.body)} />
+                  <Fragment set:html={await parseMarkdownToHTML((item.content || item.body) || '')} />
                 </div>
               )}
             </>
