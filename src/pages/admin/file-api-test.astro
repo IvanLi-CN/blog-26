@@ -1,11 +1,11 @@
 ---
-import Layout from '~/layouts/PageLayout.astro';
+import Layout from "~/layouts/PageLayout.astro";
 ---
 
-<Layout metadata={{ title: '文件 API 测试页面' }}>
+<Layout metadata={{ title: "文件 API 测试页面" }}>
   <div class="container mx-auto p-6 max-w-4xl">
     <h1 class="text-3xl font-bold mb-6">文件 API 测试页面</h1>
-    
+
     <!-- 测试状态显示 -->
     <div id="test-status" class="mb-6 p-4 rounded-lg bg-gray-100">
       <h2 class="text-lg font-semibold mb-2">测试状态</h2>
@@ -15,87 +15,100 @@ import Layout from '~/layouts/PageLayout.astro';
     <!-- 公开文件访问 API 测试 -->
     <div class="mb-8 p-6 border rounded-lg">
       <h2 class="text-2xl font-semibold mb-4">公开文件访问 API 测试</h2>
-      <p class="text-gray-600 mb-4">测试 <code>/files/&lt;source&gt;/&lt;...path&gt;</code> - 所有人可访问</p>
-      
+      <p class="text-gray-600 mb-4">
+        测试 <code>/files/&lt;source&gt;/&lt;...path&gt;</code> - 所有人可访问
+      </p>
+
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium mb-2">文件路径:</label>
-          <input 
-            type="text" 
-            id="public-file-path" 
+          <input
+            type="text"
+            id="public-file-path"
             class="w-full p-2 border rounded"
             placeholder="例如: webdav/test.txt 或 local/test.txt"
             value="webdav/test.txt"
           />
         </div>
-        
+
         <div class="flex gap-2">
-          <button 
-            id="test-public-read" 
+          <button
+            id="test-public-read"
             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             测试读取文件
           </button>
         </div>
-        
-        <div id="public-test-result" class="p-3 bg-gray-50 rounded min-h-[100px] font-mono text-sm"></div>
+
+        <div
+          id="public-test-result"
+          class="p-3 bg-gray-50 rounded min-h-[100px] font-mono text-sm"
+        >
+        </div>
       </div>
     </div>
 
     <!-- 管理员文件 API 测试 -->
     <div class="mb-8 p-6 border rounded-lg">
       <h2 class="text-2xl font-semibold mb-4">管理员文件 API 测试</h2>
-      <p class="text-gray-600 mb-4">测试 <code>/api/files/&lt;source&gt;/&lt;...path&gt;</code> - 仅管理员可访问</p>
-      
+      <p class="text-gray-600 mb-4">
+        测试 <code>/api/files/&lt;source&gt;/&lt;...path&gt;</code> - 仅管理员可访问
+      </p>
+
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium mb-2">文件路径:</label>
-          <input 
-            type="text" 
-            id="admin-file-path" 
+          <input
+            type="text"
+            id="admin-file-path"
             class="w-full p-2 border rounded"
             placeholder="例如: local/test-api.txt"
             value="local/test-api.txt"
           />
         </div>
-        
+
         <div>
           <label class="block text-sm font-medium mb-2">文件内容:</label>
-          <textarea 
-            id="admin-file-content" 
+          <textarea
+            id="admin-file-content"
             class="w-full p-2 border rounded h-24"
             placeholder="输入文件内容..."
-          >这是通过管理员 API 创建的测试文件</textarea>
+            >这是通过管理员 API 创建的测试文件</textarea
+          >
         </div>
-        
+
         <div class="flex gap-2 flex-wrap">
-          <button 
-            id="test-admin-create" 
+          <button
+            id="test-admin-create"
             class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
           >
             创建文件 (POST)
           </button>
-          <button 
-            id="test-admin-read" 
+          <button
+            id="test-admin-read"
             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             读取文件 (GET)
           </button>
-          <button 
-            id="test-admin-update" 
+          <button
+            id="test-admin-update"
             class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
           >
             更新文件 (PUT)
           </button>
-          <button 
-            id="test-admin-delete" 
+          <button
+            id="test-admin-delete"
             class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
           >
             删除文件 (DELETE)
           </button>
         </div>
-        
-        <div id="admin-test-result" class="p-3 bg-gray-50 rounded min-h-[100px] font-mono text-sm"></div>
+
+        <div
+          id="admin-test-result"
+          class="p-3 bg-gray-50 rounded min-h-[100px] font-mono text-sm"
+        >
+        </div>
       </div>
     </div>
 
@@ -103,24 +116,28 @@ import Layout from '~/layouts/PageLayout.astro';
     <div class="mb-8 p-6 border rounded-lg">
       <h2 class="text-2xl font-semibold mb-4">权限测试</h2>
       <p class="text-gray-600 mb-4">测试非管理员访问管理员 API 的权限控制</p>
-      
+
       <div class="space-y-4">
         <div class="flex gap-2">
-          <button 
-            id="test-permission-check" 
+          <button
+            id="test-permission-check"
             class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
           >
             测试权限控制
           </button>
-          <button 
-            id="clear-auth" 
+          <button
+            id="clear-auth"
             class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
             清除认证状态
           </button>
         </div>
-        
-        <div id="permission-test-result" class="p-3 bg-gray-50 rounded min-h-[100px] font-mono text-sm"></div>
+
+        <div
+          id="permission-test-result"
+          class="p-3 bg-gray-50 rounded min-h-[100px] font-mono text-sm"
+        >
+        </div>
       </div>
     </div>
 
@@ -128,337 +145,443 @@ import Layout from '~/layouts/PageLayout.astro';
     <div class="mb-8 p-6 border rounded-lg">
       <h2 class="text-2xl font-semibold mb-4">批量测试</h2>
       <p class="text-gray-600 mb-4">运行所有测试用例</p>
-      
+
       <div class="space-y-4">
         <div class="flex gap-2">
-          <button 
-            id="run-all-tests" 
+          <button
+            id="run-all-tests"
             class="px-6 py-3 bg-indigo-500 text-white rounded hover:bg-indigo-600 font-semibold"
           >
             运行所有测试
           </button>
-          <button 
-            id="clear-results" 
+          <button
+            id="clear-results"
             class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
             清除结果
           </button>
         </div>
-        
-        <div id="batch-test-result" class="p-3 bg-gray-50 rounded min-h-[200px] font-mono text-sm"></div>
+
+        <div
+          id="batch-test-result"
+          class="p-3 bg-gray-50 rounded min-h-[200px] font-mono text-sm"
+        >
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     // 工具函数
-    function updateStatus(message, type = 'info') {
-      const statusContent = document.getElementById('status-content');
-      const colors = {
-        info: 'text-blue-600',
-        success: 'text-green-600',
-        error: 'text-red-600',
-        warning: 'text-yellow-600'
+    function updateStatus(message: string, type: string = "info") {
+      const statusContent = document.getElementById("status-content");
+      if (!statusContent) return;
+
+      const colors: Record<string, string> = {
+        info: "text-blue-600",
+        success: "text-green-600",
+        error: "text-red-600",
+        warning: "text-yellow-600",
       };
       statusContent.className = colors[type] || colors.info;
       statusContent.textContent = message;
     }
 
-    function logResult(elementId, message, type = 'info') {
+    function logResult(
+      elementId: string,
+      message: string,
+      type: string = "info",
+    ) {
       const element = document.getElementById(elementId);
+      if (!element) return;
+
       const timestamp = new Date().toLocaleTimeString();
-      const colors = {
-        info: 'text-blue-600',
-        success: 'text-green-600',
-        error: 'text-red-600',
-        warning: 'text-yellow-600'
+      const colors: Record<string, string> = {
+        info: "text-blue-600",
+        success: "text-green-600",
+        error: "text-red-600",
+        warning: "text-yellow-600",
       };
-      
-      const logEntry = document.createElement('div');
+
+      const logEntry = document.createElement("div");
       logEntry.className = `mb-2 ${colors[type] || colors.info}`;
       logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
       element.appendChild(logEntry);
       element.scrollTop = element.scrollHeight;
     }
 
-    function clearResults(elementId) {
-      document.getElementById(elementId).innerHTML = '';
+    function clearResults(elementId: string) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.innerHTML = "";
+      }
     }
 
     // API 测试函数
     async function testPublicFileRead() {
-      const path = document.getElementById('public-file-path').value;
+      const pathElement = document.getElementById(
+        "public-file-path",
+      ) as HTMLInputElement;
+      if (!pathElement) return;
+      const path = pathElement.value;
       if (!path) {
-        logResult('public-test-result', '请输入文件路径', 'error');
+        logResult("public-test-result", "请输入文件路径", "error");
         return;
       }
 
-      updateStatus('测试公开文件读取...');
-      logResult('public-test-result', `开始测试公开文件读取: ${path}`);
+      updateStatus("测试公开文件读取...");
+      logResult("public-test-result", `开始测试公开文件读取: ${path}`);
 
       try {
         const response = await fetch(`/files/${path}`);
-        const contentType = response.headers.get('content-type');
+        const contentType = response.headers.get("content-type");
 
-        logResult('public-test-result', `响应状态: ${response.status} ${response.statusText}`);
-        logResult('public-test-result', `内容类型: ${contentType}`);
+        logResult(
+          "public-test-result",
+          `响应状态: ${response.status} ${response.statusText}`,
+        );
+        logResult("public-test-result", `内容类型: ${contentType}`);
 
         if (response.ok) {
-          if (contentType && contentType.includes('text/')) {
+          if (contentType && contentType.includes("text/")) {
             const content = await response.text();
-            logResult('public-test-result', `文件内容: ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}`, 'success');
+            logResult(
+              "public-test-result",
+              `文件内容: ${content.substring(0, 200)}${content.length > 200 ? "..." : ""}`,
+              "success",
+            );
           } else {
-            logResult('public-test-result', `文件大小: ${response.headers.get('content-length')} bytes`, 'success');
+            logResult(
+              "public-test-result",
+              `文件大小: ${response.headers.get("content-length")} bytes`,
+              "success",
+            );
           }
-          updateStatus('公开文件读取测试成功', 'success');
+          updateStatus("公开文件读取测试成功", "success");
         } else {
           const errorText = await response.text();
-          logResult('public-test-result', `错误: ${errorText}`, 'error');
-          updateStatus('公开文件读取测试失败', 'error');
+          logResult("public-test-result", `错误: ${errorText}`, "error");
+          updateStatus("公开文件读取测试失败", "error");
         }
       } catch (error) {
-        logResult('public-test-result', `网络错误: ${error.message}`, 'error');
-        updateStatus('公开文件读取测试失败', 'error');
+        logResult("public-test-result", `网络错误: ${error.message}`, "error");
+        updateStatus("公开文件读取测试失败", "error");
       }
     }
 
     async function testAdminFileCreate() {
-      const path = document.getElementById('admin-file-path').value;
-      const content = document.getElementById('admin-file-content').value;
-      
+      const pathElement = document.getElementById(
+        "admin-file-path",
+      ) as HTMLInputElement;
+      const contentElement = document.getElementById(
+        "admin-file-content",
+      ) as HTMLTextAreaElement;
+      if (!pathElement || !contentElement) return;
+
+      const path = pathElement.value;
+      const content = contentElement.value;
+
       if (!path) {
-        logResult('admin-test-result', '请输入文件路径', 'error');
+        logResult("admin-test-result", "请输入文件路径", "error");
         return;
       }
 
-      updateStatus('测试管理员文件创建...');
-      logResult('admin-test-result', `开始创建文件: ${path}`);
+      updateStatus("测试管理员文件创建...");
+      logResult("admin-test-result", `开始创建文件: ${path}`);
 
       try {
         const response = await fetch(`/api/files/${path}`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'text/plain',
+            "Content-Type": "text/plain",
           },
-          body: content
+          body: content,
         });
 
-        logResult('admin-test-result', `响应状态: ${response.status} ${response.statusText}`);
+        logResult(
+          "admin-test-result",
+          `响应状态: ${response.status} ${response.statusText}`,
+        );
 
         if (response.ok) {
           const result = await response.json();
-          logResult('admin-test-result', `创建成功: ${JSON.stringify(result)}`, 'success');
-          updateStatus('管理员文件创建测试成功', 'success');
+          logResult(
+            "admin-test-result",
+            `创建成功: ${JSON.stringify(result)}`,
+            "success",
+          );
+          updateStatus("管理员文件创建测试成功", "success");
         } else {
           const errorText = await response.text();
-          logResult('admin-test-result', `错误: ${errorText}`, 'error');
-          updateStatus('管理员文件创建测试失败', 'error');
+          logResult("admin-test-result", `错误: ${errorText}`, "error");
+          updateStatus("管理员文件创建测试失败", "error");
         }
       } catch (error) {
-        logResult('admin-test-result', `网络错误: ${error.message}`, 'error');
-        updateStatus('管理员文件创建测试失败', 'error');
+        logResult("admin-test-result", `网络错误: ${error.message}`, "error");
+        updateStatus("管理员文件创建测试失败", "error");
       }
     }
 
     async function testAdminFileRead() {
-      const path = document.getElementById('admin-file-path').value;
-      
+      const path = document.getElementById("admin-file-path").value;
+
       if (!path) {
-        logResult('admin-test-result', '请输入文件路径', 'error');
+        logResult("admin-test-result", "请输入文件路径", "error");
         return;
       }
 
-      updateStatus('测试管理员文件读取...');
-      logResult('admin-test-result', `开始读取文件: ${path}`);
+      updateStatus("测试管理员文件读取...");
+      logResult("admin-test-result", `开始读取文件: ${path}`);
 
       try {
         const response = await fetch(`/api/files/${path}`);
-        const contentType = response.headers.get('content-type');
-        
-        logResult('admin-test-result', `响应状态: ${response.status} ${response.statusText}`);
-        logResult('admin-test-result', `内容类型: ${contentType}`);
+        const contentType = response.headers.get("content-type");
+
+        logResult(
+          "admin-test-result",
+          `响应状态: ${response.status} ${response.statusText}`,
+        );
+        logResult("admin-test-result", `内容类型: ${contentType}`);
 
         if (response.ok) {
-          if (contentType && contentType.includes('text/')) {
+          if (contentType && contentType.includes("text/")) {
             const content = await response.text();
-            logResult('admin-test-result', `文件内容: ${content}`, 'success');
+            logResult("admin-test-result", `文件内容: ${content}`, "success");
           } else {
-            logResult('admin-test-result', `文件大小: ${response.headers.get('content-length')} bytes`, 'success');
+            logResult(
+              "admin-test-result",
+              `文件大小: ${response.headers.get("content-length")} bytes`,
+              "success",
+            );
           }
-          updateStatus('管理员文件读取测试成功', 'success');
+          updateStatus("管理员文件读取测试成功", "success");
         } else {
           const errorText = await response.text();
-          logResult('admin-test-result', `错误: ${errorText}`, 'error');
-          updateStatus('管理员文件读取测试失败', 'error');
+          logResult("admin-test-result", `错误: ${errorText}`, "error");
+          updateStatus("管理员文件读取测试失败", "error");
         }
       } catch (error) {
-        logResult('admin-test-result', `网络错误: ${error.message}`, 'error');
-        updateStatus('管理员文件读取测试失败', 'error');
+        logResult("admin-test-result", `网络错误: ${error.message}`, "error");
+        updateStatus("管理员文件读取测试失败", "error");
       }
     }
 
     async function testAdminFileUpdate() {
-      const path = document.getElementById('admin-file-path').value;
-      const content = document.getElementById('admin-file-content').value + '\n[已更新]';
-      
+      const path = document.getElementById("admin-file-path").value;
+      const content =
+        document.getElementById("admin-file-content").value + "\n[已更新]";
+
       if (!path) {
-        logResult('admin-test-result', '请输入文件路径', 'error');
+        logResult("admin-test-result", "请输入文件路径", "error");
         return;
       }
 
-      updateStatus('测试管理员文件更新...');
-      logResult('admin-test-result', `开始更新文件: ${path}`);
+      updateStatus("测试管理员文件更新...");
+      logResult("admin-test-result", `开始更新文件: ${path}`);
 
       try {
         const response = await fetch(`/api/files/${path}`, {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Type': 'text/plain',
+            "Content-Type": "text/plain",
           },
-          body: content
+          body: content,
         });
 
-        logResult('admin-test-result', `响应状态: ${response.status} ${response.statusText}`);
+        logResult(
+          "admin-test-result",
+          `响应状态: ${response.status} ${response.statusText}`,
+        );
 
         if (response.ok) {
           const result = await response.json();
-          logResult('admin-test-result', `更新成功: ${JSON.stringify(result)}`, 'success');
-          updateStatus('管理员文件更新测试成功', 'success');
+          logResult(
+            "admin-test-result",
+            `更新成功: ${JSON.stringify(result)}`,
+            "success",
+          );
+          updateStatus("管理员文件更新测试成功", "success");
         } else {
           const errorText = await response.text();
-          logResult('admin-test-result', `错误: ${errorText}`, 'error');
-          updateStatus('管理员文件更新测试失败', 'error');
+          logResult("admin-test-result", `错误: ${errorText}`, "error");
+          updateStatus("管理员文件更新测试失败", "error");
         }
       } catch (error) {
-        logResult('admin-test-result', `网络错误: ${error.message}`, 'error');
-        updateStatus('管理员文件更新测试失败', 'error');
+        logResult("admin-test-result", `网络错误: ${error.message}`, "error");
+        updateStatus("管理员文件更新测试失败", "error");
       }
     }
 
     async function testAdminFileDelete() {
-      const path = document.getElementById('admin-file-path').value;
-      
+      const path = document.getElementById("admin-file-path").value;
+
       if (!path) {
-        logResult('admin-test-result', '请输入文件路径', 'error');
+        logResult("admin-test-result", "请输入文件路径", "error");
         return;
       }
 
-      updateStatus('测试管理员文件删除...');
-      logResult('admin-test-result', `开始删除文件: ${path}`);
+      updateStatus("测试管理员文件删除...");
+      logResult("admin-test-result", `开始删除文件: ${path}`);
 
       try {
         const response = await fetch(`/api/files/${path}`, {
-          method: 'DELETE'
+          method: "DELETE",
         });
 
-        logResult('admin-test-result', `响应状态: ${response.status} ${response.statusText}`);
+        logResult(
+          "admin-test-result",
+          `响应状态: ${response.status} ${response.statusText}`,
+        );
 
         if (response.ok) {
           const result = await response.json();
-          logResult('admin-test-result', `删除成功: ${JSON.stringify(result)}`, 'success');
-          updateStatus('管理员文件删除测试成功', 'success');
+          logResult(
+            "admin-test-result",
+            `删除成功: ${JSON.stringify(result)}`,
+            "success",
+          );
+          updateStatus("管理员文件删除测试成功", "success");
         } else {
           const errorText = await response.text();
-          logResult('admin-test-result', `错误: ${errorText}`, 'error');
-          updateStatus('管理员文件删除测试失败', 'error');
+          logResult("admin-test-result", `错误: ${errorText}`, "error");
+          updateStatus("管理员文件删除测试失败", "error");
         }
       } catch (error) {
-        logResult('admin-test-result', `网络错误: ${error.message}`, 'error');
-        updateStatus('管理员文件删除测试失败', 'error');
+        logResult("admin-test-result", `网络错误: ${error.message}`, "error");
+        updateStatus("管理员文件删除测试失败", "error");
       }
     }
 
     async function testPermissionCheck() {
-      updateStatus('测试权限控制...');
-      logResult('permission-test-result', '开始测试权限控制');
+      updateStatus("测试权限控制...");
+      logResult("permission-test-result", "开始测试权限控制");
 
       // 测试未授权访问管理员 API
       try {
-        const response = await fetch('/api/files/local/permission-test.txt', {
-          method: 'POST',
+        const response = await fetch("/api/files/local/permission-test.txt", {
+          method: "POST",
           headers: {
-            'Content-Type': 'text/plain',
+            "Content-Type": "text/plain",
           },
-          body: '权限测试文件'
+          body: "权限测试文件",
         });
 
-        logResult('permission-test-result', `响应状态: ${response.status} ${response.statusText}`);
+        logResult(
+          "permission-test-result",
+          `响应状态: ${response.status} ${response.statusText}`,
+        );
 
         if (response.status === 403) {
-          logResult('permission-test-result', '权限控制正常：未授权访问被拒绝', 'success');
-          updateStatus('权限控制测试成功', 'success');
+          logResult(
+            "permission-test-result",
+            "权限控制正常：未授权访问被拒绝",
+            "success",
+          );
+          updateStatus("权限控制测试成功", "success");
         } else if (response.ok) {
-          logResult('permission-test-result', '权限控制异常：未授权访问被允许', 'warning');
-          updateStatus('权限控制测试异常', 'warning');
+          logResult(
+            "permission-test-result",
+            "权限控制异常：未授权访问被允许",
+            "warning",
+          );
+          updateStatus("权限控制测试异常", "warning");
         } else {
           const errorText = await response.text();
-          logResult('permission-test-result', `其他错误: ${errorText}`, 'error');
-          updateStatus('权限控制测试失败', 'error');
+          logResult(
+            "permission-test-result",
+            `其他错误: ${errorText}`,
+            "error",
+          );
+          updateStatus("权限控制测试失败", "error");
         }
       } catch (error) {
-        logResult('permission-test-result', `网络错误: ${error.message}`, 'error');
-        updateStatus('权限控制测试失败', 'error');
+        logResult(
+          "permission-test-result",
+          `网络错误: ${error.message}`,
+          "error",
+        );
+        updateStatus("权限控制测试失败", "error");
       }
     }
 
     function clearAuth() {
       // 清除可能的认证状态
-      document.cookie.split(";").forEach(function(c) { 
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      document.cookie.split(";").forEach(function (c) {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
       localStorage.clear();
       sessionStorage.clear();
-      
-      logResult('permission-test-result', '已清除认证状态', 'info');
-      updateStatus('认证状态已清除', 'info');
+
+      logResult("permission-test-result", "已清除认证状态", "info");
+      updateStatus("认证状态已清除", "info");
     }
 
     async function runAllTests() {
-      updateStatus('开始运行所有测试...');
-      clearResults('batch-test-result');
-      
+      updateStatus("开始运行所有测试...");
+      clearResults("batch-test-result");
+
       const tests = [
-        { name: '公开文件读取', fn: testPublicFileRead },
-        { name: '管理员文件创建', fn: testAdminFileCreate },
-        { name: '管理员文件读取', fn: testAdminFileRead },
-        { name: '管理员文件更新', fn: testAdminFileUpdate },
-        { name: '管理员文件删除', fn: testAdminFileDelete },
-        { name: '权限控制', fn: testPermissionCheck }
+        { name: "公开文件读取", fn: testPublicFileRead },
+        { name: "管理员文件创建", fn: testAdminFileCreate },
+        { name: "管理员文件读取", fn: testAdminFileRead },
+        { name: "管理员文件更新", fn: testAdminFileUpdate },
+        { name: "管理员文件删除", fn: testAdminFileDelete },
+        { name: "权限控制", fn: testPermissionCheck },
       ];
 
       for (const test of tests) {
-        logResult('batch-test-result', `\n=== 开始测试: ${test.name} ===`);
+        logResult("batch-test-result", `\n=== 开始测试: ${test.name} ===`);
         try {
           await test.fn();
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // 等待1秒
         } catch (error) {
-          logResult('batch-test-result', `测试 ${test.name} 失败: ${error.message}`, 'error');
+          logResult(
+            "batch-test-result",
+            `测试 ${test.name} 失败: ${error.message}`,
+            "error",
+          );
         }
       }
-      
-      logResult('batch-test-result', '\n=== 所有测试完成 ===', 'success');
-      updateStatus('所有测试完成', 'success');
+
+      logResult("batch-test-result", "\n=== 所有测试完成 ===", "success");
+      updateStatus("所有测试完成", "success");
     }
 
     // 事件监听器
-    document.getElementById('test-public-read').addEventListener('click', testPublicFileRead);
-    document.getElementById('test-admin-create').addEventListener('click', testAdminFileCreate);
-    document.getElementById('test-admin-read').addEventListener('click', testAdminFileRead);
-    document.getElementById('test-admin-update').addEventListener('click', testAdminFileUpdate);
-    document.getElementById('test-admin-delete').addEventListener('click', testAdminFileDelete);
-    document.getElementById('test-permission-check').addEventListener('click', testPermissionCheck);
-    document.getElementById('clear-auth').addEventListener('click', clearAuth);
-    document.getElementById('run-all-tests').addEventListener('click', runAllTests);
-    
-    document.getElementById('clear-results').addEventListener('click', () => {
-      clearResults('public-test-result');
-      clearResults('admin-test-result');
-      clearResults('permission-test-result');
-      clearResults('batch-test-result');
-      updateStatus('结果已清除', 'info');
+    document
+      .getElementById("test-public-read")
+      .addEventListener("click", testPublicFileRead);
+    document
+      .getElementById("test-admin-create")
+      .addEventListener("click", testAdminFileCreate);
+    document
+      .getElementById("test-admin-read")
+      .addEventListener("click", testAdminFileRead);
+    document
+      .getElementById("test-admin-update")
+      .addEventListener("click", testAdminFileUpdate);
+    document
+      .getElementById("test-admin-delete")
+      .addEventListener("click", testAdminFileDelete);
+    document
+      .getElementById("test-permission-check")
+      .addEventListener("click", testPermissionCheck);
+    document.getElementById("clear-auth").addEventListener("click", clearAuth);
+    document
+      .getElementById("run-all-tests")
+      .addEventListener("click", runAllTests);
+
+    document.getElementById("clear-results").addEventListener("click", () => {
+      clearResults("public-test-result");
+      clearResults("admin-test-result");
+      clearResults("permission-test-result");
+      clearResults("batch-test-result");
+      updateStatus("结果已清除", "info");
     });
 
     // 页面加载完成
-    updateStatus('页面加载完成，准备测试', 'success');
+    updateStatus("页面加载完成，准备测试", "success");
   </script>
 </Layout>
