@@ -865,12 +865,22 @@ async function forceRefreshMemosCache(onProgress?: (progress: ContentCacheProgre
         const memo = await webdavClient.getMemoByIndex(fileIndex);
         console.log(`✅ 成功获取闪念: ${memo.data.title || fileIndex.path}`);
 
+        // 尝试从内容中提取标题，如果没有则使用 frontmatter 中的 title，最后回退到 "无标题"
+        let title = memo.data.title;
+
+        if (!title) {
+          // 从内容中提取第一个标题
+          const { extractFirstH1Title } = await import('~/utils/markdown');
+          const extractedTitle = extractFirstH1Title(memo.body);
+          title = extractedTitle || '无标题';
+        }
+
         // 转换为 ContentItem 格式，并添加 ETag 信息
         const contentItem: ContentItem = {
           id: memo.id,
           slug: memo.slug,
           type: 'memo',
-          title: memo.data.title || memo.id,
+          title,
           excerpt: '',
           body: memo.body,
           publishDate: memo.createdAt,
@@ -1037,11 +1047,21 @@ async function refreshMemosCache(onProgress?: (progress: ContentCacheProgress) =
           const webdavClient = getWebDAVClient();
           const memo = await webdavClient.getMemoByIndex(fileIndex);
 
+          // 尝试从内容中提取标题，如果没有则使用 frontmatter 中的 title，最后回退到 "无标题"
+          let title = memo.data.title;
+
+          if (!title) {
+            // 从内容中提取第一个标题
+            const { extractFirstH1Title } = await import('~/utils/markdown');
+            const extractedTitle = extractFirstH1Title(memo.body);
+            title = extractedTitle || '无标题';
+          }
+
           const contentItem: ContentItem = {
             id: memo.id,
             slug: memo.slug,
             type: 'memo',
-            title: memo.data.title || memo.id,
+            title,
             excerpt: '',
             body: memo.body,
             publishDate: memo.createdAt,

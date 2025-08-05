@@ -427,12 +427,22 @@ export async function loadPostsAndProjects(): Promise<ContentItem[]> {
   return uniqueContent.sort((a, b) => b.publishDate.valueOf() - a.publishDate.valueOf());
 }
 
-export const normalizeWebDAVMemo = (memo: WebDAVMemo): ContentItem => {
+export const normalizeWebDAVMemo = async (memo: WebDAVMemo): Promise<ContentItem> => {
+  // 尝试从内容中提取标题，如果没有则使用 frontmatter 中的 title，最后回退到 "无标题"
+  let title = memo.data.title;
+
+  if (!title) {
+    // 从内容中提取第一个标题
+    const { extractFirstH1Title } = await import('~/utils/markdown');
+    const extractedTitle = extractFirstH1Title(memo.body);
+    title = extractedTitle || '无标题';
+  }
+
   return {
     id: memo.id,
     slug: memo.slug,
     type: 'memo',
-    title: memo.data.title || memo.id,
+    title,
     publishDate: memo.createdAt,
     updateDate: memo.updatedAt,
     public: memo.data.public === true, // 默认为私有，需要明确设置为 true 才公开
@@ -474,7 +484,7 @@ async function loadMemos(): Promise<ContentItem[]> {
       })
     );
     const validMemos = memos.filter((memo): memo is NonNullable<typeof memo> => memo !== null);
-    return validMemos.map(normalizeWebDAVMemo);
+    return await Promise.all(validMemos.map(normalizeWebDAVMemo));
   } catch (error) {
     console.warn('Failed to load memos from WebDAV:', error);
     return [];

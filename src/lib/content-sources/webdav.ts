@@ -106,7 +106,7 @@ export class WebDAVDataSource extends BaseContentDataSource {
         }
 
         const memo = await this.client.getMemoByIndex(fileIndex);
-        return normalizeWebDAVMemo(memo);
+        return await normalizeWebDAVMemo(memo);
       } else {
         // 获取Post/Project内容
         const fileIndex = await this.findFileIndex(id);
@@ -147,7 +147,7 @@ export class WebDAVDataSource extends BaseContentDataSource {
           try {
             const memo = await this.client.getMemoByIndex(memoIndex);
             if (memo.slug === slug) {
-              return normalizeWebDAVMemo(memo);
+              return await normalizeWebDAVMemo(memo);
             }
           } catch (error) {
             console.warn(`Failed to load memo ${memoIndex.path}:`, error);
@@ -219,7 +219,7 @@ export class WebDAVDataSource extends BaseContentDataSource {
           memosIndex.map(async (fileIndex) => {
             try {
               const memo = await this.client!.getMemoByIndex(fileIndex);
-              return normalizeWebDAVMemo(memo);
+              return await normalizeWebDAVMemo(memo);
             } catch (error) {
               this.logWarning(`处理闪念失败 ${fileIndex.path}: ${error.message}`);
               return null;
@@ -355,7 +355,7 @@ export class WebDAVDataSource extends BaseContentDataSource {
         // 创建Memo
         const attachments = input.frontmatter?.attachments || [];
         const memo = await this.client.createMemo(input.body, input.frontmatter?.public !== false, attachments);
-        return normalizeWebDAVMemo(memo);
+        return await normalizeWebDAVMemo(memo);
       } else {
         // 创建Post/Project
         const collection = input.collection || (input.type === 'project' ? 'projects' : 'posts');
@@ -400,7 +400,7 @@ export class WebDAVDataSource extends BaseContentDataSource {
       if (contentType === 'memo') {
         // 更新Memo
         const memo = await this.client.updateMemo(id, input.body || '', input.frontmatter?.public !== false);
-        return normalizeWebDAVMemo(memo);
+        return await normalizeWebDAVMemo(memo);
       } else {
         // 更新Post/Project
         const post = await this.client.updatePost(id, input.frontmatter || {}, input.body || '');

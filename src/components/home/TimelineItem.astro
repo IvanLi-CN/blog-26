@@ -1,0 +1,236 @@
+---
+import { Icon } from "astro-icon/components";
+import ContentImageHandler from "~/components/common/ContentImageHandler";
+import Image from "~/components/common/Image.astro";
+import { parseMarkdownToHTML } from "~/utils/markdown";
+
+interface Props {
+  item: {
+    type: 'post' | 'memo';
+    id: string;
+    slug: string;
+    title?: string;
+    content?: string;
+    body?: string;
+    excerpt?: string;
+    publishDate: Date;
+    tags?: string[];
+    image?: string;
+    permalink?: string;
+    dataSource?: string;
+  };
+  isLast?: boolean;
+  loading?: boolean;
+}
+
+const { item, isLast = false, loading = false } = Astro.props;
+
+// 根据类型确定链接
+const itemUrl = item.type === 'memo' ? `/memos/${item.slug}` : item.permalink || `/${item.type}s/${item.slug}`;
+
+// 处理内容
+let processedContent = '';
+if (item.type === 'memo') {
+  // 闪念需要完整渲染 Markdown
+  processedContent = await parseMarkdownToHTML(item.body || item.content || '', item.id);
+} else {
+  // 文章只显示摘要
+  processedContent = item.excerpt || '';
+}
+
+// 格式化时间
+const formatDate = (date: Date) => {
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+};
+
+// 获取类型图标和颜色
+const getTypeIcon = (type: string) => {
+  return type === 'memo' ? 'tabler:bulb' : 'tabler:article';
+};
+
+const getTypeColor = (type: string) => {
+  return type === 'memo' ? 'text-yellow-500' : 'text-blue-500';
+};
+---
+
+<div class="timeline-item relative flex items-start gap-4 pb-8">
+  <!-- 时间线主轴和节点 -->
+  <div class="flex flex-col items-center relative">
+    <!-- 时间线节点 -->
+    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-base-200 border-2 border-base-300 flex-shrink-0 z-10 relative">
+      {loading ? (
+        <div class="w-5 h-5 bg-base-300 rounded-full animate-pulse"></div>
+      ) : (
+        <Icon
+          name={getTypeIcon(item.type)}
+          class={`w-5 h-5 ${getTypeColor(item.type)}`}
+        />
+      )}
+    </div>
+
+    <!-- 时间线主轴（连接线） -->
+    {!isLast && (
+      <div class="w-0.5 h-32 bg-base-300 opacity-30 absolute top-10 left-1/2 transform -translate-x-1/2"></div>
+    )}
+  </div>
+
+  <!-- 内容区域 -->
+  <div class="flex-1 min-w-0">
+    <!-- 时间和类型信息 -->
+    <div class="flex items-center gap-2 mb-2">
+      {loading ? (
+        <>
+          <div class="h-4 bg-base-300 rounded w-20 animate-pulse"></div>
+          <div class="h-5 bg-base-300 rounded w-12 animate-pulse"></div>
+        </>
+      ) : (
+        <>
+          <span class="text-sm text-muted">
+            {formatDate(item.publishDate)}
+          </span>
+          <span class="badge badge-outline badge-xs">
+            {item.type === 'memo' ? '闪念' : '文章'}
+          </span>
+        </>
+      )}
+    </div>
+
+    <!-- 内容卡片 -->
+    {loading ? (
+      <!-- 加载状态 -->
+      <div class="card bg-base-100 shadow-sm border border-base-200">
+        <div class="card-body p-4">
+          <!-- 骨架屏占位内容 -->
+          <div class="h-20 bg-base-200 rounded mb-2 animate-pulse"></div>
+          <div class="h-3 bg-base-300 rounded w-3/4 mb-1 animate-pulse"></div>
+          <div class="h-3 bg-base-300 rounded w-1/2 animate-pulse"></div>
+        </div>
+      </div>
+    ) : (
+      <!-- 正常内容 -->
+      <a
+        href={itemUrl}
+        class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 block border border-base-200 hover:border-base-300"
+      >
+        <div class="card-body p-4">
+          {item.type === 'post' && (
+            <div class="flex gap-4">
+              <!-- 文章封面图 -->
+              {item.image && (
+                <div class="flex-shrink-0">
+                  <Image
+                    src={item.image}
+                    alt={item.title || '文章封面'}
+                    class="w-24 h-24 object-cover rounded"
+                    loading="lazy"
+                    width={96}
+                    height={96}
+                    dataSource={item.dataSource}
+                  />
+                </div>
+              )}
+
+              <!-- 文章内容 -->
+              <div class="flex-1 min-w-0">
+                <!-- 文章标题 -->
+                {item.title && (
+                  <h3 class="card-title text-lg mb-2 line-clamp-2">
+                    {item.title}
+                  </h3>
+                )}
+
+                <!-- 文章摘要 -->
+                {item.excerpt && (
+                  <p class="text-sm text-muted line-clamp-3">
+                    {item.excerpt}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {item.type === 'memo' && (
+            <>
+              <!-- 闪念标题（如果有） -->
+              {item.title && item.title.trim() && item.title !== '无标题' && (
+                <h3 class="card-title text-base mb-2">
+                  {item.title}
+                </h3>
+              )}
+
+              <!-- 闪念完整内容 -->
+              {(item.content || item.body) && (
+                <div class="prose prose-sm max-w-none text-sm">
+                  <Fragment set:html={await parseMarkdownToHTML(item.content || item.body)} />
+                </div>
+              )}
+            </>
+          )}
+
+          <!-- 标签 -->
+          {item.tags && item.tags.length > 0 && (
+            <div class="flex flex-wrap gap-1 mt-3">
+              {item.tags.slice(0, 3).map((tag: string) => (
+                <span class="badge badge-outline badge-xs">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </a>
+    )}
+  </div>
+</div>
+
+<style>
+  .memo-content :global(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 0.75rem 0;
+  }
+  
+  .memo-content :global(p) {
+    margin-bottom: 0.75rem;
+  }
+  
+  .memo-content :global(h1),
+  .memo-content :global(h2),
+  .memo-content :global(h3) {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .memo-content :global(ul),
+  .memo-content :global(ol) {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+  }
+  
+  .memo-content :global(blockquote) {
+    border-left: 4px solid #e5e7eb;
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    font-style: italic;
+  }
+  
+  .memo-content :global(code) {
+    background-color: #f3f4f6;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+  
+  .memo-content :global(pre) {
+    background-color: #f3f4f6;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+  }
+</style>

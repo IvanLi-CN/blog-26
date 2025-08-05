@@ -1,12 +1,11 @@
 ---
 import { Icon } from "astro-icon/components";
-
+import TimelineItem from "~/components/home/TimelineItem.astro";
 import Button from "~/components/ui/Button.astro";
 import Layout from "~/layouts/PageLayout.astro";
 import { getCachedMemos } from "~/lib/content-cache";
 import type { MetaData } from "~/types";
 import { findFeaturedProjects, findLatestPosts } from "~/utils/blog";
-import { getBlogPermalink } from "~/utils/permalinks";
 
 export const prerender = false;
 
@@ -15,7 +14,7 @@ const isUserAdmin = Astro.locals.isAdmin || false;
 
 // 获取最新文章、精选项目和最近闪念
 const [latestPosts, featuredProjects, allMemos] = await Promise.all([
-  findLatestPosts({ count: 6 }, isUserAdmin),
+  findLatestPosts({ count: 10 }, isUserAdmin),
   findFeaturedProjects({ count: 12 }, isUserAdmin),
   getCachedMemos().catch(() => []),
 ]);
@@ -25,17 +24,37 @@ const filteredMemos = isUserAdmin
   ? allMemos
   : allMemos.filter((memo) => memo.public === true);
 
-const recentMemos = filteredMemos
+const processedMemos = filteredMemos
   .sort((a, b) => b.publishDate - a.publishDate)
-  .slice(0, 5)
+  .slice(0, 10)
   .map((memo) => ({
+    type: "memo" as const,
     id: memo.id,
     slug: memo.slug,
     title: memo.title || "无标题",
-    content: memo.body,
+    body: memo.body,
     publishDate: new Date(memo.publishDate * 1000),
     tags: memo.tags ? JSON.parse(memo.tags) : [],
   }));
+
+// 处理文章数据
+const processedPosts = latestPosts.slice(0, 10).map((post) => ({
+  type: "post" as const,
+  id: post.id,
+  slug: post.slug,
+  title: post.title,
+  excerpt: post.excerpt,
+  publishDate: post.publishDate,
+  tags: post.tags?.map((tag) => tag.title) || [],
+  image: post.image,
+  permalink: post.permalink,
+  dataSource: post.dataSource,
+}));
+
+// 合并文章和闪念，按时间排序
+const timelineItems = [...processedPosts, ...processedMemos]
+  .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime())
+  .slice(0, 15); // 显示最新的15条
 
 const metadata: MetaData = {
   title: "首页",
@@ -57,180 +76,51 @@ const metadata: MetaData = {
     </div>
   </section>
 
-  {/* Recent Memos Section - 最近的几篇闪念作为动态 */}
-  <section class="px-6 py-12 mx-auto max-w-6xl">
-    <div class="flex items-center justify-between mb-6">
+  {/* Timeline Section - 文章和闪念混合时间线 */}
+  <section class="px-6 py-12 mx-auto max-w-4xl">
+    <div class="flex items-center justify-between mb-8">
       <h2 class="text-xl md:text-2xl font-bold flex items-center gap-2">
-        <Icon name="tabler:bulb" class="w-5 h-5 text-yellow-500" />
-        最近闪念 ({recentMemos.length})
+        <Icon name="tabler:timeline" class="w-5 h-5 text-primary" />
+        最新动态 ({timelineItems.length})
       </h2>
-      <Button variant="link" href="/memos" class="text-sm"> 查看全部 » </Button>
-    </div>
-
-    <div class="space-y-4">
-      <div
-        class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200"
-      >
-        <div class="card-body p-5">
-          <div class="flex items-start justify-between mb-3">
-            <time class="text-xs text-muted"> 2025/1/15 </time>
-            <Icon
-              name="tabler:message-circle"
-              class="w-4 h-4 text-muted flex-shrink-0"
-            />
-          </div>
-
-          <div class="prose prose-sm max-w-none">
-            <p class="text-sm leading-relaxed line-clamp-2">
-              今天学习了 Astro
-              的新特性，感觉非常有趣。特别是它的岛屿架构，让我对现代前端开发有了新的认识...
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200"
-      >
-        <div class="card-body p-5">
-          <div class="flex items-start justify-between mb-3">
-            <time class="text-xs text-muted"> 2025/1/14 </time>
-            <Icon
-              name="tabler:message-circle"
-              class="w-4 h-4 text-muted flex-shrink-0"
-            />
-          </div>
-
-          <div class="prose prose-sm max-w-none">
-            <p class="text-sm leading-relaxed line-clamp-2">
-              正在重构博客系统，希望能提供更好的用户体验。新的设计更加简洁，加载速度也有所提升...
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200"
-      >
-        <div class="card-body p-5">
-          <div class="flex items-start justify-between mb-3">
-            <time class="text-xs text-muted"> 2025/1/13 </time>
-            <Icon
-              name="tabler:message-circle"
-              class="w-4 h-4 text-muted flex-shrink-0"
-            />
-          </div>
-
-          <div class="prose prose-sm max-w-none">
-            <p class="text-sm leading-relaxed line-clamp-2">
-              分享一个有趣的技术发现：使用 WebDAV
-              作为内容管理系统的后端存储，可以实现很灵活的内容同步...
-            </p>
-          </div>
-        </div>
+      <div class="flex gap-2">
+        <!-- 加载状态演示按钮 -->
+        <button
+          id="toggle-loading"
+          class="btn btn-sm btn-outline"
+          title="切换加载状态演示"
+        >
+          <Icon name="tabler:refresh" class="w-4 h-4" />
+          演示加载
+        </button>
+        <Button variant="link" href="/blog" class="text-sm">
+          全部文章 »
+        </Button>
+        <Button variant="link" href="/memos" class="text-sm">
+          全部闪念 »
+        </Button>
       </div>
     </div>
-  </section>
 
-  {/* Latest Posts Section - 最近更新的文章 */}
-  <section class="px-6 py-12 mx-auto max-w-6xl">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl md:text-2xl font-bold flex items-center gap-2">
-        <Icon name="tabler:notebook" class="w-5 h-5 text-blue-500" />
-        最新文章 ({latestPosts.length})
-      </h2>
-      <Button variant="link" href={getBlogPermalink()} class="text-sm">
-        查看全部 »
-      </Button>
-    </div>
-
-    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      <div
-        class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200"
-      >
-        <figure class="aspect-video overflow-hidden">
-          <div
-            class="w-full h-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center"
-          >
-            <span class="text-blue-600 text-sm">文章封面</span>
+    <div class="timeline flex flex-col space-y-4">
+      {
+        timelineItems.length > 0 ? (
+          timelineItems.map((item, index) => (
+            <TimelineItem
+              item={item}
+              isLast={index === timelineItems.length - 1}
+            />
+          ))
+        ) : (
+          <div class="text-center py-8 text-muted">
+            <Icon
+              name="tabler:timeline"
+              class="w-8 h-8 mx-auto mb-2 opacity-50"
+            />
+            <p>暂无内容</p>
           </div>
-        </figure>
-        <div class="card-body p-4">
-          <h3 class="card-title text-base mb-2 line-clamp-2">
-            <a
-              href="/blog/astro-guide"
-              class="hover:text-primary transition-colors"
-            >
-              Astro 完全指南：构建现代静态网站
-            </a>
-          </h3>
-          <p class="text-sm text-muted line-clamp-2 mb-3">
-            深入了解 Astro 框架的核心概念，学习如何构建高性能的静态网站...
-          </p>
-          <div class="flex items-center justify-between text-xs text-muted">
-            <span>2025/1/15</span>
-            <span class="badge badge-outline badge-xs">技术</span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200"
-      >
-        <figure class="aspect-video overflow-hidden">
-          <div
-            class="w-full h-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center"
-          >
-            <span class="text-green-600 text-sm">文章封面</span>
-          </div>
-        </figure>
-        <div class="card-body p-4">
-          <h3 class="card-title text-base mb-2 line-clamp-2">
-            <a
-              href="/blog/webdav-cms"
-              class="hover:text-primary transition-colors"
-            >
-              使用 WebDAV 构建内容管理系统
-            </a>
-          </h3>
-          <p class="text-sm text-muted line-clamp-2 mb-3">
-            探索如何使用 WebDAV 协议作为内容管理系统的后端存储方案...
-          </p>
-          <div class="flex items-center justify-between text-xs text-muted">
-            <span>2025/1/14</span>
-            <span class="badge badge-outline badge-xs">架构</span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200"
-      >
-        <figure class="aspect-video overflow-hidden">
-          <div
-            class="w-full h-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center"
-          >
-            <span class="text-purple-600 text-sm">文章封面</span>
-          </div>
-        </figure>
-        <div class="card-body p-4">
-          <h3 class="card-title text-base mb-2 line-clamp-2">
-            <a
-              href="/blog/frontend-optimization"
-              class="hover:text-primary transition-colors"
-            >
-              前端性能优化最佳实践
-            </a>
-          </h3>
-          <p class="text-sm text-muted line-clamp-2 mb-3">
-            分享一些实用的前端性能优化技巧，帮助提升网站加载速度...
-          </p>
-          <div class="flex items-center justify-between text-xs text-muted">
-            <span>2025/1/13</span>
-            <span class="badge badge-outline badge-xs">优化</span>
-          </div>
-        </div>
-      </div>
+        )
+      }
     </div>
   </section>
 
@@ -347,3 +237,63 @@ const metadata: MetaData = {
     </div>
   </section>
 </Layout>
+
+<script>
+  // 加载状态演示功能
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggleButton = document.getElementById("toggle-loading");
+    const timeline = document.querySelector(".timeline");
+    let isLoading = false;
+
+    if (toggleButton && timeline) {
+      toggleButton.addEventListener("click", () => {
+        isLoading = !isLoading;
+
+        if (isLoading) {
+          // 显示加载状态
+          timeline.innerHTML = Array.from(
+            { length: 5 },
+            (_, index) => `
+            <div class="timeline-item relative flex items-start gap-4 pb-8">
+              <!-- 时间线主轴和节点 -->
+              <div class="flex flex-col items-center relative">
+                <!-- 时间线节点（加载状态） -->
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-base-200 border-2 border-base-300 flex-shrink-0 z-10 relative">
+                  <div class="w-5 h-5 bg-base-300 rounded-full animate-pulse"></div>
+                </div>
+
+                <!-- 时间线主轴（连接线） -->
+                ${index < 4 ? '<div class="w-0.5 h-32 bg-base-300 opacity-30 absolute top-10 left-1/2 transform -translate-x-1/2"></div>' : ""}
+              </div>
+
+              <!-- 内容区域（加载状态） -->
+              <div class="flex-1 min-w-0">
+                <!-- 时间和类型信息（加载状态） -->
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="h-4 bg-base-300 rounded w-20 animate-pulse"></div>
+                  <div class="h-5 bg-base-300 rounded w-12 animate-pulse"></div>
+                </div>
+
+                <!-- 内容卡片（加载状态） -->
+                <div class="card bg-base-100 shadow-sm border border-base-200">
+                  <div class="card-body p-4">
+                    <!-- 骨架屏占位内容 -->
+                    <div class="h-20 bg-base-200 rounded mb-2 animate-pulse"></div>
+                    <div class="h-3 bg-base-300 rounded w-3/4 mb-1 animate-pulse"></div>
+                    <div class="h-3 bg-base-300 rounded w-1/2 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `,
+          ).join("");
+
+          toggleButton.textContent = "显示内容";
+        } else {
+          // 重新加载页面显示真实内容
+          window.location.reload();
+        }
+      });
+    }
+  });
+</script>
