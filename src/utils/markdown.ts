@@ -31,6 +31,19 @@ export async function parseMarkdownToHTML(markdown: string, articlePath?: string
     .replace(/\\\_/g, '_') // 反转义下划线
     .replace(/<br\s*\/?>/gi, '\n\n'); // 将HTML换行转换为markdown换行
 
+  // 预处理图片和链接URL，将包含空格或特殊字符的URL用尖括号包围
+  // 这样markdown解析器就能正确识别它们
+  processedMarkdown = processedMarkdown.replace(/(!?\[([^\]]*)\])\(([^)]+)\)/g, (match, linkPart, _altText, url) => {
+    // 检查URL是否包含空格或特殊字符，且不是已经用尖括号包围的
+    if (!url.startsWith('<') && !url.endsWith('>')) {
+      // 检查是否包含空格、中文字符或其他需要编码的字符
+      if (/[\s\u4e00-\u9fff@]/.test(url)) {
+        return `${linkPart}(<${url}>)`;
+      }
+    }
+    return match;
+  });
+
   // 创建一个虚拟文件对象
   const vfile = {
     value: processedMarkdown,
@@ -53,8 +66,8 @@ export async function parseMarkdownToHTML(markdown: string, articlePath?: string
     .use(readingTimeRemarkPlugin)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(responsiveTablesRehypePlugin)
-    .use(lazyImagesRehypePlugin)
     .use(webdavImagesRehypePlugin)
+    .use(lazyImagesRehypePlugin)
     .use(rehypeKatex, {
       strict: 'ignore', // 忽略严格模式警告
       throwOnError: false, // 遇到错误时不抛出异常
