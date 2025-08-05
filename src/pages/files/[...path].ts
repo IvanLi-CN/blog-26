@@ -166,35 +166,47 @@ export const GET: APIRoute = async ({ params, url }) => {
 
         console.log(`Files service: Image processed successfully, output size: ${processedBuffer.length}`);
 
-        return new Response(processedBuffer, {
-          headers: {
-            'Content-Type': outputMimeType,
-            'Cache-Control': 'public, max-age=31536000, immutable',
-            'Content-Length': processedBuffer.length.toString(),
-          },
-        });
+        return new Response(
+          processedBuffer.buffer.slice(
+            processedBuffer.byteOffset,
+            processedBuffer.byteOffset + processedBuffer.byteLength
+          ) as ArrayBuffer,
+          {
+            headers: {
+              'Content-Type': outputMimeType,
+              'Cache-Control': 'public, max-age=31536000, immutable',
+              'Content-Length': processedBuffer.length.toString(),
+            },
+          }
+        );
       } catch (error) {
         console.error('Files service: Error processing image:', error);
         // 如果图片处理失败，返回原始文件
-        return new Response(fileBuffer, {
-          headers: {
-            'Content-Type': mimeType,
-            'Cache-Control': 'public, max-age=31536000',
-            'Content-Length': fileBuffer.length.toString(),
-          },
-        });
+        return new Response(
+          fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer,
+          {
+            headers: {
+              'Content-Type': mimeType,
+              'Cache-Control': 'public, max-age=31536000',
+              'Content-Length': fileBuffer.length.toString(),
+            },
+          }
+        );
       }
     }
 
     // 对于非图片文件，直接返回
     console.log(`Files service: Returning non-image file directly`);
-    return new Response(fileBuffer, {
-      headers: {
-        'Content-Type': mimeType,
-        'Cache-Control': 'public, max-age=3600',
-        'Content-Length': fileBuffer.length.toString(),
-      },
-    });
+    return new Response(
+      fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer,
+      {
+        headers: {
+          'Content-Type': mimeType,
+          'Cache-Control': 'public, max-age=3600',
+          'Content-Length': fileBuffer.length.toString(),
+        },
+      }
+    );
   } catch (error) {
     console.error('Files service: Error serving file:', error);
     return new Response('Internal server error', { status: 500 });

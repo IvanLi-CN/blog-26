@@ -80,47 +80,47 @@ export abstract class BaseContentDataSource implements ContentDataSource {
   }
 
   // 可选方法的默认实现（抛出不支持错误）
-  async createContent?(input: CreateContentInput): Promise<ContentItem> {
+  async createContent?(_input: CreateContentInput): Promise<ContentItem> {
     this.validateCapability('write');
     throw new UnsupportedOperationError('createContent', this.name);
   }
 
-  async updateContent?(id: string, input: UpdateContentInput): Promise<ContentItem> {
+  async updateContent?(_id: string, _input: UpdateContentInput): Promise<ContentItem> {
     this.validateCapability('write');
     throw new UnsupportedOperationError('updateContent', this.name);
   }
 
-  async deleteContent?(id: string): Promise<void> {
+  async deleteContent?(_id: string): Promise<void> {
     this.validateCapability('delete');
     throw new UnsupportedOperationError('deleteContent', this.name);
   }
 
-  async uploadFile?(path: string, content: Buffer | string): Promise<string> {
+  async uploadFile?(_path: string, _content: Buffer | string): Promise<string> {
     this.validateCapability('uploadFile');
     throw new UnsupportedOperationError('uploadFile', this.name);
   }
 
-  async downloadFile?(path: string): Promise<Buffer> {
+  async downloadFile?(_path: string): Promise<Buffer> {
     this.validateCapability('downloadFile');
     throw new UnsupportedOperationError('downloadFile', this.name);
   }
 
-  async renameFile?(oldPath: string, newPath: string): Promise<void> {
+  async renameFile?(_oldPath: string, _newPath: string): Promise<void> {
     this.validateCapability('renameFile');
     throw new UnsupportedOperationError('renameFile', this.name);
   }
 
-  async createDirectory?(path: string): Promise<void> {
+  async createDirectory?(_path: string): Promise<void> {
     this.validateCapability('createDirectory');
     throw new UnsupportedOperationError('createDirectory', this.name);
   }
 
-  async deleteDirectory?(path: string): Promise<void> {
+  async deleteDirectory?(_path: string): Promise<void> {
     this.validateCapability('delete');
     throw new UnsupportedOperationError('deleteDirectory', this.name);
   }
 
-  async listDirectories?(path?: string): Promise<any[]> {
+  async listDirectories?(_path?: string): Promise<any[]> {
     this.validateCapability('read');
     throw new UnsupportedOperationError('listDirectories', this.name);
   }
@@ -193,7 +193,7 @@ export abstract class BaseContentDataSource implements ContentDataSource {
     return content?.updateDate || content?.publishDate || null;
   }
 
-  async checkChanges?(since?: Date): Promise<any[]> {
+  async checkChanges?(_since?: Date): Promise<any[]> {
     // 默认实现：返回空数组
     return [];
   }

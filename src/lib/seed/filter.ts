@@ -3,7 +3,7 @@
  * 在生产环境中过滤掉测试数据
  */
 
-import { and, like, not } from 'drizzle-orm';
+import { like, not } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { TEST_DATA_PREFIX, TEST_DATA_TAG } from './types';
 

@@ -142,19 +142,25 @@ export const GET: APIRoute = async ({ params, request, url }) => {
     }
 
     // 返回优化后的图片
-    return new Response(optimizedResult.buffer, {
-      status: 200,
-      headers: {
-        'Content-Type': `image/${optimizedResult.format}`,
-        'Content-Length': optimizedResult.size.toString(),
-        'X-Image-Width': optimizedResult.width.toString(),
-        'X-Image-Height': optimizedResult.height.toString(),
-        'X-Original-Size': originalBuffer.length.toString(),
-        'X-Optimized-Size': optimizedResult.size.toString(),
-        'X-Compression-Ratio': ((1 - optimizedResult.size / originalBuffer.length) * 100).toFixed(2),
-        ...cacheHeaders,
-      },
-    });
+    return new Response(
+      optimizedResult.buffer.buffer.slice(
+        optimizedResult.buffer.byteOffset,
+        optimizedResult.buffer.byteOffset + optimizedResult.buffer.byteLength
+      ) as ArrayBuffer,
+      {
+        status: 200,
+        headers: {
+          'Content-Type': `image/${optimizedResult.format}`,
+          'Content-Length': optimizedResult.size.toString(),
+          'X-Image-Width': optimizedResult.width.toString(),
+          'X-Image-Height': optimizedResult.height.toString(),
+          'X-Original-Size': originalBuffer.length.toString(),
+          'X-Optimized-Size': optimizedResult.size.toString(),
+          'X-Compression-Ratio': ((1 - optimizedResult.size / originalBuffer.length) * 100).toFixed(2),
+          ...cacheHeaders,
+        },
+      }
+    );
   } catch (error) {
     console.error('Error in image rendering optimization:', error);
     return new Response('Internal server error', { status: 500 });

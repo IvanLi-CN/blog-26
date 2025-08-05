@@ -323,7 +323,11 @@ import Layout from "~/layouts/PageLayout.astro";
     }
 
     async function testAdminFileRead() {
-      const path = document.getElementById("admin-file-path").value;
+      const pathElement = document.getElementById(
+        "admin-file-path",
+      ) as HTMLInputElement;
+      if (!pathElement) return;
+      const path = pathElement.value;
 
       if (!path) {
         logResult("admin-test-result", "请输入文件路径", "error");
@@ -367,9 +371,16 @@ import Layout from "~/layouts/PageLayout.astro";
     }
 
     async function testAdminFileUpdate() {
-      const path = document.getElementById("admin-file-path").value;
-      const content =
-        document.getElementById("admin-file-content").value + "\n[已更新]";
+      const pathElement = document.getElementById(
+        "admin-file-path",
+      ) as HTMLInputElement;
+      const contentElement = document.getElementById(
+        "admin-file-content",
+      ) as HTMLTextAreaElement;
+      if (!pathElement || !contentElement) return;
+
+      const path = pathElement.value;
+      const content = contentElement.value + "\n[已更新]";
 
       if (!path) {
         logResult("admin-test-result", "请输入文件路径", "error");
@@ -413,7 +424,11 @@ import Layout from "~/layouts/PageLayout.astro";
     }
 
     async function testAdminFileDelete() {
-      const path = document.getElementById("admin-file-path").value;
+      const pathElement = document.getElementById(
+        "admin-file-path",
+      ) as HTMLInputElement;
+      if (!pathElement) return;
+      const path = pathElement.value;
 
       if (!path) {
         logResult("admin-test-result", "请输入文件路径", "error");
@@ -552,28 +567,28 @@ import Layout from "~/layouts/PageLayout.astro";
     // 事件监听器
     document
       .getElementById("test-public-read")
-      .addEventListener("click", testPublicFileRead);
+      ?.addEventListener("click", testPublicFileRead);
     document
       .getElementById("test-admin-create")
-      .addEventListener("click", testAdminFileCreate);
+      ?.addEventListener("click", testAdminFileCreate);
     document
       .getElementById("test-admin-read")
-      .addEventListener("click", testAdminFileRead);
+      ?.addEventListener("click", testAdminFileRead);
     document
       .getElementById("test-admin-update")
-      .addEventListener("click", testAdminFileUpdate);
+      ?.addEventListener("click", testAdminFileUpdate);
     document
       .getElementById("test-admin-delete")
-      .addEventListener("click", testAdminFileDelete);
+      ?.addEventListener("click", testAdminFileDelete);
     document
       .getElementById("test-permission-check")
-      .addEventListener("click", testPermissionCheck);
-    document.getElementById("clear-auth").addEventListener("click", clearAuth);
+      ?.addEventListener("click", testPermissionCheck);
+    document.getElementById("clear-auth")?.addEventListener("click", clearAuth);
     document
       .getElementById("run-all-tests")
-      .addEventListener("click", runAllTests);
+      ?.addEventListener("click", runAllTests);
 
-    document.getElementById("clear-results").addEventListener("click", () => {
+    document.getElementById("clear-results")?.addEventListener("click", () => {
       clearResults("public-test-result");
       clearResults("admin-test-result");
       clearResults("permission-test-result");

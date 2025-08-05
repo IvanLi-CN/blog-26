@@ -114,7 +114,7 @@ export async function optimizeImage(
   }
 
   // 获取原始图片信息（添加错误处理）
-  let metadata;
+  let metadata: import('sharp').Metadata;
   let originalWidth: number | undefined;
   let originalHeight: number | undefined;
 
@@ -127,7 +127,7 @@ export async function optimizeImage(
     // 对于测试图片或损坏的图片，使用默认值
     originalWidth = 100;
     originalHeight = 100;
-    metadata = { width: originalWidth, height: originalHeight };
+    metadata = { width: originalWidth, height: originalHeight } as import('sharp').Metadata;
   }
 
   // 计算目标尺寸，保持宽高比
@@ -181,7 +181,7 @@ export async function optimizeImage(
 
       if (finalWidth && finalHeight) {
         // 先处理图片到最终尺寸，然后添加水印
-        let processedBuffer;
+        let processedBuffer: Buffer | null;
         try {
           processedBuffer = await pipeline.toBuffer();
         } catch (error) {
@@ -192,12 +192,12 @@ export async function optimizeImage(
 
         if (processedBuffer) {
           try {
-            let processedMeta;
+            let processedMeta: import('sharp').Metadata;
             try {
               processedMeta = await sharp(processedBuffer).metadata();
             } catch (error) {
               console.warn('⚠️ 无法读取处理后图片元数据，使用默认值:', error);
-              processedMeta = { width: finalWidth, height: finalHeight };
+              processedMeta = { width: finalWidth, height: finalHeight } as import('sharp').Metadata;
             }
 
             const watermarkSvg = await createWatermarkSvg(
@@ -275,7 +275,7 @@ export async function generateResponsiveImages(
   const results = new Map<number, OptimizedImageResult>();
 
   // 获取原始图片尺寸（添加错误处理）
-  let metadata;
+  let metadata: import('sharp').Metadata;
   let originalWidth = 1920;
   try {
     metadata = await sharp(inputBuffer).metadata();

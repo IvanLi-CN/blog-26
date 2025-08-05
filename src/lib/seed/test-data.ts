@@ -8,7 +8,7 @@ import { TEST_DATA_PREFIX, TEST_DATA_TAG } from './types';
 
 // 生成唯一 ID
 function generateId(prefix: string = TEST_DATA_PREFIX): string {
-  return `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `${prefix}${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 // 生成时间戳（过去30天内的随机时间）

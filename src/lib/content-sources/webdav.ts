@@ -6,29 +6,20 @@
 
 import { normalizeWebDAVMemo, normalizeWebDAVPost } from '~/lib/content';
 // 导入现有的WebDAV相关类型和客户端
-import {
-  getWebDAVClient,
-  isWebDAVEnabled,
-  type WebDAVClient,
-  type WebDAVFileIndex,
-  type WebDAVMemo,
-  type WebDAVPost,
-} from '~/lib/webdav';
+import { getWebDAVClient, isWebDAVEnabled, type WebDAVClient, type WebDAVFileIndex } from '~/lib/webdav';
 import { BaseContentDataSource } from './base';
 import type {
   ChangeInfo,
-  ContentDataSource,
   ContentIndex,
   ContentItem,
   ContentSourceCapabilities,
   ContentType,
   CreateContentInput,
-  DataSourceConfig,
   DirectoryInfo,
   ListContentOptions,
   UpdateContentInput,
 } from './types';
-import { ContentNotFoundError, ContentSourceError } from './types';
+import { ContentSourceError } from './types';
 
 /**
  * WebDAV数据源实现
@@ -150,10 +141,20 @@ export class WebDAVDataSource extends BaseContentDataSource {
 
     try {
       if (type === 'memo' || (!type && slug.includes('memo'))) {
-        // 搜索Memo
-        const memos = await this.client.getAllMemos();
-        const memo = memos.find((m) => m.slug === slug);
-        return memo ? normalizeWebDAVMemo(memo) : null;
+        // 搜索Memo - 需要遍历所有memo来找到匹配的slug
+        const memosIndex = await this.client.getMemosIndex();
+        for (const memoIndex of memosIndex) {
+          try {
+            const memo = await this.client.getMemoByIndex(memoIndex);
+            if (memo.slug === slug) {
+              return normalizeWebDAVMemo(memo);
+            }
+          } catch (error) {
+            console.warn(`Failed to load memo ${memoIndex.path}:`, error);
+            continue;
+          }
+        }
+        return null;
       } else {
         // 搜索Post/Project
         const post = await this.client.getPostBySlug(slug);

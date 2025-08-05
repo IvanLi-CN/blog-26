@@ -3,7 +3,7 @@
  * 支持从任何版本迁移到新版本，并在开发/测试环境填充测试数据
  */
 
-import { eq, like } from 'drizzle-orm';
+import { like } from 'drizzle-orm';
 import { config } from '../config';
 import { db, initializeDB } from '../db';
 import { comments, memos, posts, users } from '../schema';

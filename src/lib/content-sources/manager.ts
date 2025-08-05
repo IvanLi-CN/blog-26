@@ -16,7 +16,7 @@ import type {
   SyncResult,
   UpdateContentInput,
 } from './types';
-import { ContentNotFoundError, ContentSourceError, ContentSourceUnavailableError } from './types';
+import { ContentNotFoundError, ContentSourceError } from './types';
 
 /**
  * 多源内容管理器

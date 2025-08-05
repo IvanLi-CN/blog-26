@@ -78,7 +78,7 @@ async function loadLocalContentWithFS(): Promise<ContentItem[]> {
         const fullPath = join(dir, entry);
         const relativePath = join(basePath, entry);
 
-        let stat;
+        let stat: import('fs').Stats;
         try {
           stat = statSync(fullPath);
         } catch (error) {

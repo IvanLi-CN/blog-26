@@ -88,10 +88,13 @@ async function createWebDAVFile(filePath: string, content: Buffer | string): Pro
 
     if (content instanceof Buffer) {
       // 正确地将 Buffer 转换为 ArrayBuffer
-      const arrayBuffer = content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength);
+      const arrayBuffer = content.buffer.slice(
+        content.byteOffset,
+        content.byteOffset + content.byteLength
+      ) as ArrayBuffer;
       await webdavClient.putBinaryFile(filePath, arrayBuffer);
     } else {
-      await webdavClient.putFile(filePath, content);
+      await webdavClient.putFile(filePath, content as string);
     }
     return true;
   } catch (error) {
@@ -206,12 +209,15 @@ export const GET: APIRoute = async ({ params, request }) => {
     const mimeType = getMimeType(filePath);
     console.log(`Admin Files API: Found file ${source}/${filePath}, type: ${mimeType}, size: ${fileBuffer.length}`);
 
-    return new Response(fileBuffer, {
-      headers: {
-        'Content-Type': mimeType,
-        'Content-Length': fileBuffer.length.toString(),
-      },
-    });
+    return new Response(
+      fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer,
+      {
+        headers: {
+          'Content-Type': mimeType,
+          'Content-Length': fileBuffer.length.toString(),
+        },
+      }
+    );
   } catch (error) {
     console.error('Admin Files API: Error reading file:', error);
     return new Response('Internal server error', { status: 500 });

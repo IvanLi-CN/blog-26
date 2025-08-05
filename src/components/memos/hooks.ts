@@ -34,8 +34,8 @@ interface UseMemosProps {
   initialPagination?: Pagination;
 }
 
-export function useMemos({ isAdmin = false, initialMemos, initialPagination }: UseMemosProps = {}) {
-  // Note: isAdmin is currently not used but kept for future admin-specific features
+export function useMemos({ isAdmin: _isAdmin = false, initialMemos, initialPagination }: UseMemosProps = {}) {
+  // Note: _isAdmin is currently not used but kept for future admin-specific features
   const [allMemos, setAllMemos] = useState<Memo[]>(initialMemos || []);
   const [page, setPage] = useState(initialPagination?.page || 1);
   const [hasMore, setHasMore] = useState(initialPagination?.hasMore ?? true);

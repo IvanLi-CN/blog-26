@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import ImageLightbox from './ImageLightbox';
 
 // 全局灯箱状态，确保同一时间只有一个灯箱打开
-let _globalLightboxState: LightboxState | null = null;
 let globalLightboxSetters: Set<(state: LightboxState) => void> = new Set();
 
 interface ContentImageHandlerProps {
@@ -34,7 +33,6 @@ export default function ContentImageHandler({ children }: ContentImageHandlerPro
 
   // 全局状态同步函数
   const setGlobalLightbox = (newState: LightboxState) => {
-    _globalLightboxState = newState;
     // 同步到所有组件实例
     globalLightboxSetters.forEach((setter) => setter(newState));
   };

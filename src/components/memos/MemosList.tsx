@@ -102,7 +102,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
       // 关闭确认对话框
       setDeleteConfirm({ show: false, slug: '', title: '' });
     },
-    onError: (error, variables) => {
+    onError: (error, _variables) => {
       // 显示错误对话框
       setErrorDialog({ show: true, message: `删除失败: ${error.message}` });
       // 清除删除状态
@@ -456,7 +456,7 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
 
                     const contentImagePaths = new Set();
                     const imageRegex = /!\[.*?\]\(([^)]+)\)/g;
-                    let match;
+                    let match: RegExpExecArray | null;
                     while ((match = imageRegex.exec(memo.content)) !== null) {
                       let imagePath = match[1];
                       // 标准化路径格式

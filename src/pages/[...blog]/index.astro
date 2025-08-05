@@ -1,5 +1,4 @@
 ---
-import type { ImageMetadata } from "astro";
 import merge from "lodash.merge";
 import RelatedPosts from "~/components/blog/RelatedPosts.astro";
 import SinglePost from "~/components/blog/SinglePost.astro";
@@ -8,7 +7,6 @@ import Layout from "~/layouts/PageLayout.astro";
 
 import type { MetaData } from "~/types";
 import { blogPostRobots, getPostBySlug } from "~/utils/blog";
-import { create404Response } from "~/utils/error-handler";
 
 import { getCanonical, getPermalink } from "~/utils/permalinks";
 

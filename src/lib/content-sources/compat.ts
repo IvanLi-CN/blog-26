@@ -89,8 +89,10 @@ export async function fetchContent(types: (ContentType | 'all')[] = ['all']): Pr
   } catch (error) {
     console.error('Failed to fetch content via multi-source manager:', error);
 
-    // 降级到原有实现
+    // 降级到原有实现（使用已弃用的 fetchContent 作为兼容性回退）
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const { fetchContent: originalFetch } = await import('~/lib/content');
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     return originalFetch(types);
   }
 }

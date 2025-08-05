@@ -1,6 +1,5 @@
 import type { AstroCookies } from 'astro';
 import { extractAuthFromRequest } from './auth-utils';
-import { config } from './config';
 import { verifyJwt } from './jwt';
 
 export interface UserInfo {
