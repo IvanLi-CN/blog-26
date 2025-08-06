@@ -51,7 +51,7 @@ export function getDefaultMultiSourceConfig(): any {
       {
         name: 'webdav-primary',
         type: 'webdav' as const,
-        enabled: !!(webdavConfig.url && webdavConfig.username && webdavConfig.password),
+        enabled: !!webdavConfig.url, // 只要有URL就启用，用户名和密码可选（开发环境可能不需要认证）
         priority: 2,
         required: false,
         config: {

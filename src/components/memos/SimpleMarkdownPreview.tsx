@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import { removeTagsFromContent } from '~/utils/utils';
+import { isExternalUrl, resolveRelativePath } from '../../utils/path-resolver';
 
 // 不需要重复导入样式，因为已经在 CustomStyles.astro 中全局导入了
 
@@ -79,40 +80,13 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
             // 转换图片路径为优化后的图片路径
             let convertedSrc = src;
             // 如果是base64图片、HTTP/HTTPS URL或已经是render-image端点，直接使用
-            if (
-              src &&
-              !src.startsWith('http://') &&
-              !src.startsWith('https://') &&
-              !src.startsWith('data:') &&
-              !src.startsWith('/api/render-image/')
-            ) {
-              let cleanPath = src;
-
-              // 处理相对路径和绝对路径
-              let targetPath = cleanPath;
-
-              if (targetPath.startsWith('./assets/')) {
-                // ./assets/file.png -> assets/file.png (相对于WebDAV根目录)
-                targetPath = targetPath.substring(2);
-              } else if (targetPath.startsWith('assets/')) {
-                // assets/file.png -> assets/file.png (已经是正确的路径)
-                targetPath = targetPath;
-              } else if (targetPath.startsWith('./')) {
-                // 其他相对路径，如 ./file.png -> Memos/file.png (相对于闪念目录)
-                targetPath = `Memos/${targetPath.substring(2)}`;
-              } else if (targetPath.startsWith('/files/')) {
-                // 移除 /files/ 前缀
-                targetPath = targetPath.substring(7);
-              } else if (targetPath.startsWith('/assets/')) {
-                // /assets/file.png -> assets/file.png (绝对路径，相对于WebDAV根目录)
-                targetPath = targetPath.substring(1);
-              } else if (targetPath.startsWith('/')) {
-                // 其他绝对路径，移除开头的斜杠
-                targetPath = targetPath.substring(1);
-              }
+            if (src && !isExternalUrl(src) && !src.startsWith('data:') && !src.startsWith('/api/render-image/')) {
+              // 对于Memos，使用统一的路径解析逻辑
+              const articleDir = 'Memos/'; // Memos文章都在Memos目录下
+              const resolvedPath = resolveRelativePath(src, articleDir);
 
               // 使用优化后的图片端点，指定尺寸和像素倍率
-              convertedSrc = `/api/render-image/${targetPath}?f=webp&q=85&s=1200&dpr=1`;
+              convertedSrc = `/api/render-image/${resolvedPath}?f=webp&q=85&s=1200&dpr=1`;
             }
             return (
               <img

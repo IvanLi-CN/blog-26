@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
+import { generateOptimizedImageUrl, isExternalUrl, resolveRelativePath } from '../../utils/path-resolver';
 
 // 不需要重复导入样式，因为已经在 CustomStyles.astro 中全局导入了
 
@@ -13,58 +14,21 @@ interface MarkdownPreviewProps {
 // 转换图片路径用于预览显示
 function convertImagePathForPreview(imagePath: string, currentFilePath?: string): string {
   // 如果已经是完整的 URL、base64图片或已经是文件代理路径，直接返回
-  if (
-    imagePath &&
-    (imagePath.startsWith('http://') ||
-      imagePath.startsWith('https://') ||
-      imagePath.startsWith('data:') ||
-      imagePath.startsWith('/files/'))
-  ) {
+  if (imagePath && (isExternalUrl(imagePath) || imagePath.startsWith('data:') || imagePath.startsWith('/files/'))) {
     return imagePath;
   }
 
   // 如果是相对路径，需要基于当前文件路径解析
   if (imagePath && currentFilePath) {
-    let resolvedPath = imagePath;
-
     // 获取当前文件所在的目录
     const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'));
+    const articleDir = currentDir.startsWith('/') ? currentDir.substring(1) + '/' : currentDir + '/';
 
-    if (imagePath.startsWith('./')) {
-      // ./path -> 相对于当前目录
-      resolvedPath = `${currentDir}/${imagePath.substring(2)}`;
-    } else if (imagePath.startsWith('../')) {
-      // ../path -> 相对于父目录
-      const pathParts = currentDir.split('/').filter((part) => part);
-      const imagePathParts = imagePath.split('/');
+    // 使用统一的路径解析逻辑
+    const resolvedPath = resolveRelativePath(imagePath, articleDir);
 
-      // 处理 ../ 部分
-      let upLevels = 0;
-      for (const part of imagePathParts) {
-        if (part === '..') {
-          upLevels++;
-        } else {
-          break;
-        }
-      }
-
-      // 构建解析后的路径
-      const baseParts = pathParts.slice(0, -upLevels);
-      const remainingParts = imagePathParts.slice(upLevels);
-      resolvedPath = `/${baseParts.concat(remainingParts).join('/')}`;
-    } else if (!imagePath.startsWith('/')) {
-      // 相对路径（不以 ./ 开头）-> 相对于当前目录
-      resolvedPath = `${currentDir}/${imagePath}`;
-    } else {
-      // 绝对路径
-      resolvedPath = imagePath;
-    }
-
-    // 清理路径（移除开头的 /）
-    resolvedPath = resolvedPath.replace(/^\/+/, '');
-
-    // 使用文件代理路径
-    return `/files/${resolvedPath}`;
+    // 转换为文件代理路径
+    return `/files/webdav/${resolvedPath}`;
   }
 
   // 如果没有文件路径信息，使用简单的转换逻辑
@@ -78,7 +42,7 @@ function convertImagePathForPreview(imagePath: string, currentFilePath?: string)
       processedPath = imagePath;
     }
 
-    return `/files/${processedPath}`;
+    return `/files/webdav/${processedPath}`;
   }
 
   return imagePath;

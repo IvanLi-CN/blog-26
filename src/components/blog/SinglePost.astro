@@ -114,7 +114,7 @@ const isUserAdmin = Astro.locals.isAdmin || false;
                 <span class="text-sm font-semibold text-blue-800 dark:text-blue-200">
                   管理员视图
                 </span>
-                <div class="ml-auto">
+                <div class="ml-auto flex items-center gap-3">
                   {post.draft ? (
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700">
                       草稿
@@ -128,6 +128,17 @@ const isUserAdmin = Astro.locals.isAdmin || false;
                       已发布
                     </span>
                   )}
+                  <a
+                    href={`/admin/posts/edit?id=${encodeURIComponent(post.id)}`}
+                    class="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 rounded-md transition-colors duration-200"
+                    title="编辑文章"
+                  >
+                    <Icon
+                      name="tabler:edit"
+                      class="w-4 h-4"
+                    />
+                    编辑
+                  </a>
                 </div>
               </div>
             </div>

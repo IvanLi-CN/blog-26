@@ -35,15 +35,18 @@ async function getWebDAVFile(filePath: string): Promise<Buffer | null> {
     // 根据文件路径判断是否需要添加路径前缀
     let fullPath = filePath;
 
-    // 如果路径以 assets/ 开头，很可能是 Memos 相关的文件，需要添加 memosPath 前缀
-    if (filePath.startsWith('assets/')) {
-      fullPath = `${webdavConfig.memosPath}/${filePath}`;
-      console.log(`WebDAV: Detected Memos asset, adding memosPath prefix: ${fullPath}`);
-    }
     // 如果路径以 projects/ 开头，添加 projectsPath 前缀
-    else if (filePath.startsWith('projects/')) {
+    if (filePath.startsWith('projects/')) {
       fullPath = `${webdavConfig.projectsPath}/${filePath}`;
       console.log(`WebDAV: Detected project file, adding projectsPath prefix: ${fullPath}`);
+    }
+    // 对于 assets/ 路径，需要区分是否是 Memos 相关的文件
+    else if (filePath.startsWith('assets/')) {
+      // 检查是否是通过 webdav/ 前缀访问的，如果是，则可能是 Memos 资源
+      // 但如果是直接的 assets/ 访问，则视为全局资源，不添加前缀
+      // 这里我们直接使用原始路径，不添加任何前缀
+      fullPath = filePath;
+      console.log(`WebDAV: Detected global asset, using direct path: ${fullPath}`);
     }
 
     // 移除开头的斜杠，避免双斜杠

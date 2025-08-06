@@ -22,7 +22,7 @@
 
 - **默认路径**: `/Memos` （可通过 `WEBDAV_MEMOS_PATH` 环境变量配置）
 - **存储方式**: WebDAV 远程存储
-- **附件存储**: 在 `assets` 目录，临时文件在 `assets/tmp`
+- **附件存储**: 在 `assets` 目录
 
 ## 📝 文件内容格式
 

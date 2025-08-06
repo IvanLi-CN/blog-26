@@ -1,6 +1,7 @@
 import { Crepe, CrepeFeature } from '@milkdown/crepe';
 import { replaceAll } from '@milkdown/utils';
 import { useEffect, useRef } from 'react';
+import { isExternalUrl, isOptimizedImageUrl, resolveRelativePath } from '../../utils/path-resolver';
 
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
@@ -20,33 +21,22 @@ function convertImagePathForEditor(imagePath: string): string {
   // 如果已经是完整的 URL、base64图片或已经是文件代理路径，直接返回
   if (
     imagePath &&
-    (imagePath.startsWith('http://') ||
-      imagePath.startsWith('https://') ||
+    (isExternalUrl(imagePath) ||
       imagePath.startsWith('data:') ||
       imagePath.startsWith('/files/') ||
-      imagePath.startsWith('/api/render-image/'))
+      isOptimizedImageUrl(imagePath))
   ) {
     return imagePath;
   }
 
   // 如果是相对路径，转换为 WebDAV 文件代理路径
   if (imagePath) {
-    let cleanPath = imagePath;
-
-    // 处理相对路径前缀
-    if (imagePath.startsWith('./')) {
-      cleanPath = imagePath.substring(2);
-    } else if (imagePath.startsWith('../')) {
-      cleanPath = imagePath.substring(3);
-    }
-
-    // 如果路径不以 assets/ 开头，添加 assets/ 前缀（适用于 Memos）
-    if (!cleanPath.startsWith('assets/')) {
-      cleanPath = `assets/${cleanPath}`;
-    }
+    // 对于Memos，使用统一的路径解析逻辑
+    const articleDir = 'Memos/'; // Memos文章都在Memos目录下
+    const resolvedPath = resolveRelativePath(imagePath, articleDir);
 
     // 使用 WebDAV 文件代理路径（Memos 图片存储在 WebDAV）
-    return `/files/webdav/${cleanPath}`;
+    return `/files/webdav/${resolvedPath}`;
   }
 
   return imagePath;
