@@ -46,23 +46,6 @@ export function MemosApp({ isAdmin, initialMemos, initialPagination }: MemosAppP
     initialPagination,
   });
 
-  // 监听来自抽屉编辑器的memo创建事件
-  useEffect(() => {
-    const handleMemoCreated = (event: CustomEvent) => {
-      if (event.detail) {
-        memosHook.addMemoToLocal(event.detail);
-      }
-    };
-
-    // 添加事件监听器
-    window.addEventListener('memoCreated', handleMemoCreated as EventListener);
-
-    // 清理函数
-    return () => {
-      window.removeEventListener('memoCreated', handleMemoCreated as EventListener);
-    };
-  }, [memosHook.addMemoToLocal]);
-
   return (
     <div>
       {/* 管理员快速编辑器 */}

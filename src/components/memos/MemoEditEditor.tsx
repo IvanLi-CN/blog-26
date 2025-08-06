@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
 import { type Attachment, AttachmentGrid } from './AttachmentGrid';
 import { MilkdownEditor } from './MilkdownEditor';
@@ -398,11 +398,7 @@ export function MemoEditEditor({
             {attachments.length > 0 && (
               <div className="space-y-2">
                 <label className="text-xs font-medium text-base-content/70">附件</label>
-                <AttachmentGrid
-                  attachments={attachments}
-                  onRemove={handleRemoveAttachment}
-                  showRemoveButton={!isPreview}
-                />
+                <AttachmentGrid attachments={attachments} onRemove={handleRemoveAttachment} editable={!isPreview} />
               </div>
             )}
 
