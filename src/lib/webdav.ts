@@ -931,60 +931,6 @@ export class WebDAVClient {
   }
 
   /**
-   * 更新 Memo
-   */
-  async updateMemo(
-    id: string,
-    content: string,
-    isPublic?: boolean,
-    attachments?: MemoAttachment[]
-  ): Promise<WebDAVMemo> {
-    const fileContent = await this.getFileContent(id);
-    const { frontmatter } = this.parseFrontmatter(fileContent);
-    const now = new Date();
-
-    // 使用统一的标签解析函数从正文中提取标签
-    const { parseTagsFromContent } = await import('~/utils/utils');
-    const parsedTags = parseTagsFromContent(content);
-    const tags = parsedTags.map((tag) => tag.content);
-
-    frontmatter.updatedAt = now.toISOString();
-    frontmatter.tags = tags.length > 0 ? tags : undefined; // 更新标签
-
-    // 如果提供了isPublic参数，则更新公开状态
-    if (isPublic !== undefined) {
-      frontmatter.public = isPublic;
-    }
-
-    // 如果提供了attachments参数，则更新附件
-    if (attachments !== undefined) {
-      frontmatter.attachments = attachments.map((a) => ({
-        filename: a.filename,
-        path: a.path,
-        contentType: a.contentType,
-        size: a.size,
-        isImage: a.isImage,
-      }));
-    }
-
-    const fullContent = this.serializeMarkdownContent(frontmatter, content);
-    await this.putFile(id, fullContent);
-
-    const slug = this.generateSlug(id, frontmatter);
-
-    return {
-      id,
-      slug,
-      data: frontmatter,
-      body: content,
-      createdAt: new Date(frontmatter.createdAt || now),
-      updatedAt: now,
-      attachments: attachments || frontmatter.attachments || [],
-      tags,
-    };
-  }
-
-  /**
    * 删除 Memo
    */
   async deleteMemo(id: string): Promise<void> {

@@ -22,24 +22,6 @@ const CreateMemoSchema = z.object({
     .default([]),
 });
 
-const UpdateMemoSchema = z.object({
-  id: z.string().min(1, 'ID is required'),
-  content: z.string().min(1, 'Content is required'),
-  isPublic: z.boolean().optional(),
-  attachments: z
-    .array(
-      z.object({
-        filename: z.string(),
-        path: z.string(),
-        contentType: z.string().optional(),
-        size: z.number().optional(),
-        isImage: z.boolean(),
-      })
-    )
-    .optional()
-    .default([]),
-});
-
 const DeleteMemoSchema = z.object({
   slug: z.string().min(1, 'Slug is required'),
 });
@@ -184,46 +166,6 @@ export const memosRouter = createTRPCRouter({
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to create memo',
-      });
-    }
-  }),
-
-  /**
-   * 更新 Memo（仅管理员）
-   */
-  update: adminProcedure.input(UpdateMemoSchema).mutation(async ({ input }) => {
-    if (!isWebDAVEnabled()) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'WebDAV is not enabled',
-      });
-    }
-
-    try {
-      const webdavClient = getWebDAVClient();
-      const memo = await webdavClient.updateMemo(input.id, input.content, input.isPublic, input.attachments);
-
-      // 刷新数据库缓存，确保更新的闪念立即在数据库中更新
-      await refreshContentCache();
-      console.log('✅ 更新闪念后已刷新数据库缓存');
-
-      return {
-        id: memo.id,
-        slug: memo.slug,
-        title: memo.data.title || '无标题 Memo',
-        content: memo.body,
-        createdAt: memo.createdAt.toISOString(),
-        updatedAt: memo.updatedAt.toISOString(),
-        data: memo.data,
-        isPublic: memo.data.public !== false, // 添加 isPublic 字段
-        attachments: memo.attachments || [],
-        tags: memo.tags || [],
-      };
-    } catch (error) {
-      console.error('Failed to update memo:', error);
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'Failed to update memo',
       });
     }
   }),

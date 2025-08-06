@@ -4,7 +4,7 @@ import { trpc } from '~/lib/trpc-client';
 import { AttachmentGrid } from './AttachmentGrid';
 import CommentCountWithProvider from './CommentCountWithProvider';
 import { useInfiniteScroll, useMemos } from './hooks';
-import { MemoEditor } from './MemoEditor';
+
 import MemoReactionStatsWithProvider from './MemoReactionStatsWithProvider';
 import { SimpleMarkdownPreview } from './SimpleMarkdownPreview';
 
@@ -57,11 +57,6 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
   const [errorDialog, setErrorDialog] = useState<{ show: boolean; message: string }>({
     show: false,
     message: '',
-  });
-  // 编辑抽屉状态
-  const [editDrawer, setEditDrawer] = useState<{ show: boolean; memo: any | null }>({
-    show: false,
-    memo: null,
   });
 
   useEffect(() => {
@@ -133,22 +128,6 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
 
   const handleCloseError = () => {
     setErrorDialog({ show: false, message: '' });
-  };
-
-  const handleEditClick = (slug: string) => {
-    // 找到要编辑的memo
-    const memo = memos.find((m) => m.slug === slug);
-    if (memo) {
-      setEditDrawer({ show: true, memo });
-      // 禁止背景滚动
-      document.body.style.overflow = 'hidden';
-    }
-  };
-
-  const handleCloseEditDrawer = () => {
-    setEditDrawer({ show: false, memo: null });
-    // 恢复背景滚动
-    document.body.style.overflow = '';
   };
 
   // 格式化日期 - 友好显示
@@ -370,32 +349,6 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
                     {/* 管理员操作按钮组 */}
                     {isAdmin && (
                       <div className="flex items-center space-x-0.5 sm:space-x-1">
-                        {/* 编辑按钮 */}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleEditClick(memo.slug);
-                          }}
-                          disabled={!isHydrated}
-                          className="btn btn-ghost btn-xs btn-circle text-primary hover:bg-primary/10"
-                          title={!isHydrated ? '正在加载...' : '编辑'}
-                        >
-                          <svg
-                            className="w-2.5 h-2.5 sm:w-3 sm:h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                        </button>
-
                         {/* 删除按钮 */}
                         <button
                           onClick={(e) => {
@@ -593,52 +546,6 @@ export function MemosList({ isAdmin = false, initialMemos, initialPagination, me
             </div>
           </div>
         </div>
-      )}
-
-      {/* 编辑抽屉 */}
-      {editDrawer.show && (
-        <>
-          {/* 遮罩层 */}
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={handleCloseEditDrawer} />
-
-          {/* 抽屉内容 */}
-          <div className="fixed top-0 left-0 right-0 bg-base-100 shadow-xl z-50 transform transition-transform duration-300 ease-in-out h-[85vh] sm:h-[80vh] flex flex-col">
-            <div className="container mx-auto px-4 py-3 sm:px-6 sm:py-4 max-w-4xl h-full flex flex-col">
-              {/* 抽屉头部 */}
-              <div className="flex items-center justify-between mb-3 sm:mb-4 border-b border-base-300 pb-3 sm:pb-4 flex-shrink-0">
-                <h3 className="text-base sm:text-lg font-semibold">编辑 Memo</h3>
-                <button
-                  onClick={handleCloseEditDrawer}
-                  className="btn btn-ghost btn-sm btn-circle"
-                  aria-label="关闭编辑器"
-                >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* 编辑器内容 */}
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {editDrawer.memo && (
-                  <MemoEditor
-                    memo={editDrawer.memo}
-                    onSave={(updatedMemo) => {
-                      // 更新本地状态
-                      if (memosHook?.addMemoToLocal) {
-                        // 先移除旧的，再添加新的
-                        removeMemoFromLocal(editDrawer.memo.slug);
-                        memosHook.addMemoToLocal(updatedMemo);
-                      }
-                      handleCloseEditDrawer();
-                    }}
-                    onCancel={handleCloseEditDrawer}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </>
       )}
     </div>
   );
