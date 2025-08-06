@@ -175,8 +175,8 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
       const timestamp = Date.now();
       const uniqueFileName = `${timestamp}_${file.name}`;
 
-      // 构建上传路径：Memos/assets/tmp/filename
-      const uploadPath = `Memos/assets/tmp/${uniqueFileName}`;
+      // 构建上传路径：Memos/assets/filename（直接上传到正式目录）
+      const uploadPath = `Memos/assets/${uniqueFileName}`;
 
       console.log('📦 [QuickMemoEditor] 准备上传到路径:', uploadPath);
 
@@ -204,7 +204,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
 
       // 返回相对路径，相对于 Memos 目录
       // 这个路径会被 frontmatter.ts 正确解析
-      const relativePath = `assets/tmp/${uniqueFileName}`;
+      const relativePath = `assets/${uniqueFileName}`;
       console.log('🔗 [QuickMemoEditor] 生成相对路径:', relativePath);
 
       return relativePath;
@@ -230,8 +230,8 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}_${file.name}`;
 
-        // 构建上传路径：Memos/assets/tmp/filename
-        const uploadPath = `Memos/assets/tmp/${uniqueFileName}`;
+        // 构建上传路径：Memos/assets/filename（直接上传到正式目录）
+        const uploadPath = `Memos/assets/${uniqueFileName}`;
 
         console.log('📦 [QuickMemoEditor] 上传附件到路径:', uploadPath);
 
@@ -263,7 +263,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
         // 返回附件信息
         const attachment: Attachment = {
           filename: file.name,
-          path: `assets/tmp/${uniqueFileName}`, // 相对路径
+          path: `assets/${uniqueFileName}`, // 相对路径
           contentType: file.type,
           size: file.size,
           isImage,

@@ -49,11 +49,7 @@ export const GET: APIRoute = async ({ params, request, url }) => {
         ];
       } else if (!normalizedPath.includes('/')) {
         // 如果路径只是文件名，尝试在闪念的 assets 目录中查找
-        possiblePaths = [
-          `${cleanMemosPath}/assets/${normalizedPath}`,
-          `${cleanMemosPath}/assets/tmp/${normalizedPath}`,
-          normalizedPath,
-        ];
+        possiblePaths = [`${cleanMemosPath}/assets/${normalizedPath}`, normalizedPath];
       }
 
       let foundPath: string | null = null;

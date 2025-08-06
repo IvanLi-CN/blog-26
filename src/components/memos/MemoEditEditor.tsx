@@ -81,8 +81,8 @@ export function MemoEditEditor({
         const timestamp = Date.now();
         const filename = `inline-${timestamp}.${imageType}`;
 
-        // 构建上传路径：Memos/assets/tmp/filename（与快速发布编辑器保持一致）
-        const uploadPath = `Memos/assets/tmp/${filename}`;
+        // 构建上传路径：Memos/assets/filename（直接上传到正式目录）
+        const uploadPath = `Memos/assets/${filename}`;
 
         // 将 base64 转换为 Blob
         const byteCharacters = atob(base64Data);
@@ -115,7 +115,7 @@ export function MemoEditEditor({
         });
 
         // 替换内联图片为上传后的路径（使用相对路径）
-        const imagePath = `assets/tmp/${filename}`;
+        const imagePath = `assets/${filename}`;
         const newImageMarkdown = `![${altText}](${imagePath})`;
         processedContent = processedContent.replace(fullMatch, newImageMarkdown);
 
@@ -140,8 +140,8 @@ export function MemoEditEditor({
       const timestamp = Date.now();
       const uniqueFileName = `${timestamp}_${file.name}`;
 
-      // 构建上传路径：Memos/assets/tmp/filename
-      const uploadPath = `Memos/assets/tmp/${uniqueFileName}`;
+      // 构建上传路径：Memos/assets/filename（直接上传到正式目录）
+      const uploadPath = `Memos/assets/${uniqueFileName}`;
 
       console.log('📦 [MemoEditEditor] 准备上传到路径:', uploadPath);
 
@@ -168,7 +168,7 @@ export function MemoEditEditor({
       });
 
       // 返回相对路径（与快速发布编辑器保持一致）
-      return `assets/tmp/${uniqueFileName}`;
+      return `assets/${uniqueFileName}`;
     } catch (error) {
       console.error('❌ [MemoEditEditor] 图片上传失败:', error);
       throw error;
@@ -187,8 +187,8 @@ export function MemoEditEditor({
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}_${file.name}`;
 
-        // 构建上传路径：Memos/assets/tmp/filename（与快速发布编辑器保持一致）
-        const uploadPath = `Memos/assets/tmp/${uniqueFileName}`;
+        // 构建上传路径：Memos/assets/filename（直接上传到正式目录）
+        const uploadPath = `Memos/assets/${uniqueFileName}`;
 
         console.log('📦 [MemoEditEditor] 上传附件到路径:', uploadPath);
 
@@ -220,7 +220,7 @@ export function MemoEditEditor({
         // 返回附件信息（使用相对路径，与快速发布编辑器保持一致）
         const attachment: Attachment = {
           filename: file.name,
-          path: `assets/tmp/${uniqueFileName}`, // 相对路径
+          path: `assets/${uniqueFileName}`, // 相对路径
           contentType: file.type,
           size: file.size,
           isImage,

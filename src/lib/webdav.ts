@@ -1023,7 +1023,8 @@ export class WebDAVClient {
     contentType?: string,
     isTemporary: boolean = false
   ): Promise<string> {
-    const assetsPath = isTemporary ? `${this.memosPath}/assets/tmp` : `${this.memosPath}/assets/${memoId}`;
+    // 直接上传到 assets 目录，不再使用 tmp 或 memoId 子目录
+    const assetsPath = `${this.memosPath}/assets`;
     const filePath = `${assetsPath}/${filename}`;
 
     // 确保目录存在

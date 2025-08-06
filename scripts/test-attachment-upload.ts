@@ -170,7 +170,7 @@ async function testAttachmentUpload() {
     // 6. 验证文件是否真的创建了
     console.log('6. 验证文件创建...');
     try {
-      const expectedPath = `/Memos/assets/tmp/${filename}`;
+      const expectedPath = `/Memos/assets/${filename}`;
       // 这里我们无法直接验证文件是否存在，但可以通过 WebDAV 服务器日志来确认
       console.log(`   预期文件路径: ${expectedPath}`);
       console.log('   ✅ 请检查 WebDAV 服务器日志确认文件是否被创建');
