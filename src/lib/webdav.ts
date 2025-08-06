@@ -931,6 +931,66 @@ export class WebDAVClient {
   }
 
   /**
+   * 更新现有 Memo
+   */
+  async updateMemo(
+    id: string,
+    content: string,
+    isPublic: boolean,
+    attachments: MemoAttachment[] = []
+  ): Promise<WebDAVMemo> {
+    console.log(
+      `🔄 开始更新闪念: ${id}, 内容长度: ${content.length}, 公开: ${isPublic}, 附件数量: ${attachments.length}`
+    );
+
+    // 读取现有文件以获取当前的 frontmatter
+    const existingContent = await this.getFileContent(id);
+    const { frontmatter: existingFrontmatter } = this.parseFrontmatter(existingContent);
+
+    // 解析标签
+    const { parseTagsFromContent } = await import('~/utils/utils');
+    const parsedTags = parseTagsFromContent(content);
+    const tags = parsedTags.map((tag) => tag.content);
+
+    // 提取标题（第一个 # 标题）
+    const titleMatch = content.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : existingFrontmatter.title || '无标题 Memo';
+
+    // 更新 frontmatter，保留现有的创建时间等信息
+    const updatedFrontmatter = {
+      ...existingFrontmatter,
+      title,
+      public: isPublic,
+      tags,
+      attachments,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 序列化内容
+    const fullContent = this.serializeMarkdownContent(updatedFrontmatter, content);
+
+    // 更新文件
+    await this.putFile(id, fullContent);
+
+    console.log(`✅ 闪念更新成功: ${id}`);
+
+    // 生成 slug
+    const slug = this.generateSlug(id, updatedFrontmatter);
+
+    return {
+      id,
+      slug,
+      data: updatedFrontmatter,
+      body: content,
+      collection: 'memos',
+      createdAt: new Date(existingFrontmatter.createdAt || existingFrontmatter.publishDate),
+      updatedAt: new Date(),
+      attachments,
+      tags,
+    };
+  }
+
+  /**
    * 删除 Memo
    */
   async deleteMemo(id: string): Promise<void> {

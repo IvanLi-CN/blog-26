@@ -32,7 +32,24 @@ async function getWebDAVFile(filePath: string): Promise<Buffer | null> {
       return null;
     }
 
-    const url = `${webdavConfig.url}/${filePath}`;
+    // 根据文件路径判断是否需要添加路径前缀
+    let fullPath = filePath;
+
+    // 如果路径以 assets/ 开头，很可能是 Memos 相关的文件，需要添加 memosPath 前缀
+    if (filePath.startsWith('assets/')) {
+      fullPath = `${webdavConfig.memosPath}/${filePath}`;
+      console.log(`WebDAV: Detected Memos asset, adding memosPath prefix: ${fullPath}`);
+    }
+    // 如果路径以 projects/ 开头，添加 projectsPath 前缀
+    else if (filePath.startsWith('projects/')) {
+      fullPath = `${webdavConfig.projectsPath}/${filePath}`;
+      console.log(`WebDAV: Detected project file, adding projectsPath prefix: ${fullPath}`);
+    }
+
+    // 移除开头的斜杠，避免双斜杠
+    fullPath = fullPath.replace(/^\/+/, '');
+
+    const url = `${webdavConfig.url}/${fullPath}`;
     console.log(`WebDAV: Fetching ${url}`);
 
     // 构建请求头，只在有用户名和密码时才添加认证

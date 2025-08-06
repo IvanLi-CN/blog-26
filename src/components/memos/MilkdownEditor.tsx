@@ -15,6 +15,58 @@ interface MilkdownEditorProps {
   onImageUpload?: (file: File) => Promise<string>;
 }
 
+// 转换图片路径用于编辑器显示
+function convertImagePathForEditor(imagePath: string): string {
+  // 如果已经是完整的 URL、base64图片或已经是文件代理路径，直接返回
+  if (
+    imagePath &&
+    (imagePath.startsWith('http://') ||
+      imagePath.startsWith('https://') ||
+      imagePath.startsWith('data:') ||
+      imagePath.startsWith('/files/') ||
+      imagePath.startsWith('/api/render-image/'))
+  ) {
+    return imagePath;
+  }
+
+  // 如果是相对路径，转换为 WebDAV 文件代理路径
+  if (imagePath) {
+    let cleanPath = imagePath;
+
+    // 处理相对路径前缀
+    if (imagePath.startsWith('./')) {
+      cleanPath = imagePath.substring(2);
+    } else if (imagePath.startsWith('../')) {
+      cleanPath = imagePath.substring(3);
+    }
+
+    // 如果路径不以 assets/ 开头，添加 assets/ 前缀（适用于 Memos）
+    if (!cleanPath.startsWith('assets/')) {
+      cleanPath = `assets/${cleanPath}`;
+    }
+
+    // 使用 WebDAV 文件代理路径（Memos 图片存储在 WebDAV）
+    return `/files/webdav/${cleanPath}`;
+  }
+
+  return imagePath;
+}
+
+// 预处理内容，转换图片路径
+function preprocessContentForEditor(content: string): string {
+  // 匹配 Markdown 图片语法：![alt](src)
+  const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+  return content.replace(imageRegex, (match, alt, src) => {
+    const convertedSrc = convertImagePathForEditor(src);
+    console.log('🖼️ [MilkdownEditor] 转换图片路径:', {
+      original: src,
+      converted: convertedSrc,
+    });
+    return `![${alt}](${convertedSrc})`;
+  });
+}
+
 export function MilkdownEditor({
   content,
   onChange,
@@ -40,10 +92,18 @@ export function MilkdownEditor({
       try {
         console.log('🚀 [MilkdownEditor] 开始初始化 Crepe 编辑器...');
 
+        // 预处理内容，转换图片路径
+        const processedContent = preprocessContentForEditor(content);
+        console.log('📝 [MilkdownEditor] 预处理内容:', {
+          originalLength: content.length,
+          processedLength: processedContent.length,
+          hasImages: processedContent.includes('!['),
+        });
+
         // 配置 Crepe 编辑器
         const crepeConfig = {
           root: editorRef.current!,
-          defaultValue: content,
+          defaultValue: processedContent,
           features: {
             [CrepeFeature.ImageBlock]: true, // 启用图片块功能
           },
@@ -141,8 +201,11 @@ export function MilkdownEditor({
           newLength: content.length,
         });
 
+        // 预处理内容，转换图片路径
+        const processedContent = preprocessContentForEditor(content);
+
         // 使用 Milkdown 的 action API 来设置内容
-        crepeRef.current.editor.action(replaceAll(content));
+        crepeRef.current.editor.action(replaceAll(processedContent));
         lastContentRef.current = content;
 
         console.log('✅ [MilkdownEditor] 内容更新成功');
@@ -152,9 +215,10 @@ export function MilkdownEditor({
         if (editorRef.current) {
           console.log('🔄 [MilkdownEditor] 尝试重新创建编辑器...');
           crepeRef.current.destroy();
+          const processedContent = preprocessContentForEditor(content);
           const newCrepe = new Crepe({
             root: editorRef.current,
-            defaultValue: content,
+            defaultValue: processedContent,
             features: {
               [CrepeFeature.ImageBlock]: true,
             },

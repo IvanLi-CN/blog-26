@@ -3,11 +3,12 @@ import type { ImageMetadata } from "astro";
 import merge from "lodash.merge";
 import CommentSectionWithProvider from "~/components/comments/CommentSectionWithProvider";
 import ContentImageHandler from "~/components/common/ContentImageHandler";
+import MemoDetailWithEditProvider from "~/components/memos/MemoDetailWithEditProvider";
 import MemoReactionsWithProvider from "~/components/memos/MemoReactionsWithProvider";
 import Layout from "~/layouts/PageLayout.astro";
 import { getCachedMemoBySlug } from "~/lib/content-cache";
 import type { MetaData } from "~/types";
-
+import { create404Response } from "~/utils/error-handler";
 import { findImage } from "~/utils/images";
 import { parseMarkdownToHTML } from "~/utils/markdown";
 import { getCanonical, getPermalink } from "~/utils/permalinks";
@@ -161,9 +162,11 @@ const memoData = {
 
     <!-- 内容 -->
     <ContentImageHandler client:only="react">
-      <div class="prose prose-lg max-w-none">
-        <Fragment set:html={memoData.content} />
-      </div>
+      <MemoDetailWithEditProvider
+        client:load
+        memoData={memoData}
+        isAdmin={isUserAdmin}
+      />
     </ContentImageHandler>
 
     <!-- 附件 -->
