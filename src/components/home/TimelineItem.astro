@@ -147,13 +147,6 @@ const getTypeColor = (type: string) => {
 
           {item.type === 'memo' && (
             <>
-              <!-- 闪念标题（如果有） -->
-              {item.title && item.title.trim() && item.title !== '无标题' && (
-                <h3 class="card-title text-base mb-2">
-                  {item.title}
-                </h3>
-              )}
-
               <!-- 闪念完整内容 -->
               {(item.content || item.body) && (
                 <div class="prose prose-sm max-w-none text-sm">
