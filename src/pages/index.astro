@@ -83,22 +83,22 @@ const metadata: MetaData = {
         <Icon name="tabler:timeline" class="w-5 h-5 text-primary" />
         最新动态 ({timelineItems.length})
       </h2>
-      <div class="flex gap-2">
-        <!-- 加载状态演示按钮 -->
-        <button
-          id="toggle-loading"
-          class="btn btn-sm btn-outline"
-          title="切换加载状态演示"
+      <!-- 简洁的导航链接 -->
+      <div class="flex items-center gap-4 text-sm">
+        <a
+          href="/blog"
+          class="flex items-center gap-1 text-muted hover:text-primary transition-colors"
         >
-          <Icon name="tabler:refresh" class="w-4 h-4" />
-          演示加载
-        </button>
-        <Button variant="link" href="/blog" class="text-sm">
-          全部文章 »
-        </Button>
-        <Button variant="link" href="/memos" class="text-sm">
-          全部闪念 »
-        </Button>
+          <Icon name="tabler:article" class="w-4 h-4" />
+          文章
+        </a>
+        <a
+          href="/memos"
+          class="flex items-center gap-1 text-muted hover:text-primary transition-colors"
+        >
+          <Icon name="tabler:bulb" class="w-4 h-4" />
+          闪念
+        </a>
       </div>
     </div>
 
@@ -237,63 +237,3 @@ const metadata: MetaData = {
     </div>
   </section>
 </Layout>
-
-<script>
-  // 加载状态演示功能
-  document.addEventListener("DOMContentLoaded", () => {
-    const toggleButton = document.getElementById("toggle-loading");
-    const timeline = document.querySelector(".timeline");
-    let isLoading = false;
-
-    if (toggleButton && timeline) {
-      toggleButton.addEventListener("click", () => {
-        isLoading = !isLoading;
-
-        if (isLoading) {
-          // 显示加载状态
-          timeline.innerHTML = Array.from(
-            { length: 5 },
-            (_, index) => `
-            <div class="timeline-item relative flex items-start gap-4 pb-8">
-              <!-- 时间线主轴和节点 -->
-              <div class="flex flex-col items-center relative">
-                <!-- 时间线节点（加载状态） -->
-                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-base-200 border-2 border-base-300 flex-shrink-0 z-10 relative">
-                  <div class="w-5 h-5 bg-base-300 rounded-full animate-pulse"></div>
-                </div>
-
-                <!-- 时间线主轴（连接线） -->
-                ${index < 4 ? '<div class="w-0.5 h-32 bg-base-300 opacity-30 absolute top-10 left-1/2 transform -translate-x-1/2"></div>' : ""}
-              </div>
-
-              <!-- 内容区域（加载状态） -->
-              <div class="flex-1 min-w-0">
-                <!-- 时间和类型信息（加载状态） -->
-                <div class="flex items-center gap-2 mb-2">
-                  <div class="h-4 bg-base-300 rounded w-20 animate-pulse"></div>
-                  <div class="h-5 bg-base-300 rounded w-12 animate-pulse"></div>
-                </div>
-
-                <!-- 内容卡片（加载状态） -->
-                <div class="card bg-base-100 shadow-sm border border-base-200">
-                  <div class="card-body p-4">
-                    <!-- 骨架屏占位内容 -->
-                    <div class="h-20 bg-base-200 rounded mb-2 animate-pulse"></div>
-                    <div class="h-3 bg-base-300 rounded w-3/4 mb-1 animate-pulse"></div>
-                    <div class="h-3 bg-base-300 rounded w-1/2 animate-pulse"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `,
-          ).join("");
-
-          toggleButton.textContent = "显示内容";
-        } else {
-          // 重新加载页面显示真实内容
-          window.location.reload();
-        }
-      });
-    }
-  });
-</script>
