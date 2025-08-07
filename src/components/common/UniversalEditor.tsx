@@ -427,7 +427,7 @@ export function UniversalEditor({
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 flex flex-col flex-1 min-h-0">
             {/* 内容输入 */}
-            <div className="relative flex flex-col flex-1 min-h-0">
+            <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
               {isPreview ? (
                 <div className="flex-1 p-2 sm:p-3 border border-base-300 rounded-md bg-base-200 overflow-auto">
                   <div className="prose prose-sm max-w-none">
@@ -436,7 +436,7 @@ export function UniversalEditor({
                 </div>
               ) : (
                 <div
-                  className={`relative flex flex-col flex-1 min-h-0 ${isDragOver ? 'ring-2 ring-primary ring-opacity-50' : ''}`}
+                  className={`relative flex flex-col flex-1 min-h-0 overflow-hidden ${isDragOver ? 'ring-2 ring-primary ring-opacity-50' : ''}`}
                   onDragOver={handleEditorDragOver}
                   onDragLeave={handleEditorDragLeave}
                   onDrop={handleEditorDrop}
@@ -445,7 +445,7 @@ export function UniversalEditor({
                     content={content}
                     onChange={handleContentChange}
                     placeholder={placeholder}
-                    className="w-full flex-1"
+                    className="w-full flex-1 min-h-0"
                     data-testid="content-input"
                     onImageUpload={handleImageUpload}
                   />
@@ -467,7 +467,7 @@ export function UniversalEditor({
             )}
 
             {/* 工具栏和按钮 */}
-            <div className="flex items-center justify-between">
+            <div className="flex-shrink-0 flex items-center justify-between">
               {/* 快速插入工具栏 */}
               {!isPreview && (
                 <div className="flex items-center space-x-1">

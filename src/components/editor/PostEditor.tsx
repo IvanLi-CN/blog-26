@@ -374,32 +374,34 @@ export function PostEditor({ postId: initialPostId, isNewPost: initialIsNewPost 
         )}
 
         {/* 编辑器区域 */}
-        {activeTab ? (
-          <PostUniversalEditor
-            key={activeTab.id} // 添加 key 强制重新渲染
-            postId={activeTab.filePath}
-            initialContent={activeTab.content}
-            onContentChange={handleContentChange}
-            onSave={handleSave}
-            isSaving={updateMutation.isPending}
-            saveStatus={
-              updateMutation.isPending
-                ? 'saving'
-                : updateMutation.isSuccess
-                  ? 'saved'
-                  : updateMutation.isError
-                    ? 'error'
-                    : 'idle'
-            }
-          />
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
-            <div className="text-center">
-              <div className="text-4xl mb-4">📝</div>
-              <p>从左侧文件管理器选择一个文件开始编辑</p>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {activeTab ? (
+            <PostUniversalEditor
+              key={activeTab.id} // 添加 key 强制重新渲染
+              postId={activeTab.filePath}
+              initialContent={activeTab.content}
+              onContentChange={handleContentChange}
+              onSave={handleSave}
+              isSaving={updateMutation.isPending}
+              saveStatus={
+                updateMutation.isPending
+                  ? 'saving'
+                  : updateMutation.isSuccess
+                    ? 'saved'
+                    : updateMutation.isError
+                      ? 'error'
+                      : 'idle'
+              }
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <div className="text-center">
+                <div className="text-4xl mb-4">📝</div>
+                <p>从左侧文件管理器选择一个文件开始编辑</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
