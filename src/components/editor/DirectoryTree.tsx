@@ -112,8 +112,11 @@ function TreeNode({
       setIsExpanded(newExpanded);
       saveExpandedState(newExpanded);
     } else {
-      // 点击文件时直接编辑
-      onSelectFile(node.path);
+      // 只有点击 markdown 文件时才打开编辑器
+      const isMarkdownFile = node.path.toLowerCase().endsWith('.md') || node.path.toLowerCase().endsWith('.markdown');
+      if (isMarkdownFile) {
+        onSelectFile(node.path);
+      }
     }
   };
 
