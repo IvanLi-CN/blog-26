@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc';
 import { DirectoryTree } from './DirectoryTree';
-import { MarkdownEditor } from './MarkdownEditor';
+import { PostUniversalEditor } from './PostUniversalEditor';
 
 interface PostEditorProps {
   postId?: string;
@@ -29,14 +29,27 @@ export function PostEditor({ postId, isNewPost }: PostEditorProps) {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full min-h-0">
       <div className="w-1/4 border-r overflow-y-auto">
-        <DirectoryTree onSelectFile={setFilePath} onCreateFile={() => {}} />
+        <DirectoryTree onSelectFile={setFilePath} onCreateFile={() => {}} selectedPath={filePath} />
       </div>
-      <div className="w-3/4 flex flex-col">
-        <div className="flex-1">
-          <MarkdownEditor content={content} onChange={setContent} filePath={filePath} onSave={handleSave} />
-        </div>
+      <div className="w-3/4 flex flex-col min-h-0">
+        <PostUniversalEditor
+          postId={filePath}
+          initialContent={content}
+          onContentChange={setContent}
+          onSave={handleSave}
+          isSaving={updateMutation.isPending}
+          saveStatus={
+            updateMutation.isPending
+              ? 'saving'
+              : updateMutation.isSuccess
+                ? 'saved'
+                : updateMutation.isError
+                  ? 'error'
+                  : 'idle'
+          }
+        />
       </div>
     </div>
   );

@@ -434,20 +434,34 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath, onRefr
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">文件管理器</h3>
       </div>
       <div className="py-2">
-        {directoryTree.map((node) => (
-          <TreeNode
-            key={node.path}
-            node={node}
-            level={0}
-            onSelectFile={onSelectFile}
-            onCreateFile={onCreateFile}
-            selectedPath={selectedPath}
-            onCreateDirectory={handleCreateDirectory}
-            onDeleteDirectory={handleDeleteDirectory}
-            onRenameFile={handleRenameFile}
-            onDeleteFile={handleDeleteFile}
-          />
-        ))}
+        {directoryTree.length === 0 ? (
+          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            <div className="mb-2">📁</div>
+            <p className="text-sm mb-2">暂无文件</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">WebDAV 目录为空或连接失败</p>
+            <button
+              onClick={() => refetch()}
+              className="text-blue-500 hover:text-blue-600 text-sm px-3 py-1 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+            >
+              重新加载
+            </button>
+          </div>
+        ) : (
+          directoryTree.map((node) => (
+            <TreeNode
+              key={node.path}
+              node={node}
+              level={0}
+              onSelectFile={onSelectFile}
+              onCreateFile={onCreateFile}
+              selectedPath={selectedPath}
+              onCreateDirectory={handleCreateDirectory}
+              onDeleteDirectory={handleDeleteDirectory}
+              onRenameFile={handleRenameFile}
+              onDeleteFile={handleDeleteFile}
+            />
+          ))
+        )}
       </div>
 
       {/* 根目录上下文菜单 */}

@@ -530,7 +530,7 @@ export function QuickMemoEditor({ onMemoCreated }: QuickMemoEditorProps) {
                     content={content}
                     onChange={setContent}
                     placeholder="写下你的想法..."
-                    className="w-full"
+                    className="w-full memo-editor"
                     data-testid="content-input"
                     onImageUpload={handleImageUpload}
                   />

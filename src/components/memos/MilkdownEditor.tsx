@@ -42,12 +42,32 @@ function convertImagePathForEditor(imagePath: string): string {
   return imagePath;
 }
 
-// 预处理内容，转换图片路径
+// 预处理内容，转换图片路径和处理 frontmatter
 function preprocessContentForEditor(content: string): string {
-  // 匹配 Markdown 图片语法：![alt](src)
+  // 首先处理 frontmatter
+  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+  const frontmatterMatch = content.match(frontmatterRegex);
+
+  let processedContent = content;
+
+  if (frontmatterMatch) {
+    const frontmatter = frontmatterMatch[1];
+    const bodyContent = frontmatterMatch[2];
+
+    // 将 frontmatter 转换为 YAML 代码块
+    processedContent = `\`\`\`yaml\n${frontmatter}\n\`\`\`\n\n${bodyContent}`;
+
+    console.log('📝 [MilkdownEditor] 处理 frontmatter:', {
+      hasFrontmatter: true,
+      frontmatterLength: frontmatter.length,
+      bodyLength: bodyContent.length,
+    });
+  }
+
+  // 然后处理图片路径
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
-  return content.replace(imageRegex, (match, alt, src) => {
+  return processedContent.replace(imageRegex, (match, alt, src) => {
     const convertedSrc = convertImagePathForEditor(src);
     console.log('🖼️ [MilkdownEditor] 转换图片路径:', {
       original: src,
@@ -55,6 +75,31 @@ function preprocessContentForEditor(content: string): string {
     });
     return `![${alt}](${convertedSrc})`;
   });
+}
+
+// 后处理内容，将 YAML 代码块转换回 frontmatter
+function postprocessContentFromEditor(content: string): string {
+  // 匹配开头的 YAML 代码块
+  const yamlCodeBlockRegex = /^```yaml\n([\s\S]*?)\n```\n\n([\s\S]*)$/;
+  const yamlMatch = content.match(yamlCodeBlockRegex);
+
+  if (yamlMatch) {
+    const yamlContent = yamlMatch[1];
+    const bodyContent = yamlMatch[2];
+
+    // 转换回 frontmatter 格式
+    const processedContent = `---\n${yamlContent}\n---\n${bodyContent}`;
+
+    console.log('📝 [MilkdownEditor] 转换回 frontmatter:', {
+      hasYamlBlock: true,
+      yamlLength: yamlContent.length,
+      bodyLength: bodyContent.length,
+    });
+
+    return processedContent;
+  }
+
+  return content;
 }
 
 export function MilkdownEditor({
@@ -151,8 +196,11 @@ export function MilkdownEditor({
               hasImages: markdown.includes('!['),
               timestamp: new Date().toISOString(),
             });
-            lastContentRef.current = markdown;
-            onChange(markdown);
+
+            // 后处理内容，将 YAML 代码块转换回 frontmatter
+            const processedMarkdown = postprocessContentFromEditor(markdown);
+            lastContentRef.current = processedMarkdown;
+            onChange(processedMarkdown);
           });
         });
 
@@ -163,6 +211,45 @@ export function MilkdownEditor({
         lastContentRef.current = content;
 
         console.log('✅ [MilkdownEditor] 编辑器初始化完成');
+
+        // 修复编辑器布局：确保正确的 flex 布局，不设置固定高度
+        setTimeout(() => {
+          const editorElement = editorRef.current;
+          const milkdownElement = editorElement?.querySelector('.milkdown');
+          const prosemirrorElement = editorElement?.querySelector('.ProseMirror');
+
+          if (editorElement && milkdownElement && prosemirrorElement) {
+            // 移除任何可能的内联高度样式，让 CSS 完全控制
+            editorElement.style.removeProperty('height');
+            editorElement.style.removeProperty('max-height');
+            milkdownElement.style.removeProperty('height');
+            milkdownElement.style.removeProperty('max-height');
+            prosemirrorElement.style.removeProperty('height');
+            prosemirrorElement.style.removeProperty('max-height');
+
+            // 确保正确的 flex 布局属性
+            editorElement.style.display = 'flex';
+            editorElement.style.flexDirection = 'column';
+            editorElement.style.minHeight = '0';
+            editorElement.style.overflow = 'hidden';
+
+            milkdownElement.style.display = 'flex';
+            milkdownElement.style.flexDirection = 'column';
+            milkdownElement.style.flex = '1';
+            milkdownElement.style.minHeight = '0';
+            milkdownElement.style.overflow = 'hidden';
+
+            prosemirrorElement.style.flex = '1';
+            prosemirrorElement.style.minHeight = '0';
+            prosemirrorElement.style.overflowY = 'auto';
+
+            console.log('🔧 [MilkdownEditor] 编辑器布局修复完成（自适应高度）:', {
+              editorHeight: editorElement.getBoundingClientRect().height,
+              prosemirrorHeight: prosemirrorElement.getBoundingClientRect().height,
+              canScroll: prosemirrorElement.scrollHeight > prosemirrorElement.clientHeight,
+            });
+          }
+        }, 100); // 延迟执行确保 DOM 完全渲染
       } catch (error) {
         console.error('❌ [MilkdownEditor] 编辑器初始化失败:', {
           error: error.message,
@@ -225,8 +312,10 @@ export function MilkdownEditor({
           });
           newCrepe.on((listener) => {
             listener.markdownUpdated((_, markdown) => {
-              lastContentRef.current = markdown;
-              onChange(markdown);
+              // 后处理内容，将 YAML 代码块转换回 frontmatter
+              const processedMarkdown = postprocessContentFromEditor(markdown);
+              lastContentRef.current = processedMarkdown;
+              onChange(processedMarkdown);
             });
           });
           newCrepe.create().then(() => {
