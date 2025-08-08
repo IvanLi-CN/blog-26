@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/.astro", "!**/src/content/notes", "!**/dist"]
+    "includes": ["**", "!**/.astro", "!**/src/content/notes", "!**/dist", "!**/src/generated", "!**/test-results"]
   },
   "formatter": {
     "enabled": true,
@@ -19,7 +19,16 @@
     "lineWidth": 120,
     "attributePosition": "auto",
     "bracketSpacing": true,
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.github", "!**/.changeset", "!**/*.astro"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.github",
+      "!**/.changeset",
+      "!**/*.astro",
+      "!**/src/generated",
+      "!**/test-results"
+    ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
@@ -34,7 +43,9 @@
       "!**/.github",
       "!**/types.generated.d.ts",
       "!**/.astro",
-      "!**/*.astro"
+      "!**/*.astro",
+      "!**/src/generated",
+      "!**/test-results"
     ]
   },
   "javascript": {
