@@ -170,10 +170,12 @@ const socialLinks = footerData.socialLinks;
   <!-- Content Area -->
   <div class="flex-grow flex flex-col container mx-auto px-8">
     <!-- Search Form (at the top) -->
-    <div class="pt-8">
-      <form action="/search" method="GET" class="w-full">
-        <label class="input input-bordered flex items-center gap-2 text-lg">
-          <Icon name="tabler:search" class="w-5 h-5 opacity-50" />
+    <div class="py-8 flex justify-center px-4">
+      <form action="/search" method="GET" class="w-full max-w-md">
+        <label
+          class="input input-bordered flex items-center gap-2 text-lg shadow-sm focus-within:shadow-md transition-shadow"
+        >
+          <Icon name="tabler:search" class="w-5 h-5 opacity-60" />
           <input type="text" name="q" placeholder="搜索文章..." class="grow" />
         </label>
       </form>
