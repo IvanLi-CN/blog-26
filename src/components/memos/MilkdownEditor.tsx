@@ -215,8 +215,8 @@ export function MilkdownEditor({
         // 修复编辑器布局：确保正确的 flex 布局，不设置固定高度
         setTimeout(() => {
           const editorElement = editorRef.current;
-          const milkdownElement = editorElement?.querySelector('.milkdown');
-          const prosemirrorElement = editorElement?.querySelector('.ProseMirror');
+          const milkdownElement = editorElement?.querySelector('.milkdown') as HTMLElement | null;
+          const prosemirrorElement = editorElement?.querySelector('.ProseMirror') as HTMLElement | null;
 
           if (editorElement && milkdownElement && prosemirrorElement) {
             // 移除任何可能的内联高度样式，让 CSS 完全控制

@@ -982,7 +982,6 @@ export class WebDAVClient {
       slug,
       data: updatedFrontmatter,
       body: content,
-      collection: 'memos',
       createdAt: new Date(existingFrontmatter.createdAt || existingFrontmatter.publishDate),
       updatedAt: new Date(),
       attachments,

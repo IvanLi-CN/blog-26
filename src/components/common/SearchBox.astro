@@ -152,10 +152,10 @@ const { placeholder = "搜索文章...", buttonLabel = "搜索" } = Astro.props;
     // 中屏搜索按钮点击事件
     const mediumSearchTrigger = document.querySelector(
       ".search-trigger-medium",
-    );
+    ) as HTMLElement | null;
     const mediumSearchOverlay = document.querySelector(
       ".search-overlay-medium",
-    );
+    ) as HTMLElement | null;
 
     mediumSearchTrigger?.addEventListener("click", () => {
       if (mediumSearchOverlay) {
@@ -175,8 +175,8 @@ const { placeholder = "搜索文章...", buttonLabel = "搜索" } = Astro.props;
     document.addEventListener("click", (e) => {
       if (
         mediumSearchOverlay &&
-        !mediumSearchOverlay.contains(e.target) &&
-        !mediumSearchTrigger?.contains(e.target)
+        !mediumSearchOverlay.contains(e.target as Node) &&
+        !mediumSearchTrigger?.contains(e.target as Node)
       ) {
         mediumSearchOverlay.classList.add("hidden");
         // 恢复背景滚动
