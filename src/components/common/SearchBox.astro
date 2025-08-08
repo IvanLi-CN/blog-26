@@ -15,7 +15,7 @@ const { placeholder = "搜索文章...", buttonLabel = "搜索" } = Astro.props;
     id="desktop-search-form"
     action="/search"
     method="GET"
-    class="hidden md:flex items-center w-auto"
+    class="hidden xl:flex items-center w-auto"
   >
     <label class="input input-bordered flex items-center gap-2">
       <Icon name="tabler:search" class="w-5 h-5 opacity-50" />
@@ -30,17 +30,47 @@ const { placeholder = "搜索文章...", buttonLabel = "搜索" } = Astro.props;
     </label>
   </form>
 
-  <!-- 小屏搜索按钮 -->
+  <!-- 中屏搜索按钮 -->
   <button
     type="button"
-    class="btn btn-ghost btn-circle md:hidden search-trigger"
+    class="btn btn-ghost btn-circle hidden md:flex xl:hidden search-trigger-medium"
     aria-label={buttonLabel}
   >
     <Icon name="tabler:search" class="w-5 h-5" />
   </button>
 
-  <!-- 小屏搜索弹出层 -->
-  <div class="search-modal fixed inset-0 z-50 bg-base-100/95 hidden md:!hidden">
+  <!-- 中屏搜索悬浮框 -->
+  <div
+    class="search-overlay-medium fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm"
+  >
+    <div class="absolute top-20 left-1/2 transform -translate-x-1/2">
+      <form
+        action="/search"
+        method="GET"
+        class="flex items-center bg-base-100 rounded-lg shadow-lg border border-base-300 px-3 py-2"
+      >
+        <Icon name="tabler:search" class="w-4 h-4 text-base-content/60 mr-2" />
+        <input
+          type="text"
+          name="q"
+          placeholder={placeholder}
+          class="input input-ghost w-64 h-8 text-sm bg-transparent border-0 focus:outline-none"
+          autocomplete="off"
+        />
+        <div
+          class="hidden sm:flex items-center ml-2 text-xs text-base-content/60"
+        >
+          <kbd class="kbd kbd-xs">⌘</kbd>
+          <kbd class="kbd kbd-xs">K</kbd>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 全屏搜索模态框 -->
+  <div
+    class="search-modal fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm"
+  >
     <div class="container mx-auto px-4 h-full flex items-center justify-center">
       <form
         id="mobile-search-form"
@@ -77,63 +107,126 @@ const { placeholder = "搜索文章...", buttonLabel = "搜索" } = Astro.props;
       </button>
     </div>
   </div>
-</div>
 
-<script>
-  // 搜索框交互逻辑
-  const searchTrigger = document.querySelector(".search-trigger");
-  const searchModal = document.querySelector(".search-modal");
-  const searchClose = document.querySelector(".search-close");
-  const searchInput = searchModal?.querySelector("input");
+  <script>
+    // 搜索框交互逻辑
+    const searchTrigger = document.querySelector(".search-trigger");
+    const searchModal = document.querySelector(".search-modal");
+    const searchClose = document.querySelector(".search-close");
+    const searchInput = searchModal?.querySelector("input");
 
-  searchTrigger?.addEventListener("click", () => {
-    searchModal?.classList.remove("hidden");
-    searchInput?.focus();
-    // 禁止背景滚动
-    document.body.style.overflow = "hidden";
-  });
+    searchTrigger?.addEventListener("click", () => {
+      searchModal?.classList.remove("hidden");
+      searchInput?.focus();
+      // 禁止背景滚动
+      document.body.style.overflow = "hidden";
+    });
 
-  searchClose?.addEventListener("click", () => {
-    searchModal?.classList.add("hidden");
-    // 恢复背景滚动
-    document.body.style.overflow = "";
-  });
-
-  // ESC 键关闭搜索
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !searchModal?.classList.contains("hidden")) {
+    searchClose?.addEventListener("click", () => {
       searchModal?.classList.add("hidden");
+      // 恢复背景滚动
       document.body.style.overflow = "";
-    }
-  });
-  // 快捷键聚焦搜索框 (⌘ + K 或 Ctrl + K)
-  document.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-      e.preventDefault();
-      const desktopSearchInput = document.querySelector(
-        '#desktop-search-form input[type="text"]',
-      ) as HTMLInputElement;
-      desktopSearchInput?.focus();
-    }
-  });
+    });
 
-  // Loading spinner logic
-  const desktopForm = document.getElementById("desktop-search-form");
-  const mobileForm = document.getElementById("mobile-search-form");
-  const desktopSpinner = document.getElementById("desktop-search-spinner");
-  const desktopHotkey = document.getElementById("desktop-search-hotkey");
-  const mobileSpinner = document.getElementById("mobile-search-spinner");
+    // ESC 键关闭搜索
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        // 关闭全屏搜索模态框
+        if (!searchModal?.classList.contains("hidden")) {
+          searchModal?.classList.add("hidden");
+          document.body.style.overflow = "";
+        }
+        // 关闭中屏搜索悬浮框
+        const mediumSearchOverlay = document.querySelector(
+          ".search-overlay-medium",
+        );
+        if (
+          mediumSearchOverlay &&
+          !mediumSearchOverlay.classList.contains("hidden")
+        ) {
+          mediumSearchOverlay.classList.add("hidden");
+          document.body.style.overflow = "";
+        }
+      }
+    });
+    // 中屏搜索按钮点击事件
+    const mediumSearchTrigger = document.querySelector(
+      ".search-trigger-medium",
+    );
+    const mediumSearchOverlay = document.querySelector(
+      ".search-overlay-medium",
+    );
 
-  desktopForm?.addEventListener("submit", () => {
-    desktopSpinner?.classList.remove("hidden");
-    desktopHotkey?.classList.add("hidden");
-    // Optional: disable submit button
-    // desktopForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'true');
-  });
+    mediumSearchTrigger?.addEventListener("click", () => {
+      if (mediumSearchOverlay) {
+        // 显示悬浮框
+        mediumSearchOverlay.classList.remove("hidden");
 
-  mobileForm?.addEventListener("submit", () => {
-    mobileSpinner?.classList.remove("hidden");
-    // Optional: disable submit button
-    // mobileForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'true');
-  });
-</script>
+        // 聚焦输入框
+        const input = mediumSearchOverlay.querySelector("input");
+        input?.focus();
+
+        // 禁止背景滚动
+        document.body.style.overflow = "hidden";
+      }
+    });
+
+    // 点击外部关闭中屏搜索框
+    document.addEventListener("click", (e) => {
+      if (
+        mediumSearchOverlay &&
+        !mediumSearchOverlay.contains(e.target) &&
+        !mediumSearchTrigger?.contains(e.target)
+      ) {
+        mediumSearchOverlay.classList.add("hidden");
+        // 恢复背景滚动
+        document.body.style.overflow = "";
+      }
+    });
+
+    // 快捷键聚焦搜索框 (⌘ + K 或 Ctrl + K)
+    document.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+
+        // 检查屏幕尺寸，决定使用哪种搜索
+        const isLargeScreen = window.matchMedia("(min-width: 1280px)").matches;
+        const isMediumScreen = window.matchMedia(
+          "(min-width: 768px) and (max-width: 1279px)",
+        ).matches;
+
+        if (isLargeScreen) {
+          // 大屏：聚焦桌面版搜索框
+          const desktopSearchInput = document.querySelector(
+            '#desktop-search-form input[type="text"]',
+          ) as HTMLInputElement;
+          desktopSearchInput?.focus();
+        } else if (isMediumScreen) {
+          // 中屏：触发中屏搜索
+          mediumSearchTrigger?.click();
+        }
+        // 小屏不处理快捷键
+      }
+    });
+
+    // Loading spinner logic
+    const desktopForm = document.getElementById("desktop-search-form");
+    const mobileForm = document.getElementById("mobile-search-form");
+    const desktopSpinner = document.getElementById("desktop-search-spinner");
+    const desktopHotkey = document.getElementById("desktop-search-hotkey");
+    const mobileSpinner = document.getElementById("mobile-search-spinner");
+
+    desktopForm?.addEventListener("submit", () => {
+      desktopSpinner?.classList.remove("hidden");
+      desktopHotkey?.classList.add("hidden");
+      // Optional: disable submit button
+      // desktopForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'true');
+    });
+
+    mobileForm?.addEventListener("submit", () => {
+      mobileSpinner?.classList.remove("hidden");
+      // Optional: disable submit button
+      // mobileForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'true');
+    });
+  </script>
+</div>

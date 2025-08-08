@@ -9,7 +9,6 @@ import { UI } from "astrowind:config";
 
   window.basic_script = true;
 
-
   function attachEvent(selector, event, fn) {
     const matches =
       typeof selector === "string"
@@ -41,7 +40,6 @@ import { UI } from "astrowind:config";
     let ticking = true;
 
     attachEvent("[data-aw-toggle-menu]", "click", toggleMenu);
-
 
     attachEvent("[data-aw-social-share]", "click", function (_, elem) {
       const network = elem.getAttribute("data-aw-social-share");
