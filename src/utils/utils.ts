@@ -75,9 +75,36 @@ export interface TagInfo {
 }
 
 /**
+ * 检查指定位置的#号是否是URL中的hash部分
+ * @param content 完整内容
+ * @param hashIndex #号的位置
+ * @returns 如果是URL中的hash则返回true
+ */
+const isUrlHash = (content: string, hashIndex: number): boolean => {
+  // 获取#号前面的内容，最多检查前200个字符
+  const beforeHash = content.substring(Math.max(0, hashIndex - 200), hashIndex);
+
+  // 检查是否是URL的一部分
+  // 更精确的URL模式匹配
+  const urlPatterns = [
+    // 匹配 http:// 或 https:// 开头的URL，确保紧邻#号
+    /https?:\/\/[^\s<>()]*$/,
+    // 匹配 www. 开头的URL
+    /(?:^|\s)www\.[^\s<>()]*$/,
+    // 匹配域名格式（至少包含一个点）
+    /(?:^|\s)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s<>()]*$/,
+    // 匹配Markdown链接中的URL部分 ](url
+    /\]\([^\s<>()]*$/,
+  ];
+
+  return urlPatterns.some((pattern) => pattern.test(beforeHash));
+};
+
+/**
  * 统一的标签解析函数
  * 从正文内容中解析所有标签，返回标签内容和位置信息
  * 注意：标签顺序与正文中出现的顺序一致，不进行去重
+ * 会自动过滤掉URL中的hash部分，避免误识别为标签
  *
  * @param content 要解析的正文内容
  * @returns 标签信息数组，按在正文中出现的顺序排列
@@ -96,6 +123,11 @@ export const parseTagsFromContent = (content: string): TagInfo[] => {
     const tagContent = match[1]; // 标签内容，不包含 # 符号
     const startIndex = match.index; // 开始位置
     const endIndex = match.index + fullMatch.length; // 结束位置
+
+    // 检查是否是URL中的hash部分
+    if (isUrlHash(content, startIndex)) {
+      continue; // 跳过URL中的hash
+    }
 
     // 过滤掉空标签或无效格式
     if (tagContent && tagContent.trim()) {
