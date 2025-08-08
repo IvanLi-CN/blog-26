@@ -36,6 +36,12 @@ export const GET: APIRoute = async ({ params, request, url }) => {
     const keepMetadata = searchParams.get('keep-metadata') === 'true';
     const pixelRatio = searchParams.get('dpr') ? parseFloat(searchParams.get('dpr')!) : 1; // 显示倍率，默认1x
 
+    // 新增：智能宽高比控制参数
+    const usage = (searchParams.get('usage') as 'content' | 'thumbnail' | 'avatar' | 'default') || 'default';
+    const maxRatio = searchParams.get('maxRatio') ? parseFloat(searchParams.get('maxRatio')!) : undefined;
+    const minRatio = searchParams.get('minRatio') ? parseFloat(searchParams.get('minRatio')!) : undefined;
+    const smartCrop = searchParams.get('smartCrop') !== 'false'; // 默认启用智能裁剪
+
     // 特殊处理：处理闪念相关的图片路径
     if (normalizedPath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
       const cleanMemosPath = webdavConfig.memosPath.replace(/^\/+/, '');
@@ -114,11 +120,16 @@ export const GET: APIRoute = async ({ params, request, url }) => {
       addWatermark: !noWatermark,
       removeMetadata: !keepMetadata,
       pixelRatio,
+      // 智能宽高比控制
+      usage,
+      maxRatio,
+      minRatio,
+      smartCrop,
     });
 
     // 生成更强的缓存键，包含文件修改时间和优化参数
     const lastModified = response.headers.get('last-modified') || new Date().toISOString();
-    const cacheKey = `${normalizedPath}-${size}-${quality}-${format}-${pixelRatio}-${!noWatermark}-${lastModified}`;
+    const cacheKey = `${normalizedPath}-${size}-${quality}-${format}-${pixelRatio}-${!noWatermark}-${usage}-${maxRatio}-${minRatio}-${smartCrop}-${lastModified}`;
     const etag = `"${crypto.createHash('md5').update(cacheKey).digest('hex')}"`;
 
     // 设置缓存头

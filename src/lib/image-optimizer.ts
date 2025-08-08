@@ -8,6 +8,11 @@ export interface ImageOptimizationOptions {
   addWatermark?: boolean;
   removeMetadata?: boolean;
   pixelRatio?: number; // 显示倍率，用于调整水印大小，默认1x
+  // 新增：智能宽高比控制
+  usage?: 'content' | 'thumbnail' | 'avatar' | 'default'; // 图片用途
+  maxRatio?: number; // 自定义最大宽高比
+  minRatio?: number; // 自定义最小宽高比
+  smartCrop?: boolean; // 是否启用智能裁剪，默认true
 }
 
 export interface OptimizedImageResult {
@@ -21,6 +26,14 @@ export interface OptimizedImageResult {
 // 预定义的响应式断点
 export const RESPONSIVE_BREAKPOINTS = [320, 480, 640, 768, 1024, 1280, 1536, 1920];
 
+// 宽高比限制配置
+export const ASPECT_RATIO_LIMITS = {
+  content: { min: 0.5, max: 4 }, // 1:2 到 4:1 (正文图片)
+  thumbnail: { min: 0.5, max: 2 }, // 1:2 到 2:1 (缩略图)
+  avatar: { min: 0.8, max: 1.25 }, // 接近正方形 (头像)
+  default: { min: 0.25, max: 8 }, // 更宽松的限制 (默认)
+} as const;
+
 // 默认优化选项
 export const DEFAULT_OPTIMIZATION_OPTIONS: Required<ImageOptimizationOptions> = {
   size: 1920,
@@ -29,6 +42,10 @@ export const DEFAULT_OPTIMIZATION_OPTIONS: Required<ImageOptimizationOptions> = 
   addWatermark: true,
   removeMetadata: true,
   pixelRatio: 1,
+  usage: 'default',
+  maxRatio: ASPECT_RATIO_LIMITS.default.max,
+  minRatio: ASPECT_RATIO_LIMITS.default.min,
+  smartCrop: true,
 };
 
 /**
@@ -86,6 +103,59 @@ async function createWatermarkSvg(
 }
 
 /**
+ * 智能裁剪图片到合适的宽高比
+ */
+async function smartCropImage(
+  pipeline: sharp.Sharp,
+  originalWidth: number,
+  originalHeight: number,
+  targetMinRatio: number,
+  targetMaxRatio: number
+): Promise<{ pipeline: sharp.Sharp; width: number; height: number }> {
+  const aspectRatio = originalWidth / originalHeight;
+
+  // 如果宽高比在合理范围内，不需要裁剪
+  if (aspectRatio >= targetMinRatio && aspectRatio <= targetMaxRatio) {
+    return { pipeline, width: originalWidth, height: originalHeight };
+  }
+
+  let cropWidth: number;
+  let cropHeight: number;
+
+  if (aspectRatio > targetMaxRatio) {
+    // 图片太宽，需要裁剪宽度
+    cropHeight = originalHeight;
+    cropWidth = Math.round(originalHeight * targetMaxRatio);
+  } else {
+    // 图片太高，需要裁剪高度
+    cropWidth = originalWidth;
+    cropHeight = Math.round(originalWidth / targetMinRatio);
+  }
+
+  // 确保裁剪尺寸不超过原始尺寸
+  cropWidth = Math.min(cropWidth, originalWidth);
+  cropHeight = Math.min(cropHeight, originalHeight);
+
+  // 计算裁剪位置（居中裁剪）
+  const left = Math.round((originalWidth - cropWidth) / 2);
+  const top = Math.round((originalHeight - cropHeight) / 2);
+
+  console.log(
+    `Smart cropping: ${originalWidth}x${originalHeight} (ratio: ${aspectRatio.toFixed(2)}) -> ${cropWidth}x${cropHeight} (ratio: ${(cropWidth / cropHeight).toFixed(2)})`
+  );
+
+  // 应用裁剪
+  const croppedPipeline = pipeline.extract({
+    left,
+    top,
+    width: cropWidth,
+    height: cropHeight,
+  });
+
+  return { pipeline: croppedPipeline, width: cropWidth, height: cropHeight };
+}
+
+/**
  * 优化单张图片
  */
 export async function optimizeImage(
@@ -93,6 +163,16 @@ export async function optimizeImage(
   options: Partial<ImageOptimizationOptions> = {}
 ): Promise<OptimizedImageResult> {
   const opts = { ...DEFAULT_OPTIMIZATION_OPTIONS, ...options };
+
+  // 根据用途设置宽高比限制
+  let minRatio = opts.minRatio;
+  let maxRatio = opts.maxRatio;
+
+  if (opts.usage && opts.usage !== 'default') {
+    const limits = ASPECT_RATIO_LIMITS[opts.usage];
+    minRatio = limits.min;
+    maxRatio = limits.max;
+  }
 
   // 检查是否为 SVG 文件
   const isSvg = inputBuffer.toString('utf8', 0, 100).includes('<svg');
@@ -130,22 +210,37 @@ export async function optimizeImage(
     metadata = { width: originalWidth, height: originalHeight } as import('sharp').Metadata;
   }
 
-  // 计算目标尺寸，保持宽高比
+  // 应用智能裁剪（如果启用且有有效的尺寸信息）
+  let currentWidth = originalWidth;
+  let currentHeight = originalHeight;
+
+  if (opts.smartCrop && originalWidth && originalHeight && minRatio && maxRatio) {
+    try {
+      const cropResult = await smartCropImage(pipeline, originalWidth, originalHeight, minRatio, maxRatio);
+      pipeline = cropResult.pipeline;
+      currentWidth = cropResult.width;
+      currentHeight = cropResult.height;
+    } catch (error) {
+      console.warn('⚠️ 智能裁剪失败，继续使用原始尺寸:', error);
+    }
+  }
+
+  // 计算目标尺寸，保持宽高比（使用裁剪后的当前尺寸）
   let targetWidth: number | undefined;
   let targetHeight: number | undefined;
 
-  if (opts.size && originalWidth && originalHeight) {
-    // 如果传入的尺寸大于原图的最大边，则不处理
-    const maxOriginalDimension = Math.max(originalWidth, originalHeight);
-    if (opts.size >= maxOriginalDimension) {
-      // 不缩放，保持原始尺寸
-      targetWidth = originalWidth;
-      targetHeight = originalHeight;
+  if (opts.size && currentWidth && currentHeight) {
+    // 如果传入的尺寸大于当前图片的最大边，则不处理
+    const maxCurrentDimension = Math.max(currentWidth, currentHeight);
+    if (opts.size >= maxCurrentDimension) {
+      // 不缩放，保持当前尺寸
+      targetWidth = currentWidth;
+      targetHeight = currentHeight;
     } else {
       // 等比缩放到指定尺寸
-      const aspectRatio = originalWidth / originalHeight;
+      const aspectRatio = currentWidth / currentHeight;
 
-      if (originalWidth >= originalHeight) {
+      if (currentWidth >= currentHeight) {
         // 宽图：以宽度为准
         targetWidth = opts.size;
         targetHeight = Math.round(opts.size / aspectRatio);
@@ -158,8 +253,8 @@ export async function optimizeImage(
   }
 
   // 调整尺寸
-  if (targetWidth && targetHeight && (targetWidth !== originalWidth || targetHeight !== originalHeight)) {
-    console.log('Resizing from', { originalWidth, originalHeight }, 'to', { targetWidth, targetHeight });
+  if (targetWidth && targetHeight && (targetWidth !== currentWidth || targetHeight !== currentHeight)) {
+    console.log('Resizing from', { currentWidth, currentHeight }, 'to', { targetWidth, targetHeight });
     pipeline = pipeline.resize(targetWidth, targetHeight, {
       fit: 'cover', // 使用cover确保输出尺寸准确
       withoutEnlargement: true,
@@ -175,9 +270,9 @@ export async function optimizeImage(
   // 添加水印 - 简化版本
   if (opts.addWatermark) {
     try {
-      // 使用计算出的目标尺寸，如果没有缩放则使用原始尺寸
-      const finalWidth = targetWidth || originalWidth;
-      const finalHeight = targetHeight || originalHeight;
+      // 使用计算出的目标尺寸，如果没有缩放则使用当前尺寸
+      const finalWidth = targetWidth || currentWidth;
+      const finalHeight = targetHeight || currentHeight;
 
       if (finalWidth && finalHeight) {
         // 先处理图片到最终尺寸，然后添加水印
@@ -256,8 +351,8 @@ export async function optimizeImage(
     // 如果处理失败，返回原始图片
     return {
       buffer: inputBuffer,
-      width: originalWidth || 100,
-      height: originalHeight || 100,
+      width: currentWidth || 100,
+      height: currentHeight || 100,
       format: 'unknown',
       size: inputBuffer.length,
     };

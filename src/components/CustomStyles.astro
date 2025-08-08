@@ -288,4 +288,78 @@ import "../styles/milkdown.css";
     border-color: #4b5563 !important;
     color: #d1d5db !important;
   }
+
+  /* ===== 响应式图片尺寸控制系统 ===== */
+
+  /* 基础样式：闪念和文章内容中的图片 */
+  .prose img.content-image,
+  .prose img[data-lightbox="true"],
+  img.content-image,
+  /* 闪念页面中的图片 */
+  img.max-w-full,
+  img[alt*="图片"],
+  img[alt*="测试"],
+  img[src*="picsum"] {
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    /* 默认移动端最大高度 */
+    max-height: 40vmin !important;
+    /* 图片居中显示 */
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  /* 小屏幕 (640px - 767px): 35vmin */
+  @media (min-width: 640px) and (max-width: 767px) {
+    .prose img.content-image,
+    .prose img[data-lightbox="true"],
+    img.content-image,
+    img.max-w-full,
+    img[alt*="图片"],
+    img[alt*="测试"],
+    img[src*="picsum"] {
+      max-height: 35vmin !important;
+    }
+  }
+
+  /* 平板端 (768px - 1023px): 30vmin */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .prose img.content-image,
+    .prose img[data-lightbox="true"],
+    img.content-image,
+    img.max-w-full,
+    img[alt*="图片"],
+    img[alt*="测试"],
+    img[src*="picsum"] {
+      max-height: 30vmin !important;
+    }
+  }
+
+  /* 大屏幕 (1024px - 1279px): 25vmin */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .prose img.content-image,
+    .prose img[data-lightbox="true"],
+    img.content-image,
+    img.max-w-full,
+    img[alt*="图片"],
+    img[alt*="测试"],
+    img[src*="picsum"] {
+      max-height: 25vmin !important;
+    }
+  }
+
+  /* 超大屏幕 (≥1280px): 20vmin */
+  @media (min-width: 1280px) {
+    .prose img.content-image,
+    .prose img[data-lightbox="true"],
+    img.content-image,
+    img.max-w-full,
+    img[alt*="图片"],
+    img[alt*="测试"],
+    img[src*="picsum"] {
+      max-height: 20vmin !important;
+    }
+  }
 </style>
