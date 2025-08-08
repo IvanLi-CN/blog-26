@@ -157,7 +157,7 @@ const isUserAdmin = Astro.locals.isAdmin || false;
           <ContentImageHandler client:only="react">
             <Image
               src={post.image}
-              class="max-w-full lg:max-w-[900px] mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer"
+              class="max-w-full lg:max-w-[900px] mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer max-h-[50vh] sm:max-h-[60vh] md:max-w-2xl md:max-h-96 lg:max-h-[506px] xl:max-h-[50vh] h-auto object-contain"
               widths={[400, 900]}
               sizes="(max-width: 900px) 400px, 900px"
               alt={post?.excerpt || ""}

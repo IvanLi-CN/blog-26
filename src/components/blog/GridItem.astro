@@ -30,7 +30,7 @@ const link = APP_BLOG?.post?.isEnabled
           <a href={link}>
             <Image
               src={image}
-              class="w-full md:h-full rounded object-cover shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-110"
+              class="w-full md:h-full rounded object-cover shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-110 max-h-64 md:max-h-72 lg:max-h-80"
               widths={[400, 900]}
               width={400}
               sizes="(max-width: 900px) 400px, 900px"
@@ -47,7 +47,7 @@ const link = APP_BLOG?.post?.isEnabled
         ) : (
           <Image
             src={image}
-            class="w-full md:h-full rounded object-cover shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-110"
+            class="w-full md:h-full rounded object-cover shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-110 max-h-64 md:max-h-72 lg:max-h-80"
             widths={[400, 900]}
             width={400}
             sizes="(max-width: 900px) 400px, 900px"

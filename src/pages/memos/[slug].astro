@@ -255,7 +255,7 @@ const memoData = {
                       <img
                         src={`/api/render-image/${attachment.path.replace(/^\//, "")}?w=300&f=webp&q=85&display-w=300&display-h=300`}
                         alt={attachment.filename}
-                        class="w-full h-32 object-cover rounded bg-base-200 content-image cursor-pointer"
+                        class="w-full h-32 object-cover rounded bg-base-200 content-image cursor-pointer max-h-32 sm:max-h-40"
                         loading="lazy"
                         data-lightbox="true"
                         data-original-src={`/api/render-image/${attachment.path.replace(/^\//, "")}?f=webp&q=95&s=2048`}
