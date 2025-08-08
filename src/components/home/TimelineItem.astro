@@ -104,10 +104,7 @@ const getTypeColor = (type: string) => {
       </div>
     ) : (
       <!-- 正常内容 -->
-      <a
-        href={itemUrl}
-        class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 block border border-base-200 hover:border-base-300"
-      >
+      <div class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 border border-base-200 hover:border-base-300">
         <div class="card-body p-3 sm:p-4">
           {item.type === 'post' && (
             <div class="flex gap-4">
@@ -130,9 +127,11 @@ const getTypeColor = (type: string) => {
               <div class="flex-1 min-w-0">
                 <!-- 文章标题 -->
                 {item.title && (
-                  <h3 class="card-title text-lg mb-2 line-clamp-2">
-                    {item.title}
-                  </h3>
+                  <a href={itemUrl} class="block">
+                    <h3 class="card-title text-lg mb-2 line-clamp-2 hover:text-primary transition-colors">
+                      {item.title}
+                    </h3>
+                  </a>
                 )}
 
                 <!-- 文章摘要 -->
@@ -149,10 +148,16 @@ const getTypeColor = (type: string) => {
             <>
               <!-- 闪念完整内容 -->
               {(item.content || item.body) && (
-                <div class="prose prose-sm max-w-none text-sm">
+                <div class="prose prose-sm max-w-none text-sm memo-content">
                   <Fragment set:html={await parseMarkdownToHTML((item.content || item.body) || '')} />
                 </div>
               )}
+              <!-- 闪念查看详情链接 -->
+              <div class="mt-3">
+                <a href={itemUrl} class="text-sm text-primary hover:text-primary-focus transition-colors">
+                  查看详情 →
+                </a>
+              </div>
             </>
           )}
 
@@ -167,7 +172,7 @@ const getTypeColor = (type: string) => {
             </div>
           )}
         </div>
-      </a>
+      </div>
     )}
   </div>
 </div>

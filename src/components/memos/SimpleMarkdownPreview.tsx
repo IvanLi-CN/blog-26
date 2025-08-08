@@ -31,6 +31,19 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
     .replace(/\\\_/g, '_') // 反转义下划线
     .replace(/<br\s*\/?>/gi, '\n\n'); // 将HTML换行转换为markdown换行
 
+  // 预处理图片和链接URL，将包含空格或特殊字符的URL用尖括号包围
+  // 这样markdown解析器就能正确识别它们（与parseMarkdownToHTML函数保持一致）
+  processedContent = processedContent.replace(/(!?\[([^\]]*)\])\(([^)]+)\)/g, (match, linkPart, _altText, url) => {
+    // 检查URL是否包含空格或特殊字符，且不是已经用尖括号包围的
+    if (!url.startsWith('<') && !url.endsWith('>')) {
+      // 检查是否包含空格、中文字符或其他需要编码的字符
+      if (/[\s\u4e00-\u9fff@]/.test(url)) {
+        return `${linkPart}(<${url}>)`;
+      }
+    }
+    return match;
+  });
+
   return (
     <div className="markdown-preview">
       <ReactMarkdown
