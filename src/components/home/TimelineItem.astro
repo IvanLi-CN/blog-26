@@ -81,7 +81,7 @@ const getTypeColor = (type: string) => {
         </>
       ) : (
         <>
-          <span class="text-sm text-muted">
+          <span class="text-sm md:text-base text-muted">
             {formatDate(item.publishDate)}
           </span>
           <span class="badge badge-outline badge-xs">
@@ -128,7 +128,7 @@ const getTypeColor = (type: string) => {
                 <!-- 文章标题 -->
                 {item.title && (
                   <a href={itemUrl} class="block">
-                    <h3 class="card-title text-lg mb-2 line-clamp-2 hover:text-primary transition-colors">
+                    <h3 class="card-title text-lg md:text-xl mb-2 line-clamp-2 hover:text-primary transition-colors">
                       {item.title}
                     </h3>
                   </a>
@@ -136,7 +136,7 @@ const getTypeColor = (type: string) => {
 
                 <!-- 文章摘要 -->
                 {item.excerpt && (
-                  <p class="text-sm text-muted line-clamp-3">
+                  <p class="text-sm md:text-base text-muted line-clamp-3">
                     {item.excerpt}
                   </p>
                 )}
@@ -148,7 +148,7 @@ const getTypeColor = (type: string) => {
             <>
               <!-- 闪念完整内容 -->
               {(item.content || item.body) && (
-                <div class="prose prose-sm max-w-none text-sm memo-content">
+                <div class="prose prose-sm md:prose-base max-w-none text-sm md:text-base memo-content">
                   <Fragment set:html={await parseMarkdownToHTML((item.content || item.body) || '')} />
                 </div>
               )}
@@ -165,7 +165,7 @@ const getTypeColor = (type: string) => {
           {item.tags && item.tags.length > 0 && (
             <div class="flex flex-wrap gap-1 mt-3">
               {item.tags.slice(0, 3).map((tag: string) => (
-                <span class="badge badge-outline badge-xs">
+                <span class="badge badge-outline badge-xs md:badge-sm">
                   #{tag}
                 </span>
               ))}
