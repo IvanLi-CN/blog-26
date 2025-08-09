@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
+import { SourceEditor } from '../editor/SourceEditor';
 import { type Attachment, AttachmentGrid } from '../memos/AttachmentGrid';
 import { MilkdownEditor } from '../memos/MilkdownEditor';
 import { SimpleMarkdownPreview } from '../memos/SimpleMarkdownPreview';
+
+// 编辑器模式类型
+type EditorMode = 'wysiwyg' | 'source' | 'preview';
 
 export interface UniversalEditorProps {
   // 内容相关
@@ -63,7 +67,7 @@ export function UniversalEditor({
   const [content, setContent] = useState(initialContent);
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments);
-  const [isPreview, setIsPreview] = useState(false);
+  const [editorMode, setEditorMode] = useState<EditorMode>('wysiwyg');
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{
@@ -410,13 +414,33 @@ export function UniversalEditor({
             <h2 className="text-sm sm:text-base font-medium">{title}</h2>
             {initialShowPreview && (
               <div className="flex items-center space-x-1 sm:space-x-2">
+                {/* 编辑模式按钮组 */}
+                <div className="btn-group">
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('wysiwyg')}
+                    className={`btn btn-xs ${editorMode === 'wysiwyg' ? 'btn-primary' : 'btn-outline'}`}
+                    data-testid="wysiwyg-button"
+                  >
+                    富文本
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('source')}
+                    className={`btn btn-xs ${editorMode === 'source' ? 'btn-primary' : 'btn-outline'}`}
+                    data-testid="source-button"
+                  >
+                    源码
+                  </button>
+                </div>
+                {/* 预览按钮 */}
                 <button
                   type="button"
-                  onClick={() => setIsPreview(!isPreview)}
-                  className={`btn btn-xs ${isPreview ? 'btn-primary' : 'btn-outline'}`}
-                  data-testid={isPreview ? 'edit-button' : 'preview-button'}
+                  onClick={() => setEditorMode(editorMode === 'preview' ? 'wysiwyg' : 'preview')}
+                  className={`btn btn-xs ${editorMode === 'preview' ? 'btn-primary' : 'btn-outline'}`}
+                  data-testid="preview-button"
                 >
-                  {isPreview ? '编辑' : '预览'}
+                  预览
                 </button>
               </div>
             )}
@@ -428,11 +452,22 @@ export function UniversalEditor({
           <div className="p-3 sm:p-4 space-y-2 sm:space-y-3 flex flex-col flex-1 min-h-0">
             {/* 内容输入 */}
             <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
-              {isPreview ? (
+              {editorMode === 'preview' ? (
                 <div className="flex-1 p-2 sm:p-3 border border-base-300 rounded-md bg-base-200 overflow-auto">
                   <div className="prose prose-sm max-w-none">
                     <SimpleMarkdownPreview content={content} />
                   </div>
+                </div>
+              ) : editorMode === 'source' ? (
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <SourceEditor
+                    content={content}
+                    onChange={handleContentChange}
+                    placeholder={placeholder}
+                    className="w-full h-full"
+                    data-testid="content-input"
+                    onImageUpload={handleImageUpload}
+                  />
                 </div>
               ) : (
                 <div
@@ -462,14 +497,18 @@ export function UniversalEditor({
             {enableAttachments && attachments.length > 0 && (
               <div className="space-y-2">
                 <label className="text-xs font-medium text-base-content/70">附件</label>
-                <AttachmentGrid attachments={attachments} onRemove={handleRemoveAttachment} editable={!isPreview} />
+                <AttachmentGrid
+                  attachments={attachments}
+                  onRemove={handleRemoveAttachment}
+                  editable={editorMode !== 'preview'}
+                />
               </div>
             )}
 
             {/* 工具栏和按钮 */}
             <div className="flex-shrink-0 flex items-center justify-between">
               {/* 快速插入工具栏 */}
-              {!isPreview && (
+              {editorMode !== 'preview' && (
                 <div className="flex items-center space-x-1">
                   <div className="tooltip tooltip-top mr-2" data-tip="支持 Markdown 格式。支持拖拽、粘贴上传文件">
                     <div className="w-4 h-4 text-base-content/40 hover:text-base-content/60 cursor-help">
