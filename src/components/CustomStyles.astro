@@ -371,7 +371,7 @@ import "../styles/milkdown.css";
     word-wrap: break-word !important;
     /* 确保容器不会被内容撑开 */
     min-width: 0 !important;
-    max-width: 100% !important;
+    /* 移除 max-width: 100% 以允许 Tailwind 的 max-w-* 类正常工作 */
   }
 
   /* prose中的链接特殊处理 */
