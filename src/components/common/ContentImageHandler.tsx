@@ -63,12 +63,12 @@ export default function ContentImageHandler({ children }: ContentImageHandlerPro
 
   // 设置URL hash
   const setImageHash = (imageId: string) => {
-    window.history.pushState(null, '', `#image-${imageId}`);
+    window.history.replaceState(null, '', `#image-${imageId}`);
   };
 
   // 清除URL hash
   const clearImageHash = () => {
-    window.history.pushState(null, '', window.location.pathname + window.location.search);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
   };
 
   useEffect(() => {
