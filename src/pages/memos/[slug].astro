@@ -160,7 +160,14 @@ const memoData = {
       )
     }
 
-    <!-- 内容 -->
+    <!-- 内容（SSR 首屏直出） -->
+    <div
+      id="memo-ssr-content"
+      class="prose prose-md xl:text-lg dark:prose-invert dark:prose-headings:text-slate-300 prose-headings:font-heading prose-headings:leading-tighter prose-headings:tracking-tighter prose-headings:font-bold prose-a:text-primary dark:prose-a:text-blue-400 prose-img:rounded-md prose-img:shadow-lg prose-headings:scroll-mt-[80px] prose-li:my-0"
+      set:html={content}
+    />
+
+    <!-- 交互增强（编辑、评论、反应等）由 React 接管 -->
     <ContentImageHandler client:only="react">
       <MemoDetailWithEditProvider
         client:load
