@@ -375,7 +375,7 @@ const memoData = {
             );
 
             if (previewPre && fullContainer) {
-              previewPre.style.display = "none";
+              (previewPre as HTMLElement).style.display = "none";
               fullContainer.classList.remove("hidden");
             }
           } else if (action === "collapse") {
@@ -388,7 +388,7 @@ const memoData = {
             );
 
             if (previewPre && fullContainer) {
-              previewPre.style.display = "block";
+              (previewPre as HTMLElement).style.display = "block";
               fullContainer.classList.add("hidden");
             }
           }

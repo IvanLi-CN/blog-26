@@ -144,7 +144,11 @@ export function rehypeCollapsibleCode(options: CollapsibleCodeOptions = {}) {
                 tagName: 'pre',
                 properties: {
                   ...node.properties,
-                  className: [...(node.properties?.className || []), 'relative', 'pb-10'],
+                  className: [
+                    ...(Array.isArray(node.properties?.className) ? node.properties.className : []),
+                    'relative',
+                    'pb-10',
+                  ],
                 },
                 children: [
                   {
@@ -174,7 +178,11 @@ export function rehypeCollapsibleCode(options: CollapsibleCodeOptions = {}) {
                     tagName: 'pre',
                     properties: {
                       ...node.properties,
-                      className: [...(node.properties?.className || []), 'relative', 'pb-10'],
+                      className: [
+                        ...(Array.isArray(node.properties?.className) ? node.properties.className : []),
+                        'relative',
+                        'pb-10',
+                      ],
                     },
                     children: [
                       {
