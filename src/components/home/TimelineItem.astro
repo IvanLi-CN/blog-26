@@ -150,6 +150,7 @@ const getTypeColor = (type: string) => {
               {(item.content || item.body) && (
                 <div class="memo-content">
                   <MarkdownRenderer
+                    client:load
                     content={(item.content || item.body) || ''}
                     className="prose prose-sm md:prose-base max-w-none text-sm md:text-base"
                   />
