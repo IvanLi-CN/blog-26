@@ -4,6 +4,8 @@ import Headline from "~/components/ui/Headline.astro";
 import Layout from "~/layouts/PageLayout.astro";
 
 import { getCachedMemos } from "~/lib/content-cache";
+import { parseMarkdownToHTML } from "~/utils/markdown";
+import { removeTagsFromContent } from "~/utils/utils";
 
 export const prerender = false;
 
@@ -52,6 +54,23 @@ const initialMemos = firstPageMemos.map((memo) => ({
   tags: memo.tags ? JSON.parse(memo.tags) : undefined,
 }));
 
+// 服务端预渲染首屏 HTML，利于 SEO
+const ssrMemos = await Promise.all(
+  firstPageMemos.map(async (memo) => ({
+    id: memo.id,
+    slug: memo.slug,
+    title: memo.title || "无标题 Memo",
+    createdAt: new Date(memo.publishDate * 1000),
+    updatedAt: memo.updateDate ? new Date(memo.updateDate * 1000) : undefined,
+    isPublic: memo.public,
+    tags: memo.tags ? JSON.parse(memo.tags) : [],
+    html: await parseMarkdownToHTML(
+      removeTagsFromContent(memo.body || ""),
+      memo.id,
+    ),
+  })),
+);
+
 const initialPagination = {
   page: 1,
   limit,
@@ -80,16 +99,150 @@ const metadata = {
       Memos
     </Headline>
 
-    <!-- 使用 React 组件，传递服务端渲染的初始数据 -->
-    <MemosAppWithProviders
-      client:load
-      isAdmin={isUserAdmin}
-      initialMemos={initialMemos}
-      initialPagination={initialPagination}
-    />
+    <!-- 首屏 SSR 列表（SEO 友好），React 水合后将隐藏 -->
+    <div id="memos-ssr" class="space-y-6 sm:space-y-8" aria-hidden="false">
+      {
+        ssrMemos.length === 0 ? (
+          <div class="text-center py-8 sm:py-12" data-testid="memos-list">
+            <div class="text-base-content/60">
+              <p class="text-base sm:text-lg mb-2">还没有任何 Memo</p>
+              {isUserAdmin && (
+                <p class="text-xs sm:text-sm">
+                  使用上方的编辑器创建第一条 Memo 吧！
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          ssrMemos.map((memo, index) => (
+            <article class="relative" data-testid="memo-item">
+              {/* 时间线圆点 & 连线（简化版，仅装饰） */}
+              {index < ssrMemos.length - 1 && (
+                <div class="absolute left-4 sm:left-5 top-10 sm:top-12 w-0.5 h-full bg-gradient-to-b from-primary/30 to-transparent -z-10 hidden sm:block" />
+              )}
 
-    <!-- 隐藏的数据传递容器 -->
-    <div id="memo-data-bridge" style="display: none;"></div>
+              <div class="flex items-start space-x-0 sm:space-x-5">
+                <div class="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full items-center justify-center shadow-lg ring-2 sm:ring-4 ring-base-100 hidden sm:flex" />
+
+                <div class="flex-1 card bg-base-100 shadow-xl overflow-hidden relative">
+                  <div class="flex items-center justify-between px-4 py-2 sm:px-6 sm:py-3 bg-base-200 border-b border-base-300 gap-2 sm:gap-4">
+                    <div class="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm text-base-content/70 min-w-0 flex-shrink">
+                      <time
+                        datetime={memo.createdAt.toISOString()}
+                        class="cursor-help truncate"
+                        data-testid="memo-time"
+                      >
+                        {memo.createdAt.toLocaleDateString("zh-CN", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </time>
+                      {memo.updatedAt &&
+                        memo.updatedAt.getTime() !==
+                          memo.createdAt.getTime() && (
+                          <>
+                            <span class="text-base-content/40 flex-shrink-0">
+                              •
+                            </span>
+                            <span
+                              title={memo.updatedAt.toISOString()}
+                              class="cursor-help flex-shrink-0"
+                            >
+                              已编辑
+                            </span>
+                          </>
+                        )}
+                    </div>
+                    {isUserAdmin && (
+                      <div class="flex items-center">
+                        {memo.isPublic ? (
+                          <div
+                            class="badge badge-info badge-xs sm:badge-sm gap-1"
+                            data-testid="public-indicator"
+                          >
+                            <span class="hidden sm:inline">公开</span>
+                          </div>
+                        ) : (
+                          <div
+                            class="badge badge-warning badge-xs sm:badge-sm gap-1"
+                            data-testid="private-indicator"
+                          >
+                            <span class="hidden sm:inline">私有</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div class="card-body px-4 py-3 sm:px-6 sm:py-4">
+                    <h2 class="text-lg font-semibold mb-2">{memo.title}</h2>
+                    <div
+                      class="prose prose-sm max-w-none"
+                      set:html={memo.html}
+                    />
+
+                    {Array.isArray(memo.tags) && memo.tags.length > 0 && (
+                      <div class="flex flex-wrap gap-1 mt-2 sm:mt-3">
+                        {memo.tags.map((tag: string) => (
+                          <span class="badge badge-outline badge-sm">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))
+        )
+      }
+    </div>
+
+    <!-- 使用 React 组件，传递服务端渲染的初始数据 -->
+    <div id="memos-react-root">
+      <MemosAppWithProviders
+        client:load
+        isAdmin={isUserAdmin}
+        initialMemos={initialMemos}
+        initialPagination={initialPagination}
+      />
+    </div>
+
+    <!-- 可选：启用图片灯箱的事件处理（不包裹内容，避免阻断 SSR） -->
+    <!-- <ContentImageHandler client:only="react" /> -->
+
+    <!-- 水合后检测 React 是否已接管，再隐藏 SSR 列表，失败时保留 SSR 保障可见性 -->
+    <script>
+      (() => {
+        const ssrEl = document.getElementById("memos-ssr");
+        const reactRoot = document.getElementById("memos-react-root");
+        if (!ssrEl || !reactRoot) return;
+
+        const hide = () => {
+          ssrEl.setAttribute("hidden", "");
+          ssrEl.setAttribute("aria-hidden", "true");
+          ssrEl.style.display = "none";
+        };
+
+        // 当 React 渲染出任何实际元素后再隐藏 SSR
+        const hasRendered = () => reactRoot.innerHTML.trim().length > 0;
+
+        if (hasRendered()) {
+          hide();
+          return;
+        }
+
+        const observer = new MutationObserver(() => {
+          if (hasRendered()) {
+            hide();
+            observer.disconnect();
+          }
+        });
+        observer.observe(reactRoot, { childList: true, subtree: true });
+      })();
+    </script>
   </section>
 </Layout>
 
