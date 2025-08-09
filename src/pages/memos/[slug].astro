@@ -338,3 +338,73 @@ const memoData = {
     color: hsl(var(--pf));
   }
 </style>
+
+<script>
+  /**
+   * 代码块折叠功能的客户端脚本
+   *
+   * 此脚本为服务端渲染的代码块折叠结构添加交互功能。
+   * 它会在页面加载后自动初始化，为所有折叠按钮绑定点击事件。
+   */
+
+  /**
+   * 初始化代码块折叠功能
+   */
+  function initCollapsibleCode() {
+    // 查找所有代码块折叠容器
+    const containers = document.querySelectorAll(".collapsible-code-container");
+
+    containers.forEach((container) => {
+      // 查找容器内的所有按钮
+      const buttons = container.querySelectorAll(".collapsible-code-button");
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const action = button.getAttribute("data-action");
+
+          if (action === "expand") {
+            // 展开：隐藏预览，显示完整内容
+            const previewPre = container.querySelector(
+              "pre:not(.collapsible-code-full pre)",
+            );
+            const fullContainer = container.querySelector(
+              ".collapsible-code-full",
+            );
+
+            if (previewPre && fullContainer) {
+              previewPre.style.display = "none";
+              fullContainer.classList.remove("hidden");
+            }
+          } else if (action === "collapse") {
+            // 收起：显示预览，隐藏完整内容
+            const previewPre = container.querySelector(
+              "pre:not(.collapsible-code-full pre)",
+            );
+            const fullContainer = container.querySelector(
+              ".collapsible-code-full",
+            );
+
+            if (previewPre && fullContainer) {
+              previewPre.style.display = "block";
+              fullContainer.classList.add("hidden");
+            }
+          }
+        });
+      });
+    });
+  }
+
+  // 页面加载完成后初始化
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initCollapsibleCode);
+  } else {
+    // 如果页面已经加载完成，立即初始化
+    initCollapsibleCode();
+  }
+
+  // 为了确保在动态内容加载后也能工作，添加延迟初始化
+  setTimeout(initCollapsibleCode, 100);
+</script>

@@ -2,7 +2,7 @@
 import { Icon } from "astro-icon/components";
 
 import Image from "~/components/common/Image.astro";
-import { parseMarkdownToHTML } from "~/utils/markdown";
+import MarkdownRenderer from "~/components/common/MarkdownRenderer";
 
 interface Props {
   item: {
@@ -148,8 +148,11 @@ const getTypeColor = (type: string) => {
             <>
               <!-- 闪念完整内容 -->
               {(item.content || item.body) && (
-                <div class="prose prose-sm md:prose-base max-w-none text-sm md:text-base memo-content">
-                  <Fragment set:html={await parseMarkdownToHTML((item.content || item.body) || '')} />
+                <div class="memo-content">
+                  <MarkdownRenderer
+                    content={(item.content || item.body) || ''}
+                    className="prose prose-sm md:prose-base max-w-none text-sm md:text-base"
+                  />
                 </div>
               )}
               <!-- 闪念查看详情链接 -->

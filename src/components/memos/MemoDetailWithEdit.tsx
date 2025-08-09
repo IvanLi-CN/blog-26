@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import MarkdownRenderer from '~/components/common/MarkdownRenderer';
 import type { Attachment } from './AttachmentGrid';
 import { MemoEditEditor } from './MemoEditEditor';
 
@@ -75,9 +76,7 @@ export function MemoDetailWithEdit({ memoData, isAdmin }: MemoDetailWithEditProp
       )}
 
       {/* 原始内容显示 */}
-      <div className="prose prose-lg max-w-none">
-        <div dangerouslySetInnerHTML={{ __html: memoData.content }} />
-      </div>
+      <MarkdownRenderer content={memoData.body} variant="detail" className="prose prose-lg max-w-none" />
     </div>
   );
 }

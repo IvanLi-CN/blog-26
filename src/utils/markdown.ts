@@ -13,6 +13,7 @@ import {
   responsiveTablesRehypePlugin,
   webdavImagesRehypePlugin,
 } from './frontmatter';
+import { rehypeCollapsibleCode } from './rehype-collapsible-code';
 
 /**
  * 解析 Markdown 内容为 HTML
@@ -102,6 +103,10 @@ export async function parseMarkdownToHTML(markdown: string, articlePath?: string
       },
     })
     .use(rehypeHighlight)
+    .use(rehypeCollapsibleCode, {
+      maxLines: 30,
+      previewLines: 20,
+    })
     .use(rehypeStringify, { allowDangerousHtml: true });
 
   const result = await processor.process(vfile);

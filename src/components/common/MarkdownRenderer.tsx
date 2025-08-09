@@ -1,27 +1,63 @@
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
-import { CollapsibleCodeBlock } from '~/components/common/CollapsibleCodeBlock';
 import { removeTagsFromContent } from '~/utils/utils';
 import { isExternalUrl, resolveRelativePath } from '../../utils/path-resolver';
+import { CollapsibleCodeBlock } from './CollapsibleCodeBlock';
 
-// 不需要重复导入样式，因为已经在 CustomStyles.astro 中全局导入了
-
-interface SimpleMarkdownPreviewProps {
+interface MarkdownRendererProps {
   content: string;
-  removeTags?: boolean; // 是否移除标签，默认为 false
+  removeTags?: boolean;
+  className?: string;
+  /** 折叠模式：list（列表页，紧凑）或 detail（详情页，宽松） */
+  variant?: 'list' | 'detail';
+  /** 自定义最大行数，会覆盖 variant 的默认值 */
+  maxLines?: number;
+  /** 自定义预览行数，会覆盖 variant 的默认值 */
+  previewLines?: number;
 }
 
-export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMarkdownPreviewProps) {
+export default function MarkdownRenderer({
+  content,
+  removeTags = false,
+  className = 'prose prose-sm md:prose-base max-w-none text-sm md:text-base',
+  variant = 'list',
+  maxLines,
+  previewLines,
+}: MarkdownRendererProps) {
   if (!content.trim()) {
-    return <div className="text-gray-500 italic text-center py-8">开始写作以查看预览...</div>;
+    return <div className="text-gray-500 italic text-center py-8">暂无内容</div>;
   }
+
+  // 根据 variant 计算折叠参数
+  const getCollapseConfig = () => {
+    if (maxLines !== undefined && previewLines !== undefined) {
+      // 如果明确指定了参数，使用指定值
+      return { maxLines, previewLines };
+    }
+
+    // 根据 variant 使用预设值
+    switch (variant) {
+      case 'detail':
+        return {
+          maxLines: maxLines ?? 30,
+          previewLines: previewLines ?? 20,
+        };
+      case 'list':
+      default:
+        return {
+          maxLines: maxLines ?? 10,
+          previewLines: previewLines ?? 7,
+        };
+    }
+  };
+
+  const collapseConfig = getCollapseConfig();
 
   // 如果需要移除标签，则处理内容
   let processedContent = removeTags ? removeTagsFromContent(content) : content;
 
   // 处理Milkdown编辑器输出的HTML转义问题
-  // Milkdown有时会对markdown语法进行HTML转义，我们需要反转义
   processedContent = processedContent
     .replace(/\\#/g, '#') // 反转义标题
     .replace(/!\\\[/g, '![') // 反转义图片开始
@@ -32,12 +68,9 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
     .replace(/\\\_/g, '_') // 反转义下划线
     .replace(/<br\s*\/?>/gi, '\n\n'); // 将HTML换行转换为markdown换行
 
-  // 预处理图片和链接URL，将包含空格或特殊字符的URL用尖括号包围
-  // 这样markdown解析器就能正确识别它们（与parseMarkdownToHTML函数保持一致）
+  // 预处理图片和链接URL
   processedContent = processedContent.replace(/(!?\[([^\]]*)\])\(([^)]+)\)/g, (match, linkPart, _altText, url) => {
-    // 检查URL是否包含空格或特殊字符，且不是已经用尖括号包围的
     if (!url.startsWith('<') && !url.endsWith('>')) {
-      // 检查是否包含空格、中文字符或其他需要编码的字符
       if (/[\s\u4e00-\u9fff@]/.test(url)) {
         return `${linkPart}(<${url}>)`;
       }
@@ -46,13 +79,13 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
   });
 
   return (
-    <div className="markdown-preview">
+    <div className={className}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         urlTransform={(url) => url}
         components={{
-          // 自定义组件样式，适配闪念的紧凑布局
+          // 自定义组件样式
           h1: ({ children }) => <h1 className="text-xl font-bold mt-6 mb-3 first:mt-0">{children}</h1>,
           h2: ({ children }) => <h2 className="text-lg font-semibold mt-5 mb-2 first:mt-0">{children}</h2>,
           h3: ({ children }) => <h3 className="text-base font-semibold mt-4 mb-2 first:mt-0">{children}</h3>,
@@ -73,34 +106,64 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
             if (isInline) {
               return <code className="inline-code">{children}</code>;
             }
-            // 对于代码块，完全依赖 highlight.js 的样式
             return <code className={className}>{children}</code>;
           },
           pre: ({ children }) => {
+            // 递归提取文本内容的辅助函数
+            const extractTextContent = (node: any): string => {
+              if (typeof node === 'string') {
+                return node;
+              }
+              if (typeof node === 'number') {
+                return String(node);
+              }
+              if (Array.isArray(node)) {
+                return node.map(extractTextContent).join('');
+              }
+              if (node && typeof node === 'object') {
+                if ('props' in node && node.props && 'children' in node.props) {
+                  return extractTextContent(node.props.children);
+                }
+                if ('children' in node) {
+                  return extractTextContent(node.children);
+                }
+              }
+              return '';
+            };
+
             // 提取代码内容和语言信息
             const codeElement = Array.isArray(children) ? children[0] : children;
-
             if (codeElement && typeof codeElement === 'object' && 'props' in codeElement) {
               const { className = '', children: codeContent } = codeElement.props;
 
-              // 递归提取纯文本内容的函数
-              const extractTextContent = (content: any): string => {
-                if (typeof content === 'string') {
-                  return content;
-                } else if (Array.isArray(content)) {
-                  return content.map(extractTextContent).join('');
-                } else if (content && typeof content === 'object' && content.props && content.props.children) {
-                  return extractTextContent(content.props.children);
-                }
-                return '';
-              };
-
-              // 提取纯文本内容
+              // 使用递归函数提取代码文本
               const codeText = extractTextContent(codeContent);
 
               if (codeText.trim()) {
-                return <CollapsibleCodeBlock className={className}>{codeText}</CollapsibleCodeBlock>;
+                return (
+                  <CollapsibleCodeBlock
+                    className={className}
+                    maxLines={collapseConfig.maxLines}
+                    previewLines={collapseConfig.previewLines}
+                  >
+                    {codeText}
+                  </CollapsibleCodeBlock>
+                );
               }
+            }
+
+            // 如果无法从 code 元素中提取内容，尝试直接从 children 提取
+            const directText = extractTextContent(children);
+            if (directText.trim()) {
+              return (
+                <CollapsibleCodeBlock
+                  className=""
+                  maxLines={collapseConfig.maxLines}
+                  previewLines={collapseConfig.previewLines}
+                >
+                  {directText}
+                </CollapsibleCodeBlock>
+              );
             }
 
             // 降级处理
@@ -122,13 +185,9 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
           img: ({ src, alt }) => {
             // 转换图片路径为优化后的图片路径
             let convertedSrc = src;
-            // 如果是base64图片、HTTP/HTTPS URL或已经是render-image端点，直接使用
             if (src && !isExternalUrl(src) && !src.startsWith('data:') && !src.startsWith('/api/render-image/')) {
-              // 对于Memos，使用统一的路径解析逻辑
-              const articleDir = 'Memos/'; // Memos文章都在Memos目录下
+              const articleDir = 'Memos/';
               const resolvedPath = resolveRelativePath(src, articleDir);
-
-              // 使用优化后的图片端点，指定尺寸和像素倍率
               convertedSrc = `/api/render-image/${resolvedPath}?f=webp&q=85&s=1200&dpr=1`;
             }
             return (
@@ -138,7 +197,7 @@ export function SimpleMarkdownPreview({ content, removeTags = false }: SimpleMar
                 className="max-w-full h-auto rounded-md my-3"
                 loading="lazy"
                 onError={() => {
-                  console.error('Image failed to load in SimpleMarkdownPreview:', {
+                  console.error('Image failed to load in MarkdownRenderer:', {
                     originalSrc: src,
                     convertedSrc: convertedSrc,
                     alt: alt,
