@@ -362,4 +362,77 @@ import "../styles/milkdown.css";
       max-height: 20vmin !important;
     }
   }
+
+  /* ===== 长文本和URL溢出处理 ===== */
+
+  /* 全局prose容器长文本处理 */
+  .prose {
+    overflow-wrap: anywhere !important;
+    word-wrap: break-word !important;
+    /* 确保容器不会被内容撑开 */
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* prose中的链接特殊处理 */
+  .prose a {
+    overflow-wrap: anywhere !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    /* 确保长URL能够换行 */
+    hyphens: auto !important;
+    /* 防止链接撑开容器 */
+    max-width: 100% !important;
+    display: inline-block !important;
+  }
+
+  /* prose中的段落、列表项、表格单元格文本处理 */
+  .prose p,
+  .prose li,
+  .prose td,
+  .prose th,
+  .prose div {
+    overflow-wrap: anywhere !important;
+    word-wrap: break-word !important;
+    /* 确保所有文本内容都能正确换行 */
+    hyphens: auto !important;
+  }
+
+  /* 特别处理代码块中的长文本（但保持代码的可读性） */
+  .prose code:not(pre code) {
+    overflow-wrap: anywhere !important;
+    word-wrap: break-word !important;
+    /* 行内代码也需要能够换行 */
+    white-space: pre-wrap !important;
+  }
+
+  /* memo-content特殊处理（时间线中的闪念内容） */
+  .memo-content {
+    overflow-wrap: anywhere !important;
+    word-wrap: break-word !important;
+    /* 确保闪念内容不会溢出 */
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .memo-content a {
+    overflow-wrap: anywhere !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    /* 闪念中的链接特殊处理 */
+    max-width: 100% !important;
+    display: inline-block !important;
+  }
+
+  /* 响应式处理：移动端更激进的换行策略 */
+  @media (max-width: 640px) {
+    .prose a {
+      word-break: break-all !important;
+      /* 移动端对长URL使用更激进的断行策略 */
+    }
+
+    .memo-content a {
+      word-break: break-all !important;
+    }
+  }
 </style>
