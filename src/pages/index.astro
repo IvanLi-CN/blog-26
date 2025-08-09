@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import ContentImageHandler from "~/components/common/ContentImageHandler";
 import TimelineItem from "~/components/home/TimelineItem.astro";
 import Button from "~/components/ui/Button.astro";
 import Layout from "~/layouts/PageLayout.astro";
@@ -104,26 +105,28 @@ const metadata: MetaData = {
       </div>
     </div>
 
-    <div class="timeline flex flex-col">
-      {
-        timelineItems.length > 0 ? (
-          timelineItems.map((item, index) => (
-            <TimelineItem
-              item={item}
-              isLast={index === timelineItems.length - 1}
-            />
-          ))
-        ) : (
-          <div class="text-center py-8 text-muted">
-            <Icon
-              name="tabler:timeline"
-              class="w-8 h-8 mx-auto mb-2 opacity-50"
-            />
-            <p>暂无内容</p>
-          </div>
-        )
-      }
-    </div>
+    <ContentImageHandler client:only="react">
+      <div class="timeline flex flex-col">
+        {
+          timelineItems.length > 0 ? (
+            timelineItems.map((item, index) => (
+              <TimelineItem
+                item={item}
+                isLast={index === timelineItems.length - 1}
+              />
+            ))
+          ) : (
+            <div class="text-center py-8 text-muted">
+              <Icon
+                name="tabler:timeline"
+                class="w-8 h-8 mx-auto mb-2 opacity-50"
+              />
+              <p>暂无内容</p>
+            </div>
+          )
+        }
+      </div>
+    </ContentImageHandler>
   </section>
 
   {/* Featured Projects Section - 底下用小卡片块显示几个项目 */}
