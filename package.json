@@ -41,6 +41,7 @@
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.2.0",
+    "daisyui": "^5.0.50",
     "next": "15.4.6",
     "react": "19.1.0",
     "react-dom": "19.1.0"
