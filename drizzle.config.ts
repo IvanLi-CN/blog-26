@@ -1,11 +1,12 @@
-import path from 'node:path';
-import { defineConfig } from 'drizzle-kit';
+import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
-  schema: './src/lib/schema.ts',
-  out: './drizzle', // Directory for migration files
-  dialect: 'sqlite', // Specify the database driver for Bun's built-in SQLite
+  schema: "./src/lib/schema.ts",
+  out: "./drizzle",
+  dialect: "sqlite",
   dbCredentials: {
-    url: path.resolve(process.cwd() || '', process.env.DB_PATH || './sqlite.db'), // Path to your SQLite database file
+    url: process.env.DB_PATH || "./sqlite.db",
   },
+  verbose: true,
+  strict: true,
 });

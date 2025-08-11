@@ -1,384 +1,118 @@
-# 📝 Ivan's Blog
+# Ivan's Blog - Next.js Migration
 
-A modern personal blog system built with **[Astro 5.0](https://astro.build/)**, featuring complete content management, comment system, AI enhancements, and vector search capabilities.
+This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 
-## ✨ Key Features
+## 🚀 Migration Status
 
-- 🚀 **High Performance**: Static site generation with Astro 5.0, excellent PageSpeed Insights scores
-- 🎨 **Modern Design**: Built with Tailwind CSS and daisyUI, supports dark mode
-- 💬 **Complete Comment System**: Nested replies, email notifications, admin moderation
-- 🔐 **Admin Features**: JWT authentication, content management, comment moderation
-- 🤖 **AI Enhanced**: OpenAI integration for intelligent content processing
-- 🔍 **Vector Search**: Semantic search with SQLite-stored embeddings
-- 📧 **Email System**: SMTP notifications, verification code login
-- 🛡️ **Security**: Luosimao CAPTCHA, rate limiting, XSS protection
-- 🐳 **Containerized**: One-click deployment with Docker Compose
-- 📱 **Responsive**: Perfect adaptation to all devices
+### ✅ Completed
+- [x] **Project Setup**: Next.js 15 project created with TypeScript and Tailwind CSS
+- [x] **Core Dependencies**: Installed essential packages (tRPC, Drizzle ORM, AI libraries)
+- [x] **Database Schema**: Migrated database schema from Astro version
+- [x] **tRPC Setup**: Basic tRPC configuration with health check endpoint
+- [x] **Configuration Files**: Created Biome, environment, and Drizzle configs
+- [x] **Basic UI**: Added daisyUI integration and Inter font
 
-## 📋 Table of Contents
+### 🔄 In Progress
+- [ ] **Component Migration**: Migrate React components from `old/src/components/`
+- [ ] **API Routes**: Migrate tRPC routers and API endpoints
+- [ ] **Page Migration**: Convert Astro pages to Next.js App Router pages
+- [ ] **Middleware**: Migrate authentication and other middleware
+- [ ] **Static Assets**: Copy and optimize static assets
 
-- [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Configuration](#-configuration)
-- [Deployment](#-deployment)
-- [Development Commands](#-development-commands)
-- [Features](#-features)
-- [Environment Variables](#-environment-variables)
-- [Troubleshooting](#-troubleshooting)
+### 📋 Next Steps
+1. **Component Migration**: Start with common components (UI, layout)
+2. **API Migration**: Migrate tRPC routers for posts, comments, auth
+3. **Page Structure**: Create blog, admin, and memos pages
+4. **Database Migration**: Set up database with existing schema
+5. **Testing**: Migrate and update E2E tests
 
 ## 🛠 Tech Stack
 
-- **Frontend**: [Astro 5.0](https://astro.build/) + [React](https://reactjs.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [daisyUI](https://daisyui.com/)
-- **Database**: [SQLite](https://sqlite.org/) + [Drizzle ORM](https://orm.drizzle.team/)
-- **Cache**: [Redis](https://redis.io/)
-- **Vector Storage**: SQLite with embedding vectors for semantic search
-- **AI Service**: [OpenAI API](https://openai.com/api/) + [LlamaIndex](https://www.llamaindex.ai/)
-- **Authentication**: [JWT](https://jwt.io/) + Email verification
-- **Email**: [Nodemailer](https://nodemailer.com/)
-- **CAPTCHA**: [Luosimao](https://captcha.luosimao.com/)
-- **Package Manager**: [Bun](https://bun.sh/)
-- **Deployment**: [Docker](https://docker.com/) + [Docker Compose](https://docs.docker.com/compose/)
+### Core Framework
+- **Next.js 15.4.6** with App Router
+- **React 19.1.0**
+- **TypeScript 5.x**
+- **Tailwind CSS 4.x** + daisyUI
 
-## 🚀 Quick Start
+### Backend & Database
+- **tRPC 11.4.3** for type-safe APIs
+- **Drizzle ORM 0.44.2** with SQLite
+- **better-sqlite3** for database connection
 
-### Prerequisites
+### AI & Search
+- **OpenAI API** for AI features
+- **LlamaIndex** for RAG functionality
+- **Redis** for caching (ioredis)
 
-- Bun 1.0+
-- Docker and Docker Compose (for deployment)
+### Development Tools
+- **Biome 2.0.4** for code formatting and linting
+- **Playwright** for E2E testing
 
-### Local Development
+## 🚀 Getting Started
 
 ```bash
-# Clone the repository
-git clone ssh://gitea@git.ivanli.cc:7018/Ivan/blog-astrowind.git
-cd blog-astrowind
-
 # Install dependencies
-bun install
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env file with your configuration
-
-# Run database migrations
-bun run migrate
+npm install
 
 # Start development server
-bun run dev
-```
+npm run dev
 
-### Docker Deployment
+# Build for production
+npm run build
 
-```bash
-# Build the application
-bun run build
+# Run linting
+npm run check
 
-# Deploy with Docker Compose
-docker-compose up -d --build
-
-# Or use the deployment script
-./deploy.sh
+# Fix code issues
+npm run fix
 ```
 
 ## 📁 Project Structure
 
 ```
-├── src/
-│   ├── components/          # React/Astro components
-│   │   ├── comments/        # Comment system components
-│   │   ├── admin/           # Admin interface components
-│   │   └── ui/              # Common UI components
-│   ├── content/             # Content files
-│   │   ├── post/            # Blog posts (MDX)
-│   │   └── notes/           # Note files
-│   ├── layouts/             # Page layouts
-│   ├── lib/                 # Core libraries
-│   │   ├── config.ts        # Unified configuration management
-│   │   ├── db.ts            # Database connection
-│   │   ├── auth.ts          # Authentication logic
-│   │   ├── email.ts         # Email service
-│   │   └── captcha.ts       # CAPTCHA service
-│   ├── pages/               # Page routes
-│   │   ├── api/             # API routes
-│   │   ├── admin/           # Admin pages
-│   │   └── blog/            # Blog pages
-│   └── utils/               # Utility functions
-├── docker-compose.yml       # Docker deployment config
-├── Dockerfile              # Docker image config
-├── drizzle/                # Database migration files
-└── scripts/                # Script files
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/trpc/          # tRPC API routes
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page
+├── components/            # React components
+│   └── TRPCProvider.tsx   # tRPC client provider
+├── lib/                   # Core libraries
+│   ├── db.ts             # Database connection
+│   ├── schema.ts         # Database schema
+│   └── trpc.ts           # tRPC client
+├── server/               # tRPC server
+│   ├── router.ts         # Main router
+│   └── trpc.ts           # tRPC setup
+└── utils/                # Utility functions
+
+old/                      # Original Astro project (reference)
 ```
 
-## ⚙️ Configuration
+## 🔗 Original Project
 
-The project uses a unified configuration management system with Zod validation for type safety and data validation.
+The original Astro project is preserved in the `old/` directory for reference during migration.
 
-### Configuration System
+## 📝 Environment Variables
 
-- **File**: `src/lib/config.ts`
-- **Features**:
-  - Zod schema validation for all environment variables
-  - Type-safe configuration access
-  - Dual fallback mechanism (process.env → import.meta.env)
-  - Configuration caching
+Copy `.env.example` to `.env` and configure:
 
-### Usage Example
+- Database path
+- OpenAI API credentials
+- Redis connection
+- WebDAV settings (if used)
+- SMTP configuration
+- Admin settings
 
-```typescript
-import { config } from '~/lib/config';
-
-// Type-safe, automatically validated
-const { secretKey } = config.captcha;
-const { email } = config.admin;
-const { host, port } = config.smtp;
-```
-
-### Test Configuration
+## 🧪 Testing
 
 ```bash
-# Test configuration validation
-bun test-config.ts
-
-# In Docker environment
-docker-compose exec blog bun test-config.ts
+# Run E2E tests (after migration)
+npm run test:e2e
 ```
 
-### Admin Authentication
+---
 
-The system supports two authentication methods for admin access:
-
-#### 1. Traditional Email Verification (Default)
-
-- Admin logs in via `/admin/login` with email verification
-- Uses JWT tokens stored in cookies
-- Requires SMTP configuration for sending verification codes
-
-#### 2. Traefik SSO Integration (Recommended for Production)
-
-- Integrates with Traefik reverse proxy and SSO providers
-- Automatically recognizes admin users via request headers
-- No additional login required if already authenticated via SSO
-
-**Environment Variables:**
-
-```bash
-# Admin email (required for both methods)
-ADMIN_EMAIL="your-admin@example.com"
-
-# Traefik SSO configuration
-ADMIN_EMAIL_HEADER_NAME="Remote-Email"  # Default: Remote-Email
-```
-
-**Traefik Configuration:**
-
-```yaml
-# Ensure Traefik forwards authentication headers
-traefik.http.middlewares.authelia.forwardAuth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email
-```
-
-**Testing SSO Authentication:**
-
-- Visit `/admin/test-sso` to check authentication status
-- View all received headers and authentication results
-- Verify both SSO and cookie-based authentication
-
-## 🚀 Deployment
-
-### Production Deployment
-
-1. **Configure Environment Variables**
-
-   ```bash
-   cp .env.example .env
-   # Edit .env with your production values
-   ```
-
-2. **Build and Deploy**
-
-   ```bash
-   bun run build
-   docker-compose up -d --build
-   ```
-
-3. **Use Deployment Script**
-
-   ```bash
-   ./deploy.sh
-   ```
-
-### Services Included
-
-- **Blog Application**: Main Astro application with SQLite database
-- **Redis**: Caching and session storage
-
-## 💻 Development Commands
-
-| Command | Description |
-|---------|-------------|
-| `bun install` | Install dependencies |
-| `bun run dev` | Start development server |
-| `bun run build` | Build for production |
-| `bun run preview` | Preview production build |
-| `bun run migrate` | Run database migrations |
-| `bun run check` | Type checking |
-| `bun test-config.ts` | Test configuration |
-
-## 🎯 Features
-
-### Comment System
-
-- Nested replies with unlimited depth
-- Email notifications for new comments
-- Admin moderation and approval
-- CAPTCHA protection against spam
-- Real-time updates
-
-### Admin Panel
-
-- Dual authentication support (JWT + Traefik SSO)
-- Email verification code login
-- Traefik SSO integration for seamless access
-- Content management interface
-- Comment moderation tools
-- Vectorization status monitoring
-- Authentication testing tools (`/admin/test-sso`)
-
-### AI Integration
-
-- OpenAI API integration with LlamaIndex
-- Intelligent content processing and RAG queries
-- Vector embeddings stored in SQLite
-- Semantic similarity search with cosine similarity
-
-### Security
-
-- Luosimao CAPTCHA integration
-- Rate limiting on API endpoints
-- XSS protection
-- CSRF protection
-- Input validation with Zod
-
-## 🔧 Environment Variables
-
-### Required Variables
-
-| Variable | Type | Description | Example |
-|----------|------|-------------|---------|
-| `LUOSIMAO_SECRET_KEY` | string | Luosimao CAPTCHA secret key | `"abc123..."` |
-| `JWT_SECRET` | string (≥32 chars) | JWT signing secret | `"your-32-char-secret..."` |
-| `ADMIN_EMAIL` | email | Administrator email | `"admin@example.com"` |
-| `OPENAI_API_KEY` | string | OpenAI API key | `"sk-..."` |
-| `SMTP_HOST` | string | SMTP server host | `"smtp.gmail.com"` |
-| `SMTP_FROM_EMAIL` | email | Sender email address | `"noreply@example.com"` |
-| `SITE_URL` | URL | Site base URL | `"https://example.com"` |
-| `PUBLIC_LUOSIMAO_SITE_KEY` | string | Luosimao site key | `"def456..."` |
-
-### Optional Variables (with defaults)
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_PATH` | `"./sqlite.db"` | Database file path |
-| `REDIS_HOST` | `"localhost"` | Redis host |
-| `REDIS_PORT` | `6379` | Redis port |
-| `SMTP_PORT` | `587` | SMTP port |
-| `SMTP_FROM_NAME` | `"Blog"` | Sender name |
-| `NODE_ENV` | `"development"` | Environment type |
-| `ADMIN_EMAIL_HEADER_NAME` | `"Remote-Email"` | Traefik SSO email header name |
-
-### Configuration Example
-
-```bash
-# Database
-DB_PATH=./sqlite.db
-
-# OpenAI
-OPENAI_API_KEY=sk-your-openai-key
-OPENAI_API_BASE_URL=https://api.openai.com/v1
-
-# Site
-SITE_URL=https://yourdomain.com
-JWT_SECRET=your-very-long-jwt-secret-key-here
-
-# SMTP
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_FROM_NAME=Your Blog Name
-SMTP_FROM_EMAIL=noreply@yourdomain.com
-
-# Admin
-ADMIN_EMAIL=admin@yourdomain.com
-
-# CAPTCHA
-PUBLIC_LUOSIMAO_SITE_KEY=your-site-key
-LUOSIMAO_SECRET_KEY=your-secret-key
-```
-
-## 🔍 Troubleshooting
-
-### Configuration Issues
-
-**Problem**: `LUOSIMAO_SECRET_KEY is not set in environment variables`
-
-**Solution**:
-
-1. Check your `.env` file exists and contains the variable
-2. Verify Docker Compose environment configuration
-3. Run configuration test: `bun test-config.ts`
-4. Rebuild containers: `docker-compose build --no-cache`
-
-### Common Issues
-
-1. **Configuration Validation Failed**
-   - Check environment variable formats (URL, email, numbers)
-   - Ensure all required variables are set
-   - Verify variable types match schema requirements
-
-2. **Container Startup Failed**
-   - Check logs: `docker-compose logs blog`
-   - Verify port availability: `lsof -i :4321`
-   - Check configuration validation in logs
-
-3. **Database Issues**
-   - Run migrations: `bun run migrate`
-   - Check SQLite file permissions
-   - Verify database path in configuration
-
-### Useful Commands
-
-```bash
-# Check configuration
-bun test-config.ts
-
-# View container logs
-docker-compose logs -f blog
-
-# Check container status
-docker-compose ps
-
-# Restart services
-docker-compose restart
-
-# Rebuild and restart
-docker-compose down && docker-compose up -d --build
-
-# Run troubleshooting script
-./troubleshoot.sh
-```
-
-## 👨‍💻 Author
-
-**Ivan Li**
-
-- Email: <ivanli2048@gmail.com>
-- Repository: [git.ivanli.cc/Ivan/blog-astrowind](https://git.ivanli.cc/Ivan/blog-astrowind)
-
-## 📄 License
-
-This project uses dual licensing:
-
-- **Code**: MIT License - see the [LICENSE.md](LICENSE.md) file for details
-- **Content**: All blog articles and written content are licensed under [CC BY-NC-ND 4.0](http://creativecommons.org/licenses/by-nc-nd/4.0/)
+**Migration Progress**: 🟡 **Phase 1 Complete** - Basic setup and infrastructure ready
+**Next Phase**: 🔄 **Component and API Migration**
