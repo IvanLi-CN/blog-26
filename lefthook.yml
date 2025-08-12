@@ -1,0 +1,12 @@
+pre-commit:
+  commands:
+    check:
+      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,css,scss,sass,less}"
+      run: npx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files} && git update-index --again
+      fail_text: "Code formatting/linting failed. Please fix the issues before committing."
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit {1}
+      fail_text: "Commit message does not follow conventional commits format or contains non-English characters. Please check commitlint.config.cjs for rules."

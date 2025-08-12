@@ -1,6 +1,7 @@
-import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm";
+import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-// 用户表
+// 适配实际数据库结构
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -8,7 +9,7 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at").notNull(),
 });
 
-// 评论表
+// 临时适配现有数据库schema
 export const comments = sqliteTable("comments", {
   id: text("id").primaryKey(),
   content: text("content").notNull(),
@@ -16,7 +17,9 @@ export const comments = sqliteTable("comments", {
   authorName: text("author_name").notNull(),
   authorEmail: text("author_email").notNull(),
   parentId: text("parent_id"),
-  status: text("status").notNull().default("pending"), // pending/approved/rejected
+  status: text("status", { enum: ["pending", "approved", "rejected"] })
+    .notNull()
+    .default("pending"),
   createdAt: integer("created_at").notNull(),
 });
 
@@ -64,10 +67,36 @@ export const reactions = sqliteTable("reactions", {
   createdAt: integer("created_at").notNull(),
 });
 
-// 邮箱验证码表
 export const emailVerificationCodes = sqliteTable("email_verification_codes", {
   id: text("id").primaryKey(),
   email: text("email").notNull(),
   code: text("code").notNull(),
-  expiresAt: integer("expires_at").notNull(),
+  expiresAt: integer("expires_at").notNull(), // UNIX timestamp
 });
+
+// 关系定义
+export const usersRelations = relations(users, ({ many }) => ({
+  comments: many(comments),
+}));
+
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
+    relationName: "replies",
+  }),
+  replies: many(comments, {
+    relationName: "replies",
+  }),
+}));
+
+export const reactionsRelations = relations(reactions, ({ one }) => ({
+  author: one(users, {
+    fields: [reactions.userEmail],
+    references: [users.email],
+  }),
+}));
+
+// 类型导出
+export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data
+export type NewVectorizedFile = typeof vectorizedFiles.$inferInsert; // Infer type for inserting data

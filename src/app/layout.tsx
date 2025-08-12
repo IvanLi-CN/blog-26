@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
+import { TRPCProvider } from "../components/providers/TRPCProvider";
 
 export const metadata: Metadata = {
   title: "Ivan's Blog",
@@ -19,8 +14,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
+      <body className="font-sans antialiased">
+        <TRPCProvider>{children}</TRPCProvider>
       </body>
     </html>
   );

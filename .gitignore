@@ -39,3 +39,31 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# database
+sqlite.db
+sqlite.db-journal
+*.sqlite
+*.sqlite3
+
+# test data and development data
+test-data/
+dev-data/
+
+# old project files
+old/
+
+# generated files
+src/generated/
+
+# logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
