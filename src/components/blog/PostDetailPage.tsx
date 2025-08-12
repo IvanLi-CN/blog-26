@@ -109,12 +109,11 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
               {/* Tags and Category */}
               <div className="flex flex-wrap gap-2 mb-6">
                 {post.category && <span className="badge badge-primary">{post.category}</span>}
-                {post.tags &&
-                  post.tags.split(",").map((tag, index) => (
-                    <span key={index} className="badge badge-outline">
-                      #{tag.trim()}
-                    </span>
-                  ))}
+                {post.tags?.split(",").map((tag, index) => (
+                  <span key={index} className="badge badge-outline">
+                    #{tag.trim()}
+                  </span>
+                ))}
               </div>
 
               {/* Featured Image */}

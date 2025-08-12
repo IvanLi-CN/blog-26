@@ -124,7 +124,7 @@ export default function BlogHomePage() {
                       </div>
 
                       <p className="text-base-content/80 mb-4">
-                        {post.excerpt || post.body.substring(0, 200) + "..."}
+                        {post.excerpt || `${post.body.substring(0, 200)}...`}
                       </p>
 
                       <div className="card-actions justify-between items-center">

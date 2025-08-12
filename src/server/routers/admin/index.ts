@@ -1,5 +1,6 @@
 import { createTRPCRouter } from "../../trpc";
 import { adminCommentsRouter } from "./comments";
+import { adminContentSyncRouter } from "./content-sync";
 import { adminDashboardRouter } from "./dashboard";
 import { adminPostsRouter } from "./posts";
 
@@ -11,4 +12,5 @@ export const adminRouter = createTRPCRouter({
   dashboard: adminDashboardRouter,
   posts: adminPostsRouter,
   comments: adminCommentsRouter,
+  contentSync: adminContentSyncRouter,
 });

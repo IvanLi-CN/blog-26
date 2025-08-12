@@ -1,0 +1,348 @@
+/**
+ * WebDAV 内容源实现
+ *
+ * 基于现有的 WebDAV 客户端实现远程内容同步
+ */
+
+import { getWebDAVClient, isWebDAVEnabled, type WebDAVClient } from "../webdav";
+import { ContentSourceBase } from "./base";
+import type { ContentItem, ContentSourceConfig, ContentSourceStatus, FileInfo } from "./types";
+import {
+  createContentItemFromParsed,
+  isMarkdownFile,
+  normalizePath,
+  parseMarkdownContent,
+  sanitizeContentItem,
+  validateContentItem,
+} from "./utils";
+
+/**
+ * WebDAV 内容源配置
+ */
+export interface WebDAVContentSourceConfig extends ContentSourceConfig {
+  options: {
+    /** WebDAV 路径映射 */
+    pathMappings: {
+      /** 博客文章路径 */
+      posts?: string;
+      /** 项目文档路径 */
+      projects?: string;
+      /** 闪念内容路径 */
+      memos?: string;
+    };
+    /** 是否启用 ETag 缓存 */
+    enableETagCache?: boolean;
+    /** 连接超时时间（毫秒） */
+    timeout?: number;
+    /** 最大重试次数 */
+    maxRetries?: number;
+  };
+}
+
+/**
+ * WebDAV 内容源
+ */
+export class WebDAVContentSource extends ContentSourceBase {
+  private webdavClient: WebDAVClient;
+  private pathMappings: Required<WebDAVContentSourceConfig["options"]["pathMappings"]>;
+  private enableETagCache: boolean;
+  private timeout: number;
+  private maxRetries: number;
+  private fileCache = new Map<string, FileInfo>();
+  private etagCache = new Map<string, string>();
+
+  constructor(config: WebDAVContentSourceConfig) {
+    super(config, "webdav");
+
+    const {
+      pathMappings = {},
+      enableETagCache = true,
+      timeout = 30000,
+      maxRetries = 3,
+    } = config.options;
+
+    // 设置默认路径映射
+    this.pathMappings = {
+      posts: pathMappings.posts || "/blog",
+      projects: pathMappings.projects || "/blog/projects",
+      memos: pathMappings.memos || "/Memos",
+    };
+
+    this.enableETagCache = enableETagCache;
+    this.timeout = timeout;
+    this.maxRetries = maxRetries;
+
+    // 初始化 WebDAV 客户端（延迟到 initialize 方法中）
+    this.webdavClient = null as any;
+  }
+
+  // ============================================================================
+  // IContentSource 接口实现
+  // ============================================================================
+
+  async initialize(): Promise<void> {
+    this.log("info", "初始化 WebDAV 内容源");
+
+    try {
+      // 检查 WebDAV 是否启用
+      if (!isWebDAVEnabled()) {
+        throw new Error("WebDAV 未配置，请设置相关环境变量");
+      }
+
+      // 获取 WebDAV 客户端实例
+      this.webdavClient = getWebDAVClient();
+
+      // 验证连接
+      const isConnected = await this.validateConnection();
+      if (!isConnected) {
+        throw new Error("WebDAV 连接验证失败");
+      }
+
+      // 刷新文件缓存
+      await this.refreshFileCache();
+
+      this.isInitialized = true;
+      this.log("info", `WebDAV 内容源初始化成功，发现 ${this.fileCache.size} 个文件`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `WebDAV 内容源初始化失败: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  async listContent(): Promise<ContentItem[]> {
+    this.ensureInitialized();
+
+    this.log("info", "开始扫描 WebDAV 内容文件");
+
+    const contentItems: ContentItem[] = [];
+    const markdownFiles = Array.from(this.fileCache.values()).filter(
+      (file) => !file.isDirectory && isMarkdownFile(file.path)
+    );
+
+    for (const fileInfo of markdownFiles) {
+      try {
+        const relativePath = this.getRelativePath(fileInfo.path);
+
+        // 获取文件内容
+        const rawContent = await this.webdavClient.getFileContent(fileInfo.path);
+        const parsed = parseMarkdownContent(rawContent, relativePath);
+        const contentItem = createContentItemFromParsed(parsed, relativePath, this.name);
+
+        // 更新 WebDAV 相关的字段
+        contentItem.lastModified = fileInfo.lastModified;
+
+        // 验证和清理内容项
+        if (validateContentItem(contentItem)) {
+          contentItems.push(sanitizeContentItem(contentItem));
+        } else {
+          this.log("warn", `内容项验证失败，跳过: ${relativePath}`);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log("error", `处理文件失败: ${fileInfo.path}`, fileInfo.path, { error: errorMessage });
+      }
+    }
+
+    this.log("info", `WebDAV 内容扫描完成，处理了 ${contentItems.length} 个有效文件`);
+    return contentItems;
+  }
+
+  async getContent(filePath: string): Promise<string> {
+    this.ensureInitialized();
+
+    try {
+      // 将相对路径转换为 WebDAV 路径
+      const webdavPath = this.resolveWebDAVPath(filePath);
+      const content = await this.webdavClient.getFileContent(webdavPath);
+
+      this.log("debug", `读取 WebDAV 文件内容: ${filePath}`);
+      return content;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `读取 WebDAV 文件失败: ${filePath}`, filePath, { error: errorMessage });
+      throw new Error(`无法读取 WebDAV 文件 ${filePath}: ${errorMessage}`);
+    }
+  }
+
+  async validateConnection(): Promise<boolean> {
+    try {
+      // 尝试列出根目录来验证连接
+      const files = await this.webdavClient.listFiles("/", false);
+      return Array.isArray(files);
+    } catch (error) {
+      this.log(
+        "warn",
+        `WebDAV 连接验证失败: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return false;
+    }
+  }
+
+  protected async getSourceSpecificStatus(): Promise<Partial<ContentSourceStatus>> {
+    const markdownFiles = Array.from(this.fileCache.values()).filter(
+      (file) => !file.isDirectory && isMarkdownFile(file.path)
+    );
+
+    return {
+      totalItems: markdownFiles.length,
+      metadata: {
+        pathMappings: this.pathMappings,
+        enableETagCache: this.enableETagCache,
+        timeout: this.timeout,
+        maxRetries: this.maxRetries,
+        cachedFiles: this.fileCache.size,
+        cachedETags: this.etagCache.size,
+      },
+    };
+  }
+
+  // ============================================================================
+  // 私有方法
+  // ============================================================================
+
+  /**
+   * 刷新文件缓存
+   */
+  private async refreshFileCache(): Promise<void> {
+    this.fileCache.clear();
+
+    // 扫描所有配置的路径
+    for (const [contentType, webdavPath] of Object.entries(this.pathMappings)) {
+      try {
+        await this.scanWebDAVDirectory(webdavPath, contentType as keyof typeof this.pathMappings);
+      } catch (error) {
+        this.log("warn", `扫描 WebDAV 目录失败: ${webdavPath}`, undefined, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  /**
+   * 扫描 WebDAV 目录
+   */
+  private async scanWebDAVDirectory(webdavPath: string, contentType: string): Promise<void> {
+    this.log("debug", `开始扫描 WebDAV 目录: ${webdavPath} (类型: ${contentType})`);
+
+    try {
+      const files = await this.webdavClient.listFiles(webdavPath, true);
+      this.log("debug", `WebDAV 目录 ${webdavPath} 返回 ${files.length} 个文件`);
+
+      for (const webdavFile of files) {
+        this.log("debug", `处理文件: ${webdavFile.filename} (类型: ${webdavFile.type})`);
+
+        // 转换为标准的 FileInfo 格式
+        const fileInfo: FileInfo = {
+          path: webdavFile.filename,
+          name: webdavFile.basename,
+          extension: webdavFile.basename.split(".").pop()?.toLowerCase() || "",
+          size: webdavFile.size,
+          lastModified: new Date(webdavFile.lastmod).getTime() || Date.now(),
+          etag: webdavFile.etag,
+          isDirectory: webdavFile.type === "directory",
+        };
+
+        this.fileCache.set(webdavFile.filename, fileInfo);
+
+        // 缓存 ETag
+        if (this.enableETagCache && webdavFile.etag) {
+          this.etagCache.set(webdavFile.filename, webdavFile.etag);
+        }
+      }
+
+      this.log("info", `扫描 WebDAV 目录完成: ${webdavPath}，发现 ${files.length} 个项目`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `扫描 WebDAV 目录失败: ${webdavPath}`, undefined, { error: errorMessage });
+      throw error;
+    }
+  }
+
+  /**
+   * 获取相对路径
+   */
+  private getRelativePath(webdavPath: string): string {
+    // 移除路径映射前缀，生成相对路径
+    for (const [contentType, mappingPath] of Object.entries(this.pathMappings)) {
+      if (webdavPath.startsWith(mappingPath)) {
+        const relativePath = webdavPath.substring(mappingPath.length);
+        return normalizePath(`${contentType}${relativePath}`);
+      }
+    }
+
+    // 如果没有匹配的映射，直接使用路径
+    return normalizePath(webdavPath);
+  }
+
+  /**
+   * 解析 WebDAV 路径
+   */
+  private resolveWebDAVPath(filePath: string): string {
+    // 如果已经是 WebDAV 路径，直接返回
+    if (filePath.startsWith("/")) {
+      return filePath;
+    }
+
+    // 根据文件路径推断内容类型并映射到 WebDAV 路径
+    const normalizedPath = filePath.toLowerCase();
+
+    if (normalizedPath.startsWith("posts/")) {
+      return `${this.pathMappings.posts}/${filePath.substring(6)}`;
+    }
+
+    if (normalizedPath.startsWith("projects/")) {
+      return `${this.pathMappings.projects}/${filePath.substring(9)}`;
+    }
+
+    if (normalizedPath.startsWith("memos/")) {
+      return `${this.pathMappings.memos}/${filePath.substring(6)}`;
+    }
+
+    // 默认映射到 posts 路径
+    return `${this.pathMappings.posts}/${filePath}`;
+  }
+
+  // ============================================================================
+  // 静态工厂方法
+  // ============================================================================
+
+  /**
+   * 创建默认的 WebDAV 内容源配置
+   */
+  static createDefaultConfig(
+    name: string = "webdav",
+    priority: number = 100
+  ): WebDAVContentSourceConfig {
+    return {
+      name,
+      priority,
+      enabled: true,
+      options: {
+        pathMappings: {
+          posts: "/blog",
+          projects: "/blog/projects",
+          memos: "/Memos",
+        },
+        enableETagCache: true,
+        timeout: 30000,
+        maxRetries: 3,
+      },
+    };
+  }
+
+  /**
+   * 验证 WebDAV 内容源配置
+   */
+  static validateConfig(config: WebDAVContentSourceConfig): boolean {
+    if (!ContentSourceBase.validateConfig(config)) {
+      return false;
+    }
+
+    if (!isWebDAVEnabled()) {
+      throw new Error("WebDAV 未配置，请设置 WEBDAV_URL 环境变量");
+    }
+
+    return true;
+  }
+}

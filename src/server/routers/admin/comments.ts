@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../../lib/db";
 import { comments } from "../../../lib/schema";
@@ -211,32 +211,32 @@ export const adminCommentsRouter = createTRPCRouter({
       const { ids, action } = input;
 
       try {
-        let result;
+        let _result;
 
         switch (action) {
           case "approve":
-            result = await db
+            _result = await db
               .update(comments)
               .set({ status: "approved" })
               .where(or(...ids.map((id) => eq(comments.id, id))));
             break;
 
           case "reject":
-            result = await db
+            _result = await db
               .update(comments)
               .set({ status: "rejected" })
               .where(or(...ids.map((id) => eq(comments.id, id))));
             break;
 
           case "pending":
-            result = await db
+            _result = await db
               .update(comments)
               .set({ status: "pending" })
               .where(or(...ids.map((id) => eq(comments.id, id))));
             break;
 
           case "delete":
-            result = await db.delete(comments).where(or(...ids.map((id) => eq(comments.id, id))));
+            _result = await db.delete(comments).where(or(...ids.map((id) => eq(comments.id, id))));
             break;
 
           default:

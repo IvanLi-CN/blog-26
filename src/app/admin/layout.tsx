@@ -33,6 +33,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/comments">评论管理</Link>
             </li>
             <li>
+              <Link href="/admin/content-sync">内容同步</Link>
+            </li>
+            <li>
               <details>
                 <summary>更多</summary>
                 <ul className="bg-base-100 rounded-t-none p-2 w-40">

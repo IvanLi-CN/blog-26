@@ -138,7 +138,7 @@ export default function PostsListPage() {
                       </div>
 
                       <p className="text-base-content/80 mb-4">
-                        {post.excerpt || post.body.substring(0, 150) + "..."}
+                        {post.excerpt || `${post.body.substring(0, 150)}...`}
                       </p>
 
                       {post.tags && (

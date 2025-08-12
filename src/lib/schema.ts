@@ -97,6 +97,60 @@ export const reactionsRelations = relations(reactions, ({ one }) => ({
   }),
 }));
 
+// 内容同步日志表
+export const contentSyncLogs = sqliteTable("content_sync_logs", {
+  id: text("id").primaryKey(),
+  sourceType: text("source_type").notNull(), // local/webdav
+  sourceName: text("source_name").notNull(),
+  operation: text("operation").notNull(), // sync/create/update/delete
+  status: text("status", { enum: ["success", "error", "warning"] }).notNull(),
+  message: text("message").notNull(),
+  filePath: text("file_path"), // 相关文件路径
+  data: text("data"), // JSON 格式的额外数据
+  createdAt: integer("created_at").notNull(),
+});
+
+// 内容同步状态表
+export const contentSyncStatus = sqliteTable("content_sync_status", {
+  sourceType: text("source_type").primaryKey(), // local/webdav
+  sourceName: text("source_name").notNull(),
+  lastSyncAt: integer("last_sync_at"),
+  status: text("status", { enum: ["idle", "running", "success", "error", "cancelled"] })
+    .notNull()
+    .default("idle"),
+  progress: integer("progress").notNull().default(0), // 0-100
+  currentStep: text("current_step"),
+  totalItems: integer("total_items").notNull().default(0),
+  processedItems: integer("processed_items").notNull().default(0),
+  errorMessage: text("error_message"),
+  metadata: text("metadata"), // JSON 格式的额外状态信息
+  updatedAt: integer("updated_at").notNull(),
+});
+
+// 为未来的闪念系统预留表结构
+export const memos = sqliteTable("memos", {
+  id: text("id").primaryKey(),
+  content: text("content").notNull(),
+  authorEmail: text("author_email").notNull(),
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at"),
+  attachments: text("attachments"), // JSON 存储附件信息
+  tags: text("tags"), // JSON 存储标签
+  sourcePath: text("source_path"), // WebDAV 源文件路径
+  dataSource: text("data_source"), // local/webdav/database
+  contentHash: text("content_hash").notNull(),
+});
+
 // 类型导出
 export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data
 export type NewVectorizedFile = typeof vectorizedFiles.$inferInsert; // Infer type for inserting data
+
+export type ContentSyncLog = typeof contentSyncLogs.$inferSelect;
+export type NewContentSyncLog = typeof contentSyncLogs.$inferInsert;
+
+export type ContentSyncStatus = typeof contentSyncStatus.$inferSelect;
+export type NewContentSyncStatus = typeof contentSyncStatus.$inferInsert;
+
+export type Memo = typeof memos.$inferSelect;
+export type NewMemo = typeof memos.$inferInsert;

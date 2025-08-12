@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../../lib/db";
 import { posts } from "../../../lib/schema";
@@ -248,25 +248,25 @@ export const adminPostsRouter = createTRPCRouter({
       const { ids, action } = input;
 
       try {
-        let result;
+        let _result;
 
         switch (action) {
           case "publish":
-            result = await db
+            _result = await db
               .update(posts)
               .set({ draft: false, public: true, updateDate: Date.now() })
               .where(or(...ids.map((id) => eq(posts.id, id))));
             break;
 
           case "unpublish":
-            result = await db
+            _result = await db
               .update(posts)
               .set({ draft: true, updateDate: Date.now() })
               .where(or(...ids.map((id) => eq(posts.id, id))));
             break;
 
           case "delete":
-            result = await db.delete(posts).where(or(...ids.map((id) => eq(posts.id, id))));
+            _result = await db.delete(posts).where(or(...ids.map((id) => eq(posts.id, id))));
             break;
 
           default:

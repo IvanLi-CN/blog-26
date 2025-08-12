@@ -14,7 +14,7 @@ export default function AdminLoginForm({ luosimaoSiteKey }: AdminLoginFormProps)
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [captchaResponse, setCaptchaResponse] = useState("");
+  const [captchaResponse, _setCaptchaResponse] = useState("");
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +50,7 @@ export default function AdminLoginForm({ luosimaoSiteKey }: AdminLoginFormProps)
       } else {
         setError(result.error?.message || "发送验证码失败");
       }
-    } catch (error) {
+    } catch (_error) {
       setError("网络错误，请重试");
     } finally {
       setLoading(false);
@@ -83,7 +83,7 @@ export default function AdminLoginForm({ luosimaoSiteKey }: AdminLoginFormProps)
       } else {
         setError(result.error?.message || "验证码错误");
       }
-    } catch (error) {
+    } catch (_error) {
       setError("网络错误，请重试");
     } finally {
       setLoading(false);
