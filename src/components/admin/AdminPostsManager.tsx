@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useId, useState } from "react";
 import { trpc } from "../../lib/trpc";
 
 export default function AdminPostsManager() {
+  const searchInputId = useId();
+  const statusSelectId = useId();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "published" | "draft">("all");
@@ -95,7 +98,7 @@ export default function AdminPostsManager() {
     return (
       <div className="alert alert-error">
         <span>加载文章失败</span>
-        <button onClick={() => refetch()} className="btn btn-sm">
+        <button type="button" onClick={() => refetch()} className="btn btn-sm">
           重试
         </button>
       </div>
@@ -112,7 +115,9 @@ export default function AdminPostsManager() {
             <a href="/admin/dashboard" className="btn btn-outline">
               ← 返回仪表盘
             </a>
-            <button className="btn btn-primary">✏️ 新建文章</button>
+            <Link href="/admin/posts/editor" className="btn btn-primary">
+              ✏️ 新建文章
+            </Link>
           </div>
         </div>
         <p className="text-base-content/70">管理博客文章和内容</p>
@@ -123,10 +128,11 @@ export default function AdminPostsManager() {
         <div className="card-body">
           <form onSubmit={handleSearch} className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-64">
-              <label className="label">
+              <label className="label" htmlFor={searchInputId}>
                 <span className="label-text">搜索文章</span>
               </label>
               <input
+                id={searchInputId}
                 type="text"
                 placeholder="搜索标题、内容或 slug..."
                 className="input input-bordered w-full"
@@ -135,10 +141,11 @@ export default function AdminPostsManager() {
               />
             </div>
             <div>
-              <label className="label">
+              <label className="label" htmlFor={statusSelectId}>
                 <span className="label-text">状态</span>
               </label>
               <select
+                id={statusSelectId}
                 className="select select-bordered"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as "all" | "published" | "draft")}
@@ -161,6 +168,7 @@ export default function AdminPostsManager() {
           <span>已选择 {selectedPosts.length} 篇文章</span>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => handleBatchAction("publish")}
               className="btn btn-sm btn-success"
               disabled={batchUpdateMutation.isPending}
@@ -168,6 +176,7 @@ export default function AdminPostsManager() {
               发布
             </button>
             <button
+              type="button"
               onClick={() => handleBatchAction("unpublish")}
               className="btn btn-sm btn-warning"
               disabled={batchUpdateMutation.isPending}
@@ -175,6 +184,7 @@ export default function AdminPostsManager() {
               取消发布
             </button>
             <button
+              type="button"
               onClick={() => handleBatchAction("delete")}
               className="btn btn-sm btn-error"
               disabled={batchUpdateMutation.isPending}
@@ -236,8 +246,14 @@ export default function AdminPostsManager() {
                       </td>
                       <td>
                         <div className="flex gap-2">
-                          <button className="btn btn-sm btn-primary">编辑</button>
+                          <Link
+                            href={`/admin/posts/editor?id=${post.id}`}
+                            className="btn btn-sm btn-primary"
+                          >
+                            编辑
+                          </Link>
                           <button
+                            type="button"
                             onClick={() => handleDeletePost(post.id, post.title)}
                             className="btn btn-sm btn-error"
                             disabled={deleteMutation.isPending}
@@ -264,16 +280,18 @@ export default function AdminPostsManager() {
             <div className="flex justify-center mt-6">
               <div className="join">
                 <button
+                  type="button"
                   className="join-item btn"
                   disabled={page <= 1}
                   onClick={() => setPage(page - 1)}
                 >
                   «
                 </button>
-                <button className="join-item btn btn-active">
+                <button type="button" className="join-item btn btn-active">
                   第 {page} 页，共 {data.pagination.totalPages} 页
                 </button>
                 <button
+                  type="button"
                   className="join-item btn"
                   disabled={page >= data.pagination.totalPages}
                   onClick={() => setPage(page + 1)}
