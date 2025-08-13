@@ -99,9 +99,12 @@ export const postsRouter = router({
 
   // 获取单个文章
   get: publicProcedure.input(getPostSchema).query(async ({ input }) => {
-    const { slug } = input;
+    let { slug } = input;
 
     try {
+      // 解码 URL 编码的 slug
+      slug = decodeURIComponent(slug);
+
       const post = await db
         .select()
         .from(posts)
@@ -145,7 +148,7 @@ export const postsRouter = router({
           return [];
         }
 
-        const { category, tags } = currentPost[0];
+        const { category } = currentPost[0];
 
         // 构建相关文章查询条件
         const conditions = [

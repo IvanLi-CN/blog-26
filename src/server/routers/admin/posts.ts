@@ -40,6 +40,12 @@ const deletePostSchema = z.object({
   id: z.string(),
 });
 
+const uploadImageSchema = z.object({
+  filename: z.string().min(1, "文件名不能为空"),
+  content: z.string().min(1, "文件内容不能为空"), // Base64 encoded
+  contentType: z.string().optional(),
+});
+
 export const adminPostsRouter = createTRPCRouter({
   // 获取文章列表
   list: adminProcedure.input(getPostsSchema).query(async ({ input }) => {
@@ -248,7 +254,7 @@ export const adminPostsRouter = createTRPCRouter({
       const { ids, action } = input;
 
       try {
-        let _result;
+        let _result: unknown;
 
         switch (action) {
           case "publish":
@@ -292,4 +298,72 @@ export const adminPostsRouter = createTRPCRouter({
         });
       }
     }),
+
+  // 上传图片
+  uploadImage: adminProcedure.input(uploadImageSchema).mutation(async ({ input }) => {
+    const { filename, content, contentType } = input;
+
+    try {
+      // 验证文件类型
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+      if (contentType && !allowedTypes.includes(contentType)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不支持的文件类型。支持的类型：JPEG, PNG, GIF, WebP",
+        });
+      }
+
+      // 解码 Base64 内容
+      const buffer = Buffer.from(content, "base64");
+
+      // 验证文件大小 (5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (buffer.length > maxSize) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "文件太大。最大支持 5MB",
+        });
+      }
+
+      // 生成安全的文件名
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const extension = filename.split(".").pop() || "jpg";
+      const safeFilename = `${timestamp}-${randomString}.${extension}`;
+
+      // 确保上传目录存在
+      const { writeFile, mkdir } = await import("node:fs/promises");
+      const { join } = await import("node:path");
+      const { existsSync } = await import("node:fs");
+
+      const uploadDir = join(process.cwd(), "public", "uploads", "images");
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true });
+      }
+
+      // 保存文件
+      const filePath = join(uploadDir, safeFilename);
+      await writeFile(filePath, buffer);
+
+      // 返回文件 URL
+      const fileUrl = `/uploads/images/${safeFilename}`;
+
+      return {
+        success: true,
+        url: fileUrl,
+        filename: safeFilename,
+        size: buffer.length,
+        type: contentType || "image/jpeg",
+      };
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      console.error("图片上传失败:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "图片上传失败",
+      });
+    }
+  }),
 });

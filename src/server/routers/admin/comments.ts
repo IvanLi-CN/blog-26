@@ -211,7 +211,7 @@ export const adminCommentsRouter = createTRPCRouter({
       const { ids, action } = input;
 
       try {
-        let _result;
+        let _result: unknown;
 
         switch (action) {
           case "approve":
