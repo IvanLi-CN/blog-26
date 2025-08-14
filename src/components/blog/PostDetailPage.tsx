@@ -77,7 +77,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                       d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                     ></path>
                   </svg>
-                  <span>发布于 {new Date(post.publishDate).toLocaleDateString()}</span>
+                  <span>发布于 {new Date(post.publishDate * 1000).toLocaleDateString()}</span>
                 </div>
 
                 {post.updateDate && post.updateDate !== post.publishDate && (
@@ -90,7 +90,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                       ></path>
                     </svg>
-                    <span>更新于 {new Date(post.updateDate).toLocaleDateString()}</span>
+                    <span>更新于 {new Date(post.updateDate * 1000).toLocaleDateString()}</span>
                   </div>
                 )}
 
@@ -247,7 +247,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                             {relatedPost.title}
                           </Link>
                           <div className="text-xs text-base-content/50 mt-1">
-                            {new Date(relatedPost.publishDate).toLocaleDateString()}
+                            {new Date(relatedPost.publishDate * 1000).toLocaleDateString()}
                           </div>
                         </div>
                       ))}
