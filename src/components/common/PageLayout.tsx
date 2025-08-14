@@ -4,13 +4,29 @@ import Header from "./Header";
 interface PageLayoutProps {
   children: React.ReactNode;
   className?: string;
+  headerProps?: {
+    isSticky?: boolean;
+    showSearchBox?: boolean;
+    showToggleTheme?: boolean;
+    showRssFeed?: boolean;
+  };
 }
 
-export default function PageLayout({ children, className = "" }: PageLayoutProps) {
+export default function PageLayout({
+  children,
+  className = "",
+  headerProps = {}
+}: PageLayoutProps) {
   return (
     <div className={`min-h-screen bg-base-100 ${className}`}>
-      <Header />
-      <main className="flex-1">{children}</main>
+      <Header
+        isSticky={true}
+        showSearchBox={true}
+        showToggleTheme={true}
+        showRssFeed={true}
+        {...headerProps}
+      />
+      <main className="flex-grow">{children}</main>
       <Footer />
     </div>
   );

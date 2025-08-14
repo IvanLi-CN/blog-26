@@ -1,0 +1,57 @@
+// 站点配置文件
+
+export const SITE = {
+  name: "Ivan's Blog",
+  title: "Ivan's Blog",
+  description: "记录技术探索、生活感悟和创意想法的个人空间",
+  owner: "Ivan Li",
+  url: "https://blog.ivanli.cc",
+  author: {
+    name: "Ivan Li",
+    email: "ivanli2048@gmail.com",
+  },
+};
+
+export const UI = {
+  theme: {
+    default: "system",
+    mainThemes: ["system", "light", "dark"],
+    allThemes: [
+      "light",
+      "dark", 
+      "cupcake",
+      "bumblebee",
+      "emerald",
+      "corporate",
+      "synthwave",
+      "retro",
+      "cyberpunk",
+      "valentine",
+      "halloween",
+      "garden",
+      "forest",
+      "aqua",
+      "lofi",
+      "pastel",
+      "fantasy",
+      "wireframe",
+      "black",
+      "luxury",
+      "dracula",
+      "cmyk",
+      "autumn",
+      "business",
+      "acid",
+      "lemonade",
+      "night",
+      "coffee",
+      "winter",
+      "dim",
+      "nord",
+      "sunset",
+      "caramellatte",
+      "abyss",
+      "silk",
+    ],
+  },
+};
