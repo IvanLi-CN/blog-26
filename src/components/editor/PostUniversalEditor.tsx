@@ -578,7 +578,7 @@ author: ""
         } else {
           // 本地文件：上传到本地文件系统
           console.log("💾 [PostUniversalEditor] 上传图片到本地文件系统:", uploadPath);
-          response = await fetch(`/api/files/webdav/${uploadPath}`, {
+          response = await fetch(`/api/files/local/${uploadPath}`, {
             method: "POST",
             headers: {
               "Content-Type": `image/${imageType}`,
@@ -795,6 +795,7 @@ author: ""
           articlePath={
             activeTab.id.startsWith("__NEW__") ? activeTab.id.replace("__NEW__", "") : activeTab.id
           }
+          contentSource={activeTab.id.startsWith("/") ? "webdav" : "local"}
           mode={activeTab.mode}
           onModeChange={(mode) => handleModeChange(activeTab.id, mode)}
           className="h-full"
