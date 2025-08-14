@@ -127,19 +127,39 @@ export const contentSyncStatus = sqliteTable("content_sync_status", {
   updatedAt: integer("updated_at").notNull(),
 });
 
-// 为未来的闪念系统预留表结构
+// Memos 表 - 完全兼容 ContentItem 接口
 export const memos = sqliteTable("memos", {
-  id: text("id").primaryKey(),
-  content: text("content").notNull(),
-  authorEmail: text("author_email").notNull(),
-  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at"),
+  // ContentItem 核心字段
+  id: text("id").primaryKey(), // 唯一标识符（文件路径）
+  type: text("type").notNull().default("memo"), // 内容类型，固定为 "memo"
+  slug: text("slug").notNull(), // URL 友好标识符
+  title: text("title"), // 标题（可选，从内容提取）
+  excerpt: text("excerpt"), // 摘要/描述
+  contentHash: text("content_hash").notNull(), // 内容哈希值
+  lastModified: integer("last_modified").notNull(), // 最后修改时间
+  source: text("source").notNull(), // 内容源标识 (local/webdav)
+  filePath: text("file_path").notNull(), // 原始文件路径
+  draft: integer("draft", { mode: "boolean" }).notNull().default(false), // 是否为草稿
+  public: integer("public", { mode: "boolean" }).notNull().default(true), // 是否公开
+  publishDate: integer("publish_date").notNull(), // 发布日期
+  updateDate: integer("update_date"), // 更新日期
+  category: text("category"), // 分类
+  tags: text("tags"), // JSON 存储标签数组
+  author: text("author"), // 作者
+  image: text("image"), // 封面图片
+  metadata: text("metadata"), // JSON 存储其他元数据
+
+  // Memo 特有字段
+  content: text("content").notNull(), // Markdown 内容
+  authorEmail: text("author_email").notNull(), // 作者邮箱
   attachments: text("attachments"), // JSON 存储附件信息
-  tags: text("tags"), // JSON 存储标签
-  sourcePath: text("source_path"), // WebDAV 源文件路径
-  dataSource: text("data_source"), // local/webdav/database
-  contentHash: text("content_hash").notNull(),
+
+  // 兼容旧字段（保持向后兼容）
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(true), // 兼容旧的 public 字段
+  createdAt: integer("created_at").notNull(), // 兼容旧的创建时间
+  updatedAt: integer("updated_at"), // 兼容旧的更新时间
+  sourcePath: text("source_path"), // 兼容旧的源路径字段
+  dataSource: text("data_source"), // 兼容旧的数据源字段
 });
 
 // 类型导出

@@ -17,6 +17,32 @@ import {
 } from "./utils";
 
 /**
+ * Memo 元数据接口
+ */
+export interface MemoMetadata {
+  /** 标题 */
+  title?: string;
+  /** URL 友好标识符 */
+  slug?: string;
+  /** 是否公开 */
+  isPublic?: boolean;
+  /** 标签列表 */
+  tags?: string[];
+  /** 附件列表 */
+  attachments?: Array<{
+    filename: string;
+    path: string;
+    contentType?: string;
+    size?: number;
+    isImage: boolean;
+  }>;
+  /** 作者邮箱 */
+  authorEmail?: string;
+  /** 其他元数据 */
+  [key: string]: unknown;
+}
+
+/**
  * WebDAV 内容源配置
  */
 export interface WebDAVContentSourceConfig extends ContentSourceConfig {
@@ -226,7 +252,7 @@ export class WebDAVContentSource extends ContentSourceBase {
     this.log("debug", `开始扫描 WebDAV 目录: ${webdavPath} (类型: ${contentType})`);
 
     try {
-      const files = await this.webdavClient.listFiles(webdavPath, true);
+      const files = await this.webdavClient.listFiles(webdavPath, false);
       this.log("debug", `WebDAV 目录 ${webdavPath} 返回 ${files.length} 个文件`);
 
       for (const webdavFile of files) {
@@ -331,6 +357,218 @@ export class WebDAVContentSource extends ContentSourceBase {
       this.log("error", `写入 WebDAV 文件失败: ${filePath}`, undefined, { error: errorMessage });
       throw error;
     }
+  }
+
+  // ============================================================================
+  // Memo 专用方法
+  // ============================================================================
+
+  /**
+   * 创建新的 memo
+   */
+  async createMemo(content: string, metadata: MemoMetadata): Promise<string> {
+    try {
+      this.log("info", "创建新 memo");
+
+      // 生成 memo 文件名
+      const timestamp = Date.now();
+      const slug = metadata.slug || this.generateMemoSlug(content, timestamp);
+      const fileName = `${slug}.md`;
+      const filePath = `${fileName}`;
+
+      // 构建 markdown 内容
+      const markdownContent = this.buildMemoMarkdown(content, metadata);
+
+      // 写入到 WebDAV
+      const webdavPath = `${this.pathMappings.memos}/${fileName}`;
+      await this.webdavClient.putFileContent(webdavPath, markdownContent);
+
+      this.log("info", `Memo 创建成功: ${webdavPath}`);
+      return filePath;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", "创建 memo 失败", undefined, { error: errorMessage });
+      throw error;
+    }
+  }
+
+  /**
+   * 更新现有 memo
+   */
+  async updateMemo(id: string, content: string, metadata: MemoMetadata): Promise<void> {
+    try {
+      this.log("info", `更新 memo: ${id}`);
+
+      // 构建 markdown 内容
+      const markdownContent = this.buildMemoMarkdown(content, metadata);
+
+      // 解析文件路径
+      const fileName = id.endsWith(".md") ? id : `${id}.md`;
+      const webdavPath = `${this.pathMappings.memos}/${fileName}`;
+
+      // 写入到 WebDAV
+      await this.webdavClient.putFileContent(webdavPath, markdownContent);
+
+      // 清除缓存
+      this.clearMemoCache(id);
+
+      this.log("info", `Memo 更新成功: ${webdavPath}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `更新 memo 失败: ${id}`, undefined, { error: errorMessage });
+      throw error;
+    }
+  }
+
+  /**
+   * 删除 memo
+   */
+  async deleteMemo(id: string): Promise<void> {
+    try {
+      this.log("info", `删除 memo: ${id}`);
+
+      // 解析文件路径
+      const fileName = id.endsWith(".md") ? id : `${id}.md`;
+      const webdavPath = `${this.pathMappings.memos}/${fileName}`;
+
+      // 从 WebDAV 删除
+      await this.webdavClient.deleteFile(webdavPath);
+
+      // 清除缓存
+      this.clearMemoCache(id);
+
+      this.log("info", `Memo 删除成功: ${webdavPath}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `删除 memo 失败: ${id}`, undefined, { error: errorMessage });
+      throw error;
+    }
+  }
+
+  /**
+   * 上传 memo 附件
+   */
+  async uploadMemoAttachment(filename: string, content: ArrayBuffer): Promise<string> {
+    try {
+      this.log("info", `上传 memo 附件: ${filename}`);
+
+      // 构建附件路径
+      const attachmentPath = `${this.pathMappings.memos}/assets/${filename}`;
+
+      // 上传到 WebDAV
+      await this.webdavClient.putFileContent(attachmentPath, content);
+
+      this.log("info", `Memo 附件上传成功: ${attachmentPath}`);
+      return attachmentPath;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `上传 memo 附件失败: ${filename}`, undefined, { error: errorMessage });
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // Memo 辅助方法
+  // ============================================================================
+
+  /**
+   * 生成 memo slug
+   */
+  private generateMemoSlug(content: string, timestamp: number): string {
+    // 尝试从内容中提取标题
+    const titleMatch = content.match(/^#\s+(.+)$/m);
+    if (titleMatch) {
+      return this.slugify(titleMatch[1]);
+    }
+
+    // 使用第一行内容
+    const firstLine = content.split("\n")[0]?.trim();
+    if (firstLine && firstLine.length > 0) {
+      return this.slugify(firstLine.substring(0, 30));
+    }
+
+    // 使用时间戳
+    return `memo-${timestamp}`;
+  }
+
+  /**
+   * 将字符串转换为 slug
+   */
+  private slugify(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, "") // 移除特殊字符
+      .replace(/[\s_-]+/g, "-") // 替换空格和下划线为连字符
+      .replace(/^-+|-+$/g, ""); // 移除首尾连字符
+  }
+
+  /**
+   * 构建 memo markdown 内容
+   */
+  private buildMemoMarkdown(content: string, metadata: MemoMetadata): string {
+    const frontmatter: Record<string, unknown> = {
+      title: metadata.title || this.extractTitleFromContent(content),
+      public: metadata.isPublic ?? true,
+      tags: metadata.tags || [],
+      date: new Date().toISOString(),
+    };
+
+    // 添加附件信息
+    if (metadata.attachments && metadata.attachments.length > 0) {
+      frontmatter.attachments = metadata.attachments;
+    }
+
+    // 添加其他元数据
+    Object.keys(metadata).forEach((key) => {
+      if (!["title", "isPublic", "tags", "attachments", "authorEmail", "slug"].includes(key)) {
+        frontmatter[key] = metadata[key];
+      }
+    });
+
+    // 构建 frontmatter
+    const frontmatterYaml = Object.entries(frontmatter)
+      .map(([key, value]) => {
+        if (Array.isArray(value)) {
+          return `${key}:\n${value.map((v) => `  - ${JSON.stringify(v)}`).join("\n")}`;
+        }
+        return `${key}: ${JSON.stringify(value)}`;
+      })
+      .join("\n");
+
+    return `---\n${frontmatterYaml}\n---\n\n${content}`;
+  }
+
+  /**
+   * 从内容中提取标题
+   */
+  private extractTitleFromContent(content: string): string {
+    // 查找第一个 H1 标题
+    const h1Match = content.match(/^#\s+(.+)$/m);
+    if (h1Match) {
+      return h1Match[1].trim();
+    }
+
+    // 使用第一行内容
+    const firstLine = content.split("\n")[0]?.trim();
+    if (firstLine && firstLine.length > 0) {
+      return firstLine.substring(0, 50);
+    }
+
+    return "无标题 Memo";
+  }
+
+  /**
+   * 清除 memo 相关缓存
+   */
+  private clearMemoCache(id: string): void {
+    const cacheKeys = Array.from(this.fileCache.keys()).filter(
+      (key) => key.includes(id) || key.includes(this.pathMappings.memos)
+    );
+
+    cacheKeys.forEach((key) => {
+      this.fileCache.delete(key);
+      this.etagCache.delete(key);
+    });
   }
 
   // ============================================================================

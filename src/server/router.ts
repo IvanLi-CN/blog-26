@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { adminRouter } from "./routers/admin";
 import { authRouter } from "./routers/auth";
+import { memosRouter } from "./routers/memos";
 import { postsRouter } from "./routers/posts";
 import { createTRPCRouter, publicProcedure } from "./trpc";
 
@@ -13,6 +14,9 @@ export const appRouter = createTRPCRouter({
 
   // 公共文章路由
   posts: postsRouter,
+
+  // Memo 路由
+  memos: memosRouter,
 
   // 健康检查端点
   health: publicProcedure.query(() => {

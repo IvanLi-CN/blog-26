@@ -8,12 +8,16 @@ import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:te
 // Mock Milkdown 相关模块
 const mockCrepe = {
   editor: {
-    action: mock(() => {}),
+    action: mock(() => {
+      // Mock action implementation
+    }),
   },
   on: mock((callback: any) => {
     // 模拟监听器注册
     const listener = {
-      markdownUpdated: mock((_callback: any) => {}),
+      markdownUpdated: mock((_callback: any) => {
+        // Mock callback implementation
+      }),
     };
     callback(listener);
   }),
@@ -77,8 +81,12 @@ describe("MilkdownEditor 无限循环修复测试", () => {
   let _onChangeMock: any;
 
   beforeEach(() => {
-    consoleLogSpy = spyOn(console, "log").mockImplementation(() => {});
-    _onChangeMock = mock(() => {});
+    consoleLogSpy = spyOn(console, "log").mockImplementation(() => {
+      // Mock console.log implementation
+    });
+    _onChangeMock = mock(() => {
+      // Mock onChange implementation
+    });
   });
 
   afterEach(() => {

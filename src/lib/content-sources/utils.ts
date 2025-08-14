@@ -86,6 +86,8 @@ export function createContentItemFromParsed(
     image: frontmatter.image as string,
     metadata: {
       ...frontmatter,
+      // 添加正文内容到 metadata 中
+      content: body,
       // 移除已经提取的字段，避免重复
       slug: undefined,
       title: undefined,

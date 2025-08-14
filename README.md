@@ -11,11 +11,19 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 - [x] **tRPC Setup**: Basic tRPC configuration with health check endpoint
 - [x] **Configuration Files**: Created Biome, environment, and Drizzle configs
 - [x] **Basic UI**: Added daisyUI integration and Inter font
+- [x] **Memo System**: Complete memo functionality with multi-source content support
+  - [x] **Data Layer**: Extended database schema for ContentItem compatibility
+  - [x] **API Layer**: Full CRUD operations with tRPC routers
+  - [x] **Frontend Components**: MemoEditor, QuickMemoEditor, MemosList, MemoCard
+  - [x] **Pages**: List page (/memos) and detail page (/memos/[slug])
+  - [x] **Multi-source Support**: Local and WebDAV content sources
+  - [x] **Performance**: Database optimization and caching strategies
 
 ### 🔄 In Progress
-- [ ] **Component Migration**: Migrate React components from `old/src/components/`
-- [ ] **API Routes**: Migrate tRPC routers and API endpoints
-- [ ] **Page Migration**: Convert Astro pages to Next.js App Router pages
+
+- [ ] **Component Migration**: Migrate remaining React components from `old/src/components/`
+- [ ] **API Routes**: Migrate remaining tRPC routers and API endpoints
+- [ ] **Page Migration**: Convert remaining Astro pages to Next.js App Router pages
 - [ ] **Middleware**: Migrate authentication and other middleware
 - [ ] **Static Assets**: Copy and optimize static assets
 
@@ -47,6 +55,50 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 ### Development Tools
 - **Biome 2.0.4** for code formatting and linting
 - **Playwright** for E2E testing
+
+## 📝 Memo System
+
+The memo system is a complete content management solution that supports multiple content sources and provides a rich editing experience.
+
+### Features
+
+- **Multi-source Content**: Supports both local files and WebDAV storage
+- **Rich Editor**: Based on UniversalEditor with WYSIWYG and source modes
+- **Quick Memo**: Lightweight editor for rapid note-taking
+- **Search & Filter**: Full-text search and tag-based filtering
+- **Responsive Design**: Optimized for desktop and mobile devices
+- **SEO Optimized**: Dynamic metadata and structured data
+- **Performance**: Database indexing and caching strategies
+
+### API Endpoints
+
+- `GET /api/trpc/memos.list` - Get paginated memo list
+- `GET /api/trpc/memos.bySlug` - Get memo by slug
+- `POST /api/trpc/memos.create` - Create new memo (admin only)
+- `POST /api/trpc/memos.update` - Update memo (admin only)
+- `POST /api/trpc/memos.delete` - Delete memo (admin only)
+- `POST /api/trpc/memos.uploadAttachment` - Upload attachment (admin only)
+
+### Components
+
+- **MemosApp**: Main container component with state management
+- **MemoEditor**: Full-featured editor based on UniversalEditor
+- **QuickMemoEditor**: Lightweight editor for quick notes
+- **MemosList**: List view with infinite scroll and filtering
+- **MemoCard**: Individual memo display component
+- **MemoDetailPage**: Full memo detail view
+
+### Usage
+
+```typescript
+import { MemosApp } from "@/components/memos/MemosApp";
+
+// Public memo list
+<MemosApp publicOnly={true} showManageFeatures={false} />
+
+// Admin interface
+<MemosApp publicOnly={false} showManageFeatures={true} />
+```
 
 ## 🚀 Getting Started
 

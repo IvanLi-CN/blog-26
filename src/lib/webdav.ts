@@ -330,11 +330,12 @@ export class WebDAVClient {
    * @param filePath 文件路径
    * @param content 文件内容
    */
-  async putFileContent(filePath: string, content: string): Promise<void> {
+  async putFileContent(filePath: string, content: string | ArrayBuffer): Promise<void> {
     const url = `${this.baseUrl}${filePath}`;
 
     const headers: Record<string, string> = {
-      "Content-Type": "text/plain; charset=utf-8",
+      "Content-Type":
+        typeof content === "string" ? "text/plain; charset=utf-8" : "application/octet-stream",
     };
 
     // 只有在提供了用户名和密码时才添加认证头
@@ -350,6 +351,29 @@ export class WebDAVClient {
 
     if (!response.ok) {
       throw new Error(`Failed to put file content: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * 删除文件
+   * @param filePath 文件路径
+   */
+  async deleteFile(filePath: string): Promise<void> {
+    const url = `${this.baseUrl}${filePath}`;
+
+    const headers: Record<string, string> = {};
+
+    if (this.username && this.password) {
+      headers.Authorization = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`;
+    }
+
+    const response = await fetchWithRetry(url, {
+      method: "DELETE",
+      headers,
+    });
+
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Failed to delete file: ${response.status} ${response.statusText}`);
     }
   }
 
