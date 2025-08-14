@@ -131,7 +131,7 @@ export default function PostsListPage() {
                       </h2>
 
                       <div className="flex items-center gap-4 text-sm text-base-content/70 mb-3">
-                        <span>📅 {new Date(post.publishDate).toLocaleDateString()}</span>
+                        <span>📅 {new Date(post.publishDate * 1000).toLocaleDateString()}</span>
                         {post.category && (
                           <span className="badge badge-outline">{post.category}</span>
                         )}
