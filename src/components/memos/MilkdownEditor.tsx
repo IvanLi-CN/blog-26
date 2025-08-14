@@ -7,7 +7,7 @@
  */
 
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
-import { replaceAll } from "@milkdown/utils";
+import { replaceAll, getMarkdown } from "@milkdown/utils";
 import { useEffect, useRef } from "react";
 import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
@@ -80,10 +80,16 @@ interface MilkdownEditorProps {
   editorId?: string;
   // 文章路径，用于正确解析相对图片路径
   articlePath?: string;
+  // 内容源类型，用于正确的图片路径转换
+  contentSource?: "webdav" | "local";
 }
 
 // 转换图片路径用于编辑器显示
-function convertImagePathForEditor(imagePath: string, articlePath: string = ""): string {
+function convertImagePathForEditor(
+  imagePath: string,
+  articlePath: string = "",
+  contentSource: "webdav" | "local" = "webdav"
+): string {
   // 从文章路径推断文章目录
   const articleDir = articlePath.startsWith("/")
     ? articlePath.substring(1).split("/").slice(0, -1).join("/") +
@@ -99,30 +105,35 @@ function convertImagePathForEditor(imagePath: string, articlePath: string = ""):
     return imagePath;
   }
 
-  // 如果是相对路径，转换为 WebDAV 文件代理路径
+  // 如果是相对路径，转换为对应内容源的文件代理路径
   if (imagePath) {
     // 使用路径解析逻辑
     const resolvedPath = resolveRelativePath(imagePath, articleDir);
 
-    // 使用 WebDAV 文件代理路径
-    return `/api/files/webdav/${resolvedPath}`;
+    // 根据内容源使用对应的文件代理路径
+    return `/api/files/${contentSource}/${resolvedPath}`;
   }
 
   return imagePath;
 }
 
 // 预处理内容，转换图片路径
-function preprocessContentForEditor(content: string, articlePath: string = ""): string {
+function preprocessContentForEditor(
+  content: string,
+  articlePath: string = "",
+  contentSource: "webdav" | "local" = "webdav"
+): string {
   // 处理图片路径
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
   return content.replace(imageRegex, (_match, alt, src) => {
     // 使用实际的文章路径来确定目录
-    const convertedSrc = convertImagePathForEditor(src, articlePath);
+    const convertedSrc = convertImagePathForEditor(src, articlePath, contentSource);
     console.log("🖼️ [MilkdownEditor] 转换图片路径:", {
       original: src,
       converted: convertedSrc,
       articlePath: articlePath,
+      contentSource: contentSource,
     });
     return `![${alt}](${convertedSrc})`;
   });
@@ -137,6 +148,7 @@ export function MilkdownEditor({
   onImageUpload,
   editorId = "default",
   articlePath = "",
+  contentSource = "webdav",
 }: MilkdownEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
@@ -183,7 +195,7 @@ export function MilkdownEditor({
 
         // 预处理内容，转换 frontmatter 和图片路径
         const frontmatterProcessed = preprocessFrontmatterForEditor(content);
-        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath);
+        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath, contentSource);
 
         // 创建 Crepe 编辑器实例
         if (!editorRef.current) return;
@@ -224,12 +236,35 @@ export function MilkdownEditor({
         // 监听内容变化
         crepe.on((listener) => {
           listener.markdownUpdated((_, markdown) => {
-            if (lastContentRef.current !== markdown) {
-              lastContentRef.current = markdown;
-              // 后处理内容，将 YAML 代码块转换回 frontmatter
-              const processedMarkdown = postprocessContentFromEditor(markdown);
-              onChange(processedMarkdown);
+            // 后处理内容，将 YAML 代码块转换回 frontmatter
+            const processedMarkdown = postprocessContentFromEditor(markdown);
+
+            // 强化的防护机制：多重检查避免无限循环
+            const currentContent = lastContentRef.current;
+            const isSameContent = currentContent === processedMarkdown;
+            const isSimilarLength = Math.abs(currentContent.length - processedMarkdown.length) <= 1;
+
+            if (isSameContent) {
+              console.log("🔄 [MilkdownEditor] 编辑器内容完全相同，跳过 onChange 避免无限循环");
+              return;
             }
+
+            // 如果内容长度只差1个字符，进行更严格的检查
+            if (isSimilarLength && currentContent.trim() === processedMarkdown.trim()) {
+              console.log("🔄 [MilkdownEditor] 编辑器内容仅空白字符差异，跳过 onChange 避免无限循环:", {
+                oldLength: currentContent.length,
+                newLength: processedMarkdown.length,
+                lengthDiff: processedMarkdown.length - currentContent.length,
+              });
+              return;
+            }
+
+            console.log("📝 [MilkdownEditor] 编辑器内容变化，触发 onChange:", {
+              oldLength: currentContent.length,
+              newLength: processedMarkdown.length,
+              lengthDiff: processedMarkdown.length - currentContent.length,
+            });
+            onChange(processedMarkdown);
           });
         });
 
@@ -273,7 +308,15 @@ export function MilkdownEditor({
 
         // 预处理内容，转换 frontmatter 和图片路径
         const frontmatterProcessed = preprocessFrontmatterForEditor(content);
-        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath);
+        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath, contentSource);
+
+        // 检查是否与上次处理的内容相同，避免无限循环
+        // 使用原始内容比较而不是编辑器内容比较，因为编辑器内容可能有格式化差异
+        const contentHash = `${content.length}-${content.slice(0, 100)}-${content.slice(-100)}`;
+        if (lastContentRef.current && lastContentRef.current === content) {
+          console.log("🔄 [MilkdownEditor] 内容相同，跳过更新避免无限循环");
+          return;
+        }
 
         // 使用 Milkdown 的 action API 来设置内容
         crepeRef.current.editor.action(replaceAll(processedContent));
@@ -284,7 +327,7 @@ export function MilkdownEditor({
         console.error("❌ [MilkdownEditor] 内容更新失败:", error);
       }
     }
-  }, [content, articlePath]);
+  }, [content, articlePath, contentSource]);
 
   return (
     <div ref={editorRef} className={`milkdown-editor ${className}`} data-testid={dataTestId} />
