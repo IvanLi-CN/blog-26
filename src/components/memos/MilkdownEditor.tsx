@@ -9,9 +9,14 @@
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import { replaceAll } from "@milkdown/utils";
 import { useEffect, useRef } from "react";
+import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
+
+// 基于标签页的编辑器实例管理
+const editorInstances = new Map<string, Crepe>();
+const initializingEditors = new Set<string>();
 
 interface MilkdownEditorProps {
   content: string;
@@ -21,38 +26,53 @@ interface MilkdownEditorProps {
   "data-testid"?: string;
   // 图片上传处理函数
   onImageUpload?: (file: File) => Promise<string>;
+  // 编辑器唯一标识符
+  editorId?: string;
+  // 文章路径，用于正确解析相对图片路径
+  articlePath?: string;
 }
 
 // 转换图片路径用于编辑器显示
-function convertImagePathForEditor(imagePath: string): string {
+function convertImagePathForEditor(imagePath: string, articlePath: string = ""): string {
+  // 从文章路径推断文章目录
+  const articleDir = articlePath.startsWith("/")
+    ? articlePath.substring(1).split("/").slice(0, -1).join("/") +
+      (articlePath.includes("/") ? "/" : "")
+    : "";
   // 如果已经是完整的 URL、base64图片或已经是文件代理路径，直接返回
   if (
     imagePath &&
-    (imagePath.startsWith("http") ||
+    (isExternalUrl(imagePath) ||
       imagePath.startsWith("data:") ||
-      imagePath.startsWith("/uploads/"))
+      imagePath.startsWith("/api/files/"))
   ) {
     return imagePath;
   }
 
-  // 如果是相对路径，转换为上传路径
+  // 如果是相对路径，转换为 WebDAV 文件代理路径
   if (imagePath) {
-    return `/uploads/${imagePath}`;
+    // 使用路径解析逻辑
+    const resolvedPath = resolveRelativePath(imagePath, articleDir);
+
+    // 使用 WebDAV 文件代理路径
+    return `/api/files/webdav/${resolvedPath}`;
   }
 
   return imagePath;
 }
 
 // 预处理内容，转换图片路径
-function preprocessContentForEditor(content: string): string {
+function preprocessContentForEditor(content: string, articlePath: string = ""): string {
   // 处理图片路径
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
   return content.replace(imageRegex, (_match, alt, src) => {
-    const convertedSrc = convertImagePathForEditor(src);
+    // 使用实际的文章路径来确定目录
+    const convertedSrc = convertImagePathForEditor(src, articlePath);
     console.log("🖼️ [MilkdownEditor] 转换图片路径:", {
       original: src,
       converted: convertedSrc,
+      articlePath: articlePath,
     });
     return `![${alt}](${convertedSrc})`;
   });
@@ -65,6 +85,8 @@ export function MilkdownEditor({
   className = "",
   "data-testid": dataTestId,
   onImageUpload,
+  editorId = "default",
+  articlePath = "",
 }: MilkdownEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
@@ -79,13 +101,38 @@ export function MilkdownEditor({
   // 初始化编辑器
   useEffect(() => {
     if (!editorRef.current) return;
+    if (crepeRef.current) return; // 如果已经有编辑器实例，直接返回
+
+    // 检查是否已经有这个 editorId 的实例
+    if (editorInstances.has(editorId)) {
+      console.warn(
+        `⚠️ [MilkdownEditor] 编辑器实例 ${editorId} 已存在，但需要重新创建以确保正确挂载`
+      );
+      // 移除旧实例，重新创建以确保正确挂载
+      const oldInstance = editorInstances.get(editorId);
+      if (oldInstance) {
+        try {
+          oldInstance.destroy();
+        } catch (error) {
+          console.warn("销毁旧编辑器实例时出错:", error);
+        }
+      }
+      editorInstances.delete(editorId);
+    }
+
+    // 检查是否正在初始化
+    if (initializingEditors.has(editorId)) {
+      console.warn(`⚠️ [MilkdownEditor] 编辑器 ${editorId} 正在初始化中，跳过重复初始化`);
+      return;
+    }
 
     const initEditor = async () => {
       try {
-        console.log("🔨 [MilkdownEditor] 初始化编辑器...");
+        initializingEditors.add(editorId);
+        console.log(`🔨 [MilkdownEditor] 初始化编辑器 ${editorId}...`);
 
         // 预处理内容，转换图片路径
-        const processedContent = preprocessContentForEditor(content);
+        const processedContent = preprocessContentForEditor(content, articlePath);
 
         // 创建 Crepe 编辑器实例
         const crepe = new Crepe({
@@ -133,27 +180,33 @@ export function MilkdownEditor({
         });
 
         // 创建编辑器
-        console.log("🔨 [MilkdownEditor] 创建编辑器实例...");
         await crepe.create();
         crepeRef.current = crepe;
         lastContentRef.current = content;
 
-        console.log("✅ [MilkdownEditor] 编辑器初始化完成");
+        // 保存到实例管理器
+        editorInstances.set(editorId, crepe);
+        console.log(`✅ [MilkdownEditor] 编辑器 ${editorId} 初始化完成`);
       } catch (error) {
-        console.error("❌ [MilkdownEditor] 编辑器初始化失败:", error);
+        console.error(`❌ [MilkdownEditor] 编辑器 ${editorId} 初始化失败:`, error);
+      } finally {
+        initializingEditors.delete(editorId);
       }
     };
 
     initEditor();
 
     return () => {
-      console.log("🧹 [MilkdownEditor] 清理编辑器...");
       if (crepeRef.current) {
+        console.log(`🧹 [MilkdownEditor] 清理编辑器 ${editorId}...`);
         crepeRef.current.destroy();
         crepeRef.current = null;
+        // 从实例管理器中移除
+        editorInstances.delete(editorId);
+        initializingEditors.delete(editorId);
       }
     };
-  }, [content, onChange]); // 只在组件挂载时初始化一次
+  }, [articlePath, content, editorId, onChange]); // 只在组件挂载时初始化一次
 
   // 处理外部内容变化
   useEffect(() => {
@@ -165,7 +218,7 @@ export function MilkdownEditor({
         });
 
         // 预处理内容，转换图片路径
-        const processedContent = preprocessContentForEditor(content);
+        const processedContent = preprocessContentForEditor(content, articlePath);
 
         // 使用 Milkdown 的 action API 来设置内容
         crepeRef.current.editor.action(replaceAll(processedContent));
@@ -176,7 +229,7 @@ export function MilkdownEditor({
         console.error("❌ [MilkdownEditor] 内容更新失败:", error);
       }
     }
-  }, [content]);
+  }, [content, articlePath]);
 
   return (
     <div ref={editorRef} className={`milkdown-editor ${className}`} data-testid={dataTestId} />

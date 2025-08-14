@@ -303,6 +303,36 @@ export class WebDAVContentSource extends ContentSourceBase {
     return `${this.pathMappings.posts}/${filePath}`;
   }
 
+  /**
+   * 写入文件内容
+   */
+  async writeFile(filePath: string, content: string): Promise<void> {
+    try {
+      this.log("info", `写入 WebDAV 文件: ${filePath}`);
+
+      // 解析 WebDAV 路径
+      const webdavPath = this.resolveWebDAVPath(filePath);
+      this.log("info", `解析后的 WebDAV 路径: ${webdavPath}`);
+      this.log("info", `写入内容长度: ${content.length}`);
+      this.log("info", `写入内容预览: ${content.substring(0, 100)}...`);
+
+      // 使用 WebDAV 客户端写入文件
+      await this.webdavClient.putFileContent(webdavPath, content);
+
+      // 清除 ETag 缓存
+      if (this.etagCache.has(filePath)) {
+        this.etagCache.delete(filePath);
+        this.log("info", `清除 ETag 缓存: ${filePath}`);
+      }
+
+      this.log("info", `WebDAV 文件写入成功: ${webdavPath}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `写入 WebDAV 文件失败: ${filePath}`, undefined, { error: errorMessage });
+      throw error;
+    }
+  }
+
   // ============================================================================
   // 静态工厂方法
   // ============================================================================

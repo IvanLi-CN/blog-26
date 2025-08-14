@@ -1,30 +1,83 @@
 /**
- * WebDAV 风格的文件上传 API
- *
- * 完全模仿旧项目的 /api/files/webdav/[...path].ts 实现
+ * WebDAV 风格的文件 API
+ * 支持文件的读取和上传
  */
 
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type NextRequest, NextResponse } from "next/server";
 
-// 支持的文件类型
-const ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "image/svg+xml",
-  "text/plain",
-  "text/markdown",
-  "application/pdf",
-];
+// GET - 读取文件
+export async function GET(_request: NextRequest, { params }: { params: { path: string[] } }) {
+  try {
+    const pathSegments = params.path || [];
+    const filePath = pathSegments.join("/");
 
-// 最大文件大小 (10MB)
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    console.log("📖 [WebDAV API] 读取文件:", filePath);
 
+    // 验证路径安全性
+    if (filePath.includes("..") || filePath.includes("~")) {
+      return NextResponse.json({ error: "不安全的文件路径" }, { status: 400 });
+    }
+
+    // 构建完整文件路径
+    const fullPath = join(process.cwd(), "public", "uploads", filePath);
+
+    // 检查文件是否存在
+    if (!existsSync(fullPath)) {
+      console.log("❌ [WebDAV API] 文件不存在:", fullPath);
+      return NextResponse.json({ error: "文件不存在" }, { status: 404 });
+    }
+
+    // 读取文件
+    const fileBuffer = await readFile(fullPath);
+
+    // 根据文件扩展名设置 Content-Type
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    let contentType = "application/octet-stream";
+
+    switch (ext) {
+      case "png":
+        contentType = "image/png";
+        break;
+      case "jpg":
+      case "jpeg":
+        contentType = "image/jpeg";
+        break;
+      case "gif":
+        contentType = "image/gif";
+        break;
+      case "webp":
+        contentType = "image/webp";
+        break;
+      case "svg":
+        contentType = "image/svg+xml";
+        break;
+      case "md":
+        contentType = "text/markdown";
+        break;
+      case "txt":
+        contentType = "text/plain";
+        break;
+      case "json":
+        contentType = "application/json";
+        break;
+    }
+
+    return new NextResponse(fileBuffer, {
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=31536000", // 缓存1年
+      },
+    });
+  } catch (error) {
+    console.error("❌ [WebDAV API] 读取文件失败:", error);
+    return NextResponse.json({ error: "读取文件失败" }, { status: 500 });
+  }
+}
+
+// POST - 上传文件
 export async function POST(request: NextRequest, { params }: { params: { path: string[] } }) {
   try {
     const pathSegments = params.path || [];
@@ -46,76 +99,35 @@ export async function POST(request: NextRequest, { params }: { params: { path: s
     const fileBuffer = Buffer.from(buffer);
 
     // 验证文件大小
-    if (fileBuffer.length > MAX_FILE_SIZE) {
+    if (fileBuffer.length > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "文件太大。最大支持 10MB" }, { status: 400 });
     }
 
-    // 验证文件类型（如果提供了 Content-Type）
-    const contentType = request.headers.get("content-type");
-    if (contentType && !ALLOWED_TYPES.includes(contentType)) {
-      console.warn("⚠️ [WebDAV API] 未知文件类型:", contentType);
-      // 不阻止上传，只是警告
+    // 构建完整文件路径
+    const fullPath = join(process.cwd(), "public", "uploads", filePath);
+    const dirPath = join(fullPath, "..");
+
+    // 确保目录存在
+    if (!existsSync(dirPath)) {
+      await mkdir(dirPath, { recursive: true });
     }
 
-    // 确保上传目录存在
-    const uploadDir = join(process.cwd(), "public", "uploads");
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
-    // 创建完整的文件路径
-    const fullFilePath = join(uploadDir, filePath);
-    const fileDir = join(fullFilePath, "..");
-
-    // 确保文件目录存在
-    if (!existsSync(fileDir)) {
-      await mkdir(fileDir, { recursive: true });
-    }
-
-    // 保存文件
-    await writeFile(fullFilePath, fileBuffer);
+    // 写入文件
+    await writeFile(fullPath, fileBuffer);
 
     console.log("✅ [WebDAV API] 文件上传成功:", {
       path: filePath,
       size: fileBuffer.length,
-      savedTo: fullFilePath,
+      fullPath,
     });
 
-    // 返回成功响应（模仿旧项目的响应格式）
     return NextResponse.json({
       success: true,
       path: filePath,
-      size: fileBuffer.length,
-      contentType: contentType || "application/octet-stream",
       url: `/uploads/${filePath}`,
     });
   } catch (error) {
     console.error("❌ [WebDAV API] 文件上传失败:", error);
     return NextResponse.json({ error: "文件上传失败" }, { status: 500 });
-  }
-}
-
-// 支持 GET 方法用于文件访问（可选）
-export async function GET(request: NextRequest, { params }: { params: { path: string[] } }) {
-  try {
-    const pathSegments = params.path || [];
-    const filePath = pathSegments.join("/");
-
-    // 验证路径安全性
-    if (filePath.includes("..") || filePath.includes("~")) {
-      return NextResponse.json({ error: "不安全的文件路径" }, { status: 400 });
-    }
-
-    const fullFilePath = join(process.cwd(), "public", "uploads", filePath);
-
-    if (!existsSync(fullFilePath)) {
-      return NextResponse.json({ error: "文件不存在" }, { status: 404 });
-    }
-
-    // 重定向到静态文件
-    return NextResponse.redirect(new URL(`/uploads/${filePath}`, request.url));
-  } catch (error) {
-    console.error("❌ [WebDAV API] 文件访问失败:", error);
-    return NextResponse.json({ error: "文件访问失败" }, { status: 500 });
   }
 }

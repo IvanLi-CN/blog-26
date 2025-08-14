@@ -326,6 +326,34 @@ export class WebDAVClient {
   }
 
   /**
+   * 写入文件内容
+   * @param filePath 文件路径
+   * @param content 文件内容
+   */
+  async putFileContent(filePath: string, content: string): Promise<void> {
+    const url = `${this.baseUrl}${filePath}`;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "text/plain; charset=utf-8",
+    };
+
+    // 只有在提供了用户名和密码时才添加认证头
+    if (this.username && this.password) {
+      headers.Authorization = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`;
+    }
+
+    const response = await fetchWithRetry(url, {
+      method: "PUT",
+      headers,
+      body: content,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to put file content: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
    * 获取目录下的所有文件
    * @param dirPath 目录路径
    * @param recursive 是否递归获取子目录

@@ -25,9 +25,14 @@ export function PostEditor({ initialPostId }: PostEditorProps) {
   };
 
   // 处理创建新文件
-  const handleCreateFile = () => {
-    // 这里可以触发创建新文章的逻辑
-    console.log("创建新文章");
+  const handleCreateFile = (fullPath: string, fileName: string) => {
+    // 使用特殊前缀标识新文件
+    const newFileId = `__NEW__${fullPath}`;
+
+    console.log("创建新文章:", { fullPath, fileName, newFileId });
+
+    // 选择新创建的文件
+    setSelectedPostId(newFileId);
   };
 
   // 处理拖拽调整侧边栏宽度

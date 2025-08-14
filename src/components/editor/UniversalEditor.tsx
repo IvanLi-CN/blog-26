@@ -25,12 +25,16 @@ export interface UniversalEditorProps {
 
   // 附件相关
   attachmentBasePath?: string; // 附件上传的基础路径，如 'assets' 或 'Memos/assets'
+  articlePath?: string; // 文章路径，用于正确解析相对图片路径
 
   // UI 配置
   title?: string;
   className?: string;
   mode?: EditorMode;
   onModeChange?: (mode: EditorMode) => void;
+
+  // 编辑器标识
+  editorId?: string;
 
   // 测试相关
   "data-testid"?: string;
@@ -41,10 +45,12 @@ export function UniversalEditor({
   onContentChange,
   placeholder = "开始编写...",
   attachmentBasePath = "assets",
+  articlePath = "",
   title,
   className = "",
   mode = "wysiwyg",
   onModeChange,
+  editorId = "default",
   "data-testid": dataTestId,
 }: UniversalEditorProps) {
   const [content, setContent] = useState(initialContent);
@@ -114,7 +120,7 @@ export function UniversalEditor({
         });
 
         // 替换内联图片为上传后的路径（使用相对路径）
-        const imagePath = `${attachmentBasePath.split("/").pop()}/${filename}`;
+        const imagePath = `./${attachmentBasePath.split("/").pop()}/${filename}`;
         const newImageMarkdown = `![${altText}](${imagePath})`;
         processedContent = processedContent.replace(fullMatch, newImageMarkdown);
 
@@ -169,12 +175,28 @@ export function UniversalEditor({
       });
 
       // 返回相对路径
-      const imagePath = `${attachmentBasePath.split("/").pop()}/${uniqueFileName}`;
+      const imagePath = `./${attachmentBasePath.split("/").pop()}/${uniqueFileName}`;
       return imagePath;
     } catch (error) {
       console.error("❌ [UniversalEditor] 图片上传失败:", error);
       throw error;
     }
+  };
+
+  // 将API URL转换回相对路径（用于源码模式显示）
+  const convertApiUrlsToRelativePaths = (content: string): string => {
+    // 匹配 /api/files/webdav/ 开头的图片URL
+    const apiUrlRegex = /!\[([^\]]*)\]\(\/api\/files\/webdav\/(.+?)\)/g;
+
+    return content.replace(apiUrlRegex, (_match, alt, relativePath) => {
+      // 确保相对路径以 ./ 开头
+      const normalizedPath = relativePath.startsWith("./") ? relativePath : `./${relativePath}`;
+      console.log("🔄 [UniversalEditor] 转换API URL回相对路径:", {
+        original: _match,
+        converted: `![${alt}](${normalizedPath})`,
+      });
+      return `![${alt}](${normalizedPath})`;
+    });
   };
 
   // 同步外部内容变化
@@ -202,18 +224,21 @@ export function UniversalEditor({
       <div className="editor-content h-full">
         {currentMode === "wysiwyg" && (
           <MilkdownEditor
+            key={`milkdown-editor-${editorId}`}
+            editorId={editorId}
             content={content}
             onChange={handleContentChange}
             placeholder={placeholder}
             className="w-full h-full"
             data-testid="content-input"
             onImageUpload={handleImageUpload}
+            articlePath={articlePath}
           />
         )}
 
         {currentMode === "source" && (
           <textarea
-            value={content}
+            value={convertApiUrlsToRelativePaths(content)}
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder={placeholder}
             className="w-full h-full p-4 bg-base-100 border-none outline-none resize-none font-mono text-sm"
@@ -233,7 +258,26 @@ export function UniversalEditor({
                 components={{
                   // 自定义图片组件，处理相对路径
                   img: ({ src, alt, ..._props }) => {
-                    const imageSrc = src?.startsWith("/") ? src : `/uploads/${src}`;
+                    let imageSrc = src || "";
+
+                    // 如果是相对路径，转换为API URL用于显示
+                    if (imageSrc.startsWith("./")) {
+                      // 移除 ./ 前缀
+                      const relativePath = imageSrc.substring(2);
+                      imageSrc = `/api/files/webdav/${relativePath}`;
+                      console.log("🖼️ [UniversalEditor] 预览模式转换图片路径:", {
+                        original: src,
+                        converted: imageSrc,
+                      });
+                    } else if (
+                      !imageSrc.startsWith("/") &&
+                      !imageSrc.startsWith("http") &&
+                      !imageSrc.startsWith("data:")
+                    ) {
+                      // 其他相对路径格式
+                      imageSrc = `/uploads/${imageSrc}`;
+                    }
+
                     return (
                       <Image
                         src={imageSrc}

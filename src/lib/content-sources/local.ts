@@ -144,6 +144,41 @@ export class LocalContentSource extends ContentSourceBase {
     }
   }
 
+  async writeFile(filePath: string, content: string): Promise<void> {
+    this.ensureInitialized();
+
+    const fullPath = this.resolveContentPath(filePath);
+
+    try {
+      // 确保目录存在
+      const { dirname } = await import("node:path");
+      const dirPath = dirname(fullPath);
+      await fs.mkdir(dirPath, { recursive: true });
+
+      // 写入文件
+      await fs.writeFile(fullPath, content, "utf-8");
+      this.log("info", `写入文件成功: ${filePath}`);
+
+      // 更新文件缓存
+      const stats = await fs.stat(fullPath);
+      const extension = filePath.split(".").pop()?.toLowerCase() || "";
+      const fileName = filePath.split("/").pop() || "";
+
+      this.fileCache.set(fullPath, {
+        path: fullPath,
+        name: fileName,
+        extension,
+        size: stats.size,
+        lastModified: stats.mtimeMs,
+        isDirectory: false,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log("error", `写入文件失败: ${filePath}`, filePath, { error: errorMessage });
+      throw new Error(`无法写入文件 ${filePath}: ${errorMessage}`);
+    }
+  }
+
   async validateConnection(): Promise<boolean> {
     try {
       const stats = await fs.stat(this.contentPath);
