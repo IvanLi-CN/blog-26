@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
+import { resolveRelativePath } from "../../utils/path-resolver";
 import { MilkdownEditor } from "../memos/MilkdownEditor";
 import { SourceEditor } from "./SourceEditor";
 import "highlight.js/styles/github.css";
@@ -27,6 +28,7 @@ export interface UniversalEditorProps {
   // 附件相关
   attachmentBasePath?: string; // 附件上传的基础路径，如 'assets' 或 'Memos/assets'
   articlePath?: string; // 文章路径，用于正确解析相对图片路径
+  contentSource?: "webdav" | "local"; // 内容来源，用于确定图片 API 路径
 
   // UI 配置
   title?: string;
@@ -47,6 +49,7 @@ export function UniversalEditor({
   placeholder = "开始编写...",
   attachmentBasePath = "assets",
   articlePath = "",
+  contentSource = "webdav",
   title,
   className = "",
   mode = "wysiwyg",
@@ -244,28 +247,33 @@ export function UniversalEditor({
 
       <div className="editor-content h-full">
         {currentMode === "wysiwyg" && (
-          <MilkdownEditor
-            key={`milkdown-editor-${editorId}`}
-            editorId={editorId}
-            content={content}
-            onChange={handleContentChange}
-            placeholder={placeholder}
-            className="w-full h-full"
-            data-testid="content-input"
-            onImageUpload={handleImageUpload}
-            articlePath={articlePath}
-          />
+          <div className="w-full h-full overflow-auto">
+            <MilkdownEditor
+              key={`milkdown-editor-${editorId}`}
+              editorId={editorId}
+              content={content}
+              onChange={handleContentChange}
+              placeholder={placeholder}
+              className="w-full h-full"
+              data-testid="content-input"
+              onImageUpload={handleImageUpload}
+              articlePath={articlePath}
+              contentSource={contentSource}
+            />
+          </div>
         )}
 
         {currentMode === "source" && (
-          <SourceEditor
-            content={convertApiUrlsToRelativePaths(content)}
-            onChange={handleContentChange}
-            placeholder={placeholder}
-            className="w-full h-full"
-            data-testid="content-input"
-            onImageUpload={handleImageUpload}
-          />
+          <div className="w-full h-full overflow-auto">
+            <SourceEditor
+              content={convertApiUrlsToRelativePaths(content)}
+              onChange={handleContentChange}
+              placeholder={placeholder}
+              className="w-full h-full"
+              data-testid="content-input"
+              onImageUpload={handleImageUpload}
+            />
+          </div>
         )}
 
         {currentMode === "preview" && (
@@ -282,22 +290,37 @@ export function UniversalEditor({
                   img: ({ src, alt, ..._props }) => {
                     let imageSrc = src || "";
 
-                    // 如果是相对路径，转换为API URL用于显示
-                    if (imageSrc.startsWith("./")) {
-                      // 移除 ./ 前缀
-                      const relativePath = imageSrc.substring(2);
-                      imageSrc = `/api/files/webdav/${relativePath}`;
+                    // 如果是相对路径，使用路径解析器转换为API URL用于显示
+                    if (
+                      imageSrc.startsWith("./") ||
+                      imageSrc.startsWith("../") ||
+                      imageSrc.startsWith("~/")
+                    ) {
+                      // 从文章路径推断文章目录
+                      const articleDir = articlePath?.startsWith("/")
+                        ? articlePath.substring(1).split("/").slice(0, -1).join("/") +
+                          (articlePath.includes("/") ? "/" : "")
+                        : "";
+
+                      // 使用路径解析器解析相对路径
+                      const resolvedPath = resolveRelativePath(imageSrc, articleDir);
+                      imageSrc = `/api/files/${contentSource}/${resolvedPath}`;
+
                       console.log("🖼️ [UniversalEditor] 预览模式转换图片路径:", {
                         original: src,
                         converted: imageSrc,
+                        articlePath,
+                        articleDir,
+                        resolvedPath,
+                        contentSource,
                       });
                     } else if (
                       !imageSrc.startsWith("/") &&
                       !imageSrc.startsWith("http") &&
                       !imageSrc.startsWith("data:")
                     ) {
-                      // 其他相对路径格式
-                      imageSrc = `/uploads/${imageSrc}`;
+                      // 其他相对路径格式，根据内容源使用对应的 API
+                      imageSrc = `/api/files/${contentSource}/${imageSrc}`;
                     }
 
                     return (
