@@ -18,7 +18,7 @@ export default function PageLayout({
   headerProps = {},
 }: PageLayoutProps) {
   return (
-    <div className={`min-h-screen bg-base-100 ${className}`}>
+    <div className={`min-h-screen bg-base-100 flex flex-col ${className}`}>
       <Header
         isSticky={true}
         showSearchBox={true}
