@@ -13,7 +13,7 @@ const config: Config & { daisyui?: any } = {
       },
     },
   },
-  plugins: [require("daisyui")],
+  plugins: [require("@tailwindcss/typography"), require("daisyui")],
   daisyui: {
     themes: ["light", "dark", "cupcake", "bumblebee", "emerald", "corporate"],
     darkTheme: "dark",

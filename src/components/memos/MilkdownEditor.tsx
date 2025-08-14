@@ -18,6 +18,56 @@ import "@milkdown/crepe/theme/frame.css";
 const editorInstances = new Map<string, Crepe>();
 const initializingEditors = new Set<string>();
 
+// 预处理内容，将 frontmatter 转换为 YAML 代码块
+function preprocessFrontmatterForEditor(content: string): string {
+  // 处理 frontmatter
+  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+  const frontmatterMatch = content.match(frontmatterRegex);
+
+  if (frontmatterMatch) {
+    const frontmatter = frontmatterMatch[1];
+    const bodyContent = frontmatterMatch[2];
+
+    // 将 frontmatter 转换为 YAML 代码块
+    const processedContent = `\`\`\`yaml\n${frontmatter}\n\`\`\`\n\n${bodyContent}`;
+
+    console.log("📝 [MilkdownEditor] 处理 frontmatter:", {
+      hasFrontmatter: true,
+      frontmatterLength: frontmatter.length,
+      bodyLength: bodyContent.length,
+    });
+
+    return processedContent;
+  }
+
+  return content;
+}
+
+// 后处理内容，将 YAML 代码块转换回 frontmatter
+function postprocessContentFromEditor(content: string): string {
+  // 匹配开头的 YAML 代码块
+  const yamlCodeBlockRegex = /^```yaml\n([\s\S]*?)\n```\n\n([\s\S]*)$/;
+  const yamlMatch = content.match(yamlCodeBlockRegex);
+
+  if (yamlMatch) {
+    const yamlContent = yamlMatch[1];
+    const bodyContent = yamlMatch[2];
+
+    // 转换回 frontmatter 格式
+    const processedContent = `---\n${yamlContent}\n---\n${bodyContent}`;
+
+    console.log("📝 [MilkdownEditor] 转换回 frontmatter:", {
+      hasYamlBlock: true,
+      yamlLength: yamlContent.length,
+      bodyLength: bodyContent.length,
+    });
+
+    return processedContent;
+  }
+
+  return content;
+}
+
 interface MilkdownEditorProps {
   content: string;
   onChange: (content: string) => void;
@@ -131,12 +181,14 @@ export function MilkdownEditor({
         initializingEditors.add(editorId);
         console.log(`🔨 [MilkdownEditor] 初始化编辑器 ${editorId}...`);
 
-        // 预处理内容，转换图片路径
-        const processedContent = preprocessContentForEditor(content, articlePath);
+        // 预处理内容，转换 frontmatter 和图片路径
+        const frontmatterProcessed = preprocessFrontmatterForEditor(content);
+        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath);
 
         // 创建 Crepe 编辑器实例
+        if (!editorRef.current) return;
         const crepe = new Crepe({
-          root: editorRef.current!,
+          root: editorRef.current,
           defaultValue: processedContent,
           features: {
             [CrepeFeature.ImageBlock]: true,
@@ -174,7 +226,9 @@ export function MilkdownEditor({
           listener.markdownUpdated((_, markdown) => {
             if (lastContentRef.current !== markdown) {
               lastContentRef.current = markdown;
-              onChange(markdown);
+              // 后处理内容，将 YAML 代码块转换回 frontmatter
+              const processedMarkdown = postprocessContentFromEditor(markdown);
+              onChange(processedMarkdown);
             }
           });
         });
@@ -217,8 +271,9 @@ export function MilkdownEditor({
           newLength: content.length,
         });
 
-        // 预处理内容，转换图片路径
-        const processedContent = preprocessContentForEditor(content, articlePath);
+        // 预处理内容，转换 frontmatter 和图片路径
+        const frontmatterProcessed = preprocessFrontmatterForEditor(content);
+        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath);
 
         // 使用 Milkdown 的 action API 来设置内容
         crepeRef.current.editor.action(replaceAll(processedContent));

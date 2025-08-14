@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { MilkdownEditor } from "../memos/MilkdownEditor";
+import { SourceEditor } from "./SourceEditor";
 import "highlight.js/styles/github.css";
 
 // 编辑器模式类型
@@ -199,6 +200,25 @@ export function UniversalEditor({
     });
   };
 
+  // 提取正文内容，用于预览模式（移除 frontmatter）
+  const extractBodyContent = (content: string): string => {
+    // 如果内容以 frontmatter 开头，提取正文部分
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+    const frontmatterMatch = content.match(frontmatterRegex);
+
+    if (frontmatterMatch) {
+      console.log("👁️ [UniversalEditor] 预览模式移除 frontmatter:", {
+        hasFrontmatter: true,
+        frontmatterLength: frontmatterMatch[1].length,
+        bodyLength: frontmatterMatch[2].length,
+      });
+      return frontmatterMatch[2]; // 返回正文部分
+    }
+
+    // 如果没有 frontmatter，返回原内容
+    return content;
+  };
+
   // 同步外部内容变化
   useEffect(() => {
     if (initialContent !== content) {
@@ -215,8 +235,9 @@ export function UniversalEditor({
 
   return (
     <div className={`universal-editor ${className}`} data-testid={dataTestId}>
+      {/* 编辑器头部 */}
       {title && (
-        <div className="editor-header mb-4">
+        <div className="editor-header mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">{title}</h2>
         </div>
       )}
@@ -237,18 +258,19 @@ export function UniversalEditor({
         )}
 
         {currentMode === "source" && (
-          <textarea
-            value={convertApiUrlsToRelativePaths(content)}
-            onChange={(e) => handleContentChange(e.target.value)}
+          <SourceEditor
+            content={convertApiUrlsToRelativePaths(content)}
+            onChange={handleContentChange}
             placeholder={placeholder}
-            className="w-full h-full p-4 bg-base-100 border-none outline-none resize-none font-mono text-sm"
+            className="w-full h-full"
             data-testid="content-input"
+            onImageUpload={handleImageUpload}
           />
         )}
 
         {currentMode === "preview" && (
           <div
-            className="w-full h-full p-4 bg-base-100 overflow-auto prose prose-sm max-w-none"
+            className="w-full h-full p-4 bg-base-100 overflow-auto prose prose-lg prose-slate max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-li:my-2"
             data-testid="content-preview"
           >
             {content ? (
@@ -307,7 +329,7 @@ export function UniversalEditor({
                   },
                 }}
               >
-                {content}
+                {extractBodyContent(content)}
               </ReactMarkdown>
             ) : (
               <span className="text-gray-500">预览内容...</span>
