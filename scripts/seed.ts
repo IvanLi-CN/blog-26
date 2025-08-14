@@ -201,32 +201,330 @@ async function seedDatabase(options: SeedOptions): Promise<{
       if (options.verbose) console.log("📝 创建测试文章...");
 
       const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+
       const testPosts = [
         {
           id: "test-post-1",
-          title: "测试文章1",
-          body: "这是第一篇测试文章的内容。",
-          slug: "test-post-1",
+          title: "Next.js 15 新特性深度解析",
+          body: `# Next.js 15 新特性深度解析
+
+Next.js 15 带来了许多令人兴奋的新特性，让我们一起来深入了解这些改进。
+
+## 主要新特性
+
+### 1. React 19 支持
+Next.js 15 完全支持 React 19，包括新的并发特性和服务器组件改进。
+
+### 2. Turbopack 稳定版
+Turbopack 现在已经稳定，构建速度提升了 76%。
+
+### 3. 改进的缓存策略
+新的缓存策略让应用性能更加出色。
+
+## 代码示例
+
+\`\`\`typescript
+// app/page.tsx
+export default function HomePage() {
+  return (
+    <div>
+      <h1>Welcome to Next.js 15!</h1>
+    </div>
+  );
+}
+\`\`\`
+
+这些新特性让 Next.js 15 成为了构建现代 Web 应用的最佳选择。`,
+          slug: "nextjs-15-features",
           type: "post",
-          excerpt: "这是第一篇测试文章的摘要",
-          publishDate: now,
-          updateDate: now,
+          excerpt:
+            "深入解析 Next.js 15 的新特性，包括 React 19 支持、Turbopack 稳定版和改进的缓存策略。",
+          publishDate: now - oneDay * 1,
+          updateDate: now - oneDay * 1,
           draft: false,
           public: true,
-          contentHash: "test-hash-1",
+          image:
+            "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=400&fit=crop",
+          tags: "Next.js,React,前端开发,Web开发",
+          category: "技术",
+          author: "Ivan Li",
+          contentHash: "nextjs-15-hash",
+          lastModified: now - oneDay * 1,
+          createdAt: now - oneDay * 1,
+          updatedAt: now - oneDay * 1,
+          dataSource: "database",
         },
         {
           id: "test-post-2",
-          title: "测试文章2",
-          body: "这是第二篇测试文章的内容。",
-          slug: "test-post-2",
+          title: "TypeScript 5.0 实战指南",
+          body: `# TypeScript 5.0 实战指南
+
+TypeScript 5.0 引入了许多强大的新特性，让我们的开发体验更加出色。
+
+## 核心改进
+
+### 1. 装饰器支持
+原生支持 ECMAScript 装饰器，无需额外配置。
+
+### 2. const 类型参数
+新的 const 类型参数让类型推断更加精确。
+
+### 3. 性能优化
+编译速度提升了 10-20%，内存使用减少了 13%。
+
+## 实际应用
+
+\`\`\`typescript
+// 装饰器示例
+class ApiController {
+  @Get('/users')
+  getUsers() {
+    return this.userService.findAll();
+  }
+}
+
+// const 类型参数
+function createConfig<const T>(config: T): T {
+  return config;
+}
+\`\`\`
+
+TypeScript 5.0 让我们能够写出更安全、更高效的代码。`,
+          slug: "typescript-5-guide",
           type: "post",
-          excerpt: "这是第二篇测试文章的摘要",
-          publishDate: now,
-          updateDate: now,
+          excerpt: "全面介绍 TypeScript 5.0 的新特性，包括装饰器支持、const 类型参数和性能优化。",
+          publishDate: now - oneDay * 2,
+          updateDate: now - oneDay * 2,
           draft: false,
           public: true,
-          contentHash: "test-hash-2",
+          image:
+            "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&h=400&fit=crop",
+          tags: "TypeScript,JavaScript,编程语言,类型系统",
+          category: "技术",
+          author: "Ivan Li",
+          contentHash: "typescript-5-hash",
+          lastModified: now - oneDay * 2,
+          createdAt: now - oneDay * 2,
+          updatedAt: now - oneDay * 2,
+          dataSource: "database",
+        },
+        {
+          id: "test-post-3",
+          title: "现代前端架构设计思考",
+          body: `# 现代前端架构设计思考
+
+在快速发展的前端生态中，如何设计一个可维护、可扩展的前端架构是每个开发者都需要思考的问题。
+
+## 架构原则
+
+### 1. 模块化设计
+将应用拆分为独立的模块，每个模块负责特定的功能。
+
+### 2. 状态管理
+选择合适的状态管理方案，如 Zustand、Redux Toolkit 等。
+
+### 3. 组件设计
+遵循单一职责原则，构建可复用的组件库。
+
+## 技术选型
+
+\`\`\`typescript
+// 状态管理示例
+import { create } from 'zustand';
+
+interface AppState {
+  user: User | null;
+  setUser: (user: User) => void;
+}
+
+const useAppStore = create<AppState>((set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+}));
+\`\`\`
+
+好的架构设计能够让团队更高效地协作，让产品更稳定地运行。`,
+          slug: "modern-frontend-architecture",
+          type: "post",
+          excerpt: "探讨现代前端架构设计的核心原则，包括模块化设计、状态管理和组件设计等方面。",
+          publishDate: now - oneDay * 3,
+          updateDate: now - oneDay * 3,
+          draft: false,
+          public: true,
+          image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=400&fit=crop",
+          tags: "前端架构,设计模式,软件工程,最佳实践",
+          category: "架构",
+          author: "Ivan Li",
+          contentHash: "frontend-arch-hash",
+          lastModified: now - oneDay * 3,
+          createdAt: now - oneDay * 3,
+          updatedAt: now - oneDay * 3,
+          dataSource: "database",
+        },
+        {
+          id: "test-post-4",
+          title: "AI 辅助编程的实践与思考",
+          body: `# AI 辅助编程的实践与思考
+
+AI 工具正在改变我们的编程方式，让我们来看看如何更好地利用这些工具。
+
+## AI 工具的优势
+
+### 1. 代码生成
+快速生成样板代码和常见模式。
+
+### 2. 代码审查
+自动发现潜在的问题和改进建议。
+
+### 3. 文档生成
+自动生成代码文档和注释。
+
+## 实践经验
+
+\`\`\`typescript
+// AI 生成的工具函数
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+\`\`\`
+
+AI 是工具，不是替代品。关键是要学会如何与 AI 协作。`,
+          slug: "ai-assisted-programming",
+          type: "post",
+          excerpt: "分享 AI 辅助编程的实践经验，探讨如何更好地利用 AI 工具提高开发效率。",
+          publishDate: now - oneDay * 4,
+          updateDate: now - oneDay * 4,
+          draft: false,
+          public: true,
+          image:
+            "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop",
+          tags: "AI,编程工具,开发效率,人工智能",
+          category: "AI",
+          author: "Ivan Li",
+          contentHash: "ai-programming-hash",
+          lastModified: now - oneDay * 4,
+          createdAt: now - oneDay * 4,
+          updatedAt: now - oneDay * 4,
+          dataSource: "database",
+        },
+        {
+          id: "test-post-5",
+          title: "Web 性能优化实战",
+          body: `# Web 性能优化实战
+
+性能优化是前端开发中的重要话题，让我们来看看一些实用的优化技巧。
+
+## 优化策略
+
+### 1. 资源优化
+压缩图片、使用 WebP 格式、懒加载等。
+
+### 2. 代码分割
+使用动态导入和路由级别的代码分割。
+
+### 3. 缓存策略
+合理使用浏览器缓存和 CDN。
+
+## 性能监控
+
+\`\`\`typescript
+// 性能监控示例
+function measurePerformance(name: string, fn: () => void) {
+  const start = performance.now();
+  fn();
+  const end = performance.now();
+  console.log(\`\${name} took \${end - start} milliseconds\`);
+}
+
+// 使用示例
+measurePerformance('data processing', () => {
+  // 数据处理逻辑
+});
+\`\`\`
+
+性能优化是一个持续的过程，需要不断地测量和改进。`,
+          slug: "web-performance-optimization",
+          type: "post",
+          excerpt: "分享 Web 性能优化的实战经验，包括资源优化、代码分割和缓存策略等方面。",
+          publishDate: now - oneDay * 5,
+          updateDate: now - oneDay * 5,
+          draft: false,
+          public: true,
+          image:
+            "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=400&fit=crop",
+          tags: "性能优化,Web开发,前端优化,用户体验",
+          category: "性能",
+          author: "Ivan Li",
+          contentHash: "performance-hash",
+          lastModified: now - oneDay * 5,
+          createdAt: now - oneDay * 5,
+          updatedAt: now - oneDay * 5,
+          dataSource: "database",
+        },
+        {
+          id: "test-post-6",
+          title: "开源项目维护心得",
+          body: `# 开源项目维护心得
+
+维护开源项目是一件既有挑战又有收获的事情，让我分享一些心得体会。
+
+## 项目管理
+
+### 1. 版本规划
+制定清晰的版本发布计划和里程碑。
+
+### 2. 社区建设
+积极回应 issue 和 PR，建立友好的社区氛围。
+
+### 3. 文档维护
+保持文档的及时更新和完整性。
+
+## 技术债务
+
+\`\`\`typescript
+// 重构示例
+// Before
+function processData(data: any) {
+  // 复杂的处理逻辑
+}
+
+// After
+interface DataProcessor {
+  validate(data: unknown): boolean;
+  transform(data: ValidData): ProcessedData;
+  save(data: ProcessedData): Promise<void>;
+}
+
+class DefaultDataProcessor implements DataProcessor {
+  // 清晰的实现
+}
+\`\`\`
+
+开源项目不仅是代码，更是一个社区和生态系统。`,
+          slug: "open-source-maintenance",
+          type: "post",
+          excerpt: "分享开源项目维护的心得体会，包括项目管理、社区建设和技术债务处理等方面。",
+          publishDate: now - oneDay * 6,
+          updateDate: now - oneDay * 6,
+          draft: false,
+          public: true,
+          image: "https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=800&h=400&fit=crop",
+          tags: "开源,项目管理,社区建设,软件开发",
+          category: "开源",
+          author: "Ivan Li",
+          contentHash: "opensource-hash",
+          lastModified: now - oneDay * 6,
+          createdAt: now - oneDay * 6,
+          updatedAt: now - oneDay * 6,
+          dataSource: "database",
         },
       ];
 

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Icon from '../ui/Icon';
-import SearchBox from './SearchBox';
-import ThemeToggle from './ThemeToggle';
-import MobileMenu from './MobileMenu';
-import { headerData } from '../../config/navigation';
-import { SITE } from '../../config/site';
+import { headerData } from "../../config/navigation";
+import { SITE } from "../../config/site";
+import Icon from "../ui/Icon";
+import MobileMenu from "./MobileMenu";
+import SearchBox from "./SearchBox";
+import ThemeToggle from "./ThemeToggle";
 
 interface HeaderProps {
   isSticky?: boolean;
@@ -20,7 +20,7 @@ export default function Header({
   isSticky = false,
   showSearchBox = true,
   showToggleTheme = true,
-  showRssFeed = true
+  showRssFeed = true,
 }: HeaderProps) {
   const pathname = usePathname();
 
@@ -34,7 +34,7 @@ export default function Header({
   return (
     <header
       className={`
-        ${isSticky ? 'sticky' : 'relative'}
+        ${isSticky ? "sticky" : "relative"}
         top-0 z-40 flex-none mx-auto w-full border-b border-gray-50/0 transition-[opacity] ease-in-out
       `}
     >
@@ -58,7 +58,7 @@ export default function Header({
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className={`btn btn-ghost ${isActive(link.href) ? 'aw-link-active' : ''}`}
+                  className={`btn btn-ghost ${isActive(link.href) ? "aw-link-active" : ""}`}
                 >
                   {link.text}
                 </Link>

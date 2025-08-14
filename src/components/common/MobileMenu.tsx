@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Icon from '../ui/Icon';
-import ThemeToggle from './ThemeToggle';
-import { headerData, footerData } from '../../config/navigation';
-import { SITE } from '../../config/site';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { footerData, headerData } from "../../config/navigation";
+import { SITE } from "../../config/site";
+import Icon from "../ui/Icon";
+import ThemeToggle from "./ThemeToggle";
 
 export default function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,21 +15,21 @@ export default function MobileMenu() {
   // 切换菜单状态
   const toggleMenu = () => {
     setIsOpen(!isOpen);
-    document.body.style.overflow = isOpen ? '' : 'hidden';
+    document.body.style.overflow = isOpen ? "" : "hidden";
   };
 
   // 关闭菜单
   const closeMenu = () => {
     setIsOpen(false);
-    document.body.style.overflow = '';
+    document.body.style.overflow = "";
   };
 
   // 处理搜索提交
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const query = formData.get('q') as string;
-    
+    const query = formData.get("q") as string;
+
     if (query.trim()) {
       router.push(`/search?q=${encodeURIComponent(query.trim())}`);
       closeMenu();
@@ -39,7 +39,7 @@ export default function MobileMenu() {
   // 清理副作用
   useEffect(() => {
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, []);
 
@@ -132,7 +132,7 @@ export default function MobileMenu() {
                   </a>
                 ))}
               </div>
-              
+
               {/* 版权和切换器 */}
               <div className="flex justify-between items-center w-full">
                 <div className="text-sm text-gray-500">

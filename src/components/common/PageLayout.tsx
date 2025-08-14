@@ -15,7 +15,7 @@ interface PageLayoutProps {
 export default function PageLayout({
   children,
   className = "",
-  headerProps = {}
+  headerProps = {},
 }: PageLayoutProps) {
   return (
     <div className={`min-h-screen bg-base-100 ${className}`}>

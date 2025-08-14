@@ -1,12 +1,12 @@
 "use client";
 
-import Link from 'next/link';
-import { useEffect, useRef } from 'react';
-import Icon from '../ui/Icon';
+import Link from "next/link";
+import { useEffect, useRef } from "react";
+import Icon from "../ui/Icon";
 
 interface TimelineItemProps {
   item: {
-    type: 'post' | 'memo';
+    type: "post" | "memo";
     id: string;
     slug: string;
     title?: string;
@@ -27,24 +27,25 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
   const connectorRef = useRef<HTMLDivElement>(null);
 
   // 根据类型确定链接
-  const itemUrl = item.type === 'memo' ? `/memos/${item.slug}` : item.permalink || `/posts/${item.slug}`;
+  const itemUrl =
+    item.type === "memo" ? `/memos/${item.slug}` : item.permalink || `/posts/${item.slug}`;
 
   // 格式化时间
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+    return date.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
   };
 
   // 获取类型图标和颜色
   const getTypeIcon = (type: string) => {
-    return type === 'memo' ? 'tabler:bulb' : 'tabler:article';
+    return type === "memo" ? "tabler:bulb" : "tabler:article";
   };
 
   const getTypeColor = (type: string) => {
-    return type === 'memo' ? 'text-yellow-500' : 'text-blue-500';
+    return type === "memo" ? "text-yellow-500" : "text-blue-500";
   };
 
   // 动态调整时间线连接线高度
@@ -52,7 +53,7 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
     const adjustConnectorHeight = () => {
       if (!connectorRef.current || isLast) return;
 
-      const currentItem = connectorRef.current.closest('.timeline-item') as HTMLElement;
+      const currentItem = connectorRef.current.closest(".timeline-item") as HTMLElement;
       if (!currentItem) return;
 
       const nextItem = currentItem.nextElementSibling as HTMLElement;
@@ -68,13 +69,13 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
 
     // 延迟执行以确保DOM已渲染
     const timer = setTimeout(adjustConnectorHeight, 100);
-    
+
     // 监听窗口大小变化
-    window.addEventListener('resize', adjustConnectorHeight);
-    
+    window.addEventListener("resize", adjustConnectorHeight);
+
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('resize', adjustConnectorHeight);
+      window.removeEventListener("resize", adjustConnectorHeight);
     };
   }, [isLast]);
 
@@ -87,19 +88,16 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
           {loading ? (
             <div className="w-5 h-5 bg-base-300 rounded-full animate-pulse"></div>
           ) : (
-            <Icon
-              name={getTypeIcon(item.type)}
-              className={`w-5 h-5 ${getTypeColor(item.type)}`}
-            />
+            <Icon name={getTypeIcon(item.type)} className={`w-5 h-5 ${getTypeColor(item.type)}`} />
           )}
         </div>
 
         {/* 时间线主轴（连接线） */}
         {!isLast && (
-          <div 
+          <div
             ref={connectorRef}
             className="timeline-connector w-0.5 bg-base-300 opacity-30 absolute top-8 sm:top-10 left-1/2 transform -translate-x-1/2"
-            style={{ height: '100vh' }}
+            style={{ height: "100vh" }}
           ></div>
         )}
       </div>
@@ -119,7 +117,7 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                 {formatDate(item.publishDate)}
               </span>
               <span className="badge badge-outline badge-xs">
-                {item.type === 'memo' ? '闪念' : '文章'}
+                {item.type === "memo" ? "闪念" : "文章"}
               </span>
             </>
           )}
@@ -137,14 +135,14 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
         ) : (
           <div className="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 border border-base-200 hover:border-base-300">
             <div className="card-body p-3 sm:p-4">
-              {item.type === 'post' && (
+              {item.type === "post" && (
                 <div className="flex gap-4">
                   {/* 文章封面图 */}
                   {item.image && (
                     <div className="flex-shrink-0">
                       <img
                         src={item.image}
-                        alt={item.title || '文章封面'}
+                        alt={item.title || "文章封面"}
                         className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded"
                         loading="lazy"
                         width={96}
@@ -166,15 +164,13 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
 
                     {/* 文章摘要 */}
                     {item.excerpt && (
-                      <p className="text-sm md:text-base text-muted line-clamp-3">
-                        {item.excerpt}
-                      </p>
+                      <p className="text-sm md:text-base text-muted line-clamp-3">{item.excerpt}</p>
                     )}
                   </div>
                 </div>
               )}
 
-              {item.type === 'memo' && (
+              {item.type === "memo" && (
                 <>
                   {/* 闪念完整内容 */}
                   {(item.content || item.body) && (
@@ -187,7 +183,10 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                   )}
                   {/* 闪念查看详情链接 */}
                   <div className="mt-3">
-                    <Link href={itemUrl} className="text-sm text-primary hover:text-primary-focus transition-colors">
+                    <Link
+                      href={itemUrl}
+                      className="text-sm text-primary hover:text-primary-focus transition-colors"
+                    >
                       查看详情 →
                     </Link>
                   </div>

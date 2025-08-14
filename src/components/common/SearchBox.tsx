@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Icon from '../ui/Icon';
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import Icon from "../ui/Icon";
 
 interface SearchBoxProps {
   placeholder?: string;
   buttonLabel?: string;
 }
 
-export default function SearchBox({ 
-  placeholder = "搜索文章...", 
-  buttonLabel = "搜索" 
+export default function SearchBox({
+  placeholder = "搜索文章...",
+  buttonLabel = "搜索",
 }: SearchBoxProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMediumOverlayOpen, setIsMediumOverlayOpen] = useState(false);
@@ -24,14 +24,14 @@ export default function SearchBox({
   // 处理搜索提交
   const handleSearch = (query: string) => {
     if (!query.trim()) return;
-    
+
     setIsLoading(true);
     router.push(`/search?q=${encodeURIComponent(query.trim())}`);
-    
+
     // 关闭所有搜索界面
     setIsModalOpen(false);
     setIsMediumOverlayOpen(false);
-    
+
     // 重置加载状态
     setTimeout(() => setIsLoading(false), 1000);
   };
@@ -40,7 +40,7 @@ export default function SearchBox({
   const handleDesktopSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const query = formData.get('q') as string;
+    const query = formData.get("q") as string;
     handleSearch(query);
   };
 
@@ -48,7 +48,7 @@ export default function SearchBox({
   const handleMobileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const query = formData.get('q') as string;
+    const query = formData.get("q") as string;
     handleSearch(query);
   };
 
@@ -56,51 +56,53 @@ export default function SearchBox({
   const handleMediumSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const query = formData.get('q') as string;
+    const query = formData.get("q") as string;
     handleSearch(query);
   };
 
   // 打开移动端搜索模态框
-  const openModal = () => {
+  const _openModal = () => {
     setIsModalOpen(true);
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     setTimeout(() => modalInputRef.current?.focus(), 100);
   };
 
   // 关闭移动端搜索模态框
   const closeModal = () => {
     setIsModalOpen(false);
-    document.body.style.overflow = '';
+    document.body.style.overflow = "";
   };
 
   // 打开中屏搜索悬浮框
   const openMediumOverlay = () => {
     setIsMediumOverlayOpen(true);
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     setTimeout(() => mediumInputRef.current?.focus(), 100);
   };
 
   // 关闭中屏搜索悬浮框
   const closeMediumOverlay = () => {
     setIsMediumOverlayOpen(false);
-    document.body.style.overflow = '';
+    document.body.style.overflow = "";
   };
 
   // 键盘事件处理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // ESC 键关闭搜索
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         if (isModalOpen) closeModal();
         if (isMediumOverlayOpen) closeMediumOverlay();
       }
 
       // ⌘+K 或 Ctrl+K 快捷键
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        
-        const isLargeScreen = window.matchMedia('(min-width: 1280px)').matches;
-        const isMediumScreen = window.matchMedia('(min-width: 768px) and (max-width: 1279px)').matches;
+
+        const isLargeScreen = window.matchMedia("(min-width: 1280px)").matches;
+        const isMediumScreen = window.matchMedia(
+          "(min-width: 768px) and (max-width: 1279px)"
+        ).matches;
 
         if (isLargeScreen) {
           desktopInputRef.current?.focus();
@@ -111,51 +113,50 @@ export default function SearchBox({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, isMediumOverlayOpen]);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen, isMediumOverlayOpen, closeMediumOverlay, closeModal, openMediumOverlay]);
 
   // 点击外部关闭中屏搜索框
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (isMediumOverlayOpen) {
-        const overlay = document.querySelector('.search-overlay-medium');
-        const trigger = document.querySelector('.search-trigger-medium');
-        
-        if (overlay && !overlay.contains(e.target as Node) && 
-            trigger && !trigger.contains(e.target as Node)) {
+        const overlay = document.querySelector(".search-overlay-medium");
+        const trigger = document.querySelector(".search-trigger-medium");
+
+        if (
+          overlay &&
+          !overlay.contains(e.target as Node) &&
+          trigger &&
+          !trigger.contains(e.target as Node)
+        ) {
           closeMediumOverlay();
         }
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [isMediumOverlayOpen]);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [isMediumOverlayOpen, closeMediumOverlay]);
 
   return (
     <div className="relative">
       {/* 大屏搜索框 */}
-      <form
-        onSubmit={handleDesktopSubmit}
-        className="hidden xl:flex items-center w-auto"
-      >
+      <form onSubmit={handleDesktopSubmit} className="hidden xl:flex items-center w-auto">
         <label className="input input-bordered flex items-center gap-2">
           <Icon name="tabler:search" className="w-5 h-5 opacity-50" />
-          <input 
+          <input
             ref={desktopInputRef}
-            type="text" 
-            name="q" 
-            placeholder={placeholder} 
-            className="grow" 
+            type="text"
+            name="q"
+            placeholder={placeholder}
+            className="grow"
           />
-          <span className={`flex items-center gap-1 ${isLoading ? 'hidden' : ''}`}>
+          <span className={`flex items-center gap-1 ${isLoading ? "hidden" : ""}`}>
             <kbd className="kbd kbd-sm">⌘</kbd>
             <kbd className="kbd kbd-sm">K</kbd>
           </span>
-          {isLoading && (
-            <span className="loading loading-spinner loading-xs ml-2"></span>
-          )}
+          {isLoading && <span className="loading loading-spinner loading-xs ml-2"></span>}
         </label>
       </form>
 
@@ -199,10 +200,7 @@ export default function SearchBox({
       {isModalOpen && (
         <div className="search-modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
           <div className="container mx-auto px-4 h-full flex items-center justify-center">
-            <form
-              onSubmit={handleMobileSubmit}
-              className="w-full max-w-lg"
-            >
+            <form onSubmit={handleMobileSubmit} className="w-full max-w-lg">
               <div className="relative">
                 <input
                   ref={modalInputRef}

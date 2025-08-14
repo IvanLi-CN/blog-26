@@ -1,7 +1,6 @@
-import Link from "next/link";
-import Icon from '../ui/Icon';
-import { footerData } from '../../config/navigation';
-import { SITE } from '../../config/site';
+import { footerData } from "../../config/navigation";
+import { SITE } from "../../config/site";
+import Icon from "../ui/Icon";
 
 export default function Footer() {
   return (
@@ -29,7 +28,9 @@ export default function Footer() {
 
             {/* 版权信息 */}
             <div className="text-sm opacity-75 space-y-1">
-              <div>Copyright © {new Date().getFullYear()} {SITE.owner}</div>
+              <div>
+                Copyright © {new Date().getFullYear()} {SITE.owner}
+              </div>
             </div>
           </div>
 
@@ -91,7 +92,7 @@ export default function Footer() {
             {/* 备案信息 */}
             <a
               target="_blank"
-              rel="nofollow"
+              rel="noopener nofollow"
               href="https://beian.miit.gov.cn"
               className="hover:opacity-80 transition-opacity"
             >

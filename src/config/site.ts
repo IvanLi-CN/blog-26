@@ -18,7 +18,7 @@ export const UI = {
     mainThemes: ["system", "light", "dark"],
     allThemes: [
       "light",
-      "dark", 
+      "dark",
       "cupcake",
       "bumblebee",
       "emerald",
