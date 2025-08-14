@@ -7,7 +7,7 @@
  */
 
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
-import { replaceAll, getMarkdown } from "@milkdown/utils";
+import { replaceAll } from "@milkdown/utils";
 import { useEffect, useRef } from "react";
 import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
@@ -195,7 +195,11 @@ export function MilkdownEditor({
 
         // 预处理内容，转换 frontmatter 和图片路径
         const frontmatterProcessed = preprocessFrontmatterForEditor(content);
-        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath, contentSource);
+        const processedContent = preprocessContentForEditor(
+          frontmatterProcessed,
+          articlePath,
+          contentSource
+        );
 
         // 创建 Crepe 编辑器实例
         if (!editorRef.current) return;
@@ -251,11 +255,14 @@ export function MilkdownEditor({
 
             // 如果内容长度只差1个字符，进行更严格的检查
             if (isSimilarLength && currentContent.trim() === processedMarkdown.trim()) {
-              console.log("🔄 [MilkdownEditor] 编辑器内容仅空白字符差异，跳过 onChange 避免无限循环:", {
-                oldLength: currentContent.length,
-                newLength: processedMarkdown.length,
-                lengthDiff: processedMarkdown.length - currentContent.length,
-              });
+              console.log(
+                "🔄 [MilkdownEditor] 编辑器内容仅空白字符差异，跳过 onChange 避免无限循环:",
+                {
+                  oldLength: currentContent.length,
+                  newLength: processedMarkdown.length,
+                  lengthDiff: processedMarkdown.length - currentContent.length,
+                }
+              );
               return;
             }
 
@@ -295,7 +302,7 @@ export function MilkdownEditor({
         initializingEditors.delete(editorId);
       }
     };
-  }, [articlePath, content, editorId, onChange]); // 只在组件挂载时初始化一次
+  }, [articlePath, content, editorId, onChange, contentSource]); // 只在组件挂载时初始化一次
 
   // 处理外部内容变化
   useEffect(() => {
@@ -308,11 +315,15 @@ export function MilkdownEditor({
 
         // 预处理内容，转换 frontmatter 和图片路径
         const frontmatterProcessed = preprocessFrontmatterForEditor(content);
-        const processedContent = preprocessContentForEditor(frontmatterProcessed, articlePath, contentSource);
+        const processedContent = preprocessContentForEditor(
+          frontmatterProcessed,
+          articlePath,
+          contentSource
+        );
 
         // 检查是否与上次处理的内容相同，避免无限循环
         // 使用原始内容比较而不是编辑器内容比较，因为编辑器内容可能有格式化差异
-        const contentHash = `${content.length}-${content.slice(0, 100)}-${content.slice(-100)}`;
+        const _contentHash = `${content.length}-${content.slice(0, 100)}-${content.slice(-100)}`;
         if (lastContentRef.current && lastContentRef.current === content) {
           console.log("🔄 [MilkdownEditor] 内容相同，跳过更新避免无限循环");
           return;

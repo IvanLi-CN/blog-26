@@ -3,9 +3,7 @@
  * 重点测试无限循环修复逻辑
  */
 
-import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from 'bun:test';
-import { render, screen, waitFor } from '@testing-library/react';
-import { MilkdownEditor } from '../MilkdownEditor';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 // Mock Milkdown 相关模块
 const mockCrepe = {
@@ -15,27 +13,27 @@ const mockCrepe = {
   on: mock((callback: any) => {
     // 模拟监听器注册
     const listener = {
-      markdownUpdated: mock((callback: any) => {}),
+      markdownUpdated: mock((_callback: any) => {}),
     };
     callback(listener);
   }),
 };
 
-mock.module('@milkdown/crepe', () => ({
+mock.module("@milkdown/crepe", () => ({
   Crepe: mock(() => mockCrepe),
 }));
 
-mock.module('@milkdown/core', () => ({
-  replaceAll: mock((content: string) => ({ type: 'replaceAll', content })),
-  getMarkdown: mock(() => ({ type: 'getMarkdown' })),
+mock.module("@milkdown/core", () => ({
+  replaceAll: mock((content: string) => ({ type: "replaceAll", content })),
+  getMarkdown: mock(() => ({ type: "getMarkdown" })),
 }));
 
 // Mock React hooks
-const mockUseRef = mock((initialValue: any) => ({
+const _mockUseRef = mock((initialValue: any) => ({
   current: initialValue,
 }));
 
-const mockUseEffect = mock((effect: () => void, deps: any[]) => {
+const _mockUseEffect = mock((effect: () => void, _deps: any[]) => {
   effect();
 });
 
@@ -74,21 +72,21 @@ function postprocessContentFromEditor(content: string): string {
   return content;
 }
 
-describe('MilkdownEditor 无限循环修复测试', () => {
+describe("MilkdownEditor 无限循环修复测试", () => {
   let consoleLogSpy: any;
-  let onChangeMock: any;
-  
+  let _onChangeMock: any;
+
   beforeEach(() => {
-    consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {});
-    onChangeMock = mock(() => {});
+    consoleLogSpy = spyOn(console, "log").mockImplementation(() => {});
+    _onChangeMock = mock(() => {});
   });
-  
+
   afterEach(() => {
     consoleLogSpy.mockRestore();
   });
 
-  describe('frontmatter 处理函数测试', () => {
-    it('应该正确转换 frontmatter 为 YAML 代码块', () => {
+  describe("frontmatter 处理函数测试", () => {
+    it("应该正确转换 frontmatter 为 YAML 代码块", () => {
       const input = `---
 title: "Test"
 slug: "test"
@@ -107,7 +105,7 @@ slug: "test"
       expect(preprocessFrontmatterForEditor(input)).toBe(expected);
     });
 
-    it('应该正确转换 YAML 代码块回 frontmatter', () => {
+    it("应该正确转换 YAML 代码块回 frontmatter", () => {
       const input = `\`\`\`yaml
 title: "Test"
 slug: "test"
@@ -124,7 +122,7 @@ slug: "test"
       expect(postprocessContentFromEditor(input)).toBe(expected);
     });
 
-    it('双向转换应该保持内容一致性', () => {
+    it("双向转换应该保持内容一致性", () => {
       const original = `---
 title: "Test Image Paste"
 slug: "test-image-paste"
@@ -147,13 +145,13 @@ author: ""
       const processed = preprocessFrontmatterForEditor(original);
       // 反向转换
       const restored = postprocessContentFromEditor(processed);
-      
+
       expect(restored).toBe(original);
     });
   });
 
-  describe('内容比较逻辑测试', () => {
-    it('应该检测到相同的内容', () => {
+  describe("内容比较逻辑测试", () => {
+    it("应该检测到相同的内容", () => {
       const content1 = `---
 title: "Test"
 ---
@@ -164,11 +162,11 @@ title: "Test"
 ---
 
 Content`;
-      
+
       expect(content1).toBe(content2);
     });
 
-    it('应该检测到微小的空白字符差异', () => {
+    it("应该检测到微小的空白字符差异", () => {
       const content1 = `---
 title: "Test"
 ---
@@ -178,13 +176,13 @@ Content`;
 title: "Test"
 ---
 
-Content `;  // 末尾多一个空格
-      
+Content `; // 末尾多一个空格
+
       expect(content1).not.toBe(content2);
       expect(content1.length).toBe(content2.length - 1);
     });
 
-    it('应该检测到换行符差异', () => {
+    it("应该检测到换行符差异", () => {
       const content1 = `---
 title: "Test"
 ---
@@ -195,15 +193,15 @@ title: "Test"
 ---
 
 Content
-`;  // 末尾多一个换行符
-      
+`; // 末尾多一个换行符
+
       expect(content1).not.toBe(content2);
       expect(content1.length).toBe(content2.length - 1);
     });
   });
 
-  describe('循环检测逻辑测试', () => {
-    it('应该检测到内容长度的微小变化', () => {
+  describe("循环检测逻辑测试", () => {
+    it("应该检测到内容长度的微小变化", () => {
       const baseContent = `---
 title: "Test Image Paste"
 slug: "test-image-paste"
@@ -224,18 +222,18 @@ author: ""
 
       // 模拟 bodyLength 在 97 和 98 之间变化的情况
       const content1 = baseContent;
-      const content2 = baseContent + ' ';  // 多一个空格
-      
+      const content2 = `${baseContent} `; // 多一个空格
+
       expect(content1.length).toBe(content2.length - 1);
-      
+
       // 模拟处理后的内容
       const processed1 = preprocessFrontmatterForEditor(content1);
       const processed2 = preprocessFrontmatterForEditor(content2);
-      
+
       expect(processed1.length).toBe(processed2.length - 1);
     });
 
-    it('应该能够稳定地处理重复的转换', () => {
+    it("应该能够稳定地处理重复的转换", () => {
       const original = `---
 title: "Test"
 ---
@@ -244,7 +242,7 @@ Content`;
 
       let current = original;
       const transformations = [];
-      
+
       // 模拟多次转换
       for (let i = 0; i < 10; i++) {
         const processed = preprocessFrontmatterForEditor(current);
@@ -258,19 +256,19 @@ Content`;
         });
         current = restored;
       }
-      
+
       // 所有转换都应该是稳定的
       transformations.forEach((t, index) => {
         expect(t.isStable).toBe(true, `转换 ${index} 应该是稳定的`);
       });
-      
+
       // 最终内容应该与原始内容相同
       expect(current).toBe(original);
     });
   });
 
-  describe('防护机制测试', () => {
-    it('应该能够检测到相同的内容并跳过更新', () => {
+  describe("防护机制测试", () => {
+    it("应该能够检测到相同的内容并跳过更新", () => {
       const content = `---
 title: "Test"
 ---
@@ -286,7 +284,7 @@ Content`;
       expect(shouldSkipUpdate).toBe(true);
     });
 
-    it('应该能够检测到不同的内容并允许更新', () => {
+    it("应该能够检测到不同的内容并允许更新", () => {
       const oldContent = `---
 title: "Test"
 ---
@@ -309,8 +307,8 @@ New Content`;
     });
   });
 
-  describe('无限循环场景测试', () => {
-    it('应该能够处理实际的无限循环场景 - bodyLength 在 97 和 98 之间变化', () => {
+  describe("无限循环场景测试", () => {
+    it("应该能够处理实际的无限循环场景 - bodyLength 在 97 和 98 之间变化", () => {
       // 模拟实际遇到的内容
       const baseContent = `---
 title: "Test Image Paste"
@@ -332,7 +330,7 @@ author: ""
 
       // 模拟编辑器可能产生的微小变化
       const content1 = baseContent;
-      const content2 = baseContent.replace('\n\n![Base64测试图片]', '\n![Base64测试图片]'); // 减少一个换行符
+      const content2 = baseContent.replace("\n\n![Base64测试图片]", "\n![Base64测试图片]"); // 减少一个换行符
 
       expect(content1.length - content2.length).toBe(1); // 确认只有1字符差异
 
@@ -351,7 +349,7 @@ author: ""
       expect(restored1.length - restored2.length).toBe(1);
     });
 
-    it('应该能够检测到微小的格式化差异并防止循环', () => {
+    it("应该能够检测到微小的格式化差异并防止循环", () => {
       const content = `---
 title: "Test Image Paste"
 slug: "test-image-paste"
@@ -416,7 +414,7 @@ author: ""
       expect(changeCount).toBeGreaterThan(updateCount);
     });
 
-    it('应该能够处理字符数在 265-266 之间变化的情况', () => {
+    it("应该能够处理字符数在 265-266 之间变化的情况", () => {
       // 创建一个接近 265 字符的内容
       const shortContent = `---
 title: "Test"
@@ -434,7 +432,7 @@ author: ""
 
 Content that is exactly the right length to test the 265-266 character boundary issue.`;
 
-      const longContent = shortContent + ' '; // 多一个空格
+      const longContent = `${shortContent} `; // 多一个空格
 
       // 验证字符数差异
       expect(longContent.length - shortContent.length).toBe(1);
@@ -455,8 +453,8 @@ Content that is exactly the right length to test the 265-266 character boundary 
     });
   });
 
-  describe('增强防护机制测试', () => {
-    it('应该检测到完全相同的内容', () => {
+  describe("增强防护机制测试", () => {
+    it("应该检测到完全相同的内容", () => {
       const content = `---
 title: "Test"
 ---
@@ -474,7 +472,7 @@ Content`;
       expect(isSimilarLength).toBe(true);
     });
 
-    it('应该检测到仅空白字符差异的内容', () => {
+    it("应该检测到仅空白字符差异的内容", () => {
       const content1 = `---
 title: "Test"
 ---
@@ -484,7 +482,7 @@ Content`;
 title: "Test"
 ---
 
-Content `;  // 末尾多一个空格
+Content `; // 末尾多一个空格
 
       // 模拟增强的防护逻辑
       const isSameContent = content1 === content2;
@@ -500,7 +498,7 @@ Content `;  // 末尾多一个空格
       expect(shouldBlock).toBe(true);
     });
 
-    it('应该允许有意义的内容变化', () => {
+    it("应该允许有意义的内容变化", () => {
       const content1 = `---
 title: "Test"
 ---
@@ -510,7 +508,7 @@ Old Content`;
 title: "Test"
 ---
 
-Different Content`;  // 使用更长的差异来确保长度差异超过1
+Different Content`; // 使用更长的差异来确保长度差异超过1
 
       // 验证实际的长度差异
       const lengthDiff = Math.abs(content1.length - content2.length);
@@ -530,7 +528,7 @@ Different Content`;  // 使用更长的差异来确保长度差异超过1
       expect(shouldAllow).toBe(true);
     });
 
-    it('应该处理实际的 bodyLength 97-98 变化场景', () => {
+    it("应该处理实际的 bodyLength 97-98 变化场景", () => {
       // 模拟实际遇到的内容变化
       const content97 = `---
 title: "Test Image Paste"
@@ -550,7 +548,7 @@ author: ""
 
 ![Base64测试图片](./assets/inline-1755162514446.png)`;
 
-      const content98 = content97 + '\n'; // 多一个换行符
+      const content98 = `${content97}\n`; // 多一个换行符
 
       // 验证长度差异
       expect(content98.length - content97.length).toBe(1);
