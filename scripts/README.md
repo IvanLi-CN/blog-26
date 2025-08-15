@@ -217,6 +217,44 @@ bun run test-data:verify
 
 ---
 
+### 🧪 Memos 迁移测试脚本
+
+#### `test-memos-data.ts`
+
+**用途**: 测试 Memos 数据库数据完整性
+**功能**:
+
+- 验证数据库连接和表结构
+- 检查数据完整性和内容预览
+- 分析标签分布和空内容统计
+- 验证数据库字段映射修复
+
+**使用方法**:
+
+```bash
+bun run scripts/test-memos-data.ts
+```
+
+#### `test-api-endpoints.ts`
+
+**用途**: 测试 TRPC API 端点功能
+**功能**:
+
+- 验证 memos.list API 响应
+- 检查数据格式和字段映射
+- 验证内容不是简单的 "content"
+- 测试分页和数据完整性
+
+**使用方法**:
+
+```bash
+# 确保开发服务器运行
+bun run dev:next
+
+# 在另一个终端运行测试
+bun run scripts/test-api-endpoints.ts
+```
+
 ## 📞 获取帮助
 
 每个脚本都支持 `--help` 参数来显示详细的使用说明：
