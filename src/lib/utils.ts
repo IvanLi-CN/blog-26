@@ -14,6 +14,13 @@ export const formatter: Intl.DateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
 
 export const getFormattedDate = (date: Date): string => (date ? formatter.format(date) : "");
 
+// 处理时间戳的日期格式化函数
+export const getFormattedDateFromTimestamp = (timestamp: number): string => {
+  if (!timestamp) return "";
+  const date = new Date(timestamp * 1000); // 转换为毫秒
+  return formatter.format(date);
+};
+
 export const trim = (str = "", ch?: string) => {
   let start = 0,
     end = str.length || 0;
@@ -102,20 +109,21 @@ export const extractTags = (content: string): TagInfo[] => {
   const regex = /#([^\s#]+)/g;
   let match: RegExpExecArray | null;
 
-  while ((match = regex.exec(content)) !== null) {
+  match = regex.exec(content);
+  while (match !== null) {
     const hashIndex = match.index;
 
     // 检查是否是URL中的hash部分
-    if (isUrlHash(content, hashIndex)) {
-      continue;
+    if (!isUrlHash(content, hashIndex)) {
+      tags.push({
+        content: match[1],
+        fullMatch: match[0],
+        startIndex: match.index,
+        endIndex: match.index + match[0].length,
+      });
     }
 
-    tags.push({
-      content: match[1],
-      fullMatch: match[0],
-      startIndex: match.index,
-      endIndex: match.index + match[0].length,
-    });
+    match = regex.exec(content);
   }
 
   return tags;
