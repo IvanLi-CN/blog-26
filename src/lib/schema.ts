@@ -150,7 +150,7 @@ export const memos = sqliteTable("memos", {
   metadata: text("metadata"), // JSON 存储其他元数据
 
   // Memo 特有字段
-  content: text("content").notNull(), // Markdown 内容
+  body: text("body").notNull(), // Markdown 内容（匹配实际数据库字段）
   authorEmail: text("author_email").notNull(), // 作者邮箱
   attachments: text("attachments"), // JSON 存储附件信息
 

@@ -120,16 +120,16 @@ export const memosRouter = router({
         slug: memo.slug,
         title: memo.title || "无标题 Memo",
         excerpt: memo.excerpt,
-        content: memo.content,
+        content: memo.body, // 使用 body 字段匹配实际数据库结构
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
         attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
         author: memo.author || memo.authorEmail,
         source: memo.source,
-        createdAt: new Date(memo.publishDate).toISOString(),
+        createdAt: new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
         updatedAt: memo.updateDate
-          ? new Date(memo.updateDate).toISOString()
-          : new Date(memo.publishDate).toISOString(),
+          ? new Date(memo.updateDate * 1000).toISOString() // 秒转毫秒
+          : new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
       }));
 
       const totalPages = Math.ceil(totalCount / limit);
@@ -186,16 +186,16 @@ export const memosRouter = router({
         slug: memo.slug,
         title: memo.title || "无标题 Memo",
         excerpt: memo.excerpt,
-        content: memo.content,
+        content: memo.body, // 使用 body 字段匹配实际数据库结构
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
         attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
         author: memo.author || memo.authorEmail,
         source: memo.source,
-        createdAt: new Date(memo.publishDate).toISOString(),
+        createdAt: new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
         updatedAt: memo.updateDate
-          ? new Date(memo.updateDate).toISOString()
-          : new Date(memo.publishDate).toISOString(),
+          ? new Date(memo.updateDate * 1000).toISOString() // 秒转毫秒
+          : new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
       };
     } catch (error) {
       if (error instanceof TRPCError) {
@@ -261,7 +261,7 @@ export const memosRouter = router({
         tags: JSON.stringify(tags),
         author: ctx.user?.email || "admin@example.com",
         metadata: JSON.stringify({}),
-        content,
+        body: content, // 使用 body 字段匹配实际数据库结构
         authorEmail: ctx.user?.email || "admin@example.com",
         attachments: JSON.stringify(attachments),
         isPublic,
@@ -279,7 +279,7 @@ export const memosRouter = router({
         id: memoData.id,
         slug: memoData.slug,
         title: memoData.title,
-        content: memoData.content,
+        content: memoData.body, // 使用 body 字段匹配实际数据库结构
         isPublic: memoData.public,
         tags,
         attachments,
@@ -345,7 +345,7 @@ export const memosRouter = router({
       const updateData = {
         title: title || extractTitleFromContent(content),
         excerpt: generateExcerptFromContent(content),
-        content,
+        body: content, // 使用 body 字段匹配实际数据库结构
         public: isPublic,
         tags: JSON.stringify(tags),
         attachments: JSON.stringify(attachments),
@@ -363,7 +363,7 @@ export const memosRouter = router({
         id,
         slug: existingMemo.slug,
         title: updateData.title,
-        content: updateData.content,
+        content: updateData.body, // 使用 body 字段匹配实际数据库结构
         isPublic: updateData.public,
         tags,
         attachments,

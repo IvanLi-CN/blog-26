@@ -478,13 +478,19 @@ export class WebDAVContentSource extends ContentSourceBase {
     // 尝试从内容中提取标题
     const titleMatch = content.match(/^#\s+(.+)$/m);
     if (titleMatch) {
-      return this.slugify(titleMatch[1]);
+      const titleSlug = this.slugify(titleMatch[1]);
+      if (titleSlug && titleSlug !== "untitled") {
+        return `${titleSlug}-${timestamp}`;
+      }
     }
 
     // 使用第一行内容
     const firstLine = content.split("\n")[0]?.trim();
     if (firstLine && firstLine.length > 0) {
-      return this.slugify(firstLine.substring(0, 30));
+      const lineSlug = this.slugify(firstLine.substring(0, 30));
+      if (lineSlug && lineSlug !== "untitled") {
+        return `${lineSlug}-${timestamp}`;
+      }
     }
 
     // 使用时间戳
@@ -495,11 +501,14 @@ export class WebDAVContentSource extends ContentSourceBase {
    * 将字符串转换为 slug
    */
   private slugify(text: string): string {
-    return text
+    const result = text
       .toLowerCase()
-      .replace(/[^\w\s-]/g, "") // 移除特殊字符
+      .replace(/[^\w\s\u4e00-\u9fff-]/g, "") // 移除特殊字符，但保留中文字符
       .replace(/[\s_-]+/g, "-") // 替换空格和下划线为连字符
       .replace(/^-+|-+$/g, ""); // 移除首尾连字符
+
+    // 如果结果为空，返回一个默认值
+    return result || "untitled";
   }
 
   /**
