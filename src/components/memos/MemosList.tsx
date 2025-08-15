@@ -53,11 +53,11 @@ export function MemosList({
   showManageButtons = false,
   className,
   // 忽略这些不需要的参数
-  onSearch,
-  onTagFilter,
-  onRefresh,
-  onNew,
-  viewMode,
+  onSearch: _onSearch,
+  onTagFilter: _onTagFilter,
+  onRefresh: _onRefresh,
+  onNew: _onNew,
+  viewMode: _viewMode,
 }: MemosListProps) {
   // 处理加载更多
   const handleLoadMore = useCallback(() => {
@@ -90,9 +90,7 @@ export function MemosList({
   // 渲染空状态
   const renderEmpty = () => (
     <div className="text-center py-12">
-      <div className="text-base-content/60 mb-4">
-        还没有任何 memo
-      </div>
+      <div className="text-base-content/60 mb-4">还没有任何 memo</div>
     </div>
   );
 
@@ -187,21 +185,15 @@ export function MemosList({
       {!loading && !error && memos.length === 0 && (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">📝</div>
-          <h3 className="text-xl font-semibold text-base-content mb-2">
-            还没有 Memo
-          </h3>
-          <p className="text-base-content/60">
-            开始记录你的第一个想法吧！
-          </p>
+          <h3 className="text-xl font-semibold text-base-content mb-2">还没有 Memo</h3>
+          <p className="text-base-content/60">开始记录你的第一个想法吧！</p>
         </div>
       )}
 
       {/* 已加载完所有内容提示 */}
       {!hasMore && memos.length > 0 && !loading && (
         <div className="text-center py-8">
-          <div className="text-base-content/60">
-            已显示所有 {memos.length} 条 Memo
-          </div>
+          <div className="text-base-content/60">已显示所有 {memos.length} 条 Memo</div>
         </div>
       )}
     </div>

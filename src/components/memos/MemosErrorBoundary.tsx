@@ -2,11 +2,11 @@
 
 /**
  * Memos 错误边界组件
- * 
+ *
  * 用于捕获和处理 Memos 相关组件的错误，提供友好的错误提示
  */
 
-import { Component, ErrorInfo, ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -29,7 +29,7 @@ export class MemosErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Memos Error Boundary caught an error:', error, errorInfo);
+    console.error("Memos Error Boundary caught an error:", error, errorInfo);
   }
 
   render() {
@@ -58,32 +58,22 @@ export class MemosErrorBoundary extends Component<Props, State> {
                 />
               </svg>
             </div>
-            
-            <h2 className="card-title justify-center text-error">
-              Oops! 出现了一些问题
-            </h2>
-            
-            <p className="text-base-content/70 mb-4">
-              加载 Memos 时遇到了错误，请尝试刷新页面。
-            </p>
-            
+
+            <h2 className="card-title justify-center text-error">Oops! 出现了一些问题</h2>
+
+            <p className="text-base-content/70 mb-4">加载 Memos 时遇到了错误，请尝试刷新页面。</p>
+
             <div className="card-actions justify-center">
-              <button
-                onClick={() => window.location.reload()}
-                className="btn btn-primary"
-              >
+              <button type="button" onClick={() => window.location.reload()} className="btn btn-primary">
                 刷新页面
               </button>
-              
-              <button
-                onClick={() => this.setState({ hasError: false })}
-                className="btn btn-ghost"
-              >
+
+              <button type="button" onClick={() => this.setState({ hasError: false })} className="btn btn-ghost">
                 重试
               </button>
             </div>
-            
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+
+            {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mt-4 text-left">
                 <summary className="cursor-pointer text-sm text-base-content/60">
                   错误详情 (开发模式)

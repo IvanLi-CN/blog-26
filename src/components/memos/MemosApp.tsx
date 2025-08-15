@@ -11,7 +11,7 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useInfiniteScroll, useMemoEditor, useMemos, useQuickMemo } from "./hooks";
-import { type MemoCardData } from "./MemoCard";
+import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
 import { MemosErrorBoundary } from "./MemosErrorBoundary";
 import { MemosList } from "./MemosList";
@@ -90,8 +90,6 @@ export function MemosApp({
     setEditingMemo(null);
     setShowEditor(true);
   }, []);
-
-
 
   // 处理编辑 memo
   const handleEdit = useCallback((memo: MemoCardData) => {

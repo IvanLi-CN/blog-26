@@ -15,13 +15,10 @@
  * - 复杂的点击交互逻辑：避免与文本选择冲突
  */
 
-import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
 import { useCallback, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import { cn } from "../../lib/utils";
 
 export interface MemoCardProps {
   /** Memo 数据 */
@@ -69,7 +66,6 @@ export interface MemoCardData {
 
 export function MemoCard({
   memo,
-  compact = false,
   showEditButton = false,
   showDeleteButton = false,
   maxContentLength = 300,
@@ -443,3 +439,4 @@ export function MemoCard({
       </div>
     </div>
   );
+}
