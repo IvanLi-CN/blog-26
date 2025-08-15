@@ -59,6 +59,30 @@
   @apply text-primary bg-primary/10;
 }
 
+/* Milkdown 编辑器自动高度样式 */
+.milkdown-editor {
+  height: auto !important;
+  min-height: inherit;
+}
+
+.milkdown-editor .milkdown {
+  height: auto !important;
+  min-height: inherit;
+}
+
+.milkdown-editor .editor {
+  height: auto !important;
+  min-height: inherit;
+  overflow: visible !important;
+}
+
+.milkdown-editor .ProseMirror {
+  height: auto !important;
+  min-height: inherit;
+  overflow: visible !important;
+  resize: none;
+}
+
 /* 闪念内容样式 */
 .memo-content img {
   max-width: 100%;

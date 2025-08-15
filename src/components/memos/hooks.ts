@@ -110,10 +110,13 @@ export interface UseMemoEditorOptions {
 
 export function useMemoEditor(options: UseMemoEditorOptions = {}) {
   const { memoId, onSaveSuccess, onSaveError } = options;
+  const utils = trpc.useUtils();
 
   // tRPC mutations
   const createMemo = trpc.memos.create.useMutation({
     onSuccess: (data) => {
+      // 使缓存失效，确保列表显示最新数据
+      utils.memos.list.invalidate();
       onSaveSuccess?.(data);
     },
     onError: (error) => {
@@ -123,6 +126,9 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
 
   const updateMemo = trpc.memos.update.useMutation({
     onSuccess: (data) => {
+      // 使缓存失效，确保列表显示最新数据
+      utils.memos.list.invalidate();
+      utils.memos.bySlug.invalidate({ slug: memoId || "" });
       onSaveSuccess?.(data);
     },
     onError: (error) => {
@@ -130,7 +136,12 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
     },
   });
 
-  const deleteMemo = trpc.memos.delete.useMutation();
+  const deleteMemo = trpc.memos.delete.useMutation({
+    onSuccess: () => {
+      // 使缓存失效，确保列表显示最新数据
+      utils.memos.list.invalidate();
+    },
+  });
 
   // 获取单个 memo（编辑模式）
   const { data: existingMemo, isLoading: isLoadingMemo } = trpc.memos.bySlug.useQuery(
@@ -198,10 +209,13 @@ export interface UseQuickMemoOptions {
 
 export function useQuickMemo(options: UseQuickMemoOptions = {}) {
   const { onSaveSuccess, onSaveError } = options;
+  const utils = trpc.useUtils();
 
   // tRPC mutation
   const createMemo = trpc.memos.create.useMutation({
     onSuccess: () => {
+      // 使缓存失效，确保列表显示最新数据
+      utils.memos.list.invalidate();
       onSaveSuccess?.();
     },
     onError: (error) => {

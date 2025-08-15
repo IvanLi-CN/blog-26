@@ -116,10 +116,10 @@ async function uploadLocalFile(filePath: string, buffer: Buffer): Promise<void> 
 // GET - 读取文件
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { source: string; path: string[] } }
+  { params }: { params: Promise<{ source: string; path: string[] }> }
 ) {
   try {
-    const { source, path: pathSegments } = params;
+    const { source, path: pathSegments } = await params;
     const filePath = pathSegments?.join("/") || "";
 
     console.log(`📖 [Files API] 读取文件: ${source}:${filePath}`);
@@ -165,10 +165,10 @@ export async function GET(
 // POST - 上传文件
 export async function POST(
   request: NextRequest,
-  { params }: { params: { source: string; path: string[] } }
+  { params }: { params: Promise<{ source: string; path: string[] }> }
 ) {
   try {
-    const { source, path: pathSegments } = params;
+    const { source, path: pathSegments } = await params;
     const filePath = pathSegments?.join("/") || "";
 
     console.log(`🔄 [Files API] 上传文件: ${source}:${filePath}`, {
@@ -187,7 +187,24 @@ export async function POST(
     }
 
     // 获取文件内容
-    const buffer = await request.arrayBuffer();
+    const contentType = request.headers.get("content-type") || "";
+    let buffer: ArrayBuffer;
+
+    if (contentType.includes("multipart/form-data")) {
+      // 处理 multipart/form-data（从前端上传的图片）
+      const formData = await request.formData();
+      const file = formData.get("file") as File;
+
+      if (!file) {
+        return NextResponse.json({ error: "表单中未找到文件" }, { status: 400 });
+      }
+
+      buffer = await file.arrayBuffer();
+    } else {
+      // 处理其他类型的数据（如直接的二进制数据）
+      buffer = await request.arrayBuffer();
+    }
+
     const fileBuffer = Buffer.from(buffer);
 
     // 验证文件大小
@@ -195,11 +212,13 @@ export async function POST(
       return NextResponse.json({ error: "文件太大。最大支持 10MB" }, { status: 400 });
     }
 
-    const contentType = request.headers.get("content-type") || getContentType(filePath);
+    const finalContentType = contentType.includes("multipart/form-data")
+      ? getContentType(filePath)
+      : contentType || getContentType(filePath);
 
     // 根据内容源上传文件
     if (source === "webdav") {
-      await uploadWebDAVFile(filePath, buffer, contentType);
+      await uploadWebDAVFile(filePath, buffer, finalContentType);
     } else {
       await uploadLocalFile(filePath, fileBuffer);
     }
