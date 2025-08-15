@@ -6,15 +6,14 @@
  * 集成所有子组件，统一状态管理
  */
 
-import { Edit3, List, Plus, Zap } from "lucide-react";
 import { useCallback, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { useInfiniteScroll, useMemoEditor, useMemos, useQuickMemo } from "./hooks";
-import { MemoCard, type MemoCardData } from "./MemoCard";
+import { type MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
+import { MemosErrorBoundary } from "./MemosErrorBoundary";
 import { MemosList } from "./MemosList";
 import { type QuickMemoData, QuickMemoEditor } from "./QuickMemoEditor";
 
@@ -32,11 +31,9 @@ export interface MemosAppProps {
 export function MemosApp({
   showManageFeatures = false,
   publicOnly = true,
-  initialView = "list",
   className,
 }: MemosAppProps) {
   // 状态管理
-  const [currentView, setCurrentView] = useState(initialView);
   const [editingMemo, setEditingMemo] = useState<MemoCardData | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [showQuickEditor, setShowQuickEditor] = useState(false);
@@ -94,10 +91,7 @@ export function MemosApp({
     setShowEditor(true);
   }, []);
 
-  // 处理快速新建
-  const handleQuickNew = useCallback(() => {
-    setShowQuickEditor(true);
-  }, []);
+
 
   // 处理编辑 memo
   const handleEdit = useCallback((memo: MemoCardData) => {
@@ -152,111 +146,17 @@ export function MemosApp({
 
   return (
     <div className={cn("memos-app", className)}>
-      {/* 主要内容区域 */}
-      <div className="space-y-6">
-        {/* 头部操作栏 */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Memos</h1>
-            <p className="text-muted-foreground">记录想法，分享见解</p>
-          </div>
-
-          {showManageFeatures && (
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                onClick={handleQuickNew}
-                className="flex items-center space-x-2"
-              >
-                <Zap className="w-4 h-4" />
-                <span>快速记录</span>
-              </Button>
-
-              <Button onClick={handleNew} className="flex items-center space-x-2">
-                <Plus className="w-4 h-4" />
-                <span>新建 Memo</span>
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* 视图切换（可选） */}
+      {/* 主要内容区域 - 匹配旧项目的简洁设计 */}
+      <div>
+        {/* 管理员快速编辑器 - 匹配旧项目 */}
         {showManageFeatures && (
-          <Tabs value={currentView} onValueChange={setCurrentView as any}>
-            <TabsList>
-              <TabsTrigger value="list" className="flex items-center space-x-2">
-                <List className="w-4 h-4" />
-                <span>列表</span>
-              </TabsTrigger>
-              <TabsTrigger value="quick" className="flex items-center space-x-2">
-                <Zap className="w-4 h-4" />
-                <span>快速</span>
-              </TabsTrigger>
-              <TabsTrigger value="editor" className="flex items-center space-x-2">
-                <Edit3 className="w-4 h-4" />
-                <span>编辑</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="list" className="mt-6">
-              <MemosList
-                memos={memos}
-                loading={isLoading}
-                hasMore={pagination?.hasMore}
-                onLoadMore={loadMore}
-                onSearch={handleSearch}
-                onTagFilter={handleTagFilter}
-                onRefresh={refresh}
-                onNew={showManageFeatures ? handleNew : undefined}
-                onEdit={showManageFeatures ? handleEdit : undefined}
-                onDelete={showManageFeatures ? handleDeleteMemo : undefined}
-                onMemoClick={handleMemoClick}
-                showManageButtons={showManageFeatures}
-              />
-            </TabsContent>
-
-            <TabsContent value="quick" className="mt-6">
-              <div className="max-w-2xl mx-auto">
-                <QuickMemoEditor
-                  onSave={handleQuickSave}
-                  autoFocus
-                  showAdvancedOptions={showManageFeatures}
-                />
-
-                {/* 最近的 memo */}
-                <div className="mt-8">
-                  <h3 className="text-lg font-medium mb-4">最近的 Memo</h3>
-                  <div className="space-y-3">
-                    {memos.slice(0, 5).map((memo) => (
-                      <MemoCard
-                        key={memo.id}
-                        memo={memo}
-                        compact
-                        showEditButton={showManageFeatures}
-                        onEdit={handleEdit}
-                        onDelete={handleDeleteMemo}
-                        onClick={handleMemoClick}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="editor" className="mt-6">
-              <div className="max-w-4xl mx-auto">
-                <MemoEditor
-                  onSave={handleEditorSave}
-                  onCancel={() => setCurrentView("list")}
-                  showAdvancedOptions
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <MemosErrorBoundary>
+            <QuickMemoEditor onSave={handleQuickSave} />
+          </MemosErrorBoundary>
         )}
 
-        {/* 默认列表视图（非管理模式） */}
-        {!showManageFeatures && (
+        {/* Memos 列表 - 匹配旧项目的简洁设计 */}
+        <MemosErrorBoundary>
           <MemosList
             memos={memos}
             loading={isLoading}
@@ -265,10 +165,15 @@ export function MemosApp({
             onSearch={handleSearch}
             onTagFilter={handleTagFilter}
             onRefresh={refresh}
+            onNew={showManageFeatures ? handleNew : undefined}
+            onEdit={showManageFeatures ? handleEdit : undefined}
+            onDelete={showManageFeatures ? handleDeleteMemo : undefined}
             onMemoClick={handleMemoClick}
-            showManageButtons={false}
+            showManageButtons={showManageFeatures}
+            viewMode="timeline"
+            error={error}
           />
-        )}
+        </MemosErrorBoundary>
       </div>
 
       {/* 编辑器对话框 */}

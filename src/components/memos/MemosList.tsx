@@ -3,25 +3,12 @@
 /**
  * Memo 列表组件
  *
- * 支持多源数据展示、无限滚动分页、时间线样式
+ * 完全匹配旧项目的简洁设计 - 只显示时间线样式的 memo 列表
+ * 不包含搜索、过滤、视图切换等工具栏功能
  */
 
-import { format, isThisMonth, isThisWeek, isToday, isYesterday } from "date-fns";
-import { zhCN } from "date-fns/locale";
-import { Calendar, ChevronDown, Grid3X3, List, Plus, RefreshCw, Search, Tag } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { cn } from "../../lib/utils";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { Input } from "../ui/input";
-import { Skeleton } from "../ui/skeleton";
 import { MemoCard, type MemoCardData } from "./MemoCard";
 
 export interface MemosListProps {
@@ -33,130 +20,67 @@ export interface MemosListProps {
   hasMore?: boolean;
   /** 加载更多回调 */
   onLoadMore?: () => void;
-  /** 搜索回调 */
-  onSearch?: (query: string) => void;
-  /** 标签过滤回调 */
-  onTagFilter?: (tag: string | null) => void;
-  /** 刷新回调 */
-  onRefresh?: () => void;
-  /** 新建回调 */
-  onNew?: () => void;
   /** 编辑回调 */
   onEdit?: (memo: MemoCardData) => void;
   /** 删除回调 */
   onDelete?: (memo: MemoCardData) => void;
-  /** 点击回调 */
+  /** Memo 点击回调 */
   onMemoClick?: (memo: MemoCardData) => void;
   /** 是否显示管理按钮 */
   showManageButtons?: boolean;
-  /** 视图模式 */
-  viewMode?: "list" | "grid" | "timeline";
+  /** 错误信息 */
+  error?: any;
   /** 样式类名 */
   className?: string;
-}
 
-type GroupedMemos = {
-  [key: string]: MemoCardData[];
-};
+  // 保留这些参数以兼容现有调用，但不使用
+  onSearch?: (query: string) => void;
+  onTagFilter?: (tag: string | null) => void;
+  onRefresh?: () => void;
+  onNew?: () => void;
+  viewMode?: "timeline" | "grid" | "list";
+}
 
 export function MemosList({
   memos,
   loading = false,
   hasMore = false,
   onLoadMore,
+  onEdit,
+  onDelete,
+  error,
+  onMemoClick,
+  showManageButtons = false,
+  className,
+  // 忽略这些不需要的参数
   onSearch,
   onTagFilter,
   onRefresh,
   onNew,
-  onEdit,
-  onDelete,
-  onMemoClick,
-  showManageButtons = false,
-  viewMode = "timeline",
-  className,
+  viewMode,
 }: MemosListProps) {
-  // 状态管理
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [currentViewMode, setCurrentViewMode] = useState(viewMode);
-
-  // 处理搜索
-  const handleSearch = useCallback(
-    (query: string) => {
-      setSearchQuery(query);
-      onSearch?.(query);
-    },
-    [onSearch]
-  );
-
-  // 处理标签过滤
-  const handleTagFilter = useCallback(
-    (tag: string | null) => {
-      setSelectedTag(tag);
-      onTagFilter?.(tag);
-    },
-    [onTagFilter]
-  );
-
-  // 获取所有标签
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    memos.forEach((memo) => {
-      memo.tags.forEach((tag) => tagSet.add(tag));
-    });
-    return Array.from(tagSet).sort();
-  }, [memos]);
-
-  // 按时间分组 memo
-  const groupedMemos = useMemo((): GroupedMemos => {
-    if (currentViewMode !== "timeline") {
-      return { "所有 Memo": memos };
+  // 处理加载更多
+  const handleLoadMore = useCallback(() => {
+    if (!loading && hasMore && onLoadMore) {
+      onLoadMore();
     }
-
-    const groups: GroupedMemos = {};
-
-    memos.forEach((memo) => {
-      try {
-        const date = new Date(memo.createdAt);
-        let groupKey: string;
-
-        if (isToday(date)) {
-          groupKey = "今天";
-        } else if (isYesterday(date)) {
-          groupKey = "昨天";
-        } else if (isThisWeek(date)) {
-          groupKey = "本周";
-        } else if (isThisMonth(date)) {
-          groupKey = "本月";
-        } else {
-          groupKey = format(date, "yyyy年MM月", { locale: zhCN });
-        }
-
-        if (!groups[groupKey]) {
-          groups[groupKey] = [];
-        }
-        groups[groupKey].push(memo);
-      } catch {
-        // 如果日期解析失败，放到"其他"分组
-        if (!groups.其他) {
-          groups.其他 = [];
-        }
-        groups.其他.push(memo);
-      }
-    });
-
-    return groups;
-  }, [memos, currentViewMode]);
+  }, [loading, hasMore, onLoadMore]);
 
   // 渲染加载骨架
   const renderSkeleton = () => (
-    <div className="space-y-4">
+    <div className="space-y-6 sm:space-y-8">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div key={`skeleton-${index}`} className="space-y-2">
-          <Skeleton className="h-4 w-32" />
-          <div className="space-y-3">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
+        <div key={`skeleton-${index}`} className="flex gap-4 sm:gap-6">
+          {/* 时间线圆点骨架 */}
+          <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-base-300 rounded-full animate-pulse hidden sm:block" />
+          {/* 卡片骨架 */}
+          <div className="flex-1 bg-base-200 rounded-lg p-4 animate-pulse">
+            <div className="h-4 bg-base-300 rounded w-1/4 mb-2"></div>
+            <div className="h-16 bg-base-300 rounded mb-2"></div>
+            <div className="flex gap-2">
+              <div className="h-6 bg-base-300 rounded w-16"></div>
+              <div className="h-6 bg-base-300 rounded w-16"></div>
+            </div>
           </div>
         </div>
       ))}
@@ -166,186 +90,118 @@ export function MemosList({
   // 渲染空状态
   const renderEmpty = () => (
     <div className="text-center py-12">
-      <div className="text-muted-foreground mb-4">
-        {searchQuery || selectedTag ? "没有找到匹配的 memo" : "还没有任何 memo"}
+      <div className="text-base-content/60 mb-4">
+        还没有任何 memo
       </div>
-      {onNew && (
-        <Button onClick={onNew}>
-          <Plus className="w-4 h-4 mr-2" />
-          创建第一个 Memo
-        </Button>
-      )}
     </div>
   );
 
   return (
-    <div className={cn("memos-list space-y-4", className)}>
-      {/* 头部工具栏 */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* 搜索框 */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="搜索 memo..."
-            className="pl-10"
-          />
-        </div>
+    <div className={cn("memos-list", className)}>
+      {/* 直接显示 memo 列表，不需要工具栏 - 匹配旧项目 */}
 
-        {/* 工具按钮 */}
-        <div className="flex items-center space-x-2">
-          {/* 标签过滤 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Tag className="w-4 h-4 mr-2" />
-                {selectedTag || "标签"}
-                <ChevronDown className="w-4 h-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleTagFilter(null)}>所有标签</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {allTags.map((tag) => (
-                <DropdownMenuItem key={tag} onClick={() => handleTagFilter(tag)}>
-                  #{tag}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+      {/* 加载状态 */}
+      {loading && memos.length === 0 && renderSkeleton()}
 
-          {/* 视图模式切换 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                {currentViewMode === "timeline" && <Calendar className="w-4 h-4" />}
-                {currentViewMode === "grid" && <Grid3X3 className="w-4 h-4" />}
-                {currentViewMode === "list" && <List className="w-4 h-4" />}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setCurrentViewMode("timeline")}>
-                <Calendar className="w-4 h-4 mr-2" />
-                时间线
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCurrentViewMode("grid")}>
-                <Grid3X3 className="w-4 h-4 mr-2" />
-                网格
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCurrentViewMode("list")}>
-                <List className="w-4 h-4 mr-2" />
-                列表
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      {/* 空状态 */}
+      {!loading && memos.length === 0 && renderEmpty()}
 
-          {/* 刷新按钮 */}
-          {onRefresh && (
-            <Button variant="outline" size="sm" onClick={onRefresh}>
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          )}
-
-          {/* 新建按钮 */}
-          {onNew && (
-            <Button size="sm" onClick={onNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              新建
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* 过滤器状态 */}
-      {(searchQuery || selectedTag) && (
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">筛选条件:</span>
-          {searchQuery && (
-            <Badge variant="secondary">
-              搜索: {searchQuery}
-              <button
-                type="button"
-                onClick={() => handleSearch("")}
-                className="ml-1 hover:text-red-500"
-              >
-                ×
-              </button>
-            </Badge>
-          )}
-          {selectedTag && (
-            <Badge variant="secondary">
-              标签: #{selectedTag}
-              <button
-                type="button"
-                onClick={() => handleTagFilter(null)}
-                className="ml-1 hover:text-red-500"
-              >
-                ×
-              </button>
-            </Badge>
-          )}
+      {/* Memo 列表 - 时间线样式 */}
+      {memos.length > 0 && (
+        <div className="space-y-6 sm:space-y-8">
+          {memos.map((memo, index) => (
+            <MemoCard
+              key={memo.id}
+              memo={memo}
+              index={index}
+              isLast={index === memos.length - 1}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onClick={onMemoClick}
+              showEditButton={showManageButtons}
+              showDeleteButton={showManageButtons}
+            />
+          ))}
         </div>
       )}
 
-      {/* 内容区域 */}
-      {loading && memos.length === 0 ? (
-        renderSkeleton()
-      ) : memos.length === 0 ? (
-        renderEmpty()
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedMemos).map(([groupKey, groupMemos]) => (
-            <div key={groupKey} className="space-y-3">
-              {/* 分组标题 */}
-              {currentViewMode === "timeline" && (
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">{groupKey}</h3>
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-xs text-muted-foreground">{groupMemos.length} 个</span>
-                </div>
-              )}
-
-              {/* Memo 列表 */}
-              <div
-                className={cn(
-                  currentViewMode === "grid" &&
-                    "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
-                  currentViewMode === "list" && "space-y-2",
-                  currentViewMode === "timeline" && "space-y-3"
-                )}
-              >
-                {groupMemos.map((memo) => (
-                  <MemoCard
-                    key={memo.id}
-                    memo={memo}
-                    compact={currentViewMode === "list"}
-                    showEditButton={showManageButtons}
-                    showDeleteButton={showManageButtons}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onClick={onMemoClick}
+      {/* 加载更多按钮 */}
+      {hasMore && (
+        <div className="flex justify-center py-8">
+          <button
+            onClick={handleLoadMore}
+            disabled={loading}
+            className="btn btn-outline btn-primary gap-2"
+            type="button"
+            aria-label="加载更多 Memo"
+          >
+            {loading ? (
+              <>
+                <span className="loading loading-spinner loading-sm"></span>
+                加载中...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 14l-7 7m0 0l-7-7m7 7V3"
                   />
-                ))}
-              </div>
-            </div>
-          ))}
+                </svg>
+                加载更多 Memo
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
-          {/* 加载更多 */}
-          {hasMore && (
-            <div className="text-center py-4">
-              <Button variant="outline" onClick={onLoadMore} disabled={loading}>
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    加载中...
-                  </>
-                ) : (
-                  "加载更多"
-                )}
-              </Button>
-            </div>
-          )}
+      {/* 错误状态 */}
+      {error && (
+        <div className="alert alert-error max-w-md mx-auto my-8">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="stroke-current shrink-0 h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>加载失败，请稍后重试</span>
+        </div>
+      )}
+
+      {/* 空状态 */}
+      {!loading && !error && memos.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">📝</div>
+          <h3 className="text-xl font-semibold text-base-content mb-2">
+            还没有 Memo
+          </h3>
+          <p className="text-base-content/60">
+            开始记录你的第一个想法吧！
+          </p>
+        </div>
+      )}
+
+      {/* 已加载完所有内容提示 */}
+      {!hasMore && memos.length > 0 && !loading && (
+        <div className="text-center py-8">
+          <div className="text-base-content/60">
+            已显示所有 {memos.length} 条 Memo
+          </div>
         </div>
       )}
     </div>
