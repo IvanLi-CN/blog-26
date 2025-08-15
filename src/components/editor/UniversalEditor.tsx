@@ -7,17 +7,21 @@
  */
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useImperativeHandle, forwardRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { resolveRelativePath } from "../../utils/path-resolver";
-import { MilkdownEditor } from "../memos/MilkdownEditor";
 import { SourceEditor } from "./SourceEditor";
 import "highlight.js/styles/github.css";
 
 // 编辑器模式类型
 type EditorMode = "wysiwyg" | "source" | "preview";
+
+// 编辑器实例接口
+export interface UniversalEditorRef {
+  processInlineImages: (content: string) => Promise<string>;
+}
 
 export interface UniversalEditorProps {
   // 内容相关
@@ -43,7 +47,7 @@ export interface UniversalEditorProps {
   "data-testid"?: string;
 }
 
-export function UniversalEditor({
+export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorProps>(({
   initialContent,
   onContentChange,
   placeholder = "开始编写...",
@@ -56,24 +60,12 @@ export function UniversalEditor({
   onModeChange,
   editorId = "default",
   "data-testid": dataTestId,
-}: UniversalEditorProps) {
+}, ref) => {
   const [content, setContent] = useState(initialContent);
   const [currentMode, setCurrentMode] = useState<EditorMode>(mode);
 
-  // 处理内容变化
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    onContentChange?.(newContent);
-  };
-
-  // 处理模式切换
-  const _handleModeChange = (newMode: EditorMode) => {
-    setCurrentMode(newMode);
-    onModeChange?.(newMode);
-  };
-
   // 处理内联图片上传 - 完全按照旧项目的方式
-  const _processInlineImages = async (content: string): Promise<string> => {
+  const processInlineImages = async (content: string): Promise<string> => {
     const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
     let processedContent = content;
     const matches = Array.from(content.matchAll(base64ImageRegex));
@@ -123,8 +115,8 @@ export function UniversalEditor({
           result,
         });
 
-        // 替换内联图片为上传后的路径（使用相对路径）
-        const imagePath = `./${attachmentBasePath.split("/").pop()}/${filename}`;
+        // 替换内联图片为上传后的路径（使用 API 路径）
+        const imagePath = `/api/files/webdav/${attachmentBasePath}/${filename}`;
         const newImageMarkdown = `![${altText}](${imagePath})`;
         processedContent = processedContent.replace(fullMatch, newImageMarkdown);
 
@@ -141,6 +133,25 @@ export function UniversalEditor({
 
     return processedContent;
   };
+
+  // 暴露给外部的方法
+  useImperativeHandle(ref, () => ({
+    processInlineImages,
+  }));
+
+  // 处理内容变化
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+    onContentChange?.(newContent);
+  };
+
+  // 处理模式切换
+  const _handleModeChange = (newMode: EditorMode) => {
+    setCurrentMode(newMode);
+    onModeChange?.(newMode);
+  };
+
+
 
   // 处理图片上传
   const handleImageUpload = async (file: File): Promise<string> => {
@@ -178,8 +189,8 @@ export function UniversalEditor({
         result,
       });
 
-      // 返回相对路径
-      const imagePath = `./${attachmentBasePath.split("/").pop()}/${uniqueFileName}`;
+      // 返回 API 路径
+      const imagePath = `/api/files/webdav/${attachmentBasePath}/${uniqueFileName}`;
       return imagePath;
     } catch (error) {
       console.error("❌ [UniversalEditor] 图片上传失败:", error);
@@ -222,9 +233,17 @@ export function UniversalEditor({
     return content;
   };
 
-  // 同步外部内容变化
+  // 同步外部内容变化 - 使用 ref 来避免无限循环
+  const lastInitialContentRef = useRef(initialContent);
   useEffect(() => {
-    if (initialContent !== content) {
+    // 只有当外部内容真正不同且不是由内部变化引起时才更新
+    if (initialContent !== lastInitialContentRef.current && initialContent !== content) {
+      console.log("🔄 [UniversalEditor] 同步外部内容变化:", {
+        oldLength: content.length,
+        newLength: initialContent.length,
+        lengthDiff: initialContent.length - content.length,
+      });
+      lastInitialContentRef.current = initialContent;
       setContent(initialContent);
     }
   }, [initialContent, content]);
@@ -248,17 +267,13 @@ export function UniversalEditor({
       <div className="editor-content h-full">
         {currentMode === "wysiwyg" && (
           <div className="w-full h-full overflow-auto">
-            <MilkdownEditor
-              key={`milkdown-editor-${editorId}`}
-              editorId={editorId}
+            <SourceEditor
+              key={`source-editor-${editorId}`}
               content={content}
               onChange={handleContentChange}
               placeholder={placeholder}
               className="w-full h-full"
               data-testid="content-input"
-              onImageUpload={handleImageUpload}
-              articlePath={articlePath}
-              contentSource={contentSource}
             />
           </div>
         )}
@@ -287,7 +302,12 @@ export function UniversalEditor({
                 rehypePlugins={[rehypeHighlight]}
                 components={{
                   // 自定义图片组件，处理相对路径
-                  img: ({ src, alt, ..._props }) => {
+                  img: ({ src, alt, ...props }) => {
+                    // 确保 src 是字符串类型
+                    if (typeof src !== 'string') {
+                      return <img src="" alt={alt || ""} {...props} />;
+                    }
+
                     let imageSrc = src || "";
 
                     // 如果是相对路径，使用路径解析器转换为API URL用于显示
@@ -362,4 +382,6 @@ export function UniversalEditor({
       </div>
     </div>
   );
-}
+});
+
+UniversalEditor.displayName = "UniversalEditor";

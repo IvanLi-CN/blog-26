@@ -1,20 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+
 import { trpc } from "../../lib/trpc";
+import CommentSectionWithProvider from "../comments/CommentSectionWithProvider";
 import PageLayout from "../common/PageLayout";
 
 interface PostDetailPageProps {
   slug: string;
 }
-
 export default function PostDetailPage({ slug }: PostDetailPageProps) {
-  const [showCommentForm, setShowCommentForm] = useState(false);
-
   const { data: post, isLoading, error } = trpc.posts.get.useQuery({ slug });
   const { data: relatedPosts } = trpc.posts.related.useQuery({ slug, limit: 5 });
-
   if (isLoading) {
     return (
       <PageLayout>
@@ -150,73 +147,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
             </footer>
 
             {/* Comments Section */}
-            <section className="border-t pt-8">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold">评论</h3>
-                <button
-                  onClick={() => setShowCommentForm(!showCommentForm)}
-                  className="btn btn-primary btn-sm"
-                >
-                  💬 发表评论
-                </button>
-              </div>
-
-              {/* Comment Form */}
-              {showCommentForm && (
-                <div className="card bg-base-100 shadow-xl mb-8">
-                  <div className="card-body">
-                    <h4 className="card-title">发表评论</h4>
-                    <form className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">
-                            <span className="label-text">姓名 *</span>
-                          </label>
-                          <input type="text" className="input input-bordered w-full" required />
-                        </div>
-                        <div>
-                          <label className="label">
-                            <span className="label-text">邮箱 *</span>
-                          </label>
-                          <input type="email" className="input input-bordered w-full" required />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="label">
-                          <span className="label-text">评论内容 *</span>
-                        </label>
-                        <textarea
-                          className="textarea textarea-bordered w-full h-32"
-                          placeholder="请输入您的评论..."
-                          required
-                        ></textarea>
-                      </div>
-                      <div className="card-actions justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setShowCommentForm(false)}
-                          className="btn btn-ghost"
-                        >
-                          取消
-                        </button>
-                        <button type="submit" className="btn btn-primary">
-                          提交评论
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              {/* Comments List */}
-              <div className="space-y-6">
-                {/* 暂时显示占位评论 */}
-                <div className="text-center py-12 text-base-content/50">
-                  <div className="text-4xl mb-2">💬</div>
-                  <p>暂无评论，成为第一个评论者吧！</p>
-                </div>
-              </div>
-            </section>
+            <CommentSectionWithProvider postSlug={slug} />
           </article>
 
           {/* Sidebar */}
