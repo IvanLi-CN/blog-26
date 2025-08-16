@@ -86,108 +86,279 @@ export default function CommentItem({
   const canDelete = userInfo && (userInfo.email === comment.authorEmail || isAdmin);
 
   return (
-    <div className="border-l-2 border-base-300 pl-4">
-      <div className="flex items-start gap-3">
+    <div className="py-4">
+      <div className="flex items-start gap-4">
         <div className="avatar">
-          <div className="w-10 rounded-full">
+          <div className="w-12 h-12 rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={comment.author.avatarUrl} alt={comment.author.nickname || "用户"} />
+            <img
+              src={comment.author.avatarUrl}
+              alt={comment.author.nickname || "用户"}
+              className="rounded-full"
+            />
           </div>
         </div>
 
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="font-semibold">{comment.author.nickname}</span>
-            <span className="text-sm text-base-content/60">{formatDate(comment.createdAt)}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-3">
+            <h4 className="font-semibold text-base-content">{comment.author.nickname}</h4>
+            <time
+              className="text-sm text-base-content/60"
+              dateTime={new Date(comment.createdAt).toISOString()}
+            >
+              {formatDate(comment.createdAt)}
+            </time>
             {comment.status === "pending" && (
-              <span className="badge badge-warning badge-sm">待审核</span>
+              <span className="badge badge-warning badge-sm gap-1">
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-3 h-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+                待审核
+              </span>
             )}
           </div>
 
           {isEditing ? (
-            <div className="space-y-2">
+            <div className="space-y-4">
               <textarea
-                className="textarea textarea-bordered w-full"
+                className="textarea textarea-bordered w-full h-24 resize-none focus:textarea-primary"
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
+                placeholder="编辑评论内容..."
               />
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={handleEditSave}
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-sm gap-2"
                   disabled={isEditingComment}
                 >
-                  {isEditingComment ? "保存中..." : "保存"}
+                  {isEditingComment ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs"></span>
+                      保存中...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      保存
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-ghost btn-sm gap-2"
                 >
+                  <svg
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
                   取消
                 </button>
               </div>
             </div>
           ) : (
             <div className="prose prose-sm max-w-none">
-              <p>{comment.content}</p>
+              <p className="text-base-content leading-relaxed">{comment.content}</p>
             </div>
           )}
 
-          <div className="flex items-center gap-2 mt-3">
-            <button
-              type="button"
-              onClick={() => setIsReplying(!isReplying)}
-              className="btn btn-ghost btn-xs"
-            >
-              回复
-            </button>
-
-            {canEdit && (
+          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-base-200">
+            <div className="btn-group">
               <button
                 type="button"
-                onClick={() => setIsEditing(!isEditing)}
-                className="btn btn-ghost btn-xs"
+                onClick={() => setIsReplying(!isReplying)}
+                className={`btn btn-ghost btn-sm gap-2 ${isReplying ? "btn-active" : ""}`}
               >
-                编辑
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                  />
+                </svg>
+                回复
               </button>
-            )}
 
-            {canDelete && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="btn btn-ghost btn-xs text-error"
-              >
-                删除
-              </button>
-            )}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(!isEditing)}
+                  className={`btn btn-ghost btn-sm gap-2 ${isEditing ? "btn-active" : ""}`}
+                >
+                  <svg
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                  编辑
+                </button>
+              )}
+
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error hover:text-error-content"
+                >
+                  <svg
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  删除
+                </button>
+              )}
+            </div>
 
             {isAdmin && comment.status === "pending" && (
-              <>
+              <div className="btn-group ml-auto">
                 <button
                   type="button"
                   onClick={() => handleModerate("approved")}
-                  className="btn btn-success btn-xs"
+                  className="btn btn-success btn-sm gap-2"
                   disabled={isModerating}
                 >
+                  {isModerating ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  )}
                   批准
                 </button>
                 <button
                   type="button"
                   onClick={() => handleModerate("rejected")}
-                  className="btn btn-error btn-xs"
+                  className="btn btn-error btn-sm gap-2"
                   disabled={isModerating}
                 >
+                  {isModerating ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  )}
                   拒绝
                 </button>
-              </>
+              </div>
             )}
           </div>
 
           {isReplying && (
-            <div className="mt-4">
+            <div className="mt-6 p-4 bg-base-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-4">
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4 text-primary"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                  />
+                </svg>
+                <span className="text-sm font-medium text-base-content/70">
+                  回复 {comment.author.nickname}
+                </span>
+              </div>
               <CommentForm
                 postSlug={postSlug}
                 parentId={comment.id}
@@ -203,7 +374,27 @@ export default function CommentItem({
           )}
 
           {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-6 pl-4">
+              <div className="flex items-center gap-2 mb-4">
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4 text-primary"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                <span className="text-sm font-medium text-base-content/70">
+                  {comment.replies.length} 条回复
+                </span>
+              </div>
               <CommentList
                 comments={comment.replies}
                 postSlug={postSlug}
@@ -225,18 +416,90 @@ export default function CommentItem({
       {showDeleteConfirm && (
         <div className="modal modal-open">
           <div className="modal-box">
-            <h3 className="font-bold text-lg">确认删除</h3>
-            <p className="py-4">确定要删除这条评论吗？此操作不可撤销。</p>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-error/10">
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6 text-error"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-base-content">确认删除</h3>
+                <p className="text-sm text-base-content/60">此操作不可撤销</p>
+              </div>
+            </div>
+
+            <div className="bg-base-100 p-4 rounded-lg border border-base-200 mb-6">
+              <p className="text-sm text-base-content/80">
+                确定要删除这条评论吗？删除后将无法恢复，包括所有回复内容。
+              </p>
+            </div>
+
             <div className="modal-action">
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="btn btn-error"
+                className="btn btn-error gap-2"
                 disabled={isDeleting}
               >
-                {isDeleting ? "删除中..." : "确认删除"}
+                {isDeleting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    删除中...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    确认删除
+                  </>
+                )}
               </button>
-              <button type="button" onClick={() => setShowDeleteConfirm(false)} className="btn">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="btn btn-ghost gap-2"
+                disabled={isDeleting}
+              >
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
                 取消
               </button>
             </div>

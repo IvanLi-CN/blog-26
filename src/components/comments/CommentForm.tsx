@@ -84,99 +84,181 @@ export default function CommentForm({
   };
 
   return (
-    <div className="card bg-base-100 shadow-xl mt-6">
-      <div className="card-body">
-        <h3 className="card-title">
-          {parentId ? "回复评论" : "发表评论"}
-          {userInfo && (
-            <div className="flex items-center gap-2 text-sm">
-              <span>欢迎，{userInfo.nickname}</span>
-              <button type="button" onClick={onLogout} className="btn btn-ghost btn-xs">
-                退出
-              </button>
+    <div className="space-y-6">
+      {userInfo && (
+        <div className="flex items-center gap-4 mb-6 p-4 bg-base-50 rounded-lg">
+          <div className="avatar">
+            <div className="w-12 h-12 rounded-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={userInfo.avatarUrl || "/default-avatar.png"}
+                alt={userInfo.nickname}
+                className="rounded-full"
+              />
             </div>
-          )}
-        </h3>
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-base-content">{userInfo.nickname}</h3>
+            <p className="text-sm text-base-content/60">{userInfo.email || "admin@example.com"}</p>
+          </div>
+          <button type="button" onClick={onLogout} className="btn btn-ghost btn-sm gap-2">
+            <svg
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-label="登出"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            登出
+          </button>
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!userInfo && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label" htmlFor={nicknameId}>
-                  <span className="label-text">昵称 *</span>
-                </label>
-                <input
-                  id={nicknameId}
-                  type="text"
-                  placeholder="请输入昵称"
-                  className="input input-bordered"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="form-control">
-                <label className="label" htmlFor={emailId}>
-                  <span className="label-text">邮箱 *</span>
-                </label>
-                <input
-                  id={emailId}
-                  type="email"
-                  placeholder="请输入邮箱"
-                  className="input input-bordered"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {!userInfo && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label" htmlFor={nicknameId}>
+                <span className="label-text font-medium">昵称 *</span>
+              </label>
+              <input
+                id={nicknameId}
+                type="text"
+                placeholder="请输入昵称"
+                className="input input-bordered focus:input-primary"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                required
+              />
             </div>
-          )}
+            <div className="form-control">
+              <label className="label" htmlFor={emailId}>
+                <span className="label-text font-medium">邮箱 *</span>
+              </label>
+              <input
+                id={emailId}
+                type="email"
+                placeholder="请输入邮箱"
+                className="input input-bordered focus:input-primary"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+        )}
 
-          <div className="form-control">
-            <label className="label" htmlFor={contentId}>
-              <span className="label-text">评论内容 *</span>
-            </label>
+        <div className="form-control">
+          <label className="label" htmlFor={contentId}>
+            <span className="label-text font-medium">评论内容 *</span>
+          </label>
+          <div className="flex gap-3">
             <textarea
               id={contentId}
-              className="textarea textarea-bordered h-24"
-              placeholder="请输入评论内容..."
+              className="textarea textarea-bordered flex-1 h-20 resize-none focus:textarea-primary"
+              placeholder="分享你的想法..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               required
-            ></textarea>
+              aria-label="评论内容"
+            />
+            <button
+              type="submit"
+              className="btn btn-primary gap-2 self-end"
+              disabled={isPosting || !content.trim()}
+            >
+              {isPosting ? (
+                <>
+                  <span className="loading loading-spinner loading-sm"></span>
+                  提交中...
+                </>
+              ) : (
+                <>
+                  <svg
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
+                  </svg>
+                  提交
+                </>
+              )}
+            </button>
           </div>
+        </div>
 
-          {!userInfo && (
-            <div className="form-control">
+        {!userInfo && (
+          <div className="form-control">
+            <div className="label">
+              <span className="label-text font-medium">人机验证</span>
+            </div>
+            <div className="p-4 bg-base-50 rounded-lg border border-base-200">
               <div
                 className="l-captcha"
                 data-site-key={process.env.NEXT_PUBLIC_LUOSIMAO_SITE_KEY}
                 data-callback="handleCaptchaSuccess"
               ></div>
-              {captchaError && <div className="text-error text-sm mt-2">{captchaError}</div>}
-            </div>
-          )}
-
-          {error && (
-            <div role="alert" className="alert alert-error">
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="card-actions justify-end">
-            <button type="submit" className="btn btn-primary" disabled={isPosting}>
-              {isPosting ? (
-                <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  发布中...
-                </>
-              ) : (
-                "发布评论"
+              {captchaError && (
+                <div className="alert alert-error mt-3">
+                  <svg
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="stroke-current shrink-0 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span>{captchaError}</span>
+                </div>
               )}
-            </button>
+            </div>
           </div>
-        </form>
-      </div>
+        )}
+
+        {error && (
+          <div role="alert" className="alert alert-error">
+            <svg
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
+      </form>
     </div>
   );
 }

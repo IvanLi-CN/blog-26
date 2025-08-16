@@ -76,11 +76,31 @@ export default function CommentSection({ postSlug, title, texts = {} }: CommentS
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="text-2xl font-bold">{displayTitle}</h2>
+    <section className="mt-12">
+      {/* 优雅的标题设计 */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5 text-primary"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-base-content">{displayTitle}</h2>
+      </div>
 
       {successMessage && (
-        <div role="alert" className="alert alert-success mt-4">
+        <div role="alert" className="alert alert-success mb-6 shadow-sm">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="stroke-current shrink-0 h-6 w-6"
@@ -138,14 +158,38 @@ export default function CommentSection({ postSlug, title, texts = {} }: CommentS
         />
 
         {page < liveTotalPages && (
-          <div className="text-center mt-4">
+          <div className="text-center mt-8">
             <button
               type="button"
               onClick={loadMore}
-              className="btn btn-primary"
+              className="btn btn-outline btn-primary gap-2"
               disabled={isCommentsLoading}
             >
-              {isCommentsLoading ? finalTexts.loadingText : finalTexts.loadMoreText}
+              {isCommentsLoading ? (
+                <>
+                  <span className="loading loading-spinner loading-sm"></span>
+                  {finalTexts.loadingText}
+                </>
+              ) : (
+                <>
+                  <svg
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                  {finalTexts.loadMoreText}
+                </>
+              )}
             </button>
           </div>
         )}
