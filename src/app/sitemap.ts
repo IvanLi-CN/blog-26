@@ -1,0 +1,58 @@
+import { MetadataRoute } from 'next';
+import { db } from '../lib/db';
+import { posts } from '../lib/schema';
+import { eq } from 'drizzle-orm';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+  // 获取所有公开的文章
+  const publishedPosts = await db
+    .select({
+      slug: posts.slug,
+      publishDate: posts.publishDate,
+      updateDate: posts.updateDate,
+    })
+    .from(posts)
+    .where(eq(posts.public, true));
+
+  // 静态页面
+  const staticPages = [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 1,
+    },
+    {
+      url: `${baseUrl}/posts`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    },
+  ];
+
+  // 文章页面
+  const postPages = publishedPosts.map((post) => ({
+    url: `${baseUrl}/posts/${post.slug}`,
+    lastModified: post.updateDate 
+      ? new Date(post.updateDate * 1000)
+      : new Date(post.publishDate * 1000),
+    changeFrequency: 'weekly' as const,
+    priority: 0.7,
+  }));
+
+  return [...staticPages, ...postPages];
+}
