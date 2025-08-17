@@ -1,23 +1,23 @@
 "use client";
 
-import { Icon } from '@iconify/react';
+import { Icon } from "@iconify/react";
 import Link from "next/link";
 
 import { trpc } from "../../lib/trpc";
-import { useUserInfo } from "../comments/hooks";
 import CommentSectionWithProvider from "../comments/CommentSectionWithProvider";
+import { useUserInfo } from "../comments/hooks";
+import MarkdownRenderer from "../common/MarkdownRenderer";
 import PageLayout from "../common/PageLayout";
+
+import StructuredData from "../seo/StructuredData";
 import ArticleLicense from "./ArticleLicense";
 import PostReactions from "./PostReactions";
 import PostStatus from "./PostStatus";
 import PostTags from "./PostTags";
+import ReadingTime from "./ReadingTime";
 import RelatedPosts from "./RelatedPosts";
 import SocialShare from "./SocialShare";
 import ToBlogLink from "./ToBlogLink";
-import StructuredData from "../seo/StructuredData";
-import Breadcrumbs from "../seo/Breadcrumbs";
-import ReadingTime from "./ReadingTime";
-import MarkdownRenderer from "../common/MarkdownRenderer";
 
 interface PostDetailPageProps {
   slug: string;
@@ -61,10 +61,10 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
 
   // 格式化日期
   const getFormattedDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(timestamp * 1000).toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -82,7 +82,10 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                   icon="tabler:clock"
                   className="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
                 />
-                <time dateTime={new Date(post.publishDate * 1000).toISOString()} className="inline-block">
+                <time
+                  dateTime={new Date(post.publishDate * 1000).toISOString()}
+                  className="inline-block"
+                >
                   {getFormattedDate(post.publishDate)}
                 </time>
                 {post.author && (
@@ -102,29 +105,24 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                     ·{" "}
                     <Link
                       className="hover:underline inline-block"
-                      href={`/category/${post.category.toLowerCase().replace(/\s+/g, '-')}`}
+                      href={`/category/${post.category.toLowerCase().replace(/\s+/g, "-")}`}
                     >
                       {post.category}
                     </Link>
                   </>
                 )}
-                <>
-                  &nbsp;· <ReadingTime content={post.body} />
-                </>
+                &nbsp;· <ReadingTime content={post.body} />
               </p>
 
               {/* 向量化状态（仅显示已正确向量化的内容） */}
-              {post.vectorizationStatus === 'correct' && (
+              {post.vectorizationStatus === "correct" && (
                 <div className="vectorization-status-container">
                   <div
                     className="vectorization-status opacity-70 hover:opacity-100 transition-opacity"
                     title="内容已成功向量化，可用于智能搜索"
                   >
                     {/* 正确向量化图标 */}
-                    <Icon
-                      icon="mingcute:ai-line"
-                      className="w-4 h-4 text-base-content/60"
-                    />
+                    <Icon icon="mingcute:ai-line" className="w-4 h-4 text-base-content/60" />
                   </div>
                 </div>
               )}
@@ -135,7 +133,12 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                 <h1 className="text-4xl md:text-5xl font-bold leading-tighter tracking-tighter font-heading flex-grow">
                   {post.title}
                 </h1>
-                <PostStatus post={post} size="md" className="flex-shrink-0 mt-2" isAdmin={isUserAdmin} />
+                <PostStatus
+                  post={post}
+                  size="md"
+                  className="flex-shrink-0 mt-2"
+                  isAdmin={isUserAdmin}
+                />
               </div>
             </div>
 
@@ -169,10 +172,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                         className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 rounded-md transition-colors duration-200"
                         title="编辑文章"
                       >
-                        <Icon
-                          icon="tabler:edit"
-                          className="w-4 h-4"
-                        />
+                        <Icon icon="tabler:edit" className="w-4 h-4" />
                         编辑
                       </Link>
                     </div>
@@ -237,7 +237,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
               </div>
               <div className="flex items-center">
                 <SocialShare
-                  url={typeof window !== 'undefined' ? window.location.href : ''}
+                  url={typeof window !== "undefined" ? window.location.href : ""}
                   text={post.title}
                   className="text-gray-500 dark:text-slate-600"
                 />
