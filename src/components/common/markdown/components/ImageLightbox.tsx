@@ -88,8 +88,8 @@ export function ImageLightbox({
           className={mergeClassNames(
             "max-w-full h-auto rounded-lg border shadow-sm",
             enableLightbox &&
-            !hasError &&
-            "cursor-pointer hover:shadow-md transition-shadow duration-200",
+              !hasError &&
+              "cursor-pointer hover:shadow-md transition-shadow duration-200",
             className
           )}
           loading="lazy"
