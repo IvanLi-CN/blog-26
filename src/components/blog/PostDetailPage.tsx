@@ -1,17 +1,36 @@
 "use client";
 
+import { Icon } from '@iconify/react';
 import Link from "next/link";
 
 import { trpc } from "../../lib/trpc";
+import { useUserInfo } from "../comments/hooks";
 import CommentSectionWithProvider from "../comments/CommentSectionWithProvider";
 import PageLayout from "../common/PageLayout";
+import ArticleLicense from "./ArticleLicense";
+import PostReactions from "./PostReactions";
+import PostStatus from "./PostStatus";
+import PostTags from "./PostTags";
+import RelatedPosts from "./RelatedPosts";
+import SocialShare from "./SocialShare";
+import ToBlogLink from "./ToBlogLink";
+import StructuredData from "../seo/StructuredData";
+import Breadcrumbs from "../seo/Breadcrumbs";
+import ReadingTime from "./ReadingTime";
+import MarkdownRenderer from "../common/MarkdownRenderer";
 
 interface PostDetailPageProps {
   slug: string;
 }
+
 export default function PostDetailPage({ slug }: PostDetailPageProps) {
   const { data: post, isLoading, error } = trpc.posts.get.useQuery({ slug });
   const { data: relatedPosts } = trpc.posts.related.useQuery({ slug, limit: 5 });
+  const { userInfo } = useUserInfo();
+
+  // 检查是否为管理员
+  const isUserAdmin = userInfo?.isAdmin || false;
+
   if (isLoading) {
     return (
       <PageLayout>
@@ -40,171 +59,206 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
     );
   }
 
+  // 格式化日期
+  const getFormattedDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   return (
     <PageLayout>
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Article Content */}
-          <article className="lg:col-span-3">
-            {/* Breadcrumb */}
-            <div className="breadcrumbs text-sm mb-6">
-              <ul>
-                <li>
-                  <Link href="/">首页</Link>
-                </li>
-                <li>
-                  <Link href="/posts">文章</Link>
-                </li>
-                <li>{post.title}</li>
-              </ul>
-            </div>
+      {/* SEO 结构化数据 */}
+      <StructuredData post={post} />
 
-            {/* Article Header */}
-            <header className="mb-8">
-              <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-
-              <div className="flex flex-wrap items-center gap-4 text-sm text-base-content/70 mb-6">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    ></path>
-                  </svg>
-                  <span>发布于 {new Date(post.publishDate * 1000).toLocaleDateString()}</span>
-                </div>
-
-                {post.updateDate && post.updateDate !== post.publishDate && (
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      ></path>
-                    </svg>
-                    <span>更新于 {new Date(post.updateDate * 1000).toLocaleDateString()}</span>
-                  </div>
-                )}
-
+      <section className="py-8 sm:py-16 lg:py-20 mx-auto">
+        <article>
+          <header className={post.image ? "mb-6" : "mb-6"}>
+            <div className="flex justify-between flex-col sm:flex-row max-w-3xl mx-auto mt-0 mb-2 px-4 sm:px-6 sm:items-center">
+              <p>
+                <Icon
+                  icon="tabler:clock"
+                  className="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
+                />
+                <time dateTime={new Date(post.publishDate * 1000).toISOString()} className="inline-block">
+                  {getFormattedDate(post.publishDate)}
+                </time>
                 {post.author && (
-                  <div className="flex items-center gap-2">
-                    <div className="avatar placeholder">
-                      <div className="bg-neutral text-neutral-content rounded-full w-6">
-                        <span className="text-xs">{post.author.charAt(0)}</span>
-                      </div>
-                    </div>
-                    <span>作者：{post.author}</span>
-                  </div>
+                  <>
+                    {" "}
+                    ·{" "}
+                    <Icon
+                      icon="tabler:user"
+                      className="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
+                    />
+                    <span className="inline-block">{post.author}</span>
+                  </>
                 )}
-              </div>
+                {post.category && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <Link
+                      className="hover:underline inline-block"
+                      href={`/category/${post.category.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      {post.category}
+                    </Link>
+                  </>
+                )}
+                <>
+                  &nbsp;· <ReadingTime content={post.body} />
+                </>
+              </p>
 
-              {/* Tags and Category */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                {post.category && <span className="badge badge-primary">{post.category}</span>}
-                {post.tags?.split(",").map((tag, index) => (
-                  <span key={index} className="badge badge-outline">
-                    #{tag.trim()}
-                  </span>
-                ))}
-              </div>
-
-              {/* Featured Image */}
-              {post.image && (
-                <div className="mb-8">
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-64 object-cover rounded-lg shadow-lg"
-                  />
-                </div>
-              )}
-            </header>
-
-            {/* Article Body */}
-            <div className="prose prose-lg max-w-none mb-12">
-              {/* 这里应该渲染 Markdown 内容，暂时显示纯文本 */}
-              <div className="whitespace-pre-wrap">{post.body}</div>
-            </div>
-
-            {/* Article Footer */}
-            <footer className="border-t pt-8 mb-12">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-base-content/70">
-                    如果您觉得这篇文章有用，请分享给更多人！
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button className="btn btn-outline btn-sm">👍 点赞</button>
-                  <button className="btn btn-outline btn-sm">📤 分享</button>
-                </div>
-              </div>
-            </footer>
-
-            {/* Comments Section */}
-            <CommentSectionWithProvider postSlug={slug} />
-          </article>
-
-          {/* Sidebar */}
-          <aside className="lg:col-span-1">
-            <div className="space-y-6">
-              {/* Table of Contents */}
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h3 className="card-title">目录</h3>
-                  <div className="text-sm">
-                    <p className="text-base-content/50">目录功能开发中...</p>
+              {/* 向量化状态（仅显示已正确向量化的内容） */}
+              {post.vectorizationStatus === 'correct' && (
+                <div className="vectorization-status-container">
+                  <div
+                    className="vectorization-status opacity-70 hover:opacity-100 transition-opacity"
+                    title="内容已成功向量化，可用于智能搜索"
+                  >
+                    {/* 正确向量化图标 */}
+                    <Icon
+                      icon="mingcute:ai-line"
+                      className="w-4 h-4 text-base-content/60"
+                    />
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Related Posts */}
-              {relatedPosts && relatedPosts.length > 0 && (
-                <div className="card bg-base-100 shadow-xl">
-                  <div className="card-body">
-                    <h3 className="card-title">相关文章</h3>
-                    <div className="space-y-3">
-                      {relatedPosts.map((relatedPost) => (
-                        <div key={relatedPost.id}>
-                          <Link
-                            href={`/posts/${relatedPost.slug}`}
-                            className="text-sm hover:text-primary transition-colors line-clamp-2"
-                          >
-                            {relatedPost.title}
-                          </Link>
-                          <div className="text-xs text-base-content/50 mt-1">
-                            {new Date(relatedPost.publishDate * 1000).toLocaleDateString()}
-                          </div>
-                        </div>
-                      ))}
+            <div className="px-4 sm:px-6 max-w-3xl mx-auto">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <h1 className="text-4xl md:text-5xl font-bold leading-tighter tracking-tighter font-heading flex-grow">
+                  {post.title}
+                </h1>
+                <PostStatus post={post} size="md" className="flex-shrink-0 mt-2" isAdmin={isUserAdmin} />
+              </div>
+            </div>
+
+            {isUserAdmin && (
+              <div className="max-w-3xl mx-auto mt-4 px-4 sm:px-6">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      icon="tabler:shield-check"
+                      className="w-5 h-5 text-blue-600 dark:text-blue-400"
+                    />
+                    <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                      管理员视图
+                    </span>
+                    <div className="ml-auto flex items-center gap-3">
+                      {post.draft ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700">
+                          草稿
+                        </span>
+                      ) : post.public === false ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-300 dark:border-orange-700">
+                          私有
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-300 dark:border-green-700">
+                          已发布
+                        </span>
+                      )}
+                      <Link
+                        href={`/admin/posts/edit?id=${encodeURIComponent(post.id)}`}
+                        className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 rounded-md transition-colors duration-200"
+                        title="编辑文章"
+                      >
+                        <Icon
+                          icon="tabler:edit"
+                          className="w-4 h-4"
+                        />
+                        编辑
+                      </Link>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Back to Top */}
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <button
-                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                    className="btn btn-outline w-full"
-                  >
-                    ⬆️ 回到顶部
-                  </button>
-                  <Link href="/" className="btn btn-primary w-full">
-                    🏠 返回首页
-                  </Link>
-                </div>
+            <p className="max-w-3xl mx-auto mt-4 mb-8 px-4 sm:px-6 text-md font-serif font-light text-justify">
+              {post.excerpt}
+            </p>
+
+            {post.image ? (
+              <div className="max-w-full lg:max-w-[900px] mx-auto mb-6">
+                <img
+                  src={post.image}
+                  className="max-w-full mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer max-h-[50vh] sm:max-h-[60vh] md:max-w-2xl md:max-h-96 lg:max-h-[506px] xl:max-h-[50vh] h-auto object-contain"
+                  alt={post.excerpt || ""}
+                  width={900}
+                  height={506}
+                  loading="eager"
+                />
+              </div>
+            ) : (
+              <div className="max-w-3xl mx-auto px-4 sm:px-6">
+                <div className="border-t dark:border-slate-700" />
+              </div>
+            )}
+          </header>
+
+          <div className="mx-auto px-6 sm:px-6 max-w-3xl mt-8">
+            <MarkdownRenderer
+              content={post.body}
+              variant="article"
+              enableMath={true}
+              enableMermaid={true}
+              enableCodeFolding={true}
+              enableImageLightbox={true}
+              maxCodeLines={30}
+              previewCodeLines={20}
+              articlePath={post.id}
+              className="prose prose-md xl:text-lg dark:prose-invert dark:prose-headings:text-slate-300 prose-headings:font-heading prose-headings:leading-tighter prose-headings:tracking-tighter prose-headings:font-bold prose-a:text-primary dark:prose-a:text-blue-400 prose-img:rounded-md prose-img:shadow-lg prose-headings:scroll-mt-[80px] prose-li:my-0"
+            />
+          </div>
+
+          <div className="mx-auto px-6 sm:px-6 max-w-3xl mt-8">
+            {/* 许可证信息 */}
+            <ArticleLicense
+              author={post.author || "Ivan Li"}
+              year={new Date(post.publishDate * 1000).getFullYear()}
+            />
+
+            {/* 标签单独一行 */}
+            <div className="mb-4 mt-6">
+              <PostTags tags={post.tags} className="flex gap-1 flex-wrap" />
+            </div>
+
+            {/* 表态和分享在同一行，两端对齐 */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <PostReactions postSlug={post.slug} />
+              </div>
+              <div className="flex items-center">
+                <SocialShare
+                  url={typeof window !== 'undefined' ? window.location.href : ''}
+                  text={post.title}
+                  className="text-gray-500 dark:text-slate-600"
+                />
               </div>
             </div>
-          </aside>
+          </div>
+        </article>
+
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <CommentSectionWithProvider postSlug={slug} />
         </div>
-      </div>
+      </section>
+
+      <ToBlogLink />
+      {relatedPosts && relatedPosts.length > 0 && (
+        <RelatedPosts
+          posts={relatedPosts}
+          currentPostCategory={post.category}
+          currentPostTags={post.tags}
+        />
+      )}
     </PageLayout>
   );
 }
