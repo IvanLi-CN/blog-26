@@ -16,9 +16,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import remarkGfm from "remark-gfm";
+import MarkdownRenderer from "../common/MarkdownRenderer";
 
 export interface MemoCardProps {
   /** Memo 数据 */
@@ -386,27 +384,19 @@ export function MemoCard({
 
             {/* Memo 内容 - 完全匹配旧项目 */}
             <div className="card-body px-4 py-3 sm:px-6 sm:py-4">
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeHighlight]}
-                  components={{
-                    // 限制标题层级
-                    h1: ({ children }) => <h4 className="text-base font-medium">{children}</h4>,
-                    h2: ({ children }) => <h5 className="text-sm font-medium">{children}</h5>,
-                    h3: ({ children }) => <h6 className="text-sm font-medium">{children}</h6>,
-                    // 限制图片大小
-                    img: ({ src, alt }) => (
-                      <img
-                        src={src}
-                        alt={alt}
-                        className="max-w-full h-auto max-h-32 object-cover rounded"
-                      />
-                    ),
-                  }}
-                >
-                  {truncatedContent}
-                </ReactMarkdown>
+              <div>
+                <MarkdownRenderer
+                  content={truncatedContent}
+                  variant="preview"
+                  enableMath={true}
+                  enableMermaid={true}
+                  enableCodeFolding={true}
+                  enableImageLightbox={true}
+                  maxCodeLines={15}
+                  previewCodeLines={10}
+                  articlePath={`/memos/${memo.slug}`}
+                  className="prose prose-sm max-w-none [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-32 [&_img]:object-cover [&_img]:rounded"
+                />
               </div>
 
               {/* 展开/收起按钮 */}

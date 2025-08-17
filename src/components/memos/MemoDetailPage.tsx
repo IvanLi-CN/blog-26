@@ -22,11 +22,9 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import remarkGfm from "remark-gfm";
 import { trpc } from "../../lib/trpc";
 import { cn } from "../../lib/utils";
+import MarkdownRenderer from "../common/MarkdownRenderer";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -283,18 +281,19 @@ export function MemoDetailPage({
       </div>
 
       {/* 内容 */}
-      <div className="prose prose-lg max-w-none">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeHighlight]}
-          components={{
-            img: ({ src, alt }) => (
-              <img src={src} alt={alt} className="max-w-full h-auto rounded-lg shadow-sm" />
-            ),
-          }}
-        >
-          {memo.content}
-        </ReactMarkdown>
+      <div>
+        <MarkdownRenderer
+          content={memo.content}
+          variant="memo"
+          enableMath={true}
+          enableMermaid={true}
+          enableCodeFolding={true}
+          enableImageLightbox={true}
+          maxCodeLines={30}
+          previewCodeLines={20}
+          articlePath={`/memos/${memo.slug}`}
+          className="prose prose-lg max-w-none"
+        />
       </div>
 
       {/* 附件 */}

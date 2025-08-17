@@ -3,7 +3,7 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { WebDAVContentSource } from "../../lib/content-sources/webdav";
 import { db } from "../../lib/db";
-import { memos } from "../../lib/schema";
+import { posts } from "../../lib/schema";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
 // ============================================================================
@@ -81,35 +81,35 @@ export const memosRouter = router({
 
     try {
       // 构建查询条件
-      const conditions = [];
+      const conditions = [eq(posts.type, "memo")];
 
       // 权限过滤：非管理员只能看到公开的 memo
       if (publicOnly && !ctx.isAdmin) {
-        conditions.push(eq(memos.public, true));
+        conditions.push(eq(posts.public, true));
       }
 
       // 搜索条件
       if (search) {
-        conditions.push(like(memos.title, `%${search}%`));
+        conditions.push(like(posts.title, `%${search}%`));
       }
 
       // 标签过滤
       if (tag) {
-        conditions.push(like(memos.tags, `%${tag}%`));
+        conditions.push(like(posts.tags, `%${tag}%`));
       }
 
       // 查询数据
       const [memoList, totalCount] = await Promise.all([
         db
           .select()
-          .from(memos)
+          .from(posts)
           .where(conditions.length > 0 ? and(...conditions) : undefined)
-          .orderBy(desc(memos.publishDate))
+          .orderBy(desc(posts.publishDate))
           .limit(limit)
           .offset(offset),
         db
           .select({ count: sql<number>`count(*)` })
-          .from(memos)
+          .from(posts)
           .where(conditions.length > 0 ? and(...conditions) : undefined)
           .then((result) => result[0]?.count || 0),
       ]);
@@ -161,8 +161,8 @@ export const memosRouter = router({
     try {
       const memo = await db
         .select()
-        .from(memos)
-        .where(eq(memos.slug, slug))
+        .from(posts)
+        .where(and(eq(posts.slug, slug), eq(posts.type, "memo")))
         .limit(1)
         .then((result) => result[0]);
 
@@ -303,8 +303,8 @@ export const memosRouter = router({
       // 查找现有 memo
       const existingMemo = await db
         .select()
-        .from(memos)
-        .where(eq(memos.id, id))
+        .from(posts)
+        .where(and(eq(posts.id, id), eq(posts.type, "memo")))
         .limit(1)
         .then((result) => result[0]);
 
@@ -355,7 +355,7 @@ export const memosRouter = router({
         contentHash: calculateSimpleHash(content),
       };
 
-      await db.update(memos).set(updateData).where(eq(memos.id, id));
+      await db.update(posts).set(updateData).where(eq(posts.id, id));
 
       await webdavSource.dispose();
 
@@ -389,8 +389,8 @@ export const memosRouter = router({
       // 查找现有 memo
       const existingMemo = await db
         .select()
-        .from(memos)
-        .where(eq(memos.id, id))
+        .from(posts)
+        .where(and(eq(posts.id, id), eq(posts.type, "memo")))
         .limit(1)
         .then((result) => result[0]);
 
@@ -421,7 +421,7 @@ export const memosRouter = router({
       await webdavSource.deleteMemo(existingMemo.slug);
 
       // 从数据库删除
-      await db.delete(memos).where(eq(memos.id, id));
+      await db.delete(posts).where(eq(posts.id, id));
 
       await webdavSource.dispose();
 
