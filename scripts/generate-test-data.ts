@@ -2438,11 +2438,10 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
 </svg>`;
 
   // 准备所有下载任务
-  const webdavImages = [
-    ...images.slice(0, 5), // WebDAV 文章图片 (ID 1-5)
-    ...images.slice(10, 15), // WebDAV 项目图片 (ID 16-20)
-    ...images.slice(20), // 闪念内容图片 + 附件图片 (ID 26-38)
-  ];
+  const webdavArticleImages = images.slice(0, 5); // WebDAV 文章图片 (ID 1-5)
+  const webdavProjectImages = images.slice(10, 15); // WebDAV 项目图片 (ID 16-20)
+  const memoContentImages = images.slice(20, 26); // 闪念内容图片 (ID 26-31)
+  const memoAttachmentImages = images.slice(26); // 闪念附件图片 (ID 33-38)
 
   const localImages = [
     ...images.slice(5, 10), // 本地文章图片 (ID 11-15)
@@ -2451,10 +2450,28 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
 
   // 创建所有下载任务
   const downloadTasks = [
-    // WebDAV 图片下载任务
-    ...webdavImages.map((image) => ({
+    // WebDAV 文章图片 - 放在 webdav/assets
+    ...webdavArticleImages.map((image) => ({
       url: image.url,
       filePath: join(webdavDir, "assets", image.filename),
+      filename: image.filename,
+    })),
+    // WebDAV 项目图片 - 放在 webdav/assets
+    ...webdavProjectImages.map((image) => ({
+      url: image.url,
+      filePath: join(webdavDir, "assets", image.filename),
+      filename: image.filename,
+    })),
+    // 闪念内容图片 - 放在 Memos/assets (因为文章在 Memos 目录下)
+    ...memoContentImages.map((image) => ({
+      url: image.url,
+      filePath: join(webdavDir, "Memos", "assets", image.filename),
+      filename: image.filename,
+    })),
+    // 闪念附件图片 - 放在 Memos/assets
+    ...memoAttachmentImages.map((image) => ({
+      url: image.url,
+      filePath: join(webdavDir, "Memos", "assets", image.filename),
       filename: image.filename,
     })),
     // 本地图片下载任务
