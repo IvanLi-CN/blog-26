@@ -171,7 +171,7 @@ async function seedDatabase(options: SeedOptions): Promise<{
       await clearAllTestData();
     }
 
-    const seededCounts = { posts: 0, comments: 0, users: 0 };
+    const seededCounts = { posts: 0, comments: 0, users: 0, memos: 0 };
 
     // 创建测试用户
     if (options.dataTypes.includes("users")) {
@@ -211,10 +211,14 @@ async function seedDatabase(options: SeedOptions): Promise<{
 
 Next.js 15 带来了许多令人兴奋的新特性，让我们一起来深入了解这些改进。
 
+![Next.js 15 架构图](https://picsum.photos/800/400?random=1)
+
 ## 主要新特性
 
 ### 1. React 19 支持
 Next.js 15 完全支持 React 19，包括新的并发特性和服务器组件改进。
+
+![React 19 特性](https://picsum.photos/600/300?random=2)
 
 ### 2. Turbopack 稳定版
 Turbopack 现在已经稳定，构建速度提升了 76%。
@@ -235,6 +239,8 @@ export default function HomePage() {
 }
 \`\`\`
 
+![性能对比图](https://picsum.photos/700/350?random=3)
+
 这些新特性让 Next.js 15 成为了构建现代 Web 应用的最佳选择。`,
           slug: "nextjs-15-features",
           type: "post",
@@ -250,9 +256,6 @@ export default function HomePage() {
           category: "技术",
           author: "Ivan Li",
           contentHash: "nextjs-15-hash",
-          lastModified: now - oneDay * 1,
-          createdAt: now - oneDay * 1,
-          updatedAt: now - oneDay * 1,
           dataSource: "database",
         },
         {
@@ -304,9 +307,6 @@ TypeScript 5.0 让我们能够写出更安全、更高效的代码。`,
           category: "技术",
           author: "Ivan Li",
           contentHash: "typescript-5-hash",
-          lastModified: now - oneDay * 2,
-          createdAt: now - oneDay * 2,
-          updatedAt: now - oneDay * 2,
           dataSource: "database",
         },
         {
@@ -357,9 +357,6 @@ const useAppStore = create<AppState>((set) => ({
           category: "架构",
           author: "Ivan Li",
           contentHash: "frontend-arch-hash",
-          lastModified: now - oneDay * 3,
-          createdAt: now - oneDay * 3,
-          updatedAt: now - oneDay * 3,
           dataSource: "database",
         },
         {
@@ -410,9 +407,6 @@ AI 是工具，不是替代品。关键是要学会如何与 AI 协作。`,
           category: "AI",
           author: "Ivan Li",
           contentHash: "ai-programming-hash",
-          lastModified: now - oneDay * 4,
-          createdAt: now - oneDay * 4,
-          updatedAt: now - oneDay * 4,
           dataSource: "database",
         },
         {
@@ -464,9 +458,6 @@ measurePerformance('data processing', () => {
           category: "性能",
           author: "Ivan Li",
           contentHash: "performance-hash",
-          lastModified: now - oneDay * 5,
-          createdAt: now - oneDay * 5,
-          updatedAt: now - oneDay * 5,
           dataSource: "database",
         },
         {
@@ -521,9 +512,6 @@ class DefaultDataProcessor implements DataProcessor {
           category: "开源",
           author: "Ivan Li",
           contentHash: "opensource-hash",
-          lastModified: now - oneDay * 6,
-          createdAt: now - oneDay * 6,
-          updatedAt: now - oneDay * 6,
           dataSource: "database",
         },
       ];
