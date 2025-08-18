@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
 import { resolveImagePath } from "../../lib/image-utils";
-import { getFormattedDateFromTimestamp } from "../../lib/utils";
+import { getFormattedDateFromTimestamp, toMsTimestamp } from "../../lib/utils";
 
 interface Post {
   id: string;
@@ -48,7 +48,7 @@ export default function BlogListItem({ post }: BlogListItemProps) {
                 className="w-3.5 h-3.5 inline-block -mt-0.5 dark:text-gray-400"
               />
               <time
-                dateTime={new Date(post.publishDate * 1000).toISOString()}
+                dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
                 className="inline-block"
               >
                 {getFormattedDateFromTimestamp(post.publishDate)}

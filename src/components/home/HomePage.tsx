@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { SITE } from "../../config/site";
 import { trpc } from "../../lib/trpc";
+import { toMsTimestamp } from "../../lib/utils";
 import PageLayout from "../common/PageLayout";
 import Icon from "../ui/Icon";
 import ProjectCard from "./ProjectCard";
@@ -46,7 +47,7 @@ export default function HomePage() {
       slug: post.slug,
       title: post.title,
       excerpt: post.excerpt || `${post.body.substring(0, 200)}...`,
-      publishDate: new Date(post.publishDate * 1000), // 转换秒级时间戳为毫秒级
+      publishDate: new Date(toMsTimestamp(post.publishDate)), // 兼容秒/毫秒时间戳
       tags: post.tags ? post.tags.split(",").map((tag) => tag.trim()) : [],
       image: post.image || undefined,
       permalink: `/posts/${post.slug}`,

@@ -4,11 +4,11 @@ import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { resolveImagePath } from "../../lib/image-utils";
 import { trpc } from "../../lib/trpc";
+import { toMsTimestamp } from "../../lib/utils";
 import CommentSectionWithProvider from "../comments/CommentSectionWithProvider";
 import { useUserInfo } from "../comments/hooks";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import PageLayout from "../common/PageLayout";
-
 import StructuredData from "../seo/StructuredData";
 import ArticleLicense from "./ArticleLicense";
 import PostReactions from "./PostReactions";
@@ -59,9 +59,9 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
     );
   }
 
-  // 格式化日期
+  // 格式化日期（兼容秒/毫秒）
   const getFormattedDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString("zh-CN", {
+    return new Date(toMsTimestamp(timestamp)).toLocaleDateString("zh-CN", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -83,7 +83,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                   className="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
                 />
                 <time
-                  dateTime={new Date(post.publishDate * 1000).toISOString()}
+                  dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
                   className="inline-block"
                 >
                   {getFormattedDate(post.publishDate)}
@@ -222,7 +222,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
             {/* 许可证信息 */}
             <ArticleLicense
               author={post.author || "Ivan Li"}
-              year={new Date(post.publishDate * 1000).getFullYear()}
+              year={new Date(toMsTimestamp(post.publishDate)).getFullYear()}
             />
 
             {/* 标签单独一行 */}

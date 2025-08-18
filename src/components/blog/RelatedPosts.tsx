@@ -1,6 +1,7 @@
-import { Icon } from '@iconify/react';
-import Link from 'next/link';
-import ReadingTime from './ReadingTime';
+import { Icon } from "@iconify/react";
+import Link from "next/link";
+import { toMsTimestamp } from "../../lib/utils";
+import ReadingTime from "./ReadingTime";
 
 interface RelatedPost {
   id: string;
@@ -20,7 +21,11 @@ interface RelatedPostsProps {
   currentPostTags?: string;
 }
 
-export default function RelatedPosts({ posts, currentPostCategory, currentPostTags }: RelatedPostsProps) {
+export default function RelatedPosts({
+  posts,
+  currentPostCategory,
+  currentPostTags,
+}: RelatedPostsProps) {
   if (!posts || posts.length === 0) {
     return null;
   }
@@ -36,15 +41,15 @@ export default function RelatedPosts({ posts, currentPostCategory, currentPostTa
 
     // 同标签加分
     if (currentPostTags && a.tags) {
-      const currentTags = currentPostTags.split(',').map(t => t.trim());
-      const aTags = a.tags.split(',').map(t => t.trim());
-      const commonTags = currentTags.filter(tag => aTags.includes(tag));
+      const currentTags = currentPostTags.split(",").map((t) => t.trim());
+      const aTags = a.tags.split(",").map((t) => t.trim());
+      const commonTags = currentTags.filter((tag) => aTags.includes(tag));
       scoreA += commonTags.length;
     }
     if (currentPostTags && b.tags) {
-      const currentTags = currentPostTags.split(',').map(t => t.trim());
-      const bTags = b.tags.split(',').map(t => t.trim());
-      const commonTags = currentTags.filter(tag => bTags.includes(tag));
+      const currentTags = currentPostTags.split(",").map((t) => t.trim());
+      const bTags = b.tags.split(",").map((t) => t.trim());
+      const commonTags = currentTags.filter((tag) => bTags.includes(tag));
       scoreB += commonTags.length;
     }
 
@@ -105,13 +110,13 @@ export default function RelatedPosts({ posts, currentPostCategory, currentPostTa
 
                 <div className="flex items-center justify-between text-xs text-base-content/50">
                   <time
-                    dateTime={new Date(post.publishDate * 1000).toISOString()}
+                    dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
                     itemProp="datePublished"
                   >
-                    {new Date(post.publishDate * 1000).toLocaleDateString('zh-CN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
+                    {new Date(toMsTimestamp(post.publishDate)).toLocaleDateString("zh-CN", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })}
                   </time>
 

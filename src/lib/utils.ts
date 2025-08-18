@@ -14,10 +14,17 @@ export const formatter: Intl.DateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
 
 export const getFormattedDate = (date: Date): string => (date ? formatter.format(date) : "");
 
-// 处理时间戳的日期格式化函数
+// 将时间戳统一归一化为毫秒（兼容秒/毫秒两种输入）
+export const toMsTimestamp = (timestamp: number): number => {
+  if (!timestamp) return 0;
+  // 小于 1e12 基本可以判定为秒级时间戳
+  return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
+};
+
+// 处理时间戳的日期格式化函数（自动兼容秒/毫秒）
 export const getFormattedDateFromTimestamp = (timestamp: number): string => {
   if (!timestamp) return "";
-  const date = new Date(timestamp * 1000); // 转换为毫秒
+  const date = new Date(toMsTimestamp(timestamp));
   return formatter.format(date);
 };
 
