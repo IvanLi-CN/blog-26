@@ -56,6 +56,9 @@ export const adminPostsRouter = createTRPCRouter({
       // 构建查询条件
       const conditions = [];
 
+      // 只显示文章类型的内容，排除闪念(memo)和其他类型
+      conditions.push(eq(posts.type, "post"));
+
       // 搜索条件
       if (search) {
         conditions.push(

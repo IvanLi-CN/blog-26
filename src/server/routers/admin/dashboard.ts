@@ -83,6 +83,7 @@ export const adminDashboardRouter = createTRPCRouter({
             draft: posts.draft,
           })
           .from(posts)
+          .where(eq(posts.type, "post")) // 只显示文章类型，排除闪念
           .orderBy(desc(posts.publishDate))
           .limit(5);
 
