@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { resolveImagePath } from "../../lib/image-utils";
 import Icon from "../ui/Icon";
 
 interface TimelineItemProps {
@@ -141,7 +142,10 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                   {item.image && (
                     <div className="flex-shrink-0">
                       <img
-                        src={item.image}
+                        src={resolveImagePath(
+                          item.image,
+                          item.type === "post" ? `/posts/${item.slug}` : `/memos/${item.slug}`
+                        )}
                         alt={item.title || "文章封面"}
                         className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded"
                         loading="lazy"

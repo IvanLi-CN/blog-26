@@ -59,10 +59,11 @@ export function resolveRelativePath(src: string, articleDir: string): string {
 
 /**
  * 生成优化图片端点URL
+ * 修复：使用现有的文件代理端点而不是不存在的render-image端点
  *
  * @param resolvedPath 已解析的绝对路径
- * @param options 图片优化选项
- * @returns 优化图片端点URL
+ * @param options 图片优化选项（暂时保留接口，但使用文件代理）
+ * @returns 文件代理端点URL
  */
 export function generateOptimizedImageUrl(
   resolvedPath: string,
@@ -71,11 +72,13 @@ export function generateOptimizedImageUrl(
     quality?: number;
     size?: number;
     dpr?: number;
+    contentSource?: "webdav" | "local";
   } = {}
 ): string {
-  const { format = "webp", quality = 85, size = 1200, dpr = 1 } = options;
+  const { contentSource = "webdav" } = options;
 
-  return `/api/render-image/${resolvedPath}?f=${format}&q=${quality}&s=${size}&dpr=${dpr}`;
+  // 使用现有的文件代理端点
+  return `/api/files/${contentSource}/${resolvedPath}`;
 }
 
 /**
@@ -99,11 +102,12 @@ export function isExternalUrl(path: string): boolean {
 }
 
 /**
- * 检查路径是否已经是优化图片端点
+ * 检查路径是否已经是文件代理端点
+ * 修复：检查文件代理端点而不是不存在的render-image端点
  *
  * @param path 路径
- * @returns 是否已经是优化图片端点
+ * @returns 是否已经是文件代理端点
  */
 export function isOptimizedImageUrl(path: string): boolean {
-  return path.startsWith("/api/render-image/");
+  return path.startsWith("/api/files/");
 }

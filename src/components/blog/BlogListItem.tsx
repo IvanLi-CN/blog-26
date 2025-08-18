@@ -3,20 +3,8 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
+import { resolveImagePath } from "../../lib/image-utils";
 import { getFormattedDateFromTimestamp } from "../../lib/utils";
-
-// 处理图片路径，将相对路径转换为绝对路径或提供默认图片
-function getImageSrc(imagePath: string | undefined): string | null {
-  if (!imagePath) return null;
-
-  // 如果是相对路径，返回 null（不显示图片）
-  if (imagePath.startsWith("./") || imagePath.startsWith("../")) {
-    return null;
-  }
-
-  // 如果是绝对路径或完整URL，直接返回
-  return imagePath;
-}
 
 interface Post {
   id: string;
@@ -47,7 +35,7 @@ export default function BlogListItem({ post }: BlogListItemProps) {
         .filter(Boolean)
     : [];
 
-  const imageSrc = getImageSrc(post.image);
+  const imageSrc = resolveImagePath(post.image, `/posts/${post.slug}`);
 
   return (
     <article className="max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-lg p-4 hover:bg-base-100/50">
@@ -113,7 +101,13 @@ export default function BlogListItem({ post }: BlogListItemProps) {
         <Link className="relative block group" href={link}>
           <div className="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg transition-all duration-300 group-hover:shadow-xl">
             <Image
-              src={imageSrc}
+              src={
+                imageSrc ||
+                (post.image?.startsWith("./assets/")
+                  ? `/api/files/webdav/${post.image.substring(2)}`
+                  : post.image) ||
+                ""
+              }
               className="absolute inset-0 object-cover w-full h-full mb-6 rounded shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-105"
               alt={post.title}
               fill

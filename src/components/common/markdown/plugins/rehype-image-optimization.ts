@@ -51,16 +51,16 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           node.properties["data-original-src"] = originalSrc;
         }
 
-        // 如果已经是完整的 URL、base64图片或已经是优化图片端点，跳过路径处理
+        // 如果已经是完整的 URL、base64图片或已经是文件代理端点，跳过路径处理
         if (
           !isExternalUrl(originalSrc) &&
           !originalSrc.startsWith("data:") &&
-          !isOptimizedImageUrl(originalSrc)
+          !originalSrc.startsWith("/api/files/")
         ) {
           // 根据文章的实际路径解析相对路径
           const resolvedPath = resolveRelativePath(originalSrc, articleDir);
 
-          // 转换为优化图片端点
+          // 转换为文件代理端点（使用utils中的函数，默认webdav源）
           const finalPath = generateOptimizedImageUrl(resolvedPath);
           node.properties.src = finalPath;
         }
@@ -89,8 +89,8 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
 
         // 检查是否是图片文件链接
         if (href && isImagePath(href)) {
-          // 如果已经是完整的 URL 或已经是优化图片端点，跳过处理
-          if (!isExternalUrl(href) && !isOptimizedImageUrl(href)) {
+          // 如果已经是完整的 URL 或已经是文件代理端点，跳过处理
+          if (!isExternalUrl(href) && !href.startsWith("/api/files/")) {
             // 使用统一的路径解析逻辑
             const resolvedPath = resolveRelativePath(href, articleDir);
             const finalPath = generateOptimizedImageUrl(resolvedPath);

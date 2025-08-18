@@ -11,11 +11,14 @@ test.describe("闪念列表页图片灯箱功能", () => {
     // 访问闪念列表页
     await page.goto("/memos");
 
-    // 等待页面加载完成
-    await page.waitForLoadState("networkidle");
+    // 等待页面DOM加载完成（不等待网络空闲，避免外部API影响）
+    await page.waitForLoadState("domcontentloaded");
 
     // 等待 memo 卡片加载，增加超时时间
     await page.waitForSelector('[data-testid="memo-card"]', { timeout: 30000 });
+
+    // 等待一下确保内容渲染完成
+    await page.waitForTimeout(1000);
   });
 
   test("应该显示详情链接图标", async ({ page }) => {
@@ -61,8 +64,8 @@ test.describe("闪念列表页图片灯箱功能", () => {
   });
 
   test("图片灯箱功能应该正常工作", async ({ page }) => {
-    // 等待页面加载完成
-    await page.waitForLoadState("networkidle");
+    // 等待页面DOM加载完成（不等待网络空闲，避免外部API影响）
+    await page.waitForLoadState("domcontentloaded");
 
     // 首先检查页面上是否有任何图片
     const allImages = await page.locator("img").count();
@@ -210,7 +213,7 @@ test.describe("闪念列表页图片灯箱功能", () => {
     // 先跳转到详情页
     const detailLink = page.locator('[aria-label*="查看详情"]').first();
     await detailLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // 查找详情页中的图片
     const imageInDetail = page.locator('img[data-lightbox="true"]').first();
@@ -244,7 +247,10 @@ test.describe("闪念列表页图片灯箱功能", () => {
 
     // 重新加载页面
     await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
+
+    // 等待内容加载
+    await page.waitForSelector('[data-testid="memo-card"]', { timeout: 15000 });
 
     // 详情链接在移动端应该仍然可见
     const detailLink = page.locator('[aria-label*="查看详情"]').first();
