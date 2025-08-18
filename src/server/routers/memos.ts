@@ -3,7 +3,8 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { WebDAVContentSource } from "../../lib/content-sources/webdav";
 import { db } from "../../lib/db";
-import { posts } from "../../lib/schema";
+import { memos, posts } from "../../lib/schema";
+import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
 // ============================================================================
@@ -126,10 +127,10 @@ export const memosRouter = router({
         attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
         author: memo.author || memo.authorEmail,
         source: memo.source,
-        createdAt: new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
+        createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
-          ? new Date(memo.updateDate * 1000).toISOString() // 秒转毫秒
-          : new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
+          ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
+          : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
       }));
 
       const totalPages = Math.ceil(totalCount / limit);
@@ -192,10 +193,10 @@ export const memosRouter = router({
         attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
         author: memo.author || memo.authorEmail,
         source: memo.source,
-        createdAt: new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
+        createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
-          ? new Date(memo.updateDate * 1000).toISOString() // 秒转毫秒
-          : new Date(memo.publishDate * 1000).toISOString(), // 秒转毫秒
+          ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
+          : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
       };
     } catch (error) {
       if (error instanceof TRPCError) {
@@ -283,8 +284,8 @@ export const memosRouter = router({
         isPublic: memoData.public,
         tags,
         attachments,
-        createdAt: new Date(now * 1000).toISOString(),
-        updatedAt: new Date(now * 1000).toISOString(),
+        createdAt: new Date(toMsTimestamp(now)).toISOString(),
+        updatedAt: new Date(toMsTimestamp(now)).toISOString(),
       };
     } catch (error) {
       console.error("创建 memo 失败:", error);
@@ -367,7 +368,7 @@ export const memosRouter = router({
         isPublic: updateData.public,
         tags,
         attachments,
-        updatedAt: new Date(now * 1000).toISOString(),
+        updatedAt: new Date(toMsTimestamp(now)).toISOString(),
       };
     } catch (error) {
       if (error instanceof TRPCError) {

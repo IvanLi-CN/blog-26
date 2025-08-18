@@ -7,6 +7,7 @@ import { verifyCaptcha } from "../../lib/captcha";
 import { db } from "../../lib/db";
 import { signJwt } from "../../lib/jwt";
 import { comments, users } from "../../lib/schema";
+import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 // 输入验证 schemas
@@ -292,7 +293,7 @@ export const commentsRouter = createTRPCRouter({
 
       // 创建评论
       const commentId = uuidv4();
-      const now = Date.now(); // UNIX timestamp
+      const now = Math.floor(Date.now() / 1000); // seconds since epoch
 
       await db.insert(comments).values({
         id: commentId,
@@ -513,10 +514,10 @@ export const commentsRouter = createTRPCRouter({
     // 转换为前端期望的格式
     const commentsWithAuthors = commentsData.map((comment) => ({
       ...comment,
-      createdAt: comment.createdAt * 1000, // 转换为毫秒时间戳
-      ipAddress: "unknown", // 现有schema没有这个字段
+      createdAt: toMsTimestamp(comment.createdAt),
+      ipAddress: "unknown",
       author: {
-        id: comment.authorEmail, // 使用email作为临时ID
+        id: comment.authorEmail,
         nickname: comment.authorName,
         email: comment.authorEmail,
         avatarUrl: getAvatarUrl(comment.authorEmail),
