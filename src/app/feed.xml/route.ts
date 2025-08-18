@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server';
-import { db } from '../../lib/db';
-import { posts } from '../../lib/schema';
-import { eq, desc } from 'drizzle-orm';
+import { desc, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { db, initializeDB } from "../../lib/db";
+import { posts } from "../../lib/schema";
+import { toMsTimestamp } from "../../lib/utils";
+export const runtime = "nodejs";
 
 export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   try {
+    await initializeDB();
     // 获取最新的20篇公开文章
     const recentPosts = await db
       .select()
@@ -15,22 +18,24 @@ export async function GET() {
       .orderBy(desc(posts.publishDate))
       .limit(20);
 
-    const rssItems = recentPosts.map((post) => {
-      const postUrl = `${baseUrl}/posts/${post.slug}`;
-      const pubDate = new Date(post.publishDate * 1000).toUTCString();
-      
-      return `
+    const rssItems = recentPosts
+      .map((post) => {
+        const postUrl = `${baseUrl}/posts/${post.slug}`;
+        const pubDate = new Date(toMsTimestamp(post.publishDate)).toUTCString();
+
+        return `
     <item>
       <title><![CDATA[${post.title}]]></title>
       <description><![CDATA[${post.excerpt || post.title}]]></description>
       <link>${postUrl}</link>
       <guid isPermaLink="true">${postUrl}</guid>
       <pubDate>${pubDate}</pubDate>
-      ${post.author ? `<author>noreply@ivanli.cc (${post.author})</author>` : ''}
-      ${post.category ? `<category><![CDATA[${post.category}]]></category>` : ''}
-      ${post.image ? `<enclosure url="${post.image.startsWith('http') ? post.image : baseUrl + post.image}" type="image/jpeg" />` : ''}
+      ${post.author ? `<author>noreply@ivanli.cc (${post.author})</author>` : ""}
+      ${post.category ? `<category><![CDATA[${post.category}]]></category>` : ""}
+      ${post.image ? `<enclosure url="${post.image.startsWith("http") ? post.image : baseUrl + post.image}" type="image/jpeg" />` : ""}
     </item>`;
-    }).join('');
+      })
+      .join("");
 
     const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
@@ -57,12 +62,12 @@ export async function GET() {
 
     return new NextResponse(rssXml, {
       headers: {
-        'Content-Type': 'application/xml; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=3600, s-maxage=3600",
       },
     });
   } catch (error) {
-    console.error('Error generating RSS feed:', error);
-    return new NextResponse('Error generating RSS feed', { status: 500 });
+    console.error("Error generating RSS feed:", error);
+    return new NextResponse("Error generating RSS feed", { status: 500 });
   }
 }
