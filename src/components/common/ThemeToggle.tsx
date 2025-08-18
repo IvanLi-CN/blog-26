@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { UI } from "../../config/site";
 import Icon from "../ui/Icon";
 
+// 使用纯 CSS 的主题颜色预览圆点
+// 不再需要 JavaScript 动态获取颜色
+
 interface ThemeToggleProps {
   iconClass?: string;
 }
@@ -105,49 +108,160 @@ export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps)
         )}
       </label>
 
-      <div className="dropdown-content z-[1] py-2 shadow-2xl bg-base-300 rounded-box w-52">
-        <ul className="max-h-96 overflow-y-auto px-2 flex flex-col gap-1">
-          {/* 主要主题 */}
-          {UI.theme.mainThemes.map((theme: string) => (
-            <li key={theme}>
-              <button
-                type="button"
-                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100 w-full text-left ${
-                  currentTheme === theme ? "bg-base-100" : ""
-                }`}
-                onClick={() => setTheme(theme)}
-              >
-                <span className="flex-grow text-sm capitalize">{theme}</span>
-                {currentTheme === theme && <Icon name="tabler:check" className="w-4 h-4" />}
-              </button>
-            </li>
-          ))}
+      <div className="dropdown-content z-[1] shadow-2xl bg-base-200 rounded-2xl w-80 border border-base-300">
+        {/* 下拉菜单标题 */}
+        <div className="px-4 py-3 border-b border-base-300">
+          <h3 className="text-sm font-semibold text-base-content/80 uppercase tracking-wide">
+            选择主题
+          </h3>
+        </div>
+
+        <div className="max-h-96 overflow-y-auto">
+          {/* 主要主题区域 */}
+          <div className="p-3">
+            <div className="text-xs font-medium text-base-content/60 uppercase tracking-wide mb-2 px-1">
+              常用主题
+            </div>
+            <div className="space-y-1">
+              {UI.theme.mainThemes.map((theme: string) => (
+                <button
+                  key={theme}
+                  type="button"
+                  className={`group relative flex items-center w-full p-3 rounded-xl transition-all duration-200 ${
+                    currentTheme === theme
+                      ? "bg-primary/10 border-2 border-primary/20"
+                      : "hover:bg-base-300/50 border-2 border-transparent"
+                  }`}
+                  onClick={() => setTheme(theme)}
+                >
+                  {/* 主题名称 */}
+                  <div className="flex-1 text-left">
+                    <div
+                      className={`text-sm font-medium capitalize ${
+                        currentTheme === theme ? "text-primary" : "text-base-content"
+                      }`}
+                    >
+                      {theme}
+                    </div>
+                  </div>
+
+                  {/* 选中状态指示器 */}
+                  {currentTheme === theme && (
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary">
+                      <Icon name="tabler:check" className="w-3 h-3 text-primary-content" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* 分隔线 */}
-          <li className="border-t border-base-content/20 my-1"></li>
+          <div className="border-t border-base-300 mx-3"></div>
 
-          {/* 所有其他主题 */}
-          {UI.theme.allThemes.map((theme: string) => (
-            <li key={theme} data-theme={theme}>
-              <button
-                type="button"
-                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-base-100 w-full text-left ${
-                  currentTheme === theme ? "bg-base-100" : ""
-                }`}
-                onClick={() => setTheme(theme)}
-              >
-                <span className="flex-grow text-sm capitalize">{theme}</span>
-                <span className="flex items-center gap-1">
-                  <span className="h-4 w-4 rounded-full bg-primary ring-1 ring-inset ring-black/10" />
-                  <span className="h-4 w-4 rounded-full bg-secondary ring-1 ring-inset ring-black/10" />
-                  <span className="h-4 w-4 rounded-full bg-accent ring-1 ring-inset ring-black/10" />
-                  <span className="h-4 w-4 rounded-full bg-neutral ring-1 ring-inset ring-black/10" />
-                </span>
-                {currentTheme === theme && <Icon name="tabler:check" className="w-4 h-4 ml-2" />}
-              </button>
-            </li>
-          ))}
-        </ul>
+          {/* 亮色主题区域 */}
+          <div className="p-3">
+            <div className="text-xs font-medium text-base-content/60 uppercase tracking-wide mb-2 px-1">
+              亮色主题
+            </div>
+            <div className="space-y-1">
+              {UI.theme.lightThemes.map((theme: string) => (
+                <button
+                  key={theme}
+                  type="button"
+                  className={`group relative flex items-center w-full p-3 rounded-xl transition-all duration-200 ${
+                    currentTheme === theme
+                      ? "bg-primary/10 border-2 border-primary/20"
+                      : "hover:bg-base-300/50 border-2 border-transparent"
+                  }`}
+                  onClick={() => setTheme(theme)}
+                >
+                  {/* 主题名称 */}
+                  <div className="flex-1 text-left">
+                    <div
+                      className={`text-sm font-medium capitalize ${
+                        currentTheme === theme ? "text-primary" : "text-base-content"
+                      }`}
+                    >
+                      {theme}
+                    </div>
+                  </div>
+
+                  {/* 颜色预览圆点 */}
+                  <div
+                    className="flex items-center gap-1.5 mr-2 px-2 py-1 rounded-lg bg-base-100/50"
+                    data-theme={theme}
+                  >
+                    <div className="w-4 h-4 rounded-full bg-primary shadow-sm ring-1 ring-base-content/20" />
+                    <div className="w-4 h-4 rounded-full bg-secondary shadow-sm ring-1 ring-base-content/20" />
+                    <div className="w-4 h-4 rounded-full bg-accent shadow-sm ring-1 ring-base-content/20" />
+                    <div className="w-4 h-4 rounded-full bg-neutral shadow-sm ring-1 ring-base-content/20" />
+                  </div>
+
+                  {/* 选中状态指示器 */}
+                  {currentTheme === theme && (
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary">
+                      <Icon name="tabler:check" className="w-3 h-3 text-primary-content" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 分隔线 */}
+          <div className="border-t border-base-300 mx-3"></div>
+
+          {/* 暗色主题区域 */}
+          <div className="p-3">
+            <div className="text-xs font-medium text-base-content/60 uppercase tracking-wide mb-2 px-1">
+              暗色主题
+            </div>
+            <div className="space-y-1">
+              {UI.theme.darkThemes.map((theme: string) => (
+                <button
+                  key={theme}
+                  type="button"
+                  className={`group relative flex items-center w-full p-3 rounded-xl transition-all duration-200 ${
+                    currentTheme === theme
+                      ? "bg-primary/10 border-2 border-primary/20"
+                      : "hover:bg-base-300/50 border-2 border-transparent"
+                  }`}
+                  onClick={() => setTheme(theme)}
+                >
+                  {/* 主题名称 */}
+                  <div className="flex-1 text-left">
+                    <div
+                      className={`text-sm font-medium capitalize ${
+                        currentTheme === theme ? "text-primary" : "text-base-content"
+                      }`}
+                    >
+                      {theme}
+                    </div>
+                  </div>
+
+                  {/* 颜色预览圆点 */}
+                  <div
+                    className="flex items-center gap-1.5 mr-2 px-2 py-1 rounded-lg bg-base-100/50"
+                    data-theme={theme}
+                  >
+                    <div className="w-4 h-4 rounded-full bg-primary shadow-sm ring-1 ring-base-content/20" />
+                    <div className="w-4 h-4 rounded-full bg-secondary shadow-sm ring-1 ring-base-content/20" />
+                    <div className="w-4 h-4 rounded-full bg-accent shadow-sm ring-1 ring-base-content/20" />
+                    <div className="w-4 h-4 rounded-full bg-neutral shadow-sm ring-1 ring-base-content/20" />
+                  </div>
+
+                  {/* 选中状态指示器 */}
+                  {currentTheme === theme && (
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary">
+                      <Icon name="tabler:check" className="w-3 h-3 text-primary-content" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

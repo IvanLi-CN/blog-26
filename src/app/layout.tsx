@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ProgressBar } from "../components/common/ProgressBar";
 import { TRPCProvider } from "../components/providers/TRPCProvider";
 
 export const metadata: Metadata = {
@@ -9,24 +10,22 @@ export const metadata: Metadata = {
   authors: [{ name: "Ivan Li", url: "https://ivanli.cc" }],
   creator: "Ivan Li",
   publisher: "Ivan Li",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   alternates: {
     types: {
-      'application/rss+xml': [
-        { url: '/feed.xml', title: "Ivan's Blog RSS Feed" }
-      ]
-    }
+      "application/rss+xml": [{ url: "/feed.xml", title: "Ivan's Blog RSS Feed" }],
+    },
   },
   openGraph: {
-    type: 'website',
-    locale: 'zh_CN',
-    url: '/',
+    type: "website",
+    locale: "zh_CN",
+    url: "/",
     siteName: "Ivan's Blog",
     title: "Ivan's Blog",
     description: "Ivan Li 的个人博客，分享技术文章、项目经验和思考",
     images: [
       {
-        url: '/og-image.png',
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "Ivan's Blog",
@@ -34,11 +33,11 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: "summary_large_image",
     title: "Ivan's Blog",
     description: "Ivan Li 的个人博客，分享技术文章、项目经验和思考",
-    creator: '@ivanli_cc',
-    images: ['/og-image.png'],
+    creator: "@ivanli_cc",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
@@ -46,9 +45,9 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
   },
 };
@@ -123,6 +122,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <ProgressBar />
         <TRPCProvider>{children}</TRPCProvider>
       </body>
     </html>

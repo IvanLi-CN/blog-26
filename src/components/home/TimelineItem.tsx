@@ -45,8 +45,14 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
     return type === "memo" ? "tabler:bulb" : "tabler:article";
   };
 
+  // 使用 DaisyUI 语义色而不是硬编码颜色，确保与主题一致
   const getTypeColor = (type: string) => {
-    return type === "memo" ? "text-yellow-500" : "text-blue-500";
+    return type === "memo" ? "text-accent" : "text-primary";
+  };
+
+  // 语义化背景色（淡色，无边框、无ring）
+  const getTypeBgClass = (type: string) => {
+    return type === "memo" ? "bg-accent/10" : "bg-primary/10";
   };
 
   // 动态调整时间线连接线高度
@@ -84,12 +90,17 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
     <div className="timeline-item relative flex items-start gap-3 sm:gap-4">
       {/* 时间线主轴和节点 */}
       <div className="flex flex-col items-center relative">
-        {/* 时间线节点 */}
-        <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-base-200 border-2 border-base-300 flex-shrink-0 z-10 relative">
+        {/* 时间线节点：干净的圆形，无明显边框。背景用语义色淡化 */}
+        <div
+          className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full ${getTypeBgClass(item.type)} flex-shrink-0 z-10`}
+        >
           {loading ? (
             <div className="w-5 h-5 bg-base-300 rounded-full animate-pulse"></div>
           ) : (
-            <Icon name={getTypeIcon(item.type)} className={`w-5 h-5 ${getTypeColor(item.type)}`} />
+            <Icon
+              name={getTypeIcon(item.type)}
+              className={`w-5 h-5 ${getTypeColor(item.type)} inline-block`}
+            />
           )}
         </div>
 
