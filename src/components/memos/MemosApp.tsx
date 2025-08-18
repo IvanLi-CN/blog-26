@@ -110,12 +110,6 @@ export function MemosApp({
     [handleDelete, refresh]
   );
 
-  // 处理 memo 点击
-  const handleMemoClick = useCallback((memo: MemoCardData) => {
-    // 可以导航到详情页或展开预览
-    window.open(`/memos/${memo.slug}`, "_blank");
-  }, []);
-
   // 处理编辑器保存
   const handleEditorSave = useCallback(
     async (data: MemoData) => {
@@ -166,7 +160,6 @@ export function MemosApp({
             onNew={showManageFeatures ? handleNew : undefined}
             onEdit={showManageFeatures ? handleEdit : undefined}
             onDelete={showManageFeatures ? handleDeleteMemo : undefined}
-            onMemoClick={handleMemoClick}
             showManageButtons={showManageFeatures}
             viewMode="timeline"
             error={error}

@@ -15,6 +15,7 @@
  * - 复杂的点击交互逻辑：避免与文本选择冲突
  */
 
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 
@@ -33,8 +34,6 @@ export interface MemoCardProps {
   onEdit?: (memo: MemoCardData) => void;
   /** 删除回调 */
   onDelete?: (memo: MemoCardData) => void;
-  /** 点击回调 */
-  onClick?: (memo: MemoCardData) => void;
   /** 样式类名 */
   className?: string;
   /** 是否为最后一个（用于时间线连接线） */
@@ -69,10 +68,9 @@ export function MemoCard({
   maxContentLength = 300,
   onEdit,
   onDelete,
-  onClick,
-  className,
+  className: _className,
   isLast = false,
-  index = 0,
+  index: _index = 0,
 }: MemoCardProps) {
   const [_isExpanded, _setIsExpanded] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
@@ -96,15 +94,15 @@ export function MemoCard({
 
       // 3个月 = 90天
       if (diffDays > 90) {
-        return date.toLocaleDateString('zh-CN', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
+        return date.toLocaleDateString("zh-CN", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
         });
       }
 
       // 友好时间显示
-      if (diffMinutes < 1) return '刚刚';
+      if (diffMinutes < 1) return "刚刚";
       if (diffMinutes < 60) return `${diffMinutes}分钟前`;
       if (diffHours < 24) return `${diffHours}小时前`;
       if (diffDays < 7) return `${diffDays}天前`;
@@ -119,14 +117,14 @@ export function MemoCard({
   const fullDate = useMemo(() => {
     try {
       const date = new Date(memo.createdAt);
-      return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short',
+      return date.toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short",
       });
     } catch {
       return memo.createdAt;
@@ -138,14 +136,14 @@ export function MemoCard({
     if (!memo.updatedAt || memo.updatedAt === memo.createdAt) return null;
     try {
       const date = new Date(memo.updatedAt);
-      return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short',
+      return date.toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short",
       });
     } catch {
       return memo.updatedAt;
@@ -167,7 +165,11 @@ export function MemoCard({
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (confirm(`确定要删除 "${memo.title || '这条 Memo'}" 吗？\n\n⚠️ 此操作不可撤销，Memo 将被永久删除。`)) {
+      if (
+        confirm(
+          `确定要删除 "${memo.title || "这条 Memo"}" 吗？\n\n⚠️ 此操作不可撤销，Memo 将被永久删除。`
+        )
+      ) {
         onDelete?.(memo);
       }
     },
@@ -175,7 +177,7 @@ export function MemoCard({
   );
 
   return (
-    <div className="relative" data-testid="memo-item">
+    <div className="relative" data-testid="memo-card">
       {/* 时间线连接线 - 完全匹配旧项目 */}
       {!isLast && (
         <div className="absolute left-4 sm:left-5 top-10 sm:top-12 w-0.5 h-full bg-gradient-to-b from-primary/30 to-transparent -z-10 hidden sm:block"></div>
@@ -206,47 +208,12 @@ export function MemoCard({
         </div>
 
         {/* Memo 内容 - 完全匹配旧项目 */}
-        <div className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden relative">
-          {/* 可点击的卡片内容 */}
-          <div
-            className="block cursor-pointer"
-            onMouseDown={(e) => {
-              // 记录鼠标按下的位置 - 匹配旧项目的交互逻辑
-              const startX = e.clientX;
-              const startY = e.clientY;
-              const startTime = Date.now();
-
-              const handleMouseUp = (upEvent: MouseEvent) => {
-                // 移除事件监听器
-                document.removeEventListener('mouseup', handleMouseUp);
-
-                // 计算鼠标移动距离和时间
-                const deltaX = Math.abs(upEvent.clientX - startX);
-                const deltaY = Math.abs(upEvent.clientY - startY);
-                const deltaTime = Date.now() - startTime;
-
-                // 检查是否是文本选择（移动距离大于阈值或时间过长）
-                const isTextSelection = deltaX > 5 || deltaY > 5 || deltaTime > 500;
-
-                // 检查是否有文本被选中
-                const hasSelection = (window.getSelection()?.toString().length ?? 0) > 0;
-
-                // 检查是否点击了可交互元素
-                const target = upEvent.target as HTMLElement;
-                const isInteractiveElement = target.closest(
-                  'button, a, .badge, [role="button"], .group\\/image, img[alt*=".jpg"], img[alt*=".png"], img[alt*=".jpeg"], img[alt*=".gif"], img[alt*=".webp"]'
-                );
-
-                // 只有在没有文本选择、没有点击交互元素、且是简单点击时才导航
-                if (!isTextSelection && !hasSelection && !isInteractiveElement) {
-                  window.location.href = `/memos/${memo.slug}`;
-                }
-              };
-
-              // 添加鼠标松开事件监听器
-              document.addEventListener('mouseup', handleMouseUp);
-            }}
-          >
+        <div
+          className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden relative"
+          data-testid="memo-card"
+        >
+          {/* 卡片内容 */}
+          <div>
             {/* 头部信息 - 完全匹配旧项目 */}
             <div className="flex items-center justify-between px-4 py-2 sm:px-6 sm:py-3 bg-base-200 border-b border-base-300 gap-2 sm:gap-4">
               {/* 左侧：时间信息 */}
@@ -256,6 +223,7 @@ export function MemoCard({
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -264,11 +232,7 @@ export function MemoCard({
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span
-                  title={fullDate}
-                  className="cursor-help truncate"
-                  data-testid="memo-time"
-                >
+                <span title={fullDate} className="cursor-help truncate" data-testid="memo-time">
                   {formattedDate}
                 </span>
                 {fullUpdatedDate && (
@@ -286,12 +250,16 @@ export function MemoCard({
                 {/* 公开/私有状态指示器 */}
                 <div className="flex items-center">
                   {memo.isPublic ? (
-                    <div className="badge badge-info badge-xs sm:badge-sm gap-1" data-testid="public-indicator">
+                    <div
+                      className="badge badge-info badge-xs sm:badge-sm gap-1"
+                      data-testid="public-indicator"
+                    >
                       <svg
                         className="w-2.5 h-2.5 sm:w-3 sm:h-3"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
+                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"
@@ -312,6 +280,7 @@ export function MemoCard({
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
+                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"
@@ -321,7 +290,7 @@ export function MemoCard({
                         />
                       </svg>
                       <span className="hidden sm:inline">私有</span>
-                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -331,10 +300,11 @@ export function MemoCard({
                     {/* 编辑按钮 */}
                     {showEditButton && (
                       <button
+                        type="button"
                         onClick={handleEditClick}
                         className="btn btn-ghost btn-xs btn-circle text-info hover:bg-info/10"
-                        title={`编辑 Memo: ${memo.title || '无标题'}`}
-                        aria-label={`编辑 Memo: ${memo.title || '无标题'}`}
+                        title={`编辑 Memo: ${memo.title || "无标题"}`}
+                        aria-label={`编辑 Memo: ${memo.title || "无标题"}`}
                       >
                         <svg
                           className="w-2.5 h-2.5 sm:w-3 sm:h-3"
@@ -356,10 +326,11 @@ export function MemoCard({
                     {/* 删除按钮 */}
                     {showDeleteButton && (
                       <button
+                        type="button"
                         onClick={handleDeleteClick}
                         className="btn btn-ghost btn-xs btn-circle text-error hover:bg-error/10"
-                        title={`删除 Memo: ${memo.title || '无标题'}`}
-                        aria-label={`删除 Memo: ${memo.title || '无标题'}`}
+                        title={`删除 Memo: ${memo.title || "无标题"}`}
+                        aria-label={`删除 Memo: ${memo.title || "无标题"}`}
                       >
                         <svg
                           className="w-2.5 h-2.5 sm:w-3 sm:h-3"
@@ -416,8 +387,8 @@ export function MemoCard({
               {/* 标签显示 - 完全匹配旧项目 */}
               {memo.tags && memo.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2 sm:mt-3">
-                  {memo.tags.map((tag: string, index: number) => (
-                    <span key={index} className="badge badge-outline badge-sm">
+                  {memo.tags.map((tag: string) => (
+                    <span key={tag} className="badge badge-outline badge-sm">
                       #{tag}
                     </span>
                   ))}
@@ -425,6 +396,24 @@ export function MemoCard({
               )}
             </div>
           </div>
+
+          {/* 详情链接图标 - 右下角浮动 */}
+          <Link
+            href={`/memos/${memo.slug}`}
+            className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 w-8 h-8 sm:w-9 sm:h-9 bg-primary/80 hover:bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 group"
+            title={`查看详情: ${memo.title || "无标题"}`}
+            aria-label={`查看详情: ${memo.title || "无标题"}`}
+          >
+            <svg
+              className="w-4 h-4 sm:w-5 sm:h-5 transform group-hover:translate-x-0.5 transition-transform duration-200"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
       </div>
     </div>

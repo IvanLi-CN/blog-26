@@ -24,8 +24,6 @@ export interface MemosListProps {
   onEdit?: (memo: MemoCardData) => void;
   /** 删除回调 */
   onDelete?: (memo: MemoCardData) => void;
-  /** Memo 点击回调 */
-  onMemoClick?: (memo: MemoCardData) => void;
   /** 是否显示管理按钮 */
   showManageButtons?: boolean;
   /** 错误信息 */
@@ -49,7 +47,6 @@ export function MemosList({
   onEdit,
   onDelete,
   error,
-  onMemoClick,
   showManageButtons = false,
   className,
   // 忽略这些不需要的参数
@@ -115,7 +112,6 @@ export function MemosList({
               isLast={index === memos.length - 1}
               onEdit={onEdit}
               onDelete={onDelete}
-              onClick={onMemoClick}
               showEditButton={showManageButtons}
               showDeleteButton={showManageButtons}
             />
@@ -169,6 +165,7 @@ export function MemosList({
             className="stroke-current shrink-0 h-6 w-6"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
