@@ -60,12 +60,12 @@ export default defineConfig({
     },
   ],
 
-  // 开发服务器配置
+  // E2E 测试服务器配置
   webServer: {
-    command: "npm run dev",
+    command: "bun ./scripts/start-e2e-server.ts",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000, // 2分钟启动超时
+    timeout: 300 * 1000, // 5分钟启动超时（包含数据生成和同步时间）
     env: {
       NODE_ENV: "test",
       ADMIN_MODE: "true",
