@@ -77,9 +77,15 @@ async function main() {
 
   // Use child_process to avoid relying on Bun global within pre-commit
   const { spawn } = await import("node:child_process");
-  const proc = spawn(cmd[0]!, cmd.slice(1), { stdio: "inherit" });
-  await new Promise<number>((resolve) => proc.on("close", (code) => resolve(code ?? 1)));
-  const exitCode = proc.exitCode ?? 0;
+  const [bin, ...args] = cmd;
+  if (!bin) {
+    console.error("No command to run");
+    process.exit(1);
+  }
+  const proc = spawn(bin, args, { stdio: "inherit" });
+  const exitCode: number = await new Promise((resolve) => {
+    proc.on("close", (code) => resolve(code ?? 1));
+  });
   process.exit(exitCode);
 }
 

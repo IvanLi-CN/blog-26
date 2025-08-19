@@ -1,5 +1,5 @@
-import { appRouter } from '@/server/router';
-import { createContext } from '@/server/context';
+import { createContext } from "@/server/context";
+import { appRouter } from "@/server/router";
 
 /**
  * 创建 TRPC 服务端调用器
@@ -12,23 +12,21 @@ export const createCaller = appRouter.createCaller;
 /**
  * 获取初始 memo 数据用于 SSR
  */
-export async function getInitialMemos(options: {
-  page?: number;
-  limit?: number;
-  publicOnly?: boolean;
-} = {}) {
+export async function getInitialMemos(
+  options: { page?: number; limit?: number; publicOnly?: boolean } = {}
+) {
   const caller = createCaller(await createContext());
-  
+
   try {
     const result = await caller.memos.list({
       page: options.page || 1,
       limit: options.limit || 20,
       publicOnly: options.publicOnly ?? true,
     });
-    
+
     return result;
   } catch (error) {
-    console.error('Failed to fetch initial memos:', error);
+    console.error("Failed to fetch initial memos:", error);
     return {
       items: [],
       nextCursor: undefined,

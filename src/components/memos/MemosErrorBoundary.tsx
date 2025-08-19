@@ -49,7 +49,10 @@ export class MemosErrorBoundary extends Component<Props, State> {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                role="img"
+                aria-label="Error"
               >
+                <title>Error</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -64,11 +67,19 @@ export class MemosErrorBoundary extends Component<Props, State> {
             <p className="text-base-content/70 mb-4">加载 Memos 时遇到了错误，请尝试刷新页面。</p>
 
             <div className="card-actions justify-center">
-              <button type="button" onClick={() => window.location.reload()} className="btn btn-primary">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="btn btn-primary"
+              >
                 刷新页面
               </button>
 
-              <button type="button" onClick={() => this.setState({ hasError: false })} className="btn btn-ghost">
+              <button
+                type="button"
+                onClick={() => this.setState({ hasError: false })}
+                className="btn btn-ghost"
+              >
                 重试
               </button>
             </div>

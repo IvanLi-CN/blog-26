@@ -23,7 +23,7 @@ export default function AdminDashboard() {
     return (
       <div className="alert alert-error">
         <span>加载数据失败</span>
-        <button onClick={handleRefresh} className="btn btn-sm">
+        <button type="button" onClick={handleRefresh} className="btn btn-sm">
           重试
         </button>
       </div>
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
             <a href="/admin" className="btn btn-outline">
               ← 返回管理面板
             </a>
-            <button onClick={handleRefresh} className="btn btn-primary">
+            <button type="button" onClick={handleRefresh} className="btn btn-primary">
               🔄 刷新数据
             </button>
           </div>

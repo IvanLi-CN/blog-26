@@ -1,10 +1,10 @@
 "use client";
 
-import Reactions from './Reactions';
-import type { UserInfo } from '../comments/types';
+import type { UserInfo } from "../comments/types";
+import Reactions from "./Reactions";
 
 interface ReactionsWithProviderProps {
-  targetType: 'post' | 'comment';
+  targetType: "post" | "comment";
   targetId: string;
   userInfo: UserInfo | null;
 }

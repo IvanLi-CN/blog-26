@@ -89,7 +89,7 @@ export default function CommentForm({
         <div className="flex items-center gap-4 mb-6 p-4 bg-base-50 rounded-lg">
           <div className="avatar">
             <div className="w-12 h-12 rounded-full">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* biome-ignore lint/performance/noImgElement: Using plain <img> is acceptable for avatar here */}
               <img
                 src={userInfo.avatarUrl || "/default-avatar.png"}
                 alt={userInfo.nickname}

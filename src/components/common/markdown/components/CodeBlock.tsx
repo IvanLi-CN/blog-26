@@ -96,7 +96,15 @@ export function CodeBlock({
             onClick={toggleExpanded}
             data-action="expand"
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-3 h-3"
+              role="img"
+              aria-label="展开"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <title>展开</title>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -124,7 +132,15 @@ export function CodeBlock({
             onClick={toggleExpanded}
             data-action="collapse"
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-3 h-3"
+              role="img"
+              aria-label="收起"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <title>收起</title>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

@@ -187,6 +187,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
 
             {post.image ? (
               <div className="max-w-full lg:max-w-[900px] mx-auto mb-6">
+                {/* biome-ignore lint/performance/noImgElement: Next/Image is not necessary for this use-case */}
                 <img
                   src={resolveImagePath(post.image, `/posts/${post.slug}`)}
                   className="max-w-full mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer max-h-[50vh] sm:max-h-[60vh] md:max-w-2xl md:max-h-96 lg:max-h-[506px] xl:max-h-[50vh] h-auto object-contain"

@@ -142,6 +142,7 @@ export function QuickMemoEditor({
       className={cn("mb-6 sm:mb-8", className)}
       data-testid="quick-memo-editor"
       onKeyDown={handleKeyDown}
+      aria-label="快速发布区域"
     >
       <div className="card bg-base-100 shadow-xl">
         <div className="card-body p-4 sm:p-6">

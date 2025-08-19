@@ -24,8 +24,8 @@ function _SubDirectoryContent({
   path,
   onSelectFile,
   selectedPath,
-  expandedFolders,
-  toggleFolder,
+  expandedFolders: _expandedFolders,
+  toggleFolder: _toggleFolder,
 }: SubDirectoryContentProps) {
   // 获取子目录内容
   const { data: subDirFiles, isLoading } = trpc.admin.files.listDirectory.useQuery(
@@ -53,7 +53,7 @@ function _SubDirectoryContent({
           onClick={() => {
             if (file.type === "directory") {
               // 子目录：展开/折叠
-              toggleFolder(`${source}-${path}/${file.path}`);
+              _toggleFolder(`${source}-${path}/${file.path}`);
             } else {
               // 文件：打开编辑
               const fullPath =

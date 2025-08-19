@@ -6,7 +6,7 @@
  * 提供内容源状态显示、手动同步控制和日志查看功能
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
 
 interface SyncProgress {
@@ -86,13 +86,13 @@ export function ContentSyncManager() {
     trpc.admin.contentSync.getSyncProgress.useQuery();
 
   // 刷新数据
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     try {
       await Promise.all([refetchSources(), refetchLogs(), refetchProgress()]);
     } catch (error) {
       console.error("刷新数据失败:", error);
     }
-  };
+  }, [refetchSources, refetchLogs, refetchProgress]);
 
   // 更新本地状态
   useEffect(() => {
@@ -256,6 +256,7 @@ export function ContentSyncManager() {
           {/* 控制按钮 */}
           <div className="flex gap-4">
             <button
+              type="button"
               className={`btn btn-primary ${isLoading ? "loading" : ""}`}
               onClick={handleTriggerSync}
               disabled={isLoading || syncProgress?.status === "running"}
@@ -265,6 +266,7 @@ export function ContentSyncManager() {
 
             {syncProgress?.status === "running" && (
               <button
+                type="button"
                 className="btn btn-warning"
                 onClick={handleCancelSync}
                 disabled={cancelSyncMutation.isLoading}
@@ -273,7 +275,12 @@ export function ContentSyncManager() {
               </button>
             )}
 
-            <button className="btn btn-ghost" onClick={refreshData} disabled={isLoading}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={refreshData}
+              disabled={isLoading}
+            >
               刷新状态
             </button>
           </div>
@@ -342,7 +349,11 @@ export function ContentSyncManager() {
         <div className="card-body">
           <div className="flex justify-between items-center">
             <h2 className="card-title">同步日志</h2>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowLogs(!showLogs)}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowLogs(!showLogs)}
+            >
               {showLogs ? "隐藏日志" : "显示日志"}
             </button>
           </div>

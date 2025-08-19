@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 
 interface SearchBoxProps {
@@ -68,23 +68,23 @@ export default function SearchBox({
   };
 
   // 关闭移动端搜索模态框
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     document.body.style.overflow = "";
-  };
+  }, []);
 
   // 打开中屏搜索悬浮框
-  const openMediumOverlay = () => {
+  const openMediumOverlay = useCallback(() => {
     setIsMediumOverlayOpen(true);
     document.body.style.overflow = "hidden";
     setTimeout(() => mediumInputRef.current?.focus(), 100);
-  };
+  }, []);
 
   // 关闭中屏搜索悬浮框
-  const closeMediumOverlay = () => {
+  const closeMediumOverlay = useCallback(() => {
     setIsMediumOverlayOpen(false);
     document.body.style.overflow = "";
-  };
+  }, []);
 
   // 键盘事件处理
   useEffect(() => {

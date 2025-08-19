@@ -23,7 +23,7 @@ interface UniversalEditorProps {
   activeTabId: string;
   onTabChange: (tabId: string) => void;
   onTabClose: (tabId: string) => void;
-  onContentChange: (tabId: string, content: string) => void;
+  // onContentChange: (tabId: string, content: string) => void;
   onModeChange: (tabId: string, mode: EditorMode) => void;
   onSave: (tabId: string) => void;
   children: React.ReactNode;
@@ -34,7 +34,7 @@ export function UniversalEditor({
   activeTabId,
   onTabChange,
   onTabClose,
-  onContentChange,
+  // onContentChange,
   onModeChange,
   onSave,
   children,

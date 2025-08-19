@@ -1,7 +1,7 @@
 "use client";
 
-import { useUserInfo } from '../comments/hooks';
-import ReactionsWithProvider from './ReactionsWithProvider';
+import { useUserInfo } from "../comments/hooks";
+import ReactionsWithProvider from "./ReactionsWithProvider";
 
 interface PostReactionsProps {
   postSlug: string;

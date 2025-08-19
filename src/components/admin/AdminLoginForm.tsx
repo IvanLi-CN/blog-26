@@ -7,7 +7,7 @@ interface AdminLoginFormProps {
   luosimaoSiteKey?: string;
 }
 
-export default function AdminLoginForm({ luosimaoSiteKey }: AdminLoginFormProps) {
+export default function AdminLoginForm(_props: AdminLoginFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
@@ -123,7 +123,7 @@ export default function AdminLoginForm({ luosimaoSiteKey }: AdminLoginFormProps)
                     <span className="label-text font-medium">邮箱地址</span>
                   </label>
                   <input
-                    id="email"
+                    id={`email-${Math.random().toString(36).slice(2)}`}
                     name="email"
                     type="email"
                     required
@@ -136,7 +136,7 @@ export default function AdminLoginForm({ luosimaoSiteKey }: AdminLoginFormProps)
 
                 {/* 人机验证 - 开发环境中显示提示 */}
                 <div>
-                  <label className="label pb-1">
+                  <label className="label pb-1" htmlFor="captcha">
                     <span className="label-text font-medium">人机验证</span>
                   </label>
                   {process.env.NODE_ENV === "development" ? (
@@ -173,7 +173,7 @@ export default function AdminLoginForm({ luosimaoSiteKey }: AdminLoginFormProps)
                     <span className="label-text font-medium">验证码</span>
                   </label>
                   <input
-                    id="code"
+                    id={`code-${Math.random().toString(36).slice(2)}`}
                     name="code"
                     type="text"
                     required

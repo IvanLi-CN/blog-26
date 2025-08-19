@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from '@iconify/react';
+import { Icon } from "@iconify/react";
 
 interface SocialShareProps {
   text: string;
@@ -9,35 +9,35 @@ interface SocialShareProps {
 }
 
 export default function SocialShare({ text, url, className = "inline-block" }: SocialShareProps) {
-  const shareUrl = typeof url === 'string' ? url : url.toString();
+  const shareUrl = typeof url === "string" ? url : url.toString();
 
   const handleShare = (platform: string) => {
-    let shareLink = '';
-    
+    let shareLink = "";
+
     switch (platform) {
-      case 'twitter':
+      case "twitter":
         shareLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
         break;
-      case 'facebook':
+      case "facebook":
         shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
         break;
-      case 'linkedin':
+      case "linkedin":
         shareLink = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
         break;
-      case 'whatsapp':
+      case "whatsapp":
         shareLink = `https://wa.me/?text=${encodeURIComponent(`${text} ${shareUrl}`)}`;
         break;
-      case 'mail':
+      case "mail":
         shareLink = `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(shareUrl)}`;
         break;
       default:
         return;
     }
 
-    if (platform === 'mail') {
+    if (platform === "mail") {
       window.location.href = shareLink;
     } else {
-      window.open(shareLink, '_blank', 'noopener,noreferrer');
+      window.open(shareLink, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -45,9 +45,10 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
     <div className={`flex items-center ${className}`}>
       <span className="font-bold text-slate-500 dark:text-slate-400 mr-2">Share:</span>
       <button
+        type="button"
         className="rtl:ml-0 rtl:mr-2"
         title="Twitter Share"
-        onClick={() => handleShare('twitter')}
+        onClick={() => handleShare("twitter")}
       >
         <Icon
           icon="tabler:brand-x"
@@ -55,9 +56,10 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
         />
       </button>
       <button
+        type="button"
         className="ml-2 rtl:ml-0 rtl:mr-2"
         title="Facebook Share"
-        onClick={() => handleShare('facebook')}
+        onClick={() => handleShare("facebook")}
       >
         <Icon
           icon="tabler:brand-facebook"
@@ -65,9 +67,10 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
         />
       </button>
       <button
+        type="button"
         className="ml-2 rtl:ml-0 rtl:mr-2"
         title="Linkedin Share"
-        onClick={() => handleShare('linkedin')}
+        onClick={() => handleShare("linkedin")}
       >
         <Icon
           icon="tabler:brand-linkedin"
@@ -75,9 +78,10 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
         />
       </button>
       <button
+        type="button"
         className="ml-2 rtl:ml-0 rtl:mr-2"
         title="Whatsapp Share"
-        onClick={() => handleShare('whatsapp')}
+        onClick={() => handleShare("whatsapp")}
       >
         <Icon
           icon="tabler:brand-whatsapp"
@@ -85,9 +89,10 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
         />
       </button>
       <button
+        type="button"
         className="ml-2 rtl:ml-0 rtl:mr-2"
         title="Email Share"
-        onClick={() => handleShare('mail')}
+        onClick={() => handleShare("mail")}
       >
         <Icon
           icon="tabler:mail"

@@ -1,17 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { getVisitorId } from '../../lib/fingerprint';
-import { trpc } from '../../lib/trpc';
-import type { UserInfo } from '../comments/types';
+import { useCallback, useEffect, useState } from "react";
+import { getVisitorId } from "../../lib/fingerprint";
+import { trpc } from "../../lib/trpc";
+import type { UserInfo } from "../comments/types";
 
 interface ReactionsProps {
-  targetType: 'post' | 'comment';
+  targetType: "post" | "comment";
   targetId: string;
   userInfo: UserInfo | null;
 }
 
-const EMOJI_OPTIONS = ['👍', '❤️', '😂', '🎉', '🤔'];
+const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "🤔"];
 
 export default function Reactions({ targetType, targetId, userInfo }: ReactionsProps) {
   const [fingerprint, setFingerprint] = useState<string | null>(null);
@@ -54,10 +54,10 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
           emoji,
         });
       } catch (error) {
-        console.error('Failed to toggle reaction:', error);
+        console.error("Failed to toggle reaction:", error);
       }
     },
-    [canFetch, targetType, targetId, fingerprint, toggleReaction]
+    [canFetch, targetType, targetId, toggleReaction]
   );
 
   const displayedReactions = data?.reactions ?? [];
@@ -71,12 +71,13 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
 
         return (
           <button
+            type="button"
             key={emoji}
             onClick={() => handleEmojiClick(emoji)}
             disabled={isLoading}
             className={`btn btn-xs rounded-full transition-all duration-200 ${
-              userReacted ? 'btn-primary' : 'btn-ghost'
-            } ${isLoading ? 'loading' : ''}`}
+              userReacted ? "btn-primary" : "btn-ghost"
+            } ${isLoading ? "loading" : ""}`}
             aria-label={`React with ${emoji}`}
           >
             <span className="text-sm">{emoji}</span>

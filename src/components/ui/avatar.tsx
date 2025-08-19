@@ -16,6 +16,7 @@ Avatar.displayName = "Avatar";
 
 const AvatarImage = React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTMLImageElement>>(
   ({ className, alt = "", ...props }, ref) => (
+    // biome-ignore lint/performance/noImgElement: Avatar uses native img intentionally
     <img ref={ref} alt={alt} className={cn("aspect-square h-full w-full", className)} {...props} />
   )
 );

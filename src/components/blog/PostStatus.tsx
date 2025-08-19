@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react';
+import { Icon } from "@iconify/react";
 
 interface Post {
   public?: boolean;
@@ -47,12 +47,12 @@ function getPostStatus(post: Post) {
   };
 }
 
-export default function PostStatus({ 
-  post, 
-  size = "md", 
-  showText = true, 
+export default function PostStatus({
+  post,
+  size = "md",
+  showText = true,
   className = "",
-  isAdmin = false
+  isAdmin = false,
 }: PostStatusProps) {
   if (!isAdmin) return null;
 

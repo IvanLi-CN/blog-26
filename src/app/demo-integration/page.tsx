@@ -1,8 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import MarkdownRenderer from '@/components/common/MarkdownRenderer';
-import PageLayout from '@/components/common/PageLayout';
+import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import PageLayout from "@/components/common/PageLayout";
 
 const demoArticleContent = `# 集成演示：MarkdownRenderer 在实际页面中的应用
 
@@ -214,7 +213,7 @@ export default function DemoIntegrationPage() {
               📄 文章模式 (Article Mode)
             </h2>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <MarkdownRenderer 
+              <MarkdownRenderer
                 content={demoArticleContent}
                 variant="article"
                 enableMath={true}
@@ -255,7 +254,9 @@ export default function DemoIntegrationPage() {
             </h3>
             <div className="grid md:grid-cols-3 gap-4 text-sm">
               <div>
-                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">文章模式特点：</h4>
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  文章模式特点：
+                </h4>
                 <ul className="text-blue-700 dark:text-blue-300 space-y-1">
                   <li>• 启用数学公式渲染</li>
                   <li>• 支持 Mermaid 图表</li>
@@ -265,7 +266,9 @@ export default function DemoIntegrationPage() {
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">闪念模式特点：</h4>
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  闪念模式特点：
+                </h4>
                 <ul className="text-blue-700 dark:text-blue-300 space-y-1">
                   <li>• 启用数学公式渲染</li>
                   <li>• 支持 Mermaid 图表</li>
@@ -275,7 +278,9 @@ export default function DemoIntegrationPage() {
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">闪念卡片特点：</h4>
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  闪念卡片特点：
+                </h4>
                 <ul className="text-blue-700 dark:text-blue-300 space-y-1">
                   <li>• 启用数学公式渲染</li>
                   <li>• 支持 Mermaid 图表</li>

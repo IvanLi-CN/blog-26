@@ -149,9 +149,9 @@ export default function HomePage() {
         </div>
 
         <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {featuredProjects.map((project, index) => (
+          {featuredProjects.map((project) => (
             <ProjectCard
-              key={index}
+              key={project.href}
               title={project.title}
               href={project.href}
               category={project.category}

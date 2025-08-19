@@ -4,16 +4,24 @@ import * as React from "react";
 import { cn } from "../../lib/utils";
 
 const Label = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
-  ({ className, ...props }, ref) => (
-    <label
-      ref={ref}
-      className={cn(
-        "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-        className
-      )}
-      {...props}
-    />
-  )
+  ({ className, ...props }, ref) => {
+    const ariaLabel =
+      typeof props.children === "string"
+        ? (props.children as string)
+        : (props["aria-label"] as string | undefined);
+    return (
+      <label
+        ref={ref}
+        className={cn(
+          "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+          className
+        )}
+        aria-label={ariaLabel}
+        htmlFor={props.htmlFor}
+        {...props}
+      />
+    );
+  }
 );
 Label.displayName = "Label";
 

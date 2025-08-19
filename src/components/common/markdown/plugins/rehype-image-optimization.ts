@@ -5,7 +5,6 @@ import {
   generateOptimizedImageUrl,
   isExternalUrl,
   isImagePath,
-  isOptimizedImageUrl,
   resolveRelativePath,
 } from "../utils";
 

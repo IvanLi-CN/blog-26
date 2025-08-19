@@ -82,6 +82,7 @@ export function ImageLightbox({
     <>
       {/* 主图片 */}
       <span className="inline-block my-4 w-full">
+        {/* biome-ignore lint/performance/noImgElement: This lightbox uses native <img> for simplicity and performance */}
         <img
           src={src}
           alt={alt}
@@ -94,6 +95,11 @@ export function ImageLightbox({
           )}
           loading="lazy"
           onClick={openLightbox}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") openLightbox();
+          }}
+          role={enableLightbox && !hasError ? "button" : undefined}
+          tabIndex={enableLightbox && !hasError ? 0 : undefined}
           onLoad={handleImageLoad}
           onError={handleImageError}
           data-lightbox={enableLightbox ? "true" : "false"}
@@ -116,6 +122,11 @@ export function ImageLightbox({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm"
           onClick={handleBackdropClick}
+          role="dialog"
+          aria-modal="true"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") closeLightbox();
+          }}
         >
           {/* 关闭按钮 */}
           <button
@@ -124,7 +135,15 @@ export function ImageLightbox({
             onClick={closeLightbox}
             aria-label="关闭图片预览"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-6 h-6"
+              role="img"
+              aria-label="关闭"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <title>关闭</title>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -136,11 +155,11 @@ export function ImageLightbox({
 
           {/* 放大的图片 */}
           <div className="relative max-w-[90vw] max-h-[90vh] p-4">
+            {/* biome-ignore lint/performance/noImgElement: Lightbox uses native img intentionally */}
             <img
               src={src}
               alt={alt}
               className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
             />
 
             {/* 图片标题 */}

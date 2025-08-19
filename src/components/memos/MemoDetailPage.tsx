@@ -304,6 +304,7 @@ export function MemoDetailPage({
             {memo.attachments.map((attachment) => (
               <div key={attachment.path} className="border rounded-lg p-3">
                 {attachment.isImage ? (
+                  // biome-ignore lint/performance/noImgElement: Simple attachment thumbnail
                   <img
                     src={attachment.path}
                     alt={attachment.filename}

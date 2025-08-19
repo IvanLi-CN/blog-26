@@ -66,8 +66,8 @@ export function MemosList({
   // 渲染加载骨架
   const renderSkeleton = () => (
     <div className="space-y-6 sm:space-y-8">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div key={`skeleton-${index}`} className="flex gap-4 sm:gap-6">
+      {["a", "b", "c"].map((id) => (
+        <div key={`skeleton-${id}`} className="flex gap-4 sm:gap-6">
           {/* 时间线圆点骨架 */}
           <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-base-300 rounded-full animate-pulse hidden sm:block" />
           {/* 卡片骨架 */}

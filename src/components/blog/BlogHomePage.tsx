@@ -63,24 +63,28 @@ export default function BlogHomePage() {
             <div className="mb-8">
               <div className="tabs tabs-boxed">
                 <button
+                  type="button"
                   className={`tab ${category === "all" ? "tab-active" : ""}`}
                   onClick={() => setCategory("all")}
                 >
                   全部
                 </button>
                 <button
+                  type="button"
                   className={`tab ${category === "tech" ? "tab-active" : ""}`}
                   onClick={() => setCategory("tech")}
                 >
                   技术
                 </button>
                 <button
+                  type="button"
                   className={`tab ${category === "life" ? "tab-active" : ""}`}
                   onClick={() => setCategory("life")}
                 >
                   生活
                 </button>
                 <button
+                  type="button"
                   className={`tab ${category === "thoughts" ? "tab-active" : ""}`}
                   onClick={() => setCategory("thoughts")}
                 >
@@ -112,8 +116,8 @@ export default function BlogHomePage() {
                             )}
                             {post.tags && (
                               <div className="flex gap-1">
-                                {post.tags.split(",").map((tag, index) => (
-                                  <span key={index} className="badge badge-ghost badge-sm">
+                                {post.tags.split(",").map((tag) => (
+                                  <span key={tag.trim()} className="badge badge-ghost badge-sm">
                                     #{tag.trim()}
                                   </span>
                                 ))}
@@ -163,16 +167,18 @@ export default function BlogHomePage() {
               <div className="flex justify-center mt-12">
                 <div className="join">
                   <button
+                    type="button"
                     className="join-item btn"
                     disabled={page <= 1}
                     onClick={() => setPage(page - 1)}
                   >
                     «
                   </button>
-                  <button className="join-item btn btn-active">
+                  <button type="button" className="join-item btn btn-active">
                     第 {page} 页，共 {data.pagination.totalPages} 页
                   </button>
                   <button
+                    type="button"
                     className="join-item btn"
                     disabled={page >= data.pagination.totalPages}
                     onClick={() => setPage(page + 1)}

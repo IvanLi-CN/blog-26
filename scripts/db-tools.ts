@@ -233,10 +233,6 @@ function main(): void {
 
   try {
     switch (command) {
-      default:
-        showOverview(sqlite);
-        break;
-
       case "schema":
         showSchema(sqlite);
         break;
@@ -263,6 +259,10 @@ function main(): void {
         checkComments(sqlite);
         console.log(`\n${"=".repeat(50)}\n`);
         checkUsers(sqlite);
+        break;
+
+      default:
+        showOverview(sqlite);
         break;
     }
   } finally {

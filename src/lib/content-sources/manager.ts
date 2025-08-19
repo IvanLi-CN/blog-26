@@ -281,8 +281,10 @@ export class ContentSourceManager {
 
     for (const [index, source] of sources.entries()) {
       try {
-        this.currentSync!.currentStep = `收集 ${source.name} 的变更`;
-        this.currentSync!.processedItems = index;
+        if (this.currentSync) {
+          this.currentSync.currentStep = `收集 ${source.name} 的变更`;
+          this.currentSync.processedItems = index;
+        }
 
         // 获取上次同步时间
         const lastSyncTime = await this.getLastSyncTime(source.name);

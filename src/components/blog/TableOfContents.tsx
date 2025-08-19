@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Icon } from '@iconify/react';
-import { extractTableOfContents, type TocItem } from '../../lib/toc';
+import { Icon } from "@iconify/react";
+import { useEffect, useState } from "react";
+import { extractTableOfContents, type TocItem } from "../../lib/toc";
 
 interface TableOfContentsProps {
   content: string;
@@ -17,15 +17,16 @@ interface TocItemComponentProps {
 
 function TocItemComponent({ item, activeId, onItemClick }: TocItemComponentProps) {
   const isActive = activeId === item.id;
-  
+
   return (
     <li>
       <button
+        type="button"
         onClick={() => onItemClick(item.id)}
         className={`block w-full text-left py-1 px-2 rounded text-sm transition-colors duration-200 ${
-          isActive 
-            ? 'text-primary bg-primary/10 font-medium' 
-            : 'text-gray-600 dark:text-gray-400 hover:text-primary hover:bg-primary/5'
+          isActive
+            ? "text-primary bg-primary/10 font-medium"
+            : "text-gray-600 dark:text-gray-400 hover:text-primary hover:bg-primary/5"
         }`}
         style={{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }}
       >
@@ -49,7 +50,7 @@ function TocItemComponent({ item, activeId, onItemClick }: TocItemComponentProps
 
 export default function TableOfContents({ content, className = "" }: TableOfContentsProps) {
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
-  const [activeId, setActiveId] = useState<string>('');
+  const [activeId, setActiveId] = useState<string>("");
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -60,10 +61,10 @@ export default function TableOfContents({ content, className = "" }: TableOfCont
   useEffect(() => {
     // 监听滚动，高亮当前章节
     const handleScroll = () => {
-      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
       const scrollTop = window.scrollY;
-      
-      let currentId = '';
+
+      let currentId = "";
       for (let i = headings.length - 1; i >= 0; i--) {
         const heading = headings[i] as HTMLElement;
         if (heading.offsetTop <= scrollTop + 100) {
@@ -71,20 +72,20 @@ export default function TableOfContents({ content, className = "" }: TableOfCont
           break;
         }
       }
-      
+
       setActiveId(currentId);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
     handleScroll(); // 初始化
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleItemClick = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -100,17 +101,18 @@ export default function TableOfContents({ content, className = "" }: TableOfCont
           目录
         </h3>
         <button
+          type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="btn btn-ghost btn-xs"
           aria-label={isCollapsed ? "展开目录" : "收起目录"}
         >
-          <Icon 
-            icon={isCollapsed ? "tabler:chevron-down" : "tabler:chevron-up"} 
-            className="w-4 h-4" 
+          <Icon
+            icon={isCollapsed ? "tabler:chevron-down" : "tabler:chevron-up"}
+            className="w-4 h-4"
           />
         </button>
       </div>
-      
+
       {!isCollapsed && (
         <nav aria-label="文章目录">
           <ul className="space-y-1">

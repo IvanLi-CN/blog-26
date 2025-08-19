@@ -59,7 +59,7 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
 
   // 获取数据库文章数据
   const { data: post } = trpc.admin.posts.get.useQuery(
-    { id: selectedPostId! },
+    selectedPostId ? { id: selectedPostId } : { id: "" },
     { enabled: !!selectedPostId && isDatabasePost }
   );
 
@@ -68,7 +68,7 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
   const shouldSkipReload = Date.now() - lastSaveTime < 2000; // 保存后2秒内不重载
 
   const { data: webdavFile } = trpc.admin.files.readFile.useQuery(
-    { source: "webdav", path: selectedPostId! },
+    selectedPostId ? { source: "webdav", path: selectedPostId } : { source: "webdav", path: "" },
     {
       enabled: !!selectedPostId && isWebDAVFile && !shouldSkipReload,
       refetchOnWindowFocus: false, // 避免窗口聚焦时重新获取
@@ -77,7 +77,7 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
 
   // 获取本地文件数据
   const { data: localFile } = trpc.admin.files.readFile.useQuery(
-    { source: "local", path: selectedPostId! },
+    selectedPostId ? { source: "local", path: selectedPostId } : { source: "local", path: "" },
     { enabled: !!selectedPostId && isLocalFile }
   );
 

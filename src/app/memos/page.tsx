@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import PageLayout from "../../components/common/PageLayout";
 import { MemosApp } from "../../components/memos/MemosApp";
 import { TRPCProvider } from "../../components/providers/TRPCProvider";
-import PageLayout from "../../components/common/PageLayout";
 
 /**
  * Memo 列表页面
@@ -86,11 +86,7 @@ export default function MemosPage() {
 
         {/* Memos 应用 - 启用管理员功能以显示 QuickMemoEditor */}
         <TRPCProvider>
-          <MemosApp
-            publicOnly={false}
-            showManageFeatures={true}
-            initialView="list"
-          />
+          <MemosApp publicOnly={false} showManageFeatures={true} initialView="list" />
         </TRPCProvider>
       </section>
     </PageLayout>

@@ -83,6 +83,7 @@ export default function RelatedPosts({
               >
                 {post.image && (
                   <div className="mb-3 overflow-hidden rounded-md">
+                    {/* biome-ignore lint/performance/noImgElement: Next/Image is not necessary in this context */}
                     <img
                       src={post.image}
                       alt={post.title}

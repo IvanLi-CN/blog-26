@@ -74,6 +74,7 @@ export default function MobileMenu() {
             </div>
             <div className="flex items-center">
               <button
+                type="button"
                 className="btn btn-ghost btn-circle"
                 aria-label="Close menu"
                 onClick={closeMenu}

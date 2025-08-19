@@ -16,14 +16,15 @@ export function extractTableOfContents(content: string): TocItem[] {
   // 匹配 Markdown 标题
   const headingRegex = /^(#{1,6})\s+(.+)$/gm;
   const headings: { level: number; title: string; id: string }[] = [];
-  
-  let match;
-  while ((match = headingRegex.exec(content)) !== null) {
+
+  let match: RegExpExecArray | null = headingRegex.exec(content);
+  while (match !== null) {
     const level = match[1].length;
     const title = match[2].trim();
     const id = generateHeadingId(title);
-    
+
     headings.push({ level, title, id });
+    match = headingRegex.exec(content);
   }
 
   // 构建层级结构
@@ -38,10 +39,10 @@ export function extractTableOfContents(content: string): TocItem[] {
 function generateHeadingId(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^\w\u4e00-\u9fff\s-]/g, '') // 保留中文、英文、数字、空格、连字符
-    .replace(/\s+/g, '-') // 空格替换为连字符
-    .replace(/-+/g, '-') // 多个连字符合并为一个
-    .replace(/^-|-$/g, ''); // 移除首尾连字符
+    .replace(/[^\w\u4e00-\u9fff\s-]/g, "") // 保留中文、英文、数字、空格、连字符
+    .replace(/\s+/g, "-") // 空格替换为连字符
+    .replace(/-+/g, "-") // 多个连字符合并为一个
+    .replace(/^-|-$/g, ""); // 移除首尾连字符
 }
 
 /**
@@ -58,7 +59,7 @@ function buildTocTree(headings: { level: number; title: string; id: string }[]):
       id: heading.id,
       title: heading.title,
       level: heading.level,
-      children: []
+      children: [],
     };
 
     // 找到合适的父级

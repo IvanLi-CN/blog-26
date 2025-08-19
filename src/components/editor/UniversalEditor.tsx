@@ -7,7 +7,7 @@
  */
 
 import Image from "next/image";
-import { useEffect, useState, useRef, useImperativeHandle, forwardRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -47,62 +47,138 @@ export interface UniversalEditorProps {
   "data-testid"?: string;
 }
 
-export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorProps>(({
-  initialContent,
-  onContentChange,
-  placeholder = "开始编写...",
-  attachmentBasePath = "assets",
-  articlePath = "",
-  contentSource = "webdav",
-  title,
-  className = "",
-  mode = "wysiwyg",
-  onModeChange,
-  editorId = "default",
-  "data-testid": dataTestId,
-}, ref) => {
-  const [content, setContent] = useState(initialContent);
-  const [currentMode, setCurrentMode] = useState<EditorMode>(mode);
+export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorProps>(
+  (
+    {
+      initialContent,
+      onContentChange,
+      placeholder = "开始编写...",
+      attachmentBasePath = "assets",
+      articlePath = "",
+      contentSource = "webdav",
+      title,
+      className = "",
+      mode = "wysiwyg",
+      onModeChange,
+      editorId = "default",
+      "data-testid": dataTestId,
+    },
+    ref
+  ) => {
+    const [content, setContent] = useState(initialContent);
+    const [currentMode, setCurrentMode] = useState<EditorMode>(mode);
 
-  // 处理内联图片上传 - 完全按照旧项目的方式
-  const processInlineImages = async (content: string): Promise<string> => {
-    const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
-    let processedContent = content;
-    const matches = Array.from(content.matchAll(base64ImageRegex));
+    // 处理内联图片上传 - 完全按照旧项目的方式
+    const processInlineImages = async (content: string): Promise<string> => {
+      const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
+      let processedContent = content;
+      const matches = Array.from(content.matchAll(base64ImageRegex));
 
-    for (const match of matches) {
-      const [fullMatch, altText, imageType, base64Data] = match;
+      for (const match of matches) {
+        const [fullMatch, altText, imageType, base64Data] = match;
 
+        try {
+          console.log("🖼️ [UniversalEditor] 处理内联图片:", {
+            altText,
+            imageType,
+            base64Length: base64Data.length,
+          });
+
+          // 生成文件名
+          const timestamp = Date.now();
+          const filename = `inline-${timestamp}.${imageType}`;
+
+          // 构建上传路径
+          const uploadPath = `${attachmentBasePath}/${filename}`;
+
+          // 将 base64 转换为 Blob
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: `image/${imageType}` });
+
+          // 使用 /api/files/webdav/<path> API 上传
+          const response = await fetch(`/api/files/webdav/${uploadPath}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": `image/${imageType}`,
+            },
+            body: blob,
+          });
+
+          if (!response.ok) {
+            throw new Error(`上传失败: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log("✅ [UniversalEditor] 内联图片上传成功:", {
+            uploadPath,
+            result,
+          });
+
+          // 替换内联图片为上传后的路径（使用 API 路径）
+          const imagePath = `/api/files/webdav/${attachmentBasePath}/${filename}`;
+          const newImageMarkdown = `![${altText}](${imagePath})`;
+          processedContent = processedContent.replace(fullMatch, newImageMarkdown);
+
+          console.log("✅ [UniversalEditor] 内联图片处理成功:", {
+            filename,
+            imagePath,
+            newMarkdown: newImageMarkdown,
+          });
+        } catch (error) {
+          console.error("❌ [UniversalEditor] 内联图片处理失败:", error);
+          // 如果上传失败，保留原始的 base64 图片
+        }
+      }
+
+      return processedContent;
+    };
+
+    // 暴露给外部的方法
+    useImperativeHandle(ref, () => ({
+      processInlineImages,
+    }));
+
+    // 处理内容变化
+    const handleContentChange = (newContent: string) => {
+      setContent(newContent);
+      onContentChange?.(newContent);
+    };
+
+    // 处理模式切换
+    const _handleModeChange = (newMode: EditorMode) => {
+      setCurrentMode(newMode);
+      onModeChange?.(newMode);
+    };
+
+    // 处理图片上传
+    const handleImageUpload = async (file: File): Promise<string> => {
       try {
-        console.log("🖼️ [UniversalEditor] 处理内联图片:", {
-          altText,
-          imageType,
-          base64Length: base64Data.length,
-        });
-
-        // 生成文件名
+        // 生成唯一文件名，避免冲突
         const timestamp = Date.now();
-        const filename = `inline-${timestamp}.${imageType}`;
+        const uniqueFileName = `${timestamp}_${file.name}`;
 
         // 构建上传路径
-        const uploadPath = `${attachmentBasePath}/${filename}`;
+        const uploadPath = `${attachmentBasePath}/${uniqueFileName}`;
 
-        // 将 base64 转换为 Blob
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: `image/${imageType}` });
+        console.log("📤 [UniversalEditor] 开始上传图片:", {
+          fileName: file.name,
+          size: file.size,
+          type: file.type,
+          uploadPath,
+        });
 
         // 使用 /api/files/webdav/<path> API 上传
         const response = await fetch(`/api/files/webdav/${uploadPath}`, {
           method: "POST",
           headers: {
-            "Content-Type": `image/${imageType}`,
+            "Content-Type": file.type,
           },
-          body: blob,
+          body: file,
         });
 
         if (!response.ok) {
@@ -110,278 +186,206 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
         }
 
         const result = await response.json();
-        console.log("✅ [UniversalEditor] 内联图片上传成功:", {
+        console.log("✅ [UniversalEditor] 图片上传成功:", {
           uploadPath,
           result,
         });
 
-        // 替换内联图片为上传后的路径（使用 API 路径）
-        const imagePath = `/api/files/webdav/${attachmentBasePath}/${filename}`;
-        const newImageMarkdown = `![${altText}](${imagePath})`;
-        processedContent = processedContent.replace(fullMatch, newImageMarkdown);
-
-        console.log("✅ [UniversalEditor] 内联图片处理成功:", {
-          filename,
-          imagePath,
-          newMarkdown: newImageMarkdown,
-        });
+        // 返回 API 路径
+        const imagePath = `/api/files/webdav/${attachmentBasePath}/${uniqueFileName}`;
+        return imagePath;
       } catch (error) {
-        console.error("❌ [UniversalEditor] 内联图片处理失败:", error);
-        // 如果上传失败，保留原始的 base64 图片
+        console.error("❌ [UniversalEditor] 图片上传失败:", error);
+        throw error;
       }
-    }
+    };
 
-    return processedContent;
-  };
+    // 将API URL转换回相对路径（用于源码模式显示）
+    const convertApiUrlsToRelativePaths = (content: string): string => {
+      // 匹配 /api/files/webdav/ 开头的图片URL
+      const apiUrlRegex = /!\[([^\]]*)\]\(\/api\/files\/webdav\/(.+?)\)/g;
 
-  // 暴露给外部的方法
-  useImperativeHandle(ref, () => ({
-    processInlineImages,
-  }));
-
-  // 处理内容变化
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    onContentChange?.(newContent);
-  };
-
-  // 处理模式切换
-  const _handleModeChange = (newMode: EditorMode) => {
-    setCurrentMode(newMode);
-    onModeChange?.(newMode);
-  };
-
-
-
-  // 处理图片上传
-  const handleImageUpload = async (file: File): Promise<string> => {
-    try {
-      // 生成唯一文件名，避免冲突
-      const timestamp = Date.now();
-      const uniqueFileName = `${timestamp}_${file.name}`;
-
-      // 构建上传路径
-      const uploadPath = `${attachmentBasePath}/${uniqueFileName}`;
-
-      console.log("📤 [UniversalEditor] 开始上传图片:", {
-        fileName: file.name,
-        size: file.size,
-        type: file.type,
-        uploadPath,
+      return content.replace(apiUrlRegex, (_match, alt, relativePath) => {
+        // 确保相对路径以 ./ 开头
+        const normalizedPath = relativePath.startsWith("./") ? relativePath : `./${relativePath}`;
+        console.log("🔄 [UniversalEditor] 转换API URL回相对路径:", {
+          original: _match,
+          converted: `![${alt}](${normalizedPath})`,
+        });
+        return `![${alt}](${normalizedPath})`;
       });
+    };
 
-      // 使用 /api/files/webdav/<path> API 上传
-      const response = await fetch(`/api/files/webdav/${uploadPath}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": file.type,
-        },
-        body: file,
-      });
+    // 提取正文内容，用于预览模式（移除 frontmatter）
+    const extractBodyContent = (content: string): string => {
+      // 如果内容以 frontmatter 开头，提取正文部分
+      const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+      const frontmatterMatch = content.match(frontmatterRegex);
 
-      if (!response.ok) {
-        throw new Error(`上传失败: ${response.status}`);
+      if (frontmatterMatch) {
+        console.log("👁️ [UniversalEditor] 预览模式移除 frontmatter:", {
+          hasFrontmatter: true,
+          frontmatterLength: frontmatterMatch[1].length,
+          bodyLength: frontmatterMatch[2].length,
+        });
+        return frontmatterMatch[2]; // 返回正文部分
       }
 
-      const result = await response.json();
-      console.log("✅ [UniversalEditor] 图片上传成功:", {
-        uploadPath,
-        result,
-      });
+      // 如果没有 frontmatter，返回原内容
+      return content;
+    };
 
-      // 返回 API 路径
-      const imagePath = `/api/files/webdav/${attachmentBasePath}/${uniqueFileName}`;
-      return imagePath;
-    } catch (error) {
-      console.error("❌ [UniversalEditor] 图片上传失败:", error);
-      throw error;
-    }
-  };
+    // 同步外部内容变化 - 使用 ref 来避免无限循环
+    const lastInitialContentRef = useRef(initialContent);
+    useEffect(() => {
+      // 只有当外部内容真正不同且不是由内部变化引起时才更新
+      if (initialContent !== lastInitialContentRef.current && initialContent !== content) {
+        console.log("🔄 [UniversalEditor] 同步外部内容变化:", {
+          oldLength: content.length,
+          newLength: initialContent.length,
+          lengthDiff: initialContent.length - content.length,
+        });
+        lastInitialContentRef.current = initialContent;
+        setContent(initialContent);
+      }
+    }, [initialContent, content]);
 
-  // 将API URL转换回相对路径（用于源码模式显示）
-  const convertApiUrlsToRelativePaths = (content: string): string => {
-    // 匹配 /api/files/webdav/ 开头的图片URL
-    const apiUrlRegex = /!\[([^\]]*)\]\(\/api\/files\/webdav\/(.+?)\)/g;
+    // 同步外部模式变化
+    useEffect(() => {
+      if (mode !== currentMode) {
+        setCurrentMode(mode);
+      }
+    }, [mode, currentMode]);
 
-    return content.replace(apiUrlRegex, (_match, alt, relativePath) => {
-      // 确保相对路径以 ./ 开头
-      const normalizedPath = relativePath.startsWith("./") ? relativePath : `./${relativePath}`;
-      console.log("🔄 [UniversalEditor] 转换API URL回相对路径:", {
-        original: _match,
-        converted: `![${alt}](${normalizedPath})`,
-      });
-      return `![${alt}](${normalizedPath})`;
-    });
-  };
+    return (
+      <div className={`universal-editor ${className}`} data-testid={dataTestId}>
+        {/* 编辑器头部 */}
+        {title && (
+          <div className="editor-header mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">{title}</h2>
+          </div>
+        )}
 
-  // 提取正文内容，用于预览模式（移除 frontmatter）
-  const extractBodyContent = (content: string): string => {
-    // 如果内容以 frontmatter 开头，提取正文部分
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
-    const frontmatterMatch = content.match(frontmatterRegex);
+        <div className="editor-content h-full">
+          {currentMode === "wysiwyg" && (
+            <div className="w-full h-full overflow-auto">
+              <SourceEditor
+                key={`source-editor-${editorId}`}
+                content={content}
+                onChange={handleContentChange}
+                placeholder={placeholder}
+                className="w-full h-full"
+                data-testid="content-input"
+              />
+            </div>
+          )}
 
-    if (frontmatterMatch) {
-      console.log("👁️ [UniversalEditor] 预览模式移除 frontmatter:", {
-        hasFrontmatter: true,
-        frontmatterLength: frontmatterMatch[1].length,
-        bodyLength: frontmatterMatch[2].length,
-      });
-      return frontmatterMatch[2]; // 返回正文部分
-    }
+          {currentMode === "source" && (
+            <div className="w-full h-full overflow-auto">
+              <SourceEditor
+                content={convertApiUrlsToRelativePaths(content)}
+                onChange={handleContentChange}
+                placeholder={placeholder}
+                className="w-full h-full"
+                data-testid="content-input"
+                onImageUpload={handleImageUpload}
+              />
+            </div>
+          )}
 
-    // 如果没有 frontmatter，返回原内容
-    return content;
-  };
+          {currentMode === "preview" && (
+            <div
+              className="w-full h-full p-4 bg-base-100 overflow-auto prose prose-lg prose-slate max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-li:my-2"
+              data-testid="content-preview"
+            >
+              {content ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                  components={{
+                    // 自定义图片组件，处理相对路径
+                    img: ({ src, alt, ...props }) => {
+                      // 确保 src 是字符串类型
+                      if (typeof src !== "string") {
+                        // biome-ignore lint/performance/noImgElement: Markdown preview fallback
+                        return <img src="" alt={alt || ""} {...props} />;
+                      }
 
-  // 同步外部内容变化 - 使用 ref 来避免无限循环
-  const lastInitialContentRef = useRef(initialContent);
-  useEffect(() => {
-    // 只有当外部内容真正不同且不是由内部变化引起时才更新
-    if (initialContent !== lastInitialContentRef.current && initialContent !== content) {
-      console.log("🔄 [UniversalEditor] 同步外部内容变化:", {
-        oldLength: content.length,
-        newLength: initialContent.length,
-        lengthDiff: initialContent.length - content.length,
-      });
-      lastInitialContentRef.current = initialContent;
-      setContent(initialContent);
-    }
-  }, [initialContent, content]);
+                      let imageSrc = src || "";
 
-  // 同步外部模式变化
-  useEffect(() => {
-    if (mode !== currentMode) {
-      setCurrentMode(mode);
-    }
-  }, [mode, currentMode]);
+                      // 如果是相对路径，使用路径解析器转换为API URL用于显示
+                      if (
+                        imageSrc.startsWith("./") ||
+                        imageSrc.startsWith("../") ||
+                        imageSrc.startsWith("~/")
+                      ) {
+                        // 从文章路径推断文章目录
+                        const articleDir = articlePath?.startsWith("/")
+                          ? articlePath.substring(1).split("/").slice(0, -1).join("/") +
+                            (articlePath.includes("/") ? "/" : "")
+                          : "";
 
-  return (
-    <div className={`universal-editor ${className}`} data-testid={dataTestId}>
-      {/* 编辑器头部 */}
-      {title && (
-        <div className="editor-header mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">{title}</h2>
+                        // 使用路径解析器解析相对路径
+                        const resolvedPath = resolveRelativePath(imageSrc, articleDir);
+                        imageSrc = `/api/files/${contentSource}/${resolvedPath}`;
+
+                        console.log("🖼️ [UniversalEditor] 预览模式转换图片路径:", {
+                          original: src,
+                          converted: imageSrc,
+                          articlePath,
+                          articleDir,
+                          resolvedPath,
+                          contentSource,
+                        });
+                      } else if (
+                        !imageSrc.startsWith("/") &&
+                        !imageSrc.startsWith("http") &&
+                        !imageSrc.startsWith("data:")
+                      ) {
+                        // 其他相对路径格式，根据内容源使用对应的 API
+                        imageSrc = `/api/files/${contentSource}/${imageSrc}`;
+                      }
+
+                      return (
+                        <Image
+                          src={imageSrc}
+                          alt={alt || ""}
+                          width={800}
+                          height={600}
+                          className="max-w-full h-auto rounded-lg shadow-sm"
+                          onError={(e) => {
+                            console.warn("图片加载失败:", imageSrc);
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      );
+                    },
+                    // 自定义代码块组件
+                    code: ({ className, children, ...props }) => {
+                      const match = /language-(\w+)/.exec(className || "");
+                      return match ? (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      ) : (
+                        <code className="bg-gray-100 px-1 py-0.5 rounded text-sm" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {extractBodyContent(content)}
+                </ReactMarkdown>
+              ) : (
+                <span className="text-gray-500">预览内容...</span>
+              )}
+            </div>
+          )}
         </div>
-      )}
-
-      <div className="editor-content h-full">
-        {currentMode === "wysiwyg" && (
-          <div className="w-full h-full overflow-auto">
-            <SourceEditor
-              key={`source-editor-${editorId}`}
-              content={content}
-              onChange={handleContentChange}
-              placeholder={placeholder}
-              className="w-full h-full"
-              data-testid="content-input"
-            />
-          </div>
-        )}
-
-        {currentMode === "source" && (
-          <div className="w-full h-full overflow-auto">
-            <SourceEditor
-              content={convertApiUrlsToRelativePaths(content)}
-              onChange={handleContentChange}
-              placeholder={placeholder}
-              className="w-full h-full"
-              data-testid="content-input"
-              onImageUpload={handleImageUpload}
-            />
-          </div>
-        )}
-
-        {currentMode === "preview" && (
-          <div
-            className="w-full h-full p-4 bg-base-100 overflow-auto prose prose-lg prose-slate max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-li:my-2"
-            data-testid="content-preview"
-          >
-            {content ? (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
-                components={{
-                  // 自定义图片组件，处理相对路径
-                  img: ({ src, alt, ...props }) => {
-                    // 确保 src 是字符串类型
-                    if (typeof src !== 'string') {
-                      return <img src="" alt={alt || ""} {...props} />;
-                    }
-
-                    let imageSrc = src || "";
-
-                    // 如果是相对路径，使用路径解析器转换为API URL用于显示
-                    if (
-                      imageSrc.startsWith("./") ||
-                      imageSrc.startsWith("../") ||
-                      imageSrc.startsWith("~/")
-                    ) {
-                      // 从文章路径推断文章目录
-                      const articleDir = articlePath?.startsWith("/")
-                        ? articlePath.substring(1).split("/").slice(0, -1).join("/") +
-                          (articlePath.includes("/") ? "/" : "")
-                        : "";
-
-                      // 使用路径解析器解析相对路径
-                      const resolvedPath = resolveRelativePath(imageSrc, articleDir);
-                      imageSrc = `/api/files/${contentSource}/${resolvedPath}`;
-
-                      console.log("🖼️ [UniversalEditor] 预览模式转换图片路径:", {
-                        original: src,
-                        converted: imageSrc,
-                        articlePath,
-                        articleDir,
-                        resolvedPath,
-                        contentSource,
-                      });
-                    } else if (
-                      !imageSrc.startsWith("/") &&
-                      !imageSrc.startsWith("http") &&
-                      !imageSrc.startsWith("data:")
-                    ) {
-                      // 其他相对路径格式，根据内容源使用对应的 API
-                      imageSrc = `/api/files/${contentSource}/${imageSrc}`;
-                    }
-
-                    return (
-                      <Image
-                        src={imageSrc}
-                        alt={alt || ""}
-                        width={800}
-                        height={600}
-                        className="max-w-full h-auto rounded-lg shadow-sm"
-                        onError={(e) => {
-                          console.warn("图片加载失败:", imageSrc);
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    );
-                  },
-                  // 自定义代码块组件
-                  code: ({ className, children, ...props }) => {
-                    const match = /language-(\w+)/.exec(className || "");
-                    return match ? (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    ) : (
-                      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm" {...props}>
-                        {children}
-                      </code>
-                    );
-                  },
-                }}
-              >
-                {extractBodyContent(content)}
-              </ReactMarkdown>
-            ) : (
-              <span className="text-gray-500">预览内容...</span>
-            )}
-          </div>
-        )}
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 UniversalEditor.displayName = "UniversalEditor";

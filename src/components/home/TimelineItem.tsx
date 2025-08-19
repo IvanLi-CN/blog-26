@@ -152,6 +152,7 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                   {/* 文章封面图 */}
                   {item.image && (
                     <div className="flex-shrink-0">
+                      {/* biome-ignore lint/performance/noImgElement: Prefer native img here for simplicity */}
                       <img
                         src={resolveImagePath(
                           item.image,
@@ -211,8 +212,8 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
               {/* 标签 */}
               {item.tags && item.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-3">
-                  {item.tags.slice(0, 3).map((tag: string, index: number) => (
-                    <span key={index} className="badge badge-outline badge-xs md:badge-sm">
+                  {item.tags.slice(0, 3).map((tag: string) => (
+                    <span key={tag} className="badge badge-outline badge-xs md:badge-sm">
                       #{tag}
                     </span>
                   ))}

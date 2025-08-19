@@ -19,7 +19,6 @@ import type { MarkdownRendererProps } from "./markdown/types";
 import {
   cleanMarkdownContent,
   defaultUrlTransform,
-  extractLanguage,
   getVariantConfig,
   mergeClassNames,
   removeTagsFromContent,
@@ -109,7 +108,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
         // 响应式表格（需要在其他插件之前）
         rehypeResponsiveTables,
 
-    // 图片优化
+        // 图片优化
         [
           rehypeImageOptimization,
           {
