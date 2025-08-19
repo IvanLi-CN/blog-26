@@ -122,8 +122,12 @@ export function generateOptimizedImageUrl(imagePath: string): string {
     }
   }
 
-  // 使用当前项目的文件代理端点
-  const cleanPath = imagePath.startsWith("/") ? imagePath.substring(1) : imagePath;
+  // 使用当前项目的文件代理端点，并对 WebDAV 的大小写路径做兼容
+  let cleanPath = imagePath.startsWith("/") ? imagePath.substring(1) : imagePath;
+  // 兼容 WebDAV 上的目录大小写（例如 Memos 目录在 WebDAV 为大写）
+  if (cleanPath.toLowerCase().startsWith("memos/")) {
+    cleanPath = `Memos/${cleanPath.substring(6)}`;
+  }
   return `/api/files/webdav/${cleanPath}`;
 }
 
