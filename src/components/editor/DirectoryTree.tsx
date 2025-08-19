@@ -86,7 +86,7 @@ function WebDAVSubDirectory({
   toggleFolder,
   onCreateFile,
 }: {
-  file: any;
+  file: { type: string; path: string; name?: string };
   source: string;
   onSelectFile?: (path: string, name: string) => void;
   selectedPath?: string;
@@ -186,7 +186,7 @@ function LocalSubDirectory({
   toggleFolder,
   onCreateFile,
 }: {
-  file: any;
+  file: { type: string; path: string; name?: string };
   source: string;
   onSelectFile?: (path: string, name: string) => void;
   selectedPath?: string;
@@ -326,7 +326,7 @@ interface FileNode {
 
 export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: DirectoryTreeProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["webdav"]));
-  const [_directoryContents, _setDirectoryContents] = useState<Record<string, any[]>>({});
+  const [_directoryContents, _setDirectoryContents] = useState<Record<string, unknown[]>>({});
 
   // 获取数据源列表
   const { data: sources, isLoading: sourcesLoading } = trpc.admin.files.getSources.useQuery();

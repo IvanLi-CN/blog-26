@@ -86,7 +86,7 @@ export default function HomePage() {
       <section className="relative px-3 sm:px-4 md:px-6 py-6 md:py-12 mx-auto max-w-6xl">
         <div className="text-center">
           <h1 className="text-3xl md:text-5xl font-bold mb-4">
-            Ivan's <span className="text-accent">Blog</span>
+            Ivan&apos;s <span className="text-accent">Blog</span>
           </h1>
           <p className="text-lg md:text-xl text-muted mb-6 max-w-2xl mx-auto">{SITE.description}</p>
         </div>

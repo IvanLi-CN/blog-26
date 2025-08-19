@@ -1,4 +1,6 @@
 import CommentItem from "./CommentItem";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { Comment, UserInfo } from "./types";
 
 interface CommentListProps {

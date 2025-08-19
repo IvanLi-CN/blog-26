@@ -93,7 +93,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
     // 配置 remark 插件
     const remarkPlugins = useMemo(() => {
-      const plugins: any[] = [remarkGfm];
+      const plugins: unknown[] = [remarkGfm];
 
       if (config.enableMath) {
         plugins.push(remarkMath);
@@ -104,7 +104,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
     // 配置 rehype 插件
     const rehypePlugins = useMemo(() => {
-      const plugins: any[] = [
+      const plugins: unknown[] = [
         // 响应式表格（需要在其他插件之前）
         rehypeResponsiveTables,
 

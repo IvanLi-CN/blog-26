@@ -105,7 +105,7 @@ export interface ResponsiveTablesOptions {
 /**
  * 自定义 Rehype 插件类型
  */
-export type RehypePlugin = Plugin<any[], Element, Element>;
+export type RehypePlugin = Plugin<unknown[], Element, Element>;
 
 /**
  * 插件配置类型
@@ -145,7 +145,7 @@ export interface MarkdownError {
   /** 错误消息 */
   message: string;
   /** 错误详情 */
-  details?: any;
+  details?: unknown;
 }
 
 /**

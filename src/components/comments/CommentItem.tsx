@@ -1,4 +1,6 @@
 import { useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import CommentForm from "./CommentForm";
 import CommentList from "./CommentList";
 import { useDeleteComment, useEditComment, useModerateComment } from "./hooks";

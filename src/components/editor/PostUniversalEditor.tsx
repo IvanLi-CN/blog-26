@@ -591,7 +591,7 @@ author: ""
           throw new Error(`上传失败: ${response.status}`);
         }
 
-        let result: any;
+        let result: unknown;
         if (currentFileIsWebDAV) {
           // WebDAV 服务器返回文本 "OK"
           const text = await response.text();

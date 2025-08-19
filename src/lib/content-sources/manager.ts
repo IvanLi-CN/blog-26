@@ -363,7 +363,7 @@ export class ContentSourceManager {
   /**
    * 解决内容冲突
    */
-  private async resolveConflict(changes: any[]): Promise<any | null> {
+  private async resolveConflict(changes: unknown[]): Promise<unknown | null> {
     if (this.config.conflictResolution === "priority") {
       // 按优先级解决冲突
       const sourcesByPriority = changes
@@ -589,7 +589,7 @@ export class ContentSourceManager {
   async getAllSourcesStatus(): Promise<
     Array<{
       source: IContentSource;
-      status: any;
+      status: unknown;
       lastSync?: number;
     }>
   > {
@@ -631,7 +631,7 @@ export class ContentSourceManager {
   /**
    * 获取同步日志
    */
-  async getSyncLogs(limit: number = 100): Promise<any[]> {
+  async getSyncLogs(limit: number = 100): Promise<unknown[]> {
     try {
       return await db
         .select()

@@ -103,9 +103,9 @@ export interface UseMemoEditorOptions {
   /** 编辑模式下的 memo ID */
   memoId?: string;
   /** 保存成功回调 */
-  onSaveSuccess?: (memo: any) => void;
+  onSaveSuccess?: (memo: unknown) => void;
   /** 保存失败回调 */
-  onSaveError?: (error: any) => void;
+  onSaveError?: (error: unknown) => void;
 }
 
 export function useMemoEditor(options: UseMemoEditorOptions = {}) {
@@ -204,7 +204,7 @@ export interface UseQuickMemoOptions {
   /** 保存成功回调 */
   onSaveSuccess?: () => void;
   /** 保存失败回调 */
-  onSaveError?: (error: any) => void;
+  onSaveError?: (error: unknown) => void;
 }
 
 export function useQuickMemo(options: UseQuickMemoOptions = {}) {

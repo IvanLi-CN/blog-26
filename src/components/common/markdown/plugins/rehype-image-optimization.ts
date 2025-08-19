@@ -20,7 +20,7 @@ import {
 export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) {
   const { enableLazyLoading = true, enableLightbox = true, articlePath = "" } = options;
 
-  return (tree: Root, file: any) => {
+  return (tree: Root, file: unknown) => {
     // 获取文章的原始路径信息
     let resolvedArticlePath = articlePath;
     let articleDir = "";

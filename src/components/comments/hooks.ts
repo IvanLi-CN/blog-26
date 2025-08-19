@@ -72,8 +72,9 @@ export function useComments({ postSlug }: UseCommentsProps) {
         setTotalPages(data.totalPages);
         setIsAdmin(data.isAdmin || false);
         setPage(pageNum); // Update page state
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
       } finally {
         setIsLoading(false);
       }
@@ -113,8 +114,9 @@ export function useModerateComment() {
           status,
         });
         return result;
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
         throw err;
       } finally {
         setIsModerating(false);
@@ -148,9 +150,10 @@ export function usePostComment() {
         });
 
         return { ok: true, json: () => Promise.resolve(result) };
-      } catch (err: any) {
-        setError(err.message || "Failed to post message");
-        return { ok: false, json: () => Promise.resolve({ error: err.message }) };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to post message";
+        setError(message);
+        return { ok: false, json: () => Promise.resolve({ error: message }) };
       } finally {
         setIsPosting(false);
       }
@@ -174,8 +177,9 @@ export function useEditComment() {
         content,
       });
       return result;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
       throw err;
     } finally {
       setIsEditing(false);
@@ -197,8 +201,9 @@ export function useDeleteComment() {
         commentId,
       });
       return result;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
       throw err;
     } finally {
       setIsDeleting(false);

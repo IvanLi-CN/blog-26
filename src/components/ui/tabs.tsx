@@ -28,7 +28,7 @@ const Tabs = ({ value, onValueChange, children, className }: TabsProps) => {
           return React.cloneElement(child, {
             value: currentValue,
             onValueChange: handleValueChange,
-          } as any);
+          } as unknown as React.ReactElement);
         }
         return child;
       })}
@@ -53,7 +53,7 @@ const TabsList = React.forwardRef<
         return React.cloneElement(child, {
           value,
           onValueChange,
-        } as any);
+        } as unknown as React.ReactElement);
       }
       return child;
     })}

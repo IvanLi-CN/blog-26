@@ -99,7 +99,7 @@ export class WebDAVContentSource extends ContentSourceBase {
     this.maxRetries = maxRetries;
 
     // 初始化 WebDAV 客户端（延迟到 initialize 方法中）
-    this.webdavClient = null as any;
+    this.webdavClient = null as unknown as WebDAVClient;
   }
 
   // ============================================================================

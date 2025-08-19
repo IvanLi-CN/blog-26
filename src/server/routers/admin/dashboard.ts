@@ -71,8 +71,13 @@ export const adminDashboardRouter = createTRPCRouter({
     .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
     .query(async ({ input }) => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const activities: any[] = [];
+        const activities: Array<{
+          type: "post" | "memo" | "comment" | "reaction";
+          id: string;
+          title?: string;
+          content?: string;
+          createdAt: Date | string | null;
+        }> = [];
 
         // 最近的文章
         const recentPosts = await db

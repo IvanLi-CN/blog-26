@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 
+import type { Metric } from "web-vitals";
+
 interface WebVitalsProps {
-  onMetric?: (metric: any) => void;
+  onMetric?: (metric: Metric) => void;
 }
 
 export default function WebVitals({ onMetric }: WebVitalsProps) {
@@ -11,21 +13,23 @@ export default function WebVitals({ onMetric }: WebVitalsProps) {
     // 动态导入 web-vitals 库
     import("web-vitals")
       .then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
-        const reportMetric = (metric: any) => {
+        const reportMetric = (metric: Metric) => {
           // 发送到分析服务
           if (onMetric) {
             onMetric(metric);
           }
 
           // 发送到 Google Analytics（如果配置了）
-          if (typeof window !== "undefined" && (window as any).gtag) {
-            (window as any).gtag("event", metric.name, {
-              event_category: "Web Vitals",
-              event_label: metric.id,
-              value: Math.round(metric.name === "CLS" ? metric.value * 1000 : metric.value),
-              non_interaction: true,
-            });
-          }
+          const gtag =
+            typeof window !== "undefined"
+              ? (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag
+              : undefined;
+          gtag?.("event", metric.name, {
+            event_category: "Web Vitals",
+            event_label: metric.id,
+            value: Math.round(metric.name === "CLS" ? metric.value * 1000 : metric.value),
+            non_interaction: true,
+          });
 
           // 控制台输出（开发环境）
           if (process.env.NODE_ENV === "development") {

@@ -13,7 +13,7 @@ interface CommentFormProps {
     parentId?: string;
     captchaResponse?: string;
     author?: Omit<UserInfo, "id" | "avatarUrl">;
-  }) => Promise<any>;
+  }) => Promise<{ ok: boolean; json: () => Promise<unknown> }>;
   isPosting: boolean;
   error: string | null;
   onLogout: () => void;
@@ -48,10 +48,10 @@ export default function CommentForm({
   }, []);
 
   useEffect(() => {
-    // @ts-ignore
+    // @ts-expect-error - injected by captcha script
     window.handleCaptchaSuccess = handleCaptchaSuccess;
     return () => {
-      // @ts-ignore
+      // @ts-expect-error - injected by captcha script
       delete window.handleCaptchaSuccess;
     };
   }, [handleCaptchaSuccess]);
@@ -77,7 +77,7 @@ export default function CommentForm({
       const result = await response.json();
       if (result.error?.includes("验证")) {
         setCaptchaError("人机验证失败，请重试。");
-        // @ts-ignore
+        // @ts-expect-error - injected by captcha script
         window.LUOCAPTCHA?.reset();
       }
     }
