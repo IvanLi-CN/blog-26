@@ -67,6 +67,7 @@
     "dev-data:clean": "bun ./scripts/generate-test-data.ts --dev --clean",
     "test": "bun test src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*'",
     "test:watch": "bun test --watch",
+    "test:precommit": "bun ./scripts/run-precommit-tests.ts",
     "test:e2e": "playwright test",
     "test:e2e:headless": "HEADLESS=true playwright test",
     "test:e2e:ui": "playwright test --ui",
