@@ -150,7 +150,7 @@ export async function GET(
       size: fileBuffer.byteLength || (fileBuffer as Buffer).length,
     });
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(fileBuffer as BodyInit, {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000", // 缓存1年

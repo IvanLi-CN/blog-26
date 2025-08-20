@@ -12,7 +12,7 @@ export default function WebVitals({ onMetric }: WebVitalsProps) {
   useEffect(() => {
     // 动态导入 web-vitals 库
     import("web-vitals")
-      .then(({ onCLS, onFID, onFCP, onLCP, onTTFB }) => {
+      .then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
         const reportMetric = (metric: Metric) => {
           // 发送到分析服务
           if (onMetric) {
@@ -39,7 +39,7 @@ export default function WebVitals({ onMetric }: WebVitalsProps) {
 
         // 监听各项性能指标
         onCLS(reportMetric); // Cumulative Layout Shift
-        onFID(reportMetric); // First Input Delay
+        onINP(reportMetric); // Interaction to Next Paint (替代 FID)
         onFCP(reportMetric); // First Contentful Paint
         onLCP(reportMetric); // Largest Contentful Paint
         onTTFB(reportMetric); // Time to First Byte

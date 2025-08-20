@@ -9,9 +9,9 @@ import { TRPCProvider } from "../../../components/providers/TRPCProvider";
  */
 
 interface MemoPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 // 生成动态元数据

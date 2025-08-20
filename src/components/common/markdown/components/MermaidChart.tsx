@@ -13,8 +13,16 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [svgContent, setSvgContent] = useState("");
+  const [isClient, setIsClient] = useState(false);
+
+  // 客户端检查 effect
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
+    if (!isClient) return;
+
     let mounted = true;
 
     const renderMermaid = async () => {
@@ -59,9 +67,6 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
           pie: {
             useMaxWidth: true,
           },
-          git: {
-            useMaxWidth: true,
-          },
         });
 
         // 生成唯一 ID
@@ -89,7 +94,23 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return () => {
       mounted = false;
     };
-  }, [chart]);
+  }, [chart, isClient]);
+
+  // 服务端渲染时显示占位符
+  if (!isClient) {
+    return (
+      <div
+        className={mergeClassNames(
+          "mermaid-container bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 my-4",
+          className
+        )}
+      >
+        <div className="flex items-center justify-center text-gray-500 dark:text-gray-400">
+          <span>正在加载图表...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

@@ -74,7 +74,7 @@ export default function CommentForm({
       setContent("");
       onCommentPosted();
     } else {
-      const result = await response.json();
+      const result = (await response.json()) as { error?: string };
       if (result.error?.includes("验证")) {
         setCaptchaError("人机验证失败，请重试。");
         // @ts-expect-error - injected by captcha script

@@ -151,7 +151,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     {
       content,
       onChange,
-      _placeholder = "开始写作...",
+      placeholder = "开始写作...",
       className = "",
       "data-testid": dataTestId,
       onImageUpload,
@@ -322,7 +322,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             },
             featureConfigs: {
               [CrepeFeature.Placeholder]: {
-                text: _placeholder,
+                text: placeholder,
               },
               [CrepeFeature.ImageBlock]: {
                 onUpload: async (file: File) => {
@@ -439,7 +439,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           initializingEditors.delete(editorId);
         }
       };
-    }, [articlePath, editorId, contentSource, _placeholder, content, onChange]); // 只在组件挂载时初始化一次，移除 content 和 onChange 避免重复初始化
+    }, [articlePath, editorId, contentSource, placeholder, content, onChange]); // 只在组件挂载时初始化一次，移除 content 和 onChange 避免重复初始化
 
     // 处理外部内容变化 - 修复无限循环
     useEffect(() => {

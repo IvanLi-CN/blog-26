@@ -124,9 +124,9 @@ export const memosRouter = router({
         content: memo.body, // 使用 body 字段匹配实际数据库结构
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
-        attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
-        author: memo.author || memo.authorEmail,
-        source: memo.source,
+        attachments: (memo as any).attachments ? JSON.parse((memo as any).attachments) : [],
+        author: memo.author || (memo as any).authorEmail,
+        source: (memo as any).source,
         createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
           ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
@@ -190,9 +190,9 @@ export const memosRouter = router({
         content: memo.body, // 使用 body 字段匹配实际数据库结构
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
-        attachments: memo.attachments ? JSON.parse(memo.attachments) : [],
-        author: memo.author || memo.authorEmail,
-        source: memo.source,
+        attachments: (memo as any).attachments ? JSON.parse((memo as any).attachments) : [],
+        author: memo.author || (memo as any).authorEmail,
+        source: (memo as any).source,
         createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
           ? new Date(toMsTimestamp(memo.updateDate)).toISOString()

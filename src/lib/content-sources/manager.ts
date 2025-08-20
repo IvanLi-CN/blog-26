@@ -4,12 +4,15 @@
  * 统一管理多个内容源，处理内容合并、冲突解决和同步协调
  */
 
-import { eq } from "drizzle-orm";
+import { eq, lt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, initializeDB } from "../db";
+import type { ContentSyncLog } from "../schema";
 import { contentSyncLogs, contentSyncStatus, posts } from "../schema";
 import type {
   ChangeSet,
+  ContentChange,
+  ContentSourceStatus,
   IContentSource,
   SyncError,
   SyncLogEntry,
@@ -363,7 +366,7 @@ export class ContentSourceManager {
   /**
    * 解决内容冲突
    */
-  private async resolveConflict(changes: unknown[]): Promise<unknown | null> {
+  private async resolveConflict(changes: ContentChange[]): Promise<ContentChange | null> {
     if (this.config.conflictResolution === "priority") {
       // 按优先级解决冲突
       const sourcesByPriority = changes
@@ -589,7 +592,7 @@ export class ContentSourceManager {
   async getAllSourcesStatus(): Promise<
     Array<{
       source: IContentSource;
-      status: unknown;
+      status: ContentSourceStatus;
       lastSync?: number;
     }>
   > {
@@ -620,7 +623,7 @@ export class ContentSourceManager {
             totalItems: 0,
             error: error instanceof Error ? error.message : String(error),
             metadata: {},
-          },
+          } as ContentSourceStatus,
         });
       }
     }
@@ -631,7 +634,7 @@ export class ContentSourceManager {
   /**
    * 获取同步日志
    */
-  async getSyncLogs(limit: number = 100): Promise<unknown[]> {
+  async getSyncLogs(limit: number = 100): Promise<ContentSyncLog[]> {
     try {
       return await db
         .select()
@@ -650,7 +653,7 @@ export class ContentSourceManager {
   async cleanupOldLogs(daysToKeep: number = 30): Promise<void> {
     try {
       const cutoffTime = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
-      await db.delete(contentSyncLogs).where(contentSyncLogs.createdAt < cutoffTime);
+      await db.delete(contentSyncLogs).where(lt(contentSyncLogs.createdAt, cutoffTime));
 
       await this.logSync("info", `清理了 ${daysToKeep} 天前的同步日志`);
     } catch (error) {

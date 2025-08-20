@@ -2,7 +2,6 @@ import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
-import rehypeMermaid from "rehype-mermaid";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
@@ -28,6 +27,45 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // 临时解决方案：使用开发模式配置
+
+  // Webpack 配置以解决服务端渲染问题
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // 在服务端构建时排除某些可能有问题的模块
+      config.externals = config.externals || [];
+      config.externals.push({
+        puppeteer: "puppeteer",
+        playwright: "playwright",
+        "chrome-aws-lambda": "chrome-aws-lambda",
+      });
+    }
+
+    // 处理 mermaid 相关的模块
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      os: false,
+    };
+
+    return config;
+  },
+
+  // 尝试跳过有问题的静态生成
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
+
+  // 禁用静态优化来避免构建时错误
+  output: "standalone",
+
+  // 完全禁用静态生成
+  trailingSlash: false,
+  skipTrailingSlashRedirect: true,
+
+  // 移除无效的 generateStaticParams 配置
+
   // Optionally, add any other Next.js config below
   experimental: {
     mdxRs: false, // Use the legacy MDX compiler for better plugin compatibility
@@ -47,46 +85,11 @@ const withMDX = createMDX({
           throwOnError: false, // 遇到错误时不抛出异常
         },
       ],
-      [
-        rehypeMermaid,
-        {
-          strategy: "img-svg",
-          dark: true,
-          // 添加错误处理和超时配置
-          launchOptions: {
-            args: [
-              "--no-sandbox",
-              "--disable-setuid-sandbox",
-              "--disable-dev-shm-usage",
-              "--disable-gpu",
-            ],
-            timeout: 60000,
-            headless: true,
-          },
-          // 添加错误处理回调
-          errorFallback: (_element: any, diagram: string, error: Error) => {
-            console.warn("Mermaid rendering error:", error.message);
-            console.warn("Diagram content:", diagram);
-            // 返回一个简单的代码块而不是 null
-            return {
-              type: "element",
-              tagName: "pre",
-              properties: { className: ["mermaid-error"] },
-              children: [
-                {
-                  type: "element",
-                  tagName: "code",
-                  properties: {},
-                  children: [{ type: "text", value: diagram }],
-                },
-              ],
-            };
-          },
-        },
-      ],
+      // 移除 rehype-mermaid，使用客户端渲染方案
     ],
   },
 });
 
 // Wrap MDX and Next.js config with each other
+// 重新启用 MDX，但使用更安全的配置
 export default withMDX(nextConfig);

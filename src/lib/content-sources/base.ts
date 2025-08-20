@@ -12,6 +12,7 @@ import type {
   ContentSourceType,
   IContentSource,
   SyncLogEntry,
+  SyncOperationType,
 } from "./types";
 
 /**
@@ -87,8 +88,8 @@ export abstract class ContentSourceBase implements IContentSource {
         total: changes.length,
         created: changes.filter((c) => c.operation === "create").length,
         updated: changes.filter((c) => c.operation === "update").length,
-        deleted: changes.filter((c) => c.operation === "delete").length,
-        skipped: changes.filter((c) => c.operation === "skip").length,
+        deleted: 0, // 当前实现不支持删除检测
+        skipped: 0, // 当前实现不支持跳过检测
       };
 
       this.log("info", `变更检测完成: ${JSON.stringify(stats)}`);
@@ -241,7 +242,7 @@ export abstract class ContentSourceBase implements IContentSource {
       })
       .map((item) => ({
         item,
-        operation: (!lastSyncTime ? "create" : "update") as const,
+        operation: (!lastSyncTime ? "create" : "update") as SyncOperationType,
         reason: !lastSyncTime ? "首次同步" : "内容已修改",
       }));
 

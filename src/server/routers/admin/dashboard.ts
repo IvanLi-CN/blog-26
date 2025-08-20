@@ -72,11 +72,14 @@ export const adminDashboardRouter = createTRPCRouter({
     .query(async ({ input }) => {
       try {
         const activities: Array<{
-          type: "post" | "memo" | "comment" | "reaction";
+          type: "post" | "memo" | "comment" | "reaction" | "user";
           id: string;
           title?: string;
           content?: string;
           createdAt: Date | string | null;
+          action?: string;
+          status?: string;
+          timestamp?: number;
         }> = [];
 
         // 最近的文章
@@ -100,6 +103,7 @@ export const adminDashboardRouter = createTRPCRouter({
             title: post.title,
             timestamp: post.publishDate,
             status: post.draft ? "draft" : "published",
+            createdAt: new Date(post.publishDate),
           });
         });
 
@@ -126,6 +130,7 @@ export const adminDashboardRouter = createTRPCRouter({
               comment.content.substring(0, 100) + (comment.content.length > 100 ? "..." : ""),
             timestamp: comment.createdAt,
             status: comment.status,
+            createdAt: new Date(comment.createdAt),
           });
         });
 
@@ -149,11 +154,12 @@ export const adminDashboardRouter = createTRPCRouter({
             title: `${user.name || user.email} 注册了账号`,
             timestamp: user.createdAt,
             status: "completed",
+            createdAt: new Date(user.createdAt),
           });
         });
 
         // 按时间排序并限制数量
-        activities.sort((a, b) => b.timestamp - a.timestamp);
+        activities.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
         return activities.slice(0, input.limit);
       } catch (error) {

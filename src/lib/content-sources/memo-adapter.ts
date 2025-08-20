@@ -21,8 +21,8 @@ export function memoToContentItem(memo: Memo): ContentItem {
     id: memo.id,
     type: "memo" as const,
     slug: memo.slug || generateSlugFromId(memo.id),
-    title: memo.title || extractTitleFromContent(memo.content),
-    excerpt: memo.excerpt || generateExcerptFromContent(memo.content),
+    title: memo.title || extractTitleFromContent(memo.body),
+    excerpt: memo.excerpt || generateExcerptFromContent(memo.body),
     contentHash: memo.contentHash,
     lastModified: memo.lastModified || memo.updatedAt || memo.createdAt,
     source: memo.source || memo.dataSource || "webdav",
@@ -30,15 +30,15 @@ export function memoToContentItem(memo: Memo): ContentItem {
     draft: Boolean(memo.draft),
     public: Boolean(memo.public ?? memo.isPublic ?? true),
     publishDate: memo.publishDate || memo.createdAt,
-    updateDate: memo.updateDate || memo.updatedAt,
-    category: memo.category,
+    updateDate: memo.updateDate || memo.updatedAt || undefined,
+    category: memo.category || undefined,
     tags,
     author: memo.author || memo.authorEmail,
-    image: memo.image,
+    image: memo.image || undefined,
     metadata: {
       ...metadata,
       // 保留 memo 特有的字段
-      content: memo.content,
+      content: memo.body,
       authorEmail: memo.authorEmail,
       attachments,
       // 兼容字段
@@ -86,7 +86,7 @@ export function contentItemToMemo(item: ContentItem, authorEmail: string): Parti
     metadata: JSON.stringify(metadata),
 
     // Memo 特有字段
-    content,
+    body: content,
     authorEmail,
     attachments: JSON.stringify(attachments),
 

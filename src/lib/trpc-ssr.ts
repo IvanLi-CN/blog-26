@@ -15,7 +15,25 @@ export const createCaller = appRouter.createCaller;
 export async function getInitialMemos(
   options: { page?: number; limit?: number; publicOnly?: boolean } = {}
 ) {
-  const caller = createCaller(await createContext());
+  // 创建模拟的请求对象用于 SSR
+  const mockRequest = new Request("http://localhost:3000/api/trpc");
+  const mockHeaders = new Headers();
+
+  const caller = createCaller(
+    await createContext({
+      req: mockRequest,
+      resHeaders: mockHeaders,
+      info: {
+        isBatchCall: false,
+        calls: [],
+        accept: "application/jsonl",
+        type: "query" as const,
+        connectionParams: {},
+        signal: new AbortController().signal,
+        url: new URL("http://localhost:3000/api/trpc"),
+      },
+    })
+  );
 
   try {
     const result = await caller.memos.list({

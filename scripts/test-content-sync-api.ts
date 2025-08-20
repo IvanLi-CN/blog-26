@@ -1,12 +1,4 @@
 #!/usr/bin/env bun
-
-/**
- * 内容同步 API 测试脚本
- *
- * 验证 tRPC 内容同步路由的功能是否正常工作
- */
-
-// 设置测试环境变量
 process.env.WEBDAV_URL = "http://localhost:8080";
 
 import { initializeDB } from "../src/lib/db";
@@ -21,9 +13,14 @@ async function testContentSyncAPI() {
   console.log("✅ 数据库初始化完成");
 
   // 创建 tRPC caller
+  const mockRequest = new Request("http://localhost:3000/api/trpc");
+  const mockHeaders = new Headers();
+
   const caller = adminContentSyncRouter.createCaller({
     // 模拟管理员上下文
-    user: { email: "admin@test.com" },
+    req: mockRequest,
+    resHeaders: mockHeaders,
+    user: { id: "admin-test", email: "admin@test.com", nickname: "Admin Test" },
     isAdmin: true,
   });
 

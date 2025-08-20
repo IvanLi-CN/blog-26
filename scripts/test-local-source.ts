@@ -13,7 +13,9 @@ console.log("🧪 开始测试本地内容源...");
 
 async function testLocalContentSource() {
   // 创建本地内容源配置
-  const config = LocalContentSource.createDefaultConfig("test-local", resolve("./src/content"), 50);
+  const config = LocalContentSource.createDefaultConfig("test-local", 50, {
+    contentPath: resolve("./src/content"),
+  });
 
   console.log(`📁 内容路径: ${config.options.contentPath}`);
 

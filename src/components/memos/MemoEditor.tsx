@@ -164,7 +164,11 @@ export function MemoEditor({
               <Label htmlFor={publicSwitchId} className="text-sm">
                 {isPublic ? "公开" : "私有"}
               </Label>
-              <Switch id={publicSwitchId} checked={isPublic} onCheckedChange={setIsPublic} />
+              <Switch
+                id={publicSwitchId}
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+              />
             </div>
           )}
         </div>

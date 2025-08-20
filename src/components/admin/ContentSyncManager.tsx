@@ -36,7 +36,7 @@ interface SyncLog {
   operation: string;
   status: string;
   message: string;
-  filePath?: string;
+  filePath?: string | null;
   createdAt: number;
 }
 
@@ -96,7 +96,7 @@ export function ContentSyncManager() {
 
   // 更新本地状态
   useEffect(() => {
-    if (sourcesData) setSourcesStatus(sourcesData);
+    if (sourcesData) setSourcesStatus(sourcesData as SourceStatus[]);
   }, [sourcesData]);
 
   useEffect(() => {
@@ -269,7 +269,7 @@ export function ContentSyncManager() {
                 type="button"
                 className="btn btn-warning"
                 onClick={handleCancelSync}
-                disabled={cancelSyncMutation.isLoading}
+                disabled={cancelSyncMutation.isPending}
               >
                 取消同步
               </button>

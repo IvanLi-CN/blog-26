@@ -335,11 +335,9 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
   // 如果没有注册的内容源，自动注册默认的内容源
   if (sources.length === 0) {
     // 注册本地内容源
-    const localConfig = LocalContentSource.createDefaultConfig(
-      "local",
-      resolve("./src/content"),
-      50
-    );
+    const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
+      contentPath: resolve("./src/content"),
+    });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);
 

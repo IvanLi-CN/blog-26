@@ -26,12 +26,17 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
     let articleDir = "";
 
     // 从文件数据中获取文章路径
-    if (!resolvedArticlePath && file?.data?.astro?.frontmatter?.id) {
-      resolvedArticlePath = file.data.astro.frontmatter.id;
-    } else if (!resolvedArticlePath && file?.path) {
-      resolvedArticlePath = file.path;
-    } else if (!resolvedArticlePath && file?.history && file.history.length > 0) {
-      resolvedArticlePath = file.history[0];
+    const fileData = file as {
+      data?: { astro?: { frontmatter?: { id?: string } } };
+      path?: string;
+      history?: string[];
+    };
+    if (!resolvedArticlePath && fileData?.data?.astro?.frontmatter?.id) {
+      resolvedArticlePath = fileData.data.astro.frontmatter.id;
+    } else if (!resolvedArticlePath && fileData?.path) {
+      resolvedArticlePath = fileData.path;
+    } else if (!resolvedArticlePath && fileData?.history && fileData.history.length > 0) {
+      resolvedArticlePath = fileData.history[0];
     }
 
     // 提取目录部分

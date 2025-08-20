@@ -1,20 +1,10 @@
 import { eq } from "drizzle-orm";
 import type { MetadataRoute } from "next";
-import { db } from "../lib/db";
+import { db, initializeDB } from "../lib/db";
 import { posts } from "../lib/schema";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-  // 获取所有公开的文章
-  const publishedPosts = await db
-    .select({
-      slug: posts.slug,
-      publishDate: posts.publishDate,
-      updateDate: posts.updateDate,
-    })
-    .from(posts)
-    .where(eq(posts.public, true));
 
   // 静态页面
   const staticPages = [
@@ -44,15 +34,36 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // 文章页面
-  const postPages = publishedPosts.map((post) => ({
-    url: `${baseUrl}/posts/${post.slug}`,
-    lastModified: post.updateDate
-      ? new Date(post.updateDate < 1_000_000_000_000 ? post.updateDate * 1000 : post.updateDate)
-      : new Date(post.publishDate < 1_000_000_000_000 ? post.publishDate * 1000 : post.publishDate),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+  try {
+    // 确保数据库已初始化
+    await initializeDB();
 
-  return [...staticPages, ...postPages];
+    // 获取所有公开的文章
+    const publishedPosts = await db
+      .select({
+        slug: posts.slug,
+        publishDate: posts.publishDate,
+        updateDate: posts.updateDate,
+      })
+      .from(posts)
+      .where(eq(posts.public, true));
+
+    // 文章页面
+    const postPages = publishedPosts.map((post) => ({
+      url: `${baseUrl}/posts/${post.slug}`,
+      lastModified: post.updateDate
+        ? new Date(post.updateDate < 1_000_000_000_000 ? post.updateDate * 1000 : post.updateDate)
+        : new Date(
+            post.publishDate < 1_000_000_000_000 ? post.publishDate * 1000 : post.publishDate
+          ),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
+
+    return [...staticPages, ...postPages];
+  } catch (error) {
+    console.error("生成 sitemap 时出错:", error);
+    // 如果数据库出错，至少返回静态页面
+    return staticPages;
+  }
 }

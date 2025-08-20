@@ -172,6 +172,7 @@ export const postsRouter = router({
             slug: posts.slug,
             title: posts.title,
             excerpt: posts.excerpt,
+            body: posts.body,
             publishDate: posts.publishDate,
             category: posts.category,
             tags: posts.tags,

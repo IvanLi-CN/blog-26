@@ -44,10 +44,15 @@ export function useMemos(options: UseMemosOptions = {}) {
   // 更新本地状态
   useEffect(() => {
     if (data?.memos) {
+      const convertedMemos = data.memos.map((memo) => ({
+        ...memo,
+        excerpt: memo.excerpt ?? undefined,
+      }));
+
       if (page === 1) {
-        setAllMemos(data.memos);
+        setAllMemos(convertedMemos);
       } else {
-        setAllMemos((prev) => [...prev, ...data.memos]);
+        setAllMemos((prev) => [...prev, ...convertedMemos]);
       }
     }
   }, [data, page]);
@@ -189,8 +194,8 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
     isLoadingMemo,
     saveMemo,
     handleDelete,
-    isSaving: createMemo.isLoading || updateMemo.isLoading,
-    isDeleting: deleteMemo.isLoading,
+    isSaving: createMemo.isPending || updateMemo.isPending,
+    isDeleting: deleteMemo.isPending,
     saveError: createMemo.error || updateMemo.error,
     deleteError: deleteMemo.error,
   };
@@ -238,7 +243,7 @@ export function useQuickMemo(options: UseQuickMemoOptions = {}) {
 
   return {
     saveQuickMemo,
-    isSaving: createMemo.isLoading,
+    isSaving: createMemo.isPending,
     error: createMemo.error,
   };
 }
@@ -335,7 +340,7 @@ export function useMemoAttachments() {
     attachments,
     handleUpload,
     removeAttachment,
-    isUploading: uploadAttachment.isLoading,
+    isUploading: uploadAttachment.isPending,
     uploadError: uploadAttachment.error,
   };
 }

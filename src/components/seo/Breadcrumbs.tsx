@@ -24,7 +24,7 @@ export default function Breadcrumbs({ items, className = "" }: BreadcrumbsProps)
       >
         {items.map((item, index) => (
           <li
-            key={item.href || item.title || index}
+            key={item.href || item.name || index}
             className="flex items-center"
             itemProp="itemListElement"
             itemScope

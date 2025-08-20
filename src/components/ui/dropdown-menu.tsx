@@ -12,10 +12,12 @@ const DropdownMenuTrigger = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }
 >(({ className, children, asChild, ...props }, ref) => {
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children, {
-      ref,
-      ...props,
-    });
+    // 使用类型断言来处理 ref 传递
+    const childProps = { ...props } as Record<string, unknown>;
+    if (ref) {
+      childProps.ref = ref;
+    }
+    return React.cloneElement(children, childProps);
   }
 
   return (

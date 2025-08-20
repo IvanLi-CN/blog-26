@@ -1,9 +1,5 @@
 #!/usr/bin/env bun
 
-/**
- * 测试 memo API 路由器
- */
-
 import { createContext } from "../src/server/context";
 import { appRouter } from "../src/server/router";
 
@@ -12,19 +8,21 @@ async function testMemoAPI() {
 
   try {
     // 创建测试上下文
-    const mockRequest = {
-      headers: new Map([
-        ["cookie", ""],
-        ["authorization", ""],
-      ]),
-      get: function (name: string) {
-        return this.headers.get(name);
-      },
-    } as any;
+    const mockRequest = new Request("http://localhost:3000/api/trpc");
+    const mockHeaders = new Headers();
 
     const ctx = await createContext({
       req: mockRequest,
-      res: {} as any,
+      resHeaders: mockHeaders,
+      info: {
+        isBatchCall: false,
+        calls: [],
+        accept: "application/jsonl",
+        type: "query" as const,
+        connectionParams: {},
+        signal: new AbortController().signal,
+        url: new URL("http://localhost:3000/api/trpc"),
+      },
     });
 
     // 创建 tRPC 调用器

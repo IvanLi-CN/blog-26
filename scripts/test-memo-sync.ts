@@ -1,9 +1,5 @@
 #!/usr/bin/env bun
 
-/**
- * 测试 memo 多源数据同步机制
- */
-
 import { LocalContentSource } from "../src/lib/content-sources/local";
 import { ContentSourceManager } from "../src/lib/content-sources/manager";
 import { contentItemToMemo, memoToContentItem } from "../src/lib/content-sources/memo-adapter";
@@ -108,8 +104,9 @@ async function testMemoSync() {
     );
 
     Object.entries(contentBySource).forEach(([source, items]) => {
-      console.log(`\n  📂 ${source} 源: ${items.length} 个 memo`);
-      items.forEach((item, index) => {
+      const itemsArray = items as any[]; // 类型断言
+      console.log(`\n  📂 ${source} 源: ${itemsArray.length} 个 memo`);
+      itemsArray.forEach((item, index) => {
         console.log(`    ${index + 1}. ${item.title} (${item.id})`);
       });
     });
@@ -137,8 +134,16 @@ async function testMemoSync() {
         // 转换为数据库记录
         const memoRecord = contentItemToMemo(contentItem, "test@example.com");
 
+        // 确保必需字段有值
+        const completeRecord = {
+          ...memoRecord,
+          source: memoRecord.source || "unknown",
+          id: memoRecord.id || `memo-${Date.now()}`,
+          createdAt: memoRecord.createdAt || Date.now(),
+        };
+
         // 插入数据库
-        await db.insert(memos).values(memoRecord);
+        await db.insert(memos).values(completeRecord as any);
         syncedCount++;
 
         console.log(`✅ 同步成功: ${contentItem.title}`);

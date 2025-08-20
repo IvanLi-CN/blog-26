@@ -168,7 +168,9 @@ export default function AdminDashboard() {
                 {recentActivity && recentActivity.length > 0 ? (
                   recentActivity.map((activity) => (
                     <tr key={activity.id}>
-                      <td>{new Date(activity.timestamp).toLocaleString()}</td>
+                      <td>
+                        {activity.createdAt ? new Date(activity.createdAt).toLocaleString() : "N/A"}
+                      </td>
                       <td>
                         <div
                           className={`badge ${
@@ -195,29 +197,7 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td>
-                        <div
-                          className={`badge ${
-                            activity.status === "approved" ||
-                            activity.status === "published" ||
-                            activity.status === "completed"
-                              ? "badge-success"
-                              : activity.status === "pending" || activity.status === "draft"
-                                ? "badge-warning"
-                                : "badge-error"
-                          }`}
-                        >
-                          {activity.status === "approved"
-                            ? "已批准"
-                            : activity.status === "pending"
-                              ? "待审"
-                              : activity.status === "published"
-                                ? "已发布"
-                                : activity.status === "draft"
-                                  ? "草稿"
-                                  : activity.status === "completed"
-                                    ? "已完成"
-                                    : activity.status}
-                        </div>
+                        <div className="badge badge-info">{"活跃"}</div>
                       </td>
                     </tr>
                   ))

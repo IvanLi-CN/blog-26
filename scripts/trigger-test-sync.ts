@@ -1,13 +1,7 @@
 #!/usr/bin/env bun
 
-/**
- * 测试环境内容同步触发脚本
- *
- * 用于在 E2E 测试前触发内容同步，确保测试数据正确加载到数据库
- */
-
 // 设置测试环境变量
-process.env.NODE_ENV = "test";
+// process.env.NODE_ENV = "test"; // 注释掉，因为 NODE_ENV 是只读的
 process.env.WEBDAV_URL = "http://localhost:8080";
 
 import { resolve } from "node:path";
@@ -93,11 +87,9 @@ class TestContentSyncTrigger {
     this.log("📝 注册测试环境内容源...");
 
     // 注册本地内容源（测试数据）
-    const localConfig = LocalContentSource.createDefaultConfig(
-      "local-test",
-      resolve("./test-data/local"),
-      50
-    );
+    const localConfig = LocalContentSource.createDefaultConfig("local-test", 50, {
+      contentPath: resolve("./test-data/local"),
+    });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);
     this.log("✅ 本地测试内容源注册成功");
@@ -132,13 +124,14 @@ class TestContentSyncTrigger {
     const sourcesStatus = await manager.getAllSourcesStatus();
 
     for (const { source, status } of sourcesStatus) {
-      const statusIcon = status.online ? "🟢" : "🔴";
+      const statusObj = status as any; // 类型断言
+      const statusIcon = statusObj.online ? "🟢" : "🔴";
       this.log(
-        `  ${statusIcon} ${source.name}: ${status.online ? "在线" : "离线"} (${status.totalItems} 项)`
+        `  ${statusIcon} ${source.name}: ${statusObj.online ? "在线" : "离线"} (${statusObj.totalItems} 项)`
       );
 
-      if (status.error) {
-        this.log(`    ⚠️ 错误: ${status.error}`, "warn");
+      if (statusObj.error) {
+        this.log(`    ⚠️ 错误: ${statusObj.error}`, "warn");
       }
     }
   }

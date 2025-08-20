@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 // 设置环境变量
+export {}; // 使文件成为模块以支持顶层 await
 process.env.WEBDAV_URL = "http://localhost:8080";
 
 console.log("🔍 调试 WebDAV 问题...");

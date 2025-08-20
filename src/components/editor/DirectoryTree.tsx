@@ -151,7 +151,7 @@ function WebDAVSubDirectory({
               )}
               {subFile.type === "directory" ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                  {subFile.count || 0}
+                  📁
                 </span>
               ) : subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
@@ -247,7 +247,7 @@ function LocalSubDirectory({
               )}
               {subFile.type === "directory" ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                  {subFile.count || 0}
+                  📁
                 </span>
               ) : subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
@@ -435,7 +435,11 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
         if (!acc[type]) {
           acc[type] = [];
         }
-        acc[type].push(post);
+        acc[type].push({
+          ...post,
+          publishDate: new Date(post.publishDate).toISOString(),
+          updateDate: post.updateDate ? new Date(post.updateDate).toISOString() : undefined,
+        } as FileNode);
         return acc;
       },
       {} as Record<string, FileNode[]>
@@ -508,7 +512,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                                 const normalizedPath = file.path.startsWith("/")
                                   ? file.path
                                   : `/${file.path}`;
-                                onSelectFile?.(normalizedPath, file.name);
+                                onSelectFile?.(normalizedPath);
                               }
                             }}
                             title={file.name}
@@ -526,7 +530,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                             )}
                             {file.type === "directory" ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                                {file.count || 0}
+                                📁
                               </span>
                             ) : file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
@@ -563,7 +567,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                                 toggleFolder(`local-${file.path}`);
                               } else {
                                 // 文件：打开编辑
-                                onSelectFile?.(file.path, file.name);
+                                onSelectFile?.(file.path);
                               }
                             }}
                             title={file.name}
@@ -581,7 +585,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                             )}
                             {file.type === "directory" ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                                {file.count || 0}
+                                📁
                               </span>
                             ) : file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">

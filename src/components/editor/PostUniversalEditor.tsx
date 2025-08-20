@@ -6,6 +6,7 @@
  * 集成文章编辑的所有功能，包括多标签页、多种编辑模式等
  */
 
+import { skipToken } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
@@ -59,8 +60,7 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
 
   // 获取数据库文章数据
   const { data: post } = trpc.admin.posts.get.useQuery(
-    selectedPostId ? { id: selectedPostId } : { id: "" },
-    { enabled: !!selectedPostId && isDatabasePost }
+    selectedPostId && isDatabasePost ? { id: selectedPostId } : skipToken
   );
 
   // 获取 WebDAV 文件数据
@@ -77,17 +77,16 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
 
   // 获取本地文件数据
   const { data: localFile } = trpc.admin.files.readFile.useQuery(
-    selectedPostId ? { source: "local", path: selectedPostId } : { source: "local", path: "" },
-    { enabled: !!selectedPostId && isLocalFile }
+    selectedPostId && isLocalFile ? { source: "local", path: selectedPostId } : skipToken
   );
 
   // 创建文章
   const createPostMutation = trpc.admin.posts.create.useMutation({
     onSuccess: (result) => {
       // 创建成功后打开新标签页
-      openPostInTab(result.id, result.title, result.body, true);
+      openPostInTab(result.post.id, result.post.title, result.post.body, true);
       setTimeout(() => {
-        onPostChange?.(result.id);
+        onPostChange?.(result.post.id);
       }, 0);
     },
     onError: (error) => {
@@ -97,10 +96,10 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
 
   // 更新文章
   const updatePostMutation = trpc.admin.posts.update.useMutation({
-    onSuccess: (result) => {
+    onSuccess: () => {
       // 更新成功后标记为已保存
       setTabs((prev) =>
-        prev.map((tab) => (tab.id === result.id ? { ...tab, isDirty: false } : tab))
+        prev.map((tab) => (tab.id === selectedPostId ? { ...tab, isDirty: false } : tab))
       );
     },
     onError: (error) => {
@@ -622,7 +621,7 @@ author: ""
       } catch (error) {
         console.error("❌ [PostUniversalEditor] 内联图片处理失败:", error);
         // 抛出错误，不要静默处理
-        throw new Error(`图片上传失败: ${error.message}`);
+        throw new Error(`图片上传失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -630,7 +629,7 @@ author: ""
   };
 
   // 创建新文章
-  const handleCreatePost = async () => {
+  const _handleCreatePost = async () => {
     try {
       await createPostMutation.mutateAsync({
         title: "新文章",
@@ -646,8 +645,7 @@ author: ""
     }
   };
 
-  // 暴露创建文章方法给父组件
-  PostUniversalEditor.createPost = handleCreatePost;
+  // 注意：如果需要暴露方法给父组件，应该使用 useImperativeHandle 和 forwardRef
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
 

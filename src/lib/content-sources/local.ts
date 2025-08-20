@@ -18,19 +18,24 @@ import {
 } from "./utils";
 
 /**
+ * 本地内容源选项
+ */
+export interface LocalContentSourceOptions extends Record<string, unknown> {
+  /** 内容根目录路径 */
+  contentPath: string;
+  /** 是否递归扫描子目录 */
+  recursive?: boolean;
+  /** 排除的路径模式 */
+  excludePatterns?: string[];
+  /** 是否监听文件变更 */
+  watchChanges?: boolean;
+}
+
+/**
  * 本地内容源配置
  */
 export interface LocalContentSourceConfig extends ContentSourceConfig {
-  options: {
-    /** 内容根目录路径 */
-    contentPath: string;
-    /** 是否递归扫描子目录 */
-    recursive?: boolean;
-    /** 排除的路径模式 */
-    excludePatterns?: string[];
-    /** 是否监听文件变更 */
-    watchChanges?: boolean;
-  };
+  options: LocalContentSourceOptions;
 }
 
 /**
@@ -320,18 +325,19 @@ export class LocalContentSource extends ContentSourceBase {
    */
   static createDefaultConfig(
     name: string = "local",
-    contentPath: string = "./src/content",
-    priority: number = 50
+    priority: number = 50,
+    options: Partial<LocalContentSourceOptions> = {}
   ): LocalContentSourceConfig {
     return {
       name,
       priority,
       enabled: true,
       options: {
-        contentPath,
+        contentPath: "./src/content",
         recursive: true,
         excludePatterns: ["*.tmp", "*.bak", "*~"],
         watchChanges: false,
+        ...options,
       },
     };
   }

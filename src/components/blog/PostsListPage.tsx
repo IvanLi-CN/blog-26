@@ -60,7 +60,18 @@ export default function PostsListPage() {
         </div>
 
         {data?.posts && data.posts.length > 0 ? (
-          <BlogList posts={data.posts} />
+          <BlogList
+            posts={data.posts.map((post) => ({
+              ...post,
+              published: !post.draft && post.public,
+              excerpt: post.excerpt ?? undefined,
+              image: post.image ?? undefined,
+              category: post.category ?? undefined,
+              updateDate: post.updateDate ?? undefined,
+              tags: post.tags ?? undefined,
+              author: post.author ?? undefined,
+            }))}
+          />
         ) : (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">📝</div>

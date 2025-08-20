@@ -8,7 +8,8 @@ import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { CodeBlock, ImageLightbox, MermaidChart } from "./markdown/components";
+import { CodeBlock, ImageLightbox } from "./markdown/components";
+import { ClientMermaidRenderer } from "./markdown/components/ClientMermaidRenderer";
 // 导入自定义插件和组件
 import {
   rehypeCollapsibleCode,
@@ -145,7 +146,10 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       }
 
       // HTML 支持（最后添加）
-      plugins.push(rehypeRaw);
+      // 只在客户端环境中启用 HTML 支持
+      if (typeof window !== "undefined") {
+        plugins.push(rehypeRaw);
+      }
 
       return plugins;
     }, [config, articlePath]);
@@ -173,7 +177,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
           // Mermaid 图表
           if (config.enableMermaid && language === "mermaid") {
-            return <MermaidChart chart={String(children)} />;
+            return <ClientMermaidRenderer chart={String(children)} />;
           }
 
           // 普通代码块
@@ -186,7 +190,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
               className={className}
               {...props}
             >
-              {children}
+              {String(children)}
             </CodeBlock>
           );
         },
@@ -195,7 +199,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
         img({ src, alt, ...props }) {
           return (
             <ImageLightbox
-              src={src || ""}
+              src={String(src || "")}
               alt={alt}
               enableLightbox={config.enableImageLightbox}
               {...props}
@@ -293,8 +297,8 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     return (
       <div className={mergeClassNames(variantConfig.baseClassName, className)}>
         <ReactMarkdown
-          remarkPlugins={remarkPlugins}
-          rehypePlugins={rehypePlugins}
+          remarkPlugins={remarkPlugins as never[]}
+          rehypePlugins={rehypePlugins as never[]}
           components={components}
           urlTransform={defaultUrlTransform}
         >

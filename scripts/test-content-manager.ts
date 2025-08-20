@@ -1,12 +1,4 @@
 #!/usr/bin/env bun
-
-/**
- * 内容源管理器测试脚本
- *
- * 验证内容源管理器的功能是否正常工作
- */
-
-// 设置测试环境变量
 process.env.WEBDAV_URL = "http://localhost:8080";
 
 import { resolve } from "node:path";
@@ -39,11 +31,9 @@ async function testContentSourceManager() {
 
     // 注册本地内容源
     console.log("\n1️⃣ 注册本地内容源...");
-    const localConfig = LocalContentSource.createDefaultConfig(
-      "local",
-      resolve("./src/content"),
-      50
-    );
+    const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
+      contentPath: resolve("./src/content"),
+    });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);
     console.log("✅ 本地内容源注册成功");
@@ -84,11 +74,12 @@ async function testContentSourceManager() {
     const allStatus = await manager.getAllSourcesStatus();
     allStatus.forEach(({ source, status, lastSync }) => {
       console.log(`   ${source.name}:`);
-      console.log(`     - 在线: ${status.online ? "✅" : "❌"}`);
-      console.log(`     - 文件总数: ${status.totalItems}`);
+      const statusObj = status as any; // 类型断言
+      console.log(`     - 在线: ${statusObj.online ? "✅" : "❌"}`);
+      console.log(`     - 文件总数: ${statusObj.totalItems}`);
       console.log(`     - 最后同步: ${lastSync ? new Date(lastSync).toISOString() : "从未同步"}`);
-      if (status.error) {
-        console.log(`     - 错误: ${status.error}`);
+      if (statusObj.error) {
+        console.log(`     - 错误: ${statusObj.error}`);
       }
     });
 
@@ -131,8 +122,9 @@ async function testContentSourceManager() {
     const dbLogs = await manager.getSyncLogs(10);
     console.log(`   数据库中有 ${dbLogs.length} 条日志:`);
     dbLogs.slice(-5).forEach((log) => {
-      const time = new Date(log.createdAt).toLocaleTimeString();
-      console.log(`   [${time}] ${log.sourceName}: ${log.message}`);
+      const logObj = log as any; // 类型断言
+      const time = new Date(logObj.createdAt).toLocaleTimeString();
+      console.log(`   [${time}] ${logObj.sourceName}: ${logObj.message}`);
     });
 
     // 获取管理器统计信息
@@ -161,8 +153,9 @@ async function testContentSourceManager() {
       if (logs.length > 0) {
         console.log("\n📋 管理器日志:");
         logs.forEach((log) => {
-          const time = new Date(log.createdAt).toLocaleTimeString();
-          console.log(`   [${time}] ${log.sourceName}: ${log.message}`);
+          const logObj = log as any; // 类型断言
+          const time = new Date(logObj.createdAt).toLocaleTimeString();
+          console.log(`   [${time}] ${logObj.sourceName}: ${logObj.message}`);
         });
       }
     } catch {

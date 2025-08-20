@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 // 设置环境变量
+export {}; // 使文件成为模块以支持顶层 await
 process.env.WEBDAV_URL = "http://localhost:8080";
 
 console.log("🔍 调试 WebDAV 请求...");
@@ -53,7 +54,7 @@ try {
 // 测试不同的 Content-Type
 console.log("\n🔄 测试不同的 Content-Type...");
 
-const alternativeHeaders = [
+const alternativeHeaders: Record<string, string>[] = [
   { "Content-Type": "text/xml", Depth: "1" },
   { "Content-Type": "application/xml; charset=utf-8", Depth: "1" },
   { Depth: "1" }, // 不设置 Content-Type

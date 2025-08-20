@@ -68,10 +68,21 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
     });
   };
 
+  // 转换 post 对象以匹配 Post 类型
+  const postForStructuredData = {
+    ...post,
+    excerpt: post.excerpt ?? undefined,
+    image: post.image ?? undefined,
+    category: post.category ?? undefined,
+    updateDate: post.updateDate ?? undefined,
+    author: post.author ?? undefined,
+    tags: post.tags ?? undefined,
+  };
+
   return (
     <PageLayout>
       {/* SEO 结构化数据 */}
-      <StructuredData post={post} />
+      <StructuredData post={postForStructuredData} />
 
       <section className="py-8 sm:py-16 lg:py-20 mx-auto">
         <article>
@@ -114,18 +125,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                 &nbsp;· <ReadingTime content={post.body} />
               </p>
 
-              {/* 向量化状态（仅显示已正确向量化的内容） */}
-              {post.vectorizationStatus === "correct" && (
-                <div className="vectorization-status-container">
-                  <div
-                    className="vectorization-status opacity-70 hover:opacity-100 transition-opacity"
-                    title="内容已成功向量化，可用于智能搜索"
-                  >
-                    {/* 正确向量化图标 */}
-                    <Icon icon="mingcute:ai-line" className="w-4 h-4 text-base-content/60" />
-                  </div>
-                </div>
-              )}
+              {/* 向量化状态已移除，因为 post 对象中没有 vectorizationStatus 属性 */}
             </div>
 
             <div className="px-4 sm:px-6 max-w-3xl mx-auto">
@@ -189,7 +189,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
               <div className="max-w-full lg:max-w-[900px] mx-auto mb-6">
                 {/* biome-ignore lint/performance/noImgElement: Next/Image is not necessary for this use-case */}
                 <img
-                  src={resolveImagePath(post.image, `/posts/${post.slug}`)}
+                  src={resolveImagePath(post.image || undefined, `/posts/${post.slug}`) || ""}
                   className="max-w-full mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer max-h-[50vh] sm:max-h-[60vh] md:max-w-2xl md:max-h-96 lg:max-h-[506px] xl:max-h-[50vh] h-auto object-contain"
                   alt={post.excerpt || ""}
                   width={900}
@@ -228,7 +228,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
 
             {/* 标签单独一行 */}
             <div className="mb-4 mt-6">
-              <PostTags tags={post.tags} className="flex gap-1 flex-wrap" />
+              <PostTags tags={post.tags || undefined} className="flex gap-1 flex-wrap" />
             </div>
 
             {/* 表态和分享在同一行，两端对齐 */}
@@ -255,9 +255,16 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
       <ToBlogLink />
       {relatedPosts && relatedPosts.length > 0 && (
         <RelatedPosts
-          posts={relatedPosts}
-          currentPostCategory={post.category}
-          currentPostTags={post.tags}
+          posts={relatedPosts.map((p) => ({
+            ...p,
+            excerpt: p.excerpt ?? undefined,
+            category: p.category ?? undefined,
+            tags: p.tags ?? undefined,
+            author: p.author ?? undefined,
+            image: p.image ?? undefined,
+          }))}
+          currentPostCategory={post.category || undefined}
+          currentPostTags={post.tags || undefined}
         />
       )}
     </PageLayout>

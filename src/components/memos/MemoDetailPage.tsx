@@ -51,7 +51,7 @@ export interface MemoDetailPageProps {
 
 export function MemoDetailPage({
   slug,
-  initialData,
+  initialData: _initialData,
   showEditFeatures = false,
   className,
 }: MemoDetailPageProps) {
@@ -70,7 +70,6 @@ export function MemoDetailPage({
   } = trpc.memos.bySlug.useQuery(
     { slug },
     {
-      initialData,
       refetchOnMount: false,
     }
   );
@@ -271,7 +270,7 @@ export function MemoDetailPage({
         {/* 标签 */}
         {memo.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {memo.tags.map((tag) => (
+            {memo.tags.map((tag: string) => (
               <Badge key={tag} variant="secondary">
                 #{tag}
               </Badge>
@@ -301,25 +300,27 @@ export function MemoDetailPage({
         <div className="mt-8">
           <h3 className="text-lg font-medium mb-4">附件</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {memo.attachments.map((attachment) => (
-              <div key={attachment.path} className="border rounded-lg p-3">
-                {attachment.isImage ? (
-                  // biome-ignore lint/performance/noImgElement: Simple attachment thumbnail
-                  <img
-                    src={attachment.path}
-                    alt={attachment.filename}
-                    className="w-full h-24 object-cover rounded mb-2"
-                  />
-                ) : (
-                  <div className="w-full h-24 bg-muted rounded mb-2 flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground">
-                      {attachment.filename.split(".").pop()?.toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                <p className="text-xs truncate">{attachment.filename}</p>
-              </div>
-            ))}
+            {memo.attachments.map(
+              (attachment: { path: string; filename: string; isImage: boolean }) => (
+                <div key={attachment.path} className="border rounded-lg p-3">
+                  {attachment.isImage ? (
+                    // biome-ignore lint/performance/noImgElement: Simple attachment thumbnail
+                    <img
+                      src={attachment.path}
+                      alt={attachment.filename}
+                      className="w-full h-24 object-cover rounded mb-2"
+                    />
+                  ) : (
+                    <div className="w-full h-24 bg-muted rounded mb-2 flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground">
+                        {attachment.filename.split(".").pop()?.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-xs truncate">{attachment.filename}</p>
+                </div>
+              )
+            )}
           </div>
         </div>
       )}

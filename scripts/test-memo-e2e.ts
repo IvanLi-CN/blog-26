@@ -1,11 +1,5 @@
 #!/usr/bin/env bun
 
-/**
- * Memo 功能端到端测试
- *
- * 测试完整的 memo 功能流程
- */
-
 import { type Browser, chromium, type Page } from "playwright";
 
 interface TestResult {
@@ -239,7 +233,7 @@ class MemoE2ETest {
             resolve(
               entries.map((entry) => ({
                 name: entry.name,
-                value: entry.value || entry.duration,
+                value: (entry as any).value || entry.duration,
               }))
             );
           }).observe({ entryTypes: ["navigation", "paint"] });

@@ -45,6 +45,7 @@ export interface FileItem {
   size?: number;
   lastModified?: Date;
   extension?: string;
+  count?: number;
 }
 
 // 数据源信息类型
@@ -184,7 +185,7 @@ async function readWebDAVFile(path: string): Promise<string> {
       return content;
     } else {
       // 如果是 Buffer，转换为字符串
-      return content.toString("utf-8");
+      return (content as Buffer).toString("utf-8");
     }
   } catch (error) {
     console.error("❌ [Files API] WebDAV 文件读取失败:", error);
@@ -227,11 +228,9 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
     console.log("🔧 [Files API] 自动注册默认内容源...");
 
     // 注册本地内容源
-    const localConfig = LocalContentSource.createDefaultConfig(
-      "local",
-      resolve("./dev-data/local"),
-      50
-    );
+    const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
+      contentPath: resolve("./dev-data/local"),
+    });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);
     console.log("✅ [Files API] 本地内容源注册成功");
@@ -266,15 +265,15 @@ export const filesRouter = createTRPCRouter({
       console.log("📋 [Files API] 获取数据源:", sources.length);
 
       return sources.map((source): DataSource => {
-        const sourceType = source.config.type || source.type || "unknown";
+        const sourceType = source.type || "unknown";
         return {
-          name: source.config.name,
+          name: source.name,
           type: sourceType as "webdav" | "local",
-          enabled: source.config.enabled,
+          enabled: source.enabled,
           description:
             sourceType === "webdav"
-              ? `${process.env.WEBDAV_URL || "WebDAV服务器"} ${source.config.enabled ? "(已连接)" : "(未连接)"}`
-              : `${source.config.path || process.cwd()} (本地路径)`,
+              ? `${process.env.WEBDAV_URL || "WebDAV服务器"} ${source.enabled ? "(已连接)" : "(未连接)"}`
+              : `本地文件系统 (本地路径)`,
         };
       });
     } catch (error) {
@@ -393,14 +392,11 @@ export const filesRouter = createTRPCRouter({
         });
       }
 
-      // 实现具体的文件写入逻辑
-      await source.writeFile(input.path, input.content);
-
-      return {
-        success: true,
-        source: input.source,
-        path: input.path,
-      };
+      // 文件写入功能暂未实现
+      throw new TRPCError({
+        code: "NOT_IMPLEMENTED",
+        message: "文件写入功能暂未实现",
+      });
     } catch (error) {
       console.error("写入文件失败:", error);
       throw new TRPCError({
