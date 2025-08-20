@@ -68,3 +68,5 @@ src/generated/
 
 # OS
 Thumbs.db
+
+.augment
