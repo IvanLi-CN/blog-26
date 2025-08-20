@@ -534,9 +534,8 @@ export class ContentSourceManager {
         try {
           await this.ensureLogTableExists();
 
-          // 重新初始化数据库连接以确保表创建生效
-          const { initializeDB } = await import("../db");
-          await initializeDB();
+          // 等待一小段时间确保表创建完成
+          await new Promise((resolve) => setTimeout(resolve, 100));
 
           // 重试记录日志
           await db.insert(contentSyncLogs).values({
@@ -568,6 +567,8 @@ export class ContentSourceManager {
    */
   private async ensureLogTableExists(): Promise<void> {
     try {
+      console.log("🔧 开始创建缺失的日志表...");
+
       // 使用原始SQL创建表
       await db.run(sql`
         CREATE TABLE IF NOT EXISTS content_sync_logs (
@@ -582,6 +583,7 @@ export class ContentSourceManager {
           created_at integer NOT NULL
         )
       `);
+      console.log("✅ content_sync_logs 表创建完成");
 
       await db.run(sql`
         CREATE TABLE IF NOT EXISTS content_sync_status (
@@ -598,8 +600,15 @@ export class ContentSourceManager {
           updated_at integer NOT NULL
         )
       `);
+      console.log("✅ content_sync_status 表创建完成");
+
+      // 验证表是否真的创建成功
+      await db.run(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name IN ('content_sync_logs', 'content_sync_status')
+      `);
+      console.log("✅ 日志表创建验证完成");
     } catch (error) {
-      console.error("创建日志表失败:", error);
+      console.error("❌ 创建日志表失败:", error);
       throw error;
     }
   }

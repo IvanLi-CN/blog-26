@@ -598,22 +598,36 @@ class E2EServerManager {
       process.env.DB_PATH = this.testDbPath;
       console.log(`📁 设置数据库路径: ${this.testDbPath}`);
 
-      // 动态导入并重新初始化数据库
-      const { initializeDB } = await import("../src/lib/db");
+      // 创建一个新的数据库连接来验证路径正确性
+      const { Database } = await import("bun:sqlite");
+      const testSqlite = new Database(this.testDbPath);
 
-      // 强制重新初始化（清除现有连接）
-      const dbModule = await import("../src/lib/db");
-      // @ts-ignore - 强制重置数据库连接
-      dbModule.db = undefined;
+      try {
+        // 验证数据库文件可以正常访问
+        testSqlite.query("SELECT 1 as test").get();
+        console.log("✅ 数据库文件访问验证成功");
 
-      await initializeDB();
-      console.log("✅ 数据库连接重新初始化完成");
+        // 验证关键表是否存在
+        const tables = testSqlite
+          .query("SELECT name FROM sqlite_master WHERE type='table'")
+          .all() as { name: string }[];
 
-      // 验证数据库连接是否正确
-      const { db } = await import("../src/lib/db");
-      const { sql } = await import("drizzle-orm");
-      await db.run(sql`SELECT 1 as test`);
-      console.log("✅ 数据库连接验证成功");
+        const criticalTables = ["content_sync_logs", "content_sync_status"];
+        const missingTables = criticalTables.filter(
+          (tableName) => !tables.some((t) => t.name === tableName)
+        );
+
+        if (missingTables.length > 0) {
+          console.log(`⚠️  数据库连接验证发现缺失表: ${missingTables.join(", ")}`);
+          // 这里不抛出错误，让后续的表创建逻辑处理
+        } else {
+          console.log("✅ 所有关键表都存在于数据库中");
+        }
+      } finally {
+        testSqlite.close();
+      }
+
+      console.log("✅ 数据库连接一致性验证完成");
     } catch (error) {
       console.error("❌ 数据库重新初始化失败:", error);
       throw error;
