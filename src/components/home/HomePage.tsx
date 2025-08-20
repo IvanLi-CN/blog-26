@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { SITE } from "../../config/site";
-import { trpc } from "../../lib/trpc";
+import { parseTags } from "../../lib/tag-utils";
+import { trpc as api } from "../../lib/trpc";
 import { toMsTimestamp } from "../../lib/utils";
 import PageLayout from "../common/PageLayout";
 import Icon from "../ui/Icon";
@@ -11,33 +12,18 @@ import TimelineItem from "./TimelineItem";
 
 export default function HomePage() {
   // 获取最新文章
-  const { data: postsData, isLoading: postsLoading } = trpc.posts.list.useQuery({
+  const { data: postsData, isLoading: postsLoading } = api.posts.list.useQuery({
     page: 1,
     limit: 10,
     published: true,
   });
 
-  // 获取闪念数据 - 这里先用模拟数据，后续需要添加API
-  const memos = [
-    {
-      type: "memo" as const,
-      id: "memo-1",
-      slug: "memo-1",
-      title: "关于技术选型的思考",
-      body: "最近在思考技术选型的问题，发现很多时候我们容易被新技术的光环所吸引，而忽略了项目的实际需求...",
-      publishDate: new Date("2025-01-10"),
-      tags: ["技术", "思考"],
-    },
-    {
-      type: "memo" as const,
-      id: "memo-2",
-      slug: "memo-2",
-      title: "生活感悟",
-      body: "今天看到一句话：「慢慢来，比较快」。深以为然。在这个快节奏的时代，保持内心的平静和专注变得尤为重要...",
-      publishDate: new Date("2025-01-08"),
-      tags: ["生活", "感悟"],
-    },
-  ];
+  // 使用 tRPC 查询真实数据
+  const { data: memos, isLoading: memosLoading } = api.memos.list.useQuery({
+    page: 1,
+    limit: 5,
+    publicOnly: true,
+  });
 
   // 处理文章数据
   const processedPosts =
@@ -48,14 +34,28 @@ export default function HomePage() {
       title: post.title,
       excerpt: post.excerpt || `${post.body.substring(0, 200)}...`,
       publishDate: new Date(toMsTimestamp(post.publishDate)), // 兼容秒/毫秒时间戳
-      tags: post.tags ? post.tags.split(",").map((tag) => tag.trim()) : [],
+      tags: Array.isArray(post.tags) ? post.tags : [],
       image: post.image || undefined,
       permalink: `/posts/${post.slug}`,
       dataSource: "local",
     })) || [];
 
+  // 处理闪念数据
+  const processedMemos =
+    memos?.memos?.slice(0, 5).map((memo) => ({
+      type: "memo" as const,
+      id: memo.id,
+      slug: memo.slug,
+      title: memo.title || "",
+      content: memo.content,
+      body: memo.content,
+      publishDate: new Date(toMsTimestamp(memo.createdAt)),
+      tags: parseTags(memo.tags),
+      dataSource: "local",
+    })) || [];
+
   // 合并文章和闪念，按时间排序
-  const timelineItems = [...processedPosts, ...memos]
+  const timelineItems = [...processedPosts, ...processedMemos]
     .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime())
     .slice(0, 15); // 显示最新的15条
 
@@ -69,7 +69,7 @@ export default function HomePage() {
     { title: "性能监控系统", href: "/projects/performance", category: "监控" },
   ];
 
-  if (postsLoading) {
+  if (postsLoading || memosLoading) {
     return (
       <PageLayout>
         <div className="flex justify-center items-center py-20">

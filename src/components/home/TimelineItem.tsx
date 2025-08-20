@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { resolveImagePath } from "../../lib/image-utils";
+import { optimizeForPreview } from "../../lib/markdown-utils";
+import MarkdownRenderer from "../common/MarkdownRenderer";
 import Icon from "../ui/Icon";
 
 interface TimelineItemProps {
@@ -193,19 +195,33 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                   {/* 闪念完整内容 */}
                   {(item.content || item.body) && (
                     <div className="memo-content">
-                      <div className="prose prose-sm md:prose-base max-w-none text-sm md:text-base">
-                        {/* 简单的markdown渲染，这里先用纯文本 */}
-                        <p>{(item.content || item.body)?.substring(0, 200)}...</p>
-                      </div>
+                      <MarkdownRenderer
+                        content={optimizeForPreview(item.content || item.body || "", {
+                          maxLength: 200,
+                          maxParagraphs: 2,
+                          removeImages: true,
+                          simplifyHeadings: true,
+                        })}
+                        variant="preview"
+                        enableMath={true}
+                        enableMermaid={false}
+                        enableCodeFolding={false}
+                        enableImageLightbox={false}
+                        maxCodeLines={5}
+                        previewCodeLines={3}
+                        articlePath={`/memos/${item.slug}`}
+                        className="prose prose-sm max-w-none text-sm md:text-base [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-24 [&_img]:object-cover [&_img]:rounded [&_blockquote]:text-xs [&_blockquote]:py-1 [&_ul]:text-sm [&_ol]:text-sm"
+                      />
                     </div>
                   )}
                   {/* 闪念查看详情链接 */}
                   <div className="mt-3">
                     <Link
                       href={itemUrl}
-                      className="text-sm text-primary hover:text-primary-focus transition-colors"
+                      className="text-sm text-primary hover:text-primary-focus inline-flex items-center gap-1 hover:gap-2 transition-all duration-200"
                     >
-                      查看详情 →
+                      查看详情
+                      <span className="text-xs">→</span>
                     </Link>
                   </div>
                 </>
