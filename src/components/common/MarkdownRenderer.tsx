@@ -5,7 +5,7 @@ import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
-import rehypeRaw from "rehype-raw";
+// import rehypeRaw from "rehype-raw"; // 暂时禁用以解决构建问题
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { CodeBlock, ImageLightbox } from "./markdown/components";
@@ -146,10 +146,10 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       }
 
       // HTML 支持（最后添加）
-      // 只在客户端环境中启用 HTML 支持
-      if (typeof window !== "undefined") {
-        plugins.push(rehypeRaw);
-      }
+      // 暂时禁用 rehype-raw 以解决构建问题
+      // if (typeof window !== "undefined") {
+      //   plugins.push(rehypeRaw);
+      // }
 
       return plugins;
     }, [config, articlePath]);

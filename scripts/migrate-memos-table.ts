@@ -4,8 +4,8 @@
  * 迁移 memos 表以兼容 ContentItem 接口
  */
 
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
 
 const DB_PATH = process.env.DB_PATH || "./sqlite.db";
 
@@ -19,7 +19,7 @@ async function migrateMemos() {
   try {
     // 检查表是否存在
     const tables = sqlite
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='memos'")
+      .query("SELECT name FROM sqlite_master WHERE type='table' AND name='memos'")
       .all();
     if (tables.length === 0) {
       console.log("❌ memos 表不存在");
@@ -27,7 +27,7 @@ async function migrateMemos() {
     }
 
     console.log("📋 检查现有表结构...");
-    const columns = sqlite.prepare("PRAGMA table_info(memos)").all();
+    const columns = sqlite.query("PRAGMA table_info(memos)").all();
     const existingColumns = columns.map((col: any) => col.name);
     console.log("现有字段:", existingColumns);
 
@@ -54,7 +54,7 @@ async function migrateMemos() {
     for (const column of newColumns) {
       if (!existingColumns.includes(column.name)) {
         console.log(`➕ 添加字段: ${column.name}`);
-        sqlite.exec(column.sql);
+        sqlite.run(column.sql);
       } else {
         console.log(`✅ 字段已存在: ${column.name}`);
       }
@@ -72,7 +72,7 @@ async function migrateMemos() {
     ];
 
     for (const indexSql of indexes) {
-      sqlite.exec(indexSql);
+      sqlite.run(indexSql);
     }
 
     // 更新现有记录
@@ -92,24 +92,24 @@ async function migrateMemos() {
       WHERE type IS NULL OR slug IS NULL OR source IS NULL OR file_path IS NULL OR publish_date IS NULL
     `;
 
-    const _result = sqlite.exec(updateSql);
+    const _result = sqlite.run(updateSql);
     console.log("✅ 记录更新完成");
 
     // 确保关键字段不为空
-    sqlite.exec(
+    sqlite.run(
       `UPDATE memos SET slug = REPLACE(REPLACE(id, '/', '-'), '.md', '') WHERE slug IS NULL OR slug = ''`
     );
-    sqlite.exec(`UPDATE memos SET source = 'webdav' WHERE source IS NULL OR source = ''`);
-    sqlite.exec(`UPDATE memos SET file_path = id WHERE file_path IS NULL OR file_path = ''`);
-    sqlite.exec(`UPDATE memos SET publish_date = created_at WHERE publish_date IS NULL`);
-    sqlite.exec(
+    sqlite.run(`UPDATE memos SET source = 'webdav' WHERE source IS NULL OR source = ''`);
+    sqlite.run(`UPDATE memos SET file_path = id WHERE file_path IS NULL OR file_path = ''`);
+    sqlite.run(`UPDATE memos SET publish_date = created_at WHERE publish_date IS NULL`);
+    sqlite.run(
       `UPDATE memos SET last_modified = COALESCE(updated_at, created_at) WHERE last_modified IS NULL`
     );
 
     console.log("🎉 memos 表迁移完成！");
 
     // 显示最终表结构
-    const finalColumns = sqlite.prepare("PRAGMA table_info(memos)").all();
+    const finalColumns = sqlite.query("PRAGMA table_info(memos)").all();
     console.log("最终表结构:");
     finalColumns.forEach((col: any) => {
       console.log(

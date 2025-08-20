@@ -11,7 +11,7 @@ import { PostEditor } from "./PostEditor";
 
 export function PostEditorWrapper() {
   const searchParams = useSearchParams();
-  const postId = searchParams.get("id");
+  const postId = searchParams?.get("id");
 
   return <PostEditor initialPostId={postId || undefined} />;
 }

@@ -64,12 +64,17 @@ const nextConfig: NextConfig = {
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
 
-  // 移除无效的 generateStaticParams 配置
-
-  // Optionally, add any other Next.js config below
+  // 强制动态渲染
   experimental: {
     mdxRs: false, // Use the legacy MDX compiler for better plugin compatibility
   },
+
+  // 跳过静态页面生成
+  distDir: ".next",
+
+  // 移除无效的 generateStaticParams 配置
+
+  // Optionally, add any other Next.js config below
 };
 
 const withMDX = createMDX({

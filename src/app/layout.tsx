@@ -3,6 +3,9 @@ import "./globals.css";
 import { ProgressBar } from "../components/common/ProgressBar";
 import { TRPCProvider } from "../components/providers/TRPCProvider";
 
+// 强制动态渲染
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Ivan's Blog",
   description: "Ivan Li 的个人博客，分享技术文章、项目经验和思考",
