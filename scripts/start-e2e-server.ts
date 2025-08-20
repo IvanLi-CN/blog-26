@@ -444,6 +444,7 @@ class E2EServerManager {
           NODE_ENV: "test",
           ADMIN_MODE: "true",
           WEBDAV_URL: "http://localhost:8080",
+          DB_PATH: this.testDbPath,
         },
       });
 
