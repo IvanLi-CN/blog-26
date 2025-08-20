@@ -82,7 +82,9 @@ export class ContentSourceManager {
    */
   private async ensureDBInitialized(): Promise<void> {
     try {
-      await initializeDB();
+      // 在测试环境中，强制重新初始化以确保使用正确的数据库路径
+      const isTestEnv = process.env.NODE_ENV === "test" || process.env.DB_PATH?.includes("test");
+      await initializeDB(isTestEnv);
     } catch (error) {
       console.error("数据库初始化失败:", error);
     }

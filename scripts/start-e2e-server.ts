@@ -598,6 +598,11 @@ class E2EServerManager {
       process.env.DB_PATH = this.testDbPath;
       console.log(`📁 设置数据库路径: ${this.testDbPath}`);
 
+      // 强制重新初始化应用程序的数据库连接
+      const { initializeDB } = await import("../src/lib/db");
+      await initializeDB(true); // 强制重新初始化
+      console.log("✅ 应用程序数据库连接重新初始化完成");
+
       // 创建一个新的数据库连接来验证路径正确性
       const { Database } = await import("bun:sqlite");
       const testSqlite = new Database(this.testDbPath);

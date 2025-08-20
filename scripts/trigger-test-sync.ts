@@ -46,10 +46,11 @@ class TestContentSyncTrigger {
     try {
       this.log("🧪 开始测试环境内容同步...");
 
-      // 初始化数据库
-      this.log("🔧 初始化数据库...");
-      await initializeDB();
-      this.log("✅ 数据库初始化完成");
+      // 强制重新初始化数据库以确保使用正确的路径
+      this.log("🔧 强制重新初始化数据库...");
+      this.log(`📁 当前数据库路径: ${process.env.DB_PATH || "./sqlite.db"}`);
+      await initializeDB(true); // 强制重新初始化
+      this.log("✅ 数据库重新初始化完成");
 
       // 创建内容源管理器
       const manager = getContentSourceManager(this.options);
