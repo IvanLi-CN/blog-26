@@ -533,6 +533,11 @@ export class ContentSourceManager {
         console.log("🔧 检测到 content_sync_logs 表不存在，尝试创建...");
         try {
           await this.ensureLogTableExists();
+
+          // 重新初始化数据库连接以确保表创建生效
+          const { initializeDB } = await import("../db");
+          await initializeDB();
+
           // 重试记录日志
           await db.insert(contentSyncLogs).values({
             id: nanoid(),
@@ -548,7 +553,12 @@ export class ContentSourceManager {
           console.log("✅ 成功创建表并记录日志");
         } catch (retryError) {
           console.error("❌ 创建表并重试记录日志失败:", retryError);
+          // 即使日志记录失败，也不应该阻止内容同步继续进行
+          console.warn("⚠️  日志记录失败，但内容同步将继续进行");
         }
+      } else {
+        // 对于其他类型的错误，也不应该阻止内容同步
+        console.warn("⚠️  日志记录失败，但内容同步将继续进行:", error);
       }
     }
   }

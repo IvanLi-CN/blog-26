@@ -520,6 +520,9 @@ class E2EServerManager {
     // 在内容同步前强制验证关键表
     await this.ensureCriticalTablesExist();
 
+    // 强制重新初始化数据库连接以确保一致性
+    await this.reinitializeDatabase();
+
     const syncTrigger = new TestContentSyncTrigger({ verbose: false });
     const success = await syncTrigger.triggerSync();
 
@@ -581,6 +584,39 @@ class E2EServerManager {
       throw error;
     } finally {
       sqlite.close();
+    }
+  }
+
+  /**
+   * 重新初始化数据库连接以确保一致性
+   */
+  private async reinitializeDatabase(): Promise<void> {
+    console.log("🔄 重新初始化数据库连接...");
+
+    try {
+      // 设置正确的数据库路径环境变量
+      process.env.DB_PATH = this.testDbPath;
+      console.log(`📁 设置数据库路径: ${this.testDbPath}`);
+
+      // 动态导入并重新初始化数据库
+      const { initializeDB } = await import("../src/lib/db");
+
+      // 强制重新初始化（清除现有连接）
+      const dbModule = await import("../src/lib/db");
+      // @ts-ignore - 强制重置数据库连接
+      dbModule.db = undefined;
+
+      await initializeDB();
+      console.log("✅ 数据库连接重新初始化完成");
+
+      // 验证数据库连接是否正确
+      const { db } = await import("../src/lib/db");
+      const { sql } = await import("drizzle-orm");
+      await db.run(sql`SELECT 1 as test`);
+      console.log("✅ 数据库连接验证成功");
+    } catch (error) {
+      console.error("❌ 数据库重新初始化失败:", error);
+      throw error;
     }
   }
 
