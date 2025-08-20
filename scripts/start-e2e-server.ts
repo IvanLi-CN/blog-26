@@ -42,6 +42,9 @@ class E2EServerManager {
       // 2. 运行数据库迁移
       await this.runDatabaseMigration();
 
+      // 2.5. 验证数据库表结构
+      await this.verifyDatabaseTables();
+
       // 3. 生成测试数据
       await this.generateTestData();
 
@@ -126,6 +129,173 @@ class E2EServerManager {
         }
       });
     });
+  }
+
+  /**
+   * 验证数据库表结构
+   */
+  private async verifyDatabaseTables(): Promise<void> {
+    console.log("🔍 验证数据库表结构...");
+
+    const { Database } = await import("bun:sqlite");
+    const sqlite = new Database(this.testDbPath);
+
+    try {
+      // 检查关键表是否存在
+      const requiredTables = [
+        "content_sync_logs",
+        "content_sync_status",
+        "posts",
+        "comments",
+        "users",
+      ];
+
+      const missingTables: string[] = [];
+
+      for (const tableName of requiredTables) {
+        const result = sqlite
+          .query("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
+          .get(tableName);
+
+        if (!result) {
+          missingTables.push(tableName);
+        }
+      }
+
+      if (missingTables.length > 0) {
+        console.log(`⚠️  发现缺失的表: ${missingTables.join(", ")}`);
+        console.log("🔧 正在创建缺失的表...");
+
+        // 创建缺失的表
+        await this.createMissingTables(sqlite, missingTables);
+        console.log("✅ 缺失的表已创建");
+      } else {
+        console.log("✅ 所有必需的表都存在");
+      }
+
+      // 验证关键表的结构
+      await this.validateTableStructures(sqlite);
+    } catch (error) {
+      console.error("❌ 数据库表验证失败:", error);
+      throw error;
+    } finally {
+      sqlite.close();
+    }
+  }
+
+  /**
+   * 创建缺失的数据库表
+   */
+  private async createMissingTables(sqlite: any, missingTables: string[]): Promise<void> {
+    const tableCreationSQL: Record<string, string> = {
+      content_sync_logs: `
+        CREATE TABLE content_sync_logs (
+          id text PRIMARY KEY NOT NULL,
+          source_type text NOT NULL,
+          source_name text NOT NULL,
+          operation text NOT NULL,
+          status text NOT NULL,
+          message text NOT NULL,
+          file_path text,
+          data text,
+          created_at integer NOT NULL
+        )
+      `,
+      content_sync_status: `
+        CREATE TABLE content_sync_status (
+          source_type text PRIMARY KEY NOT NULL,
+          source_name text NOT NULL,
+          last_sync_at integer,
+          status text DEFAULT 'idle' NOT NULL,
+          progress integer DEFAULT 0 NOT NULL,
+          current_step text,
+          total_items integer DEFAULT 0 NOT NULL,
+          processed_items integer DEFAULT 0 NOT NULL,
+          error_message text,
+          metadata text,
+          updated_at integer NOT NULL
+        )
+      `,
+      posts: `
+        CREATE TABLE posts (
+          id text PRIMARY KEY NOT NULL,
+          slug text NOT NULL,
+          type text NOT NULL,
+          title text NOT NULL,
+          excerpt text,
+          body text NOT NULL,
+          publish_date integer NOT NULL,
+          update_date integer,
+          draft integer DEFAULT false NOT NULL,
+          public integer DEFAULT false NOT NULL,
+          category text,
+          tags text,
+          author text,
+          image text,
+          metadata text,
+          data_source text,
+          content_hash text NOT NULL,
+          last_modified integer NOT NULL,
+          source text NOT NULL,
+          file_path text NOT NULL
+        )
+      `,
+      comments: `
+        CREATE TABLE comments (
+          id text PRIMARY KEY NOT NULL,
+          content text NOT NULL,
+          post_slug text NOT NULL,
+          author_name text NOT NULL,
+          author_email text NOT NULL,
+          parent_id text,
+          status text DEFAULT 'pending' NOT NULL,
+          created_at integer NOT NULL
+        )
+      `,
+      users: `
+        CREATE TABLE users (
+          id text PRIMARY KEY NOT NULL,
+          email text NOT NULL UNIQUE,
+          name text,
+          created_at integer NOT NULL
+        )
+      `,
+    };
+
+    for (const tableName of missingTables) {
+      if (tableCreationSQL[tableName]) {
+        console.log(`  📝 创建表: ${tableName}`);
+        sqlite.exec(tableCreationSQL[tableName]);
+      } else {
+        console.warn(`⚠️  未找到表 ${tableName} 的创建SQL`);
+      }
+    }
+  }
+
+  /**
+   * 验证表结构
+   */
+  private async validateTableStructures(sqlite: any): Promise<void> {
+    // 验证 content_sync_logs 表的关键字段
+    const syncLogsColumns = sqlite.query("PRAGMA table_info(content_sync_logs)").all();
+    const requiredSyncLogsColumns = [
+      "id",
+      "source_type",
+      "source_name",
+      "operation",
+      "status",
+      "message",
+      "created_at",
+    ];
+
+    for (const requiredColumn of requiredSyncLogsColumns) {
+      const columnExists = syncLogsColumns.some((col: any) => col.name === requiredColumn);
+      if (!columnExists) {
+        throw new Error(`content_sync_logs 表缺少必需字段: ${requiredColumn}`);
+      }
+    }
+
+    console.log("  ✅ content_sync_logs 表结构验证通过");
   }
 
   /**
