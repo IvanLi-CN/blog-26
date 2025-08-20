@@ -39,19 +39,22 @@ class E2EServerManager {
       // 1. 清理测试环境
       await this.cleanupTestEnvironment();
 
-      // 2. 生成测试数据
+      // 2. 运行数据库迁移
+      await this.runDatabaseMigration();
+
+      // 3. 生成测试数据
       await this.generateTestData();
 
-      // 3. 启动 WebDAV 服务器
+      // 4. 启动 WebDAV 服务器
       await this.startWebDAVServer();
 
-      // 4. 启动 Next.js 服务器
+      // 5. 启动 Next.js 服务器
       await this.startNextJSServer();
 
-      // 5. 等待服务器就绪
+      // 6. 等待服务器就绪
       await this.waitForServersReady();
 
-      // 6. 触发内容同步
+      // 7. 触发内容同步
       await this.triggerContentSync();
 
       console.log("🎉 E2E 测试环境启动完成！");
@@ -87,6 +90,42 @@ class E2EServerManager {
 
     // 停止可能存在的服务器进程
     await this.killExistingServers();
+  }
+
+  /**
+   * 运行数据库迁移
+   */
+  private async runDatabaseMigration(): Promise<void> {
+    console.log("🗄️ 运行数据库迁移...");
+
+    return new Promise((resolve, reject) => {
+      const migrateProcess = spawn("bun", ["run", "migrate"], {
+        stdio: ["inherit", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          NODE_ENV: "test",
+          DB_PATH: this.testDbPath,
+        },
+      });
+
+      let _output = "";
+      migrateProcess.stdout?.on("data", (data) => {
+        _output += data.toString();
+      });
+
+      migrateProcess.stderr?.on("data", (data) => {
+        console.error(data.toString());
+      });
+
+      migrateProcess.on("close", (code) => {
+        if (code === 0) {
+          console.log("  ✅ 数据库迁移完成");
+          resolve();
+        } else {
+          reject(new Error(`数据库迁移失败，退出码: ${code}`));
+        }
+      });
+    });
   }
 
   /**
