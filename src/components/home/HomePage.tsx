@@ -2,13 +2,26 @@
 
 import Link from "next/link";
 import { SITE } from "../../config/site";
-import { parseTags } from "../../lib/tag-utils";
 import { trpc as api } from "../../lib/trpc";
 import { toMsTimestamp } from "../../lib/utils";
 import PageLayout from "../common/PageLayout";
 import Icon from "../ui/Icon";
 import ProjectCard from "./ProjectCard";
 import TimelineItem from "./TimelineItem";
+
+// 解析标签的辅助函数
+function parseTags(tagsJson: string | null): string[] {
+  if (!tagsJson) return [];
+  try {
+    const parsed = JSON.parse(tagsJson);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((tag) => typeof tag === "string");
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
 
 export default function HomePage() {
   // 获取最新文章
