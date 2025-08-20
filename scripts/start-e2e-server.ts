@@ -100,6 +100,7 @@ class E2EServerManager {
    */
   private async runDatabaseMigration(): Promise<void> {
     console.log("🗄️ 运行数据库迁移...");
+    console.log(`📁 目标数据库路径: ${this.testDbPath}`);
 
     return new Promise((resolve, reject) => {
       const migrateProcess = spawn("bun", ["run", "migrate"], {
@@ -111,22 +112,39 @@ class E2EServerManager {
         },
       });
 
-      let _output = "";
+      let output = "";
+      let errorOutput = "";
+
       migrateProcess.stdout?.on("data", (data) => {
-        _output += data.toString();
+        const text = data.toString();
+        output += text;
+        console.log(`[迁移] ${text.trim()}`);
       });
 
       migrateProcess.stderr?.on("data", (data) => {
-        console.error(data.toString());
+        const text = data.toString();
+        errorOutput += text;
+        console.error(`[迁移错误] ${text.trim()}`);
       });
 
       migrateProcess.on("close", (code) => {
         if (code === 0) {
           console.log("  ✅ 数据库迁移完成");
+          console.log(`📊 迁移输出长度: ${output.length} 字符`);
           resolve();
         } else {
-          reject(new Error(`数据库迁移失败，退出码: ${code}`));
+          console.error(`❌ 数据库迁移失败，退出码: ${code}`);
+          console.error(`📋 标准输出: ${output}`);
+          console.error(`📋 错误输出: ${errorOutput}`);
+          reject(
+            new Error(`数据库迁移失败，退出码: ${code}\n输出: ${output}\n错误: ${errorOutput}`)
+          );
         }
+      });
+
+      migrateProcess.on("error", (error) => {
+        console.error("❌ 迁移进程启动失败:", error);
+        reject(new Error(`迁移进程启动失败: ${error.message}`));
       });
     });
   }
@@ -141,6 +159,19 @@ class E2EServerManager {
     const sqlite = new Database(this.testDbPath);
 
     try {
+      // 检查数据库文件状态
+      const fs = await import("node:fs");
+      const dbStats = fs.statSync(this.testDbPath);
+      console.log(`📊 数据库文件路径: ${this.testDbPath}`);
+      console.log(`📊 数据库文件大小: ${dbStats.size} bytes`);
+
+      // 获取所有现有表
+      const allTables = sqlite.query("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+        name: string;
+      }[];
+
+      console.log(`📋 数据库中的所有表: ${allTables.map((t) => t.name).join(", ") || "无表"}`);
+
       // 检查关键表是否存在
       const requiredTables = [
         "content_sync_logs",
@@ -151,6 +182,7 @@ class E2EServerManager {
       ];
 
       const missingTables: string[] = [];
+      const existingTables: string[] = [];
 
       for (const tableName of requiredTables) {
         const result = sqlite
@@ -159,8 +191,12 @@ class E2EServerManager {
 
         if (!result) {
           missingTables.push(tableName);
+        } else {
+          existingTables.push(tableName);
         }
       }
+
+      console.log(`✅ 已存在的必需表: ${existingTables.join(", ") || "无"}`);
 
       if (missingTables.length > 0) {
         console.log(`⚠️  发现缺失的表: ${missingTables.join(", ")}`);
@@ -168,6 +204,12 @@ class E2EServerManager {
 
         // 创建缺失的表
         await this.createMissingTables(sqlite, missingTables);
+
+        // 再次检查创建结果
+        const recheckTables = sqlite
+          .query("SELECT name FROM sqlite_master WHERE type='table'")
+          .all() as { name: string }[];
+        console.log(`📋 创建表后的所有表: ${recheckTables.map((t) => t.name).join(", ")}`);
         console.log("✅ 缺失的表已创建");
       } else {
         console.log("✅ 所有必需的表都存在");
@@ -177,6 +219,7 @@ class E2EServerManager {
       await this.validateTableStructures(sqlite);
     } catch (error) {
       console.error("❌ 数据库表验证失败:", error);
+      console.error("错误详情:", error instanceof Error ? error.stack : "无堆栈信息");
       throw error;
     } finally {
       sqlite.close();
@@ -474,6 +517,9 @@ class E2EServerManager {
   private async triggerContentSync(): Promise<void> {
     console.log("🔄 触发内容同步...");
 
+    // 在内容同步前强制验证关键表
+    await this.ensureCriticalTablesExist();
+
     const syncTrigger = new TestContentSyncTrigger({ verbose: false });
     const success = await syncTrigger.triggerSync();
 
@@ -482,6 +528,60 @@ class E2EServerManager {
     }
 
     console.log("  ✅ 内容同步完成");
+  }
+
+  /**
+   * 确保关键表存在（内容同步前的最后检查）
+   */
+  private async ensureCriticalTablesExist(): Promise<void> {
+    console.log("🔍 内容同步前最后检查关键表...");
+
+    const { Database } = await import("bun:sqlite");
+    const sqlite = new Database(this.testDbPath);
+
+    try {
+      // 检查数据库文件状态
+      const dbStats = await import("node:fs").then((fs) => fs.statSync(this.testDbPath));
+      console.log(`📊 数据库文件大小: ${dbStats.size} bytes`);
+
+      // 获取所有现有表
+      const existingTables = sqlite
+        .query("SELECT name FROM sqlite_master WHERE type='table'")
+        .all() as { name: string }[];
+
+      console.log(`📋 现有表: ${existingTables.map((t) => t.name).join(", ")}`);
+
+      // 检查关键表
+      const criticalTables = ["content_sync_logs", "content_sync_status"];
+      const missingTables: string[] = [];
+
+      for (const tableName of criticalTables) {
+        const exists = existingTables.some((t) => t.name === tableName);
+        if (!exists) {
+          missingTables.push(tableName);
+        }
+      }
+
+      if (missingTables.length > 0) {
+        console.log(`⚠️  关键表缺失: ${missingTables.join(", ")}`);
+        console.log("🔧 立即创建缺失的关键表...");
+
+        await this.createMissingTables(sqlite, missingTables);
+
+        // 再次验证
+        const recheck = sqlite.query("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+          name: string;
+        }[];
+        console.log(`✅ 创建后的表: ${recheck.map((t) => t.name).join(", ")}`);
+      } else {
+        console.log("✅ 所有关键表都存在");
+      }
+    } catch (error) {
+      console.error("❌ 关键表检查失败:", error);
+      throw error;
+    } finally {
+      sqlite.close();
+    }
   }
 
   /**

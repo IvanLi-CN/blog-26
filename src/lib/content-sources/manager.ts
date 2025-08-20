@@ -4,7 +4,7 @@
  * 统一管理多个内容源，处理内容合并、冲突解决和同步协调
  */
 
-import { eq, lt } from "drizzle-orm";
+import { eq, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, initializeDB } from "../db";
 import type { ContentSyncLog } from "../schema";
@@ -527,6 +527,70 @@ export class ContentSourceManager {
       });
     } catch (error) {
       console.error("记录同步日志失败:", error);
+
+      // 如果是表不存在的错误，尝试创建表
+      if (error instanceof Error && error.message.includes("no such table: content_sync_logs")) {
+        console.log("🔧 检测到 content_sync_logs 表不存在，尝试创建...");
+        try {
+          await this.ensureLogTableExists();
+          // 重试记录日志
+          await db.insert(contentSyncLogs).values({
+            id: nanoid(),
+            sourceType: "manager",
+            sourceName: "ContentSourceManager",
+            operation: "sync",
+            status: level === "error" ? "error" : "success",
+            message,
+            filePath,
+            data: data ? JSON.stringify(data) : null,
+            createdAt: Date.now(),
+          });
+          console.log("✅ 成功创建表并记录日志");
+        } catch (retryError) {
+          console.error("❌ 创建表并重试记录日志失败:", retryError);
+        }
+      }
+    }
+  }
+
+  /**
+   * 确保日志表存在
+   */
+  private async ensureLogTableExists(): Promise<void> {
+    try {
+      // 使用原始SQL创建表
+      await db.run(sql`
+        CREATE TABLE IF NOT EXISTS content_sync_logs (
+          id text PRIMARY KEY NOT NULL,
+          source_type text NOT NULL,
+          source_name text NOT NULL,
+          operation text NOT NULL,
+          status text NOT NULL,
+          message text NOT NULL,
+          file_path text,
+          data text,
+          created_at integer NOT NULL
+        )
+      `);
+
+      await db.run(sql`
+        CREATE TABLE IF NOT EXISTS content_sync_status (
+          source_type text PRIMARY KEY NOT NULL,
+          source_name text NOT NULL,
+          last_sync_at integer,
+          status text DEFAULT 'idle' NOT NULL,
+          progress integer DEFAULT 0 NOT NULL,
+          current_step text,
+          total_items integer DEFAULT 0 NOT NULL,
+          processed_items integer DEFAULT 0 NOT NULL,
+          error_message text,
+          metadata text,
+          updated_at integer NOT NULL
+        )
+      `);
+    } catch (error) {
+      console.error("创建日志表失败:", error);
+      throw error;
     }
   }
 
