@@ -1,3 +1,5 @@
+"use client";
+
 import type React from "react";
 import { useCallback, useEffect, useId, useState } from "react";
 import type { UserInfo } from "./types";
