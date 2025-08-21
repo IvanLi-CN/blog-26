@@ -32,30 +32,30 @@ async function testWebDAVConnection() {
       console.log(`  ${index + 1}. ${file.filename} (${file.type})`);
     });
 
-    // 测试获取 Memos 目录（非递归）
-    console.log("\n📁 测试 Memos 目录（非递归）...");
+    // 测试获取 memos 目录（非递归）
+    console.log("\n📁 测试 memos 目录（非递归）...");
     try {
-      const memoFiles = await client.listFiles("/Memos", false);
-      console.log(`📝 Memos 目录发现 ${memoFiles.length} 个文件`);
+      const memoFiles = await client.listFiles("/memos", false);
+      console.log(`📝 memos 目录发现 ${memoFiles.length} 个文件`);
 
       memoFiles.slice(0, 5).forEach((file, index) => {
         console.log(`  ${index + 1}. ${file.filename} (${file.type})`);
       });
     } catch (error) {
-      console.error("❌ Memos 目录访问失败（非递归）:", error);
+      console.error("❌ memos 目录访问失败（非递归）:", error);
     }
 
-    // 测试获取 Memos 目录（递归）
+    // 测试获取 memos 目录（递归）
     console.log("\n📁 测试 Memos 目录（递归）...");
     try {
-      const memoFilesRecursive = await client.listFiles("/Memos", true);
-      console.log(`📝 Memos 目录发现 ${memoFilesRecursive.length} 个文件（递归）`);
+      const memoFilesRecursive = await client.listFiles("/memos", true);
+      console.log(`📝 memos 目录发现 ${memoFilesRecursive.length} 个文件（递归）`);
 
       memoFilesRecursive.slice(0, 5).forEach((file, index) => {
         console.log(`  ${index + 1}. ${file.filename} (${file.type})`);
       });
     } catch (error) {
-      console.error("❌ Memos 目录访问失败（递归）:", error);
+      console.error("❌ memos 目录访问失败（递归）:", error);
     }
   } catch (error) {
     console.error("❌ WebDAV 连接测试失败:", error);

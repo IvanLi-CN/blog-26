@@ -2277,8 +2277,8 @@ function createDirectories(webdavDir: string, localDir: string) {
   const dirs = [
     webdavDir,
     join(webdavDir, "projects"),
-    join(webdavDir, "Memos"),
-    join(webdavDir, "Memos", "assets"), // Memos 附件目录
+    join(webdavDir, "memos"),
+    join(webdavDir, "memos", "assets"), // memos 附件目录
     join(webdavDir, "assets"), // WebDAV图片目录
     localDir,
     join(localDir, "projects"),
@@ -2465,13 +2465,13 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
     // 闪念内容图片 - 放在 Memos/assets (因为文章在 Memos 目录下)
     ...memoContentImages.map((image) => ({
       url: image.url,
-      filePath: join(webdavDir, "Memos", "assets", image.filename),
+      filePath: join(webdavDir, "memos", "assets", image.filename),
       filename: image.filename,
     })),
     // 闪念附件图片 - 放在 Memos/assets
     ...memoAttachmentImages.map((image) => ({
       url: image.url,
-      filePath: join(webdavDir, "Memos", "assets", image.filename),
+      filePath: join(webdavDir, "memos", "assets", image.filename),
       filename: image.filename,
     })),
     // 本地图片下载任务
@@ -2577,7 +2577,7 @@ async function main() {
     const { body, ...frontmatter } = memo;
     const createdAt = new Date(frontmatter.createdAt);
     const fileName = generateMemoFilename(body, createdAt);
-    writeMarkdownFile(join(WEBDAV_DIR, "Memos", fileName), frontmatter, body);
+    writeMarkdownFile(join(WEBDAV_DIR, "memos", fileName), frontmatter, body);
   });
 
   console.log(`\n生成 ${envName} 本地测试数据...`);

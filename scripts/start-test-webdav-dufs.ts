@@ -66,7 +66,7 @@ class TestWebDAVServer {
       mkdirSync(this.rootPath, { recursive: true });
 
       // 创建基本的目录结构
-      const memosDir = join(this.rootPath, "Memos");
+      const memosDir = join(this.rootPath, "memos");
       const assetsDir = join(this.rootPath, "assets");
 
       if (!existsSync(memosDir)) {

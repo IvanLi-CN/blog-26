@@ -103,7 +103,7 @@ class TestContentSyncTrigger {
         webdavConfig.options.pathMappings = {
           posts: "/posts",
           projects: "/projects",
-          memos: "/Memos",
+          memos: "/memos",
         };
         const webdavSource = new WebDAVContentSource(webdavConfig);
         await manager.registerSource(webdavSource);

@@ -25,6 +25,7 @@ interface ServerProcess {
 }
 
 class E2EServerManager {
+  private webdavPort: number = 8080;
   private servers: ServerProcess[] = [];
   private testDataPath = join(process.cwd(), "test-data");
   private testDbPath = join(process.cwd(), "test.db");
@@ -406,7 +407,17 @@ class E2EServerManager {
           if (webdavServer) {
             webdavServer.ready = true;
           }
-          console.log("  ✅ WebDAV 服务器启动成功");
+          // 解析端口号并记录
+          const match = text.match(/http:\/\/localhost:(\d+)/);
+          if (match) {
+            const port = Number(match[1]);
+            this.webdavPort = port;
+            const webdavServer = this.servers.find((s) => s.name === "WebDAV");
+            if (webdavServer) webdavServer.port = port;
+            console.log(`  ✅ WebDAV 服务器启动成功 (端口: ${port})`);
+          } else {
+            console.log("  ✅ WebDAV 服务器启动成功");
+          }
           resolve();
         }
       });
@@ -443,7 +454,7 @@ class E2EServerManager {
           ...process.env,
           NODE_ENV: "test",
           ADMIN_MODE: "true",
-          WEBDAV_URL: "http://localhost:8080",
+          WEBDAV_URL: `http://localhost:${this.webdavPort}`,
           DB_PATH: this.testDbPath,
         },
       });

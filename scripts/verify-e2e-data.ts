@@ -57,7 +57,7 @@ class E2EDataVerifier {
   }
 
   /**
-   * 检查测试 Memos 数据
+   * 检查测试 memos 数据
    */
   private async checkTestMemos(): Promise<DataVerificationResult> {
     // 测试数据中的特征性 memo slug
