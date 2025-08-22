@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { SITE } from "../../config/site";
 import { trpc } from "../../lib/trpc";
 import { cn } from "../../lib/utils";
 import MarkdownRenderer from "../common/MarkdownRenderer";
@@ -253,7 +254,7 @@ export function MemoDetailPage({
                 {memo.author?.charAt(0)?.toUpperCase() || "M"}
               </AvatarFallback>
             </Avatar>
-            <span>{memo.author || "匿名"}</span>
+            <span>{memo.author || SITE.author.name}</span>
           </div>
 
           <div className="flex items-center space-x-1">

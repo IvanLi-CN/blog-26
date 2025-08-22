@@ -2,45 +2,46 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ProgressBar } from "../components/common/ProgressBar";
 import { TRPCProvider } from "../components/providers/TRPCProvider";
+import { SITE } from "../config/site";
 
 // 强制动态渲染
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Ivan's Blog",
-  description: "Ivan Li 的个人博客，分享技术文章、项目经验和思考",
-  keywords: ["技术博客", "编程", "前端开发", "后端开发", "Ivan Li"],
-  authors: [{ name: "Ivan Li", url: "https://ivanli.cc" }],
-  creator: "Ivan Li",
-  publisher: "Ivan Li",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  title: SITE.title,
+  description: SITE.description,
+  keywords: SITE.keywords,
+  authors: [{ name: SITE.author.name, url: SITE.url }],
+  creator: SITE.author.name,
+  publisher: SITE.author.name,
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || SITE.url || "http://localhost:3000"),
   alternates: {
     types: {
-      "application/rss+xml": [{ url: "/feed.xml", title: "Ivan's Blog RSS Feed" }],
+      "application/rss+xml": [{ url: "/feed.xml", title: `${SITE.title} RSS Feed` }],
     },
   },
   openGraph: {
-    type: "website",
-    locale: "zh_CN",
+    type: SITE.seo.openGraph.type as "website",
+    locale: SITE.seo.openGraph.locale,
     url: "/",
-    siteName: "Ivan's Blog",
-    title: "Ivan's Blog",
-    description: "Ivan Li 的个人博客，分享技术文章、项目经验和思考",
+    siteName: SITE.seo.openGraph.siteName,
+    title: SITE.title,
+    description: SITE.description,
     images: [
       {
-        url: "/og-image.png",
+        url: SITE.images.default,
         width: 1200,
         height: 630,
-        alt: "Ivan's Blog",
+        alt: SITE.title,
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Ivan's Blog",
-    description: "Ivan Li 的个人博客，分享技术文章、项目经验和思考",
-    creator: "@ivanli_cc",
-    images: ["/og-image.png"],
+    card: SITE.seo.twitter.card as "summary_large_image",
+    title: SITE.title,
+    description: SITE.description,
+    creator: SITE.seo.twitter.creator,
+    images: [SITE.images.default],
   },
   robots: {
     index: true,
@@ -67,7 +68,7 @@ export default function RootLayout({
         <link
           rel="alternate"
           type="application/rss+xml"
-          title="Ivan's Blog RSS Feed"
+          title={`${SITE.title} RSS Feed`}
           href="/feed.xml"
         />
 

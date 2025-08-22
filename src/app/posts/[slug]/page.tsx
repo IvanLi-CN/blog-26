@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PostDetailPage from "../../../components/blog/PostDetailPage";
+import { SITE } from "../../../config/site";
 
 interface Props {
   params: Promise<{
@@ -17,41 +18,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const postUrl = `${baseUrl}/posts/${slug}`;
 
     return {
-      title: `${slug.replace(/-/g, " ")} - Ivan's Blog`,
-      description: `阅读 Ivan Li 的文章：${slug.replace(/-/g, " ")}`,
+      title: `${slug.replace(/-/g, " ")} - ${SITE.title}`,
+      description: `阅读 ${SITE.author.name} 的文章：${slug.replace(/-/g, " ")}`,
 
       // 基础 meta 标签
-      authors: [{ name: "Ivan Li" }],
-      creator: "Ivan Li",
-      publisher: "Ivan Li",
+      authors: [{ name: SITE.author.name }],
+      creator: SITE.author.name,
+      publisher: SITE.author.name,
 
       // Open Graph
       openGraph: {
         type: "article",
-        title: `${slug.replace(/-/g, " ")} - Ivan's Blog`,
-        description: `阅读 Ivan Li 的文章：${slug.replace(/-/g, " ")}`,
+        title: `${slug.replace(/-/g, " ")} - ${SITE.title}`,
+        description: `阅读 ${SITE.author.name} 的文章：${slug.replace(/-/g, " ")}`,
         url: postUrl,
-        siteName: "Ivan's Blog",
-        locale: "zh_CN",
+        siteName: SITE.seo.openGraph.siteName,
+        locale: SITE.seo.openGraph.locale,
         images: [
           {
-            url: `${baseUrl}/og-image.png`,
+            url: `${baseUrl}${SITE.images.default}`,
             width: 1200,
             height: 630,
-            alt: `${slug.replace(/-/g, " ")} - Ivan's Blog`,
+            alt: `${slug.replace(/-/g, " ")} - ${SITE.title}`,
           },
         ],
-        authors: ["Ivan Li"],
+        authors: [SITE.author.name],
       },
 
       // Twitter Card
       twitter: {
-        card: "summary_large_image",
-        title: `${slug.replace(/-/g, " ")} - Ivan's Blog`,
-        description: `阅读 Ivan Li 的文章：${slug.replace(/-/g, " ")}`,
-        images: [`${baseUrl}/og-image.png`],
-        creator: "@ivanli_cc",
-        site: "@ivanli_cc",
+        card: SITE.seo.twitter.card as "summary_large_image",
+        title: `${slug.replace(/-/g, " ")} - ${SITE.title}`,
+        description: `阅读 ${SITE.author.name} 的文章：${slug.replace(/-/g, " ")}`,
+        images: [`${baseUrl}${SITE.images.default}`],
+        creator: SITE.seo.twitter.creator,
+        site: SITE.seo.twitter.site,
       },
 
       // 机器人指令
@@ -75,7 +76,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   } catch (error) {
     console.error("Error generating metadata:", error);
     return {
-      title: "文章加载失败 - Ivan's Blog",
+      title: `文章加载失败 - ${SITE.title}`,
       description: "文章信息加载失败，请稍后重试",
     };
   }

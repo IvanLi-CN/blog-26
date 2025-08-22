@@ -2,6 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import Link from "next/link";
+import { SITE } from "../../config/site";
 import { resolveImagePath } from "../../lib/image-utils";
 import { trpc } from "../../lib/trpc";
 import { toMsTimestamp } from "../../lib/utils";
@@ -222,7 +223,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
           <div className="mx-auto px-6 sm:px-6 max-w-3xl mt-8">
             {/* 许可证信息 */}
             <ArticleLicense
-              author={post.author || "Ivan Li"}
+              author={post.author || SITE.author.name}
               year={new Date(toMsTimestamp(post.publishDate)).getFullYear()}
             />
 
