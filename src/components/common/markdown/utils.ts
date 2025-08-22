@@ -163,6 +163,79 @@ export function defaultUrlTransform(url: string): string {
 }
 
 /**
+ * 从 React 节点中提取纯文本内容
+ * 处理 rehype-highlight 等插件产生的复杂对象结构
+ * @param children React 节点（可能是字符串、对象、数组等）
+ * @returns 提取的纯文本内容
+ */
+export function extractTextContent(children: any): string {
+  if (typeof children === "string") {
+    return children;
+  }
+
+  if (typeof children === "number") {
+    return String(children);
+  }
+
+  if (children == null) {
+    return "";
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(extractTextContent).join("");
+  }
+
+  // 处理 React 元素
+  if (typeof children === "object" && children.props && children.props.children) {
+    return extractTextContent(children.props.children);
+  }
+
+  // 处理 rehype/hast 节点
+  if (typeof children === "object") {
+    // 文本节点
+    if (children.type === "text" && children.value) {
+      return children.value;
+    }
+
+    // 元素节点
+    if (children.type === "element" && children.children) {
+      return extractTextContent(children.children);
+    }
+
+    // 处理 highlight.js 生成的 span 元素
+    if (children.tagName === "span" && children.children) {
+      return extractTextContent(children.children);
+    }
+
+    // 其他可能的文本属性
+    if (children.value !== undefined) {
+      return String(children.value);
+    }
+
+    if (children.data !== undefined) {
+      return String(children.data);
+    }
+
+    if (children.children) {
+      return extractTextContent(children.children);
+    }
+
+    // 如果对象有 toString 方法且不是默认的 [object Object]
+    if (children.toString && children.toString() !== "[object Object]") {
+      return children.toString();
+    }
+  }
+
+  // 对于无法处理的对象，返回空字符串而不是 [object Object]
+  if (typeof children === "object") {
+    return "";
+  }
+
+  // 最后的回退方案
+  return String(children);
+}
+
+/**
  * 计算文本行数
  * @param text 文本内容
  * @returns 行数

@@ -20,6 +20,7 @@ import type { MarkdownRendererProps } from "./markdown/types";
 import {
   cleanMarkdownContent,
   defaultUrlTransform,
+  extractTextContent,
   getVariantConfig,
   mergeClassNames,
   removeTagsFromContent,
@@ -177,10 +178,10 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
           // Mermaid 图表
           if (config.enableMermaid && language === "mermaid") {
-            return <ClientMermaidRenderer chart={String(children)} />;
+            return <ClientMermaidRenderer chart={extractTextContent(children)} />;
           }
 
-          // 普通代码块
+          // 普通代码块 - 保持原始 children 以保留语法高亮结构
           return (
             <CodeBlock
               language={language}
@@ -190,7 +191,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
               className={className}
               {...props}
             >
-              {String(children)}
+              {children}
             </CodeBlock>
           );
         },

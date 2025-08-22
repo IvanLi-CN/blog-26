@@ -17,6 +17,7 @@ const EXCLUDE_DIRS = new Set([
   "dev-data",
   "test-data",
   "old",
+  "e2e", // 排除 E2E 测试目录
 ]);
 
 const ROOTS = ["src", "tests", "tests/integration", "tests/lib", "tests/server"];

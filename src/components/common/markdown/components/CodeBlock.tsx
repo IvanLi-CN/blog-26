@@ -3,7 +3,36 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 import type { CodeBlockProps } from "../types";
-import { countLines, mergeClassNames } from "../utils";
+import { countLines, extractTextContent, mergeClassNames } from "../utils";
+
+/**
+ * 创建代码预览内容，保持语法高亮结构
+ * @param children 原始 children
+ * @param previewLines 预览行数
+ * @returns 预览内容的 React 节点
+ */
+function createPreviewContent(children: React.ReactNode, previewLines: number): React.ReactNode {
+  const fullText = extractTextContent(children);
+  const lines = fullText.split("\n");
+  const previewText = lines.slice(0, previewLines).join("\n");
+
+  // 如果原始 children 是简单文本，直接返回预览文本
+  if (typeof children === "string") {
+    return previewText;
+  }
+
+  // 对于复杂结构，我们需要保持语法高亮，但截断内容
+  // 这里我们使用一个简化的方法：如果预览文本长度小于原文本的一定比例，
+  // 我们认为可以安全地返回原始 children（因为截断可能会破坏语法高亮结构）
+  const ratio = previewText.length / fullText.length;
+  if (ratio > 0.8) {
+    // 如果预览内容占原内容的80%以上，直接返回原始内容
+    return children;
+  }
+
+  // 否则返回纯文本预览（牺牲语法高亮以确保正确截断）
+  return previewText;
+}
 
 /**
  * 代码块组件，支持语法高亮和折叠功能
@@ -18,7 +47,9 @@ export function CodeBlock({
   ...props
 }: CodeBlockProps & React.HTMLAttributes<HTMLElement>) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const codeContent = String(children).replace(/\n$/, "");
+
+  // 只在需要计算行数时提取文本内容
+  const codeContent = extractTextContent(children).replace(/\n$/, "");
   const totalLines = countLines(codeContent);
   const shouldFold = enableFolding && totalLines > maxLines;
 
@@ -71,9 +102,8 @@ export function CodeBlock({
     );
   }
 
-  // 计算预览内容
-  const lines = codeContent.split("\n");
-  const previewContent = lines.slice(0, previewLines).join("\n");
+  // 创建预览内容，尽量保持语法高亮
+  const previewContent = createPreviewContent(children, previewLines);
 
   return (
     <div
