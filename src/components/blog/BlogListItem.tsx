@@ -18,6 +18,7 @@ interface Post {
   category?: string;
   tags?: string;
   published: boolean;
+  dataSource?: string; // 内容源：local/webdav
 }
 
 interface BlogListItemProps {
@@ -35,7 +36,10 @@ export default function BlogListItem({ post }: BlogListItemProps) {
         .filter(Boolean)
     : [];
 
-  const imageSrc = resolveImagePath(post.image, `/posts/${post.slug}`);
+  // 使用新的图片路径解析函数
+  const contentSource = (post.dataSource === "local" ? "local" : "webdav") as "local" | "webdav";
+  const markdownFilePath = post.id; // post.id 就是文件路径
+  const imageSrc = resolveImagePath(post.image, contentSource, markdownFilePath);
 
   return (
     <article className="max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-lg p-4 hover:bg-base-100/50">

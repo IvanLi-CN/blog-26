@@ -14,6 +14,7 @@ interface Post {
   category?: string;
   tags?: string;
   published: boolean;
+  dataSource?: string; // 内容源：local/webdav
 }
 
 interface BlogListProps {

@@ -50,7 +50,7 @@ export default function HomePage() {
       tags: Array.isArray(post.tags) ? post.tags : [],
       image: post.image || undefined,
       permalink: `/posts/${post.slug}`,
-      dataSource: "local",
+      dataSource: post.dataSource || "webdav",
     })) || [];
 
   // 处理闪念数据
@@ -64,7 +64,7 @@ export default function HomePage() {
       body: memo.content,
       publishDate: new Date(memo.createdAt), // memo.createdAt 已经是 ISO 字符串格式
       tags: parseTags(memo.tags),
-      dataSource: "local",
+      dataSource: (memo as any).dataSource || "webdav",
     })) || [];
 
   // 合并文章和闪念，按时间排序

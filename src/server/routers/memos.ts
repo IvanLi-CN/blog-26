@@ -146,6 +146,7 @@ export const memosRouter = router({
         attachments: (memo as any).attachments ? JSON.parse((memo as any).attachments) : [],
         author: memo.author || (memo as any).authorEmail,
         source: (memo as any).source,
+        dataSource: memo.dataSource || "webdav",
         createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
           ? new Date(toMsTimestamp(memo.updateDate)).toISOString()

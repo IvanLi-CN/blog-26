@@ -159,7 +159,10 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                         src={
                           resolveImagePath(
                             item.image,
-                            item.type === "post" ? `/posts/${item.slug}` : `/memos/${item.slug}`
+                            (item.dataSource === "local" ? "local" : "webdav") as
+                              | "local"
+                              | "webdav",
+                            item.id
                           ) || ""
                         }
                         alt={item.title || "文章封面"}

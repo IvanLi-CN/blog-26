@@ -67,6 +67,7 @@ export const postsRouter = router({
           image: posts.image,
           draft: posts.draft,
           public: posts.public,
+          dataSource: posts.dataSource,
         })
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -178,6 +179,7 @@ export const postsRouter = router({
             tags: posts.tags,
             author: posts.author,
             image: posts.image,
+            dataSource: posts.dataSource,
           })
           .from(posts)
           .where(and(...conditions))
