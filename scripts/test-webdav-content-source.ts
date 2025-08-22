@@ -4,6 +4,7 @@
  * 专门测试 WebDAV 内容源
  */
 
+import { WEBDAV_PATH_MAPPINGS } from "../src/config/paths";
 import { WebDAVContentSource } from "../src/lib/content-sources/webdav";
 
 async function testWebDAVContentSource() {
@@ -17,11 +18,7 @@ async function testWebDAVContentSource() {
       enabled: true,
       contentTypes: ["memo", "post", "project"],
       options: {
-        pathMappings: {
-          posts: "/blog",
-          projects: "/blog/projects",
-          memos: "/Memos",
-        },
+        pathMappings: WEBDAV_PATH_MAPPINGS,
         enableETagCache: true,
       },
     });

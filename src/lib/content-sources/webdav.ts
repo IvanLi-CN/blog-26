@@ -4,6 +4,7 @@
  * 基于现有的 WebDAV 客户端实现远程内容同步
  */
 
+import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
 import { getWebDAVClient, isWebDAVEnabled, type WebDAVClient } from "../webdav";
 import { ContentSourceBase } from "./base";
 import type { ContentItem, ContentSourceConfig, ContentSourceStatus, FileInfo } from "./types";
@@ -89,9 +90,9 @@ export class WebDAVContentSource extends ContentSourceBase {
 
     // 设置默认路径映射
     this.pathMappings = {
-      posts: pathMappings.posts || "/blog",
-      projects: pathMappings.projects || "/blog/projects",
-      memos: pathMappings.memos || "/Memos",
+      posts: pathMappings.posts || WEBDAV_PATH_MAPPINGS.posts,
+      projects: pathMappings.projects || WEBDAV_PATH_MAPPINGS.projects,
+      memos: pathMappings.memos || WEBDAV_PATH_MAPPINGS.memos,
     };
 
     this.enableETagCache = enableETagCache;
@@ -596,11 +597,7 @@ export class WebDAVContentSource extends ContentSourceBase {
       priority,
       enabled: true,
       options: {
-        pathMappings: {
-          posts: "/blog",
-          projects: "/blog/projects",
-          memos: "/Memos",
-        },
+        pathMappings: WEBDAV_PATH_MAPPINGS,
         enableETagCache: true,
         timeout: 30000,
         maxRetries: 3,

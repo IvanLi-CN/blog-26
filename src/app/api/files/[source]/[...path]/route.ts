@@ -47,12 +47,10 @@ function getContentType(filePath: string): string {
 
 // WebDAV 文件读取
 async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
-  // 支持 memos/Memos 目录大小写兼容
-  const normalizedPath = filePath.startsWith("memos/")
+  // 统一使用小写的 memos 路径
+  const normalizedPath = filePath.startsWith("Memos/")
     ? `memos/${filePath.substring(6)}`
-    : filePath.startsWith("Memos/")
-      ? `memos/${filePath.substring(6)}`
-      : filePath;
+    : filePath;
 
   const webdavUrl = `${process.env.WEBDAV_URL || "http://localhost:8080"}/${normalizedPath}`;
 

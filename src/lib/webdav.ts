@@ -1,5 +1,7 @@
 // WebDAV 客户端库 - 用于与 WebDAV 服务器交互
 
+import { WEBDAV_PATHS } from "../config/paths";
+
 // WebDAV 请求配置
 const WEBDAV_RETRY_ATTEMPTS = 3;
 const WEBDAV_RETRY_BASE_DELAY = 1000; // 基础重试延迟 1 秒
@@ -145,8 +147,8 @@ export class WebDAVClient {
     this.username = process.env.WEBDAV_USERNAME || "";
     this.password = process.env.WEBDAV_PASSWORD || "";
     this.excludePaths = (process.env.WEBDAV_EXCLUDE_PATHS || "").split(",").filter(Boolean);
-    this.projectsPath = process.env.WEBDAV_BLOG_PATH || "/blog";
-    this.memosPath = process.env.WEBDAV_MEMOS_PATH || "/Memos";
+    this.projectsPath = WEBDAV_PATHS.posts;
+    this.memosPath = WEBDAV_PATHS.memos;
   }
 
   /**

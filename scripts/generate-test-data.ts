@@ -109,6 +109,17 @@ function generateMemoFilename(content: string, createdAt: Date): string {
   return `${datePrefix}_${filenamePart}.md`;
 }
 
+// 生成 slug
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fff\s-]/g, "") // 保留中文字符、英文字符、数字、空格和连字符
+    .replace(/[\s\u4e00-\u9fff]+/g, "-") // 空格和中文字符替换为连字符
+    .replace(/-+/g, "-") // 多个连字符合并为一个
+    .replace(/^-|-$/g, "") // 移除开头和结尾的连字符
+    .trim();
+}
+
 // 生成本地文章数据
 function generateLocalPosts() {
   return [
@@ -2249,6 +2260,219 @@ Docker 真的是现代应用部署的利器！
   return contents[index] || contents[index % contents.length];
 }
 
+// 本地闪念辅助函数
+function getLocalMemoTitle(index: number): string {
+  const titles = [
+    "Local Development Environment Setup",
+    "Code Refactoring Thoughts",
+    "New Technology Learning Notes",
+    "Project Management Experience",
+    "Programming Efficiency Tips",
+  ];
+  return titles[index] || `Local Memo ${index + 1}`;
+}
+
+function getLocalMemoExcerpt(index: number): string {
+  const excerpts = [
+    "分享一些本地开发环境的配置经验和踩坑记录",
+    "关于代码重构的一些思考和实践经验",
+    "记录学习新技术过程中的收获和感悟",
+    "项目管理中的一些心得体会和经验总结",
+    "提升编程效率的一些实用技巧和工具推荐",
+  ];
+  return excerpts[index] || "本地闪念内容摘要";
+}
+
+function getLocalMemoTags(index: number): string[] {
+  const tagSets = [
+    ["开发", "环境", "配置"],
+    ["重构", "代码质量", "最佳实践"],
+    ["学习", "技术", "笔记"],
+    ["项目管理", "团队协作", "经验"],
+    ["效率", "工具", "技巧"],
+  ];
+  return tagSets[index] || ["本地", "闪念"];
+}
+
+function getLocalMemoContent(index: number): string {
+  const contents = [
+    `# 本地开发环境配置心得
+
+最近重新配置了开发环境，记录一些有用的经验。
+
+## 开发工具配置
+
+1. **VS Code 插件推荐**
+   - ESLint + Prettier
+   - GitLens
+   - Thunder Client
+
+2. **终端配置**
+   - Oh My Zsh
+   - 自定义主题和插件
+
+## 环境变量管理
+
+使用 \`.env\` 文件管理不同环境的配置：
+
+\`\`\`bash
+# 开发环境
+NODE_ENV=development
+API_URL=http://localhost:3000
+\`\`\`
+
+这样可以避免硬编码，提高代码的可维护性。
+
+#开发 #环境 #配置`,
+
+    `# 代码重构的思考
+
+今天对项目进行了一次大规模重构，有一些心得体会。
+
+## 重构原则
+
+1. **小步快跑**：每次只重构一小部分
+2. **保持测试**：确保重构不破坏现有功能
+3. **渐进式改进**：逐步优化代码结构
+
+## 重构收益
+
+- 代码可读性提升 40%
+- 维护成本降低 30%
+- 新功能开发效率提升 25%
+
+重构是一个持续的过程，需要耐心和坚持。
+
+#重构 #代码质量 #最佳实践`,
+
+    `# 新技术学习笔记
+
+最近在学习 Rust 语言，记录一些学习心得。
+
+## 学习方法
+
+1. **理论与实践结合**
+2. **多写小项目**
+3. **参与开源贡献**
+
+## Rust 特点
+
+- 内存安全
+- 零成本抽象
+- 并发安全
+
+\`\`\`rust
+fn main() {
+    println!("Hello, Rust!");
+}
+\`\`\`
+
+学习新技术需要保持好奇心和持续的实践。
+
+#学习 #技术 #笔记`,
+
+    `# 项目管理经验分享
+
+作为技术负责人，分享一些项目管理的经验。
+
+## 团队协作
+
+1. **明确分工**：每个人都有清晰的职责
+2. **定期沟通**：每日站会 + 周会
+3. **文档先行**：重要决策都要有文档记录
+
+## 风险控制
+
+- 技术风险评估
+- 进度风险监控
+- 质量风险把控
+
+## 工具推荐
+
+- 项目管理：Jira
+- 文档协作：Notion
+- 代码管理：Git + GitHub
+
+好的项目管理是成功的一半。
+
+#项目管理 #团队协作 #经验`,
+
+    `# 编程效率提升技巧
+
+分享一些提升编程效率的实用技巧。
+
+## 快捷键掌握
+
+熟练使用 IDE 快捷键可以大大提升效率：
+
+- \`Ctrl+Shift+P\`：命令面板
+- \`Ctrl+P\`：快速打开文件
+- \`Alt+Shift+F\`：格式化代码
+
+## 代码片段
+
+创建常用的代码片段模板：
+
+\`\`\`json
+{
+  "React Component": {
+    "prefix": "rfc",
+    "body": [
+      "function \${1:ComponentName}() {",
+      "  return (",
+      "    <div>",
+      "      \${2:content}",
+      "    </div>",
+      "  );",
+      "}"
+    ]
+  }
+}
+\`\`\`
+
+## 自动化工具
+
+- 代码格式化：Prettier
+- 代码检查：ESLint
+- 自动部署：GitHub Actions
+
+工具是为了解放生产力，让我们专注于创造价值。
+
+#效率 #工具 #技巧`,
+  ];
+  return contents[index] || "本地闪念内容";
+}
+
+// 生成本地闪念数据
+function generateLocalMemos() {
+  const now = new Date();
+  const memos: any[] = [];
+
+  // 生成5条本地闪念
+  for (let i = 0; i < 5; i++) {
+    const createdAt = new Date(now.getTime() - (i + 1) * 24 * 60 * 60 * 1000);
+    const updatedAt = new Date(createdAt.getTime() + Math.random() * 12 * 60 * 60 * 1000);
+
+    const memo = {
+      title: getLocalMemoTitle(i),
+      slug: generateSlug(getLocalMemoTitle(i)),
+      publishDate: createdAt,
+      updateDate: updatedAt,
+      draft: false,
+      public: i % 2 === 0, // 交替公开/私有
+      excerpt: getLocalMemoExcerpt(i),
+      category: "闪念",
+      tags: getLocalMemoTags(i),
+      author: "Ivan Li",
+      body: getLocalMemoContent(i),
+    };
+
+    memos.push(memo);
+  }
+
+  return memos;
+}
+
 // 生成备忘录数据
 function generateMemos() {
   const now = new Date();
@@ -2276,13 +2500,19 @@ function generateMemos() {
 function createDirectories(webdavDir: string, localDir: string) {
   const dirs = [
     webdavDir,
-    join(webdavDir, "projects"),
+    join(webdavDir, "blog"), // 文章目录
+    join(webdavDir, "blog", "assets"), // 文章图片目录
+    join(webdavDir, "projects"), // 项目目录（独立的顶级目录）
+    join(webdavDir, "projects", "assets"), // 项目图片目录
     join(webdavDir, "memos"),
     join(webdavDir, "memos", "assets"), // memos 附件目录
-    join(webdavDir, "assets"), // WebDAV图片目录
     localDir,
-    join(localDir, "projects"),
-    join(localDir, "assets"), // 本地图片目录
+    join(localDir, "blog"), // 本地文章目录
+    join(localDir, "blog", "assets"), // 本地文章图片目录
+    join(localDir, "projects"), // 本地项目目录（独立的顶级目录）
+    join(localDir, "projects", "assets"), // 本地项目图片目录
+    join(localDir, "memos"), // 本地闪念目录
+    join(localDir, "memos", "assets"), // 本地闪念图片目录
   ];
 
   dirs.forEach((dir) => {
@@ -2443,23 +2673,21 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
   const memoContentImages = images.slice(20, 26); // 闪念内容图片 (ID 26-31)
   const memoAttachmentImages = images.slice(26); // 闪念附件图片 (ID 33-38)
 
-  const localImages = [
-    ...images.slice(5, 10), // 本地文章图片 (ID 11-15)
-    ...images.slice(15, 20), // 本地项目图片 (ID 21-25)
-  ];
+  const localArticleImages = images.slice(5, 10); // 本地文章图片 (ID 11-15)
+  const localProjectImages = images.slice(15, 20); // 本地项目图片 (ID 21-25)
 
   // 创建所有下载任务
   const downloadTasks = [
-    // WebDAV 文章图片 - 放在 webdav/assets
+    // WebDAV 文章图片 - 放在 webdav/blog/assets
     ...webdavArticleImages.map((image) => ({
       url: image.url,
-      filePath: join(webdavDir, "assets", image.filename),
+      filePath: join(webdavDir, "blog", "assets", image.filename),
       filename: image.filename,
     })),
-    // WebDAV 项目图片 - 放在 webdav/assets
+    // WebDAV 项目图片 - 放在 webdav/projects/assets
     ...webdavProjectImages.map((image) => ({
       url: image.url,
-      filePath: join(webdavDir, "assets", image.filename),
+      filePath: join(webdavDir, "projects", "assets", image.filename),
       filename: image.filename,
     })),
     // 闪念内容图片 - 放在 Memos/assets (因为文章在 Memos 目录下)
@@ -2474,41 +2702,67 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
       filePath: join(webdavDir, "memos", "assets", image.filename),
       filename: image.filename,
     })),
-    // 本地图片下载任务
-    ...localImages.map((image) => ({
+    // 本地文章图片 - 放在 local/blog/assets
+    ...localArticleImages.map((image) => ({
       url: image.url,
-      filePath: join(localDir, "assets", image.filename),
+      filePath: join(localDir, "blog", "assets", image.filename),
+      filename: image.filename,
+    })),
+    // 本地项目图片 - 放在 local/projects/assets
+    ...localProjectImages.map((image) => ({
+      url: image.url,
+      filePath: join(localDir, "projects", "assets", image.filename),
       filename: image.filename,
     })),
   ];
 
-  // 并行下载所有图片（限制并发数）
+  // 真正的并行下载所有图片（保持5个并发）
   console.log(`开始并行下载 ${downloadTasks.length} 张图片...`);
 
-  const concurrencyLimit = 5; // 限制同时下载5张图片
+  let completedCount = 0;
+  const totalCount = downloadTasks.length;
   const results: Array<{ success: boolean; filename: string; error?: any }> = [];
 
-  // 分批处理下载任务
-  for (let i = 0; i < downloadTasks.length; i += concurrencyLimit) {
-    const batch = downloadTasks.slice(i, i + concurrencyLimit);
-    const batchPromises = batch.map(async (task) => {
-      try {
-        await downloadImage(task.url, task.filePath);
-        return { success: true, filename: task.filename };
-      } catch (error) {
-        console.warn(`❌ ${task.filename}: ${error instanceof Error ? error.message : error}`);
-        return { success: false, filename: task.filename, error };
-      }
+  const downloadWithProgress = async (task: any) => {
+    try {
+      await downloadImage(task.url, task.filePath);
+      completedCount++;
+      console.log(
+        `📸 进度: ${completedCount}/${totalCount} (${Math.round((completedCount / totalCount) * 100)}%) - ✅ ${task.filename}`
+      );
+      return { success: true, filename: task.filename };
+    } catch (error) {
+      completedCount++;
+      console.log(
+        `📸 进度: ${completedCount}/${totalCount} (${Math.round((completedCount / totalCount) * 100)}%) - ❌ ${task.filename}: ${error instanceof Error ? error.message : error}`
+      );
+      return { success: false, filename: task.filename, error };
+    }
+  };
+
+  // 使用 Promise.allSettled 确保真正并行，但限制并发数
+  const concurrencyLimit = 5;
+  const executing: Promise<any>[] = [];
+
+  for (const task of downloadTasks) {
+    const promise = downloadWithProgress(task).then((result) => {
+      results.push(result);
+      return result;
     });
 
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
+    executing.push(promise);
 
-    // 批次间稍作延迟，避免过于频繁的请求
-    if (i + concurrencyLimit < downloadTasks.length) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    if (executing.length >= concurrencyLimit) {
+      await Promise.race(executing);
+      executing.splice(
+        executing.findIndex((p) => p === promise),
+        1
+      );
     }
   }
+
+  // 等待所有剩余任务完成
+  await Promise.all(executing);
 
   const successCount = results.filter((r) => r.success).length;
   const failCount = results.filter((r) => !r.success).length;
@@ -2517,7 +2771,7 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
 
   // 创建 SVG 测试图片
   console.log("\n🎨 创建 SVG 测试图片...");
-  const svgFilePath = join(webdavDir, "assets", "svg-test-diagram.svg");
+  const svgFilePath = join(webdavDir, "blog", "assets", "svg-test-diagram.svg");
   writeFileSync(svgFilePath, svgTestDiagram, "utf-8");
   console.log(`✅ svg-test-diagram.svg`);
 }
@@ -2554,6 +2808,7 @@ async function main() {
   const localPosts = generateLocalPosts();
   const webdavProjects = generateProjects();
   const localProjects = generateLocalProjects();
+  const localMemos = generateLocalMemos();
   const memos = generateMemos();
 
   console.log(`\n生成 ${envName} WebDAV 测试数据...`);
@@ -2562,7 +2817,7 @@ async function main() {
   webdavPosts.forEach((post, index) => {
     const { body, ...frontmatter } = post;
     const fileName = `${String(index + 1).padStart(2, "0")}-${post.slug}.md`;
-    writeMarkdownFile(join(WEBDAV_DIR, fileName), frontmatter, body);
+    writeMarkdownFile(join(WEBDAV_DIR, "blog", fileName), frontmatter, body);
   });
 
   // WebDAV 项目
@@ -2586,7 +2841,7 @@ async function main() {
   localPosts.forEach((post, index) => {
     const { body, ...frontmatter } = post;
     const fileName = `${String(index + 1).padStart(2, "0")}-${post.slug}.md`;
-    writeMarkdownFile(join(LOCAL_DIR, fileName), frontmatter, body);
+    writeMarkdownFile(join(LOCAL_DIR, "blog", fileName), frontmatter, body);
   });
 
   // 本地项目
@@ -2596,15 +2851,18 @@ async function main() {
     writeMarkdownFile(join(LOCAL_DIR, "projects", fileName), frontmatter, body);
   });
 
+  // 本地闪念
+  localMemos.forEach((memo, index) => {
+    const { body, ...frontmatter } = memo;
+    const fileName = `${String(index + 1).padStart(2, "0")}-${memo.slug}.md`;
+    writeMarkdownFile(join(LOCAL_DIR, "memos", fileName), frontmatter, body);
+  });
+
   console.log(`\n✅ ${envName}测试数据生成完成！`);
   console.log(`\n📁 数据位置:`);
   console.log(`  - WebDAV 数据: ${WEBDAV_DIR}`);
   console.log(`  - 本地数据: ${LOCAL_DIR}`);
-  console.log(`\n🚀 下一步:`);
-  const webdavCommand = environment === "dev" ? "bun run webdav:dev" : "bun run webdav:test";
-  console.log(`  1. 运行 '${webdavCommand}' 启动 WebDAV 服务器`);
-  console.log(`  2. 配置环境变量指向本地 WebDAV 服务器`);
-  console.log(`  3. 运行 'bun run dev' 启动开发服务器`);
+  console.log(`\n🚀 下一步: 运行 'bun run dev' 启动开发服务器`);
 }
 
 if (import.meta.main) {

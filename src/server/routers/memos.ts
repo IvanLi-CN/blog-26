@@ -1,11 +1,30 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
+import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
 import { WebDAVContentSource } from "../../lib/content-sources/webdav";
 import { db } from "../../lib/db";
 import { memos, posts } from "../../lib/schema";
 import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, publicProcedure, router } from "../trpc";
+
+// ============================================================================
+// 辅助函数
+// ============================================================================
+
+/**
+ * 创建 WebDAV 内容源实例
+ */
+function createWebDAVSource(): WebDAVContentSource {
+  return new WebDAVContentSource({
+    name: "webdav",
+    priority: 100,
+    enabled: true,
+    options: {
+      pathMappings: WEBDAV_PATH_MAPPINGS,
+    },
+  });
+}
 
 // ============================================================================
 // 输入验证 Schema
@@ -216,18 +235,7 @@ export const memosRouter = router({
 
     try {
       // 创建 WebDAV 内容源实例
-      const webdavSource = new WebDAVContentSource({
-        name: "webdav",
-        priority: 100,
-        enabled: true,
-        options: {
-          pathMappings: {
-            posts: "/blog",
-            projects: "/blog/projects",
-            memos: "/Memos",
-          },
-        },
-      });
+      const webdavSource = createWebDAVSource();
 
       await webdavSource.initialize();
 
@@ -317,18 +325,7 @@ export const memosRouter = router({
       }
 
       // 创建 WebDAV 内容源实例
-      const webdavSource = new WebDAVContentSource({
-        name: "webdav",
-        priority: 100,
-        enabled: true,
-        options: {
-          pathMappings: {
-            posts: "/blog",
-            projects: "/blog/projects",
-            memos: "/Memos",
-          },
-        },
-      });
+      const webdavSource = createWebDAVSource();
 
       await webdavSource.initialize();
 
@@ -445,18 +442,7 @@ export const memosRouter = router({
 
     try {
       // 创建 WebDAV 内容源实例
-      const webdavSource = new WebDAVContentSource({
-        name: "webdav",
-        priority: 100,
-        enabled: true,
-        options: {
-          pathMappings: {
-            posts: "/blog",
-            projects: "/blog/projects",
-            memos: "/Memos",
-          },
-        },
-      });
+      const webdavSource = createWebDAVSource();
 
       await webdavSource.initialize();
 

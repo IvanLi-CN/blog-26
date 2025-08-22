@@ -7,6 +7,7 @@
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { SYSTEM_CONFIG } from "../../../config/paths";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -307,16 +308,12 @@ export const adminContentSyncRouter = createTRPCRouter({
    */
   getSystemConfig: adminProcedure.query(async () => {
     return {
-      webdavEnabled: isWebDAVEnabled(),
-      webdavUrl: process.env.WEBDAV_URL || null,
-      supportedSources: ["local", "webdav"],
+      webdavEnabled: SYSTEM_CONFIG.webdav.enabled,
+      webdavUrl: SYSTEM_CONFIG.webdav.url,
+      supportedSources: SYSTEM_CONFIG.supportedSources,
       defaultPaths: {
-        local: "./src/content",
-        webdav: {
-          posts: "/blog",
-          projects: "/blog/projects",
-          memos: "/Memos",
-        },
+        local: SYSTEM_CONFIG.local.basePath,
+        webdav: SYSTEM_CONFIG.webdav.pathMappings,
       },
     };
   }),
