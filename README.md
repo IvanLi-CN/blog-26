@@ -5,6 +5,7 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 ## 🚀 Migration Status
 
 ### ✅ Completed
+
 - [x] **Project Setup**: Next.js 15 project created with TypeScript and Tailwind CSS
 - [x] **Core Dependencies**: Installed essential packages (tRPC, Drizzle ORM, AI libraries)
 - [x] **Database Schema**: Migrated database schema from Astro version
@@ -28,6 +29,7 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 - [ ] **Static Assets**: Copy and optimize static assets
 
 ### 📋 Next Steps
+
 1. **Component Migration**: Start with common components (UI, layout)
 2. **API Migration**: Migrate tRPC routers for posts, comments, auth
 3. **Page Structure**: Create blog, admin, and memos pages
@@ -37,22 +39,26 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 ## 🛠 Tech Stack
 
 ### Core Framework
+
 - **Next.js 15.4.6** with App Router
 - **React 19.1.0**
 - **TypeScript 5.x**
 - **Tailwind CSS 4.x** + daisyUI
 
 ### Backend & Database
+
 - **tRPC 11.4.3** for type-safe APIs
 - **Drizzle ORM 0.44.2** with SQLite
 - **better-sqlite3** for database connection
 
 ### AI & Search
+
 - **OpenAI API** for AI features
 - **LlamaIndex** for RAG functionality
 - **Redis** for caching (ioredis)
 
 ### Development Tools
+
 - **Biome 2.0.4** for code formatting and linting
 - **Playwright** for E2E testing
 
@@ -157,14 +163,145 @@ Copy `.env.example` to `.env` and configure:
 - SMTP configuration
 - Admin settings
 
-## 🧪 Testing
+## 🔄 Development Environment Data Regeneration
+
+This project uses a multi-source content management system that supports both local file system and WebDAV remote storage. During development, you may need to reset environment data. This section provides a complete operation guide.
+
+### 📋 System Architecture Overview
+
+**Data Storage Layers**:
+
+- **SQLite Database** - Primary data storage (posts, memos, comments, users, etc.)
+- **Local File System** - Development content (`src/content/`, `dev-data/local/`)
+- **WebDAV Remote Storage** - Remote content sync (`dev-data/webdav/`, `test-data/webdav/`)
+- **Cache Layer** - Redis cache, build cache (`.next/`)
+
+**Content Sync Mechanism**:
+
+- SHA-256 hash-based incremental sync
+- Multi-source priority management
+- Intelligent conflict resolution strategy
+
+### ⚡ Quick Reset Guide
+
+**One-click Complete Reset**:
 
 ```bash
-# Run E2E tests (after migration)
-npm run test:e2e
+# Reset database + Generate test data + Start development environment
+bun run db:reset && bun run test-data:generate && bun run dev
 ```
 
----
+**Common Scenarios**:
 
-**Migration Progress**: 🟡 **Phase 1 Complete** - Basic setup and infrastructure ready
-**Next Phase**: 🔄 **Component and API Migration**
+```bash
+# Reset database only (keep files)
+bun run db:reset
+
+# Regenerate test data only
+bun run test-data:clean && bun run test-data:generate
+
+# Check environment status
+bun run db:check && bun run webdav:check
+
+# Start complete development environment (WebDAV + Next.js)
+bun run dev
+```
+
+### 🛠️ Detailed Operation Flow
+
+#### 1. Data Cleanup Strategy
+
+**Cleanup Order** (to avoid foreign key constraint conflicts):
+
+1. Stop all service processes
+2. Clear cache data (Redis, build cache)
+3. Clear database (by dependency: comments → posts/memos → users)
+4. Clear file system data
+5. Clear temporary files
+
+**Safe Cleanup Commands**:
+
+```bash
+# Force delete database (use with caution)
+bun run drop-db --force
+
+# Clean test data files
+bun run test-data:clean
+
+# Clear build cache
+rm -rf .next/
+```
+
+#### 2. Database Rebuild Process
+
+**Standard Rebuild Process**:
+
+```bash
+# 1. Delete existing database
+bun run drop-db --force
+
+# 2. Run database migrations
+bun run migrate
+
+# 3. Populate seed data
+bun run seed
+
+# Or use one-click command
+bun run db:reset
+```
+
+**Seed Data Description**:
+
+- Create test users (<test1@example.com>, <test2@example.com>)
+- Initialize system configuration
+- **Does not include** content data (posts/memos obtained through content sync)
+
+#### 3. Content Source Regeneration
+
+**Generate Test Content**:
+
+```bash
+# Generate development environment test data
+bun run test-data:generate
+
+# Verify generated data
+bun run test-data:verify
+
+# Clean test data
+bun run test-data:clean
+```
+
+**Content Sync Process**:
+
+1. Start WebDAV server: `bun run webdav:dev`
+2. Access admin interface: `http://localhost:3000/admin/content-sync`
+3. Trigger content sync or wait for automatic sync
+4. Check sync logs and status
+
+### 📜 Script Tools Reference
+
+#### Database Management Scripts
+
+| Script | Function | Usage |
+|--------|----------|-------|
+| `migrate` | Run database migrations | `bun run migrate` |
+| `seed` | Populate seed data | `bun run seed [--clear] [--check]` |
+| `drop-db` | Delete database file | `bun run drop-db [--force]` |
+| `db:reset` | Complete database reset | `bun run db:reset` |
+| `db:check` | Check database status | `bun run db:check` |
+
+#### Content Management Scripts
+
+| Script | Function | Usage |
+|--------|----------|-------|
+| `test-data:generate` | Generate test data | `bun run test-data:generate` |
+| `test-data:clean` | Clean test data | `bun run test-data:clean` |
+| `test-data:verify` | Verify test data | `bun run test-data:verify` |
+
+#### WebDAV Tools
+
+| Script | Function | Usage |
+|--------|----------|-------|
+| `webdav:dev` | Start development WebDAV server | `bun run webdav:dev` |
+| `webdav:check` | Check WebDAV connection | `bun run webdav:check` |
+| `webdav:list` | List WebDAV directory | `bun run webdav:list` |
