@@ -288,15 +288,23 @@ export function ContentSyncManager() {
 
             {/* 同步进度和消息 - 紧凑显示 */}
             {syncProgress && (
-              <>
+              <div data-testid="sync-progress-section">
                 {syncProgress.status === "running" && (
-                  <div className="mb-4 p-3 bg-warning/10 rounded-lg border border-warning/20">
+                  <div
+                    className="mb-4 p-3 bg-warning/10 rounded-lg border border-warning/20"
+                    data-testid="sync-progress-running"
+                  >
                     <progress
                       className="progress progress-warning w-full mb-2"
                       value={syncProgress.progress}
                       max="100"
+                      data-testid="sync-progress-bar"
+                      aria-label={`同步进度 ${syncProgress.progress}%`}
                     />
-                    <div className="text-sm text-base-content/70">
+                    <div
+                      className="text-sm text-base-content/70"
+                      data-testid="sync-progress-details"
+                    >
                       {syncProgress.currentStep} ({syncProgress.processedItems}/
                       {syncProgress.totalItems})
                     </div>
@@ -304,29 +312,40 @@ export function ContentSyncManager() {
                 )}
 
                 {syncProgress.status === "success" && (
-                  <div className="mb-4 p-3 bg-success/10 rounded-lg border border-success/20 flex items-center gap-2">
+                  <div
+                    className="mb-4 p-3 bg-success/10 rounded-lg border border-success/20 flex items-center gap-2"
+                    data-testid="sync-success-message"
+                  >
                     <Icon name="lucide:check-circle" className="w-5 h-5 text-success" />
                     <span className="text-success font-medium">同步完成！所有数据已成功更新。</span>
                   </div>
                 )}
 
                 {syncProgress.error && (
-                  <div className="mb-4 p-3 bg-error/10 rounded-lg border border-error/20 flex items-center gap-2">
+                  <div
+                    className="mb-4 p-3 bg-error/10 rounded-lg border border-error/20 flex items-center gap-2"
+                    data-testid="sync-error-message"
+                  >
                     <Icon name="lucide:x-circle" className="w-5 h-5 text-error" />
                     <span className="text-error font-medium">{syncProgress.error}</span>
                   </div>
                 )}
-              </>
+              </div>
             )}
 
             {/* 控制按钮 - 紧凑设计 */}
-            <div className="bg-base-200/50 rounded-xl p-3 border border-base-300">
+            <div
+              className="bg-base-200/50 rounded-xl p-3 border border-base-300"
+              data-testid="sync-controls"
+            >
               <div className="flex flex-wrap gap-2 justify-center">
                 <button
                   type="button"
                   className={`btn btn-primary ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
                   onClick={handleTriggerSync}
                   disabled={isLoading || syncProgress?.status === "running"}
+                  data-testid="full-sync-button"
+                  aria-label="触发全量同步"
                 >
                   {isLoading ? (
                     <>
@@ -346,6 +365,8 @@ export function ContentSyncManager() {
                   className={`btn btn-secondary ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
                   onClick={handleIncrementalSync}
                   disabled={isLoading || syncProgress?.status === "running"}
+                  data-testid="incremental-sync-button"
+                  aria-label="触发增量同步"
                 >
                   {isLoading ? (
                     <>
@@ -366,6 +387,8 @@ export function ContentSyncManager() {
                     className="btn btn-warning shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap"
                     onClick={handleCancelSync}
                     disabled={cancelSyncMutation.isPending}
+                    data-testid="cancel-sync-button"
+                    aria-label="取消正在进行的同步"
                   >
                     {cancelSyncMutation.isPending ? (
                       <>
@@ -400,13 +423,18 @@ export function ContentSyncManager() {
             </div>
 
             {/* 同步日志 - 紧跟在按钮下方 */}
-            <div className="mt-6">
+            <div className="mt-6" data-testid="sync-logs-section">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold flex items-center">
+                <h3
+                  className="text-lg font-semibold flex items-center"
+                  data-testid="sync-logs-title"
+                >
                   <Icon name="lucide:clipboard-list" className="w-5 h-5 mr-2" />
                   同步日志
                   {syncLogs.length > 0 && (
-                    <div className="badge badge-neutral ml-2">{syncLogs.length} 条记录</div>
+                    <div className="badge badge-neutral ml-2" data-testid="sync-logs-count">
+                      {syncLogs.length} 条记录
+                    </div>
                   )}
                 </h3>
                 <button
@@ -415,6 +443,8 @@ export function ContentSyncManager() {
                     showLogs ? "btn-warning" : "btn-success"
                   }`}
                   onClick={() => setShowLogs(!showLogs)}
+                  data-testid="toggle-logs-button"
+                  aria-label={showLogs ? "隐藏同步日志" : "显示同步日志"}
                 >
                   {showLogs ? (
                     <>
@@ -431,9 +461,12 @@ export function ContentSyncManager() {
               </div>
 
               {showLogs && (
-                <div className="mt-4">
+                <div className="mt-4" data-testid="sync-logs-content">
                   {syncLogs.length === 0 ? (
-                    <div className="hero bg-base-200 rounded-xl py-16">
+                    <div
+                      className="hero bg-base-200 rounded-xl py-16"
+                      data-testid="empty-logs-state"
+                    >
                       <div className="hero-content text-center">
                         <div className="max-w-md">
                           <Icon
