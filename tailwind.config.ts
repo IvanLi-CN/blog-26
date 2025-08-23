@@ -9,6 +9,9 @@ const config: Config & { daisyui?: any } = {
   ],
   theme: {
     extend: {
+      maxWidth: {
+        admin: "1400px", // 自定义管理后台最大宽度
+      },
       fontFamily: {
         sans: [
           "var(--font-inter)",

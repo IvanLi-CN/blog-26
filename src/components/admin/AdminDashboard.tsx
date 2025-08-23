@@ -139,11 +139,11 @@ export default function AdminDashboard() {
 
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
-            <h2 className="card-title">⚙️ 系统设置</h2>
-            <p>缓存管理和系统配置</p>
+            <h2 className="card-title">🔄 数据同步</h2>
+            <p>多源内容采集和数据同步</p>
             <div className="card-actions justify-end">
-              <a href="/admin/cache" className="btn btn-primary">
-                系统设置
+              <a href="/admin/data-sync" className="btn btn-primary">
+                数据同步
               </a>
             </div>
           </div>

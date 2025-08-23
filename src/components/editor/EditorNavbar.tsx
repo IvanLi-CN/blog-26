@@ -13,7 +13,7 @@ export function EditorNavbar() {
     <div className="navbar bg-base-100 shadow-lg border-b border-base-300 flex-shrink-0">
       <div className="flex-1">
         <Link className="btn btn-ghost text-xl" href="/admin/dashboard">
-          🛠️ 管理后台
+          管理后台
         </Link>
       </div>
       <div className="flex-none">
@@ -28,7 +28,7 @@ export function EditorNavbar() {
             <Link href="/admin/comments">评论管理</Link>
           </li>
           <li>
-            <Link href="/admin/content-sync">内容同步</Link>
+            <Link href="/admin/data-sync">数据同步</Link>
           </li>
           <li>
             <Link href="/" className="btn btn-outline btn-sm">

@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="navbar bg-base-100 shadow-lg">
         <div className="flex-1">
           <Link className="btn btn-ghost text-xl" href="/admin/dashboard">
-            🛠️ 管理后台
+            管理后台
           </Link>
         </div>
         <div className="flex-none">
@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/comments">评论管理</Link>
             </li>
             <li>
-              <Link href="/admin/content-sync">内容同步</Link>
+              <Link href="/admin/data-sync">数据同步</Link>
             </li>
             <li>
               <details>
@@ -61,7 +61,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
 
       {/* 主要内容区域 */}
-      <main className="container mx-auto px-4 py-8">{children}</main>
+      <main className="w-full px-4 py-8">{children}</main>
     </div>
   );
 }

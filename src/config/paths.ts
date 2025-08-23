@@ -25,7 +25,7 @@ export const WEBDAV_PATHS = {
  */
 export const LOCAL_PATHS = {
   /** 本地内容基础路径 */
-  basePath: process.env.LOCAL_CONTENT_BASE_PATH || "./src/content",
+  basePath: process.env.LOCAL_CONTENT_BASE_PATH || "./dev-data/local",
   /** 博客文章路径 */
   posts: "/blog",
   /** 项目文档路径 */

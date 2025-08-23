@@ -4,7 +4,7 @@
  * 统一管理多个内容源，处理内容合并、冲突解决和同步协调
  */
 
-import { eq, lt, sql } from "drizzle-orm";
+import { desc, eq, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, initializeDB } from "../db";
 import type { ContentSyncLog } from "../schema";
@@ -454,14 +454,43 @@ export class ContentSourceManager {
 
           if (change.operation === "create") {
             stats.created++;
+            // 记录创建成功的日志
+            await this.logSync("info", `✅ 创建内容: ${change.item.title}`, change.item.id, {
+              operation: "create",
+              source: change.item.source,
+              type: change.item.type,
+              slug: change.item.slug,
+            });
           } else {
             stats.updated++;
+            // 记录更新成功的日志
+            await this.logSync("info", `🔄 更新内容: ${change.item.title}`, change.item.id, {
+              operation: "update",
+              source: change.item.source,
+              type: change.item.type,
+              slug: change.item.slug,
+            });
           }
         } else if (change.operation === "delete") {
           await db.delete(posts).where(eq(posts.id, change.item.id));
           stats.deleted++;
+          // 记录删除成功的日志
+          await this.logSync("info", `🗑️ 删除内容: ${change.item.title}`, change.item.id, {
+            operation: "delete",
+            source: change.item.source,
+            type: change.item.type,
+            slug: change.item.slug,
+          });
         } else {
           stats.skipped++;
+          // 记录跳过的日志
+          await this.logSync("info", `⏭️ 跳过内容: ${change.item.title}`, change.item.id, {
+            operation: "skip",
+            source: change.item.source,
+            type: change.item.type,
+            slug: change.item.slug,
+            reason: change.reason,
+          });
         }
       } catch (error) {
         stats.errors++;
@@ -474,6 +503,20 @@ export class ContentSourceManager {
           filePath: change.item.id,
           timestamp: Date.now(),
         });
+
+        // 记录详细的错误日志
+        await this.logSync(
+          "error",
+          `❌ ${change.operation} 失败: ${change.item.title} - ${errorMessage}`,
+          change.item.id,
+          {
+            operation: change.operation,
+            source: change.item.source,
+            type: change.item.type,
+            slug: change.item.slug,
+            error: errorMessage,
+          }
+        );
 
         logs.push({
           level: "error",
@@ -721,10 +764,11 @@ export class ContentSourceManager {
    */
   async getSyncLogs(limit: number = 100): Promise<ContentSyncLog[]> {
     try {
+      // 按创建时间降序排列，最新的日志在前面
       return await db
         .select()
         .from(contentSyncLogs)
-        .orderBy(contentSyncLogs.createdAt)
+        .orderBy(desc(contentSyncLogs.createdAt))
         .limit(limit);
     } catch (error) {
       console.error("获取同步日志失败:", error);

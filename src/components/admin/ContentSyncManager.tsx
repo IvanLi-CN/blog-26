@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
+import Icon from "../ui/Icon";
 
 interface SyncProgress {
   status: string;
@@ -45,7 +46,7 @@ export function ContentSyncManager() {
   const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [sourcesStatus, setSourcesStatus] = useState<SourceStatus[]>([]);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
-  const [showLogs, setShowLogs] = useState(false);
+  const [showLogs, setShowLogs] = useState(true); // 默认展开日志
 
   // API 查询
   const { data: systemConfig } = trpc.admin.contentSync.getSystemConfig.useQuery();
@@ -56,11 +57,16 @@ export function ContentSyncManager() {
   const triggerSyncMutation = trpc.admin.contentSync.triggerSync.useMutation({
     onSuccess: (result) => {
       console.log(`同步完成！处理了 ${result.stats.totalProcessed} 个项目`);
+      setIsLoading(false); // 重置加载状态
       refetchStats();
       refreshData();
     },
     onError: (error) => {
       console.error(`同步失败: ${error.message}`);
+      setIsLoading(false);
+    },
+    onSettled: () => {
+      // 确保在任何情况下都重置加载状态
       setIsLoading(false);
     },
   });
@@ -115,25 +121,39 @@ export function ContentSyncManager() {
       interval = setInterval(async () => {
         try {
           await refetchProgress();
-
-          if (progressData?.status !== "running") {
-            setIsLoading(false);
-            refreshData();
-          }
         } catch (error) {
           console.error("获取同步进度失败:", error);
+          setIsLoading(false);
         }
       }, 1000);
+    } else {
+      // 同步不在运行时，确保重置加载状态
+      setIsLoading(false);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [syncProgress?.status, progressData?.status, refetchProgress, refreshData]);
+  }, [syncProgress?.status, refetchProgress]);
 
-  // 触发同步
+  // 触发全量同步
   const handleTriggerSync = async () => {
     setIsLoading(true);
+    setShowLogs(true); // 自动展开日志
+    setSyncLogs([]); // 清空旧日志，准备显示新的同步过程
+    triggerSyncMutation.mutate({
+      maxConcurrentSyncs: 2,
+      syncTimeout: 300000,
+      enableTransactions: true,
+      conflictResolution: "priority",
+    });
+  };
+
+  // 触发增量同步
+  const handleIncrementalSync = async () => {
+    setIsLoading(true);
+    setShowLogs(true); // 自动展开日志
+    setSyncLogs([]); // 清空旧日志，准备显示新的同步过程
     triggerSyncMutation.mutate({
       maxConcurrentSyncs: 2,
       syncTimeout: 300000,
@@ -148,275 +168,490 @@ export function ContentSyncManager() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* 系统配置信息 */}
-      {systemConfig && (
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title">系统配置</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="font-semibold">WebDAV 状态:</span>
-                <span
-                  className={`ml-2 badge ${systemConfig.webdavEnabled ? "badge-success" : "badge-error"}`}
-                >
-                  {systemConfig.webdavEnabled ? "已启用" : "未启用"}
-                </span>
-              </div>
-              {systemConfig.webdavUrl && (
-                <div>
-                  <span className="font-semibold">WebDAV URL:</span>
-                  <span className="ml-2 text-sm font-mono">{systemConfig.webdavUrl}</span>
+    <div className="bg-base-200 px-4 pb-4">
+      <div className="max-w-6xl mx-auto space-y-4">
+        {/* 页面标题 - 简化版 */}
+        <div className="flex items-center gap-3 mb-4">
+          <Icon name="lucide:refresh-cw" className="w-6 h-6 text-primary" />
+          <h1 className="text-2xl font-bold text-base-content">数据同步管理</h1>
+        </div>
+
+        {/* 顶部状态栏 - 紧凑设计 */}
+        {(systemConfig || managerStats) && (
+          <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl p-4 border border-primary/20">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              {/* WebDAV 状态 */}
+              {systemConfig && (
+                <div className="flex items-center gap-2">
+                  <Icon name="lucide:server" className="w-4 h-4" />
+                  <span className="font-medium">WebDAV:</span>
+                  <span
+                    className={`badge badge-sm ${systemConfig.webdavEnabled ? "badge-success" : "badge-error"}`}
+                  >
+                    {systemConfig.webdavEnabled ? "已启用" : "未启用"}
+                  </span>
                 </div>
               )}
-              <div>
-                <span className="font-semibold">支持的内容源:</span>
-                <span className="ml-2">{systemConfig.supportedSources.join(", ")}</span>
-              </div>
+
+              {/* 内容源数量 */}
+              {managerStats && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Icon name="lucide:folder" className="w-4 h-4" />
+                    <span className="font-medium">内容源:</span>
+                    <span className="badge badge-sm badge-primary">
+                      {managerStats.enabledSources}/{managerStats.registeredSources}
+                    </span>
+                  </div>
+
+                  {/* 同步状态 */}
+                  <div className="flex items-center gap-2">
+                    <Icon name="lucide:activity" className="w-4 h-4" />
+                    <span className="font-medium">状态:</span>
+                    <span
+                      className={`badge badge-sm ${
+                        managerStats.currentSyncStatus === "success"
+                          ? "badge-success"
+                          : managerStats.currentSyncStatus === "error"
+                            ? "badge-error"
+                            : managerStats.currentSyncStatus === "running"
+                              ? "badge-warning"
+                              : "badge-ghost"
+                      }`}
+                    >
+                      {managerStats.currentSyncStatus === "success"
+                        ? "成功"
+                        : managerStats.currentSyncStatus === "error"
+                          ? "错误"
+                          : managerStats.currentSyncStatus === "running"
+                            ? "运行中"
+                            : "空闲"}
+                    </span>
+                  </div>
+
+                  {/* 同步次数 */}
+                  <div className="flex items-center gap-2">
+                    <Icon name="lucide:repeat" className="w-4 h-4" />
+                    <span className="font-medium">同步次数:</span>
+                    <span className="badge badge-sm badge-accent">{managerStats.totalSyncs}</span>
+                  </div>
+
+                  {/* 最后同步时间 */}
+                  {managerStats.lastSyncTime && (
+                    <div className="flex items-center gap-2" suppressHydrationWarning>
+                      <Icon name="lucide:clock" className="w-4 h-4" />
+                      <span className="font-medium">最后同步:</span>
+                      <span className="badge badge-sm badge-info">
+                        {typeof window === "undefined"
+                          ? ""
+                          : `${Math.floor((Date.now() - managerStats.lastSyncTime) / 60000)} 分钟前`}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 管理器统计信息 */}
-      {managerStats && (
-        <div className="card bg-base-100 shadow-xl">
+        {/* 主操作区域 - 突出设计 */}
+        <div className="card bg-base-100 shadow-xl border-2 border-primary/20">
           <div className="card-body">
-            <h2 className="card-title">管理器状态</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="stat">
-                <div className="stat-title">注册的内容源</div>
-                <div className="stat-value text-primary">{managerStats.registeredSources}</div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="card-title flex items-center text-primary">
+                <Icon name="lucide:play-circle" className="w-6 h-6 mr-2" />
+                同步控制
+              </h2>
+
+              {/* 内联同步状态 */}
+              {syncProgress && (
+                <div className="flex items-center gap-2">
+                  {syncProgress.status === "running" && (
+                    <span className="loading loading-spinner loading-sm"></span>
+                  )}
+                  <span
+                    className={`badge ${
+                      syncProgress.status === "success"
+                        ? "badge-success"
+                        : syncProgress.status === "error"
+                          ? "badge-error"
+                          : syncProgress.status === "running"
+                            ? "badge-warning"
+                            : "badge-ghost"
+                    }`}
+                  >
+                    {syncProgress.status === "running"
+                      ? "同步中"
+                      : syncProgress.status === "success"
+                        ? "已完成"
+                        : syncProgress.status === "error"
+                          ? "失败"
+                          : syncProgress.status}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 同步进度和消息 - 紧凑显示 */}
+            {syncProgress && (
+              <>
+                {syncProgress.status === "running" && (
+                  <div className="mb-4 p-3 bg-warning/10 rounded-lg border border-warning/20">
+                    <progress
+                      className="progress progress-warning w-full mb-2"
+                      value={syncProgress.progress}
+                      max="100"
+                    />
+                    <div className="text-sm text-base-content/70">
+                      {syncProgress.currentStep} ({syncProgress.processedItems}/
+                      {syncProgress.totalItems})
+                    </div>
+                  </div>
+                )}
+
+                {syncProgress.status === "success" && (
+                  <div className="mb-4 p-3 bg-success/10 rounded-lg border border-success/20 flex items-center gap-2">
+                    <Icon name="lucide:check-circle" className="w-5 h-5 text-success" />
+                    <span className="text-success font-medium">同步完成！所有数据已成功更新。</span>
+                  </div>
+                )}
+
+                {syncProgress.error && (
+                  <div className="mb-4 p-3 bg-error/10 rounded-lg border border-error/20 flex items-center gap-2">
+                    <Icon name="lucide:x-circle" className="w-5 h-5 text-error" />
+                    <span className="text-error font-medium">{syncProgress.error}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 控制按钮 - 紧凑设计 */}
+            <div className="bg-base-200/50 rounded-xl p-3 border border-base-300">
+              <div className="flex flex-wrap gap-2 justify-center">
+                <button
+                  type="button"
+                  className={`btn btn-primary btn-sm ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
+                  onClick={handleTriggerSync}
+                  disabled={isLoading || syncProgress?.status === "running"}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs"></span>
+                      同步中...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="lucide:database" className="w-4 h-4 mr-1" />
+                      全量同步
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className={`btn btn-secondary btn-sm ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
+                  onClick={handleIncrementalSync}
+                  disabled={isLoading || syncProgress?.status === "running"}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs"></span>
+                      同步中...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="lucide:refresh-cw" className="w-4 h-4 mr-1" />
+                      增量同步
+                    </>
+                  )}
+                </button>
+
+                {syncProgress?.status === "running" && (
+                  <button
+                    type="button"
+                    className="btn btn-warning btn-sm shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap"
+                    onClick={handleCancelSync}
+                    disabled={cancelSyncMutation.isPending}
+                  >
+                    {cancelSyncMutation.isPending ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs"></span>
+                        取消中...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="lucide:square" className="w-4 h-4 mr-1" />
+                        取消同步
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap"
+                  onClick={refreshData}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <>
+                      <Icon name="lucide:rotate-ccw" className="w-4 h-4 mr-1" />
+                      刷新状态
+                    </>
+                  )}
+                </button>
               </div>
-              <div className="stat">
-                <div className="stat-title">启用的内容源</div>
-                <div className="stat-value text-secondary">{managerStats.enabledSources}</div>
-              </div>
-              <div className="stat">
-                <div className="stat-title">当前状态</div>
-                <div
-                  className={`stat-value text-sm ${
-                    managerStats.currentSyncStatus === "success"
-                      ? "text-success"
-                      : managerStats.currentSyncStatus === "error"
-                        ? "text-error"
-                        : managerStats.currentSyncStatus === "running"
-                          ? "text-warning"
-                          : "text-base-content"
+            </div>
+
+            {/* 同步日志 - 紧跟在按钮下方 */}
+            <div className="mt-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <Icon name="lucide:clipboard-list" className="w-5 h-5 mr-2" />
+                  同步日志
+                  {syncLogs.length > 0 && (
+                    <div className="badge badge-neutral ml-2">{syncLogs.length} 条记录</div>
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  className={`btn btn-outline btn-sm shadow-lg transition-all duration-300 ${
+                    showLogs ? "btn-warning" : "btn-success"
                   }`}
+                  onClick={() => setShowLogs(!showLogs)}
                 >
-                  {managerStats.currentSyncStatus || "空闲"}
-                </div>
+                  {showLogs ? (
+                    <>
+                      <Icon name="lucide:eye-off" className="w-4 h-4 mr-1" />
+                      隐藏日志
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="lucide:eye" className="w-4 h-4 mr-1" />
+                      显示日志
+                    </>
+                  )}
+                </button>
               </div>
-              <div className="stat">
-                <div className="stat-title">总同步次数</div>
-                <div className="stat-value text-accent">{managerStats.totalSyncs}</div>
-              </div>
-            </div>
-            {managerStats.lastSyncTime && (
-              <div className="mt-4">
-                <span className="font-semibold">最后同步时间:</span>
-                <span className="ml-2 text-sm">
-                  {new Date(managerStats.lastSyncTime).toLocaleString()}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* 同步控制 */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title">同步控制</h2>
-
-          {/* 同步进度 */}
-          {syncProgress && syncProgress.status === "running" && (
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">同步进度</span>
-                <span className="text-sm">{syncProgress.progress}%</span>
-              </div>
-              <progress
-                className="progress progress-primary w-full"
-                value={syncProgress.progress}
-                max="100"
-              />
-              <div className="text-sm text-gray-600 mt-1">
-                {syncProgress.currentStep} ({syncProgress.processedItems}/{syncProgress.totalItems})
-              </div>
-              {syncProgress.error && (
-                <div className="alert alert-error mt-2">
-                  <span>{syncProgress.error}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 控制按钮 */}
-          <div className="flex gap-4">
-            <button
-              type="button"
-              className={`btn btn-primary ${isLoading ? "loading" : ""}`}
-              onClick={handleTriggerSync}
-              disabled={isLoading || syncProgress?.status === "running"}
-            >
-              {isLoading ? "同步中..." : "触发全量同步"}
-            </button>
-
-            {syncProgress?.status === "running" && (
-              <button
-                type="button"
-                className="btn btn-warning"
-                onClick={handleCancelSync}
-                disabled={cancelSyncMutation.isPending}
-              >
-                取消同步
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={refreshData}
-              disabled={isLoading}
-            >
-              刷新状态
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 内容源状态 */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title">内容源状态</h2>
-          <div className="overflow-x-auto">
-            <table className="table table-zebra">
-              <thead>
-                <tr>
-                  <th>名称</th>
-                  <th>类型</th>
-                  <th>优先级</th>
-                  <th>状态</th>
-                  <th>文件数</th>
-                  <th>最后同步</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sourcesStatus.map((source) => (
-                  <tr key={source.name}>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{source.name}</span>
-                        {!source.enabled && (
-                          <span className="badge badge-ghost badge-sm">已禁用</span>
-                        )}
+              {showLogs && (
+                <div className="mt-4">
+                  {syncLogs.length === 0 ? (
+                    <div className="hero bg-base-200 rounded-xl py-16">
+                      <div className="hero-content text-center">
+                        <div className="max-w-md">
+                          <Icon
+                            name="lucide:file-text"
+                            className="w-16 h-16 mx-auto mb-4 text-base-content/30"
+                          />
+                          <h3 className="text-2xl font-bold text-base-content/70">暂无同步日志</h3>
+                          <p className="py-4 text-base-content/50">
+                            开始同步后将显示详细的操作日志，包括每个文件的处理状态
+                          </p>
+                          <div className="badge badge-outline">等待同步操作</div>
+                        </div>
                       </div>
-                    </td>
-                    <td>
-                      <span className="badge badge-outline">{source.type}</span>
-                    </td>
-                    <td>{source.priority}</td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`badge ${source.online ? "badge-success" : "badge-error"}`}
-                        >
-                          {source.online ? "在线" : "离线"}
-                        </span>
-                        {source.error && (
-                          <div className="tooltip" data-tip={source.error}>
-                            <span className="badge badge-error badge-sm">!</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>{source.totalItems}</td>
-                    <td className="text-sm">
-                      {source.lastSync ? new Date(source.lastSync).toLocaleString() : "从未同步"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* 同步日志 */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <div className="flex justify-between items-center">
-            <h2 className="card-title">同步日志</h2>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setShowLogs(!showLogs)}
-            >
-              {showLogs ? "隐藏日志" : "显示日志"}
-            </button>
-          </div>
-
-          {showLogs && (
-            <div className="mt-4">
-              {syncLogs.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">暂无同步日志</div>
-              ) : (
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="table table-xs">
-                    <thead>
-                      <tr>
-                        <th>时间</th>
-                        <th>来源</th>
-                        <th>操作</th>
-                        <th>状态</th>
-                        <th>消息</th>
-                        <th>文件</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {syncLogs
-                        .slice()
-                        .reverse()
-                        .map((log) => (
-                          <tr key={log.id}>
-                            <td className="text-xs">{new Date(log.createdAt).toLocaleString()}</td>
-                            <td>
-                              <span className="badge badge-outline badge-xs">{log.sourceName}</span>
-                            </td>
-                            <td>{log.operation}</td>
-                            <td>
-                              <span
-                                className={`badge badge-xs ${
-                                  log.status === "success"
-                                    ? "badge-success"
-                                    : log.status === "error"
-                                      ? "badge-error"
-                                      : "badge-warning"
-                                }`}
-                              >
-                                {log.status}
-                              </span>
-                            </td>
-                            <td className="text-xs max-w-xs truncate" title={log.message}>
-                              {log.message}
-                            </td>
-                            <td className="text-xs">
-                              {log.filePath && (
-                                <span className="font-mono text-xs" title={log.filePath}>
-                                  {log.filePath.split("/").pop()}
-                                </span>
-                              )}
-                            </td>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                      <table className="table table-sm table-zebra table-fixed">
+                        <thead className="sticky top-0 bg-base-200 z-10">
+                          <tr>
+                            <th className="w-28">时间</th>
+                            <th className="w-24">来源</th>
+                            <th className="w-20">操作</th>
+                            <th className="w-24">状态</th>
+                            <th className="min-w-0 flex-1">消息</th>
+                            <th className="w-40">文件</th>
                           </tr>
-                        ))}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {syncLogs
+                            .slice()
+                            .reverse()
+                            .map((log) => (
+                              <tr
+                                key={log.id}
+                                className="hover:bg-base-200 transition-colors duration-200"
+                              >
+                                <td className="font-mono text-xs w-28">
+                                  <div className="flex flex-col">
+                                    <span>{new Date(log.createdAt).toLocaleTimeString()}</span>
+                                    <span className="text-xs text-base-content/50">
+                                      {new Date(log.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="w-24">
+                                  <span
+                                    className={`badge badge-sm ${
+                                      log.sourceName === "local"
+                                        ? "badge-primary"
+                                        : "badge-secondary"
+                                    }`}
+                                  >
+                                    {log.sourceName === "local" ? (
+                                      <>
+                                        <Icon name="lucide:home" className="w-3 h-3 mr-1" />
+                                        本地
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
+                                        WebDAV
+                                      </>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="w-20">
+                                  <span className="badge badge-outline badge-sm">
+                                    {log.operation}
+                                  </span>
+                                </td>
+                                <td className="w-24">
+                                  <span
+                                    className={`badge badge-sm ${
+                                      log.status === "success"
+                                        ? "badge-success"
+                                        : log.status === "error"
+                                          ? "badge-error"
+                                          : "badge-warning"
+                                    }`}
+                                  >
+                                    {log.status === "success" ? (
+                                      <>
+                                        <Icon name="lucide:check" className="w-3 h-3 mr-1" />
+                                        成功
+                                      </>
+                                    ) : log.status === "error" ? (
+                                      <>
+                                        <Icon name="lucide:x" className="w-3 h-3 mr-1" />
+                                        失败
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Icon
+                                          name="lucide:alert-triangle"
+                                          className="w-3 h-3 mr-1"
+                                        />
+                                        警告
+                                      </>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="min-w-0 flex-1">
+                                  <div className="tooltip tooltip-left" data-tip={log.message}>
+                                    <div className="truncate text-sm">{log.message}</div>
+                                  </div>
+                                </td>
+                                <td className="w-40">
+                                  {log.filePath && (
+                                    <div className="tooltip tooltip-left" data-tip={log.filePath}>
+                                      <span className="badge badge-ghost badge-sm font-mono">
+                                        <Icon name="lucide:file" className="w-3 h-3 mr-1" />
+                                        {log.filePath.split("/").pop()}
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* 内容源状态 - 紧凑设计 */}
+        <div className="card bg-base-100 shadow-lg">
+          <div className="card-body py-4">
+            <h2 className="card-title flex items-center text-lg mb-3">
+              <Icon name="lucide:radio" className="w-5 h-5 mr-2" />
+              内容源状态
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="table table-sm table-zebra">
+                <thead>
+                  <tr className="text-xs">
+                    <th className="w-32">名称</th>
+                    <th className="w-20">类型</th>
+                    <th className="w-20">状态</th>
+                    <th className="w-24">文件数</th>
+                    <th className="w-28">最后同步</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourcesStatus.map((source) => (
+                    <tr
+                      key={source.name}
+                      className="hover:bg-base-200 transition-colors duration-200"
+                    >
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="avatar placeholder">
+                            <div className="bg-primary text-primary-content rounded-full w-6 h-6 !flex items-center justify-center">
+                              <Icon
+                                name={source.type === "local" ? "lucide:folder" : "lucide:cloud"}
+                                className="w-3 h-3 align-baseline"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">{source.name}</div>
+                            {!source.enabled && (
+                              <span className="badge badge-ghost badge-xs">已禁用</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span
+                          className={`badge badge-sm ${source.type === "local" ? "badge-primary" : "badge-secondary"}`}
+                        >
+                          {source.type === "local" ? "本地" : "WebDAV"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1">
+                          <span
+                            className={`badge badge-sm ${source.online ? "badge-success" : "badge-error"}`}
+                          >
+                            {source.online ? "在线" : "离线"}
+                          </span>
+                          {source.error && (
+                            <div className="tooltip tooltip-error" data-tip={source.error}>
+                              <Icon name="lucide:alert-triangle" className="w-3 h-3 text-error" />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium text-accent">{source.totalItems}</span>
+                          <span className="text-xs text-base-content/60">个文件</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="text-xs" suppressHydrationWarning>
+                          {source.lastSync
+                            ? typeof window === "undefined"
+                              ? ""
+                              : `${Math.floor((Date.now() - source.lastSync) / 60000)} 分钟前`
+                            : "从未同步"}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
