@@ -238,6 +238,40 @@ export class ContentSourceManager {
       await this.logSync("error", `全量同步失败: ${errorMessage}`, undefined, { syncId });
     } finally {
       result.endTime = Date.now();
+
+      // 更新每个内容源的同步状态到数据库
+      try {
+        const enabledSources = Array.from(this.sources.values()).filter((source) => source.enabled);
+
+        for (const source of enabledSources) {
+          // 检查该源是否有错误
+          const sourceErrors = result.errors.filter((error) => error.source === source.name);
+          const hasError = sourceErrors.length > 0;
+
+          // 设置状态和错误信息
+          const status = hasError ? "error" : "success";
+          const errorMessage = hasError ? sourceErrors[0].message : undefined;
+          const currentStep = hasError ? "同步失败" : "同步完成";
+
+          // 更新数据库状态
+          await this.updateSyncStatus(source.name, status, 100, currentStep, errorMessage);
+        }
+
+        await this.logSync(
+          "info",
+          `已更新 ${enabledSources.length} 个内容源的同步状态`,
+          undefined,
+          { syncId }
+        );
+      } catch (statusUpdateError) {
+        // 状态更新失败不应该影响主要的同步流程
+        const errorMessage =
+          statusUpdateError instanceof Error
+            ? statusUpdateError.message
+            : String(statusUpdateError);
+        await this.logSync("warn", `更新同步状态失败: ${errorMessage}`, undefined, { syncId });
+      }
+
       this.syncHistory.push(result);
 
       // 限制历史记录数量
