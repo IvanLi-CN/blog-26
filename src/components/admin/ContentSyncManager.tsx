@@ -455,64 +455,142 @@ export function ContentSyncManager() {
                       </div>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                      <table className="table table-sm table-zebra table-fixed">
-                        <thead className="sticky top-0 bg-base-200 z-10">
-                          <tr>
-                            <th className="w-28">时间</th>
-                            <th className="w-24">来源</th>
-                            <th className="w-20">操作</th>
-                            <th className="w-24">状态</th>
-                            <th className="min-w-0 flex-1">消息</th>
-                            <th className="w-40">文件</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {syncLogs
-                            .slice()
-                            .reverse()
-                            .map((log) => (
-                              <tr
-                                key={log.id}
-                                className="hover:bg-base-200 transition-colors duration-200"
-                              >
-                                <td className="font-mono text-xs w-28">
-                                  <div className="flex flex-col">
-                                    <span>{new Date(log.createdAt).toLocaleTimeString()}</span>
-                                    <span className="text-xs text-base-content/50">
-                                      {new Date(log.createdAt).toLocaleDateString()}
+                    <>
+                      {/* 桌面端表格布局 */}
+                      <div className="hidden md:block overflow-x-auto max-h-96 overflow-y-auto">
+                        <table className="table table-sm table-zebra table-fixed">
+                          <thead className="sticky top-0 bg-base-200 z-10">
+                            <tr>
+                              <th className="w-24">时间</th>
+                              <th className="w-28">来源</th>
+                              <th className="w-24">操作</th>
+                              <th className="w-28">状态</th>
+                              <th className="min-w-0 flex-1">消息</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {syncLogs
+                              .slice()
+                              .reverse()
+                              .map((log) => (
+                                <tr
+                                  key={log.id}
+                                  className="hover:bg-base-200 transition-colors duration-200"
+                                >
+                                  <td className="font-mono text-xs w-24">
+                                    <div className="flex flex-col">
+                                      <span>{new Date(log.createdAt).toLocaleTimeString()}</span>
+                                      <span className="text-xs text-base-content/50">
+                                        {new Date(log.createdAt).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="w-28">
+                                    <span
+                                      className={`badge badge-sm ${
+                                        log.sourceName === "local"
+                                          ? "badge-primary"
+                                          : "badge-secondary"
+                                      }`}
+                                    >
+                                      {log.sourceName === "local" ? (
+                                        <>
+                                          <Icon name="lucide:home" className="w-3 h-3 mr-1" />
+                                          本地
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
+                                          WebDAV
+                                        </>
+                                      )}
                                     </span>
+                                  </td>
+                                  <td className="w-24">
+                                    <span className="badge badge-outline badge-sm">
+                                      {log.operation}
+                                    </span>
+                                  </td>
+                                  <td className="w-28">
+                                    <span
+                                      className={`badge badge-sm ${
+                                        log.status === "success"
+                                          ? "badge-success"
+                                          : log.status === "error"
+                                            ? "badge-error"
+                                            : "badge-warning"
+                                      }`}
+                                    >
+                                      {log.status === "success" ? (
+                                        <>
+                                          <Icon name="lucide:check" className="w-3 h-3 mr-1" />
+                                          成功
+                                        </>
+                                      ) : log.status === "error" ? (
+                                        <>
+                                          <Icon name="lucide:x" className="w-3 h-3 mr-1" />
+                                          失败
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Icon
+                                            name="lucide:alert-triangle"
+                                            className="w-3 h-3 mr-1"
+                                          />
+                                          警告
+                                        </>
+                                      )}
+                                    </span>
+                                  </td>
+                                  <td className="min-w-0 flex-1">
+                                    <div className="space-y-1">
+                                      {/* 第一行：日志消息 */}
+                                      <div className="text-sm leading-relaxed break-words">
+                                        {log.message}
+                                      </div>
+                                      {/* 第二行：文件路径（如果存在） */}
+                                      {log.filePath && (
+                                        <div className="flex items-center text-xs text-base-content/60 mt-1">
+                                          <Icon
+                                            name="lucide:file"
+                                            className="w-3 h-3 mr-1 flex-shrink-0"
+                                          />
+                                          <span className="font-mono text-xs break-all">
+                                            {log.filePath}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* 移动端卡片布局 */}
+                      <div className="block md:hidden max-h-96 overflow-y-auto space-y-3">
+                        {syncLogs
+                          .slice()
+                          .reverse()
+                          .map((log) => (
+                            <div
+                              key={log.id}
+                              className="card bg-base-100 shadow-sm border border-base-300 hover:shadow-md transition-shadow duration-200"
+                            >
+                              <div className="card-body p-4">
+                                {/* 卡片头部：时间和状态 */}
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="font-mono text-sm">
+                                    <div className="font-medium">
+                                      {new Date(log.createdAt).toLocaleTimeString()}
+                                    </div>
+                                    <div className="text-xs text-base-content/50">
+                                      {new Date(log.createdAt).toLocaleDateString()}
+                                    </div>
                                   </div>
-                                </td>
-                                <td className="w-24">
                                   <span
-                                    className={`badge badge-sm ${
-                                      log.sourceName === "local"
-                                        ? "badge-primary"
-                                        : "badge-secondary"
-                                    }`}
-                                  >
-                                    {log.sourceName === "local" ? (
-                                      <>
-                                        <Icon name="lucide:home" className="w-3 h-3 mr-1" />
-                                        本地
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
-                                        WebDAV
-                                      </>
-                                    )}
-                                  </span>
-                                </td>
-                                <td className="w-20">
-                                  <span className="badge badge-outline badge-sm">
-                                    {log.operation}
-                                  </span>
-                                </td>
-                                <td className="w-24">
-                                  <span
-                                    className={`badge badge-sm ${
+                                    className={`badge ${
                                       log.status === "success"
                                         ? "badge-success"
                                         : log.status === "error"
@@ -540,27 +618,56 @@ export function ContentSyncManager() {
                                       </>
                                     )}
                                   </span>
-                                </td>
-                                <td className="min-w-0 flex-1">
-                                  <div className="tooltip tooltip-left" data-tip={log.message}>
-                                    <div className="truncate text-sm">{log.message}</div>
+                                </div>
+
+                                {/* 卡片主体：来源、操作、消息 */}
+                                <div className="space-y-3">
+                                  <div className="flex gap-3 flex-wrap items-center">
+                                    <span
+                                      className={`badge ${
+                                        log.sourceName === "local"
+                                          ? "badge-primary"
+                                          : "badge-secondary"
+                                      }`}
+                                    >
+                                      {log.sourceName === "local" ? (
+                                        <>
+                                          <Icon name="lucide:home" className="w-3 h-3 mr-1" />
+                                          本地
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
+                                          WebDAV
+                                        </>
+                                      )}
+                                    </span>
+                                    <span className="badge badge-outline">{log.operation}</span>
                                   </div>
-                                </td>
-                                <td className="w-40">
-                                  {log.filePath && (
-                                    <div className="tooltip tooltip-left" data-tip={log.filePath}>
-                                      <span className="badge badge-ghost badge-sm font-mono">
-                                        <Icon name="lucide:file" className="w-3 h-3 mr-1" />
-                                        {log.filePath.split("/").pop()}
+                                  <div className="text-sm text-base-content leading-relaxed">
+                                    {log.message}
+                                  </div>
+                                </div>
+
+                                {/* 卡片底部：文件信息 */}
+                                {log.filePath && (
+                                  <div className="mt-3 pt-2 border-t border-base-300">
+                                    <div className="flex items-center gap-2">
+                                      <Icon
+                                        name="lucide:file"
+                                        className="w-4 h-4 text-base-content/60"
+                                      />
+                                      <span className="text-sm font-mono text-base-content/80 break-all">
+                                        {log.filePath}
                                       </span>
                                     </div>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
