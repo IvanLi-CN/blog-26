@@ -170,12 +170,6 @@ export function ContentSyncManager() {
   return (
     <div className="bg-base-200 px-4 pb-4">
       <div className="max-w-6xl mx-auto space-y-4">
-        {/* 页面标题 - 简化版 */}
-        <div className="flex items-center gap-3 mb-4">
-          <Icon name="lucide:refresh-cw" className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold text-base-content">数据同步管理</h1>
-        </div>
-
         {/* 顶部状态栏 - 紧凑设计 */}
         {(systemConfig || managerStats) && (
           <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl p-4 border border-primary/20">
@@ -330,7 +324,7 @@ export function ContentSyncManager() {
               <div className="flex flex-wrap gap-2 justify-center">
                 <button
                   type="button"
-                  className={`btn btn-primary btn-sm ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
+                  className={`btn btn-primary ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
                   onClick={handleTriggerSync}
                   disabled={isLoading || syncProgress?.status === "running"}
                 >
@@ -349,7 +343,7 @@ export function ContentSyncManager() {
 
                 <button
                   type="button"
-                  className={`btn btn-secondary btn-sm ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
+                  className={`btn btn-secondary ${isLoading ? "loading" : ""} shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap`}
                   onClick={handleIncrementalSync}
                   disabled={isLoading || syncProgress?.status === "running"}
                 >
@@ -369,7 +363,7 @@ export function ContentSyncManager() {
                 {syncProgress?.status === "running" && (
                   <button
                     type="button"
-                    className="btn btn-warning btn-sm shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap"
+                    className="btn btn-warning shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap"
                     onClick={handleCancelSync}
                     disabled={cancelSyncMutation.isPending}
                   >
@@ -389,7 +383,7 @@ export function ContentSyncManager() {
 
                 <button
                   type="button"
-                  className="btn btn-outline btn-sm shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap"
+                  className="btn btn-outline shadow-md hover:shadow-lg transition-all duration-200 min-w-28 whitespace-nowrap"
                   onClick={refreshData}
                   disabled={isLoading}
                 >
@@ -417,7 +411,7 @@ export function ContentSyncManager() {
                 </h3>
                 <button
                   type="button"
-                  className={`btn btn-outline btn-sm shadow-lg transition-all duration-300 ${
+                  className={`btn btn-outline shadow-lg transition-all duration-300 ${
                     showLogs ? "btn-warning" : "btn-success"
                   }`}
                   onClick={() => setShowLogs(!showLogs)}
