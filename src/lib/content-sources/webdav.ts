@@ -296,18 +296,8 @@ export class WebDAVContentSource extends ContentSourceBase {
    * 支持多路径映射，找到最匹配的路径前缀
    */
   private getRelativePath(webdavPath: string): string {
-    // 移除路径映射前缀，生成相对路径
-    for (const [contentType, mappingPaths] of Object.entries(this.pathMappings)) {
-      // 遍历该内容类型的所有路径
-      for (const mappingPath of mappingPaths) {
-        if (webdavPath.startsWith(mappingPath)) {
-          const relativePath = webdavPath.substring(mappingPath.length);
-          return normalizePath(`${contentType}${relativePath}`);
-        }
-      }
-    }
-
-    // 如果没有匹配的映射，直接使用路径
+    // 直接返回原始的 WebDAV 路径，不进行任何映射
+    // 文件的 id 和 filePath 应该保持原始路径
     return normalizePath(webdavPath);
   }
 

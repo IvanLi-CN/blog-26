@@ -18,7 +18,12 @@ import {
  * 4. 处理图片链接
  */
 export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) {
-  const { enableLazyLoading = true, enableLightbox = true, articlePath = "" } = options;
+  const {
+    enableLazyLoading = true,
+    enableLightbox = true,
+    articlePath = "",
+    contentSource = "webdav",
+  } = options;
 
   return (tree: Root, file: unknown) => {
     // 获取文章的原始路径信息
@@ -64,8 +69,8 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           // 根据文章的实际路径解析相对路径
           const resolvedPath = resolveRelativePath(originalSrc, articleDir);
 
-          // 转换为文件代理端点（使用utils中的函数，默认webdav源）
-          const finalPath = generateOptimizedImageUrl(resolvedPath);
+          // 转换为文件代理端点（使用utils中的函数，根据contentSource参数）
+          const finalPath = generateOptimizedImageUrl(resolvedPath, contentSource);
           node.properties.src = finalPath;
         }
 
@@ -97,7 +102,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           if (!isExternalUrl(href) && !href.startsWith("/api/files/")) {
             // 使用统一的路径解析逻辑
             const resolvedPath = resolveRelativePath(href, articleDir);
-            const finalPath = generateOptimizedImageUrl(resolvedPath);
+            const finalPath = generateOptimizedImageUrl(resolvedPath, contentSource);
             node.properties.href = finalPath;
           }
         }

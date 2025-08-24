@@ -26,6 +26,8 @@ export interface MarkdownRendererProps {
   enableImageLightbox?: boolean;
   /** 文章路径，用于相对路径解析 */
   articlePath?: string;
+  /** 内容源类型，用于图片路径解析 */
+  contentSource?: "local" | "webdav";
   /** 是否移除内容中的标签 */
   removeTags?: boolean;
 }
@@ -92,6 +94,8 @@ export interface ImageOptimizationOptions {
   enableLightbox?: boolean;
   /** 文章路径，用于相对路径解析 */
   articlePath?: string;
+  /** 内容源类型，用于图片路径解析 */
+  contentSource?: "local" | "webdav";
 }
 
 /**

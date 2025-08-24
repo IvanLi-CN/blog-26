@@ -73,38 +73,44 @@ describe("resolveImagePath", () => {
 
   describe("relative paths with file context", () => {
     it("should resolve current directory relative paths for webdav", () => {
-      expect(resolveImagePath("./assets/image.jpg", "webdav", "posts/my-post.md")).toBe(
-        "/api/files/webdav/blog/assets/image.jpg"
+      // 使用真实的 WebDAV 文件路径格式
+      expect(resolveImagePath("./assets/image.jpg", "webdav", "/Hardware/my-post.md")).toBe(
+        "/api/files/webdav/Hardware/assets/image.jpg"
       );
 
-      expect(resolveImagePath("./images/photo.png", "webdav", "memos/my-memo.md")).toBe(
-        "/api/files/webdav/memos/images/photo.png"
+      expect(resolveImagePath("./images/photo.png", "webdav", "/Memos/my-memo.md")).toBe(
+        "/api/files/webdav/Memos/images/photo.png"
       );
     });
 
     it("should resolve current directory relative paths for local", () => {
-      expect(resolveImagePath("./assets/image.jpg", "local", "posts/my-post.md")).toBe(
-        "/api/files/local/posts/assets/image.jpg"
+      // 使用真实的本地文件路径格式
+      expect(resolveImagePath("./assets/image.jpg", "local", "blog/my-post.md")).toBe(
+        "/api/files/local/blog/assets/image.jpg"
       );
     });
 
     it("should resolve parent directory relative paths", () => {
-      expect(resolveImagePath("../shared/image.jpg", "webdav", "posts/category/my-post.md")).toBe(
-        "/api/files/webdav/blog/shared/image.jpg"
-      );
+      expect(
+        resolveImagePath("../shared/image.jpg", "webdav", "/Hardware/category/my-post.md")
+      ).toBe("/api/files/webdav/Hardware/shared/image.jpg");
 
       expect(
-        resolveImagePath("../../common/logo.png", "webdav", "posts/category/subcategory/my-post.md")
-      ).toBe("/api/files/webdav/blog/common/logo.png");
+        resolveImagePath(
+          "../../common/logo.png",
+          "webdav",
+          "/Hardware/category/subcategory/my-post.md"
+        )
+      ).toBe("/api/files/webdav/Hardware/common/logo.png");
     });
 
     it("should handle paths without leading indicators", () => {
-      expect(resolveImagePath("image.jpg", "webdav", "posts/my-post.md")).toBe(
-        "/api/files/webdav/blog/image.jpg"
+      expect(resolveImagePath("image.jpg", "webdav", "/Hardware/my-post.md")).toBe(
+        "/api/files/webdav/Hardware/image.jpg"
       );
 
-      expect(resolveImagePath("assets/image.jpg", "webdav", "memos/my-memo.md")).toBe(
-        "/api/files/webdav/memos/assets/image.jpg"
+      expect(resolveImagePath("assets/image.jpg", "webdav", "/Memos/my-memo.md")).toBe(
+        "/api/files/webdav/Memos/assets/image.jpg"
       );
     });
   });
@@ -123,12 +129,12 @@ describe("resolveImagePath", () => {
 
   describe("content source handling", () => {
     it("should use correct content source in API endpoint", () => {
-      expect(resolveImagePath("./assets/image.jpg", "local", "posts/my-post.md")).toBe(
-        "/api/files/local/posts/assets/image.jpg"
+      expect(resolveImagePath("./assets/image.jpg", "local", "blog/my-post.md")).toBe(
+        "/api/files/local/blog/assets/image.jpg"
       );
 
-      expect(resolveImagePath("./assets/image.jpg", "webdav", "posts/my-post.md")).toBe(
-        "/api/files/webdav/blog/assets/image.jpg"
+      expect(resolveImagePath("./assets/image.jpg", "webdav", "/Hardware/my-post.md")).toBe(
+        "/api/files/webdav/Hardware/assets/image.jpg"
       );
     });
 
@@ -139,8 +145,8 @@ describe("resolveImagePath", () => {
 
   describe("edge cases", () => {
     it("should handle paths with whitespace", () => {
-      expect(resolveImagePath("  ./assets/image.jpg  ", "webdav", "posts/my-post.md")).toBe(
-        "/api/files/webdav/blog/assets/image.jpg"
+      expect(resolveImagePath("  ./assets/image.jpg  ", "webdav", "/Hardware/my-post.md")).toBe(
+        "/api/files/webdav/Hardware/assets/image.jpg"
       );
     });
 
@@ -149,9 +155,9 @@ describe("resolveImagePath", () => {
         resolveImagePath(
           "../../assets/shared/image.jpg",
           "webdav",
-          "posts/category/subcategory/my-post.md"
+          "/Hardware/category/subcategory/my-post.md"
         )
-      ).toBe("/api/files/webdav/blog/assets/shared/image.jpg");
+      ).toBe("/api/files/webdav/Hardware/assets/shared/image.jpg");
     });
 
     it("should handle paths without file context", () => {
@@ -176,10 +182,10 @@ describe("resolveImagePaths", () => {
       "",
     ];
 
-    const result = resolveImagePaths(paths, "webdav", "posts/my-post.md");
+    const result = resolveImagePaths(paths, "webdav", "/Hardware/my-post.md");
 
     expect(result).toEqual([
-      "/api/files/webdav/blog/assets/image1.jpg",
+      "/api/files/webdav/Hardware/assets/image1.jpg",
       "https://example.com/image2.jpg",
       "/api/files/webdav/assets/image3.png",
     ]);
@@ -197,17 +203,17 @@ describe("resolveImagePaths", () => {
   it("should handle different content sources", () => {
     const paths = ["./assets/image1.jpg", "./assets/image2.jpg"];
 
-    const webdavResult = resolveImagePaths(paths, "webdav", "posts/my-post.md");
-    const localResult = resolveImagePaths(paths, "local", "posts/my-post.md");
+    const webdavResult = resolveImagePaths(paths, "webdav", "/Hardware/my-post.md");
+    const localResult = resolveImagePaths(paths, "local", "blog/my-post.md");
 
     expect(webdavResult).toEqual([
-      "/api/files/webdav/blog/assets/image1.jpg",
-      "/api/files/webdav/blog/assets/image2.jpg",
+      "/api/files/webdav/Hardware/assets/image1.jpg",
+      "/api/files/webdav/Hardware/assets/image2.jpg",
     ]);
 
     expect(localResult).toEqual([
-      "/api/files/local/posts/assets/image1.jpg",
-      "/api/files/local/posts/assets/image2.jpg",
+      "/api/files/local/blog/assets/image1.jpg",
+      "/api/files/local/blog/assets/image2.jpg",
     ]);
   });
 });

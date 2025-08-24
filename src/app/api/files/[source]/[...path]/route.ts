@@ -56,8 +56,20 @@ async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
 
   console.log("🌐 [Files API] 请求 WebDAV 文件:", webdavUrl);
 
+  // 准备认证头
+  const headers: Record<string, string> = {};
+
+  // 如果配置了用户名和密码，添加基本认证
+  if (process.env.WEBDAV_USERNAME && process.env.WEBDAV_PASSWORD) {
+    const credentials = Buffer.from(
+      `${process.env.WEBDAV_USERNAME}:${process.env.WEBDAV_PASSWORD}`
+    ).toString("base64");
+    headers.Authorization = `Basic ${credentials}`;
+  }
+
   const response = await fetch(webdavUrl, {
     method: "GET",
+    headers,
   });
 
   if (!response.ok) {

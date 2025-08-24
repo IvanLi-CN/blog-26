@@ -463,6 +463,9 @@ export class ContentSourceManager {
               metadata: JSON.stringify(change.item.metadata),
               dataSource: change.item.source,
               contentHash: change.item.contentHash,
+              lastModified: change.item.lastModified,
+              source: change.item.source,
+              filePath: change.item.id, // 使用 id 作为文件路径
             })
             .onConflictDoUpdate({
               target: posts.id,
@@ -483,6 +486,9 @@ export class ContentSourceManager {
                 metadata: JSON.stringify(change.item.metadata),
                 dataSource: change.item.source,
                 contentHash: change.item.contentHash,
+                lastModified: change.item.lastModified,
+                source: change.item.source,
+                filePath: change.item.id, // 使用 id 作为文件路径
               },
             });
 

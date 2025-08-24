@@ -69,8 +69,8 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       ADMIN_MODE: "true",
-      // 确保 WebDAV 配置在测试环境中正确传递
-      WEBDAV_URL: "http://localhost:8080",
+      // 使用环境变量或默认值，与 E2E 服务器保持一致
+      WEBDAV_URL: process.env.WEBDAV_URL || "http://localhost:8080",
     },
   },
 });

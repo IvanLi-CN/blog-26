@@ -55,6 +55,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     previewCodeLines,
     enableImageLightbox,
     articlePath,
+    contentSource = "webdav",
     removeTags = false,
   }) => {
     // 获取变体配置
@@ -117,6 +118,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
             enableLazyLoading: true,
             enableLightbox: config.enableImageLightbox,
             articlePath,
+            contentSource,
           },
         ],
       ];
@@ -153,7 +155,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       // }
 
       return plugins;
-    }, [config, articlePath]);
+    }, [config, articlePath, contentSource]);
 
     // 自定义组件映射
     const components = useMemo<Components>(

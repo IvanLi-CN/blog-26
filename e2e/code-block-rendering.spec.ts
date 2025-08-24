@@ -148,7 +148,7 @@ test.describe("Code Block Rendering", () => {
   test("should not break page layout", async ({ page }) => {
     // Check that the page renders without layout issues
     await expect(page.locator("main")).toBeVisible();
-    await expect(page.locator("article")).toBeVisible();
+    await expect(page.locator("article").first()).toBeVisible();
 
     // Check that code blocks are properly contained
     const codeBlocks = page.locator("code");

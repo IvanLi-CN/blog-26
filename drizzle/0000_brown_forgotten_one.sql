@@ -9,11 +9,66 @@ CREATE TABLE `comments` (
 	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE `content_sync_logs` (
+	`id` text PRIMARY KEY NOT NULL,
+	`source_type` text NOT NULL,
+	`source_name` text NOT NULL,
+	`operation` text NOT NULL,
+	`status` text NOT NULL,
+	`message` text NOT NULL,
+	`file_path` text,
+	`data` text,
+	`created_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `content_sync_status` (
+	`source_type` text PRIMARY KEY NOT NULL,
+	`source_name` text NOT NULL,
+	`last_sync_at` integer,
+	`status` text DEFAULT 'idle' NOT NULL,
+	`progress` integer DEFAULT 0 NOT NULL,
+	`current_step` text,
+	`total_items` integer DEFAULT 0 NOT NULL,
+	`processed_items` integer DEFAULT 0 NOT NULL,
+	`error_message` text,
+	`metadata` text,
+	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `email_verification_codes` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,
 	`code` text NOT NULL,
 	`expires_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `memos` (
+	`id` text PRIMARY KEY NOT NULL,
+	`type` text DEFAULT 'memo' NOT NULL,
+	`slug` text NOT NULL,
+	`title` text,
+	`excerpt` text,
+	`content_hash` text NOT NULL,
+	`last_modified` integer NOT NULL,
+	`source` text NOT NULL,
+	`file_path` text NOT NULL,
+	`draft` integer DEFAULT false NOT NULL,
+	`public` integer DEFAULT true NOT NULL,
+	`publish_date` integer NOT NULL,
+	`update_date` integer,
+	`category` text,
+	`tags` text,
+	`author` text,
+	`image` text,
+	`metadata` text,
+	`body` text NOT NULL,
+	`author_email` text NOT NULL,
+	`attachments` text,
+	`is_public` integer DEFAULT true NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer,
+	`source_path` text,
+	`data_source` text
 );
 --> statement-breakpoint
 CREATE TABLE `posts` (
@@ -33,7 +88,10 @@ CREATE TABLE `posts` (
 	`image` text,
 	`metadata` text,
 	`data_source` text,
-	`content_hash` text NOT NULL
+	`content_hash` text NOT NULL,
+	`last_modified` integer DEFAULT 0 NOT NULL,
+	`source` text DEFAULT 'local' NOT NULL,
+	`file_path` text DEFAULT '' NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `reactions` (

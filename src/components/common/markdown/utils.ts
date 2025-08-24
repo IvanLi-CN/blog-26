@@ -78,9 +78,13 @@ export function resolveRelativePath(relativePath: string, basePath: string = "")
 /**
  * 生成优化图片 URL
  * @param imagePath 图片路径
+ * @param contentSource 内容源类型
  * @returns 优化后的图片 URL
  */
-export function generateOptimizedImageUrl(imagePath: string): string {
+export function generateOptimizedImageUrl(
+  imagePath: string,
+  contentSource: "local" | "webdav" = "webdav"
+): string {
   if (
     !imagePath ||
     isExternalUrl(imagePath) ||
@@ -128,7 +132,7 @@ export function generateOptimizedImageUrl(imagePath: string): string {
   if (cleanPath.toLowerCase().startsWith("memos/")) {
     cleanPath = `memos/${cleanPath.substring(6)}`;
   }
-  return `/api/files/webdav/${cleanPath}`;
+  return `/api/files/${contentSource}/${cleanPath}`;
 }
 
 /**

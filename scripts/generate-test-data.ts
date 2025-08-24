@@ -2579,6 +2579,8 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
     { url: "https://picsum.photos/id/13/800/400", filename: "graphql-api.jpg" },
     { url: "https://picsum.photos/id/14/800/400", filename: "kubernetes-cluster.jpg" },
     { url: "https://picsum.photos/id/15/800/400", filename: "redis-caching.jpg" },
+    // hello-world 文章专用图片 (ID 10)
+    { url: "https://picsum.photos/id/10/800/400", filename: "hello-world.jpg" },
     // WebDAV 项目图片 (ID 16-20)
     { url: "https://picsum.photos/id/16/800/400", filename: "blog-system.jpg" },
     { url: "https://picsum.photos/id/17/800/400", filename: "code-review-tool.jpg" },
@@ -2675,6 +2677,7 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
 
   const localArticleImages = images.slice(5, 10); // 本地文章图片 (ID 11-15)
   const localProjectImages = images.slice(15, 20); // 本地项目图片 (ID 21-25)
+  const helloWorldImage = images.find((img) => img.filename === "hello-world.jpg"); // hello-world 图片，统一放在 blog/assets
 
   // 创建所有下载任务
   const downloadTasks = [
@@ -2714,6 +2717,16 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
       filePath: join(localDir, "projects", "assets", image.filename),
       filename: image.filename,
     })),
+    // hello-world 图片 - 统一放在 local/blog/assets
+    ...(helloWorldImage
+      ? [
+          {
+            url: helloWorldImage.url,
+            filePath: join(localDir, "blog", "assets", helloWorldImage.filename),
+            filename: helloWorldImage.filename,
+          },
+        ]
+      : []),
   ];
 
   // 真正的并行下载所有图片（保持5个并发）

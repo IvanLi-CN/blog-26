@@ -223,6 +223,7 @@ export default function DemoIntegrationPage() {
                 maxCodeLines={30}
                 previewCodeLines={20}
                 articlePath="/demo-integration"
+                contentSource="webdav"
               />
             </div>
           </div>
@@ -243,6 +244,7 @@ export default function DemoIntegrationPage() {
                 maxCodeLines={30}
                 previewCodeLines={20}
                 articlePath="/demo-integration"
+                contentSource="webdav"
               />
             </div>
           </div>

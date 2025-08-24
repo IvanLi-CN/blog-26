@@ -2,7 +2,10 @@
 
 // 设置测试环境变量
 // process.env.NODE_ENV = "test"; // 注释掉，因为 NODE_ENV 是只读的
-process.env.WEBDAV_URL = "http://localhost:8080";
+// 只在没有设置 WEBDAV_URL 时才使用默认值
+if (!process.env.WEBDAV_URL) {
+  process.env.WEBDAV_URL = "http://localhost:8080";
+}
 
 import { resolve } from "node:path";
 import {
@@ -99,11 +102,11 @@ class TestContentSyncTrigger {
     if (isWebDAVEnabled()) {
       try {
         const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav-test", 100);
-        // 使用测试环境的路径映射
+        // 使用测试环境的路径映射（注意：必须是数组格式）
         webdavConfig.options.pathMappings = {
-          posts: "/posts",
-          projects: "/projects",
-          memos: "/memos",
+          posts: ["/blog"],
+          projects: ["/projects"],
+          memos: ["/memos"],
         };
         const webdavSource = new WebDAVContentSource(webdavConfig);
         await manager.registerSource(webdavSource);

@@ -292,6 +292,7 @@ export function MemoDetailPage({
           maxCodeLines={30}
           previewCodeLines={20}
           articlePath={`/memos/${memo.slug}`}
+          contentSource={memo.source === "local" ? "local" : "webdav"}
           className="prose prose-lg max-w-none"
         />
       </div>

@@ -42,6 +42,10 @@ export const posts = sqliteTable("posts", {
   metadata: text("metadata"), // JSON 字符串存储其他元数据
   dataSource: text("data_source"), // local/webdav/database
   contentHash: text("content_hash").notNull(),
+  // 新增字段（通过迁移添加）
+  lastModified: integer("last_modified").notNull().default(0),
+  source: text("source").notNull().default("local"),
+  filePath: text("file_path").notNull().default(""),
 });
 
 // 向量化文件表

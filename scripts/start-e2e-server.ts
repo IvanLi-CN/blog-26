@@ -25,7 +25,7 @@ interface ServerProcess {
 }
 
 class E2EServerManager {
-  private webdavPort: number = 8080;
+  private webdavPort: number = parseInt(process.env.WEBDAV_PORT || "8080");
   private servers: ServerProcess[] = [];
   private testDataPath = join(process.cwd(), "test-data");
   private testDbPath = join(process.cwd(), "test.db");

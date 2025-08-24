@@ -109,15 +109,53 @@ export const postsRouter = router({
       // 解码 URL 编码的 slug
       slug = decodeURIComponent(slug);
 
+      console.log("🔍 [posts.get] 开始查询文章:", slug);
+
       const post = await db
         .select()
         .from(posts)
         .where(and(eq(posts.slug, slug), eq(posts.draft, false), eq(posts.public, true)))
         .limit(1);
 
+      console.log("🔍 [posts.get] 查询结果:", post.length > 0 ? "找到文章" : "未找到文章");
+
       if (!post || post.length === 0) {
         throw new Error("文章不存在");
       }
+
+      console.log("🔍 [posts.get] 开始处理文章数据...");
+      console.log("🔍 [posts.get] 文章字段检查:", {
+        hasId: !!post[0].id,
+        hasSlug: !!post[0].slug,
+        hasTags: !!post[0].tags,
+        hasMetadata: !!post[0].metadata,
+        tagsType: typeof post[0].tags,
+        metadataType: typeof post[0].metadata,
+      });
+
+      try {
+        // 尝试解析 tags 字段
+        if (post[0].tags) {
+          console.log("🔍 [posts.get] 尝试解析 tags:", post[0].tags);
+          const parsedTags = JSON.parse(post[0].tags);
+          console.log("🔍 [posts.get] tags 解析成功:", parsedTags);
+        }
+
+        // 尝试解析 metadata 字段
+        if (post[0].metadata) {
+          console.log("🔍 [posts.get] 尝试解析 metadata...");
+          const _parsedMetadata = JSON.parse(post[0].metadata);
+          console.log("🔍 [posts.get] metadata 解析成功");
+        }
+      } catch (parseError) {
+        console.error("🔍 [posts.get] JSON 解析错误:", parseError);
+      }
+
+      console.log("🔍 [posts.get] 返回的文章数据:", {
+        id: post[0].id,
+        filePath: post[0].filePath,
+        hasFilePath: !!post[0].filePath,
+      });
 
       return post[0];
     } catch (error) {

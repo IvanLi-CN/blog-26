@@ -53,7 +53,7 @@ function normalizePath(path: string): string {
 function resolveImagePathFromFile(
   imagePath: string,
   markdownFilePath: string,
-  contentSource: "local" | "webdav" = "webdav"
+  _contentSource: "local" | "webdav" = "webdav"
 ): string {
   // 如果是绝对路径，直接使用（去掉开头的斜杠）
   if (imagePath.startsWith("/")) {
@@ -61,25 +61,29 @@ function resolveImagePathFromFile(
   }
 
   // 获取markdown文件所在的目录
-  let markdownDir = markdownFilePath.includes("/")
+  const markdownDir = markdownFilePath.includes("/")
     ? markdownFilePath.substring(0, markdownFilePath.lastIndexOf("/"))
     : "";
 
-  // 对于WebDAV内容源，需要进行路径映射
-  if (contentSource === "webdav") {
-    // posts/ 目录映射到 blog/ 目录
-    if (markdownDir.startsWith("posts")) {
-      markdownDir = markdownDir.replace(/^posts/, "blog");
+  // 不需要进行任何路径映射，直接使用实际的文件路径
+  // markdownFilePath 已经是实际的文件路径，如：
+  // - 本地: "blog/hello-world.md"
+  // - WebDAV: "/Hardware/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md"
+
+  // 辅助函数：安全地拼接路径，避免双斜杠
+  const joinPath = (dir: string, file: string): string => {
+    if (!dir) return file;
+    if (dir.endsWith("/")) {
+      return dir + file;
     }
-    // memos/ 目录保持不变
-    // projects/ 目录映射到 projects/ 目录（如果需要的话）
-  }
+    return `${dir}/${file}`;
+  };
 
   // 处理相对路径
   if (imagePath.startsWith("./")) {
     // 当前目录相对路径
     const relativePath = imagePath.substring(2);
-    return markdownDir ? `${markdownDir}/${relativePath}` : relativePath;
+    return markdownDir ? joinPath(markdownDir, relativePath) : relativePath;
   } else if (imagePath.startsWith("../")) {
     // 上级目录相对路径
     let currentDir = markdownDir;
@@ -95,10 +99,10 @@ function resolveImagePathFromFile(
       }
     }
 
-    return currentDir ? `${currentDir}/${remainingPath}` : remainingPath;
+    return currentDir ? joinPath(currentDir, remainingPath) : remainingPath;
   } else {
     // 没有前缀的相对路径，视为相对于当前目录
-    return markdownDir ? `${markdownDir}/${imagePath}` : imagePath;
+    return markdownDir ? joinPath(markdownDir, imagePath) : imagePath;
   }
 }
 
@@ -197,8 +201,9 @@ export function resolveImagePath(
   // 规范化路径
   resolvedPath = normalizePath(resolvedPath);
 
-  // 生成API端点URL
-  return `/api/files/${contentSource}/${resolvedPath}`;
+  // 生成API端点URL，确保没有双斜杠
+  const cleanResolvedPath = resolvedPath.startsWith("/") ? resolvedPath.substring(1) : resolvedPath;
+  return `/api/files/${contentSource}/${cleanResolvedPath}`;
 }
 
 /**

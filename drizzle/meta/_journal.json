@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1754899857251,
-      "tag": "0000_jittery_rocket_raccoon",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1755001527501,
-      "tag": "0001_bitter_goliath",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1755001527502,
-      "tag": "0002_extend_memos_table",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1755001527503,
-      "tag": "0003_fix_posts_table",
+      "when": 1756027257086,
+      "tag": "0000_brown_forgotten_one",
       "breakpoints": true
     }
   ]

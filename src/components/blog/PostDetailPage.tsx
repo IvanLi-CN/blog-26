@@ -221,7 +221,8 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
               enableImageLightbox={true}
               maxCodeLines={30}
               previewCodeLines={20}
-              articlePath={post.id}
+              articlePath={post.filePath || post.id}
+              contentSource={post.dataSource === "local" ? "local" : "webdav"}
               className="prose prose-md xl:text-lg dark:prose-invert dark:prose-headings:text-slate-300 prose-headings:font-heading prose-headings:leading-tighter prose-headings:tracking-tighter prose-headings:font-bold prose-a:text-primary dark:prose-a:text-blue-400 prose-img:rounded-md prose-img:shadow-lg prose-headings:scroll-mt-[80px] prose-li:my-0"
             />
           </div>
