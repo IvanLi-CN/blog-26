@@ -4,7 +4,6 @@
  * 提供内容源管理和同步控制的 API 接口
  */
 
-import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { SYSTEM_CONFIG } from "../../../config/paths";

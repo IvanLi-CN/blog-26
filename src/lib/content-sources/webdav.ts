@@ -45,17 +45,18 @@ export interface MemoMetadata {
 
 /**
  * WebDAV 内容源配置
+ * 支持多路径配置，每个内容类型可以有多个搜索路径
  */
 export interface WebDAVContentSourceConfig extends ContentSourceConfig {
   options: {
     /** WebDAV 路径映射 */
     pathMappings: {
-      /** 博客文章路径 */
-      posts?: string;
-      /** 项目文档路径 */
-      projects?: string;
-      /** 闪念内容路径 */
-      memos?: string;
+      /** 博客文章路径数组 */
+      posts?: string[];
+      /** 项目文档路径数组 */
+      projects?: string[];
+      /** 闪念内容路径数组 */
+      memos?: string[];
     };
     /** 是否启用 ETag 缓存 */
     enableETagCache?: boolean;
@@ -88,7 +89,7 @@ export class WebDAVContentSource extends ContentSourceBase {
       maxRetries = 3,
     } = config.options;
 
-    // 设置默认路径映射
+    // 设置默认路径映射，支持数组格式
     this.pathMappings = {
       posts: pathMappings.posts || WEBDAV_PATH_MAPPINGS.posts,
       projects: pathMappings.projects || WEBDAV_PATH_MAPPINGS.projects,
@@ -230,18 +231,22 @@ export class WebDAVContentSource extends ContentSourceBase {
 
   /**
    * 刷新文件缓存
+   * 支持多路径扫描，遍历每个内容类型的所有配置路径
    */
   private async refreshFileCache(): Promise<void> {
     this.fileCache.clear();
 
     // 扫描所有配置的路径
-    for (const [contentType, webdavPath] of Object.entries(this.pathMappings)) {
-      try {
-        await this.scanWebDAVDirectory(webdavPath, contentType as keyof typeof this.pathMappings);
-      } catch (error) {
-        this.log("warn", `扫描 WebDAV 目录失败: ${webdavPath}`, undefined, {
-          error: error instanceof Error ? error.message : String(error),
-        });
+    for (const [contentType, webdavPaths] of Object.entries(this.pathMappings)) {
+      // 遍历该内容类型的所有路径
+      for (const webdavPath of webdavPaths) {
+        try {
+          await this.scanWebDAVDirectory(webdavPath, contentType as keyof typeof this.pathMappings);
+        } catch (error) {
+          this.log("warn", `扫描 WebDAV 目录失败: ${webdavPath}`, undefined, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
   }
@@ -288,13 +293,17 @@ export class WebDAVContentSource extends ContentSourceBase {
 
   /**
    * 获取相对路径
+   * 支持多路径映射，找到最匹配的路径前缀
    */
   private getRelativePath(webdavPath: string): string {
     // 移除路径映射前缀，生成相对路径
-    for (const [contentType, mappingPath] of Object.entries(this.pathMappings)) {
-      if (webdavPath.startsWith(mappingPath)) {
-        const relativePath = webdavPath.substring(mappingPath.length);
-        return normalizePath(`${contentType}${relativePath}`);
+    for (const [contentType, mappingPaths] of Object.entries(this.pathMappings)) {
+      // 遍历该内容类型的所有路径
+      for (const mappingPath of mappingPaths) {
+        if (webdavPath.startsWith(mappingPath)) {
+          const relativePath = webdavPath.substring(mappingPath.length);
+          return normalizePath(`${contentType}${relativePath}`);
+        }
       }
     }
 
@@ -304,6 +313,7 @@ export class WebDAVContentSource extends ContentSourceBase {
 
   /**
    * 解析 WebDAV 路径
+   * 支持多路径配置，优先使用第一个路径进行写入操作
    */
   private resolveWebDAVPath(filePath: string): string {
     // 如果已经是 WebDAV 路径，直接返回
@@ -315,19 +325,61 @@ export class WebDAVContentSource extends ContentSourceBase {
     const normalizedPath = filePath.toLowerCase();
 
     if (normalizedPath.startsWith("posts/")) {
-      return `${this.pathMappings.posts}/${filePath.substring(6)}`;
+      const postsPaths = this.pathMappings.posts;
+      if (postsPaths.length > 0) {
+        return `${postsPaths[0]}/${filePath.substring(6)}`;
+      }
     }
 
     if (normalizedPath.startsWith("projects/")) {
-      return `${this.pathMappings.projects}/${filePath.substring(9)}`;
+      const projectsPaths = this.pathMappings.projects;
+      if (projectsPaths.length > 0) {
+        return `${projectsPaths[0]}/${filePath.substring(9)}`;
+      }
     }
 
     if (normalizedPath.startsWith("memos/")) {
-      return `${this.pathMappings.memos}/${filePath.substring(6)}`;
+      const memosPaths = this.pathMappings.memos;
+      if (memosPaths.length > 0) {
+        return `${memosPaths[0]}/${filePath.substring(6)}`;
+      }
     }
 
-    // 默认映射到 posts 路径
-    return `${this.pathMappings.posts}/${filePath}`;
+    // 默认映射到 posts 的第一个路径
+    const postsPaths = this.pathMappings.posts;
+    if (postsPaths.length > 0) {
+      return `${postsPaths[0]}/${filePath}`;
+    }
+
+    // 如果没有配置任何路径，返回原始路径
+    return `/${filePath}`;
+  }
+
+  /**
+   * 在多个路径中搜索文件
+   * @param filename 文件名
+   * @param contentType 内容类型
+   * @returns 找到的完整路径，如果未找到则返回 null
+   */
+  private async findFileInContentPaths(
+    filename: string,
+    contentType: keyof typeof this.pathMappings
+  ): Promise<string | null> {
+    const searchPaths = this.pathMappings[contentType];
+
+    for (const basePath of searchPaths) {
+      const fullPath = `${basePath}/${filename}`.replace(/\/+/g, "/");
+
+      try {
+        // 尝试获取文件内容来验证文件存在
+        await this.webdavClient.getFileContent(fullPath);
+        return fullPath;
+      } catch (_error) {
+        // 文件不存在或无法访问，跳过
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -569,11 +621,18 @@ export class WebDAVContentSource extends ContentSourceBase {
 
   /**
    * 清除 memo 相关缓存
+   * 支持多路径，清除所有 memo 路径相关的缓存
    */
   private clearMemoCache(id: string): void {
-    const cacheKeys = Array.from(this.fileCache.keys()).filter(
-      (key) => key.includes(id) || key.includes(this.pathMappings.memos)
-    );
+    const cacheKeys = Array.from(this.fileCache.keys()).filter((key) => {
+      // 检查是否包含 ID
+      if (key.includes(id)) {
+        return true;
+      }
+
+      // 检查是否在任何 memo 路径下
+      return this.pathMappings.memos.some((memoPath) => key.includes(memoPath));
+    });
 
     cacheKeys.forEach((key) => {
       this.fileCache.delete(key);

@@ -11,6 +11,7 @@
 
 /**
  * 内容类型枚举
+ * 统一使用单数形式，与数据库存储保持一致
  */
 export type ContentType = "post" | "project" | "memo";
 

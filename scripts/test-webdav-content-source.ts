@@ -16,7 +16,7 @@ async function testWebDAVContentSource() {
       name: "webdav-test",
       priority: 100,
       enabled: true,
-      contentTypes: ["memo", "post", "project"],
+      contentTypes: ["memos", "posts", "projects"],
       options: {
         pathMappings: WEBDAV_PATH_MAPPINGS,
         enableETagCache: true,

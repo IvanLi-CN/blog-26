@@ -401,18 +401,7 @@ export const memosRouter = router({
       }
 
       // 创建 WebDAV 内容源实例
-      const webdavSource = new WebDAVContentSource({
-        name: "webdav",
-        priority: 100,
-        enabled: true,
-        options: {
-          pathMappings: {
-            posts: "/blog",
-            projects: "/blog/projects",
-            memos: "/Memos",
-          },
-        },
-      });
+      const webdavSource = createWebDAVSource();
 
       await webdavSource.initialize();
 

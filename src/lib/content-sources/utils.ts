@@ -137,7 +137,7 @@ export function calculateFileInfoHash(fileInfo: FileInfo): string {
 export function inferContentTypeFromPath(filePath: string): ContentType {
   const normalizedPath = filePath.toLowerCase().replace(/\\/g, "/");
 
-  // 检查路径是否包含特定目录
+  // 检查路径是否包含特定目录（路径使用复数，但返回单数类型）
   if (normalizedPath.includes("/posts/") || normalizedPath.startsWith("posts/")) {
     return "post";
   }

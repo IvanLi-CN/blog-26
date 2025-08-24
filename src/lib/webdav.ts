@@ -125,14 +125,24 @@ export interface DirectoryTreeNode {
 
 /**
  * WebDAV 客户端类
+ * 支持多路径配置，每个内容类型可以有多个搜索路径
  */
 export class WebDAVClient {
   private baseUrl: string;
   private username: string;
   private password: string;
   private excludePaths: string[];
-  public projectsPath: string;
-  private memosPath: string;
+  public projectsPaths: string[];
+  private memosPaths: string[];
+
+  // 向后兼容的单路径属性
+  public get projectsPath(): string {
+    return this.projectsPaths.length > 0 ? this.projectsPaths[0] : "";
+  }
+
+  private get memosPath(): string {
+    return this.memosPaths.length > 0 ? this.memosPaths[0] : "";
+  }
 
   constructor() {
     const webdavUrl = process.env.WEBDAV_URL;
@@ -147,8 +157,8 @@ export class WebDAVClient {
     this.username = process.env.WEBDAV_USERNAME || "";
     this.password = process.env.WEBDAV_PASSWORD || "";
     this.excludePaths = (process.env.WEBDAV_EXCLUDE_PATHS || "").split(",").filter(Boolean);
-    this.projectsPath = WEBDAV_PATHS.posts;
-    this.memosPath = WEBDAV_PATHS.memos;
+    this.projectsPaths = WEBDAV_PATHS.posts;
+    this.memosPaths = WEBDAV_PATHS.memos;
   }
 
   /**
@@ -396,6 +406,75 @@ export class WebDAVClient {
     return this.excludePaths.some(
       (excludePath) => path.includes(excludePath) || path.startsWith(`/${excludePath}`)
     );
+  }
+
+  /**
+   * 获取所有配置的内容路径
+   * @returns 包含所有内容类型路径的对象
+   */
+  getAllContentPaths(): { posts: string[]; projects: string[]; memos: string[] } {
+    return {
+      posts: WEBDAV_PATHS.posts,
+      projects: WEBDAV_PATHS.projects,
+      memos: this.memosPaths,
+    };
+  }
+
+  /**
+   * 在多个路径中搜索文件
+   * @param filename 文件名
+   * @param searchPaths 搜索路径数组
+   * @returns 找到的文件路径，如果未找到则返回 null
+   */
+  async findFileInPaths(filename: string, searchPaths: string[]): Promise<string | null> {
+    for (const basePath of searchPaths) {
+      const fullPath = `${basePath}/${filename}`.replace(/\/+/g, "/");
+
+      try {
+        // 尝试获取文件信息
+        const files = await this.propfind(fullPath, 0);
+        if (files.length > 0 && !files[0].isDirectory) {
+          return fullPath;
+        }
+      } catch (_error) {
+        // 文件不存在或无法访问，跳过
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 从多个路径中列出所有文件
+   * @param searchPaths 搜索路径数组
+   * @param recursive 是否递归搜索
+   * @returns 合并后的文件列表
+   */
+  async listFilesFromPaths(
+    searchPaths: string[],
+    recursive: boolean = false
+  ): Promise<WebDAVFile[]> {
+    const allFiles: WebDAVFile[] = [];
+    const seenPaths = new Set<string>();
+
+    for (const basePath of searchPaths) {
+      try {
+        const files = await this.listFiles(basePath, recursive);
+
+        // 去重并添加到结果中
+        for (const file of files) {
+          if (!seenPaths.has(file.filename)) {
+            seenPaths.add(file.filename);
+            allFiles.push(file);
+          }
+        }
+      } catch (error) {
+        // 路径不存在或无法访问，跳过
+        console.warn(`无法访问路径 ${basePath}:`, error);
+      }
+    }
+
+    return allFiles;
   }
 }
 

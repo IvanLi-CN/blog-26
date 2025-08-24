@@ -14,7 +14,7 @@ async function testLocalMemoRecognition() {
     name: "local-test",
     priority: 50,
     enabled: true,
-    contentTypes: ["memo", "post", "project"],
+    contentTypes: ["memos", "posts", "projects"],
     options: {
       contentPath: "./dev-data/local",
       recursive: true,
