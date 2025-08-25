@@ -11,14 +11,14 @@ interface RelatedPost {
   excerpt?: string;
   body: string;
   category?: string;
-  tags?: string;
+  tags?: string | string[];
   image?: string;
 }
 
 interface RelatedPostsProps {
   posts: RelatedPost[];
   currentPostCategory?: string;
-  currentPostTags?: string;
+  currentPostTags?: string | string[];
 }
 
 export default function RelatedPosts({
@@ -41,14 +41,22 @@ export default function RelatedPosts({
 
     // 同标签加分
     if (currentPostTags && a.tags) {
-      const currentTags = currentPostTags.split(",").map((t) => t.trim());
-      const aTags = a.tags.split(",").map((t) => t.trim());
+      const currentTags = Array.isArray(currentPostTags)
+        ? currentPostTags.map((t) => String(t).trim())
+        : currentPostTags.split(",").map((t) => t.trim());
+      const aTags = Array.isArray(a.tags)
+        ? a.tags.map((t) => String(t).trim())
+        : a.tags.split(",").map((t) => t.trim());
       const commonTags = currentTags.filter((tag) => aTags.includes(tag));
       scoreA += commonTags.length;
     }
     if (currentPostTags && b.tags) {
-      const currentTags = currentPostTags.split(",").map((t) => t.trim());
-      const bTags = b.tags.split(",").map((t) => t.trim());
+      const currentTags = Array.isArray(currentPostTags)
+        ? currentPostTags.map((t) => String(t).trim())
+        : currentPostTags.split(",").map((t) => t.trim());
+      const bTags = Array.isArray(b.tags)
+        ? b.tags.map((t) => String(t).trim())
+        : b.tags.split(",").map((t) => t.trim());
       const commonTags = currentTags.filter((tag) => bTags.includes(tag));
       scoreB += commonTags.length;
     }

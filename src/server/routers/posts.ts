@@ -133,31 +133,43 @@ export const postsRouter = router({
         metadataType: typeof post[0].metadata,
       });
 
+      // 解析 JSON 字段并返回处理后的数据
+      const processedPost = { ...post[0] };
+
       try {
-        // 尝试解析 tags 字段
-        if (post[0].tags) {
-          console.log("🔍 [posts.get] 尝试解析 tags:", post[0].tags);
-          const parsedTags = JSON.parse(post[0].tags);
-          console.log("🔍 [posts.get] tags 解析成功:", parsedTags);
+        // 解析 tags 字段
+        if (processedPost.tags) {
+          console.log("🔍 [posts.get] 尝试解析 tags:", processedPost.tags);
+          processedPost.tags = JSON.parse(processedPost.tags);
+          console.log("🔍 [posts.get] tags 解析成功:", processedPost.tags);
+        } else {
+          processedPost.tags = [];
         }
 
-        // 尝试解析 metadata 字段
-        if (post[0].metadata) {
+        // 解析 metadata 字段
+        if (processedPost.metadata) {
           console.log("🔍 [posts.get] 尝试解析 metadata...");
-          const _parsedMetadata = JSON.parse(post[0].metadata);
+          processedPost.metadata = JSON.parse(processedPost.metadata);
           console.log("🔍 [posts.get] metadata 解析成功");
+        } else {
+          processedPost.metadata = {};
         }
       } catch (parseError) {
         console.error("🔍 [posts.get] JSON 解析错误:", parseError);
+        // 如果解析失败，设置默认值
+        processedPost.tags = [];
+        processedPost.metadata = {};
       }
 
       console.log("🔍 [posts.get] 返回的文章数据:", {
-        id: post[0].id,
-        filePath: post[0].filePath,
-        hasFilePath: !!post[0].filePath,
+        id: processedPost.id,
+        filePath: processedPost.filePath,
+        hasFilePath: !!processedPost.filePath,
+        tagsType: typeof processedPost.tags,
+        tagsValue: processedPost.tags,
       });
 
-      return post[0];
+      return processedPost;
     } catch (error) {
       console.error("获取文章失败:", error);
       throw new Error("文章不存在或已被删除");

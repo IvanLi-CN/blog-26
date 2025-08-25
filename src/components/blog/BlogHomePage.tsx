@@ -116,9 +116,12 @@ export default function BlogHomePage() {
                             )}
                             {post.tags && (
                               <div className="flex gap-1">
-                                {post.tags.split(",").map((tag) => (
-                                  <span key={tag.trim()} className="badge badge-ghost badge-sm">
-                                    #{tag.trim()}
+                                {(Array.isArray(post.tags)
+                                  ? post.tags.map((t) => String(t).trim())
+                                  : post.tags.split(",").map((t) => t.trim())
+                                ).map((tag) => (
+                                  <span key={tag} className="badge badge-ghost badge-sm">
+                                    #{tag}
                                   </span>
                                 ))}
                               </div>

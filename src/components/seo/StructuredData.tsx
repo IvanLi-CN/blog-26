@@ -7,7 +7,7 @@ interface Post {
   image?: string;
   author?: string;
   category?: string;
-  tags?: string;
+  tags?: string | string[];
   publishDate: number;
   updateDate?: number;
   public?: boolean;
@@ -71,7 +71,9 @@ export default function StructuredData({ post }: StructuredDataProps) {
       articleSection: post.category,
     }),
     ...(post.tags && {
-      keywords: post.tags.split(",").map((tag) => tag.trim()),
+      keywords: Array.isArray(post.tags)
+        ? post.tags.map((tag) => String(tag).trim())
+        : post.tags.split(",").map((tag) => tag.trim()),
     }),
     inLanguage: "zh-CN",
     isAccessibleForFree: true,

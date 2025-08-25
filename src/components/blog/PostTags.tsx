@@ -7,7 +7,7 @@ interface Tag {
 }
 
 interface PostTagsProps {
-  tags?: Tag[] | string;
+  tags?: Tag[] | string[] | string;
   className?: string;
   title?: string;
   isCategory?: boolean;
@@ -75,15 +75,46 @@ export default function PostTags({
 }: PostTagsProps) {
   if (!tags) return null;
 
-  // 处理字符串格式的标签（逗号分隔）
+  // 处理不同格式的标签数据
   let tagArray: Tag[] = [];
   if (typeof tags === "string") {
+    // 处理逗号分隔的字符串
     tagArray = tags.split(",").map((tag) => ({
       title: tag.trim(),
       slug: tag.trim().toLowerCase().replace(/\s+/g, "-"),
     }));
+  } else if (Array.isArray(tags)) {
+    // 处理数组格式
+    tagArray = tags.map((tag) => {
+      if (typeof tag === "string") {
+        // 字符串数组
+        return {
+          title: tag.trim(),
+          slug: tag.trim().toLowerCase().replace(/\s+/g, "-"),
+        };
+      } else if (tag && typeof tag === "object" && "title" in tag) {
+        // 已经是 Tag 对象格式
+        return tag as Tag;
+      } else {
+        // 其他格式，转换为字符串
+        const tagStr = String(tag).trim();
+        return {
+          title: tagStr,
+          slug: tagStr.toLowerCase().replace(/\s+/g, "-"),
+        };
+      }
+    });
   } else {
-    tagArray = tags;
+    // 其他格式，尝试转换为字符串
+    const tagStr = String(tags).trim();
+    if (tagStr) {
+      tagArray = [
+        {
+          title: tagStr,
+          slug: tagStr.toLowerCase().replace(/\s+/g, "-"),
+        },
+      ];
+    }
   }
 
   if (!tagArray.length) return null;
