@@ -28,6 +28,8 @@ export interface MemoCardProps {
   showEditButton?: boolean;
   /** 是否显示删除按钮 */
   showDeleteButton?: boolean;
+  /** 是否显示可见性指示器（公开/私有状态） */
+  showVisibilityIndicator?: boolean;
   /** 最大内容长度（超出显示省略号） */
   maxContentLength?: number;
   /** 编辑回调 */
@@ -65,6 +67,7 @@ export function MemoCard({
   memo,
   showEditButton = false,
   showDeleteButton = false,
+  showVisibilityIndicator = true,
   maxContentLength = 300,
   onEdit,
   onDelete,
@@ -247,52 +250,54 @@ export function MemoCard({
 
               {/* 右侧：状态和操作按钮 */}
               <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-                {/* 公开/私有状态指示器 */}
-                <div className="flex items-center">
-                  {memo.isPublic ? (
-                    <div
-                      className="badge badge-info badge-xs sm:badge-sm gap-1"
-                      data-testid="public-indicator"
-                    >
-                      <svg
-                        className="w-2.5 h-2.5 sm:w-3 sm:h-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
+                {/* 公开/私有状态指示器 - 只有管理员可见 */}
+                {showVisibilityIndicator && (
+                  <div className="flex items-center">
+                    {memo.isPublic ? (
+                      <div
+                        className="badge badge-info badge-xs sm:badge-sm gap-1"
+                        data-testid="public-indicator"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span className="hidden sm:inline">公开</span>
-                    </div>
-                  ) : (
-                    <div
-                      className="badge badge-warning badge-xs sm:badge-sm gap-1"
-                      data-testid="private-indicator"
-                    >
-                      <svg
-                        className="w-2.5 h-2.5 sm:w-3 sm:h-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
+                        <svg
+                          className="w-2.5 h-2.5 sm:w-3 sm:h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span className="hidden sm:inline">公开</span>
+                      </div>
+                    ) : (
+                      <div
+                        className="badge badge-warning badge-xs sm:badge-sm gap-1"
+                        data-testid="private-indicator"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                        />
-                      </svg>
-                      <span className="hidden sm:inline">私有</span>
-                    </div>
-                  )}
-                </div>
+                        <svg
+                          className="w-2.5 h-2.5 sm:w-3 sm:h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                        <span className="hidden sm:inline">私有</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* 管理员操作按钮组 */}
                 {(showEditButton || showDeleteButton) && (

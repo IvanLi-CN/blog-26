@@ -36,6 +36,7 @@ export const authRouter = createTRPCRouter({
       nickname: ctx.user.nickname,
       email: ctx.user.email,
       avatarUrl: ctx.user.avatarUrl || getAvatarUrl(ctx.user.email),
+      isAdmin: ctx.isAdmin,
     };
   }),
 

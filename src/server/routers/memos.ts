@@ -96,7 +96,7 @@ const uploadAttachmentSchema = z.object({
 export const memosRouter = router({
   // 获取 memo 列表（分页）
   list: publicProcedure.input(listMemosSchema).query(async ({ input, ctx }) => {
-    const { page, limit, search, tag, publicOnly } = input;
+    const { page, limit, search, tag } = input;
     const offset = (page - 1) * limit;
 
     try {
@@ -104,7 +104,7 @@ export const memosRouter = router({
       const conditions = [eq(posts.type, "memo")];
 
       // 权限过滤：非管理员只能看到公开的 memo
-      if (publicOnly && !ctx.isAdmin) {
+      if (!ctx.isAdmin) {
         conditions.push(eq(posts.public, true));
       }
 

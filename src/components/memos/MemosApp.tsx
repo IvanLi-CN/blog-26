@@ -161,6 +161,7 @@ export function MemosApp({
             onEdit={showManageFeatures ? handleEdit : undefined}
             onDelete={showManageFeatures ? handleDeleteMemo : undefined}
             showManageButtons={showManageFeatures}
+            showVisibilityIndicator={showManageFeatures}
             viewMode="timeline"
             error={error}
           />

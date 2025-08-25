@@ -28,6 +28,8 @@ export interface MemosListProps {
   onDelete?: (memo: MemoCardData) => void;
   /** 是否显示管理按钮 */
   showManageButtons?: boolean;
+  /** 是否显示可见性指示器（公开/私有状态） */
+  showVisibilityIndicator?: boolean;
   /** 错误信息 */
   error?: any;
   /** 样式类名 */
@@ -50,6 +52,7 @@ export function MemosList({
   onDelete,
   error,
   showManageButtons = false,
+  showVisibilityIndicator = true,
   className,
   // 忽略这些不需要的参数
   onSearch: _onSearch,
@@ -127,6 +130,7 @@ export function MemosList({
               onDelete={onDelete}
               showEditButton={showManageButtons}
               showDeleteButton={showManageButtons}
+              showVisibilityIndicator={showVisibilityIndicator}
             />
           ))}
         </div>
