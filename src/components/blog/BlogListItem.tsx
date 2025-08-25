@@ -37,7 +37,10 @@ export default function BlogListItem({ post }: BlogListItemProps) {
     : [];
 
   // 使用新的图片路径解析函数
-  const contentSource = (post.dataSource === "local" ? "local" : "webdav") as "local" | "webdav";
+  // 检查数据源是否包含 "local"（支持 "local" 和 "local-test" 等变体）
+  const contentSource = (post.dataSource?.includes("local") ? "local" : "webdav") as
+    | "local"
+    | "webdav";
   const markdownFilePath = post.id; // post.id 就是文件路径
   const imageSrc = resolveImagePath(post.image, contentSource, markdownFilePath);
 
