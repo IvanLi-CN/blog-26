@@ -433,7 +433,7 @@ export class WebDAVClient {
       try {
         // 尝试获取文件信息
         const files = await this.propfind(fullPath, 0);
-        if (files.length > 0 && !files[0].isDirectory) {
+        if (files.length > 0 && files[0].type !== "directory") {
           return fullPath;
         }
       } catch (_error) {

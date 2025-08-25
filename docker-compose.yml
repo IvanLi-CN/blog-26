@@ -1,0 +1,112 @@
+# Docker Compose 配置文件
+# 用于本地开发和测试环境
+
+services:
+  blog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date +%Y%m%d)}
+        COMMIT_HASH: ${COMMIT_HASH:-dev}
+        COMMIT_SHORT_HASH: ${COMMIT_SHORT_HASH:-dev}
+        REPOSITORY_URL: ${REPOSITORY_URL:-https://git.ivanli.cc/Ivan/blog-nextjs}
+    ports:
+      - "3000:3000"
+    environment:
+      # 基础配置
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      
+      # 数据库配置
+      - DB_PATH=/app/data/sqlite.db
+      
+      # OpenAI 配置
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
+      
+      # Redis 配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # WebDAV 配置
+      - WEBDAV_URL=${WEBDAV_URL:-http://localhost:8080}
+      - WEBDAV_USERNAME=${WEBDAV_USERNAME:-}
+      - WEBDAV_PASSWORD=${WEBDAV_PASSWORD:-}
+      - WEBDAV_MEMOS_PATH=${WEBDAV_MEMOS_PATH:-/Memos}
+      - WEBDAV_ASSETS_PATH=${WEBDAV_ASSETS_PATH:-/assets}
+      
+      # 模型配置
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION}
+      - CHAT_MODEL_NAME=${CHAT_MODEL_NAME}
+      
+      # 站点配置
+      - SITE_URL=${SITE_URL:-http://localhost:3000}
+      - JWT_SECRET=${JWT_SECRET}
+      
+      # SMTP 配置
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+      
+      # 管理员配置
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      
+      # 验证码配置
+      - PUBLIC_LUOSIMAO_SITE_KEY=${PUBLIC_LUOSIMAO_SITE_KEY}
+      - LUOSIMAO_SECRET_KEY=${LUOSIMAO_SECRET_KEY}
+      
+      # Next.js 配置
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      # 数据持久化
+      - ./data:/app/data
+      - ./public/uploads:/app/public/uploads
+      # 数据库迁移文件
+      - ./drizzle:/app/drizzle
+    restart: unless-stopped
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/trpc/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 可选：WebDAV 服务器（用于开发测试）
+  webdav:
+    image: bytemark/webdav
+    ports:
+      - "8080:80"
+    environment:
+      - AUTH_TYPE=Basic
+      - USERNAME=${WEBDAV_USERNAME:-webdav}
+      - PASSWORD=${WEBDAV_PASSWORD:-webdav}
+    volumes:
+      - webdav_data:/var/lib/dav
+    restart: unless-stopped
+    profiles:
+      - dev  # 只在开发环境启动
+
+volumes:
+  redis_data:
+  webdav_data:

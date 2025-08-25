@@ -172,7 +172,7 @@ export function defaultUrlTransform(url: string): string {
  * @param children React 节点（可能是字符串、对象、数组等）
  * @returns 提取的纯文本内容
  */
-export function extractTextContent(children: any): string {
+export function extractTextContent(children: unknown): string {
   if (typeof children === "string") {
     return children;
   }
@@ -190,38 +190,42 @@ export function extractTextContent(children: any): string {
   }
 
   // 处理 React 元素
-  if (typeof children === "object" && children.props && children.props.children) {
-    return extractTextContent(children.props.children);
+  if (typeof children === "object" && children && "props" in children) {
+    const reactElement = children as { props?: { children?: unknown } };
+    if (reactElement.props && reactElement.props.children) {
+      return extractTextContent(reactElement.props.children);
+    }
   }
 
   // 处理 rehype/hast 节点
-  if (typeof children === "object") {
+  if (typeof children === "object" && children) {
+    const node = children as Record<string, unknown>;
     // 文本节点
-    if (children.type === "text" && children.value) {
-      return children.value;
+    if (node.type === "text" && node.value) {
+      return String(node.value);
     }
 
     // 元素节点
-    if (children.type === "element" && children.children) {
-      return extractTextContent(children.children);
+    if (node.type === "element" && node.children) {
+      return extractTextContent(node.children);
     }
 
     // 处理 highlight.js 生成的 span 元素
-    if (children.tagName === "span" && children.children) {
-      return extractTextContent(children.children);
+    if (node.tagName === "span" && node.children) {
+      return extractTextContent(node.children);
     }
 
     // 其他可能的文本属性
-    if (children.value !== undefined) {
-      return String(children.value);
+    if (node.value !== undefined) {
+      return String(node.value);
     }
 
-    if (children.data !== undefined) {
-      return String(children.data);
+    if (node.data !== undefined) {
+      return String(node.data);
     }
 
-    if (children.children) {
-      return extractTextContent(children.children);
+    if (node.children) {
+      return extractTextContent(node.children);
     }
 
     // 如果对象有 toString 方法且不是默认的 [object Object]

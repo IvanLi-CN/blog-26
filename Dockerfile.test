@@ -1,0 +1,100 @@
+# 简化版 Dockerfile 用于快速测试
+# 跳过 Playwright 安装以加快构建速度
+
+# ===== 依赖安装阶段 =====
+FROM oven/bun:1 AS deps
+WORKDIR /app
+
+# 复制依赖文件（优化 Docker 层缓存）
+COPY package.json bun.lock ./
+
+# 安装依赖（跳过 Playwright）
+RUN bun install --frozen --no-cache
+
+# ===== 构建阶段 =====
+FROM oven/bun:1 AS builder
+WORKDIR /app
+
+# 构建参数（从 CI 传入）
+ARG BUILD_DATE
+ARG COMMIT_HASH
+ARG COMMIT_SHORT_HASH
+ARG REPOSITORY_URL
+
+# 从依赖阶段复制 node_modules
+COPY --from=deps /app/node_modules ./node_modules
+
+# 复制源代码
+COPY . .
+
+# 设置构建时环境变量
+ENV BUILD_DATE=${BUILD_DATE}
+ENV COMMIT_HASH=${COMMIT_HASH}
+ENV COMMIT_SHORT_HASH=${COMMIT_SHORT_HASH}
+ENV REPOSITORY_URL=${REPOSITORY_URL}
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# 生成版本信息并构建应用
+RUN bun run prebuild && \
+    bun run build
+
+# ===== 运行时阶段 =====
+FROM oven/bun:1-slim AS runner
+WORKDIR /app
+
+# 创建非 root 用户
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nextjs
+
+# 安装运行时必需的系统依赖
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    ca-certificates \
+    sqlite3 && \
+    rm -rf /var/lib/apt/lists/*
+
+# 设置生产环境变量
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+# 从构建阶段复制必要文件
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# 复制数据库操作所需的文件
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib ./src/lib
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
+# 复制启动脚本
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+# 创建数据目录
+RUN mkdir -p /app/data && \
+    chown -R nextjs:nodejs /app/data
+
+# 创建上传目录
+RUN mkdir -p /app/public/uploads && \
+    chown -R nextjs:nodejs /app/public/uploads
+
+# 切换到非 root 用户
+USER nextjs
+
+# 暴露端口
+EXPOSE 3000
+
+# 健康检查（使用 tRPC health 端点）
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3000/api/trpc/health || exit 1
+
+# 启动应用
+CMD ["./docker-entrypoint.sh"]

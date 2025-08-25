@@ -70,6 +70,7 @@ export default function PostsListPage() {
               updateDate: post.updateDate ?? undefined,
               tags: post.tags ?? undefined,
               author: post.author ?? undefined,
+              dataSource: post.dataSource ?? undefined,
             }))}
           />
         ) : (

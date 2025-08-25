@@ -37,9 +37,9 @@ async function testMemoSync() {
         contentTypes: ["memo"],
         options: {
           pathMappings: {
-            posts: "/blog",
-            projects: "/blog/projects",
-            memos: "/Memos",
+            posts: ["/blog"],
+            projects: ["/blog/projects"],
+            memos: ["/Memos"],
           },
         },
       });

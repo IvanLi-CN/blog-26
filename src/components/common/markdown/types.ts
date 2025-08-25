@@ -37,7 +37,7 @@ export interface MarkdownRendererProps {
  */
 export interface CodeBlockProps {
   /** 代码内容 */
-  children: string;
+  children: ReactNode;
   /** 语言类型 */
   language?: string;
   /** 是否启用折叠功能 */

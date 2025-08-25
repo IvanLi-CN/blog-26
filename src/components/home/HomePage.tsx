@@ -64,7 +64,7 @@ export default function HomePage() {
       body: memo.content,
       publishDate: new Date(memo.createdAt), // memo.createdAt 已经是 ISO 字符串格式
       tags: parseTags(memo.tags),
-      dataSource: (memo as any).dataSource || "webdav",
+      dataSource: (memo as { dataSource?: string }).dataSource || "webdav",
     })) || [];
 
   // 合并文章和闪念，按时间排序

@@ -1,0 +1,122 @@
+# Docker 构建上下文优化文件
+# 排除不必要的文件以减少构建时间和镜像大小
+
+# 依赖目录
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js 构建输出
+.next/
+out/
+
+# 生产构建文件
+build/
+dist/
+
+# 环境变量文件（安全考虑）
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 测试相关
+test-results/
+test-data/
+dev-data/
+coverage/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+e2e/
+tests/
+
+# 开发工具
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 缓存目录
+.npm
+.eslintcache
+.cache/
+.parcel-cache
+
+# 临时文件
+.tmp/
+.temp/
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git 相关
+.git
+.gitignore
+.gitattributes
+.gitmodules
+
+# 文档和说明
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+
+# 配置文件（开发用）
+.editorconfig
+.prettierrc*
+.eslintrc*
+biome.jsonc
+lefthook.yml
+commitlint.config.*
+
+# 数据库文件（开发用）
+*.db
+*.db.backup
+*.sqlite
+*.sqlite3
+
+# 旧项目目录
+old/
+
+# 性能报告
+performance-report.json
+
+# Playwright 相关
+playwright.config.ts
+playwright-report/
+test-results/
+
+# 脚本文件（部分）
+scripts/
+!scripts/generate-version.ts
+!scripts/migrate.ts
+!scripts/seed.ts
+
+# 其他构建工具
+.turbo/
+.swc/
