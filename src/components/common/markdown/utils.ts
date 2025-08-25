@@ -192,7 +192,7 @@ export function extractTextContent(children: unknown): string {
   // 处理 React 元素
   if (typeof children === "object" && children && "props" in children) {
     const reactElement = children as { props?: { children?: unknown } };
-    if (reactElement.props && reactElement.props.children) {
+    if (reactElement.props?.children) {
       return extractTextContent(reactElement.props.children);
     }
   }
