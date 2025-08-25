@@ -10,6 +10,7 @@
 
 import { useCallback } from "react";
 import { cn } from "../../lib/utils";
+import EmptyState from "../ui/EmptyState";
 import { MemoCard, type MemoCardData } from "./MemoCard";
 
 export interface MemosListProps {
@@ -87,9 +88,20 @@ export function MemosList({
 
   // 渲染空状态
   const renderEmpty = () => (
-    <div className="text-center py-12">
-      <div className="text-base-content/60 mb-4">还没有任何 memo</div>
-    </div>
+    <EmptyState
+      icon="tabler:notes"
+      title="还没有 Memo"
+      description="开始记录你的第一个想法吧！"
+      action={
+        showManageButtons && _onNew
+          ? {
+              label: "发布新Memo",
+              onClick: _onNew,
+              variant: "default",
+            }
+          : undefined
+      }
+    />
   );
 
   return (
@@ -181,11 +193,20 @@ export function MemosList({
 
       {/* 空状态 */}
       {!loading && !error && memos.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📝</div>
-          <h3 className="text-xl font-semibold text-base-content mb-2">还没有 Memo</h3>
-          <p className="text-base-content/60">开始记录你的第一个想法吧！</p>
-        </div>
+        <EmptyState
+          icon="tabler:notes"
+          title="还没有 Memo"
+          description="开始记录你的第一个想法吧！"
+          action={
+            showManageButtons && _onNew
+              ? {
+                  label: "发布新Memo",
+                  onClick: _onNew,
+                  variant: "default",
+                }
+              : undefined
+          }
+        />
       )}
 
       {/* 已加载完所有内容提示 */}
