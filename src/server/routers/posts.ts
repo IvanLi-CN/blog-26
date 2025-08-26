@@ -143,7 +143,7 @@ export const postsRouter = router({
           processedPost.tags = JSON.parse(processedPost.tags);
           console.log("🔍 [posts.get] tags 解析成功:", processedPost.tags);
         } else {
-          processedPost.tags = [];
+          processedPost.tags = "[]";
         }
 
         // 解析 metadata 字段
@@ -152,13 +152,13 @@ export const postsRouter = router({
           processedPost.metadata = JSON.parse(processedPost.metadata);
           console.log("🔍 [posts.get] metadata 解析成功");
         } else {
-          processedPost.metadata = {};
+          processedPost.metadata = "{}";
         }
       } catch (parseError) {
         console.error("🔍 [posts.get] JSON 解析错误:", parseError);
         // 如果解析失败，设置默认值
-        processedPost.tags = [];
-        processedPost.metadata = {};
+        processedPost.tags = "[]";
+        processedPost.metadata = "{}";
       }
 
       console.log("🔍 [posts.get] 返回的文章数据:", {

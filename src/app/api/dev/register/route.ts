@@ -50,7 +50,7 @@ function validateEmail(email: string): boolean {
  * 验证昵称
  */
 function validateNickname(nickname: string): boolean {
-  return nickname && nickname.trim().length > 0 && nickname.trim().length <= 50;
+  return !!nickname && nickname.trim().length > 0 && nickname.trim().length <= 50;
 }
 
 /**

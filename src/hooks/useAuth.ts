@@ -63,7 +63,7 @@ export function useAuth(): UseAuthResult {
     user: user || null,
     isAdmin: user?.isAdmin || false,
     isLoading,
-    error,
+    error: error as Error | null,
     refetch,
   };
 }

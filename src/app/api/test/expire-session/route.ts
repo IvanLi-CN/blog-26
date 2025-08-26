@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // 获取当前用户的认证信息
     const authInfo = await extractAuthFromRequest(request);
 
-    if (!authInfo) {
+    if (!authInfo.user) {
       return NextResponse.json({ error: "No active session found" }, { status: 401 });
     }
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     await db
       .update(sessions)
       .set({ expiresAt: Date.now() - 1000 }) // 设置为1秒前过期
-      .where(eq(sessions.userId, authInfo.id));
+      .where(eq(sessions.userId, authInfo.user.id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

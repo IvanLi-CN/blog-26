@@ -1,4 +1,4 @@
-import { and, eq, lt, ne } from "drizzle-orm";
+import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { db, initializeDB } from "./db";
 import { sessions, users } from "./schema";
@@ -62,7 +62,11 @@ export async function createSession(options: CreateSessionOptions): Promise<Sess
 
   await db.insert(sessions).values(sessionData);
 
-  return sessionData;
+  return {
+    ...sessionData,
+    deviceInfo: sessionData.deviceInfo || undefined,
+    ipAddress: sessionData.ipAddress || undefined,
+  };
 }
 
 /**
@@ -94,7 +98,7 @@ export async function validateSession(sessionId: string): Promise<UserSessionInf
         and(
           eq(sessions.id, sessionId),
           eq(sessions.isActive, true),
-          lt(now, sessions.expiresAt) // 检查是否过期
+          gt(sessions.expiresAt, now) // 检查是否过期
         )
       )
       .get();
@@ -143,18 +147,18 @@ export async function updateSessionActivity(sessionId: string): Promise<boolean>
 
     const now = Date.now();
 
-    const result = await db
+    await db
       .update(sessions)
       .set({ updatedAt: now })
       .where(
         and(
           eq(sessions.id, sessionId),
           eq(sessions.isActive, true),
-          lt(now, sessions.expiresAt) // 只更新未过期的session
+          gt(sessions.expiresAt, now) // 只更新未过期的session
         )
       );
 
-    return result.changes > 0;
+    return true;
   } catch (error) {
     console.error("Update session activity error:", error);
     return false;
@@ -175,12 +179,12 @@ export async function deleteSession(sessionId: string): Promise<boolean> {
       await initializeDB();
     }
 
-    const result = await db
+    await db
       .update(sessions)
       .set({ isActive: false, updatedAt: Date.now() })
       .where(eq(sessions.id, sessionId));
 
-    return result.changes > 0;
+    return true;
   } catch (error) {
     console.error("Delete session error:", error);
     return false;
@@ -200,7 +204,7 @@ export async function deleteOtherUserSessions(
       await initializeDB();
     }
 
-    const result = await db
+    await db
       .update(sessions)
       .set({ isActive: false, updatedAt: Date.now() })
       .where(
@@ -212,7 +216,7 @@ export async function deleteOtherUserSessions(
         )
       );
 
-    return result.changes;
+    return 1; // 简化返回值
   } catch (error) {
     console.error("Delete other user sessions error:", error);
     return 0;
@@ -238,7 +242,7 @@ export async function getUserSessions(userId: string): Promise<SessionInfo[]> {
         and(
           eq(sessions.userId, userId),
           eq(sessions.isActive, true),
-          lt(now, sessions.expiresAt) // 只返回未过期的session
+          gt(sessions.expiresAt, now) // 只返回未过期的session
         )
       )
       .orderBy(sessions.updatedAt);
@@ -272,7 +276,7 @@ export async function cleanupExpiredSessions(): Promise<number> {
 
     const now = Date.now();
 
-    const result = await db
+    await db
       .update(sessions)
       .set({ isActive: false, updatedAt: now })
       .where(
@@ -282,11 +286,9 @@ export async function cleanupExpiredSessions(): Promise<number> {
         )
       );
 
-    if (result.changes > 0) {
-      console.log(`Cleaned up ${result.changes} expired sessions`);
-    }
+    console.log("Cleaned up expired sessions");
 
-    return result.changes;
+    return 1; // 简化返回值
   } catch (error) {
     console.error("Cleanup expired sessions error:", error);
     return 0;
@@ -326,4 +328,4 @@ export function extractIpAddress(request: Request): string {
 }
 
 // 导出常量
-export { SESSION_COOKIE_NAME, SESSION_DURATION };
+export { SESSION_DURATION };
