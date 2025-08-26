@@ -2,7 +2,16 @@ name: E2E Tests
 
 on:
   push:
+    branches:
+      - main
+      - nextjs
+      - develop
   pull_request:
+    branches:
+      - main
+      - nextjs
+      - develop
+  workflow_dispatch: # 允许手动触发
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -19,7 +28,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.2.20
+          bun-version: '1.2.20'
       - name: Cache Bun & deps
         uses: actions/cache@v4
         with:

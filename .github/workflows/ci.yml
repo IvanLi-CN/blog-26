@@ -1,12 +1,38 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
+    branches:
+      - main
+      - nextjs
+      - develop
   pull_request:
+    branches:
+      - main
+      - nextjs
+      - develop
+  release:
+    types: [ published ]
+  workflow_dispatch: # 允许手动触发
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  # E2E 测试环境变量
+  NODE_ENV: test
+  ADMIN_MODE: true
+  JWT_SECRET: test-jwt-secret-key-for-testing-only-32-chars
+  ADMIN_EMAIL: admin@test.com
+  DB_PATH: ':memory:'
+  WEBDAV_URL: http://localhost:8080
+  WEBDAV_USERNAME: ''
+  WEBDAV_PASSWORD: ''
+  WEBDAV_MEMOS_PATH: /Memos
+  WEBDAV_ASSETS_PATH: /assets
 
 jobs:
   lint:
@@ -85,4 +111,64 @@ jobs:
         run: bun run migrate
       - name: Build
         run: NODE_ENV=production bun run build
+
+  # Docker 构建和推送
+  docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, build]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/nextjs')
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-
+
+      - name: Get Git information
+        id: git-info
+        run: |
+          echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "commit_short_hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "build_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+          echo "repository_url=https://github.com/${{ github.repository }}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ steps.git-info.outputs.build_date }}
+            COMMIT_HASH=${{ steps.git-info.outputs.commit_hash }}
+            COMMIT_SHORT_HASH=${{ steps.git-info.outputs.commit_short_hash }}
+            REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
