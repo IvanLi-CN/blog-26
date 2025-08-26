@@ -6,8 +6,14 @@ import { getAvatarUrl } from "../../lib/avatar";
 import { verifyCaptcha } from "../../lib/captcha";
 import { db } from "../../lib/db";
 import { generateVerificationEmailHTML, sendEmail } from "../../lib/email";
-import { signJwt } from "../../lib/jwt";
 import { emailVerificationCodes, users } from "../../lib/schema";
+import {
+  createSession,
+  deleteSession,
+  extractDeviceInfo,
+  extractIpAddress,
+  SESSION_COOKIE_NAME,
+} from "../../lib/session";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
 // 输入验证 schemas
@@ -41,9 +47,24 @@ export const authRouter = createTRPCRouter({
   }),
 
   // 登出
-  logout: publicProcedure.mutation(({ ctx }) => {
+  logout: publicProcedure.mutation(async ({ ctx }) => {
+    // 从cookie中获取session ID
+    const cookieHeader = ctx.req.headers.get("cookie");
+    if (cookieHeader) {
+      const cookies = parseCookies(cookieHeader);
+      const sessionId = cookies[SESSION_COOKIE_NAME];
+
+      if (sessionId) {
+        // 删除session记录
+        await deleteSession(sessionId);
+      }
+    }
+
     // 清除 cookie
-    ctx.resHeaders.set("Set-Cookie", "token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
+    ctx.resHeaders.set(
+      "Set-Cookie",
+      `${SESSION_COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`
+    );
 
     return {
       success: true,
@@ -226,17 +247,20 @@ export const authRouter = createTRPCRouter({
         throw new Error("Failed to create or find user");
       }
 
-      // 生成 JWT token
-      const token = await signJwt({
-        sub: user.id,
-        nickname: user.name || user.email.split("@")[0],
-        email: user.email,
+      // 创建新的session
+      const deviceInfo = extractDeviceInfo(ctx.req);
+      const ipAddress = extractIpAddress(ctx.req);
+
+      const session = await createSession({
+        userId: user.id,
+        deviceInfo,
+        ipAddress,
       });
 
-      // 设置 cookie
+      // 设置 session cookie
       ctx.resHeaders.set(
         "Set-Cookie",
-        `token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
+        `${SESSION_COOKIE_NAME}=${session.id}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
       );
 
       // 删除已使用的验证码
@@ -266,3 +290,19 @@ export const authRouter = createTRPCRouter({
     }
   }),
 });
+
+/**
+ * 简单的 Cookie 解析函数
+ */
+function parseCookies(cookieHeader: string): Record<string, string> {
+  const cookies: Record<string, string> = {};
+
+  cookieHeader.split(";").forEach((cookie) => {
+    const [name, ...rest] = cookie.trim().split("=");
+    if (name && rest.length > 0) {
+      cookies[name] = rest.join("=");
+    }
+  });
+
+  return cookies;
+}

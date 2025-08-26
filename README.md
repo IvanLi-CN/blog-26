@@ -60,7 +60,31 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 ### Development Tools
 
 - **Biome 2.0.4** for code formatting and linting
-- **Playwright** for E2E testing
+- **Playwright** for E2E testing ([详细指南](docs/e2e-testing.md))
+
+## 🧪 Testing
+
+### E2E Testing
+
+项目使用 **Playwright** 进行端到端测试，覆盖Session认证和Code Block渲染等核心功能。
+
+**快速开始**:
+
+```bash
+# 验证测试环境
+bun run test:e2e:verify
+
+# 重置测试环境（如需要）
+bun run test-env:reset
+
+# 运行所有E2E测试
+bun run test:e2e
+
+# 查看测试报告
+bunx playwright show-report
+```
+
+**详细文档**: [E2E测试指南](docs/e2e-testing.md)
 
 ## 📝 Memo System
 

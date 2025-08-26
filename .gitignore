@@ -13,6 +13,11 @@
 # testing
 /coverage
 /test-results
+/playwright-report
+playwright-report/
+e2e-*.log
+*-report.json
+performance-report.json
 
 # next.js
 /.next/
@@ -51,6 +56,9 @@ sqlite.db-journal
 # test data and development data
 test-data/
 dev-data/
+*.tmp
+*.temp
+cookies.txt
 
 # old project files
 old/
@@ -60,9 +68,11 @@ src/generated/
 
 # logs
 *.log
+logs/
 
 # IDE
-.vscode/
+.vscode/settings.json
+.vscode/extensions.json
 .idea/
 *.swp
 *.swo

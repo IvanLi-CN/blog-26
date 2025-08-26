@@ -1,4 +1,4 @@
-import { verifyJwt } from "./jwt";
+import { SESSION_COOKIE_NAME, updateSessionActivity, validateSession } from "./session";
 
 export interface AuthResult {
   user?: {
@@ -18,30 +18,29 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
   let user: AuthResult["user"] | undefined;
   let isAdmin = false;
 
-  // 1. 尝试从 Cookie 中获取 JWT token
+  // 1. 尝试从 Cookie 中获取 session ID
   const cookieHeader = request.headers.get("cookie");
   if (cookieHeader) {
     const cookies = parseCookies(cookieHeader);
-    const token = cookies.token;
+    const sessionId = cookies[SESSION_COOKIE_NAME];
 
-    if (token) {
+    if (sessionId) {
       try {
-        const payload = await verifyJwt(token);
-        if (
-          typeof payload.sub === "string" &&
-          typeof payload.nickname === "string" &&
-          typeof payload.email === "string"
-        ) {
+        const sessionInfo = await validateSession(sessionId);
+        if (sessionInfo) {
           user = {
-            id: payload.sub,
-            nickname: payload.nickname,
-            email: payload.email,
-            avatarUrl: payload.avatarUrl as string | undefined,
+            id: sessionInfo.user.id,
+            nickname: sessionInfo.user.name || sessionInfo.user.email.split("@")[0],
+            email: sessionInfo.user.email,
+            avatarUrl: undefined, // 可以后续添加头像URL逻辑
           };
+
+          // 更新session活跃时间
+          await updateSessionActivity(sessionId);
         }
       } catch (error) {
-        // Invalid or expired token, user remains undefined
-        console.warn("Invalid JWT token in auth utils:", error);
+        // Invalid or expired session, user remains undefined
+        console.warn("Invalid session in auth utils:", error);
       }
     }
   }

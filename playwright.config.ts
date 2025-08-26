@@ -6,7 +6,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   // 测试目录
-  testDir: "./e2e",
+  testDir: "./tests/e2e",
 
   // 测试超时设置
   timeout: 60 * 1000, // 60秒
@@ -32,8 +32,8 @@ export default defineConfig({
 
   // 全局测试配置
   use: {
-    // 基础URL
-    baseURL: "http://localhost:3000",
+    // 基础URL - 使用环境变量或默认端口
+    baseURL: process.env.BASE_URL || "http://localhost:3001",
 
     // 浏览器配置
     headless: process.env.HEADLESS !== "false",
@@ -62,15 +62,14 @@ export default defineConfig({
 
   // E2E 测试服务器配置
   webServer: {
-    command: "bun ./scripts/start-e2e-server.ts",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 300 * 1000, // 5分钟启动超时（包含数据生成和同步时间）
+    command:
+      "NODE_ENV=test ADMIN_EMAIL=ivanli2048@gmail.com bun --bun next dev --turbopack --port 3001",
+    url: process.env.BASE_URL || "http://localhost:3001",
+    reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
+    timeout: 120 * 1000, // 2分钟启动超时
     env: {
       NODE_ENV: "test",
-      ADMIN_MODE: "true",
-      // 使用环境变量或默认值，与 E2E 服务器保持一致
-      WEBDAV_URL: process.env.WEBDAV_URL || "http://localhost:8080",
+      ADMIN_EMAIL: "ivanli2048@gmail.com", // 测试环境管理员邮箱
     },
   },
 });

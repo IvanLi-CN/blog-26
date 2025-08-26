@@ -9,16 +9,32 @@ import { expect, test } from "@playwright/test";
 test.describe("Memos 权限控制", () => {
   test.describe("管理员权限测试", () => {
     test.beforeEach(async ({ page }) => {
-      // 确保管理员模式启用（开发环境默认已启用）
-      await page.addInitScript(() => {
-        // 确保管理员环境变量生效
-        window.localStorage.setItem("test-admin-mode", "true");
+      // 使用特权登录接口登录为管理员
+      const adminEmail = process.env.ADMIN_EMAIL || "ivanli2048@gmail.com";
+
+      console.log(`🔍 [DEBUG] 尝试使用邮箱登录: ${adminEmail}`);
+      console.log(`🔍 [DEBUG] ADMIN_EMAIL环境变量: ${process.env.ADMIN_EMAIL}`);
+
+      const response = await page.request.post("/api/dev/login", {
+        data: { email: adminEmail },
       });
 
-      // 设置管理员请求头（确保后端识别为管理员）
-      await page.setExtraHTTPHeaders({
-        "Remote-Email": process.env.ADMIN_EMAIL || "admin@example.com",
-      });
+      console.log(`🔍 [DEBUG] 登录响应状态: ${response.status()}`);
+      const data = await response.json();
+      console.log(`🔍 [DEBUG] 登录响应数据:`, data);
+
+      expect(response.status()).toBe(200);
+      expect(data.success).toBe(true);
+
+      console.log(`🔧 管理员登录成功: ${data.user.email}`);
+
+      // 验证登录后的权限状态
+      const authResponse = await page.request.get("/api/trpc/auth.me");
+      console.log(`🔍 [DEBUG] auth.me响应状态: ${authResponse.status()}`);
+      if (authResponse.ok()) {
+        const authData = await authResponse.json();
+        console.log(`🔍 [DEBUG] auth.me响应数据:`, authData);
+      }
     });
 
     test("管理员应该看到完整的管理功能", async ({ page }) => {
@@ -27,15 +43,17 @@ test.describe("Memos 权限控制", () => {
       // 等待页面加载完成
       await page.waitForLoadState("networkidle");
 
-      // 验证 QuickMemoEditor 组件可见
-      const quickEditor = page.getByTestId("quick-memo-editor");
+      // 验证 QuickMemoEditor 组件可见（使用更精确的选择器）
+      const quickEditor = page.getByRole("region", { name: "快速发布区域" });
       await expect(quickEditor).toBeVisible();
 
       // 验证快速发布标题
       await expect(page.getByText("快速发布 Memo")).toBeVisible();
 
-      // 验证编辑器输入区域
-      const editorInput = page.getByTestId("quick-memo-editor");
+      // 验证编辑器输入区域（使用更精确的选择器）
+      const editorInput = page
+        .getByRole("region", { name: "快速发布区域" })
+        .getByTestId("quick-memo-editor");
       await expect(editorInput).toBeVisible();
 
       // 等待 memo 列表加载
@@ -83,13 +101,23 @@ test.describe("Memos 权限控制", () => {
       await page.goto("/memos");
       await page.waitForLoadState("networkidle");
 
-      // 查找快速编辑器
-      const quickEditor = page.getByTestId("quick-memo-editor");
+      // 查找快速编辑器（使用更精确的选择器）
+      const quickEditor = page.getByRole("region", { name: "快速发布区域" });
       await expect(quickEditor).toBeVisible();
 
-      // 输入测试内容
+      // 输入测试内容到Milkdown编辑器
       const testContent = `测试 memo - ${Date.now()}`;
-      await quickEditor.fill(testContent);
+
+      // 等待Milkdown编辑器完全加载
+      await page.waitForTimeout(1000);
+
+      // 查找ProseMirror编辑器（Milkdown的实际可编辑区域）
+      const proseMirrorEditor = quickEditor.locator(".ProseMirror");
+      await expect(proseMirrorEditor).toBeVisible();
+
+      // 点击编辑器获得焦点，然后输入内容
+      await proseMirrorEditor.click();
+      await proseMirrorEditor.fill(testContent);
 
       // 查找并点击发布按钮
       const publishButton = page.getByRole("button", { name: /发布|保存|submit/i });
@@ -119,16 +147,18 @@ test.describe("Memos 权限控制", () => {
 
   test.describe("普通用户权限测试", () => {
     test.beforeEach(async ({ page }) => {
-      // 清除管理员权限
-      await page.addInitScript(() => {
-        window.localStorage.removeItem("test-admin-mode");
+      // 使用特权登录接口登录为普通用户
+      const userEmail = "user@example.com";
+
+      const response = await page.request.post("/api/dev/login", {
+        data: { email: userEmail },
       });
 
-      // 设置非管理员请求头 - 关键是设置 X-Test-Mode 来绕过 ADMIN_MODE
-      await page.setExtraHTTPHeaders({
-        "X-Test-Mode": "non-admin", // 这个头会让 extractAuthFromRequest 跳过 ADMIN_MODE 逻辑
-        "Remote-Email": "user@example.com", // 非管理员邮箱
-      });
+      expect(response.status()).toBe(200);
+      const data = await response.json();
+      expect(data.success).toBe(true);
+
+      console.log(`👤 普通用户登录成功: ${data.user.email}`);
     });
 
     test("普通用户不应该看到管理功能", async ({ page }) => {
@@ -136,7 +166,7 @@ test.describe("Memos 权限控制", () => {
       await page.waitForLoadState("networkidle");
 
       // 验证 QuickMemoEditor 组件不可见
-      const quickEditor = page.getByTestId("quick-memo-editor");
+      const quickEditor = page.getByRole("region", { name: "快速发布区域" });
       await expect(quickEditor).not.toBeVisible();
 
       // 验证没有"快速发布 Memo"标题
@@ -167,15 +197,23 @@ test.describe("Memos 权限控制", () => {
       await page.waitForLoadState("networkidle");
 
       // 验证页面标题存在（说明页面正常加载）
-      await expect(page.getByText("Memos")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
 
       // 验证可以看到 memo 列表（公开内容）
       const memosList = page.locator(".memos-list");
       await expect(memosList).toBeVisible();
 
-      // 验证没有任何管理相关的UI元素
+      // 验证没有任何管理相关的UI元素（使用精确的选择器，避免匹配内容文本）
       await expect(page.getByText("快速发布")).not.toBeVisible();
-      await expect(page.getByText("管理")).not.toBeVisible();
+
+      // 检查具体的管理功能UI元素，而不是宽泛的"管理"文本
+      await expect(page.getByRole("region", { name: "快速发布区域" })).not.toBeVisible();
+      await expect(page.getByRole("button", { name: /编辑|删除|管理/ })).not.toBeVisible();
+
+      // 验证没有管理员专用的导航链接
+      await expect(
+        page.getByRole("link", { name: /管理面板|后台管理|数据同步/ })
+      ).not.toBeVisible();
     });
 
     test("普通用户界面截图", async ({ page }) => {
@@ -200,10 +238,10 @@ test.describe("Memos 权限控制", () => {
       await page.waitForLoadState("networkidle");
 
       // 验证页面可以正常访问（应该显示公开内容）
-      await expect(page.getByText("Memos")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
 
       // 验证没有管理功能
-      await expect(page.getByTestId("quick-memo-editor")).not.toBeVisible();
+      await expect(page.getByRole("region", { name: "快速发布区域" })).not.toBeVisible();
     });
 
     test("权限检查加载状态", async ({ page }) => {
@@ -224,7 +262,7 @@ test.describe("Memos 权限控制", () => {
       await page.waitForTimeout(2000);
 
       // 验证最终内容显示
-      await expect(page.getByText("Memos")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
     });
   });
 });

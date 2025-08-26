@@ -18,7 +18,7 @@ export interface UseAuthResult {
   /** 是否正在加载用户信息 */
   isLoading: boolean;
   /** 加载错误信息 */
-  error: any;
+  error: Error | null;
   /** 重新获取用户信息 */
   refetch: () => void;
 }

@@ -364,36 +364,44 @@ test.describe("数据同步管理页面边界情况测试", () => {
       }
     });
 
-    test("应该支持触摸设备交互", async ({ page }) => {
-      // 设置移动设备视口
-      await page.setViewportSize({ width: 375, height: 667 });
+    test("应该支持触摸设备交互", async ({ browser }) => {
+      // 创建支持触摸的浏览器上下文
+      const context = await browser.newContext({
+        hasTouch: true,
+        isMobile: true,
+        viewport: { width: 375, height: 667 },
+      });
 
-      // 模拟触摸设备
-      await page.emulateMedia({ media: "screen" });
+      const page = await context.newPage();
 
-      await page.reload();
-      await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(1000);
-
-      // 使用触摸事件点击按钮
-      const fullSyncButton = page.getByRole("button", { name: /全量同步/ });
-      await expect(fullSyncButton).toBeVisible();
-
-      // 模拟触摸点击
-      const buttonBox = await fullSyncButton.boundingBox();
-      if (buttonBox) {
-        await page.touchscreen.tap(
-          buttonBox.x + buttonBox.width / 2,
-          buttonBox.y + buttonBox.height / 2
-        );
-
-        console.log("触摸点击同步按钮成功");
+      try {
+        await page.goto("/admin/data-sync");
+        await page.waitForLoadState("domcontentloaded");
         await page.waitForTimeout(1000);
-      }
 
-      // 验证触摸交互正常工作
-      const buttonAfterTouch = page.getByRole("button", { name: /全量同步|同步中/ });
-      await expect(buttonAfterTouch).toBeVisible();
+        // 使用触摸事件点击按钮
+        const fullSyncButton = page.getByRole("button", { name: /全量同步/ });
+        await expect(fullSyncButton).toBeVisible();
+
+        // 模拟触摸点击
+        const buttonBox = await fullSyncButton.boundingBox();
+        if (buttonBox) {
+          await page.touchscreen.tap(
+            buttonBox.x + buttonBox.width / 2,
+            buttonBox.y + buttonBox.height / 2
+          );
+
+          console.log("触摸点击同步按钮成功");
+          await page.waitForTimeout(1000);
+        }
+
+        // 验证触摸交互正常工作
+        const buttonAfterTouch = page.getByRole("button", { name: /全量同步|同步中/ });
+        await expect(buttonAfterTouch).toBeVisible();
+      } finally {
+        // 确保关闭上下文
+        await context.close();
+      }
     });
   });
 });

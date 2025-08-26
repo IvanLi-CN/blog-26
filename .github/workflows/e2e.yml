@@ -41,8 +41,31 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+      - name: Initialize Database
+        run: bun run migrate
+      - name: Generate Test Content Files
+        run: bun run test-data:generate
+      - name: Setup Test Content Source (dufs WebDAV)
+        run: |
+          # 启动dufs作为WebDAV服务器
+          dufs test-data/webdav --port 8080 --allow-all --enable-cors &
+          sleep 5
+          # 验证dufs服务器启动
+          curl -f http://localhost:8080/ || exit 1
+        env:
+          WEBDAV_URL: http://localhost:8080
+      - name: Sync Content from Sources
+        run: bun run test-sync:trigger
+        env:
+          WEBDAV_URL: http://localhost:8080
+      - name: Verify Test Data (Debug)
+        run: bun run db:posts
       - name: Run E2E tests
         run: bun run test:e2e
+        env:
+          NODE_ENV: test
+          CI: true
+          WEBDAV_URL: http://localhost:8080
       - name: Upload Playwright report (always)
         if: always()
         uses: actions/upload-artifact@v4

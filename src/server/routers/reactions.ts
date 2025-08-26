@@ -4,8 +4,8 @@ import { and, count, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { db } from "../../lib/db";
-import { verifyJwt } from "../../lib/jwt";
 import { reactions, users } from "../../lib/schema";
+import { SESSION_COOKIE_NAME, validateSession } from "../../lib/session";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
 // 输入验证 schemas
@@ -22,20 +22,20 @@ const getReactionsSchema = z.object({
 
 // 用户识别辅助函数
 async function identifyUser(ctx: any): Promise<string | undefined> {
-  // 1. 尝试从 JWT token 获取用户 email
+  // 1. 尝试从 session 获取用户 email
   const cookieHeader = ctx.req.headers.get("cookie");
   if (cookieHeader) {
     const cookies = parseCookies(cookieHeader);
-    const token = cookies.token;
+    const sessionId = cookies[SESSION_COOKIE_NAME];
 
-    if (token) {
+    if (sessionId) {
       try {
-        const payload = await verifyJwt(token);
-        if (typeof payload.email === "string") {
-          return payload.email;
+        const sessionInfo = await validateSession(sessionId);
+        if (sessionInfo) {
+          return sessionInfo.user.email;
         }
       } catch {
-        // Invalid token
+        // Invalid session
       }
     }
   }

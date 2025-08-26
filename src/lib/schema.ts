@@ -78,9 +78,31 @@ export const emailVerificationCodes = sqliteTable("email_verification_codes", {
   expiresAt: integer("expires_at").notNull(), // UNIX timestamp
 });
 
+// Sessions 表 - 基于Session的认证系统
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(), // session_id (UUID)
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  deviceInfo: text("device_info"), // 设备信息 (User-Agent)
+  ipAddress: text("ip_address"), // 登录IP地址
+  expiresAt: integer("expires_at").notNull(), // 过期时间 (UNIX timestamp)
+  createdAt: integer("created_at").notNull(), // 创建时间
+  updatedAt: integer("updated_at").notNull(), // 最后活跃时间
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true), // 是否活跃
+});
+
 // 关系定义
 export const usersRelations = relations(users, ({ many }) => ({
   comments: many(comments),
+  sessions: many(sessions),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
 }));
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({

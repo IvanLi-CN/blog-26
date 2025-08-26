@@ -5,8 +5,13 @@ import { z } from "zod";
 import { getAvatarUrl } from "../../lib/avatar";
 import { verifyCaptcha } from "../../lib/captcha";
 import { db } from "../../lib/db";
-import { signJwt } from "../../lib/jwt";
 import { comments, users } from "../../lib/schema";
+import {
+  createSession,
+  extractDeviceInfo,
+  extractIpAddress,
+  SESSION_COOKIE_NAME,
+} from "../../lib/session";
 import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -270,17 +275,20 @@ export const commentsRouter = createTRPCRouter({
           }
         }
 
-        // 为访客用户创建 JWT token
-        const token = await signJwt({
-          sub: userId,
-          nickname: authorNickname,
-          email: authorEmail,
+        // 为访客用户创建 session
+        const deviceInfo = extractDeviceInfo(ctx.req);
+        const ipAddress = extractIpAddress(ctx.req);
+
+        const session = await createSession({
+          userId,
+          deviceInfo,
+          ipAddress,
         });
 
-        // 设置 cookie（这里需要在响应中处理）
+        // 设置 session cookie
         ctx.resHeaders.set(
           "Set-Cookie",
-          `token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
+          `${SESSION_COOKIE_NAME}=${session.id}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
         );
       }
 
