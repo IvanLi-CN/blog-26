@@ -98,20 +98,9 @@ export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
     mockRequest.headers.set("cookie", cookiePairs.join("; "));
   }
 
-  const { user, isAdmin: userIsAdmin } = await extractAuthFromRequest(mockRequest);
+  const { isAdmin: userIsAdmin } = await extractAuthFromRequest(mockRequest);
 
-  // 在测试环境中，只有当用户邮箱匹配 ADMIN_EMAIL 时才允许管理员权限
-  if (process.env.NODE_ENV === "test") {
-    if (user && user.email === process.env.ADMIN_EMAIL) {
-      console.log("🔧 TEST environment - user is admin:", user.email);
-      return true;
-    } else {
-      console.log("🔧 TEST environment - user is not admin:", user?.email || "no user");
-      return false;
-    }
-  }
-
-  // 生产环境使用正常的权限检查逻辑
+  // 使用统一的权限检查逻辑，不区分环境
   return userIsAdmin;
 }
 
