@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-// 测试用户数据 - 使用现有的管理员用户
+// 测试用户数据 - 使用测试环境的管理员用户
 const TEST_USER = {
-  email: "ivanli2048@gmail.com",
-  name: "Ivan Li",
+  email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+  name: "Test Admin",
 };
 
 test.describe("Session Authentication Complete Tests", () => {

@@ -10,7 +10,7 @@ test.describe("Memos 权限控制", () => {
   test.describe("管理员权限测试", () => {
     test.beforeEach(async ({ page }) => {
       // 使用特权登录接口登录为管理员
-      const adminEmail = process.env.ADMIN_EMAIL || "ivanli2048@gmail.com";
+      const adminEmail = process.env.ADMIN_EMAIL || "admin-test@test.local";
 
       console.log(`🔍 [DEBUG] 尝试使用邮箱登录: ${adminEmail}`);
       console.log(`🔍 [DEBUG] ADMIN_EMAIL环境变量: ${process.env.ADMIN_EMAIL}`);
@@ -25,6 +25,30 @@ test.describe("Memos 权限控制", () => {
 
       expect(response.status()).toBe(200);
       expect(data.success).toBe(true);
+
+      // 提取 session cookie 并设置到浏览器上下文
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+          console.log(`🔍 [DEBUG] 提取到 session ID: ${sessionId.substring(0, 8)}...`);
+
+          // 设置 cookie 到浏览器上下文
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+
+          console.log(`🔧 Session cookie 已设置到浏览器上下文`);
+        }
+      }
 
       console.log(`🔧 管理员登录成功: ${data.user.email}`);
 

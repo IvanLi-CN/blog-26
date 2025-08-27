@@ -16,6 +16,55 @@ test.describe("数据同步管理页面", () => {
     // 设置更长的超时时间
     page.setDefaultTimeout(60000);
 
+    // 使用管理员身份登录
+    const adminEmail = process.env.ADMIN_EMAIL || "admin-test@test.local";
+    console.log(`🔍 [DEBUG] 尝试使用邮箱登录: ${adminEmail}`);
+
+    const response = await page.request.post("/api/dev/login", {
+      data: { email: adminEmail },
+    });
+
+    console.log(`🔍 [DEBUG] 登录响应状态: ${response.status()}`);
+    const data = await response.json();
+    console.log(`🔍 [DEBUG] 登录响应数据:`, data);
+
+    expect(response.status()).toBe(200);
+    expect(data.success).toBe(true);
+
+    // 提取 session cookie 并设置到浏览器上下文
+    const setCookieHeader = response.headers()["set-cookie"];
+    if (setCookieHeader) {
+      const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+      if (sessionCookieMatch) {
+        const sessionId = sessionCookieMatch[1];
+        console.log(`🔍 [DEBUG] 提取到 session ID: ${sessionId.substring(0, 8)}...`);
+
+        // 设置 cookie 到浏览器上下文
+        await page.context().addCookies([
+          {
+            name: "session_id",
+            value: sessionId,
+            domain: "localhost",
+            path: "/",
+            httpOnly: true,
+            sameSite: "Lax",
+          },
+        ]);
+
+        console.log(`🔧 Session cookie 已设置到浏览器上下文`);
+      }
+    }
+
+    console.log(`🔧 管理员登录成功: ${data.user.email}`);
+
+    // 添加调试：检查认证状态
+    console.log(`🔍 [DEBUG] 检查认证状态...`);
+    const authResponse = await page.request.get("/api/test/env");
+    if (authResponse.ok()) {
+      const envData = await authResponse.json();
+      console.log(`🔍 [DEBUG] 服务端环境变量:`, envData);
+    }
+
     try {
       // 访问数据同步管理页面
       await page.goto("/admin/data-sync", {

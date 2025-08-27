@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 interface AdminLoginFormProps {
   luosimaoSiteKey?: string;
@@ -9,6 +9,8 @@ interface AdminLoginFormProps {
 
 export default function AdminLoginForm(_props: AdminLoginFormProps) {
   const router = useRouter();
+  const emailId = useId();
+  const codeId = useId();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -119,11 +121,11 @@ export default function AdminLoginForm(_props: AdminLoginFormProps) {
               /* 邮箱输入阶段 */
               <form onSubmit={handleEmailSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="email" className="label pb-1">
+                  <label htmlFor={emailId} className="label pb-1">
                     <span className="label-text font-medium">邮箱地址</span>
                   </label>
                   <input
-                    id={`email-${Math.random().toString(36).slice(2)}`}
+                    id={emailId}
                     name="email"
                     type="email"
                     required
@@ -169,11 +171,11 @@ export default function AdminLoginForm(_props: AdminLoginFormProps) {
               /* 验证码输入阶段 */
               <form onSubmit={handleCodeSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="code" className="label pb-1">
+                  <label htmlFor={codeId} className="label pb-1">
                     <span className="label-text font-medium">验证码</span>
                   </label>
                   <input
-                    id={`code-${Math.random().toString(36).slice(2)}`}
+                    id={codeId}
                     name="code"
                     type="text"
                     required
