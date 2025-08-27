@@ -252,6 +252,35 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("应该正确处理直接URL访问", async ({ page }) => {
+      // 使用管理员身份登录
+      const response = await page.request.post("/api/dev/login", {
+        data: {
+          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+          password: "test-password",
+        },
+      });
+
+      expect(response.ok()).toBeTruthy();
+
+      // 提取并设置 session cookie
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
+
       // 直接访问数据同步页面URL
       await page.goto("/admin/data-sync");
       await page.waitForLoadState("domcontentloaded");
@@ -265,6 +294,35 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("应该正确处理页面刷新", async ({ page }) => {
+      // 使用管理员身份登录
+      const response = await page.request.post("/api/dev/login", {
+        data: {
+          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+          password: "test-password",
+        },
+      });
+
+      expect(response.ok()).toBeTruthy();
+
+      // 提取并设置 session cookie
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
+
       // 访问页面
       await page.goto("/admin/data-sync");
       await page.waitForLoadState("domcontentloaded");
@@ -313,6 +371,35 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("应该正确处理网络错误", async ({ page }) => {
+      // 使用管理员身份登录
+      const response = await page.request.post("/api/dev/login", {
+        data: {
+          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+          password: "test-password",
+        },
+      });
+
+      expect(response.ok()).toBeTruthy();
+
+      // 提取并设置 session cookie
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
+
       // 访问页面
       await page.goto("/admin/data-sync");
       await page.waitForLoadState("domcontentloaded");

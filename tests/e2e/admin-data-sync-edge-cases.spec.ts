@@ -13,6 +13,35 @@ import { expect, test } from "@playwright/test";
 
 test.describe("数据同步管理页面边界情况测试", () => {
   test.beforeEach(async ({ page }) => {
+    // 使用管理员身份登录
+    const response = await page.request.post("/api/dev/login", {
+      data: {
+        email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+        password: "test-password",
+      },
+    });
+
+    expect(response.ok()).toBeTruthy();
+
+    // 提取并设置 session cookie
+    const setCookieHeader = response.headers()["set-cookie"];
+    if (setCookieHeader) {
+      const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+      if (sessionCookieMatch) {
+        const sessionId = sessionCookieMatch[1];
+        await page.context().addCookies([
+          {
+            name: "session_id",
+            value: sessionId,
+            domain: "localhost",
+            path: "/",
+            httpOnly: true,
+            sameSite: "Lax",
+          },
+        ]);
+      }
+    }
+
     await page.goto("/admin/data-sync");
     await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(1000);
