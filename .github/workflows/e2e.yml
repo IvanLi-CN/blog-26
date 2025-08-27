@@ -54,15 +54,11 @@ jobs:
         run: bun run migrate
       - name: Generate Test Content Files
         run: bun run test-data:generate
-      - name: Setup Test Content Source (dufs WebDAV)
+      - name: Wait for dufs installation
         run: |
-          # 启动dufs作为WebDAV服务器
-          dufs test-data/webdav --port 8080 --allow-all --enable-cors &
-          sleep 5
-          # 验证dufs服务器启动
-          curl -f http://localhost:8080/ || exit 1
-        env:
-          WEBDAV_URL: http://localhost:8080
+          # 确保dufs已安装并可用
+          which dufs || exit 1
+          echo "dufs is available at: $(which dufs)"
       - name: Sync Content from Sources
         run: bun run test-sync:trigger
         env:

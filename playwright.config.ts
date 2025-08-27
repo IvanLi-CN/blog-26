@@ -61,15 +61,25 @@ export default defineConfig({
   ],
 
   // E2E 测试服务器配置
-  webServer: {
-    command:
-      "NODE_ENV=test ADMIN_EMAIL=ivanli2048@gmail.com bun --bun next dev --turbopack --port 3001",
-    url: process.env.BASE_URL || "http://localhost:3001",
-    reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
-    timeout: 120 * 1000, // 2分钟启动超时
-    env: {
-      NODE_ENV: "test",
-      ADMIN_EMAIL: "ivanli2048@gmail.com", // 测试环境管理员邮箱
+  webServer: [
+    // Next.js 应用服务器
+    {
+      command:
+        "NODE_ENV=test ADMIN_EMAIL=ivanli2048@gmail.com bun --bun next dev --turbopack --port 3001",
+      url: process.env.BASE_URL || "http://localhost:3001",
+      reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
+      timeout: 120 * 1000, // 2分钟启动超时
+      env: {
+        NODE_ENV: "test",
+        ADMIN_EMAIL: "ivanli2048@gmail.com", // 测试环境管理员邮箱
+      },
     },
-  },
+    // dufs WebDAV 服务器
+    {
+      command: "dufs test-data/webdav --port 8080 --allow-all --enable-cors",
+      url: "http://localhost:8080",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30 * 1000, // 30秒启动超时
+    },
+  ],
 });
