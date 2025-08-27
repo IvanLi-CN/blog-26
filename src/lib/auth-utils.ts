@@ -46,18 +46,7 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
   }
 
   // 2. 检查是否为管理员（从 Traefik headers 或配置）
-  let remoteEmail = request.headers.get("Remote-Email");
-
-  // 检查是否为测试模式下的非管理员请求
-  const isNonAdminTest =
-    request.headers.get("X-Test-Mode") === "non-admin" ||
-    request.headers.get("X-Admin-Override") === "false";
-
-  // 在开发环境中，如果设置了ADMIN_MODE环境变量，模拟管理员邮箱头
-  // 但如果是非管理员测试模式，则跳过这个逻辑
-  if (process.env.ADMIN_MODE === "true" && !remoteEmail && !isNonAdminTest) {
-    remoteEmail = process.env.ADMIN_EMAIL || "ivanli2048@gmail.com";
-  }
+  const remoteEmail = request.headers.get("Remote-Email");
 
   // 如果有 Traefik 传递的邮箱信息，检查是否为管理员
   if (remoteEmail) {

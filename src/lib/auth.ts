@@ -80,21 +80,6 @@ export async function isAdminFromCookies(): Promise<boolean> {
  * 使用统一的认证逻辑
  */
 export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
-  // 在开发环境中，如果设置了ADMIN_MODE环境变量，直接返回true
-  console.log("🔍 [AUTH DEBUG] NODE_ENV:", process.env.NODE_ENV);
-  console.log("🔍 [AUTH DEBUG] ADMIN_MODE:", process.env.ADMIN_MODE);
-
-  if (process.env.ADMIN_MODE === "true") {
-    console.log("🔧 ADMIN_MODE enabled - bypassing authentication");
-    return true;
-  }
-
-  // 在测试环境中，也允许绕过权限验证
-  if (process.env.NODE_ENV === "test") {
-    console.log("🧪 TEST environment - bypassing authentication");
-    return true;
-  }
-
   // 创建一个模拟的 Request 对象来复用 auth-utils 的逻辑
   const cookieStore = await cookies();
   const cookiePairs: string[] = [];
@@ -113,8 +98,21 @@ export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
     mockRequest.headers.set("cookie", cookiePairs.join("; "));
   }
 
-  const { isAdmin } = await extractAuthFromRequest(mockRequest);
-  return isAdmin;
+  const { user, isAdmin: userIsAdmin } = await extractAuthFromRequest(mockRequest);
+
+  // 在测试环境中，只有当用户邮箱匹配 ADMIN_EMAIL 时才允许管理员权限
+  if (process.env.NODE_ENV === "test") {
+    if (user && user.email === process.env.ADMIN_EMAIL) {
+      console.log("🔧 TEST environment - user is admin:", user.email);
+      return true;
+    } else {
+      console.log("🔧 TEST environment - user is not admin:", user?.email || "no user");
+      return false;
+    }
+  }
+
+  // 生产环境使用正常的权限检查逻辑
+  return userIsAdmin;
 }
 
 /**

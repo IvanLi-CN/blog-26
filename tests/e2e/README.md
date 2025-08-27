@@ -99,7 +99,7 @@ npx playwright test e2e/admin-data-sync*.spec.ts --reporter=html
 ### 环境变量
 测试运行时会自动设置以下环境变量：
 - `NODE_ENV=test` - 测试环境标识
-- `ADMIN_MODE=true` - 绕过权限验证
+- `ADMIN_EMAIL=admin-test@test.local` - 测试环境管理员邮箱
 
 ### 测试数据
 - 测试环境会自动生成测试数据

@@ -26,15 +26,14 @@
 // 修复前
 ADMIN_EMAIL: "ivanli2048@gmail.com"
 
-// 修复后  
+// 修复后
 ADMIN_EMAIL: "admin-test@test.local"
-ADMIN_MODE: "true"
 ```
 
 ### 2. 测试环境配置
 **文件**: `.env.test` (新建)
 - 专门为测试环境设置正确的环境变量
-- 确保 `NODE_ENV=test`, `ADMIN_EMAIL=admin-test@test.local`, `ADMIN_MODE=true`
+- 确保 `NODE_ENV=test`, `ADMIN_EMAIL=admin-test@test.local`
 
 ### 3. Cookie 共享机制实现
 **文件**: `tests/e2e/admin-data-sync.spec.ts`, `tests/e2e/memos-permissions.spec.ts`
@@ -61,7 +60,6 @@ if (setCookieHeader) {
 ```yaml
 env:
   ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
-  ADMIN_MODE: true  # 新增
 ```
 
 ### 5. React 水合错误修复

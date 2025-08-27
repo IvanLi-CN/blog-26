@@ -12,7 +12,35 @@ import { expect, test } from "@playwright/test";
 test.describe("数据同步管理页面权限验证", () => {
   test.describe("管理员权限测试", () => {
     test("管理员用户应该能够正常访问页面", async ({ page }) => {
-      // 在测试环境中，ADMIN_MODE=true 应该允许访问
+      // 使用管理员身份登录
+      const response = await page.request.post("/api/dev/login", {
+        data: {
+          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+          password: "test-password",
+        },
+      });
+
+      expect(response.ok()).toBeTruthy();
+
+      // 提取并设置 session cookie
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
+
       await page.goto("/admin/data-sync");
 
       // 等待页面加载
@@ -28,6 +56,35 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("管理员用户应该能够访问所有功能", async ({ page }) => {
+      // 使用管理员身份登录
+      const response = await page.request.post("/api/dev/login", {
+        data: {
+          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+          password: "test-password",
+        },
+      });
+
+      expect(response.ok()).toBeTruthy();
+
+      // 提取并设置 session cookie
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
+
       await page.goto("/admin/data-sync");
       await page.waitForLoadState("domcontentloaded");
       await page.waitForTimeout(2000);
@@ -56,24 +113,37 @@ test.describe("数据同步管理页面权限验证", () => {
     });
   });
 
-  test.describe("权限绕过机制测试", () => {
-    test("测试环境应该正确设置ADMIN_MODE", async ({ page }) => {
-      // 访问管理员页面
-      await page.goto("/admin/data-sync");
-      await page.waitForLoadState("domcontentloaded");
+  test.describe("管理员页面导航测试", () => {
+    test("管理员应该能够访问所有管理页面", async ({ page }) => {
+      // 使用管理员身份登录
+      const response = await page.request.post("/api/dev/login", {
+        data: {
+          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
+          password: "test-password",
+        },
+      });
 
-      // 在测试环境中，应该能够直接访问而不被重定向到登录页
-      const currentUrl = page.url();
-      expect(currentUrl).toContain("/admin/data-sync");
-      expect(currentUrl).not.toContain("/admin-login");
-      expect(currentUrl).not.toContain("/login");
+      expect(response.ok()).toBeTruthy();
 
-      // 验证页面内容正常显示
-      const pageTitle = page.locator("h1");
-      await expect(pageTitle).toBeVisible({ timeout: 15000 });
-    });
+      // 提取并设置 session cookie
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
 
-    test("应该能够访问其他管理员页面", async ({ page }) => {
       // 测试访问管理员仪表盘
       await page.goto("/admin/dashboard");
       await page.waitForLoadState("domcontentloaded");

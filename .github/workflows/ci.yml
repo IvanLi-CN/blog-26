@@ -24,7 +24,6 @@ env:
   IMAGE_NAME: Ivan/blog-astrowind
   # E2E 测试环境变量
   NODE_ENV: test
-  ADMIN_MODE: true
   JWT_SECRET: test-jwt-secret-key-for-testing-only-32-chars
   ADMIN_EMAIL: admin@test.com
   DB_PATH: ':memory:'

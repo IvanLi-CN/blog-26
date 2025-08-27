@@ -17,7 +17,6 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({
       NODE_ENV: process.env.NODE_ENV,
       ADMIN_EMAIL: process.env.ADMIN_EMAIL,
-      ADMIN_MODE: process.env.ADMIN_MODE,
     });
   } catch (error) {
     console.error("Get env error:", error);

@@ -33,8 +33,8 @@
     "bun": "^1.0.0"
   },
   "scripts": {
-    "dev": "concurrently --names \"WebDAV,Next.js\" --prefix-colors \"cyan,magenta\" \"bun run webdav:dev\" \"ADMIN_MODE=true bun --bun next dev --turbopack\"",
-    "dev:next": "ADMIN_MODE=true bun --bun next dev --turbopack",
+    "dev": "concurrently --names \"WebDAV,Next.js\" --prefix-colors \"cyan,magenta\" \"bun run webdav:dev\" \"bun --bun next dev --turbopack\"",
+    "dev:next": "bun --bun next dev --turbopack",
     "dev:prod": "bun --bun next dev --turbopack",
     "build": "bun run prebuild && bun --bun next build",
     "prebuild": "bun scripts/generate-version.ts",
