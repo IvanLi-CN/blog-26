@@ -6,6 +6,7 @@
  * 集成所有子组件，统一状态管理
  */
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -33,6 +34,11 @@ export function MemosApp({
   publicOnly = true,
   className,
 }: MemosAppProps) {
+  // 获取URL搜索参数
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+  const initialTag = searchParams.get("tag") || "";
+
   // 状态管理
   const [editingMemo, setEditingMemo] = useState<MemoCardData | null>(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -52,6 +58,8 @@ export function MemosApp({
   } = useMemos({
     limit: 20,
     publicOnly,
+    initialSearch,
+    initialTag,
   });
 
   // 编辑器管理

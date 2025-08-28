@@ -100,16 +100,23 @@ test.describe("数据同步管理页面权限验证", () => {
       // 等待响应，验证没有权限错误
       await page.waitForTimeout(1000);
 
-      // 检查是否有权限相关的错误信息
-      const errorMessages = page.locator("text=/权限|授权|登录|403|401/");
-      const errorCount = await errorMessages.count();
+      // 检查是否有真正的权限错误信息（更精确的检查）
+      const criticalErrorMessages = page.locator(
+        "text=/权限不足|访问被拒绝|未授权|403 Forbidden|401 Unauthorized|需要登录/"
+      );
+      const criticalErrorCount = await criticalErrorMessages.count();
 
-      if (errorCount > 0) {
-        const errorText = await errorMessages.first().textContent();
-        console.log("发现可能的权限错误:", errorText);
+      if (criticalErrorCount > 0) {
+        const errorText = await criticalErrorMessages.first().textContent();
+        console.log("发现权限错误:", errorText);
         // 在测试环境中不应该有权限错误
-        expect(errorCount).toBe(0);
+        expect(criticalErrorCount).toBe(0);
       }
+
+      // 检查页面是否被重定向到登录页面
+      const currentUrl = page.url();
+      expect(currentUrl).not.toContain("/admin-login");
+      expect(currentUrl).not.toContain("/login");
     });
   });
 

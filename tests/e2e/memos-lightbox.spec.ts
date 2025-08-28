@@ -69,39 +69,6 @@ test.describe("闪念列表页图片灯箱功能", () => {
     });
   });
 
-  test.skip("图片灯箱功能应该正常工作", async () => {
-    // 跳过此测试，因为测试环境中没有包含图片的memo数据
-    console.log("跳过图片灯箱测试 - 测试环境数据不完整");
-  });
-
-  test("图片点击不应该触发页面跳转", async ({ page }) => {
-    // 记录当前 URL
-    const currentUrl = page.url();
-
-    // 查找包含图片的 memo 卡片
-    const imageInCard = page.locator('img[data-lightbox="true"]').first();
-
-    // 如果没有图片，跳过测试
-    const imageCount = await imageInCard.count();
-    if (imageCount === 0) {
-      test.skip("没有找到包含图片的 memo 卡片");
-      return;
-    }
-
-    // 点击图片
-    await imageInCard.click();
-
-    // 等待一下确保没有导航发生
-    await page.waitForTimeout(1000);
-
-    // URL 应该保持不变
-    expect(page.url()).toBe(currentUrl);
-
-    // 但是灯箱应该打开
-    const hintText = page.locator("text=按 ESC 键或点击背景关闭");
-    await expect(hintText).toBeVisible({ timeout: 5000 });
-  });
-
   test("卡片内容区域点击不应该触发跳转", async ({ page }) => {
     // 记录当前 URL
     const currentUrl = page.url();
@@ -115,38 +82,6 @@ test.describe("闪念列表页图片灯箱功能", () => {
 
     // URL 应该保持不变
     expect(page.url()).toBe(currentUrl);
-  });
-
-  test("在详情页中图片灯箱也应该正常工作", async ({ page }) => {
-    // 先跳转到详情页
-    const detailLink = page.locator('[aria-label*="查看详情"]').first();
-    await detailLink.click();
-    await page.waitForLoadState("domcontentloaded");
-
-    // 查找详情页中的图片
-    const imageInDetail = page.locator('img[data-lightbox="true"]').first();
-
-    // 如果没有图片，跳过测试
-    const imageCount = await imageInDetail.count();
-    if (imageCount === 0) {
-      test.skip("详情页中没有找到图片");
-      return;
-    }
-
-    // 点击图片
-    await imageInDetail.click();
-
-    // 等待灯箱出现
-    const hintText = page.locator("text=按 ESC 键或点击背景关闭");
-    await expect(hintText).toBeVisible({ timeout: 5000 });
-
-    // 验证关闭按钮存在
-    const closeButton = page.getByRole("button", { name: "关闭图片预览" });
-    await expect(closeButton).toBeVisible();
-
-    // 测试 ESC 键关闭灯箱
-    await page.keyboard.press("Escape");
-    await expect(hintText).not.toBeVisible();
   });
 
   test("移动端适配测试", async ({ page }) => {
@@ -209,14 +144,157 @@ test.describe("闪念列表页图片灯箱功能", () => {
     expect(newUrl).not.toBe(currentUrl);
   });
 
+  test("图片灯箱功能应该正常工作", async ({ page }) => {
+    console.log("✅ 使用测试数据中已存在的包含图片的memo");
+
+    // 访问memos页面，搜索包含图片的Docker memo
+    await page.goto("/memos?search=Docker");
+    await page.waitForLoadState("networkidle");
+
+    // 等待数据加载
+    await page.waitForTimeout(3000);
+
+    // 调试：检查页面上所有的图片元素
+    const allImages = await page.locator("img").all();
+    console.log(`🔍 页面上找到 ${allImages.length} 个图片元素`);
+
+    for (let i = 0; i < allImages.length; i++) {
+      const img = allImages[i];
+      const src = await img.getAttribute("src");
+      const dataLightbox = await img.getAttribute("data-lightbox");
+      const alt = await img.getAttribute("alt");
+      console.log(`🔍 图片 ${i + 1}: src="${src}", data-lightbox="${dataLightbox}", alt="${alt}"`);
+    }
+
+    // 调试：检查页面HTML内容
+    const pageContent = await page.content();
+    const hasImageTag = pageContent.includes("<img");
+    const hasDataLightbox = pageContent.includes("data-lightbox");
+    console.log(`🔍 页面HTML包含<img>标签: ${hasImageTag}`);
+    console.log(`🔍 页面HTML包含data-lightbox: ${hasDataLightbox}`);
+
+    // 如果找不到图片，先检查是否有任何图片或按钮
+    const anyImageCount = await page.locator("img").count();
+    const anyButtonCount = await page.locator("button").count();
+    console.log(`🔍 页面上图片总数: ${anyImageCount}`);
+    console.log(`🔍 页面上按钮总数: ${anyButtonCount}`);
+
+    if (anyImageCount === 0) {
+      console.log(`🔍 页面上没有找到任何图片，检查是否渲染为按钮`);
+      // 检查是否有图片相关的按钮
+      const imageButtons = await page
+        .locator('button:has-text("Logo"), button:has-text("图片"), button[aria-label*="图"]')
+        .count();
+      console.log(`🔍 页面上图片相关按钮总数: ${imageButtons}`);
+      // 截图调试
+      await page.screenshot({ path: "debug-no-images.png", fullPage: true });
+    }
+
+    // 查找包含图片的 memo 卡片（应该是img标签）
+    const imageInCard = page.locator('img[data-lightbox="true"]').first();
+
+    // 等待图片加载
+    await expect(imageInCard).toBeVisible({ timeout: 10000 });
+
+    // 检查图片属性
+    const enableLightbox = await imageInCard.getAttribute("data-lightbox");
+    const imageSrc = await imageInCard.getAttribute("src");
+    console.log(`图片属性: data-lightbox="${enableLightbox}", src="${imageSrc}"`);
+
+    // 点击图片打开灯箱
+    await imageInCard.click();
+
+    // 等待一下让状态更新
+    await page.waitForTimeout(1000);
+
+    // 检查是否有灯箱遮罩出现
+    const lightboxOverlay = page.locator(".fixed.inset-0.z-50");
+    const overlayCount = await lightboxOverlay.count();
+    console.log(`灯箱遮罩数量: ${overlayCount}`);
+
+    // 验证灯箱打开
+    const hintText = page.locator("text=按 ESC 键或点击背景关闭");
+    await expect(hintText).toBeVisible({ timeout: 5000 });
+
+    // 关闭灯箱
+    await page.keyboard.press("Escape");
+    await expect(hintText).not.toBeVisible();
+  });
+
+  test("图片点击不应该触发页面跳转", async ({ page }) => {
+    console.log("✅ 使用测试数据中已存在的包含图片的memo");
+
+    // 访问memos页面，搜索包含图片的Docker memo
+    await page.goto("/memos?search=Docker");
+    await page.waitForLoadState("networkidle");
+
+    // 记录当前 URL
+    const currentUrl = page.url();
+
+    // 查找包含图片的 memo 卡片
+    const imageInCard = page.locator('img[data-lightbox="true"]').first();
+
+    // 等待图片加载
+    await expect(imageInCard).toBeVisible({ timeout: 10000 });
+
+    // 点击图片
+    await imageInCard.click();
+
+    // 等待一下确保没有导航发生
+    await page.waitForTimeout(1000);
+
+    // URL 应该保持不变
+    expect(page.url()).toBe(currentUrl);
+
+    // 但是灯箱应该打开
+    const hintText = page.locator("text=按 ESC 键或点击背景关闭");
+    await expect(hintText).toBeVisible({ timeout: 5000 });
+  });
+
+  test("在详情页中图片灯箱也应该正常工作", async ({ page }) => {
+    console.log("✅ 使用测试数据中已存在的包含图片的memo");
+
+    // 访问memos页面，搜索包含图片的Docker memo
+    await page.goto("/memos?search=Docker");
+    await page.waitForLoadState("networkidle");
+
+    // 先跳转到详情页
+    const detailLink = page.locator('[aria-label*="查看详情"]').first();
+    await detailLink.click();
+    await page.waitForLoadState("domcontentloaded");
+
+    // 查找详情页中的图片
+    const imageInDetail = page.locator('img[data-lightbox="true"]').first();
+
+    // 等待图片加载
+    await expect(imageInDetail).toBeVisible({ timeout: 10000 });
+
+    // 点击图片
+    await imageInDetail.click();
+
+    // 等待灯箱出现
+    const hintText = page.locator("text=按 ESC 键或点击背景关闭");
+    await expect(hintText).toBeVisible({ timeout: 5000 });
+
+    // 关闭灯箱
+    await page.keyboard.press("Escape");
+    await expect(hintText).not.toBeVisible();
+  });
+
   test("多个图片的灯箱导航", async ({ page }) => {
-    // 查找包含多个图片的 memo（如果存在）
+    console.log("✅ 使用测试数据中已存在的包含多个图片的memo");
+
+    // 访问memos页面，搜索包含多个图片的Docker memo
+    await page.goto("/memos?search=Docker");
+    await page.waitForLoadState("networkidle");
+
+    // 查找包含多个图片的 memo
     const images = page.locator('img[data-lightbox="true"]');
     const imageCount = await images.count();
 
     if (imageCount < 2) {
-      test.skip("没有找到包含多个图片的 memo");
-      return;
+      console.log(`⚠️ 只找到 ${imageCount} 个图片，但测试需要至少2个图片`);
+      // 不跳过测试，而是使用现有的图片进行基本测试
     }
 
     // 点击第一个图片
@@ -228,11 +306,16 @@ test.describe("闪念列表页图片灯箱功能", () => {
 
     // 如果有导航按钮，测试图片切换（当前实现可能没有导航功能）
     const nextButton = page.locator('button[aria-label*="下一张"]');
-    const _prevButton = page.locator('button[aria-label*="上一张"]');
+    const prevButton = page.locator('button[aria-label*="上一张"]');
 
     if ((await nextButton.count()) > 0) {
       await nextButton.click();
       // 验证图片已切换（这里可以检查图片 src 或其他标识）
+    }
+
+    if ((await prevButton.count()) > 0) {
+      await prevButton.click();
+      // 验证可以返回上一张图片
     }
 
     // 关闭灯箱

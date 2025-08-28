@@ -98,10 +98,18 @@ class TestContentSyncTrigger {
     await manager.registerSource(localSource);
     this.log("✅ 本地测试内容源注册成功");
 
+    // 注册本地WebDAV测试目录作为内容源（包含图片的memo）
+    const webdavLocalConfig = LocalContentSource.createDefaultConfig("webdav-local-test", 100, {
+      contentPath: resolve("./test-data/webdav"),
+    });
+    const webdavLocalSource = new LocalContentSource(webdavLocalConfig);
+    await manager.registerSource(webdavLocalSource);
+    this.log("✅ 本地WebDAV测试内容源注册成功");
+
     // 如果 WebDAV 可用，注册 WebDAV 内容源（测试数据）
     if (isWebDAVEnabled()) {
       try {
-        const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav-test", 100);
+        const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav-test", 200);
         // 使用测试环境的路径映射（注意：必须是数组格式）
         webdavConfig.options.pathMappings = {
           posts: ["/blog"],
@@ -115,7 +123,7 @@ class TestContentSyncTrigger {
         this.log(`⚠️ WebDAV 测试内容源注册失败: ${error}`, "warn");
       }
     } else {
-      this.log("⚠️ WebDAV 未启用，跳过 WebDAV 内容源注册", "warn");
+      this.log("⚠️ WebDAV 未启用，但已注册本地WebDAV测试目录", "warn");
     }
   }
 

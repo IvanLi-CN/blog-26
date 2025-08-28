@@ -33,7 +33,7 @@ export default defineConfig({
   // 全局测试配置
   use: {
     // 基础URL - 使用环境变量或默认端口
-    baseURL: process.env.BASE_URL || "http://localhost:3001",
+    baseURL: process.env.BASE_URL || "http://localhost:3000",
 
     // 浏览器配置
     headless: process.env.HEADLESS !== "false",
@@ -65,8 +65,8 @@ export default defineConfig({
     // Next.js 应用服务器
     {
       command:
-        "NODE_ENV=test ADMIN_EMAIL=admin-test@test.local bun --bun next dev --turbopack --port 3001",
-      url: process.env.BASE_URL || "http://localhost:3001",
+        "NODE_ENV=test ADMIN_EMAIL=admin-test@test.local bun --bun next dev --turbopack --port 3000",
+      url: process.env.BASE_URL || "http://localhost:3000",
       reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
       timeout: 120 * 1000, // 2分钟启动超时
       env: {
