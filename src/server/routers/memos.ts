@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
+import { getContentSourceManager } from "../../lib/content-sources";
 import { WebDAVContentSource } from "../../lib/content-sources/webdav";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
@@ -24,6 +25,88 @@ function createWebDAVSource(): WebDAVContentSource {
       pathMappings: WEBDAV_PATH_MAPPINGS,
     },
   });
+}
+
+/**
+ * 确保内容源已注册
+ */
+async function ensureContentSourcesRegistered(manager: any): Promise<void> {
+  try {
+    // 检查是否已有注册的内容源
+    const sourcesStatus = await manager.getAllSourcesStatus();
+    if (sourcesStatus.length > 0) {
+      console.log(`🔍 [memo-sync] 发现 ${sourcesStatus.length} 个已注册的内容源`);
+      return;
+    }
+
+    console.log("🔧 [memo-sync] 注册内容源...");
+
+    // 注册WebDAV内容源
+    const webdavSource = createWebDAVSource();
+    await manager.registerSource(webdavSource);
+
+    console.log("✅ [memo-sync] WebDAV内容源注册成功");
+  } catch (error) {
+    console.error("⚠️ [memo-sync] 内容源注册失败:", error);
+    // 注册失败不应该阻止同步尝试，让同步函数自己处理
+  }
+}
+
+/**
+ * 触发增量数据同步并等待完成
+ */
+async function triggerIncrementalSync(): Promise<void> {
+  try {
+    console.log("🔄 [memo-sync] 开始触发增量数据同步...");
+
+    const manager = getContentSourceManager({
+      maxConcurrentSyncs: 2,
+      syncTimeout: 30000, // 30秒超时
+      enableTransactions: true,
+      conflictResolution: "priority",
+    });
+
+    // 确保内容源已注册
+    await ensureContentSourcesRegistered(manager);
+
+    // 检查是否有正在进行的同步
+    const currentSync = manager.getCurrentSyncProgress();
+    if (currentSync && currentSync.status === "running") {
+      console.log("⏳ [memo-sync] 检测到正在进行的同步，等待完成...");
+
+      // 等待当前同步完成，最多等待30秒
+      const maxWaitTime = 30000;
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < maxWaitTime) {
+        const progress = manager.getCurrentSyncProgress();
+        if (!progress || progress.status !== "running") {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500)); // 等待500ms后重试
+      }
+
+      // 检查是否超时
+      const finalProgress = manager.getCurrentSyncProgress();
+      if (finalProgress && finalProgress.status === "running") {
+        throw new Error("等待现有同步完成超时");
+      }
+    }
+
+    // 执行增量同步
+    const result = await manager.syncAll();
+
+    if (result.success) {
+      console.log(`✅ [memo-sync] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+    } else {
+      const errorMessages = result.errors.map((e) => e.message).join(", ");
+      throw new Error(`增量同步失败: ${errorMessages}`);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("❌ [memo-sync] 增量同步失败:", errorMessage);
+    throw new Error(`增量数据同步失败: ${errorMessage}`);
+  }
 }
 
 // ============================================================================
@@ -345,6 +428,18 @@ export const memosRouter = router({
 
       console.log("🔍 [memos.create] 数据库插入完成");
 
+      // 触发增量数据同步
+      try {
+        console.log("🔄 [memos.create] 开始增量数据同步...");
+        await triggerIncrementalSync();
+        console.log("✅ [memos.create] 增量数据同步完成");
+      } catch (syncError) {
+        // 同步失败不应该影响memo创建的成功响应，但需要记录错误
+        console.error("⚠️ [memos.create] 增量数据同步失败:", syncError);
+        // 注意：这里我们选择不抛出错误，因为memo已经成功创建
+        // 如果需要严格的数据一致性，可以考虑回滚操作
+      }
+
       return {
         id: memoData.id,
         slug: memoData.slug,
@@ -418,6 +513,17 @@ export const memosRouter = router({
 
       await webdavSource.dispose();
 
+      // 触发增量数据同步
+      try {
+        console.log("🔄 [memos.update] 开始增量数据同步...");
+        await triggerIncrementalSync();
+        console.log("✅ [memos.update] 增量数据同步完成");
+      } catch (syncError) {
+        // 同步失败不应该影响memo更新的成功响应，但需要记录错误
+        console.error("⚠️ [memos.update] 增量数据同步失败:", syncError);
+        // 注意：这里我们选择不抛出错误，因为memo已经成功更新
+      }
+
       return {
         id,
         slug: existingMemo.slug,
@@ -472,6 +578,17 @@ export const memosRouter = router({
       await db.delete(posts).where(eq(posts.id, id));
 
       await webdavSource.dispose();
+
+      // 触发增量数据同步
+      try {
+        console.log("🔄 [memos.delete] 开始增量数据同步...");
+        await triggerIncrementalSync();
+        console.log("✅ [memos.delete] 增量数据同步完成");
+      } catch (syncError) {
+        // 同步失败不应该影响memo删除的成功响应，但需要记录错误
+        console.error("⚠️ [memos.delete] 增量数据同步失败:", syncError);
+        // 注意：这里我们选择不抛出错误，因为memo已经成功删除
+      }
 
       return { success: true, id };
     } catch (error) {

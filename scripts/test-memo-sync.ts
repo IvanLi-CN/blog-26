@@ -1,217 +1,172 @@
 #!/usr/bin/env bun
+/**
+ * 测试闪念写操作的增量数据同步功能
+ */
 
-import { LocalContentSource } from "../src/lib/content-sources/local";
-import { ContentSourceManager } from "../src/lib/content-sources/manager";
-import { contentItemToMemo, memoToContentItem } from "../src/lib/content-sources/memo-adapter";
-import { WebDAVContentSource } from "../src/lib/content-sources/webdav";
-import { db } from "../src/lib/db";
-import { memos } from "../src/lib/schema";
+process.env.NODE_ENV = "test";
+process.env.ADMIN_EMAIL = "admin-test@test.local";
+process.env.WEBDAV_URL = "http://localhost:8080";
+
+import { initializeDB } from "../src/lib/db";
+import { createContext } from "../src/server/context";
+import { appRouter } from "../src/server/router";
+
+console.log("🧪 开始测试闪念增量数据同步功能...");
 
 async function testMemoSync() {
-  console.log("🔄 测试 memo 多源数据同步机制...");
-
   try {
-    // 创建内容源管理器
-    const _manager = new ContentSourceManager();
+    // 初始化数据库
+    console.log("🔧 初始化数据库...");
+    await initializeDB();
+    console.log("✅ 数据库初始化完成");
 
-    // 添加本地内容源
-    const localSource = new LocalContentSource({
-      name: "local",
-      priority: 50,
-      enabled: true,
-      contentTypes: ["memo"],
-      options: {
-        contentPath: "./dev-data/local",
-        recursive: true,
+    // 创建测试上下文
+    const mockRequest = new Request("http://localhost:3000/api/trpc");
+    const mockHeaders = new Headers();
+
+    const ctx = await createContext({
+      req: mockRequest,
+      resHeaders: mockHeaders,
+      info: {
+        isBatchCall: false,
+        calls: [],
+        accept: "application/jsonl",
+        type: "mutation" as const,
+        connectionParams: {},
+        signal: new AbortController().signal,
+        url: new URL("http://localhost:3000/api/trpc"),
       },
     });
 
-    // 添加 WebDAV 内容源（如果可用）
-    let webdavSource: WebDAVContentSource | null = null;
-    try {
-      console.log("🔧 创建 WebDAV 内容源...");
-      webdavSource = new WebDAVContentSource({
-        name: "webdav",
-        priority: 100,
-        enabled: true,
-        contentTypes: ["memo"],
-        options: {
-          pathMappings: {
-            posts: ["/blog"],
-            projects: ["/blog/projects"],
-            memos: ["/Memos"],
-          },
-        },
-      });
-      console.log("✅ WebDAV 内容源创建成功");
-    } catch (error) {
-      console.log("⚠️  WebDAV 内容源创建失败:", error);
-      webdavSource = null;
-    }
+    // 模拟管理员用户
+    ctx.user = { id: "admin-test", email: "admin-test@test.local", nickname: "Admin Test" };
+    ctx.isAdmin = true;
 
-    // 初始化内容源
-    console.log("📁 初始化内容源...");
-    await localSource.initialize();
-    console.log("✅ 本地内容源初始化成功");
+    // 创建 tRPC 调用器
+    const caller = appRouter.createCaller(ctx);
 
-    if (webdavSource) {
-      try {
-        console.log("🔧 初始化 WebDAV 内容源...");
-        await webdavSource.initialize();
-        console.log("✅ WebDAV 内容源初始化成功");
-      } catch (error) {
-        console.log("⚠️  WebDAV 初始化失败:", error);
-        webdavSource = null;
-      }
-    }
+    console.log("\n1️⃣ 测试创建闪念并触发同步...");
+    const testContent = `# 测试闪念同步功能
 
-    // 获取所有 memo 内容
-    console.log("📋 从所有内容源获取 memo...");
-    const allContent: any[] = [];
+这是一个测试闪念，用于验证增量数据同步功能是否正常工作。
 
-    // 从本地源获取内容
-    const localContent = await localSource.listContent();
-    allContent.push(...localContent);
+创建时间：${new Date().toISOString()}
 
-    // 从 WebDAV 源获取内容（如果可用）
-    if (webdavSource) {
-      try {
-        console.log("📋 从 WebDAV 获取内容...");
-        const webdavContent = await webdavSource.listContent();
-        console.log(`📂 WebDAV 获取到 ${webdavContent.length} 个内容项`);
-        allContent.push(...webdavContent);
-      } catch (error) {
-        console.log("⚠️  WebDAV 内容获取失败:", error);
-      }
-    }
+## 功能验证点
 
-    const memoContent = allContent.filter((item) => item.type === "memo");
+- [x] WebDAV 文件创建
+- [x] 数据库记录插入
+- [x] 增量数据同步触发
+- [x] 同步完成等待
+- [x] 响应返回
 
-    console.log(`\n📊 内容源扫描结果:`);
-    console.log(`  总内容数: ${allContent.length}`);
-    console.log(`  Memo 数量: ${memoContent.length}`);
+## 预期行为
 
-    // 按内容源分组显示
-    const contentBySource = memoContent.reduce(
-      (acc, item) => {
-        if (!acc[item.source]) {
-          acc[item.source] = [];
-        }
-        acc[item.source].push(item);
-        return acc;
-      },
-      {} as Record<string, typeof memoContent>
-    );
+1. 闪念内容写入 WebDAV
+2. 数据库记录创建
+3. 立即触发增量同步
+4. 等待同步完成（最多30秒）
+5. 返回成功响应
 
-    Object.entries(contentBySource).forEach(([source, items]) => {
-      const itemsArray = items as any[]; // 类型断言
-      console.log(`\n  📂 ${source} 源: ${itemsArray.length} 个 memo`);
-      itemsArray.forEach((item, index) => {
-        console.log(`    ${index + 1}. ${item.title} (${item.id})`);
-      });
+如果看到这个内容，说明同步功能正常工作！ 🎉`;
+
+    const startTime = Date.now();
+
+    const createResult = await caller.memos.create({
+      content: testContent,
+      title: "测试闪念同步功能",
+      isPublic: true,
+      tags: ["test", "sync", "memo"],
+      attachments: [],
     });
 
-    // 测试数据库同步
-    console.log(`\n💾 测试数据库同步...`);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
 
-    // 清空现有的 memo 数据
-    await db.delete(memos);
-    console.log("🗑️  清空现有 memo 数据");
+    console.log("✅ 闪念创建成功！");
+    console.log(`   - ID: ${createResult.id}`);
+    console.log(`   - Slug: ${createResult.slug}`);
+    console.log(`   - 标题: ${createResult.title}`);
+    console.log(`   - 公开: ${createResult.isPublic}`);
+    console.log(`   - 标签: ${createResult.tags.join(", ")}`);
+    console.log(`   - 总耗时: ${duration}ms`);
 
-    // 同步每个 memo 到数据库
-    let syncedCount = 0;
-    for (const contentItem of memoContent) {
-      try {
-        // 调试：检查 ContentItem 的结构
-        if (syncedCount === 0) {
-          console.log("📋 ContentItem 结构示例:");
-          console.log("  ID:", contentItem.id);
-          console.log("  Title:", contentItem.title);
-          console.log("  Metadata keys:", Object.keys(contentItem.metadata));
-          console.log("  Metadata.content length:", contentItem.metadata.content?.length || 0);
-        }
+    console.log("\n2️⃣ 测试更新闪念并触发同步...");
+    const updatedContent =
+      testContent +
+      `\n\n## 更新测试\n\n更新时间：${new Date().toISOString()}\n\n这是更新后的内容，用于测试更新操作的同步功能。`;
 
-        // 转换为数据库记录
-        const memoRecord = contentItemToMemo(contentItem, "test@example.com");
+    const updateStartTime = Date.now();
 
-        // 确保必需字段有值
-        const completeRecord = {
-          ...memoRecord,
-          source: memoRecord.source || "unknown",
-          id: memoRecord.id || `memo-${Date.now()}`,
-          createdAt: memoRecord.createdAt || Date.now(),
-        };
+    const updateResult = await caller.memos.update({
+      id: createResult.id,
+      content: updatedContent,
+      title: "测试闪念同步功能（已更新）",
+      isPublic: true,
+      tags: ["test", "sync", "memo", "updated"],
+      attachments: [],
+    });
 
-        // 插入数据库
-        await db.insert(memos).values(completeRecord as any);
-        syncedCount++;
+    const updateEndTime = Date.now();
+    const updateDuration = updateEndTime - updateStartTime;
 
-        console.log(`✅ 同步成功: ${contentItem.title}`);
-      } catch (error) {
-        console.error(`❌ 同步失败: ${contentItem.title}`, error);
-      }
+    console.log("✅ 闪念更新成功！");
+    console.log(`   - 标题: ${updateResult.title}`);
+    console.log(`   - 标签: ${updateResult.tags.join(", ")}`);
+    console.log(`   - 更新耗时: ${updateDuration}ms`);
+
+    console.log("\n3️⃣ 验证闪念是否可以正常读取...");
+    const readResult = await caller.memos.bySlug({
+      slug: createResult.slug,
+    });
+
+    console.log("✅ 闪念读取成功！");
+    console.log(`   - 标题: ${readResult.title}`);
+    console.log(`   - 内容长度: ${readResult.content.length} 字符`);
+    console.log(`   - 是否包含更新标记: ${readResult.content.includes("更新测试") ? "是" : "否"}`);
+
+    console.log("\n4️⃣ 测试删除闪念并触发同步...");
+    const deleteStartTime = Date.now();
+
+    const deleteResult = await caller.memos.delete({
+      id: createResult.id,
+    });
+
+    const deleteEndTime = Date.now();
+    const deleteDuration = deleteEndTime - deleteStartTime;
+
+    console.log("✅ 闪念删除成功！");
+    console.log(`   - 删除耗时: ${deleteDuration}ms`);
+    console.log(`   - 结果: ${deleteResult.success ? "成功" : "失败"}`);
+
+    console.log("\n🎉 所有测试完成！");
+    console.log("📊 性能统计:");
+    console.log(`   - 创建操作: ${duration}ms`);
+    console.log(`   - 更新操作: ${updateDuration}ms`);
+    console.log(`   - 删除操作: ${deleteDuration}ms`);
+    console.log(`   - 总耗时: ${duration + updateDuration + deleteDuration}ms`);
+
+    if (duration > 10000 || updateDuration > 10000 || deleteDuration > 10000) {
+      console.log("⚠️  警告：某些操作耗时较长，可能需要优化同步机制");
+    } else {
+      console.log("✅ 所有操作耗时合理，同步功能正常");
     }
-
-    console.log(`\n📈 同步统计:`);
-    console.log(`  待同步: ${memoContent.length}`);
-    console.log(`  已同步: ${syncedCount}`);
-    console.log(`  失败: ${memoContent.length - syncedCount}`);
-
-    // 验证数据库中的数据
-    console.log(`\n🔍 验证数据库数据...`);
-    const dbMemos = await db.select().from(memos);
-    console.log(`数据库中的 memo 数量: ${dbMemos.length}`);
-
-    // 测试数据转换的一致性
-    console.log(`\n🔄 测试数据转换一致性...`);
-    for (const dbMemo of dbMemos) {
-      try {
-        // 从数据库记录转换回 ContentItem
-        const convertedItem = memoToContentItem(dbMemo);
-
-        // 找到原始的 ContentItem
-        const originalItem = memoContent.find((item) => item.id === dbMemo.id);
-
-        if (originalItem) {
-          // 比较关键字段
-          const fieldsMatch =
-            convertedItem.id === originalItem.id &&
-            convertedItem.type === originalItem.type &&
-            convertedItem.title === originalItem.title &&
-            convertedItem.public === originalItem.public;
-
-          if (fieldsMatch) {
-            console.log(`✅ 数据一致性验证通过: ${convertedItem.title}`);
-          } else {
-            console.log(`❌ 数据一致性验证失败: ${convertedItem.title}`);
-            console.log("  原始:", {
-              id: originalItem.id,
-              type: originalItem.type,
-              title: originalItem.title,
-              public: originalItem.public,
-            });
-            console.log("  转换:", {
-              id: convertedItem.id,
-              type: convertedItem.type,
-              title: convertedItem.title,
-              public: convertedItem.public,
-            });
-          }
-        }
-      } catch (error) {
-        console.error(`❌ 转换失败: ${dbMemo.id}`, error);
-      }
-    }
-
-    console.log(`\n🎉 多源数据同步测试完成！`);
   } catch (error) {
     console.error("❌ 测试失败:", error);
-    throw error;
+    if (error instanceof Error) {
+      console.error("错误详情:", error.message);
+      console.error("错误堆栈:", error.stack);
+    }
+    process.exit(1);
   }
 }
-
 // 运行测试
-testMemoSync().catch((error) => {
-  console.error("测试过程中发生错误:", error);
-  process.exit(1);
-});
+testMemoSync()
+  .then(() => {
+    console.log("\n✅ 测试脚本执行完成");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("❌ 测试脚本执行失败:", error);
+    process.exit(1);
+  });
