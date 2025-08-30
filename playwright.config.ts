@@ -65,13 +65,14 @@ export default defineConfig({
     // Next.js 应用服务器
     {
       command:
-        "NODE_ENV=test ADMIN_EMAIL=admin-test@test.local bun --bun next dev --turbopack --port 3000",
+        "NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test.db bun --bun next dev --turbopack --port 3000",
       url: process.env.BASE_URL || "http://localhost:3000",
       reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
       timeout: 120 * 1000, // 2分钟启动超时
       env: {
         NODE_ENV: "test",
         ADMIN_EMAIL: "admin-test@test.local", // 测试环境管理员邮箱
+        DB_PATH: "./test.db", // 测试数据库路径
       },
     },
     // dufs WebDAV 服务器

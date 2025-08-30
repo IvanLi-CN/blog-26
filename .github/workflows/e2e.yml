@@ -50,22 +50,19 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-      - name: Initialize Database
-        run: bun run migrate
-      - name: Generate Test Content Files
-        run: bun run test-data:generate
+      - name: Prepare Test Environment
+        run: bun run test-env:reset
+        env:
+          WEBDAV_URL: http://localhost:8080
+          ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
+          DB_PATH: ./test.db
       - name: Wait for dufs installation
         run: |
           # 确保dufs已安装并可用
           which dufs || exit 1
           echo "dufs is available at: $(which dufs)"
-      - name: Sync Content from Sources
-        run: bun run test-sync:trigger
-        env:
-          WEBDAV_URL: http://localhost:8080
-          ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
       - name: Verify Test Data (Debug)
-        run: bun run db:posts
+        run: bun run test-db:posts
       - name: Run E2E tests
         run: bun run test:e2e
         env:

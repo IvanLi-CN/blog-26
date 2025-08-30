@@ -382,6 +382,10 @@ export const filesRouter = createTRPCRouter({
    */
   writeFile: adminProcedure.input(writeFileSchema).mutation(async ({ input }) => {
     try {
+      console.log(`📝 [Files API] 开始写入文件: ${input.source}:${input.path}`);
+      console.log(`📝 [Files API] 内容长度: ${input.content.length}`);
+      console.log(`📝 [Files API] 内容预览: ${input.content.substring(0, 200)}...`);
+
       const manager = getContentSourceManager();
       const source = manager.getSource(input.source);
 
@@ -392,16 +396,70 @@ export const filesRouter = createTRPCRouter({
         });
       }
 
-      // 文件写入功能暂未实现
-      throw new TRPCError({
-        code: "NOT_IMPLEMENTED",
-        message: "文件写入功能暂未实现",
-      });
+      // 检查内容源是否支持写入功能
+      if (typeof source.writeFile !== "function") {
+        throw new TRPCError({
+          code: "NOT_IMPLEMENTED",
+          message: `数据源 "${input.source}" 不支持文件写入功能`,
+        });
+      }
+
+      // 调用内容源的写入方法
+      await source.writeFile(input.path, input.content);
+
+      console.log(`✅ [Files API] 文件写入成功: ${input.source}:${input.path}`);
+
+      // 触发增量数据同步
+      console.log("🔄 [Files API] 准备触发增量数据同步...");
+      try {
+        console.log("🔄 [Files API] 开始触发增量数据同步...");
+
+        console.log("🔧 [Files API] 创建同步管理器...");
+        const syncManager = getContentSourceManager({
+          maxConcurrentSyncs: 2,
+          syncTimeout: 30000, // 30秒超时
+          enableTransactions: true,
+          conflictResolution: "priority",
+        });
+        console.log("✅ [Files API] 同步管理器创建成功");
+
+        console.log("🚀 [Files API] 执行 syncAll()...");
+        const result = await syncManager.syncAll();
+        console.log("📊 [Files API] syncAll() 执行完成，结果:", result);
+
+        if (result.success) {
+          console.log(`✅ [Files API] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+        } else {
+          const errorMessages = result.errors.map((e) => e.message).join(", ");
+          console.warn(`⚠️ [Files API] 增量同步失败: ${errorMessages}`);
+        }
+      } catch (syncError) {
+        // 同步失败不应该影响文件写入的成功响应，但需要记录错误
+        console.error("❌ [Files API] 增量数据同步异常:", syncError);
+        console.error(
+          "❌ [Files API] 异常堆栈:",
+          syncError instanceof Error ? syncError.stack : "无堆栈信息"
+        );
+      }
+      console.log("🏁 [Files API] 增量同步流程结束");
+
+      return {
+        success: true,
+        message: "文件写入成功",
+        path: input.path,
+      };
     } catch (error) {
-      console.error("写入文件失败:", error);
+      console.error("❌ [Files API] 写入文件失败:", error);
+
+      // 如果是已知的 TRPCError，直接抛出
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      // 否则包装为通用错误
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "写入文件失败",
+        message: error instanceof Error ? error.message : "写入文件失败",
       });
     }
   }),

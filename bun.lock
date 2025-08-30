@@ -31,7 +31,6 @@
         "@milkdown/utils": "^7.15.3",
         "@next/mdx": "^15.4.6",
         "@playwright/test": "^1.54.1",
-        "@playwright/test": "^1.40.0",
         "@tanstack/react-query": "^5.81.5",
         "@trpc/client": "^11.4.3",
         "@trpc/react-query": "^11.4.3",

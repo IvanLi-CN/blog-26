@@ -15,8 +15,7 @@ test.describe("数据同步管理页面权限验证", () => {
       // 使用管理员身份登录
       const response = await page.request.post("/api/dev/login", {
         data: {
-          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
-          password: "test-password",
+          email: "admin-test@test.local",
         },
       });
 
@@ -59,8 +58,7 @@ test.describe("数据同步管理页面权限验证", () => {
       // 使用管理员身份登录
       const response = await page.request.post("/api/dev/login", {
         data: {
-          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
-          password: "test-password",
+          email: "admin-test@test.local",
         },
       });
 
@@ -125,8 +123,7 @@ test.describe("数据同步管理页面权限验证", () => {
       // 使用管理员身份登录
       const response = await page.request.post("/api/dev/login", {
         data: {
-          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
-          password: "test-password",
+          email: "admin-test@test.local",
         },
       });
 
@@ -262,8 +259,7 @@ test.describe("数据同步管理页面权限验证", () => {
       // 使用管理员身份登录
       const response = await page.request.post("/api/dev/login", {
         data: {
-          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
-          password: "test-password",
+          email: "admin-test@test.local",
         },
       });
 
@@ -304,8 +300,7 @@ test.describe("数据同步管理页面权限验证", () => {
       // 使用管理员身份登录
       const response = await page.request.post("/api/dev/login", {
         data: {
-          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
-          password: "test-password",
+          email: "admin-test@test.local",
         },
       });
 
@@ -381,8 +376,7 @@ test.describe("数据同步管理页面权限验证", () => {
       // 使用管理员身份登录
       const response = await page.request.post("/api/dev/login", {
         data: {
-          email: process.env.ADMIN_EMAIL || "admin-test@test.local",
-          password: "test-password",
+          email: "admin-test@test.local",
         },
       });
 

@@ -446,21 +446,21 @@ This project uses a multi-source content management system that supports both lo
 **One-click Complete Reset**:
 
 ```bash
-# Reset database + Generate test data + Start development environment
-bun run db:reset && bun run test-data:generate && bun run dev
+# Reset database + Generate development data + Start development environment
+bun run dev-db:reset && bun run dev-data:generate && bun run dev
 ```
 
 **Common Scenarios**:
 
 ```bash
-# Reset database only (keep files)
-bun run db:reset
+# Reset development database only (keep files)
+bun run dev-db:reset
 
 # Regenerate test data only
 bun run test-data:clean && bun run test-data:generate
 
-# Check environment status
-bun run db:check && bun run webdav:check
+# Check development environment status
+bun run dev-db:check && bun run webdav:check
 
 # Start complete development environment (WebDAV + Next.js)
 bun run dev
@@ -505,8 +505,8 @@ bun run migrate
 # 3. Populate seed data
 bun run seed
 
-# Or use one-click command
-bun run db:reset
+# Or use one-click command for development
+bun run dev-db:reset
 ```
 
 **Seed Data Description**:
@@ -546,8 +546,11 @@ bun run test-data:clean
 | `migrate` | Run database migrations | `bun run migrate` |
 | `seed` | Populate seed data | `bun run seed [--clear] [--check]` |
 | `drop-db` | Delete database file | `bun run drop-db [--force]` |
-| `db:reset` | Complete database reset | `bun run db:reset` |
-| `db:check` | Check database status | `bun run db:check` |
+| `dev-db:reset` | Reset development database | `bun run dev-db:reset` |
+| `dev-db:check` | Check development database | `bun run dev-db:check` |
+| `test-db:reset` | Reset test database | `bun run test-db:reset` |
+| `test-db:check` | Check test database | `bun run test-db:check` |
+| `db:which` | Show current database path | `bun run db:which` |
 
 #### Content Management Scripts
 

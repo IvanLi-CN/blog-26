@@ -79,7 +79,8 @@ function askConfirmation(): Promise<boolean> {
 
 // 删除数据库文件
 async function dropDatabase(options: DropOptions) {
-  const dbPath = join(process.cwd(), "sqlite.db");
+  const dbPathRelative = process.env.DB_PATH || "./sqlite.db";
+  const dbPath = join(process.cwd(), dbPathRelative);
 
   if (!existsSync(dbPath)) {
     console.log("ℹ️  数据库文件不存在，无需删除");
