@@ -171,6 +171,14 @@ export function generateSlugFromPath(filePath: string, frontmatterSlug?: string)
       .pop()
       ?.replace(/\.(md|mdx)$/i, "") || "";
 
+  // 优先查找时间戳模式（如 -1756460268805）
+  const timestampMatch = fileName.match(/-(\d{10,13})$/);
+
+  if (timestampMatch) {
+    // 直接使用时间戳作为 slug
+    return timestampMatch[1];
+  }
+
   // 移除日期前缀（如 2023-12-01-title.md -> title）
   const withoutDatePrefix = fileName.replace(/^\d{4}-\d{2}-\d{2}-/, "");
 

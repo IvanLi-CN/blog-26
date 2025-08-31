@@ -9,7 +9,10 @@
 import { skipToken } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { inferContentType } from "../../config/paths";
 import { trpc } from "../../lib/trpc";
+import { generateContentUrl } from "../../lib/url-utils";
+import Icon from "../ui/Icon";
 import { UniversalEditor } from "./UniversalEditor";
 
 // 编辑器模式类型
@@ -209,12 +212,79 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
       const fileName = selectedPostId.split("/").pop() || "未命名文件";
       const title = fileName.replace(/\.md$/, "");
 
+      // 生成正确的 slug
+      let generatedSlug = "";
+
+      // 从文件名中移除扩展名后再匹配时间戳
+      const fileNameWithoutExt = fileName.replace(/\.(md|mdx)$/i, "");
+
+      // 检查文件名是否包含中文字符
+      const containsChinese = /[\u4e00-\u9fff]/.test(fileNameWithoutExt);
+
+      if (containsChinese) {
+        // 对于包含中文的文件名，使用和数据库同步一致的 slug 生成逻辑
+        const generateSlugLikeLibrary = (text: string): string => {
+          return (
+            text
+              .toLowerCase()
+              // 简单的中文转拼音映射（针对常见字符）
+              .replace(/心/g, "xin1-")
+              .replace(/羽/g, "yu3-")
+              .replace(/实/g, "shi2-")
+              .replace(/时/g, "shi2-")
+              .replace(/演/g, "yan3-")
+              .replace(/示/g, "shi4-")
+              .replace(/增/g, "zeng1-")
+              .replace(/量/g, "liang4-")
+              .replace(/数/g, "shu4-")
+              .replace(/据/g, "ju4-")
+              .replace(/同/g, "tong2-")
+              .replace(/步/g, "bu4-")
+              // 将非字母数字字符替换为连字符
+              .replace(/[^\w-]/g, "-")
+              // 合并多个连字符
+              .replace(/-+/g, "-")
+              // 移除首尾连字符
+              .replace(/^-+|-+$/g, "")
+          );
+        };
+
+        generatedSlug = generateSlugLikeLibrary(fileNameWithoutExt);
+      } else {
+        // 对于不包含中文的文件名，优先查找时间戳模式
+        const timestampMatch = fileNameWithoutExt.match(/-(\d{10,13})$/);
+
+        if (timestampMatch) {
+          // 直接使用时间戳作为 slug
+          generatedSlug = timestampMatch[1];
+        } else {
+          // 对于其他情况，生成简化的 slug
+          generatedSlug = fileNameWithoutExt
+            .replace(/^\d{8}_/, "") // 移除 20250804_ 格式
+            .replace(/^\d{4}-\d{2}-\d{2}-/, "") // 移除 2023-12-01- 格式
+            .replace(/[^\w-]/g, "-") // 将非字母数字字符替换为连字符
+            .replace(/-+/g, "-") // 合并多个连字符
+            .replace(/^-+|-+$/g, "") // 移除首尾连字符
+            .toLowerCase();
+
+          // 如果 slug 为空或太短，使用当前时间戳
+          if (!generatedSlug || generatedSlug.length < 3) {
+            generatedSlug = `content-${Date.now()}`;
+          }
+        }
+      }
+
+      // 如果生成的 slug 为空或太短，使用备用方案
+      if (!generatedSlug || generatedSlug.length < 3) {
+        generatedSlug = `content-${Date.now()}`;
+      }
+
       setPostData((prev) => ({
         ...prev,
         [selectedPostId]: {
           id: selectedPostId,
           title: title,
-          slug: selectedPostId.replace(/[^a-zA-Z0-9]/g, "-"),
+          slug: generatedSlug,
           body: webdavFile.content,
           excerpt: "",
           type: "project", // WebDAV 文件默认为项目类型
@@ -364,6 +434,46 @@ author: ""
   const handleModeChange = (tabId: string, mode: EditorMode) => {
     setTabs((prev) => prev.map((tab) => (tab.id === tabId ? { ...tab, mode } : tab)));
   };
+
+  // 处理预览按钮点击 - 在新窗口打开前台详情页
+  const handlePreview = useCallback(
+    (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      const data = postData[tabId];
+
+      if (!tab || !data) return;
+
+      try {
+        // 判断内容类型
+        const contentType = inferContentType(tabId);
+
+        let frontendUrl = "";
+
+        if (contentType === "memo") {
+          // 对于 memo，使用文件路径生成 URL
+          frontendUrl = generateContentUrl("memo", tabId);
+        } else {
+          // 对于文章，使用 frontmatter 数据
+          const frontmatter = data.frontmatter || {};
+          frontendUrl = generateContentUrl("post", frontmatter, tabId);
+        }
+
+        // 在新窗口打开
+        window.open(frontendUrl, "_blank", "noopener,noreferrer");
+
+        console.log("🔍 [PostUniversalEditor] 预览内容:", {
+          tabId,
+          contentType,
+          frontendUrl,
+          fileName: tabId.split(/[/\\]/).pop(),
+        });
+      } catch (error) {
+        console.error("🔍 [PostUniversalEditor] 预览失败:", error);
+        alert("预览失败，请稍后重试");
+      }
+    },
+    [tabs, postData]
+  );
 
   // 处理保存
   const handleSave = async (tabId: string) => {
@@ -753,6 +863,14 @@ author: ""
             👁️
           </button>
           <div className="flex-1"></div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => handlePreview(activeTab.id)}
+            title="在新窗口预览"
+          >
+            <Icon name="lucide:external-link" size={16} />
+          </button>
           <button
             type="button"
             className="btn btn-sm btn-primary"

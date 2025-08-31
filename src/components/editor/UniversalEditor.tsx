@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { resolveRelativePath } from "../../utils/path-resolver";
+import { MilkdownEditor } from "../memos/MilkdownEditor";
 import { SourceEditor } from "./SourceEditor";
 import "highlight.js/styles/github.css";
 
@@ -269,13 +270,17 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
         <div className="editor-content h-full">
           {currentMode === "wysiwyg" && (
             <div className="w-full h-full overflow-auto">
-              <SourceEditor
-                key={`source-editor-${editorId}`}
+              <MilkdownEditor
+                key={`milkdown-editor-${editorId}`}
                 content={content}
                 onChange={handleContentChange}
                 placeholder={placeholder}
                 className="w-full h-full"
                 data-testid="content-input"
+                editorId={`wysiwyg-${editorId}`}
+                articlePath={articlePath}
+                contentSource={contentSource}
+                onImageUpload={handleImageUpload}
               />
             </div>
           )}
