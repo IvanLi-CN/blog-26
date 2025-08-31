@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 import { trpc } from "../../lib/trpc";
+import Icon from "../ui/Icon";
 
 // 子目录内容组件
 interface SubDirectoryContentProps {
@@ -63,7 +64,13 @@ function _SubDirectoryContent({
           }}
           title={file.name}
         >
-          <span className="mr-2">{file.type === "directory" ? "📁" : "📝"}</span>
+          <span className="mr-2">
+            {file.type === "directory" ? (
+              <Icon name="lucide:folder" size={16} />
+            ) : (
+              <Icon name="lucide:edit" size={16} />
+            )}
+          </span>
           <span className="truncate flex-1">{file.name}</span>
           {file.size && (
             <span className="ml-2 text-xs text-base-content/40">
@@ -139,7 +146,11 @@ function WebDAVSubDirectory({
               title={subFile.name}
             >
               <span className="mr-2 flex-shrink-0">
-                {subFile.type === "directory" ? "📁" : "📝"}
+                {subFile.type === "directory" ? (
+                  <Icon name="lucide:folder" size={16} />
+                ) : (
+                  <Icon name="lucide:edit" size={16} />
+                )}
               </span>
               <span className="truncate flex-1">{subFile.name}</span>
               {subFile.type === "directory" && onCreateFile && (
@@ -151,7 +162,7 @@ function WebDAVSubDirectory({
               )}
               {subFile.type === "directory" ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                  📁
+                  <Icon name="lucide:folder" size={14} />
                 </span>
               ) : subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
@@ -235,7 +246,11 @@ function LocalSubDirectory({
               title={subFile.name}
             >
               <span className="mr-2 flex-shrink-0">
-                {subFile.type === "directory" ? "📁" : "📝"}
+                {subFile.type === "directory" ? (
+                  <Icon name="lucide:folder" size={16} />
+                ) : (
+                  <Icon name="lucide:edit" size={16} />
+                )}
               </span>
               <span className="truncate flex-1">{subFile.name}</span>
               {subFile.type === "directory" && onCreateFile && (
@@ -247,7 +262,7 @@ function LocalSubDirectory({
               )}
               {subFile.type === "directory" ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                  📁
+                  <Icon name="lucide:folder" size={14} />
                 </span>
               ) : subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
@@ -274,12 +289,24 @@ function LocalSubDirectory({
 
 // 文件夹图标组件
 const FolderIcon = ({ isOpen }: { isOpen: boolean }) => (
-  <span className="mr-2 text-blue-500">{isOpen ? "📂" : "📁"}</span>
+  <span className="mr-2 text-blue-500">
+    {isOpen ? (
+      <Icon name="lucide:folder-open" size={16} />
+    ) : (
+      <Icon name="lucide:folder" size={16} />
+    )}
+  </span>
 );
 
 // 文件图标组件
 const FileIcon = ({ post }: { post: FileNode }) => (
-  <span className="mr-2">{post.draft ? "📄" : "📝"}</span>
+  <span className="mr-2">
+    {post.draft ? (
+      <Icon name="lucide:file-text" size={16} />
+    ) : (
+      <Icon name="lucide:edit" size={16} />
+    )}
+  </span>
 );
 
 // 目录操作按钮组件
@@ -420,7 +447,9 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
   if (!sources || sources.length === 0) {
     return (
       <div className="p-4 text-center">
-        <div className="text-4xl mb-2">📁</div>
+        <div className="text-4xl mb-2">
+          <Icon name="lucide:folder" size={48} />
+        </div>
         <p className="text-gray-500 mb-2">暂无数据源</p>
         <p className="text-xs text-gray-400">请配置 WebDAV 或本地数据源</p>
       </div>
@@ -459,7 +488,12 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
         {/* 数据源列表 */}
         {sources.map((source) => {
           const isExpanded = expandedFolders.has(source.name);
-          const sourceIcon = source.type === "webdav" ? "☁️" : "💾";
+          const sourceIcon =
+            source.type === "webdav" ? (
+              <Icon name="lucide:cloud" size={16} />
+            ) : (
+              <Icon name="lucide:save" size={16} />
+            );
 
           return (
             <div key={source.name} className="mb-2">
@@ -518,7 +552,11 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                             title={file.name}
                           >
                             <span className="mr-2 flex-shrink-0">
-                              {file.type === "directory" ? "📁" : "📝"}
+                              {file.type === "directory" ? (
+                                <Icon name="lucide:folder" size={16} />
+                              ) : (
+                                <Icon name="lucide:edit" size={16} />
+                              )}
                             </span>
                             <span className="truncate flex-1">{file.name}</span>
                             {file.type === "directory" && (
@@ -530,7 +568,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                             )}
                             {file.type === "directory" ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                                📁
+                                <Icon name="lucide:folder" size={14} />
                               </span>
                             ) : file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
@@ -573,7 +611,11 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                             title={file.name}
                           >
                             <span className="mr-2 flex-shrink-0">
-                              {file.type === "directory" ? "📁" : "📝"}
+                              {file.type === "directory" ? (
+                                <Icon name="lucide:folder" size={16} />
+                              ) : (
+                                <Icon name="lucide:edit" size={16} />
+                              )}
                             </span>
                             <span className="truncate flex-1">{file.name}</span>
                             {file.type === "directory" && (
@@ -585,7 +627,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                             )}
                             {file.type === "directory" ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                                📁
+                                <Icon name="lucide:folder" size={14} />
                               </span>
                             ) : file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
@@ -676,7 +718,9 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
 
         {sources.length === 0 && (
           <div className="text-center py-8 text-base-content/50">
-            <div className="text-2xl mb-2">📁</div>
+            <div className="text-2xl mb-2">
+              <Icon name="lucide:folder" size={32} />
+            </div>
             <p className="text-sm">暂无数据源</p>
             <p className="text-xs text-base-content/40 mt-1">请配置 WebDAV 或本地数据源</p>
           </div>

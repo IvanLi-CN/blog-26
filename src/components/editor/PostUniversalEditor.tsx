@@ -796,7 +796,9 @@ author: ""
         {/* 空状态 */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-6xl mb-4">📝</div>
+            <div className="text-6xl mb-4 flex justify-center">
+              <Icon name="lucide:edit" size={64} />
+            </div>
             <p className="text-lg mb-2">选择一个文件开始编辑</p>
             <p className="text-sm text-gray-500">或者创建一个新文件</p>
           </div>
@@ -846,7 +848,7 @@ author: ""
             className={`btn btn-sm ${activeTab.mode === "wysiwyg" ? "btn-active" : "btn-ghost"}`}
             onClick={() => handleModeChange(activeTab.id, "wysiwyg")}
           >
-            📝
+            <Icon name="lucide:edit" size={16} />
           </button>
           <button
             type="button"
@@ -860,7 +862,7 @@ author: ""
             className={`btn btn-sm ${activeTab.mode === "preview" ? "btn-active" : "btn-ghost"}`}
             onClick={() => handleModeChange(activeTab.id, "preview")}
           >
-            👁️
+            <Icon name="lucide:eye" size={16} />
           </button>
           <div className="flex-1"></div>
           <button
@@ -876,7 +878,7 @@ author: ""
             className="btn btn-sm btn-primary"
             onClick={() => handleSave(activeTab.id)}
           >
-            💾
+            <Icon name="lucide:save" size={16} />
           </button>
         </div>
       </div>
