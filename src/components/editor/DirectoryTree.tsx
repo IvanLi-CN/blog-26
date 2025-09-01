@@ -4,18 +4,29 @@
  * 文件目录树组件
  *
  * 模仿原项目的文件管理器界面
+ * 集成智能展开和滚动定位功能
  */
 
-import { useState } from "react";
+import { useAtom, useSetAtom } from "jotai";
+import { useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
+import {
+  expandedFoldersAtom,
+  scrollTargetAtom,
+  selectedFilePathAtom,
+  setSelectedFilePathAtom,
+  toggleFolderAtom,
+} from "../../store/editorAtoms";
 import Icon from "../ui/Icon";
+// import { useAdvancedEditorState } from "./hooks/useEditorState"; // 移除旧的依赖
+import { generateScrollDataAttribute } from "./utils/pathUtils";
 
 // 子目录内容组件
 interface SubDirectoryContentProps {
   source: string;
   path: string;
   onSelectFile?: (path: string, name: string) => void;
-  selectedPath?: string;
+  selectedFilePath?: string;
   expandedFolders: Set<string>;
   toggleFolder: (folderName: string) => void;
 }
@@ -24,7 +35,7 @@ function _SubDirectoryContent({
   source,
   path,
   onSelectFile,
-  selectedPath,
+  selectedFilePath,
   expandedFolders: _expandedFolders,
   toggleFolder: _toggleFolder,
 }: SubDirectoryContentProps) {
@@ -49,7 +60,7 @@ function _SubDirectoryContent({
           key={file.path}
           type="button"
           className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors w-full text-left ${
-            selectedPath === file.path ? "bg-primary/10 text-primary" : ""
+            selectedFilePath === file.path ? "bg-primary/10 text-primary" : ""
           }`}
           onClick={() => {
             if (file.type === "directory") {
@@ -88,7 +99,7 @@ function WebDAVSubDirectory({
   file,
   source,
   onSelectFile,
-  selectedPath,
+  selectedFilePath,
   expandedFolders,
   toggleFolder,
   onCreateFile,
@@ -96,7 +107,7 @@ function WebDAVSubDirectory({
   file: { type: string; path: string; name?: string };
   source: string;
   onSelectFile?: (path: string, name: string) => void;
-  selectedPath?: string;
+  selectedFilePath?: string;
   expandedFolders: Set<string>;
   toggleFolder: (folderName: string) => void;
   onCreateFile?: (directoryPath: string, source: string) => void;
@@ -128,7 +139,7 @@ function WebDAVSubDirectory({
             <button
               type="button"
               className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors flex-1 text-left min-w-0 ${
-                selectedPath === `/${subFile.path}` ? "bg-primary/10 text-primary" : ""
+                selectedFilePath === `/${subFile.path}` ? "bg-primary/10 text-primary" : ""
               }`}
               onClick={() => {
                 if (subFile.type === "directory") {
@@ -176,7 +187,7 @@ function WebDAVSubDirectory({
             file={subFile}
             source={source}
             onSelectFile={onSelectFile}
-            selectedPath={selectedPath}
+            selectedFilePath={selectedFilePath}
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
             onCreateFile={onCreateFile}
@@ -192,7 +203,7 @@ function LocalSubDirectory({
   file,
   source,
   onSelectFile,
-  selectedPath,
+  selectedFilePath,
   expandedFolders,
   toggleFolder,
   onCreateFile,
@@ -200,7 +211,7 @@ function LocalSubDirectory({
   file: { type: string; path: string; name?: string };
   source: string;
   onSelectFile?: (path: string, name: string) => void;
-  selectedPath?: string;
+  selectedFilePath?: string;
   expandedFolders: Set<string>;
   toggleFolder: (folderName: string) => void;
   onCreateFile?: (directoryPath: string, source: string) => void;
@@ -232,18 +243,19 @@ function LocalSubDirectory({
             <button
               type="button"
               className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors flex-1 text-left min-w-0 ${
-                selectedPath === `${file.path}/${subFile.path}` ? "bg-primary/10 text-primary" : ""
+                selectedFilePath === subFile.path ? "bg-primary/10 text-primary" : ""
               }`}
               onClick={() => {
                 if (subFile.type === "directory") {
                   // 子目录：展开/折叠
-                  toggleFolder(`local-${file.path}/${subFile.path}`);
+                  toggleFolder(`local-${subFile.path}`);
                 } else {
-                  // 文件：打开编辑
-                  onSelectFile?.(`${file.path}/${subFile.path}`, subFile.name);
+                  // 文件：打开编辑 - 直接使用subFile.path，不要重复拼接
+                  onSelectFile?.(subFile.path);
                 }
               }}
               title={subFile.name}
+              data-file-path={subFile.path}
             >
               <span className="mr-2 flex-shrink-0">
                 {subFile.type === "directory" ? (
@@ -276,7 +288,7 @@ function LocalSubDirectory({
             file={subFile}
             source={source}
             onSelectFile={onSelectFile}
-            selectedPath={selectedPath}
+            selectedFilePath={selectedFilePath}
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
             onCreateFile={onCreateFile}
@@ -352,8 +364,40 @@ interface FileNode {
 }
 
 export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: DirectoryTreeProps) {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["webdav"]));
+  // 使用 Jotai 全局状态管理
+  const [expandedFolders] = useAtom(expandedFoldersAtom);
+  const [selectedFilePath] = useAtom(selectedFilePathAtom);
+  const [scrollTarget] = useAtom(scrollTargetAtom);
+  const toggleFolder = useSetAtom(toggleFolderAtom);
+  const setSelectedFilePath = useSetAtom(setSelectedFilePathAtom);
+
   const [_directoryContents, _setDirectoryContents] = useState<Record<string, unknown[]>>({});
+
+  // 监听滚动目标变化，实现自动滚动定位
+  useEffect(() => {
+    if (scrollTarget) {
+      console.log(`[DirectoryTree] 滚动到目标文件: ${scrollTarget}`);
+
+      // 查找对应的文件元素
+      const fileElement = document.querySelector(`[data-file-path="${scrollTarget}"]`);
+      if (fileElement) {
+        fileElement.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        console.log(`[DirectoryTree] 成功滚动到文件: ${scrollTarget}`);
+      } else {
+        console.log(`[DirectoryTree] 未找到文件元素: ${scrollTarget}`);
+      }
+    }
+  }, [scrollTarget]);
+
+  // 监听选中文件变化，更新高亮状态
+  useEffect(() => {
+    if (selectedFilePath) {
+      console.log(`[DirectoryTree] 选中文件变化: ${selectedFilePath}`);
+    }
+  }, [selectedFilePath]);
 
   // 获取数据源列表
   const { data: sources, isLoading: sourcesLoading } = trpc.admin.files.getSources.useQuery();
@@ -379,20 +423,17 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
 
   // 处理文件选择
   const handleFileSelect = (post: FileNode) => {
+    // 更新 Jotai 状态
+    setSelectedFilePath(post.id);
+
+    // 调用原有的回调
     onSelectFile(post.id);
   };
 
   // 切换文件夹展开状态
-  const toggleFolder = (folderName: string) => {
-    setExpandedFolders((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(folderName)) {
-        newSet.delete(folderName);
-      } else {
-        newSet.add(folderName);
-      }
-      return newSet;
-    });
+  const handleToggleFolder = (folderName: string) => {
+    // 使用 Jotai 的切换方法
+    toggleFolder(folderName);
   };
 
   // 处理创建文件
@@ -475,7 +516,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
     ) || {};
 
   return (
-    <div className="h-full bg-base-100 border-r border-base-300">
+    <div className="h-full bg-base-100 border-r border-base-300 directory-tree-container overflow-y-auto">
       {/* 头部工具栏 */}
       <div className="p-3 border-b border-base-300 bg-base-50">
         <div className="flex items-center justify-between">
@@ -502,7 +543,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                 <button
                   type="button"
                   className="flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm flex-1 text-left min-w-0"
-                  onClick={() => toggleFolder(source.name)}
+                  onClick={() => handleToggleFolder(source.name)}
                   disabled={!source.enabled}
                 >
                   <span className="mr-2">{sourceIcon}</span>
@@ -534,12 +575,12 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                           <button
                             type="button"
                             className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors flex-1 text-left min-w-0 ${
-                              selectedPath === file.path ? "bg-primary/10 text-primary" : ""
+                              selectedFilePath === file.path ? "bg-primary/10 text-primary" : ""
                             }`}
                             onClick={() => {
                               if (file.type === "directory") {
                                 // 目录：展开/折叠
-                                toggleFolder(`webdav-${file.path}`);
+                                handleToggleFolder(`webdav-${file.path}`);
                               } else {
                                 // 文件：打开编辑
                                 // 确保路径以单个斜杠开头
@@ -581,9 +622,9 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                           file={file}
                           source="webdav"
                           onSelectFile={onSelectFile}
-                          selectedPath={selectedPath}
+                          selectedFilePath={selectedFilePath}
                           expandedFolders={expandedFolders}
-                          toggleFolder={toggleFolder}
+                          toggleFolder={handleToggleFolder}
                           onCreateFile={handleCreateFile}
                         />
                       </div>
@@ -597,18 +638,19 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                           <button
                             type="button"
                             className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors flex-1 text-left min-w-0 ${
-                              selectedPath === file.path ? "bg-primary/10 text-primary" : ""
+                              selectedFilePath === file.path ? "bg-primary/10 text-primary" : ""
                             }`}
                             onClick={() => {
                               if (file.type === "directory") {
                                 // 目录：展开/折叠
-                                toggleFolder(`local-${file.path}`);
+                                handleToggleFolder(`local-${file.path}`);
                               } else {
                                 // 文件：打开编辑
                                 onSelectFile?.(file.path);
                               }
                             }}
                             title={file.name}
+                            data-file-path={file.path}
                           >
                             <span className="mr-2 flex-shrink-0">
                               {file.type === "directory" ? (
@@ -640,9 +682,9 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                           file={file}
                           source="local"
                           onSelectFile={onSelectFile}
-                          selectedPath={selectedPath}
+                          selectedFilePath={selectedFilePath}
                           expandedFolders={expandedFolders}
-                          toggleFolder={toggleFolder}
+                          toggleFolder={handleToggleFolder}
                           onCreateFile={handleCreateFile}
                         />
                       </div>
@@ -668,7 +710,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                           <button
                             type="button"
                             className="flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm w-full text-left"
-                            onClick={() => toggleFolder(`${source.name}-${type}`)}
+                            onClick={() => handleToggleFolder(`${source.name}-${type}`)}
                           >
                             <FolderIcon isOpen={subFolderExpanded} />
                             <span className="font-medium">{folderName}</span>
@@ -685,10 +727,12 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                                   type="button"
                                   key={post.id}
                                   className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors w-full text-left ${
-                                    selectedPath === post.id ? "bg-primary/10 text-primary" : ""
+                                    selectedFilePath === post.id ? "bg-primary/10 text-primary" : ""
                                   }`}
                                   onClick={() => handleFileSelect(post)}
                                   title={post.title}
+                                  data-file-path={post.id}
+                                  data-scroll-id={generateScrollDataAttribute(post.id)}
                                 >
                                   <FileIcon post={post} />
                                   <span className="truncate flex-1">{post.title}</span>

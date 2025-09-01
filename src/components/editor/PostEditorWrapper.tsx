@@ -5,12 +5,15 @@
  *
  * 处理 URL 参数，支持直接打开特定文章
  * 作为兼容层，将 id/slug 参数转换为标准化的内容源信息
+ * 集成统一状态管理
  */
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
+import { EditorStateProvider } from "./EditorStateProvider";
 import { PostEditor } from "./PostEditor";
+// import { useAdvancedEditorState } from "./hooks/useEditorState"; // 移除旧的依赖
 
 // 标准化的内容源信息
 export interface ContentSource {
@@ -19,10 +22,14 @@ export interface ContentSource {
   id?: string; // 原始 id，用于兼容
 }
 
-export function PostEditorWrapper() {
+/**
+ * 内部编辑器组件（使用状态管理）
+ */
+function PostEditorWithState() {
   const searchParams = useSearchParams();
   const postId = searchParams?.get("id");
   const postSlug = searchParams?.get("slug");
+  // const editorState = useAdvancedEditorState(); // 移除旧的依赖
 
   const [contentSource, setContentSource] = useState<ContentSource | undefined>();
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +70,13 @@ export function PostEditorWrapper() {
     }
   }, [postId, postBySlug, postSlug, slugLoading]);
 
+  // 当有 slug 参数时，尝试恢复标签页状态
+  useEffect(() => {
+    if (postSlug && !isLoading && !error) {
+      // editorState.restoreFromSlug(postSlug); // 暂时移除，使用 Jotai 状态管理
+    }
+  }, [postSlug, isLoading, error]);
+
   // 处理 slug 查询错误
   useEffect(() => {
     if (slugError) {
@@ -94,6 +108,17 @@ export function PostEditorWrapper() {
   }
 
   return <PostEditor initialContentSource={contentSource} />;
+}
+
+/**
+ * 主要的包装组件（提供状态管理Context）
+ */
+export function PostEditorWrapper() {
+  return (
+    <EditorStateProvider>
+      <PostEditorWithState />
+    </EditorStateProvider>
+  );
 }
 
 /**

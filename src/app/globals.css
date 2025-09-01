@@ -176,3 +176,40 @@
 .animate-scale-in {
   animation: scaleIn 0.3s ease-out forwards;
 }
+
+/* 编辑器高亮闪烁效果 */
+@keyframes highlightFlash {
+  0% {
+    background-color: hsl(var(--primary) / 0.2);
+    transform: scale(1);
+  }
+  50% {
+    background-color: hsl(var(--primary) / 0.4);
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: hsl(var(--primary) / 0.1);
+    transform: scale(1);
+  }
+}
+
+.editor-highlight-flash {
+  animation: highlightFlash 1s ease-out;
+}
+
+/* 增强的标签页激活状态样式 */
+.editor-tab-active {
+  @apply bg-base-100 text-primary border-b-2 border-primary shadow-sm;
+  position: relative;
+}
+
+.editor-tab-active::before {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)));
+  border-radius: 1px;
+}

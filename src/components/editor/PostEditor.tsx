@@ -10,6 +10,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { DirectoryTree } from "./DirectoryTree";
 import type { ContentSource } from "./PostEditorWrapper";
 import { PostUniversalEditor } from "./PostUniversalEditor";
+// import { useAdvancedEditorState } from "./hooks/useEditorState"; // 移除旧的依赖
+import { createContentSource } from "./utils/pathUtils";
 
 interface PostEditorProps {
   initialContentSource?: ContentSource;
@@ -18,6 +20,8 @@ interface PostEditorProps {
 }
 
 export function PostEditor({ initialContentSource, initialPostId }: PostEditorProps) {
+  // const editorState = useAdvancedEditorState(); // 移除旧的依赖
+
   // 兼容旧的 initialPostId 参数
   const [selectedContentSource, setSelectedContentSource] = useState<ContentSource | undefined>(
     initialContentSource ||
@@ -38,6 +42,9 @@ export function PostEditor({ initialContentSource, initialPostId }: PostEditorPr
     // 将旧的 postId 转换为 ContentSource
     const contentSource = convertLegacyIdToContentSource(postId);
     setSelectedContentSource(contentSource);
+
+    // 使用新的状态管理打开文件
+    // editorState.openFile(contentSource); // 暂时移除，使用 Jotai 状态管理
   };
 
   // 处理创建新文件
@@ -52,6 +59,10 @@ export function PostEditor({ initialContentSource, initialPostId }: PostEditorPr
     console.log("创建新文章:", { fullPath, fileName, contentSource });
 
     setSelectedContentSource(contentSource);
+
+    // 使用新的状态管理打开新文件
+    const defaultContent = `# ${fileName}\n\n开始写作您的文章...`;
+    // editorState.openFile(contentSource, fileName, defaultContent); // 暂时移除，使用 Jotai 状态管理
   };
 
   // 处理拖拽调整侧边栏宽度

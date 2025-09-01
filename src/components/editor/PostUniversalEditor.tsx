@@ -7,6 +7,7 @@
  */
 
 import { skipToken } from "@tanstack/react-query";
+import { useAtom, useSetAtom } from "jotai";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { inferContentType } from "../../config/paths";
@@ -14,21 +15,26 @@ import { parseMarkdownContent } from "../../lib/content-sources/utils";
 import { processInlineImagesCompat } from "../../lib/image-processing";
 import { trpc } from "../../lib/trpc";
 import { generateContentUrl } from "../../lib/url-utils";
+import {
+  activeTabIdAtom,
+  addTabAtom,
+  autoExpandFoldersAtom,
+  markTabSavedAtom,
+  removeTabAtom,
+  setActiveTabIdAtom,
+  tabsAtom,
+  updateTabContentAtom,
+  updateTabIdAtom,
+  updateTabModeAtom,
+} from "../../store/editorAtoms";
 import Icon from "../ui/Icon";
+// import { useAdvancedEditorState } from "./hooks/useEditorState"; // 移除旧的依赖
+import type { EditorTab } from "./EditorStateContext";
 import type { ContentSource } from "./PostEditorWrapper";
 import { UniversalEditor } from "./UniversalEditor";
 
-// 编辑器模式类型
+// 编辑器模式类型（保持兼容）
 type EditorMode = "wysiwyg" | "source" | "preview";
-
-// 编辑器标签页类型
-interface EditorTab {
-  id: string;
-  title: string;
-  content: string;
-  isDirty: boolean;
-  mode: EditorMode;
-}
 
 interface PostUniversalEditorProps {
   /** 当前选中的内容源信息 */
@@ -59,9 +65,20 @@ export function PostUniversalEditor({
   selectedPostId,
   onPostChange,
 }: PostUniversalEditorProps) {
-  const _router = useRouter();
-  const [tabs, setTabs] = useState<EditorTab[]>([]);
-  const [activeTabId, setActiveTabId] = useState<string>("");
+  // const editorState = useAdvancedEditorState(); // 移除旧的依赖
+
+  // 使用 Jotai 全局状态替换本地状态
+  const [tabs] = useAtom(tabsAtom);
+  const [activeTabId] = useAtom(activeTabIdAtom);
+  const addTab = useSetAtom(addTabAtom);
+  const setActiveTab = useSetAtom(setActiveTabIdAtom);
+  const removeTab = useSetAtom(removeTabAtom);
+  const updateTabContent = useSetAtom(updateTabContentAtom);
+  const updateTabMode = useSetAtom(updateTabModeAtom);
+  const markTabSaved = useSetAtom(markTabSavedAtom);
+  const updateTabId = useSetAtom(updateTabIdAtom);
+  const autoExpandFolders = useSetAtom(autoExpandFoldersAtom);
+
   const [postData, setPostData] = useState<Record<string, PostData>>({});
 
   // 兼容旧的 selectedPostId 参数
@@ -126,9 +143,9 @@ export function PostUniversalEditor({
     onSuccess: () => {
       // 更新成功后标记为已保存
       const currentId = contentSource?.filePath || contentSource?.id;
-      setTabs((prev) =>
-        prev.map((tab) => (tab.id === currentId ? { ...tab, isDirty: false } : tab))
-      );
+      if (currentId) {
+        markTabSaved(currentId);
+      }
     },
     onError: (error) => {
       console.error("更新文章失败:", error.message);
@@ -148,29 +165,40 @@ export function PostUniversalEditor({
   // 在标签页中打开文章
   const openPostInTab = useCallback(
     (postId: string, title: string, content: string, isNew = false) => {
-      setTabs((prev) => {
-        // 检查是否已经打开
-        const existingTab = prev.find((tab) => tab.id === postId);
-        if (existingTab) {
-          setActiveTabId(postId);
-          return prev;
-        }
+      // 检查是否已经打开
+      const existingTab = tabs.find((tab) => tab.id === postId);
+      if (existingTab) {
+        setActiveTab(postId);
+        return;
+      }
 
-        // 创建新标签页
-        const newTab: EditorTab = {
-          id: postId,
-          title: title || "未命名文章",
-          content,
-          isDirty: isNew,
-          mode: "wysiwyg",
-        };
+      // 创建新标签页
+      const contentSource = selectedContentSource || {
+        source: "database",
+        filePath: postId,
+        id: postId,
+      };
 
-        const newTabs = [...prev, newTab];
-        setActiveTabId(postId);
-        return newTabs;
-      });
+      const newTab: EditorTab = {
+        id: postId,
+        title: title || "未命名文章",
+        content,
+        isDirty: isNew,
+        mode: "wysiwyg",
+        contentSource,
+        identifier: {
+          source: contentSource.source as "local" | "webdav" | "database",
+          path: contentSource.filePath,
+        },
+      };
+
+      // 使用 Jotai 的 addTab 替代本地状态管理
+      addTab(newTab);
+
+      // 自动展开相关文件夹
+      autoExpandFolders(postId);
     },
-    []
+    [selectedContentSource, tabs, setActiveTab, addTab]
   );
 
   // 防止重复打开相同文章
@@ -181,7 +209,7 @@ export function PostUniversalEditor({
       // 检查是否已经在标签页中
       const existingTab = tabs.find((tab) => tab.id === fileId);
       if (existingTab) {
-        setActiveTabId(fileId);
+        setActiveTab(fileId);
         setTimeout(() => {
           onPostChange?.(fileId);
         }, 0);
@@ -334,7 +362,8 @@ export function PostUniversalEditor({
       const fileName = contentSource.filePath.split("/").pop() || "未命名文件";
       const title = fileName.replace(/\.md$/, "");
 
-      const tabId = contentSource.filePath;
+      // 使用二元ID格式：source:path
+      const tabId = `local:${contentSource.filePath}`;
       setPostData((prev) => ({
         ...prev,
         [tabId]: {
@@ -397,7 +426,8 @@ author: ""
 开始写作您的文章...
 `;
 
-      const tabId = contentSource.filePath;
+      // 使用二元ID格式：source:path
+      const tabId = `local:${contentSource.filePath}`;
       // 在标签页中打开新文件
       openPostInTab(tabId, title, defaultContent, true);
     }
@@ -406,7 +436,15 @@ author: ""
   // 处理标签页切换
   const handleTabChange = useCallback(
     (tabId: string) => {
-      setActiveTabId(tabId);
+      setActiveTab(tabId);
+
+      // 自动展开相关文件夹
+      autoExpandFolders(tabId);
+
+      // 同时更新EditorState以触发展开和滚动
+      // 注意：这里的tabId已经是完整的二元ID格式（如 local:blog/hello-world.md）
+      // editorState.setActiveTab(tabId); // 移除旧的依赖，Jotai 状态管理会自动处理
+
       // 使用 setTimeout 避免在渲染过程中更新父组件状态
       setTimeout(() => {
         // 根据 tabId 创建对应的 ContentSource
@@ -416,32 +454,31 @@ author: ""
         onPostChange?.(tabId);
       }, 0);
     },
-    [onContentSourceChange, onPostChange]
+    [onContentSourceChange, onPostChange, setActiveTab, autoExpandFolders]
   );
 
   // 处理标签页关闭
   const handleTabClose = useCallback(
     (tabId: string) => {
-      setTabs((prev) => {
-        const newTabs = prev.filter((tab) => tab.id !== tabId);
+      // 使用 Jotai 的 removeTab，它会自动处理活动标签页的切换
+      removeTab(tabId);
 
-        // 如果关闭的是当前活动标签页，切换到其他标签页
+      // 兼容旧的回调 - 获取切换后的活动标签页
+      setTimeout(() => {
+        const remainingTabs = tabs.filter((tab) => tab.id !== tabId);
         if (tabId === activeTabId) {
-          const currentIndex = prev.findIndex((tab) => tab.id === tabId);
-          const nextTab = newTabs[currentIndex] || newTabs[currentIndex - 1] || newTabs[0];
-          setActiveTabId(nextTab?.id || "");
-          setTimeout(() => {
-            if (nextTab?.id) {
-              const newContentSource = convertTabIdToContentSource(nextTab.id);
-              onContentSourceChange?.(newContentSource);
-            }
-            // 兼容旧的回调
-            onPostChange?.(nextTab?.id || "");
-          }, 0);
+          const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
+          const nextTab =
+            remainingTabs[currentIndex] || remainingTabs[currentIndex - 1] || remainingTabs[0];
+          if (nextTab?.id) {
+            const newContentSource = convertTabIdToContentSource(nextTab.id);
+            onContentSourceChange?.(newContentSource);
+            onPostChange?.(nextTab.id);
+          } else {
+            onPostChange?.("");
+          }
         }
-
-        return newTabs;
-      });
+      }, 0);
 
       // 清理文章数据
       setPostData((prev) => {
@@ -450,14 +487,13 @@ author: ""
         return newData;
       });
     },
-    [activeTabId, onContentSourceChange, onPostChange]
+    [removeTab, tabs, activeTabId, onContentSourceChange, onPostChange]
   );
 
   // 处理内容变化
   const handleContentChange = (tabId: string, content: string) => {
-    setTabs((prev) =>
-      prev.map((tab) => (tab.id === tabId ? { ...tab, content, isDirty: true } : tab))
-    );
+    // 使用 Jotai 的 updateTabContent
+    updateTabContent(tabId, content);
 
     // 更新文章数据
     setPostData((prev) => ({
@@ -471,7 +507,8 @@ author: ""
 
   // 处理模式切换
   const handleModeChange = (tabId: string, mode: EditorMode) => {
-    setTabs((prev) => prev.map((tab) => (tab.id === tabId ? { ...tab, mode } : tab)));
+    // 使用 Jotai 的 updateTabMode
+    updateTabMode(tabId, mode);
   };
 
   // 处理预览按钮点击 - 在新窗口打开前台详情页
@@ -604,11 +641,7 @@ author: ""
 
       // 如果是新文件，更新标签页 ID 移除 __NEW__ 前缀
       if (isNewFile) {
-        setTabs((prev) =>
-          prev.map((t) =>
-            t.id === tabId ? { ...t, id: actualPath, isDirty: false, content: processedContent } : t
-          )
-        );
+        updateTabId(tabId, actualPath, processedContent);
         // 更新 postData 的键
         setPostData((prev) => {
           const newData = { ...prev };
@@ -620,11 +653,7 @@ author: ""
         onPostChange?.(actualPath);
       } else {
         // 更新标签页状态为已保存，并更新内容为处理后的内容
-        setTabs((prev) =>
-          prev.map((t) =>
-            t.id === tabId ? { ...t, isDirty: false, content: processedContent } : t
-          )
-        );
+        markTabSaved(tabId, processedContent);
         // 更新 postData 中的内容
         setPostData((prev) => ({
           ...prev,
@@ -793,8 +822,10 @@ author: ""
             <button
               type="button"
               key={tab.id}
-              className={`flex items-center px-4 py-2 border-r border-base-300 cursor-pointer flex-shrink-0 min-w-0 max-w-xs ${
-                tab.id === activeTabId ? "bg-base-200" : "hover:bg-base-100"
+              className={`flex items-center px-4 py-2 border-r border-base-300 cursor-pointer flex-shrink-0 min-w-0 max-w-xs transition-all duration-200 ${
+                tab.id === activeTabId
+                  ? "editor-tab-active bg-base-100 text-primary shadow-sm"
+                  : "hover:bg-base-100 hover:shadow-sm"
               }`}
               onClick={() => handleTabChange(tab.id)}
             >
@@ -891,7 +922,7 @@ author: ""
             activeTab.id.startsWith("__NEW__") ? activeTab.id.replace("__NEW__", "") : activeTab.id
           }
           contentSource={activeTab.id.startsWith("/") ? "webdav" : "local"}
-          mode={activeTab.mode}
+          mode={activeTab.mode as EditorMode}
           onModeChange={(mode) => handleModeChange(activeTab.id, mode)}
           className="h-full"
         />
