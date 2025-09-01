@@ -6,33 +6,52 @@
  * 实现左右分栏布局：左侧文件树，右侧编辑器
  */
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { DirectoryTree } from "./DirectoryTree";
+import type { ContentSource } from "./PostEditorWrapper";
 import { PostUniversalEditor } from "./PostUniversalEditor";
 
 interface PostEditorProps {
+  initialContentSource?: ContentSource;
+  // 保留旧接口以防其他地方还在使用
   initialPostId?: string;
 }
 
-export function PostEditor({ initialPostId }: PostEditorProps) {
-  const [selectedPostId, setSelectedPostId] = useState<string>(initialPostId || "");
+export function PostEditor({ initialContentSource, initialPostId }: PostEditorProps) {
+  // 兼容旧的 initialPostId 参数
+  const [selectedContentSource, setSelectedContentSource] = useState<ContentSource | undefined>(
+    initialContentSource ||
+      (initialPostId ? convertLegacyIdToContentSource(initialPostId) : undefined)
+  );
   const [sidebarWidth, setSidebarWidth] = useState(300); // 侧边栏宽度
   const [isResizing, setIsResizing] = useState(false);
 
+  // 监听 initialContentSource 的变化
+  useEffect(() => {
+    if (initialContentSource) {
+      setSelectedContentSource(initialContentSource);
+    }
+  }, [initialContentSource]);
+
   // 处理文件选择
   const handleFileSelect = (postId: string) => {
-    setSelectedPostId(postId);
+    // 将旧的 postId 转换为 ContentSource
+    const contentSource = convertLegacyIdToContentSource(postId);
+    setSelectedContentSource(contentSource);
   };
 
   // 处理创建新文件
   const handleCreateFile = (fullPath: string, fileName: string) => {
-    // 使用特殊前缀标识新文件
-    const newFileId = `__NEW__${fullPath}`;
+    // 创建新文件的内容源信息
+    const contentSource: ContentSource = {
+      source: fullPath.startsWith("/") ? "webdav" : "local",
+      filePath: `__NEW__${fullPath}`, // 保持新文件的特殊标识
+      id: `__NEW__${fullPath}`,
+    };
 
-    console.log("创建新文章:", { fullPath, fileName, newFileId });
+    console.log("创建新文章:", { fullPath, fileName, contentSource });
 
-    // 选择新创建的文件
-    setSelectedPostId(newFileId);
+    setSelectedContentSource(contentSource);
   };
 
   // 处理拖拽调整侧边栏宽度
@@ -80,7 +99,7 @@ export function PostEditor({ initialPostId }: PostEditorProps) {
         <DirectoryTree
           onSelectFile={handleFileSelect}
           onCreateFile={handleCreateFile}
-          selectedPath={selectedPostId}
+          selectedPath={selectedContentSource?.id || selectedContentSource?.filePath}
         />
       </div>
 
@@ -99,8 +118,39 @@ export function PostEditor({ initialPostId }: PostEditorProps) {
 
       {/* 右侧编辑器 */}
       <div className="flex-1 min-w-0">
-        <PostUniversalEditor selectedPostId={selectedPostId} onPostChange={setSelectedPostId} />
+        <PostUniversalEditor
+          selectedContentSource={selectedContentSource}
+          onContentSourceChange={setSelectedContentSource}
+        />
       </div>
     </div>
   );
+}
+
+/**
+ * 将旧的 id 参数转换为内容源信息（兼容函数）
+ */
+function convertLegacyIdToContentSource(id: string): ContentSource {
+  if (id.startsWith("/")) {
+    // WebDAV 文件
+    return {
+      source: "webdav",
+      filePath: id,
+      id,
+    };
+  } else if (id.includes("/") || id.endsWith(".md")) {
+    // 本地文件
+    return {
+      source: "local",
+      filePath: id,
+      id,
+    };
+  } else {
+    // 数据库文章
+    return {
+      source: "database",
+      filePath: id,
+      id,
+    };
+  }
 }

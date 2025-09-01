@@ -79,7 +79,7 @@ export function generateMemoUrl(filePath: string): string {
  * @param filePath 可选的文件路径，用于备用生成
  * @returns string URL 路径 (如: "/posts/my-article-slug")
  */
-export function generatePostUrl(frontmatter: any, filePath?: string): string {
+export function generatePostUrl(frontmatter: Record<string, unknown>, filePath?: string): string {
   try {
     // 处理 null/undefined frontmatter
     const fm = frontmatter || {};
@@ -93,7 +93,8 @@ export function generatePostUrl(frontmatter: any, filePath?: string): string {
     console.log("🔍 [generatePostUrl] frontmatter 中没有 slug，使用标题或文件名生成");
 
     // 如果都找不到，返回一个基于标题或文件名的默认URL
-    const title = fm.title || filePath?.split("/").pop()?.replace(/\.md$/, "") || "untitled";
+    const title =
+      (fm.title as string) || filePath?.split("/").pop()?.replace(/\.md$/, "") || "untitled";
     const defaultSlug = title
       .toLowerCase()
       .replace(/[^\w\s-]/g, "")
@@ -122,12 +123,12 @@ export function generatePostUrl(frontmatter: any, filePath?: string): string {
  */
 export function generateContentUrl(
   contentType: "memo" | "post",
-  data: any,
+  data: Record<string, unknown> | string,
   filePath?: string
 ): string {
   if (contentType === "memo") {
-    return generateMemoUrl(data);
+    return generateMemoUrl(data as string);
   } else {
-    return generatePostUrl(data, filePath);
+    return generatePostUrl(data as Record<string, unknown>, filePath);
   }
 }

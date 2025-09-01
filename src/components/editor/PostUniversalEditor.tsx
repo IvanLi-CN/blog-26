@@ -10,9 +10,12 @@ import { skipToken } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { inferContentType } from "../../config/paths";
+import { parseMarkdownContent } from "../../lib/content-sources/utils";
+import { processInlineImagesCompat } from "../../lib/image-processing";
 import { trpc } from "../../lib/trpc";
 import { generateContentUrl } from "../../lib/url-utils";
 import Icon from "../ui/Icon";
+import type { ContentSource } from "./PostEditorWrapper";
 import { UniversalEditor } from "./UniversalEditor";
 
 // 编辑器模式类型
@@ -28,9 +31,14 @@ interface EditorTab {
 }
 
 interface PostUniversalEditorProps {
-  /** 当前选中的文章 ID */
+  /** 当前选中的内容源信息 */
+  selectedContentSource?: ContentSource;
+  /** 内容源变化回调 */
+  onContentSourceChange?: (contentSource: ContentSource) => void;
+  // 保留旧接口以防其他地方还在使用
+  /** @deprecated 使用 selectedContentSource 替代 */
   selectedPostId?: string;
-  /** 文章选择变化回调 */
+  /** @deprecated 使用 onContentSourceChange 替代 */
   onPostChange?: (postId: string) => void;
 }
 
@@ -45,25 +53,31 @@ interface PostData {
   public: boolean;
 }
 
-export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniversalEditorProps) {
+export function PostUniversalEditor({
+  selectedContentSource,
+  onContentSourceChange,
+  selectedPostId,
+  onPostChange,
+}: PostUniversalEditorProps) {
   const _router = useRouter();
   const [tabs, setTabs] = useState<EditorTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>("");
   const [postData, setPostData] = useState<Record<string, PostData>>({});
 
-  // 判断文件类型
-  const isNewFile = selectedPostId?.startsWith("__NEW__");
-  const isWebDAVFile = selectedPostId?.startsWith("/");
-  const isLocalFile =
-    selectedPostId &&
-    !selectedPostId.startsWith("/") &&
-    !isNewFile &&
-    (selectedPostId.includes("/") || selectedPostId.endsWith(".md"));
-  const isDatabasePost = selectedPostId && !isWebDAVFile && !isLocalFile && !isNewFile;
+  // 兼容旧的 selectedPostId 参数
+  const contentSource =
+    selectedContentSource ||
+    (selectedPostId ? convertLegacyIdToContentSource(selectedPostId) : undefined);
+
+  // 基于明确的内容源信息判断类型，而不是基于 id 格式猜测
+  const isNewFile = contentSource?.filePath?.startsWith("__NEW__");
+  const isWebDAVFile = contentSource?.source === "webdav";
+  const isLocalFile = contentSource?.source === "local";
+  const isDatabasePost = contentSource?.source === "database";
 
   // 获取数据库文章数据
   const { data: post } = trpc.admin.posts.get.useQuery(
-    selectedPostId && isDatabasePost ? { id: selectedPostId } : skipToken
+    contentSource && isDatabasePost ? { id: contentSource.filePath } : skipToken
   );
 
   // 获取 WebDAV 文件数据
@@ -71,16 +85,18 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
   const shouldSkipReload = Date.now() - lastSaveTime < 2000; // 保存后2秒内不重载
 
   const { data: webdavFile } = trpc.admin.files.readFile.useQuery(
-    selectedPostId ? { source: "webdav", path: selectedPostId } : { source: "webdav", path: "" },
+    contentSource && isWebDAVFile
+      ? { source: "webdav", path: contentSource.filePath }
+      : { source: "webdav", path: "" },
     {
-      enabled: !!selectedPostId && isWebDAVFile && !shouldSkipReload,
+      enabled: !!contentSource && isWebDAVFile && !shouldSkipReload,
       refetchOnWindowFocus: false, // 避免窗口聚焦时重新获取
     }
   );
 
   // 获取本地文件数据
   const { data: localFile } = trpc.admin.files.readFile.useQuery(
-    selectedPostId && isLocalFile ? { source: "local", path: selectedPostId } : skipToken
+    contentSource && isLocalFile ? { source: "local", path: contentSource.filePath } : skipToken
   );
 
   // 创建文章
@@ -89,6 +105,14 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
       // 创建成功后打开新标签页
       openPostInTab(result.post.id, result.post.title, result.post.body, true);
       setTimeout(() => {
+        // 创建新的内容源信息
+        const newContentSource: ContentSource = {
+          source: "database",
+          filePath: result.post.id,
+          id: result.post.id,
+        };
+        onContentSourceChange?.(newContentSource);
+        // 兼容旧的回调
         onPostChange?.(result.post.id);
       }, 0);
     },
@@ -101,8 +125,9 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
   const updatePostMutation = trpc.admin.posts.update.useMutation({
     onSuccess: () => {
       // 更新成功后标记为已保存
+      const currentId = contentSource?.filePath || contentSource?.id;
       setTabs((prev) =>
-        prev.map((tab) => (tab.id === selectedPostId ? { ...tab, isDirty: false } : tab))
+        prev.map((tab) => (tab.id === currentId ? { ...tab, isDirty: false } : tab))
       );
     },
     onError: (error) => {
@@ -184,10 +209,11 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
 
   // 处理文章数据加载
   useEffect(() => {
-    if (post && selectedPostId) {
+    if (post && contentSource && isDatabasePost) {
+      const tabId = contentSource.filePath;
       setPostData((prev) => ({
         ...prev,
-        [selectedPostId]: {
+        [tabId]: {
           id: post.id,
           title: post.title,
           slug: post.slug,
@@ -201,124 +227,127 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
 
       openPostInTab(post.id, post.title, post.body);
     }
-  }, [post, selectedPostId, openPostInTab]);
+  }, [post, contentSource, isDatabasePost, openPostInTab]);
+
+  // 处理通过 slug 查询到的文章（可能需要读取文件内容）
+  useEffect(() => {
+    if (post && contentSource && isWebDAVFile) {
+      // 对于 WebDAV 文章，我们需要等待 webdavFile 数据加载
+      // 这个逻辑会在 WebDAV 文件数据加载的 useEffect 中处理
+    }
+  }, [post, contentSource, isWebDAVFile]);
 
   // 处理 WebDAV 文件数据加载
   useEffect(() => {
-    if (webdavFile && selectedPostId && isWebDAVFile) {
-      console.log("📁 [PostUniversalEditor] 加载 WebDAV 文件:", webdavFile);
+    if (webdavFile && contentSource && isWebDAVFile) {
+      console.log("📁 [PostUniversalEditor] 加载 WebDAV 文件:", {
+        filePath: contentSource.filePath,
+        contentLength: webdavFile.content.length,
+        hasPost: !!post,
+      });
 
-      // 解析文件名作为标题
-      const fileName = selectedPostId.split("/").pop() || "未命名文件";
-      const title = fileName.replace(/\.md$/, "");
+      try {
+        // 解析 Markdown 内容，提取 frontmatter 和正文
+        const parsed = parseMarkdownContent(webdavFile.content, contentSource.filePath);
+        const { frontmatter, body } = parsed;
 
-      // 生成正确的 slug
-      let generatedSlug = "";
+        console.log("🔧 [PostUniversalEditor] 解析 frontmatter:", {
+          frontmatter,
+          bodyLength: body.length,
+        });
 
-      // 从文件名中移除扩展名后再匹配时间戳
-      const fileNameWithoutExt = fileName.replace(/\.(md|mdx)$/i, "");
+        // 优先使用 frontmatter 中的数据，其次使用数据库中的数据，最后使用文件名
+        const title =
+          (frontmatter.title as string) ||
+          post?.title ||
+          contentSource.filePath.split("/").pop()?.replace(/\.md$/, "") ||
+          "未命名文件";
 
-      // 检查文件名是否包含中文字符
-      const containsChinese = /[\u4e00-\u9fff]/.test(fileNameWithoutExt);
+        const slug =
+          (frontmatter.slug as string) ||
+          post?.slug ||
+          contentSource.filePath.split("/").pop()?.replace(/\.md$/, "") ||
+          "untitled";
 
-      if (containsChinese) {
-        // 对于包含中文的文件名，使用和数据库同步一致的 slug 生成逻辑
-        const generateSlugLikeLibrary = (text: string): string => {
-          return (
-            text
-              .toLowerCase()
-              // 简单的中文转拼音映射（针对常见字符）
-              .replace(/心/g, "xin1-")
-              .replace(/羽/g, "yu3-")
-              .replace(/实/g, "shi2-")
-              .replace(/时/g, "shi2-")
-              .replace(/演/g, "yan3-")
-              .replace(/示/g, "shi4-")
-              .replace(/增/g, "zeng1-")
-              .replace(/量/g, "liang4-")
-              .replace(/数/g, "shu4-")
-              .replace(/据/g, "ju4-")
-              .replace(/同/g, "tong2-")
-              .replace(/步/g, "bu4-")
-              // 将非字母数字字符替换为连字符
-              .replace(/[^\w-]/g, "-")
-              // 合并多个连字符
-              .replace(/-+/g, "-")
-              // 移除首尾连字符
-              .replace(/^-+|-+$/g, "")
-          );
-        };
+        console.log("🔧 [PostUniversalEditor] WebDAV 文件数据提取:", {
+          frontmatterTitle: frontmatter.title,
+          frontmatterSlug: frontmatter.slug,
+          postTitle: post?.title,
+          postSlug: post?.slug,
+          finalTitle: title,
+          finalSlug: slug,
+        });
 
-        generatedSlug = generateSlugLikeLibrary(fileNameWithoutExt);
-      } else {
-        // 对于不包含中文的文件名，优先查找时间戳模式
-        const timestampMatch = fileNameWithoutExt.match(/-(\d{10,13})$/);
+        const tabId = contentSource.filePath;
+        setPostData((prev) => ({
+          ...prev,
+          [tabId]: {
+            id: tabId,
+            title: title,
+            slug: slug,
+            body: webdavFile.content, // 保持完整内容（包括 frontmatter）
+            excerpt: (frontmatter.excerpt as string) || "",
+            type: (frontmatter.type as string) || post?.type || "post",
+            draft: (frontmatter.draft as boolean) ?? post?.draft ?? false,
+            public: (frontmatter.public as boolean) ?? post?.public ?? true,
+          },
+        }));
 
-        if (timestampMatch) {
-          // 直接使用时间戳作为 slug
-          generatedSlug = timestampMatch[1];
-        } else {
-          // 对于其他情况，生成简化的 slug
-          generatedSlug = fileNameWithoutExt
-            .replace(/^\d{8}_/, "") // 移除 20250804_ 格式
-            .replace(/^\d{4}-\d{2}-\d{2}-/, "") // 移除 2023-12-01- 格式
-            .replace(/[^\w-]/g, "-") // 将非字母数字字符替换为连字符
-            .replace(/-+/g, "-") // 合并多个连字符
-            .replace(/^-+|-+$/g, "") // 移除首尾连字符
-            .toLowerCase();
+        openPostInTab(tabId, title, webdavFile.content);
+      } catch (error) {
+        console.error("❌ [PostUniversalEditor] 解析 WebDAV 文件失败:", error);
 
-          // 如果 slug 为空或太短，使用当前时间戳
-          if (!generatedSlug || generatedSlug.length < 3) {
-            generatedSlug = `content-${Date.now()}`;
-          }
-        }
+        // 解析失败时的后备逻辑
+        const title =
+          post?.title ||
+          contentSource.filePath.split("/").pop()?.replace(/\.md$/, "") ||
+          "未命名文件";
+        const slug =
+          post?.slug || contentSource.filePath.split("/").pop()?.replace(/\.md$/, "") || "untitled";
+
+        const tabId = contentSource.filePath;
+        setPostData((prev) => ({
+          ...prev,
+          [tabId]: {
+            id: tabId,
+            title: title,
+            slug: slug,
+            body: webdavFile.content,
+            excerpt: "",
+            type: post?.type || "post",
+            draft: post?.draft ?? false,
+            public: post?.public ?? true,
+          },
+        }));
+
+        openPostInTab(tabId, title, webdavFile.content);
       }
-
-      // 如果生成的 slug 为空或太短，使用备用方案
-      if (!generatedSlug || generatedSlug.length < 3) {
-        generatedSlug = `content-${Date.now()}`;
-      }
-
-      setPostData((prev) => ({
-        ...prev,
-        [selectedPostId]: {
-          id: selectedPostId,
-          title: title,
-          slug: generatedSlug,
-          body: webdavFile.content,
-          excerpt: "",
-          type: "project", // WebDAV 文件默认为项目类型
-          draft: false,
-          public: true,
-        },
-      }));
-
-      openPostInTab(selectedPostId, title, webdavFile.content);
     }
-  }, [webdavFile, selectedPostId, isWebDAVFile, openPostInTab]);
+  }, [webdavFile, contentSource, isWebDAVFile, post, openPostInTab]);
 
   // 处理本地文件数据加载
   useEffect(() => {
-    if (localFile && selectedPostId && isLocalFile) {
+    if (localFile && contentSource && isLocalFile) {
       console.log("📁 [PostUniversalEditor] 加载本地文件:", localFile);
 
       // 解析文件名作为标题
-      const fileName = selectedPostId.split("/").pop() || "未命名文件";
+      const fileName = contentSource.filePath.split("/").pop() || "未命名文件";
       const title = fileName.replace(/\.md$/, "");
 
+      const tabId = contentSource.filePath;
       setPostData((prev) => ({
         ...prev,
-        [selectedPostId]: {
-          id: selectedPostId,
+        [tabId]: {
+          id: tabId,
           title: title,
-          slug: selectedPostId.replace(/[^a-zA-Z0-9]/g, "-"),
+          slug: contentSource.filePath.replace(/[^a-zA-Z0-9]/g, "-"),
           body: localFile.content,
           excerpt: "",
-          type: selectedPostId.startsWith("posts/")
+          type: contentSource.filePath.startsWith("posts/")
             ? "post"
-            : selectedPostId.startsWith("projects/")
+            : contentSource.filePath.startsWith("projects/")
               ? "project"
-              : selectedPostId.startsWith("memos/")
+              : contentSource.filePath.startsWith("memos/")
                 ? "memo"
                 : "post",
           draft: false,
@@ -326,17 +355,17 @@ export function PostUniversalEditor({ selectedPostId, onPostChange }: PostUniver
         },
       }));
 
-      openPostInTab(selectedPostId, title, localFile.content);
+      openPostInTab(tabId, title, localFile.content);
     }
-  }, [localFile, selectedPostId, isLocalFile, openPostInTab]);
+  }, [localFile, contentSource, isLocalFile, openPostInTab]);
 
   // 处理新文件创建
   useEffect(() => {
-    if (selectedPostId && isNewFile) {
-      console.log("📝 [PostUniversalEditor] 创建新文件:", selectedPostId);
+    if (contentSource && isNewFile) {
+      console.log("📝 [PostUniversalEditor] 创建新文件:", contentSource);
 
       // 移除 __NEW__ 前缀获取实际文件路径
-      const actualFilePath = selectedPostId.replace("__NEW__", "");
+      const actualFilePath = contentSource.filePath.replace("__NEW__", "");
 
       // 从文件路径中提取文件名（不包含目录）
       const fileName = actualFilePath.split("/").pop() || actualFilePath;
@@ -368,10 +397,11 @@ author: ""
 开始写作您的文章...
 `;
 
+      const tabId = contentSource.filePath;
       // 在标签页中打开新文件
-      openPostInTab(selectedPostId, title, defaultContent, true);
+      openPostInTab(tabId, title, defaultContent, true);
     }
-  }, [selectedPostId, isNewFile, openPostInTab]);
+  }, [contentSource, isNewFile, openPostInTab]);
 
   // 处理标签页切换
   const handleTabChange = useCallback(
@@ -379,10 +409,14 @@ author: ""
       setActiveTabId(tabId);
       // 使用 setTimeout 避免在渲染过程中更新父组件状态
       setTimeout(() => {
+        // 根据 tabId 创建对应的 ContentSource
+        const newContentSource = convertTabIdToContentSource(tabId);
+        onContentSourceChange?.(newContentSource);
+        // 兼容旧的回调
         onPostChange?.(tabId);
       }, 0);
     },
-    [onPostChange]
+    [onContentSourceChange, onPostChange]
   );
 
   // 处理标签页关闭
@@ -397,6 +431,11 @@ author: ""
           const nextTab = newTabs[currentIndex] || newTabs[currentIndex - 1] || newTabs[0];
           setActiveTabId(nextTab?.id || "");
           setTimeout(() => {
+            if (nextTab?.id) {
+              const newContentSource = convertTabIdToContentSource(nextTab.id);
+              onContentSourceChange?.(newContentSource);
+            }
+            // 兼容旧的回调
             onPostChange?.(nextTab?.id || "");
           }, 0);
         }
@@ -411,7 +450,7 @@ author: ""
         return newData;
       });
     },
-    [activeTabId, onPostChange]
+    [activeTabId, onContentSourceChange, onPostChange]
   );
 
   // 处理内容变化
@@ -453,8 +492,12 @@ author: ""
           // 对于 memo，使用文件路径生成 URL
           frontendUrl = generateContentUrl("memo", tabId);
         } else {
-          // 对于文章，使用 frontmatter 数据
-          const frontmatter = data.frontmatter || {};
+          // 对于文章，使用文章数据构建 frontmatter 格式
+          const frontmatter = {
+            slug: data.slug,
+            title: data.title,
+            type: data.type,
+          };
           frontendUrl = generateContentUrl("post", frontmatter, tabId);
         }
 
@@ -489,22 +532,31 @@ author: ""
         contentLength: tab.content.length,
       });
 
-      // 处理内联 Base64 图片
-      const processedContent = await processInlineImages(tab.content, tabId);
-
-      console.log("📝 [PostUniversalEditor] 图片处理完成:", {
-        originalLength: tab.content.length,
-        processedLength: processedContent.length,
-        hasImages: processedContent.includes("!["),
-      });
-
-      // 自动生成 slug
+      // 自动生成 slug（需要在图片处理前生成，因为图片文件名需要使用 slug）
       const slug =
         data.slug ||
         (data.title || tab.title || "untitled")
           .toLowerCase()
           .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
           .replace(/^-+|-+$/g, "");
+
+      console.log("🔧 [PostUniversalEditor] Slug 调试信息:", {
+        tabId,
+        dataSlug: data.slug,
+        dataTitle: data.title,
+        tabTitle: tab.title,
+        finalSlug: slug,
+      });
+
+      // 处理内联 Base64 图片（传递 slug 用于生成文件名）
+      const processedContent = await processInlineImages(tab.content, tabId, slug);
+
+      console.log("📝 [PostUniversalEditor] 图片处理完成:", {
+        originalLength: tab.content.length,
+        processedLength: processedContent.length,
+        hasImages: processedContent.includes("!["),
+        slug: slug,
+      });
 
       // 根据文件类型选择保存方法
       const isNewFile = tabId.startsWith("__NEW__");
@@ -585,7 +637,7 @@ author: ""
   };
 
   // 将API URL转换回相对路径格式
-  const convertApiUrlsToRelativePaths = (content: string): string => {
+  const _convertApiUrlsToRelativePaths = (content: string): string => {
     // 匹配 API URL 格式的图片路径
     const apiUrlRegex = /!\[([^\]]*)\]\(\/api\/files\/[^/]+\/(.+?)\)/g;
 
@@ -600,142 +652,67 @@ author: ""
     });
   };
 
-  // 处理内联图片上传 - 从 UniversalEditor 复制过来
-  const processInlineImages = async (content: string, tabId: string): Promise<string> => {
-    // 首先将API URL转换回相对路径格式，避免第二次保存时路径错误
-    const normalizedContent = convertApiUrlsToRelativePaths(content);
+  /**
+   * 根据文章路径生成对应的 assets 目录路径
+   */
+  const getArticleAssetsPath = (tabId: string): string => {
+    // 1. 移除 __NEW__ 前缀（如果存在）
+    const cleanTabId = tabId.startsWith("__NEW__") ? tabId.replace("__NEW__", "") : tabId;
 
-    console.log("🔍 [PostUniversalEditor] 检查内容中的 Base64 图片:", {
-      contentLength: normalizedContent.length,
-      contentPreview:
-        normalizedContent.substring(0, 200) + (normalizedContent.length > 200 ? "..." : ""),
-      hasDataImage: normalizedContent.includes("data:image"),
-      hasEscapedDataImage: normalizedContent.includes("\\(data:image"),
-    });
+    // 2. 提取目录路径（去掉文件名）
+    const pathParts = cleanTabId.split("/");
+    pathParts.pop(); // 移除文件名部分
+    const directoryPath = pathParts.join("/");
 
-    // 先处理转义字符 - Milkdown 会转义 Markdown 语法
-    const unescapedContent = normalizedContent
-      .replace(/\\\[/g, "[") // 反转义 [
-      .replace(/\\\]/g, "]") // 反转义 ]
-      .replace(/\\\(/g, "(") // 反转义 (
-      .replace(/\\\)/g, ")"); // 反转义 )
-
-    console.log("🔧 [PostUniversalEditor] 反转义处理:", {
-      originalLength: normalizedContent.length,
-      unescapedLength: unescapedContent.length,
-      hasDataImageAfterUnescape: unescapedContent.includes("data:image"),
-      unescapedPreview:
-        unescapedContent.substring(0, 200) + (unescapedContent.length > 200 ? "..." : ""),
-    });
-
-    const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
-    let processedContent = unescapedContent;
-    const matches = Array.from(unescapedContent.matchAll(base64ImageRegex));
-
-    console.log("🔍 [PostUniversalEditor] 正则匹配结果:", {
-      matchCount: matches.length,
-      matches: matches.map((m) => ({
-        fullMatch: `${m[0].substring(0, 100)}...`,
-        altText: m[1],
-        imageType: m[2],
-        base64Length: m[3]?.length || 0,
-      })),
-    });
-
-    for (const match of matches) {
-      const [fullMatch, altText, imageType, base64Data] = match;
-
-      try {
-        console.log("🖼️ [PostUniversalEditor] 处理内联图片:", {
-          altText,
-          imageType,
-          base64Length: base64Data.length,
-        });
-
-        // 生成文件名
-        const timestamp = Date.now();
-        const filename = `inline-${timestamp}.${imageType}`;
-
-        // 根据当前文件源决定上传路径和方式
-        const currentFileIsWebDAV = tabId.startsWith("/");
-        const uploadPath = `assets/${filename}`;
-
-        // 将 base64 转换为 Blob
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: `image/${imageType}` });
-
-        let response: Response;
-
-        if (currentFileIsWebDAV) {
-          // WebDAV 文件：需要上传到 WebDAV 服务器
-          console.log("🌐 [PostUniversalEditor] 上传图片到 WebDAV 服务器:", uploadPath);
-
-          // 直接调用 WebDAV 服务器的 PUT 接口
-          const webdavUrl = `${process.env.NEXT_PUBLIC_WEBDAV_URL || "http://localhost:8080"}/${uploadPath}`;
-          response = await fetch(webdavUrl, {
-            method: "PUT",
-            headers: {
-              "Content-Type": `image/${imageType}`,
-            },
-            body: blob,
-          });
-        } else {
-          // 本地文件：上传到本地文件系统
-          console.log("💾 [PostUniversalEditor] 上传图片到本地文件系统:", uploadPath);
-          response = await fetch(`/api/files/local/${uploadPath}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": `image/${imageType}`,
-            },
-            body: blob,
-          });
-        }
-
-        if (!response.ok) {
-          throw new Error(`上传失败: ${response.status}`);
-        }
-
-        let result: unknown;
-        if (currentFileIsWebDAV) {
-          // WebDAV 服务器返回文本 "OK"
-          const text = await response.text();
-          result = { success: true, text };
-          console.log("✅ [PostUniversalEditor] WebDAV 图片上传成功:", {
-            uploadPath,
-            response: text,
-          });
-        } else {
-          // 本地 API 返回 JSON
-          result = await response.json();
-          console.log("✅ [PostUniversalEditor] 本地图片上传成功:", {
-            uploadPath,
-            result,
-          });
-        }
-
-        // 替换内联图片为上传后的路径（使用相对路径）
-        const imagePath = `./assets/${filename}`;
-        const newImageMarkdown = `![${altText}](${imagePath})`;
-        processedContent = processedContent.replace(fullMatch, newImageMarkdown);
-
-        console.log("✅ [PostUniversalEditor] 内联图片处理成功:", {
-          filename,
-          imagePath,
-          newMarkdown: newImageMarkdown,
-        });
-      } catch (error) {
-        console.error("❌ [PostUniversalEditor] 内联图片处理失败:", error);
-        // 抛出错误，不要静默处理
-        throw new Error(`图片上传失败: ${error instanceof Error ? error.message : String(error)}`);
-      }
+    // 3. 构建 assets 路径
+    if (directoryPath) {
+      return `${directoryPath}/assets`;
+    } else {
+      // 如果文件在根目录，则 assets 也在根目录
+      return "assets";
     }
+  };
 
-    return processedContent;
+  // 处理内联图片上传 - 使用统一的图片处理工具函数
+  const processInlineImages = async (
+    content: string,
+    tabId: string,
+    articleSlug?: string
+  ): Promise<string> => {
+    console.log("🔍 [PostUniversalEditor] 开始处理内联图片:", {
+      tabId,
+      articleSlug,
+      contentLength: content.length,
+      hasDataImage: content.includes("data:image"),
+    });
+
+    try {
+      // 确定内容源类型
+      const contentSource = tabId.startsWith("/") ? "webdav" : "local";
+
+      // 使用统一的图片处理函数，传递自定义 slug
+      const result = await processInlineImagesCompat(
+        content,
+        contentSource,
+        tabId,
+        "relative", // PostUniversalEditor 使用相对路径格式
+        articleSlug // 传递文章 slug 用于生成文件名
+      );
+
+      console.log("✅ [PostUniversalEditor] 图片处理完成:", {
+        tabId,
+        contentSource,
+        originalLength: content.length,
+        processedLength: result.length,
+        hasChanges: result !== content,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("❌ [PostUniversalEditor] 图片处理失败:", error);
+      // 保持与原有行为一致，抛出错误
+      throw new Error(`图片上传失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   // 创建新文章
@@ -909,7 +886,7 @@ author: ""
           initialContent={activeTab.content}
           onContentChange={(content) => handleContentChange(activeTab.id, content)}
           placeholder="开始写作您的文章..."
-          attachmentBasePath="assets"
+          attachmentBasePath={getArticleAssetsPath(activeTab.id)}
           articlePath={
             activeTab.id.startsWith("__NEW__") ? activeTab.id.replace("__NEW__", "") : activeTab.id
           }
@@ -921,4 +898,41 @@ author: ""
       </div>
     </div>
   );
+}
+
+/**
+ * 将旧的 id 参数转换为内容源信息（兼容函数）
+ */
+function convertLegacyIdToContentSource(id: string): ContentSource {
+  if (id.startsWith("/")) {
+    // WebDAV 文件
+    return {
+      source: "webdav",
+      filePath: id,
+      id,
+    };
+  } else if (id.includes("/") || id.endsWith(".md")) {
+    // 本地文件
+    return {
+      source: "local",
+      filePath: id,
+      id,
+    };
+  } else {
+    // 数据库文章
+    return {
+      source: "database",
+      filePath: id,
+      id,
+    };
+  }
+}
+
+/**
+ * 将标签页 ID 转换为内容源信息
+ */
+function convertTabIdToContentSource(tabId: string): ContentSource {
+  // 这里使用和 convertLegacyIdToContentSource 相同的逻辑
+  // 因为标签页 ID 目前就是原来的文件路径或数据库 ID
+  return convertLegacyIdToContentSource(tabId);
 }

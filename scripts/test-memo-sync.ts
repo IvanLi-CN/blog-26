@@ -3,9 +3,16 @@
  * 测试闪念写操作的增量数据同步功能
  */
 
-process.env.NODE_ENV = "test";
-process.env.ADMIN_EMAIL = "admin-test@test.local";
-process.env.WEBDAV_URL = "http://localhost:8080";
+// 设置测试环境变量
+if (!process.env.NODE_ENV) {
+  (process.env as any).NODE_ENV = "test";
+}
+if (!process.env.ADMIN_EMAIL) {
+  process.env.ADMIN_EMAIL = "admin-test@test.local";
+}
+if (!process.env.WEBDAV_URL) {
+  process.env.WEBDAV_URL = "http://localhost:8080";
+}
 
 import { initializeDB } from "../src/lib/db";
 import { createContext } from "../src/server/context";

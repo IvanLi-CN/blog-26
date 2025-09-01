@@ -146,6 +146,31 @@ export const adminPostsRouter = createTRPCRouter({
     }
   }),
 
+  // 通过 slug 获取文章
+  getBySlug: adminProcedure.input(z.object({ slug: z.string() })).query(async ({ input }) => {
+    try {
+      const post = await db.select().from(posts).where(eq(posts.slug, input.slug)).get();
+
+      if (!post) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "文章不存在",
+        });
+      }
+
+      return post;
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      console.error("通过 slug 获取文章失败:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "获取文章失败",
+      });
+    }
+  }),
+
   // 创建文章
   create: adminProcedure.input(createPostSchema).mutation(async ({ input }) => {
     try {

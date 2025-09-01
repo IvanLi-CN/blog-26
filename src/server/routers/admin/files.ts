@@ -397,7 +397,7 @@ export const filesRouter = createTRPCRouter({
       }
 
       // 检查内容源是否支持写入功能
-      if (typeof source.writeFile !== "function") {
+      if (typeof (source as any).writeFile !== "function") {
         throw new TRPCError({
           code: "NOT_IMPLEMENTED",
           message: `数据源 "${input.source}" 不支持文件写入功能`,
@@ -405,7 +405,7 @@ export const filesRouter = createTRPCRouter({
       }
 
       // 调用内容源的写入方法
-      await source.writeFile(input.path, input.content);
+      await (source as any).writeFile(input.path, input.content);
 
       console.log(`✅ [Files API] 文件写入成功: ${input.source}:${input.path}`);
 

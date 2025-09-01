@@ -61,7 +61,6 @@
     "webdav:list": "bun ./scripts/webdav-tools.ts list",
     "webdav:check": "bun ./scripts/webdav-tools.ts check",
     "webdav:dev": "bun ./scripts/start-dev-webdav.ts",
-
     "webdav:legacy": "bun ./scripts/webdav-server.ts",
     "test-data:generate": "bun ./scripts/generate-test-data.ts",
     "test-data:clean": "bun ./scripts/generate-test-data.ts --clean",
@@ -73,7 +72,6 @@
     "test-sync:trigger": "bun ./scripts/trigger-test-sync.ts",
     "test-server:start": "bun run test-env:reset && concurrently --names \"WebDAV,Next.js\" --prefix-colors \"cyan,magenta\" \"dufs test-data/webdav --port 8080 --allow-all --enable-cors\" \"NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test.db bun --bun next dev --turbopack --port 3000\"",
     "test-data:verify-e2e": "bun ./scripts/verify-e2e-data.ts",
-
     "dev-data:generate": "bun ./scripts/generate-test-data.ts --dev",
     "dev-data:clean": "bun ./scripts/generate-test-data.ts --dev --clean",
     "test": "bun test src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*'",
@@ -120,7 +118,6 @@
     "@trpc/client": "^11.4.3",
     "@trpc/react-query": "^11.4.3",
     "@trpc/server": "^11.4.3",
-
     "@types/katex": "^0.16.7",
     "@types/uuid": "^10.0.0",
     "clsx": "^2.1.1",
@@ -131,7 +128,6 @@
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "ioredis": "^5.6.1",
-
     "katex": "^0.16.22",
     "limax": "4.1.0",
     "llamaindex": "^0.11.9",

@@ -169,7 +169,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                         </span>
                       )}
                       <Link
-                        href={`/admin/posts/edit?id=${encodeURIComponent(post.id)}`}
+                        href={`/admin/posts/editor?slug=${encodeURIComponent(post.slug)}`}
                         className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 rounded-md transition-colors duration-200"
                         title="编辑文章"
                       >

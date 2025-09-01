@@ -6,6 +6,7 @@
  * 完全按照旧项目的方式实现，包含 processInlineImages 函数
  */
 
+import { nanoid } from "nanoid";
 import Image from "next/image";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -69,6 +70,28 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     const [content, setContent] = useState(initialContent);
     const [currentMode, setCurrentMode] = useState<EditorMode>(mode);
 
+    /**
+     * 根据文章路径生成文章 slug
+     */
+    const getArticleSlug = (articlePath: string): string => {
+      if (!articlePath) return "untitled";
+
+      // 提取文件名（去掉路径和扩展名）
+      const pathParts = articlePath.split("/");
+      const fileName = pathParts.pop() || "untitled";
+      const fileNameWithoutExt = fileName.replace(/\.(md|markdown)$/i, "");
+
+      // 转换为 slug 格式
+      return (
+        fileNameWithoutExt
+          .toLowerCase()
+          .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .substring(0, 50) || // 限制长度，为 nanoid 留空间
+        "untitled"
+      );
+    };
+
     // 处理内联图片上传 - 完全按照旧项目的方式
     const processInlineImages = async (content: string): Promise<string> => {
       const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
@@ -85,9 +108,10 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
             base64Length: base64Data.length,
           });
 
-          // 生成文件名
-          const timestamp = Date.now();
-          const filename = `inline-${timestamp}.${imageType}`;
+          // 生成文件名：文章slug + nanoid + 扩展名
+          const articleSlug = getArticleSlug(articlePath);
+          const uniqueId = nanoid(8); // 8位 nanoid
+          const filename = `${articleSlug}-${uniqueId}.${imageType}`;
 
           // 构建上传路径
           const uploadPath = `${attachmentBasePath}/${filename}`;
@@ -159,9 +183,11 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     // 处理图片上传
     const handleImageUpload = async (file: File): Promise<string> => {
       try {
-        // 生成唯一文件名，避免冲突
-        const timestamp = Date.now();
-        const uniqueFileName = `${timestamp}_${file.name}`;
+        // 生成唯一文件名：文章slug + nanoid + 原始扩展名
+        const articleSlug = getArticleSlug(articlePath);
+        const uniqueId = nanoid(8); // 8位 nanoid
+        const fileExtension = file.name.split(".").pop() || "jpg";
+        const uniqueFileName = `${articleSlug}-${uniqueId}.${fileExtension}`;
 
         // 构建上传路径
         const uploadPath = `${attachmentBasePath}/${uniqueFileName}`;
