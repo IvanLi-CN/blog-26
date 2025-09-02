@@ -13,12 +13,7 @@ import { Provider as JotaiProvider, useAtom, useSetAtom } from "jotai";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect } from "react";
-import {
-  activeContentIdentifierAtom,
-  activeTabIdAtom,
-  setActiveTabIdAtom,
-  tabsAtom,
-} from "../../store/editorAtoms";
+import { activeContentIdentifierAtom, setActiveTabIdAtom, tabsAtom } from "../../store/editorAtoms";
 import { debouncedUpdateUrlAtom, initializeFromUrlAtom } from "../../store/urlSyncAtoms";
 
 // URL 同步组件
@@ -49,54 +44,6 @@ function UrlSyncManager() {
   return null; // 这是一个纯逻辑组件，不渲染任何内容
 }
 
-// 调试组件（开发环境下显示状态）
-function EditorStateDebugger() {
-  const [activeTabId] = useAtom(activeTabIdAtom);
-  const [tabs] = useAtom(tabsAtom);
-  const [activeContentIdentifier] = useAtom(activeContentIdentifierAtom);
-
-  if (process.env.NODE_ENV !== "development") {
-    return null;
-  }
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: "10px",
-        right: "10px",
-        background: "rgba(0,0,0,0.8)",
-        color: "white",
-        padding: "10px",
-        borderRadius: "5px",
-        fontSize: "12px",
-        zIndex: 9999,
-        maxWidth: "300px",
-      }}
-    >
-      <div>
-        <strong>Jotai 编辑器状态调试</strong>
-      </div>
-      <div>活动标签页ID: {activeTabId || "null"}</div>
-      <div>标签页数量: {tabs.length}</div>
-      <div>
-        活动内容标识符:{" "}
-        {activeContentIdentifier
-          ? `${activeContentIdentifier.source}:${activeContentIdentifier.path}`
-          : "null"}
-      </div>
-      <div>标签页列表:</div>
-      <ul style={{ margin: "5px 0", paddingLeft: "15px" }}>
-        {tabs.map((tab) => (
-          <li key={tab.id} style={{ color: tab.id === activeTabId ? "yellow" : "white" }}>
-            {tab.id} - {tab.title}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 // 主要的状态提供者组件
 interface EditorStateProviderProps {
   children: React.ReactNode;
@@ -106,7 +53,6 @@ export function EditorStateProvider({ children }: EditorStateProviderProps) {
   return (
     <JotaiProvider>
       <UrlSyncManager />
-      <EditorStateDebugger />
       {children}
     </JotaiProvider>
   );
