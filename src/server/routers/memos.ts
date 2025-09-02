@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, like, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
 import { getContentSourceManager } from "../../lib/content-sources";
@@ -66,6 +66,9 @@ async function triggerIncrementalSync(): Promise<void> {
       conflictResolution: "priority",
     });
 
+    // 确保内容源已注册
+    await _ensureContentSourcesRegistered(manager);
+
     // 执行增量同步
     const result = await manager.syncAll();
 
@@ -88,8 +91,8 @@ async function triggerIncrementalSync(): Promise<void> {
 // ============================================================================
 
 const listMemosSchema = z.object({
-  page: z.number().min(1).default(1),
   limit: z.number().min(1).max(50).default(10),
+  cursor: z.string().optional(), // cursor format: "publishDate_id"
   search: z.string().optional(),
   tag: z.string().optional(),
   publicOnly: z.boolean().default(true),
@@ -151,10 +154,9 @@ const uploadAttachmentSchema = z.object({
 // ============================================================================
 
 export const memosRouter = router({
-  // 获取 memo 列表（分页）
+  // 获取 memo 列表（无限滚动）
   list: publicProcedure.input(listMemosSchema).query(async ({ input, ctx }) => {
-    const { page, limit, search, tag } = input;
-    const offset = (page - 1) * limit;
+    const { cursor, limit, search, tag } = input;
 
     try {
       // 构建查询条件
@@ -175,24 +177,39 @@ export const memosRouter = router({
         conditions.push(like(posts.tags, `%${tag}%`));
       }
 
-      // 查询数据
-      const [memoList, totalCount] = await Promise.all([
-        db
-          .select()
-          .from(posts)
-          .where(conditions.length > 0 ? and(...conditions) : undefined)
-          .orderBy(desc(posts.publishDate))
-          .limit(limit)
-          .offset(offset),
-        db
-          .select({ count: sql<number>`count(*)` })
-          .from(posts)
-          .where(conditions.length > 0 ? and(...conditions) : undefined)
-          .then((result) => result[0]?.count || 0),
-      ]);
+      // Cursor 分页条件 - 使用时间戳比较
+      if (cursor) {
+        try {
+          // 解码 URL 编码的 cursor
+          const decodedCursor = decodeURIComponent(cursor);
+          const [cursorDate] = decodedCursor.split("_");
+
+          if (cursorDate) {
+            // 将日期字符串转换为时间戳进行比较
+            const cursorTimestamp = new Date(cursorDate).getTime();
+            // 使用 SQL 函数进行时间戳比较，避免 Date 对象绑定问题
+            conditions.push(sql`${posts.publishDate} < ${cursorTimestamp}`);
+          }
+        } catch (error) {
+          console.error("解析 cursor 失败:", error);
+          // 如果 cursor 解析失败，忽略分页条件，从头开始
+        }
+      }
+
+      // 查询数据 - 多取一条用于判断是否有下一页
+      const memoList = await db
+        .select()
+        .from(posts)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(posts.publishDate), desc(posts.id)) // 添加 id 作为辅助排序确保稳定性
+        .limit(limit + 1); // 多取一条用于判断 hasMore
+
+      // 判断是否有更多数据
+      const hasMore = memoList.length > limit;
+      const actualMemos = hasMore ? memoList.slice(0, limit) : memoList;
 
       // 转换为 API 响应格式
-      const formattedMemos = memoList.map((memo) => ({
+      const formattedMemos = actualMemos.map((memo) => ({
         id: memo.id,
         slug: memo.slug,
         title: memo.title || "无标题 Memo",
@@ -210,18 +227,18 @@ export const memosRouter = router({
           : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
       }));
 
-      const totalPages = Math.ceil(totalCount / limit);
-      const hasMore = page < totalPages;
+      // 生成下一页的 cursor
+      let nextCursor: string | undefined;
+      if (hasMore && actualMemos.length > 0) {
+        const lastMemo = actualMemos[actualMemos.length - 1];
+        const lastDate = new Date(toMsTimestamp(lastMemo.publishDate)).toISOString();
+        nextCursor = `${lastDate}_${lastMemo.id}`;
+      }
 
       return {
         memos: formattedMemos,
-        pagination: {
-          page,
-          limit,
-          total: totalCount,
-          totalPages,
-          hasMore,
-        },
+        nextCursor,
+        hasMore,
       };
     } catch (error) {
       console.error("获取 memo 列表失败:", error);

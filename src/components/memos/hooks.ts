@@ -2,7 +2,7 @@
  * Memo 相关的自定义 hooks
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { trpc } from "../../lib/trpc";
 import type { MemoCardData } from "./MemoCard";
 import type { MemoData } from "./MemoEditor";
@@ -27,68 +27,79 @@ export function useMemos(options: UseMemosOptions = {}) {
   const { limit = 10, publicOnly = true, initialSearch = "", initialTag = "" } = options;
 
   // 状态管理
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState(initialSearch);
   const [tag, setTag] = useState(initialTag);
-  const [allMemos, setAllMemos] = useState<MemoCardData[]>([]);
 
-  // tRPC 查询
-  const { data, isLoading, isError, error, refetch } = trpc.memos.list.useQuery({
-    page,
-    limit,
-    search: search || undefined,
-    tag: tag || undefined,
-    publicOnly,
-  });
+  // tRPC 无限查询
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = trpc.memos.list.useInfiniteQuery(
+    {
+      limit,
+      search: search || undefined,
+      tag: tag || undefined,
+      publicOnly,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+    }
+  );
 
-  // 更新本地状态
-  useEffect(() => {
-    if (data?.memos) {
-      const convertedMemos = data.memos.map((memo) => ({
+  // 合并所有页面的数据
+  const allMemos = useMemo(() => {
+    if (!data?.pages) return [];
+
+    return data.pages.flatMap((page) =>
+      page.memos.map((memo) => ({
         ...memo,
         excerpt: memo.excerpt ?? undefined,
-      }));
-
-      if (page === 1) {
-        setAllMemos(convertedMemos);
-      } else {
-        setAllMemos((prev) => [...prev, ...convertedMemos]);
-      }
-    }
-  }, [data, page]);
+      }))
+    );
+  }, [data]);
 
   // 搜索处理
-  const handleSearch = useCallback((query: string) => {
-    setSearch(query);
-    setPage(1);
-    setAllMemos([]);
-  }, []);
+  const handleSearch = useCallback(
+    (query: string) => {
+      setSearch(query);
+      refetch();
+    },
+    [refetch]
+  );
 
   // 标签过滤处理
-  const handleTagFilter = useCallback((selectedTag: string | null) => {
-    setTag(selectedTag || "");
-    setPage(1);
-    setAllMemos([]);
-  }, []);
+  const handleTagFilter = useCallback(
+    (selectedTag: string | null) => {
+      setTag(selectedTag || "");
+      refetch();
+    },
+    [refetch]
+  );
 
   // 加载更多
   const loadMore = useCallback(() => {
-    if (data?.pagination.hasMore && !isLoading) {
-      setPage((prev) => prev + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-  }, [data?.pagination.hasMore, isLoading]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // 刷新
   const refresh = useCallback(() => {
-    setPage(1);
-    setAllMemos([]);
     refetch();
   }, [refetch]);
 
   return {
     memos: allMemos,
-    pagination: data?.pagination,
-    isLoading,
+    pagination: {
+      hasMore: hasNextPage,
+    },
+    isLoading: isLoading || isFetchingNextPage,
     isError,
     error,
     search,
