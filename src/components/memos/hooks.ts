@@ -4,7 +4,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { trpc } from "../../lib/trpc";
-import type { MemoCardData } from "./MemoCard";
 import type { MemoData } from "./MemoEditor";
 import type { QuickMemoData } from "./QuickMemoEditor";
 

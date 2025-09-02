@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
 import { getContentSourceManager } from "../../lib/content-sources";
