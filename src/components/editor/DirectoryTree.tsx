@@ -525,7 +525,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
       </div>
 
       {/* 文件树 */}
-      <div className="p-2 overflow-y-auto h-full">
+      <div className="p-2">
         {/* 数据源列表 */}
         {sources.map((source) => {
           const isExpanded = expandedFolders.has(source.name);
