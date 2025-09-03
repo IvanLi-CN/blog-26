@@ -8,7 +8,7 @@
 
 import { expect, test } from "@playwright/test";
 import { EditorPage } from "./pages/EditorPage";
-import { EditorTestHelpers } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("滚动定位功能", () => {
   let editorPage: EditorPage;
@@ -16,6 +16,12 @@ test.describe("滚动定位功能", () => {
   test.beforeEach(async ({ page }) => {
     // 设置控制台日志捕获
     await EditorTestHelpers.setupConsoleLogCapture(page);
+
+    // 先访问首页
+    await page.goto("/");
+
+    // 进行开发环境登录
+    await devLogin(page);
 
     editorPage = new EditorPage(page);
     await editorPage.goto();
@@ -102,7 +108,7 @@ test.describe("滚动定位功能", () => {
     await editorPage.verifyFileInViewport("01-react-hooks-deep-dive.md");
   });
 
-  test("测试用例 2.4: 跨文件夹滚动定位", async ({ _page }) => {
+  test("测试用例 2.4: 跨文件夹滚动定位", async () => {
     // 测试跨不同文件夹的滚动定位
 
     // 1. 选择blog文件夹中的文件

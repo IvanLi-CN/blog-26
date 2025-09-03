@@ -8,7 +8,7 @@
 
 import { expect, test } from "@playwright/test";
 import { EditorPage } from "./pages/EditorPage";
-import { EditorTestHelpers } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("URL状态双向绑定功能", () => {
   let editorPage: EditorPage;
@@ -16,6 +16,12 @@ test.describe("URL状态双向绑定功能", () => {
   test.beforeEach(async ({ page }) => {
     // 设置控制台日志捕获
     await EditorTestHelpers.setupConsoleLogCapture(page);
+
+    // 先访问首页
+    await page.goto("/");
+
+    // 进行开发环境登录
+    await devLogin(page);
 
     editorPage = new EditorPage(page);
     await editorPage.goto();

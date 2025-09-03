@@ -10,85 +10,32 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { devLogin } from "./editor-smart-features/utils/editor-test-helpers";
 
 test.describe("数据同步管理页面", () => {
   test.beforeEach(async ({ page }) => {
     // 设置更长的超时时间
     page.setDefaultTimeout(60000);
 
-    // 使用管理员身份登录
-    const adminEmail = process.env.ADMIN_EMAIL || "admin-test@test.local";
-    console.log(`🔍 [DEBUG] 尝试使用邮箱登录: ${adminEmail}`);
+    // 先访问首页
+    await page.goto("/");
 
-    const response = await page.request.post("/api/dev/login", {
-      data: { email: adminEmail },
-    });
+    // 使用修复的开发环境登录
+    await devLogin(page);
+    console.log("✅ 开发环境登录成功");
 
-    console.log(`🔍 [DEBUG] 登录响应状态: ${response.status()}`);
-    const data = await response.json();
-    console.log(`🔍 [DEBUG] 登录响应数据:`, data);
+    // 访问数据同步管理页面
+    await page.goto("/admin/data-sync");
+    await page.waitForLoadState("networkidle");
 
-    expect(response.status()).toBe(200);
-    expect(data.success).toBe(true);
+    // 等待页面主要内容加载
+    await page.waitForSelector("h1", { timeout: 30000 });
 
-    // 提取 session cookie 并设置到浏览器上下文
-    const setCookieHeader = response.headers()["set-cookie"];
-    if (setCookieHeader) {
-      const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
-      if (sessionCookieMatch) {
-        const sessionId = sessionCookieMatch[1];
-        console.log(`🔍 [DEBUG] 提取到 session ID: ${sessionId.substring(0, 8)}...`);
+    // 等待同步按钮加载
+    await page.waitForSelector("[data-testid='full-sync-button']", { timeout: 30000 });
 
-        // 设置 cookie 到浏览器上下文
-        await page.context().addCookies([
-          {
-            name: "session_id",
-            value: sessionId,
-            domain: "localhost",
-            path: "/",
-            httpOnly: true,
-            sameSite: "Lax",
-          },
-        ]);
-
-        console.log(`🔧 Session cookie 已设置到浏览器上下文`);
-      }
-    }
-
-    console.log(`🔧 管理员登录成功: ${data.user.email}`);
-
-    // 添加调试：检查认证状态
-    console.log(`🔍 [DEBUG] 检查认证状态...`);
-    const authResponse = await page.request.get("/api/test/env");
-    if (authResponse.ok()) {
-      const envData = await authResponse.json();
-      console.log(`🔍 [DEBUG] 服务端环境变量:`, envData);
-    }
-
-    try {
-      // 访问数据同步管理页面
-      await page.goto("/admin/data-sync", {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
-
-      // 等待页面完全加载
-      await page.waitForLoadState("networkidle", { timeout: 30000 });
-
-      // 等待页面主要内容加载
-      await page.waitForSelector("h1", { timeout: 30000 });
-
-      // 等待一下确保内容渲染完成
-      await page.waitForTimeout(2000);
-    } catch (error) {
-      console.error("页面加载失败:", error);
-      // 重试一次
-      await page.goto("/admin/data-sync", {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
-      await page.waitForSelector("h1", { timeout: 30000 });
-    }
+    // 等待一下确保内容渲染完成
+    await page.waitForTimeout(3000);
   });
 
   test.describe("页面基础功能", () => {

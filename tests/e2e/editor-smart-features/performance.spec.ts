@@ -7,7 +7,7 @@
 
 import { expect, test } from "@playwright/test";
 import { EditorPage } from "./pages/EditorPage";
-import { EditorTestHelpers } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("性能测试", () => {
   let editorPage: EditorPage;
@@ -15,6 +15,12 @@ test.describe("性能测试", () => {
   test.beforeEach(async ({ page }) => {
     // 设置控制台日志捕获
     await EditorTestHelpers.setupConsoleLogCapture(page);
+
+    // 先访问首页
+    await page.goto("/");
+
+    // 进行开发环境登录
+    await devLogin(page);
 
     editorPage = new EditorPage(page);
   });
@@ -219,7 +225,7 @@ test.describe("性能测试", () => {
     await editorPage.verifySystemStability();
   });
 
-  test("测试用例 6.7: 长时间运行稳定性", async ({ _page }) => {
+  test("测试用例 6.7: 长时间运行稳定性", async () => {
     // 测试长时间运行的稳定性
 
     await editorPage.goto();

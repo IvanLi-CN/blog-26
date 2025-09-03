@@ -7,7 +7,7 @@
 
 import { expect, test } from "@playwright/test";
 import { EditorPage } from "./pages/EditorPage";
-import { EditorTestHelpers } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("错误处理测试", () => {
   let editorPage: EditorPage;
@@ -16,6 +16,12 @@ test.describe("错误处理测试", () => {
     // 设置控制台日志捕获
     await EditorTestHelpers.setupConsoleLogCapture(page);
 
+    // 先访问首页
+    await page.goto("/");
+
+    // 进行开发环境登录
+    await devLogin(page);
+
     editorPage = new EditorPage(page);
     await editorPage.goto();
 
@@ -23,7 +29,7 @@ test.describe("错误处理测试", () => {
     await editorPage.waitForFileTreeLoad();
   });
 
-  test("测试用例 7.1: 网络错误时系统稳定性", async ({ _page }) => {
+  test("测试用例 7.1: 网络错误时系统稳定性", async () => {
     // 1. 建立正常状态
     await editorPage.expandFolder("blog");
     await editorPage.selectFile("01-react-hooks-deep-dive.md");

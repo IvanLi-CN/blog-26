@@ -8,42 +8,20 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { devLogin } from "./editor-smart-features/utils/editor-test-helpers";
 
 test.describe("数据同步管理页面权限验证", () => {
   test.describe("管理员权限测试", () => {
     test("管理员用户应该能够正常访问页面", async ({ page }) => {
-      // 使用管理员身份登录
-      const response = await page.request.post("/api/dev/login", {
-        data: {
-          email: "admin-test@test.local",
-        },
-      });
+      // 先访问首页
+      await page.goto("/");
 
-      expect(response.ok()).toBeTruthy();
+      // 使用统一的开发环境登录
+      await devLogin(page);
 
-      // 提取并设置 session cookie
-      const setCookieHeader = response.headers()["set-cookie"];
-      if (setCookieHeader) {
-        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
-        if (sessionCookieMatch) {
-          const sessionId = sessionCookieMatch[1];
-          await page.context().addCookies([
-            {
-              name: "session_id",
-              value: sessionId,
-              domain: "localhost",
-              path: "/",
-              httpOnly: true,
-              sameSite: "Lax",
-            },
-          ]);
-        }
-      }
-
+      // 访问数据同步页面
       await page.goto("/admin/data-sync");
-
-      // 等待页面加载
-      await page.waitForLoadState("domcontentloaded");
+      await page.waitForLoadState("networkidle");
 
       // 验证页面成功加载，没有被重定向
       expect(page.url()).toContain("/admin/data-sync");
@@ -55,37 +33,21 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("管理员用户应该能够访问所有功能", async ({ page }) => {
-      // 使用管理员身份登录
-      const response = await page.request.post("/api/dev/login", {
-        data: {
-          email: "admin-test@test.local",
-        },
-      });
+      // 先访问首页
+      await page.goto("/");
 
-      expect(response.ok()).toBeTruthy();
+      // 使用统一的开发环境登录
+      await devLogin(page);
 
-      // 提取并设置 session cookie
-      const setCookieHeader = response.headers()["set-cookie"];
-      if (setCookieHeader) {
-        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
-        if (sessionCookieMatch) {
-          const sessionId = sessionCookieMatch[1];
-          await page.context().addCookies([
-            {
-              name: "session_id",
-              value: sessionId,
-              domain: "localhost",
-              path: "/",
-              httpOnly: true,
-              sameSite: "Lax",
-            },
-          ]);
-        }
-      }
-
+      // 访问数据同步页面
       await page.goto("/admin/data-sync");
-      await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState("networkidle");
+
+      // 等待页面主要内容加载
+      await page.waitForSelector("h1", { timeout: 30000 });
+
+      // 等待同步按钮加载
+      await page.waitForSelector("[data-testid='full-sync-button']", { timeout: 30000 });
 
       // 验证同步按钮可用
       const fullSyncButton = page.getByRole("button", { name: /全量同步/ });
@@ -120,33 +82,11 @@ test.describe("数据同步管理页面权限验证", () => {
 
   test.describe("管理员页面导航测试", () => {
     test("管理员应该能够访问所有管理页面", async ({ page }) => {
-      // 使用管理员身份登录
-      const response = await page.request.post("/api/dev/login", {
-        data: {
-          email: "admin-test@test.local",
-        },
-      });
+      // 先访问首页
+      await page.goto("/");
 
-      expect(response.ok()).toBeTruthy();
-
-      // 提取并设置 session cookie
-      const setCookieHeader = response.headers()["set-cookie"];
-      if (setCookieHeader) {
-        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
-        if (sessionCookieMatch) {
-          const sessionId = sessionCookieMatch[1];
-          await page.context().addCookies([
-            {
-              name: "session_id",
-              value: sessionId,
-              domain: "localhost",
-              path: "/",
-              httpOnly: true,
-              sameSite: "Lax",
-            },
-          ]);
-        }
-      }
+      // 使用统一的开发环境登录
+      await devLogin(page);
 
       // 测试访问管理员仪表盘
       await page.goto("/admin/dashboard");
@@ -256,37 +196,15 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("应该正确处理直接URL访问", async ({ page }) => {
-      // 使用管理员身份登录
-      const response = await page.request.post("/api/dev/login", {
-        data: {
-          email: "admin-test@test.local",
-        },
-      });
+      // 先访问首页
+      await page.goto("/");
 
-      expect(response.ok()).toBeTruthy();
-
-      // 提取并设置 session cookie
-      const setCookieHeader = response.headers()["set-cookie"];
-      if (setCookieHeader) {
-        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
-        if (sessionCookieMatch) {
-          const sessionId = sessionCookieMatch[1];
-          await page.context().addCookies([
-            {
-              name: "session_id",
-              value: sessionId,
-              domain: "localhost",
-              path: "/",
-              httpOnly: true,
-              sameSite: "Lax",
-            },
-          ]);
-        }
-      }
+      // 使用统一的开发环境登录
+      await devLogin(page);
 
       // 直接访问数据同步页面URL
       await page.goto("/admin/data-sync");
-      await page.waitForLoadState("domcontentloaded");
+      await page.waitForLoadState("networkidle");
 
       // 验证页面正确加载
       expect(page.url()).toContain("/admin/data-sync");
@@ -297,41 +215,19 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("应该正确处理页面刷新", async ({ page }) => {
-      // 使用管理员身份登录
-      const response = await page.request.post("/api/dev/login", {
-        data: {
-          email: "admin-test@test.local",
-        },
-      });
+      // 先访问首页
+      await page.goto("/");
 
-      expect(response.ok()).toBeTruthy();
-
-      // 提取并设置 session cookie
-      const setCookieHeader = response.headers()["set-cookie"];
-      if (setCookieHeader) {
-        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
-        if (sessionCookieMatch) {
-          const sessionId = sessionCookieMatch[1];
-          await page.context().addCookies([
-            {
-              name: "session_id",
-              value: sessionId,
-              domain: "localhost",
-              path: "/",
-              httpOnly: true,
-              sameSite: "Lax",
-            },
-          ]);
-        }
-      }
+      // 使用统一的开发环境登录
+      await devLogin(page);
 
       // 访问页面
       await page.goto("/admin/data-sync");
-      await page.waitForLoadState("domcontentloaded");
+      await page.waitForLoadState("networkidle");
 
       // 刷新页面
       await page.reload();
-      await page.waitForLoadState("domcontentloaded");
+      await page.waitForLoadState("networkidle");
 
       // 验证刷新后页面仍然正常
       expect(page.url()).toContain("/admin/data-sync");
@@ -373,37 +269,15 @@ test.describe("数据同步管理页面权限验证", () => {
     });
 
     test("应该正确处理网络错误", async ({ page }) => {
-      // 使用管理员身份登录
-      const response = await page.request.post("/api/dev/login", {
-        data: {
-          email: "admin-test@test.local",
-        },
-      });
+      // 先访问首页
+      await page.goto("/");
 
-      expect(response.ok()).toBeTruthy();
-
-      // 提取并设置 session cookie
-      const setCookieHeader = response.headers()["set-cookie"];
-      if (setCookieHeader) {
-        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
-        if (sessionCookieMatch) {
-          const sessionId = sessionCookieMatch[1];
-          await page.context().addCookies([
-            {
-              name: "session_id",
-              value: sessionId,
-              domain: "localhost",
-              path: "/",
-              httpOnly: true,
-              sameSite: "Lax",
-            },
-          ]);
-        }
-      }
+      // 使用统一的开发环境登录
+      await devLogin(page);
 
       // 访问页面
       await page.goto("/admin/data-sync");
-      await page.waitForLoadState("domcontentloaded");
+      await page.waitForLoadState("networkidle");
 
       // 模拟网络错误
       await page.context().setOffline(true);

@@ -9,23 +9,44 @@ import { expect, type Page } from "@playwright/test";
 /**
  * 开发环境登录
  */
-export async function devLogin(page: Page, email = "ivanli2048@gmail.com"): Promise<void> {
-  // 使用 page.evaluate 在浏览器上下文中执行登录请求
-  const loginResponse = await page.evaluate(async (userEmail) => {
-    try {
-      const res = await fetch("/api/dev/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail }),
-      });
-      return await res.json();
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }, email);
+export async function devLogin(page: Page, email = "admin@test.com"): Promise<void> {
+  // 使用 page.request 进行登录
+  const response = await page.request.post("/api/dev/login", {
+    data: { email },
+  });
 
+  expect(response.status()).toBe(200);
+
+  const loginResponse = await response.json();
   expect(loginResponse.success).toBe(true);
   expect(loginResponse.user.email).toBe(email);
+
+  // 获取响应中的 Set-Cookie header
+  const setCookieHeader = response.headers()["set-cookie"];
+  if (setCookieHeader) {
+    // 解析 session cookie
+    const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+    if (sessionCookieMatch) {
+      const sessionId = sessionCookieMatch[1];
+
+      // 手动设置 cookie 到浏览器上下文
+      await page.context().addCookies([
+        {
+          name: "session_id",
+          value: sessionId,
+          domain: "localhost",
+          path: "/",
+          httpOnly: true,
+          sameSite: "Lax",
+        },
+      ]);
+
+      console.log(`✅ 设置 session cookie: ${sessionId.substring(0, 8)}...`);
+    }
+  }
+
+  // 等待一下确保 cookie 设置生效
+  await page.waitForTimeout(1000);
 }
 
 /**
@@ -288,3 +309,22 @@ export async function attemptRecovery(page: Page, maxAttempts = 3): Promise<bool
 
   return false;
 }
+
+// 导出所有测试辅助函数
+export {
+  devLogin,
+  waitForConsoleLog,
+  captureNetworkRequests,
+  measurePerformance,
+  takeScreenshotOnFailure,
+  setupConsoleLogCapture,
+  clearConsoleLogs,
+  getConsoleLogs,
+  waitForElementInViewport,
+  simulateNetworkDelay,
+  verifyUrlParams,
+  waitForJotaiStateUpdate,
+  createTestDataValidator,
+  getBrowserInfo,
+  attemptRecovery,
+};

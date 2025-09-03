@@ -7,7 +7,7 @@
 
 import { expect, test } from "@playwright/test";
 import { EditorPage } from "./pages/EditorPage";
-import { EditorTestHelpers } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("Jotai状态管理功能", () => {
   let editorPage: EditorPage;
@@ -15,6 +15,12 @@ test.describe("Jotai状态管理功能", () => {
   test.beforeEach(async ({ page }) => {
     // 设置控制台日志捕获
     await EditorTestHelpers.setupConsoleLogCapture(page);
+
+    // 先访问首页
+    await page.goto("/");
+
+    // 进行开发环境登录
+    await devLogin(page);
 
     editorPage = new EditorPage(page);
     await editorPage.goto();
@@ -26,7 +32,7 @@ test.describe("Jotai状态管理功能", () => {
     await editorPage.waitForJotaiDebugger();
   });
 
-  test("测试用例 5.1: 状态调试器正确显示状态", async ({ _page }) => {
+  test("测试用例 5.1: 状态调试器正确显示状态", async () => {
     // 1. 访问编辑器页面（已在beforeEach中完成）
 
     // 2. 验证初始状态
@@ -57,7 +63,7 @@ test.describe("Jotai状态管理功能", () => {
     });
   });
 
-  test("测试用例 5.2: 标签页状态管理", async ({ _page }) => {
+  test("测试用例 5.2: 标签页状态管理", async () => {
     // 测试标签页的创建、切换和关闭状态管理
 
     // 1. 创建多个标签页
@@ -89,7 +95,7 @@ test.describe("Jotai状态管理功能", () => {
     });
   });
 
-  test("测试用例 5.3: 文件树展开状态管理", async ({ _page }) => {
+  test("测试用例 5.3: 文件树展开状态管理", async () => {
     // 测试文件树展开状态的Jotai管理
 
     // 1. 验证初始展开状态
@@ -214,7 +220,7 @@ test.describe("Jotai状态管理功能", () => {
     console.log("ℹ️ Jotai调试器已移除，系统保持稳定");
   });
 
-  test("测试用例 5.7: 复杂状态场景测试", async ({ _page }) => {
+  test("测试用例 5.7: 复杂状态场景测试", async () => {
     // 测试复杂的状态管理场景
 
     // 1. 创建复杂的初始状态

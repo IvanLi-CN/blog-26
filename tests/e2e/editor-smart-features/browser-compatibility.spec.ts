@@ -7,7 +7,7 @@
 
 import { expect, test } from "@playwright/test";
 import { EditorPage } from "./pages/EditorPage";
-import { EditorTestHelpers } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("浏览器兼容性测试", () => {
   let editorPage: EditorPage;
@@ -15,6 +15,12 @@ test.describe("浏览器兼容性测试", () => {
   test.beforeEach(async ({ page }) => {
     // 设置控制台日志捕获
     await EditorTestHelpers.setupConsoleLogCapture(page);
+
+    // 先访问首页
+    await page.goto("/");
+
+    // 进行开发环境登录
+    await devLogin(page);
 
     editorPage = new EditorPage(page);
     await editorPage.goto();
@@ -182,7 +188,7 @@ test.describe("浏览器兼容性测试", () => {
     await editorPage.verifyTabExists("01-react-hooks-deep-dive");
   });
 
-  test("测试用例 8.7: 错误处理兼容性", async ({ _page, browserName }) => {
+  test("测试用例 8.7: 错误处理兼容性", async ({ browserName }) => {
     // 测试错误处理在不同浏览器下的兼容性
 
     // 1. 建立正常状态

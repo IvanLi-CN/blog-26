@@ -8,7 +8,7 @@
 
 import { expect, test } from "@playwright/test";
 import { EditorPage } from "./pages/EditorPage";
-import { EditorTestHelpers } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("文件高亮功能", () => {
   let editorPage: EditorPage;
@@ -17,6 +17,12 @@ test.describe("文件高亮功能", () => {
     // 设置控制台日志捕获
     await EditorTestHelpers.setupConsoleLogCapture(page);
 
+    // 先访问首页
+    await page.goto("/");
+
+    // 进行开发环境登录
+    await devLogin(page);
+
     editorPage = new EditorPage(page);
     await editorPage.goto();
 
@@ -24,7 +30,7 @@ test.describe("文件高亮功能", () => {
     await editorPage.waitForFileTreeLoad();
   });
 
-  test("测试用例 3.1: 文件选择时正确显示高亮状态", async ({ _page }) => {
+  test("测试用例 3.1: 文件选择时正确显示高亮状态", async () => {
     // 1. 访问编辑器页面（已在beforeEach中完成）
 
     // 2. 展开文件夹并选择文件
@@ -46,7 +52,7 @@ test.describe("文件高亮功能", () => {
     await editorPage.verifyTabExists("03-graphql-api-best-practices");
   });
 
-  test("测试用例 3.2: 标签页切换时高亮状态同步", async ({ _page }) => {
+  test("测试用例 3.2: 标签页切换时高亮状态同步", async () => {
     // 1. 准备：创建两个标签页
     await editorPage.expandFolder("blog");
     await editorPage.selectFile("01-react-hooks-deep-dive.md");
@@ -71,7 +77,7 @@ test.describe("文件高亮功能", () => {
     await editorPage.verifyFileNotHighlighted("01-react-hooks-deep-dive.md");
   });
 
-  test("测试用例 3.3: 多文件高亮状态管理", async ({ _page }) => {
+  test("测试用例 3.3: 多文件高亮状态管理", async () => {
     // 测试多个文件的高亮状态管理
 
     // 1. 创建多个标签页
@@ -94,7 +100,7 @@ test.describe("文件高亮功能", () => {
     await editorPage.verifyFileNotHighlighted("03-graphql-api-best-practices.md");
   });
 
-  test("测试用例 3.4: 跨文件夹高亮状态", async ({ _page }) => {
+  test("测试用例 3.4: 跨文件夹高亮状态", async () => {
     // 测试跨不同文件夹的文件高亮状态
 
     // 1. 选择blog文件夹中的文件
@@ -167,7 +173,7 @@ test.describe("文件高亮功能", () => {
     }
   });
 
-  test("测试用例 3.7: 高亮状态与URL同步", async ({ _page }) => {
+  test("测试用例 3.7: 高亮状态与URL同步", async () => {
     // 测试高亮状态与URL参数的同步
 
     // 1. 选择文件
