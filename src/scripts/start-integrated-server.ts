@@ -1,0 +1,12 @@
+/**
+ * 启动集成的 HTTP + WebSocket 服务器
+ * 确保主应用和 WebSocket 服务器在同一个进程中运行
+ */
+
+import { startIntegratedServer } from "../server/websocket-integration";
+
+console.log("🚀 启动集成服务器 (HTTP + WebSocket)...");
+console.log("这将在同一个进程中运行 Next.js 应用和 WebSocket 服务器");
+console.log("确保事件管理器在两者之间正确共享");
+
+startIntegratedServer();

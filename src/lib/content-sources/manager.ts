@@ -9,6 +9,7 @@ import { nanoid } from "nanoid";
 import { db, initializeDB } from "../db";
 import type { ContentSyncLog } from "../schema";
 import { contentSyncLogs, contentSyncStatus, posts } from "../schema";
+import { syncEventManager } from "../sync-events";
 import type {
   ChangeSet,
   ContentChange,
@@ -148,20 +149,35 @@ export class ContentSourceManager {
   // ============================================================================
 
   /**
-   * 执行全量同步
+   * 执行同步操作
+   * @param isFullSync 是否为全量同步。true: 清空数据库后重新同步所有内容；false: 增量同步，只处理变更内容
    */
-  async syncAll(): Promise<SyncResult> {
+  async syncAll(isFullSync: boolean = false): Promise<SyncResult> {
     if (this.currentSync && this.currentSync.status === "running") {
       throw new Error("同步正在进行中，请等待完成");
     }
 
     const startTime = Date.now();
     const syncId = nanoid();
+    const syncType = isFullSync ? "全量同步" : "增量同步";
+
+    // 启动推送会话
+    console.log("🎯 ContentSourceManager 开始同步会话");
+    console.log(
+      "📍 ContentSourceManager syncEventManager 实例:",
+      syncEventManager.constructor.name
+    );
+    console.log(
+      "📍 ContentSourceManager syncEventManager 实例 ID:",
+      (syncEventManager as any)._instanceId || "undefined"
+    );
+    const syncSessionId = syncEventManager.startSyncSession(isFullSync ? "full" : "incremental");
+    console.log("✅ ContentSourceManager 同步会话已启动:", syncSessionId);
 
     this.currentSync = {
       status: "running",
       progress: 0,
-      currentStep: "准备同步",
+      currentStep: `准备${syncType}`,
       processedItems: 0,
       totalItems: 0,
       startTime,
@@ -185,7 +201,7 @@ export class ContentSourceManager {
     };
 
     try {
-      await this.logSync("info", "开始全量同步", undefined, { syncId });
+      await this.logSync("info", `开始${syncType}`, undefined, { syncId, isFullSync });
 
       // 获取启用的内容源
       const enabledSources = Array.from(this.sources.values()).filter((source) => source.enabled);
@@ -195,12 +211,20 @@ export class ContentSourceManager {
         throw new Error("没有启用的内容源");
       }
 
+      // 如果是全量同步，先清空数据库
+      if (isFullSync) {
+        this.currentSync.currentStep = "清空数据库";
+        await this.logSync("info", "🗑️ 开始清空数据库中的所有内容");
+        await this.clearAllContent();
+        await this.logSync("info", "✅ 数据库清空完成");
+      }
+
       // 更新同步状态
       this.currentSync.totalItems = enabledSources.length;
       this.currentSync.currentStep = "收集内容变更";
 
       // 并行收集所有内容源的变更
-      const changeSets = await this.collectChanges(enabledSources);
+      const changeSets = await this.collectChanges(enabledSources, isFullSync);
 
       // 合并和解决冲突
       this.currentSync.currentStep = "合并内容";
@@ -280,6 +304,9 @@ export class ContentSourceManager {
       }
     }
 
+    // 完成推送会话
+    syncEventManager.completeSyncSession(result.success, result.stats);
+
     return result;
   }
 
@@ -313,9 +340,29 @@ export class ContentSourceManager {
   // ============================================================================
 
   /**
+   * 清空数据库中的所有内容（全量同步时使用）
+   */
+  private async clearAllContent(): Promise<void> {
+    try {
+      // 清空 posts 表中的所有内容
+      await db.delete(posts);
+      await this.logSync("info", "🗑️ 已清空 posts 表");
+
+      await this.logSync("info", "✅ 数据库内容清空完成");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await this.logSync("error", `❌ 清空数据库失败: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
    * 收集所有内容源的变更
    */
-  private async collectChanges(sources: IContentSource[]): Promise<ChangeSet[]> {
+  private async collectChanges(
+    sources: IContentSource[],
+    isFullSync: boolean = false
+  ): Promise<ChangeSet[]> {
     const changeSets: ChangeSet[] = [];
 
     for (const [index, source] of sources.entries()) {
@@ -325,17 +372,64 @@ export class ContentSourceManager {
           this.currentSync.processedItems = index;
         }
 
-        // 获取上次同步时间
-        const lastSyncTime = await this.getLastSyncTime(source.name);
+        let changeSet: ChangeSet;
 
-        // 检测变更
-        const changeSet = await source.detectChanges(lastSyncTime);
+        if (isFullSync) {
+          // 全量同步：获取所有内容，标记为创建操作
+          await this.logSync(
+            "info",
+            `🔄 ${source.name} 执行全量扫描`,
+            undefined,
+            undefined,
+            source.name
+          );
+          const allItems = await source.listContent();
+          changeSet = {
+            sourceName: source.name,
+            changes: allItems.map((item) => ({
+              item,
+              operation: "create" as const,
+              reason: "全量同步",
+            })),
+            detectedAt: Date.now(),
+            stats: {
+              total: allItems.length,
+              created: allItems.length,
+              updated: 0,
+              deleted: 0,
+              skipped: 0,
+            },
+          };
+        } else {
+          // 增量同步：检测变更
+          const lastSyncTime = await this.getLastSyncTime(source.name);
+          await this.logSync(
+            "info",
+            `🔍 ${source.name} 执行增量检测，上次同步: ${lastSyncTime ? new Date(lastSyncTime).toLocaleString() : "从未同步"}`,
+            undefined,
+            undefined,
+            source.name
+          );
+          changeSet = await source.detectChanges(lastSyncTime);
+        }
+
         changeSets.push(changeSet);
-
-        await this.logSync("info", `${source.name} 检测到 ${changeSet.stats.total} 个变更`);
+        await this.logSync(
+          "info",
+          `📊 ${source.name} 检测完成: ${changeSet.stats.total} 个变更 (新增: ${changeSet.stats.created}, 更新: ${changeSet.stats.updated})`,
+          undefined,
+          undefined,
+          source.name
+        );
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        await this.logSync("error", `收集 ${source.name} 变更失败: ${errorMessage}`);
+        await this.logSync(
+          "error",
+          `❌ 收集 ${source.name} 变更失败: ${errorMessage}`,
+          undefined,
+          undefined,
+          source.name
+        );
 
         // 创建空的变更集，避免中断整个同步过程
         changeSets.push({
@@ -436,10 +530,19 @@ export class ContentSourceManager {
     const stats = { totalProcessed: 0, created: 0, updated: 0, deleted: 0, skipped: 0, errors: 0 };
     const errors: SyncError[] = [];
     const logs: SyncLogEntry[] = [];
+    const totalChanges = changeSet.changes.length;
 
-    for (const change of changeSet.changes) {
+    await this.logSync("info", `📝 开始应用变更，共 ${totalChanges} 个项目`);
+
+    for (const [index, change] of changeSet.changes.entries()) {
       try {
         stats.totalProcessed++;
+
+        // 更新进度
+        if (this.currentSync) {
+          this.currentSync.progress = Math.round((index / totalChanges) * 100);
+          this.currentSync.currentStep = `处理 ${change.item.title || change.item.slug} (${index + 1}/${totalChanges})`;
+        }
 
         if (change.operation === "create" || change.operation === "update") {
           // 插入或更新内容
@@ -495,42 +598,66 @@ export class ContentSourceManager {
           if (change.operation === "create") {
             stats.created++;
             // 记录创建成功的日志
-            await this.logSync("info", `✅ 创建内容: ${change.item.title}`, change.item.id, {
-              operation: "create",
-              source: change.item.source,
-              type: change.item.type,
-              slug: change.item.slug,
-            });
+            await this.logSync(
+              "info",
+              `✅ 创建内容: ${change.item.title}`,
+              change.item.id,
+              {
+                operation: "create",
+                source: change.item.source,
+                type: change.item.type,
+                slug: change.item.slug,
+              },
+              change.item.source
+            );
           } else {
             stats.updated++;
             // 记录更新成功的日志
-            await this.logSync("info", `🔄 更新内容: ${change.item.title}`, change.item.id, {
-              operation: "update",
-              source: change.item.source,
-              type: change.item.type,
-              slug: change.item.slug,
-            });
+            await this.logSync(
+              "info",
+              `🔄 更新内容: ${change.item.title}`,
+              change.item.id,
+              {
+                operation: "update",
+                source: change.item.source,
+                type: change.item.type,
+                slug: change.item.slug,
+              },
+              change.item.source
+            );
           }
         } else if (change.operation === "delete") {
           await db.delete(posts).where(eq(posts.id, change.item.id));
           stats.deleted++;
           // 记录删除成功的日志
-          await this.logSync("info", `🗑️ 删除内容: ${change.item.title}`, change.item.id, {
-            operation: "delete",
-            source: change.item.source,
-            type: change.item.type,
-            slug: change.item.slug,
-          });
+          await this.logSync(
+            "info",
+            `🗑️ 删除内容: ${change.item.title}`,
+            change.item.id,
+            {
+              operation: "delete",
+              source: change.item.source,
+              type: change.item.type,
+              slug: change.item.slug,
+            },
+            change.item.source
+          );
         } else {
           stats.skipped++;
           // 记录跳过的日志
-          await this.logSync("info", `⏭️ 跳过内容: ${change.item.title}`, change.item.id, {
-            operation: "skip",
-            source: change.item.source,
-            type: change.item.type,
-            slug: change.item.slug,
-            reason: change.reason,
-          });
+          await this.logSync(
+            "info",
+            `⏭️ 跳过内容: ${change.item.title}`,
+            change.item.id,
+            {
+              operation: "skip",
+              source: change.item.source,
+              type: change.item.type,
+              slug: change.item.slug,
+              reason: change.reason,
+            },
+            change.item.source
+          );
         }
       } catch (error) {
         stats.errors++;
@@ -555,7 +682,8 @@ export class ContentSourceManager {
             type: change.item.type,
             slug: change.item.slug,
             error: errorMessage,
-          }
+          },
+          change.item.source
         );
 
         logs.push({
@@ -596,20 +724,51 @@ export class ContentSourceManager {
     level: "info" | "warn" | "error",
     message: string,
     filePath?: string,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
+    sourceName?: string
   ): Promise<void> {
     try {
-      await db.insert(contentSyncLogs).values({
+      // 如果提供了 sourceName，尝试获取对应的内容源信息
+      let sourceType = "manager";
+      let actualSourceName = "ContentSourceManager";
+
+      if (sourceName && this.sources.has(sourceName)) {
+        const source = this.sources.get(sourceName);
+        if (source) {
+          sourceType = source.type;
+          actualSourceName = source.name;
+        }
+      }
+
+      const logEntry = {
         id: nanoid(),
-        sourceType: "manager",
-        sourceName: "ContentSourceManager",
+        sourceType,
+        sourceName: actualSourceName,
         operation: "sync",
         status: level === "error" ? "error" : "success",
         message,
         filePath,
         data: data ? JSON.stringify(data) : null,
         createdAt: Date.now(),
-      });
+      };
+
+      // 保存到数据库
+      await db.insert(contentSyncLogs).values(logEntry);
+
+      // 推送日志（只在有活跃同步会话时推送）
+      if (syncEventManager.getCurrentSyncSessionId()) {
+        syncEventManager.pushLog({
+          id: logEntry.id,
+          sourceType: logEntry.sourceType,
+          sourceName: logEntry.sourceName,
+          operation: logEntry.operation,
+          status: logEntry.status as "success" | "error",
+          message: logEntry.message,
+          filePath: logEntry.filePath || undefined,
+          data: logEntry.data ? JSON.parse(logEntry.data) : undefined,
+          createdAt: logEntry.createdAt,
+        });
+      }
     } catch (error) {
       console.error("记录同步日志失败:", error);
 

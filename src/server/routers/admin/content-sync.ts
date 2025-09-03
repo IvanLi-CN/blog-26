@@ -5,6 +5,7 @@
  */
 
 import { TRPCError } from "@trpc/server";
+import { observable } from "@trpc/server/observable";
 import { z } from "zod";
 import { SYSTEM_CONFIG } from "../../../config/paths";
 import {
@@ -12,8 +13,9 @@ import {
   LocalContentSource,
   WebDAVContentSource,
 } from "../../../lib/content-sources";
+import { syncEventManager } from "../../../lib/sync-events";
 import { isWebDAVEnabled } from "../../../lib/webdav";
-import { adminProcedure, createTRPCRouter } from "../../trpc";
+import { adminProcedure, createTRPCRouter, publicProcedure } from "../../trpc";
 
 // 输入验证 Schema
 const syncConfigSchema = z.object({
@@ -21,6 +23,7 @@ const syncConfigSchema = z.object({
   syncTimeout: z.number().min(10000).max(600000).optional(), // 10秒到10分钟
   enableTransactions: z.boolean().optional(),
   conflictResolution: z.enum(["priority", "timestamp", "manual"]).optional(),
+  isFullSync: z.boolean().optional(), // 是否为全量同步
 });
 
 const _contentSourceConfigSchema = z.object({
@@ -40,11 +43,12 @@ export const adminContentSyncRouter = createTRPCRouter({
   // ============================================================================
 
   /**
-   * 触发全量同步
+   * 触发同步操作
    */
   triggerSync: adminProcedure.input(syncConfigSchema.optional()).mutation(async ({ input }) => {
     try {
-      const manager = getContentSourceManager(input);
+      const { isFullSync = false, ...managerConfig } = input || {};
+      const manager = getContentSourceManager(managerConfig);
 
       // 检查是否有正在进行的同步
       const currentSync = manager.getCurrentSyncProgress();
@@ -58,8 +62,8 @@ export const adminContentSyncRouter = createTRPCRouter({
       // 确保有注册的内容源
       await ensureContentSourcesRegistered(manager);
 
-      // 执行同步
-      const result = await manager.syncAll();
+      // 执行同步（传入同步类型）
+      const result = await manager.syncAll(isFullSync);
 
       return {
         success: result.success,
@@ -103,6 +107,73 @@ export const adminContentSyncRouter = createTRPCRouter({
   // ============================================================================
   // 状态查询
   // ============================================================================
+
+  /**
+   * 获取内容统计信息
+   */
+  getContentStats: adminProcedure.query(async () => {
+    try {
+      const { db } = await import("../../../lib/db");
+      const { posts } = await import("../../../lib/schema");
+      const { sql } = await import("drizzle-orm");
+
+      // 查询 posts 表统计
+      const postsStats = await db
+        .select({
+          type: posts.type,
+          source: posts.source,
+          count: sql<number>`count(*)`.as("count"),
+        })
+        .from(posts)
+        .groupBy(posts.type, posts.source);
+
+      // 使用 posts 表的统计结果
+      const allStats = postsStats;
+
+      // 获取所有已知的内容源和类型
+      const knownSources = ["local", "webdav"]; // 已知的内容源
+      const knownTypes = ["memo", "post", "project"]; // 已知的内容类型
+
+      // 按类型分组，确保所有内容源都显示
+      const statsByType: Record<string, { total: number; sources: Record<string, number> }> = {};
+
+      // 初始化所有类型和内容源的组合
+      for (const type of knownTypes) {
+        statsByType[type] = { total: 0, sources: {} };
+        for (const source of knownSources) {
+          statsByType[type].sources[source] = 0;
+        }
+      }
+
+      // 填入实际的统计数据
+      for (const stat of allStats) {
+        const type = stat.type || "unknown";
+        const source = stat.source || "unknown";
+        const count = Number(stat.count) || 0;
+
+        if (!statsByType[type]) {
+          statsByType[type] = { total: 0, sources: {} };
+        }
+
+        statsByType[type].total += count;
+        statsByType[type].sources[source] = (statsByType[type].sources[source] || 0) + count;
+      }
+
+      // 计算总计
+      const totalCount = Object.values(statsByType).reduce((sum, stat) => sum + stat.total, 0);
+
+      return {
+        total: totalCount,
+        byType: statsByType,
+        lastUpdated: Date.now(),
+      };
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "获取统计信息失败",
+      });
+    }
+  }),
 
   /**
    * 获取当前同步进度
@@ -222,29 +293,6 @@ export const adminContentSyncRouter = createTRPCRouter({
       }
     }),
 
-  /**
-   * 清理旧日志
-   */
-  cleanupLogs: adminProcedure
-    .input(
-      z.object({
-        daysToKeep: z.number().min(1).max(365).default(30),
-      })
-    )
-    .mutation(async ({ input }) => {
-      try {
-        const manager = getContentSourceManager();
-        await manager.cleanupOldLogs(input.daysToKeep);
-
-        return { success: true, message: `已清理 ${input.daysToKeep} 天前的日志` };
-      } catch (_error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "清理日志失败",
-        });
-      }
-    }),
-
   // ============================================================================
   // 内容源管理
   // ============================================================================
@@ -315,6 +363,75 @@ export const adminContentSyncRouter = createTRPCRouter({
         webdav: SYSTEM_CONFIG.webdav.pathMappings,
       },
     };
+  }),
+
+  // ============================================================================
+  // 订阅功能
+  // ============================================================================
+
+  /**
+   * 订阅同步日志推送
+   */
+  subscribeSyncLogs: publicProcedure.subscription(() => {
+    return observable((emit) => {
+      // 监听同步开始事件
+      const onSyncStart = (event: any) => {
+        console.log("📡 WebSocket 收到同步开始事件:", event);
+        emit.next({
+          type: "sync:start",
+          data: event,
+        });
+      };
+
+      // 监听同步日志事件
+      const onSyncLog = (event: any) => {
+        console.log("📡 WebSocket 收到同步日志事件:", event);
+        emit.next({
+          type: "sync:log",
+          data: event,
+        });
+      };
+
+      // 监听同步完成事件
+      const onSyncComplete = (event: any) => {
+        console.log("📡 WebSocket 收到同步完成事件:", event);
+        emit.next({
+          type: "sync:complete",
+          data: event,
+        });
+      };
+
+      // 注册事件监听器
+      console.log("🔗 注册 WebSocket 事件监听器");
+      console.log("📍 subscription syncEventManager 实例:", syncEventManager.constructor.name);
+      console.log(
+        "📍 subscription syncEventManager 实例 ID:",
+        (syncEventManager as any)._instanceId || "undefined"
+      );
+      console.log("📍 当前同步会话ID:", syncEventManager.getCurrentSyncSessionId());
+      syncEventManager.onSyncStart(onSyncStart);
+      syncEventManager.onSyncLog(onSyncLog);
+      syncEventManager.onSyncComplete(onSyncComplete);
+      console.log("✅ WebSocket 事件监听器注册完成");
+
+      // 发送连接确认
+      console.log("📡 发送 WebSocket 连接确认");
+      emit.next({
+        type: "connected",
+        data: {
+          message: "已连接到同步日志推送服务",
+          timestamp: Date.now(),
+        },
+      });
+      console.log("✅ WebSocket 连接确认已发送");
+
+      // 清理函数
+      return () => {
+        syncEventManager.offSyncStart(onSyncStart);
+        syncEventManager.offSyncLog(onSyncLog);
+        syncEventManager.offSyncComplete(onSyncComplete);
+      };
+    });
   }),
 });
 
