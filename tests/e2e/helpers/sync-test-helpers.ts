@@ -1,7 +1,11 @@
 /**
- * 增量数据同步E2E测试辅助工具
+ * 数据同步E2E测试辅助工具
  *
- * 提供用于测试增量数据同步功能的辅助函数和工具
+ * 提供用于测试数据同步功能的辅助函数和工具，包括：
+ * - 实时同步检测
+ * - WebSocket 连接监控
+ * - 日志动画验证
+ * - 自动滚动检查
  */
 
 import { expect, type Page } from "@playwright/test";
@@ -9,12 +13,12 @@ import { expect, type Page } from "@playwright/test";
 /**
  * 测试数据生成器
  */
-export class TestDataGenerator {
-  private static counter = 0;
+export namespace TestDataGenerator {
+  let counter = 0;
 
-  static generateMemoData() {
+  export function generateMemoData() {
     const timestamp = Date.now();
-    const counter = ++TestDataGenerator.counter;
+    counter++;
 
     return {
       content: `🧪 E2E测试闪念 #${counter} - ${timestamp}
@@ -40,9 +44,9 @@ export class TestDataGenerator {
     };
   }
 
-  static generateArticleData() {
+  export function generateArticleData() {
     const timestamp = Date.now();
-    const counter = ++TestDataGenerator.counter;
+    counter++;
 
     return {
       title: `E2E测试文章-${counter}-${timestamp}`,
@@ -118,7 +122,7 @@ const testData = {
     };
   }
 
-  static generateUpdateContent(originalContent: string) {
+  export function generateUpdateContent(originalContent: string) {
     const timestamp = Date.now();
     return `${originalContent}
 
@@ -148,29 +152,208 @@ export class SyncStatusDetector {
   constructor(private page: Page) {}
 
   /**
-   * 等待增量同步完成
-   * 使用多种策略来检测同步是否完成
+   * 等待 WebSocket 连接建立
    */
-  async waitForSyncCompletion(context: string, _timeout = 30000): Promise<void> {
-    console.log(`⏳ [${context}] 开始等待增量同步完成...`);
+  async waitForWebSocketConnection(timeout = 10000): Promise<boolean> {
+    console.log("🔌 等待 WebSocket 连接建立...");
+
+    return new Promise((resolve) => {
+      let connected = false;
+      const timer = setTimeout(() => {
+        if (!connected) {
+          console.log("⚠️ WebSocket 连接超时");
+          resolve(false);
+        }
+      }, timeout);
+
+      this.page.on("websocket", (ws) => {
+        console.log(`✅ WebSocket 连接建立: ${ws.url()}`);
+        connected = true;
+        clearTimeout(timer);
+        resolve(true);
+      });
+    });
+  }
+
+  /**
+   * 等待实时日志更新
+   */
+  async waitForRealtimeLogUpdate(context: string, timeout = 15000): Promise<void> {
+    console.log(`⏳ [${context}] 等待实时日志更新...`);
+
+    const startTime = Date.now();
+    let logReceived = false;
+
+    // 监听 WebSocket 日志消息
+    this.page.on("websocket", (ws) => {
+      ws.on("framereceived", (event) => {
+        const payload = event.payload instanceof Buffer ? event.payload.toString() : event.payload;
+        try {
+          const data = JSON.parse(payload);
+          if (data.type === "sync:log") {
+            console.log(`📝 [${context}] 收到实时日志: ${data.data.message}`);
+            logReceived = true;
+          }
+        } catch {
+          // 忽略非 JSON 消息
+        }
+      });
+    });
+
+    // 等待日志出现或超时
+    const endTime = startTime + timeout;
+    while (Date.now() < endTime && !logReceived) {
+      await this.page.waitForTimeout(500);
+    }
+
+    if (logReceived) {
+      console.log(`✅ [${context}] 实时日志更新完成`);
+    } else {
+      console.log(`⚠️ [${context}] 未收到实时日志更新`);
+    }
+  }
+
+  /**
+   * 验证日志进场动画
+   */
+  async verifyLogAnimation(): Promise<boolean> {
+    console.log("🎬 验证日志进场动画...");
+
+    // 查找带有动画类的日志元素
+    const animatedLogs = this.page.locator(".log-entry-animation");
+    const count = await animatedLogs.count();
+
+    if (count > 0) {
+      console.log(`✅ 找到 ${count} 个带有进场动画的日志`);
+      return true;
+    } else {
+      console.log("⚠️ 未找到日志进场动画");
+      return false;
+    }
+  }
+
+  /**
+   * 检查自动滚动功能
+   */
+  async checkAutoScroll(): Promise<{ enabled: boolean; indicator: boolean }> {
+    console.log("📜 检查自动滚动功能...");
+
+    // 检查自动滚动指示器
+    const autoScrollIndicator = this.page.locator("text=/自动滚动/");
+    const indicatorVisible = (await autoScrollIndicator.count()) > 0;
+
+    // 检查回到底部按钮（当自动滚动关闭时出现）
+    const backToBottomButton = this.page.getByRole("button", { name: /回到底部/ });
+    const backToBottomVisible = (await backToBottomButton.count()) > 0;
+
+    const autoScrollEnabled = indicatorVisible && !backToBottomVisible;
+
+    console.log(`自动滚动状态: ${autoScrollEnabled ? "启用" : "禁用"}`);
+    console.log(`指示器可见: ${indicatorVisible}`);
+
+    return {
+      enabled: autoScrollEnabled,
+      indicator: indicatorVisible,
+    };
+  }
+
+  /**
+   * 监控 WebSocket 事件
+   */
+  async monitorWebSocketEvents(duration = 10000): Promise<{
+    connections: number;
+    messages: number;
+    syncLogs: number;
+    syncComplete: boolean;
+  }> {
+    console.log(`📡 开始监控 WebSocket 事件 (${duration}ms)...`);
+
+    let connections = 0;
+    let messages = 0;
+    let syncLogs = 0;
+    let syncComplete = false;
+
+    this.page.on("websocket", (ws) => {
+      connections++;
+      console.log(`WebSocket 连接 #${connections}: ${ws.url()}`);
+
+      ws.on("framereceived", (event) => {
+        messages++;
+        const payload = event.payload instanceof Buffer ? event.payload.toString() : event.payload;
+        try {
+          const data = JSON.parse(payload);
+          if (data.type === "sync:log") {
+            syncLogs++;
+          } else if (data.type === "sync:complete") {
+            syncComplete = true;
+            console.log("📡 收到同步完成事件");
+          }
+        } catch {
+          // 忽略非 JSON 消息
+        }
+      });
+    });
+
+    // 监控指定时间
+    await this.page.waitForTimeout(duration);
+
+    console.log(`📊 WebSocket 监控结果:`);
+    console.log(`  - 连接数: ${connections}`);
+    console.log(`  - 消息数: ${messages}`);
+    console.log(`  - 同步日志: ${syncLogs}`);
+    console.log(`  - 同步完成: ${syncComplete}`);
+
+    return { connections, messages, syncLogs, syncComplete };
+  }
+
+  /**
+   * 等待实时同步完成
+   * 使用多种策略来检测实时同步是否完成
+   */
+  async waitForRealtimeSyncCompletion(context: string, timeout = 30000): Promise<void> {
+    console.log(`⏳ [${context}] 开始等待实时同步完成...`);
 
     const startTime = Date.now();
 
     try {
-      // 策略1: 等待固定时间（基础策略）
-      await this.page.waitForTimeout(3000);
+      // 策略1: 监听 WebSocket 同步完成事件
+      let _syncCompleted = false;
+      this.page.on("websocket", (ws) => {
+        ws.on("framereceived", (event) => {
+          const payload =
+            event.payload instanceof Buffer ? event.payload.toString() : event.payload;
+          try {
+            const data = JSON.parse(payload);
+            if (data.type === "sync:complete") {
+              console.log(`📡 [${context}] 收到同步完成事件`);
+              _syncCompleted = true;
+            }
+          } catch {
+            // 忽略非 JSON 消息
+          }
+        });
+      });
 
-      // 策略2: 检查页面是否有加载指示器消失
-      await this.waitForLoadingIndicators(context);
+      // 策略2: 等待同步按钮恢复可用状态
+      const syncButton = this.page
+        .locator("[data-testid='full-sync-button'], [data-testid='incremental-sync-button']")
+        .first();
+      await expect(syncButton).toBeEnabled({ timeout });
 
-      // 策略3: 等待网络请求完成
-      await this.page.waitForLoadState("networkidle", { timeout: 10000 });
+      // 策略3: 等待成功消息出现
+      const successMessage = this.page.locator("[data-testid='sync-success-message']");
+      try {
+        await expect(successMessage).toBeVisible({ timeout: 10000 });
+        console.log(`✅ [${context}] 找到同步成功消息`);
+      } catch {
+        console.log(`⚠️ [${context}] 未找到成功消息，但按钮已恢复可用`);
+      }
 
-      // 策略4: 额外等待确保同步完成
+      // 额外等待确保所有实时更新完成
       await this.page.waitForTimeout(2000);
 
       const elapsedTime = Date.now() - startTime;
-      console.log(`✅ [${context}] 增量同步等待完成，耗时: ${elapsedTime}ms`);
+      console.log(`✅ [${context}] 实时同步等待完成，耗时: ${elapsedTime}ms`);
     } catch (error) {
       const elapsedTime = Date.now() - startTime;
       console.warn(`⚠️ [${context}] 同步等待超时或出错，耗时: ${elapsedTime}ms，错误:`, error);

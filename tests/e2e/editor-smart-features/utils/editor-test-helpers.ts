@@ -311,20 +311,4 @@ export async function attemptRecovery(page: Page, maxAttempts = 3): Promise<bool
 }
 
 // 导出所有测试辅助函数
-export {
-  devLogin,
-  waitForConsoleLog,
-  captureNetworkRequests,
-  measurePerformance,
-  takeScreenshotOnFailure,
-  setupConsoleLogCapture,
-  clearConsoleLogs,
-  getConsoleLogs,
-  waitForElementInViewport,
-  simulateNetworkDelay,
-  verifyUrlParams,
-  waitForJotaiStateUpdate,
-  createTestDataValidator,
-  getBrowserInfo,
-  attemptRecovery,
-};
+// 所有函数已经单独导出，无需重复导出

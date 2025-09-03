@@ -86,6 +86,7 @@ function TestEditorContent() {
             {testFiles.map((file) => (
               <button
                 key={file.id}
+                type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => handleOpenFile(file)}
               >
@@ -100,6 +101,7 @@ function TestEditorContent() {
             {testFiles.map((file) => (
               <button
                 key={`scroll-${file.id}`}
+                type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={() => handleTestScroll(file.id)}
               >
@@ -111,10 +113,15 @@ function TestEditorContent() {
           <div className="divider">状态管理测试</div>
 
           <div className="flex flex-wrap gap-2">
-            <button className="btn btn-error btn-sm" onClick={() => editorState.resetState()}>
+            <button
+              type="button"
+              className="btn btn-error btn-sm"
+              onClick={() => editorState.resetState()}
+            >
               重置状态
             </button>
             <button
+              type="button"
               className="btn btn-warning btn-sm"
               onClick={() => {
                 if (editorState.activeTabId) {
@@ -124,7 +131,11 @@ function TestEditorContent() {
             >
               关闭当前标签页
             </button>
-            <button className="btn btn-info btn-sm" onClick={() => editorState.saveAllTabs()}>
+            <button
+              type="button"
+              className="btn btn-info btn-sm"
+              onClick={() => editorState.saveAllTabs()}
+            >
               保存所有标签页
             </button>
           </div>
@@ -141,6 +152,7 @@ function TestEditorContent() {
               {editorState.tabs.map((tab) => (
                 <button
                   key={tab.id}
+                  type="button"
                   className={`btn btn-sm transition-all duration-200 ${
                     tab.id === editorState.activeTabId
                       ? "editor-tab-active bg-primary text-primary-content shadow-md"
@@ -151,6 +163,7 @@ function TestEditorContent() {
                   {tab.isDirty && <span className="mr-1">●</span>}
                   {tab.title}
                   <button
+                    type="button"
                     className="ml-2 hover:text-error"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -182,9 +195,10 @@ function TestEditorContent() {
           <h2 className="text-xl font-semibold mb-4">模拟文件树</h2>
           <div className="directory-tree-container max-h-60 overflow-y-auto border rounded p-2">
             {testFiles.map((file) => (
-              <div
+              <button
                 key={file.id}
-                className={`flex items-center p-2 rounded cursor-pointer transition-colors ${
+                type="button"
+                className={`flex items-center p-2 rounded cursor-pointer transition-colors w-full text-left ${
                   editorState.selectedPath === file.id
                     ? "bg-primary/10 text-primary"
                     : "hover:bg-base-200"
@@ -195,7 +209,7 @@ function TestEditorContent() {
                 <span className="mr-2">📄</span>
                 <span className="flex-1">{file.title}</span>
                 <span className="text-xs text-base-content/60">{file.id}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>

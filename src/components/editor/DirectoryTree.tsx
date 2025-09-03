@@ -187,7 +187,7 @@ function WebDAVSubDirectory({
             file={subFile}
             source={source}
             onSelectFile={onSelectFile}
-            selectedFilePath={selectedFilePath}
+            selectedFilePath={selectedFilePath ?? undefined}
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
             onCreateFile={onCreateFile}
@@ -251,7 +251,7 @@ function LocalSubDirectory({
                   toggleFolder(`local-${subFile.path}`);
                 } else {
                   // 文件：打开编辑 - 直接使用subFile.path，不要重复拼接
-                  onSelectFile?.(subFile.path);
+                  onSelectFile?.(subFile.path, subFile.name);
                 }
               }}
               title={subFile.name}
@@ -288,7 +288,7 @@ function LocalSubDirectory({
             file={subFile}
             source={source}
             onSelectFile={onSelectFile}
-            selectedFilePath={selectedFilePath}
+            selectedFilePath={selectedFilePath ?? undefined}
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
             onCreateFile={onCreateFile}
@@ -347,9 +347,8 @@ const DirectoryActions = ({
 );
 
 interface DirectoryTreeProps {
-  onSelectFile: (filePath: string) => void;
+  onSelectFile: (filePath: string, fileName: string) => void;
   onCreateFile?: (directoryPath: string, fileName: string) => void;
-  selectedPath?: string;
 }
 
 interface FileNode {
@@ -363,7 +362,7 @@ interface FileNode {
   updateDate?: string;
 }
 
-export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: DirectoryTreeProps) {
+export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps) {
   // 使用 Jotai 全局状态管理
   const [expandedFolders] = useAtom(expandedFoldersAtom);
   const [selectedFilePath] = useAtom(selectedFilePathAtom);
@@ -427,7 +426,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
     setSelectedFilePath(post.id);
 
     // 调用原有的回调
-    onSelectFile(post.id);
+    onSelectFile(post.id, post.title);
   };
 
   // 切换文件夹展开状态
@@ -587,7 +586,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                                 const normalizedPath = file.path.startsWith("/")
                                   ? file.path
                                   : `/${file.path}`;
-                                onSelectFile?.(normalizedPath);
+                                onSelectFile?.(normalizedPath, file.name);
                               }
                             }}
                             title={file.name}
@@ -622,7 +621,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                           file={file}
                           source="webdav"
                           onSelectFile={onSelectFile}
-                          selectedFilePath={selectedFilePath}
+                          selectedFilePath={selectedFilePath ?? undefined}
                           expandedFolders={expandedFolders}
                           toggleFolder={handleToggleFolder}
                           onCreateFile={handleCreateFile}
@@ -646,7 +645,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                                 handleToggleFolder(`local-${file.path}`);
                               } else {
                                 // 文件：打开编辑
-                                onSelectFile?.(file.path);
+                                onSelectFile?.(file.path, file.name);
                               }
                             }}
                             title={file.name}
@@ -682,7 +681,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile, selectedPath }: Dire
                           file={file}
                           source="local"
                           onSelectFile={onSelectFile}
-                          selectedFilePath={selectedFilePath}
+                          selectedFilePath={selectedFilePath ?? undefined}
                           expandedFolders={expandedFolders}
                           toggleFolder={handleToggleFolder}
                           onCreateFile={handleCreateFile}
