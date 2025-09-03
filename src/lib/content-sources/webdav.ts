@@ -10,6 +10,8 @@ import { ContentSourceBase } from "./base";
 import type { ContentItem, ContentSourceConfig, ContentSourceStatus, FileInfo } from "./types";
 import {
   createContentItemFromParsed,
+  generateMemoFilename,
+  generateNanoidSlug,
   isMarkdownFile,
   normalizePath,
   parseMarkdownContent,
@@ -159,6 +161,12 @@ export class WebDAVContentSource extends ContentSourceBase {
 
         // 更新 WebDAV 相关的字段
         contentItem.lastModified = fileInfo.lastModified;
+
+        // 对于新创建的memo，使用文件的实际修改时间作为发布时间
+        // 这样可以确保排序基于实际的文件创建/修改时间，而不是从文件名提取的日期
+        if (!contentItem.publishDate || contentItem.publishDate < fileInfo.lastModified) {
+          contentItem.publishDate = fileInfo.lastModified;
+        }
 
         // 验证和清理内容项
         if (validateContentItem(contentItem)) {
@@ -413,20 +421,26 @@ export class WebDAVContentSource extends ContentSourceBase {
     try {
       this.log("info", "创建新 memo");
 
-      // 生成 memo 文件名
+      // 按照文档规范生成文件名：{datePrefix}_{titleSlug}.md
       const timestamp = Date.now();
-      const slug = metadata.slug || this.generateMemoSlug(content, timestamp);
-      const fileName = `${slug}.md`;
-      const filePath = `${fileName}`;
+      const fileName = generateMemoFilename(content, metadata.title, timestamp);
+      const filePath = fileName;
 
-      // 构建 markdown 内容
-      const markdownContent = this.buildMemoMarkdown(content, metadata);
+      // 生成数据库slug（使用nanoid确保唯一性）
+      const dbSlug = generateNanoidSlug(8);
+
+      // 构建 markdown 内容，传入数据库slug
+      const markdownContent = this.buildMemoMarkdown(content, {
+        ...metadata,
+        dbSlug, // 添加数据库slug到元数据
+      });
 
       // 写入到 WebDAV
       const webdavPath = `${this.pathMappings.memos}/${fileName}`;
       await this.webdavClient.putFileContent(webdavPath, markdownContent);
 
       this.log("info", `Memo 创建成功: ${webdavPath}`);
+      this.log("info", `文件名: ${fileName}, 数据库slug: ${dbSlug}`);
       return filePath;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -442,8 +456,11 @@ export class WebDAVContentSource extends ContentSourceBase {
     try {
       this.log("info", `更新 memo: ${id}`);
 
-      // 构建 markdown 内容
-      const markdownContent = this.buildMemoMarkdown(content, metadata);
+      // 构建 markdown 内容，标记为更新操作
+      const markdownContent = this.buildMemoMarkdown(content, {
+        ...metadata,
+        isUpdate: true, // 标记为更新操作，会添加updateDate字段
+      });
 
       // 解析文件路径
       const fileName = id.endsWith(".md") ? id : `${id}.md`;
@@ -558,12 +575,19 @@ export class WebDAVContentSource extends ContentSourceBase {
    * 构建 memo markdown 内容
    */
   private buildMemoMarkdown(content: string, metadata: MemoMetadata): string {
+    const now = new Date().toISOString();
+
     const frontmatter: Record<string, unknown> = {
       title: metadata.title || this.extractTitleFromContent(content),
       public: metadata.isPublic ?? true,
       tags: metadata.tags || [],
-      date: new Date().toISOString(),
+      publishDate: now, // 使用文档规范的字段名
     };
+
+    // 如果是更新操作，添加updateDate
+    if (metadata.isUpdate) {
+      frontmatter.updateDate = now;
+    }
 
     // 添加附件信息
     if (metadata.attachments && metadata.attachments.length > 0) {
@@ -572,7 +596,18 @@ export class WebDAVContentSource extends ContentSourceBase {
 
     // 添加其他元数据
     Object.keys(metadata).forEach((key) => {
-      if (!["title", "isPublic", "tags", "attachments", "authorEmail", "slug"].includes(key)) {
+      if (
+        ![
+          "title",
+          "isPublic",
+          "tags",
+          "attachments",
+          "authorEmail",
+          "slug",
+          "dbSlug",
+          "isUpdate",
+        ].includes(key)
+      ) {
         frontmatter[key] = metadata[key];
       }
     });

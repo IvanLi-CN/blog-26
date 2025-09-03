@@ -3,6 +3,7 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
 import { getContentSourceManager } from "../../lib/content-sources";
+import { generateNanoidSlug } from "../../lib/content-sources/utils";
 import { WebDAVContentSource } from "../../lib/content-sources/webdav";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
@@ -371,8 +372,8 @@ export const memosRouter = router({
         await webdavSource.dispose();
       }
 
-      // 生成 slug
-      const slug = filePath.replace(/\.md$/, "").replace(/^.*\//, "");
+      // 生成数据库 slug（使用 nanoid 确保唯一性）
+      const slug = generateNanoidSlug(8);
 
       // 保存到数据库
       const now = Math.floor(Date.now() / 1000);

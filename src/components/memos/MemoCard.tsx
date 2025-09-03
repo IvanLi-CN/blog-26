@@ -372,6 +372,7 @@ export function MemoCard({
                   previewCodeLines={10}
                   articlePath={`/memos/${memo.slug}`}
                   contentSource={memo.source === "local" ? "local" : "webdav"}
+                  removeTags={true}
                   className="prose prose-sm max-w-none [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-32 [&_img]:object-cover [&_img]:rounded"
                 />
               </div>

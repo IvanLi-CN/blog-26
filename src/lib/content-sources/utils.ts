@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import matter from "gray-matter";
 import limax from "limax";
+import { nanoid } from "nanoid";
 import type { ContentItem, ContentType, FileInfo, ParsedContent } from "./types";
 
 // ============================================================================
@@ -61,8 +62,8 @@ export function createContentItemFromParsed(
   // 提取发布日期
   const publishDate = extractPublishDate(frontmatter, filePath);
 
-  // 提取标签
-  const tags = extractTags(frontmatter);
+  // 提取标签（合并frontmatter标签和内联标签）
+  const tags = extractAllTags(frontmatter, body);
 
   return {
     id: filePath,
@@ -171,16 +172,32 @@ export function generateSlugFromPath(filePath: string, frontmatterSlug?: string)
       .pop()
       ?.replace(/\.(md|mdx)$/i, "") || "";
 
+  // 检查新格式：{datePrefix}_{titleSlug}.md (如: 20241201_react-learning)
+  const newFormatMatch = fileName.match(/^(\d{8})_(.+)$/);
+  if (newFormatMatch) {
+    const titleSlug = newFormatMatch[2];
+    // 如果titleSlug看起来像nanoid（8位字母数字），为同步生成一个新的nanoid
+    if (/^[a-zA-Z0-9_-]{8}$/.test(titleSlug)) {
+      return generateNanoidSlug(8);
+    }
+    // 否则使用titleSlug作为基础生成slug
+    return limax(titleSlug);
+  }
+
   // 优先查找时间戳模式（如 -1756460268805）
   const timestampMatch = fileName.match(/-(\d{10,13})$/);
-
   if (timestampMatch) {
     // 直接使用时间戳作为 slug
     return timestampMatch[1];
   }
 
-  // 移除日期前缀（如 2023-12-01-title.md -> title）
+  // 移除旧格式日期前缀（如 2023-12-01-title.md -> title）
   const withoutDatePrefix = fileName.replace(/^\d{4}-\d{2}-\d{2}-/, "");
+
+  // 如果处理后的文件名为空或太短，生成nanoid
+  if (!withoutDatePrefix || withoutDatePrefix.length < 2) {
+    return generateNanoidSlug(8);
+  }
 
   return limax(withoutDatePrefix);
 }
@@ -211,7 +228,7 @@ export function isMarkdownFile(filePath: string): boolean {
  * @param body 正文内容
  * @param filePath 文件路径（用于生成默认标题）
  */
-function extractTitle(
+export function extractTitle(
   frontmatter: Record<string, unknown>,
   body: string,
   filePath: string
@@ -221,10 +238,23 @@ function extractTitle(
     return frontmatter.title.trim();
   }
 
-  // 尝试从正文中提取第一个 H1 标题
-  const h1Match = body.match(/^#\s+(.+)$/m);
-  if (h1Match) {
-    return h1Match[1].trim();
+  // 尝试从正文中提取标题，按优先级 H1 > H2 > ... > H7
+  // 支持文档规范要求的 H1-H7 标题提取
+  const titlePatterns = [
+    /^#\s+(.+)$/m, // H1
+    /^##\s+(.+)$/m, // H2
+    /^###\s+(.+)$/m, // H3
+    /^####\s+(.+)$/m, // H4
+    /^#####\s+(.+)$/m, // H5
+    /^######\s+(.+)$/m, // H6
+    /^#######\s+(.+)$/m, // H7
+  ];
+
+  for (const pattern of titlePatterns) {
+    const match = body.match(pattern);
+    if (match) {
+      return match[1].trim();
+    }
   }
 
   // 使用文件名作为默认标题
@@ -241,7 +271,7 @@ function extractTitle(
  * @param frontmatter frontmatter 数据
  * @param filePath 文件路径
  */
-function extractPublishDate(frontmatter: Record<string, unknown>, filePath: string): number {
+export function extractPublishDate(frontmatter: Record<string, unknown>, filePath: string): number {
   // 优先使用 frontmatter 中的日期
   if (frontmatter.date) {
     const date = new Date(frontmatter.date as string);
@@ -259,9 +289,25 @@ function extractPublishDate(frontmatter: Record<string, unknown>, filePath: stri
 
   // 尝试从文件名中提取日期
   const fileName = filePath.split(/[/\\]/).pop() || "";
-  const dateMatch = fileName.match(/^(\d{4}-\d{2}-\d{2})/);
+
+  // 支持多种日期格式
+  // 格式1: YYYY-MM-DD (如 2024-01-15)
+  let dateMatch = fileName.match(/^(\d{4}-\d{2}-\d{2})/);
   if (dateMatch) {
     const date = new Date(dateMatch[1]);
+    if (!Number.isNaN(date.getTime())) {
+      return date.getTime();
+    }
+  }
+
+  // 格式2: YYYYMMDD_ (如 20240115_)
+  dateMatch = fileName.match(/^(\d{8})_/);
+  if (dateMatch) {
+    const dateStr = dateMatch[1];
+    const year = dateStr.substring(0, 4);
+    const month = dateStr.substring(4, 6);
+    const day = dateStr.substring(6, 8);
+    const date = new Date(`${year}-${month}-${day}`);
     if (!Number.isNaN(date.getTime())) {
       return date.getTime();
     }
@@ -290,6 +336,56 @@ function extractTags(frontmatter: Record<string, unknown>): string[] {
   }
 
   return [];
+}
+
+/**
+ * 从正文内容中提取内联标签
+ * @param body 正文内容
+ * @returns 内联标签数组
+ */
+export function extractInlineTags(body: string): string[] {
+  if (!body) return [];
+
+  const inlineTags: string[] = [];
+  // 匹配 #标签 格式，支持中英文、数字、连字符
+  const tagRegex = /#([^\s#]+)/g;
+  let match: RegExpExecArray | null;
+
+  match = tagRegex.exec(body);
+  while (match !== null) {
+    const tagContent = match[1];
+    const hashIndex = match.index;
+
+    // 检查是否是URL中的hash部分（简单检查前面是否有http或www）
+    const beforeHash = body.substring(Math.max(0, hashIndex - 20), hashIndex);
+    if (!/https?:\/\/|www\./i.test(beforeHash)) {
+      // 验证标签格式：支持中英文、数字、连字符
+      if (/^[\w\u4e00-\u9fff-]+$/.test(tagContent)) {
+        inlineTags.push(tagContent);
+      }
+    }
+
+    // 获取下一个匹配
+    match = tagRegex.exec(body);
+  }
+
+  // 去重并返回
+  return [...new Set(inlineTags)];
+}
+
+/**
+ * 合并frontmatter标签和内联标签
+ * @param frontmatter frontmatter 数据
+ * @param body 正文内容
+ * @returns 合并后的标签数组
+ */
+export function extractAllTags(frontmatter: Record<string, unknown>, body: string): string[] {
+  const frontmatterTags = extractTags(frontmatter);
+  const inlineTags = extractInlineTags(body);
+
+  // 合并并去重
+  const allTags = [...frontmatterTags, ...inlineTags];
+  return [...new Set(allTags)];
 }
 
 /**
@@ -366,4 +462,88 @@ export function sanitizeContentItem(item: ContentItem): ContentItem {
     category: item.category?.trim() || undefined,
     author: item.author?.trim() || undefined,
   };
+}
+
+// ============================================================================
+// Memo 专用工具函数
+// ============================================================================
+
+/**
+ * 生成nanoid slug（用于界面创建闪念时）
+ * @param length slug长度，默认为8
+ * @returns 唯一的nanoid字符串
+ */
+export function generateNanoidSlug(length: number = 8): string {
+  return nanoid(length);
+}
+
+/**
+ * 从标题生成URL友好的slug
+ * @param title 标题
+ * @returns URL友好的slug
+ */
+export function generateTitleSlug(title: string): string {
+  if (!title) return "";
+
+  // 使用limax处理中英文标题，生成URL友好的slug
+  return limax(title, {
+    replacement: "-",
+    lowercase: true,
+    separator: "-",
+  });
+}
+
+/**
+ * 生成memo文件名（符合文档规范）
+ * @param content 内容
+ * @param title 标题（可选）
+ * @param timestamp 时间戳（可选，默认当前时间）
+ * @returns 文件名格式：{datePrefix}_{titleSlug}.md
+ */
+export function generateMemoFilename(content: string, title?: string, timestamp?: number): string {
+  const now = new Date(timestamp || Date.now());
+
+  // 生成日期前缀 YYYYMMDD
+  const year = now.getFullYear();
+  const month = (now.getMonth() + 1).toString().padStart(2, "0");
+  const day = now.getDate().toString().padStart(2, "0");
+  const datePrefix = `${year}${month}${day}`;
+
+  // 确定标题
+  let finalTitle = title;
+  if (!finalTitle) {
+    // 从内容中提取标题
+    const titlePatterns = [
+      /^#\s+(.+)$/m, // H1
+      /^##\s+(.+)$/m, // H2
+      /^###\s+(.+)$/m, // H3
+      /^####\s+(.+)$/m, // H4
+      /^#####\s+(.+)$/m, // H5
+      /^######\s+(.+)$/m, // H6
+      /^#######\s+(.+)$/m, // H7
+    ];
+
+    for (const pattern of titlePatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        finalTitle = match[1].trim();
+        break;
+      }
+    }
+  }
+
+  // 生成titleSlug
+  let titleSlug: string;
+  if (finalTitle) {
+    titleSlug = generateTitleSlug(finalTitle);
+    // 如果生成的slug为空或过短，使用nanoid
+    if (!titleSlug || titleSlug.length < 2) {
+      titleSlug = generateNanoidSlug(8);
+    }
+  } else {
+    // 没有标题时使用nanoid
+    titleSlug = generateNanoidSlug(8);
+  }
+
+  return `${datePrefix}_${titleSlug}.md`;
 }

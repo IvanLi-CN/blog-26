@@ -302,15 +302,38 @@ export function cleanMarkdownContent(content: string): string {
 }
 
 /**
- * 移除内容中的标签
+ * 移除内容中的内联标签
  * @param content 原始内容
  * @returns 移除标签后的内容
  */
 export function removeTagsFromContent(content: string): string {
   if (!content) return "";
 
-  // 简单的标签移除逻辑，可以根据需要扩展
-  return content.replace(/#[\w\u4e00-\u9fff-]+/g, "").trim();
+  // 移除内联标签，但要避免误删URL中的hash部分
+  // 使用更精确的正则表达式，只匹配标签字符（字母、数字、中文、连字符、下划线）
+  let result = content.replace(/#([\w\u4e00-\u9fff-]+)/g, (match, tagContent, offset) => {
+    // 检查是否是URL中的hash部分
+    const beforeHash = content.substring(Math.max(0, offset - 20), offset);
+    if (/https?:\/\/|www\./i.test(beforeHash)) {
+      return match; // 保留URL中的hash
+    }
+
+    // 验证是否是有效的标签格式（支持中英文、数字、连字符）
+    if (/^[\w\u4e00-\u9fff-]+$/.test(tagContent)) {
+      return ""; // 移除内联标签
+    }
+
+    return match; // 保留不符合标签格式的内容
+  });
+
+  // 清理多余的空格，但保留所有换行结构
+  result = result
+    .replace(/[ \t]+/g, " ") // 将多个空格/制表符替换为单个空格
+    .replace(/ +$/gm, "") // 移除行尾空格
+    .replace(/\n{3,}/g, "\n\n") // 将3个或更多连续换行替换为2个
+    .trim();
+
+  return result;
 }
 
 /**
