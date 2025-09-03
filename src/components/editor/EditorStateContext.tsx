@@ -8,15 +8,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
-import { createContext, useCallback, useContext, useEffect, useReducer } from "react";
+import { createContext, useCallback, useContext, useReducer } from "react";
 import type { ContentSource } from "./PostEditorWrapper";
-import {
-  type ArticleIdentifier,
-  createTabId,
-  generateUrlParams,
-  parseTabId,
-  parseUrlParams,
-} from "./types/editorTypes";
+import type { ArticleIdentifier } from "./types/editorTypes";
 
 // 编辑器模式类型
 export type EditorMode = "wysiwyg" | "source" | "preview";
@@ -256,8 +250,8 @@ const EditorStateContext = createContext<EditorContextValue | null>(null);
 // Context Provider 组件
 export function EditorStateProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(editorReducer, initialState);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const _router = useRouter();
+  const _searchParams = useSearchParams();
 
   // 便捷方法
   const setActiveTab = useCallback((tabId: string) => {

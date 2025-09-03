@@ -8,7 +8,6 @@
 
 import { skipToken } from "@tanstack/react-query";
 import { useAtom, useSetAtom } from "jotai";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { inferContentType } from "../../config/paths";
 import { parseMarkdownContent } from "../../lib/content-sources/utils";
@@ -198,7 +197,13 @@ export function PostUniversalEditor({
       // 自动展开相关文件夹
       autoExpandFolders(postId);
     },
-    [selectedContentSource, tabs, setActiveTab, addTab]
+    [
+      selectedContentSource,
+      tabs,
+      setActiveTab,
+      addTab, // 自动展开相关文件夹
+      autoExpandFolders,
+    ]
   );
 
   // 防止重复打开相同文章
@@ -232,7 +237,7 @@ export function PostUniversalEditor({
         onPostChange?.(fileId);
       }, 0);
     },
-    [tabs, onPostChange]
+    [tabs, onPostChange, setActiveTab]
   );
 
   // 处理文章数据加载

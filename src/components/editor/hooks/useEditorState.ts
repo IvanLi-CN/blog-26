@@ -6,26 +6,22 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
-import type { EditorMode, EditorTab } from "../EditorStateContext";
+import type { EditorTab } from "../EditorStateContext";
 import { useEditorState } from "../EditorStateContext";
 import type { ContentSource } from "../PostEditorWrapper";
 import {
-  ArticleIdentifier,
   contentSourceToIdentifier,
   createTabId,
   generateUrlParams,
-  parseTabId,
   parseUrlParams,
 } from "../types/editorTypes";
 import {
   createContentSource,
   extractFileNameWithoutExtension,
-  isNewFilePath,
-  removeNewFilePrefix,
   slugToFilePaths,
   tabIdToSlug,
 } from "../utils/pathUtils";
-import { debounceScrollToFile, scrollToFileInTree } from "../utils/scrollUtils";
+import { debounceScrollToFile } from "../utils/scrollUtils";
 
 /**
  * 防抖延迟配置
@@ -90,7 +86,13 @@ export function useAdvancedEditorState() {
     if (activeTab.identifier) {
       actions.setScrollTarget(activeTab.identifier.path);
     }
-  }, [state.activeTabId]);
+  }, [
+    state.activeTabId,
+    actions.expandFolderPath,
+    actions.setScrollTarget,
+    router.replace,
+    state.tabs.find,
+  ]);
 
   // 滚动目标变化时的副作用
   useEffect(() => {
@@ -101,7 +103,7 @@ export function useAdvancedEditorState() {
         dispatch({ type: "SET_SCROLL_TARGET", payload: { target: null } });
       }, 1000);
     }
-  }, [state.scrollTarget]);
+  }, [state.scrollTarget, dispatch]);
 
   // 清理定时器
   useEffect(() => {
@@ -148,7 +150,13 @@ export function useAdvancedEditorState() {
       actions.setSelectedPath(identifier.path);
       actions.setScrollTarget(identifier.path);
     },
-    [state.tabs, actions]
+    [
+      state.tabs,
+      actions.addTab,
+      actions.setActiveTab,
+      actions.setSelectedPath,
+      actions.setScrollTarget,
+    ]
   );
 
   /**
@@ -186,7 +194,7 @@ export function useAdvancedEditorState() {
 
       actions.addTab(newTab);
     },
-    [state.tabs, actions]
+    [state.tabs, actions.addTab, actions.setActiveTab]
   );
 
   /**
@@ -204,7 +212,7 @@ export function useAdvancedEditorState() {
 
       actions.removeTab(tabId);
     },
-    [state.tabs, actions]
+    [state.tabs, actions.removeTab]
   );
 
   /**
@@ -227,7 +235,7 @@ export function useAdvancedEditorState() {
       console.error(`[EditorState] 保存失败:`, error);
       return false;
     }
-  }, [state.activeTabId, state.tabs, actions]);
+  }, [state.activeTabId, state.tabs, actions.setTabDirty]);
 
   /**
    * 获取当前活动标签页
@@ -272,7 +280,7 @@ export function useAdvancedEditorState() {
 
     console.log(`[EditorState] 成功保存 ${unsavedTabs.length} 个文件`);
     return true;
-  }, [getUnsavedTabs, actions]);
+  }, [getUnsavedTabs, actions.setTabDirty]);
 
   /**
    * 重置编辑器状态
@@ -288,7 +296,7 @@ export function useAdvancedEditorState() {
     actions.setScrollTarget(null);
 
     console.log(`[EditorState] 重置编辑器状态`);
-  }, [state.tabs, actions]);
+  }, [state.tabs, actions.removeTab, actions.setSelectedPath, actions.setScrollTarget]);
 
   return {
     // 状态

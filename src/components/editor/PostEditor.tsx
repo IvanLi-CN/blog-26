@@ -10,8 +10,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { DirectoryTree } from "./DirectoryTree";
 import type { ContentSource } from "./PostEditorWrapper";
 import { PostUniversalEditor } from "./PostUniversalEditor";
-// import { useAdvancedEditorState } from "./hooks/useEditorState"; // 移除旧的依赖
-import { createContentSource } from "./utils/pathUtils";
 
 interface PostEditorProps {
   initialContentSource?: ContentSource;
@@ -61,7 +59,7 @@ export function PostEditor({ initialContentSource, initialPostId }: PostEditorPr
     setSelectedContentSource(contentSource);
 
     // 使用新的状态管理打开新文件
-    const defaultContent = `# ${fileName}\n\n开始写作您的文章...`;
+    const _defaultContent = `# ${fileName}\n\n开始写作您的文章...`;
     // editorState.openFile(contentSource, fileName, defaultContent); // 暂时移除，使用 Jotai 状态管理
   };
 

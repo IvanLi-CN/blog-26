@@ -303,10 +303,10 @@ export const toggleFolderAtom = atom(null, (get, set, folderPath: string) => {
 });
 
 // 设置滚动目标
-export const setScrollTargetAtom = atom(null, (get, set, filePath: string | null) => {
+export const setScrollTargetAtom = atom(null, (_get, set, filePath: string | null) => {
   // 转换二元ID格式为实际文件路径
   let actualTarget = filePath;
-  if (filePath && filePath.includes(":")) {
+  if (filePath?.includes(":")) {
     if (filePath.startsWith("local:")) {
       actualTarget = filePath.replace("local:", "");
     } else if (filePath.startsWith("webdav:")) {
@@ -321,7 +321,7 @@ export const setScrollTargetAtom = atom(null, (get, set, filePath: string | null
 });
 
 // 设置选中的文件路径
-export const setSelectedFilePathAtom = atom(null, (get, set, filePath: string | null) => {
+export const setSelectedFilePathAtom = atom(null, (_get, set, filePath: string | null) => {
   console.log(`[EditorAtoms] 设置选中文件: ${filePath}`);
   set(selectedFilePathAtom, filePath);
 });

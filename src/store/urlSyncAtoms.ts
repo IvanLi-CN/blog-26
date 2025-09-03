@@ -5,7 +5,7 @@
  */
 
 import { atom } from "jotai";
-import { activeContentIdentifierAtom, activeTabIdAtom, setActiveTabIdAtom } from "./editorAtoms";
+import { activeContentIdentifierAtom, setActiveTabIdAtom } from "./editorAtoms";
 
 // URL 参数生成函数
 export const generateUrlParams = (source: string, path: string): string => {
@@ -34,7 +34,7 @@ export const generateBinaryId = (source: string, path: string): string => {
 };
 
 // URL 更新原子（只写）
-export const updateUrlAtom = atom(null, (get, set, router: any) => {
+export const updateUrlAtom = atom(null, (get, _set, router: any) => {
   const activeContentIdentifier = get(activeContentIdentifierAtom);
 
   if (!activeContentIdentifier) {
@@ -54,7 +54,7 @@ export const updateUrlAtom = atom(null, (get, set, router: any) => {
 // URL 同步初始化原子（只写）
 export const initializeFromUrlAtom = atom(
   null,
-  (get, set, searchParams: URLSearchParams, availableTabs: any[]) => {
+  (_get, set, searchParams: URLSearchParams, availableTabs: any[]) => {
     const urlData = parseUrlParams(searchParams);
 
     if (!urlData) {
@@ -83,7 +83,7 @@ export const URL_UPDATE_DELAY = 300; // 300ms 防抖
 // URL 更新防抖原子
 let urlUpdateTimeout: NodeJS.Timeout | null = null;
 
-export const debouncedUpdateUrlAtom = atom(null, (get, set, router: any) => {
+export const debouncedUpdateUrlAtom = atom(null, (_get, set, router: any) => {
   // 清除之前的定时器
   if (urlUpdateTimeout) {
     clearTimeout(urlUpdateTimeout);
