@@ -8,7 +8,7 @@
  */
 
 import { expect, test } from "@playwright/test";
-import { devLogin } from "./editor-smart-features/utils/editor-test-helpers";
+import { devLogin } from "../editor-smart-features/utils/editor-test-helpers";
 
 test.describe("数据同步管理页面权限验证", () => {
   test.describe("管理员权限测试", () => {

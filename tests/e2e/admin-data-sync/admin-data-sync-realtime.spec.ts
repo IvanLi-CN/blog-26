@@ -11,7 +11,7 @@
  */
 
 import { expect, test } from "@playwright/test";
-import { devLogin } from "./editor-smart-features/utils/editor-test-helpers";
+import { devLogin } from "../editor-smart-features/utils/editor-test-helpers";
 
 test.describe("数据同步管理页面实时功能测试", () => {
   test.beforeEach(async ({ page }) => {
