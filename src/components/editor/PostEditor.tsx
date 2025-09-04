@@ -59,7 +59,7 @@ export function PostEditor({ initialContentSource, initialPostId }: PostEditorPr
     setSelectedContentSource(contentSource);
 
     // 使用新的状态管理打开新文件
-    const _defaultContent = `# ${fileName}\n\n开始写作您的文章...`;
+    // const defaultContent = `# ${fileName}\n\n开始写作您的文章...`;
     // editorState.openFile(contentSource, fileName, defaultContent); // 暂时移除，使用 Jotai 状态管理
   };
 

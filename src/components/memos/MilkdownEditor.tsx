@@ -145,8 +145,6 @@ function preprocessContentForEditor(
 }
 
 export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>(
-  // eslint-disable-next-line react/display-name
-
   (
     {
       content,

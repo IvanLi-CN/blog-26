@@ -47,16 +47,16 @@ export interface ProcessInlineImagesResult {
 /**
  * Base64 图片匹配的正则表达式
  */
-const _BASE64_IMAGE_REGEX = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
+// const BASE64_IMAGE_REGEX = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
 
 /**
  * 已处理图片的正则表达式（用于幂等性检查）
  */
-const _PROCESSED_IMAGE_PATTERNS = [
-  /!\[([^\]]*)\]\(\.\/assets\/[^)]+\)/g, // 相对路径格式
-  /!\[([^\]]*)\]\(\/api\/files\/[^)]+\)/g, // API 路径格式
-  /!\[([^\]]*)\]\(https?:\/\/[^)]+\)/g, // 外部 URL
-];
+// const PROCESSED_IMAGE_PATTERNS = [
+//   /!\[([^\]]*)\]\(\.\/assets\/[^)]+\)/g, // 相对路径格式
+//   /!\[([^\]]*)\]\(\/api\/files\/[^)]+\)/g, // API 路径格式
+//   /!\[([^\]]*)\]\(https?:\/\/[^)]+\)/g, // 外部 URL
+// ];
 
 /**
  * 检查内容是否包含 Base64 图片

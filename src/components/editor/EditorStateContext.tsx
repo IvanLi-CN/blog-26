@@ -6,7 +6,7 @@
  * 集中管理标签页、文件树、URL状态的统一状态管理器
  */
 
-import { useRouter, useSearchParams } from "next/navigation";
+// import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { createContext, useCallback, useContext, useReducer } from "react";
 import type { ContentSource } from "./PostEditorWrapper";
@@ -250,8 +250,8 @@ const EditorStateContext = createContext<EditorContextValue | null>(null);
 // Context Provider 组件
 export function EditorStateProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(editorReducer, initialState);
-  const _router = useRouter();
-  const _searchParams = useSearchParams();
+  // const router = useRouter();
+  // const searchParams = useSearchParams();
 
   // 便捷方法
   const setActiveTab = useCallback((tabId: string) => {

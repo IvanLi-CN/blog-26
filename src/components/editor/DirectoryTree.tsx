@@ -8,7 +8,7 @@
  */
 
 import { useAtom, useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { trpc } from "../../lib/trpc";
 import {
   expandedFoldersAtom,
@@ -22,77 +22,77 @@ import Icon from "../ui/Icon";
 import { generateScrollDataAttribute } from "./utils/pathUtils";
 
 // 子目录内容组件
-interface SubDirectoryContentProps {
-  source: string;
-  path: string;
-  onSelectFile?: (path: string, name: string) => void;
-  selectedFilePath?: string;
-  expandedFolders: Set<string>;
-  toggleFolder: (folderName: string) => void;
-}
+// interface SubDirectoryContentProps {
+//   source: string;
+//   path: string;
+//   onSelectFile?: (path: string, name: string) => void;
+//   selectedFilePath?: string;
+//   expandedFolders: Set<string>;
+//   toggleFolder: (folderName: string) => void;
+// }
 
-function _SubDirectoryContent({
-  source,
-  path,
-  onSelectFile,
-  selectedFilePath,
-  expandedFolders: _expandedFolders,
-  toggleFolder: _toggleFolder,
-}: SubDirectoryContentProps) {
-  // 获取子目录内容
-  const { data: subDirFiles, isLoading } = trpc.admin.files.listDirectory.useQuery(
-    { source, path },
-    { enabled: true }
-  );
+// function SubDirectoryContent({
+//   source,
+//   path,
+//   onSelectFile,
+//   selectedFilePath,
+//   expandedFolders,
+//   toggleFolder,
+// }: SubDirectoryContentProps) {
+//   // 获取子目录内容
+//   const { data: subDirFiles, isLoading } = trpc.admin.files.listDirectory.useQuery(
+//     { source, path },
+//     { enabled: true }
+//   );
 
-  if (isLoading) {
-    return <div className="ml-4 text-xs text-base-content/60 px-2 py-1">加载中...</div>;
-  }
+//   if (isLoading) {
+//     return <div className="ml-4 text-xs text-base-content/60 px-2 py-1">加载中...</div>;
+//   }
 
-  if (!subDirFiles?.items?.length) {
-    return <div className="ml-4 text-xs text-base-content/60 px-2 py-1">空目录</div>;
-  }
+//   if (!subDirFiles?.items?.length) {
+//     return <div className="ml-4 text-xs text-base-content/60 px-2 py-1">空目录</div>;
+//   }
 
-  return (
-    <div className="ml-4 border-l border-base-300">
-      {subDirFiles.items.map((file) => (
-        <button
-          key={file.path}
-          type="button"
-          className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors w-full text-left ${
-            selectedFilePath === file.path ? "bg-primary/10 text-primary" : ""
-          }`}
-          onClick={() => {
-            if (file.type === "directory") {
-              // 子目录：展开/折叠
-              _toggleFolder(`${source}-${path}/${file.path}`);
-            } else {
-              // 文件：打开编辑
-              const fullPath =
-                source === "webdav" ? `/${path}/${file.path}` : `${path}/${file.path}`;
-              onSelectFile?.(fullPath, file.name);
-            }
-          }}
-          title={file.name}
-        >
-          <span className="mr-2">
-            {file.type === "directory" ? (
-              <Icon name="lucide:folder" size={16} />
-            ) : (
-              <Icon name="lucide:edit" size={16} />
-            )}
-          </span>
-          <span className="truncate flex-1">{file.name}</span>
-          {file.size && (
-            <span className="ml-2 text-xs text-base-content/40">
-              {Math.round(file.size / 1024)}KB
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
-}
+//   return (
+//     <div className="ml-4 border-l border-base-300">
+//       {subDirFiles.items.map((file) => (
+//         <button
+//           key={file.path}
+//           type="button"
+//           className={`flex items-center px-2 py-1 hover:bg-base-200 cursor-pointer rounded text-sm transition-colors w-full text-left ${
+//             selectedFilePath === file.path ? "bg-primary/10 text-primary" : ""
+//           }`}
+//           onClick={() => {
+//             if (file.type === "directory") {
+//               // 子目录：展开/折叠
+//               _toggleFolder(`${source}-${path}/${file.path}`);
+//             } else {
+//               // 文件：打开编辑
+//               const fullPath =
+//                 source === "webdav" ? `/${path}/${file.path}` : `${path}/${file.path}`;
+//               onSelectFile?.(fullPath, file.name);
+//             }
+//           }}
+//           title={file.name}
+//         >
+//           <span className="mr-2">
+//             {file.type === "directory" ? (
+//               <Icon name="lucide:folder" size={16} />
+//             ) : (
+//               <Icon name="lucide:edit" size={16} />
+//             )}
+//           </span>
+//           <span className="truncate flex-1">{file.name}</span>
+//           {file.size && (
+//             <span className="ml-2 text-xs text-base-content/40">
+//               {Math.round(file.size / 1024)}KB
+//             </span>
+//           )}
+//         </button>
+//       ))}
+//     </div>
+//   );
+// }
 
 // WebDAV 子目录组件
 function WebDAVSubDirectory({
@@ -370,7 +370,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
   const toggleFolder = useSetAtom(toggleFolderAtom);
   const setSelectedFilePath = useSetAtom(setSelectedFilePathAtom);
 
-  const [_directoryContents, _setDirectoryContents] = useState<Record<string, unknown[]>>({});
+  // const [directoryContents, setDirectoryContents] = useState<Record<string, unknown[]>>({});
 
   // 监听滚动目标变化，实现自动滚动定位
   useEffect(() => {

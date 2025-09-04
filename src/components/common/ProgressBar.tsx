@@ -62,8 +62,8 @@ export function ProgressBar() {
     };
 
     // 监听路由变化
-    const _handleRouteChangeStart = () => startProgress();
-    const _handleRouteChangeComplete = () => finishProgress();
+    // const handleRouteChangeStart = () => startProgress();
+    // const handleRouteChangeComplete = () => finishProgress();
 
     // 监听浏览器导航事件
     const originalPushState = history.pushState;

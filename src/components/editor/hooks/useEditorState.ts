@@ -92,6 +92,8 @@ export function useAdvancedEditorState() {
     actions.setScrollTarget,
     router.replace,
     state.tabs.find,
+    router,
+    state.tabs,
   ]);
 
   // 滚动目标变化时的副作用

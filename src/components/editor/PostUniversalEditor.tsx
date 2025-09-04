@@ -116,7 +116,7 @@ export function PostUniversalEditor({
   );
 
   // 创建文章
-  const createPostMutation = trpc.admin.posts.create.useMutation({
+  const _createPostMutation = trpc.admin.posts.create.useMutation({
     onSuccess: (result) => {
       // 创建成功后打开新标签页
       openPostInTab(result.post.id, result.post.title, result.post.body, true);
@@ -207,38 +207,38 @@ export function PostUniversalEditor({
   );
 
   // 防止重复打开相同文章
-  const _handleFileSelect = useCallback(
-    (fileId: string, fileName?: string) => {
-      console.log("🔄 [PostUniversalEditor] 选择文件:", { fileId, fileName });
+  // const handleFileSelect = useCallback(
+  //   (fileId: string, fileName?: string) => {
+  //     console.log("🔄 [PostUniversalEditor] 选择文件:", { fileId, fileName });
 
-      // 检查是否已经在标签页中
-      const existingTab = tabs.find((tab) => tab.id === fileId);
-      if (existingTab) {
-        setActiveTab(fileId);
-        setTimeout(() => {
-          onPostChange?.(fileId);
-        }, 0);
-        return;
-      }
+  //     // 检查是否已经在标签页中
+  //     const existingTab = tabs.find((tab) => tab.id === fileId);
+  //     if (existingTab) {
+  //       setActiveTab(fileId);
+  //       setTimeout(() => {
+  //         onPostChange?.(fileId);
+  //       }, 0);
+  //       return;
+  //     }
 
-      // 如果是 WebDAV 文件路径（以 / 开头），需要特殊处理
-      if (fileId.startsWith("/")) {
-        console.log("📁 [PostUniversalEditor] 检测到 WebDAV 文件路径:", fileId);
-        // TODO: 实现 WebDAV 文件加载逻辑
-        // 暂时使用文件路径作为 ID
-        setTimeout(() => {
-          onPostChange?.(fileId);
-        }, 0);
-        return;
-      }
+  //     // 如果是 WebDAV 文件路径（以 / 开头），需要特殊处理
+  //     if (fileId.startsWith("/")) {
+  //       console.log("📁 [PostUniversalEditor] 检测到 WebDAV 文件路径:", fileId);
+  //       // TODO: 实现 WebDAV 文件加载逻辑
+  //       // 暂时使用文件路径作为 ID
+  //       setTimeout(() => {
+  //         onPostChange?.(fileId);
+  //       }, 0);
+  //       return;
+  //     }
 
-      // 如果不存在，则正常处理数据库文章
-      setTimeout(() => {
-        onPostChange?.(fileId);
-      }, 0);
-    },
-    [tabs, onPostChange, setActiveTab]
-  );
+  //     // 如果不存在，则正常处理数据库文章
+  //     setTimeout(() => {
+  //       onPostChange?.(fileId);
+  //     }, 0);
+  //   },
+  //   [tabs, onPostChange, setActiveTab]
+  // );
 
   // 处理文章数据加载
   useEffect(() => {
@@ -671,20 +671,20 @@ author: ""
   };
 
   // 将API URL转换回相对路径格式
-  const _convertApiUrlsToRelativePaths = (content: string): string => {
-    // 匹配 API URL 格式的图片路径
-    const apiUrlRegex = /!\[([^\]]*)\]\(\/api\/files\/[^/]+\/(.+?)\)/g;
+  // const convertApiUrlsToRelativePaths = (content: string): string => {
+  //   // 匹配 API URL 格式的图片路径
+  //   const apiUrlRegex = /!\[([^\]]*)\]\(\/api\/files\/[^/]+\/(.+?)\)/g;
 
-    return content.replace(apiUrlRegex, (_match, alt, relativePath) => {
-      // 确保相对路径以 ./ 开头
-      const normalizedPath = relativePath.startsWith("./") ? relativePath : `./${relativePath}`;
-      console.log("🔄 [PostUniversalEditor] 转换API URL回相对路径:", {
-        original: _match,
-        converted: `![${alt}](${normalizedPath})`,
-      });
-      return `![${alt}](${normalizedPath})`;
-    });
-  };
+  //   return content.replace(apiUrlRegex, (_match, alt, relativePath) => {
+  //     // 确保相对路径以 ./ 开头
+  //     const normalizedPath = relativePath.startsWith("./") ? relativePath : `./${relativePath}`;
+  //     console.log("🔄 [PostUniversalEditor] 转换API URL回相对路径:", {
+  //       original: _match,
+  //       converted: `![${alt}](${normalizedPath})`,
+  //     });
+  //     return `![${alt}](${normalizedPath})`;
+  //   });
+  // };
 
   /**
    * 根据文章路径生成对应的 assets 目录路径
@@ -750,21 +750,21 @@ author: ""
   };
 
   // 创建新文章
-  const _handleCreatePost = async () => {
-    try {
-      await createPostMutation.mutateAsync({
-        title: "新文章",
-        slug: `new-post-${Date.now()}`,
-        body: "# 新文章\n\n开始写作...",
-        excerpt: "",
-        type: "post",
-        draft: true,
-        public: true,
-      });
-    } catch (error) {
-      console.error("创建文章失败:", error);
-    }
-  };
+  // const handleCreatePost = async () => {
+  //   try {
+  //     await _createPostMutation.mutateAsync({
+  //       title: "新文章",
+  //       slug: `new-post-${Date.now()}`,
+  //       body: "# 新文章\n\n开始写作...",
+  //       excerpt: "",
+  //       type: "post",
+  //       draft: true,
+  //       public: true,
+  //     });
+  //   } catch (error) {
+  //     console.error("创建文章失败:", error);
+  //   }
+  // };
 
   // 注意：如果需要暴露方法给父组件，应该使用 useImperativeHandle 和 forwardRef
 

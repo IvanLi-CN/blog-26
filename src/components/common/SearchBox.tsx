@@ -61,11 +61,11 @@ export default function SearchBox({
   };
 
   // 打开移动端搜索模态框
-  const _openModal = () => {
-    setIsModalOpen(true);
-    document.body.style.overflow = "hidden";
-    setTimeout(() => modalInputRef.current?.focus(), 100);
-  };
+  // const openModal = () => {
+  //   setIsModalOpen(true);
+  //   document.body.style.overflow = "hidden";
+  //   setTimeout(() => modalInputRef.current?.focus(), 100);
+  // };
 
   // 关闭移动端搜索模态框
   const closeModal = useCallback(() => {

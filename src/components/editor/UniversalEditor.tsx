@@ -61,7 +61,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       title,
       className = "",
       mode = "wysiwyg",
-      onModeChange,
+      onModeChange: _onModeChange,
       editorId = "default",
       "data-testid": dataTestId,
     },
@@ -175,10 +175,10 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     };
 
     // 处理模式切换
-    const _handleModeChange = (newMode: EditorMode) => {
-      setCurrentMode(newMode);
-      onModeChange?.(newMode);
-    };
+    // const handleModeChange = (newMode: EditorMode) => {
+    //   setCurrentMode(newMode);
+    //   onModeChange?.(newMode);
+    // };
 
     // 处理图片上传
     const handleImageUpload = async (file: File): Promise<string> => {

@@ -75,7 +75,7 @@ export function MemoCard({
   isLast = false,
   index: _index = 0,
 }: MemoCardProps) {
-  const [_isExpanded, _setIsExpanded] = useState(false);
+  // const [isExpanded, setIsExpanded] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
 
   // 处理内容截断
