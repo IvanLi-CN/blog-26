@@ -189,7 +189,7 @@ export class SyncStatusDetector {
       ws.on("framereceived", (event) => {
         const payload = event.payload instanceof Buffer ? event.payload.toString() : event.payload;
         try {
-          const data = JSON.parse(payload);
+          const data = JSON.parse(payload as string);
           if (data.type === "sync:log") {
             console.log(`📝 [${context}] 收到实时日志: ${data.data.message}`);
             logReceived = true;
@@ -281,7 +281,7 @@ export class SyncStatusDetector {
         messages++;
         const payload = event.payload instanceof Buffer ? event.payload.toString() : event.payload;
         try {
-          const data = JSON.parse(payload);
+          const data = JSON.parse(payload as string);
           if (data.type === "sync:log") {
             syncLogs++;
           } else if (data.type === "sync:complete") {
@@ -323,7 +323,7 @@ export class SyncStatusDetector {
           const payload =
             event.payload instanceof Buffer ? event.payload.toString() : event.payload;
           try {
-            const data = JSON.parse(payload);
+            const data = JSON.parse(payload as string);
             if (data.type === "sync:complete") {
               console.log(`📡 [${context}] 收到同步完成事件`);
               _syncCompleted = true;

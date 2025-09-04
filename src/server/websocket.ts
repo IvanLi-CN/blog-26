@@ -31,13 +31,23 @@ export function createWebSocketServer(port: number = 3001) {
       // 在开发环境中，我们暂时允许所有连接作为管理员
       // 在生产环境中，你需要从连接参数中验证认证信息
 
+      // 创建模拟的请求对象和响应头
+      const mockReq = new Request("ws://localhost:3000/api/trpc");
+      const mockResHeaders = new Headers();
+
       // 检查是否是开发环境
       const isDev = process.env.NODE_ENV === "development";
 
       if (isDev) {
         // 开发环境：允许所有连接作为管理员
         return {
-          user: { id: "dev-user", email: "dev@example.com" },
+          req: mockReq,
+          resHeaders: mockResHeaders,
+          user: {
+            id: "dev-user",
+            email: "dev@example.com",
+            nickname: "Dev User",
+          },
           isAdmin: true,
         };
       }
@@ -45,7 +55,9 @@ export function createWebSocketServer(port: number = 3001) {
       // 生产环境：需要实现真正的认证逻辑
       // 你可以从 opts.connectionParams 中获取认证信息
       return {
-        user: null,
+        req: mockReq,
+        resHeaders: mockResHeaders,
+        user: undefined,
         isAdmin: false,
       };
     },

@@ -40,7 +40,7 @@ export const expandedFoldersAtom = atomWithStorage<Set<string>>(
   "editor-expanded-folders",
   new Set<string>(),
   {
-    getItem: (key) => {
+    getItem: (key: string): Set<string> => {
       const item = localStorage.getItem(key);
       if (!item) return new Set<string>();
       try {

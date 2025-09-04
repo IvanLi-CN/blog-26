@@ -33,7 +33,6 @@ export default function HomePage() {
 
   // 使用 tRPC 查询真实数据
   const { data: memos, isLoading: memosLoading } = api.memos.list.useQuery({
-    page: 1,
     limit: 5,
     publicOnly: true,
   });

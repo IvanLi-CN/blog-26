@@ -127,54 +127,69 @@ export function ContentSyncManager() {
 
   // tRPC subscription 用于接收实时日志
   trpc.admin.contentSync.subscribeSyncLogs.useSubscription(undefined, {
-    onData: (event) => {
+    onData: (event: unknown) => {
       console.log("收到订阅事件:", event);
 
-      switch (event.type) {
-        case "connected":
-          console.log("tRPC 订阅连接确认:", event.data.message);
-          break;
+      // 类型守卫：确保 event 是我们期望的格式
+      if (typeof event === "object" && event !== null && "type" in event) {
+        const typedEvent = event as { type: string; data: unknown };
 
-        case "sync:start":
-          console.log("同步开始:", event.data);
-          // 清空旧日志，准备接收新的同步日志
-          setSyncLogs([]);
-          break;
+        switch (typedEvent.type) {
+          case "connected":
+            console.log("tRPC 订阅连接确认:", (typedEvent.data as { message: string }).message);
+            break;
 
-        case "sync:log": {
-          const logData = event.data;
-          console.log("收到同步日志:", logData);
+          case "sync:start":
+            console.log("同步开始:", typedEvent.data);
+            // 清空旧日志，准备接收新的同步日志
+            setSyncLogs([]);
+            break;
 
-          // 添加新日志到列表
-          setSyncLogs((prev) => [
-            ...prev,
-            {
-              id: logData.id,
-              sourceType: logData.sourceType,
-              sourceName: logData.sourceName,
-              operation: logData.operation,
-              status: logData.status,
-              message: logData.message,
-              filePath: logData.filePath,
-              data: logData.data,
-              createdAt: logData.createdAt,
-            },
-          ]);
+          case "sync:log": {
+            const logData = typedEvent.data as {
+              id: string;
+              sourceType: string;
+              sourceName: string;
+              operation: string;
+              status: string;
+              message: string;
+              filePath?: string;
+              data?: unknown;
+              createdAt: number;
+            };
+            console.log("收到同步日志:", logData);
 
-          // 标记为新日志，用于动画效果
-          setNewLogIds((prev) => new Set([...prev, logData.id]));
-          break;
+            // 添加新日志到列表
+            setSyncLogs((prev) => [
+              ...prev,
+              {
+                id: logData.id,
+                sourceType: logData.sourceType,
+                sourceName: logData.sourceName,
+                operation: logData.operation,
+                status: logData.status,
+                message: logData.message,
+                filePath: logData.filePath,
+                data: logData.data,
+                createdAt: logData.createdAt,
+              },
+            ]);
+
+            // 标记为新日志，用于动画效果
+            setNewLogIds((prev) => new Set([...prev, logData.id]));
+            break;
+          }
+
+          case "sync:complete":
+            console.log("同步完成:", typedEvent.data);
+            setIsLoading(false);
+
+            // 刷新统计信息
+            refetchStats();
+            refetchContentStats();
+            refreshData();
+            break;
         }
-
-        case "sync:complete":
-          console.log("同步完成:", event.data);
-          setIsLoading(false);
-
-          // 刷新统计信息
-          refetchStats();
-          refetchContentStats();
-          refreshData();
-          break;
       }
     },
     onError: (error) => {

@@ -740,12 +740,25 @@ export class ContentSourceManager {
         }
       }
 
+      // 映射日志级别到数据库状态
+      const getStatusFromLevel = (level: string): "success" | "error" | "warning" => {
+        switch (level) {
+          case "error":
+            return "error";
+          case "warn":
+          case "warning":
+            return "warning";
+          default:
+            return "success";
+        }
+      };
+
       const logEntry = {
         id: nanoid(),
         sourceType,
         sourceName: actualSourceName,
         operation: "sync",
-        status: level === "error" ? "error" : "success",
+        status: getStatusFromLevel(level),
         message,
         filePath,
         data: data ? JSON.stringify(data) : null,

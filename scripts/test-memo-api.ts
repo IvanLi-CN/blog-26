@@ -31,13 +31,15 @@ async function testMemoAPI() {
     // 测试获取 memo 列表
     console.log("📋 测试获取 memo 列表...");
     const memosList = await caller.memos.list({
-      page: 1,
       limit: 5,
       publicOnly: false, // 获取所有 memo（包括私有的）
     });
 
     console.log(`✅ 获取到 ${memosList.memos.length} 个 memo`);
-    console.log("分页信息:", memosList.pagination);
+    console.log("分页信息:", {
+      hasMore: memosList.hasMore,
+      nextCursor: memosList.nextCursor,
+    });
 
     if (memosList.memos.length > 0) {
       console.log("\n📝 Memo 列表示例:");

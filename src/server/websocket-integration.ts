@@ -61,15 +61,27 @@ export async function startIntegratedServer() {
         // 在开发环境中允许所有连接作为管理员
         const isDev = process.env.NODE_ENV === "development";
 
+        // 创建模拟的请求对象和响应头
+        const mockReq = new Request("ws://localhost:3000/api/trpc");
+        const mockResHeaders = new Headers();
+
         if (isDev) {
           return {
-            user: { id: "dev-user", email: "dev@example.com" },
+            req: mockReq,
+            resHeaders: mockResHeaders,
+            user: {
+              id: "dev-user",
+              email: "dev@example.com",
+              nickname: "Dev User",
+            },
             isAdmin: true,
           };
         }
 
         return {
-          user: null,
+          req: mockReq,
+          resHeaders: mockResHeaders,
+          user: undefined,
           isAdmin: false,
         };
       },

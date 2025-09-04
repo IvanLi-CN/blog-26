@@ -488,7 +488,7 @@ export function generateTitleSlug(title: string): string {
   // 使用limax处理中英文标题，生成URL友好的slug
   return limax(title, {
     replacement: "-",
-    lowercase: true,
+    maintainCase: false,
     separator: "-",
   });
 }

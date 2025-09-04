@@ -105,11 +105,7 @@ export function PostEditor({ initialContentSource, initialPostId }: PostEditorPr
         className="bg-base-100 border-r border-base-300 flex-shrink-0"
         style={{ width: sidebarWidth }}
       >
-        <DirectoryTree
-          onSelectFile={handleFileSelect}
-          onCreateFile={handleCreateFile}
-          selectedPath={selectedContentSource?.id || selectedContentSource?.filePath}
-        />
+        <DirectoryTree onSelectFile={handleFileSelect} onCreateFile={handleCreateFile} />
       </div>
 
       {/* 拖拽分割线 */}

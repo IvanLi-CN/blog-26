@@ -37,7 +37,6 @@ export async function getInitialMemos(
 
   try {
     const result = await caller.memos.list({
-      page: options.page || 1,
       limit: options.limit || 20,
       publicOnly: options.publicOnly ?? true,
     });

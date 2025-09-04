@@ -185,8 +185,12 @@ export function useAdvancedEditorState() {
       const contentSource = createContentSource(possiblePaths[0]);
 
       // 创建新标签页（内容将由组件异步加载）
+      const identifier = contentSourceToIdentifier(contentSource);
+      const tabId = createTabId(identifier);
+
       const newTab: EditorTab = {
-        id: contentSource.filePath,
+        id: tabId,
+        identifier,
         title: slug,
         content: "",
         isDirty: false,
