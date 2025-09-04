@@ -9,6 +9,7 @@
  * - 为E2E测试提供干净的数据环境
  */
 
+import { Database } from "bun:sqlite";
 import { and, eq, like, or } from "drizzle-orm";
 import { db, initializeDB } from "../src/lib/db";
 import { posts } from "../src/lib/schema";
@@ -19,6 +20,24 @@ interface CleanOptions {
   source?: string;
   pattern?: string;
   force: boolean;
+}
+
+// 检查表是否存在
+async function checkTableExists(tableName: string): Promise<boolean> {
+  try {
+    const DB_PATH = process.env.DB_PATH || "./sqlite.db";
+    const sqlite = new Database(DB_PATH);
+
+    const result = sqlite
+      .query("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
+      .get(tableName);
+
+    sqlite.close();
+    return result !== null;
+  } catch (_error) {
+    // 如果数据库文件不存在或其他错误，返回 false
+    return false;
+  }
 }
 
 // 解析命令行参数
@@ -140,6 +159,17 @@ async function cleanTestPosts(): Promise<void> {
   const options = parseArgs();
 
   try {
+    // 检查 posts 表是否存在
+    const postsTableExists = await checkTableExists("posts");
+    if (!postsTableExists) {
+      if (options.verbose) {
+        console.log("ℹ️  posts 表不存在，没有需要清理的测试文章");
+      } else {
+        console.log("✅ 没有找到需要清理的测试文章");
+      }
+      return;
+    }
+
     // 初始化数据库
     await initializeDB();
 

@@ -8,6 +8,7 @@
  * 内容数据应通过内容同步系统从文件系统获取
  */
 
+import { Database } from "bun:sqlite";
 import { like } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { db, initializeDB } from "../src/lib/db";
@@ -18,6 +19,24 @@ interface SeedOptions {
   developmentOnly: boolean;
   dataTypes: Array<"users" | "system">;
   verbose: boolean;
+}
+
+// 检查表是否存在
+async function checkTableExists(tableName: string): Promise<boolean> {
+  try {
+    const DB_PATH = process.env.DB_PATH || "./sqlite.db";
+    const sqlite = new Database(DB_PATH);
+
+    const result = sqlite
+      .query("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
+      .get(tableName);
+
+    sqlite.close();
+    return result !== null;
+  } catch (_error) {
+    // 如果数据库文件不存在或其他错误，返回 false
+    return false;
+  }
 }
 
 // 解析命令行参数
@@ -133,18 +152,33 @@ async function checkTestData(): Promise<boolean> {
 // 清理所有测试数据
 async function clearAllTestData(): Promise<void> {
   try {
-    // 清理测试用户
-    await db.delete(users).where(like(users.email, "%test%"));
+    let cleanedItems = 0;
+
+    // 检查并清理测试用户
+    if (await checkTableExists("users")) {
+      await db.delete(users).where(like(users.email, "%test%"));
+      cleanedItems++;
+    }
 
     // 注意：不清理文章数据，文章通过内容同步系统管理
 
-    // 清理测试评论
-    await db.delete(comments).where(like(comments.content, "%测试%"));
+    // 检查并清理测试评论
+    if (await checkTableExists("comments")) {
+      await db.delete(comments).where(like(comments.content, "%测试%"));
+      cleanedItems++;
+    }
 
-    // 清理验证码
-    await db.delete(emailVerificationCodes);
+    // 检查并清理验证码
+    if (await checkTableExists("email_verification_codes")) {
+      await db.delete(emailVerificationCodes);
+      cleanedItems++;
+    }
 
-    console.log("✅ 测试数据清理完成");
+    if (cleanedItems > 0) {
+      console.log("✅ 测试数据清理完成");
+    } else {
+      console.log("ℹ️  没有找到需要清理的测试数据（相关表不存在）");
+    }
   } catch (error) {
     console.error("清理测试数据时出错:", error);
     throw error;
@@ -180,23 +214,30 @@ async function seedDatabase(options: SeedOptions): Promise<{
     if (options.dataTypes.includes("users")) {
       if (options.verbose) console.log("👥 创建测试用户...");
 
-      const testUsers = [
-        {
-          id: uuidv4(),
-          email: "test1@example.com",
-          name: "测试用户1",
-          createdAt: Date.now(),
-        },
-        {
-          id: uuidv4(),
-          email: "test2@example.com",
-          name: "测试用户2",
-          createdAt: Date.now(),
-        },
-      ];
+      // 检查 users 表是否存在
+      if (!(await checkTableExists("users"))) {
+        if (options.verbose) {
+          console.log("⚠️  users 表不存在，跳过用户创建");
+        }
+      } else {
+        const testUsers = [
+          {
+            id: uuidv4(),
+            email: "test1@example.com",
+            name: "测试用户1",
+            createdAt: Date.now(),
+          },
+          {
+            id: uuidv4(),
+            email: "test2@example.com",
+            name: "测试用户2",
+            createdAt: Date.now(),
+          },
+        ];
 
-      await db.insert(users).values(testUsers);
-      seededCounts.users = testUsers.length;
+        await db.insert(users).values(testUsers);
+        seededCounts.users = testUsers.length;
+      }
     }
 
     // 系统配置数据（如果需要的话）
