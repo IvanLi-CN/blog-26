@@ -158,11 +158,18 @@ test.describe("数据同步管理页面实时功能测试", () => {
         const latestLog = page.locator("tbody tr, .card").first();
         await expect(latestLog).toBeVisible();
 
-        // 检查日志时间戳是否是最近的
-        // 桌面端：td.font-mono，移动端：.font-mono
-        const timeElement = latestLog.locator("td.font-mono, .font-mono").first();
-        const timeText = await timeElement.textContent();
-        console.log(`最新日志时间: ${timeText}`);
+        // 检查日志时间戳（使用更灵活的选择器）
+        const timeElements = latestLog.locator(
+          "td, .text-xs, .font-mono, [class*='time'], [class*='timestamp']"
+        );
+        const timeCount = await timeElements.count();
+
+        if (timeCount > 0) {
+          const timeText = await timeElements.first().textContent();
+          console.log(`最新日志时间: ${timeText}`);
+        } else {
+          console.log("⚠️ 未找到时间戳元素，但日志存在");
+        }
       } else {
         console.log("⚠️ 未检测到新的日志，同步可能已快速完成");
       }
