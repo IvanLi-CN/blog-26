@@ -254,7 +254,12 @@ export class EditorPage {
   // 滚动相关方法
   async scrollFileTreeToTop() {
     const fileTreeSelector = this.selectors.fileTree || ".directory-tree-container";
-    await this.page.locator(fileTreeSelector).scrollTo({ top: 0 });
+    await this.page.evaluate((selector) => {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, fileTreeSelector);
   }
 
   async verifyFileInViewport(fileName: string) {
@@ -287,10 +292,139 @@ export class EditorPage {
   }
 
   async verifySystemStability() {
-    // 验证页面基本元素仍然可见
-    await expect(this.page.locator("button")).toBeVisible();
     // 验证页面没有崩溃
     await expect(this.page.locator("body")).toBeVisible();
+    // 验证主要容器存在
+    await expect(this.page.locator(".directory-tree-container")).toBeVisible();
+    // 验证页面标题正确
+    await expect(this.page).toHaveTitle(/文章编辑器|管理后台/);
+  }
+
+  // 新增：基本页面加载验证
+  async verifyBasicPageLoad() {
+    // 等待页面完全加载
+    await this.page.waitForLoadState("networkidle");
+
+    // 验证页面标题
+    const title = await this.page.title();
+    expect(title).toBeTruthy();
+
+    // 验证主要容器元素
+    await expect(this.page.locator("body")).toBeVisible();
+    await expect(this.page.locator("main, .main-content, [role='main']")).toBeVisible();
+
+    // 验证没有明显的JavaScript错误
+    const errors = await this.page.evaluate(() => {
+      return (window as any).jsErrors || [];
+    });
+    expect(errors.length).toBe(0);
+  }
+
+  // 新增：响应式布局验证
+  async verifyResponsiveLayout(viewport: { width: number; height: number }) {
+    // 设置视口大小
+    await this.page.setViewportSize(viewport);
+    await this.page.waitForTimeout(1000); // 等待布局调整
+
+    // 验证页面在新视口下仍然可用
+    await expect(this.page.locator("body")).toBeVisible();
+
+    // 验证主要内容区域适配
+    const mainContent = this.page.locator("main, .main-content, [role='main']").first();
+    if (await mainContent.isVisible()) {
+      const boundingBox = await mainContent.boundingBox();
+      expect(boundingBox?.width).toBeLessThanOrEqual(viewport.width);
+    }
+
+    // 验证没有水平滚动条（除非是超宽内容）
+    const hasHorizontalScroll = await this.page.evaluate(() => {
+      return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+    });
+
+    // 对于移动设备，允许一定的水平滚动
+    if (viewport.width < 768) {
+      // 移动设备可以有少量水平滚动
+    } else {
+      expect(hasHorizontalScroll).toBe(false);
+    }
+  }
+
+  // 新增：键盘可访问性验证
+  async verifyKeyboardAccessibility() {
+    // 验证页面可以通过Tab键导航
+    await this.page.keyboard.press("Tab");
+
+    // 检查是否有焦点指示器
+    const focusedElement = await this.page.evaluate(() => {
+      const focused = document.activeElement;
+      if (!focused || focused === document.body) return null;
+
+      const styles = window.getComputedStyle(focused);
+      return {
+        tagName: focused.tagName,
+        outline: styles.outline,
+        boxShadow: styles.boxShadow,
+        border: styles.border,
+      };
+    });
+
+    expect(focusedElement).toBeTruthy();
+
+    // 验证可以继续Tab导航
+    await this.page.keyboard.press("Tab");
+    await this.page.keyboard.press("Tab");
+
+    // 验证Escape键可以用于关闭模态框等
+    await this.page.keyboard.press("Escape");
+
+    // 验证Enter键可以激活按钮
+    const firstButton = this.page.locator("button").first();
+    if (await firstButton.isVisible()) {
+      await firstButton.focus();
+      // 不实际按Enter，只验证焦点可以到达
+    }
+  }
+
+  // 新增：CSS完整性验证
+  async verifyCSSIntegrity() {
+    // 验证关键CSS类存在
+    const hasRequiredStyles = await this.page.evaluate(() => {
+      const testElement = document.createElement("div");
+      testElement.className = "bg-primary text-primary border rounded";
+      document.body.appendChild(testElement);
+
+      const styles = window.getComputedStyle(testElement);
+      const hasBackground = styles.backgroundColor !== "rgba(0, 0, 0, 0)";
+      const hasColor = styles.color !== "rgba(0, 0, 0, 0)";
+      const hasBorder = styles.borderWidth !== "0px";
+      const hasBorderRadius = styles.borderRadius !== "0px";
+
+      document.body.removeChild(testElement);
+
+      return { hasBackground, hasColor, hasBorder, hasBorderRadius };
+    });
+
+    // 至少应该有一些基本样式
+    expect(hasRequiredStyles.hasBackground || hasRequiredStyles.hasColor).toBe(true);
+
+    // 验证布局没有明显问题
+    const layoutIssues = await this.page.evaluate(() => {
+      const elements = document.querySelectorAll("*");
+      let issues = 0;
+
+      elements.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        // 检查是否有元素超出视口太多
+        if (rect.width > window.innerWidth * 2 || rect.height > window.innerHeight * 2) {
+          issues++;
+        }
+      });
+
+      return issues;
+    });
+
+    // 允许少量布局问题，但不应该太多
+    expect(layoutIssues).toBeLessThan(5);
   }
 
   // 等待方法

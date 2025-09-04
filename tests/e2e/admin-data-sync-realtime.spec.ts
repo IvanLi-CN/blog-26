@@ -159,7 +159,8 @@ test.describe("数据同步管理页面实时功能测试", () => {
         await expect(latestLog).toBeVisible();
 
         // 检查日志时间戳是否是最近的
-        const timeElement = latestLog.locator(".font-mono, td:first-child");
+        // 桌面端：td.font-mono，移动端：.font-mono
+        const timeElement = latestLog.locator("td.font-mono, .font-mono").first();
         const timeText = await timeElement.textContent();
         console.log(`最新日志时间: ${timeText}`);
       } else {

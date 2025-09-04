@@ -393,7 +393,7 @@ test.describe("数据同步管理页面", () => {
         await expect(firstLogEntry).toBeVisible();
 
         // 检查日志是否包含时间戳
-        const timeElements = page.locator("td:first-child, .font-mono");
+        const timeElements = page.locator("td.font-mono, .font-mono");
         const timeCount = await timeElements.count();
         if (timeCount > 0) {
           console.log("✅ 日志包含时间戳");

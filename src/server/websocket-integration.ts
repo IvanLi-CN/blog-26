@@ -12,7 +12,9 @@ import { appRouter } from "./router";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
-const port = parseInt(process.env.PORT || "3001", 10);
+// 在测试环境中默认使用3000端口，其他环境使用3001
+const defaultPort = process.env.NODE_ENV === "test" ? "3000" : "3001";
+const port = parseInt(process.env.PORT || defaultPort, 10);
 
 // 创建 Next.js 应用
 const app = next({ dev, hostname, port });

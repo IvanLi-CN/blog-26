@@ -13,9 +13,13 @@ function getBaseUrl() {
 
 function getWsUrl() {
   if (typeof window !== "undefined") {
+    // 客户端：使用当前页面的协议、主机名和端口
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.hostname}:${window.location.port}/trpc-ws`;
+    const wsUrl = `${protocol}//${window.location.hostname}:${window.location.port}/trpc-ws`;
+    console.log("🔌 客户端 WebSocket URL:", wsUrl);
+    return wsUrl;
   }
+  // 服务器端：使用默认配置
   return `ws://localhost:3001/trpc-ws`;
 }
 
