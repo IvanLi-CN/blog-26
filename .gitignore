@@ -52,6 +52,7 @@ sqlite.db-journal
 *.sqlite
 *.sqlite3
 *.db
+*.db.backup
 
 # test data and development data
 test-data/
