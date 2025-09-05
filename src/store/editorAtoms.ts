@@ -109,15 +109,46 @@ export const setActiveTabIdAtom = atom(null, (get, set, tabId: string) => {
   }
 });
 
+// 从标签页ID中提取路径部分
+const extractPathFromTabId = (tabId: string): string => {
+  return tabId.split(":").slice(1).join(":");
+};
+
 // 添加标签页
 export const addTabAtom = atom(null, (get, set, tab: EditorTab) => {
   console.log(`[EditorAtoms] 添加标签页: ${tab.id}`);
   const tabs = get(tabsAtom);
 
-  // 检查是否已存在
-  const existingTab = tabs.find((t) => t.id === tab.id);
-  if (existingTab) {
-    // 如果已存在，只设置为活动标签页
+  // 1. 检查是否已存在相同ID的标签页
+  const existingTabById = tabs.find((t) => t.id === tab.id);
+  if (existingTabById) {
+    console.log(`[EditorAtoms] 标签页已存在(ID匹配)，设置为活动: ${tab.id}`);
+    set(activeTabIdAtom, tab.id);
+    return;
+  }
+
+  // 2. 检查是否已存在相同路径的标签页（防止重命名时的重复）
+  const tabPath = extractPathFromTabId(tab.id);
+  const duplicateTabs = tabs.filter((t) => {
+    const existingPath = extractPathFromTabId(t.id);
+    return tabPath === existingPath;
+  });
+
+  if (duplicateTabs.length > 0) {
+    console.log(`[EditorAtoms] 发现重复路径的标签页，进行清理: ${tabPath}`);
+    console.log(
+      `[EditorAtoms] 重复的标签页:`,
+      duplicateTabs.map((t) => t.id)
+    );
+
+    // 删除重复的标签页，保留最新的
+    const cleanedTabs = tabs.filter((t) => {
+      const existingPath = extractPathFromTabId(t.id);
+      return existingPath !== tabPath;
+    });
+
+    console.log(`[EditorAtoms] 清理后保留新标签页: ${tab.id}`);
+    set(tabsAtom, [...cleanedTabs, tab]);
     set(activeTabIdAtom, tab.id);
     return;
   }
@@ -206,6 +237,123 @@ export const updateTabIdAtom = atom(
     // 如果更新的是活动标签页，也要更新活动标签页ID
     if (activeTabId === oldTabId) {
       set(activeTabIdAtom, newTabId);
+    }
+  }
+);
+
+// 重命名状态标记，防止URL同步时重复创建标签页
+export const isRenamingAtom = atom<boolean>(false);
+
+// 重命名文件后更新相关标签页
+export const updateTabsAfterRenameAtom = atom(
+  null,
+  (
+    get,
+    set,
+    source: string,
+    oldPath: string,
+    newName: string,
+    onContentSourceChange?: (contentSource: any) => void
+  ) => {
+    // 设置重命名状态标记，防止URL同步干扰
+    set(isRenamingAtom, true);
+
+    const tabs = get(tabsAtom);
+    const activeTabId = get(activeTabIdAtom);
+
+    // 构建新路径
+    const pathParts = oldPath.split("/");
+    pathParts[pathParts.length - 1] = newName;
+    const newPath = pathParts.join("/");
+
+    // 标签页ID是二元格式：source:path
+    const oldTabId = `${source}:${oldPath}`;
+    const newTabId = `${source}:${newPath}`;
+
+    console.log(`[EditorAtoms] 重命名后更新标签页: ${oldTabId} -> ${newTabId}`);
+
+    // 查找需要更新的标签页
+    const tabToUpdate = tabs.find((tab) => tab.id === oldTabId);
+
+    if (tabToUpdate) {
+      // 生成新的标题（基于新的文件名）
+      const newTitle = newName.replace(/\.md$/, "");
+      console.log(
+        `[EditorAtoms] 找到需要更新的标签页，更新标题: "${tabToUpdate.title}" -> "${newTitle}"`
+      );
+
+      // 批量更新所有相关状态，确保原子性
+      const newTabs = tabs.map((tab) =>
+        tab.id === oldTabId
+          ? {
+              ...tab,
+              id: newTabId,
+              title: newTitle, // 更新标题为新的文件名
+              identifier: {
+                ...tab.identifier,
+                path: newPath,
+              },
+              contentSource: tab.contentSource
+                ? {
+                    ...tab.contentSource,
+                    filePath: newPath,
+                  }
+                : undefined,
+            }
+          : tab
+      );
+
+      // 原子性更新：先更新标签页列表，再更新活动状态
+      set(tabsAtom, newTabs);
+
+      // 如果更新的是活动标签页，也要更新活动标签页ID和相关状态
+      if (activeTabId === oldTabId) {
+        set(activeTabIdAtom, newTabId);
+        set(selectedFilePathAtom, newPath);
+        set(scrollTargetAtom, newPath);
+        console.log(`[EditorAtoms] 更新活动标签页状态: ${oldTabId} -> ${newTabId}`);
+      }
+
+      // 强制更新浏览器URL到新的文件路径，避免URL同步逻辑创建重复标签页
+      const newContentId = `${source}:${newPath}`;
+      console.log(`[EditorAtoms] 强制更新浏览器URL: ${newContentId}`);
+
+      // 使用 window.history.replaceState 直接更新URL，不触发页面刷新
+      const newUrl = `/admin/posts/editor?source=${encodeURIComponent(source)}&path=${encodeURIComponent(encodeURIComponent(newPath))}`;
+      window.history.replaceState(null, "", newUrl);
+      console.log(`[EditorAtoms] URL已更新: ${newUrl}`);
+
+      console.log(
+        `[EditorAtoms] 标签页更新完成: ${oldTabId} -> ${newTabId}, 标题更新: "${tabToUpdate.title}" -> "${newTitle}"`
+      );
+
+      // 如果提供了回调函数，通知父组件更新 selectedContentSource
+      if (onContentSourceChange) {
+        const newContentSource = {
+          source: source as "local" | "webdav" | "database",
+          filePath: newPath,
+          id: newTabId,
+        };
+        console.log(`[EditorAtoms] 通知父组件更新 selectedContentSource:`, newContentSource);
+        onContentSourceChange(newContentSource);
+      }
+
+      // 延迟清除重命名状态标记，确保URL同步逻辑有足够时间稳定
+      setTimeout(() => {
+        set(isRenamingAtom, false);
+        console.log(`[EditorAtoms] 重命名操作完成，延迟清除状态标记`);
+      }, 500); // 500ms 延迟，确保URL同步逻辑完全稳定
+    } else {
+      console.log(`[EditorAtoms] 未找到需要更新的标签页: ${oldTabId}`);
+      console.log(
+        `[EditorAtoms] 当前所有标签页ID:`,
+        tabs.map((tab) => `${tab.id} (${tab.title})`)
+      );
+      // 未找到标签页时也要延迟清除状态标记
+      setTimeout(() => {
+        set(isRenamingAtom, false);
+        console.log(`[EditorAtoms] 未找到标签页，延迟清除重命名状态标记`);
+      }, 500);
     }
   }
 );

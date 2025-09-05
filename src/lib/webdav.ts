@@ -390,6 +390,63 @@ export class WebDAVClient {
   }
 
   /**
+   * 移动/重命名文件或目录
+   * @param sourcePath 源路径
+   * @param destinationPath 目标路径
+   */
+  async moveFile(sourcePath: string, destinationPath: string): Promise<void> {
+    const sourceUrl = `${this.baseUrl}${sourcePath}`;
+    // 对目标URL进行编码以处理中文字符
+    const destinationUrl = `${this.baseUrl}${encodeURI(destinationPath)}`;
+
+    const headers: Record<string, string> = {
+      Destination: destinationUrl,
+      Overwrite: "F", // 不覆盖已存在的文件
+    };
+
+    if (this.username && this.password) {
+      headers.Authorization = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`;
+    }
+
+    const response = await fetchWithRetry(sourceUrl, {
+      method: "MOVE",
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 412) {
+        throw new Error("目标文件或目录已存在");
+      }
+      throw new Error(`Failed to move file: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * 检查文件或目录是否存在
+   * @param filePath 文件路径
+   */
+  async exists(filePath: string): Promise<boolean> {
+    const url = `${this.baseUrl}${filePath}`;
+
+    const headers: Record<string, string> = {};
+
+    if (this.username && this.password) {
+      headers.Authorization = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString("base64")}`;
+    }
+
+    try {
+      const response = await fetchWithRetry(url, {
+        method: "HEAD",
+        headers,
+      });
+
+      return response.ok;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  /**
    * 获取目录下的所有文件
    * @param dirPath 目录路径
    * @param recursive 是否递归获取子目录

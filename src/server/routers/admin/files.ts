@@ -37,6 +37,12 @@ const createDirectorySchema = z.object({
   path: z.string().min(1),
 });
 
+const renameFileSchema = z.object({
+  source: z.string().min(1),
+  oldPath: z.string().min(1),
+  newName: z.string().min(1),
+});
+
 // 文件/目录项类型
 export interface FileItem {
   name: string;
@@ -213,6 +219,82 @@ async function readLocalFile(path: string): Promise<string> {
     return content;
   } catch (error) {
     console.error("❌ [Files API] 本地文件读取失败:", error);
+    throw error;
+  }
+}
+
+/**
+ * 重命名WebDAV文件或目录
+ */
+async function renameWebDAVFile(oldPath: string, newName: string): Promise<void> {
+  try {
+    const client = getWebDAVClient();
+    if (!client) {
+      throw new Error("WebDAV客户端未初始化");
+    }
+
+    // 构建新路径
+    const pathParts = oldPath.split("/");
+    pathParts[pathParts.length - 1] = newName;
+    const newPath = pathParts.join("/");
+
+    // 检查新路径是否已存在
+    const exists = await client.exists(newPath);
+    if (exists) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "目标文件或目录已存在",
+      });
+    }
+
+    // 执行重命名（WebDAV中使用MOVE方法）
+    await client.moveFile(oldPath, newPath);
+
+    console.log(`✅ [Files API] WebDAV文件重命名成功: ${oldPath} -> ${newPath}`);
+  } catch (error) {
+    console.error("❌ [Files API] WebDAV文件重命名失败:", error);
+    throw error;
+  }
+}
+
+/**
+ * 重命名本地文件或目录
+ */
+async function renameLocalFile(oldPath: string, newName: string): Promise<void> {
+  try {
+    const fs = await import("node:fs/promises");
+    const nodePath = await import("node:path");
+
+    // 构建完整路径
+    const basePath = resolve("./dev-data/local");
+    const fullOldPath = nodePath.join(basePath, oldPath);
+
+    // 构建新路径
+    const pathParts = oldPath.split("/");
+    pathParts[pathParts.length - 1] = newName;
+    const newPath = pathParts.join("/");
+    const fullNewPath = nodePath.join(basePath, newPath);
+
+    // 检查新路径是否已存在
+    try {
+      await fs.access(fullNewPath);
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "目标文件或目录已存在",
+      });
+    } catch (error: any) {
+      // 如果文件不存在，这是我们期望的结果
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    // 执行重命名
+    await fs.rename(fullOldPath, fullNewPath);
+
+    console.log(`✅ [Files API] 本地文件重命名成功: ${fullOldPath} -> ${fullNewPath}`);
+  } catch (error) {
+    console.error("❌ [Files API] 本地文件重命名失败:", error);
     throw error;
   }
 }
@@ -492,6 +574,76 @@ export const filesRouter = createTRPCRouter({
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "创建目录失败",
+      });
+    }
+  }),
+
+  /**
+   * 重命名文件或目录
+   */
+  renameFile: adminProcedure.input(renameFileSchema).mutation(async ({ input }) => {
+    try {
+      const manager = getContentSourceManager();
+
+      // 确保内容源已注册
+      await ensureContentSourcesRegistered(manager);
+
+      const source = manager.getSource(input.source);
+
+      if (!source) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `数据源 "${input.source}" 不存在`,
+        });
+      }
+
+      // 验证新名称
+      if (!input.newName.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "文件名不能为空",
+        });
+      }
+
+      // 检查新名称是否包含非法字符
+      const invalidChars = /[<>:"/\\|?*]/;
+      if (invalidChars.test(input.newName)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "文件名包含非法字符",
+        });
+      }
+
+      // 根据数据源类型执行重命名
+      if (source instanceof WebDAVContentSource) {
+        await renameWebDAVFile(input.oldPath, input.newName);
+      } else if (source instanceof LocalContentSource) {
+        await renameLocalFile(input.oldPath, input.newName);
+      } else {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不支持的数据源类型",
+        });
+      }
+
+      return {
+        success: true,
+        source: input.source,
+        oldPath: input.oldPath,
+        newName: input.newName,
+      };
+    } catch (error) {
+      console.error("❌ [Files API] 重命名文件失败:", error);
+
+      // 如果是已知的 TRPCError，直接抛出
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      // 否则包装为通用错误
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "重命名文件失败",
       });
     }
   }),

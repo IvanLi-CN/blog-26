@@ -13,7 +13,12 @@ import { Provider as JotaiProvider, useAtom, useSetAtom } from "jotai";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect } from "react";
-import { activeContentIdentifierAtom, setActiveTabIdAtom, tabsAtom } from "../../store/editorAtoms";
+import {
+  activeContentIdentifierAtom,
+  isRenamingAtom,
+  setActiveTabIdAtom,
+  tabsAtom,
+} from "../../store/editorAtoms";
 import { debouncedUpdateUrlAtom, initializeFromUrlAtom } from "../../store/urlSyncAtoms";
 
 // URL 同步组件
@@ -22,16 +27,23 @@ function UrlSyncManager() {
   const searchParams = useSearchParams();
   const [activeContentIdentifier] = useAtom(activeContentIdentifierAtom);
   const [tabs] = useAtom(tabsAtom);
+  const [isRenaming] = useAtom(isRenamingAtom);
   const updateUrl = useSetAtom(debouncedUpdateUrlAtom);
   const initializeFromUrl = useSetAtom(initializeFromUrlAtom);
 
   // 监听活动内容标识符变化，同步到 URL
   useEffect(() => {
+    // 如果正在重命名，跳过URL更新以避免竞态条件
+    if (isRenaming) {
+      console.log("[UrlSyncManager] 正在重命名文件，跳过URL更新");
+      return;
+    }
+
     if (activeContentIdentifier) {
       console.log("[UrlSyncManager] 活动内容标识符变化，更新URL:", activeContentIdentifier);
       updateUrl(router);
     }
-  }, [activeContentIdentifier, router, updateUrl]);
+  }, [activeContentIdentifier, router, updateUrl, isRenaming]);
 
   // 初始化时从 URL 恢复状态
   useEffect(() => {

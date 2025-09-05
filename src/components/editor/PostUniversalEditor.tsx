@@ -18,6 +18,7 @@ import {
   activeTabIdAtom,
   addTabAtom,
   autoExpandFoldersAtom,
+  isRenamingAtom,
   markTabSavedAtom,
   removeTabAtom,
   setActiveTabIdAtom,
@@ -69,6 +70,7 @@ export function PostUniversalEditor({
   // 使用 Jotai 全局状态替换本地状态
   const [tabs] = useAtom(tabsAtom);
   const [activeTabId] = useAtom(activeTabIdAtom);
+  const [isRenaming] = useAtom(isRenamingAtom);
   const addTab = useSetAtom(addTabAtom);
   const setActiveTab = useSetAtom(setActiveTabIdAtom);
   const removeTab = useSetAtom(removeTabAtom);
@@ -111,8 +113,12 @@ export function PostUniversalEditor({
   );
 
   // 获取本地文件数据
-  const { data: localFile } = trpc.admin.files.readFile.useQuery(
-    contentSource && isLocalFile ? { source: "local", path: contentSource.filePath } : skipToken
+  const { data: localFile, error: localFileError } = trpc.admin.files.readFile.useQuery(
+    contentSource && isLocalFile ? { source: "local", path: contentSource.filePath } : skipToken,
+    {
+      retry: false, // 不重试，避免对不存在的文件进行多次请求
+      refetchOnWindowFocus: false, // 避免窗口聚焦时重新获取
+    }
   );
 
   // 创建文章
@@ -164,22 +170,46 @@ export function PostUniversalEditor({
   // 在标签页中打开文章
   const openPostInTab = useCallback(
     (postId: string, title: string, content: string, isNew = false) => {
-      // 检查是否已经打开
-      const existingTab = tabs.find((tab) => tab.id === postId);
-      if (existingTab) {
-        setActiveTab(postId);
+      // 如果正在重命名，跳过标签页创建以避免重复
+      if (isRenaming) {
+        console.log(`[PostUniversalEditor] 正在重命名，跳过标签页创建: ${postId}`);
         return;
       }
 
-      // 创建新标签页
+      // 创建内容源信息
       const contentSource = selectedContentSource || {
         source: "database",
         filePath: postId,
         id: postId,
       };
 
+      // 生成二元格式的标签页ID
+      const tabId = `${contentSource.source}:${contentSource.filePath}`;
+
+      // 检查是否已经打开（精确ID匹配）
+      const existingTab = tabs.find((tab) => tab.id === tabId);
+      if (existingTab) {
+        setActiveTab(tabId);
+        return;
+      }
+
+      // 检查是否已存在相同路径的标签页（防止重命名时的重复）
+      const existingTabByPath = tabs.find((tab) => {
+        // 从ID中提取路径部分进行比较
+        const tabPath = tab.id.split(":").slice(1).join(":");
+        const currentPath = contentSource.filePath;
+        return tabPath === currentPath;
+      });
+      if (existingTabByPath) {
+        console.log(
+          `[PostUniversalEditor] 发现相同路径的标签页，设置为活动: ${existingTabByPath.id} (请求的: ${tabId})`
+        );
+        setActiveTab(existingTabByPath.id);
+        return;
+      }
+
       const newTab: EditorTab = {
-        id: postId,
+        id: tabId, // 使用二元格式ID
         title: title || "未命名文章",
         content,
         isDirty: isNew,
@@ -195,9 +225,10 @@ export function PostUniversalEditor({
       addTab(newTab);
 
       // 自动展开相关文件夹
-      autoExpandFolders(postId);
+      autoExpandFolders(contentSource.filePath);
     },
     [
+      isRenaming,
       selectedContentSource,
       tabs,
       setActiveTab,
@@ -243,7 +274,7 @@ export function PostUniversalEditor({
   // 处理文章数据加载
   useEffect(() => {
     if (post && contentSource && isDatabasePost) {
-      const tabId = contentSource.filePath;
+      const tabId = `${contentSource.source}:${contentSource.filePath}`;
       setPostData((prev) => ({
         ...prev,
         [tabId]: {
@@ -311,7 +342,7 @@ export function PostUniversalEditor({
           finalSlug: slug,
         });
 
-        const tabId = contentSource.filePath;
+        const tabId = `${contentSource.source}:${contentSource.filePath}`;
         setPostData((prev) => ({
           ...prev,
           [tabId]: {
@@ -326,7 +357,7 @@ export function PostUniversalEditor({
           },
         }));
 
-        openPostInTab(tabId, title, webdavFile.content);
+        openPostInTab(contentSource.filePath, title, webdavFile.content);
       } catch (error) {
         console.error("❌ [PostUniversalEditor] 解析 WebDAV 文件失败:", error);
 
@@ -338,7 +369,7 @@ export function PostUniversalEditor({
         const slug =
           post?.slug || contentSource.filePath.split("/").pop()?.replace(/\.md$/, "") || "untitled";
 
-        const tabId = contentSource.filePath;
+        const tabId = `${contentSource.source}:${contentSource.filePath}`;
         setPostData((prev) => ({
           ...prev,
           [tabId]: {
@@ -353,15 +384,29 @@ export function PostUniversalEditor({
           },
         }));
 
-        openPostInTab(tabId, title, webdavFile.content);
+        openPostInTab(contentSource.filePath, title, webdavFile.content);
       }
     }
   }, [webdavFile, contentSource, isWebDAVFile, post, openPostInTab]);
 
   // 处理本地文件数据加载
   useEffect(() => {
+    // 检查文件是否成功加载，如果有错误则跳过
+    if (localFileError) {
+      console.log("📁 [PostUniversalEditor] 本地文件加载失败，跳过创建标签页:", {
+        source: contentSource?.source,
+        path: contentSource?.filePath,
+        error: localFileError.message,
+      });
+      return;
+    }
+
     if (localFile && contentSource && isLocalFile) {
-      console.log("📁 [PostUniversalEditor] 加载本地文件:", localFile);
+      console.log("📁 [PostUniversalEditor] 加载本地文件:", {
+        source: contentSource.source,
+        path: contentSource.filePath,
+        contentLength: localFile.content.length,
+      });
 
       // 解析文件名作为标题
       const fileName = contentSource.filePath.split("/").pop() || "未命名文件";
@@ -389,9 +434,9 @@ export function PostUniversalEditor({
         },
       }));
 
-      openPostInTab(tabId, title, localFile.content);
+      openPostInTab(contentSource.filePath, title, localFile.content);
     }
-  }, [localFile, contentSource, isLocalFile, openPostInTab]);
+  }, [localFile, localFileError, contentSource, isLocalFile, openPostInTab]);
 
   // 处理新文件创建
   useEffect(() => {
@@ -431,10 +476,8 @@ author: ""
 开始写作您的文章...
 `;
 
-      // 使用二元ID格式：source:path
-      const tabId = `local:${contentSource.filePath}`;
       // 在标签页中打开新文件
-      openPostInTab(tabId, title, defaultContent, true);
+      openPostInTab(contentSource.filePath, title, defaultContent, true);
     }
   }, [contentSource, isNewFile, openPostInTab]);
 
@@ -525,14 +568,17 @@ author: ""
       if (!tab || !data) return;
 
       try {
+        // 从二元ID中提取文件路径
+        const filePath = tabId.includes(":") ? tabId.split(":").slice(1).join(":") : tabId;
+
         // 判断内容类型
-        const contentType = inferContentType(tabId);
+        const contentType = inferContentType(filePath);
 
         let frontendUrl = "";
 
         if (contentType === "memo") {
           // 对于 memo，使用文件路径生成 URL
-          frontendUrl = generateContentUrl("memo", tabId);
+          frontendUrl = generateContentUrl("memo", filePath);
         } else {
           // 对于文章，使用文章数据构建 frontmatter 格式
           const frontmatter = {
@@ -540,7 +586,7 @@ author: ""
             title: data.title,
             type: data.type,
           };
-          frontendUrl = generateContentUrl("post", frontmatter, tabId);
+          frontendUrl = generateContentUrl("post", frontmatter, filePath);
         }
 
         // 在新窗口打开
@@ -600,9 +646,12 @@ author: ""
         slug: slug,
       });
 
+      // 从二元ID中提取文件路径
+      const filePath = tabId.includes(":") ? tabId.split(":").slice(1).join(":") : tabId;
+
       // 根据文件类型选择保存方法
-      const isNewFile = tabId.startsWith("__NEW__");
-      const actualPath = isNewFile ? tabId.replace("__NEW__", "") : tabId;
+      const isNewFile = filePath.startsWith("__NEW__");
+      const actualPath = isNewFile ? filePath.replace("__NEW__", "") : filePath;
       const isWebDAVFile = actualPath.startsWith("/");
       const isLocalFile =
         actualPath &&
@@ -646,16 +695,20 @@ author: ""
 
       // 如果是新文件，更新标签页 ID 移除 __NEW__ 前缀
       if (isNewFile) {
-        updateTabId(tabId, actualPath, processedContent);
+        // 构建新的二元格式ID
+        const [source] = tabId.split(":");
+        const newTabId = `${source}:${actualPath}`;
+
+        updateTabId(tabId, newTabId, processedContent);
         // 更新 postData 的键
         setPostData((prev) => {
           const newData = { ...prev };
-          newData[actualPath] = { ...newData[tabId], body: processedContent };
+          newData[newTabId] = { ...newData[tabId], body: processedContent };
           delete newData[tabId];
           return newData;
         });
         // 更新选中的文章 ID
-        onPostChange?.(actualPath);
+        onPostChange?.(newTabId);
       } else {
         // 更新标签页状态为已保存，并更新内容为处理后的内容
         markTabSaved(tabId, processedContent);
@@ -690,11 +743,14 @@ author: ""
    * 根据文章路径生成对应的 assets 目录路径
    */
   const getArticleAssetsPath = (tabId: string): string => {
-    // 1. 移除 __NEW__ 前缀（如果存在）
-    const cleanTabId = tabId.startsWith("__NEW__") ? tabId.replace("__NEW__", "") : tabId;
+    // 1. 从二元ID中提取文件路径
+    const filePath = tabId.includes(":") ? tabId.split(":").slice(1).join(":") : tabId;
 
-    // 2. 提取目录路径（去掉文件名）
-    const pathParts = cleanTabId.split("/");
+    // 2. 移除 __NEW__ 前缀（如果存在）
+    const cleanPath = filePath.startsWith("__NEW__") ? filePath.replace("__NEW__", "") : filePath;
+
+    // 3. 提取目录路径（去掉文件名）
+    const pathParts = cleanPath.split("/");
     pathParts.pop(); // 移除文件名部分
     const directoryPath = pathParts.join("/");
 
@@ -721,14 +777,17 @@ author: ""
     });
 
     try {
+      // 从二元ID中提取文件路径
+      const filePath = tabId.includes(":") ? tabId.split(":").slice(1).join(":") : tabId;
+
       // 确定内容源类型
-      const contentSource = tabId.startsWith("/") ? "webdav" : "local";
+      const contentSource = filePath.startsWith("/") ? "webdav" : "local";
 
       // 使用统一的图片处理函数，传递自定义 slug
       const result = await processInlineImagesCompat(
         content,
         contentSource,
-        tabId,
+        filePath,
         "relative", // PostUniversalEditor 使用相对路径格式
         articleSlug // 传递文章 slug 用于生成文件名
       );
@@ -968,7 +1027,17 @@ function convertLegacyIdToContentSource(id: string): ContentSource {
  * 将标签页 ID 转换为内容源信息
  */
 function convertTabIdToContentSource(tabId: string): ContentSource {
-  // 这里使用和 convertLegacyIdToContentSource 相同的逻辑
-  // 因为标签页 ID 目前就是原来的文件路径或数据库 ID
+  // 解析二元格式的标签页ID：source:path
+  const [source, ...pathParts] = tabId.split(":");
+  if (source && pathParts.length > 0) {
+    const path = pathParts.join(":"); // 重新拼接，防止path中包含冒号
+    return {
+      source: source as "database" | "webdav" | "local",
+      filePath: path,
+      id: tabId,
+    };
+  }
+
+  // 后备逻辑：如果不是二元格式，使用旧的转换逻辑
   return convertLegacyIdToContentSource(tabId);
 }

@@ -8,7 +8,7 @@
  */
 
 import { useAtom, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "../../lib/trpc";
 import {
   expandedFoldersAtom,
@@ -16,10 +16,24 @@ import {
   selectedFilePathAtom,
   setSelectedFilePathAtom,
   toggleFolderAtom,
+  updateTabsAfterRenameAtom,
 } from "../../store/editorAtoms";
 import Icon from "../ui/Icon";
+import { RenameDialog } from "./RenameDialog";
 // import { useAdvancedEditorState } from "./hooks/useEditorState"; // 移除旧的依赖
 import { generateScrollDataAttribute } from "./utils/pathUtils";
+
+// 文件项排序工具函数
+function sortFileItems<T extends { type: string; name: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    // 目录优先于文件
+    if (a.type === "directory" && b.type !== "directory") return -1;
+    if (a.type !== "directory" && b.type === "directory") return 1;
+
+    // 同类型按名称字母顺序排序
+    return a.name.localeCompare(b.name, "zh-CN", { numeric: true });
+  });
+}
 
 // 子目录内容组件
 // interface SubDirectoryContentProps {
@@ -103,6 +117,7 @@ function WebDAVSubDirectory({
   expandedFolders,
   toggleFolder,
   onCreateFile,
+  onRename,
 }: {
   file: { type: string; path: string; name?: string };
   source: string;
@@ -111,6 +126,7 @@ function WebDAVSubDirectory({
   expandedFolders: Set<string>;
   toggleFolder: (folderName: string) => void;
   onCreateFile?: (directoryPath: string, source: string) => void;
+  onRename?: (path: string, source: string, type: "file" | "directory") => void;
 }) {
   // 获取子目录内容
   const { data: subDirFiles, isLoading } = trpc.admin.files.listDirectory.useQuery(
@@ -133,7 +149,7 @@ function WebDAVSubDirectory({
 
   return (
     <div className="ml-4 border-l border-base-300">
-      {subDirFiles.items.map((subFile) => (
+      {sortFileItems(subDirFiles.items).map((subFile) => (
         <div key={subFile.path}>
           <div className="group flex items-center w-full">
             <button
@@ -169,13 +185,13 @@ function WebDAVSubDirectory({
                   directoryPath={subFile.path}
                   source={source}
                   onCreateFile={onCreateFile}
+                  onRename={onRename}
                 />
               )}
-              {subFile.type === "directory" ? (
-                <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                  <Icon name="lucide:folder" size={14} />
-                </span>
-              ) : subFile.size ? (
+              {subFile.type === "file" && onRename && (
+                <FileActions filePath={subFile.path} source={source} onRename={onRename} />
+              )}
+              {subFile.type === "file" && subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                   {Math.round(subFile.size / 1024)}KB
                 </span>
@@ -191,6 +207,7 @@ function WebDAVSubDirectory({
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
             onCreateFile={onCreateFile}
+            onRename={onRename}
           />
         </div>
       ))}
@@ -207,6 +224,7 @@ function LocalSubDirectory({
   expandedFolders,
   toggleFolder,
   onCreateFile,
+  onRename,
 }: {
   file: { type: string; path: string; name?: string };
   source: string;
@@ -215,6 +233,7 @@ function LocalSubDirectory({
   expandedFolders: Set<string>;
   toggleFolder: (folderName: string) => void;
   onCreateFile?: (directoryPath: string, source: string) => void;
+  onRename?: (path: string, source: string, type: "file" | "directory") => void;
 }) {
   // 获取子目录内容
   const { data: subDirFiles, isLoading } = trpc.admin.files.listDirectory.useQuery(
@@ -237,7 +256,7 @@ function LocalSubDirectory({
 
   return (
     <div className="ml-4 border-l border-base-300">
-      {subDirFiles.items.map((subFile) => (
+      {sortFileItems(subDirFiles.items).map((subFile) => (
         <div key={subFile.path}>
           <div className="group flex items-center w-full">
             <button
@@ -270,13 +289,13 @@ function LocalSubDirectory({
                   directoryPath={`${file.path}/${subFile.path}`}
                   source={source}
                   onCreateFile={onCreateFile}
+                  onRename={onRename}
                 />
               )}
-              {subFile.type === "directory" ? (
-                <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                  <Icon name="lucide:folder" size={14} />
-                </span>
-              ) : subFile.size ? (
+              {subFile.type === "file" && onRename && (
+                <FileActions filePath={subFile.path} source={source} onRename={onRename} />
+              )}
+              {subFile.type === "file" && subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                   {Math.round(subFile.size / 1024)}KB
                 </span>
@@ -292,6 +311,7 @@ function LocalSubDirectory({
             expandedFolders={expandedFolders}
             toggleFolder={toggleFolder}
             onCreateFile={onCreateFile}
+            onRename={onRename}
           />
         </div>
       ))}
@@ -326,12 +346,14 @@ const DirectoryActions = ({
   directoryPath,
   source,
   onCreateFile,
+  onRename,
 }: {
   directoryPath: string;
   source: string;
   onCreateFile: (directoryPath: string, source: string) => void;
+  onRename?: (path: string, source: string, type: "directory") => void;
 }) => (
-  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center">
+  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
     <button
       type="button"
       onClick={(e) => {
@@ -343,12 +365,53 @@ const DirectoryActions = ({
     >
       +
     </button>
+    {onRename && (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRename(directoryPath, source, "directory");
+        }}
+        className="w-6 h-6 flex items-center justify-center text-xs text-base-content/60 hover:text-primary hover:bg-primary/10 rounded transition-colors duration-200"
+        title="重命名目录"
+      >
+        <Icon name="lucide:edit-3" size={12} />
+      </button>
+    )}
+  </div>
+);
+
+// 文件操作按钮组件
+const FileActions = ({
+  filePath,
+  source,
+  onRename,
+}: {
+  filePath: string;
+  source: string;
+  onRename?: (path: string, source: string, type: "file") => void;
+}) => (
+  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
+    {onRename && (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRename(filePath, source, "file");
+        }}
+        className="w-6 h-6 flex items-center justify-center text-xs text-base-content/60 hover:text-primary hover:bg-primary/10 rounded transition-colors duration-200"
+        title="重命名文件"
+      >
+        <Icon name="lucide:edit-3" size={12} />
+      </button>
+    )}
   </div>
 );
 
 interface DirectoryTreeProps {
   onSelectFile: (filePath: string, fileName: string) => void;
   onCreateFile?: (directoryPath: string, fileName: string) => void;
+  onContentSourceChange?: (contentSource: any) => void;
 }
 
 interface FileNode {
@@ -362,13 +425,32 @@ interface FileNode {
   updateDate?: string;
 }
 
-export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps) {
+export function DirectoryTree({
+  onSelectFile,
+  onCreateFile,
+  onContentSourceChange,
+}: DirectoryTreeProps) {
   // 使用 Jotai 全局状态管理
   const [expandedFolders] = useAtom(expandedFoldersAtom);
   const [selectedFilePath] = useAtom(selectedFilePathAtom);
   const [scrollTarget] = useAtom(scrollTargetAtom);
   const toggleFolder = useSetAtom(toggleFolderAtom);
   const setSelectedFilePath = useSetAtom(setSelectedFilePathAtom);
+
+  // 重命名相关状态
+  const [renameDialog, setRenameDialog] = useState<{
+    open: boolean;
+    path: string;
+    source: string;
+    type: "file" | "directory";
+    currentName: string;
+  }>({
+    open: false,
+    path: "",
+    source: "",
+    type: "file",
+    currentName: "",
+  });
 
   // const [directoryContents, setDirectoryContents] = useState<Record<string, unknown[]>>({});
 
@@ -400,6 +482,15 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
 
   // 获取数据源列表
   const { data: sources, isLoading: sourcesLoading } = trpc.admin.files.getSources.useQuery();
+
+  // 重命名文件/目录的mutation
+  const renameMutation = trpc.admin.files.renameFile.useMutation();
+
+  // 用于刷新文件列表的工具
+  const utils = trpc.useUtils();
+
+  // 重命名后更新标签页的原子
+  const updateTabsAfterRename = useSetAtom(updateTabsAfterRenameAtom);
 
   // 获取所有文章（临时保留，用于显示现有数据）
   const { data: posts, isLoading } = trpc.admin.posts.list.useQuery({
@@ -471,6 +562,44 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
 
     // 调用创建文件回调
     onCreateFile?.(fullPath, fullFileName);
+  };
+
+  // 处理重命名请求
+  const handleRename = (path: string, source: string, type: "file" | "directory") => {
+    // 从路径中提取当前名称
+    const currentName = path.split("/").pop() || "";
+
+    setRenameDialog({
+      open: true,
+      path,
+      source,
+      type,
+      currentName,
+    });
+  };
+
+  // 执行重命名
+  const executeRename = async (newName: string) => {
+    try {
+      await renameMutation.mutateAsync({
+        source: renameDialog.source,
+        oldPath: renameDialog.path,
+        newName,
+      });
+
+      // 更新相关的标签页信息
+      updateTabsAfterRename(renameDialog.source, renameDialog.path, newName, onContentSourceChange);
+
+      // 刷新相关的文件列表
+      await utils.admin.files.listDirectory.invalidate({
+        source: renameDialog.source,
+      });
+
+      console.log(`重命名成功: ${renameDialog.path} -> ${newName}`);
+    } catch (error) {
+      console.error("重命名失败:", error);
+      throw error;
+    }
   };
 
   if (isLoading || sourcesLoading) {
@@ -553,6 +682,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
                       directoryPath=""
                       source={source.name}
                       onCreateFile={handleCreateFile}
+                      onRename={handleRename}
                     />
                   )}
                   <span className="ml-auto text-xs text-base-content/60 text-right min-w-[4rem] mr-1">
@@ -568,7 +698,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
 
                   {/* 显示 WebDAV 文件系统内容 */}
                   {source.name === "webdav" &&
-                    webdavRootFiles?.items?.map((file) => (
+                    sortFileItems(webdavRootFiles?.items || []).map((file) => (
                       <div key={file.path}>
                         <div className="group flex items-center w-full">
                           <button
@@ -604,13 +734,17 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
                                 directoryPath={file.path}
                                 source="webdav"
                                 onCreateFile={handleCreateFile}
+                                onRename={handleRename}
                               />
                             )}
-                            {file.type === "directory" ? (
-                              <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                                <Icon name="lucide:folder" size={14} />
-                              </span>
-                            ) : file.size ? (
+                            {file.type === "file" && (
+                              <FileActions
+                                filePath={file.path}
+                                source="webdav"
+                                onRename={handleRename}
+                              />
+                            )}
+                            {file.type === "file" && file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                                 {Math.round(file.size / 1024)}KB
                               </span>
@@ -625,13 +759,14 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
                           expandedFolders={expandedFolders}
                           toggleFolder={handleToggleFolder}
                           onCreateFile={handleCreateFile}
+                          onRename={handleRename}
                         />
                       </div>
                     ))}
 
                   {/* 显示本地文件系统内容 */}
                   {source.name === "local" &&
-                    localRootFiles?.items?.map((file) => (
+                    sortFileItems(localRootFiles?.items || []).map((file) => (
                       <div key={file.path}>
                         <div className="group flex items-center w-full">
                           <button
@@ -664,13 +799,17 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
                                 directoryPath={file.path}
                                 source="local"
                                 onCreateFile={handleCreateFile}
+                                onRename={handleRename}
                               />
                             )}
-                            {file.type === "directory" ? (
-                              <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[2rem] mr-1">
-                                <Icon name="lucide:folder" size={14} />
-                              </span>
-                            ) : file.size ? (
+                            {file.type === "file" && (
+                              <FileActions
+                                filePath={file.path}
+                                source="local"
+                                onRename={handleRename}
+                              />
+                            )}
+                            {file.type === "file" && file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                                 {Math.round(file.size / 1024)}KB
                               </span>
@@ -685,6 +824,7 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
                           expandedFolders={expandedFolders}
                           toggleFolder={handleToggleFolder}
                           onCreateFile={handleCreateFile}
+                          onRename={handleRename}
                         />
                       </div>
                     ))}
@@ -769,6 +909,15 @@ export function DirectoryTree({ onSelectFile, onCreateFile }: DirectoryTreeProps
           </div>
         )}
       </div>
+
+      {/* 重命名对话框 */}
+      <RenameDialog
+        open={renameDialog.open}
+        onOpenChange={(open) => setRenameDialog((prev) => ({ ...prev, open }))}
+        currentName={renameDialog.currentName}
+        itemType={renameDialog.type}
+        onRename={executeRename}
+      />
     </div>
   );
 }
