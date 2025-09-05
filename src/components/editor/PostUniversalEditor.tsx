@@ -18,6 +18,7 @@ import {
   activeTabIdAtom,
   addTabAtom,
   autoExpandFoldersAtom,
+  isClosingLastTabAtom,
   isRenamingAtom,
   markTabSavedAtom,
   removeTabAtom,
@@ -71,6 +72,7 @@ export function PostUniversalEditor({
   const [tabs] = useAtom(tabsAtom);
   const [activeTabId] = useAtom(activeTabIdAtom);
   const [isRenaming] = useAtom(isRenamingAtom);
+  const [isClosingLastTab] = useAtom(isClosingLastTabAtom);
   const addTab = useSetAtom(addTabAtom);
   const setActiveTab = useSetAtom(setActiveTabIdAtom);
   const removeTab = useSetAtom(removeTabAtom);
@@ -107,7 +109,7 @@ export function PostUniversalEditor({
       ? { source: "webdav", path: contentSource.filePath }
       : { source: "webdav", path: "" },
     {
-      enabled: !!contentSource && isWebDAVFile && !shouldSkipReload,
+      enabled: !!contentSource && isWebDAVFile && !shouldSkipReload && !isClosingLastTab,
       refetchOnWindowFocus: false, // 避免窗口聚焦时重新获取
     }
   );
@@ -170,6 +172,12 @@ export function PostUniversalEditor({
   // 在标签页中打开文章
   const openPostInTab = useCallback(
     (postId: string, title: string, content: string, isNew = false) => {
+      // 如果正在关闭最后一个标签页，跳过标签页创建
+      if (isClosingLastTab) {
+        console.log(`[PostUniversalEditor] 正在关闭最后一个标签页，跳过标签页创建: ${postId}`);
+        return;
+      }
+
       // 如果正在重命名，跳过标签页创建以避免重复
       if (isRenaming) {
         console.log(`[PostUniversalEditor] 正在重命名，跳过标签页创建: ${postId}`);
@@ -228,6 +236,7 @@ export function PostUniversalEditor({
       autoExpandFolders(contentSource.filePath);
     },
     [
+      isClosingLastTab,
       isRenaming,
       selectedContentSource,
       tabs,
@@ -273,6 +282,12 @@ export function PostUniversalEditor({
 
   // 处理文章数据加载
   useEffect(() => {
+    // 如果正在关闭最后一个标签页，跳过文件加载
+    if (isClosingLastTab) {
+      console.log("📁 [PostUniversalEditor] 正在关闭最后一个标签页，跳过数据库文章加载");
+      return;
+    }
+
     if (post && contentSource && isDatabasePost) {
       const tabId = `${contentSource.source}:${contentSource.filePath}`;
       setPostData((prev) => ({
@@ -291,7 +306,7 @@ export function PostUniversalEditor({
 
       openPostInTab(post.id, post.title, post.body);
     }
-  }, [post, contentSource, isDatabasePost, openPostInTab]);
+  }, [post, contentSource, isDatabasePost, openPostInTab, isClosingLastTab]);
 
   // 处理通过 slug 查询到的文章（可能需要读取文件内容）
   useEffect(() => {
@@ -512,21 +527,21 @@ author: ""
       removeTab(tabId);
 
       // 兼容旧的回调 - 获取切换后的活动标签页
-      setTimeout(() => {
-        const remainingTabs = tabs.filter((tab) => tab.id !== tabId);
-        if (tabId === activeTabId) {
-          const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
-          const nextTab =
-            remainingTabs[currentIndex] || remainingTabs[currentIndex - 1] || remainingTabs[0];
-          if (nextTab?.id) {
-            const newContentSource = convertTabIdToContentSource(nextTab.id);
-            onContentSourceChange?.(newContentSource);
-            onPostChange?.(nextTab.id);
-          } else {
-            onPostChange?.("");
-          }
+      const remainingTabs = tabs.filter((tab) => tab.id !== tabId);
+      if (tabId === activeTabId) {
+        const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
+        const nextTab =
+          remainingTabs[currentIndex] || remainingTabs[currentIndex - 1] || remainingTabs[0];
+        if (nextTab?.id) {
+          const newContentSource = convertTabIdToContentSource(nextTab.id);
+          onContentSourceChange?.(newContentSource);
+          onPostChange?.(nextTab.id);
+        } else {
+          // 关闭最后一个标签页时，立即清除 selectedContentSource
+          onContentSourceChange?.(undefined);
+          onPostChange?.("");
         }
-      }, 0);
+      }
 
       // 清理文章数据
       setPostData((prev) => {

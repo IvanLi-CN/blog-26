@@ -5,7 +5,12 @@
  */
 
 import { atom } from "jotai";
-import { activeContentIdentifierAtom, isRenamingAtom, setActiveTabIdAtom } from "./editorAtoms";
+import {
+  activeContentIdentifierAtom,
+  isClosingLastTabAtom,
+  isRenamingAtom,
+  setActiveTabIdAtom,
+} from "./editorAtoms";
 
 // URL 参数生成函数
 export const generateUrlParams = (source: string, path: string): string => {
@@ -60,6 +65,13 @@ const extractPathFromTabId = (tabId: string): string => {
 export const initializeFromUrlAtom = atom(
   null,
   (get, set, searchParams: URLSearchParams, availableTabs: any[]) => {
+    // 检查是否正在关闭最后一个标签页，如果是则跳过URL初始化
+    const isClosingLastTab = get(isClosingLastTabAtom);
+    if (isClosingLastTab) {
+      console.log("[URLSync] 正在关闭最后一个标签页，跳过URL初始化");
+      return;
+    }
+
     // 检查是否正在重命名，如果是则跳过URL初始化，避免创建重复标签页
     const isRenaming = get(isRenamingAtom);
     if (isRenaming) {

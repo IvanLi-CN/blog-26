@@ -65,6 +65,9 @@ export const scrollTargetAtom = atom<string | null>(null);
 // 选中的文件路径（用于高亮）
 export const selectedFilePathAtom = atom<string | null>(null);
 
+// 标记是否正在关闭最后一个标签页
+export const isClosingLastTabAtom = atom<boolean>(false);
+
 // ===== 派生状态原子 =====
 
 // 当前活动标签页
@@ -179,20 +182,48 @@ export const removeTabAtom = atom(null, (get, set, tabId: string) => {
   console.log(`[EditorAtoms] 移除标签页: ${tabId}`);
   const tabs = get(tabsAtom);
   const newTabs = tabs.filter((tab) => tab.id !== tabId);
+
+  // 检查是否是最后一个标签页，如果是，立即设置标志
+  const activeTabId = get(activeTabIdAtom);
+  const isRemovingActiveTab = activeTabId === tabId;
+  const willBeLastTab = isRemovingActiveTab && newTabs.length === 0;
+
+  if (willBeLastTab) {
+    console.log(`[EditorAtoms] 即将关闭最后一个标签页，提前设置标志`);
+    // 立即设置标志，阻止任何后续的文件重新加载
+    set(isClosingLastTabAtom, true);
+  }
+
+  // 现在安全地移除标签页
   set(tabsAtom, newTabs);
 
   // 如果移除的是活动标签页，切换到其他标签页
-  const activeTabId = get(activeTabIdAtom);
-  if (activeTabId === tabId) {
+  if (isRemovingActiveTab) {
     const newActiveTab = newTabs[newTabs.length - 1];
     if (newActiveTab) {
       set(activeTabIdAtom, newActiveTab.id);
       set(selectedFilePathAtom, newActiveTab.identifier.path);
       set(scrollTargetAtom, newActiveTab.identifier.path);
     } else {
+      // 如果没有剩余标签页，清除所有状态并清除 URL 参数
+      console.log(`[EditorAtoms] 关闭最后一个标签页，清除所有状态`);
+
       set(activeTabIdAtom, null);
       set(selectedFilePathAtom, null);
       set(scrollTargetAtom, null);
+      // 注意：activeContentIdentifierAtom 是派生原子，会自动更新为 null
+
+      // 清除 URL 参数，避免 URL 同步机制重新创建标签页
+      if (typeof window !== "undefined") {
+        const newUrl = window.location.pathname;
+        console.log(`[EditorAtoms] 清除 URL 参数: ${newUrl}`);
+        window.history.replaceState({}, "", newUrl);
+      }
+
+      // 延迟重置标志，给其他组件时间响应
+      setTimeout(() => {
+        set(isClosingLastTabAtom, false);
+      }, 1000); // 增加到 1 秒
     }
   }
 });
