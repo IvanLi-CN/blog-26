@@ -3,6 +3,7 @@
 import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import type { AppRouter } from "@/server/router";
+import { buildHttpUrl } from "./url-builder";
 
 /**
  * tRPC React 客户端 - 用于 React 组件
@@ -40,7 +41,8 @@ export function getTRPCUrl() {
     return `https://${process.env.VERCEL_URL}/api/trpc`;
   }
 
-  return `http://localhost:${process.env.PORT ?? 3000}/api/trpc`;
+  // 使用统一的URL构建工具
+  return buildHttpUrl("/api/trpc");
 }
 
 /**

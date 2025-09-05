@@ -4,39 +4,42 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createWSClient, httpBatchLink, splitLink, wsLink } from "@trpc/client";
 import { useState } from "react";
 import { trpc } from "../../lib/trpc";
+import { buildHttpUrl, buildWebSocketUrl } from "../../lib/url-builder";
 
 function getBaseUrl() {
   if (typeof window !== "undefined") return "";
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return `http://localhost:${process.env.PORT ?? 3000}`;
+  // 使用统一的URL构建工具
+  return buildHttpUrl("");
 }
 
+// 使用统一的URL构建工具
 function getWsUrl() {
-  if (typeof window !== "undefined") {
-    // 客户端：使用当前页面的协议、主机名和端口
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.hostname}:${window.location.port}/trpc-ws`;
-    console.log("🔌 客户端 WebSocket URL:", wsUrl);
-    return wsUrl;
-  }
-  // 服务器端：使用默认配置
-  return `ws://localhost:3001/trpc-ws`;
+  return buildWebSocketUrl("/trpc-ws");
 }
 
 export function TRPCProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const [trpcClient] = useState(() => {
+    const wsUrl = getWsUrl();
+    console.log("🔍 TRPCProvider 初始化:", {
+      userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "server",
+      hostname: typeof window !== "undefined" ? window.location.hostname : "server",
+      port: typeof window !== "undefined" ? window.location.port : "server",
+      wsUrl,
+    });
+
     // 创建 WebSocket 客户端
     const wsClient = createWSClient({
-      url: getWsUrl(),
+      url: wsUrl,
       onOpen: () => {
-        console.log("WebSocket 连接已建立");
+        console.log("✅ WebSocket 连接已建立");
       },
       onClose: () => {
-        console.log("WebSocket 连接已关闭");
+        console.log("🔌 WebSocket 连接已关闭");
       },
       onError: (error) => {
-        console.error("WebSocket 连接错误:", error);
+        console.error("❌ WebSocket 连接错误:", error);
       },
     });
 

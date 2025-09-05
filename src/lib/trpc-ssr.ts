@@ -1,5 +1,6 @@
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
+import { buildMockRequestUrl } from "./url-builder";
 
 /**
  * 创建 TRPC 服务端调用器
@@ -16,7 +17,8 @@ export async function getInitialMemos(
   options: { page?: number; limit?: number; publicOnly?: boolean } = {}
 ) {
   // 创建模拟的请求对象用于 SSR
-  const mockRequest = new Request("http://localhost:3000/api/trpc");
+  const mockRequestUrl = buildMockRequestUrl("/api/trpc");
+  const mockRequest = new Request(mockRequestUrl);
   const mockHeaders = new Headers();
 
   const caller = createCaller(
@@ -30,7 +32,7 @@ export async function getInitialMemos(
         type: "query" as const,
         connectionParams: {},
         signal: new AbortController().signal,
-        url: new URL("http://localhost:3000/api/trpc"),
+        url: new URL(mockRequestUrl),
       },
     })
   );

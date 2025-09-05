@@ -5,7 +5,7 @@
 
 import { applyWSSHandler } from "@trpc/server/adapters/ws";
 import { WebSocketServer } from "ws";
-
+import { buildMockRequestUrl } from "../lib/url-builder";
 import { appRouter } from "./router";
 
 let wss: WebSocketServer | null = null;
@@ -32,21 +32,22 @@ export function createWebSocketServer(port: number = 3001) {
       // 在生产环境中，你需要从连接参数中验证认证信息
 
       // 创建模拟的请求对象和响应头
-      const mockReq = new Request("ws://localhost:3000/api/trpc");
+      const mockReq = new Request(buildMockRequestUrl("/api/trpc"));
       const mockResHeaders = new Headers();
 
-      // 检查是否是开发环境
+      // 检查是否是开发环境或测试环境
       const isDev = process.env.NODE_ENV === "development";
+      const isTest = process.env.NODE_ENV === "test";
 
-      if (isDev) {
-        // 开发环境：允许所有连接作为管理员
+      if (isDev || isTest) {
+        // 开发环境和测试环境：允许所有连接作为管理员
         return {
           req: mockReq,
           resHeaders: mockResHeaders,
           user: {
-            id: "dev-user",
-            email: "dev@example.com",
-            nickname: "Dev User",
+            id: isTest ? "test-user" : "dev-user",
+            email: isTest ? "admin@test.com" : "dev@example.com",
+            nickname: isTest ? "Test User" : "Dev User",
           },
           isAdmin: true,
         };

@@ -8,6 +8,7 @@ import { parse } from "node:url";
 import { applyWSSHandler } from "@trpc/server/adapters/ws";
 import next from "next";
 import { WebSocketServer } from "ws";
+import { buildHttpUrl, buildMockRequestUrl, buildWebSocketUrl } from "../lib/url-builder";
 import { appRouter } from "./router";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -58,21 +59,22 @@ export async function startIntegratedServer() {
       wss,
       router: appRouter,
       createContext: async () => {
-        // 在开发环境中允许所有连接作为管理员
+        // 在开发环境和测试环境中允许所有连接作为管理员
         const isDev = process.env.NODE_ENV === "development";
+        const isTest = process.env.NODE_ENV === "test";
 
         // 创建模拟的请求对象和响应头
-        const mockReq = new Request("ws://localhost:3000/api/trpc");
+        const mockReq = new Request(buildMockRequestUrl("/api/trpc"));
         const mockResHeaders = new Headers();
 
-        if (isDev) {
+        if (isDev || isTest) {
           return {
             req: mockReq,
             resHeaders: mockResHeaders,
             user: {
-              id: "dev-user",
-              email: "dev@example.com",
-              nickname: "Dev User",
+              id: isTest ? "test-user" : "dev-user",
+              email: isTest ? "admin@test.com" : "dev@example.com",
+              nickname: isTest ? "Test User" : "Dev User",
             },
             isAdmin: true,
           };
@@ -103,8 +105,8 @@ export async function startIntegratedServer() {
     // 启动服务器
     server.listen(port, () => {
       console.log(`🚀 集成服务器启动成功:`);
-      console.log(`   - HTTP: http://${hostname}:${port}`);
-      console.log(`   - WebSocket: ws://${hostname}:${port}/trpc-ws`);
+      console.log(`   - HTTP: ${buildHttpUrl("")}`);
+      console.log(`   - WebSocket: ${buildWebSocketUrl("/trpc-ws")}`);
       console.log(`   - 环境: ${dev ? "开发" : "生产"}`);
     });
   } catch (error) {

@@ -64,8 +64,7 @@ export default defineConfig({
   webServer: [
     // 集成的 HTTP + WebSocket 服务器
     {
-      command:
-        "NODE_ENV=test ADMIN_EMAIL=admin@test.com DB_PATH=./test.db PORT=3000 bun src/scripts/start-integrated-server.ts",
+      command: "bun src/scripts/start-integrated-server.ts",
       url: process.env.BASE_URL || "http://localhost:3000",
       reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
       timeout: 120 * 1000, // 2分钟启动超时
@@ -74,6 +73,8 @@ export default defineConfig({
         ADMIN_EMAIL: "admin@test.com", // 测试环境管理员邮箱
         DB_PATH: "./test.db", // 测试数据库路径
         PORT: "3000", // 确保使用3000端口
+        LOCAL_CONTENT_BASE_PATH: "./test-data/local", // 测试环境本地内容路径
+        WEBDAV_URL: "http://localhost:8080", // WebDAV服务器地址
       },
     },
     // dufs WebDAV 服务器
