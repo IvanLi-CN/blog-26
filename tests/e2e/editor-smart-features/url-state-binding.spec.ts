@@ -26,6 +26,9 @@ test.describe("URL状态双向绑定功能", () => {
     editorPage = new EditorPage(page);
     await editorPage.goto();
 
+    // 清理localStorage状态，确保URL状态绑定测试环境干净
+    await EditorTestHelpers.clearLocalStorage(page);
+
     // 等待页面完全加载
     await editorPage.waitForFileTreeLoad();
   });

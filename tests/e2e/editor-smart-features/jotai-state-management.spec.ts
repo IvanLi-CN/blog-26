@@ -25,6 +25,9 @@ test.describe("Jotai状态管理功能", () => {
     editorPage = new EditorPage(page);
     await editorPage.goto();
 
+    // 清理localStorage状态，确保Jotai状态管理测试环境干净
+    await EditorTestHelpers.clearLocalStorage(page);
+
     // 等待页面完全加载
     await editorPage.waitForFileTreeLoad();
 

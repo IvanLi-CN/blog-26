@@ -136,6 +136,24 @@ export async function clearConsoleLogs(page: Page): Promise<void> {
 }
 
 /**
+ * 清理localStorage状态，确保测试环境干净
+ * 这对于涉及客户端状态持久化的测试非常重要
+ */
+export async function clearLocalStorage(page: Page, skipReload = false): Promise<void> {
+  await page.evaluate(() => {
+    console.log("🧹 清理localStorage状态...");
+    localStorage.clear();
+    sessionStorage.clear(); // 同时清理sessionStorage
+  });
+
+  // 可选择是否刷新页面
+  if (!skipReload) {
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForTimeout(1000);
+  }
+}
+
+/**
  * 获取所有控制台日志
  */
 export async function getConsoleLogs(page: Page): Promise<string[]> {
@@ -319,6 +337,7 @@ export const EditorTestHelpers = {
   takeScreenshotOnFailure,
   setupConsoleLogCapture,
   clearConsoleLogs,
+  clearLocalStorage,
   getConsoleLogs,
   waitForElementInViewport,
   simulateNetworkDelay,

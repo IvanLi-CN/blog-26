@@ -26,6 +26,9 @@ test.describe("智能文件树展开功能", () => {
     editorPage = new EditorPage(page);
     await editorPage.goto();
 
+    // 清理localStorage状态，确保文件树展开状态干净
+    await EditorTestHelpers.clearLocalStorage(page);
+
     // 等待页面完全加载
     await editorPage.waitForFileTreeLoad();
   });

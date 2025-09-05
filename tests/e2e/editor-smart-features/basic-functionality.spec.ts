@@ -5,7 +5,7 @@
  */
 
 import { expect, test } from "@playwright/test";
-import { devLogin } from "./utils/editor-test-helpers";
+import { devLogin, EditorTestHelpers } from "./utils/editor-test-helpers";
 
 test.describe("编辑器基本功能测试", () => {
   test.beforeEach(async ({ page }) => {
@@ -188,13 +188,8 @@ test.describe("编辑器基本功能测试", () => {
   });
 
   test("测试用例: URL状态同步", async ({ page }) => {
-    // 0. 清理localStorage状态，确保测试环境干净
-    await page.evaluate(() => {
-      console.log("🐾 心羽清理localStorage状态...");
-      localStorage.clear();
-    });
-    await page.reload();
-    await page.waitForTimeout(2000);
+    // 0. 清理localStorage状态，确保测试环境干净（不刷新页面）
+    await EditorTestHelpers.clearLocalStorage(page, true);
 
     // 1. 先展开LOCAL数据源
     const localButton = page.locator('button:has-text("LOCAL")');
@@ -225,7 +220,7 @@ test.describe("编辑器基本功能测试", () => {
 
     // 6. 刷新页面验证状态恢复
     await page.reload({ waitUntil: "networkidle" });
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(2000);
 
     // 7. 验证状态恢复（检查标签页是否重新打开）
     const tabs = page.locator('button:has-text("✕")');
