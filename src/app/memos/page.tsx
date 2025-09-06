@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import PageLayout from "../../components/common/PageLayout";
-import { TRPCProvider } from "../../components/providers/TRPCProvider";
 import { MemosPageContent } from "./MemosPageContent";
 
 /**
@@ -85,9 +84,7 @@ export default function MemosPage() {
         </div>
 
         {/* Memos 应用 - 根据用户权限动态显示功能 */}
-        <TRPCProvider>
-          <MemosPageContent />
-        </TRPCProvider>
+        <MemosPageContent />
       </section>
     </PageLayout>
   );

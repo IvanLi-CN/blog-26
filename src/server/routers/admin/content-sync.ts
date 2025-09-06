@@ -4,8 +4,8 @@
  * 提供内容源管理和同步控制的 API 接口
  */
 
+import { EventEmitter, on } from "node:events";
 import { TRPCError } from "@trpc/server";
-import { observable } from "@trpc/server/observable";
 import { z } from "zod";
 import { SYSTEM_CONFIG } from "../../../config/paths";
 import {
@@ -370,68 +370,78 @@ export const adminContentSyncRouter = createTRPCRouter({
   // ============================================================================
 
   /**
-   * 订阅同步日志推送
+   * 订阅同步日志推送 (SSE)
    */
-  subscribeSyncLogs: publicProcedure.subscription(() => {
-    return observable((emit) => {
-      // 监听同步开始事件
-      const onSyncStart = (event: any) => {
-        console.log("📡 WebSocket 收到同步开始事件:", event);
-        emit.next({
-          type: "sync:start",
-          data: event,
-        });
-      };
+  subscribeSyncLogs: publicProcedure.subscription(async function* (opts) {
+    console.log("🔗 建立 SSE 连接，注册事件监听器");
+    console.log("📍 subscription syncEventManager 实例:", syncEventManager.constructor.name);
+    console.log(
+      "📍 subscription syncEventManager 实例 ID:",
+      (syncEventManager as any)._instanceId || "undefined"
+    );
+    console.log("📍 当前同步会话ID:", syncEventManager.getCurrentSyncSessionId());
 
-      // 监听同步日志事件
-      const onSyncLog = (event: any) => {
-        console.log("📡 WebSocket 收到同步日志事件:", event);
-        emit.next({
-          type: "sync:log",
-          data: event,
-        });
-      };
+    // 发送连接确认
+    console.log("📡 发送 SSE 连接确认");
+    yield {
+      type: "connected",
+      data: {
+        message: "已连接到同步日志推送服务 (SSE)",
+        timestamp: Date.now(),
+      },
+    };
+    console.log("✅ SSE 连接确认已发送");
 
-      // 监听同步完成事件
-      const onSyncComplete = (event: any) => {
-        console.log("📡 WebSocket 收到同步完成事件:", event);
-        emit.next({
-          type: "sync:complete",
-          data: event,
-        });
-      };
+    // 创建一个 EventEmitter 来聚合所有事件
+    const eventAggregator = new EventEmitter();
 
-      // 注册事件监听器
-      console.log("🔗 注册 WebSocket 事件监听器");
-      console.log("📍 subscription syncEventManager 实例:", syncEventManager.constructor.name);
-      console.log(
-        "📍 subscription syncEventManager 实例 ID:",
-        (syncEventManager as any)._instanceId || "undefined"
-      );
-      console.log("📍 当前同步会话ID:", syncEventManager.getCurrentSyncSessionId());
-      syncEventManager.onSyncStart(onSyncStart);
-      syncEventManager.onSyncLog(onSyncLog);
-      syncEventManager.onSyncComplete(onSyncComplete);
-      console.log("✅ WebSocket 事件监听器注册完成");
-
-      // 发送连接确认
-      console.log("📡 发送 WebSocket 连接确认");
-      emit.next({
-        type: "connected",
-        data: {
-          message: "已连接到同步日志推送服务",
-          timestamp: Date.now(),
-        },
+    // 监听同步开始事件
+    const onSyncStart = (event: any) => {
+      console.log("📡 SSE 收到同步开始事件:", event);
+      eventAggregator.emit("sync-event", {
+        type: "sync:start",
+        data: event,
       });
-      console.log("✅ WebSocket 连接确认已发送");
+    };
 
-      // 清理函数
-      return () => {
-        syncEventManager.offSyncStart(onSyncStart);
-        syncEventManager.offSyncLog(onSyncLog);
-        syncEventManager.offSyncComplete(onSyncComplete);
-      };
-    });
+    // 监听同步日志事件
+    const onSyncLog = (event: any) => {
+      console.log("📡 SSE 收到同步日志事件:", event);
+      eventAggregator.emit("sync-event", {
+        type: "sync:log",
+        data: event,
+      });
+    };
+
+    // 监听同步完成事件
+    const onSyncComplete = (event: any) => {
+      console.log("📡 SSE 收到同步完成事件:", event);
+      eventAggregator.emit("sync-event", {
+        type: "sync:complete",
+        data: event,
+      });
+    };
+
+    // 注册事件监听器
+    syncEventManager.onSyncStart(onSyncStart);
+    syncEventManager.onSyncLog(onSyncLog);
+    syncEventManager.onSyncComplete(onSyncComplete);
+    console.log("✅ SSE 事件监听器注册完成");
+
+    try {
+      // 监听聚合的事件
+      for await (const [eventData] of on(eventAggregator, "sync-event", {
+        signal: opts.signal,
+      })) {
+        yield eventData;
+      }
+    } finally {
+      // 清理事件监听器
+      console.log("🧹 清理 SSE 事件监听器");
+      syncEventManager.offSyncStart(onSyncStart);
+      syncEventManager.offSyncLog(onSyncLog);
+      syncEventManager.offSyncComplete(onSyncComplete);
+    }
   }),
 });
 

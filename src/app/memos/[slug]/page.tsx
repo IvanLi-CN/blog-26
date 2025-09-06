@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { MemoDetailPage } from "../../../components/memos/MemoDetailPage";
-import { TRPCProvider } from "../../../components/providers/TRPCProvider";
 
 /**
  * Memo 详情页面
@@ -93,9 +92,7 @@ export default async function MemoPage({ params }: MemoPageProps) {
 
       {/* 页面内容 */}
       <div className="container mx-auto px-4 py-8">
-        <TRPCProvider>
-          <MemoDetailPage slug={slug} showEditFeatures={false} className="max-w-4xl mx-auto" />
-        </TRPCProvider>
+        <MemoDetailPage slug={slug} showEditFeatures={false} className="max-w-4xl mx-auto" />
       </div>
     </>
   );

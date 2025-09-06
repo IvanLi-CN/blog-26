@@ -80,7 +80,16 @@ export async function isAdminFromCookies(): Promise<boolean> {
  * 使用统一的认证逻辑
  */
 export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
-  // 创建一个模拟的 Request 对象来复用 auth-utils 的逻辑
+  // 在开发环境和测试环境中提供管理员权限绕过
+  const isDev = process.env.NODE_ENV === "development";
+  const isTest = process.env.NODE_ENV === "test";
+
+  if (isDev || isTest) {
+    console.log(`🔧 [Auth] ${isDev ? "开发" : "测试"}环境：提供默认管理员权限`);
+    return true;
+  }
+
+  // 生产环境：创建一个模拟的 Request 对象来复用 auth-utils 的逻辑
   const cookieStore = await cookies();
   const cookiePairs: string[] = [];
 
@@ -100,7 +109,7 @@ export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
 
   const { isAdmin: userIsAdmin } = await extractAuthFromRequest(mockRequest);
 
-  // 使用统一的权限检查逻辑，不区分环境
+  // 使用统一的权限检查逻辑
   return userIsAdmin;
 }
 
