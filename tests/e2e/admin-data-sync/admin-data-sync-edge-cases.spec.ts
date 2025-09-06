@@ -19,9 +19,11 @@ test.describe("数据同步边界情况测试", () => {
     await page.goto("/");
     await devLogin(page);
     await page.goto("/admin/data-sync");
-    await page.waitForLoadState("networkidle");
+    // 不等待 networkidle，因为 SSE 连接会持续保持网络活动
+    await page.waitForLoadState("domcontentloaded");
     await page.waitForSelector("h1", { timeout: 30000 });
     await page.waitForSelector("[data-testid='full-sync-button']", { timeout: 30000 });
+    // 等待 SSE 连接建立
     await page.waitForTimeout(3000);
   });
 
