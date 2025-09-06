@@ -41,7 +41,7 @@ interface PostUniversalEditorProps {
   /** 当前选中的内容源信息 */
   selectedContentSource?: ContentSource;
   /** 内容源变化回调 */
-  onContentSourceChange?: (contentSource: ContentSource) => void;
+  onContentSourceChange?: (contentSource: ContentSource | undefined) => void;
   // 保留旧接口以防其他地方还在使用
   /** @deprecated 使用 selectedContentSource 替代 */
   selectedPostId?: string;

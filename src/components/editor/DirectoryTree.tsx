@@ -412,7 +412,7 @@ const FileActions = ({
 interface DirectoryTreeProps {
   onSelectFile: (filePath: string, fileName: string) => void;
   onCreateFile?: (directoryPath: string, fileName: string) => void;
-  onContentSourceChange?: (contentSource: ContentSource) => void;
+  onContentSourceChange?: (contentSource: ContentSource | undefined) => void;
 }
 
 interface FileNode {
