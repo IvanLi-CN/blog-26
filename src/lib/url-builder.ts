@@ -42,7 +42,7 @@ export function getServerConfig(): ServerConfig {
     };
   } else {
     // 服务器端环境：从环境变量获取信息
-    const port = process.env.PORT || "3000";
+    const port = process.env.PORT || "25090";
     const hostname = "localhost";
     const protocol = "http"; // 服务器端默认使用http
     const wsProtocol = "ws"; // 服务器端默认使用ws

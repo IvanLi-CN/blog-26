@@ -33,7 +33,7 @@ export default defineConfig({
   // 全局测试配置
   use: {
     // 基础URL - 使用环境变量或默认端口
-    baseURL: process.env.BASE_URL || "http://localhost:3000",
+    baseURL: process.env.BASE_URL || "http://localhost:25090",
 
     // 浏览器配置
     headless: process.env.HEADLESS !== "false",
@@ -65,22 +65,22 @@ export default defineConfig({
     // 集成的 HTTP + WebSocket 服务器
     {
       command: "bun src/scripts/start-integrated-server.ts",
-      url: process.env.BASE_URL || "http://localhost:3000",
+      url: process.env.BASE_URL || "http://localhost:25090",
       reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
       timeout: 120 * 1000, // 2分钟启动超时
       env: {
         NODE_ENV: "test",
         ADMIN_EMAIL: "admin@test.com", // 测试环境管理员邮箱
         DB_PATH: "./test.db", // 测试数据库路径
-        PORT: "3000", // 确保使用3000端口
+        PORT: "25090", // 确保使用25090端口
         LOCAL_CONTENT_BASE_PATH: "./test-data/local", // 测试环境本地内容路径
-        WEBDAV_URL: "http://localhost:8080", // WebDAV服务器地址
+        WEBDAV_URL: "http://localhost:25091", // WebDAV服务器地址
       },
     },
     // dufs WebDAV 服务器
     {
-      command: "dufs test-data/webdav --port 8080 --allow-all --enable-cors",
-      url: "http://localhost:8080",
+      command: "dufs test-data/webdav --port 25091 --allow-all --enable-cors",
+      url: "http://localhost:25091",
       reuseExistingServer: !process.env.CI,
       timeout: 30 * 1000, // 30秒启动超时
     },

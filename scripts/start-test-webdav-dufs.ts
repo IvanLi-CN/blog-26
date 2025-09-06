@@ -11,7 +11,7 @@ import { join } from "node:path";
 
 // 测试环境 WebDAV 配置
 const TEST_WEBDAV_CONFIG = {
-  startPort: 8080,
+  startPort: 25091,
   host: "localhost",
   rootPath: join(process.cwd(), "test-data", "webdav"),
   maxPortTries: 10,

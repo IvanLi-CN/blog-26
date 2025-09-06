@@ -12,12 +12,12 @@ services:
         COMMIT_SHORT_HASH: ${COMMIT_SHORT_HASH:-dev}
         REPOSITORY_URL: ${REPOSITORY_URL:-https://git.ivanli.cc/Ivan/blog-nextjs}
     ports:
-      - "3000:3000"
+      - "25090:25090"
     environment:
       # 基础配置
       - NODE_ENV=production
       - HOST=0.0.0.0
-      - PORT=3000
+      - PORT=25090
       
       # 数据库配置
       - DB_PATH=/app/data/sqlite.db
@@ -31,7 +31,7 @@ services:
       - REDIS_PORT=6379
       
       # WebDAV 配置
-      - WEBDAV_URL=${WEBDAV_URL:-http://localhost:8080}
+      - WEBDAV_URL=${WEBDAV_URL:-http://localhost:25091}
       - WEBDAV_USERNAME=${WEBDAV_USERNAME:-}
       - WEBDAV_PASSWORD=${WEBDAV_PASSWORD:-}
       - WEBDAV_MEMOS_PATH=${WEBDAV_MEMOS_PATH:-/Memos}
@@ -43,7 +43,7 @@ services:
       - CHAT_MODEL_NAME=${CHAT_MODEL_NAME}
       
       # 站点配置
-      - SITE_URL=${SITE_URL:-http://localhost:3000}
+      - SITE_URL=${SITE_URL:-http://localhost:25090}
       - JWT_SECRET=${JWT_SECRET}
       
       # SMTP 配置
@@ -96,7 +96,7 @@ services:
   webdav:
     image: bytemark/webdav
     ports:
-      - "8080:80"
+      - "25091:80"
     environment:
       - AUTH_TYPE=Basic
       - USERNAME=${WEBDAV_USERNAME:-webdav}

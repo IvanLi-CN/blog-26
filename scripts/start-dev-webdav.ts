@@ -11,7 +11,7 @@ import { join } from "node:path";
 
 // 开发环境 WebDAV 配置
 const DEV_WEBDAV_CONFIG = {
-  port: 8080,
+  port: 25091,
   host: "localhost",
   rootPath: join(process.cwd(), "dev-data", "webdav"),
   maxPortTries: 5,

@@ -17,7 +17,7 @@ const mockWindow = {
   location: {
     protocol: "http:",
     hostname: "localhost",
-    port: "3000",
+    port: "25090",
   },
 };
 
@@ -45,7 +45,7 @@ describe("URL Builder", () => {
 
     it("应该正确构建WebSocket URL（有端口）", () => {
       const url = buildWebSocketUrl("/trpc-ws");
-      expect(url).toBe("ws://localhost:3000/trpc-ws");
+      expect(url).toBe("ws://localhost:25090/trpc-ws");
     });
 
     it("应该正确构建WebSocket URL（无端口）", () => {
@@ -63,12 +63,12 @@ describe("URL Builder", () => {
 
     it("应该正确构建HTTP URL", () => {
       const url = buildHttpUrl("/api/trpc");
-      expect(url).toBe("http://localhost:3000/api/trpc");
+      expect(url).toBe("http://localhost:25090/api/trpc");
     });
 
     it("应该正确构建基础URL", () => {
       const url = buildBaseUrl();
-      expect(url).toBe("http://localhost:3000");
+      expect(url).toBe("http://localhost:25090");
     });
 
     it("应该正确处理HTTPS协议", () => {
@@ -92,29 +92,29 @@ describe("URL Builder", () => {
     beforeEach(() => {
       // 确保没有window对象
       (global as any).window = undefined;
-      process.env.PORT = "3000";
+      process.env.PORT = "25090";
     });
 
     it("应该正确构建WebSocket URL", () => {
       const url = buildWebSocketUrl("/trpc-ws");
-      expect(url).toBe("ws://localhost:3000/trpc-ws");
+      expect(url).toBe("ws://localhost:25090/trpc-ws");
     });
 
     it("应该正确构建HTTP URL", () => {
       const url = buildHttpUrl("/api/trpc");
-      expect(url).toBe("http://localhost:3000/api/trpc");
+      expect(url).toBe("http://localhost:25090/api/trpc");
     });
 
     it("应该正确构建模拟请求URL", () => {
       const url = buildMockRequestUrl("/api/trpc");
-      expect(url).toBe("http://localhost:3000/api/trpc");
+      expect(url).toBe("http://localhost:25090/api/trpc");
     });
 
     it("应该使用默认端口当环境变量未设置时", () => {
       delete process.env.PORT;
 
       const url = buildWebSocketUrl("/trpc-ws");
-      expect(url).toBe("ws://localhost:3000/trpc-ws");
+      expect(url).toBe("ws://localhost:25090/trpc-ws");
     });
   });
 
@@ -125,7 +125,7 @@ describe("URL Builder", () => {
       const config = getServerConfig();
       expect(config).toEqual({
         hostname: "localhost",
-        port: "3000",
+        port: "25090",
         protocol: "http",
         wsProtocol: "ws",
         isClient: true,
@@ -152,16 +152,16 @@ describe("URL Builder", () => {
       (global as any).window = mockWindow;
 
       // 测试不同的路径格式
-      expect(buildWebSocketUrl("trpc-ws")).toBe("ws://localhost:3000/trpc-ws");
-      expect(buildWebSocketUrl("/trpc-ws")).toBe("ws://localhost:3000/trpc-ws");
-      expect(buildWebSocketUrl("")).toBe("ws://localhost:3000/");
+      expect(buildWebSocketUrl("trpc-ws")).toBe("ws://localhost:25090/trpc-ws");
+      expect(buildWebSocketUrl("/trpc-ws")).toBe("ws://localhost:25090/trpc-ws");
+      expect(buildWebSocketUrl("")).toBe("ws://localhost:25090/");
     });
 
     it("应该使用默认路径", () => {
       (global as any).window = mockWindow;
 
-      expect(buildWebSocketUrl()).toBe("ws://localhost:3000/trpc-ws");
-      expect(buildHttpUrl()).toBe("http://localhost:3000/api/trpc");
+      expect(buildWebSocketUrl()).toBe("ws://localhost:25090/trpc-ws");
+      expect(buildHttpUrl()).toBe("http://localhost:25090/api/trpc");
     });
   });
 });

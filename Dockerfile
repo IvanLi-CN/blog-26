@@ -86,7 +86,7 @@ RUN apt-get update && \
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOST=0.0.0.0
-ENV PORT=3000
+ENV PORT=25090
 
 # 从构建阶段复制必要文件
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
