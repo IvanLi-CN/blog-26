@@ -4,7 +4,7 @@
  * 提供 Markdown 解析、哈希计算、路径处理等通用工具函数
  */
 
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import matter from "gray-matter";
 import limax from "limax";
 import { nanoid } from "nanoid";

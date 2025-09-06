@@ -19,6 +19,7 @@ import {
   updateTabsAfterRenameAtom,
 } from "../../store/editorAtoms";
 import Icon from "../ui/Icon";
+import type { ContentSource } from "./PostEditorWrapper";
 import { RenameDialog } from "./RenameDialog";
 // import { useAdvancedEditorState } from "./hooks/useEditorState"; // 移除旧的依赖
 import { generateScrollDataAttribute } from "./utils/pathUtils";
@@ -411,7 +412,7 @@ const FileActions = ({
 interface DirectoryTreeProps {
   onSelectFile: (filePath: string, fileName: string) => void;
   onCreateFile?: (directoryPath: string, fileName: string) => void;
-  onContentSourceChange?: (contentSource: any) => void;
+  onContentSourceChange?: (contentSource: ContentSource) => void;
 }
 
 interface FileNode {
