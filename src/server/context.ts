@@ -28,30 +28,7 @@ export async function createContext({
   // 初始化数据库
   await initializeDB();
 
-  // 在开发环境和测试环境中提供管理员权限绕过
-  const isDev = process.env.NODE_ENV === "development";
-  const isTest = process.env.NODE_ENV === "test";
-
-  if (isDev || isTest) {
-    // 开发/测试环境：提供默认管理员权限
-    const devUser: User = {
-      id: isTest ? "test-user" : "dev-user",
-      email: isTest ? "admin@test.com" : "dev@example.com",
-      nickname: isTest ? "Test User" : "Dev User",
-    };
-
-    console.log(`🔧 [tRPC-Context] ${isDev ? "开发" : "测试"}环境：提供默认管理员权限`);
-
-    return {
-      req,
-      resHeaders,
-      user: devUser,
-      isAdmin: true,
-      clientAddress: "dev-environment",
-    };
-  }
-
-  // 生产环境：使用统一的认证逻辑
+  // 使用统一的认证逻辑（所有环境）
   const { user, isAdmin } = await extractAuthFromRequest(req);
 
   // 3. 获取客户端 IP 地址
