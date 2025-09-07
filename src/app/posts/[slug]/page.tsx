@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     // 简化的 metadata 生成，避免在构建时访问数据库
     // 在生产环境中，这里可以使用静态数据或者缓存
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:25090";
     const postUrl = `${baseUrl}/posts/${slug}`;
 
     return {

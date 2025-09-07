@@ -173,12 +173,12 @@ bun run dev-data:clean
 
 E2E tests automatically start two servers:
 
-1. **Next.js Application Server** (`localhost:3000`)
+1. **Next.js Application Server** (`localhost:25090`)
    - Runs in test mode with `NODE_ENV=test`
    - Uses test admin email: `admin-test@test.local`
    - Connects to SQLite test database
 
-2. **WebDAV Server** (`localhost:8080`)
+2. **WebDAV Server** (`localhost:25091`)
    - Serves test content files from `test-data/webdav/`
    - Enables content source synchronization testing
 
@@ -253,8 +253,8 @@ bun run test-env:reset
 
 ```bash
 # Kill processes on test ports
-lsof -ti:3000 | xargs kill -9
-lsof -ti:8080 | xargs kill -9
+lsof -ti:25090 | xargs -r kill -9
+lsof -ti:25091 | xargs -r kill -9
 ```
 
 #### Test Debugging
@@ -533,7 +533,7 @@ bun run test-data:clean
 **Content Sync Process**:
 
 1. Start WebDAV server: `bun run webdav:dev`
-2. Access admin interface: `http://localhost:3000/admin/content-sync`
+2. Access admin interface: `http://localhost:25090/admin/content-sync`
 3. Trigger content sync or wait for automatic sync
 4. Check sync logs and status
 

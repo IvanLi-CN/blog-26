@@ -2318,7 +2318,7 @@ function getLocalMemoContent(index: number): string {
 \`\`\`bash
 # 开发环境
 NODE_ENV=development
-API_URL=http://localhost:3000
+API_URL=http://localhost:25090
 \`\`\`
 
 这样可以避免硬编码，提高代码的可维护性。

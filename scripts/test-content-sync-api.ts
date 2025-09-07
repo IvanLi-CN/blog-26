@@ -13,7 +13,7 @@ async function testContentSyncAPI() {
   console.log("✅ 数据库初始化完成");
 
   // 创建 tRPC caller
-  const mockRequest = new Request("http://localhost:3000/api/trpc");
+  const mockRequest = new Request("http://localhost:25090/api/trpc");
   const mockHeaders = new Headers();
 
   const caller = adminContentSyncRouter.createCaller({

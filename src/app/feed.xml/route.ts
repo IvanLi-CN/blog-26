@@ -6,7 +6,7 @@ import { toMsTimestamp } from "../../lib/utils";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:25090";
 
   try {
     await initializeDB();

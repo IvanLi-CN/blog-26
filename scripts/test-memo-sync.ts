@@ -28,7 +28,7 @@ async function testMemoSync() {
     console.log("✅ 数据库初始化完成");
 
     // 创建测试上下文
-    const mockRequest = new Request("http://localhost:3000/api/trpc");
+    const mockRequest = new Request("http://localhost:25090/api/trpc");
     const mockHeaders = new Headers();
 
     const ctx = await createContext({
@@ -41,7 +41,7 @@ async function testMemoSync() {
         type: "mutation" as const,
         connectionParams: {},
         signal: new AbortController().signal,
-        url: new URL("http://localhost:3000/api/trpc"),
+        url: new URL("http://localhost:25090/api/trpc"),
       },
     });
 

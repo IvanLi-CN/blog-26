@@ -109,11 +109,11 @@ RUN mkdir -p /app/public/uploads && \
 USER nextjs
 
 # 暴露端口
-EXPOSE 3000
+EXPOSE 25090
 
 # 健康检查（使用 tRPC health 端点）
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:3000/api/trpc/health || exit 1
+    CMD sh -c "curl -f http://localhost:${PORT:-25090}/api/trpc/health || exit 1"
 
 # 启动应用
 CMD ["bun", "server.js"]

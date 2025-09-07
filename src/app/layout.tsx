@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   authors: [{ name: SITE.author.name, url: SITE.url }],
   creator: SITE.author.name,
   publisher: SITE.author.name,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || SITE.url || "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || SITE.url || "http://localhost:25090"),
   alternates: {
     types: {
       "application/rss+xml": [{ url: "/feed.xml", title: `${SITE.title} RSS Feed` }],

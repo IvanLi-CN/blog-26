@@ -21,7 +21,7 @@ interface StructuredDataProps {
 import { toMsTimestamp } from "../../lib/utils";
 
 export default function StructuredData({ post }: StructuredDataProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:25090";
   const postUrl = `${baseUrl}/posts/${post.slug}`;
   const imageUrl = post.image
     ? post.image.startsWith("http")

@@ -63,8 +63,8 @@ export function getServerConfig(): ServerConfig {
  * @returns 完整的WebSocket URL
  *
  * @example
- * // 客户端：ws://localhost:3000/trpc-ws
- * // 服务器端：ws://localhost:3000/trpc-ws
+ * // 客户端：ws://localhost:25090/trpc-ws
+ * // 服务器端：ws://localhost:25090/trpc-ws
  */
 export function buildWebSocketUrl(path: string = "/trpc-ws"): string {
   const config = getServerConfig();
@@ -96,8 +96,8 @@ export function buildWebSocketUrl(path: string = "/trpc-ws"): string {
  * @returns 完整的HTTP URL
  *
  * @example
- * // 客户端：http://localhost:3000/api/trpc
- * // 服务器端：http://localhost:3000/api/trpc
+ * // 客户端：http://localhost:25090/api/trpc
+ * // 服务器端：http://localhost:25090/api/trpc
  */
 export function buildHttpUrl(path: string = "/api/trpc"): string {
   const config = getServerConfig();
@@ -118,8 +118,8 @@ export function buildHttpUrl(path: string = "/api/trpc"): string {
  * @returns 基础URL字符串
  *
  * @example
- * // 客户端：http://localhost:3000
- * // 服务器端：http://localhost:3000
+ * // 客户端：http://localhost:25090
+ * // 服务器端：http://localhost:25090
  */
 export function buildBaseUrl(): string {
   const config = getServerConfig();

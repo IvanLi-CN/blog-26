@@ -68,7 +68,7 @@ export function generateAdminNotificationEmailHTML(
   authorName: string,
   authorEmail: string
 ): string {
-  const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+  const siteUrl = process.env.SITE_URL || "http://localhost:25090";
   const postUrl = `${siteUrl}/blog/${postSlug}`;
   const adminUrl = `${siteUrl}/admin/comments`;
 

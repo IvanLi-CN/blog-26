@@ -139,8 +139,8 @@ tests/
 - **浏览器**: Chromium (默认)
 - **超时时间**: 60秒
 - **并发**: 1个worker（避免数据冲突）
-- **服务器**: 自动启动Next.js开发服务器
-- **端口**: 固定使用3000端口
+- **服务器**: 自动启动一体化测试服务（应用 + WebDAV）
+- **端口**: 应用 `25090`，WebDAV `25091`
 
 ## 🛠️ 数据管理
 
@@ -187,18 +187,18 @@ bun run db:posts
 
 ### ❌ 端口冲突
 
-**问题**: 测试启动失败，端口3000被占用
+**问题**: 测试启动失败，端口被占用（默认应用端口 25090，WebDAV 端口 25091）
 
 **解决方案**:
 ```bash
-# 查找占用端口的进程
-lsof -ti:3000
+# 查找并释放应用端口
+lsof -ti:25090 | xargs -r kill -9
 
-# 杀死占用进程
-kill -9 $(lsof -ti:3000)
+# 查找并释放 WebDAV 端口
+lsof -ti:25091 | xargs -r kill -9
 
-# 或者使用不同端口
-BASE_URL=http://localhost:3001 bunx playwright test
+# 重新运行测试
+bun run test:e2e
 ```
 
 ### ❌ WebDAV错误

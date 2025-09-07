@@ -12,7 +12,7 @@ interface TestResult {
 class MemoE2ETest {
   private browser: Browser | null = null;
   private page: Page | null = null;
-  private baseUrl = "http://localhost:3000";
+  private baseUrl = "http://localhost:25090";
   private results: TestResult[] = [];
 
   async setup() {
