@@ -9,6 +9,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type NextRequest, NextResponse } from "next/server";
+import { getWebDAVUrl } from "@/config/paths";
 
 // 支持的内容源类型
 type ContentSource = "webdav" | "local";
@@ -52,7 +53,7 @@ async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
     ? `memos/${filePath.substring(6)}`
     : filePath;
 
-  const webdavUrl = `${process.env.WEBDAV_URL || "http://localhost:8080"}/${normalizedPath}`;
+  const webdavUrl = getWebDAVUrl(normalizedPath);
 
   console.log("🌐 [Files API] 请求 WebDAV 文件:", webdavUrl);
 
@@ -98,15 +99,26 @@ async function uploadWebDAVFile(
   buffer: ArrayBuffer,
   contentType: string
 ): Promise<void> {
-  const webdavUrl = `${process.env.NEXT_PUBLIC_WEBDAV_URL || "http://localhost:8080"}/${filePath}`;
+  const webdavUrl = getWebDAVUrl(filePath);
 
   console.log("🌐 [Files API] 上传文件到 WebDAV 服务器:", webdavUrl);
 
+  // 准备认证头
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+  };
+
+  // 如果配置了用户名和密码，添加基本认证
+  if (process.env.WEBDAV_USERNAME && process.env.WEBDAV_PASSWORD) {
+    const credentials = Buffer.from(
+      `${process.env.WEBDAV_USERNAME}:${process.env.WEBDAV_PASSWORD}`
+    ).toString("base64");
+    headers.Authorization = `Basic ${credentials}`;
+  }
+
   const response = await fetch(webdavUrl, {
     method: "PUT",
-    headers: {
-      "Content-Type": contentType,
-    },
+    headers,
     body: buffer,
   });
 
@@ -179,10 +191,25 @@ export async function GET(
   }
 }
 
-// POST - 上传文件
+// POST/PUT - 上传文件
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ source: string; path: string[] }> }
+) {
+  return handleFileUpload(request, params);
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ source: string; path: string[] }> }
+) {
+  return handleFileUpload(request, params);
+}
+
+// 统一的文件上传处理函数
+async function handleFileUpload(
+  request: NextRequest,
+  params: Promise<{ source: string; path: string[] }>
 ) {
   try {
     const { source, path: pathSegments } = await params;
