@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { resolveImagePath } from "../../lib/image-utils";
 import { optimizeForPreview } from "../../lib/markdown-utils";
 import MarkdownRenderer from "../common/MarkdownRenderer";
@@ -28,6 +30,11 @@ interface TimelineItemProps {
 
 export default function TimelineItem({ item, isLast = false, loading = false }: TimelineItemProps) {
   const connectorRef = useRef<HTMLDivElement>(null);
+  const { isAdmin } = useAuth();
+
+  // 检测异常（仅针对 memo 内容）
+  const anomalies =
+    item.type === "memo" ? detectContentAnomalies(item.content || item.body || "") : null;
 
   // 根据类型确定链接
   const itemUrl =
@@ -227,6 +234,23 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                       <span className="text-xs">→</span>
                     </Link>
                   </div>
+
+                  {isAdmin && anomalies?.hasInlineDataImages && (
+                    <div className="mt-2 text-warning flex items-center gap-2">
+                      <div
+                        className="tooltip tooltip-bottom"
+                        data-tip={
+                          (anomalies.details || []).join("；") ||
+                          "检测到异常数据：包含 base64 内嵌图片"
+                        }
+                      >
+                        <span className="inline-flex items-center gap-1 text-xs">
+                          <Icon name="tabler:alert-triangle" className="w-4 h-4 text-warning" />
+                          <span>异常数据</span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

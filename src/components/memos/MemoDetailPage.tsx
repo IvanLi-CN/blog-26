@@ -23,6 +23,8 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { SITE } from "../../config/site";
+import { useAuth } from "../../hooks/useAuth";
+import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { trpc } from "../../lib/trpc";
 import { cn } from "../../lib/utils";
 import MarkdownRenderer from "../common/MarkdownRenderer";
@@ -36,6 +38,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import AnomalyIndicator from "./AnomalyIndicator";
 import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
 
@@ -57,6 +60,7 @@ export function MemoDetailPage({
   className,
 }: MemoDetailPageProps) {
   const router = useRouter();
+  const { isAdmin } = useAuth();
 
   // 状态管理
   const [isEditing, setIsEditing] = useState(false);
@@ -66,7 +70,6 @@ export function MemoDetailPage({
     data: memo,
     isLoading,
     isError,
-    error,
     refetch,
   } = trpc.memos.bySlug.useQuery(
     { slug },
@@ -171,9 +174,27 @@ export function MemoDetailPage({
   // 错误状态
   if (isError || !memo) {
     return (
-      <div className={cn("memo-detail-page text-center py-12", className)}>
-        <div className="text-destructive mb-4">{error?.message || "Memo 不存在"}</div>
-        <Button onClick={handleBack}>返回</Button>
+      <div className={cn("memo-detail-page", className)}>
+        <div className="alert alert-error max-w-md mx-auto my-8">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="stroke-current shrink-0 h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>加载失败，请稍后重试</span>
+        </div>
+        <div className="text-center">
+          <Button onClick={handleBack}>返回</Button>
+        </div>
       </div>
     );
   }
@@ -245,9 +266,13 @@ export function MemoDetailPage({
 
       {/* 标题和元信息 */}
       <div className="mb-6">
-        {memo.title && <h1 className="text-3xl font-bold mb-4">{memo.title}</h1>}
+        {memo.title && (
+          <div className="mb-2">
+            <h1 className="text-3xl font-bold">{memo.title}</h1>
+          </div>
+        )}
 
-        <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-4">
+        <div className="flex items-center text-sm text-muted-foreground mb-4 gap-4">
           <div className="flex items-center space-x-2">
             <Avatar className="w-6 h-6">
               <AvatarFallback className="text-xs">
@@ -266,6 +291,18 @@ export function MemoDetailPage({
             {memo.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             <span>{memo.isPublic ? "公开" : "私有"}</span>
           </div>
+
+          {/* 右侧放置异常数据提示（仅管理员可见） */}
+          {(() => {
+            const anomalies = detectContentAnomalies(memo.content || "");
+            return isAdmin && anomalies.hasInlineDataImages ? (
+              <div className="ml-auto">
+                <AnomalyIndicator anomalies={anomalies} showLabel={true} />
+              </div>
+            ) : (
+              <div className="ml-auto" />
+            );
+          })()}
         </div>
 
         {/* 标签 */}

@@ -3,6 +3,7 @@
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { SITE } from "../../config/site";
+import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { resolveImagePath } from "../../lib/image-utils";
 import { trpc } from "../../lib/trpc";
 import { toMsTimestamp } from "../../lib/utils";
@@ -141,6 +142,26 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                   isAdmin={isUserAdmin}
                 />
               </div>
+
+              {(() => {
+                const anomalies = detectContentAnomalies(post.body || "");
+                return isUserAdmin && anomalies.hasInlineDataImages ? (
+                  <div className="-mt-2 mb-2 text-warning">
+                    <div
+                      className="tooltip tooltip-bottom"
+                      data-tip={
+                        (anomalies.details || []).join("；") ||
+                        "检测到异常数据：包含 base64 内嵌图片"
+                      }
+                    >
+                      <span className="inline-flex items-center gap-1 text-xs">
+                        <Icon icon="tabler:alert-triangle" className="w-4 h-4 text-warning" />
+                        <span>异常数据</span>
+                      </span>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
 
             {isUserAdmin && (

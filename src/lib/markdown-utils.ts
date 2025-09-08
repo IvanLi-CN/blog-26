@@ -196,3 +196,42 @@ export function optimizeForPreview(
   // 智能截断
   return smartTruncateMarkdown(optimized, maxLength, maxParagraphs);
 }
+
+/**
+ * 智能截断 Markdown，但保留 data:image;base64 图片不被截断破坏
+ *
+ * 实现思路：
+ * 1. 先用占位符替换所有 data:image;base64 的 URL，显著缩短字符串长度，避免被粗暴截断
+ * 2. 使用 smartTruncateMarkdown 对替换后的内容进行段落级截断（保持 Markdown 结构）
+ * 3. 将占位符还原为原始的 base64 URL，确保图片能够正常渲染
+ */
+export function truncateMarkdownPreserveDataImages(
+  content: string,
+  maxLength: number = 300,
+  maxParagraphs: number = 2
+): string {
+  if (!content?.trim()) return "";
+
+  // 1) 提取并替换 data:image;base64 段为占位符，保留原始的 Markdown 图片语法
+  const placeholders: string[] = [];
+  let replaced = content;
+
+  // 匹配 ![alt](data:image/...base64,...) 形式，alt 可为空
+  const dataImgRegex =
+    /(!\[[^\]]*\]\()\s*(data:image\/[a-zA-Z.+-]+;base64,[A-Za-z0-9+/=]+)\s*(\))/g;
+  replaced = replaced.replace(dataImgRegex, (_m, p1, url, p3) => {
+    const idx = placeholders.push(url) - 1;
+    return `${p1}__DATAIMG_${idx}__${p3}`;
+  });
+
+  // 2) 对替换后的内容做段落级安全截断
+  const truncated = smartTruncateMarkdown(replaced, maxLength, maxParagraphs);
+
+  // 3) 还原占位符
+  const restored = truncated.replace(/__DATAIMG_(\d+)__/g, (_m, n) => {
+    const i = Number(n);
+    return placeholders[i] || "";
+  });
+
+  return restored;
+}

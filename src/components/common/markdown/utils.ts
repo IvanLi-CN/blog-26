@@ -144,9 +144,18 @@ export function defaultUrlTransform(url: string): string {
   if (!url) return "";
 
   // 允许的协议
-  const allowedProtocols = ["http:", "https:", "mailto:", "tel:"];
+  const allowedProtocols = ["http:", "https:", "mailto:", "tel:", "data:"];
 
   try {
+    // 允许 data:image/* 的内联图片（用于渲染 base64 图片）
+    if (url.startsWith("data:")) {
+      // 仅放行图片的 data URL，其他类型一律拦截
+      if (/^data:image\/[a-zA-Z.+-]+;base64,/.test(url)) {
+        return url;
+      }
+      return "";
+    }
+
     // 相对 URL 直接返回
     if (url.startsWith("/") || url.startsWith("./") || url.startsWith("../")) {
       return url;

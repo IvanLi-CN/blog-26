@@ -17,7 +17,10 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import { detectContentAnomalies } from "../../lib/content-anomalies";
+import { truncateMarkdownPreserveDataImages } from "../../lib/markdown-utils";
 import MarkdownRenderer from "../common/MarkdownRenderer";
+import AnomalyIndicator from "./AnomalyIndicator";
 
 export interface MemoCardProps {
   /** Memo 数据 */
@@ -78,12 +81,23 @@ export function MemoCard({
   // const [isExpanded, setIsExpanded] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
 
+  // 管理员异常数据检测（依赖于上层通过 showVisibilityIndicator 标识管理员场景）
+  const anomalies = useMemo(() => detectContentAnomalies(memo.content || ""), [memo.content]);
+
   // 处理内容截断
   const displayContent = memo.content || memo.excerpt || "";
-  const shouldTruncate = displayContent.length > maxContentLength && !showFullContent;
-  const truncatedContent = shouldTruncate
-    ? `${displayContent.substring(0, maxContentLength)}...`
-    : displayContent;
+  // 先进行一次基于“忽略 base64”策略的安全截断尝试
+  const truncatedCandidate = useMemo(
+    () => truncateMarkdownPreserveDataImages(displayContent, maxContentLength, 2),
+    [displayContent, maxContentLength]
+  );
+  // 只有当截断后的内容与原内容不同，才认为需要“展开/收起”
+  const isActuallyTruncated = useMemo(
+    () => truncatedCandidate.trim() !== displayContent.trim(),
+    [truncatedCandidate, displayContent]
+  );
+  const truncatedContent =
+    showFullContent || !isActuallyTruncated ? displayContent : truncatedCandidate;
 
   // 格式化时间 - 使用 useMemo 优化性能
   const formattedDate = useMemo(() => {
@@ -249,17 +263,17 @@ export function MemoCard({
               </div>
 
               {/* 右侧：状态和操作按钮 */}
-              <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
                 {/* 公开/私有状态指示器 - 只有管理员可见 */}
                 {showVisibilityIndicator && (
                   <div className="flex items-center">
                     {memo.isPublic ? (
                       <div
-                        className="badge badge-info badge-xs sm:badge-sm gap-1"
+                        className="badge badge-outline badge-xs sm:badge-sm h-6 sm:h-7 gap-1 text-info border-info/40 bg-info/5"
                         data-testid="public-indicator"
                       >
                         <svg
-                          className="w-2.5 h-2.5 sm:w-3 sm:h-3"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -276,11 +290,11 @@ export function MemoCard({
                       </div>
                     ) : (
                       <div
-                        className="badge badge-warning badge-xs sm:badge-sm gap-1"
+                        className="badge badge-outline badge-xs sm:badge-sm h-6 sm:h-7 gap-1 text-warning border-warning/40 bg-warning/5"
                         data-testid="private-indicator"
                       >
                         <svg
-                          className="w-2.5 h-2.5 sm:w-3 sm:h-3"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -299,6 +313,11 @@ export function MemoCard({
                   </div>
                 )}
 
+                {/* 管理员异常数据提示（例如包含 base64 内嵌图片） */}
+                {showVisibilityIndicator && anomalies.hasInlineDataImages && (
+                  <AnomalyIndicator anomalies={anomalies} />
+                )}
+
                 {/* 管理员操作按钮组 */}
                 {(showEditButton || showDeleteButton) && (
                   <div className="flex items-center space-x-0.5 sm:space-x-1">
@@ -307,12 +326,12 @@ export function MemoCard({
                       <button
                         type="button"
                         onClick={handleEditClick}
-                        className="btn btn-ghost btn-xs btn-circle text-info hover:bg-info/10"
+                        className="btn btn-ghost btn-xs btn-circle text-info hover:bg-info/10 hover:text-info h-6 w-6 sm:h-7 sm:w-7"
                         title={`编辑 Memo: ${memo.title || "无标题"}`}
                         aria-label={`编辑 Memo: ${memo.title || "无标题"}`}
                       >
                         <svg
-                          className="w-2.5 h-2.5 sm:w-3 sm:h-3"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -333,12 +352,12 @@ export function MemoCard({
                       <button
                         type="button"
                         onClick={handleDeleteClick}
-                        className="btn btn-ghost btn-xs btn-circle text-error hover:bg-error/10"
+                        className="btn btn-ghost btn-xs btn-circle text-error hover:bg-error/10 hover:text-error h-6 w-6 sm:h-7 sm:w-7"
                         title={`删除 Memo: ${memo.title || "无标题"}`}
                         aria-label={`删除 Memo: ${memo.title || "无标题"}`}
                       >
                         <svg
-                          className="w-2.5 h-2.5 sm:w-3 sm:h-3"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -378,7 +397,7 @@ export function MemoCard({
               </div>
 
               {/* 展开/收起按钮 */}
-              {shouldTruncate && (
+              {isActuallyTruncated && (
                 <button
                   type="button"
                   onClick={(e) => {
