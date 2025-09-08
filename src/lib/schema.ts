@@ -162,3 +162,7 @@ export type NewContentSyncLog = typeof contentSyncLogs.$inferInsert;
 
 export type ContentSyncStatus = typeof contentSyncStatus.$inferSelect;
 export type NewContentSyncStatus = typeof contentSyncStatus.$inferInsert;
+
+// Posts 类型导出
+export type Post = typeof posts.$inferSelect;
+export type NewPost = typeof posts.$inferInsert;

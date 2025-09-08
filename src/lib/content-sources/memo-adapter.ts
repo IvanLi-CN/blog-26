@@ -4,17 +4,17 @@
  * 处理 memos 表记录与 ContentItem 接口之间的转换
  */
 
-import type { Memo } from "../schema";
+import type { Post as PostRow } from "../schema";
 import type { ContentItem } from "./types";
 
 /**
  * 将数据库中的 Memo 记录转换为 ContentItem
  */
-export function memoToContentItem(memo: Memo): ContentItem {
+export function memoToContentItem(memo: PostRow): ContentItem {
   // 解析 JSON 字段
   const tags = memo.tags ? JSON.parse(memo.tags) : [];
   const metadata = memo.metadata ? JSON.parse(memo.metadata) : {};
-  const attachments = memo.attachments ? JSON.parse(memo.attachments) : [];
+  const attachments = Array.isArray(metadata.attachments) ? metadata.attachments : [];
 
   return {
     // ContentItem 核心字段
@@ -24,27 +24,26 @@ export function memoToContentItem(memo: Memo): ContentItem {
     title: memo.title || extractTitleFromContent(memo.body),
     excerpt: memo.excerpt || generateExcerptFromContent(memo.body),
     contentHash: memo.contentHash,
-    lastModified: memo.lastModified || memo.updatedAt || memo.createdAt,
+    lastModified: memo.lastModified || memo.updateDate || memo.publishDate,
     source: memo.source || memo.dataSource || "webdav",
-    filePath: memo.filePath || memo.sourcePath || memo.id,
+    filePath: memo.filePath || memo.id,
     draft: Boolean(memo.draft),
-    public: Boolean(memo.public ?? memo.isPublic ?? true),
-    publishDate: memo.publishDate || memo.createdAt,
-    updateDate: memo.updateDate || memo.updatedAt || undefined,
+    public: Boolean(memo.public ?? true),
+    publishDate: memo.publishDate,
+    updateDate: memo.updateDate || undefined,
     category: memo.category || undefined,
     tags,
-    author: memo.author || memo.authorEmail,
-    image: memo.image || undefined,
+    author: memo.author ?? undefined,
+    image: memo.image ?? undefined,
     metadata: {
       ...metadata,
       // 保留 memo 特有的字段
       content: memo.body,
-      authorEmail: memo.authorEmail,
       attachments,
       // 兼容字段
-      isPublic: memo.isPublic,
-      createdAt: memo.createdAt,
-      updatedAt: memo.updatedAt,
+      // 兼容字段（如存在）
+      createdAt: memo.publishDate,
+      updatedAt: memo.updateDate,
     },
   };
 }
@@ -52,7 +51,7 @@ export function memoToContentItem(memo: Memo): ContentItem {
 /**
  * 将 ContentItem 转换为 Memo 数据库记录
  */
-export function contentItemToMemo(item: ContentItem, authorEmail: string): Partial<Memo> {
+export function contentItemToMemo(item: ContentItem, authorEmail: string): Partial<PostRow> {
   const metadata = { ...item.metadata };
 
   // 提取 memo 特有字段
@@ -83,19 +82,10 @@ export function contentItemToMemo(item: ContentItem, authorEmail: string): Parti
     tags: JSON.stringify(item.tags),
     author: item.author,
     image: item.image,
-    metadata: JSON.stringify(metadata),
+    metadata: JSON.stringify({ ...metadata, attachments, authorEmail }),
 
-    // Memo 特有字段
+    // Post body 字段
     body: content,
-    authorEmail,
-    attachments: JSON.stringify(attachments),
-
-    // 兼容字段
-    isPublic: item.public,
-    createdAt: item.publishDate,
-    updatedAt: item.updateDate || item.lastModified,
-    sourcePath: item.filePath,
-    dataSource: item.source,
   };
 }
 

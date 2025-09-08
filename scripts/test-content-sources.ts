@@ -122,11 +122,11 @@ console.log(`   内容项清理: ${sanitized.title === contentItem.title.trim() 
 // 测试数据库类型（简单导入测试）
 console.log("\n6️⃣ 测试数据库类型导入...");
 try {
-  const { contentSyncLogs, contentSyncStatus, memos } = await import("../src/lib/schema");
+  const { contentSyncLogs, contentSyncStatus, posts } = await import("../src/lib/schema");
   console.log("✅ 数据库类型导入成功");
   console.log(`   - contentSyncLogs: ${typeof contentSyncLogs}`);
   console.log(`   - contentSyncStatus: ${typeof contentSyncStatus}`);
-  console.log(`   - memos: ${typeof memos}`);
+  console.log(`   - posts: ${typeof posts}`);
 } catch (error) {
   console.error("❌ 数据库类型导入失败:", error);
   process.exit(1);
