@@ -7,6 +7,7 @@
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { LOCAL_PATHS } from "../../../config/paths";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -124,8 +125,8 @@ async function listLocalDirectory(path: string): Promise<FileItem[]> {
     const fs = await import("node:fs/promises");
     const nodePath = await import("node:path");
 
-    // 构建完整路径
-    const basePath = resolve("./dev-data/local");
+    // 构建完整路径（使用配置的本地内容根路径）
+    const basePath = resolve(LOCAL_PATHS.basePath);
     const fullPath = nodePath.join(basePath, path || "");
 
     console.log("📂 [Files API] 列出本地目录:", { path, fullPath });
@@ -207,8 +208,8 @@ async function readLocalFile(path: string): Promise<string> {
     const fs = await import("node:fs/promises");
     const nodePath = await import("node:path");
 
-    // 构建完整路径
-    const basePath = resolve("./dev-data/local");
+    // 构建完整路径（使用配置的本地内容根路径）
+    const basePath = resolve(LOCAL_PATHS.basePath);
     const fullPath = nodePath.join(basePath, path);
 
     console.log("📖 [Files API] 读取本地文件:", { path, fullPath });
@@ -265,8 +266,8 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
     const fs = await import("node:fs/promises");
     const nodePath = await import("node:path");
 
-    // 构建完整路径
-    const basePath = resolve("./dev-data/local");
+    // 构建完整路径（使用配置的本地内容根路径）
+    const basePath = resolve(LOCAL_PATHS.basePath);
     const fullOldPath = nodePath.join(basePath, oldPath);
 
     // 构建新路径
@@ -311,7 +312,7 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
 
     // 注册本地内容源
     const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-      contentPath: resolve("./dev-data/local"),
+      contentPath: resolve(LOCAL_PATHS.basePath),
     });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);

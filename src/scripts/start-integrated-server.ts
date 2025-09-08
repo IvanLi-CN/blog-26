@@ -3,7 +3,7 @@
  * 确保主应用和 WebSocket 服务器在同一个进程中运行
  */
 
-import { startIntegratedServer } from "../server/websocket-integration";
+import { startIntegratedServer } from "../server/integrated-server";
 
 console.log("🚀 启动集成服务器 (HTTP + WebSocket)...");
 console.log("这将在同一个进程中运行 Next.js 应用和 WebSocket 服务器");

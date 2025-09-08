@@ -179,13 +179,14 @@ bun run test:e2e:report
 - 测试数据包括本地文件和 WebDAV 内容
 - 使用 `bun run test-env:reset` 重置完整测试环境
 
-### 浏览器配置
+### 运行时配置
 
 - 默认使用 Chromium 浏览器
 - 视口大小：1280x720
 - 支持移动端和平板端测试
-- 自动启动 Next.js 开发服务器 (端口 3000)
-- 自动启动 WebDAV 测试服务器 (端口 8080)
+- 自动启动一体化测试服务（Next.js 应用）：端口 25090
+- 自动启动 WebDAV 测试服务器（dufs）：端口 25091
+- 实时通道采用 tRPC + HTTP SSE（不使用 WebSocket）
 
 ## 📊 测试标识符
 

@@ -79,7 +79,7 @@
     "test:precommit": "bun ./scripts/run-precommit-tests.ts",
     "test:e2e": "playwright test",
     "test:e2e:headless": "HEADLESS=true playwright test",
-    "test:e2e:verify": "bun ./scripts/verify-e2e-env.ts",
+    "test:e2e:verify": "bun ./scripts/verify-e2e-data.ts",
     "test:ci": "bun ./scripts/test-ci-workflow.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
@@ -161,7 +161,6 @@
     "unpic": "^4.1.2",
     "uuid": "^11.1.0",
     "web-vitals": "^5.1.0",
-    "ws": "^8.18.3",
     "zod": "^3.25.67"
   },
   "devDependencies": {

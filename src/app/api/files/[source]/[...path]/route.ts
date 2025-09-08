@@ -9,7 +9,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type NextRequest, NextResponse } from "next/server";
-import { getWebDAVUrl } from "@/config/paths";
+import { getLocalPath, getWebDAVUrl } from "@/config/paths";
 
 // 支持的内容源类型
 type ContentSource = "webdav" | "local";
@@ -82,7 +82,8 @@ async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
 
 // 本地文件读取
 async function readLocalFile(filePath: string): Promise<Buffer> {
-  const fullPath = join(process.cwd(), "dev-data", "local", filePath);
+  // 使用统一配置的本地内容根路径，支持通过环境变量覆盖
+  const fullPath = getLocalPath(filePath);
 
   console.log("📖 [Files API] 读取本地文件:", { filePath, fullPath });
 
@@ -129,7 +130,8 @@ async function uploadWebDAVFile(
 
 // 本地文件上传
 async function uploadLocalFile(filePath: string, buffer: Buffer): Promise<void> {
-  const fullPath = join(process.cwd(), "dev-data", "local", filePath);
+  // 使用统一配置的本地内容根路径，支持通过环境变量覆盖
+  const fullPath = getLocalPath(filePath);
   const dirPath = join(fullPath, "..");
 
   console.log("💾 [Files API] 上传文件到本地文件系统:", { filePath, fullPath });
@@ -185,7 +187,13 @@ export async function GET(
         "Cache-Control": "public, max-age=31536000", // 缓存1年
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    const message = error?.message || String(error);
+    // 对 404 进行更友好的处理，避免误判为服务器错误
+    if (message.includes("404")) {
+      console.warn("⚠️ [Files API] 文件不存在:", message);
+      return NextResponse.json({ error: "文件不存在" }, { status: 404 });
+    }
     console.error("❌ [Files API] 读取文件失败:", error);
     return NextResponse.json({ error: "读取文件失败" }, { status: 500 });
   }
