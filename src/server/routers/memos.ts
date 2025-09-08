@@ -29,6 +29,19 @@ function createWebDAVSource(): WebDAVContentSource {
 }
 
 /**
+ * 从 posts.metadata 中解析附件数组
+ */
+function parseAttachments(metadata: string | null | undefined): any[] {
+  try {
+    if (!metadata) return [];
+    const meta = JSON.parse(metadata);
+    return Array.isArray(meta.attachments) ? meta.attachments : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * 确保内容源已注册
  */
 async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
@@ -210,23 +223,26 @@ export const memosRouter = router({
       const actualMemos = hasMore ? memoList.slice(0, limit) : memoList;
 
       // 转换为 API 响应格式
-      const formattedMemos = actualMemos.map((memo) => ({
-        id: memo.id,
-        slug: memo.slug,
-        title: memo.title || "无标题 Memo",
-        excerpt: memo.excerpt,
-        content: memo.body, // 使用 body 字段匹配实际数据库结构
-        isPublic: memo.public,
-        tags: memo.tags ? JSON.parse(memo.tags) : [],
-        attachments: (memo as any).attachments ? JSON.parse((memo as any).attachments) : [],
-        author: memo.author || (memo as any).authorEmail,
-        source: memo.source,
-        dataSource: memo.dataSource || "webdav", // 使用正确的字段名
-        createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
-        updatedAt: memo.updateDate
-          ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
-          : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
-      }));
+      const formattedMemos = actualMemos.map((memo) => {
+        const attachments = parseAttachments(memo.metadata);
+        return {
+          id: memo.id,
+          slug: memo.slug,
+          title: memo.title || "无标题 Memo",
+          excerpt: memo.excerpt,
+          content: memo.body, // 使用 body 字段匹配实际数据库结构
+          isPublic: memo.public,
+          tags: memo.tags ? JSON.parse(memo.tags) : [],
+          attachments,
+          author: memo.author || undefined,
+          source: memo.source,
+          dataSource: memo.dataSource || "webdav",
+          createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
+          updatedAt: memo.updateDate
+            ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
+            : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
+        };
+      });
 
       // 生成下一页的 cursor
       let nextCursor: string | undefined;
@@ -277,17 +293,19 @@ export const memosRouter = router({
         });
       }
 
+      const attachments = parseAttachments(memo.metadata);
+
       return {
         id: memo.id,
         slug: memo.slug,
         title: memo.title || "无标题 Memo",
         excerpt: memo.excerpt,
-        content: memo.body, // 使用 body 字段匹配实际数据库结构
+        content: memo.body,
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
-        attachments: (memo as any).attachments ? JSON.parse((memo as any).attachments) : [],
-        author: memo.author || (memo as any).authorEmail,
-        source: (memo as any).source,
+        attachments,
+        author: memo.author || undefined,
+        source: memo.source,
         createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
           ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
@@ -393,14 +411,8 @@ export const memosRouter = router({
         updateDate: now,
         tags: JSON.stringify(tags),
         author: ctx.user?.email || "admin@example.com",
-        metadata: JSON.stringify({}),
+        metadata: JSON.stringify({ attachments }),
         body: content, // 使用 body 字段匹配实际数据库结构
-        authorEmail: ctx.user?.email || "admin@example.com",
-        attachments: JSON.stringify(attachments),
-        isPublic,
-        createdAt: now,
-        updatedAt: now,
-        sourcePath: `memos/${filePath}`,
         dataSource: "webdav",
       };
 
@@ -479,16 +491,22 @@ export const memosRouter = router({
 
       // 更新数据库
       const now = Math.floor(Date.now() / 1000);
+      // 合并并更新元数据
+      let meta: any = {};
+      try {
+        meta = existingMemo.metadata ? JSON.parse(existingMemo.metadata) : {};
+      } catch {}
+      meta.attachments = attachments;
+
       const updateData = {
         title: title || extractTitleFromContent(content),
         excerpt: generateExcerptFromContent(content),
         body: content, // 使用 body 字段匹配实际数据库结构
         public: isPublic,
         tags: JSON.stringify(tags),
-        attachments: JSON.stringify(attachments),
+        metadata: JSON.stringify(meta),
         updateDate: now,
         lastModified: now,
-        updatedAt: now,
         contentHash: calculateSimpleHash(content),
       };
 

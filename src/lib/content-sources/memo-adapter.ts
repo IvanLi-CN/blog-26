@@ -51,7 +51,7 @@ export function memoToContentItem(memo: PostRow): ContentItem {
 /**
  * 将 ContentItem 转换为 Memo 数据库记录
  */
-export function contentItemToMemo(item: ContentItem, authorEmail: string): Partial<PostRow> {
+export function contentItemToMemo(item: ContentItem): Partial<PostRow> {
   const metadata = { ...item.metadata };
 
   // 提取 memo 特有字段
@@ -82,7 +82,7 @@ export function contentItemToMemo(item: ContentItem, authorEmail: string): Parti
     tags: JSON.stringify(item.tags),
     author: item.author,
     image: item.image,
-    metadata: JSON.stringify({ ...metadata, attachments, authorEmail }),
+    metadata: JSON.stringify({ ...metadata, attachments }),
 
     // Post body 字段
     body: content,
