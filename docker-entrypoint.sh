@@ -47,7 +47,7 @@ if [ "$(id -u)" = "0" ]; then
 
   # 以目标身份执行迁移（可容忍失败，避免影响服务启动）
   echo "🔄 Running database migrations as ${RUN_UID}:${RUN_GID}..."
-  if gosu ${RUN_UID}:${RUN_GID} env DB_PATH="$DB_PATH" bun run migrate; then
+  if gosu ${RUN_UID}:${RUN_GID} env DB_PATH="$DB_PATH" bun ./scripts/migrate.ts; then
     echo "✅ Database migrations completed"
   else
     echo "❌ Database migrations failed, but continuing..."
@@ -64,7 +64,7 @@ else
   fi
   echo "✅ Config validation passed (WEBDAV_URL present)"
   echo "🔄 Running database migrations as current user..."
-  if DB_PATH="$DB_PATH" bun run migrate; then
+  if DB_PATH="$DB_PATH" bun ./scripts/migrate.ts; then
     echo "✅ Database migrations completed"
   else
     echo "❌ Database migrations failed, but continuing..."
