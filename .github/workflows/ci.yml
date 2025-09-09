@@ -21,7 +21,7 @@ concurrency:
 
 env:
   REGISTRY: git.ivanli.cc
-  IMAGE_NAME: Ivan/blog-astrowind
+  IMAGE_NAME: ivan/blog-astrowind
   PLATFORMS: linux/amd64
   # E2E 测试环境变量
   NODE_ENV: test
