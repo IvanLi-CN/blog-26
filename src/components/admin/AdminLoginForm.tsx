@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 interface AdminLoginFormProps {
   luosimaoSiteKey?: string;
 }
 
-export default function AdminLoginForm(_props: AdminLoginFormProps) {
+export default function AdminLoginForm(props: AdminLoginFormProps) {
+  const { luosimaoSiteKey } = props;
   const router = useRouter();
   const emailId = useId();
   const codeId = useId();
@@ -16,7 +17,44 @@ export default function AdminLoginForm(_props: AdminLoginFormProps) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [captchaResponse, _setCaptchaResponse] = useState("");
+  const [captchaResponse, setCaptchaResponse] = useState("");
+
+  // 检查是否配置了 Luosimao 验证码
+  const isLuosimaoConfigured = !!luosimaoSiteKey;
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  // 加载 Luosimao 验证码脚本
+  useEffect(() => {
+    if (isLuosimaoConfigured && !isDevelopment) {
+      const scriptId = "luosimao-captcha-script";
+      if (document.getElementById(scriptId)) {
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "//captcha.luosimao.com/static/dist/api.js";
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+
+      // 设置全局回调函数
+      (
+        window as typeof window & { handleCaptchaSuccess?: (response: string) => void }
+      ).handleCaptchaSuccess = (response: string) => {
+        setCaptchaResponse(response);
+      };
+
+      return () => {
+        const scriptElement = document.getElementById(scriptId);
+        if (scriptElement) {
+          document.body.removeChild(scriptElement);
+        }
+        delete (window as typeof window & { handleCaptchaSuccess?: (response: string) => void })
+          .handleCaptchaSuccess;
+      };
+    }
+  }, [isLuosimaoConfigured, isDevelopment]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +63,7 @@ export default function AdminLoginForm(_props: AdminLoginFormProps) {
 
     try {
       // 在开发环境中使用绕过验证码
-      const captchaValue =
-        process.env.NODE_ENV === "development" ? "development-bypass" : captchaResponse;
+      const captchaValue = isDevelopment ? "development-bypass" : captchaResponse;
 
       if (!captchaValue) {
         setError("请完成人机验证");
@@ -136,14 +173,22 @@ export default function AdminLoginForm(_props: AdminLoginFormProps) {
                   />
                 </div>
 
-                {/* 人机验证 - 开发环境中显示提示 */}
+                {/* 人机验证 */}
                 <div>
                   <label className="label pb-1" htmlFor="captcha">
                     <span className="label-text font-medium">人机验证</span>
                   </label>
-                  {process.env.NODE_ENV === "development" ? (
+                  {isDevelopment ? (
                     <div className="alert alert-info">
                       <span>开发环境：人机验证已自动通过</span>
+                    </div>
+                  ) : isLuosimaoConfigured ? (
+                    <div className="p-4 bg-base-50 rounded-lg border border-base-200">
+                      <div
+                        className="l-captcha"
+                        data-site-key={luosimaoSiteKey}
+                        data-callback="handleCaptchaSuccess"
+                      ></div>
                     </div>
                   ) : (
                     <div className="alert alert-warning">

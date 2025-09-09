@@ -78,7 +78,6 @@
         "unpic": "^4.1.2",
         "uuid": "^11.1.0",
         "web-vitals": "^5.1.0",
-        "ws": "^8.18.3",
         "zod": "^3.25.67",
       },
       "devDependencies": {

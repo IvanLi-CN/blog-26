@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default function AdminLoginPage() {
-  const luosimaoSiteKey = process.env.PUBLIC_LUOSIMAO_SITE_KEY;
+  const luosimaoSiteKey = process.env.NEXT_PUBLIC_LUOSIMAO_SITE_KEY;
 
   return <AdminLoginForm luosimaoSiteKey={luosimaoSiteKey} />;
 }
