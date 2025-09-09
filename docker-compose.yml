@@ -20,6 +20,9 @@ services:
       
       # 数据库配置
       - DB_PATH=/app/data/sqlite.db
+      # 运行身份（用于容器内降权），若未定义则默认 1000:1000
+      - RUN_UID=${APP_UID:-1000}
+      - RUN_GID=${APP_GID:-1000}
       
       # OpenAI 配置
       - OPENAI_API_KEY=${OPENAI_API_KEY}
