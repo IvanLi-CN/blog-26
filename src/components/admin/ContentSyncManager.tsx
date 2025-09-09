@@ -83,6 +83,10 @@ export function ContentSyncManager() {
   const { data: contentStats, refetch: refetchContentStats } =
     trpc.admin.contentSync.getContentStats.useQuery();
 
+  // 向量化统计
+  const { data: vectorStats, refetch: refetchVectorStats } =
+    trpc.admin.vectorize.getVectorizationStats.useQuery();
+
   // API 变更
   const triggerSyncMutation = trpc.admin.contentSync.triggerSync.useMutation({
     onSuccess: async (result) => {
@@ -106,6 +110,13 @@ export function ContentSyncManager() {
     },
     onError: (error) => {
       console.error(`取消同步失败: ${error.message}`);
+    },
+  });
+
+  // 向量化触发
+  const triggerVectorize = trpc.admin.vectorize.triggerVectorize.useMutation({
+    onSuccess: async () => {
+      await refetchVectorStats();
     },
   });
 
@@ -308,6 +319,14 @@ export function ContentSyncManager() {
   // 取消同步
   const handleCancelSync = () => {
     cancelSyncMutation.mutate();
+  };
+
+  // 触发向量化
+  const handleVectorize = (isFull: boolean) => {
+    setShowLogs(true);
+    setAutoScroll(true);
+    setSyncLogs([]);
+    triggerVectorize.mutate({ isFull });
   };
 
   return (
@@ -617,6 +636,49 @@ export function ContentSyncManager() {
                         刷新状态
                       </>
                     )}
+                  </button>
+                </div>
+              </div>
+
+              {/* 向量化控制与统计 */}
+              <div className="mt-4 bg-base-200/50 rounded-xl p-3 border border-base-300">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-semibold flex items-center">
+                    <Icon name="lucide:sparkles" className="w-5 h-5 mr-2" />
+                    AI 向量化
+                  </h3>
+                  {vectorStats && (
+                    <div className="text-sm text-base-content/70">
+                      模型: {vectorStats.model} · 维度: {vectorStats.dim} · 已索引:{" "}
+                      {vectorStats.indexed}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <button
+                    type="button"
+                    className={`btn btn-primary ${triggerVectorize.isPending ? "loading" : ""}`}
+                    onClick={() => handleVectorize(true)}
+                    disabled={triggerVectorize.isPending}
+                  >
+                    全量向量化
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-secondary ${triggerVectorize.isPending ? "loading" : ""}`}
+                    onClick={() => handleVectorize(false)}
+                    disabled={triggerVectorize.isPending}
+                  >
+                    增量向量化
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => refetchVectorStats()}
+                    disabled={triggerVectorize.isPending}
+                  >
+                    刷新向量化统计
                   </button>
                 </div>
               </div>
