@@ -83,3 +83,10 @@ logs/
 Thumbs.db
 
 .augment
+.serena/.gitignore
+.serena/project.yml
+.serena/memories/post_task_checklist.md
+.serena/memories/project_overview.md
+.serena/memories/style_and_conventions.md
+.serena/memories/suggested_commands.md
+.serena/memories/system_utils_darwin.md

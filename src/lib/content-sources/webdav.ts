@@ -354,33 +354,6 @@ export class WebDAVContentSource extends ContentSourceBase {
   }
 
   /**
-   * 在多个路径中搜索文件
-   * @param filename 文件名
-   * @param contentType 内容类型
-   * @returns 找到的完整路径，如果未找到则返回 null
-   */
-  private async findFileInContentPaths(
-    filename: string,
-    contentType: keyof typeof this.pathMappings
-  ): Promise<string | null> {
-    const searchPaths = this.pathMappings[contentType];
-
-    for (const basePath of searchPaths) {
-      const fullPath = `${basePath}/${filename}`.replace(/\/+/g, "/");
-
-      try {
-        // 尝试获取文件内容来验证文件存在
-        await this.webdavClient.getFileContent(fullPath);
-        return fullPath;
-      } catch (_error) {
-        // 文件不存在或无法访问，跳过
-      }
-    }
-
-    return null;
-  }
-
-  /**
    * 写入文件内容
    */
   async writeFile(filePath: string, content: string): Promise<void> {
@@ -525,50 +498,6 @@ export class WebDAVContentSource extends ContentSourceBase {
       this.log("error", `上传 memo 附件失败: ${filename}`, undefined, { error: errorMessage });
       throw error;
     }
-  }
-
-  // ============================================================================
-  // Memo 辅助方法
-  // ============================================================================
-
-  /**
-   * 生成 memo slug
-   */
-  private generateMemoSlug(content: string, timestamp: number): string {
-    // 尝试从内容中提取标题
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    if (titleMatch) {
-      const titleSlug = this.slugify(titleMatch[1]);
-      if (titleSlug && titleSlug !== "untitled") {
-        return `${titleSlug}-${timestamp}`;
-      }
-    }
-
-    // 使用第一行内容
-    const firstLine = content.split("\n")[0]?.trim();
-    if (firstLine && firstLine.length > 0) {
-      const lineSlug = this.slugify(firstLine.substring(0, 30));
-      if (lineSlug && lineSlug !== "untitled") {
-        return `${lineSlug}-${timestamp}`;
-      }
-    }
-
-    // 使用时间戳
-    return `memo-${timestamp}`;
-  }
-
-  /**
-   * 将字符串转换为 slug
-   */
-  private slugify(text: string): string {
-    const result = text
-      .toLowerCase()
-      .replace(/[^\w\s\u4e00-\u9fff-]/g, "") // 移除特殊字符，但保留中文字符
-      .replace(/[\s_-]+/g, "-") // 替换空格和下划线为连字符
-      .replace(/^-+|-+$/g, ""); // 移除首尾连字符
-
-    // 如果结果为空，返回一个默认值
-    return result || "untitled";
   }
 
   /**

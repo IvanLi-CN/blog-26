@@ -64,25 +64,25 @@
 
 /* Milkdown 编辑器自动高度样式 */
 .milkdown-editor {
-  height: auto !important;
+  height: auto;
   min-height: inherit;
 }
 
 .milkdown-editor .milkdown {
-  height: auto !important;
+  height: auto;
   min-height: inherit;
 }
 
 .milkdown-editor .editor {
-  height: auto !important;
+  height: auto;
   min-height: inherit;
-  overflow: visible !important;
+  overflow: visible;
 }
 
 .milkdown-editor .ProseMirror {
-  height: auto !important;
+  height: auto;
   min-height: inherit;
-  overflow: visible !important;
+  overflow: visible;
   resize: none;
 }
 

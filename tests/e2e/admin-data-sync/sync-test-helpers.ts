@@ -363,37 +363,6 @@ export class SyncStatusDetector {
   }
 
   /**
-   * 等待加载指示器消失
-   */
-  private async waitForLoadingIndicators(context: string): Promise<void> {
-    try {
-      // 常见的加载指示器选择器
-      const loadingSelectors = [
-        ".loading",
-        ".spinner",
-        "[data-loading='true']",
-        ".sync-indicator",
-        "text=同步中",
-        "text=保存中",
-        "text=处理中",
-      ];
-
-      for (const selector of loadingSelectors) {
-        const elements = this.page.locator(selector);
-        const count = await elements.count();
-
-        if (count > 0) {
-          console.log(`⏳ [${context}] 等待加载指示器消失: ${selector}`);
-          await elements.first().waitFor({ state: "hidden", timeout: 10000 });
-        }
-      }
-    } catch (_error) {
-      // 忽略加载指示器等待错误
-      console.log(`ℹ️ [${context}] 加载指示器等待完成（可能没有指示器）`);
-    }
-  }
-
-  /**
    * 验证同步成功的指标
    */
   async verifySyncSuccess(context: string): Promise<boolean> {

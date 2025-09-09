@@ -131,17 +131,12 @@ export class WebDAVClient {
   private baseUrl: string;
   private username: string;
   private password: string;
-  private excludePaths: string[];
   public projectsPaths: string[];
   private memosPaths: string[];
 
   // 向后兼容的单路径属性
   public get projectsPath(): string {
     return this.projectsPaths.length > 0 ? this.projectsPaths[0] : "";
-  }
-
-  private get memosPath(): string {
-    return this.memosPaths.length > 0 ? this.memosPaths[0] : "";
   }
 
   constructor() {
@@ -454,15 +449,6 @@ export class WebDAVClient {
   async listFiles(dirPath: string = "/", recursive: boolean = false): Promise<WebDAVFile[]> {
     const depth = recursive ? "infinity" : 1;
     return await this.propfind(dirPath, depth);
-  }
-
-  /**
-   * 检查路径是否应该被排除
-   */
-  private shouldExcludePath(path: string): boolean {
-    return this.excludePaths.some(
-      (excludePath) => path.includes(excludePath) || path.startsWith(`/${excludePath}`)
-    );
   }
 
   /**

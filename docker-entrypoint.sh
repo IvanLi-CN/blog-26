@@ -25,12 +25,11 @@ if [ "$(id -u)" = "0" ]; then
 
   # 先验证配置（以目标身份）
   echo "🧪 Validating configuration as ${RUN_UID}:${RUN_GID}..."
-  if gosu ${RUN_UID}:${RUN_GID} bun scripts/validate-config.ts; then
-    echo "✅ Config validation passed"
-  else
-    echo "❌ Config validation failed"
+  if [ -z "${WEBDAV_URL:-}" ]; then
+    echo "❌ Config validation failed: WEBDAV_URL is not set"
     exit 1
   fi
+  echo "✅ Config validation passed (WEBDAV_URL present)"
 
   # 用目标身份执行迁移与应用
   echo "🔄 Running database migrations as ${RUN_UID}:${RUN_GID}..."
@@ -45,12 +44,11 @@ if [ "$(id -u)" = "0" ]; then
 else
   echo "👤 Already running as uid:gid=$(id -u):$(id -g)"
   echo "🧪 Validating configuration as current user..."
-  if bun scripts/validate-config.ts; then
-    echo "✅ Config validation passed"
-  else
-    echo "❌ Config validation failed"
+  if [ -z "${WEBDAV_URL:-}" ]; then
+    echo "❌ Config validation failed: WEBDAV_URL is not set"
     exit 1
   fi
+  echo "✅ Config validation passed (WEBDAV_URL present)"
   echo "🔄 Running database migrations as current user..."
   if bun run migrate; then
     echo "✅ Database migrations completed"

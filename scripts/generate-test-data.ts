@@ -2767,10 +2767,7 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
 
     if (executing.length >= concurrencyLimit) {
       await Promise.race(executing);
-      executing.splice(
-        executing.findIndex((p) => p === promise),
-        1
-      );
+      executing.splice(executing.indexOf(promise), 1);
     }
   }
 

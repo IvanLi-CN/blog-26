@@ -56,7 +56,6 @@ export interface ContentMergeStrategy {
 export class ContentSourceManager {
   private sources = new Map<string, IContentSource>();
   private config: Required<ContentSourceManagerConfig>;
-  private mergeStrategy: ContentMergeStrategy;
   private currentSync: SyncProgress | null = null;
   private syncHistory: SyncResult[] = [];
 
