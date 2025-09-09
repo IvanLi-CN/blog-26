@@ -47,10 +47,10 @@ async function mapWithConcurrency<T, R>(
     while (next < items.length && running.length < Math.max(1, limit)) {
       const i = next++;
       const p = runOne(i).then(() => {
-        const idx = running.indexOf(p as any);
+        const idx = running.indexOf(p);
         if (idx >= 0) running.splice(idx, 1);
       });
-      running.push(p as any);
+      running.push(p);
     }
     if (running.length > 0) await Promise.race(running);
   }
@@ -125,8 +125,8 @@ export async function vectorizeAll(params: {
       }
 
       const input = buildEmbeddingInput({
-        title: (p as any).title,
-        excerpt: (p as any).excerpt,
+        title: p.title,
+        excerpt: p.excerpt,
         body: p.body,
       });
       const contentHash = hashEmbeddingInput(input);
@@ -236,7 +236,7 @@ export async function vectorizeOneBySlug(params: {
   if (rows.length === 0) throw new Error(`Post not found: ${params.slug}`);
   const p = rows[0]!;
 
-  const input = buildEmbeddingInput(p as any);
+  const input = buildEmbeddingInput({ title: p.title, excerpt: p.excerpt, body: p.body });
   const contentHash = hashEmbeddingInput(input);
 
   if (chunking) {

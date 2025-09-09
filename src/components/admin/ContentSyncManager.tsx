@@ -51,11 +51,14 @@ interface SourceStatus {
 
 interface SyncLog {
   id: string;
+  sourceType: string;
   sourceName: string;
   operation: string;
   status: string;
   message: string;
   filePath?: string | null;
+  // 某些日志会附带额外数据
+  data?: unknown;
   createdAt: number;
 }
 
@@ -174,17 +177,52 @@ export function ContentSyncManager() {
 
       // 类型守卫：确保 event 是我们期望的格式
       if (typeof event === "object" && event !== null && "type" in event) {
-        const typedEvent = event as { type: string; data: unknown };
+        type ConnectedEvent = { type: "connected"; data: { message: string } };
+        type SyncStartEvent = {
+          type: "sync:start";
+          data: { syncSessionId: string; syncType: string; timestamp: number };
+        };
+        type SyncLogEvent = {
+          type: "sync:log";
+          data: {
+            id: string;
+            sourceType: string;
+            sourceName: string;
+            operation: string;
+            status: string;
+            message: string;
+            filePath?: string;
+            data?: unknown;
+            createdAt: number;
+          };
+        };
+        type SyncCompleteEvent = {
+          type: "sync:complete";
+          data: {
+            syncSessionId: string;
+            success: boolean;
+            timestamp: number;
+            stats?: {
+              total?: number;
+              processed?: number;
+              success?: number;
+              failed?: number;
+              model?: string;
+            };
+          };
+        };
+        type SyncEvent = ConnectedEvent | SyncStartEvent | SyncLogEvent | SyncCompleteEvent;
+        const typedEvent = event as SyncEvent;
 
         switch (typedEvent.type) {
           case "connected":
-            console.log(`✅ 订阅已连接 msg="${(typedEvent.data as { message: string }).message}"`);
+            console.log(`✅ 订阅已连接 msg="${typedEvent.data.message}"`);
             break;
 
           case "sync:start": {
-            const d = typedEvent.data as any;
+            const d = typedEvent.data;
             console.log(
-              `🚀 同步开始 session=${d?.syncSessionId} type=${d?.syncType} ts=${d?.timestamp}`
+              `🚀 同步开始 session=${d.syncSessionId} type=${d.syncType} ts=${d.timestamp}`
             );
             // 清空旧日志，准备接收新的同步日志
             setSyncLogs([]);
@@ -198,17 +236,7 @@ export function ContentSyncManager() {
           }
 
           case "sync:log": {
-            const logData = typedEvent.data as {
-              id: string;
-              sourceType: string;
-              sourceName: string;
-              operation: string;
-              status: string;
-              message: string;
-              filePath?: string;
-              data?: unknown;
-              createdAt: number;
-            };
+            const logData = typedEvent.data;
             console.log(
               `📝 同步日志 status=${logData.status} op=${logData.operation} src=${logData.sourceName} msg="${logData.message}" path=${
                 logData.filePath || ""
@@ -224,10 +252,9 @@ export function ContentSyncManager() {
               status: logData.status,
               message: logData.message,
               filePath: logData.filePath,
-              // @ts-ignore data 字段用于渲染时可选存在
               data: logData.data,
               createdAt: logData.createdAt,
-            } as unknown as SyncLog;
+            };
 
             pendingLogsRef.current.push(buffered);
             scheduleRateLimitedFlush();
@@ -235,14 +262,14 @@ export function ContentSyncManager() {
           }
 
           case "sync:complete": {
-            const d = typedEvent.data as any;
-            const stats = (d?.stats as any) || {};
+            const d = typedEvent.data;
+            const stats = d.stats || {};
             console.log(
-              `✅ 同步完成 session=${d?.syncSessionId} success=${d?.success} total=${
+              `✅ 同步完成 session=${d.syncSessionId} success=${d.success} total=${
                 stats.total ?? ""
               } processed=${stats.processed ?? ""} ok=${stats.success ?? ""} failed=${
                 stats.failed ?? ""
-              } model=${stats.model ?? ""} ts=${d?.timestamp}`
+              } model=${stats.model ?? ""} ts=${d.timestamp}`
             );
             setIsLoading(false);
 

@@ -210,12 +210,18 @@ export async function createEmbedding(
     throw new Error(`Embedding request failed: ${res.status} ${res.statusText} ${text}`);
   }
 
-  const json: any = await res.json();
-  const data = json?.data?.[0];
-  if (!data?.embedding || !Array.isArray(data.embedding)) {
+  const json: unknown = await res.json();
+  type EmbeddingAPIResponse = { data?: Array<{ embedding?: unknown }> };
+  const isEmbeddingResponse = (x: unknown): x is EmbeddingAPIResponse =>
+    typeof x === "object" && x !== null;
+  if (!isEmbeddingResponse(json) || !Array.isArray(json.data) || json.data.length === 0) {
     throw new Error("Invalid embedding response");
   }
-  const vector = data.embedding as number[];
+  const first = json.data[0];
+  if (!first || !Array.isArray(first.embedding)) {
+    throw new Error("Invalid embedding response");
+  }
+  const vector = first.embedding as number[];
   const dim = vector.length;
   return { model: modelName, dim, vector };
 }

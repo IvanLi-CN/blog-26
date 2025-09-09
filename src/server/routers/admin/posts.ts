@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
+import { EmbeddingsRepository, type VectorizationStatus } from "@/lib/ai/embeddings-repo";
 import { db } from "../../../lib/db";
-import { posts } from "../../../lib/schema";
+import { type Post as PostRow, posts } from "../../../lib/schema";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 // 输入验证 schemas
@@ -106,14 +106,16 @@ export const adminPostsRouter = createTRPCRouter({
 
       // 计算向量化状态
       const model = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
-      const postsWithVector = await Promise.all(
+      type PostWithVector = PostRow & { vectorizationStatus?: VectorizationStatus };
+      const postsWithVector: PostWithVector[] = await Promise.all(
         postsList.map(async (p) => {
           const status = await EmbeddingsRepository.getVectorizationStatus(
             p.id,
             model,
             p.contentHash
           );
-          return { ...p, vectorizationStatus: status } as any;
+          const enriched: PostWithVector = { ...p, vectorizationStatus: status };
+          return enriched;
         })
       );
 

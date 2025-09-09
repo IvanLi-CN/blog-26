@@ -250,7 +250,7 @@ export default function AdminPostsManager() {
                       </td>
                       <td>
                         {(() => {
-                          const s = (post as any).vectorizationStatus as
+                          const s = post.vectorizationStatus as
                             | "indexed"
                             | "unindexed"
                             | "outdated"

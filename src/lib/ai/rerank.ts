@@ -50,7 +50,11 @@ export async function rerank(
 ): Promise<RerankItem[]> {
   const modelName = opts?.model || process.env.RERANKER_MODEL_NAME;
   if (!modelName) {
-    const err: any = new Error("RERANKER_UNAVAILABLE");
+    interface RerankerUnavailable extends Error {
+      code: "RERANKER_UNAVAILABLE";
+      details?: string;
+    }
+    const err = new Error("RERANKER_UNAVAILABLE") as RerankerUnavailable;
     err.code = "RERANKER_UNAVAILABLE";
     throw err;
   }
@@ -58,7 +62,12 @@ export async function rerank(
     throw new Error("OPENAI_API_BASE_URL or OPENAI_API_KEY is not configured");
   }
 
-  const payload = { model: modelName, query, documents, top_n: opts?.topN } as any;
+  const payload: { model: string; query: string; documents: string[]; top_n?: number } = {
+    model: modelName,
+    query,
+    documents,
+    top_n: opts?.topN,
+  };
   const base = OPENAI_API_BASE_URL.replace(/\/$/, "");
   const apiBase = base.endsWith("/v1") ? base : `${base}/v1`;
   const res = await fetchWithBackoff(
@@ -76,7 +85,11 @@ export async function rerank(
 
   if (!res.ok) {
     // 标准化为不可用错误，不做降级
-    const err: any = new Error("RERANKER_UNAVAILABLE");
+    interface RerankerUnavailable extends Error {
+      code: "RERANKER_UNAVAILABLE";
+      details?: string;
+    }
+    const err = new Error("RERANKER_UNAVAILABLE") as RerankerUnavailable;
     err.code = "RERANKER_UNAVAILABLE";
     try {
       err.details = await res.text();
@@ -84,7 +97,17 @@ export async function rerank(
     throw err;
   }
 
-  const json: any = await res.json();
-  const items = (json?.data || []) as RerankItem[];
+  const json: unknown = await res.json();
+  const items: RerankItem[] = Array.isArray((json as { data?: unknown }).data)
+    ? ((json as { data: unknown }).data as unknown[])
+        .map((it, index) => {
+          const o = it as Record<string, unknown>;
+          const i = typeof o.index === "number" ? o.index : index;
+          const document = typeof o.document === "string" ? o.document : "";
+          const score = typeof o.score === "number" ? o.score : 0;
+          return { index: i, document, score };
+        })
+        .filter((x) => typeof x.index === "number")
+    : [];
   return items;
 }

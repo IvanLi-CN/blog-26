@@ -101,8 +101,16 @@ export async function enhanced(
         return { ...r, rerank: rr, final };
       })
       .sort((a, b) => (b.final ?? 0) - (a.final ?? 0));
-  } catch (err: any) {
-    if (err?.code === "RERANKER_UNAVAILABLE") {
+  } catch (err: unknown) {
+    const hasCode = (e: unknown, code: string): e is { code: string } => {
+      return (
+        typeof e === "object" &&
+        e !== null &&
+        "code" in (e as Record<string, unknown>) &&
+        (e as Record<string, unknown>).code === code
+      );
+    };
+    if (hasCode(err, "RERANKER_UNAVAILABLE")) {
       throw err; // 由上层返回明确错误
     }
     throw err;
