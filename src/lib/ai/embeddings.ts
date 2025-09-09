@@ -3,6 +3,53 @@ import crypto from "node:crypto";
 const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL || "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithBackoff(
+  makeRequest: () => Promise<Response>,
+  options?: { retries?: number; initialDelayMs?: number; maxDelayMs?: number }
+): Promise<Response> {
+  const retries = options?.retries ?? 5;
+  const initialDelayMs = options?.initialDelayMs ?? 100;
+  const maxDelayMs = options?.maxDelayMs ?? 3000;
+
+  let attempt = 0;
+  let delay = initialDelayMs;
+
+  while (true) {
+    try {
+      const res = await makeRequest();
+      if (res.ok) return res;
+
+      // Retry on 429 or 5xx
+      if (res.status === 429 || res.status >= 500) {
+        if (attempt >= retries) return res; // give up and let caller handle
+        // Respect Retry-After when available
+        const retryAfter = res.headers.get("retry-after");
+        let wait = retryAfter ? Number(retryAfter) * 1000 : delay;
+        if (!Number.isFinite(wait) || wait <= 0) wait = delay;
+        // jitter
+        wait = Math.min(maxDelayMs, Math.floor(wait * (1 + Math.random() * 0.25)));
+        await sleep(wait);
+        attempt++;
+        delay = Math.min(maxDelayMs, Math.floor(delay * 2));
+        continue;
+      }
+
+      return res;
+    } catch (err) {
+      // network error: retry with backoff
+      if (attempt >= retries) throw err;
+      const wait = Math.min(maxDelayMs, Math.floor(delay * (1 + Math.random() * 0.25)));
+      await sleep(wait);
+      attempt++;
+      delay = Math.min(maxDelayMs, Math.floor(delay * 2));
+    }
+  }
+}
+
 export type EmbeddingResponse = {
   model: string;
   dim: number;
@@ -18,14 +65,18 @@ export async function createEmbedding(input: string, model?: string): Promise<Em
 
   const base = OPENAI_API_BASE_URL.replace(/\/$/, "");
   const apiBase = base.endsWith("/v1") ? base : `${base}/v1`;
-  const res = await fetch(`${apiBase}/embeddings`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({ model: modelName, input }),
-  });
+  const res = await fetchWithBackoff(
+    () =>
+      fetch(`${apiBase}/embeddings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({ model: modelName, input }),
+      }),
+    { retries: 5, initialDelayMs: 100, maxDelayMs: 3000 }
+  );
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
