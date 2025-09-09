@@ -23,7 +23,21 @@ echo "[docker-build] Target: ${TARGET}"
 echo "[docker-build] Image:  ${IMAGE_TAG}"
 echo "[docker-build] drizzle-orm: ${DRIZZLE_ORM_VERSION}"
 
-docker build \
+# Prefer buildx when available
+if docker buildx version >/dev/null 2>&1; then
+  export DOCKER_BUILDKIT=1
+  export BUILDKIT_PROGRESS=${BUILDKIT_PROGRESS:-plain}
+  BUILD_CMD=(docker buildx build --load)
+else
+  echo "[docker-build] buildx is not available."
+  echo "[docker-build] This Dockerfile uses RUN --mount which requires BuildKit/buildx."
+  echo "[docker-build] Please install buildx (Docker Desktop has it built-in) or:"
+  echo "[docker-build]   - On Linux: sudo apt-get install docker-buildx-plugin (or equivalent)"
+  echo "[docker-build]   - Or: docker buildx install"
+  exit 1
+fi
+
+"${BUILD_CMD[@]}" \
   --file Dockerfile \
   --target "${TARGET}" \
   --build-arg "WITH_PLAYWRIGHT=${WITH_PLAYWRIGHT}" \
@@ -32,4 +46,3 @@ docker build \
   .
 
 echo "[docker-build] Done. Run: docker run --rm -p 25090:25090 ${IMAGE_TAG}"
-
