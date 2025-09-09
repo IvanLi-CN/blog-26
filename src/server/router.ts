@@ -5,6 +5,7 @@ import { commentsRouter } from "./routers/comments";
 import { memosRouter } from "./routers/memos";
 import { postsRouter } from "./routers/posts";
 import { reactionsRouter } from "./routers/reactions";
+import { searchRouter } from "./routers/search";
 import { createTRPCRouter, publicProcedure } from "./trpc";
 
 export const appRouter = createTRPCRouter({
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
 
   // 反应路由
   reactions: reactionsRouter,
+  search: searchRouter,
 
   // 健康检查端点
   health: publicProcedure.query(() => {
