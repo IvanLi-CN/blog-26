@@ -42,6 +42,7 @@
     "lint": "bun --bun next lint",
     "check": "biome check",
     "fix": "biome check --write",
+    "docker:build": "bash ./scripts/docker-build.sh",
     "migrate": "bun ./scripts/migrate.ts",
     "seed": "bun ./scripts/seed.ts",
     "seed:clear": "bun ./scripts/seed.ts --clear",
