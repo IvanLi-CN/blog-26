@@ -32,6 +32,13 @@ export default function AdminPostsManager() {
     },
   });
 
+  // 向量化（单篇）
+  const vectorizeBySlug = trpc.admin.vectorize.vectorizeBySlug.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+  });
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -271,12 +278,14 @@ export default function AdminPostsManager() {
                           </Link>
                           <button
                             type="button"
-                            className="btn btn-sm btn-secondary"
+                            className={`btn btn-sm btn-secondary ${vectorizeBySlug.isPending ? "loading" : ""}`}
+                            disabled={vectorizeBySlug.isPending}
                             onClick={async () => {
-                              await trpc.admin.vectorize.vectorizeBySlug.mutate({
-                                slug: post.slug,
-                              });
-                              refetch();
+                              try {
+                                await vectorizeBySlug.mutateAsync({ slug: post.slug });
+                              } catch (err) {
+                                console.error("强制向量化失败:", err);
+                              }
                             }}
                           >
                             强制向量化
