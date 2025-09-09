@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // 适配实际数据库结构
 export const users = sqliteTable("users", {
@@ -60,6 +60,35 @@ export const vectorizedFiles = sqliteTable("vectorized_files", {
   vector: blob("vector"), // BLOB 类型存储向量 embeddings
   errorMessage: text("error_message"), // 向量化失败原因
 });
+
+// 独立向量表（方案B）：post_embeddings
+// 支持文档级（chunkIndex = -1）与 chunk 级索引
+export const postEmbeddings = sqliteTable(
+  "post_embeddings",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id").notNull(),
+    slug: text("slug").notNull(),
+    type: text("type").notNull(), // post | memo | project
+    modelName: text("model_name").notNull(),
+    dim: integer("dim").notNull(),
+    contentHash: text("content_hash").notNull(),
+    chunkIndex: integer("chunk_index"), // 文档级记录使用 -1
+    vector: blob("vector"), // Float32Array -> BLOB
+    errorMessage: text("error_message"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => ({
+    uqPostModelChunk: uniqueIndex("post_embeddings_uq_post_model_chunk").on(
+      t.postId,
+      t.modelName,
+      t.chunkIndex
+    ),
+    idxSlugModel: index("post_embeddings_idx_slug_model").on(t.slug, t.modelName),
+    idxTypeModel: index("post_embeddings_idx_type_model").on(t.type, t.modelName),
+  })
+);
 
 // 反应表
 export const reactions = sqliteTable("reactions", {
@@ -156,6 +185,9 @@ export const contentSyncStatus = sqliteTable("content_sync_status", {
 // 类型导出
 export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data
 export type NewVectorizedFile = typeof vectorizedFiles.$inferInsert; // Infer type for inserting data
+
+export type PostEmbedding = typeof postEmbeddings.$inferSelect;
+export type NewPostEmbedding = typeof postEmbeddings.$inferInsert;
 
 export type ContentSyncLog = typeof contentSyncLogs.$inferSelect;
 export type NewContentSyncLog = typeof contentSyncLogs.$inferInsert;
