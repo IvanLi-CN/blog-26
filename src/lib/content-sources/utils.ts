@@ -4,7 +4,6 @@
  * 提供 Markdown 解析、哈希计算、路径处理等通用工具函数
  */
 
-import { createHash } from "crypto";
 import matter from "gray-matter";
 import limax from "limax";
 import { nanoid } from "nanoid";
@@ -115,7 +114,14 @@ export function createContentItemFromParsed(
  * @param algorithm 哈希算法，默认为 sha256
  */
 export function calculateContentHash(content: string, algorithm: string = "sha256"): string {
-  return createHash(algorithm).update(content, "utf8").digest("hex");
+  // Avoid Node-specific APIs to keep this safe for client bundles.
+  // Fallback: FNV-1a 32-bit hash (sufficient for change detection in UI)
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < content.length; i++) {
+    hash ^= content.charCodeAt(i);
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 /**
