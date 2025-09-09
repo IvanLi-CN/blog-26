@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { trpc } from "../../lib/trpc";
+import type { MemoCardData } from "./MemoCard";
 import type { MemoData } from "./MemoEditor";
 import type { QuickMemoData } from "./QuickMemoEditor";
 
@@ -52,14 +53,17 @@ export function useMemos(options: UseMemosOptions = {}) {
   );
 
   // 合并所有页面的数据
-  const allMemos = useMemo(() => {
+  const allMemos = useMemo<MemoCardData[]>(() => {
     if (!data?.pages) return [];
 
-    return data.pages.flatMap((page) =>
-      page.memos.map((memo) => ({
-        ...memo,
-        excerpt: memo.excerpt ?? undefined,
-      }))
+    return data.pages.flatMap(
+      (page) =>
+        page.memos.map((memo) => ({
+          ...memo,
+          excerpt: memo.excerpt ?? undefined,
+          // Ensure required fields satisfy MemoCardData
+          tags: (memo as Partial<MemoCardData>).tags ?? [],
+        })) as MemoCardData[]
     );
   }, [data]);
 

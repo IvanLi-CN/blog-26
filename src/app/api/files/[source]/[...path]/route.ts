@@ -187,8 +187,8 @@ export async function GET(
         "Cache-Control": "public, max-age=31536000", // 缓存1年
       },
     });
-  } catch (error: any) {
-    const message = error?.message || String(error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     // 对 404 进行更友好的处理，避免误判为服务器错误
     if (message.includes("404")) {
       console.warn("⚠️ [Files API] 文件不存在:", message);

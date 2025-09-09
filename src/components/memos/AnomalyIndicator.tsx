@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ContentAnomalies } from "../../lib/content-anomalies";
 
@@ -20,7 +21,7 @@ export function AnomalyIndicator({ anomalies, showLabel = false }: AnomalyIndica
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
 
-  const items: Array<{ key: string; text: string; icon: JSX.Element; color: string }> = [];
+  const items: Array<{ key: string; text: string; icon: ReactElement; color: string }> = [];
 
   if (anomalies?.inlineImageCount > 0) {
     items.push({

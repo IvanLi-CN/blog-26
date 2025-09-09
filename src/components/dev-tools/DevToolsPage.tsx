@@ -28,6 +28,7 @@ export function DevToolsPage() {
 
   // Get current user info
   const { data: userInfo, refetch: refetchUser } = trpc.auth.me.useQuery();
+  const logout = trpc.auth.logout.useMutation();
 
   useEffect(() => {
     setCurrentUser(userInfo || null);
@@ -135,7 +136,7 @@ export function DevToolsPage() {
   const handleLogout = async () => {
     try {
       setLoading(true);
-      await trpc.auth.logout.mutate();
+      await logout.mutateAsync();
       showMessage("success", "Logged out successfully");
       setCurrentUser(null);
       window.location.reload();
