@@ -842,7 +842,9 @@ export function ContentSyncManager() {
                                             ? "badge-success"
                                             : log.status === "error"
                                               ? "badge-error"
-                                              : "badge-warning"
+                                              : log.status === "warning"
+                                                ? "badge-warning"
+                                                : "badge-neutral"
                                         }`}
                                       >
                                         {log.status === "success" ? (
@@ -855,13 +857,18 @@ export function ContentSyncManager() {
                                             <Icon name="lucide:x" className="w-3 h-3 mr-1" />
                                             失败
                                           </>
-                                        ) : (
+                                        ) : log.status === "warning" ? (
                                           <>
                                             <Icon
-                                              name="lucide:alert-triangle"
+                                              name="lucide:rotate-ccw"
                                               className="w-3 h-3 mr-1"
                                             />
-                                            警告
+                                            重试
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Icon name="lucide:info" className="w-3 h-3 mr-1" />
+                                            提示
                                           </>
                                         )}
                                       </span>
@@ -925,7 +932,9 @@ export function ContentSyncManager() {
                                           ? "badge-success"
                                           : log.status === "error"
                                             ? "badge-error"
-                                            : "badge-warning"
+                                            : log.status === "warning"
+                                              ? "badge-warning"
+                                              : "badge-neutral"
                                       }`}
                                     >
                                       {log.status === "success" ? (
@@ -938,13 +947,15 @@ export function ContentSyncManager() {
                                           <Icon name="lucide:x" className="w-3 h-3 mr-1" />
                                           失败
                                         </>
+                                      ) : log.status === "warning" ? (
+                                        <>
+                                          <Icon name="lucide:rotate-ccw" className="w-3 h-3 mr-1" />
+                                          重试
+                                        </>
                                       ) : (
                                         <>
-                                          <Icon
-                                            name="lucide:alert-triangle"
-                                            className="w-3 h-3 mr-1"
-                                          />
-                                          警告
+                                          <Icon name="lucide:info" className="w-3 h-3 mr-1" />
+                                          提示
                                         </>
                                       )}
                                     </span>

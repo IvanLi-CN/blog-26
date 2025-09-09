@@ -10,7 +10,7 @@ export interface SyncLogEvent {
   sourceType: string;
   sourceName: string;
   operation: string;
-  status: "success" | "error";
+  status: "success" | "error" | "warning"; // 新增 warning 用于重试/限流等非致命事件
   message: string;
   filePath?: string;
   data?: any;

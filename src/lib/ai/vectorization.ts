@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { db, initializeDB } from "../db";
 import { posts } from "../schema";
@@ -31,6 +31,32 @@ function chunkText(text: string, size: number, overlap: number): Chunk[] {
   return chunks;
 }
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, idx: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length) as R[];
+  let next = 0;
+  const running: Promise<void>[] = [];
+  async function runOne(i: number) {
+    const r = await worker(items[i] as T, i);
+    results[i] = r;
+  }
+  while (next < items.length || running.length > 0) {
+    while (next < items.length && running.length < Math.max(1, limit)) {
+      const i = next++;
+      const p = runOne(i).then(() => {
+        const idx = running.indexOf(p as any);
+        if (idx >= 0) running.splice(idx, 1);
+      });
+      running.push(p as any);
+    }
+    if (running.length > 0) await Promise.race(running);
+  }
+  return results;
+}
+
 export async function vectorizeAll(params: {
   isFull: boolean;
   model?: string;
@@ -41,6 +67,7 @@ export async function vectorizeAll(params: {
   const chunking = params.chunking ?? process.env.EMBED_CHUNKING_ENABLED !== "false";
   const chunkSize = Number(process.env.EMBED_CHUNK_SIZE || 1400);
   const chunkOverlap = Number(process.env.EMBED_CHUNK_OVERLAP || 200);
+  const maxEmbedConcurrency = Math.max(1, Number(process.env.MAX_EMBED_CONCURRENCY || 3));
 
   const syncId = syncEventManager.startSyncSession(params.isFull ? "full" : "incremental");
   syncEventManager.pushLog({
@@ -106,8 +133,21 @@ export async function vectorizeAll(params: {
 
       if (chunking) {
         const chunks = chunkText(input, chunkSize, chunkOverlap);
-        for (const ch of chunks) {
-          const { vector, dim } = await createEmbedding(ch.text, modelName);
+        await mapWithConcurrency(chunks, maxEmbedConcurrency, async (ch) => {
+          const { vector, dim } = await createEmbedding(ch.text, modelName, {
+            onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
+              syncEventManager.pushLog({
+                id: nanoid(),
+                sourceType: "vector",
+                sourceName: "post_embeddings",
+                operation: "vectorize",
+                status: "warning",
+                message: `向量化重试 第${attempt}次，等待 ${waitMs}ms（原因：${reason}${status ? ` ${status}` : ""}${retryAfterMs != null ? ` · Retry-After: ${Math.round(retryAfterMs / 1000)}s` : ""}）：${p.slug}#${ch.index}`,
+                filePath: p.slug,
+                createdAt: Date.now(),
+              });
+            },
+          });
           await EmbeddingsRepository.upsert({
             id: nanoid(),
             postId: p.id,
@@ -119,9 +159,22 @@ export async function vectorizeAll(params: {
             chunkIndex: ch.index,
             vector: float32ArrayToBlobBuffer(vector),
           });
-        }
+        });
       } else {
-        const { vector, dim } = await createEmbedding(input, modelName);
+        const { vector, dim } = await createEmbedding(input, modelName, {
+          onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
+            syncEventManager.pushLog({
+              id: nanoid(),
+              sourceType: "vector",
+              sourceName: "post_embeddings",
+              operation: "vectorize",
+              status: "warning",
+              message: `向量化重试 第${attempt}次，等待 ${waitMs}ms（原因：${reason}${status ? ` ${status}` : ""}${retryAfterMs != null ? ` · Retry-After: ${Math.round(retryAfterMs / 1000)}s` : ""}）：${p.slug}`,
+              filePath: p.slug,
+              createdAt: Date.now(),
+            });
+          },
+        });
         await EmbeddingsRepository.upsert({
           id: nanoid(),
           postId: p.id,
@@ -177,6 +230,7 @@ export async function vectorizeOneBySlug(params: {
   const chunking = params.chunking ?? process.env.EMBED_CHUNKING_ENABLED !== "false";
   const chunkSize = Number(process.env.EMBED_CHUNK_SIZE || 1400);
   const chunkOverlap = Number(process.env.EMBED_CHUNK_OVERLAP || 200);
+  const maxEmbedConcurrency = Math.max(1, Number(process.env.MAX_EMBED_CONCURRENCY || 3));
 
   const rows = await db.select().from(posts).where(eq(posts.slug, params.slug));
   if (rows.length === 0) throw new Error(`Post not found: ${params.slug}`);
@@ -187,8 +241,21 @@ export async function vectorizeOneBySlug(params: {
 
   if (chunking) {
     const chunks = chunkText(input, chunkSize, chunkOverlap);
-    for (const ch of chunks) {
-      const { vector, dim } = await createEmbedding(ch.text, modelName);
+    await mapWithConcurrency(chunks, maxEmbedConcurrency, async (ch) => {
+      const { vector, dim } = await createEmbedding(ch.text, modelName, {
+        onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
+          syncEventManager.pushLog({
+            id: nanoid(),
+            sourceType: "vector",
+            sourceName: "post_embeddings",
+            operation: "vectorize",
+            status: "warning",
+            message: `向量化重试 第${attempt}次，等待 ${waitMs}ms（原因：${reason}${status ? ` ${status}` : ""}${retryAfterMs != null ? ` · Retry-After: ${Math.round(retryAfterMs / 1000)}s` : ""}）：${p.slug}#${ch.index}`,
+            filePath: p.slug,
+            createdAt: Date.now(),
+          });
+        },
+      });
       await EmbeddingsRepository.upsert({
         id: nanoid(),
         postId: p.id,
@@ -200,9 +267,22 @@ export async function vectorizeOneBySlug(params: {
         chunkIndex: ch.index,
         vector: float32ArrayToBlobBuffer(vector),
       });
-    }
+    });
   } else {
-    const { vector, dim } = await createEmbedding(input, modelName);
+    const { vector, dim } = await createEmbedding(input, modelName, {
+      onRetry: ({ attempt, waitMs, reason, status, retryAfterMs }) => {
+        syncEventManager.pushLog({
+          id: nanoid(),
+          sourceType: "vector",
+          sourceName: "post_embeddings",
+          operation: "vectorize",
+          status: "warning",
+          message: `向量化重试 第${attempt}次，等待 ${waitMs}ms（原因：${reason}${status ? ` ${status}` : ""}${retryAfterMs != null ? ` · Retry-After: ${Math.round(retryAfterMs / 1000)}s` : ""}）：${p.slug}`,
+          filePath: p.slug,
+          createdAt: Date.now(),
+        });
+      },
+    });
     await EmbeddingsRepository.upsert({
       id: nanoid(),
       postId: p.id,
