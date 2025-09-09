@@ -22,6 +22,7 @@ concurrency:
 env:
   REGISTRY: git.ivanli.cc
   IMAGE_NAME: Ivan/blog-astrowind
+  PLATFORMS: linux/amd64
   # E2E 测试环境变量
   NODE_ENV: test
   JWT_SECRET: test-jwt-secret-key-for-testing-only-32-chars
@@ -159,7 +160,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -168,6 +169,6 @@ jobs:
             COMMIT_HASH=${{ steps.git-info.outputs.commit_hash }}
             COMMIT_SHORT_HASH=${{ steps.git-info.outputs.commit_short_hash }}
             REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
+            WITH_PLAYWRIGHT=false
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
