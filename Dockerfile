@@ -43,30 +43,31 @@ RUN bun run prebuild && \
     bun run build
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
-ARG APP_UID=1000
-ARG APP_GID=1000
-RUN groupadd --gid ${APP_GID} nodejs && \
-    useradd --uid ${APP_UID} --gid nodejs --shell /bin/bash --create-home nextjs
 RUN apt-get update && \
     apt-get install -y \
     curl \
     ca-certificates \
-    sqlite3 && \
+    sqlite3 \
+    gosu && \
     rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-COPY --from=builder --chown=${APP_UID}:${APP_GID} /app/public ./public
-COPY --from=builder --chown=${APP_UID}:${APP_GID} /app/.next/standalone ./
-COPY --from=builder --chown=${APP_UID}:${APP_GID} /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=builder /ms-playwright /ms-playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN mkdir -p /app/data && \
-    chown -R ${APP_UID}:${APP_GID} /app/data
-USER nextjs
+RUN chmod +x ./docker-entrypoint.sh && \
+    mkdir -p /app/data && \
+    chmod -R a+rX /app && \
+    chown -R 0:0 /app && \
+    chmod 2775 /app/data
 EXPOSE 25090
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["bun", "server.js"]

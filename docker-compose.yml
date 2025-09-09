@@ -63,8 +63,8 @@ services:
       # Next.js 配置
       - NEXT_TELEMETRY_DISABLED=1
     volumes:
-      # 数据持久化
-      - ./data:/app/data
+      # 数据持久化（固定挂载到 docker-data/）
+      - ./docker-data:/app/data
       # 数据库迁移文件
       - ./drizzle:/app/drizzle
     restart: unless-stopped
