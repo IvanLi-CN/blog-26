@@ -58,8 +58,11 @@ RUN apt-get update && \
 # 设置生产环境变量
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOST=0.0.0.0
+# 确保 Next.js 监听 IPv4
+ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
+# 优先解析为 IPv4，避免 IPv6-only 解析导致健康检查异常
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 # 从构建阶段复制必要文件
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
@@ -92,9 +95,9 @@ USER nextjs
 # 暴露端口
 EXPOSE 25090
 
-# 健康检查（使用 tRPC health 端点）
+# 健康检查：使用轻量 /api/health 端点（避免触发 tRPC 上下文中的 DB 初始化）
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD sh -c "curl -f http://localhost:${PORT:-25090}/api/trpc/health || exit 1"
+    CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
 
 # 启动应用
 CMD ["./docker-entrypoint.sh"]

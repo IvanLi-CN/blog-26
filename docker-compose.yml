@@ -14,10 +14,7 @@ services:
     ports:
       - "25090:25090"
     environment:
-      # 基础配置
-      - NODE_ENV=production
-      - HOST=0.0.0.0
-      - PORT=25090
+      # 基础配置使用镜像默认值（无需在 compose 覆盖）
       
       # 数据库配置
       - DB_PATH=/app/data/sqlite.db
@@ -73,7 +70,7 @@ services:
     depends_on:
       - redis
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:25090/api/trpc/health"]
+      test: ["CMD", "curl", "-fsSL", "http://127.0.0.1:25090/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
