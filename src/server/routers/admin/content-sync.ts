@@ -390,16 +390,14 @@ export const adminContentSyncRouter = createTRPCRouter({
    * 订阅同步日志推送 (SSE)
    */
   subscribeSyncLogs: publicProcedure.subscription(async function* (opts) {
-    console.log("🔗 建立 SSE 连接，注册事件监听器");
-    console.log("📍 subscription syncEventManager 实例:", syncEventManager.constructor.name);
     console.log(
-      "📍 subscription syncEventManager 实例 ID:",
-      (syncEventManager as any)._instanceId || "undefined"
+      `🔗 SSE 连接建立 instance=${syncEventManager.constructor.name} id=${
+        (syncEventManager as any)._instanceId || "undefined"
+      } currentSession=${syncEventManager.getCurrentSyncSessionId()}`
     );
-    console.log("📍 当前同步会话ID:", syncEventManager.getCurrentSyncSessionId());
 
     // 发送连接确认
-    console.log("📡 发送 SSE 连接确认");
+    console.log("📡 SSE 已发送连接确认");
     yield {
       type: "connected",
       data: {
@@ -414,7 +412,9 @@ export const adminContentSyncRouter = createTRPCRouter({
 
     // 监听同步开始事件
     const onSyncStart = (event: any) => {
-      console.log("📡 SSE 收到同步开始事件:", event);
+      console.log(
+        `📡 SSE 同步开始 session=${event?.syncSessionId} type=${event?.syncType} ts=${event?.timestamp}`
+      );
       eventAggregator.emit("sync-event", {
         type: "sync:start",
         data: event,
@@ -423,7 +423,6 @@ export const adminContentSyncRouter = createTRPCRouter({
 
     // 监听同步日志事件
     const onSyncLog = (event: any) => {
-      console.log("📡 SSE 收到同步日志事件:", event);
       eventAggregator.emit("sync-event", {
         type: "sync:log",
         data: event,
@@ -432,7 +431,15 @@ export const adminContentSyncRouter = createTRPCRouter({
 
     // 监听同步完成事件
     const onSyncComplete = (event: any) => {
-      console.log("📡 SSE 收到同步完成事件:", event);
+      const e = event || {};
+      const stats = (e.stats as any) || {};
+      console.log(
+        `📡 SSE 同步完成 session=${e.syncSessionId} success=${e.success} total=${
+          stats.total ?? ""
+        } processed=${stats.processed ?? ""} ok=${stats.success ?? ""} failed=${
+          stats.failed ?? ""
+        } model=${stats.model ?? ""} ts=${e.timestamp}`
+      );
       eventAggregator.emit("sync-event", {
         type: "sync:complete",
         data: event,
@@ -443,7 +450,7 @@ export const adminContentSyncRouter = createTRPCRouter({
     syncEventManager.onSyncStart(onSyncStart);
     syncEventManager.onSyncLog(onSyncLog);
     syncEventManager.onSyncComplete(onSyncComplete);
-    console.log("✅ SSE 事件监听器注册完成");
+    console.log("✅ SSE 事件监听器已注册");
 
     try {
       // 监听聚合的事件

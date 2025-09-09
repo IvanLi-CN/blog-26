@@ -170,7 +170,7 @@ export function ContentSyncManager() {
   // tRPC subscription 用于接收实时日志
   trpc.admin.contentSync.subscribeSyncLogs.useSubscription(undefined, {
     onData: (event: unknown) => {
-      console.log("收到订阅事件:", event);
+      console.log("📡 订阅事件接收");
 
       // 类型守卫：确保 event 是我们期望的格式
       if (typeof event === "object" && event !== null && "type" in event) {
@@ -178,11 +178,14 @@ export function ContentSyncManager() {
 
         switch (typedEvent.type) {
           case "connected":
-            console.log("tRPC 订阅连接确认:", (typedEvent.data as { message: string }).message);
+            console.log(`✅ 订阅已连接 msg="${(typedEvent.data as { message: string }).message}"`);
             break;
 
-          case "sync:start":
-            console.log("同步开始:", typedEvent.data);
+          case "sync:start": {
+            const d = typedEvent.data as any;
+            console.log(
+              `🚀 同步开始 session=${d?.syncSessionId} type=${d?.syncType} ts=${d?.timestamp}`
+            );
             // 清空旧日志，准备接收新的同步日志
             setSyncLogs([]);
             // 同时清空缓冲与定时器，避免旧队列残留
@@ -192,6 +195,7 @@ export function ContentSyncManager() {
               rateLimiterTimerRef.current = null;
             }
             break;
+          }
 
           case "sync:log": {
             const logData = typedEvent.data as {
@@ -205,7 +209,11 @@ export function ContentSyncManager() {
               data?: unknown;
               createdAt: number;
             };
-            console.log("收到同步日志:", logData);
+            console.log(
+              `📝 同步日志 status=${logData.status} op=${logData.operation} src=${logData.sourceName} msg="${logData.message}" path=${
+                logData.filePath || ""
+              } ts=${logData.createdAt}`
+            );
 
             // 放入缓冲等待按 50ms/条 刷新
             const buffered: SyncLog = {
@@ -226,8 +234,16 @@ export function ContentSyncManager() {
             break;
           }
 
-          case "sync:complete":
-            console.log("同步完成:", typedEvent.data);
+          case "sync:complete": {
+            const d = typedEvent.data as any;
+            const stats = (d?.stats as any) || {};
+            console.log(
+              `✅ 同步完成 session=${d?.syncSessionId} success=${d?.success} total=${
+                stats.total ?? ""
+              } processed=${stats.processed ?? ""} ok=${stats.success ?? ""} failed=${
+                stats.failed ?? ""
+              } model=${stats.model ?? ""} ts=${d?.timestamp}`
+            );
             setIsLoading(false);
 
             // 刷新统计信息
@@ -235,6 +251,7 @@ export function ContentSyncManager() {
             refetchContentStats();
             refreshData();
             break;
+          }
         }
       }
     },
