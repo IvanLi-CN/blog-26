@@ -92,3 +92,38 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["bun", "server.js"]
+
+# Prebuilt target: use prebuilt Next.js output from build artifacts
+FROM oven/bun:1-slim AS app-prebuilt
+WORKDIR /app
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      curl \
+      ca-certificates \
+      sqlite3 \
+      gosu && \
+    rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=25090
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
+# Copy from build artifacts already present in the build context
+COPY public ./public
+COPY .next/standalone ./
+COPY .next/static ./.next/static
+COPY scripts ./scripts
+COPY drizzle ./drizzle
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh && \
+    mkdir -p /app/data && \
+    chmod -R a+rX /app && \
+    chown -R 0:0 /app && \
+    chmod 2775 /app/data
+EXPOSE 25090
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["bun", "server.js"]

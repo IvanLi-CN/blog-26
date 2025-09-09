@@ -9,6 +9,8 @@ yarn-error.log*
 
 # Next.js 构建输出
 .next/
+!.next/standalone
+!.next/static
 out/
 
 # 生产构建文件
@@ -111,11 +113,9 @@ playwright.config.ts
 playwright-report/
 test-results/
 
-# 脚本文件（部分）
-scripts/
-!scripts/generate-version.ts
-!scripts/migrate.ts
-!scripts/seed.ts
+# 脚本与运行时资源（需要在镜像中使用）
+# 允许包含 scripts/ 与 drizzle/（用于迁移），以及 public/
+# 注意：这些目录在 Docker 镜像中用于运行与静态资源
 
 # 其他构建工具
 .turbo/
