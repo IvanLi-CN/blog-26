@@ -212,6 +212,7 @@ export default function AdminPostsManager() {
                   </th>
                   <th>标题</th>
                   <th>状态</th>
+                  <th>向量化</th>
                   <th>发布时间</th>
                   <th>更新时间</th>
                   <th>操作</th>
@@ -240,6 +241,22 @@ export default function AdminPostsManager() {
                           {post.draft ? "草稿" : "已发布"}
                         </div>
                       </td>
+                      <td>
+                        {(() => {
+                          const s = (post as any).vectorizationStatus as
+                            | "indexed"
+                            | "unindexed"
+                            | "outdated"
+                            | undefined;
+                          if (!s || s === "unindexed")
+                            return <span className="badge badge-ghost">未索引</span>;
+                          if (s === "indexed")
+                            return <span className="badge badge-success">已索引</span>;
+                          if (s === "outdated")
+                            return <span className="badge badge-warning">过时</span>;
+                          return null;
+                        })()}
+                      </td>
                       <td>{new Date(post.publishDate).toLocaleString()}</td>
                       <td>
                         {post.updateDate ? new Date(post.updateDate).toLocaleString() : "未更新"}
@@ -252,6 +269,18 @@ export default function AdminPostsManager() {
                           >
                             编辑
                           </Link>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-secondary"
+                            onClick={async () => {
+                              await trpc.admin.vectorize.vectorizeBySlug.mutate({
+                                slug: post.slug,
+                              });
+                              refetch();
+                            }}
+                          >
+                            强制向量化
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDeletePost(post.id, post.title)}
