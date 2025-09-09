@@ -1,29 +1,43 @@
+# syntax=docker/dockerfile:1.7
+
 FROM oven/bun:1 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN apt-get update && \
-    apt-get install -y \
-    curl \
-    ca-certificates \
-    libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxss1 \
-    libgconf-2-4 \
-    libxcomposite1 \
-    libxrandr2 \
-    libasound2 \
-    libpangocairo-1.0-0 \
-    libgtk-3-0 \
-    libgbm1 && \
-    rm -rf /var/lib/apt/lists/*
-RUN bun install --frozen --no-cache
+
+# Speed up dependency install with BuildKit cache; keep it cacheable across builds
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen
+
+# Optional Playwright installation (disabled by default for production builds)
+ARG WITH_PLAYWRIGHT=false
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN timeout 1200 bunx playwright install chromium --force
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+RUN mkdir -p /ms-playwright
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    if [ "$WITH_PLAYWRIGHT" = "true" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        libnss3 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libxss1 \
+        libgconf-2-4 \
+        libxcomposite1 \
+        libxrandr2 \
+        libasound2 \
+        libpangocairo-1.0-0 \
+        libgtk-3-0 \
+        libgbm1 \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
+RUN if [ "$WITH_PLAYWRIGHT" = "true" ]; then \
+      timeout 1200 bunx playwright install chromium --force; \
+    fi
 FROM oven/bun:1 AS builder
 WORKDIR /app
 ARG BUILD_DATE
@@ -40,16 +54,20 @@ ENV REPOSITORY_URL=${REPOSITORY_URL}
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TSC_COMPILE_ON_ERROR=1
-RUN bun run prebuild && \
+# Reuse Next.js build cache across runs
+RUN --mount=type=cache,target=/app/.next/cache \
+    bun run prebuild && \
     bun run build
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
-RUN apt-get update && \
-    apt-get install -y \
-    curl \
-    ca-certificates \
-    sqlite3 \
-    gosu && \
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      curl \
+      ca-certificates \
+      sqlite3 \
+      gosu && \
     rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
