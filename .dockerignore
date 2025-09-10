@@ -11,6 +11,7 @@ yarn-error.log*
 .next/
 !.next/standalone
 !.next/static
+!.next/BUILD_ID
 out/
 
 # 生产构建文件
