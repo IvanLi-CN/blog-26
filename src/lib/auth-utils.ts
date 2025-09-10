@@ -1,3 +1,7 @@
+import { eq } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { db, initializeDB } from "./db";
+import { users } from "./schema";
 import { SESSION_COOKIE_NAME, updateSessionActivity, validateSession } from "./session";
 
 export interface AuthResult {
@@ -45,21 +49,53 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
     }
   }
 
-  // 2. 检查是否为管理员（从 Traefik headers 或配置）
-  const remoteEmail = request.headers.get("Remote-Email");
+  // 2. 检查是否为管理员/用户（从 Traefik/SSO headers 或配置）
+  const emailHeaderName = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
+  const remoteEmail = request.headers.get(emailHeaderName);
 
-  // 如果有 Traefik 传递的邮箱信息，检查是否为管理员
+  // 如果有 Traefik/SSO 传递的邮箱信息，优先基于邮箱识别用户，并判断管理员
   if (remoteEmail) {
     const adminEmail = process.env.ADMIN_EMAIL;
     isAdmin = adminEmail ? remoteEmail === adminEmail : false;
 
-    // 如果是管理员且没有用户信息，创建临时用户对象（生产环境和开发环境都需要）
-    if (isAdmin && !user) {
-      user = {
-        id: "admin-header-user",
-        nickname: "Admin",
-        email: remoteEmail,
-      };
+    // 如果还没有从 Cookie 中识别出用户，则尝试从数据库查找或创建
+    if (!user) {
+      try {
+        if (!db) {
+          await initializeDB();
+        }
+
+        let dbUser = await db.select().from(users).where(eq(users.email, remoteEmail)).get();
+
+        if (!dbUser) {
+          const userId = uuidv4();
+          await db.insert(users).values({
+            id: userId,
+            email: remoteEmail,
+            name: remoteEmail.split("@")[0],
+            createdAt: Date.now(),
+          });
+
+          dbUser = await db.select().from(users).where(eq(users.email, remoteEmail)).get();
+        }
+
+        if (dbUser) {
+          user = {
+            id: dbUser.id,
+            nickname: dbUser.name || dbUser.email.split("@")[0],
+            email: dbUser.email,
+            avatarUrl: undefined,
+          };
+        }
+      } catch (err) {
+        console.warn("Header-based user lookup/creation failed:", err);
+        // 回退到最小可用信息（无 DB 的情况下仍允许识别请求态用户）
+        user = {
+          id: "header-user",
+          nickname: remoteEmail.split("@")[0],
+          email: remoteEmail,
+        };
+      }
     }
   }
 

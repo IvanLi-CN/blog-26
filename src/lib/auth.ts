@@ -53,7 +53,7 @@ export function isAdmin(userEmail: string): boolean {
 export function isAdminFromHeaders(headers: Headers): boolean {
   try {
     const adminEmail = process.env.ADMIN_EMAIL;
-    const emailHeaderName = process.env.ADMIN_EMAIL_HEADER_NAME || "Remote-Email";
+    const emailHeaderName = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
     if (!adminEmail) {
       return false;
