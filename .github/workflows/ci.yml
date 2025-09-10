@@ -121,6 +121,7 @@ jobs:
             .next/standalone
             .next/static
             .next/BUILD_ID
+            .next/*.json
             public
             scripts
             drizzle
