@@ -120,6 +120,7 @@ jobs:
           path: |
             .next/standalone
             .next/static
+            .next/BUILD_ID
             public
             scripts
             drizzle
@@ -187,7 +188,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          target: app-prebuilt
+          target: app-image-prebuilt
           platforms: ${{ env.PLATFORMS }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}

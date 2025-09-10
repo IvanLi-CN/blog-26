@@ -58,7 +58,7 @@ ENV TSC_COMPILE_ON_ERROR=1
 RUN --mount=type=cache,target=/app/.next/cache \
     bun run prebuild && \
     bun run build
-FROM oven/bun:1-slim AS runner
+FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
 RUN --mount=type=cache,target=/var/cache/apt \
@@ -78,6 +78,7 @@ ENV NODE_OPTIONS=--dns-result-order=ipv4first
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/.next/BUILD_ID ./.next/BUILD_ID
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
@@ -96,7 +97,7 @@ ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["bun", "server.js"]
 
 # Prebuilt target: use prebuilt Next.js output from build artifacts
-FROM oven/bun:1-slim AS app-prebuilt
+FROM oven/bun:1-slim AS app-image-prebuilt
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
 RUN --mount=type=cache,target=/var/cache/apt \
@@ -117,6 +118,7 @@ ENV NODE_OPTIONS=--dns-result-order=ipv4first
 COPY public ./public
 COPY .next/standalone ./
 COPY .next/static ./.next/static
+COPY .next/BUILD_ID ./.next/BUILD_ID
 COPY scripts ./scripts
 COPY drizzle ./drizzle
 COPY docker-entrypoint.sh ./docker-entrypoint.sh

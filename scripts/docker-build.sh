@@ -1,40 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Simple local Docker build helper
-# - Chooses target automatically:
-#   - If .next/standalone exists -> use app-prebuilt (faster, smaller)
-#   - Else -> use runner (build Next.js inside image)
+# Simple local Docker build helper (docker prebuild)
+# - Always performs Next.js build inside Docker (target=app-image-built)
+# - Produces final image using build-time artifacts (no host build)
 # - Auto-reads drizzle-orm version from package.json and passes as build-arg
 
 IMAGE_TAG=${IMAGE_TAG:-ivan/blog-astrowind:local}
 WITH_PLAYWRIGHT=${WITH_PLAYWRIGHT:-false}
-
-if [ -d ".next/standalone" ]; then
-  TARGET=${TARGET:-app-prebuilt}
-else
-  TARGET=${TARGET:-runner}
-fi
+TARGET=${TARGET:-app-image-built}
 
 # Read drizzle-orm version from package.json (strip leading ^ ~ etc.)
 DRIZZLE_ORM_VERSION=$(node -e "const p=require('./package.json'); const v=(p.dependencies&&p.dependencies['drizzle-orm'])||(p.devDependencies&&p.devDependencies['drizzle-orm'])||''; process.stdout.write(String(v||'').replace(/^\\D+/,''));")
 
-echo "[docker-build] Target: ${TARGET}"
+echo "[docker-build] Target: ${TARGET} (docker prebuild)"
 echo "[docker-build] Image:  ${IMAGE_TAG}"
 echo "[docker-build] drizzle-orm: ${DRIZZLE_ORM_VERSION}"
 
-# Prefer buildx when available
+# Prefer buildx when available; fallback to docker-buildx CLI; else to docker build with BuildKit
 if docker buildx version >/dev/null 2>&1; then
   export DOCKER_BUILDKIT=1
   export BUILDKIT_PROGRESS=${BUILDKIT_PROGRESS:-plain}
   BUILD_CMD=(docker buildx build --load)
+elif command -v docker-buildx >/dev/null 2>&1; then
+  export DOCKER_BUILDKIT=1
+  export BUILDKIT_PROGRESS=${BUILDKIT_PROGRESS:-plain}
+  BUILD_CMD=(docker-buildx build --load)
 else
-  echo "[docker-build] buildx is not available."
-  echo "[docker-build] This Dockerfile uses RUN --mount which requires BuildKit/buildx."
-  echo "[docker-build] Please install buildx (Docker Desktop has it built-in) or:"
-  echo "[docker-build]   - On Linux: sudo apt-get install docker-buildx-plugin (or equivalent)"
-  echo "[docker-build]   - Or: docker buildx install"
-  exit 1
+  echo "[docker-build] buildx not found; falling back to 'docker build' with BuildKit."
+  export DOCKER_BUILDKIT=1
+  export BUILDKIT_PROGRESS=${BUILDKIT_PROGRESS:-plain}
+  BUILD_CMD=(docker build)
 fi
 
 "${BUILD_CMD[@]}" \

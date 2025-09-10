@@ -3,6 +3,8 @@ set -euo pipefail
 
 echo "🚀 Starting Docker container..."
 
+# Note: we rely on Docker build-time to produce artifacts; runtime does not validate again.
+
 # 允许使用 RUN_UID/GID 或 APP_UID/GID（后者与 compose/.env.docker 注释一致）
 RUN_UID=${RUN_UID:-${APP_UID:-1000}}
 RUN_GID=${RUN_GID:-${APP_GID:-1000}}
