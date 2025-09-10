@@ -146,6 +146,21 @@ jobs:
           name: next-build
           path: .
 
+      - name: Prepare Next.js build artifacts layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d "next-build" ]; then
+            echo "[prep] Found 'next-build' directory from artifact, flattening into workspace root..."
+            # Preserve dotfiles like .next when copying
+            cp -a next-build/. .
+            rm -rf next-build
+          fi
+          # Quick sanity check to fail fast if artifact layout is wrong
+          ls -la . || true
+          ls -la .next || (echo "::error::.next directory missing after artifact preparation" && exit 1)
+          test -f .next/BUILD_ID || (echo "::error::.next/BUILD_ID missing after artifact preparation" && exit 1)
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
