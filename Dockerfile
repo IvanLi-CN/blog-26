@@ -79,6 +79,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/BUILD_ID ./.next/BUILD_ID
+# Copy all Next.js manifest JSONs (routes, build, images, etc.)
+COPY --from=builder /app/.next/*.json ./.next/
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
@@ -119,6 +121,8 @@ COPY public ./public
 COPY .next/standalone ./
 COPY .next/static ./.next/static
 COPY .next/BUILD_ID ./.next/BUILD_ID
+# Copy all Next.js manifest JSONs (routes, build, images, etc.)
+COPY .next/*.json ./.next/
 COPY scripts ./scripts
 COPY drizzle ./drizzle
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
