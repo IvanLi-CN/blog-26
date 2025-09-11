@@ -41,7 +41,7 @@ export async function startIntegratedServer() {
       try {
         const parsedUrl = parse(req.url || "", true);
 
-        // 请求级日志：Forward Email 与管理员判定
+        // 请求级日志：打印所有请求头 + Forward Email 与管理员判定
         try {
           const emailHeaderName = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
@@ -51,23 +51,57 @@ export async function startIntegratedServer() {
             if (Array.isArray(v)) headers.set(k, v.join(", "));
             else if (typeof v === "string") headers.set(k, v);
           }
-
-          const forwardedEmail =
-            headers.get(emailHeaderName) ||
-            headers.get(emailHeaderName.toLowerCase()) ||
-            headers.get("Remote-Email") ||
-            headers.get("remote-email") ||
-            headers.get("x-forwarded-email") ||
-            null;
+          // 依次尝试若干可能的邮箱头，并记录命中的是哪个
+          const candidateHeaders = [
+            emailHeaderName,
+            emailHeaderName.toLowerCase(),
+            "Remote-Email",
+            "remote-email",
+            "x-forwarded-email",
+          ];
+          let forwardedEmail: string | null = null;
+          let matchedEmailHeader: string | null = null;
+          for (const key of candidateHeaders) {
+            const val = headers.get(key);
+            if (val) {
+              forwardedEmail = val;
+              matchedEmailHeader = key;
+              break;
+            }
+          }
 
           const isAdmin = isAdminFromHeaders(headers);
           const method = req.method || "GET";
           const path = req.url || "/";
 
           console.log(
-            `➡️  [Request] ${method} ${path} | ${emailHeaderName}=` +
-              `${forwardedEmail ?? "<none>"} | isAdmin=${isAdmin}`
+            `➡️  [Request] ${method} ${path} | ForwardEmail(${emailHeaderName})=` +
+              `${forwardedEmail ?? "<none>"} | matchedHeader=${matchedEmailHeader ?? "<none>"} | isAdmin=${isAdmin}`
           );
+
+          // 按 key 排序打印所有请求头，便于排查实际传入的 header 名与大小写
+          try {
+            const allHeaderEntries = Array.from(headers.entries()).sort((a, b) =>
+              a[0].localeCompare(b[0])
+            );
+            console.log("🧾 请求头 (normalized by Node):");
+            for (const [k, v] of allHeaderEntries) {
+              console.log(`   ${k}: ${v}`);
+            }
+
+            // 额外打印原始 rawHeaders，保留客户端发送时的大小写与顺序
+            if (Array.isArray((req as any).rawHeaders)) {
+              const raw = (req as any).rawHeaders as Array<string>;
+              console.log("🧾 原始请求头 (req.rawHeaders):");
+              for (let i = 0; i < raw.length; i += 2) {
+                const k = raw[i];
+                const v = raw[i + 1];
+                console.log(`   ${k}: ${v}`);
+              }
+            }
+          } catch (e) {
+            console.warn("打印请求头失败:", e);
+          }
         } catch (e) {
           console.warn("请求日志记录失败:", e);
         }
