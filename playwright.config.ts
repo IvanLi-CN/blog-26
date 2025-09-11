@@ -47,6 +47,13 @@ export default defineConfig({
     // 网络配置
     ignoreHTTPSErrors: true,
 
+    // 在 E2E 中通过上下文头部注入管理员邮箱，模拟反向代理 SSO
+    // 与服务端默认读取的 header 名保持一致（SSO_EMAIL_HEADER_NAME 或 Remote-Email）
+    extraHTTPHeaders: {
+      [process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email"]:
+        process.env.ADMIN_EMAIL || "admin@test.com",
+    },
+
     // 等待配置
     actionTimeout: 10 * 1000, // 10秒
     navigationTimeout: 30 * 1000, // 30秒
