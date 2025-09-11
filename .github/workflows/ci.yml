@@ -23,16 +23,6 @@ env:
   REGISTRY: git.ivanli.cc
   IMAGE_NAME: ivan/blog-astrowind
   PLATFORMS: linux/amd64
-  # E2E 测试环境变量
-  NODE_ENV: test
-  JWT_SECRET: test-jwt-secret-key-for-testing-only-32-chars
-  ADMIN_EMAIL: admin@test.com
-  DB_PATH: ':memory:'
-  WEBDAV_URL: http://localhost:8080
-  WEBDAV_USERNAME: ''
-  WEBDAV_PASSWORD: ''
-  WEBDAV_MEMOS_PATH: /Memos
-  WEBDAV_ASSETS_PATH: /assets
 
 jobs:
   lint:
@@ -107,8 +97,6 @@ jobs:
             ${{ runner.os }}-bun-
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Initialize Database
-        run: bun run migrate
       - name: Build
         run: NODE_ENV=production bun run build
 
