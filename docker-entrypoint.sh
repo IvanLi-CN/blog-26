@@ -5,6 +5,14 @@ echo "🚀 Starting Docker container..."
 
 # Note: we rely on Docker build-time to produce artifacts; runtime does not validate again.
 
+# Print all environment variables (sorted) for diagnostics
+echo "🌐 Environment variables (startup):"
+if command -v printenv >/dev/null 2>&1; then
+  printenv | sort
+else
+  env | sort
+fi
+
 # 允许使用 RUN_UID/GID 或 APP_UID/GID（后者与 compose/.env.docker 注释一致）
 RUN_UID=${RUN_UID:-${APP_UID:-1000}}
 RUN_GID=${RUN_GID:-${APP_GID:-1000}}

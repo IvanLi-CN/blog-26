@@ -74,6 +74,8 @@ const nextConfig: NextConfig = {
 
   // 强制动态渲染
   experimental: {
+    // Enable instrumentation hook so instrumentation.ts runs on startup
+    instrumentationHook: true,
     mdxRs: false, // Use the legacy MDX compiler for better plugin compatibility
   },
 };
