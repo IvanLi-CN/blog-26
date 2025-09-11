@@ -90,8 +90,9 @@ RUN chmod +x ./docker-entrypoint.sh && \
     mkdir -p /app/data && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
-    chmod 2775 /app/data && \
-    bun add drizzle-orm@${DRIZZLE_ORM_VERSION}
+    chmod 2775 /app/data
+# Provide drizzle-orm for runtime migration scripts without resolving deps in final stage
+COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 EXPOSE 25090
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
@@ -130,8 +131,9 @@ RUN chmod +x ./docker-entrypoint.sh && \
     mkdir -p /app/data && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
-    chmod 2775 /app/data && \
-    bun add drizzle-orm@${DRIZZLE_ORM_VERSION}
+    chmod 2775 /app/data
+# Provide drizzle-orm for runtime migration scripts without resolving deps in final stage
+COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 EXPOSE 25090
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
