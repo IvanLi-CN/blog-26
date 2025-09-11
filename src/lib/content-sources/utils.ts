@@ -114,8 +114,23 @@ export function createContentItemFromParsed(
  * @param algorithm 哈希算法，默认为 sha256
  */
 export function calculateContentHash(content: string, algorithm: string = "sha256"): string {
-  // Avoid Node-specific APIs to keep this safe for client bundles.
-  // Fallback: FNV-1a 32-bit hash (sufficient for change detection in UI)
+  // Prefer Bun's CryptoHasher when available (synchronous, Bun-compatible)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bunGlobal = (globalThis as any).Bun;
+    if (bunGlobal && typeof bunGlobal.CryptoHasher === "function") {
+      const hasher = new bunGlobal.CryptoHasher(algorithm);
+      hasher.update(content);
+      return hasher.digest("hex"); // 64-length hex for sha256
+    }
+  } catch {
+    // ignore and fallback
+  }
+
+  // Do NOT import or require Node's crypto here to keep this file client-safe.
+  // Bun path above covers server usage; other environments fall back below.
+
+  // Fallback: FNV-1a 32-bit (kept for browser safety); not ideal for server, but prevents crashes
   let hash = 0x811c9dc5;
   for (let i = 0; i < content.length; i++) {
     hash ^= content.charCodeAt(i);
