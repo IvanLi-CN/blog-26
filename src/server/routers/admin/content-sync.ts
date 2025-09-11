@@ -474,12 +474,17 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
 
   // 如果没有注册的内容源，自动注册默认的内容源
   if (sources.length === 0) {
-    // 注册本地内容源 - 使用系统配置中的正确路径
-    const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-      contentPath: SYSTEM_CONFIG.local.basePath,
-    });
-    const localSource = new LocalContentSource(localConfig);
-    await manager.registerSource(localSource);
+    // 仅当存在 LOCAL_CONTENT_BASE_PATH 且非空时注册本地源
+    const basePathEnv = process.env.LOCAL_CONTENT_BASE_PATH;
+    const localEnabled = typeof basePathEnv === "string" && basePathEnv.trim().length > 0;
+
+    if (localEnabled) {
+      const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
+        contentPath: SYSTEM_CONFIG.local.basePath,
+      });
+      const localSource = new LocalContentSource(localConfig);
+      await manager.registerSource(localSource);
+    }
 
     // 如果 WebDAV 可用，注册 WebDAV 内容源
     if (isWebDAVEnabled()) {
