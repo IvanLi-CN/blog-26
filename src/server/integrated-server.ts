@@ -8,6 +8,7 @@
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import next from "next";
+import { isAdminFromHeaders } from "../lib/auth";
 import { buildHttpUrl } from "../lib/url-builder";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -39,6 +40,38 @@ export async function startIntegratedServer() {
     server = createServer(async (req, res) => {
       try {
         const parsedUrl = parse(req.url || "", true);
+
+        // 请求级日志：Forward Email 与管理员判定
+        try {
+          const emailHeaderName = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
+
+          // Node 将 header 名字规范化为小写
+          const headers = new Headers();
+          for (const [k, v] of Object.entries(req.headers)) {
+            if (Array.isArray(v)) headers.set(k, v.join(", "));
+            else if (typeof v === "string") headers.set(k, v);
+          }
+
+          const forwardedEmail =
+            headers.get(emailHeaderName) ||
+            headers.get(emailHeaderName.toLowerCase()) ||
+            headers.get("Remote-Email") ||
+            headers.get("remote-email") ||
+            headers.get("x-forwarded-email") ||
+            null;
+
+          const isAdmin = isAdminFromHeaders(headers);
+          const method = req.method || "GET";
+          const path = req.url || "/";
+
+          console.log(
+            `➡️  [Request] ${method} ${path} | ${emailHeaderName}=` +
+              `${forwardedEmail ?? "<none>"} | isAdmin=${isAdmin}`
+          );
+        } catch (e) {
+          console.warn("请求日志记录失败:", e);
+        }
+
         await handle(req, res, parsedUrl);
       } catch (err) {
         console.error("处理请求时出错:", err);
@@ -55,6 +88,19 @@ export async function startIntegratedServer() {
       console.log(`🚀 集成服务器启动成功:`);
       console.log(`   - HTTP: ${buildHttpUrl("")}`);
       console.log(`   - 环境: ${dev ? "开发" : "生产"}`);
+
+      // 启动后打印全部环境变量（按 key 排序）
+      try {
+        const entries = Object.entries(process.env as Record<string, string>)
+          .map(([k, v]) => [k, v])
+          .sort((a, b) => a[0].localeCompare(b[0]));
+        console.log("🌐 环境变量 (process.env):");
+        for (const [k, v] of entries) {
+          console.log(`   ${k}=${v ?? ""}`);
+        }
+      } catch (e) {
+        console.warn("打印环境变量失败:", e);
+      }
     });
   } catch (error) {
     console.error("启动集成服务器失败:", error);
