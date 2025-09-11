@@ -213,13 +213,28 @@ export const adminContentSyncRouter = createTRPCRouter({
 
       const sourcesStatus = await manager.getAllSourcesStatus();
 
+      // 数据量从数据库 posts 表统计，而非扫描源目录
+      const { db } = await import("../../../lib/db");
+      const { posts } = await import("../../../lib/schema");
+      const { sql } = await import("drizzle-orm");
+
+      const dbCounts = await db
+        .select({ source: posts.source, count: sql<number>`count(*)`.as("count") })
+        .from(posts)
+        .groupBy(posts.source);
+
+      const countMap = new Map<string, number>();
+      for (const row of dbCounts) {
+        countMap.set(row.source || "unknown", Number(row.count) || 0);
+      }
+
       return sourcesStatus.map(({ source, status, lastSync }) => ({
         name: source.name,
         type: source.type,
         priority: source.priority,
         enabled: source.enabled,
-        online: status.online,
-        totalItems: status.totalItems,
+        online: status.online, // 仅做可用性判断
+        totalItems: countMap.get(source.name) || 0, // 数据量来源于 DB（同步结果）
         lastSync,
         error: status.error,
         metadata: status.metadata,
@@ -238,6 +253,8 @@ export const adminContentSyncRouter = createTRPCRouter({
   getManagerStats: adminProcedure.query(async () => {
     try {
       const manager = getContentSourceManager();
+      // Ensure default sources are registered so first-time stats reflect reality
+      await ensureContentSourcesRegistered(manager);
       const stats = manager.getManagerStats();
 
       return {

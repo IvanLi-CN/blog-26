@@ -102,17 +102,9 @@ export class ContentSourceManager {
       throw new Error(`内容源 ${source.name} 已经注册`);
     }
 
-    // 初始化内容源
-    await source.initialize();
-
-    // 验证连接
-    const isConnected = await source.validateConnection();
-    if (!isConnected) {
-      throw new Error(`内容源 ${source.name} 连接验证失败`);
-    }
-
+    // 惰性注册：此处不做任何扫描/网络访问，仅登记源，真正的初始化与扫描在同步流程中进行
     this.sources.set(source.name, source);
-    await this.logSync("info", `内容源 ${source.name} 注册成功`);
+    await this.logSync("info", `内容源 ${source.name} 已注册（惰性，不扫描）`);
   }
 
   /**
@@ -222,7 +214,20 @@ export class ContentSourceManager {
       this.currentSync.totalItems = enabledSources.length;
       this.currentSync.currentStep = "收集内容变更";
 
-      // 并行收集所有内容源的变更
+      // 先确保内容源完成轻量初始化（不触发扫描/网络开销）
+      for (const source of enabledSources) {
+        try {
+          // initialize() 设计为轻量操作，不进行目录扫描/网络遍历
+          await source.initialize();
+        } catch (e) {
+          await this.logSync(
+            "warn",
+            `内容源 ${source.name} 轻量初始化失败: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+      }
+
+      // 并行收集所有内容源的变更（在 listContent/detectChanges 内部执行真实扫描）
       const changeSets = await this.collectChanges(enabledSources, isFullSync);
 
       // 合并和解决冲突
