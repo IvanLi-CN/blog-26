@@ -71,7 +71,7 @@ bun run test:e2e
 - Install browsers before running tests: `bunx playwright install`
 - Default ports in test: app `25090`, WebDAV `25091`
 
-- For deeper E2E guidance, see `docs/e2e-testing.md`.
+- For deeper E2E guidance, see `tests/e2e/README.md`.
 
 ### Build & Run Staging
 
@@ -322,4 +322,4 @@ bun run test-data:clean
 ### Development Tools
 
 - **Biome 2.0.4** for code formatting and linting
-- **Playwright** for E2E testing (see `docs/e2e-testing.md`)
+- **Playwright** for E2E testing (see `tests/e2e/README.md`)

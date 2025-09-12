@@ -38,7 +38,7 @@
 
 ## Security & Configuration Tips
 - Keep secrets in `.env.local` (never commit). Default DB is `./sqlite.db`; tests use `./test.db`.
-- E2E requires `dufs` for WebDAV; see `README.md` and `docs/e2e-testing.md`.
+- E2E requires `dufs` for WebDAV; see `README.md` and `tests/e2e/README.md`.
 
 ## Agent-Specific Notes
 - Keep patches minimal and scoped; prefer `rg` for search.
