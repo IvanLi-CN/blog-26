@@ -37,7 +37,10 @@
 - PRs: clear description, link issues, include test plan/commands; attach screenshots for UI; update docs when behavior changes.
 
 ## Security & Configuration Tips
-- Keep secrets in `.env.local` (never commit). Default DB is `./sqlite.db`; tests use `./test.db`.
+- Keep secrets in `.env.local` (never commit). DB is controlled via `DB_PATH`.
+  - Dev default: `./dev-data/sqlite.db`
+  - Test default: `./test-data/sqlite.db`
+  - Docker prod default: `/app/data/sqlite.db` (via compose volume)
 - E2E requires `dufs` for WebDAV; see `README.md` and `tests/e2e/README.md`.
 
 ## Agent-Specific Notes

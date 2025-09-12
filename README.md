@@ -25,7 +25,7 @@ Environment variables: create a local file and tweak values
 ```bash
 cp .env.pre .env.local
 # Key vars: ADMIN_EMAIL, SSO_EMAIL_HEADER_NAME (default: Remote-Email),
-# DB_PATH (default: ./sqlite.db), WEBDAV_URL, LOCAL_CONTENT_BASE_PATH, etc.
+# DB_PATH (env-specific default; see section below), WEBDAV_URL, LOCAL_CONTENT_BASE_PATH, etc.
 ```
 
 ### Start Dev Environment
@@ -92,6 +92,44 @@ Important env hints:
 - `DB_PATH` should point to a persistent location (e.g., `./sqlite.db` or a mounted volume)
 - `ADMIN_EMAIL` and `SSO_EMAIL_HEADER_NAME` (if your proxy injects email SSO)
 - Content sources: `WEBDAV_URL`, `LOCAL_CONTENT_BASE_PATH`, etc.
+
+### Environment Storage Layout (Paths)
+
+To remove ambiguity, the project standardizes where content and database files live per environment. These are the effective defaults unless you override with env vars.
+
+- Development
+  - `DB_PATH`: `./dev-data/sqlite.db`
+  - Local content root: `./dev-data/local`
+  - WebDAV (dufs): `http://localhost:25091` serving `./dev-data/webdav`
+  - Notes: `bun run dev-db:*` now targets `./dev-data/sqlite.db` for reset/check/schema
+
+- Test (E2E and local test server)
+  - `DB_PATH`: `./test-data/sqlite.db`
+  - Local content root: `./test-data/local`
+  - WebDAV (dufs): `http://localhost:25091` serving `./test-data/webdav`
+  - Notes: Playwright and `bun run test-env:*` are wired to the paths above
+
+- Production/Staging
+  - Docker image default: `DB_PATH=/app/data/sqlite.db`
+  - Persisted volume: `./docker-data:/app/data` in `docker-compose.yml`
+  - WebDAV: set `WEBDAV_URL` (basic auth optional via `WEBDAV_USERNAME/WEBDAV_PASSWORD`)
+  - Local content (optional): `LOCAL_CONTENT_BASE_PATH=/app/data/local` (disabled unless set)
+
+Essentials
+
+- Single source of truth for DB location is `DB_PATH`. Scripts and Playwright use environment-specific defaults above.
+- Local content location is governed by `LOCAL_CONTENT_BASE_PATH` and defaults to `./dev-data/local` (dev) or `./test-data/local` (test).
+- WebDAV URL must be explicit; the dev/test dufs server binds to `25091` and serves the matching directory under `dev-data/` or `test-data/`.
+
+Quick sanity commands
+
+```bash
+# Show which DB this shell session points to
+bun run db:which
+
+# Validate path config and env
+bun run -i scripts/validate-config.ts
+```
 
 ### How To Log In
 

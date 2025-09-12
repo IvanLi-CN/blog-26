@@ -8,6 +8,7 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
+import path from "node:path";
 
 interface StepResult {
   name: string;
@@ -31,6 +32,7 @@ class CIWorkflowTester {
           ...process.env,
           NODE_ENV: "test",
           CI: "true",
+          DB_PATH: process.env.DB_PATH || path.resolve(process.cwd(), "./test-data/sqlite.db"),
         },
       });
 
@@ -77,9 +79,10 @@ class CIWorkflowTester {
 
     // 清理环境
     console.log("🧹 清理测试环境...");
-    if (existsSync("sqlite.db")) {
-      rmSync("sqlite.db");
-      console.log("  ✅ 删除现有数据库");
+    const dbPath = process.env.DB_PATH || path.resolve(process.cwd(), "./test-data/sqlite.db");
+    if (existsSync(dbPath)) {
+      rmSync(dbPath);
+      console.log(`  ✅ 删除现有数据库: ${dbPath}`);
     }
 
     const steps = [

@@ -78,7 +78,7 @@ export default defineConfig({
       env: {
         NODE_ENV: "test",
         ADMIN_EMAIL: "admin@test.com", // 测试环境管理员邮箱
-        DB_PATH: "./test.db", // 测试数据库路径
+        DB_PATH: "./test-data/sqlite.db", // 测试数据库路径（集中在 test-data/ 下）
         PORT: "25090", // 确保使用25090端口
         LOCAL_CONTENT_BASE_PATH: "./test-data/local", // 测试环境本地内容路径
         WEBDAV_URL: "http://localhost:25091", // WebDAV服务器地址

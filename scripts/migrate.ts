@@ -91,6 +91,12 @@ async function runMigrations() {
       throw new Error(`Migrations folder does not exist: ${MIGRATIONS_FOLDER_ABSOLUTE}`);
     }
 
+    // Ensure database directory exists (necessary when DB_PATH includes subdirectories)
+    const dbDir = path.dirname(DB_PATH_ABSOLUTE);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+
     // Use Bun's built-in SQLite driver
     sqlite = new Database(DB_PATH_ABSOLUTE);
     const db = drizzle(sqlite);

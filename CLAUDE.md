@@ -212,7 +212,7 @@ E2E tests run against:
 - Always use transactions for multi-table operations
 - Use `DB_PATH` environment variable for database location
 - Run migrations before seeding: `migrate` → `seed`
-- Test database: `./test.db`, Development: `./sqlite.db`
+- Dev DB default: `./dev-data/sqlite.db`; Test DB default: `./test-data/sqlite.db`
 
 ### Testing Requirements
 - E2E tests require `dufs` WebDAV server: `cargo install dufs`
@@ -228,7 +228,7 @@ E2E tests run against:
 
 ### Environment Variables
 Key variables for development:
-- `DB_PATH`: Database file location (default: `./sqlite.db`)
+- `DB_PATH`: Database file location (env-specific default; see README)
 - `NODE_ENV`: Environment mode (`development`/`test`/`production`)
 - `ADMIN_EMAIL`: Admin user identifier
 - `WEBDAV_URL`: WebDAV server endpoint

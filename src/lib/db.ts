@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import fs from "node:fs";
 import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema";
@@ -16,6 +17,12 @@ export async function initializeDB(force: boolean = false): Promise<void> {
   // 如果强制重新初始化，或者数据库未初始化，或者路径已更改
   if (force || !db || resolvedDBPath !== currentResolvedDBPath) {
     try {
+      // Ensure parent directory exists when DB path includes subdirectories
+      const dbDir = path.dirname(currentResolvedDBPath);
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+
       // Use Bun's built-in SQLite driver
       const sqlite = new Database(currentResolvedDBPath);
       db = drizzle(sqlite, { schema });

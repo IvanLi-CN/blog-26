@@ -54,6 +54,7 @@ sqlite.db-journal
 *.db
 *.db.backup
 docker-data/
+data/
 
 # test data and development data
 test-data/

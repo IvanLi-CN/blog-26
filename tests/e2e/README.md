@@ -170,7 +170,7 @@ bun run test:e2e:report
 
 - `NODE_ENV=test` - 测试环境标识
 - `ADMIN_EMAIL=admin-test@test.local` - 测试环境管理员邮箱
-- `DB_PATH=./test.db` - 测试数据库路径
+- `DB_PATH=./test-data/sqlite.db` - 测试数据库路径
 
 ### 测试数据
 
