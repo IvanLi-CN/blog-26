@@ -187,9 +187,14 @@ export class LocalContentSource extends ContentSourceBase {
   async validateConnection(): Promise<boolean> {
     try {
       const stats = await fs.stat(this.contentPath);
-      return stats.isDirectory();
-    } catch {
-      return false;
+      if (!stats.isDirectory()) {
+        throw new Error(`内容路径不是目录: ${this.contentPath}`);
+      }
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // 抛出错误以便上层 getStatus() 捕获并回填到 UI 的 error 字段
+      throw new Error(`本地内容源不可用: ${message}`);
     }
   }
 

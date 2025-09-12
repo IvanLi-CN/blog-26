@@ -1001,7 +1001,17 @@ export function ContentSyncManager() {
                             </span>
                             {source.error && (
                               <div className="tooltip tooltip-error" data-tip={source.error}>
-                                <Icon name="lucide:alert-triangle" className="w-3 h-3 text-error" />
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs p-0"
+                                  aria-label={`错误详情：${source.error}`}
+                                  title={source.error}
+                                >
+                                  <Icon
+                                    name="lucide:alert-triangle"
+                                    className="w-3 h-3 text-error"
+                                  />
+                                </button>
                               </div>
                             )}
                           </div>

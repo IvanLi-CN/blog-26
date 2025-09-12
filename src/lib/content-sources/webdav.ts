@@ -207,11 +207,9 @@ export class WebDAVContentSource extends ContentSourceBase {
       const files = await this.webdavClient.listFiles("/", false);
       return Array.isArray(files);
     } catch (error) {
-      this.log(
-        "warn",
-        `WebDAV 连接验证失败: ${error instanceof Error ? error.message : String(error)}`
-      );
-      return false;
+      const message = error instanceof Error ? error.message : String(error);
+      // 抛出错误以便上层 getStatus() 捕获并回填到 UI 的 error 字段
+      throw new Error(`WebDAV 连接失败: ${message}`);
     }
   }
 
