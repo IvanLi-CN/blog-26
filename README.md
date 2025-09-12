@@ -365,24 +365,132 @@ import { MemosApp } from "@/components/memos/MemosApp";
 <MemosApp publicOnly={false} showManageFeatures={true} />
 ```
 
-## 🚀 Getting Started
+## Development
+
+### Prerequisites
+
+- Bun ≥ 1.0 and SQLite (file-based, no separate service required)
+- Optional: Playwright browsers (for E2E), dufs (WebDAV for dev/test)
 
 ```bash
-# Install dependencies
-npm install
+# Install deps
+bun install
 
-# Start development server
-npm run dev
+# Install Playwright browsers (for E2E)
+bunx playwright install
 
-# Build for production
-npm run build
-
-# Run linting
-npm run check
-
-# Fix code issues
-npm run fix
+# Install dufs (WebDAV)
+brew install dufs       # or: cargo install dufs
 ```
+
+Environment variables: create a local file and tweak values
+
+```bash
+cp .env.pre .env.local
+# Key vars: ADMIN_EMAIL, SSO_EMAIL_HEADER_NAME (default: Remote-Email),
+# DB_PATH (default: ./sqlite.db), WEBDAV_URL, LOCAL_CONTENT_BASE_PATH, etc.
+```
+
+### Start Dev Environment
+
+```bash
+# Recommended on first run: init DB and sample data
+bun run dev-db:reset
+bun run dev-data:generate   # optional: generate dev content data
+
+# Start Next.js (with WebDAV dev server)
+bun run dev
+```
+
+- App URL: `http://localhost:3000` by default; if `PORT` is set in `.env.local` (example: `25090`), that port takes effect.
+- WebDAV dev server: `http://localhost:25091`
+
+#### Reset Dev Data
+
+```bash
+# Reset dev DB (drop + migrate + seed)
+bun run dev-db:reset
+
+# Clean and (re)generate dev content files
+bun run dev-data:clean && bun run dev-data:generate
+
+# Quick health checks
+bun run dev-db:check && bun run webdav:check
+```
+
+### Start Test Environment
+
+```bash
+# One-shot reset + prepare test fixtures
+bun run test-env:reset
+
+# Start test services only (manual verification): Next.js (test) + WebDAV
+bun run test-server:start
+
+# Run E2E tests (automatically starts services)
+bun run test:e2e
+```
+
+- Install browsers before running tests: `bunx playwright install`
+- Default ports in test: app `25090`, WebDAV `25091`
+
+### Build & Run Staging
+
+```bash
+# Prebuild (generate version info)
+bun run prebuild
+
+# Build Next.js assets
+bun run build
+
+# Start (make sure .env.local or env vars are configured)
+bun run start
+```
+
+Important env hints:
+
+- `NODE_ENV=production`, `PORT=25090` (example)
+- `DB_PATH` should point to a persistent location (e.g., `./sqlite.db` or a mounted volume)
+- `ADMIN_EMAIL` and `SSO_EMAIL_HEADER_NAME` (if your proxy injects email SSO)
+- Content sources: `WEBDAV_URL`, `LOCAL_CONTENT_BASE_PATH`, etc.
+
+### How To Log In
+
+- Option A (recommended for automation/integration): Remote-Email header injection
+  - Inject an admin email via request header; the server reads `SSO_EMAIL_HEADER_NAME` (default: `Remote-Email`).
+  - This repo enables it in `playwright.config.ts`:
+
+    ```ts
+    // excerpt
+    extraHTTPHeaders: {
+      [process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email"]:
+        process.env.ADMIN_EMAIL || "admin@test.com",
+    }
+    ```
+
+- Option B (dev/test only): Privileged endpoints (use fetch in the browser)
+  - These endpoints set a `Set-Cookie` session; the simplest way is to run them in the browser console so the cookie is stored for the current origin.
+  - Open the app in a browser (e.g., `http://localhost:25090`), then in DevTools Console run:
+
+    ```js
+    // Login
+    await fetch('/api/dev/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: 'admin@test.com' }),
+    }).then(r => r.json()).then(console.log);
+
+    // Or register + login
+    await fetch('/api/dev/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nickname: 'Dev', email: 'dev@example.com' }),
+    }).then(r => r.json()).then(console.log);
+    ```
+
+  - Production blocks these endpoints and returns 404.
 
 ## 📁 Project Structure
 
@@ -413,14 +521,14 @@ The original Astro project is preserved in the `old/` directory for reference du
 
 ## 📝 Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Copy `.env.pre` to `.env.local` and configure:
 
 - Database path
 - OpenAI API credentials
 - Redis connection
 - WebDAV settings (if used)
 - SMTP configuration
-- Admin settings
+- Admin settings (e.g., `ADMIN_EMAIL`, `SSO_EMAIL_HEADER_NAME`)
 
 ## 🔄 Development Environment Data Regeneration
 
