@@ -286,6 +286,8 @@ bun run test-data:clean
 
 | Script | Function | Usage |
 |--------|----------|-------|
+| `dev-data:generate` | Generate development content data | `bun run dev-data:generate` |
+| `dev-data:clean` | Clean development content data | `bun run dev-data:clean` |
 | `test-data:generate` | Generate test data | `bun run test-data:generate` |
 | `test-data:clean` | Clean test data | `bun run test-data:clean` |
 | `test-data:verify` | Verify test data | `bun run test-data:verify` |
