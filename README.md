@@ -171,102 +171,6 @@ This project uses a multi-source content management system that supports both lo
 - Multi-source priority management
 - Intelligent conflict resolution strategy
 
-### ⚡ Quick Reset Guide
-
-**One-click Complete Reset**:
-
-```bash
-# Reset database + Generate development data + Start development environment
-bun run dev-db:reset && bun run dev-data:generate && bun run dev
-```
-
-**Common Scenarios**:
-
-```bash
-# Reset development database only (keep files)
-bun run dev-db:reset
-
-# Regenerate test data only
-bun run test-data:clean && bun run test-data:generate
-
-# Check development environment status
-bun run dev-db:check && bun run webdav:check
-
-# Start complete development environment (WebDAV + Next.js)
-bun run dev
-```
-
-### 🛠️ Detailed Operation Flow
-
-#### 1. Data Cleanup Strategy
-
-**Cleanup Order** (to avoid foreign key constraint conflicts):
-
-1. Stop all service processes
-2. Clear cache data (Redis, build cache)
-3. Clear database (by dependency: comments → posts/memos → users)
-4. Clear file system data
-5. Clear temporary files
-
-**Safe Cleanup Commands**:
-
-```bash
-# Force delete database (use with caution)
-bun run drop-db --force
-
-# Clean test data files
-bun run test-data:clean
-
-# Clear build cache
-rm -rf .next/
-```
-
-#### 2. Database Rebuild Process
-
-**Standard Rebuild Process**:
-
-```bash
-# 1. Delete existing database
-bun run drop-db --force
-
-# 2. Run database migrations
-bun run migrate
-
-# 3. Populate seed data
-bun run seed
-
-# Or use one-click command for development
-bun run dev-db:reset
-```
-
-**Seed Data Description**:
-
-- Create test users (<test1@example.com>, <test2@example.com>)
-- Initialize system configuration
-- **Does not include** content data (posts/memos obtained through content sync)
-
-#### 3. Content Source Regeneration
-
-**Generate Test Content**:
-
-```bash
-# Generate development environment test data
-bun run test-data:generate
-
-# Verify generated data
-bun run test-data:verify
-
-# Clean test data
-bun run test-data:clean
-```
-
-**Content Sync Process**:
-
-1. Start WebDAV server: `bun run webdav:dev`
-2. Access admin interface: `http://localhost:25090/admin/content-sync`
-3. Trigger content sync or wait for automatic sync
-4. Check sync logs and status
-
 ### 📜 Script Tools Reference
 
 #### Database Management Scripts
@@ -274,7 +178,7 @@ bun run test-data:clean
 | Script | Function | Usage |
 |--------|----------|-------|
 | `migrate` | Run database migrations | `bun run migrate` |
-| `seed` | Populate seed data | `bun run seed [--clear] [--check]` |
+| `seed` | Populate seed data (creates test users and initializes system configuration) | `bun run seed [--clear] [--check]` |
 | `drop-db` | Delete database file | `bun run drop-db [--force]` |
 | `dev-db:reset` | Reset development database | `bun run dev-db:reset` |
 | `dev-db:check` | Check development database | `bun run dev-db:check` |
