@@ -72,6 +72,9 @@ src/generated/
 *.log
 logs/
 
+# pid files
+*.pid
+
 # IDE
 .vscode/settings.json
 .vscode/extensions.json
