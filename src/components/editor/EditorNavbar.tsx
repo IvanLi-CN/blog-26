@@ -7,6 +7,7 @@
  */
 
 import Link from "next/link";
+import ThemeToggle from "../common/ThemeToggle";
 
 export function EditorNavbar() {
   return (
@@ -16,7 +17,7 @@ export function EditorNavbar() {
           管理后台
         </Link>
       </div>
-      <div className="flex-none">
+      <div className="flex-none flex items-center">
         <ul className="menu menu-horizontal px-1">
           <li>
             <Link href="/admin/dashboard">仪表盘</Link>
@@ -36,6 +37,9 @@ export function EditorNavbar() {
             </Link>
           </li>
         </ul>
+        <div className="ml-2">
+          <ThemeToggle iconClass="w-5 h-5" />
+        </div>
       </div>
     </div>
   );

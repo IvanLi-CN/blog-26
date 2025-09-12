@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import { isAdminFromRequest } from "../../lib/auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             管理后台
           </Link>
         </div>
-        <div className="flex-none">
+        <div className="flex-none flex items-center">
           <ul className="menu menu-horizontal px-1">
             <li>
               <Link href="/admin/dashboard">仪表盘</Link>
@@ -57,6 +58,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </Link>
             </li>
           </ul>
+          <div className="ml-2">
+            <ThemeToggle iconClass="w-5 h-5" />
+          </div>
         </div>
       </div>
 
