@@ -18,7 +18,6 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
-import { truncateMarkdownPreserveDataImages } from "../../lib/markdown-utils";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import AnomalyIndicator from "./AnomalyIndicator";
 
@@ -33,8 +32,6 @@ export interface MemoCardProps {
   showDeleteButton?: boolean;
   /** 是否显示可见性指示器（公开/私有状态） */
   showVisibilityIndicator?: boolean;
-  /** 最大内容长度（超出显示省略号） */
-  maxContentLength?: number;
   /** 编辑回调 */
   onEdit?: (memo: MemoCardData) => void;
   /** 删除回调 */
@@ -71,33 +68,19 @@ export function MemoCard({
   showEditButton = false,
   showDeleteButton = false,
   showVisibilityIndicator = true,
-  maxContentLength = 300,
   onEdit,
   onDelete,
   className: _className,
   isLast = false,
   index: _index = 0,
 }: MemoCardProps) {
-  // const [isExpanded, setIsExpanded] = useState(false);
-  const [showFullContent, setShowFullContent] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // 管理员异常数据检测（依赖于上层通过 showVisibilityIndicator 标识管理员场景）
   const anomalies = useMemo(() => detectContentAnomalies(memo.content || ""), [memo.content]);
 
-  // 处理内容截断
+  // 显示内容（按固定 CSS 高度控制折叠）
   const displayContent = memo.content || memo.excerpt || "";
-  // 先进行一次基于“忽略 base64”策略的安全截断尝试
-  const truncatedCandidate = useMemo(
-    () => truncateMarkdownPreserveDataImages(displayContent, maxContentLength, 2),
-    [displayContent, maxContentLength]
-  );
-  // 只有当截断后的内容与原内容不同，才认为需要“展开/收起”
-  const isActuallyTruncated = useMemo(
-    () => truncatedCandidate.trim() !== displayContent.trim(),
-    [truncatedCandidate, displayContent]
-  );
-  const truncatedContent =
-    showFullContent || !isActuallyTruncated ? displayContent : truncatedCandidate;
 
   // 格式化时间 - 使用 useMemo 优化性能
   const formattedDate = useMemo(() => {
@@ -379,34 +362,44 @@ export function MemoCard({
 
             {/* Memo 内容 - 完全匹配旧项目 */}
             <div className="card-body px-4 py-3 sm:px-6 sm:py-4">
-              <div>
-                <MarkdownRenderer
-                  content={truncatedContent}
-                  variant="preview"
-                  enableMath={true}
-                  enableMermaid={true}
-                  enableCodeFolding={true}
-                  enableImageLightbox={true}
-                  maxCodeLines={15}
-                  previewCodeLines={10}
-                  articlePath={`/memos/${memo.slug}`}
-                  contentSource={memo.source === "local" ? "local" : "webdav"}
-                  removeTags={true}
-                  className="prose prose-sm max-w-none [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-32 [&_img]:object-cover [&_img]:rounded"
-                />
+              {/* 内容容器：仅按 CSS 高度折叠；展开后不再折叠 */}
+              <div className="relative">
+                <div
+                  className={"transition-all duration-300 ease-in-out overflow-hidden"}
+                  style={{ maxHeight: isExpanded ? undefined : "50lh" }}
+                >
+                  <MarkdownRenderer
+                    content={displayContent}
+                    variant="preview"
+                    enableMath={true}
+                    enableMermaid={true}
+                    enableCodeFolding={true}
+                    enableImageLightbox={true}
+                    maxCodeLines={15}
+                    previewCodeLines={10}
+                    articlePath={`/memos/${memo.slug}`}
+                    contentSource={memo.source === "local" ? "local" : "webdav"}
+                    removeTags={true}
+                    className="prose prose-sm max-w-none [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-32 [&_img]:object-cover [&_img]:rounded"
+                  />
+                </div>
+                {/* 渐变遮罩：折叠时显示（纯 CSS 高度判断）*/}
+                {!isExpanded && (
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-b from-transparent to-base-100" />
+                )}
               </div>
 
-              {/* 展开/收起按钮 */}
-              {isActuallyTruncated && (
+              {/* 展开按钮：一次性展开，不再收起 */}
+              {!isExpanded && (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowFullContent(!showFullContent);
+                    setIsExpanded(true);
                   }}
                   className="text-xs text-primary hover:text-primary/80 mt-2"
                 >
-                  {showFullContent ? "收起" : "展开"}
+                  展开
                 </button>
               )}
 
