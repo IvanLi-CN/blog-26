@@ -92,9 +92,22 @@ export function MemosList({
   // 渲染空状态
   const renderEmpty = () => (
     <EmptyState
-      icon="tabler:notes"
-      title="还没有 Memo"
-      description="开始记录你的第一个想法吧！"
+      icon={showManageButtons ? "tabler:notes" : "tabler:inbox"}
+      title={showManageButtons ? "还没有 Memo" : "暂无公开 Memo"}
+      // 管理员：引导创建；访客：显示中性提示，避免误导
+      description={showManageButtons ? "开始记录你的第一个想法吧！" : "这里暂时没有公开的内容"}
+      size={showManageButtons ? "lg" : "md"}
+      tone={showManageButtons ? "brand" : "neutral"}
+      variant={showManageButtons ? "plain" : "card"}
+      links={
+        showManageButtons
+          ? undefined
+          : [
+              { label: "去看文章", href: "/posts", icon: "tabler:article" },
+              { label: "浏览标签", href: "/tags", icon: "tabler:tags" },
+              { label: "订阅 RSS", href: "/rss.xml", icon: "tabler:rss" },
+            ]
+      }
       action={
         showManageButtons && _onNew
           ? {
@@ -115,7 +128,7 @@ export function MemosList({
       {loading && memos.length === 0 && renderSkeleton()}
 
       {/* 空状态 */}
-      {!loading && memos.length === 0 && renderEmpty()}
+      {!loading && !error && memos.length === 0 && renderEmpty()}
 
       {/* Memo 列表 - 时间线样式 */}
       {memos.length > 0 && (
@@ -195,23 +208,7 @@ export function MemosList({
         </div>
       )}
 
-      {/* 空状态 */}
-      {!loading && !error && memos.length === 0 && (
-        <EmptyState
-          icon="tabler:notes"
-          title="还没有 Memo"
-          description="开始记录你的第一个想法吧！"
-          action={
-            showManageButtons && _onNew
-              ? {
-                  label: "发布新Memo",
-                  onClick: _onNew,
-                  variant: "default",
-                }
-              : undefined
-          }
-        />
-      )}
+      {/* 空状态 - 已在上方处理，避免重复渲染 */}
 
       {/* 已加载完所有内容提示 */}
       {!hasMore && memos.length > 0 && !loading && (

@@ -28,6 +28,16 @@ export interface EmptyStateProps {
   className?: string;
   /** 尺寸变体 */
   size?: "sm" | "md" | "lg";
+  /** 视觉语气：品牌色或更克制的中性风格 */
+  tone?: "brand" | "muted" | "neutral";
+  /** 次级引导链接（用于减少页面空旷感） */
+  links?: Array<{
+    label: string;
+    href: string;
+    icon?: string;
+  }>;
+  /** 展示样式：plain 为极简，card 为强调空状态 */
+  variant?: "plain" | "card";
 }
 
 export function EmptyState({
@@ -37,6 +47,9 @@ export function EmptyState({
   action,
   className,
   size = "md",
+  tone = "brand",
+  links,
+  variant = "plain",
 }: EmptyStateProps) {
   // 根据尺寸确定样式
   const sizeConfig = {
@@ -67,6 +80,20 @@ export function EmptyState({
   };
 
   const config = sizeConfig[size];
+  const toneConfig = {
+    brand: {
+      iconContainer: "bg-primary/10",
+      icon: "text-primary/60",
+    },
+    muted: {
+      iconContainer: "bg-base-200/70",
+      icon: "text-base-content/50",
+    },
+    neutral: {
+      iconContainer: "bg-base-100 ring-1 ring-base-300",
+      icon: "text-base-content/40",
+    },
+  } as const;
 
   return (
     <div
@@ -74,17 +101,20 @@ export function EmptyState({
         "flex flex-col items-center justify-center text-center animate-fade-in-up",
         config.container,
         config.spacing,
+        variant === "card" &&
+          "rounded-2xl bg-base-100/60 ring-1 ring-base-300/60 border border-dashed border-base-300",
         className
       )}
     >
       {/* 图标容器 */}
       <div
         className={cn(
-          "flex items-center justify-center rounded-full bg-primary/10 transition-colors",
+          "flex items-center justify-center rounded-full transition-colors",
+          toneConfig[tone].iconContainer,
           config.iconContainer
         )}
       >
-        <Icon name={icon} className={cn("text-primary/60", config.icon)} />
+        <Icon name={icon} className={cn(toneConfig[tone].icon, config.icon)} />
       </div>
 
       {/* 文字内容 */}
@@ -104,10 +134,32 @@ export function EmptyState({
           <Button
             onClick={action.onClick}
             variant={action.variant || "default"}
-            className="animate-scale-in"
+            size="lg"
+            className={cn(
+              "animate-scale-in rounded-xl px-8",
+              // 提升可见性与可点击性：更大的尺寸、阴影与轻微悬浮动效
+              "shadow-md ring-1 ring-primary/20 transition-all duration-200",
+              "hover:shadow-lg hover:-translate-y-0.5 hover:ring-primary/30"
+            )}
           >
             {action.label}
           </Button>
+        </div>
+      )}
+
+      {/* 次级引导链接 */}
+      {links && links.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-base-content/70">
+          {links.map((l, i) => (
+            <a
+              key={`${l.label}-${i}`}
+              href={l.href}
+              className="inline-flex items-center gap-1 rounded-full px-3 py-1 ring-1 ring-base-300 hover:ring-base-400 hover:text-base-content transition-colors"
+            >
+              {l.icon && <Icon name={l.icon} className="w-4 h-4 opacity-70" />}
+              <span>{l.label}</span>
+            </a>
+          ))}
         </div>
       )}
     </div>
