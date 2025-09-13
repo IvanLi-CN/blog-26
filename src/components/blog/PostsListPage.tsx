@@ -1,8 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
 import { trpc } from "../../lib/trpc";
 import PageLayout from "../common/PageLayout";
+import EmptyState from "../ui/EmptyState";
 import BlogList from "./BlogList";
 import BlogPagination from "./BlogPagination";
 
@@ -14,6 +17,9 @@ export default function PostsListPage() {
     limit: 10, // 匹配旧项目的每页数量
     published: true,
   });
+
+  const { isAdmin } = useAuth();
+  const router = useRouter();
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -74,11 +80,33 @@ export default function PostsListPage() {
             }))}
           />
         ) : (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📝</div>
-            <h3 className="text-2xl font-bold mb-2">暂无文章</h3>
-            <p className="text-base-content/70">还没有发布任何文章</p>
-          </div>
+          <EmptyState
+            icon={isAdmin ? "tabler:article" : "tabler:inbox"}
+            title={isAdmin ? "还没有文章" : "暂无公开文章"}
+            description={isAdmin ? "开始写下你的第一篇文章吧！" : "这里暂时没有公开的内容"}
+            size={isAdmin ? "lg" : "md"}
+            tone={isAdmin ? "brand" : "neutral"}
+            variant={isAdmin ? "plain" : "card"}
+            links={
+              isAdmin
+                ? undefined
+                : [
+                    { label: "去看闪念", href: "/memos", icon: "tabler:bulb" },
+                    { label: "浏览标签", href: "/tags", icon: "tabler:tags" },
+                    { label: "订阅 RSS", href: "/rss.xml", icon: "tabler:rss" },
+                  ]
+            }
+            action={
+              isAdmin
+                ? {
+                    label: "新建文章",
+                    onClick: () => router.push("/admin/posts/editor"),
+                    variant: "default",
+                  }
+                : undefined
+            }
+            className="mt-2"
+          />
         )}
 
         {data?.pagination && data.pagination.totalPages > 1 && (
