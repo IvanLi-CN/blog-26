@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { trpc } from "@/lib/trpc";
 import Icon from "../ui/Icon";
 
 type ResultType = "post" | "memo";
@@ -12,47 +13,14 @@ export interface AiSearchOverlayProps {
   initialQuery?: string;
 }
 
-type MockResult = {
+type ApiResult = {
   slug: string;
-  title: string;
-  excerpt: string;
-  type: ResultType;
-  score?: number;
+  title?: string | null;
+  excerpt?: string | null;
+  type?: ResultType;
+  final?: number;
+  cosine?: number;
 };
-
-const MOCK_RESULTS: MockResult[] = [
-  {
-    slug: "ai-search-design",
-    title: "Designing an AI-Powered Search Overlay",
-    excerpt:
-      "Outline a clean command-palette style overlay using DaisyUI with tabs, skeleton loading, and keyboard hints.",
-    type: "post",
-    score: 0.92,
-  },
-  {
-    slug: "semantic-search-nextjs",
-    title: "Semantic Search in Next.js with Embeddings",
-    excerpt:
-      "Compute embeddings, filter by published status, and rank by cosine similarity for relevant content retrieval.",
-    type: "post",
-    score: 0.88,
-  },
-  {
-    slug: "note-ai-search-roadmap",
-    title: "Memo: AI Search Roadmap",
-    excerpt: "Track tasks: UI polish, reranking, and quick preview with keyboard navigation.",
-    type: "memo",
-    score: 0.81,
-  },
-  {
-    slug: "reranking-options",
-    title: "Reranking Options and Trade-offs",
-    excerpt:
-      "Compare base cosine ranking vs. reranker scores, and consider latency vs. quality for various models.",
-    type: "post",
-    score: 0.79,
-  },
-];
 
 const modes = [
   { key: "enhanced", label: "Enhanced" },
@@ -67,9 +35,9 @@ export default function AiSearchOverlay({
   const [query, setQuery] = useState(initialQuery);
   const [mode, setMode] = useState<"enhanced" | "semantic">("enhanced");
   const [filter, setFilter] = useState<"all" | ResultType>("all");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const canSearch = query.trim().length > 0;
 
   useEffect(() => {
     if (open) {
@@ -98,38 +66,34 @@ export default function AiSearchOverlay({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, handleClose]);
 
-  const doMockSearch = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      // Simulate latency
-      await new Promise((r) => setTimeout(r, 450));
-    } catch (_e) {
-      setError("Failed to search. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // 后端搜索（增强/语义）
+  const enhancedQ = trpc.search.ai.enhanced.useQuery(
+    { q: query.trim(), topK: 20 },
+    { enabled: canSearch && mode === "enhanced", staleTime: 30_000 }
+  );
+  const semanticQ = trpc.search.ai.semantic.useQuery(
+    { q: query.trim(), topK: 20 },
+    { enabled: canSearch && mode === "semantic", staleTime: 30_000 }
+  );
+  const isLoading =
+    mode === "enhanced"
+      ? enhancedQ.isLoading || enhancedQ.isFetching
+      : semanticQ.isLoading || semanticQ.isFetching;
+  const data = (mode === "enhanced" ? enhancedQ.data : semanticQ.data) as ApiResult[] | undefined;
+  useEffect(() => {
+    const err = (mode === "enhanced" ? enhancedQ.error : semanticQ.error) as any;
+    setError(err ? String(err?.message || "搜索失败，请稍后重试") : null);
+  }, [mode, enhancedQ.error, semanticQ.error]);
 
   const filteredResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = MOCK_RESULTS;
-    if (q) {
-      list = list.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          r.excerpt.toLowerCase().includes(q) ||
-          r.slug.toLowerCase().includes(q)
-      );
-    }
-    if (filter !== "all") list = list.filter((r) => r.type === filter);
+    let list = (data || []) as ApiResult[];
+    if (filter !== "all") list = list.filter((r) => (r.type || "post") === filter);
     return list;
-  }, [query, filter]);
+  }, [data, filter]);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!query.trim()) return;
-    void doMockSearch();
+    // 输入即触发查询，通过 useQuery 的 enabled 控制
   };
 
   if (!open) return null;
@@ -216,7 +180,7 @@ export default function AiSearchOverlay({
             </div>
           )}
 
-          {loading ? (
+          {isLoading ? (
             <div className="p-4 space-y-4">
               {(["s1", "s2", "s3", "s4", "s5"] as const).map((k) => (
                 <div key={k} className="flex items-start gap-4">
@@ -243,7 +207,7 @@ export default function AiSearchOverlay({
                 <span className="ml-2">关闭</span>
               </div>
             </div>
-          ) : filteredResults.length === 0 ? (
+          ) : !isLoading && filteredResults.length === 0 ? (
             <div className="p-10 text-center text-base-content/60">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Icon name="tabler:mood-empty" className="w-5 h-5" />
@@ -255,25 +219,36 @@ export default function AiSearchOverlay({
             <ul className="menu bg-base-100 p-2">
               {filteredResults.map((r) => (
                 <li key={r.slug} className="">
-                  <Link href={`/${r.slug}`} className="!py-3">
+                  <Link
+                    href={(r.type || "post") === "memo" ? `/memos/${r.slug}` : `/posts/${r.slug}`}
+                    className="!py-3"
+                  >
                     <div className="flex items-start gap-4">
                       <div className="avatar placeholder">
                         <div className="bg-base-200 text-base-content/70 rounded w-10">
-                          <span>{r.type === "post" ? "P" : "M"}</span>
+                          <span>{(r.type || "post") === "post" ? "P" : "M"}</span>
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate max-w-[75%]">{r.title}</span>
-                          <span className="badge badge-sm badge-outline capitalize">{r.type}</span>
-                          {typeof r.score === "number" && (
+                          <span className="font-medium truncate max-w-[75%]">
+                            {r.title || r.slug}
+                          </span>
+                          <span className="badge badge-sm badge-outline capitalize">
+                            {r.type || "post"}
+                          </span>
+                          {typeof r.final === "number" && (
                             <span className="badge badge-xs badge-ghost">
-                              {(r.score * 100).toFixed(0)}%
+                              {(r.final * 100).toFixed(0)}%
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-base-content/70 line-clamp-2">{r.excerpt}</p>
-                        <div className="text-xs text-base-content/50">/{r.slug}</div>
+                        {r.excerpt && (
+                          <p className="text-sm text-base-content/70 line-clamp-2">{r.excerpt}</p>
+                        )}
+                        <div className="text-xs text-base-content/50">
+                          {(r.type || "post") === "memo" ? `/memos/${r.slug}` : `/posts/${r.slug}`}
+                        </div>
                       </div>
                     </div>
                   </Link>

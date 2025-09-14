@@ -120,35 +120,42 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
 
         {!isLoading && !isFetching && (data?.length || 0) > 0 && (
           <ul className="menu bg-base-100 p-0">
-            {(data ?? []).map((r) => (
-              <li key={r.slug}>
-                <Link href={`/${r.slug}`} className="!py-3">
-                  <div className="flex items-start gap-4">
-                    <div className="avatar placeholder">
-                      <div className="bg-base-200 text-base-content/70 rounded w-10">
-                        <span>{(r as any).type === "memo" ? "M" : "P"}</span>
+            {(data ?? []).map((r) => {
+              const type = (r as any).type as "post" | "memo" | undefined;
+              const href = type === "memo" ? `/memos/${r.slug}` : `/posts/${r.slug}`;
+              return (
+                <li key={r.slug}>
+                  <Link href={href} className="!py-3">
+                    <div className="flex items-start gap-4">
+                      <div className="avatar placeholder">
+                        <div className="bg-base-200 text-base-content/70 rounded w-10">
+                          <span>{type === "memo" ? "M" : "P"}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate max-w-[75%]">
-                          {r.title || r.slug}
-                        </span>
-                        {typeof r.final === "number" && (
-                          <span className="badge badge-xs badge-ghost">
-                            {(r.final * 100).toFixed(0)}%
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate max-w-[75%]">
+                            {r.title || r.slug}
                           </span>
+                          {type && (
+                            <span className="badge badge-xs badge-outline capitalize">{type}</span>
+                          )}
+                          {typeof r.final === "number" && (
+                            <span className="badge badge-xs badge-ghost">
+                              {(r.final * 100).toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                        {r.excerpt && (
+                          <p className="text-sm text-base-content/70 line-clamp-2">{r.excerpt}</p>
                         )}
+                        <div className="text-xs text-base-content/50">{href}</div>
                       </div>
-                      {r.excerpt && (
-                        <p className="text-sm text-base-content/70 line-clamp-2">{r.excerpt}</p>
-                      )}
-                      <div className="text-xs text-base-content/50">/{r.slug}</div>
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

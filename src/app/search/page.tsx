@@ -5,8 +5,13 @@ export const metadata: Metadata = {
   title: "搜索 | Ivan's Blog",
 };
 
-export default function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const q = typeof searchParams?.q === "string" ? searchParams.q : "";
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const sp = await searchParams;
+  const q = typeof sp?.q === "string" ? sp.q : "";
   return (
     <main className="min-h-[60vh]">
       <div className="container mx-auto px-4">

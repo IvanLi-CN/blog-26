@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
 import { cosineSimilarity, createEmbedding } from "./embeddings";
@@ -16,14 +16,80 @@ export type SearchResult = {
   slug: string;
   title?: string | null;
   excerpt?: string | null;
+  type?: "post" | "memo"; // 用于前端路由跳转
   cosine?: number;
   rerank?: number;
   final?: number;
 };
 
+async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult[]> {
+  const q = input.q.trim();
+  if (!q) return [];
+
+  const conditions = [] as any[];
+
+  // 发布状态过滤（除非显式传 publishedOnly=false）
+  if (input.publishedOnly !== false) {
+    conditions.push(eq(posts.draft, false));
+    conditions.push(eq(posts.public, true));
+  }
+
+  // 类型过滤
+  if (input.type && input.type !== "all") {
+    conditions.push(eq(posts.type, input.type));
+  } else {
+    // 仅在搜索时纳入主要类型
+    conditions.push(inArray(posts.type, ["post", "memo"] as unknown as string[]));
+  }
+
+  // 关键字匹配（title/ excerpt/ body）
+  const pattern = `%${q}%`;
+  const matchCond = or(
+    like(posts.title, pattern),
+    like(posts.excerpt, pattern),
+    like(posts.body, pattern)
+  );
+
+  const rows = await db
+    .select({ slug: posts.slug, title: posts.title, excerpt: posts.excerpt, type: posts.type })
+    .from(posts)
+    .where(and(matchCond, ...(conditions as any)))
+    .orderBy(desc(posts.publishDate))
+    .limit(input.topK ?? 50);
+
+  return rows.map((r) => ({
+    slug: r.slug,
+    title: r.title,
+    excerpt: r.excerpt,
+    type: r.type as any,
+  }));
+}
+
 export async function semantic(input: SemanticSearchInput): Promise<SearchResult[]> {
   const model = input.model || process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
-  const { vector: qv } = await createEmbedding(input.q, model);
+
+  // 若当前模型尚无向量索引，降级为关键字搜索
+  try {
+    const countRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(postEmbeddings)
+      .where(eq(postEmbeddings.modelName, model));
+    const hasIndex = (countRows[0]?.count ?? 0) > 0;
+    if (!hasIndex) {
+      return keywordFallback(input);
+    }
+  } catch {
+    // 统计失败时，不阻断主流程
+  }
+
+  // 生成查询向量；失败时也回退到关键字搜索
+  let qv: number[];
+  try {
+    const { vector } = await createEmbedding(input.q, model);
+    qv = vector;
+  } catch {
+    return keywordFallback(input);
+  }
   const _targetTypes = input.type && input.type !== "all" ? [input.type] : ["post", "memo"];
 
   const eb = await db
@@ -65,6 +131,7 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
       slug: p.slug,
       title: p.title,
       excerpt: p.excerpt,
+      type: p.type as any,
       cosine: scoreBySlug.get(p.slug) ?? 0,
     }));
 
