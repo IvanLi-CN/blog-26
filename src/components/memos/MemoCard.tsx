@@ -15,6 +15,7 @@
  * - 复杂的点击交互逻辑：避免与文本选择冲突
  */
 
+import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
@@ -61,6 +62,8 @@ export interface MemoCardData {
     path: string;
     isImage: boolean;
   }>;
+  /** 是否已完成向量化（当前模型且哈希匹配） */
+  isVectorized?: boolean;
 }
 
 export function MemoCard({
@@ -212,6 +215,15 @@ export function MemoCard({
           className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden relative"
           data-testid="memo-card"
         >
+          {/* 向量化标记：参考 /posts 样式，放置于卡片左上角 */}
+          {memo.isVectorized && (
+            <div
+              className="absolute top-2 sm:top-3 right-4 sm:right-6 text-secondary/80 drop-shadow"
+              title="已向量化（当前模型，哈希匹配）"
+            >
+              <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
+            </div>
+          )}
           {/* 卡片内容 */}
           <div>
             {/* 头部信息 - 完全匹配旧项目 */}

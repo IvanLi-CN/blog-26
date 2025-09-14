@@ -1,6 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
+import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
+import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
 import { getContentSourceManager } from "../../lib/content-sources";
 import { generateNanoidSlug } from "../../lib/content-sources/utils";
@@ -222,8 +224,34 @@ export const memosRouter = router({
       const hasMore = memoList.length > limit;
       const actualMemos = hasMore ? memoList.slice(0, limit) : memoList;
 
+      // 计算向量化状态（与 /posts 相同口径：当前模型名 + 输入拼接哈希一致且存在向量）
+      const modelName = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+      const memosWithVectorStatus = await Promise.all(
+        actualMemos.map(async (m) => {
+          try {
+            const embeddingInput = buildEmbeddingInput({
+              title: m.title || "",
+              excerpt: m.excerpt || "",
+              body: m.body || "",
+            });
+            const embeddingHash = hashEmbeddingInput(embeddingInput);
+            const status = await EmbeddingsRepository.getVectorizationStatus(
+              m.id,
+              modelName,
+              embeddingHash
+            );
+            return {
+              ...m,
+              isVectorized: status === "indexed",
+            } as typeof m & { isVectorized: boolean };
+          } catch {
+            return { ...m, isVectorized: false } as typeof m & { isVectorized: boolean };
+          }
+        })
+      );
+
       // 转换为 API 响应格式
-      const formattedMemos = actualMemos.map((memo) => {
+      const formattedMemos = memosWithVectorStatus.map((memo) => {
         const attachments = parseAttachments(memo.metadata);
         return {
           id: memo.id,
@@ -241,6 +269,8 @@ export const memosRouter = router({
           updatedAt: memo.updateDate
             ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
             : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
+          // 新增：向量化标记
+          isVectorized: (memo as any).isVectorized === true,
         };
       });
 
@@ -495,7 +525,10 @@ export const memosRouter = router({
       let meta: any = {};
       try {
         meta = existingMemo.metadata ? JSON.parse(existingMemo.metadata) : {};
-      } catch {}
+      } catch {
+        // ignore malformed metadata json
+        meta = {};
+      }
       meta.attachments = attachments;
 
       const updateData = {
