@@ -106,6 +106,16 @@ export default function SearchBox({
 
   return (
     <div className="relative">
+      {/* 移动端搜索按钮：跳转到独立搜索页 */}
+      <button
+        type="button"
+        className="btn btn-ghost btn-circle md:hidden"
+        aria-label={buttonLabel}
+        onClick={() => router.push("/search")}
+      >
+        <Icon name="tabler:search" className="w-5 h-5" />
+      </button>
+
       {/* 大屏搜索框 */}
       <form onSubmit={handleDesktopSubmit} className="hidden xl:flex items-center w-auto">
         <label className="input input-bordered flex items-center gap-2">
