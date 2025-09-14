@@ -15,6 +15,7 @@ interface Post {
   tags?: string;
   published: boolean;
   dataSource?: string; // 内容源：local/webdav
+  isVectorized?: boolean; // 是否已完成向量化（当前模型且哈希匹配）
 }
 
 interface BlogListProps {

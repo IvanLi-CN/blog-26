@@ -19,6 +19,7 @@ interface Post {
   tags?: string;
   published: boolean;
   dataSource?: string; // 内容源：local/webdav
+  isVectorized?: boolean; // 是否已完成向量化（当前模型且哈希匹配）
 }
 
 interface BlogListItemProps {
@@ -46,7 +47,9 @@ export default function BlogListItem({ post }: BlogListItemProps) {
 
   return (
     <article className="max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-lg p-4 hover:bg-base-100/50">
-      <div className={`mt-2 ${imageSrc ? "md:col-start-2 md:row-start-1" : "md:col-span-2"}`}>
+      <div
+        className={`mt-2 ${imageSrc ? "md:col-start-2 md:row-start-1" : "md:col-span-2"} h-full flex flex-col`}
+      >
         <header>
           <div className="mb-1">
             <span className="text-sm">
@@ -97,10 +100,22 @@ export default function BlogListItem({ post }: BlogListItemProps) {
 
         {post.excerpt && <p className="flex-grow text-base-content/70 text-lg">{post.excerpt}</p>}
 
-        {tags.length > 0 && (
-          <footer className="mt-5">
-            <PostTags tags={tags} />
+        {tags.length > 0 ? (
+          <footer className="mt-auto pt-4">
+            <PostTags tags={tags} showVectorized={post.isVectorized} />
           </footer>
+        ) : (
+          // 无标签时也保证星标在文本列底部对齐显示（单独占一行，靠右）
+          post.isVectorized && (
+            <div className="mt-auto pt-4 flex">
+              <span
+                className="ml-auto text-secondary/80 drop-shadow shrink-0"
+                title="已向量化（当前模型，哈希匹配）"
+              >
+                <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
+              </span>
+            </div>
+          )
         )}
       </div>
 
@@ -123,6 +138,8 @@ export default function BlogListItem({ post }: BlogListItemProps) {
           </div>
         </Link>
       )}
+
+      {/* 星标已移入文本列底部（或标签行），避免在移动端覆盖图片 */}
     </article>
   );
 }
@@ -154,11 +171,12 @@ function PostStatus({ post, size = "md", className = "" }: PostStatusProps) {
 // PostTags 组件
 interface PostTagsProps {
   tags: string[];
+  showVectorized?: boolean;
 }
 
-function PostTags({ tags }: PostTagsProps) {
+function PostTags({ tags, showVectorized }: PostTagsProps) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap items-center gap-1 min-h-5">
       {tags.map((tag) => (
         <Link
           key={tag}
@@ -168,6 +186,14 @@ function PostTags({ tags }: PostTagsProps) {
           #{tag}
         </Link>
       ))}
+      {showVectorized && (
+        <span
+          className="ml-auto flex items-center text-secondary/80 drop-shadow shrink-0"
+          title="已向量化（当前模型，哈希匹配）"
+        >
+          <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
+        </span>
+      )}
     </div>
   );
 }

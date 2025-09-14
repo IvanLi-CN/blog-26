@@ -1,5 +1,7 @@
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
+import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
+import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
 import { publicProcedure, router } from "../trpc";
@@ -68,6 +70,7 @@ export const postsRouter = router({
           draft: posts.draft,
           public: posts.public,
           dataSource: posts.dataSource,
+          contentHash: posts.contentHash,
         })
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -76,6 +79,30 @@ export const postsRouter = router({
         .offset(offset);
 
       const postsList = await postsQuery;
+
+      // 计算每条记录是否已按当前模型完成向量化（哈希匹配且存在向量）
+      const modelName = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+      const postsWithVectorStatus = await Promise.all(
+        postsList.map(async (p) => {
+          try {
+            // 使用与向量化相同的拼接与哈希算法，确保校验口径一致
+            const embeddingInput = buildEmbeddingInput({
+              title: p.title,
+              excerpt: p.excerpt,
+              body: p.body,
+            });
+            const embeddingHash = hashEmbeddingInput(embeddingInput);
+            const status = await EmbeddingsRepository.getVectorizationStatus(
+              p.id,
+              modelName,
+              embeddingHash
+            );
+            return { ...p, isVectorized: status === "indexed" };
+          } catch {
+            return { ...p, isVectorized: false };
+          }
+        })
+      );
 
       // 获取总数
       const totalResult = await db
@@ -87,7 +114,7 @@ export const postsRouter = router({
       const totalPages = Math.ceil(total / limit);
 
       return {
-        posts: postsList,
+        posts: postsWithVectorStatus,
         pagination: {
           page,
           limit,
