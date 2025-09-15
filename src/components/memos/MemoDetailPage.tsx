@@ -264,48 +264,8 @@ export function MemoDetailPage({
         </div>
       </div>
 
-      {/* 标题和元信息 */}
+      {/* 顶部：仅展示标签（标题由内容内提取，不再额外渲染） */}
       <div className="mb-6">
-        {memo.title && (
-          <div className="mb-2">
-            <h1 className="text-3xl font-bold">{memo.title}</h1>
-          </div>
-        )}
-
-        <div className="flex items-center text-sm text-muted-foreground mb-4 gap-4">
-          <div className="flex items-center space-x-2">
-            <Avatar className="w-6 h-6">
-              <AvatarFallback className="text-xs">
-                {memo.author?.charAt(0)?.toUpperCase() || "M"}
-              </AvatarFallback>
-            </Avatar>
-            <span>{memo.author || SITE.author.name}</span>
-          </div>
-
-          <div className="flex items-center space-x-1">
-            <Calendar className="w-4 h-4" />
-            <span>{formatTime(memo.createdAt)}</span>
-          </div>
-
-          <div className="flex items-center space-x-1">
-            {memo.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            <span>{memo.isPublic ? "公开" : "私有"}</span>
-          </div>
-
-          {/* 右侧放置异常数据提示（仅管理员可见） */}
-          {(() => {
-            const anomalies = detectContentAnomalies(memo.content || "");
-            return isAdmin && anomalies.hasInlineDataImages ? (
-              <div className="ml-auto">
-                <AnomalyIndicator anomalies={anomalies} showLabel={true} />
-              </div>
-            ) : (
-              <div className="ml-auto" />
-            );
-          })()}
-        </div>
-
-        {/* 标签 */}
         {memo.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {memo.tags.map((tag: string) => (
@@ -333,6 +293,39 @@ export function MemoDetailPage({
           removeTags={true}
           className="prose prose-lg max-w-none"
         />
+        {/* 元信息：移动到内容末尾展示 */}
+        <div className="mt-6 flex items-center text-sm text-muted-foreground gap-4">
+          <div className="flex items-center space-x-2">
+            <Avatar className="w-6 h-6">
+              <AvatarFallback className="text-xs">
+                {memo.author?.charAt(0)?.toUpperCase() || "M"}
+              </AvatarFallback>
+            </Avatar>
+            <span>{memo.author || SITE.author.name}</span>
+          </div>
+
+          <div className="flex items-center space-x-1">
+            <Calendar className="w-4 h-4" />
+            <span>{formatTime(memo.createdAt)}</span>
+          </div>
+
+          <div className="flex items-center space-x-1">
+            {memo.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            <span>{memo.isPublic ? "公开" : "私有"}</span>
+          </div>
+
+          {/* 右侧：仅管理员显示异常提示 */}
+          {(() => {
+            const anomalies = detectContentAnomalies(memo.content || "");
+            return isAdmin && anomalies.hasInlineDataImages ? (
+              <div className="ml-auto">
+                <AnomalyIndicator anomalies={anomalies} showLabel={true} />
+              </div>
+            ) : (
+              <div className="ml-auto" />
+            );
+          })()}
+        </div>
       </div>
 
       {/* 附件 */}
