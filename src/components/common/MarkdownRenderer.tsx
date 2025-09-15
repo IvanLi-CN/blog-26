@@ -249,16 +249,16 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 列表样式
         ul: ({ children }) => (
-          <ul className="list-disc list-inside my-4 space-y-1 text-gray-700 dark:text-gray-300">
+          <ul className="list-disc list-outside pl-6 my-4 space-y-1 text-gray-700 dark:text-gray-300">
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="list-decimal list-inside my-4 space-y-1 text-gray-700 dark:text-gray-300">
+          <ol className="list-decimal list-outside pl-6 my-4 space-y-1 text-gray-700 dark:text-gray-300">
             {children}
           </ol>
         ),
-        li: ({ children }) => <li className="ml-4">{children}</li>,
+        li: ({ children }) => <li>{children}</li>,
 
         // 引用样式
         blockquote: ({ children }) => (
