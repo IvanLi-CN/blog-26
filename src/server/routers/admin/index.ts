@@ -4,6 +4,7 @@ import { adminContentSyncRouter } from "./content-sync";
 import { adminDashboardRouter } from "./dashboard";
 import { filesRouter } from "./files";
 import { adminPostsRouter } from "./posts";
+import { adminVectorizeRouter } from "./vectorize";
 
 /**
  * 管理员路由
@@ -14,5 +15,6 @@ export const adminRouter = createTRPCRouter({
   posts: adminPostsRouter,
   comments: adminCommentsRouter,
   contentSync: adminContentSyncRouter,
+  vectorize: adminVectorizeRouter,
   files: filesRouter,
 });

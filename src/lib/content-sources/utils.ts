@@ -127,16 +127,48 @@ export function calculateContentHash(content: string, algorithm: string = "sha25
     // ignore and fallback
   }
 
-  // Do NOT import or require Node's crypto here to keep this file client-safe.
-  // Bun path above covers server usage; other environments fall back below.
+  // Environment-neutral, synchronous fallback that yields a 64-hex digest.
+  // Construct 8 independent 32-bit FNV-1a style rounds with different salts
+  // and concatenate their hex outputs to reach 64 characters. This is
+  // deterministic and sufficient for change detection while remaining safe for
+  // client bundles (no Node-only APIs, no async WebCrypto).
 
-  // Fallback: FNV-1a 32-bit (kept for browser safety); not ideal for server, but prevents crashes
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < content.length; i++) {
-    hash ^= content.charCodeAt(i);
-    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  // Single 32-bit FNV-1a style round
+  const fnv1a32 = (str: string, seed: number): number => {
+    let h = seed >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      // Mix using shifts to simulate multiplication by FNV prime without BigInt
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h >>> 0;
+  };
+
+  // Different salts (odd numbers) to decorrelate rounds
+  const SALTS = [
+    0x811c9dc5, // FNV offset basis
+    0x811c9dc5 ^ 0x9e3779b9,
+    0x811c9dc5 ^ 0x7f4a7c15,
+    0x811c9dc5 ^ 0x94d049bb,
+    0x811c9dc5 ^ 0xd1b54a32,
+    0x811c9dc5 ^ 0x3c6ef372,
+    0x811c9dc5 ^ 0xa54ff53a,
+    0x811c9dc5 ^ 0x510e527f,
+  ];
+
+  let digest = "";
+  for (let i = 0; i < SALTS.length; i++) {
+    const part = fnv1a32(`${i}|${content}|${content.length}`, SALTS[i])
+      .toString(16)
+      .padStart(8, "0");
+    digest += part;
   }
-  return (hash >>> 0).toString(16).padStart(8, "0");
+
+  // Ensure 64 hex chars
+  if (digest.length !== 64) {
+    digest = (digest + digest).slice(0, 64);
+  }
+  return digest;
 }
 
 /**

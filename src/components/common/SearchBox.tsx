@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import AiSearchOverlay from "../search/AiSearchOverlay";
 import Icon from "../ui/Icon";
 
 interface SearchBoxProps {
@@ -18,7 +19,6 @@ export default function SearchBox({
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const modalInputRef = useRef<HTMLInputElement>(null);
-  const mediumInputRef = useRef<HTMLInputElement>(null);
   const desktopInputRef = useRef<HTMLInputElement>(null);
 
   // 处理搜索提交
@@ -52,13 +52,7 @@ export default function SearchBox({
     handleSearch(query);
   };
 
-  // 中屏版搜索表单提交
-  const handleMediumSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const query = formData.get("q") as string;
-    handleSearch(query);
-  };
+  // 保留：中屏提交逻辑由 AiSearchOverlay 承担
 
   // 打开移动端搜索模态框
   // const openModal = () => {
@@ -76,8 +70,6 @@ export default function SearchBox({
   // 打开中屏搜索悬浮框
   const openMediumOverlay = useCallback(() => {
     setIsMediumOverlayOpen(true);
-    document.body.style.overflow = "hidden";
-    setTimeout(() => mediumInputRef.current?.focus(), 100);
   }, []);
 
   // 关闭中屏搜索悬浮框
@@ -98,18 +90,7 @@ export default function SearchBox({
       // ⌘+K 或 Ctrl+K 快捷键
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-
-        const isLargeScreen = window.matchMedia("(min-width: 1280px)").matches;
-        const isMediumScreen = window.matchMedia(
-          "(min-width: 768px) and (max-width: 1279px)"
-        ).matches;
-
-        if (isLargeScreen) {
-          desktopInputRef.current?.focus();
-        } else if (isMediumScreen) {
-          openMediumOverlay();
-        }
-        // 小屏不处理快捷键
+        openMediumOverlay();
       }
     };
 
@@ -117,30 +98,24 @@ export default function SearchBox({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen, isMediumOverlayOpen, closeMediumOverlay, closeModal, openMediumOverlay]);
 
-  // 点击外部关闭中屏搜索框
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (isMediumOverlayOpen) {
-        const overlay = document.querySelector(".search-overlay-medium");
-        const trigger = document.querySelector(".search-trigger-medium");
-
-        if (
-          overlay &&
-          !overlay.contains(e.target as Node) &&
-          trigger &&
-          !trigger.contains(e.target as Node)
-        ) {
-          closeMediumOverlay();
-        }
-      }
+    return () => {
+      document.body.style.overflow = "";
     };
-
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [isMediumOverlayOpen, closeMediumOverlay]);
+  }, []);
 
   return (
     <div className="relative">
+      {/* 移动端搜索按钮：跳转到独立搜索页 */}
+      <button
+        type="button"
+        className="btn btn-ghost btn-circle md:hidden"
+        aria-label={buttonLabel}
+        onClick={() => router.push("/search")}
+      >
+        <Icon name="tabler:search" className="w-5 h-5" />
+      </button>
+
       {/* 大屏搜索框 */}
       <form onSubmit={handleDesktopSubmit} className="hidden xl:flex items-center w-auto">
         <label className="input input-bordered flex items-center gap-2">
@@ -170,31 +145,7 @@ export default function SearchBox({
         <Icon name="tabler:search" className="w-5 h-5" />
       </button>
 
-      {/* 中屏搜索悬浮框 */}
-      {isMediumOverlayOpen && (
-        <div className="search-overlay-medium fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-          <div className="absolute top-20 left-1/2 transform -translate-x-1/2">
-            <form
-              onSubmit={handleMediumSubmit}
-              className="flex items-center bg-base-100 rounded-lg shadow-lg border border-base-300 px-3 py-2"
-            >
-              <Icon name="tabler:search" className="w-4 h-4 text-base-content/60 mr-2" />
-              <input
-                ref={mediumInputRef}
-                type="text"
-                name="q"
-                placeholder={placeholder}
-                className="input input-ghost w-64 h-8 text-sm bg-transparent border-0 focus:outline-none"
-                autoComplete="off"
-              />
-              <div className="hidden sm:flex items-center ml-2 text-xs text-base-content/60">
-                <kbd className="kbd kbd-xs">⌘</kbd>
-                <kbd className="kbd kbd-xs">K</kbd>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AiSearchOverlay open={isMediumOverlayOpen} onClose={closeMediumOverlay} />
 
       {/* 全屏搜索模态框 */}
       {isModalOpen && (

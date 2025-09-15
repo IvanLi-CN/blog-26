@@ -32,6 +32,13 @@ export default function AdminPostsManager() {
     },
   });
 
+  // 向量化（单篇）
+  const vectorizeBySlug = trpc.admin.vectorize.vectorizeBySlug.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+  });
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -212,6 +219,7 @@ export default function AdminPostsManager() {
                   </th>
                   <th>标题</th>
                   <th>状态</th>
+                  <th>向量化</th>
                   <th>发布时间</th>
                   <th>更新时间</th>
                   <th>操作</th>
@@ -240,6 +248,22 @@ export default function AdminPostsManager() {
                           {post.draft ? "草稿" : "已发布"}
                         </div>
                       </td>
+                      <td>
+                        {(() => {
+                          const s = post.vectorizationStatus as
+                            | "indexed"
+                            | "unindexed"
+                            | "outdated"
+                            | undefined;
+                          if (!s || s === "unindexed")
+                            return <span className="badge badge-ghost">未索引</span>;
+                          if (s === "indexed")
+                            return <span className="badge badge-success">已索引</span>;
+                          if (s === "outdated")
+                            return <span className="badge badge-warning">过时</span>;
+                          return null;
+                        })()}
+                      </td>
                       <td>{new Date(post.publishDate).toLocaleString()}</td>
                       <td>
                         {post.updateDate ? new Date(post.updateDate).toLocaleString() : "未更新"}
@@ -252,6 +276,20 @@ export default function AdminPostsManager() {
                           >
                             编辑
                           </Link>
+                          <button
+                            type="button"
+                            className={`btn btn-sm btn-secondary ${vectorizeBySlug.isPending ? "loading" : ""}`}
+                            disabled={vectorizeBySlug.isPending}
+                            onClick={async () => {
+                              try {
+                                await vectorizeBySlug.mutateAsync({ slug: post.slug });
+                              } catch (err) {
+                                console.error("强制向量化失败:", err);
+                              }
+                            }}
+                          >
+                            强制向量化
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDeletePost(post.id, post.title)}

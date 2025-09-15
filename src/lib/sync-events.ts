@@ -10,7 +10,7 @@ export interface SyncLogEvent {
   sourceType: string;
   sourceName: string;
   operation: string;
-  status: "success" | "error";
+  status: "success" | "error" | "warning"; // 新增 warning 用于重试/限流等非致命事件
   message: string;
   filePath?: string;
   data?: any;
@@ -73,11 +73,12 @@ class SyncEventManager extends EventEmitter {
       syncSessionId: this.currentSyncSessionId,
     };
 
-    console.log(`📝 推送同步日志: ${log.message} (会话: ${this.currentSyncSessionId})`);
-    console.log("🔥 发射 sync:log 事件:", logWithSession);
-    console.log("🎯 当前 sync:log 监听器数量:", this.listenerCount("sync:log"));
+    console.log(
+      `📝 sync:log status=${log.status} op=${log.operation} src=${log.sourceName} msg="${log.message}" path=${
+        log.filePath || ""
+      } session=${this.currentSyncSessionId}`
+    );
     this.emit("sync:log", logWithSession);
-    console.log("✅ sync:log 事件已发射");
   }
 
   /**
@@ -88,6 +89,16 @@ class SyncEventManager extends EventEmitter {
       console.warn("尝试完成同步会话但没有活跃的同步会话");
       return;
     }
+
+    const sid = this.currentSyncSessionId;
+    const s: any = stats || {};
+    console.log(
+      `✅ sync:complete session=${sid} success=${success} processed=${
+        s.totalProcessed ?? s.processed ?? ""
+      } created=${s.created ?? ""} updated=${s.updated ?? ""} deleted=${s.deleted ?? ""} skipped=${
+        s.skipped ?? ""
+      } errors=${s.errors ?? ""} model=${s.model ?? ""} ts=${Date.now()}`
+    );
 
     this.emit("sync:complete", {
       syncSessionId: this.currentSyncSessionId,
@@ -117,10 +128,13 @@ class SyncEventManager extends EventEmitter {
    * 监听同步日志事件
    */
   onSyncLog(listener: (event: SyncLogEvent) => void) {
-    console.log("🎯 注册 sync:log 监听器，EventEmitter 实例:", this.constructor.name);
-    console.log("🎯 当前监听器数量:", this.listenerCount("sync:log"));
+    console.log(
+      `🎯 注册 sync:log 监听器 emitter=${this.constructor.name} count=${this.listenerCount(
+        "sync:log"
+      )}`
+    );
     this.on("sync:log", listener);
-    console.log("✅ sync:log 监听器注册完成，当前监听器数量:", this.listenerCount("sync:log"));
+    console.log(`✅ sync:log 监听器注册完成 count=${this.listenerCount("sync:log")}`);
   }
 
   /**

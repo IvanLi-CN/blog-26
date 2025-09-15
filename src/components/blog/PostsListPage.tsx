@@ -77,6 +77,10 @@ export default function PostsListPage() {
               tags: post.tags ?? undefined,
               author: post.author ?? undefined,
               dataSource: post.dataSource ?? undefined,
+              isVectorized:
+                "isVectorized" in post
+                  ? Boolean((post as { isVectorized?: unknown }).isVectorized)
+                  : false,
             }))}
           />
         ) : (

@@ -39,7 +39,7 @@ export default function Header({
         top-0 z-40 flex-none mx-auto w-full border-b border-gray-50/0 transition-[opacity] ease-in-out
       `}
     >
-      <div className="navbar bg-base-100 max-w-7xl mx-auto">
+      <div className="navbar bg-base-100 max-w-7xl mx-auto px-4">
         <div className="flex-1">
           <Link
             href="/"

@@ -6,7 +6,7 @@
  * 提供内容源状态显示、手动同步控制和日志查看功能
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { trpc } from "../../lib/trpc";
 import Icon from "../ui/Icon";
 
@@ -51,11 +51,14 @@ interface SourceStatus {
 
 interface SyncLog {
   id: string;
+  sourceType: string;
   sourceName: string;
   operation: string;
   status: string;
   message: string;
   filePath?: string | null;
+  // 某些日志会附带额外数据
+  data?: unknown;
   createdAt: number;
 }
 
@@ -71,7 +74,15 @@ export function ContentSyncManager() {
   // 日志容器的引用
   const logContainerRef = useRef<HTMLDivElement>(null);
   const mobileLogContainerRef = useRef<HTMLDivElement>(null);
+  const bottomDesktopRef = useRef<HTMLDivElement>(null);
+  const bottomMobileRef = useRef<HTMLDivElement>(null);
+  const isProgrammaticScrollRef = useRef(false);
+  const atBottomRef = useRef(true);
   const previousLogCountRef = useRef<number>(0); // 记录上次的日志数量
+
+  // 日志速率限制：缓冲队列与定时器（最快50ms一条）
+  const pendingLogsRef = useRef<SyncLog[]>([]);
+  const rateLimiterTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // tRPC utils
   const _utils = trpc.useUtils();
@@ -82,6 +93,10 @@ export function ContentSyncManager() {
     trpc.admin.contentSync.getManagerStats.useQuery();
   const { data: contentStats, refetch: refetchContentStats } =
     trpc.admin.contentSync.getContentStats.useQuery();
+
+  // 向量化统计
+  const { data: vectorStats, refetch: refetchVectorStats } =
+    trpc.admin.vectorize.getVectorizationStats.useQuery();
 
   // API 变更
   const triggerSyncMutation = trpc.admin.contentSync.triggerSync.useMutation({
@@ -109,6 +124,13 @@ export function ContentSyncManager() {
     },
   });
 
+  // 向量化触发
+  const triggerVectorize = trpc.admin.vectorize.triggerVectorize.useMutation({
+    onSuccess: async () => {
+      await refetchVectorStats();
+    },
+  });
+
   // 使用 tRPC 查询
   const { data: sourcesData, refetch: refetchSources } =
     trpc.admin.contentSync.getSourcesStatus.useQuery();
@@ -125,63 +147,130 @@ export function ContentSyncManager() {
     }
   }, [refetchSources, refetchProgress, refetchContentStats]);
 
+  // 以 50ms 速率向界面追加 1 条日志
+  const scheduleRateLimitedFlush = useCallback(() => {
+    if (rateLimiterTimerRef.current) return;
+    const flushOne = () => {
+      // 若无待处理日志，停止调度
+      if (pendingLogsRef.current.length === 0) {
+        rateLimiterTimerRef.current = null;
+        return;
+      }
+
+      const nextLog = pendingLogsRef.current.shift()!;
+      startTransition(() => {
+        setSyncLogs((prev) => [...prev, nextLog]);
+      });
+
+      // 继续调度下一条（50ms后）
+      rateLimiterTimerRef.current = setTimeout(flushOne, 50);
+    };
+
+    // 首次立即开始（从现在计时50ms）
+    rateLimiterTimerRef.current = setTimeout(flushOne, 50);
+  }, []);
+
   // tRPC subscription 用于接收实时日志
   trpc.admin.contentSync.subscribeSyncLogs.useSubscription(undefined, {
     onData: (event: unknown) => {
-      console.log("收到订阅事件:", event);
+      console.log("📡 订阅事件接收");
 
       // 类型守卫：确保 event 是我们期望的格式
       if (typeof event === "object" && event !== null && "type" in event) {
-        const typedEvent = event as { type: string; data: unknown };
+        type ConnectedEvent = { type: "connected"; data: { message: string } };
+        type SyncStartEvent = {
+          type: "sync:start";
+          data: { syncSessionId: string; syncType: string; timestamp: number };
+        };
+        type SyncLogEvent = {
+          type: "sync:log";
+          data: {
+            id: string;
+            sourceType: string;
+            sourceName: string;
+            operation: string;
+            status: string;
+            message: string;
+            filePath?: string;
+            data?: unknown;
+            createdAt: number;
+          };
+        };
+        type SyncCompleteEvent = {
+          type: "sync:complete";
+          data: {
+            syncSessionId: string;
+            success: boolean;
+            timestamp: number;
+            stats?: {
+              total?: number;
+              processed?: number;
+              success?: number;
+              failed?: number;
+              model?: string;
+            };
+          };
+        };
+        type SyncEvent = ConnectedEvent | SyncStartEvent | SyncLogEvent | SyncCompleteEvent;
+        const typedEvent = event as SyncEvent;
 
         switch (typedEvent.type) {
           case "connected":
-            console.log("tRPC 订阅连接确认:", (typedEvent.data as { message: string }).message);
+            console.log(`✅ 订阅已连接 msg="${typedEvent.data.message}"`);
             break;
 
-          case "sync:start":
-            console.log("同步开始:", typedEvent.data);
+          case "sync:start": {
+            const d = typedEvent.data;
+            console.log(
+              `🚀 同步开始 session=${d.syncSessionId} type=${d.syncType} ts=${d.timestamp}`
+            );
             // 清空旧日志，准备接收新的同步日志
             setSyncLogs([]);
-            break;
-
-          case "sync:log": {
-            const logData = typedEvent.data as {
-              id: string;
-              sourceType: string;
-              sourceName: string;
-              operation: string;
-              status: string;
-              message: string;
-              filePath?: string;
-              data?: unknown;
-              createdAt: number;
-            };
-            console.log("收到同步日志:", logData);
-
-            // 添加新日志到列表
-            setSyncLogs((prev) => [
-              ...prev,
-              {
-                id: logData.id,
-                sourceType: logData.sourceType,
-                sourceName: logData.sourceName,
-                operation: logData.operation,
-                status: logData.status,
-                message: logData.message,
-                filePath: logData.filePath,
-                data: logData.data,
-                createdAt: logData.createdAt,
-              },
-            ]);
-
-            // 标记为新日志，用于动画效果
-            setNewLogIds((prev) => new Set([...prev, logData.id]));
+            // 同时清空缓冲与定时器，避免旧队列残留
+            pendingLogsRef.current = [];
+            if (rateLimiterTimerRef.current) {
+              clearTimeout(rateLimiterTimerRef.current);
+              rateLimiterTimerRef.current = null;
+            }
             break;
           }
 
-          case "sync:complete":
-            console.log("同步完成:", typedEvent.data);
+          case "sync:log": {
+            const logData = typedEvent.data;
+            console.log(
+              `📝 同步日志 status=${logData.status} op=${logData.operation} src=${logData.sourceName} msg="${logData.message}" path=${
+                logData.filePath || ""
+              } ts=${logData.createdAt}`
+            );
+
+            // 放入缓冲等待按 50ms/条 刷新
+            const buffered: SyncLog = {
+              id: logData.id,
+              sourceType: logData.sourceType,
+              sourceName: logData.sourceName,
+              operation: logData.operation,
+              status: logData.status,
+              message: logData.message,
+              filePath: logData.filePath,
+              data: logData.data,
+              createdAt: logData.createdAt,
+            };
+
+            pendingLogsRef.current.push(buffered);
+            scheduleRateLimitedFlush();
+            break;
+          }
+
+          case "sync:complete": {
+            const d = typedEvent.data;
+            const stats = d.stats || {};
+            console.log(
+              `✅ 同步完成 session=${d.syncSessionId} success=${d.success} total=${
+                stats.total ?? ""
+              } processed=${stats.processed ?? ""} ok=${stats.success ?? ""} failed=${
+                stats.failed ?? ""
+              } model=${stats.model ?? ""} ts=${d.timestamp}`
+            );
             setIsLoading(false);
 
             // 刷新统计信息
@@ -189,6 +278,7 @@ export function ContentSyncManager() {
             refetchContentStats();
             refreshData();
             break;
+          }
         }
       }
     },
@@ -206,9 +296,9 @@ export function ContentSyncManager() {
       return;
     }
 
-    // 如果日志数量增加了，标记新日志
+    // 如果日志数量增加了，标记新日志（新增的应该是列表末尾）
     if (syncLogs.length > previousLogCountRef.current) {
-      const newLogs = syncLogs.slice(0, syncLogs.length - previousLogCountRef.current);
+      const newLogs = syncLogs.slice(previousLogCountRef.current);
       const newIds = new Set(newLogs.map((log) => log.id));
       setNewLogIds(newIds);
 
@@ -221,34 +311,84 @@ export function ContentSyncManager() {
     previousLogCountRef.current = syncLogs.length;
   }, [syncLogs]);
 
-  // 自动滚动到日志底部
+  // 自动滚动到日志底部（仅滚动容器本身，避免滚动整个页面）
   useEffect(() => {
-    if (autoScroll && syncLogs.length > 0) {
-      // 平滑滚动到底部
-      const scrollToBottom = (container: HTMLDivElement) => {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: "smooth",
-        });
-      };
+    if (!autoScroll || syncLogs.length === 0) return;
 
-      // 滚动桌面端日志容器
-      if (logContainerRef.current) {
-        scrollToBottom(logContainerRef.current);
+    const scrollContainerToBottom = (container: HTMLDivElement | null) => {
+      if (!container) return;
+      try {
+        isProgrammaticScrollRef.current = true;
+        container.scrollTo({ top: container.scrollHeight, behavior: "auto" });
+      } finally {
+        setTimeout(() => {
+          isProgrammaticScrollRef.current = false;
+        }, 0);
       }
-      // 滚动移动端日志容器
-      if (mobileLogContainerRef.current) {
-        scrollToBottom(mobileLogContainerRef.current);
-      }
+    };
+
+    const desktopVisible = !!(
+      logContainerRef.current && logContainerRef.current.offsetParent !== null
+    );
+    const mobileVisible = !!(
+      mobileLogContainerRef.current && mobileLogContainerRef.current.offsetParent !== null
+    );
+
+    if (desktopVisible) {
+      scrollContainerToBottom(logContainerRef.current);
+    } else if (mobileVisible) {
+      scrollContainerToBottom(mobileLogContainerRef.current);
     }
   }, [syncLogs, autoScroll]);
 
   // 处理用户手动滚动
   const handleLogScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (isProgrammaticScrollRef.current) return;
     const container = e.currentTarget;
-    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 10;
-    setAutoScroll(isAtBottom);
+    const threshold = 64;
+    const isAtBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+    if (!isAtBottom) setAutoScroll(false);
   };
+
+  // 使用 IntersectionObserver 监测是否在底部，离开底部则关闭自动滚动
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+
+    const createObserver = (target: HTMLDivElement | null, root: HTMLDivElement | null) => {
+      if (!target) return;
+      const io = new IntersectionObserver(
+        (entries) => {
+          const isIntersecting = entries[0]?.isIntersecting ?? false;
+          atBottomRef.current = isIntersecting;
+          if (!isIntersecting && !isProgrammaticScrollRef.current) {
+            setAutoScroll(false);
+          }
+        },
+        { root: root ?? undefined, threshold: 1.0 }
+      );
+      io.observe(target);
+      observers.push(io);
+    };
+
+    createObserver(bottomDesktopRef.current, logContainerRef.current);
+    createObserver(bottomMobileRef.current, mobileLogContainerRef.current);
+
+    return () => {
+      observers.forEach((io) => io.disconnect());
+    };
+  }, []);
+
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (rateLimiterTimerRef.current) {
+        clearTimeout(rateLimiterTimerRef.current);
+        rateLimiterTimerRef.current = null;
+      }
+      pendingLogsRef.current = [];
+    };
+  }, []);
 
   // 更新本地状态
   useEffect(() => {
@@ -308,6 +448,14 @@ export function ContentSyncManager() {
   // 取消同步
   const handleCancelSync = () => {
     cancelSyncMutation.mutate();
+  };
+
+  // 触发向量化
+  const handleVectorize = (isFull: boolean) => {
+    setShowLogs(true);
+    setAutoScroll(true);
+    setSyncLogs([]);
+    triggerVectorize.mutate({ isFull });
   };
 
   return (
@@ -621,6 +769,49 @@ export function ContentSyncManager() {
                 </div>
               </div>
 
+              {/* 向量化控制与统计 */}
+              <div className="mt-4 bg-base-200/50 rounded-xl p-3 border border-base-300">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-semibold flex items-center">
+                    <Icon name="lucide:sparkles" className="w-5 h-5 mr-2" />
+                    AI 向量化
+                  </h3>
+                  {vectorStats && (
+                    <div className="text-sm text-base-content/70">
+                      模型: {vectorStats.model} · 维度: {vectorStats.dim} · 已索引:{" "}
+                      {vectorStats.indexed}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <button
+                    type="button"
+                    className={`btn btn-primary ${triggerVectorize.isPending ? "loading" : ""}`}
+                    onClick={() => handleVectorize(true)}
+                    disabled={triggerVectorize.isPending}
+                  >
+                    全量向量化
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-secondary ${triggerVectorize.isPending ? "loading" : ""}`}
+                    onClick={() => handleVectorize(false)}
+                    disabled={triggerVectorize.isPending}
+                  >
+                    增量向量化
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => refetchVectorStats()}
+                    disabled={triggerVectorize.isPending}
+                  >
+                    刷新向量化统计
+                  </button>
+                </div>
+              </div>
+
               {/* 同步日志 - 紧跟在按钮下方 */}
               <div className="mt-6" data-testid="sync-logs-section">
                 <div className="flex justify-between items-center">
@@ -729,141 +920,57 @@ export function ContentSyncManager() {
                               </tr>
                             </thead>
                             <tbody>
-                              {syncLogs
-                                .slice()
-                                .reverse()
-                                .map((log, index) => (
-                                  <tr
-                                    key={`${log.id}-${log.createdAt}-${index}`}
-                                    className={`hover:bg-base-200 transition-colors duration-200 ${
-                                      newLogIds.has(log.id) ? "log-entry-animation" : ""
-                                    }`}
-                                  >
-                                    <td className="font-mono text-xs w-24">
-                                      <div className="flex flex-col">
-                                        <span>{new Date(log.createdAt).toLocaleTimeString()}</span>
-                                        <span className="text-xs text-base-content/50">
-                                          {new Date(log.createdAt).toLocaleDateString()}
-                                        </span>
-                                      </div>
-                                    </td>
-                                    <td className="w-28">
-                                      <span
-                                        className={`badge badge-sm ${
-                                          log.sourceName === "local"
-                                            ? "badge-primary"
-                                            : "badge-secondary"
-                                        }`}
-                                      >
-                                        {log.sourceName === "local" ? (
-                                          <>
-                                            <Icon name="lucide:home" className="w-3 h-3 mr-1" />
-                                            本地
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
-                                            WebDAV
-                                          </>
-                                        )}
-                                      </span>
-                                    </td>
-                                    <td className="w-24">
-                                      <span className="badge badge-outline badge-sm">
-                                        {log.operation}
-                                      </span>
-                                    </td>
-                                    <td className="w-28">
-                                      <span
-                                        className={`badge badge-sm ${
-                                          log.status === "success"
-                                            ? "badge-success"
-                                            : log.status === "error"
-                                              ? "badge-error"
-                                              : "badge-warning"
-                                        }`}
-                                      >
-                                        {log.status === "success" ? (
-                                          <>
-                                            <Icon name="lucide:check" className="w-3 h-3 mr-1" />
-                                            成功
-                                          </>
-                                        ) : log.status === "error" ? (
-                                          <>
-                                            <Icon name="lucide:x" className="w-3 h-3 mr-1" />
-                                            失败
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Icon
-                                              name="lucide:alert-triangle"
-                                              className="w-3 h-3 mr-1"
-                                            />
-                                            警告
-                                          </>
-                                        )}
-                                      </span>
-                                    </td>
-                                    <td className="min-w-0 flex-1">
-                                      <div className="space-y-1">
-                                        {/* 第一行：日志消息 */}
-                                        <div className="text-sm leading-relaxed break-words">
-                                          {log.message}
-                                        </div>
-                                        {/* 第二行：文件路径（如果存在） */}
-                                        {log.filePath && (
-                                          <div className="flex items-center text-xs text-base-content/60 mt-1">
-                                            <Icon
-                                              name="lucide:file"
-                                              className="w-3 h-3 mr-1 flex-shrink-0"
-                                            />
-                                            <span className="font-mono text-xs break-all">
-                                              {log.filePath}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* 移动端卡片布局 */}
-                        <div
-                          ref={mobileLogContainerRef}
-                          className="block md:hidden max-h-96 overflow-y-auto space-y-3"
-                          onScroll={handleLogScroll}
-                        >
-                          {syncLogs
-                            .slice()
-                            .reverse()
-                            .map((log, index) => (
-                              <div
-                                key={`${log.id}-${log.createdAt}-${index}`}
-                                className={`card bg-base-100 shadow-sm border border-base-300 hover:shadow-md transition-shadow duration-200 ${
-                                  newLogIds.has(log.id) ? "log-entry-animation" : ""
-                                }`}
-                              >
-                                <div className="card-body p-4">
-                                  {/* 卡片头部：时间和状态 */}
-                                  <div className="flex justify-between items-start mb-3">
-                                    <div className="font-mono text-sm">
-                                      <div className="font-medium">
-                                        {new Date(log.createdAt).toLocaleTimeString()}
-                                      </div>
-                                      <div className="text-xs text-base-content/50">
+                              {syncLogs.map((log, index) => (
+                                <tr
+                                  key={`${log.id}-${log.createdAt}-${index}`}
+                                  className={`hover:bg-base-200 transition-colors duration-200 ${
+                                    newLogIds.has(log.id) ? "log-entry-animation" : ""
+                                  }`}
+                                >
+                                  <td className="font-mono text-xs w-24">
+                                    <div className="flex flex-col">
+                                      <span>{new Date(log.createdAt).toLocaleTimeString()}</span>
+                                      <span className="text-xs text-base-content/50">
                                         {new Date(log.createdAt).toLocaleDateString()}
-                                      </div>
+                                      </span>
                                     </div>
+                                  </td>
+                                  <td className="w-28">
                                     <span
-                                      className={`badge ${
+                                      className={`badge badge-sm ${
+                                        log.sourceName === "local"
+                                          ? "badge-primary"
+                                          : "badge-secondary"
+                                      }`}
+                                    >
+                                      {log.sourceName === "local" ? (
+                                        <>
+                                          <Icon name="lucide:home" className="w-3 h-3 mr-1" />
+                                          本地
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
+                                          WebDAV
+                                        </>
+                                      )}
+                                    </span>
+                                  </td>
+                                  <td className="w-24">
+                                    <span className="badge badge-outline badge-sm">
+                                      {log.operation}
+                                    </span>
+                                  </td>
+                                  <td className="w-28">
+                                    <span
+                                      className={`badge badge-sm ${
                                         log.status === "success"
                                           ? "badge-success"
                                           : log.status === "error"
                                             ? "badge-error"
-                                            : "badge-warning"
+                                            : log.status === "warning"
+                                              ? "badge-warning"
+                                              : "badge-neutral"
                                       }`}
                                     >
                                       {log.status === "success" ? (
@@ -876,64 +983,154 @@ export function ContentSyncManager() {
                                           <Icon name="lucide:x" className="w-3 h-3 mr-1" />
                                           失败
                                         </>
+                                      ) : log.status === "warning" ? (
+                                        <>
+                                          <Icon name="lucide:rotate-ccw" className="w-3 h-3 mr-1" />
+                                          重试
+                                        </>
                                       ) : (
                                         <>
-                                          <Icon
-                                            name="lucide:alert-triangle"
-                                            className="w-3 h-3 mr-1"
-                                          />
-                                          警告
+                                          <Icon name="lucide:info" className="w-3 h-3 mr-1" />
+                                          提示
                                         </>
                                       )}
                                     </span>
-                                  </div>
-
-                                  {/* 卡片主体：来源、操作、消息 */}
-                                  <div className="space-y-3">
-                                    <div className="flex gap-3 flex-wrap items-center">
-                                      <span
-                                        className={`badge ${
-                                          log.sourceName === "local"
-                                            ? "badge-primary"
-                                            : "badge-secondary"
-                                        }`}
-                                      >
-                                        {log.sourceName === "local" ? (
-                                          <>
-                                            <Icon name="lucide:home" className="w-3 h-3 mr-1" />
-                                            本地
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
-                                            WebDAV
-                                          </>
-                                        )}
-                                      </span>
-                                      <span className="badge badge-outline">{log.operation}</span>
-                                    </div>
-                                    <div className="text-sm text-base-content leading-relaxed">
-                                      {log.message}
-                                    </div>
-                                  </div>
-
-                                  {/* 卡片底部：文件信息 */}
-                                  {log.filePath && (
-                                    <div className="mt-3 pt-2 border-t border-base-300">
-                                      <div className="flex items-center gap-2">
-                                        <Icon
-                                          name="lucide:file"
-                                          className="w-4 h-4 text-base-content/60"
-                                        />
-                                        <span className="text-sm font-mono text-base-content/80 break-all">
-                                          {log.filePath}
-                                        </span>
+                                  </td>
+                                  <td className="min-w-0 flex-1">
+                                    <div className="space-y-1">
+                                      {/* 第一行：日志消息 */}
+                                      <div className="text-sm leading-relaxed break-words">
+                                        {log.message}
                                       </div>
+                                      {/* 第二行：文件路径（如果存在） */}
+                                      {log.filePath && (
+                                        <div className="flex items-center text-xs text-base-content/60 mt-1">
+                                          <Icon
+                                            name="lucide:file"
+                                            className="w-3 h-3 mr-1 flex-shrink-0"
+                                          />
+                                          <span className="font-mono text-xs break-all">
+                                            {log.filePath}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {/* 桌面端底部哨兵 */}
+                          <div ref={bottomDesktopRef} style={{ height: 1 }} />
+                        </div>
+
+                        {/* 移动端卡片布局 */}
+                        <div
+                          ref={mobileLogContainerRef}
+                          className="block md:hidden max-h-96 overflow-y-auto space-y-3"
+                          onScroll={handleLogScroll}
+                        >
+                          {syncLogs.map((log, index) => (
+                            <div
+                              key={`${log.id}-${log.createdAt}-${index}`}
+                              className={`card bg-base-100 shadow-sm border border-base-300 hover:shadow-md transition-shadow duration-200 ${
+                                newLogIds.has(log.id) ? "log-entry-animation" : ""
+                              }`}
+                            >
+                              <div className="card-body p-4">
+                                {/* 卡片头部：时间和状态 */}
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="font-mono text-sm">
+                                    <div className="font-medium">
+                                      {new Date(log.createdAt).toLocaleTimeString()}
+                                    </div>
+                                    <div className="text-xs text-base-content/50">
+                                      {new Date(log.createdAt).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                  <span
+                                    className={`badge ${
+                                      log.status === "success"
+                                        ? "badge-success"
+                                        : log.status === "error"
+                                          ? "badge-error"
+                                          : log.status === "warning"
+                                            ? "badge-warning"
+                                            : "badge-neutral"
+                                    }`}
+                                  >
+                                    {log.status === "success" ? (
+                                      <>
+                                        <Icon name="lucide:check" className="w-3 h-3 mr-1" />
+                                        成功
+                                      </>
+                                    ) : log.status === "error" ? (
+                                      <>
+                                        <Icon name="lucide:x" className="w-3 h-3 mr-1" />
+                                        失败
+                                      </>
+                                    ) : log.status === "warning" ? (
+                                      <>
+                                        <Icon name="lucide:rotate-ccw" className="w-3 h-3 mr-1" />
+                                        重试
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Icon name="lucide:info" className="w-3 h-3 mr-1" />
+                                        提示
+                                      </>
+                                    )}
+                                  </span>
                                 </div>
+
+                                {/* 卡片主体：来源、操作、消息 */}
+                                <div className="space-y-3">
+                                  <div className="flex gap-3 flex-wrap items-center">
+                                    <span
+                                      className={`badge ${
+                                        log.sourceName === "local"
+                                          ? "badge-primary"
+                                          : "badge-secondary"
+                                      }`}
+                                    >
+                                      {log.sourceName === "local" ? (
+                                        <>
+                                          <Icon name="lucide:home" className="w-3 h-3 mr-1" />
+                                          本地
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Icon name="lucide:cloud" className="w-3 h-3 mr-1" />
+                                          WebDAV
+                                        </>
+                                      )}
+                                    </span>
+                                    <span className="badge badge-outline">{log.operation}</span>
+                                  </div>
+                                  <div className="text-sm text-base-content leading-relaxed">
+                                    {log.message}
+                                  </div>
+                                </div>
+
+                                {/* 卡片底部：文件信息 */}
+                                {log.filePath && (
+                                  <div className="mt-3 pt-2 border-t border-base-300">
+                                    <div className="flex items-center gap-2">
+                                      <Icon
+                                        name="lucide:file"
+                                        className="w-4 h-4 text-base-content/60"
+                                      />
+                                      <span className="text-sm font-mono text-base-content/80 break-all">
+                                        {log.filePath}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            ))}
+                            </div>
+                          ))}
+                          {/* 移动端底部哨兵 */}
+                          <div ref={bottomMobileRef} style={{ height: 1 }} />
                         </div>
                       </>
                     )}
