@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SearchResultsList from "@/components/search/SearchResultsList";
 import { trpc } from "@/lib/trpc";
 import Icon from "../ui/Icon";
 
@@ -216,45 +217,7 @@ export default function AiSearchOverlay({
               <div className="text-sm">试试更通用的关键词或切换模式</div>
             </div>
           ) : (
-            <ul className="menu bg-base-100 p-2">
-              {filteredResults.map((r) => (
-                <li key={r.slug} className="">
-                  <Link
-                    href={(r.type || "post") === "memo" ? `/memos/${r.slug}` : `/posts/${r.slug}`}
-                    className="!py-3"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="avatar placeholder">
-                        <div className="bg-base-200 text-base-content/70 rounded w-10">
-                          <span>{(r.type || "post") === "post" ? "P" : "M"}</span>
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium truncate max-w-[75%]">
-                            {r.title || r.slug}
-                          </span>
-                          <span className="badge badge-sm badge-outline capitalize">
-                            {r.type || "post"}
-                          </span>
-                          {typeof r.final === "number" && (
-                            <span className="badge badge-xs badge-ghost">
-                              {(r.final * 100).toFixed(0)}%
-                            </span>
-                          )}
-                        </div>
-                        {r.excerpt && (
-                          <p className="text-sm text-base-content/70 line-clamp-2">{r.excerpt}</p>
-                        )}
-                        <div className="text-xs text-base-content/50">
-                          {(r.type || "post") === "memo" ? `/memos/${r.slug}` : `/posts/${r.slug}`}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <SearchResultsList results={filteredResults as any} containerClassName="p-2" />
           )}
         </div>
 

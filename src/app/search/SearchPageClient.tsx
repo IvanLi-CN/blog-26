@@ -1,8 +1,7 @@
 "use client";
-
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SearchResultsList from "@/components/search/SearchResultsList";
 import Icon from "@/components/ui/Icon";
 import { trpc } from "@/lib/trpc";
 
@@ -119,44 +118,7 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
         )}
 
         {!isLoading && !isFetching && (data?.length || 0) > 0 && (
-          <ul className="menu bg-base-100 p-0">
-            {(data ?? []).map((r) => {
-              const type = (r as any).type as "post" | "memo" | undefined;
-              const href = type === "memo" ? `/memos/${r.slug}` : `/posts/${r.slug}`;
-              return (
-                <li key={r.slug}>
-                  <Link href={href} className="!py-3">
-                    <div className="flex items-start gap-4">
-                      <div className="avatar placeholder">
-                        <div className="bg-base-200 text-base-content/70 rounded w-10">
-                          <span>{type === "memo" ? "M" : "P"}</span>
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium truncate max-w-[75%]">
-                            {r.title || r.slug}
-                          </span>
-                          {type && (
-                            <span className="badge badge-xs badge-outline capitalize">{type}</span>
-                          )}
-                          {typeof r.final === "number" && (
-                            <span className="badge badge-xs badge-ghost">
-                              {(r.final * 100).toFixed(0)}%
-                            </span>
-                          )}
-                        </div>
-                        {r.excerpt && (
-                          <p className="text-sm text-base-content/70 line-clamp-2">{r.excerpt}</p>
-                        )}
-                        <div className="text-xs text-base-content/50">{href}</div>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <SearchResultsList results={(data ?? []) as any} containerClassName="p-0" />
         )}
       </section>
     </div>
