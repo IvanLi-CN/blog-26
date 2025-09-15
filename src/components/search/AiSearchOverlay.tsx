@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import SearchResultsList from "@/components/search/SearchResultsList";
+import SearchResultsList, { type SearchResultItem } from "@/components/search/SearchResultsList";
 import { trpc } from "@/lib/trpc";
 import Icon from "../ui/Icon";
 
@@ -14,19 +14,13 @@ export interface AiSearchOverlayProps {
   initialQuery?: string;
 }
 
-type ApiResult = {
-  slug: string;
-  title?: string | null;
-  excerpt?: string | null;
-  type?: ResultType;
-  final?: number;
-  cosine?: number;
-};
+type ApiResult = SearchResultItem & { final?: number };
 
 const modes = [
   { key: "enhanced", label: "Enhanced" },
   { key: "semantic", label: "Semantic" },
-];
+] as const;
+type Mode = (typeof modes)[number]["key"];
 
 export default function AiSearchOverlay({
   open,
@@ -34,7 +28,7 @@ export default function AiSearchOverlay({
   initialQuery = "",
 }: AiSearchOverlayProps) {
   const [query, setQuery] = useState(initialQuery);
-  const [mode, setMode] = useState<"enhanced" | "semantic">("enhanced");
+  const [mode, setMode] = useState<Mode>("enhanced");
   const [filter, setFilter] = useState<"all" | ResultType>("all");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,12 +76,14 @@ export default function AiSearchOverlay({
       : semanticQ.isLoading || semanticQ.isFetching;
   const data = (mode === "enhanced" ? enhancedQ.data : semanticQ.data) as ApiResult[] | undefined;
   useEffect(() => {
-    const err = (mode === "enhanced" ? enhancedQ.error : semanticQ.error) as any;
-    setError(err ? String(err?.message || "搜索失败，请稍后重试") : null);
+    const err = mode === "enhanced" ? enhancedQ.error : semanticQ.error;
+    setError(
+      err ? (err instanceof Error && err.message ? err.message : "搜索失败，请稍后重试") : null
+    );
   }, [mode, enhancedQ.error, semanticQ.error]);
 
   const filteredResults = useMemo(() => {
-    let list = (data || []) as ApiResult[];
+    let list: ApiResult[] = data || [];
     if (filter !== "all") list = list.filter((r) => (r.type || "post") === filter);
     return list;
   }, [data, filter]);
@@ -163,8 +159,8 @@ export default function AiSearchOverlay({
               <button
                 key={m.key}
                 type="button"
-                className={`btn btn-sm join-item ${mode === (m.key as any) ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setMode(m.key as any)}
+                className={`btn btn-sm join-item ${mode === m.key ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setMode(m.key)}
               >
                 {m.label}
               </button>
@@ -217,7 +213,10 @@ export default function AiSearchOverlay({
               <div className="text-sm">试试更通用的关键词或切换模式</div>
             </div>
           ) : (
-            <SearchResultsList results={filteredResults as any} containerClassName="p-2" />
+            <SearchResultsList
+              results={filteredResults as SearchResultItem[]}
+              containerClassName="p-2"
+            />
           )}
         </div>
 

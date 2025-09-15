@@ -1,7 +1,7 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import SearchResultsList from "@/components/search/SearchResultsList";
+import SearchResultsList, { type SearchResultItem } from "@/components/search/SearchResultsList";
 import Icon from "@/components/ui/Icon";
 import { trpc } from "@/lib/trpc";
 
@@ -74,7 +74,14 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
         {error && (
           <div role="alert" className="alert alert-error mb-4">
             <Icon name="tabler:alert-triangle" className="w-5 h-5" />
-            <span>{String((error as any)?.message || "搜索失败，请稍后重试")}</span>
+            <span>
+              {(() => {
+                if (!error) return "搜索失败，请稍后重试";
+                return error instanceof Error && error.message
+                  ? error.message
+                  : "搜索失败，请稍后重试";
+              })()}
+            </span>
           </div>
         )}
 
@@ -118,7 +125,10 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
         )}
 
         {!isLoading && !isFetching && (data?.length || 0) > 0 && (
-          <SearchResultsList results={(data ?? []) as any} containerClassName="p-0" />
+          <SearchResultsList
+            results={(data ?? []) as SearchResultItem[]}
+            containerClassName="p-0"
+          />
         )}
       </section>
     </div>

@@ -26,21 +26,7 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
   const q = input.q.trim();
   if (!q) return [];
 
-  const conditions = [] as any[];
-
-  // 发布状态过滤（除非显式传 publishedOnly=false）
-  if (input.publishedOnly !== false) {
-    conditions.push(eq(posts.draft, false));
-    conditions.push(eq(posts.public, true));
-  }
-
-  // 类型过滤
-  if (input.type && input.type !== "all") {
-    conditions.push(eq(posts.type, input.type));
-  } else {
-    // 仅在搜索时纳入主要类型
-    conditions.push(inArray(posts.type, ["post", "memo"] as unknown as string[]));
-  }
+  // Build dynamic condition without using `any` casts
 
   // 关键字匹配（title/ excerpt/ body）
   const pattern = `%${q}%`;
@@ -50,10 +36,24 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
     like(posts.body, pattern)
   );
 
+  // 发布状态过滤（除非显式传 publishedOnly=false）
+  let condition = matchCond;
+  if (input.publishedOnly !== false) {
+    condition = and(condition, eq(posts.draft, false), eq(posts.public, true));
+  }
+
+  // 类型过滤
+  if (input.type && input.type !== "all") {
+    condition = and(condition, eq(posts.type, input.type));
+  } else {
+    // 仅在搜索时纳入主要类型
+    condition = and(condition, inArray(posts.type, ["post", "memo"]));
+  }
+
   const rows = await db
     .select({ slug: posts.slug, title: posts.title, excerpt: posts.excerpt, type: posts.type })
     .from(posts)
-    .where(and(matchCond, ...(conditions as any)))
+    .where(condition)
     .orderBy(desc(posts.publishDate))
     .limit(input.topK ?? 50);
 
@@ -61,7 +61,7 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
     slug: r.slug,
     title: r.title,
     excerpt: r.excerpt,
-    type: r.type as any,
+    type: r.type === "post" || r.type === "memo" ? r.type : undefined,
   }));
 }
 
@@ -131,7 +131,7 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
       slug: p.slug,
       title: p.title,
       excerpt: p.excerpt,
-      type: p.type as any,
+      type: p.type === "post" || p.type === "memo" ? p.type : undefined,
       cosine: scoreBySlug.get(p.slug) ?? 0,
     }));
 
