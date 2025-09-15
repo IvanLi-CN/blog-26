@@ -48,12 +48,8 @@ function getContentType(filePath: string): string {
 
 // WebDAV 文件读取
 async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
-  // 统一使用小写的 memos 路径
-  const normalizedPath = filePath.startsWith("Memos/")
-    ? `memos/${filePath.substring(6)}`
-    : filePath;
-
-  const webdavUrl = getWebDAVUrl(normalizedPath);
+  // 严格按传入路径访问，保持大小写与存储一致
+  const webdavUrl = getWebDAVUrl(filePath);
 
   console.log("🌐 [Files API] 请求 WebDAV 文件:", webdavUrl);
 

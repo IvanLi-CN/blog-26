@@ -1,3 +1,4 @@
+import { resolveImagePath as resolveImagePathCommon } from "@/lib/image-utils";
 import type { VariantConfig } from "./types";
 
 /**
@@ -85,15 +86,6 @@ export function generateOptimizedImageUrl(
   imagePath: string,
   contentSource: "local" | "webdav" = "webdav"
 ): string {
-  if (
-    !imagePath ||
-    isExternalUrl(imagePath) ||
-    isOptimizedImageUrl(imagePath) ||
-    imagePath.startsWith("data:")
-  ) {
-    return imagePath;
-  }
-
   // 对于演示页面，使用 base64 编码的占位图片
   if (typeof window !== "undefined" && window.location.pathname === "/demo-integration") {
     // 根据图片名称生成不同的占位图片
@@ -126,13 +118,9 @@ export function generateOptimizedImageUrl(
     }
   }
 
-  // 使用当前项目的文件代理端点，并对 WebDAV 的大小写路径做兼容
-  let cleanPath = imagePath.startsWith("/") ? imagePath.substring(1) : imagePath;
-  // 规范化目录大小写：memos 目录一律使用小写输出
-  if (cleanPath.toLowerCase().startsWith("memos/")) {
-    cleanPath = `memos/${cleanPath.substring(6)}`;
-  }
-  return `/api/files/${contentSource}/${cleanPath}`;
+  // 统一走公共图片路径解析，保持大小写与实际文件一致
+  const resolved = resolveImagePathCommon(imagePath, contentSource);
+  return resolved ?? imagePath;
 }
 
 /**

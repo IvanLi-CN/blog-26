@@ -263,6 +263,7 @@ export const memosRouter = router({
           tags: memo.tags ? JSON.parse(memo.tags) : [],
           attachments,
           author: memo.author || undefined,
+          filePath: memo.filePath,
           source: memo.source,
           dataSource: memo.dataSource || "webdav",
           createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
@@ -335,6 +336,7 @@ export const memosRouter = router({
         tags: memo.tags ? JSON.parse(memo.tags) : [],
         attachments,
         author: memo.author || undefined,
+        filePath: memo.filePath,
         source: memo.source,
         createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
