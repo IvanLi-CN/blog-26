@@ -11,14 +11,14 @@ interface RelatedPost {
   excerpt?: string;
   body: string;
   category?: string;
-  tags?: string | string[];
+  tags?: string[];
   image?: string;
 }
 
 interface RelatedPostsProps {
   posts: RelatedPost[];
   currentPostCategory?: string;
-  currentPostTags?: string | string[];
+  currentPostTags?: string[];
 }
 
 export default function RelatedPosts({
@@ -30,6 +30,9 @@ export default function RelatedPosts({
     return null;
   }
 
+  const toTagArray = (value?: string[]): string[] =>
+    Array.isArray(value) ? value.map((tag) => String(tag).trim()).filter(Boolean) : [];
+
   // 智能排序：优先显示同分类或同标签的文章
   const sortedPosts = [...posts].sort((a, b) => {
     let scoreA = 0;
@@ -40,25 +43,15 @@ export default function RelatedPosts({
     if (currentPostCategory && b.category === currentPostCategory) scoreB += 3;
 
     // 同标签加分
-    if (currentPostTags && a.tags) {
-      const currentTags = Array.isArray(currentPostTags)
-        ? currentPostTags.map((t) => String(t).trim())
-        : currentPostTags.split(",").map((t) => t.trim());
-      const aTags = Array.isArray(a.tags)
-        ? a.tags.map((t) => String(t).trim())
-        : a.tags.split(",").map((t) => t.trim());
-      const commonTags = currentTags.filter((tag) => aTags.includes(tag));
-      scoreA += commonTags.length;
-    }
-    if (currentPostTags && b.tags) {
-      const currentTags = Array.isArray(currentPostTags)
-        ? currentPostTags.map((t) => String(t).trim())
-        : currentPostTags.split(",").map((t) => t.trim());
-      const bTags = Array.isArray(b.tags)
-        ? b.tags.map((t) => String(t).trim())
-        : b.tags.split(",").map((t) => t.trim());
-      const commonTags = currentTags.filter((tag) => bTags.includes(tag));
-      scoreB += commonTags.length;
+    const currentTags = toTagArray(currentPostTags);
+    if (currentTags.length) {
+      const aTags = toTagArray(a.tags);
+      const commonTagsA = currentTags.filter((tag) => aTags.includes(tag));
+      scoreA += commonTagsA.length;
+
+      const bTags = toTagArray(b.tags);
+      const commonTagsB = currentTags.filter((tag) => bTags.includes(tag));
+      scoreB += commonTagsB.length;
     }
 
     // 按发布时间排序（新的优先）

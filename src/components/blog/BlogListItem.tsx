@@ -16,7 +16,7 @@ interface Post {
   publishDate: number;
   author?: string;
   category?: string;
-  tags?: string;
+  tags?: string[];
   published: boolean;
   dataSource?: string; // 内容源：local/webdav
   isVectorized?: boolean; // 是否已完成向量化（当前模型且哈希匹配）
@@ -29,13 +29,8 @@ interface BlogListItemProps {
 export default function BlogListItem({ post }: BlogListItemProps) {
   const link = `/posts/${post.slug}`;
 
-  // 处理标签 - 从逗号分隔的字符串转换为数组
-  const tags = post.tags
-    ? post.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-    : [];
+  // 处理标签 - 兼容字符串数组并清洗空白
+  const tags = Array.isArray(post.tags) ? post.tags.map((tag) => tag.trim()).filter(Boolean) : [];
 
   // 使用新的图片路径解析函数
   // 检查数据源是否包含 "local"（支持 "local" 和 "local-test" 等变体）

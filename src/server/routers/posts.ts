@@ -19,6 +19,37 @@ const getPostSchema = z.object({
   slug: z.string(),
 });
 
+function normalizeTags(raw: unknown): string[] {
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    return raw.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
+      }
+    } catch {
+      // ignore JSON parse errors and fall back to comma-separated parsing
+    }
+
+    return trimmed
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }
+
+  return [];
+}
+
 export const postsRouter = router({
   // 获取文章列表
   list: publicProcedure.input(listPostsSchema).query(async ({ input }) => {
@@ -80,10 +111,15 @@ export const postsRouter = router({
 
       const postsList = await postsQuery;
 
+      const normalizedPosts = postsList.map((post) => ({
+        ...post,
+        tags: normalizeTags(post.tags),
+      }));
+
       // 计算每条记录是否已按当前模型完成向量化（哈希匹配且存在向量）
       const modelName = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
       const postsWithVectorStatus = await Promise.all(
-        postsList.map(async (p) => {
+        normalizedPosts.map(async (p) => {
           try {
             // 使用与向量化相同的拼接与哈希算法，确保校验口径一致
             const embeddingInput = buildEmbeddingInput({
@@ -165,13 +201,7 @@ export const postsRouter = router({
 
       try {
         // 解析 tags 字段
-        if (processedPost.tags) {
-          console.log("🔍 [posts.get] 尝试解析 tags:", processedPost.tags);
-          processedPost.tags = JSON.parse(processedPost.tags);
-          console.log("🔍 [posts.get] tags 解析成功:", processedPost.tags);
-        } else {
-          processedPost.tags = "[]";
-        }
+        processedPost.tags = normalizeTags(processedPost.tags);
 
         // 解析 metadata 字段
         if (processedPost.metadata) {
@@ -184,7 +214,7 @@ export const postsRouter = router({
       } catch (parseError) {
         console.error("🔍 [posts.get] JSON 解析错误:", parseError);
         // 如果解析失败，设置默认值
-        processedPost.tags = "[]";
+        processedPost.tags = [];
         processedPost.metadata = "{}";
       }
 
@@ -263,7 +293,10 @@ export const postsRouter = router({
           .orderBy(desc(posts.publishDate))
           .limit(limit);
 
-        return relatedPosts;
+        return relatedPosts.map((post) => ({
+          ...post,
+          tags: normalizeTags(post.tags),
+        }));
       } catch (error) {
         console.error("获取相关文章失败:", error);
         return [];

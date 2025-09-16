@@ -114,16 +114,16 @@ export default function BlogHomePage() {
                             {post.category && (
                               <span className="badge badge-outline">{post.category}</span>
                             )}
-                            {post.tags && (
+                            {Array.isArray(post.tags) && post.tags.length > 0 && (
                               <div className="flex gap-1">
-                                {(Array.isArray(post.tags)
-                                  ? post.tags.map((t) => String(t).trim())
-                                  : post.tags.split(",").map((t) => t.trim())
-                                ).map((tag) => (
-                                  <span key={tag} className="badge badge-ghost badge-sm">
-                                    #{tag}
-                                  </span>
-                                ))}
+                                {post.tags
+                                  .map((tag) => String(tag).trim())
+                                  .filter(Boolean)
+                                  .map((tag) => (
+                                    <span key={tag} className="badge badge-ghost badge-sm">
+                                      #{tag}
+                                    </span>
+                                  ))}
                               </div>
                             )}
                           </div>
