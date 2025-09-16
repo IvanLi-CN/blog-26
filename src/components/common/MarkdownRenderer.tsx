@@ -11,11 +11,7 @@ import remarkMath from "remark-math";
 import { CodeBlock, ImageLightbox } from "./markdown/components";
 import { ClientMermaidRenderer } from "./markdown/components/ClientMermaidRenderer";
 // 导入自定义插件和组件
-import {
-  rehypeCollapsibleCode,
-  rehypeImageOptimization,
-  rehypeResponsiveTables,
-} from "./markdown/plugins";
+import { rehypeImageOptimization, rehypeResponsiveTables } from "./markdown/plugins";
 import type { MarkdownRendererProps } from "./markdown/types";
 import {
   cleanMarkdownContent,
@@ -137,16 +133,9 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       // 代码高亮
       plugins.push(rehypeHighlight);
 
-      // 代码折叠（需要在代码高亮之后）
-      if (config.enableCodeFolding) {
-        plugins.push([
-          rehypeCollapsibleCode,
-          {
-            maxLines: config.maxCodeLines,
-            previewLines: config.previewCodeLines,
-          },
-        ]);
-      }
+      // 代码折叠：改由 React 组件 CodeBlock 负责
+      // 如果同时启用 rehype 插件与组件，会出现重复按钮。
+      // 因此这里不再注入 rehypeCollapsibleCode。
 
       // HTML 支持（最后添加）
       // 暂时禁用 rehype-raw 以解决构建问题
@@ -283,8 +272,14 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
         hr: () => <hr className="border-t border-gray-300 dark:border-gray-600 my-6" />,
 
         // 预格式化文本
-        pre: ({ children }) => (
-          <pre className="my-4 overflow-x-auto bg-gray-50 dark:bg-gray-900 rounded-lg">
+        pre: ({ children, className, ...props }) => (
+          <pre
+            className={mergeClassNames(
+              "my-4 overflow-x-auto bg-gray-50 dark:bg-gray-900 rounded-lg",
+              className
+            )}
+            {...props}
+          >
             {children}
           </pre>
         ),
