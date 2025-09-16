@@ -216,15 +216,6 @@ export function MemoCard({
           className="flex-1 card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 overflow-hidden relative"
           data-testid="memo-card"
         >
-          {/* 向量化标记：参考 /posts 样式，放置于卡片左上角 */}
-          {memo.isVectorized && (
-            <div
-              className="absolute top-2 sm:top-3 right-4 sm:right-6 text-secondary/80 drop-shadow"
-              title="已向量化（当前模型，哈希匹配）"
-            >
-              <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
-            </div>
-          )}
           {/* 卡片内容 */}
           <div>
             {/* 头部信息 - 完全匹配旧项目 */}
@@ -312,6 +303,22 @@ export function MemoCard({
                 {/* 管理员异常数据提示（例如包含 base64 内嵌图片） */}
                 {showVisibilityIndicator && anomalies.hasInlineDataImages && (
                   <AnomalyIndicator anomalies={anomalies} />
+                )}
+
+                {/* 向量化标记：与管理员操作按钮同列展示，避免重叠 */}
+                {memo.isVectorized && (
+                  <span
+                    className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-secondary/10 text-secondary/80 drop-shadow-sm flex-shrink-0"
+                    title="已向量化（当前模型，哈希匹配）"
+                    role="img"
+                    aria-label="已向量化"
+                  >
+                    <Icon
+                      icon="tabler:sparkles"
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4"
+                      aria-hidden="true"
+                    />
+                  </span>
                 )}
 
                 {/* 管理员操作按钮组 */}

@@ -17,6 +17,7 @@ const sampleMemo: MemoCardData = {
   source: "webdav",
   createdAt: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
   updatedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
+  isVectorized: true,
 };
 
 export default function DemoMemoCardPage() {
