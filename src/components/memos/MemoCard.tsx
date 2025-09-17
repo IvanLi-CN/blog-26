@@ -17,7 +17,7 @@
 
 import { Icon } from "@iconify/react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import AnomalyIndicator from "./AnomalyIndicator";
@@ -79,12 +79,58 @@ export function MemoCard({
   index: _index = 0,
 }: MemoCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isCollapsible, setIsCollapsible] = useState<boolean | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  const COLLAPSED_MAX_HEIGHT = "50lh";
 
   // 管理员异常数据检测（依赖于上层通过 showVisibilityIndicator 标识管理员场景）
   const anomalies = useMemo(() => detectContentAnomalies(memo.content || ""), [memo.content]);
 
   // 显示内容（按固定 CSS 高度控制折叠）
   const displayContent = memo.content || memo.excerpt || "";
+
+  useLayoutEffect(() => {
+    if (isExpanded) {
+      return;
+    }
+
+    if (displayContent.trim().length === 0) {
+      setIsCollapsible(false);
+      return;
+    }
+
+    setIsCollapsible((prev) => (prev === null ? prev : null));
+
+    const container = contentRef.current;
+    if (!container) {
+      return;
+    }
+
+    const checkOverflow = () => {
+      const { scrollHeight, clientHeight } = container;
+      const hasOverflow = scrollHeight - clientHeight > 1;
+      setIsCollapsible((prev) => (prev === hasOverflow ? prev : hasOverflow));
+    };
+
+    checkOverflow();
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      checkOverflow();
+    });
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [displayContent, isExpanded]);
+
+  const shouldShowGradient = !isExpanded && (isCollapsible ?? true);
 
   // 格式化时间 - 使用 useMemo 优化性能
   const formattedDate = useMemo(() => {
@@ -385,8 +431,9 @@ export function MemoCard({
               {/* 内容容器：仅按 CSS 高度折叠；展开后不再折叠 */}
               <div className="relative">
                 <div
+                  ref={contentRef}
                   className={"transition-all duration-300 ease-in-out overflow-hidden"}
-                  style={{ maxHeight: isExpanded ? undefined : "50lh" }}
+                  style={{ maxHeight: isExpanded ? undefined : COLLAPSED_MAX_HEIGHT }}
                 >
                   <MarkdownRenderer
                     content={displayContent}
@@ -404,13 +451,13 @@ export function MemoCard({
                   />
                 </div>
                 {/* 渐变遮罩：折叠时显示（纯 CSS 高度判断）*/}
-                {!isExpanded && (
+                {shouldShowGradient && (
                   <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-b from-transparent to-base-100" />
                 )}
               </div>
 
               {/* 展开按钮：一次性展开，不再收起 */}
-              {!isExpanded && (
+              {!isExpanded && isCollapsible && (
                 <button
                   type="button"
                   onClick={(e) => {
