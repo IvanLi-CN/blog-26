@@ -397,17 +397,6 @@ function extractTags(frontmatter: Record<string, unknown>): string[] {
 }
 
 /**
- * 从正文内容中提取内联标签
- * @param body 正文内容
- * @returns 内联标签数组
- */
-export function extractInlineTags(body: string): string[] {
-  if (!body) return [];
-  const { tags } = parseContentTags(body);
-  return [...new Set(tags.map((tag) => tag.name))];
-}
-
-/**
  * 合并frontmatter标签和内联标签
  * @param frontmatter frontmatter 数据
  * @param body 正文内容
@@ -415,7 +404,7 @@ export function extractInlineTags(body: string): string[] {
  */
 export function extractAllTags(frontmatter: Record<string, unknown>, body: string): string[] {
   const frontmatterTags = extractTags(frontmatter);
-  const inlineTags = extractInlineTags(body);
+  const inlineTags = body ? [...new Set(parseContentTags(body).tags.map((t) => t.name))] : [];
 
   // 合并并去重
   const allTags = [...frontmatterTags, ...inlineTags];

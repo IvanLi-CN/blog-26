@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 // import rehypeRaw from "rehype-raw"; // 暂时禁用以解决构建问题
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { removeInlineTags } from "@/lib/tag-parser";
 import { CodeBlock, ImageLightbox } from "./markdown/components";
 import { ClientMermaidRenderer } from "./markdown/components/ClientMermaidRenderer";
 // 导入自定义插件和组件
@@ -19,7 +20,6 @@ import {
   extractTextContent,
   getVariantConfig,
   mergeClassNames,
-  removeTagsFromContent,
 } from "./markdown/utils";
 
 // 导入必要的样式
@@ -84,7 +84,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
       let processed = cleanMarkdownContent(content);
       if (removeTags) {
-        processed = removeTagsFromContent(processed);
+        processed = removeInlineTags(processed);
       }
 
       return processed;

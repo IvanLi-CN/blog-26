@@ -1,0 +1,4 @@
+- Before requesting review, run `bun run check` plus targeted `bun run test` or `bun run test:e2e` when behavior changes touch related areas.
+- Ensure WebDAV/DB env vars correct (ports 25090/25091) when verifying runtime flows or Playwright specs.
+- Provide screenshots/logs for UI changes; document new migrations or scripts in PR description.
+- Use Conventional Commits (English subject ≤72 chars, include body) and never bypass hooks; await user confirmation before committing/pushing.

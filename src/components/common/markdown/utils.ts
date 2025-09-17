@@ -1,5 +1,4 @@
 import { resolveImagePath as resolveImagePathCommon } from "@/lib/image-utils";
-import { removeInlineTags } from "@/lib/tag-parser";
 import type { VariantConfig } from "./types";
 
 /**
@@ -304,10 +303,7 @@ export function cleanMarkdownContent(content: string): string {
  * @param content 原始内容
  * @returns 移除标签后的内容
  */
-export function removeTagsFromContent(content: string): string {
-  if (!content) return "";
-  return removeInlineTags(content);
-}
+// 兼容层已移除：请直接使用 `removeInlineTags` 来自 `@/lib/tag-parser`。
 
 /**
  * 获取渲染变体的默认配置

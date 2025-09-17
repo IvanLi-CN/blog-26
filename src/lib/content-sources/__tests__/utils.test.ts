@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
+import { parseContentTags } from "@/lib/tag-parser";
 import {
   extractAllTags,
-  extractInlineTags,
   extractTitle,
   generateMemoFilename,
   generateNanoidSlug,
@@ -113,46 +113,46 @@ describe("Memo Utils", () => {
     });
   });
 
-  describe("extractInlineTags", () => {
+  describe("parseContentTags (inline tags)", () => {
     it("should extract inline tags from content", () => {
       const content = "This is content with #tag1 and #tag2";
-      const tags = extractInlineTags(content);
+      const tags = parseContentTags(content).tags.map((t) => t.name);
       expect(tags).toEqual(["tag1", "tag2"]);
     });
 
     it("should extract Chinese tags", () => {
       const content = "内容包含 #技术 和 #学习 标签";
-      const tags = extractInlineTags(content);
+      const tags = parseContentTags(content).tags.map((t) => t.name);
       expect(tags).toEqual(["技术", "学习"]);
     });
 
     it("should not extract URL hashes", () => {
       const content = "Visit https://example.com#section and #realtag";
-      const tags = extractInlineTags(content);
+      const tags = parseContentTags(content).tags.map((t) => t.name);
       expect(tags).toEqual(["realtag"]);
     });
 
     it("should handle tags with hyphens and underscores", () => {
       const content = "Tags: #front-end #back_end #full-stack";
-      const tags = extractInlineTags(content);
+      const tags = parseContentTags(content).tags.map((t) => t.name);
       expect(tags).toEqual(["front-end", "back_end", "full-stack"]);
     });
 
     it("should support hierarchical tags", () => {
       const content = "Today #编程/Git and #学习/算法";
-      const tags = extractInlineTags(content);
+      const tags = parseContentTags(content).tags.map((t) => t.name);
       expect(tags).toEqual(["编程/Git", "学习/算法"]);
     });
 
     it("should deduplicate tags", () => {
       const content = "Content with #tag1 and #tag1 again";
-      const tags = extractInlineTags(content);
+      const tags = parseContentTags(content).tags.map((t) => t.name);
       expect(tags).toEqual(["tag1"]);
     });
 
     it("should return empty array for content without tags", () => {
       const content = "Content without any tags";
-      const tags = extractInlineTags(content);
+      const tags = parseContentTags(content).tags.map((t) => t.name);
       expect(tags).toEqual([]);
     });
   });
