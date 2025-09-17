@@ -1,3 +1,6 @@
+import { SITE } from "@/config/site";
+import { toMsTimestamp } from "../../lib/utils";
+
 interface Post {
   id: string;
   title: string;
@@ -17,8 +20,6 @@ interface Post {
 interface StructuredDataProps {
   post: Post;
 }
-
-import { toMsTimestamp } from "../../lib/utils";
 
 export default function StructuredData({ post }: StructuredDataProps) {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:25090";
@@ -43,7 +44,7 @@ export default function StructuredData({ post }: StructuredDataProps) {
       }),
     author: {
       "@type": "Person",
-      name: post.author || "Ivan Li",
+      name: post.author || SITE.author.name,
       url: baseUrl,
       sameAs: [
         "https://github.com/ivanli",
@@ -53,7 +54,7 @@ export default function StructuredData({ post }: StructuredDataProps) {
     },
     publisher: {
       "@type": "Organization",
-      name: "Ivan's Blog",
+      name: SITE.name,
       url: baseUrl,
       logo: {
         "@type": "ImageObject",
@@ -110,13 +111,13 @@ export default function StructuredData({ post }: StructuredDataProps) {
   const websiteStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Ivan's Blog",
+    name: SITE.name,
     url: baseUrl,
-    description: "Ivan Li 的个人博客，分享技术文章、项目经验和思考",
+    description: SITE.description,
     inLanguage: "zh-CN",
     author: {
       "@type": "Person",
-      name: "Ivan Li",
+      name: SITE.author.name,
       url: baseUrl,
     },
     potentialAction: {

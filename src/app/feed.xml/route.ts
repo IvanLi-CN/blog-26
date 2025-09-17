@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { SITE } from "@/config/site";
 import { db, initializeDB } from "../../lib/db";
 import { posts } from "../../lib/schema";
 import { toMsTimestamp } from "../../lib/utils";
@@ -23,6 +24,7 @@ export async function GET() {
         const postUrl = `${baseUrl}/posts/${post.slug}`;
         const pubDate = new Date(toMsTimestamp(post.publishDate)).toUTCString();
 
+        const authorName = post.author || SITE.author.name;
         return `
     <item>
       <title><![CDATA[${post.title}]]></title>
@@ -30,7 +32,7 @@ export async function GET() {
       <link>${postUrl}</link>
       <guid isPermaLink="true">${postUrl}</guid>
       <pubDate>${pubDate}</pubDate>
-      ${post.author ? `<author>noreply@ivanli.cc (${post.author})</author>` : ""}
+      <author>${SITE.author.email} (${authorName})</author>
       ${post.category ? `<category><![CDATA[${post.category}]]></category>` : ""}
       ${post.image ? `<enclosure url="${post.image.startsWith("http") ? post.image : baseUrl + post.image}" type="image/jpeg" />` : ""}
     </item>`;
@@ -40,18 +42,18 @@ export async function GET() {
     const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title><![CDATA[Ivan's Blog]]></title>
-    <description><![CDATA[Ivan Li 的个人博客，分享技术文章、项目经验和思考]]></description>
+    <title><![CDATA[${SITE.title}]]></title>
+    <description><![CDATA[${SITE.description}]]></description>
     <link>${baseUrl}</link>
     <language>zh-CN</language>
-    <managingEditor>noreply@ivanli.cc (Ivan Li)</managingEditor>
-    <webMaster>noreply@ivanli.cc (Ivan Li)</webMaster>
+    <managingEditor>${SITE.author.email} (${SITE.author.name})</managingEditor>
+    <webMaster>${SITE.author.email} (${SITE.author.name})</webMaster>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
     <generator>Next.js Blog</generator>
     <image>
       <url>${baseUrl}/logo.png</url>
-      <title><![CDATA[Ivan's Blog]]></title>
+      <title><![CDATA[${SITE.title}]]></title>
       <link>${baseUrl}</link>
       <width>512</width>
       <height>512</height>

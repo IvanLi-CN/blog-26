@@ -3,6 +3,7 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
+import { SITE } from "@/config/site";
 import { resolveImagePath } from "../../lib/image-utils";
 import { getFormattedDateFromTimestamp, toMsTimestamp } from "../../lib/utils";
 
@@ -40,6 +41,9 @@ export default function BlogListItem({ post }: BlogListItemProps) {
   const markdownFilePath = post.id; // post.id 就是文件路径
   const imageSrc = resolveImagePath(post.image, contentSource, markdownFilePath);
 
+  const authorName = post.author?.trim() || SITE.author.name;
+  const displayAuthor = post.author ? post.author.replaceAll("-", " ") : authorName;
+
   return (
     <article className="max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-lg p-4 hover:bg-base-100/50">
       <div
@@ -47,32 +51,20 @@ export default function BlogListItem({ post }: BlogListItemProps) {
       >
         <header>
           <div className="mb-1">
-            <span className="text-sm">
-              <Icon
-                icon="tabler:clock"
-                className="w-3.5 h-3.5 inline-block -mt-0.5 dark:text-gray-400"
-              />
+            <span className="text-sm flex flex-wrap items-center gap-1">
+              <Icon icon="tabler:clock" className="w-3.5 h-3.5 -mt-0.5 dark:text-gray-400" />
               <time
                 dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
                 className="inline-block"
               >
                 {getFormattedDateFromTimestamp(post.publishDate)}
               </time>
-              {post.author && (
-                <>
-                  {" "}
-                  ·{" "}
-                  <Icon
-                    icon="tabler:user"
-                    className="w-3.5 h-3.5 inline-block -mt-0.5 dark:text-gray-400"
-                  />
-                  <span>{post.author.replaceAll("-", " ")}</span>
-                </>
-              )}
+              <span>·</span>
+              <Icon icon="tabler:user" className="w-3.5 h-3.5 -mt-0.5 dark:text-gray-400" />
+              <span>{displayAuthor}</span>
               {post.category && (
                 <>
-                  {" "}
-                  ·{" "}
+                  <span>·</span>
                   <Link className="hover:underline" href={`/category/${post.category}`}>
                     {post.category}
                   </Link>

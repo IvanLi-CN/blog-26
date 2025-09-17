@@ -71,13 +71,15 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
   };
 
   // 转换 post 对象以匹配 Post 类型
+  const authorName = post.author?.trim() || SITE.author.name;
+
   const postForStructuredData = {
     ...post,
     excerpt: post.excerpt ?? undefined,
     image: post.image ?? undefined,
     category: post.category ?? undefined,
     updateDate: post.updateDate ?? undefined,
-    author: post.author ?? undefined,
+    author: authorName,
     tags: post.tags ?? undefined,
   };
 
@@ -90,32 +92,20 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
         <article>
           <header className={post.image ? "mb-6" : "mb-6"}>
             <div className="flex justify-between flex-col sm:flex-row max-w-3xl mx-auto mt-0 mb-2 px-4 sm:px-6 sm:items-center">
-              <p>
-                <Icon
-                  icon="tabler:clock"
-                  className="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
-                />
+              <p className="flex flex-wrap items-center gap-2">
+                <Icon icon="tabler:clock" className="w-4 h-4 -mt-0.5 dark:text-gray-400" />
                 <time
                   dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
                   className="inline-block"
                 >
                   {getFormattedDate(post.publishDate)}
                 </time>
-                {post.author && (
-                  <>
-                    {" "}
-                    ·{" "}
-                    <Icon
-                      icon="tabler:user"
-                      className="w-4 h-4 inline-block -mt-0.5 dark:text-gray-400"
-                    />
-                    <span className="inline-block">{post.author}</span>
-                  </>
-                )}
+                <span>·</span>
+                <Icon icon="tabler:user" className="w-4 h-4 -mt-0.5 dark:text-gray-400" />
+                <span className="inline-block">{authorName}</span>
                 {post.category && (
                   <>
-                    {" "}
-                    ·{" "}
+                    <span>·</span>
                     <Link
                       className="hover:underline inline-block"
                       href={`/category/${post.category.toLowerCase().replace(/\s+/g, "-")}`}
@@ -124,7 +114,8 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                     </Link>
                   </>
                 )}
-                &nbsp;· <ReadingTime content={post.body} />
+                <span>·</span>
+                <ReadingTime content={post.body} />
               </p>
 
               {/* 向量化状态已移除，因为 post 对象中没有 vectorizationStatus 属性 */}

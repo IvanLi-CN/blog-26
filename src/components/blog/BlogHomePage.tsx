@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { SITE } from "@/config/site";
 import { trpc } from "../../lib/trpc";
 import PageLayout from "../common/PageLayout";
 
@@ -96,64 +97,65 @@ export default function BlogHomePage() {
             {/* Posts List */}
             <div className="space-y-8">
               {data?.posts && data.posts.length > 0 ? (
-                data.posts.map((post) => (
-                  <article key={post.id} className="card bg-base-100 shadow-xl">
-                    <div className="card-body">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h2 className="card-title text-2xl mb-2">
-                            <Link
-                              href={`/posts/${post.slug}`}
-                              className="hover:text-primary transition-colors"
-                            >
-                              {post.title}
-                            </Link>
-                          </h2>
-                          <div className="flex items-center gap-4 text-sm text-base-content/70">
-                            <span>📅 {new Date(post.publishDate).toLocaleDateString()}</span>
-                            {post.category && (
-                              <span className="badge badge-outline">{post.category}</span>
-                            )}
-                            {Array.isArray(post.tags) && post.tags.length > 0 && (
-                              <div className="flex gap-1">
-                                {post.tags
-                                  .map((tag) => String(tag).trim())
-                                  .filter(Boolean)
-                                  .map((tag) => (
-                                    <span key={tag} className="badge badge-ghost badge-sm">
-                                      #{tag}
-                                    </span>
-                                  ))}
-                              </div>
-                            )}
+                data.posts.map((post) => {
+                  const authorName = post.author?.trim() || SITE.author.name;
+                  const authorInitial = authorName.charAt(0).toUpperCase();
+
+                  return (
+                    <article key={post.id} className="card bg-base-100 shadow-xl">
+                      <div className="card-body">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <h2 className="card-title text-2xl mb-2">
+                              <Link
+                                href={`/posts/${post.slug}`}
+                                className="hover:text-primary transition-colors"
+                              >
+                                {post.title}
+                              </Link>
+                            </h2>
+                            <div className="flex items-center gap-4 text-sm text-base-content/70">
+                              <span>📅 {new Date(post.publishDate).toLocaleDateString()}</span>
+                              {post.category && (
+                                <span className="badge badge-outline">{post.category}</span>
+                              )}
+                              {Array.isArray(post.tags) && post.tags.length > 0 && (
+                                <div className="flex gap-1">
+                                  {post.tags
+                                    .map((tag) => String(tag).trim())
+                                    .filter(Boolean)
+                                    .map((tag) => (
+                                      <span key={tag} className="badge badge-ghost badge-sm">
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <p className="text-base-content/80 mb-4">
-                        {post.excerpt || `${post.body.substring(0, 200)}...`}
-                      </p>
+                        <p className="text-base-content/80 mb-4">
+                          {post.excerpt || `${post.body.substring(0, 200)}...`}
+                        </p>
 
-                      <div className="card-actions justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          {post.author && (
-                            <div className="flex items-center gap-2">
-                              <div className="avatar placeholder">
-                                <div className="bg-neutral text-neutral-content rounded-full w-8">
-                                  <span className="text-xs">{post.author.charAt(0)}</span>
-                                </div>
+                        <div className="card-actions justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="avatar placeholder">
+                              <div className="bg-neutral text-neutral-content rounded-full w-8">
+                                <span className="text-xs">{authorInitial}</span>
                               </div>
-                              <span className="text-sm">{post.author}</span>
                             </div>
-                          )}
+                            <span className="text-sm">{authorName}</span>
+                          </div>
+                          <Link href={`/posts/${post.slug}`} className="btn btn-primary btn-sm">
+                            阅读更多
+                          </Link>
                         </div>
-                        <Link href={`/posts/${post.slug}`} className="btn btn-primary btn-sm">
-                          阅读更多
-                        </Link>
                       </div>
-                    </div>
-                  </article>
-                ))
+                    </article>
+                  );
+                })
               ) : (
                 <div className="text-center py-12">
                   <div className="text-6xl mb-4">📝</div>

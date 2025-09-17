@@ -1,3 +1,5 @@
+import { SITE } from "@/config/site";
+
 interface ArticleLicenseProps {
   author?: string;
   year?: number;
@@ -5,7 +7,7 @@ interface ArticleLicenseProps {
 }
 
 export default function ArticleLicense({
-  author = "Ivan Li",
+  author = SITE.author.name,
   year = new Date().getFullYear(),
   className = "",
 }: ArticleLicenseProps) {
