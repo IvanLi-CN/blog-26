@@ -1,5 +1,0 @@
-- Formatting via Biome (2-space indent, width 100, double quotes, trailing commas); run with `bun run check` or `bun run fix`.
-- ESLint extends `next/core-web-vitals`; strict TS checks enforced.
-- Prefer descriptive kebab-case filenames within features, use `@/*` path alias over deep relative paths.
-- Favor succinct explanatory comments only for non-obvious logic.
-- Store secrets in `.env.local` and keep SQLite paths environment-specific (dev/test/prod defaults documented).

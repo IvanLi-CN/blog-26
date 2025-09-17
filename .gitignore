@@ -94,3 +94,6 @@ Thumbs.db
 .serena/memories/style_and_conventions.md
 .serena/memories/suggested_commands.md
 .serena/memories/system_utils_darwin.md
+
+# ignore serena memories
+.serena/memories/*.md
