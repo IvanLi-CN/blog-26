@@ -16,6 +16,16 @@ The project relies on Biome for formatting (2-space indent, max width 100, doubl
 
 Unit and integration tests run with Bun's test runner via `bun run test`; keep specs close to the code they cover or under `src/lib/__tests__/`. E2E scenarios use Playwright in `tests/e2e/`; execute with `bun run test:e2e` (install browsers using `bunx playwright install`). Reset or seed test data with `bun run test-env:reset` and `bun run test-data:generate` before long runs.
 
+## Runtime Verification Access
+
+- Before invoking any runtime verification workflow, validate whether the scenario explicitly requires administrator permissions. Record the decision in your run notes so downstream agents understand the context.
+- When admin access *is* required:
+  - Ensure `ADMIN_EMAIL` is populated and shared across every process involved (Next.js dev server, Playwright, MCP tooling). Prefer defining it in `.env.local`; otherwise prefix the command, e.g. `ADMIN_EMAIL=admin@example.com SSO_EMAIL_HEADER_NAME=Remote-Email bun run dev`.
+  - Keep `SSO_EMAIL_HEADER_NAME` aligned with the upstream proxy (defaults to `Remote-Email`). Both the app (`src/lib/auth.ts`) and Playwright (`playwright.config.ts`) read this value to inject the same header.
+  - When launching Playwright or MCP-driven checks, export the same variables so the shared config issues the admin header automatically: `ADMIN_EMAIL=admin@example.com bun run test:e2e`. MCP tools that reuse the Playwright runner inherit the header list; custom MCP clients must set `[SSO_EMAIL_HEADER_NAME]=ADMIN_EMAIL` in `extraHTTPHeaders` before triggering runtime verification.
+  - For manual browsing through the local reverse proxy (`scripts/local-proxy.ts`), start it with matching env so the proxy injects the correct admin header.
+- When admin access is *not* required, state that explicitly and omit the header injection to avoid masking authorization regressions during verification.
+
 ## Commit & Pull Request Guidelines
 
 Commit messages must follow Conventional Commits (English subject ≤72 chars, body required). Example: `feat(memos): add lightbox for images` followed by rationale and test notes. Pull requests should summarize behavior changes, link related issues, document any new migrations, and attach screenshots or logs for UI or UX updates. Run `bun run check` and relevant tests before requesting review.
