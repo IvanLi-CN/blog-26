@@ -6,7 +6,7 @@ Source lives under `src/`, with page routes and API handlers in `src/app/`. Shar
 
 ## Build, Test, and Development Commands
 
-Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (Next.js plus WebDAV). Produce a production build via `bun run build`, then serve it using `bun run start`. Lint and format the codebase with `bun run check`; auto-fix minor issues using `bun run fix`. Execute ESLint rules through `bun run lint`. For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset` as required.
+Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (Next.js plus WebDAV). Both development and test environments must bind the web service to port `25090` and the WebDAV service to port `25091` to stay compliant with shared infrastructure. Produce a production build via `bun run build`, then serve it using `bun run start`. Lint and format the codebase with `bun run check`; auto-fix minor issues using `bun run fix`. Execute ESLint rules through `bun run lint`. For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset` as required.
 
 ## Coding Style & Naming Conventions
 
