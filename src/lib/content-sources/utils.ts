@@ -402,7 +402,10 @@ function extractTags(frontmatter: Record<string, unknown>): string[] {
  * @param body 正文内容
  * @returns 合并后的标签数组
  */
-export function extractAllTags(frontmatter: Record<string, unknown>, body: string): string[] {
+export function mergeFrontmatterAndInlineTags(
+  frontmatter: Record<string, unknown>,
+  body: string
+): string[] {
   const frontmatterTags = extractTags(frontmatter);
   const inlineTags = body ? [...new Set(parseContentTags(body).tags.map((t) => t.name))] : [];
 

@@ -1,11 +1,11 @@
 import { describe, expect, it, mock } from "bun:test";
 import { parseContentTags } from "@/lib/tag-parser";
 import {
-  extractAllTags,
   extractTitle,
   generateMemoFilename,
   generateNanoidSlug,
   generateTitleSlug,
+  mergeFrontmatterAndInlineTags,
 } from "../utils";
 
 // Mock nanoid for predictable testing in this file
@@ -157,12 +157,12 @@ describe("Memo Utils", () => {
     });
   });
 
-  describe("extractAllTags", () => {
+  describe("mergeFrontmatterAndInlineTags", () => {
     it("should merge frontmatter and inline tags", () => {
       const frontmatter = { tags: ["frontend", "react"] };
       const body = "Content with #javascript and #typescript";
 
-      const tags = extractAllTags(frontmatter, body);
+      const tags = mergeFrontmatterAndInlineTags(frontmatter, body);
       expect(tags).toEqual(["frontend", "react", "javascript", "typescript"]);
     });
 
@@ -170,7 +170,7 @@ describe("Memo Utils", () => {
       const frontmatter = { tags: ["react", "frontend"] };
       const body = "Content with #react and #vue";
 
-      const tags = extractAllTags(frontmatter, body);
+      const tags = mergeFrontmatterAndInlineTags(frontmatter, body);
       expect(tags).toEqual(["react", "frontend", "vue"]);
     });
 
@@ -178,7 +178,7 @@ describe("Memo Utils", () => {
       const frontmatter = {};
       const body = "Content with #tag1 and #tag2";
 
-      const tags = extractAllTags(frontmatter, body);
+      const tags = mergeFrontmatterAndInlineTags(frontmatter, body);
       expect(tags).toEqual(["tag1", "tag2"]);
     });
 
@@ -186,7 +186,7 @@ describe("Memo Utils", () => {
       const frontmatter = { tags: ["tag1", "tag2"] };
       const body = "Content without inline tags";
 
-      const tags = extractAllTags(frontmatter, body);
+      const tags = mergeFrontmatterAndInlineTags(frontmatter, body);
       expect(tags).toEqual(["tag1", "tag2"]);
     });
 
@@ -194,7 +194,7 @@ describe("Memo Utils", () => {
       const frontmatter = { tags: ["编程"] };
       const body = "Content with #编程/Git and #学习/算法";
 
-      const tags = extractAllTags(frontmatter, body);
+      const tags = mergeFrontmatterAndInlineTags(frontmatter, body);
       expect(tags).toEqual(["编程", "编程/Git", "学习/算法"]);
     });
   });
