@@ -138,6 +138,12 @@ describe("Memo Utils", () => {
       expect(tags).toEqual(["front-end", "back_end", "full-stack"]);
     });
 
+    it("should support hierarchical tags", () => {
+      const content = "Today #编程/Git and #学习/算法";
+      const tags = extractInlineTags(content);
+      expect(tags).toEqual(["编程/Git", "学习/算法"]);
+    });
+
     it("should deduplicate tags", () => {
       const content = "Content with #tag1 and #tag1 again";
       const tags = extractInlineTags(content);
@@ -182,6 +188,14 @@ describe("Memo Utils", () => {
 
       const tags = extractAllTags(frontmatter, body);
       expect(tags).toEqual(["tag1", "tag2"]);
+    });
+
+    it("should merge hierarchical inline tags", () => {
+      const frontmatter = { tags: ["编程"] };
+      const body = "Content with #编程/Git and #学习/算法";
+
+      const tags = extractAllTags(frontmatter, body);
+      expect(tags).toEqual(["编程", "编程/Git", "学习/算法"]);
     });
   });
 

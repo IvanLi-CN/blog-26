@@ -18,6 +18,7 @@
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { parseContentTags } from "@/lib/tag-parser";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import AnomalyIndicator from "./AnomalyIndicator";
@@ -84,11 +85,23 @@ export function MemoCard({
 
   const COLLAPSED_MAX_HEIGHT = "50lh";
 
+  const parsedContent = useMemo(() => parseContentTags(memo.content || ""), [memo.content]);
+
+  const derivedTags = useMemo(() => {
+    const inlineTags = parsedContent.tags.map((tag) => tag.name);
+    if (inlineTags.length === 0) {
+      return memo.tags ?? [];
+    }
+    const merged = new Set<string>(inlineTags);
+    (memo.tags ?? []).forEach((tag) => merged.add(tag));
+    return Array.from(merged);
+  }, [memo.tags, parsedContent.tags]);
+
   // 管理员异常数据检测（依赖于上层通过 showVisibilityIndicator 标识管理员场景）
   const anomalies = useMemo(() => detectContentAnomalies(memo.content || ""), [memo.content]);
 
   // 显示内容（按固定 CSS 高度控制折叠）
-  const displayContent = memo.content || memo.excerpt || "";
+  const displayContent = parsedContent.cleanedContent || memo.excerpt || "";
 
   useLayoutEffect(() => {
     if (isExpanded) {
@@ -446,7 +459,7 @@ export function MemoCard({
                     previewCodeLines={10}
                     articlePath={memo.filePath || memo.id}
                     contentSource={memo.source === "local" ? "local" : "webdav"}
-                    removeTags={true}
+                    removeTags={false}
                     className="prose prose-sm max-w-none [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-32 [&_img]:object-cover [&_img]:rounded"
                   />
                 </div>
@@ -471,9 +484,9 @@ export function MemoCard({
               )}
 
               {/* 标签显示 - 完全匹配旧项目 */}
-              {memo.tags && memo.tags.length > 0 && (
+              {derivedTags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2 sm:mt-3">
-                  {memo.tags.map((tag: string) => (
+                  {derivedTags.map((tag: string) => (
                     <span key={tag} className="badge badge-outline badge-sm">
                       #{tag}
                     </span>

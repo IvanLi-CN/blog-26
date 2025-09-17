@@ -7,6 +7,7 @@
 import matter from "gray-matter";
 import limax from "limax";
 import { nanoid } from "nanoid";
+import { parseContentTags } from "@/lib/tag-parser";
 import type { ContentItem, ContentType, FileInfo, ParsedContent } from "./types";
 
 // ============================================================================
@@ -61,15 +62,17 @@ export function createContentItemFromParsed(
   // 提取发布日期
   const publishDate = extractPublishDate(frontmatter, filePath);
 
-  // 提取标签（合并frontmatter标签和内联标签）
-  const tags = extractAllTags(frontmatter, body);
+  // 提取标签与清理后的正文
+  const { tags: inlineTagDetails, cleanedContent } = parseContentTags(body);
+  const frontmatterTags = extractTags(frontmatter);
+  const mergedTags = [...new Set([...frontmatterTags, ...inlineTagDetails.map((tag) => tag.name)])];
 
   return {
     id: filePath,
     type: contentType,
     slug,
     title,
-    excerpt: (frontmatter.excerpt as string) || extractExcerpt(body),
+    excerpt: (frontmatter.excerpt as string) || extractExcerpt(cleanedContent || body),
     contentHash,
     lastModified: Date.now(), // 这里应该从文件系统获取，子类会覆盖
     source,
@@ -81,13 +84,15 @@ export function createContentItemFromParsed(
       ? new Date(frontmatter.updateDate as string).getTime()
       : undefined,
     category: frontmatter.category as string,
-    tags,
+    tags: mergedTags,
     author: frontmatter.author as string,
     image: frontmatter.image as string,
     metadata: {
       ...frontmatter,
       // 添加正文内容到 metadata 中
       content: body,
+      cleanedContent,
+      inlineTagPositions: inlineTagDetails,
       // 移除已经提取的字段，避免重复
       slug: undefined,
       title: undefined,
@@ -398,32 +403,8 @@ function extractTags(frontmatter: Record<string, unknown>): string[] {
  */
 export function extractInlineTags(body: string): string[] {
   if (!body) return [];
-
-  const inlineTags: string[] = [];
-  // 匹配 #标签 格式，支持中英文、数字、连字符
-  const tagRegex = /#([^\s#]+)/g;
-  let match: RegExpExecArray | null;
-
-  match = tagRegex.exec(body);
-  while (match !== null) {
-    const tagContent = match[1];
-    const hashIndex = match.index;
-
-    // 检查是否是URL中的hash部分（简单检查前面是否有http或www）
-    const beforeHash = body.substring(Math.max(0, hashIndex - 20), hashIndex);
-    if (!/https?:\/\/|www\./i.test(beforeHash)) {
-      // 验证标签格式：支持中英文、数字、连字符
-      if (/^[\w\u4e00-\u9fff-]+$/.test(tagContent)) {
-        inlineTags.push(tagContent);
-      }
-    }
-
-    // 获取下一个匹配
-    match = tagRegex.exec(body);
-  }
-
-  // 去重并返回
-  return [...new Set(inlineTags)];
+  const { tags } = parseContentTags(body);
+  return [...new Set(tags.map((tag) => tag.name))];
 }
 
 /**

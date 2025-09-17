@@ -33,6 +33,12 @@ describe("Markdown Utils", () => {
       expect(result).toBe("Tags:");
     });
 
+    it("should handle hierarchical tags", () => {
+      const content = "学习 #编程/Git 提升效率";
+      const result = removeTagsFromContent(content);
+      expect(result).toBe("学习 提升效率");
+    });
+
     it("should handle mixed content with URLs and tags", () => {
       const content = `# 技术文章
 

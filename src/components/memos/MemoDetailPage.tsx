@@ -21,7 +21,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { parseContentTags } from "@/lib/tag-parser";
 import { SITE } from "../../config/site";
 import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
@@ -154,6 +155,22 @@ export function MemoDetailPage({
     router.back();
   }, [router]);
 
+  const parsedContent = useMemo(() => parseContentTags(memo?.content ?? ""), [memo?.content]);
+  const derivedTags = useMemo(() => {
+    const inlineTags = parsedContent.tags.map((tag) => tag.name);
+    if (inlineTags.length === 0) {
+      return memo?.tags ?? [];
+    }
+    const merged = new Set<string>(inlineTags);
+    (memo?.tags ?? []).forEach((tag) => merged.add(tag));
+    return Array.from(merged);
+  }, [memo?.tags, parsedContent.tags]);
+
+  const displayContent = useMemo(
+    () => parsedContent.cleanedContent || memo?.content || "",
+    [memo?.content, parsedContent.cleanedContent]
+  );
+
   // 加载状态
   if (isLoading) {
     return (
@@ -207,7 +224,7 @@ export function MemoDetailPage({
           initialContent={memo.content}
           initialTitle={memo.title}
           initialIsPublic={memo.isPublic}
-          initialTags={memo.tags}
+          initialTags={derivedTags}
           isEditing={true}
           onSave={handleSave}
           onCancel={() => setIsEditing(false)}
@@ -266,9 +283,9 @@ export function MemoDetailPage({
 
       {/* 顶部：仅展示标签（标题由内容内提取，不再额外渲染） */}
       <div className="mb-6">
-        {memo.tags.length > 0 && (
+        {derivedTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {memo.tags.map((tag: string) => (
+            {derivedTags.map((tag: string) => (
               <Badge key={tag} variant="secondary">
                 #{tag}
               </Badge>
@@ -280,7 +297,7 @@ export function MemoDetailPage({
       {/* 内容 */}
       <div>
         <MarkdownRenderer
-          content={memo.content}
+          content={displayContent}
           variant="memo"
           enableMath={true}
           enableMermaid={true}
@@ -290,7 +307,7 @@ export function MemoDetailPage({
           previewCodeLines={20}
           articlePath={memo.filePath}
           contentSource={memo.source === "local" ? "local" : "webdav"}
-          removeTags={true}
+          removeTags={false}
           className="prose prose-lg max-w-none"
         />
         {/* 元信息：移动到内容末尾展示 */}
