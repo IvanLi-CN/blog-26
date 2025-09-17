@@ -8,6 +8,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -16,6 +17,7 @@ import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
 import { MemosErrorBoundary } from "./MemosErrorBoundary";
 import { MemosList } from "./MemosList";
+import { QuickMemoEditModal, type QuickMemoEditValues } from "./QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "./QuickMemoEditor";
 
 export interface MemosAppProps {
@@ -62,14 +64,24 @@ export function MemosApp({
     initialTag,
   });
 
+  const handleSaveSuccess = useCallback(() => {
+    setShowEditor(false);
+    setShowQuickEditor(false);
+    setEditingMemo(null);
+    refresh();
+  }, [refresh]);
+
   // 编辑器管理
-  const { existingMemo, saveMemo, handleDelete } = useMemoEditor({
+  const {
+    existingMemo,
+    isLoadingMemo,
+    isSaving: isSavingMemo,
+    saveError,
+    saveMemo,
+    handleDelete,
+  } = useMemoEditor({
     memoId: editingMemo?.slug,
-    onSaveSuccess: () => {
-      setShowEditor(false);
-      setEditingMemo(null);
-      refresh();
-    },
+    onSaveSuccess: handleSaveSuccess,
     onSaveError: (error) => {
       console.error("保存失败:", error);
     },
@@ -102,7 +114,13 @@ export function MemosApp({
   // 处理编辑 memo
   const handleEdit = useCallback((memo: MemoCardData) => {
     setEditingMemo(memo);
-    setShowEditor(true);
+    setShowEditor(false);
+    setShowQuickEditor(true);
+  }, []);
+
+  const handleCloseQuickEditor = useCallback(() => {
+    setShowQuickEditor(false);
+    setEditingMemo(null);
   }, []);
 
   // 处理删除 memo
@@ -133,6 +151,33 @@ export function MemosApp({
     },
     [saveQuickMemo]
   );
+
+  const handleQuickEditSave = useCallback(
+    async ({ content, isPublic }: QuickMemoEditValues) => {
+      if (!existingMemo) {
+        console.warn("尝试在未加载完成时保存闪念，已忽略");
+        return;
+      }
+
+      await saveMemo({
+        content,
+        title: existingMemo.title,
+        isPublic,
+        tags: existingMemo.tags ?? [],
+      });
+    },
+    [existingMemo, saveMemo]
+  );
+
+  const quickEditTitle =
+    existingMemo?.title || editingMemo?.title || editingMemo?.slug || undefined;
+  const quickEditContent = existingMemo?.content ?? editingMemo?.content;
+  const quickEditIsPublic = existingMemo?.isPublic ?? editingMemo?.isPublic ?? true;
+  const quickEditArticlePath = existingMemo?.filePath ?? editingMemo?.filePath ?? editingMemo?.slug;
+  const quickEditSource = existingMemo?.source ?? editingMemo?.source;
+  const quickEditContentSource = quickEditSource === "local" ? "local" : "webdav";
+  const quickEditErrorMessage =
+    saveError instanceof Error ? saveError.message : saveError ? String(saveError) : undefined;
 
   // 渲染错误状态
   if (isError) {
@@ -196,16 +241,19 @@ export function MemosApp({
         </DialogContent>
       </Dialog>
 
-      {/* 快速编辑器对话框 */}
-      <Dialog open={showQuickEditor} onOpenChange={setShowQuickEditor}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>快速记录</DialogTitle>
-          </DialogHeader>
-
-          <QuickMemoEditor onSave={handleQuickSave} autoFocus showAdvancedOptions />
-        </DialogContent>
-      </Dialog>
+      <QuickMemoEditModal
+        open={showQuickEditor}
+        onClose={handleCloseQuickEditor}
+        memoTitle={quickEditTitle}
+        initialContent={quickEditContent}
+        initialIsPublic={quickEditIsPublic}
+        articlePath={quickEditArticlePath}
+        contentSource={quickEditContentSource}
+        isLoading={isLoadingMemo && !!editingMemo}
+        isSaving={isSavingMemo}
+        errorMessage={quickEditErrorMessage}
+        onSave={handleQuickEditSave}
+      />
     </div>
   );
 }
