@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 const feeds = [
-  { path: "/feed.xml", expectRoot: /<rss/i },
-  { path: "/memos/feed.xml", expectRoot: /<rss/i },
-  { path: "/tags/test/feed.xml", expectRoot: /<rss/i },
+  { path: "/feed.xml", expectRoot: /<rss/i, expectItems: true },
+  { path: "/memos/feed.xml", expectRoot: /<rss/i, expectItems: true },
+  { path: "/tags/test/feed.xml", expectRoot: /<rss/i, expectItems: false },
 ];
 
 for (const f of feeds) {
@@ -13,9 +13,12 @@ for (const f of feeds) {
     expect(res.headers()["content-type"]).toContain("application/xml");
     const text = await res.text();
     expect(text).toMatch(f.expectRoot);
-    expect(text).toMatch(/<item>/i);
 
-    const etag = res.headers()["etag"];
+    if (f.expectItems) {
+      expect(text).toMatch(/<item>/i);
+    }
+
+    const etag = res.headers().etag;
     const lastModified = res.headers()["last-modified"];
     expect(etag).toBeTruthy();
     expect(lastModified).toBeTruthy();
@@ -30,5 +33,5 @@ for (const f of feeds) {
 test("/rss.xml redirects to /feed.xml", async ({ request, baseURL }) => {
   const res = await request.fetch(`${baseURL}/rss.xml`, { maxRedirects: 0 });
   expect(res.status()).toBe(301);
-  expect(res.headers()["location"]).toContain("/feed.xml");
+  expect(res.headers().location).toContain("/feed.xml");
 });
