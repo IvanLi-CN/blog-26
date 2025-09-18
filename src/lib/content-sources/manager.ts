@@ -1023,7 +1023,8 @@ export class ContentSourceManager {
       try {
         const isConnected = await source.validateConnection();
         results.set(source.name, isConnected);
-      } catch (_error) {
+      } catch (error) {
+        console.warn(`验证内容源 ${source.name} 连接失败:`, error);
         results.set(source.name, false);
       }
     }

@@ -13,6 +13,14 @@ export const metadata: Metadata = {
   title: "Memos - 记录想法，分享见解",
   description: "浏览所有公开的 memo，发现有趣的想法和见解。支持搜索、标签过滤和时间线浏览。",
   keywords: ["memo", "笔记", "想法", "分享", "博客"],
+  alternates: {
+    canonical: "/memos",
+    types: {
+      "application/rss+xml": [{ url: "/memos/feed.xml", title: "Memos RSS Feed" }],
+      "application/atom+xml": [{ url: "/atom.xml", title: "Site Atom Feed" }],
+      "application/feed+json": [{ url: "/feed.json", title: "Site JSON Feed" }],
+    },
+  },
   openGraph: {
     title: "Memos - 记录想法，分享见解",
     description: "浏览所有公开的 memo，发现有趣的想法和见解。",
@@ -32,9 +40,6 @@ export const metadata: Metadata = {
     title: "Memos - 记录想法，分享见解",
     description: "浏览所有公开的 memo，发现有趣的想法和见解。",
     images: ["/og-memos.png"],
-  },
-  alternates: {
-    canonical: "/memos",
   },
 };
 

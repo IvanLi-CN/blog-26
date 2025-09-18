@@ -259,6 +259,21 @@ This project uses a multi-source content management system that supports both lo
 
 ### AI & Search
 
+## 🔔 Subscribe
+
+Your readers can follow updates via standard syndication formats. All endpoints support HTTP caching with `ETag` and `Last-Modified`:
+
+- Main RSS: `/feed.xml` (`Content-Type: application/xml`)
+- Main Atom: `/atom.xml` (`Content-Type: application/atom+xml`)
+- Main JSON Feed: `/feed.json` (`Content-Type: application/feed+json`)
+- Memos RSS: `/memos/feed.xml`
+- Tag RSS: `/tags/[tag]/feed.xml` (replace `[tag]` with actual tag)
+
+Notes:
+- Limit items via `?limit=30` (defaults to 30, max 50).
+- Short URL `/rss.xml` permanently redirects to `/feed.xml`.
+- Absolute URLs are generated using `NEXT_PUBLIC_SITE_URL` (falls back to site config when unset).
+
 - **OpenAI API** for AI features
 - **LlamaIndex** for RAG functionality
 - **Redis** for caching (ioredis)

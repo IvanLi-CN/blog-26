@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -94,11 +95,12 @@ export default function CommentItem({
       <div className="flex items-start gap-4">
         <div className="avatar">
           <div className="w-12 h-12 rounded-full">
-            {/* biome-ignore lint/performance/noImgElement: Using plain <img> is acceptable for avatar here */}
-            <img
+            <Image
               src={comment.author.avatarUrl}
               alt={comment.author.nickname || "用户"}
               className="rounded-full"
+              width={48}
+              height={48}
             />
           </div>
         </div>

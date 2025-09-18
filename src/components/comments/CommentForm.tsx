@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type React from "react";
 import { useCallback, useEffect, useId, useState } from "react";
 import type { UserInfo } from "./types";
@@ -91,11 +92,12 @@ export default function CommentForm({
         <div className="flex items-center gap-4 mb-6 p-4 bg-base-50 rounded-lg">
           <div className="avatar">
             <div className="w-12 h-12 rounded-full">
-              {/* biome-ignore lint/performance/noImgElement: Using plain <img> is acceptable for avatar here */}
-              <img
+              <Image
                 src={userInfo.avatarUrl || "/default-avatar.png"}
                 alt={userInfo.nickname}
                 className="rounded-full"
+                width={48}
+                height={48}
               />
             </div>
           </div>

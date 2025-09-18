@@ -39,6 +39,16 @@ export function useAdvancedEditorState() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const {
+    addTab,
+    expandFolderPath,
+    removeTab,
+    setActiveTab,
+    setScrollTarget,
+    setSelectedPath,
+    setTabDirty,
+  } = actions;
+
   // 防抖函数引用
   const debouncedScrollRef = useRef(debounceScrollToFile(DEBOUNCE_DELAYS.SCROLL));
   const urlUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,39 +72,23 @@ export function useAdvancedEditorState() {
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
     if (!activeTab) return;
 
-    // 更新 URL（防抖）
     if (urlUpdateTimeoutRef.current) {
       clearTimeout(urlUpdateTimeoutRef.current);
     }
 
     urlUpdateTimeoutRef.current = setTimeout(() => {
-      // 使用二元ID生成URL参数
       if (activeTab.identifier) {
         const urlParams = generateUrlParams(activeTab.identifier);
         const newUrl = `${window.location.pathname}?${urlParams}`;
-
         router.replace(newUrl, { scroll: false });
       }
     }, DEBOUNCE_DELAYS.URL_UPDATE);
 
-    // 展开文件路径
     if (activeTab.identifier) {
-      actions.expandFolderPath(activeTab.identifier.path);
+      expandFolderPath(activeTab.identifier.path);
+      setScrollTarget(activeTab.identifier.path);
     }
-
-    // 设置滚动目标
-    if (activeTab.identifier) {
-      actions.setScrollTarget(activeTab.identifier.path);
-    }
-  }, [
-    state.activeTabId,
-    actions.expandFolderPath,
-    actions.setScrollTarget,
-    router.replace,
-    state.tabs.find,
-    router,
-    state.tabs,
-  ]);
+  }, [state.activeTabId, state.tabs, expandFolderPath, setScrollTarget, router]);
 
   // 滚动目标变化时的副作用
   useEffect(() => {
@@ -130,7 +124,7 @@ export function useAdvancedEditorState() {
 
       if (existingTab) {
         // 切换到已存在的标签页
-        actions.setActiveTab(existingTab.id);
+        setActiveTab(existingTab.id);
       } else {
         // 创建新标签页
         const tabTitle = title || extractFileNameWithoutExtension(identifier.path) || "新文件";
@@ -144,21 +138,15 @@ export function useAdvancedEditorState() {
           contentSource, // 保持兼容性
         };
 
-        actions.addTab(newTab);
-        actions.setActiveTab(newTab.id);
+        addTab(newTab);
+        setActiveTab(newTab.id);
       }
 
       // 设置选中路径和滚动目标（使用原始路径）
-      actions.setSelectedPath(identifier.path);
-      actions.setScrollTarget(identifier.path);
+      setSelectedPath(identifier.path);
+      setScrollTarget(identifier.path);
     },
-    [
-      state.tabs,
-      actions.addTab,
-      actions.setActiveTab,
-      actions.setSelectedPath,
-      actions.setScrollTarget,
-    ]
+    [state.tabs, addTab, setActiveTab, setSelectedPath, setScrollTarget]
   );
 
   /**
@@ -173,7 +161,7 @@ export function useAdvancedEditorState() {
       });
 
       if (existingTab) {
-        actions.setActiveTab(existingTab.id);
+        setActiveTab(existingTab.id);
         return;
       }
 
@@ -198,9 +186,9 @@ export function useAdvancedEditorState() {
         contentSource,
       };
 
-      actions.addTab(newTab);
+      addTab(newTab);
     },
-    [state.tabs, actions.addTab, actions.setActiveTab]
+    [state.tabs, addTab, setActiveTab]
   );
 
   /**
@@ -216,9 +204,9 @@ export function useAdvancedEditorState() {
         if (!confirmed) return;
       }
 
-      actions.removeTab(tabId);
+      removeTab(tabId);
     },
-    [state.tabs, actions.removeTab]
+    [state.tabs, removeTab]
   );
 
   /**
@@ -233,7 +221,7 @@ export function useAdvancedEditorState() {
     try {
       // 这里应该调用实际的保存逻辑
       // 暂时只是标记为已保存
-      actions.setTabDirty(activeTab.id, false);
+      setTabDirty(activeTab.id, false);
 
       console.log(`[EditorState] 保存文件: ${activeTab.title}`);
       return true;
@@ -241,7 +229,7 @@ export function useAdvancedEditorState() {
       console.error(`[EditorState] 保存失败:`, error);
       return false;
     }
-  }, [state.activeTabId, state.tabs, actions.setTabDirty]);
+  }, [state.activeTabId, state.tabs, setTabDirty]);
 
   /**
    * 获取当前活动标签页
@@ -273,7 +261,7 @@ export function useAdvancedEditorState() {
     const results = await Promise.allSettled(
       unsavedTabs.map((tab) => {
         // 这里应该调用实际的保存逻辑
-        actions.setTabDirty(tab.id, false);
+        setTabDirty(tab.id, false);
         return Promise.resolve(tab.id);
       })
     );
@@ -286,7 +274,7 @@ export function useAdvancedEditorState() {
 
     console.log(`[EditorState] 成功保存 ${unsavedTabs.length} 个文件`);
     return true;
-  }, [getUnsavedTabs, actions.setTabDirty]);
+  }, [getUnsavedTabs, setTabDirty]);
 
   /**
    * 重置编辑器状态
@@ -294,15 +282,15 @@ export function useAdvancedEditorState() {
   const resetState = useCallback(() => {
     // 关闭所有标签页
     state.tabs.forEach((tab) => {
-      actions.removeTab(tab.id);
+      removeTab(tab.id);
     });
 
     // 清除选中状态
-    actions.setSelectedPath(null);
-    actions.setScrollTarget(null);
+    setSelectedPath(null);
+    setScrollTarget(null);
 
     console.log(`[EditorState] 重置编辑器状态`);
-  }, [state.tabs, actions.removeTab, actions.setSelectedPath, actions.setScrollTarget]);
+  }, [state.tabs, removeTab, setSelectedPath, setScrollTarget]);
 
   return {
     // 状态

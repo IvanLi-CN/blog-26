@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { SITE } from "@/config/site";
 import {
@@ -8,29 +8,35 @@ import {
   shouldReturnNotModified,
   toAbsoluteUrl,
 } from "@/lib/rss";
-import { db, initializeDB } from "../../lib/db";
-import { extractTextSummary } from "../../lib/markdown-utils";
-import { posts } from "../../lib/schema";
-import { safeJsonParse, toMsTimestamp } from "../../lib/utils";
+import { db, initializeDB } from "../../../../lib/db";
+import { extractTextSummary } from "../../../../lib/markdown-utils";
+import { posts } from "../../../../lib/schema";
+import { safeJsonParse, toMsTimestamp } from "../../../../lib/utils";
+
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+export async function GET(request: Request, ctx: { params: { tag: string } }) {
+  const { tag } = ctx.params;
+  const decodedTag = decodeURIComponent(tag || "");
   const url = new URL(request.url);
   const limit = sanitizeLimit(url.searchParams.get("limit") ?? 30, 30, 50);
   const baseUrl = defaultBaseUrl;
 
   try {
     await initializeDB();
-    // 获取最新公开文章（排除草稿）
-    const recentPosts = (await db
+
+    const rows = (await db
       .select()
       .from(posts)
-      .where(and(eq(posts.public, true), eq(posts.draft, false)))
+      .where(
+        and(eq(posts.public, true), eq(posts.draft, false), like(posts.tags, `%${decodedTag}%`))
+      )
       .orderBy(desc(posts.publishDate))
       .limit(limit)) as Array<typeof posts.$inferSelect>;
 
-    const items = recentPosts.map((post) => {
-      const link = `${baseUrl}/posts/${post.slug}`;
+    const items = rows.map((post) => {
+      const isMemo = (post.type || "").toLowerCase() === "memo";
+      const link = `${baseUrl}${isMemo ? "/memos" : "/posts"}/${post.slug}`;
       const rawTags = safeJsonParse<string[]>(post.tags || "[]", []);
       const categories = Array.isArray(rawTags) ? rawTags.filter(Boolean) : [];
       const description = post.excerpt || extractTextSummary(post.body || "", 180);
@@ -47,22 +53,23 @@ export async function GET(request: Request) {
         image: post.image ? toAbsoluteUrl(post.image) : SITE.images.default,
         publishedAt,
         updatedAt,
-        // Treat cover image as enclosure when image exists
         enclosureUrl: post.image || undefined,
       };
     });
 
     const built = buildFeed(
       {
-        title: SITE.title,
-        description: SITE.description,
-        id: baseUrl,
-        link: baseUrl,
+        title: `${SITE.title} - #${decodedTag}`,
+        description: `标签 #${decodedTag} 的最新内容`,
+        id: `${baseUrl}/tags/${encodeURIComponent(decodedTag)}`,
+        link: `${baseUrl}/tags/${encodeURIComponent(decodedTag)}`,
         language: "zh-CN",
         image: toAbsoluteUrl(SITE.images.default),
         favicon: toAbsoluteUrl(SITE.images.favicon),
         author: { name: SITE.author.name, email: SITE.author.email },
-        feedLinks: { rss2: `${baseUrl}/feed.xml` },
+        feedLinks: {
+          rss2: `${baseUrl}/tags/${encodeURIComponent(decodedTag)}/feed.xml`,
+        },
       },
       items,
       { formats: { rss: true } }
@@ -88,7 +95,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error("Error generating RSS feed:", error);
-    return new NextResponse("Error generating RSS feed", { status: 500 });
+    console.error("Error generating tag RSS:", error);
+    return new NextResponse("Error generating tag RSS feed", { status: 500 });
   }
 }

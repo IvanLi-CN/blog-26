@@ -335,11 +335,10 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                   rehypePlugins={[rehypeHighlight]}
                   components={{
                     // 自定义图片组件，处理相对路径
-                    img: ({ src, alt, ...props }) => {
+                    img: ({ src, alt }) => {
                       // 确保 src 是字符串类型
                       if (typeof src !== "string") {
-                        // biome-ignore lint/performance/noImgElement: Markdown preview fallback
-                        return <img src="" alt={alt || ""} {...props} />;
+                        return null;
                       }
 
                       let imageSrc = src || "";

@@ -89,7 +89,8 @@ export default function AdminLoginForm(props: AdminLoginFormProps) {
       } else {
         setError(result.error?.message || "发送验证码失败");
       }
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to send admin code:", error);
       setError("网络错误，请重试");
     } finally {
       setLoading(false);
@@ -122,7 +123,8 @@ export default function AdminLoginForm(props: AdminLoginFormProps) {
       } else {
         setError(result.error?.message || "验证码错误");
       }
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to verify admin code:", error);
       setError("网络错误，请重试");
     } finally {
       setLoading(false);

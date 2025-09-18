@@ -12,6 +12,7 @@ import { db, initializeDB } from "../../lib/db";
 import { extractTextSummary } from "../../lib/markdown-utils";
 import { posts } from "../../lib/schema";
 import { safeJsonParse, toMsTimestamp } from "../../lib/utils";
+
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
@@ -21,15 +22,15 @@ export async function GET(request: Request) {
 
   try {
     await initializeDB();
-    // 获取最新公开文章（排除草稿）
-    const recentPosts = (await db
+
+    const rows = (await db
       .select()
       .from(posts)
       .where(and(eq(posts.public, true), eq(posts.draft, false)))
       .orderBy(desc(posts.publishDate))
       .limit(limit)) as Array<typeof posts.$inferSelect>;
 
-    const items = recentPosts.map((post) => {
+    const items = rows.map((post) => {
       const link = `${baseUrl}/posts/${post.slug}`;
       const rawTags = safeJsonParse<string[]>(post.tags || "[]", []);
       const categories = Array.isArray(rawTags) ? rawTags.filter(Boolean) : [];
@@ -47,7 +48,6 @@ export async function GET(request: Request) {
         image: post.image ? toAbsoluteUrl(post.image) : SITE.images.default,
         publishedAt,
         updatedAt,
-        // Treat cover image as enclosure when image exists
         enclosureUrl: post.image || undefined,
       };
     });
@@ -62,10 +62,10 @@ export async function GET(request: Request) {
         image: toAbsoluteUrl(SITE.images.default),
         favicon: toAbsoluteUrl(SITE.images.favicon),
         author: { name: SITE.author.name, email: SITE.author.email },
-        feedLinks: { rss2: `${baseUrl}/feed.xml` },
+        feedLinks: { atom1: `${baseUrl}/atom.xml` },
       },
       items,
-      { formats: { rss: true } }
+      { formats: { rss: false, atom: true } }
     );
 
     if (shouldReturnNotModified(request, built.etag, built.lastModified)) {
@@ -79,16 +79,16 @@ export async function GET(request: Request) {
       });
     }
 
-    return new NextResponse(built.rss, {
+    return new NextResponse(built.atom || "", {
       headers: {
-        "Content-Type": "application/xml; charset=utf-8",
+        "Content-Type": "application/atom+xml; charset=utf-8",
         "Cache-Control": "public, max-age=3600, s-maxage=3600",
         ETag: built.etag,
         "Last-Modified": built.lastModified.toUTCString(),
       },
     });
   } catch (error) {
-    console.error("Error generating RSS feed:", error);
-    return new NextResponse("Error generating RSS feed", { status: 500 });
+    console.error("Error generating Atom feed:", error);
+    return new NextResponse("Error generating Atom feed", { status: 500 });
   }
 }
