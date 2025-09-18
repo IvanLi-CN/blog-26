@@ -1,7 +1,7 @@
 # RSS 设计与实施方案
 
 作者: Platform Team  
-状态: 草案 (v1)  
+状态: 已实现 (v1)  
 分支: `feat/rss-research`
 
 ## 背景与目标
@@ -14,7 +14,7 @@
   - 主站文章订阅 `/feed.xml`
   - 标签订阅 `/tags/[tag]/feed.xml`
   - 闪念订阅 `/memos/feed.xml`
-  - 可选输出：`/atom.xml`、`/feed.json`
+  - 多格式输出：`/atom.xml`、`/feed.json`
   - 缓存：`ETag`、`Last-Modified`、304
   - SEO 可发现性：`<link rel="alternate" ...>`、标签页注入
   - 单测 + E2E
@@ -37,8 +37,8 @@
 
 - 主订阅
   - RSS: `/feed.xml`
-  - Atom: `/atom.xml`（可选）
-  - JSON Feed: `/feed.json`（可选）
+  - Atom: `/atom.xml`
+  - JSON Feed: `/feed.json`
   - 兼容短链：`/rss.xml` → 301 到 `/feed.xml`
 - 标签订阅
   - RSS: `/tags/[tag]/feed.xml`
@@ -111,9 +111,9 @@ Phase 2（扩展订阅源）
 7) 闪念订阅：`src/app/memos/feed.xml/route.ts`
    - 查询 `posts.type = 'memo'` 且公开
    - 摘要更短（如 120–160 字），可取首张图片做 `enclosure`
-8) 可选多格式：
-   - `/atom.xml`（Atom）
-   - `/feed.json`（JSON Feed）
+8) 多格式：
+   - `/atom.xml`（Atom）✅
+   - `/feed.json`（JSON Feed）✅
 
 Phase 3（测试与增强）
 9) 单测 `src/lib/__tests__/rss.spec.ts`
@@ -127,7 +127,10 @@ Phase 3（测试与增强）
 
 - 已在 `src/app/layout.tsx` 暴露：
   - `<link rel="alternate" type="application/rss+xml" href="/feed.xml" />`
-- 标签页（若有单独布局）也注入对应标签订阅 `<link rel="alternate" ...>`
+  - `<link rel="alternate" type="application/atom+xml" href="/atom.xml" />`
+  - `<link rel="alternate" type="application/feed+json" href="/feed.json" />`
+- `src/app/memos/page.tsx` 中注入了频道级 alternate（RSS/Atom/JSON）
+- 标签页（若有单独页面）可在对应 `page.tsx` 注入 `rel="alternate"`（当前无单页，不做注入）
 - Sitemap 已存在，RSS 与 Sitemap 互补（无需互相引用）
 
 ## 性能与容量
@@ -148,15 +151,15 @@ Phase 3（测试与增强）
 
 ## 开发清单（DoD）
 
-- [ ] `src/lib/rss.ts` 构建器 + 缓存工具
-- [ ] `/feed.xml` 改造并支持 304
-- [ ] `/rss.xml` 301 重定向
-- [ ] `/tags/[tag]/feed.xml`
-- [ ] `/memos/feed.xml`
-- [ ] （可选）`/atom.xml`、`/feed.json`
-- [ ] 单测（构建器）
-- [ ] E2E（路由与缓存）
-- [ ] 文档与 README 订阅说明
+- [x] `src/lib/rss.ts` 构建器 + 缓存工具
+- [x] `/feed.xml` 改造并支持 304
+- [x] `/rss.xml` 301 重定向
+- [x] `/tags/[tag]/feed.xml`
+- [x] `/memos/feed.xml`
+- [x] `/atom.xml`、`/feed.json`
+- [x] 单测（构建器）
+- [x] E2E（路由与缓存）
+- [x] 文档与 README 订阅说明
 
 ## 代码片段（示例）
 
@@ -225,4 +228,3 @@ export function buildFeed(meta: {
 ---
 
 如需调整路线或优先级（例如先只交付 `/feed.xml` 与标签订阅），在本文件开头更新“状态”与“范围”即可。
-
