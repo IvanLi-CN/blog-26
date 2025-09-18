@@ -22,7 +22,7 @@ export default defineConfig({
 
   // 报告配置
   reporter: [
-    ["html", { outputFolder: "test-results/html-report" }],
+    ["html", { outputFolder: "test-results/html-report", open: "never" }],
     ["json", { outputFile: "test-results/results.json" }],
     ["line"],
   ],

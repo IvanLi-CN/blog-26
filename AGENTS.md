@@ -8,6 +8,16 @@ Source lives under `src/`, with page routes and API handlers in `src/app/`. Shar
 
 Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (Next.js plus WebDAV). Both development and test environments must bind the web service to port `25090` and the WebDAV service to port `25091` to stay compliant with shared infrastructure. Produce a production build via `bun run build`, then serve it using `bun run start`. Lint and format the codebase with `bun run check`; auto-fix minor issues using `bun run fix`. Execute ESLint rules through `bun run lint`. For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset` as required.
 
+### Long-running commands & background management
+
+These conventions apply to any automation agent (Codex, CI, or human-operated scripts) that cannot dedicate a foreground terminal to a persistent service.
+
+- **Starting services in the background**: use `nohup bun run dev >tmp/dev.log 2>&1 & echo $! >tmp/dev.pid` (or a similar PID+log pattern) to launch the full dev stack without blocking. The `tmp/` directory keeps transient artefacts out of the repo.
+- **Stopping services**: issue `kill $(cat tmp/dev.pid)` once downstream tasks finish, wait for the process to exit (`kill -0` loop if needed), then remove the PID file (`rm tmp/dev.pid`). Always verify that ports `25090/25091` are free before a new launch.
+- **Monitoring**: inspect or tail logs via `tail -f tmp/dev.log`; rotate or truncate long-lived logs inside the same directory to avoid unbounded growth.
+- **Other scripts that persist**: `bun run dev:next`, `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, `bun run dev:proxy` (`scripts/local-proxy.ts`), and direct calls to `bun run src/scripts/start-integrated-server.ts` all remain active until terminated. Manage each with its own PID file/log pair if they run concurrently.
+- **Playwright utilities**: interactive helpers—`bun run test:e2e:ui`, `bun run test:e2e:debug`, `bun run test:e2e:headed`, and `bun run test:e2e:report` (Playwright’s report viewer)—block until the UI is closed. Schedule an explicit `SIGINT`/`kill` in automated pipelines if they must be invoked.
+
 ## Coding Style & Naming Conventions
 
 The project relies on Biome for formatting (2-space indent, max width 100, double quotes, trailing commas). ESLint extends `next/core-web-vitals` with strict TypeScript checks. Follow existing file naming patterns; prefer descriptive, kebab-case filenames within features. Leverage `@/*` imports instead of relative traversals to keep modules readable.
