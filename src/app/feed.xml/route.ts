@@ -1,71 +1,90 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { SITE } from "@/config/site";
+import {
+  buildFeed,
+  defaultBaseUrl,
+  sanitizeLimit,
+  shouldReturnNotModified,
+  toAbsoluteUrl,
+} from "@/lib/rss";
 import { db, initializeDB } from "../../lib/db";
+import { extractTextSummary } from "../../lib/markdown-utils";
 import { posts } from "../../lib/schema";
-import { toMsTimestamp } from "../../lib/utils";
+import { safeJsonParse, toMsTimestamp } from "../../lib/utils";
 export const runtime = "nodejs";
 
-export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:25090";
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const limit = sanitizeLimit(url.searchParams.get("limit") ?? 30, 30, 50);
+  const baseUrl = defaultBaseUrl;
 
   try {
     await initializeDB();
-    // 获取最新的20篇公开文章
-    const recentPosts = await db
+    // 获取最新公开文章（排除草稿）
+    const recentPosts = (await db
       .select()
       .from(posts)
-      .where(eq(posts.public, true))
+      .where(and(eq(posts.public, true), eq(posts.draft, false)))
       .orderBy(desc(posts.publishDate))
-      .limit(20);
+      .limit(limit)) as Array<typeof posts.$inferSelect>;
 
-    const rssItems = recentPosts
-      .map((post) => {
-        const postUrl = `${baseUrl}/posts/${post.slug}`;
-        const pubDate = new Date(toMsTimestamp(post.publishDate)).toUTCString();
+    const items = recentPosts.map((post) => {
+      const link = `${baseUrl}/posts/${post.slug}`;
+      const rawTags = safeJsonParse<string[]>(post.tags || "[]", []);
+      const categories = Array.isArray(rawTags) ? rawTags.filter(Boolean) : [];
+      const description = post.excerpt || extractTextSummary(post.body || "", 180);
+      const updatedAt = post.updateDate ? toMsTimestamp(post.updateDate) : undefined;
+      const publishedAt = post.publishDate ? toMsTimestamp(post.publishDate) : undefined;
+      return {
+        id: link,
+        title: post.title,
+        link,
+        description,
+        authorName: post.author || SITE.author.name,
+        authorEmail: SITE.author.email,
+        categories,
+        image: post.image ? toAbsoluteUrl(post.image) : SITE.images.default,
+        publishedAt,
+        updatedAt,
+        // Treat cover image as enclosure when image exists
+        enclosureUrl: post.image || undefined,
+      };
+    });
 
-        const authorName = post.author || SITE.author.name;
-        return `
-    <item>
-      <title><![CDATA[${post.title}]]></title>
-      <description><![CDATA[${post.excerpt || post.title}]]></description>
-      <link>${postUrl}</link>
-      <guid isPermaLink="true">${postUrl}</guid>
-      <pubDate>${pubDate}</pubDate>
-      <author>${SITE.author.email} (${authorName})</author>
-      ${post.category ? `<category><![CDATA[${post.category}]]></category>` : ""}
-      ${post.image ? `<enclosure url="${post.image.startsWith("http") ? post.image : baseUrl + post.image}" type="image/jpeg" />` : ""}
-    </item>`;
-      })
-      .join("");
+    const built = buildFeed(
+      {
+        title: SITE.title,
+        description: SITE.description,
+        id: baseUrl,
+        link: baseUrl,
+        language: "zh-CN",
+        image: toAbsoluteUrl(SITE.images.default),
+        favicon: toAbsoluteUrl(SITE.images.favicon),
+        author: { name: SITE.author.name, email: SITE.author.email },
+        feedLinks: { rss2: `${baseUrl}/feed.xml` },
+      },
+      items,
+      { formats: { rss: true } }
+    );
 
-    const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
-  <channel>
-    <title><![CDATA[${SITE.title}]]></title>
-    <description><![CDATA[${SITE.description}]]></description>
-    <link>${baseUrl}</link>
-    <language>zh-CN</language>
-    <managingEditor>${SITE.author.email} (${SITE.author.name})</managingEditor>
-    <webMaster>${SITE.author.email} (${SITE.author.name})</webMaster>
-    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
-    <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
-    <generator>Next.js Blog</generator>
-    <image>
-      <url>${baseUrl}/logo.png</url>
-      <title><![CDATA[${SITE.title}]]></title>
-      <link>${baseUrl}</link>
-      <width>512</width>
-      <height>512</height>
-    </image>
-    ${rssItems}
-  </channel>
-</rss>`;
+    if (shouldReturnNotModified(request, built.etag, built.lastModified)) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          "Cache-Control": "public, max-age=3600, s-maxage=3600",
+          ETag: built.etag,
+          "Last-Modified": built.lastModified.toUTCString(),
+        },
+      });
+    }
 
-    return new NextResponse(rssXml, {
+    return new NextResponse(built.rss, {
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
         "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        ETag: built.etag,
+        "Last-Modified": built.lastModified.toUTCString(),
       },
     });
   } catch (error) {
