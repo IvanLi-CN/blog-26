@@ -8,13 +8,16 @@
  */
 
 import { expect, test } from "@playwright/test";
-import { devLogin } from "../editor-smart-features/utils/editor-test-helpers";
+import { AdminAuthHelper } from "./sync-test-helpers";
 
 test.describe("数据同步核心功能", () => {
   test.beforeEach(async ({ page }) => {
     page.setDefaultTimeout(60000);
-    await page.goto("/");
-    await devLogin(page);
+
+    // 使用辅助类进行管理员登录
+    const authHelper = new AdminAuthHelper(page);
+    await authHelper.loginAsAdmin();
+
     await page.goto("/admin/data-sync");
     // 不等待 networkidle，因为 SSE 连接会持续保持网络活动
     await page.waitForLoadState("domcontentloaded");

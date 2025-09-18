@@ -11,18 +11,16 @@
  */
 
 import { expect, test } from "@playwright/test";
-import { devLogin } from "../editor-smart-features/utils/editor-test-helpers";
+import { AdminAuthHelper } from "./sync-test-helpers";
 
 test.describe("数据同步管理页面实时功能测试", () => {
   test.beforeEach(async ({ page }) => {
     // 设置更长的超时时间
     page.setDefaultTimeout(60000);
 
-    // 先访问首页
-    await page.goto("/");
-
-    // 使用开发环境登录
-    await devLogin(page);
+    // 使用辅助类进行管理员登录
+    const authHelper = new AdminAuthHelper(page);
+    await authHelper.loginAsAdmin();
     console.log("✅ 开发环境登录成功");
 
     // 访问数据同步管理页面
