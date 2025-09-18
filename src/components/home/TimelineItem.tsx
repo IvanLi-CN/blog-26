@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
@@ -161,8 +162,7 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                   {/* 文章封面图 */}
                   {item.image && (
                     <div className="flex-shrink-0">
-                      {/* biome-ignore lint/performance/noImgElement: Prefer native img here for simplicity */}
-                      <img
+                      <Image
                         src={
                           resolveImagePath(
                             item.image,
@@ -174,7 +174,6 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                         }
                         alt={item.title || "文章封面"}
                         className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded"
-                        loading="lazy"
                         width={96}
                         height={96}
                       />

@@ -20,6 +20,7 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { parseContentTags } from "@/lib/tag-parser";
@@ -354,11 +355,12 @@ export function MemoDetailPage({
               (attachment: { path: string; filename: string; isImage: boolean }) => (
                 <div key={attachment.path} className="border rounded-lg p-3">
                   {attachment.isImage ? (
-                    // biome-ignore lint/performance/noImgElement: Simple attachment thumbnail
-                    <img
+                    <Image
                       src={attachment.path}
                       alt={attachment.filename}
                       className="w-full h-24 object-cover rounded mb-2"
+                      width={320}
+                      height={96}
                     />
                   ) : (
                     <div className="w-full h-24 bg-muted rounded mb-2 flex items-center justify-center">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image, { type ImageProps } from "next/image";
 import * as React from "react";
 import { cn } from "../../lib/utils";
 
@@ -14,10 +15,16 @@ const Avatar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElem
 );
 Avatar.displayName = "Avatar";
 
-const AvatarImage = React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTMLImageElement>>(
-  ({ className, alt = "", ...props }, ref) => (
-    // biome-ignore lint/performance/noImgElement: Avatar uses native img intentionally
-    <img ref={ref} alt={alt} className={cn("aspect-square h-full w-full", className)} {...props} />
+const AvatarImage = React.forwardRef<HTMLImageElement, ImageProps>(
+  ({ className, alt = "", width = 40, height = 40, ...props }, ref) => (
+    <Image
+      ref={ref}
+      alt={alt}
+      className={cn("aspect-square h-full w-full", className)}
+      width={width}
+      height={height}
+      {...props}
+    />
   )
 );
 AvatarImage.displayName = "AvatarImage";

@@ -436,7 +436,8 @@ export class WebDAVClient {
       });
 
       return response.ok;
-    } catch (_error) {
+    } catch (error) {
+      console.warn(`WebDAV HEAD request failed for ${filePath}:`, error);
       return false;
     }
   }
@@ -479,7 +480,7 @@ export class WebDAVClient {
         if (files.length > 0 && files[0].type !== "directory") {
           return fullPath;
         }
-      } catch (_error) {
+      } catch {
         // 文件不存在或无法访问，跳过
       }
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "../../config/site";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
@@ -200,8 +201,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
 
             {post.image ? (
               <div className="max-w-full lg:max-w-[900px] mx-auto mb-6">
-                {/* biome-ignore lint/performance/noImgElement: Next/Image is not necessary for this use-case */}
-                <img
+                <Image
                   src={
                     resolveImagePath(
                       post.image || undefined,
@@ -213,7 +213,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                   alt={post.excerpt || ""}
                   width={900}
                   height={506}
-                  loading="eager"
+                  priority
                 />
               </div>
             ) : (

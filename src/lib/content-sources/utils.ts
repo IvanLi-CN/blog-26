@@ -121,8 +121,18 @@ export function createContentItemFromParsed(
 export function calculateContentHash(content: string, algorithm: string = "sha256"): string {
   // Prefer Bun's CryptoHasher when available (synchronous, Bun-compatible)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bunGlobal = (globalThis as any).Bun;
+    const bunGlobal = (
+      globalThis as unknown as {
+        Bun?: {
+          CryptoHasher?: new (
+            algorithm: string
+          ) => {
+            update: (value: string | ArrayBufferView) => void;
+            digest: (encoding: string) => string;
+          };
+        };
+      }
+    ).Bun;
     if (bunGlobal && typeof bunGlobal.CryptoHasher === "function") {
       const hasher = new bunGlobal.CryptoHasher(algorithm);
       hasher.update(content);

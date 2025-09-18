@@ -37,6 +37,14 @@ export type FeedItem = {
   enclosureType?: string; // e.g. image/jpeg, audio/mpeg
 };
 
+type FeedItemWithEnclosure = FeedItemDef & {
+  enclosure?: {
+    url: string;
+    type?: string;
+    length?: number;
+  };
+};
+
 export type BuiltFeed = {
   rss: string;
   atom?: string;
@@ -155,7 +163,7 @@ export function buildFeed(
         ? new Date(toMsTimestamp(it.publishedAt))
         : (it.publishedAt as Date | undefined);
 
-    const itemDef: FeedItemDef = {
+    const itemDef: FeedItemWithEnclosure = {
       title: it.title,
       id: it.id,
       link: it.link,
@@ -166,11 +174,11 @@ export function buildFeed(
       published: publishedDate,
       image: img,
       category: (it.categories || []).map((c) => ({ name: c })),
-    } as FeedItemDef;
+    };
 
     // Minimal enclosure support (non-standard across formats but supported by feed for RSS)
     if (it.enclosureUrl) {
-      (itemDef as any).enclosure = {
+      itemDef.enclosure = {
         url: toAbsoluteUrl(it.enclosureUrl),
         type: enclosureType,
       };

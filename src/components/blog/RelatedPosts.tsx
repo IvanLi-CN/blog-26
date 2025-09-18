@@ -1,4 +1,5 @@
 import { Icon } from "@iconify/react";
+import Image from "next/image";
 import Link from "next/link";
 import { toMsTimestamp } from "../../lib/utils";
 import ReadingTime from "./ReadingTime";
@@ -84,12 +85,13 @@ export default function RelatedPosts({
               >
                 {post.image && (
                   <div className="mb-3 overflow-hidden rounded-md">
-                    {/* biome-ignore lint/performance/noImgElement: Next/Image is not necessary in this context */}
-                    <img
+                    <Image
                       src={post.image}
                       alt={post.title}
                       className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
                       itemProp="image"
+                      width={640}
+                      height={240}
                     />
                   </div>
                 )}

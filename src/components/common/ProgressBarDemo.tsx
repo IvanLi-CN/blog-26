@@ -48,7 +48,8 @@ export default function ProgressBarDemo() {
       // 完成
       loader.done();
       alert("异步操作完成！");
-    } catch (_error) {
+    } catch (error) {
+      console.error("Progress bar demo async operation failed:", error);
       loader.done();
       alert("操作失败！");
     }

@@ -195,7 +195,8 @@ export const adminContentSyncRouter = createTRPCRouter({
             error: progress.error,
           }
         : null;
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to fetch sync progress:", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "获取同步进度失败",
@@ -239,7 +240,8 @@ export const adminContentSyncRouter = createTRPCRouter({
         error: status.error,
         metadata: status.metadata,
       }));
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to fetch content source status:", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "获取内容源状态失败",
@@ -264,7 +266,8 @@ export const adminContentSyncRouter = createTRPCRouter({
         lastSyncTime: stats.lastSyncTime,
         totalSyncs: stats.totalSyncs,
       };
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to get manager stats:", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "获取管理器统计信息失败",
@@ -302,7 +305,8 @@ export const adminContentSyncRouter = createTRPCRouter({
           data: log.data ? JSON.parse(log.data) : null,
           createdAt: log.createdAt,
         }));
-      } catch (_error) {
+      } catch (error) {
+        console.error("Failed to fetch sync logs:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "获取同步日志失败",
@@ -328,7 +332,8 @@ export const adminContentSyncRouter = createTRPCRouter({
         sourceName,
         isConnected,
       }));
-    } catch (_error) {
+    } catch (error) {
+      console.error("Failed to validate connections:", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "验证连接失败",
@@ -359,7 +364,8 @@ export const adminContentSyncRouter = createTRPCRouter({
           stats: result.stats,
           errorCount: result.errors.length,
         }));
-      } catch (_error) {
+      } catch (error) {
+        console.error("Failed to fetch sync history:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "获取同步历史失败",
