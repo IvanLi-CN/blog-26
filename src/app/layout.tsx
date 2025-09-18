@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   alternates: {
     types: {
       "application/rss+xml": [{ url: "/feed.xml", title: `${SITE.title} RSS Feed` }],
+      "application/atom+xml": [{ url: "/atom.xml", title: `${SITE.title} Atom Feed` }],
+      "application/feed+json": [{ url: "/feed.json", title: `${SITE.title} JSON Feed` }],
     },
   },
   openGraph: {
@@ -70,6 +72,18 @@ export default function RootLayout({
           type="application/rss+xml"
           title={`${SITE.title} RSS Feed`}
           href="/feed.xml"
+        />
+        <link
+          rel="alternate"
+          type="application/atom+xml"
+          title={`${SITE.title} Atom Feed`}
+          href="/atom.xml"
+        />
+        <link
+          rel="alternate"
+          type="application/feed+json"
+          title={`${SITE.title} JSON Feed`}
+          href="/feed.json"
         />
 
         {/* Favicon */}
