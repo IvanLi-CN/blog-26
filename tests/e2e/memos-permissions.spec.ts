@@ -10,7 +10,7 @@ test.describe("Memos 权限控制", () => {
   test.describe("管理员权限测试", () => {
     test.beforeEach(async ({ page }) => {
       // 使用特权登录接口登录为管理员
-      const adminEmail = process.env.ADMIN_EMAIL || "admin-test@test.local";
+      const adminEmail = process.env.ADMIN_EMAIL || "admin@test.local";
 
       console.log(`🔍 [DEBUG] 尝试使用邮箱登录: ${adminEmail}`);
       console.log(`🔍 [DEBUG] ADMIN_EMAIL环境变量: ${process.env.ADMIN_EMAIL}`);
@@ -223,6 +223,12 @@ test.describe("Memos 权限控制", () => {
   });
 
   test.describe("普通用户权限测试", () => {
+    // 覆盖全局头，确保非管理员身份
+    test.use({
+      extraHTTPHeaders: {
+        [(process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email") as string]: "not-admin@test.local",
+      },
+    });
     test.beforeEach(async ({ page }) => {
       // 使用特权登录接口登录为普通用户
       const userEmail = "user@example.com";
@@ -339,6 +345,8 @@ test.describe("Memos 权限控制", () => {
   });
 
   test.describe("边界情况测试", () => {
+    // 去掉头部注入，模拟无 SSO 情况
+    test.use({ extraHTTPHeaders: {} as any });
     test("未登录用户访问", async ({ page }) => {
       // 清除所有认证信息
       await page.context().clearCookies();

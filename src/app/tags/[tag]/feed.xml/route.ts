@@ -15,8 +15,8 @@ import { safeJsonParse, toMsTimestamp } from "../../../../lib/utils";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request, ctx: { params: { tag: string } }) {
-  const { tag } = ctx.params;
+export async function GET(request: Request, { params }: { params: Promise<{ tag: string }> }) {
+  const { tag } = await params;
   const decodedTag = decodeURIComponent(tag || "");
   const url = new URL(request.url);
   const limit = sanitizeLimit(url.searchParams.get("limit") ?? 30, 30, 50);

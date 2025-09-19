@@ -97,7 +97,8 @@ export function computeLastModified(items: FeedItem[]): Date {
     const d = getItemDate(it);
     if (d?.getTime && Number.isFinite(d.getTime())) dates.push(d.getTime());
   }
-  if (dates.length === 0) return new Date();
+  // When no items, return a fixed epoch to keep ETag stable
+  if (dates.length === 0) return new Date(0);
   return new Date(Math.max(...dates));
 }
 

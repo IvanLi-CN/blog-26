@@ -4,6 +4,9 @@ import { defineConfig, devices } from "@playwright/test";
  * Playwright E2E测试配置
  * 用于测试闪念列表页图片灯箱功能等交互特性
  */
+// Keep server and test-runner using the same admin email
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@test.local";
+
 export default defineConfig({
   // 测试目录
   testDir: "./tests/e2e",
@@ -50,8 +53,7 @@ export default defineConfig({
     // 在 E2E 中通过上下文头部注入管理员邮箱，模拟反向代理 SSO
     // 与服务端默认读取的 header 名保持一致（SSO_EMAIL_HEADER_NAME 或 Remote-Email）
     extraHTTPHeaders: {
-      [process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email"]:
-        process.env.ADMIN_EMAIL || "admin@test.com",
+      [process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email"]: ADMIN_EMAIL,
     },
 
     // 等待配置
@@ -71,14 +73,14 @@ export default defineConfig({
   webServer: [
     // 集成的 HTTP + WebSocket 服务器
     {
-      command:
-        "ADMIN_EMAIL=admin-test@test.local NODE_ENV=test bun --bun next dev --turbopack --port 25090",
+      command: "NODE_ENV=test bun --bun next dev --turbopack --port 25090",
       url: process.env.BASE_URL || "http://localhost:25090",
       reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
       timeout: 120 * 1000, // 2分钟启动超时
       env: {
         NODE_ENV: "test",
-        ADMIN_EMAIL: "admin-test@test.local", // 测试环境管理员邮箱 - 与测试中使用的邮箱匹配
+        // Pass through ADMIN_EMAIL so server and tests agree
+        ADMIN_EMAIL,
         DB_PATH: "./test-data/sqlite.db", // 测试数据库路径（集中在 test-data/ 下）
         PORT: "25090", // 确保使用25090端口
         LOCAL_CONTENT_BASE_PATH: "./test-data/local", // 测试环境本地内容路径
