@@ -5,11 +5,25 @@
  * 保留统一的启动入口，供 E2E 与脚本复用。
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import next from "next";
 import { isAdminFromHeaders } from "../lib/auth";
 import { buildHttpUrl } from "../lib/url-builder";
+
+// 强化修复 Next.js 15 在所有环境中的 AsyncLocalStorage 问题
+console.log("🔧 [INTEGRATED-SERVER] 修复 AsyncLocalStorage...");
+if (!globalThis.AsyncLocalStorage) {
+  console.log("🔧 设置 globalThis.AsyncLocalStorage");
+  globalThis.AsyncLocalStorage = AsyncLocalStorage;
+}
+
+// 确保 Node.js 环境中的 AsyncLocalStorage 可用
+if (typeof global !== "undefined" && !global.AsyncLocalStorage) {
+  console.log("🔧 设置 global.AsyncLocalStorage");
+  global.AsyncLocalStorage = AsyncLocalStorage;
+}
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";

@@ -235,12 +235,44 @@ test.describe("Memos 权限控制", () => {
       const data = await response.json();
       expect(data.success).toBe(true);
 
+      // 提取 session cookie 并设置到浏览器上下文
+      const setCookieHeader = response.headers()["set-cookie"];
+      if (setCookieHeader) {
+        const sessionCookieMatch = setCookieHeader.match(/session_id=([^;]+)/);
+        if (sessionCookieMatch) {
+          const sessionId = sessionCookieMatch[1];
+
+          // 设置 cookie 到浏览器上下文
+          await page.context().addCookies([
+            {
+              name: "session_id",
+              value: sessionId,
+              domain: "localhost",
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
+
       console.log(`👤 普通用户登录成功: ${data.user.email}`);
     });
 
     test("普通用户不应该看到管理功能", async ({ page }) => {
       await page.goto("/memos");
       await page.waitForLoadState("networkidle");
+
+      // 首先验证用户的权限状态
+      const authResponse = await page.request.get("/api/trpc/auth.me");
+      const authData = await authResponse.json();
+      console.log("🔍 [TEST] auth.me 响应:", authData);
+
+      // 验证用户不是管理员
+      expect(authData.result?.data?.isAdmin).toBe(false);
+
+      // 等待页面完全加载和权限检查
+      await page.waitForTimeout(3000);
 
       // 验证 QuickMemoEditor 组件不可见
       const quickEditor = page.getByRole("region", { name: "快速发布区域" });

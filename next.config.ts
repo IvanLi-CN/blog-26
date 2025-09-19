@@ -72,7 +72,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  // 强制动态渲染
+  // 实验性功能配置
   experimental: {
     mdxRs: false, // Use the legacy MDX compiler for better plugin compatibility
   },

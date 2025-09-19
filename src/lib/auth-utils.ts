@@ -20,7 +20,9 @@ export interface AuthResult {
  */
 export async function extractAuthFromRequest(request: Request): Promise<AuthResult> {
   let user: AuthResult["user"] | undefined;
-  let isAdmin = false;
+  let isAdmin = false; // 默认不是管理员
+
+  console.log("🔍 [AUTH-UTILS] 开始权限检查, 默认 isAdmin=false");
 
   // 1. 尝试从 Cookie 中获取 session ID
   const cookieHeader = request.headers.get("cookie");
@@ -56,6 +58,13 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
   // 如果有 Traefik/SSO 传递的邮箱信息，优先基于邮箱识别用户，并判断管理员
   if (remoteEmail) {
     const adminEmail = process.env.ADMIN_EMAIL;
+    console.log("🔍 [AUTH-UTILS] Traefik/SSO 权限检查:", {
+      remoteEmail,
+      adminEmail,
+      adminEmailSet: !!adminEmail,
+      isMatch: adminEmail ? remoteEmail === adminEmail : false,
+    });
+    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员
     isAdmin = adminEmail ? remoteEmail === adminEmail : false;
 
     // 如果还没有从 Cookie 中识别出用户，则尝试从数据库查找或创建
@@ -102,10 +111,27 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
   // 如果有用户但还没有确定管理员状态，检查用户邮箱是否为管理员邮箱
   if (user && !isAdmin) {
     const adminEmail = process.env.ADMIN_EMAIL;
+    console.log("🔍 [AUTH-UTILS] 权限检查:", {
+      userEmail: user.email,
+      adminEmail,
+      adminEmailSet: !!adminEmail,
+      isMatch: adminEmail && user.email === adminEmail,
+    });
+
+    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员
     if (adminEmail && user.email === adminEmail) {
       isAdmin = true;
+      console.log("✅ [AUTH-UTILS] 用户被识别为管理员");
+    } else {
+      console.log("❌ [AUTH-UTILS] 用户不是管理员 (ADMIN_EMAIL未设置或不匹配)");
     }
   }
+
+  console.log("🔍 [AUTH-UTILS] 最终权限结果:", {
+    hasUser: !!user,
+    userEmail: user?.email,
+    isAdmin,
+  });
 
   return {
     user,

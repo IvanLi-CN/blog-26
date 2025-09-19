@@ -11,26 +11,11 @@ import { useAuth } from "../../hooks/useAuth";
 export function MemosPageContent() {
   const { isAdmin, isLoading } = useAuth();
 
-  // 加载状态：显示骨架屏，避免权限检查期间的界面闪烁
+  // 加载状态：只显示基本的 memo 列表骨架屏，不显示管理功能
   if (isLoading) {
     return (
       <div className="space-y-6 sm:space-y-8">
-        {/* 快速编辑器骨架屏（仅在可能是管理员时显示） */}
-        <div className="card bg-base-100 shadow-xl animate-pulse">
-          <div className="card-body p-4 sm:p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-5 h-5 bg-base-300 rounded"></div>
-              <div className="w-32 h-6 bg-base-300 rounded"></div>
-            </div>
-            <div className="w-full h-32 bg-base-300 rounded"></div>
-            <div className="flex justify-between items-center mt-4">
-              <div className="w-20 h-4 bg-base-300 rounded"></div>
-              <div className="w-16 h-8 bg-base-300 rounded"></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Memo 列表骨架屏 */}
+        {/* 只显示 Memo 列表骨架屏，不显示快速编辑器骨架屏 */}
         <div className="space-y-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="card bg-base-100 shadow-xl animate-pulse">

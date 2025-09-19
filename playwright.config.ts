@@ -71,13 +71,14 @@ export default defineConfig({
   webServer: [
     // 集成的 HTTP + WebSocket 服务器
     {
-      command: "bun src/scripts/start-integrated-server.ts",
+      command:
+        "ADMIN_EMAIL=admin-test@test.local NODE_ENV=test bun --bun next dev --turbopack --port 25090",
       url: process.env.BASE_URL || "http://localhost:25090",
       reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
       timeout: 120 * 1000, // 2分钟启动超时
       env: {
         NODE_ENV: "test",
-        ADMIN_EMAIL: "admin@test.com", // 测试环境管理员邮箱
+        ADMIN_EMAIL: "admin-test@test.local", // 测试环境管理员邮箱 - 与测试中使用的邮箱匹配
         DB_PATH: "./test-data/sqlite.db", // 测试数据库路径（集中在 test-data/ 下）
         PORT: "25090", // 确保使用25090端口
         LOCAL_CONTENT_BASE_PATH: "./test-data/local", // 测试环境本地内容路径
