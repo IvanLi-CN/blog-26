@@ -13,19 +13,12 @@ for (const f of feeds) {
     expect(res.headers()["content-type"]).toContain("application/xml");
     const text = await res.text();
     expect(text).toMatch(f.expectRoot);
-
-    if (f.expectItems) {
-      expect(text).toMatch(/<item>/i);
-    }
-
+    if (f.expectItems) expect(text).toMatch(/<item>/i);
     const etag = res.headers().etag;
     const lastModified = res.headers()["last-modified"];
     expect(etag).toBeTruthy();
     expect(lastModified).toBeTruthy();
-
-    const res304 = await request.get(`${baseURL}${f.path}`, {
-      headers: { "If-None-Match": etag },
-    });
+    const res304 = await request.get(`${baseURL}${f.path}`, { headers: { "If-None-Match": etag } });
     expect(res304.status()).toBe(304);
   });
 }

@@ -4,20 +4,21 @@
 
 ## 📁 测试文件结构
 
+已按“游客 / 普通用户 / 管理员”三组划分，并通过 Playwright 项目分别注入 Remote-Email 请求头（仅 user/admin 组注入）。
+
 ```
 e2e/
-├── session-complete.spec.ts              # Session 认证系统测试
-├── dev-auth.spec.ts                      # 开发环境认证测试
-├── code-block-rendering.spec.ts          # 代码块渲染测试
-├── memos-lightbox.spec.ts                # 闪念图片灯箱测试
-├── memos-permissions.spec.ts             # 闪念权限控制测试
-├── incremental-sync-integration.spec.ts  # 增量同步集成测试
-├── admin-data-sync.spec.ts               # 数据同步管理页面测试
-├── admin-data-sync-auth.spec.ts          # 数据同步权限验证测试
-├── admin-data-sync-edge-cases.spec.ts    # 数据同步边界情况测试
-├── helpers/
-│   └── sync-test-helpers.ts              # 测试辅助工具
-└── README.md                             # 本文档
+├── guest/
+│   ├── code-block-rendering.spec.ts   # 代码块渲染（公开内容）
+│   ├── dev-auth.spec.ts               # 开发环境认证接口
+│   └── rss.spec.ts                    # RSS 输出与缓存
+├── user/
+│   ├── memos-user.spec.ts             # 普通用户在 Memos 的权限
+│   └── session-header-auth.spec.ts    # Header 注入的用户认证
+├── admin/
+│   ├── memos-admin.spec.ts            # 管理员在 Memos 的权限
+│   └── post-editor-slug.spec.ts       # 管理后台文章编辑器（slug/id）
+└── README.md
 ```
 
 ## 🧪 测试分类和覆盖范围
@@ -124,23 +125,17 @@ bun run test:e2e:debug
 bun run test:e2e:ui
 ```
 
-### 运行特定测试类别
+### 运行特定测试类别（按身份组）
 
 ```bash
-# 运行认证相关测试
-npx playwright test tests/e2e/session-complete.spec.ts
-npx playwright test tests/e2e/dev-auth.spec.ts
-npx playwright test tests/e2e/memos-permissions.spec.ts
+# 游客组（不注入 Remote-Email 头）
+npx playwright test --project=guest-chromium
 
-# 运行内容渲染测试
-npx playwright test tests/e2e/code-block-rendering.spec.ts
-npx playwright test tests/e2e/memos-lightbox.spec.ts
+# 普通用户组（注入非管理员邮箱）
+npx playwright test --project=user-chromium
 
-# 运行数据同步管理测试
-npx playwright test tests/e2e/admin-data-sync*.spec.ts
-
-# 运行集成测试
-npx playwright test tests/e2e/incremental-sync-integration.spec.ts
+# 管理员组（注入 ADMIN_EMAIL）
+npx playwright test --project=admin-chromium
 ```
 
 ### 调试和开发
@@ -170,6 +165,7 @@ bun run test:e2e:report
 
 - `NODE_ENV=test` - 测试环境标识
 - `ADMIN_EMAIL=admin-test@test.local` - 测试环境管理员邮箱
+- `USER_EMAIL=user@test.local` - 测试环境普通用户邮箱（可选）
 - `DB_PATH=./test-data/sqlite.db` - 测试数据库路径
 
 ### 测试数据

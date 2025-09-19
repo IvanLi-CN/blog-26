@@ -4,8 +4,10 @@ import { defineConfig, devices } from "@playwright/test";
  * Playwright E2E测试配置
  * 用于测试闪念列表页图片灯箱功能等交互特性
  */
-// Keep server and test-runner using the same admin email
+// Keep server and test-runner using the same emails
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@test.local";
+const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
+const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
 export default defineConfig({
   // 测试目录
@@ -50,22 +52,38 @@ export default defineConfig({
     // 网络配置
     ignoreHTTPSErrors: true,
 
-    // 在 E2E 中通过上下文头部注入管理员邮箱，模拟反向代理 SSO
-    // 与服务端默认读取的 header 名保持一致（SSO_EMAIL_HEADER_NAME 或 Remote-Email）
-    extraHTTPHeaders: {
-      [process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email"]: ADMIN_EMAIL,
-    },
+    // 注意：不在全局层面注入认证头，分别在项目维度注入（guest/admin/user 分组）
 
     // 等待配置
     actionTimeout: 10 * 1000, // 10秒
     navigationTimeout: 30 * 1000, // 30秒
   },
 
-  // 项目配置 - 不同浏览器
+  // 项目配置 - 三组身份 + 浏览器
   projects: [
+    // 游客访问（不注入 Remote-Email 头）
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "guest-chromium",
+      testMatch: ["**/guest/**/*.spec.ts"],
+      use: { ...devices["Desktop Chrome"], extraHTTPHeaders: {} },
+    },
+    // 普通用户访问（注入非管理员邮箱）
+    {
+      name: "user-chromium",
+      testMatch: ["**/user/**/*.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        extraHTTPHeaders: { [EMAIL_HEADER_NAME]: USER_EMAIL },
+      },
+    },
+    // 管理员访问（注入管理员邮箱）
+    {
+      name: "admin-chromium",
+      testMatch: ["**/admin/**/*.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        extraHTTPHeaders: { [EMAIL_HEADER_NAME]: ADMIN_EMAIL },
+      },
     },
   ],
 
