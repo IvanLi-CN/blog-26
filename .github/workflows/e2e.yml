@@ -73,11 +73,9 @@ jobs:
           ADMIN_MODE: true
       - name: Upload Playwright report (always)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: playwright-report
-          path: |
-            test-results/html-report
-            test-results/artifacts
+          # Use a single root to avoid multi-path warning on GHES/Gitea
+          path: test-results
           if-no-files-found: warn
-
