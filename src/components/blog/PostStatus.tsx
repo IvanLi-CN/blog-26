@@ -81,7 +81,10 @@ export default function PostStatus({
 
   if (showText) {
     return (
-      <span className={`badge ${status.badgeClass} ${sizeClass.badge} gap-1 ${className}`}>
+      <span
+        className={`badge ${status.badgeClass} ${sizeClass.badge} gap-1 ${className}`}
+        data-testid="post-status-badge"
+      >
         <Icon icon={status.icon} className={sizeClass.icon} />
         <span className={sizeClass.text}>{status.label}</span>
       </span>
@@ -89,7 +92,11 @@ export default function PostStatus({
   }
 
   return (
-    <div className={`tooltip tooltip-bottom ${className}`} data-tip={status.label}>
+    <div
+      className={`tooltip tooltip-bottom ${className}`}
+      data-tip={status.label}
+      data-testid="post-status-icon"
+    >
       <Icon icon={status.icon} className={`${sizeClass.icon} ${status.iconClass}`} />
     </div>
   );
