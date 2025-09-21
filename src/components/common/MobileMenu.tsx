@@ -104,6 +104,7 @@ export default function MobileMenu() {
                     <li key={link.href}>
                       <Link
                         href={link.href}
+                        prefetch={!(link.href === "/projects" || link.href === "/tags")}
                         className="hover:text-primary transition-colors flex items-center gap-3"
                         onClick={closeMenu}
                       >

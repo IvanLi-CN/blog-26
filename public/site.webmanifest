@@ -1,0 +1,11 @@
+{
+  "name": "Ivan's Blog",
+  "short_name": "Blog",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "zh-CN",
+  "icons": []
+}
+
