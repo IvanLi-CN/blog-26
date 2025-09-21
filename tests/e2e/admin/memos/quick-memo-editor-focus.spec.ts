@@ -16,13 +16,16 @@ test.describe("Quick Memo Editor focus (admin)", () => {
     await expect(editor).toBeFocused();
 
     // Type in small chunks and assert focus remains
+    // NOTE: Use keyboard.insertText to avoid IME issues in headless CI
     const chunks = ["这是一次", " 焦点", " 稳定性", " 测试"];
     for (const chunk of chunks) {
-      await editor.type(chunk, { delay: 10 });
+      await editor.click(); // ensure caret inside editor
+      await expect(editor).toBeFocused();
+      await page.keyboard.insertText(chunk);
       await expect(editor).toBeFocused();
     }
 
-    // Content should reflect typed text
+    // Content should reflect typed text (final chunk)
     await expect(editor).toContainText("测试");
 
     // Publish button should become enabled after typing

@@ -155,7 +155,7 @@ export default function HomePage() {
             <Icon name="tabler:code" className="w-5 h-5 text-green-500" />
             精选项目 ({featuredProjects.length})
           </h2>
-          <Link href="/projects" className="btn btn-link text-sm">
+          <Link href="/projects" prefetch={false} className="btn btn-link text-sm">
             查看全部 »
           </Link>
         </div>

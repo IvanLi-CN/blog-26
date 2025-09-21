@@ -11,7 +11,7 @@ export default function ProjectCard({ title, href, category }: ProjectCardProps)
     <div className="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200">
       <div className="card-body p-2 sm:p-3">
         <h3 className="card-title text-sm mb-1 line-clamp-1">
-          <Link href={href} className="hover:text-primary transition-colors">
+          <Link href={href} prefetch={false} className="hover:text-primary transition-colors">
             {title}
           </Link>
         </h3>

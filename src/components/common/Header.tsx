@@ -59,6 +59,7 @@ export default function Header({
               <li key={link.href}>
                 <Link
                   href={link.href}
+                  prefetch={!(link.href === "/projects" || link.href === "/tags")}
                   className={`btn btn-ghost ${isActive(link.href) ? "aw-link-active" : ""}`}
                 >
                   {link.text}
