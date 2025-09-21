@@ -34,28 +34,10 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Webpack 配置以解决服务端渲染问题
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      // 在服务端构建时排除某些可能有问题的模块
-      config.externals = config.externals || [];
-      config.externals.push({
-        puppeteer: "puppeteer",
-        playwright: "playwright",
-        "chrome-aws-lambda": "chrome-aws-lambda",
-      });
-    }
-
-    // 处理 mermaid 相关的模块
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      path: false,
-      os: false,
-    };
-
-    return config;
-  },
+  // Removed custom Webpack config to avoid conflicts with Turbopack.
+  // Next.js already externalizes common E2E tooling (e.g. Playwright/Puppeteer)
+  // on the server by default under Turbopack, so an explicit webpack() block
+  // is unnecessary and triggers a warning.
 
   // 禁用静态优化来避免构建时错误
   output: "standalone",
