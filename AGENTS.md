@@ -6,14 +6,19 @@ Source lives under `src/`, with page routes and API handlers in `src/app/`. Shar
 
 ## Build, Test, and Development Commands
 
-Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (Next.js plus WebDAV). Both development and test environments must bind the web service to port `25090` and the WebDAV service to port `25091` to stay compliant with shared infrastructure. Produce a production build via `bun run build`, then serve it using `bun run start`. Lint and format the codebase with `bun run check`; auto-fix minor issues using `bun run fix`. Execute ESLint rules through `bun run lint`. For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset` as required.
+Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (Next.js plus WebDAV).
+Primary checkout uses `25090` (web) and `25091` (WebDAV). For worktrees, do not use these ports.
+Set custom ports via env vars as noted in "Worktree Development".
+Produce a production build via `bun run build`, then serve it using `bun run start`.
+Lint and format with `bun run check`; auto-fix via `bun run fix`. Run ESLint using `bun run lint`.
+For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset`.
 
 ### Long-running commands & background management
 
 These conventions apply to any automation agent (Codex, CI, or human-operated scripts) that cannot dedicate a foreground terminal to a persistent service.
 
 - **Starting services in the background**: use `nohup bun run dev >tmp/dev.log 2>&1 & echo $! >tmp/dev.pid` (or a similar PID+log pattern) to launch the full dev stack without blocking. The `tmp/` directory keeps transient artefacts out of the repo.
-- **Stopping services**: issue `kill $(cat tmp/dev.pid)` once downstream tasks finish, wait for the process to exit (`kill -0` loop if needed), then remove the PID file (`rm tmp/dev.pid`). Always verify that ports `25090/25091` are free before a new launch.
+- **Stopping services**: issue `kill $(cat tmp/dev.pid)` once downstream tasks finish, wait for the process to exit (`kill -0` loop if needed), then remove the PID file (`rm tmp/dev.pid`). Ensure required ports are free before a new launch.
 - **Monitoring**: inspect or tail logs via `tail -f tmp/dev.log`; rotate or truncate long-lived logs inside the same directory to avoid unbounded growth.
 - **Other scripts that persist**: `bun run dev:next`, `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, `bun run dev:proxy` (`scripts/local-proxy.ts`), and direct calls to `bun run src/scripts/start-integrated-server.ts` all remain active until terminated. Manage each with its own PID file/log pair if they run concurrently.
 - **Playwright utilities**: interactive helpers—`bun run test:e2e:ui`, `bun run test:e2e:debug`, `bun run test:e2e:headed`, and `bun run test:e2e:report` (Playwright’s report viewer)—block until the UI is closed. Schedule an explicit `SIGINT`/`kill` in automated pipelines if they must be invoked.
@@ -43,3 +48,21 @@ Commit messages must follow Conventional Commits (English subject ≤72 chars, b
 ## Security & Configuration Tips
 
 Store secrets in `.env.local`; never commit them. SQLite paths default to `./dev-data/sqlite.db` for development and `./test-data/sqlite.db` for automated tests. For production deployments, ensure the `DB_PATH` environment variable points at the desired volume (Docker default: `/app/data/sqlite.db`).
+
+## Worktree Development (Concise)
+
+- Create worktree and branch:
+  - `git worktree add -b <branch> ../blog-nextjs-wt-<slug>`
+- Pick two free ports (avoid `25090/25091`).
+- In the worktree, add `.env.local`:
+  - `PORT=<web_port>`
+  - `NEXT_PUBLIC_SITE_URL=http://localhost:<web_port>`
+  - `DB_PATH=./dev-data/sqlite.db`
+  - `WEBDAV_URL=http://localhost:<webdav_port>`
+- Bootstrap:
+  - `bun install`
+  - `bun run dev-db:reset`
+  - `bun run dev-data:generate`
+- Run:
+  - WebDAV: `dufs dev-data/webdav --port <webdav_port> --allow-all --enable-cors`
+  - Next.js: `PORT=<web_port> bun --bun next dev --turbopack`
