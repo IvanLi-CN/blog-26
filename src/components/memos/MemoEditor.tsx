@@ -60,6 +60,8 @@ export function MemoEditor({
 }: MemoEditorProps) {
   const publicSwitchId = useId();
   const titleInputId = useId();
+  // 使用稳定的 editorId，避免在每次渲染时重建编辑器导致失焦
+  const stableEditorId = useId();
 
   // 状态管理
   const [content, setContent] = useState(initialContent);
@@ -264,7 +266,7 @@ export function MemoEditor({
           contentSource="webdav"
           mode={editorMode}
           onModeChange={setEditorMode}
-          editorId={`memo-editor-${Date.now()}`}
+          editorId={`memo-editor-${stableEditorId}`}
           className="min-h-[300px]"
         />
       </div>

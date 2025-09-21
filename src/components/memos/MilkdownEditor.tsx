@@ -162,7 +162,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const editorRef = useRef<HTMLDivElement>(null);
     const crepeRef = useRef<Crepe | null>(null);
     const lastContentRef = useRef<string>(content);
+    const initialContentRef = useRef<string>(content);
     const onImageUploadRef = useRef(onImageUpload);
+    const onChangeRef = useRef(onChange);
     const isUpdatingRef = useRef<boolean>(false); // 防止循环更新的标志
 
     // 处理内联图片上传 - 与 UniversalEditor 相同的逻辑
@@ -259,6 +261,11 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       onImageUploadRef.current = onImageUpload;
     }, [onImageUpload]);
 
+    // 同步最新的 onChange 到 ref（避免把 onChange 放入初始化副作用依赖）
+    useEffect(() => {
+      onChangeRef.current = onChange;
+    }, [onChange]);
+
     // 初始化编辑器
     useEffect(() => {
       if (!editorRef.current) return;
@@ -293,7 +300,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           console.log(`🔨 [MilkdownEditor] 初始化编辑器 ${editorId}...`);
 
           // 预处理内容，转换 frontmatter 和图片路径
-          const frontmatterProcessed = preprocessFrontmatterForEditor(content);
+          const frontmatterProcessed = preprocessFrontmatterForEditor(initialContentRef.current);
           const processedContent = preprocessContentForEditor(
             frontmatterProcessed,
             articlePath,
@@ -404,7 +411,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 异步调用 onChange，然后重置标志
               setTimeout(() => {
-                onChange(processedMarkdown);
+                onChangeRef.current(processedMarkdown);
                 isUpdatingRef.current = false;
               }, 0);
             });
@@ -413,7 +420,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           // 创建编辑器
           await crepe.create();
           crepeRef.current = crepe;
-          lastContentRef.current = content;
+          lastContentRef.current = initialContentRef.current;
 
           // 保存到实例管理器
           editorInstances.set(editorId, crepe);
@@ -437,7 +444,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           initializingEditors.delete(editorId);
         }
       };
-    }, [articlePath, editorId, contentSource, placeholder, content, onChange]); // 只在组件挂载时初始化一次，移除 content 和 onChange 避免重复初始化
+    }, [articlePath, editorId, contentSource, placeholder]); // 只在组件挂载时初始化一次，避免内容变化触发重建
 
     // 处理外部内容变化 - 修复无限循环
     useEffect(() => {
