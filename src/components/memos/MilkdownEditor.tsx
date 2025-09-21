@@ -211,8 +211,21 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           const filename = `inline-${timestamp}.${imageType}`;
           const file = new File([blob], filename, { type: `image/${imageType}` });
 
-          // 上传文件
-          const uploadPath = `${articlePath}/${filename}`;
+          // 上传文件路径：基于文章所在目录，而不是文件本身
+          // 例如：/Memos/xxx.md -> Memos/；Memos/assets -> Memos/assets/
+          const normalizedArticlePath = (articlePath || "").replace(/^\//, "");
+          const segments = normalizedArticlePath.split("/").filter(Boolean);
+          let baseDir = normalizedArticlePath;
+
+          if (segments.length > 0) {
+            const last = segments[segments.length - 1];
+            // 如果最后一段看起来是文件（包含扩展名），则取其父目录
+            if (/\.[A-Za-z0-9]+$/.test(last)) {
+              baseDir = segments.slice(0, -1).join("/");
+            }
+          }
+
+          const uploadPath = baseDir ? `${baseDir}/${filename}` : filename;
           const formData = new FormData();
           formData.append("file", file);
 
