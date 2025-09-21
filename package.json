@@ -123,7 +123,7 @@
     "daisyui": "^5.0.50",
     "date-fns": "^4.1.0",
     "drizzle-kit": "^0.31.1",
-    "drizzle-orm": "^0.44.2",
+    "drizzle-orm": "0.44.5",
     "feed": "^4.2.2",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
@@ -160,7 +160,7 @@
     "unpic": "^4.1.2",
     "uuid": "^11.1.0",
     "web-vitals": "^5.1.0",
-    "zod": "^3.25.67"
+    "zod": "3.23.8"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.4",
