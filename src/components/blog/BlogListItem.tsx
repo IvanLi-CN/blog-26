@@ -4,8 +4,10 @@ import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/config/site";
+import { useAuth } from "../../hooks/useAuth";
 import { resolveImagePath } from "../../lib/image-utils";
 import { getFormattedDateFromTimestamp, toMsTimestamp } from "../../lib/utils";
+import PostStatus from "./PostStatus";
 
 interface Post {
   id: string;
@@ -21,6 +23,9 @@ interface Post {
   published: boolean;
   dataSource?: string; // 内容源：local/webdav
   isVectorized?: boolean; // 是否已完成向量化（当前模型且哈希匹配）
+  // 用于权限感知的可见性字段（源数据中存在）
+  public?: boolean;
+  draft?: boolean;
 }
 
 interface BlogListItemProps {
@@ -29,6 +34,7 @@ interface BlogListItemProps {
 
 export default function BlogListItem({ post }: BlogListItemProps) {
   const link = `/posts/${post.slug}`;
+  const { isAdmin } = useAuth();
 
   // 处理标签 - 兼容字符串数组并清洗空白
   const tags = Array.isArray(post.tags) ? post.tags.map((tag) => tag.trim()).filter(Boolean) : [];
@@ -81,7 +87,8 @@ export default function BlogListItem({ post }: BlogListItemProps) {
                 {post.title}
               </Link>
             </h2>
-            <PostStatus post={post} size="sm" className="flex-shrink-0" />
+            {/* 公开/私有状态徽标仅管理员可见 */}
+            <PostStatus post={post} size="sm" className="flex-shrink-0" isAdmin={isAdmin} />
           </div>
         </header>
 
@@ -131,29 +138,7 @@ export default function BlogListItem({ post }: BlogListItemProps) {
   );
 }
 
-// PostStatus 组件
-interface PostStatusProps {
-  post: Post;
-  size?: "sm" | "md" | "lg";
-  className?: string;
-}
-
-function PostStatus({ post, size = "md", className = "" }: PostStatusProps) {
-  const sizeClasses = {
-    sm: "text-xs px-2 py-1",
-    md: "text-sm px-3 py-1",
-    lg: "text-base px-4 py-2",
-  };
-
-  return (
-    <span
-      className={`badge ${post.published ? "badge-success" : "badge-warning"} ${sizeClasses[size]} ${className}`}
-    >
-      <Icon icon={post.published ? "tabler:eye" : "tabler:eye-off"} className="w-3 h-3 mr-1" />
-      {post.published ? "公开" : "私有"}
-    </span>
-  );
-}
+// 状态徽标改为使用共享组件（./PostStatus），并在上方按 isAdmin 条件渲染
 
 // PostTags 组件
 interface PostTagsProps {
