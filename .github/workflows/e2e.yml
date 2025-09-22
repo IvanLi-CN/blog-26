@@ -17,10 +17,15 @@ concurrency:
   group: e2e-${{ github.ref }}
   cancel-in-progress: true
 
+# Minimal default permissions for all jobs on GitHub Actions
+permissions:
+  contents: read
+
 jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     continue-on-error: true
     steps:
       - name: Checkout
@@ -35,7 +40,7 @@ jobs:
           path: |
             ~/.bun/install/cache
             node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'bun.lockb') }}
           restore-keys: |
             ${{ runner.os }}-bun-
       - name: Install dependencies
@@ -130,7 +135,7 @@ jobs:
           ADMIN_MODE: true
       - name: Upload Playwright report (always)
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           # Use a single root to avoid multi-path warning on GHES/Gitea
