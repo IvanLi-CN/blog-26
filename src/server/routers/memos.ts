@@ -44,6 +44,23 @@ function parseAttachments(metadata: string | null | undefined): any[] {
 }
 
 /**
+ * 规范化附件路径：将以 "/" 开头的相对站点路径转换为统一的文件 API 路径
+ */
+function normalizeAttachmentPaths(
+  attachments: Array<{ path: string; [k: string]: any }>,
+  dataSource: string | null | undefined
+) {
+  const source = dataSource === "local" ? "local" : "webdav";
+  return attachments.map((att) => {
+    if (att?.path && typeof att.path === "string" && att.path.startsWith("/")) {
+      const clean = att.path.replace(/^\/+/, "");
+      return { ...att, path: `/api/files/${source}/${clean}` };
+    }
+    return att;
+  });
+}
+
+/**
  * 确保内容源已注册
  */
 async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
@@ -217,6 +234,7 @@ export const memosRouter = router({
         .select()
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
+        // 重要：严格按发布/创建时间倒序排序，而非更新时间
         .orderBy(desc(posts.publishDate), desc(posts.id)) // 添加 id 作为辅助排序确保稳定性
         .limit(limit + 1); // 多取一条用于判断 hasMore
 
@@ -252,7 +270,10 @@ export const memosRouter = router({
 
       // 转换为 API 响应格式
       const formattedMemos = memosWithVectorStatus.map((memo) => {
-        const attachments = parseAttachments(memo.metadata);
+        const attachments = normalizeAttachmentPaths(
+          parseAttachments(memo.metadata),
+          (memo as any).dataSource
+        );
         return {
           id: memo.id,
           slug: memo.slug,
@@ -275,6 +296,33 @@ export const memosRouter = router({
         };
       });
 
+      // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
+      if (!ctx.isAdmin) {
+        for (const m of formattedMemos as any[]) {
+          delete (m as any).filePath;
+          delete (m as any).source;
+          delete (m as any).dataSource;
+          delete (m as any).author;
+          delete (m as any).attachments;
+          delete (m as any).isVectorized;
+        }
+      }
+
+      // 对非管理员进行字段最小化，避免暴露界面未显示的信息
+      const sanitizedMemos = ctx.isAdmin
+        ? formattedMemos
+        : formattedMemos.map((m) => ({
+            id: m.id,
+            slug: m.slug,
+            title: m.title,
+            excerpt: m.excerpt,
+            content: m.content,
+            isPublic: m.isPublic,
+            tags: m.tags,
+            createdAt: m.createdAt,
+            updatedAt: m.updatedAt,
+          }));
+
       // 生成下一页的 cursor
       let nextCursor: string | undefined;
       if (hasMore && actualMemos.length > 0) {
@@ -284,7 +332,7 @@ export const memosRouter = router({
       }
 
       return {
-        memos: formattedMemos,
+        memos: sanitizedMemos,
         nextCursor,
         hasMore,
       };
@@ -324,9 +372,29 @@ export const memosRouter = router({
         });
       }
 
-      const attachments = parseAttachments(memo.metadata);
+      const attachments = normalizeAttachmentPaths(
+        parseAttachments(memo.metadata),
+        (memo as any).dataSource
+      );
 
-      return {
+      // 非管理员：仅返回界面展示所需字段，避免接口泄露内部信息
+      if (!ctx.isAdmin) {
+        return {
+          id: memo.id,
+          slug: memo.slug,
+          title: memo.title || "无标题 Memo",
+          excerpt: memo.excerpt,
+          content: memo.body,
+          isPublic: memo.public,
+          tags: memo.tags ? JSON.parse(memo.tags) : [],
+          createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
+          updatedAt: memo.updateDate
+            ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
+            : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
+        } as const;
+      }
+
+      const base = {
         id: memo.id,
         slug: memo.slug,
         title: memo.title || "无标题 Memo",
@@ -334,15 +402,27 @@ export const memosRouter = router({
         content: memo.body,
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
-        attachments,
-        author: memo.author || undefined,
-        filePath: memo.filePath,
-        source: memo.source,
         createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
         updatedAt: memo.updateDate
           ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
           : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
-      };
+      } as const;
+
+      // 非管理员只返回界面会显示的字段
+      if (!ctx.isAdmin) {
+        return base;
+      }
+
+      // 管理员返回完整信息
+      return {
+        ...base,
+        attachments,
+        author: memo.author || undefined,
+        filePath: memo.filePath,
+        source: memo.source,
+        dataSource: (memo as any).dataSource || "webdav",
+        isVectorized: false,
+      } as any;
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;

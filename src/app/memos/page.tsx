@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import PageLayout from "../../components/common/PageLayout";
+import { isAdminFromRequest } from "../../lib/auth";
 import { MemosPageContent } from "./MemosPageContent";
 
 /**
@@ -65,7 +67,11 @@ const structuredData = {
  *
  * TODO: 添加 SSR 支持以提升首屏加载性能
  */
-export default function MemosPage() {
+export default async function MemosPage() {
+  // SSR 判定是否为管理员，用于首屏快速展示管理功能，避免客户端首次请求延迟
+  const h = await headers();
+  const initialIsAdmin = await isAdminFromRequest(h);
+
   return (
     <PageLayout>
       {/* 结构化数据 */}
@@ -89,7 +95,7 @@ export default function MemosPage() {
         </div>
 
         {/* Memos 应用 - 根据用户权限动态显示功能 */}
-        <MemosPageContent />
+        <MemosPageContent initialIsAdmin={initialIsAdmin} />
       </section>
     </PageLayout>
   );

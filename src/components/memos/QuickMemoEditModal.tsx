@@ -164,7 +164,7 @@ export function QuickMemoEditModal({
                 "border border-base-300 rounded-xl bg-base-100",
                 showSkeleton && "animate-pulse"
               )}
-              data-testid="quick-memo-editor"
+              data-testid="quick-memo-edit-container"
             >
               {showSkeleton ? (
                 <div className="h-64" />

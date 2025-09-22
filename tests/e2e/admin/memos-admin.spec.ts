@@ -53,7 +53,8 @@ test.describe("Memos 管理员权限", () => {
     const testContent = `测试 memo - ${Date.now()}`;
     await page.waitForTimeout(1000);
 
-    const editorContainer = quickEditor.locator('[data-testid="quick-memo-editor"]');
+    // Quick editor container itself carries this test id after duplicate removal
+    const editorContainer = page.getByTestId("quick-memo-editor");
     await expect(editorContainer).toBeVisible();
 
     let editableArea = editorContainer.locator('[contenteditable="true"]').first();

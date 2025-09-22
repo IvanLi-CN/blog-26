@@ -1,6 +1,7 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
+import { resolveImagePath } from "@/lib/image-utils";
 import { toMsTimestamp } from "../../lib/utils";
 import ReadingTime from "./ReadingTime";
 
@@ -14,6 +15,7 @@ interface RelatedPost {
   category?: string;
   tags?: string[];
   image?: string;
+  dataSource?: string;
 }
 
 interface RelatedPostsProps {
@@ -85,14 +87,28 @@ export default function RelatedPosts({
               >
                 {post.image && (
                   <div className="mb-3 overflow-hidden rounded-md">
-                    <Image
-                      src={post.image}
-                      alt={post.title}
-                      className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                      itemProp="image"
-                      width={640}
-                      height={240}
-                    />
+                    {(() => {
+                      const contentSource = (post.dataSource === "local" ? "local" : "webdav") as
+                        | "local"
+                        | "webdav";
+                      const imageSrc =
+                        resolveImagePath(post.image || "", contentSource, post.id) || post.image;
+                      if (typeof window !== "undefined" && imageSrc) {
+                        // 开发期观测
+                        // eslint-disable-next-line no-console
+                        console.debug("[RelatedPosts] image src:", imageSrc);
+                      }
+                      return (
+                        <Image
+                          src={imageSrc}
+                          alt={post.title}
+                          className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
+                          itemProp="image"
+                          width={640}
+                          height={240}
+                        />
+                      );
+                    })()}
                   </div>
                 )}
 

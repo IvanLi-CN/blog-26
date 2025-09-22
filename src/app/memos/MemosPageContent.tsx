@@ -8,11 +8,12 @@ import { useAuth } from "../../hooks/useAuth";
  *
  * 根据用户权限动态控制功能显示
  */
-export function MemosPageContent() {
+export function MemosPageContent({ initialIsAdmin = false }: { initialIsAdmin?: boolean }) {
   const { isAdmin, isLoading } = useAuth();
+  const effectiveIsAdmin = isLoading ? initialIsAdmin : isAdmin;
 
-  // 加载状态：只显示基本的 memo 列表骨架屏，不显示管理功能
-  if (isLoading) {
+  // 加载中且无法判定为管理员时，仅显示列表骨架屏（避免闪烁）
+  if (isLoading && !initialIsAdmin) {
     return (
       <div className="space-y-6 sm:space-y-8">
         {/* 只显示 Memo 列表骨架屏，不显示快速编辑器骨架屏 */}
@@ -37,11 +38,11 @@ export function MemosPageContent() {
     );
   }
 
-  // 根据权限渲染不同的功能
+  // 根据权限渲染不同的功能（若 SSR 已判定为管理员，会立刻呈现管理功能，避免等待）
   return (
     <MemosApp
-      publicOnly={!isAdmin} // 管理员可以看到所有内容，普通用户只看公开内容
-      showManageFeatures={isAdmin} // 只有管理员显示管理功能
+      publicOnly={!effectiveIsAdmin}
+      showManageFeatures={effectiveIsAdmin}
       initialView="list"
     />
   );
