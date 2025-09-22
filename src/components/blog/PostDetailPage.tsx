@@ -207,7 +207,8 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                       post.image || undefined,
                       (post.dataSource === "local" ? "local" : "webdav") as "local" | "webdav",
                       // 使用实际 markdown 文件路径来解析相对封面路径，避免以数据库 id 解析导致的 404
-                      (post.filePath as string | undefined) || (post.slug ? `blog/${post.slug}.md` : undefined)
+                      (post.filePath as string | undefined) ||
+                        (post.slug ? `blog/${post.slug}.md` : undefined)
                     ) || ""
                   }
                   className="max-w-full mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer max-h-[50vh] sm:max-h-[60vh] md:max-w-2xl md:max-h-96 lg:max-h-[506px] xl:max-h-[50vh] h-auto object-contain"
