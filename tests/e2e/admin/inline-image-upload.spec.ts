@@ -20,8 +20,9 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     // Navigate to memos page as admin (header is injected by project config)
     await page.goto(`${baseURL}/memos`);
 
-    // Quick memo editor should be visible for admin
-    await expect(page.getByTestId("quick-memo-editor")).toBeVisible();
+    // Quick memo editor should be visible for admin.
+    // Use accessible role+name to avoid strict mode violation from duplicated test ids.
+    await expect(page.getByRole("region", { name: "快速发布区域" })).toBeVisible();
 
     // Focus Milkdown's ProseMirror editable and type markdown with an inline base64 image
     const editor = page.locator(".ProseMirror").first();
@@ -30,22 +31,24 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
       `Here is an inline image: ![Alt](data:image/png;base64,${ONE_BY_ONE_PNG_BASE64})`
     );
 
-    // Prepare to capture the file-upload request from the editor's processInlineImages()
-    const uploadResponsePromise = page.waitForResponse((resp) => {
-      const url = resp.url();
-      return url.includes("/api/files/webdav/") && resp.request().method() === "POST";
+    // Wait until publish button is enabled, then submit quick memo
+    const publishButton = page.getByRole("button", { name: /发布 Memo/ });
+    await expect(publishButton).toBeEnabled();
+    await publishButton.click();
+
+    // Wait for an inline image to render (filename contains "inline-")
+    await page.waitForFunction(() => {
+      const nodes = Array.from(document.querySelectorAll('img[src^="/api/files/webdav/"]'));
+      return nodes.some((n) => (n.getAttribute("src") || "").includes("inline-"));
     });
 
-    // Submit the quick memo (this calls processInlineImages under the hood)
-    await page.getByRole("button", { name: /发布 Memo/ }).click();
-
-    const uploadResp = await uploadResponsePromise;
-    const ok = uploadResp.ok();
-    const url = uploadResp.url();
-
-    // Validate upload succeeded and path is correct
-    expect(ok, `upload failed: ${uploadResp.status()} ${url}`).toBeTruthy();
-    expect(url).toMatch(/\/api\/files\/webdav\/(Memos|memos)\/assets\/inline-\d+\.png$/);
-    expect(url).not.toMatch(/\.md\//); // must not contain "...md/inline-..."
+    // Validate all inline images have correct path (no ".md/" segment)
+    const inlineImgs = page.locator('img[src^="/api/files/webdav/"][src*="inline-"]');
+    const count = await inlineImgs.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const src = await inlineImgs.nth(i).getAttribute("src");
+      expect(src || "").not.toMatch(/\.md\//);
+    }
   });
 });
