@@ -284,7 +284,8 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
             tags: p.tags ?? undefined,
             author: p.author ?? undefined,
             image: p.image ?? undefined,
-            dataSource: (p as any).dataSource ?? undefined,
+            // 避免使用 any：仅在存在该属性时读取
+            dataSource: "dataSource" in p ? (p as { dataSource?: string }).dataSource : undefined,
           }))}
           currentPostCategory={post.category || undefined}
           currentPostTags={post.tags || undefined}

@@ -93,7 +93,7 @@ export function QuickMemoEditor({
             if (latest && latest.trim().length >= processedContent.length) {
               processedContent = latest.trim();
             }
-          } catch (_err) {
+          } catch {
             // ignore: getMarkdown may not be available during early mount
           }
         }
@@ -265,7 +265,6 @@ export function QuickMemoEditor({
                   contentSource="webdav"
                   editorId="quick-memo-editor"
                   className="min-h-full"
-                  data-testid="quick-memo-editor"
                 />
               </div>
 

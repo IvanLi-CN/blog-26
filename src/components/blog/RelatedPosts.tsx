@@ -94,8 +94,7 @@ export default function RelatedPosts({
                       const imageSrc =
                         resolveImagePath(post.image || "", contentSource, post.id) || post.image;
                       if (typeof window !== "undefined" && imageSrc) {
-                        // 开发期观测
-                        // eslint-disable-next-line no-console
+                        // 开发期观测（在本地环境打印，不需要禁用 no-console 规则）
                         console.debug("[RelatedPosts] image src:", imageSrc);
                       }
                       return (
