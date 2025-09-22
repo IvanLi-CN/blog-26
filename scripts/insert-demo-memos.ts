@@ -1,15 +1,25 @@
 #!/usr/bin/env bun
+<<<<<<< HEAD
+=======
+import { eq } from "drizzle-orm";
+>>>>>>> 71b001f (feat(memos): preserve attachments and required paths for non-admin views)
 import { db, initializeDB } from "../src/lib/db";
 import { posts } from "../src/lib/schema";
 
 function toSec(ts: number) {
   return Math.floor(ts / 1000);
 }
+<<<<<<< HEAD
 
 async function main() {
   await initializeDB(true);
   const now = Date.now();
 
+=======
+async function main() {
+  await initializeDB(true);
+  const now = Date.now();
+>>>>>>> 71b001f (feat(memos): preserve attachments and required paths for non-admin views)
   const memos = [
     {
       id: `memos/demo-a-${now - 60000}.md`,
@@ -87,6 +97,7 @@ async function main() {
       filePath: `memos/demo-c-${now - 10000}.md`,
     },
   ];
+<<<<<<< HEAD
 
   // 删除可能同名的旧数据（幂等）
   for (const m of memos) {
@@ -100,6 +111,17 @@ async function main() {
   );
 }
 
+=======
+  for (const m of memos) {
+    await db.delete(posts).where(eq(posts.id, m.id));
+  }
+  await db.insert(posts).values(memos as any);
+  console.log(
+    "Inserted memos:",
+    memos.map((m) => ({ slug: m.slug, publishDate: m.publishDate, public: m.public }))
+  );
+}
+>>>>>>> 71b001f (feat(memos): preserve attachments and required paths for non-admin views)
 main().catch((e) => {
   console.error(e);
   process.exit(1);

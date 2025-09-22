@@ -332,7 +332,27 @@ export const memosRouter = router({
       }
 
       return {
+<<<<<<< HEAD
         memos: sanitizedMemos,
+=======
+        memos: ctx.isAdmin
+          ? formattedMemos
+          : formattedMemos.map((m) => ({
+              id: m.id,
+              slug: m.slug,
+              title: m.title,
+              excerpt: m.excerpt,
+              content: m.content,
+              isPublic: m.isPublic,
+              tags: m.tags,
+              attachments: m.attachments,
+              author: m.author,
+              filePath: m.filePath,
+              source: m.source,
+              createdAt: m.createdAt,
+              updatedAt: m.updatedAt,
+            })),
+>>>>>>> 71b001f (feat(memos): preserve attachments and required paths for non-admin views)
         nextCursor,
         hasMore,
       };

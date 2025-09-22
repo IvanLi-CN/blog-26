@@ -207,8 +207,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
                       post.image || undefined,
                       (post.dataSource === "local" ? "local" : "webdav") as "local" | "webdav",
                       // 使用实际 markdown 文件路径来解析相对封面路径，避免以数据库 id 解析导致的 404
-                      (post.filePath as string | undefined) ||
-                        (post.slug ? `blog/${post.slug}.md` : undefined)
+                      (post.filePath as string | undefined) || (post.slug ? `blog/${post.slug}.md` : undefined)
                     ) || ""
                   }
                   className="max-w-full mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer max-h-[50vh] sm:max-h-[60vh] md:max-w-2xl md:max-h-96 lg:max-h-[506px] xl:max-h-[50vh] h-auto object-contain"
@@ -235,7 +234,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
               enableImageLightbox={true}
               maxCodeLines={30}
               previewCodeLines={20}
-              articlePath={post.filePath || post.id}
+              articlePath={post.filePath || (post.slug ? `blog/${post.slug}.md` : undefined)}
               contentSource={post.dataSource === "local" ? "local" : "webdav"}
               className="prose prose-md xl:text-lg dark:prose-invert dark:prose-headings:text-slate-300 prose-headings:font-heading prose-headings:leading-tighter prose-headings:tracking-tighter prose-headings:font-bold prose-a:text-primary dark:prose-a:text-blue-400 prose-img:rounded-md prose-img:shadow-lg prose-headings:scroll-mt-[80px] prose-li:my-0"
             />

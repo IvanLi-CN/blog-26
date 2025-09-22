@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
-import { resolveImagePath } from "@/lib/image-utils";
+import { resolveImagePath } from "../../lib/image-utils";
 import { toMsTimestamp } from "../../lib/utils";
 import ReadingTime from "./ReadingTime";
 
@@ -87,27 +87,20 @@ export default function RelatedPosts({
               >
                 {post.image && (
                   <div className="mb-3 overflow-hidden rounded-md">
-                    {(() => {
-                      const contentSource = (post.dataSource === "local" ? "local" : "webdav") as
-                        | "local"
-                        | "webdav";
-                      const imageSrc =
-                        resolveImagePath(post.image || "", contentSource, post.id) || post.image;
-                      if (typeof window !== "undefined" && imageSrc) {
-                        // 开发期观测（在本地环境打印，不需要禁用 no-console 规则）
-                        console.debug("[RelatedPosts] image src:", imageSrc);
+                    <Image
+                      src={
+                        resolveImagePath(
+                          post.image,
+                          (post.dataSource === "local" ? "local" : "webdav") as "local" | "webdav",
+                          `blog/${post.slug}.md`
+                        ) || post.image
                       }
-                      return (
-                        <Image
-                          src={imageSrc}
-                          alt={post.title}
-                          className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                          itemProp="image"
-                          width={640}
-                          height={240}
-                        />
-                      );
-                    })()}
+                      alt={post.title}
+                      className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
+                      itemProp="image"
+                      width={640}
+                      height={240}
+                    />
                   </div>
                 )}
 
