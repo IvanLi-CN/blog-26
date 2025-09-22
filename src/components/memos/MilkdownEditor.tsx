@@ -71,6 +71,7 @@ function postprocessContentFromEditor(content: string): string {
 // 编辑器实例接口
 export interface MilkdownEditorRef {
   processInlineImages: (content: string) => Promise<string>;
+  getMarkdown: () => string;
 }
 
 interface MilkdownEditorProps {
@@ -267,6 +268,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     // 暴露给外部的方法
     useImperativeHandle(ref, () => ({
       processInlineImages,
+      getMarkdown: () => lastContentRef.current,
     }));
 
     // 更新 onImageUpload 引用

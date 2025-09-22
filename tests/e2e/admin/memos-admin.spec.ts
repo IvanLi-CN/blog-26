@@ -53,7 +53,8 @@ test.describe("Memos 管理员权限", () => {
     const testContent = `测试 memo - ${Date.now()}`;
     await page.waitForTimeout(1000);
 
-    const editorContainer = quickEditor.locator('[data-testid="quick-memo-editor"]');
+    // 使用无歧义的区域角色定位编辑器容器，避免 data-testid 严格模式冲突
+    const editorContainer = quickEditor;
     await expect(editorContainer).toBeVisible();
 
     let editableArea = editorContainer.locator('[contenteditable="true"]').first();

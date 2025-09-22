@@ -272,12 +272,11 @@ export function cleanMarkdownContent(content: string): string {
   // 处理 Milkdown 编辑器输出的 HTML 转义问题
   let processedContent = content
     .replace(/\\#/g, "#") // 反转义标题
-    .replace(/!\\\[/g, "![") // 反转义图片开始
-    .replace(/\\\]/g, "]") // 反转义右方括号
-    .replace(/\\\(/g, "(") // 反转义左圆括号
+    .replace(/!\\\[/g, "![") // 仅修正图片起始标记，不影响数学分隔符
+    // 注意：不要全局移除 \\] 与 \\(，否则会破坏 \( \) 与 \[ \] 数学分隔符
     .replace(/\\`/g, "`") // 反转义代码
     .replace(/\\\*/g, "*") // 反转义粗体/斜体
-    .replace(/\\_/g, "_") // 反转义下划线
+    .replace(/\\_/g, "_") // 反转义下划线（数学环境由 remark-math 先于 GFM 处理）
     .replace(/<br\s*\/?>/gi, "\n\n"); // 将HTML换行转换为markdown换行
 
   // 预处理图片和链接URL，将包含空格或特殊字符的URL用尖括号包围
@@ -295,7 +294,56 @@ export function cleanMarkdownContent(content: string): string {
     }
   );
 
+  // 将 TeX 分隔符 \( \) 与 \[ \] 转换为 remark-math 兼容的 $ 与 $$
+  processedContent = convertTexDelimitersToDollar(processedContent);
+
+  processedContent = convertTexDelimitersToDollar(processedContent);
+
   return processedContent;
+}
+
+/**
+ * 将 TeX 风格分隔符转换为 remark-math 支持的美元符号分隔
+ * - 行间公式：\[ ... \] -> $$ ... $$（保留原有缩进与换行）
+ * - 行内公式：\( ... \) -> $ ... $
+ * 注意：转换前会暂存并保护代码块与行内代码，避免误替换
+ */
+export function convertTexDelimitersToDollar(content: string): string {
+  if (!content) return content;
+
+  const codeBlocks: string[] = [];
+  const inlineCodes: string[] = [];
+  let tmp = content;
+
+  // 保护多行代码块 ``` ```
+  tmp = tmp.replace(/```[\s\S]*?```/g, (m) => {
+    const idx = codeBlocks.push(m) - 1;
+    return `__CODEBLOCK_${idx}__`;
+  });
+
+  // 保护行内代码 ` `
+  tmp = tmp.replace(/`[^`\n]*`/g, (m) => {
+    const idx = inlineCodes.push(m) - 1;
+    return `__INLINECODE_${idx}__`;
+  });
+
+  // 行间：\[ ... \] -> $$ ... $$ （要求左右在同一段内）
+  tmp = tmp.replace(
+    /(^|\n)([ \t]*)\\\[([\s\S]*?)\\\]([ \t]*)(?=\n|$)/g,
+    (_m, pre, indent, body, tail) => {
+      const trimmed = body.trim();
+      return `${pre}${indent}$$\n${indent}${trimmed}\n${indent}$$${tail}`;
+    }
+  );
+
+  // 行内：\( ... \) -> $ ... $ （不跨行）
+  tmp = tmp.replace(/\\\(([^\n]*?)\\\)/g, (_m, body) => `$${body.trim()}$`);
+
+  // 还原行内代码与代码块
+  tmp = tmp.replace(/__INLINECODE_(\d+)__/g, (_m, i) => inlineCodes[Number(i)]);
+  tmp = tmp.replace(/__CODEBLOCK_(\d+)__/g, (_m, i) => codeBlocks[Number(i)]);
+
+  return tmp;
 }
 
 /**

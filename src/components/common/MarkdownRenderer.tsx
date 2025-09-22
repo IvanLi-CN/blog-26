@@ -92,11 +92,14 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
     // 配置 remark 插件
     const remarkPlugins = useMemo(() => {
-      const plugins: unknown[] = [remarkGfm];
+      const plugins: unknown[] = [];
 
+      // 数学应优先于 GFM，避免下划线、管道等在数学环境中被 GFM 误解析
       if (config.enableMath) {
         plugins.push(remarkMath);
       }
+
+      plugins.push(remarkGfm);
 
       return plugins;
     }, [config.enableMath]);

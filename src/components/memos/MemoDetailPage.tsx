@@ -23,6 +23,7 @@ import {
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+import { resolveImagePath } from "@/lib/image-utils";
 import { parseContentTags } from "@/lib/tag-parser";
 import { SITE } from "../../config/site";
 import { useAuth } from "../../hooks/useAuth";
@@ -356,7 +357,13 @@ export function MemoDetailPage({
                 <div key={attachment.path} className="border rounded-lg p-3">
                   {attachment.isImage ? (
                     <Image
-                      src={attachment.path}
+                      src={
+                        resolveImagePath(
+                          attachment.path,
+                          memo.source === "local" ? "local" : "webdav",
+                          memo.filePath
+                        ) || attachment.path
+                      }
                       alt={attachment.filename}
                       className="w-full h-24 object-cover rounded mb-2"
                       width={320}

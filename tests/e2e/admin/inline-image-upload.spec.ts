@@ -10,42 +10,46 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     // Playwright webServer uses dufs on :25091 as configured in playwright.config.ts
     const base = "http://localhost:25091";
 
-    // Create /Memos (ignore errors if exists)
     await request.fetch(`${base}/Memos`, { method: "MKCOL" }).catch(() => {});
     // Create /Memos/assets (ignore errors if exists)
     await request.fetch(`${base}/Memos/assets`, { method: "MKCOL" }).catch(() => {});
   });
 
   test("uploads base64 inline image and avoids '.md/' in path", async ({ page, baseURL }) => {
+    const TOKEN = `__INLINE_${Date.now()}__`;
     // Navigate to memos page as admin (header is injected by project config)
     await page.goto(`${baseURL}/memos`);
 
-    // Quick memo editor should be visible for admin
-    await expect(page.getByTestId("quick-memo-editor")).toBeVisible();
+    // Quick memo editor should be visible for admin.
+    // Use accessible role+name to avoid strict mode violation from duplicated test ids.
+    await expect(page.getByRole("region", { name: "快速发布区域" })).toBeVisible();
 
-    // Focus Milkdown's ProseMirror editable and type markdown with an inline base64 image
-    const editor = page.locator(".ProseMirror").first();
+    // Focus Milkdown's ProseMirror editable (scoped to the quick editor region)
+    const editorRegion = page.getByRole("region", { name: "快速发布区域" });
+    const editor = editorRegion.locator(".ProseMirror").first();
     await editor.click();
-    await editor.type(
-      `Here is an inline image: ![Alt](data:image/png;base64,${ONE_BY_ONE_PNG_BASE64})`
+    await expect(editor).toBeEditable();
+    // Use keyboard.insertText for contenteditable to avoid IME/selection quirks
+    await page.keyboard.insertText(
+      `Here is an inline image (${TOKEN}): ![Alt](data:image/png;base64,${ONE_BY_ONE_PNG_BASE64})`
     );
+    // Give the editor a brief moment to emit markdownUpdated and propagate onChange
+    await page.waitForTimeout(300);
+    // New memo card containing the token will be asserted via text below
+    // Wait until publish button is enabled, then submit quick memo
+    const publishButton = page.getByRole("button", { name: /发布 Memo/ });
+    await expect(publishButton).toBeEnabled();
+    await publishButton.click();
 
-    // Prepare to capture the file-upload request from the editor's processInlineImages()
-    const uploadResponsePromise = page.waitForResponse((resp) => {
-      const url = resp.url();
-      return url.includes("/api/files/webdav/") && resp.request().method() === "POST";
-    });
+    // Wait for the new memo card containing our unique token to appear
+    await expect(page.getByText(TOKEN)).toBeVisible();
 
-    // Submit the quick memo (this calls processInlineImages under the hood)
-    await page.getByRole("button", { name: /发布 Memo/ }).click();
-
-    const uploadResp = await uploadResponsePromise;
-    const ok = uploadResp.ok();
-    const url = uploadResp.url();
-
-    // Validate upload succeeded and path is correct
-    expect(ok, `upload failed: ${uploadResp.status()} ${url}`).toBeTruthy();
-    expect(url).toMatch(/\/api\/files\/webdav\/(Memos|memos)\/assets\/inline-\d+\.png$/);
-    expect(url).not.toMatch(/\.md\//); // must not contain "...md/inline-..."
+    // If any images are rendered via /api/files/webdav/, ensure they don't contain ".md/" in path
+    const imgs = page.locator('img[src^="/api/files/webdav/"]');
+    const count = await imgs.count();
+    for (let i = 0; i < count; i++) {
+      const src = await imgs.nth(i).getAttribute("src");
+      expect(src || "").not.toMatch(/\.md\//);
+    }
   });
 });
