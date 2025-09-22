@@ -61,7 +61,19 @@ jobs:
           if [[ -z "${TAG:-}" ]]; then
             echo "Failed to resolve latest tag from releases/latest redirect" >&2; exit 1
           fi
-          ASSET_URL="https://github.com/sigoden/dufs/releases/download/${TAG}/dufs-${TAG}-${ARCH}-unknown-linux-musl.tar.gz"
+          # Try musl first, then gnu
+          BASE="https://github.com/sigoden/dufs/releases/download/${TAG}"
+          for libc in musl gnu; do
+            CANDIDATE="${BASE}/dufs-${TAG}-${ARCH}-unknown-linux-${libc}.tar.gz"
+            echo "Probing: $CANDIDATE"
+            if curl -fsSLI "$CANDIDATE" >/dev/null 2>&1; then
+              ASSET_URL="$CANDIDATE"
+              break
+            fi
+          done
+          if [[ -z "${ASSET_URL:-}" ]]; then
+            echo "No suitable dufs asset found for ${TAG} ${ARCH}" >&2; exit 1
+          fi
           echo "Downloading: $ASSET_URL"
           curl -fsSL -o dufs.tar.gz "$ASSET_URL"
           mkdir -p dufs-dist
@@ -75,9 +87,24 @@ jobs:
             exit 1
           fi
 
-          echo "Installing dufs to /usr/local/bin (requires sudo)..."
-          sudo install -m 0755 "$DUFS_BIN" /usr/local/bin/dufs
-          echo "> Installed $(/usr/local/bin/dufs --version)"
+          # Install with sudo when available, otherwise into ~/.local/bin and add to PATH
+          if command -v sudo >/dev/null 2>&1; then
+            echo "Installing dufs to /usr/local/bin via sudo..."
+            sudo install -m 0755 "$DUFS_BIN" /usr/local/bin/dufs
+            BIN_PATH="/usr/local/bin/dufs"
+          else
+            echo "Installing dufs to ~/.local/bin (no sudo)..."
+            mkdir -p "$HOME/.local/bin"
+            install -m 0755 "$DUFS_BIN" "$HOME/.local/bin/dufs"
+            BIN_PATH="$HOME/.local/bin/dufs"
+            if [[ -n "${GITHUB_PATH:-}" ]]; then
+              echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+            else
+              echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> "$HOME/.profile"
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+          fi
+          echo "> Installed $($BIN_PATH --version)"
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
       - name: Prepare Test Environment
