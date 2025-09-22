@@ -297,18 +297,7 @@ export const memosRouter = router({
       });
 
       // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
-      if (!ctx.isAdmin) {
-        for (const m of formattedMemos as any[]) {
-          delete (m as any).filePath;
-          delete (m as any).source;
-          delete (m as any).dataSource;
-          delete (m as any).author;
-          delete (m as any).attachments;
-          delete (m as any).isVectorized;
-        }
-      }
-
-      // 对非管理员进行字段最小化，避免暴露界面未显示的信息
+      // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
       const sanitizedMemos = ctx.isAdmin
         ? formattedMemos
         : formattedMemos.map((m) => ({
@@ -319,6 +308,10 @@ export const memosRouter = router({
             content: m.content,
             isPublic: m.isPublic,
             tags: m.tags,
+            attachments: (m as any).attachments,
+            author: (m as any).author,
+            filePath: (m as any).filePath,
+            source: (m as any).source,
             createdAt: m.createdAt,
             updatedAt: m.updatedAt,
           }));
