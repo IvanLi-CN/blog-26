@@ -11,6 +11,7 @@ import { parse } from "node:url";
 import next from "next";
 import { isAdminFromHeaders } from "../lib/auth";
 import { buildHttpUrl } from "../lib/url-builder";
+import { getMcpTransport } from "./mcp";
 
 // 强化修复 Next.js 15 在所有环境中的 AsyncLocalStorage 问题
 console.log("🔧 [INTEGRATED-SERVER] 修复 AsyncLocalStorage...");
@@ -54,6 +55,14 @@ export async function startIntegratedServer() {
     server = createServer(async (req, res) => {
       try {
         const parsedUrl = parse(req.url || "", true);
+        const pathname = parsedUrl.pathname || "/";
+
+        // MCP endpoint (integrated)
+        if (pathname === "/mcp") {
+          const transport = await getMcpTransport();
+          await transport.handleRequest(req as any, res as any);
+          return;
+        }
 
         // 请求级日志：打印所有请求头 + Forward Email 与管理员判定
         try {

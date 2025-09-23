@@ -93,7 +93,9 @@ export function MemoCard({
       return memo.tags ?? [];
     }
     const merged = new Set<string>(inlineTags);
-    (memo.tags ?? []).forEach((tag) => merged.add(tag));
+    (memo.tags ?? []).forEach((tag) => {
+      merged.add(tag);
+    });
     return Array.from(merged);
   }, [memo.tags, parsedContent.tags]);
 

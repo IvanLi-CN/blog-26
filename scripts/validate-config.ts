@@ -17,7 +17,9 @@ if (validation.isValid) {
   console.log("✅ 路径配置验证通过");
 } else {
   console.log("❌ 路径配置验证失败:");
-  validation.errors.forEach((error) => console.log(`  - ${error}`));
+  validation.errors.forEach((error) => {
+    console.log(`  - ${error}`);
+  });
 }
 
 // 2. 显示当前配置

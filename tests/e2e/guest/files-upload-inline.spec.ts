@@ -7,8 +7,12 @@ const ONE_BY_ONE_PNG_BASE64 =
 test.describe("Files API - inline image upload via WebDAV (guest)", () => {
   test.beforeAll(async ({ request }) => {
     const base = "http://localhost:25091";
-    await request.fetch(`${base}/Memos`, { method: "MKCOL" }).catch(() => {});
-    await request.fetch(`${base}/Memos/assets`, { method: "MKCOL" }).catch(() => {});
+    await request.fetch(`${base}/Memos`, { method: "MKCOL" }).catch(() => {
+      /* ignore if already exists */
+    });
+    await request.fetch(`${base}/Memos/assets`, { method: "MKCOL" }).catch(() => {
+      /* ignore if already exists */
+    });
   });
 
   test("POST /api/files/webdav/Memos/assets/inline-*.png returns 200", async ({

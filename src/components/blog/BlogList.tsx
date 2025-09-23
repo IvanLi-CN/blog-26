@@ -20,9 +20,11 @@ interface Post {
 
 interface BlogListProps {
   posts: Post[];
+  /** 可选的管理员标记（来自服务端首屏判定） */
+  isAdmin?: boolean;
 }
 
-export default function BlogList({ posts }: BlogListProps) {
+export default function BlogList({ posts, isAdmin }: BlogListProps) {
   return (
     <ul className="space-y-4 md:space-y-6">
       {posts.map((post, index) => (
@@ -31,7 +33,7 @@ export default function BlogList({ posts }: BlogListProps) {
           className="animate-fade-in-up"
           style={{ animationDelay: `${index * 100}ms` }}
         >
-          <BlogListItem post={post} />
+          <BlogListItem post={post} forceIsAdmin={isAdmin} />
         </li>
       ))}
     </ul>

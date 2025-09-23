@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import PostsListPage from "../../components/blog/PostsListPage";
+import { isAdminFromRequest } from "../../lib/auth";
 
 export const metadata: Metadata = {
   title: "文章列表 - Ivan's Blog",
@@ -7,6 +9,8 @@ export const metadata: Metadata = {
   keywords: ["技术文章", "Web开发", "编程", "博客", "技术分享"],
 };
 
-export default function PostsPage() {
-  return <PostsListPage />;
+export default async function PostsPage() {
+  const h = await headers();
+  const initialIsAdmin = await isAdminFromRequest(h);
+  return <PostsListPage initialIsAdmin={initialIsAdmin} />;
 }
