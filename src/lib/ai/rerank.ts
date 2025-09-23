@@ -93,7 +93,9 @@ export async function rerank(
     err.code = "RERANKER_UNAVAILABLE";
     try {
       err.details = await res.text();
-    } catch {}
+    } catch {
+      /* ignore: response body may be empty or stream already consumed */
+    }
     throw err;
   }
 

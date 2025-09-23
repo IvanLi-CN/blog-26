@@ -112,13 +112,12 @@ export function PostEditor({ initialContentSource, initialPostId }: PostEditorPr
         />
       </div>
 
-      {/* 拖拽分割线 */}
-      <div
+      {/* 拖拽分割线（使用语义化元素） */}
+      <hr
         className={`w-1 bg-base-300 cursor-col-resize hover:bg-primary/50 transition-colors ${
           isResizing ? "bg-primary" : ""
         }`}
         onMouseDown={handleMouseDown}
-        role="separator"
         aria-orientation="vertical"
         aria-label="调整面板大小"
         aria-valuenow={sidebarWidth}

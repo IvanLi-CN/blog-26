@@ -157,7 +157,12 @@ export function ContentSyncManager() {
         return;
       }
 
-      const nextLog = pendingLogsRef.current.shift()!;
+      // Avoid non-null assertion: extra guard in case queue emptied between checks
+      const nextLog = pendingLogsRef.current.shift();
+      if (!nextLog) {
+        rateLimiterTimerRef.current = null;
+        return;
+      }
       startTransition(() => {
         setSyncLogs((prev) => [...prev, nextLog]);
       });
@@ -375,7 +380,9 @@ export function ContentSyncManager() {
     createObserver(bottomMobileRef.current, mobileLogContainerRef.current);
 
     return () => {
-      observers.forEach((io) => io.disconnect());
+      observers.forEach((io) => {
+        io.disconnect();
+      });
     };
   }, []);
 
