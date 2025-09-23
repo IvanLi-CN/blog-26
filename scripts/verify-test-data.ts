@@ -199,12 +199,16 @@ async function main(): Promise<void> {
 
     if (result.warnings.length > 0) {
       console.log("\n⚠️  警告:");
-      result.warnings.forEach((warning) => console.log(`   ${warning}`));
+      result.warnings.forEach((warning) => {
+        console.log(`   ${warning}`);
+      });
     }
 
     if (result.errors.length > 0) {
       console.log("\n❌ 错误:");
-      result.errors.forEach((error) => console.log(`   ${error}`));
+      result.errors.forEach((error) => {
+        console.log(`   ${error}`);
+      });
       console.log("\n💡 请运行测试数据生成脚本修复这些问题");
       process.exit(1);
     } else {

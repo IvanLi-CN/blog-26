@@ -10,9 +10,13 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     // Playwright webServer uses dufs on :25091 as configured in playwright.config.ts
     const base = "http://localhost:25091";
 
-    await request.fetch(`${base}/Memos`, { method: "MKCOL" }).catch(() => {});
+    await request.fetch(`${base}/Memos`, { method: "MKCOL" }).catch(() => {
+      /* ignore if already exists */
+    });
     // Create /Memos/assets (ignore errors if exists)
-    await request.fetch(`${base}/Memos/assets`, { method: "MKCOL" }).catch(() => {});
+    await request.fetch(`${base}/Memos/assets`, { method: "MKCOL" }).catch(() => {
+      /* ignore if already exists */
+    });
   });
 
   test("uploads base64 inline image and avoids '.md/' in path", async ({ page, baseURL }) => {

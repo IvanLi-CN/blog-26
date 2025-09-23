@@ -234,7 +234,10 @@ export async function vectorizeOneBySlug(params: {
 
   const rows = await db.select().from(posts).where(eq(posts.slug, params.slug));
   if (rows.length === 0) throw new Error(`Post not found: ${params.slug}`);
-  const p = rows[0]!;
+  // Avoid non-null assertion: re-check and assign safely
+  const pCandidate = rows[0];
+  if (!pCandidate) throw new Error(`Post not found: ${params.slug}`);
+  const p = pCandidate;
 
   const input = buildEmbeddingInput({ title: p.title, excerpt: p.excerpt, body: p.body });
   const contentHash = hashEmbeddingInput(input);

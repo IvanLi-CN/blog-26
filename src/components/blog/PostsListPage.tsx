@@ -9,7 +9,7 @@ import EmptyState from "../ui/EmptyState";
 import BlogList from "./BlogList";
 import BlogPagination from "./BlogPagination";
 
-export default function PostsListPage() {
+export default function PostsListPage({ initialIsAdmin = false }: { initialIsAdmin?: boolean }) {
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch } = trpc.posts.list.useQuery({
@@ -18,7 +18,8 @@ export default function PostsListPage() {
     published: true,
   });
 
-  const { isAdmin } = useAuth();
+  const { isAdmin, isLoading: authLoading } = useAuth();
+  const effectiveIsAdmin = authLoading ? initialIsAdmin : isAdmin;
   const router = useRouter();
 
   const handlePageChange = (newPage: number) => {
@@ -82,17 +83,18 @@ export default function PostsListPage() {
                   ? Boolean((post as { isVectorized?: unknown }).isVectorized)
                   : false,
             }))}
+            isAdmin={effectiveIsAdmin}
           />
         ) : (
           <EmptyState
-            icon={isAdmin ? "tabler:article" : "tabler:inbox"}
-            title={isAdmin ? "还没有文章" : "暂无公开文章"}
-            description={isAdmin ? "开始写下你的第一篇文章吧！" : "这里暂时没有公开的内容"}
-            size={isAdmin ? "lg" : "md"}
-            tone={isAdmin ? "brand" : "neutral"}
-            variant={isAdmin ? "plain" : "card"}
+            icon={effectiveIsAdmin ? "tabler:article" : "tabler:inbox"}
+            title={effectiveIsAdmin ? "还没有文章" : "暂无公开文章"}
+            description={effectiveIsAdmin ? "开始写下你的第一篇文章吧！" : "这里暂时没有公开的内容"}
+            size={effectiveIsAdmin ? "lg" : "md"}
+            tone={effectiveIsAdmin ? "brand" : "neutral"}
+            variant={effectiveIsAdmin ? "plain" : "card"}
             links={
-              isAdmin
+              effectiveIsAdmin
                 ? undefined
                 : [
                     { label: "去看闪念", href: "/memos", icon: "tabler:bulb" },
@@ -101,7 +103,7 @@ export default function PostsListPage() {
                   ]
             }
             action={
-              isAdmin
+              effectiveIsAdmin
                 ? {
                     label: "新建文章",
                     onClick: () => router.push("/admin/posts/editor"),
