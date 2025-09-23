@@ -30,11 +30,14 @@ interface Post {
 
 interface BlogListItemProps {
   post: Post;
+  /** 服务端已判定的管理员标记（可选） */
+  forceIsAdmin?: boolean;
 }
 
-export default function BlogListItem({ post }: BlogListItemProps) {
+export default function BlogListItem({ post, forceIsAdmin }: BlogListItemProps) {
   const link = `/posts/${post.slug}`;
   const { isAdmin } = useAuth();
+  const effectiveIsAdmin = typeof forceIsAdmin === "boolean" ? forceIsAdmin : isAdmin;
 
   // 处理标签 - 兼容字符串数组并清洗空白
   const tags = Array.isArray(post.tags) ? post.tags.map((tag) => tag.trim()).filter(Boolean) : [];
@@ -88,7 +91,12 @@ export default function BlogListItem({ post }: BlogListItemProps) {
               </Link>
             </h2>
             {/* 公开/私有状态徽标仅管理员可见 */}
-            <PostStatus post={post} size="sm" className="flex-shrink-0" isAdmin={isAdmin} />
+            <PostStatus
+              post={post}
+              size="sm"
+              className="flex-shrink-0"
+              isAdmin={effectiveIsAdmin}
+            />
           </div>
         </header>
 
