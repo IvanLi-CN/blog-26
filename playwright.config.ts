@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  * 用于测试闪念列表页图片灯箱功能等交互特性
  */
 // Keep server and test-runner using the same emails
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@test.local";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
@@ -91,7 +91,7 @@ export default defineConfig({
   webServer: [
     // 集成的 HTTP + WebSocket 服务器
     {
-      command: "NODE_ENV=test bun --bun next dev --turbopack --port 25090",
+      command: `ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=./test-data/sqlite.db NODE_ENV=test bun --bun next dev --turbopack --port 25090`,
       url: process.env.BASE_URL || "http://localhost:25090",
       reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
       timeout: 120 * 1000, // 2分钟启动超时
