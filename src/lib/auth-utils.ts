@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { resolveUserByPersonalAccessToken } from "@/server/services/personal-access-tokens";
 import { db, initializeDB } from "./db";
 import { users } from "./schema";
 import { SESSION_COOKIE_NAME, updateSessionActivity, validateSession } from "./session";
@@ -24,29 +25,54 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
 
   console.log("🔍 [AUTH-UTILS] 开始权限检查, 默认 isAdmin=false");
 
-  // 1. 尝试从 Cookie 中获取 session ID
-  const cookieHeader = request.headers.get("cookie");
-  if (cookieHeader) {
-    const cookies = parseCookies(cookieHeader);
-    const sessionId = cookies[SESSION_COOKIE_NAME];
+  // 0. 尝试使用 Bearer Token (Personal Access Token) 进行认证
+  const authorizationHeader = request.headers.get("authorization");
+  if (authorizationHeader) {
+    const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+    const rawToken = bearerMatch?.[1]?.trim();
 
-    if (sessionId) {
+    if (rawToken) {
       try {
-        const sessionInfo = await validateSession(sessionId);
-        if (sessionInfo) {
+        const resolved = await resolveUserByPersonalAccessToken(rawToken);
+        if (resolved) {
           user = {
-            id: sessionInfo.user.id,
-            nickname: sessionInfo.user.name || sessionInfo.user.email.split("@")[0],
-            email: sessionInfo.user.email,
-            avatarUrl: undefined, // 可以后续添加头像URL逻辑
+            id: resolved.user.id,
+            nickname: resolved.user.name || resolved.user.email.split("@")[0],
+            email: resolved.user.email,
+            avatarUrl: undefined,
           };
-
-          // 更新session活跃时间
-          await updateSessionActivity(sessionId);
         }
       } catch (error) {
-        // Invalid or expired session, user remains undefined
-        console.warn("Invalid session in auth utils:", error);
+        console.warn("PAT authentication failed:", error);
+      }
+    }
+  }
+
+  // 1. 尝试从 Cookie 中获取 session ID（若尚未识别用户）
+  if (!user) {
+    const cookieHeader = request.headers.get("cookie");
+    if (cookieHeader) {
+      const cookies = parseCookies(cookieHeader);
+      const sessionId = cookies[SESSION_COOKIE_NAME];
+
+      if (sessionId) {
+        try {
+          const sessionInfo = await validateSession(sessionId);
+          if (sessionInfo) {
+            user = {
+              id: sessionInfo.user.id,
+              nickname: sessionInfo.user.name || sessionInfo.user.email.split("@")[0],
+              email: sessionInfo.user.email,
+              avatarUrl: undefined, // 可以后续添加头像URL逻辑
+            };
+
+            // 更新session活跃时间
+            await updateSessionActivity(sessionId);
+          }
+        } catch (error) {
+          // Invalid or expired session, user remains undefined
+          console.warn("Invalid session in auth utils:", error);
+        }
       }
     }
   }

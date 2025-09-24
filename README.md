@@ -169,6 +169,15 @@ bun run -i scripts/validate-config.ts
 
   - Production blocks these endpoints and returns 404.
 
+### Personal Access Tokens
+
+- 管理入口：管理员后台 → “更多” → “访问令牌”（`/admin/pats`），支持查询、创建、撤销 PAT。
+- 默认前缀遵循环境：开发 `blog-pat-`、生产 `blog-prod-pat-`、测试 `blog-test-pat-`，后端会校验前缀以防止跨环境滥用。
+- 可选环境变量：
+  - `BLOG_PAT_ENV` / `BLOG_RUNTIME_ENV` / `PAT_ENVIRONMENT` / `APP_ENV` / `NEXT_PUBLIC_SITE_ENV`：指定环境标签（如 `staging`），生成 `blog-<env>-pat-…`。
+  - `BLOG_PAT_PREFIX`：覆盖完整前缀（最高优先级）。
+- 令牌仅以 SHA-256 哈希写入数据库；撤销后保留记录并立即失效。
+
 ## 📁 Project Structure
 
 ```text

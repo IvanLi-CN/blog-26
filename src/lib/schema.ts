@@ -121,15 +121,44 @@ export const sessions = sqliteTable("sessions", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true), // 是否活跃
 });
 
+export const personalAccessTokens = sqliteTable(
+  "personal_access_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: text("label"),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+    revokedAt: integer("revoked_at"),
+    lastUsedAt: integer("last_used_at"),
+  },
+  (t) => ({
+    tokenUnique: uniqueIndex("pat_token_unique").on(t.tokenHash),
+    userIdx: index("pat_user_idx").on(t.userId),
+    revokedIdx: index("pat_revoked_idx").on(t.revokedAt),
+  })
+);
+
 // 关系定义
 export const usersRelations = relations(users, ({ many }) => ({
   comments: many(comments),
   sessions: many(sessions),
+  personalAccessTokens: many(personalAccessTokens),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, {
     fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const personalAccessTokensRelations = relations(personalAccessTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [personalAccessTokens.userId],
     references: [users.id],
   }),
 }));
@@ -198,3 +227,6 @@ export type NewContentSyncStatus = typeof contentSyncStatus.$inferInsert;
 // Posts 类型导出
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
+
+export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
+export type NewPersonalAccessToken = typeof personalAccessTokens.$inferInsert;
