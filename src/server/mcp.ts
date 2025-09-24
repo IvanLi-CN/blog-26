@@ -14,6 +14,7 @@ import {
 import { db, initializeDB } from "@/lib/db";
 import { posts as postsTable } from "@/lib/schema";
 import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
+import { requireAdmin } from "./mcp-auth-context";
 
 let server: McpServer | null = null;
 let transport: StreamableHTTPServerTransport | null = null;
@@ -233,6 +234,8 @@ async function ensureServer() {
     "Create & publish a post (writes Markdown)",
     createPostInput.shape,
     async (args) => {
+      // 管理员专属
+      requireAdmin();
       const input = args as z.infer<typeof createPostInput>;
       const fm = buildFrontmatter({
         title: input.title,
@@ -269,6 +272,8 @@ async function ensureServer() {
     "Update a post's content/metadata by slug",
     updatePostContentInput.shape,
     async (args) => {
+      // 管理员专属
+      requireAdmin();
       const input = args as z.infer<typeof updatePostContentInput>;
       const row = await db
         .select()
@@ -298,6 +303,8 @@ async function ensureServer() {
     "Update publish/update time by slug",
     updatePostTimeInput.shape,
     async (args) => {
+      // 管理员专属
+      requireAdmin();
       const input = args as z.infer<typeof updatePostTimeInput>;
       const row = await db
         .select()
@@ -320,6 +327,8 @@ async function ensureServer() {
     "Toggle visibility by slug",
     updatePostVisibilityInput.shape,
     async (args) => {
+      // 管理员专属
+      requireAdmin();
       const input = args as z.infer<typeof updatePostVisibilityInput>;
       const row = await db
         .select()
@@ -342,6 +351,8 @@ async function ensureServer() {
     "Delete a post by slug (removes file)",
     deletePostInput.shape,
     async (args) => {
+      // 管理员专属
+      requireAdmin();
       const input = args as z.infer<typeof deletePostInput>;
       const row = await db
         .select()
@@ -394,6 +405,8 @@ async function ensureServer() {
   );
 
   server.tool("memos.create", "Create a memo", createMemoInput.shape, async (args) => {
+    // 管理员专属
+    requireAdmin();
     const input = args as z.infer<typeof createMemoInput>;
     const fm = buildFrontmatter({
       title: input.title,
@@ -427,6 +440,8 @@ async function ensureServer() {
     "Update memo content/metadata by slug",
     updateMemoInput.shape,
     async (args) => {
+      // 管理员专属
+      requireAdmin();
       const input = args as z.infer<typeof updateMemoInput>;
       const row = await db
         .select()
@@ -451,6 +466,8 @@ async function ensureServer() {
   );
 
   server.tool("memos.delete", "Delete memo by slug", deleteMemoInput.shape, async (args) => {
+    // 管理员专属
+    requireAdmin();
     const input = args as z.infer<typeof deleteMemoInput>;
     const row = await db
       .select()

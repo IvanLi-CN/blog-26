@@ -10,8 +10,10 @@ import { createServer } from "node:http";
 import { parse } from "node:url";
 import next from "next";
 import { isAdminFromHeaders } from "../lib/auth";
+import { extractAuthFromRequest } from "../lib/auth-utils";
 import { buildHttpUrl } from "../lib/url-builder";
 import { getMcpTransport } from "./mcp";
+import { runWithMcpAuth } from "./mcp-auth-context";
 
 // 强化修复 Next.js 15 在所有环境中的 AsyncLocalStorage 问题
 console.log("🔧 [INTEGRATED-SERVER] 修复 AsyncLocalStorage...");
@@ -60,7 +62,22 @@ export async function startIntegratedServer() {
         // MCP endpoint (integrated)
         if (pathname === "/mcp") {
           const transport = await getMcpTransport();
-          await transport.handleRequest(req as any, res as any);
+
+          // 构造标准 Request 以复用统一认证逻辑（支持 PAT / Cookie / SSO 头）
+          const headers = new Headers();
+          for (const [k, v] of Object.entries(req.headers)) {
+            if (Array.isArray(v)) headers.set(k, v.join(", "));
+            else if (typeof v === "string") headers.set(k, v);
+          }
+          const url = `http://${hostname}:${port}${req.url || "/mcp"}`;
+          const mockRequest = new Request(url, { method: req.method, headers });
+
+          const auth = await extractAuthFromRequest(mockRequest);
+
+          // 将认证上下文注入到当前请求的 AsyncLocalStorage 中，供 MCP 工具内部使用
+          await runWithMcpAuth({ isAdmin: auth.isAdmin, userEmail: auth.user?.email }, async () => {
+            await transport.handleRequest(req as any, res as any);
+          });
           return;
         }
 
