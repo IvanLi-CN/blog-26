@@ -117,6 +117,20 @@ test.describe("Admin PAT management", () => {
     const tokenValue = await tokenInput.inputValue();
     assertTokenPrefix(tokenValue);
 
+    const bearerResponse = await fetch(`${BASE_URL}/api/test/auth`, {
+      headers: {
+        Authorization: `Bearer ${tokenValue}`,
+      },
+    });
+
+    expect.soft(bearerResponse.status, "PAT bearer auth should succeed").toBe(200);
+    const bearerPayload: { user?: { email: string }; isAdmin: boolean } =
+      await bearerResponse.json();
+    expect
+      .soft(bearerPayload.user?.email, "PAT bearer auth should resolve the correct user")
+      .toBe(ADMIN_EMAIL);
+    expect.soft(bearerPayload.isAdmin, "PAT bearer auth should grant admin access").toBe(true);
+
     await page.getByRole("button", { name: "我已妥善保存" }).click();
     await expect(issuedModal).toBeHidden();
 
