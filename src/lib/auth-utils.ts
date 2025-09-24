@@ -1,5 +1,12 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { resolveUserByPersonalAccessToken } from "@/server/services/personal-access-tokens";
+import {
+  getAdminEmail,
+  getSsoEmailHeaderName,
+  isAdminBypassEnabled,
+  isBypassHeaderPresent,
+} from "./admin-config";
 import { db, initializeDB } from "./db";
 import { users } from "./schema";
 import { SESSION_COOKIE_NAME, updateSessionActivity, validateSession } from "./session";
@@ -21,51 +28,78 @@ export interface AuthResult {
 export async function extractAuthFromRequest(request: Request): Promise<AuthResult> {
   let user: AuthResult["user"] | undefined;
   let isAdmin = false; // 默认不是管理员
+  const bypassAdmin = isAdminBypassEnabled() || isBypassHeaderPresent(request.headers);
 
   console.log("🔍 [AUTH-UTILS] 开始权限检查, 默认 isAdmin=false");
 
-  // 1. 尝试从 Cookie 中获取 session ID
-  const cookieHeader = request.headers.get("cookie");
-  if (cookieHeader) {
-    const cookies = parseCookies(cookieHeader);
-    const sessionId = cookies[SESSION_COOKIE_NAME];
+  // 0. 尝试使用 Bearer Token (Personal Access Token) 进行认证
+  const authorizationHeader = request.headers.get("authorization");
+  if (authorizationHeader) {
+    const bearerMatch = authorizationHeader.match(/^Bearer\s+(.+)$/i);
+    const rawToken = bearerMatch?.[1]?.trim();
 
-    if (sessionId) {
+    if (rawToken) {
       try {
-        const sessionInfo = await validateSession(sessionId);
-        if (sessionInfo) {
+        const resolved = await resolveUserByPersonalAccessToken(rawToken);
+        if (resolved) {
           user = {
-            id: sessionInfo.user.id,
-            nickname: sessionInfo.user.name || sessionInfo.user.email.split("@")[0],
-            email: sessionInfo.user.email,
-            avatarUrl: undefined, // 可以后续添加头像URL逻辑
+            id: resolved.user.id,
+            nickname: resolved.user.name || resolved.user.email.split("@")[0],
+            email: resolved.user.email,
+            avatarUrl: undefined,
           };
-
-          // 更新session活跃时间
-          await updateSessionActivity(sessionId);
         }
       } catch (error) {
-        // Invalid or expired session, user remains undefined
-        console.warn("Invalid session in auth utils:", error);
+        console.warn("PAT authentication failed:", error);
+      }
+    }
+  }
+
+  // 1. 尝试从 Cookie 中获取 session ID（若尚未识别用户）
+  if (!user) {
+    const cookieHeader = request.headers.get("cookie");
+    if (cookieHeader) {
+      const cookies = parseCookies(cookieHeader);
+      const sessionId = cookies[SESSION_COOKIE_NAME];
+
+      if (sessionId) {
+        try {
+          const sessionInfo = await validateSession(sessionId);
+          if (sessionInfo) {
+            user = {
+              id: sessionInfo.user.id,
+              nickname: sessionInfo.user.name || sessionInfo.user.email.split("@")[0],
+              email: sessionInfo.user.email,
+              avatarUrl: undefined, // 可以后续添加头像URL逻辑
+            };
+
+            // 更新session活跃时间
+            await updateSessionActivity(sessionId);
+          }
+        } catch (error) {
+          // Invalid or expired session, user remains undefined
+          console.warn("Invalid session in auth utils:", error);
+        }
       }
     }
   }
 
   // 2. 检查是否为管理员/用户（从 Traefik/SSO headers 或配置）
-  const emailHeaderName = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
+  const emailHeaderName = getSsoEmailHeaderName();
   const remoteEmail = request.headers.get(emailHeaderName);
 
   // 如果有 Traefik/SSO 传递的邮箱信息，优先基于邮箱识别用户，并判断管理员
   if (remoteEmail) {
-    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminEmail = getAdminEmail();
     console.log("🔍 [AUTH-UTILS] Traefik/SSO 权限检查:", {
       remoteEmail,
       adminEmail,
       adminEmailSet: !!adminEmail,
       isMatch: adminEmail ? remoteEmail === adminEmail : false,
+      bypassAdmin,
     });
-    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员
-    isAdmin = adminEmail ? remoteEmail === adminEmail : false;
+    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员；测试场景可通过 bypass 开关放行
+    isAdmin = adminEmail ? remoteEmail === adminEmail : bypassAdmin;
 
     // 如果还没有从 Cookie 中识别出用户，则尝试从数据库查找或创建
     if (!user) {
@@ -110,16 +144,17 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
 
   // 如果有用户但还没有确定管理员状态，检查用户邮箱是否为管理员邮箱
   if (user && !isAdmin) {
-    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminEmail = getAdminEmail();
     console.log("🔍 [AUTH-UTILS] 权限检查:", {
       userEmail: user.email,
       adminEmail,
       adminEmailSet: !!adminEmail,
       isMatch: adminEmail && user.email === adminEmail,
+      bypassAdmin,
     });
 
-    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员
-    if (adminEmail && user.email === adminEmail) {
+    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员；或显式 bypass
+    if ((adminEmail && user.email === adminEmail) || bypassAdmin) {
       isAdmin = true;
       console.log("✅ [AUTH-UTILS] 用户被识别为管理员");
     } else {
