@@ -169,6 +169,19 @@ bun run -i scripts/validate-config.ts
 
   - Production blocks these endpoints and returns 404.
 
+### Personal Access Tokens
+
+- Entry point: Admin dashboard → "More" → "Personal Access Tokens" (`/admin/pats`) with list, create,
+  and revoke actions.
+- Default prefixes follow the environment: development `blog-pat-`, production `blog-prod-pat-`,
+  and test `blog-test-pat-`. The backend validates prefixes to prevent cross-environment reuse.
+- Optional environment variables:
+  - `BLOG_PAT_ENV` / `BLOG_RUNTIME_ENV` / `PAT_ENVIRONMENT` / `APP_ENV` / `NEXT_PUBLIC_SITE_ENV` set the
+    environment tag (for example `staging`) and emit tokens like `blog-<env>-pat-…`.
+  - `BLOG_PAT_PREFIX` overrides the entire prefix (highest precedence).
+- Tokens are persisted as SHA-256 hashes only; revoked tokens remain recorded but become unusable
+  immediately.
+
 ## 📁 Project Structure
 
 ```text
