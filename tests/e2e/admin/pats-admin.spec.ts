@@ -100,7 +100,8 @@ test.describe("Admin PAT management", () => {
     const tableRows = page.locator("table tbody tr");
     const initialCount = (await tableRows.count()) || 0;
 
-    await page.getByRole("button", { name: "新建访问令牌" }).click();
+    const createTokenButton = page.getByRole("button", { name: "新建访问令牌" }).first();
+    await createTokenButton.click();
     await expect(page.getByRole("heading", { name: "创建新的访问令牌" })).toBeVisible();
 
     const label = `E2E 自动化 ${Date.now()}`;
@@ -159,7 +160,8 @@ test.describe("Admin PAT management", () => {
     await expect(page).toHaveURL(/\/admin\/pats/);
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "新建访问令牌" }).click();
+    const reopenButton = page.getByRole("button", { name: "新建访问令牌" }).first();
+    await reopenButton.click();
     await expect(page.getByRole("heading", { name: "创建新的访问令牌" })).toBeVisible();
 
     await page.keyboard.press("Escape");
