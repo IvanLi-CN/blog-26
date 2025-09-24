@@ -115,9 +115,9 @@ jobs:
       - name: Prepare Test Environment
         run: bun run test-env:reset
         env:
-          WEBDAV_URL: http://localhost:8080
+          WEBDAV_URL: http://localhost:25091
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
-          DB_PATH: ./test.db
+          DB_PATH: ./test-data/sqlite.db
       - name: Wait for dufs installation
         run: |
           # 确保dufs已安装并可用
@@ -130,7 +130,7 @@ jobs:
         env:
           NODE_ENV: test
           CI: true
-          WEBDAV_URL: http://localhost:8080
+          WEBDAV_URL: http://localhost:25091
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           ADMIN_MODE: true
       - name: Upload Playwright report (always)

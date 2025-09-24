@@ -53,16 +53,13 @@ Store secrets in `.env.local`; never commit them. SQLite paths default to `./dev
 
 - Create worktree and branch:
   - `git worktree add -b <branch> ../blog-nextjs-wt-<slug>`
-- Pick two free ports (avoid `25090/25091`).
-- In the worktree, add `.env.local`:
-  - `PORT=<web_port>`
-  - `NEXT_PUBLIC_SITE_URL=http://localhost:<web_port>`
-  - `DB_PATH=./dev-data/sqlite.db`
-  - `WEBDAV_URL=http://localhost:<webdav_port>`
-- Bootstrap:
-  - `bun install`
-  - `bun run dev-db:reset`
-  - `bun run dev-data:generate`
-- Run:
-  - WebDAV: `dufs dev-data/webdav --port <webdav_port> --allow-all --enable-cors`
-  - Next.js: `PORT=<web_port> bun --bun next dev --turbopack`
+- Initialize the new worktree with the setup script (required):
+  - Default ports: `PORT=25090`, `WEBDAV_PORT=26091`.
+  - If a default port is in use, supply available ports via environment variables. The script validates availability and exits on conflict. It does not create or modify any `.env*` files.
+  - Examples:
+    - `./scripts/setup.sh` (uses defaults and validates)
+    - `PORT=3001 WEBDAV_PORT=3002 ./scripts/setup.sh` (override when defaults are busy)
+    - `./scripts/setup.sh --with-db` (also reset dev DB and generate dev data)
+- Run the dev stack:
+  - `PORT=<web_port> bun run dev` (Next.js uses `PORT`; WebDAV helper will choose a free port near 25091 and print it in logs.)
+  - Alternatively start services separately if needed.

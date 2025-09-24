@@ -33,6 +33,7 @@
     "bun": "^1.0.0"
   },
   "scripts": {
+    "setup": "bash ./scripts/setup.sh",
     "dev": "concurrently --names \"WebDAV,Next.js\" --prefix-colors \"cyan,magenta\" \"bun run webdav:dev\" \"bun --bun next dev --turbopack\"",
     "dev:next": "bun --bun next dev --turbopack",
     "dev:proxy": "bun ./scripts/local-proxy.ts",

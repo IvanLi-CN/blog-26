@@ -4,6 +4,39 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 
 ## Development
 
+### One-Click Setup
+
+For a fresh checkout or worktree, run:
+
+```bash
+./scripts/setup.sh --with-db     # add --with-e2e to install Playwright browsers
+# or equivalently
+bun run setup -- --with-db
+# legacy/alternate entry (same behavior)
+# legacy/alternate entry (removed)
+# bun run prepare:dev --with-db
+```
+
+What it does:
+
+- Installs dependencies with `bun install`.
+- Installs git hooks via `lefthook` (pre-commit, commit-msg with commitlint).
+- Validates dev ports: defaults to `PORT=25090`, `WEBDAV_PORT=26091`; overrides allowed via env. Ports must be free, otherwise the script exits with error. No `.env` files are created.
+- Optionally resets dev DB and seeds sample content (`--with-db`).
+- Optional E2E browsers install (`--with-e2e`).
+
+Flags: `--dry-run`, `--force-env`, `--with-db`, `--with-e2e`.
+Env overrides: `PORT=<web_port> WEBDAV_PORT=<webdav_port>`
+
+### Worktree Development (Quick Start)
+
+```bash
+git worktree add -b feat/some-change ../blog-nextjs-wt-some-change
+cd ../blog-nextjs-wt-some-change
+./scripts/setup.sh --with-db
+bun run dev
+```
+
 ### Prerequisites
 
 - Bun ≥ 1.0 and SQLite (file-based, no separate service required)
