@@ -9,11 +9,12 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import next from "next";
+import { getAdminEmail } from "../lib/admin-config";
 import { isAdminFromHeaders } from "../lib/auth";
-import { extractAuthFromRequest } from "../lib/auth-utils";
 import { buildHttpUrl } from "../lib/url-builder";
 import { getMcpTransport } from "./mcp";
 import { runWithMcpAuth } from "./mcp-auth-context";
+import { resolveUserByPersonalAccessToken } from "./services/personal-access-tokens";
 
 // 强化修复 Next.js 15 在所有环境中的 AsyncLocalStorage 问题
 console.log("🔧 [INTEGRATED-SERVER] 修复 AsyncLocalStorage...");
@@ -63,19 +64,34 @@ export async function startIntegratedServer() {
         if (pathname === "/mcp") {
           const transport = await getMcpTransport();
 
-          // 构造标准 Request 以复用统一认证逻辑（支持 PAT / Cookie / SSO 头）
+          // 仅使用 PAT（Authorization: Bearer <token>）进行鉴权
           const headers = new Headers();
           for (const [k, v] of Object.entries(req.headers)) {
             if (Array.isArray(v)) headers.set(k, v.join(", "));
             else if (typeof v === "string") headers.set(k, v);
           }
-          const url = `http://${hostname}:${port}${req.url || "/mcp"}`;
-          const mockRequest = new Request(url, { method: req.method, headers });
 
-          const auth = await extractAuthFromRequest(mockRequest);
+          const authz = headers.get("authorization") || headers.get("Authorization");
+          let userEmail: string | undefined;
+          let isAdmin = false;
+          if (authz) {
+            const m = authz.match(/^Bearer\s+(.+)$/i);
+            const rawToken = m?.[1]?.trim();
+            if (rawToken) {
+              try {
+                const resolved = await resolveUserByPersonalAccessToken(rawToken);
+                if (resolved) {
+                  userEmail = resolved.user.email;
+                  const adminEmail = getAdminEmail();
+                  isAdmin = !!adminEmail && userEmail === adminEmail;
+                }
+              } catch (e) {
+                console.warn("[MCP] PAT resolve failed:", e);
+              }
+            }
+          }
 
-          // 将认证上下文注入到当前请求的 AsyncLocalStorage 中，供 MCP 工具内部使用
-          await runWithMcpAuth({ isAdmin: auth.isAdmin, userEmail: auth.user?.email }, async () => {
+          await runWithMcpAuth({ isAdmin, userEmail }, async () => {
             await transport.handleRequest(req as any, res as any);
           });
           return;
