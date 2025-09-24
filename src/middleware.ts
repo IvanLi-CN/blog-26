@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getAdminEmail, getSsoEmailHeaderName } from "./lib/admin-config";
 
 export function middleware(request: NextRequest) {
   try {
-    const emailHeaderName = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
+    const emailHeaderName = getSsoEmailHeaderName();
     const headers = request.headers;
 
     // 依次尝试若干可能的邮箱头，并记录命中的是哪个
@@ -25,7 +26,7 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL || "";
+    const adminEmail = getAdminEmail();
     const isAdmin = Boolean(adminEmail && forwardedEmail && forwardedEmail === adminEmail);
 
     const url = new URL(request.url);

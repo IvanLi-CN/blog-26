@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { desc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
+import { getAdminEmail } from "../../lib/admin-config";
 import { getAvatarUrl } from "../../lib/avatar";
 import { verifyCaptcha } from "../../lib/captcha";
 import { db } from "../../lib/db";
@@ -126,7 +127,7 @@ export const authRouter = createTRPCRouter({
     }
 
     // 检查是否为管理员邮箱
-    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminEmail = getAdminEmail();
     const isAdminEmail = adminEmail && email === adminEmail;
 
     try {
