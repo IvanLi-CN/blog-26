@@ -10,19 +10,32 @@ interface DialogProps {
 }
 
 const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
+  React.useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onOpenChange?.(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onOpenChange]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="presentation">
       <button
         type="button"
         className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange?.(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            onOpenChange?.(false);
-          }
-        }}
         aria-label="Close dialog"
       />
       <div className="relative z-50">{children}</div>
@@ -38,6 +51,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg",
         className
       )}
+      role="dialog"
+      aria-modal="true"
       {...props}
     >
       {children}

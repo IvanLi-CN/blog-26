@@ -51,6 +51,7 @@ export function PersonalAccessTokenManager() {
     null
   );
   const [label, setLabel] = useState("");
+  const [tokenPendingDelete, setTokenPendingDelete] = useState<TokenRow | null>(null);
   const labelId = useId();
 
   const tokensQuery = trpc.admin.personalAccessTokens.list.useQuery(undefined, {
@@ -74,6 +75,7 @@ export function PersonalAccessTokenManager() {
     onSuccess: () => {
       setFeedback({ type: "success", message: "访问令牌已删除。" });
       utils.admin.personalAccessTokens.list.invalidate();
+      setTokenPendingDelete(null);
     },
     onError: (error) => {
       setFeedback({ type: "error", message: error.message || "删除访问令牌失败" });
@@ -96,12 +98,11 @@ export function PersonalAccessTokenManager() {
     });
   };
 
-  const handleRevoke = (tokenId: string) => {
-    const confirmed = window.confirm("确认删除该访问令牌？此操作不可撤销。");
-    if (!confirmed) {
+  const handleConfirmRevoke = () => {
+    if (!tokenPendingDelete) {
       return;
     }
-    revokeMutation.mutate({ tokenId });
+    revokeMutation.mutate({ tokenId: tokenPendingDelete.token.id });
   };
 
   const handleCopyToken = async (token: string) => {
@@ -129,6 +130,15 @@ export function PersonalAccessTokenManager() {
         </span>
       </div>
     );
+  };
+
+  const describeLastUsed = (timestamp: number | null) => {
+    if (!timestamp) {
+      return "从未使用";
+    }
+    const date = new Date(timestamp);
+    const relative = formatDistanceToNow(date, { addSuffix: true });
+    return `${getFormattedDateFromTimestamp(timestamp)} · ${relative}`;
   };
 
   return (
@@ -247,7 +257,7 @@ export function PersonalAccessTokenManager() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => handleRevoke(row.token.id)}
+                          onClick={() => setTokenPendingDelete(row)}
                           disabled={revokeMutation.isPending}
                           className="gap-1"
                         >
@@ -322,14 +332,17 @@ export function PersonalAccessTokenManager() {
           {issuedToken && (
             <div className="space-y-4">
               <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <code className="break-all font-mono text-sm font-semibold text-primary">
-                    {issuedToken.token}
-                  </code>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Input
+                    readOnly
+                    value={issuedToken.token}
+                    className="h-10 font-mono text-sm font-semibold text-primary"
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
                   <Button
-                    size="sm"
+                    size="default"
                     variant="outline"
-                    className="gap-1"
+                    className="h-10 gap-1 px-4"
                     onClick={() => handleCopyToken(issuedToken.token)}
                   >
                     <Icon name="tabler:copy" className="h-4 w-4" />
@@ -344,6 +357,73 @@ export function PersonalAccessTokenManager() {
                 <Button onClick={() => setIssuedToken(null)} className="gap-1">
                   <Icon name="tabler:shield-check" className="h-4 w-4" />
                   我已妥善保存
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(tokenPendingDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTokenPendingDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md border border-error/40 bg-base-100/95">
+          <DialogHeader>
+            <DialogTitle>确认删除访问令牌</DialogTitle>
+            <p className="text-sm text-base-content/60">
+              删除后该令牌将立即失效，相关客户端需重新配置新的令牌。
+            </p>
+          </DialogHeader>
+
+          {tokenPendingDelete && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-dashed border-error/40 bg-error/5 p-4 text-sm text-base-content/80">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-base-content/60">
+                    标签
+                  </span>
+                  <span className="font-medium text-base-content">
+                    {tokenPendingDelete.token.label || "未命名"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="uppercase tracking-wider text-base-content/60">最近使用</span>
+                  <span>{describeLastUsed(tokenPendingDelete.token.lastUsedAt)}</span>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setTokenPendingDelete(null)}
+                  disabled={revokeMutation.isPending}
+                >
+                  取消
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="gap-1"
+                  disabled={revokeMutation.isPending}
+                  onClick={handleConfirmRevoke}
+                >
+                  {revokeMutation.isPending ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs" />
+                      删除中...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="tabler:trash" className="h-4 w-4" />
+                      确认删除
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </div>
