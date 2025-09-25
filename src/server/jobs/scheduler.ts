@@ -70,13 +70,17 @@ class JobsScheduler {
     st.running = true;
 
     const runId = nanoid();
-    const log = createRunLog(jobKey);
+    const log = createRunLog(jobKey, runId);
     const startedAt = Date.now();
 
     const logger = {
-      info: (m: string) => log.write(m),
-      error: (m: string) => log.write(`[ERROR] ${m}`),
-    };
+      info: (message: string, data?: Record<string, unknown>) =>
+        log.write({ level: "info", message, data }),
+      error: (message: string, data?: Record<string, unknown>) =>
+        log.write({ level: "error", message, data }),
+    } as const;
+
+    logger.info("run_initialized", { triggeredBy });
 
     await initializeDB();
     await db.insert(jobRuns).values({
@@ -97,16 +101,19 @@ class JobsScheduler {
         .update(jobRuns)
         .set({ status: "success", finishedAt: Date.now() })
         .where(eq(jobRuns.id, runId));
+      logger.info("run_completed", { status: "success", durationMs: Date.now() - startedAt });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      logger.error(msg);
+      logger.error("run_failed", {
+        message: msg,
+        stack: e instanceof Error ? e.stack : undefined,
+      });
       await db
         .update(jobRuns)
         .set({ status: "error", finishedAt: Date.now(), errorMessage: msg })
         .where(eq(jobRuns.id, runId));
+      logger.info("run_completed", { status: "error", durationMs: Date.now() - startedAt });
     } finally {
-      log.write(`== ${jobKey} run finished ==`);
-      log.close();
       st.running = false;
       st.nextAt = this.computeNext(st.def);
       this.armTimer(st);
@@ -124,14 +131,21 @@ class JobsScheduler {
                 .set({ logDeleted: true })
                 .where(inArray(jobRuns.logPath, slice));
             }
-            logger.info(`Removed ${removed.length} log files older than 7 days`);
+            logger.info("cleanup_removed_logs", {
+              removedCount: removed.length,
+              keepDays: 7,
+              sample: removed.slice(0, 5),
+            });
           } catch (e) {
-            logger.error(`Failed to update DB logDeleted flags: ${e}`);
+            logger.error("cleanup_update_failed", {
+              message: e instanceof Error ? e.message : String(e),
+            });
           }
         } else {
-          logger.info("No old log files to remove");
+          logger.info("cleanup_removed_logs", { removedCount: 0, keepDays: 7 });
         }
       }
+      log.close();
     }
   }
 

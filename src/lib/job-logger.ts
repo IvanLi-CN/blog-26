@@ -1,11 +1,25 @@
 import fs from "node:fs";
 import path from "node:path";
 
+export type LogLevel = "info" | "error" | "debug";
+
+export type LogEntryInput = {
+  level: LogLevel;
+  message: string;
+  data?: Record<string, unknown>;
+};
+
+export type LogEntry = LogEntryInput & {
+  ts: string;
+  jobKey: string;
+  runId: string;
+};
+
 export type LogWriter = {
   /** absolute file path */
   filePath: string;
-  /** write a line with timestamp */
-  write: (line: string) => void;
+  /** write a structured JSON line */
+  write: (entry: LogEntryInput) => void;
   /** finalize stream */
   close: () => void;
 };
@@ -29,7 +43,7 @@ export function resolveJobLogsBaseDir(): string {
   return isTest ? path.resolve("./test-data/job-logs") : path.resolve("./dev-data/job-logs");
 }
 
-export function createRunLog(jobKey: string): LogWriter {
+export function createRunLog(jobKey: string, runId: string): LogWriter {
   const base = resolveJobLogsBaseDir();
   const now = new Date();
   const dayDir = path.join(
@@ -38,16 +52,21 @@ export function createRunLog(jobKey: string): LogWriter {
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
   );
   ensureDirSync(dayDir);
-  const filename = `${now.getTime()}.log`;
+  const filename = `${now.getTime()}.jsonl`;
   const filePath = path.join(dayDir, filename);
   const stream = fs.createWriteStream(filePath, { flags: "a" });
 
-  const write = (line: string) => {
-    const ts = new Date().toISOString();
-    stream.write(`[${ts}] ${line}\n`);
+  const write = (entry: LogEntryInput) => {
+    const payload: LogEntry = {
+      ts: new Date().toISOString(),
+      jobKey,
+      runId,
+      ...entry,
+    };
+    stream.write(`${JSON.stringify(payload)}\n`);
   };
   const close = () => stream.end();
-  write(`== ${jobKey} run started ==`);
+  write({ level: "info", message: "run_started" });
   return { filePath, write, close };
 }
 

@@ -7,7 +7,10 @@ import {
 } from "@/lib/content-sources";
 import { isWebDAVEnabled } from "@/lib/webdav";
 
-export type Logger = { info: (msg: string) => void; error: (msg: string) => void };
+export type Logger = {
+  info: (message: string, data?: Record<string, unknown>) => void;
+  error: (message: string, data?: Record<string, unknown>) => void;
+};
 
 export type IntervalSchedule = { kind: "interval"; everyMs: number };
 export type DailyAtSchedule = { kind: "dailyAt"; hour: number; minute?: number };
@@ -86,11 +89,19 @@ export const jobDefinitions: JobDefinition[] = [
     schedule: { kind: "interval", everyMs: 30 * 60 * 1000 },
     run: async (log) => {
       const manager = await ensureContentSourcesRegistered();
-      log.info("Trigger incremental sync");
+      log.info("sync_started");
       const res = await manager.syncAll(false);
-      log.info(
-        `Sync done: processed=${res.stats.totalProcessed} created=${res.stats.created} updated=${res.stats.updated} errors=${res.errors.length}`
-      );
+      log.info("sync_completed", {
+        stats: res.stats,
+        errors: res.errors,
+        warnings: res.warnings ?? [],
+      });
+      if (res.errors.length > 0) {
+        log.error("sync_errors", {
+          count: res.errors.length,
+          samples: res.errors.slice(0, 3),
+        });
+      }
     },
   },
   {
@@ -99,11 +110,16 @@ export const jobDefinitions: JobDefinition[] = [
     description: "每1小时对增量内容进行向量化",
     schedule: { kind: "interval", everyMs: 60 * 60 * 1000 },
     run: async (log) => {
-      log.info("Trigger incremental vectorization");
+      log.info("vectorization_started", { mode: "incremental" });
       const { stats } = await vectorizeAll({ isFull: false });
-      log.info(
-        `Vectorization done: processed=${stats.processed} success=${stats.success} failed=${stats.failed}`
-      );
+      log.info("vectorization_completed", {
+        processed: stats.processed,
+        success: stats.success,
+        failed: stats.failed,
+      });
+      if (stats.failed > 0) {
+        log.error("vectorization_failures", { failed: stats.failed });
+      }
     },
   },
   {
@@ -113,7 +129,7 @@ export const jobDefinitions: JobDefinition[] = [
     schedule: { kind: "dailyAt", hour: 3, minute: 0 },
     run: async (log) => {
       // 实际清理在 scheduler 内部统一处理（删除文件并回写 DB 标记）
-      log.info("Cleanup job logs older than 7 days");
+      log.info("cleanup_scheduled", { keepDays: 7 });
     },
   },
 ];
