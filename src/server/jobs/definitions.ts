@@ -89,8 +89,23 @@ export const jobDefinitions: JobDefinition[] = [
     schedule: { kind: "interval", everyMs: 30 * 60 * 1000 },
     run: async (log) => {
       const manager = await ensureContentSourcesRegistered();
+      const sources = manager.getSources();
+      if (sources.length === 0) {
+        log.info("sync_skipped", { reason: "no_sources" });
+        return;
+      }
       log.info("sync_started");
       const res = await manager.syncAll(false);
+      const noSourcesError =
+        res.errors.length > 0 &&
+        res.errors.every((err) =>
+          typeof err.message === "string" ? err.message.includes("没有启用的内容源") : false
+        );
+      if (noSourcesError) {
+        log.info("sync_skipped", { reason: "no_sources" });
+        return;
+      }
+
       log.info("sync_completed", {
         stats: res.stats,
         errors: res.errors,
