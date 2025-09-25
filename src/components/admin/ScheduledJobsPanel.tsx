@@ -171,42 +171,34 @@ export function ScheduledJobsPanel() {
             <span className="loading loading-dots loading-lg text-secondary" />
           </div>
         ) : recentRuns && recentRuns.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-box border border-base-200 divide-y divide-base-200">
             {recentRuns.map((run) => (
               <div
                 key={run.id}
-                className="card bg-base-100 border border-base-200 shadow-lg transition-transform hover:-translate-y-1 hover:shadow-2xl"
+                className="flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-base-200/40"
               >
-                <div className="card-body gap-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <Link
-                        href={`/admin/schedules/runs/${run.id}`}
-                        className="text-lg font-semibold leading-snug hover:text-primary transition-colors"
-                      >
-                        {run.jobName}
-                      </Link>
-                      <p className="text-xs text-base-content/50 font-mono">{run.jobKey}</p>
-                    </div>
-                    {renderStatusBadge(run.status)}
-                  </div>
-
-                  <div className="space-y-2 text-sm text-base-content/70">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">开始</span>
-                      <span>{formatTime(run.startedAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">结束</span>
-                      <span>{formatTime(run.finishedAt)}</span>
-                    </div>
-                  </div>
-
-                  <div className="card-actions justify-end">
-                    <Link href={`/admin/schedules/runs/${run.id}`} className="btn btn-xs btn-ghost">
-                      查看日志
-                    </Link>
-                  </div>
+                <div className="min-w-[12rem] flex-1">
+                  <Link
+                    href={`/admin/schedules/runs/${run.id}`}
+                    className="font-semibold text-base-content hover:text-primary transition-colors"
+                  >
+                    {run.jobName}
+                  </Link>
+                  <p className="text-xs text-base-content/50 font-mono mt-1">{run.jobKey}</p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-base-content/70">
+                  <span className="font-medium">开始</span>
+                  <span>{formatTime(run.startedAt)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-base-content/70">
+                  <span className="font-medium">结束</span>
+                  <span>{formatTime(run.finishedAt)}</span>
+                </div>
+                <div className="flex items-center gap-3 ml-auto">
+                  {renderStatusBadge(run.status)}
+                  <Link href={`/admin/schedules/runs/${run.id}`} className="btn btn-xs btn-ghost">
+                    查看日志
+                  </Link>
                 </div>
               </div>
             ))}
