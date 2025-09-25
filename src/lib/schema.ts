@@ -211,6 +211,29 @@ export const contentSyncStatus = sqliteTable("content_sync_status", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+export const jobRuns = sqliteTable(
+  "job_runs",
+  {
+    id: text("id").primaryKey(),
+    jobKey: text("job_key").notNull(),
+    jobName: text("job_name").notNull(),
+    status: text("status", { enum: ["running", "success", "error"] }).notNull(),
+    triggeredBy: text("triggered_by", { enum: ["scheduler", "manual"] })
+      .notNull()
+      .default("scheduler"),
+    attempt: integer("attempt").notNull().default(1),
+    startedAt: integer("started_at").notNull(),
+    finishedAt: integer("finished_at"),
+    logPath: text("log_path").notNull(),
+    logDeleted: integer("log_deleted", { mode: "boolean" }).notNull().default(false),
+    errorMessage: text("error_message"),
+  },
+  (t) => ({
+    jobKeyTimeIdx: index("job_runs_idx_job_time").on(t.jobKey, t.startedAt),
+    statusIdx: index("job_runs_idx_status").on(t.status),
+  })
+);
+
 // 类型导出
 export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data
 export type NewVectorizedFile = typeof vectorizedFiles.$inferInsert; // Infer type for inserting data
@@ -223,6 +246,9 @@ export type NewContentSyncLog = typeof contentSyncLogs.$inferInsert;
 
 export type ContentSyncStatus = typeof contentSyncStatus.$inferSelect;
 export type NewContentSyncStatus = typeof contentSyncStatus.$inferInsert;
+
+export type JobRun = typeof jobRuns.$inferSelect;
+export type NewJobRun = typeof jobRuns.$inferInsert;
 
 // Posts 类型导出
 export type Post = typeof posts.$inferSelect;

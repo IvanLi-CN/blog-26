@@ -69,6 +69,8 @@ services:
     volumes:
       # 数据持久化（固定挂载到 docker-data/）
       - ./docker-data:/app/data
+      # 任务运行日志（明确绑定到宿主机目录）
+      - ./docker-data/job-logs:/app/data/job-logs
       # 数据库迁移文件
       - ./drizzle:/app/drizzle
     restart: unless-stopped
