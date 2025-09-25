@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import type { ExternalsFunctionElement } from "webpack";
 
 const nextConfig: NextConfig = {
   // Configure `pageExtensions` to include markdown and MDX files
@@ -34,10 +35,28 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Removed custom Webpack config to avoid conflicts with Turbopack.
-  // Next.js already externalizes common E2E tooling (e.g. Playwright/Puppeteer)
-  // on the server by default under Turbopack, so an explicit webpack() block
-  // is unnecessary and triggers a warning.
+  webpack(config, { isServer }) {
+    if (isServer) {
+      const externals: ExternalsFunctionElement[] = Array.isArray(config.externals)
+        ? [...config.externals]
+        : config.externals
+          ? [config.externals as ExternalsFunctionElement]
+          : [];
+
+      externals.push((ctx, callback) => {
+        const request = ctx.request ?? "";
+        if (request.startsWith("bun:") || request.startsWith("node:")) {
+          callback(undefined, `commonjs ${ctx.request}`);
+          return;
+        }
+        callback();
+      });
+
+      config.externals = externals;
+    }
+
+    return config;
+  },
 
   // 禁用静态优化来避免构建时错误
   output: "standalone",
