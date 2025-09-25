@@ -59,6 +59,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                     <Link href="/admin/vectorize">向量化</Link>
                   </li>
                   <li>
+                    <Link href="/admin/schedules">定时任务</Link>
+                  </li>
+                  <li>
                     <Link href="/admin/pats">访问令牌</Link>
                   </li>
                   <li>

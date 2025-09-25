@@ -29,6 +29,19 @@
     "comments",
     "admin"
   ],
+  "browserslist": {
+    "production": [
+      "chrome >= 112",
+      "edge >= 112",
+      "firefox >= 113",
+      "safari >= 16.4"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
   "engines": {
     "bun": "^1.0.0"
   },

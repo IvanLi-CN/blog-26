@@ -3,6 +3,7 @@ import { adminCommentsRouter } from "./comments";
 import { adminContentSyncRouter } from "./content-sync";
 import { adminDashboardRouter } from "./dashboard";
 import { filesRouter } from "./files";
+import { adminJobsRouter } from "./jobs";
 import { adminPersonalAccessTokensRouter } from "./personal-access-tokens";
 import { adminPostsRouter } from "./posts";
 import { adminVectorizeRouter } from "./vectorize";
@@ -17,6 +18,7 @@ export const adminRouter = createTRPCRouter({
   comments: adminCommentsRouter,
   contentSync: adminContentSyncRouter,
   vectorize: adminVectorizeRouter,
+  jobs: adminJobsRouter,
   files: filesRouter,
   personalAccessTokens: adminPersonalAccessTokensRouter,
 });

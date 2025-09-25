@@ -162,6 +162,18 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
     }
   }
 
+  if (bypassAdmin && !user) {
+    const adminEmail = getAdminEmail();
+    user = {
+      id: "bypass-admin",
+      nickname: adminEmail.split("@")[0],
+      email: adminEmail,
+      avatarUrl: undefined,
+    };
+    isAdmin = true;
+    console.log("✅ [AUTH-UTILS] Bypass admin enabled, synthetic admin user injected");
+  }
+
   console.log("🔍 [AUTH-UTILS] 最终权限结果:", {
     hasUser: !!user,
     userEmail: user?.email,
