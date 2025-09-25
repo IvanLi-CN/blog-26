@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 function formatTime(ts?: number | null) {
@@ -11,100 +11,216 @@ function formatTime(ts?: number | null) {
 }
 
 export function ScheduledJobsPanel() {
-  const { data: jobs, refetch } = trpc.admin.jobs.list.useQuery();
-  const { data: recentRuns, refetch: refetchRuns } = trpc.admin.jobs.runs.useQuery({ limit: 10 });
+  const {
+    data: jobs,
+    isLoading: jobsLoading,
+    isFetching: jobsFetching,
+    refetch: refetchJobs,
+  } = trpc.admin.jobs.list.useQuery();
+  const {
+    data: recentRuns,
+    isLoading: runsLoading,
+    isFetching: runsFetching,
+    refetch: refetchRuns,
+  } = trpc.admin.jobs.runs.useQuery({ limit: 12 });
   const trigger = trpc.admin.jobs.trigger.useMutation({
     onSuccess: () => {
-      refetch();
+      refetchJobs();
       refetchRuns();
     },
   });
   const [triggering, setTriggering] = useState<string | null>(null);
 
+  const isLoading = useMemo(() => jobsLoading || runsLoading, [jobsLoading, runsLoading]);
+
+  const renderStatusBadge = (status: string) => {
+    const palette: Record<string, string> = {
+      running: "badge-warning",
+      success: "badge-success",
+      error: "badge-error",
+    };
+    return (
+      <span
+        className={`badge badge-sm font-semibold uppercase ${palette[status] ?? "badge-ghost"}`}
+      >
+        {status}
+      </span>
+    );
+  };
+
   return (
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">定时任务</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full border divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800/50">
-              <tr>
-                <th className="px-4 py-2 text-left">名称</th>
-                <th className="px-4 py-2 text-left">周期</th>
-                <th className="px-4 py-2 text-left">上次执行</th>
-                <th className="px-4 py-2 text-left">下次执行</th>
-                <th className="px-4 py-2 text-left">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs?.map((j) => (
-                <tr
-                  key={j.key}
-                  className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-900 dark:even:bg-gray-800"
-                >
-                  <td className="px-4 py-2">
-                    <div className="font-medium">
-                      <Link href={`/admin/schedules/${j.key}`}>{j.name}</Link>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {j.key}
-                      {j.running ? " · 运行中" : ""}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2">{j.scheduleText}</td>
-                  <td className="px-4 py-2">{formatTime(j.lastRunAt)}</td>
-                  <td className="px-4 py-2">{formatTime(j.nextRunAt)}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      type="button"
-                      className="px-3 py-1 rounded bg-blue-600 text-white disabled:opacity-50"
-                      disabled={trigger.isPending || j.running || triggering === j.key}
-                      onClick={async () => {
-                        setTriggering(j.key);
-                        try {
-                          await trigger.mutateAsync({ key: j.key });
-                        } finally {
-                          setTriggering(null);
-                        }
-                      }}
-                    >
-                      手动触发
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="space-y-10">
+      <section className="card bg-base-100 border border-base-200 shadow-xl">
+        <div className="card-body gap-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="card-title text-3xl">定时任务</h2>
+              <p className="text-sm text-base-content/60">
+                管理所有后台任务的调度频率、运行状态与下一次执行时间。
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  refetchJobs();
+                  refetchRuns();
+                }}
+                disabled={jobsFetching || runsFetching}
+              >
+                {jobsFetching || runsFetching ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  "刷新"
+                )}
+              </button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-16">
+              <span className="loading loading-spinner loading-lg text-primary" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto border border-base-200 rounded-box">
+              <table className="table table-pin-rows table-zebra">
+                <thead>
+                  <tr>
+                    <th className="w-1/4">任务</th>
+                    <th className="w-1/5">周期</th>
+                    <th className="w-1/5">上次执行</th>
+                    <th className="w-1/5">下次执行</th>
+                    <th className="text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobs?.map((job) => (
+                    <tr key={job.key} className="hover">
+                      <td>
+                        <div className="flex flex-col gap-1">
+                          <Link
+                            href={`/admin/schedules/${job.key}`}
+                            className="font-semibold text-base-content hover:text-primary transition-colors"
+                          >
+                            {job.name}
+                          </Link>
+                          <div className="text-xs text-base-content/60 flex items-center gap-2">
+                            <span className="font-mono">{job.key}</span>
+                            {job.running ? (
+                              <span className="badge badge-xs badge-warning">运行中</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge badge-neutral badge-outline badge-sm font-mono">
+                          {job.scheduleText}
+                        </span>
+                      </td>
+                      <td className="text-sm text-base-content/70">{formatTime(job.lastRunAt)}</td>
+                      <td className="text-sm text-base-content/70">{formatTime(job.nextRunAt)}</td>
+                      <td className="text-right">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          disabled={trigger.isPending || job.running || triggering === job.key}
+                          onClick={async () => {
+                            setTriggering(job.key);
+                            try {
+                              await trigger.mutateAsync({ key: job.key });
+                            } finally {
+                              setTriggering(null);
+                            }
+                          }}
+                        >
+                          {triggering === job.key || trigger.isPending ? (
+                            <span className="loading loading-spinner loading-xs" />
+                          ) : (
+                            "手动触发"
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
 
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">最近执行记录</h2>
-        <div className="space-y-2">
-          {recentRuns?.map((r) => (
-            <div key={r.id} className="p-3 rounded border dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Link
-                    className="font-medium hover:underline"
-                    href={`/admin/schedules/runs/${r.id}`}
-                  >
-                    {r.jobName}
-                  </Link>
-                  <span className="ml-2 text-xs text-gray-500">{r.jobKey}</span>
-                </div>
-                <span
-                  className={`text-sm ${r.status === "success" ? "text-green-600" : r.status === "error" ? "text-red-600" : "text-yellow-600"}`}
-                >
-                  {r.status}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                开始 {formatTime(r.startedAt)} · 结束 {formatTime(r.finishedAt)}
-              </div>
-            </div>
-          ))}
+      <section className="space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-semibold">最近执行记录</h3>
+            <p className="text-sm text-base-content/60">快速查看最新任务执行状态与时间线。</p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => refetchRuns()}
+            disabled={runsFetching}
+          >
+            {runsFetching ? <span className="loading loading-spinner loading-xs" /> : "刷新记录"}
+          </button>
         </div>
+
+        {runsLoading ? (
+          <div className="flex justify-center py-12">
+            <span className="loading loading-dots loading-lg text-secondary" />
+          </div>
+        ) : recentRuns && recentRuns.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {recentRuns.map((run) => (
+              <div
+                key={run.id}
+                className="card bg-base-100 border border-base-200 shadow-lg transition-transform hover:-translate-y-1 hover:shadow-2xl"
+              >
+                <div className="card-body gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <Link
+                        href={`/admin/schedules/runs/${run.id}`}
+                        className="text-lg font-semibold leading-snug hover:text-primary transition-colors"
+                      >
+                        {run.jobName}
+                      </Link>
+                      <p className="text-xs text-base-content/50 font-mono">{run.jobKey}</p>
+                    </div>
+                    {renderStatusBadge(run.status)}
+                  </div>
+
+                  <div className="space-y-2 text-sm text-base-content/70">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">开始</span>
+                      <span>{formatTime(run.startedAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">结束</span>
+                      <span>{formatTime(run.finishedAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="card-actions justify-end">
+                    <Link href={`/admin/schedules/runs/${run.id}`} className="btn btn-xs btn-ghost">
+                      查看日志
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="card bg-base-100 border border-dashed border-base-200">
+            <div className="card-body items-center text-center space-y-2">
+              <h4 className="font-semibold text-base-content">暂无执行记录</h4>
+              <p className="text-sm text-base-content/60">
+                可以通过上方列表的“手动触发”按钮立即启动任务，随后查看执行详情。
+              </p>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
