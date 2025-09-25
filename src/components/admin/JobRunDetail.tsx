@@ -72,10 +72,19 @@ export function JobRunDetail({ runId }: JobRunDetailProps) {
           const parsed = JSON.parse(line) as ParsedLogEntry;
           return parsed;
         } catch (_err) {
+          const legacyMatch = line.match(/^\[(.+?)\]\s*(.*)$/);
+          let ts = new Date().toISOString();
+          let message = line;
+          if (legacyMatch) {
+            const [, tsRaw, rest] = legacyMatch;
+            const parsedTs = new Date(tsRaw);
+            if (!Number.isNaN(parsedTs.getTime())) ts = parsedTs.toISOString();
+            message = rest.trim();
+          }
           return {
-            ts: new Date().toISOString(),
+            ts,
             level: "info",
-            message: line,
+            message,
           };
         }
       });
