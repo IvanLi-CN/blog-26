@@ -110,7 +110,7 @@ export function JobRunsList({ jobKey }: JobRunsListProps) {
                 <td className="align-middle text-right">
                   <Link
                     href={`/admin/schedules/runs/${run.id}`}
-                    className="btn btn-sm btn-ghost inline-flex min-w-[6rem] justify-end"
+                    className="btn btn-sm btn-ghost whitespace-nowrap"
                   >
                     查看详情
                   </Link>
