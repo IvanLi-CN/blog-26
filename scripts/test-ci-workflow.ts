@@ -92,6 +92,11 @@ class CIWorkflowTester {
         args: ["install", "--frozen-lockfile"],
       },
       {
+        name: "MCP PAT 冒烟测试",
+        command: "bun",
+        args: ["test", "tests/mcp"],
+      },
+      {
         name: "初始化数据库",
         command: "bun",
         args: ["run", "migrate"],

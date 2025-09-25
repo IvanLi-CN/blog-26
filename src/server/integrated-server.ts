@@ -9,8 +9,12 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import next from "next";
+import { getAdminEmail } from "../lib/admin-config";
 import { isAdminFromHeaders } from "../lib/auth";
 import { buildHttpUrl } from "../lib/url-builder";
+import { getMcpTransport } from "./mcp";
+import { runWithMcpAuth } from "./mcp-auth-context";
+import { resolveUserByPersonalAccessToken } from "./services/personal-access-tokens";
 
 // 强化修复 Next.js 15 在所有环境中的 AsyncLocalStorage 问题
 console.log("🔧 [INTEGRATED-SERVER] 修复 AsyncLocalStorage...");
@@ -54,6 +58,44 @@ export async function startIntegratedServer() {
     server = createServer(async (req, res) => {
       try {
         const parsedUrl = parse(req.url || "", true);
+        const pathname = parsedUrl.pathname || "/";
+
+        // MCP endpoint (integrated)
+        if (pathname === "/mcp") {
+          const transport = await getMcpTransport();
+
+          // 仅使用 PAT（Authorization: Bearer <token>）进行鉴权
+          const headers = new Headers();
+          for (const [k, v] of Object.entries(req.headers)) {
+            if (Array.isArray(v)) headers.set(k, v.join(", "));
+            else if (typeof v === "string") headers.set(k, v);
+          }
+
+          const authz = headers.get("authorization") || headers.get("Authorization");
+          let userEmail: string | undefined;
+          let isAdmin = false;
+          if (authz) {
+            const m = authz.match(/^Bearer\s+(.+)$/i);
+            const rawToken = m?.[1]?.trim();
+            if (rawToken) {
+              try {
+                const resolved = await resolveUserByPersonalAccessToken(rawToken);
+                if (resolved) {
+                  userEmail = resolved.user.email;
+                  const adminEmail = getAdminEmail();
+                  isAdmin = !!adminEmail && userEmail === adminEmail;
+                }
+              } catch (e) {
+                console.warn("[MCP] PAT resolve failed:", e);
+              }
+            }
+          }
+
+          await runWithMcpAuth({ isAdmin, userEmail }, async () => {
+            await transport.handleRequest(req as any, res as any);
+          });
+          return;
+        }
 
         // 请求级日志：打印所有请求头 + Forward Email 与管理员判定
         try {
