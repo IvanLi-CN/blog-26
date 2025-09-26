@@ -114,7 +114,7 @@ class CIWorkflowTester {
       {
         name: "验证测试数据",
         command: "bun",
-        args: ["run", "db:posts"],
+        args: ["run", "test-db:posts"],
       },
       {
         name: "运行E2E测试",
