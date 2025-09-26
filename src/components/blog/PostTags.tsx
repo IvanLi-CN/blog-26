@@ -1,4 +1,4 @@
-import { Icon } from "@iconify/react";
+import { Hash } from "lucide-react";
 import Link from "next/link";
 
 interface Tag {
@@ -13,31 +13,7 @@ interface PostTagsProps {
   isCategory?: boolean;
 }
 
-// 根据标签类型获取图标
-function getTagIcon(tagTitle: string): string {
-  const lowerTitle = tagTitle.toLowerCase();
-
-  // 技术类标签
-  if (lowerTitle.includes("hardware") || lowerTitle.includes("circuit")) return "tabler:cpu";
-  if (lowerTitle.includes("project") || lowerTitle.includes("ups")) return "tabler:rocket";
-  if (lowerTitle.includes("software") || lowerTitle.includes("code")) return "tabler:code";
-  if (lowerTitle.includes("web") || lowerTitle.includes("frontend")) return "tabler:world-www";
-  if (lowerTitle.includes("backend") || lowerTitle.includes("server")) return "tabler:server";
-  if (lowerTitle.includes("database") || lowerTitle.includes("db")) return "tabler:database";
-  if (lowerTitle.includes("ai") || lowerTitle.includes("ml")) return "tabler:brain";
-  if (lowerTitle.includes("design") || lowerTitle.includes("ui")) return "tabler:palette";
-  if (lowerTitle.includes("tool") || lowerTitle.includes("utility")) return "tabler:tool";
-
-  // 特定技术标签
-  if (lowerTitle === "diy") return "tabler:hammer";
-  if (lowerTitle === "stm32") return "tabler:cpu-2";
-  if (lowerTitle === "usb") return "tabler:usb";
-  if (lowerTitle === "rust") return "tabler:brand-rust";
-  if (lowerTitle.includes("pd-sink") || lowerTitle.includes("power")) return "tabler:plug";
-
-  // 默认图标
-  return "tabler:tag";
-}
+// 默认统一为 Hash 图标（post 内容标签显示规则）
 
 // 根据标签类型获取颜色主题
 function getTagColorTheme(tagTitle: string): string {
@@ -145,8 +121,8 @@ export default function PostTags({
                 <span
                   className={`flex items-center gap-1 ${isMultiLevel ? "font-semibold text-primary" : ""}`}
                 >
-                  <Icon icon={getTagIcon(tag.title)} className="w-3 h-3" />
-                  {lastSegment}
+                  <Hash className="inline-block sm:hidden md:inline-block w-3 h-3" aria-hidden />
+                  {String(lastSegment).replace(/^#/, "")}
                 </span>
               </Link>
             </li>

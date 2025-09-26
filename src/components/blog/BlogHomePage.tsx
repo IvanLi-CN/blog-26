@@ -1,5 +1,6 @@
 "use client";
 
+import { Hash } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { SITE } from "@/config/site";
@@ -125,8 +126,15 @@ export default function BlogHomePage() {
                                     .map((tag) => String(tag).trim())
                                     .filter(Boolean)
                                     .map((tag) => (
-                                      <span key={tag} className="badge badge-ghost badge-sm">
-                                        #{tag}
+                                      <span
+                                        key={tag}
+                                        className="badge badge-ghost badge-sm inline-flex items-center gap-1"
+                                      >
+                                        <Hash
+                                          className="inline-block sm:hidden md:inline-block w-3 h-3"
+                                          aria-hidden
+                                        />
+                                        <span>{String(tag).replace(/^#/, "")}</span>
                                       </span>
                                     ))}
                                 </div>

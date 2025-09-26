@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import { Hash } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/config/site";
@@ -161,9 +162,10 @@ function PostTags({ tags, showVectorized }: PostTagsProps) {
         <Link
           key={tag}
           href={`/tag/${encodeURIComponent(tag)}`}
-          className="badge badge-outline badge-sm hover:badge-primary transition-colors"
+          className="badge badge-outline badge-sm hover:badge-primary transition-colors inline-flex items-center gap-1"
         >
-          #{tag}
+          <Hash className="inline-block sm:hidden md:inline-block w-3 h-3" aria-hidden />
+          <span>{String(tag).replace(/^#/, "")}</span>
         </Link>
       ))}
       {showVectorized && (
