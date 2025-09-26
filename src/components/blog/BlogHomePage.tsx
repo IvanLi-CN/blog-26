@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useState } from "react";
 import { SITE } from "@/config/site";
+import { useAuth } from "../../hooks/useAuth";
 import { trpc } from "../../lib/trpc";
 import PageLayout from "../common/PageLayout";
 import PostTags from "./PostTags";
+import { resolvePostTiming } from "./time-utils";
 
 export default function BlogHomePage() {
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState<string>("all");
+  const { isAdmin } = useAuth();
 
   const { data, isLoading, error } = trpc.posts.list.useQuery({
     page,
@@ -102,6 +105,16 @@ export default function BlogHomePage() {
                   const authorName = post.author?.trim() || SITE.author.name;
                   const authorInitial = authorName.charAt(0).toUpperCase();
 
+                  const timing = resolvePostTiming(post);
+                  const publishDateTimeAttr = timing.publishDateTimeAttr ?? undefined;
+                  const publishTitle = timing.publishTitle ?? undefined;
+                  const relativePublish = timing.relativePublish;
+                  const relativeUpdate = timing.relativeUpdate;
+                  const shouldShowUpdateHint =
+                    Boolean(isAdmin) && Boolean(relativeUpdate) && timing.shouldShowUpdateHint;
+                  const fallbackLabel =
+                    Boolean(isAdmin) && timing.fallbackLabel ? timing.fallbackLabel : null;
+
                   return (
                     <article key={post.id} className="card bg-base-100 shadow-xl">
                       <div className="card-body">
@@ -115,8 +128,25 @@ export default function BlogHomePage() {
                                 {post.title}
                               </Link>
                             </h2>
-                            <div className="flex items-center gap-4 text-sm text-base-content/70">
-                              <span>📅 {new Date(post.publishDate).toLocaleDateString()}</span>
+                            <div className="flex items-center gap-3 text-sm text-base-content/70 flex-wrap">
+                              <span className="inline-flex items-center gap-1">
+                                <span role="img" aria-label="时间">
+                                  🕒
+                                </span>
+                                <time dateTime={publishDateTimeAttr} title={publishTitle}>
+                                  {relativePublish}
+                                </time>
+                                {shouldShowUpdateHint && relativeUpdate && (
+                                  <span className="whitespace-nowrap text-xs text-base-content/50 italic">
+                                    (编辑于 {relativeUpdate})
+                                  </span>
+                                )}
+                                {fallbackLabel && (
+                                  <span className="text-warning/80 flex-shrink-0">
+                                    {fallbackLabel}
+                                  </span>
+                                )}
+                              </span>
                               {post.category && (
                                 <span className="badge badge-outline">{post.category}</span>
                               )}

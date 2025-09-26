@@ -6,8 +6,6 @@
  * 展示单个 memo 的详细内容，支持编辑功能
  */
 
-import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
 import {
   ArrowLeft,
   Calendar,
@@ -29,7 +27,7 @@ import { SITE } from "../../config/site";
 import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { trpc } from "../../lib/trpc";
-import { cn } from "../../lib/utils";
+import { cn, formatRelativeTime } from "../../lib/utils";
 import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -111,15 +109,12 @@ export function MemoDetailPage({
 
   // 格式化时间
   const formatTime = useCallback((dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return formatDistanceToNow(date, {
-        addSuffix: true,
-        locale: zhCN,
-      });
-    } catch {
+    if (!dateString) {
       return "未知时间";
     }
+
+    const result = formatRelativeTime(dateString);
+    return result ?? "未知时间";
   }, []);
 
   // 处理编辑保存

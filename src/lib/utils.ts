@@ -14,6 +14,116 @@ export const formatter: Intl.DateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
 
 export const getFormattedDate = (date: Date): string => (date ? formatter.format(date) : "");
 
+type DateLike = Date | number | string | null | undefined;
+
+const RELATIVE_TIME_UNITS: Array<{
+  unit: "year" | "month" | "week" | "day" | "hour" | "minute" | "second";
+  ms: number;
+}> = [
+  { unit: "year", ms: 1000 * 60 * 60 * 24 * 365 },
+  { unit: "month", ms: 1000 * 60 * 60 * 24 * 30 },
+  { unit: "week", ms: 1000 * 60 * 60 * 24 * 7 },
+  { unit: "day", ms: 1000 * 60 * 60 * 24 },
+  { unit: "hour", ms: 1000 * 60 * 60 },
+  { unit: "minute", ms: 1000 * 60 },
+  { unit: "second", ms: 1000 },
+];
+
+const RELATIVE_UNIT_LABEL: Record<(typeof RELATIVE_TIME_UNITS)[number]["unit"], string> = {
+  year: "年",
+  month: "个月",
+  week: "周",
+  day: "天",
+  hour: "小时",
+  minute: "分钟",
+  second: "秒",
+};
+
+function normalizeToMs(input: DateLike): number | null {
+  if (!input) return null;
+
+  if (input instanceof Date) {
+    const value = input.getTime();
+    return Number.isNaN(value) ? null : value;
+  }
+
+  if (typeof input === "number") {
+    if (!Number.isFinite(input)) return null;
+    const normalized = toMsTimestamp(input);
+    return normalized > 0 ? normalized : null;
+  }
+
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+      const numericValue = Number.parseFloat(trimmed);
+      if (!Number.isFinite(numericValue)) return null;
+      const normalized = toMsTimestamp(numericValue);
+      return normalized > 0 ? normalized : null;
+    }
+    const parsed = Date.parse(trimmed);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return null;
+}
+
+export function formatAbsoluteDate(input: DateLike): string | null {
+  const ms = normalizeToMs(input);
+  if (ms === null) return null;
+  const date = new Date(ms);
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
+}
+
+export function toDate(input: DateLike): Date | null {
+  const ms = normalizeToMs(input);
+  if (ms === null) return null;
+  const date = new Date(ms);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatRelativeTime(input: DateLike): string | null {
+  const ms = normalizeToMs(input);
+  if (ms === null) return null;
+
+  const now = Date.now();
+  const diff = ms - now;
+  const absDiff = Math.abs(diff);
+
+  if (absDiff < 30 * 1000) {
+    return "刚刚";
+  }
+
+  for (const { unit, ms: unitMs } of RELATIVE_TIME_UNITS) {
+    if (absDiff >= unitMs || unit === "second") {
+      const value = Math.round(diff / unitMs);
+      if (Math.abs(value) === 0) {
+        return "刚刚";
+      }
+
+      // 为了更好阅读体验，添加空格（例："20 小时前"）
+      const label = RELATIVE_UNIT_LABEL[unit];
+      const magnitude = Math.abs(value);
+      if (value <= 0) {
+        return `${magnitude} ${label}前`;
+      }
+
+      return `${magnitude} ${label}后`;
+    }
+  }
+
+  return null;
+}
+
 // 将时间戳统一归一化为毫秒（兼容秒/毫秒两种输入）
 export const toMsTimestamp = (timestamp: number): number => {
   if (!timestamp) return 0;
