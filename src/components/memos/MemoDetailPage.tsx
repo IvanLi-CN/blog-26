@@ -15,6 +15,7 @@ import {
   Edit3,
   ExternalLink,
   Globe,
+  Hash,
   Lock,
   MoreHorizontal,
   Share2,
@@ -364,13 +365,14 @@ export function MemoDetailPage({
         </div>
       </div>
 
-      {/* 顶部：仅展示标签（标题由内容内提取，不再额外渲染） */}
+      {/* 顶部：标签列表（每个标签内部左侧显示 # 图标，仅 md+ 可见） */}
       <div className="mb-6">
         {derivedTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {derivedTags.map((tag: string) => (
-              <Badge key={tag} variant="secondary">
-                #{tag}
+              <Badge key={tag} variant="secondary" className="inline-flex items-center gap-1">
+                <Hash className="inline-block sm:hidden md:inline-block w-3 h-3" aria-hidden />
+                <span>{tag.replace(/^#/, "")}</span>
               </Badge>
             ))}
           </div>
