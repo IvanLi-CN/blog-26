@@ -16,6 +16,7 @@
  */
 
 import { Icon } from "@iconify/react";
+import { Hash } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseContentTags } from "@/lib/tag-parser";
@@ -516,8 +517,15 @@ export function MemoCard({
               {derivedTags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2 sm:mt-3">
                   {derivedTags.map((tag: string) => (
-                    <span key={tag} className="badge badge-outline badge-sm">
-                      #{tag}
+                    <span
+                      key={tag}
+                      className="badge badge-outline badge-sm inline-flex items-center gap-1"
+                    >
+                      <Hash
+                        className="inline-block sm:hidden md:inline-block w-3 h-3"
+                        aria-hidden
+                      />
+                      <span>{String(tag).replace(/^#/, "")}</span>
                     </span>
                   ))}
                 </div>

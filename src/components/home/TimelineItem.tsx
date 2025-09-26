@@ -257,24 +257,18 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
               {/* 标签 */}
               {item.tags && item.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-3">
-                  {item.tags.slice(0, 3).map((tag: string) =>
-                    item.type === "post" ? (
-                      <span
-                        key={tag}
-                        className="badge badge-outline badge-xs md:badge-sm inline-flex items-center gap-1"
-                      >
-                        <Hash
-                          className="inline-block sm:hidden md:inline-block w-3 h-3"
-                          aria-hidden
-                        />
-                        <span>{String(tag).replace(/^#/, "")}</span>
-                      </span>
-                    ) : (
-                      <span key={tag} className="badge badge-outline badge-xs md:badge-sm">
-                        #{tag}
-                      </span>
-                    )
-                  )}
+                  {item.tags.slice(0, 3).map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="badge badge-outline badge-xs md:badge-sm inline-flex items-center gap-1"
+                    >
+                      <Hash
+                        className="inline-block sm:hidden md:inline-block w-3 h-3"
+                        aria-hidden
+                      />
+                      <span>{String(tag).replace(/^#/, "")}</span>
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
