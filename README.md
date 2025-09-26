@@ -9,9 +9,9 @@ This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 For a fresh checkout or worktree, run:
 
 ```bash
-./scripts/setup.sh --with-db     # add --with-e2e to install Playwright browsers
+./scripts/setup.sh               # add --with-e2e to install Playwright browsers
 # or equivalently
-bun run setup -- --with-db
+bun run setup
 # legacy/alternate entry (same behavior)
 # legacy/alternate entry (removed)
 # bun run prepare:dev --with-db
@@ -22,18 +22,18 @@ What it does:
 - Installs dependencies with `bun install`.
 - Installs git hooks via `lefthook` (pre-commit, commit-msg with commitlint).
 - Validates dev ports: defaults to `PORT=25090`, `WEBDAV_PORT=26091`; overrides allowed via env. Ports must be free, otherwise the script exits with error. No `.env` files are created.
-- Optionally resets dev DB and seeds sample content (`--with-db`).
+- Resets dev DB and seeds sample content by default (pass `--no-db` to skip).
 - Optional E2E browsers install (`--with-e2e`).
 
-Flags: `--dry-run`, `--force-env`, `--with-db`, `--with-e2e`.
+Flags: `--dry-run`, `--force-env`, `--no-db`, `--with-e2e`.
+Deprecated: `--with-db` (now default behavior).
 Env overrides: `PORT=<web_port> WEBDAV_PORT=<webdav_port>`
 
 ### Worktree Development (Quick Start)
 
 ```bash
 git worktree add -b feat/some-change ../blog-nextjs-wt-some-change
-cd ../blog-nextjs-wt-some-change
-./scripts/setup.sh --with-db
+./scripts/setup.sh
 bun run dev
 ```
 
@@ -53,14 +53,21 @@ bunx playwright install
 brew install dufs       # or: cargo install dufs
 ```
 
-Environment variables: create a local file and tweak values
+Environment variables
 
-```bash
-cp .env.pre .env.local
-# Key vars: ADMIN_EMAIL, SSO_EMAIL_HEADER_NAME (default: Remote-Email),
-# DB_PATH (env-specific default; see section below), WEBDAV_URL, LOCAL_CONTENT_BASE_PATH, etc.
+The repo includes `.env.development` with sane dev defaults (no ports defined):
+
+```env
+DB_PATH=./dev-data/sqlite.db
+LOCAL_CONTENT_BASE_PATH=./dev-data/local
 ```
 
+To customize locally, create `.env.local` (e.g., if you must pin ports for parallel worktrees):
+
+```bash
+cp .env.development .env.local
+# edit only what you need locally; do not commit
+```
 ### Start Dev Environment
 
 ```bash
