@@ -5,6 +5,7 @@ import { useState } from "react";
 import { SITE } from "@/config/site";
 import { trpc } from "../../lib/trpc";
 import PageLayout from "../common/PageLayout";
+import PostTags from "./PostTags";
 
 export default function BlogHomePage() {
   const [page, setPage] = useState(1);
@@ -120,16 +121,7 @@ export default function BlogHomePage() {
                                 <span className="badge badge-outline">{post.category}</span>
                               )}
                               {Array.isArray(post.tags) && post.tags.length > 0 && (
-                                <div className="flex gap-1">
-                                  {post.tags
-                                    .map((tag) => String(tag).trim())
-                                    .filter(Boolean)
-                                    .map((tag) => (
-                                      <span key={tag} className="badge badge-ghost badge-sm">
-                                        #{tag}
-                                      </span>
-                                    ))}
-                                </div>
+                                <PostTags tags={post.tags} className="flex gap-1 flex-wrap" />
                               )}
                             </div>
                           </div>

@@ -41,7 +41,7 @@ async function rpc<T = any>(body: any, auth?: string): Promise<T> {
     Accept: "application/json, text/event-stream",
     "Mcp-Protocol-Version": PROTOCOL_VERSION,
   };
-  if (auth) headers["Authorization"] = `Bearer ${auth}`;
+  if (auth) headers.Authorization = `Bearer ${auth}`;
   const res = await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify(body) });
   const json = (await res.json()) as any;
   return json;
@@ -107,10 +107,14 @@ if (!ENABLE) {
     afterAll(async () => {
       try {
         serverProc?.kill("SIGTERM");
-      } catch {}
+      } catch (error) {
+        console.debug("serverProc cleanup skipped", error);
+      }
       try {
         dufsProc?.kill("SIGTERM");
-      } catch {}
+      } catch (error) {
+        console.debug("dufsProc cleanup skipped", error);
+      }
     });
 
     it("should deny write without PAT", async () => {

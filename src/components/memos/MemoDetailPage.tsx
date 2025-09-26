@@ -30,9 +30,9 @@ import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { trpc } from "../../lib/trpc";
 import { cn } from "../../lib/utils";
+import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -44,6 +44,13 @@ import {
 import AnomalyIndicator from "./AnomalyIndicator";
 import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
+
+const FALLBACK_LABEL_MAP: Record<Exclude<MemoCardData["timeDisplaySource"], undefined>, string> = {
+  publishDate: "",
+  updateDate: "（自动选择）",
+  lastModified: "（自动选择）",
+  unknown: "（自动选择）",
+};
 
 export interface MemoDetailPageProps {
   /** Memo slug */
@@ -175,6 +182,78 @@ export function MemoDetailPage({
     [memo?.content, parsedContent.cleanedContent]
   );
 
+  const publishDateIso = memo?.publishedAt ?? memo?.createdAt ?? memo?.updatedAt ?? null;
+  const updatedAtIso = memo?.updatedAt ?? null;
+  const timeDisplaySource =
+    memo?.timeDisplaySource ?? (memo?.publishedAt ? "publishDate" : "unknown");
+  const fallbackLabel =
+    timeDisplaySource !== "publishDate"
+      ? FALLBACK_LABEL_MAP[timeDisplaySource] || FALLBACK_LABEL_MAP.unknown
+      : "";
+
+  const publishRelative = useMemo(
+    () => (publishDateIso ? formatTime(publishDateIso) : "未知时间"),
+    [formatTime, publishDateIso]
+  );
+
+  const publishFull = useMemo(() => {
+    if (!publishDateIso) {
+      return "未知时间";
+    }
+    try {
+      return new Date(publishDateIso).toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short",
+      });
+    } catch {
+      return publishDateIso;
+    }
+  }, [publishDateIso]);
+
+  const updateRelative = useMemo(
+    () => (updatedAtIso ? formatTime(updatedAtIso) : null),
+    [formatTime, updatedAtIso]
+  );
+
+  const updateFull = useMemo(() => {
+    if (!updatedAtIso) return null;
+    try {
+      return new Date(updatedAtIso).toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short",
+      });
+    } catch {
+      return updatedAtIso;
+    }
+  }, [updatedAtIso]);
+
+  const publishDateTimeAttr = publishDateIso ?? undefined;
+
+  const shouldShowUpdateHint = useMemo(() => {
+    if (!updatedAtIso) {
+      return false;
+    }
+    if (!publishDateIso) {
+      return true;
+    }
+    const publishMs = Date.parse(publishDateIso);
+    const updateMs = Date.parse(updatedAtIso);
+    if (Number.isNaN(publishMs) || Number.isNaN(updateMs)) {
+      return publishDateIso !== updatedAtIso;
+    }
+    return Math.abs(updateMs - publishMs) > 1000;
+  }, [publishDateIso, updatedAtIso]);
+
   // 加载状态
   if (isLoading) {
     return (
@@ -285,17 +364,9 @@ export function MemoDetailPage({
         </div>
       </div>
 
-      {/* 顶部：仅展示标签（标题由内容内提取，不再额外渲染） */}
+      {/* 顶部：标签列表（统一使用 PostTags） */}
       <div className="mb-6">
-        {derivedTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {derivedTags.map((tag: string) => (
-              <Badge key={tag} variant="secondary">
-                #{tag}
-              </Badge>
-            ))}
-          </div>
-        )}
+        {derivedTags.length > 0 && <PostTags tags={derivedTags} className="flex flex-wrap gap-2" />}
       </div>
 
       {/* 内容 */}
@@ -325,9 +396,24 @@ export function MemoDetailPage({
             <span>{memo.author || SITE.author.name}</span>
           </div>
 
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap text-sm">
             <Calendar className="w-4 h-4" />
-            <span>{formatTime(memo.createdAt)}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <time title={publishFull} dateTime={publishDateTimeAttr} className="cursor-help">
+                {publishRelative}
+              </time>
+              {isAdmin && shouldShowUpdateHint && updateRelative && (
+                <span
+                  className="whitespace-nowrap text-xs text-base-content/50 italic"
+                  title={updateFull ?? undefined}
+                >
+                  (编辑于 {updateRelative})
+                </span>
+              )}
+              {fallbackLabel && (
+                <span className="text-warning/80 flex-shrink-0">{fallbackLabel}</span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center space-x-1">

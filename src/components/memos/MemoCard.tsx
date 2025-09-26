@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseContentTags } from "@/lib/tag-parser";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
+import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import AnomalyIndicator from "./AnomalyIndicator";
 
@@ -58,7 +59,9 @@ export interface MemoCardData {
   filePath?: string;
   source: string;
   createdAt: string;
+  publishedAt?: string;
   updatedAt: string;
+  timeDisplaySource?: "publishDate" | "updateDate" | "lastModified" | "unknown";
   attachments?: Array<{
     filename: string;
     path: string;
@@ -66,6 +69,58 @@ export interface MemoCardData {
   }>;
   /** 是否已完成向量化（当前模型且哈希匹配） */
   isVectorized?: boolean;
+}
+
+const FALLBACK_LABEL_MAP: Record<Exclude<MemoCardData["timeDisplaySource"], undefined>, string> = {
+  publishDate: "",
+  updateDate: "（自动选择）",
+  lastModified: "（自动选择）",
+  unknown: "（自动选择）",
+};
+
+function parseDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatRelative(date: Date | null): string | null {
+  if (!date) return null;
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 90) {
+    return date.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  if (diffMinutes < 1) return "刚刚";
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 7) return `${diffDays}天前`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+  return `${Math.floor(diffDays / 30)}个月前`;
+}
+
+function formatFull(date: Date | null): string | null {
+  if (!date) return null;
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
 }
 
 export function MemoCard({
@@ -147,74 +202,39 @@ export function MemoCard({
 
   const shouldShowGradient = !isExpanded && (isCollapsible ?? true);
 
-  // 格式化时间 - 使用 useMemo 优化性能
-  const formattedDate = useMemo(() => {
-    try {
-      const date = new Date(memo.createdAt);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const publishDate = useMemo(
+    () => parseDate(memo.publishedAt ?? memo.createdAt ?? memo.updatedAt),
+    [memo.publishedAt, memo.createdAt, memo.updatedAt]
+  );
+  const updatedDate = useMemo(() => parseDate(memo.updatedAt), [memo.updatedAt]);
 
-      // 3个月 = 90天
-      if (diffDays > 90) {
-        return date.toLocaleDateString("zh-CN", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      }
+  const formattedPublishDate = useMemo(
+    () => formatRelative(publishDate) ?? "未知时间",
+    [publishDate]
+  );
+  const fullPublishDate = useMemo(
+    () => formatFull(publishDate) ?? memo.publishedAt ?? memo.createdAt ?? "未知时间",
+    [publishDate, memo.publishedAt, memo.createdAt]
+  );
+  const fullUpdatedDate = useMemo(() => formatFull(updatedDate), [updatedDate]);
+  const formattedUpdatedDate = useMemo(() => formatRelative(updatedDate), [updatedDate]);
 
-      // 友好时间显示
-      if (diffMinutes < 1) return "刚刚";
-      if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-      if (diffHours < 24) return `${diffHours}小时前`;
-      if (diffDays < 7) return `${diffDays}天前`;
-      if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
-      return `${Math.floor(diffDays / 30)}个月前`;
-    } catch {
-      return "未知时间";
-    }
-  }, [memo.createdAt]);
+  const hasMeaningfulUpdate = useMemo(() => {
+    if (!updatedDate) return false;
+    if (!publishDate) return true;
+    return Math.abs(updatedDate.getTime() - publishDate.getTime()) > 1000;
+  }, [publishDate, updatedDate]);
 
-  // 完整日期格式 - 用于悬浮提示
-  const fullDate = useMemo(() => {
-    try {
-      const date = new Date(memo.createdAt);
-      return date.toLocaleString("zh-CN", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        timeZoneName: "short",
-      });
-    } catch {
-      return memo.createdAt;
-    }
-  }, [memo.createdAt]);
+  const timeDisplaySource =
+    memo.timeDisplaySource ?? (memo.publishedAt ? "publishDate" : "unknown");
+  const fallbackLabel =
+    timeDisplaySource !== "publishDate"
+      ? FALLBACK_LABEL_MAP[timeDisplaySource] || FALLBACK_LABEL_MAP.unknown
+      : "";
 
-  // 更新时间格式
-  const fullUpdatedDate = useMemo(() => {
-    if (!memo.updatedAt || memo.updatedAt === memo.createdAt) return null;
-    try {
-      const date = new Date(memo.updatedAt);
-      return date.toLocaleString("zh-CN", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        timeZoneName: "short",
-      });
-    } catch {
-      return memo.updatedAt;
-    }
-  }, [memo.updatedAt, memo.createdAt]);
-
+  const publishDateTimeAttr =
+    publishDate?.toISOString() ?? memo.publishedAt ?? memo.createdAt ?? memo.updatedAt ?? undefined;
+  const isAdminView = showVisibilityIndicator;
   // 处理编辑
   const handleEditClick = useCallback(
     (e: React.MouseEvent) => {
@@ -253,7 +273,7 @@ export function MemoCard({
         {/* 时间线圆点 - 完全匹配旧项目 */}
         <div
           className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full items-center justify-center shadow-lg ring-2 sm:ring-4 ring-base-100 hidden sm:flex"
-          aria-label={`Memo 发布于 ${formattedDate}`}
+          aria-label={`Memo 时间 ${formattedPublishDate}`}
           role="img"
         >
           <svg
@@ -282,7 +302,7 @@ export function MemoCard({
             {/* 头部信息 - 完全匹配旧项目 */}
             <div className="flex items-center justify-between px-4 py-2 sm:px-6 sm:py-3 bg-base-200 border-b border-base-300 gap-2 sm:gap-4">
               {/* 左侧：时间信息 */}
-              <div className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm text-base-content/70 min-w-0 flex-shrink">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-base-content/70 min-w-0 flex-shrink flex-wrap">
                 <svg
                   className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0"
                   fill="none"
@@ -297,16 +317,24 @@ export function MemoCard({
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span title={fullDate} className="cursor-help truncate" data-testid="memo-time">
-                  {formattedDate}
-                </span>
-                {fullUpdatedDate && (
-                  <>
-                    <span className="text-base-content/40 flex-shrink-0">•</span>
-                    <span title={fullUpdatedDate} className="cursor-help flex-shrink-0">
-                      已编辑
-                    </span>
-                  </>
+                <time
+                  title={fullPublishDate}
+                  dateTime={publishDateTimeAttr}
+                  className="cursor-help truncate"
+                  data-testid="memo-time"
+                >
+                  {formattedPublishDate}
+                </time>
+                {isAdminView && hasMeaningfulUpdate && formattedUpdatedDate && (
+                  <span
+                    className="whitespace-nowrap text-xs text-base-content/50 italic"
+                    title={fullUpdatedDate ?? undefined}
+                  >
+                    (编辑于 {formattedUpdatedDate})
+                  </span>
+                )}
+                {fallbackLabel && (
+                  <span className="text-warning/80 flex-shrink-0">{fallbackLabel}</span>
                 )}
               </div>
 
@@ -485,15 +513,9 @@ export function MemoCard({
                 </button>
               )}
 
-              {/* 标签显示 - 完全匹配旧项目 */}
+              {/* 标签显示：统一使用 PostTags（与 posts 表一致） */}
               {derivedTags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2 sm:mt-3">
-                  {derivedTags.map((tag: string) => (
-                    <span key={tag} className="badge badge-outline badge-sm">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+                <PostTags tags={derivedTags} className="flex flex-wrap gap-1 mt-2 sm:mt-3" />
               )}
             </div>
           </div>

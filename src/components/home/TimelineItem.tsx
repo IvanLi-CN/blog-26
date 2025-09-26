@@ -7,6 +7,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { resolveImagePath } from "../../lib/image-utils";
 import { optimizeForPreview } from "../../lib/markdown-utils";
+import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import Icon from "../ui/Icon";
 
@@ -253,15 +254,9 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
                 </>
               )}
 
-              {/* 标签 */}
+              {/* 标签：统一使用共享 PostTags（posts 表内容包含 memo） */}
               {item.tags && item.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-3">
-                  {item.tags.slice(0, 3).map((tag: string) => (
-                    <span key={tag} className="badge badge-outline badge-xs md:badge-sm">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+                <PostTags tags={item.tags.slice(0, 3)} className="flex flex-wrap gap-1 mt-3" />
               )}
             </div>
           </div>

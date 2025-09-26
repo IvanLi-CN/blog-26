@@ -1,5 +1,5 @@
 @import "tailwindcss";
-/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind/DaisyUI plugin directive */
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind v4 plugin block */
 @plugin "daisyui" {
   /* biome-ignore lint/correctness/noUnknownProperty: DaisyUI v5 valid configuration */
   themes: all;
@@ -60,7 +60,7 @@
 
 /* 活跃链接样式 */
 .aw-link-active {
-  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply utility */
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
   @apply text-primary bg-primary/10;
 }
 
@@ -201,7 +201,7 @@
 
 /* 增强的标签页激活状态样式 */
 .editor-tab-active {
-  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply utility */
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
   @apply bg-base-100 text-primary border-b-2 border-primary shadow-sm;
   position: relative;
 }
