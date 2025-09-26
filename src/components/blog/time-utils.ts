@@ -11,7 +11,8 @@ export interface PostTimingInput {
   timeDisplaySource?: TimeDisplaySource;
 }
 
-const FALLBACK_LABEL_MAP: Record<TimeDisplaySource, string> = {
+// We no longer display time-source explanations to users; keep map only for potential future use.
+const _FALLBACK_LABEL_MAP: Record<TimeDisplaySource, string> = {
   publishDate: "",
   updateDate: "（自动选择）",
   lastModified: "（自动选择）",
@@ -58,8 +59,8 @@ export function resolvePostTiming(post: PostTimingInput): PostTimingResult {
     updateDate && publishDate && Math.abs(updateDate.getTime() - publishDate.getTime()) > 1000
   );
 
-  const fallbackKey = (post.timeDisplaySource ?? "publishDate") as TimeDisplaySource;
-  const fallbackLabel = FALLBACK_LABEL_MAP[fallbackKey] || FALLBACK_LABEL_MAP.unknown;
+  // 不向任何用户解释时间来源，统一不返回回退标签
+  const _fallbackLabel = null;
 
   return {
     publishDateTimeAttr,
@@ -67,7 +68,7 @@ export function resolvePostTiming(post: PostTimingInput): PostTimingResult {
     relativePublish,
     relativeUpdate,
     shouldShowUpdateHint,
-    fallbackLabel: fallbackLabel || null,
+    fallbackLabel: null,
     publishDate,
     updateDate,
   };

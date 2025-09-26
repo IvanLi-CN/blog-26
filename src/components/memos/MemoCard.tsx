@@ -72,12 +72,7 @@ export interface MemoCardData {
   isVectorized?: boolean;
 }
 
-const FALLBACK_LABEL_MAP: Record<Exclude<MemoCardData["timeDisplaySource"], undefined>, string> = {
-  publishDate: "",
-  updateDate: "（自动选择）",
-  lastModified: "（自动选择）",
-  unknown: "（自动选择）",
-};
+// 不在界面上解释时间来源，因此无需 fallback 标签
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -85,7 +80,6 @@ function parseDate(value?: string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-<<<<<<< HEAD
 function formatFull(date: Date | null): string | null {
   if (!date) return null;
   return date.toLocaleString("zh-CN", {
@@ -204,12 +198,8 @@ export function MemoCard({
     return Math.abs(updatedDate.getTime() - publishDate.getTime()) > 1000;
   }, [publishDate, updatedDate]);
 
-  const timeDisplaySource =
-    memo.timeDisplaySource ?? (memo.publishedAt ? "publishDate" : "unknown");
-  const fallbackLabel =
-    timeDisplaySource !== "publishDate"
-      ? FALLBACK_LABEL_MAP[timeDisplaySource] || FALLBACK_LABEL_MAP.unknown
-      : "";
+  // 不显示任何“自动选择”等解释性标签
+  const fallbackLabel = "";
 
   const publishDateTimeAttr =
     publishDate?.toISOString() ?? memo.publishedAt ?? memo.createdAt ?? memo.updatedAt ?? undefined;

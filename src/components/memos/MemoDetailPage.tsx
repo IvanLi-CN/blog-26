@@ -42,13 +42,7 @@ import {
 import AnomalyIndicator from "./AnomalyIndicator";
 import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
-
-const FALLBACK_LABEL_MAP: Record<Exclude<MemoCardData["timeDisplaySource"], undefined>, string> = {
-  publishDate: "",
-  updateDate: "（自动选择）",
-  lastModified: "（自动选择）",
-  unknown: "（自动选择）",
-};
+// 不在界面上解释时间来源，因此无需 fallback 标签映射
 
 export interface MemoDetailPageProps {
   /** Memo slug */
@@ -179,12 +173,8 @@ export function MemoDetailPage({
 
   const publishDateIso = memo?.publishedAt ?? memo?.createdAt ?? memo?.updatedAt ?? null;
   const updatedAtIso = memo?.updatedAt ?? null;
-  const timeDisplaySource =
-    memo?.timeDisplaySource ?? (memo?.publishedAt ? "publishDate" : "unknown");
-  const fallbackLabel =
-    timeDisplaySource !== "publishDate"
-      ? FALLBACK_LABEL_MAP[timeDisplaySource] || FALLBACK_LABEL_MAP.unknown
-      : "";
+  // 不显示任何“自动选择”等解释性标签
+  const fallbackLabel = "";
 
   const publishRelative = useMemo(
     () => (publishDateIso ? formatTime(publishDateIso) : "未知时间"),
