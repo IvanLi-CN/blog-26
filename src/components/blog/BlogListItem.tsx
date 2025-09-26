@@ -1,7 +1,6 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { Hash } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/config/site";
@@ -9,6 +8,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { resolveImagePath } from "../../lib/image-utils";
 import { getFormattedDateFromTimestamp, toMsTimestamp } from "../../lib/utils";
 import PostStatus from "./PostStatus";
+import PostTags from "./PostTags";
 
 interface Post {
   id: string;
@@ -103,23 +103,17 @@ export default function BlogListItem({ post, forceIsAdmin }: BlogListItemProps) 
 
         {post.excerpt && <p className="flex-grow text-base-content/70 text-lg">{post.excerpt}</p>}
 
-        {tags.length > 0 ? (
-          <footer className="mt-auto pt-4">
-            <PostTags tags={tags} showVectorized={post.isVectorized} />
-          </footer>
-        ) : (
-          // 无标签时也保证星标在文本列底部对齐显示（单独占一行，靠右）
-          post.isVectorized && (
-            <div className="mt-auto pt-4 flex">
-              <span
-                className="ml-auto text-secondary/80 drop-shadow shrink-0"
-                title="已向量化（当前模型，哈希匹配）"
-              >
-                <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
-              </span>
-            </div>
-          )
-        )}
+        <footer className="mt-auto pt-4 flex items-center gap-2">
+          {tags.length > 0 && <PostTags tags={tags} className="flex gap-1 flex-wrap" />}
+          {post.isVectorized && (
+            <span
+              className="ml-auto text-secondary/80 drop-shadow shrink-0"
+              title="已向量化（当前模型，哈希匹配）"
+            >
+              <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
+            </span>
+          )}
+        </footer>
       </div>
 
       {imageSrc && (
@@ -148,34 +142,3 @@ export default function BlogListItem({ post, forceIsAdmin }: BlogListItemProps) 
 }
 
 // 状态徽标改为使用共享组件（./PostStatus），并在上方按 isAdmin 条件渲染
-
-// PostTags 组件
-interface PostTagsProps {
-  tags: string[];
-  showVectorized?: boolean;
-}
-
-function PostTags({ tags, showVectorized }: PostTagsProps) {
-  return (
-    <div className="flex flex-wrap items-center gap-1 min-h-5">
-      {tags.map((tag) => (
-        <Link
-          key={tag}
-          href={`/tag/${encodeURIComponent(tag)}`}
-          className="badge badge-outline badge-sm hover:badge-primary transition-colors inline-flex items-center gap-1"
-        >
-          <Hash className="inline-block sm:hidden md:inline-block w-3 h-3" aria-hidden />
-          <span>{String(tag).replace(/^#/, "")}</span>
-        </Link>
-      ))}
-      {showVectorized && (
-        <span
-          className="ml-auto flex items-center text-secondary/80 drop-shadow shrink-0"
-          title="已向量化（当前模型，哈希匹配）"
-        >
-          <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
-        </span>
-      )}
-    </div>
-  );
-}

@@ -16,11 +16,11 @@
  */
 
 import { Icon } from "@iconify/react";
-import { Hash } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseContentTags } from "@/lib/tag-parser";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
+import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import AnomalyIndicator from "./AnomalyIndicator";
 
@@ -513,22 +513,9 @@ export function MemoCard({
                 </button>
               )}
 
-              {/* 标签显示 - 完全匹配旧项目 */}
+              {/* 标签显示：统一使用 PostTags（与 posts 表一致） */}
               {derivedTags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2 sm:mt-3">
-                  {derivedTags.map((tag: string) => (
-                    <span
-                      key={tag}
-                      className="badge badge-outline badge-sm inline-flex items-center gap-1"
-                    >
-                      <Hash
-                        className="inline-block sm:hidden md:inline-block w-3 h-3"
-                        aria-hidden
-                      />
-                      <span>{String(tag).replace(/^#/, "")}</span>
-                    </span>
-                  ))}
-                </div>
+                <PostTags tags={derivedTags} className="flex flex-wrap gap-1 mt-2 sm:mt-3" />
               )}
             </div>
           </div>

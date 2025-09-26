@@ -15,7 +15,6 @@ import {
   Edit3,
   ExternalLink,
   Globe,
-  Hash,
   Lock,
   MoreHorizontal,
   Share2,
@@ -31,9 +30,9 @@ import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { trpc } from "../../lib/trpc";
 import { cn } from "../../lib/utils";
+import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -365,18 +364,9 @@ export function MemoDetailPage({
         </div>
       </div>
 
-      {/* 顶部：标签列表（每个标签内部左侧显示 # 图标，仅 md+ 可见） */}
+      {/* 顶部：标签列表（统一使用 PostTags） */}
       <div className="mb-6">
-        {derivedTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {derivedTags.map((tag: string) => (
-              <Badge key={tag} variant="secondary" className="inline-flex items-center gap-1">
-                <Hash className="inline-block sm:hidden md:inline-block w-3 h-3" aria-hidden />
-                <span>{tag.replace(/^#/, "")}</span>
-              </Badge>
-            ))}
-          </div>
-        )}
+        {derivedTags.length > 0 && <PostTags tags={derivedTags} className="flex flex-wrap gap-2" />}
       </div>
 
       {/* 内容 */}
