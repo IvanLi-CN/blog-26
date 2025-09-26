@@ -57,9 +57,8 @@ Store secrets in `.env.local`; never commit them. SQLite paths default to `./dev
   - Default ports: `PORT=25090`, `WEBDAV_PORT=26091`.
   - If a default port is in use, supply available ports via environment variables. The script validates availability and exits on conflict. It does not create or modify any `.env*` files.
   - Examples:
-    - `./scripts/setup.sh` (uses defaults and validates)
-    - `PORT=3001 WEBDAV_PORT=3002 ./scripts/setup.sh` (override when defaults are busy)
-    - `./scripts/setup.sh --with-db` (also reset dev DB and generate dev data)
+    - `./scripts/setup.sh` (regenerates dev DB+data by default)
+    - `./scripts/setup.sh --no-db` (skip DB reset and dev data generation)
 - Run the dev stack:
   - `PORT=<web_port> bun run dev` (Next.js uses `PORT`; WebDAV helper will choose a free port near 25091 and print it in logs.)
   - Alternatively start services separately if needed.
