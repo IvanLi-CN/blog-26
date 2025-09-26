@@ -61,7 +61,9 @@ export default function HomePage() {
       title: memo.title || "",
       content: memo.content,
       body: memo.content,
-      publishDate: new Date(memo.createdAt), // memo.createdAt 已经是 ISO 字符串格式
+      publishDate: new Date(
+        memo.publishedAt ?? memo.createdAt ?? memo.updatedAt ?? new Date().toISOString()
+      ),
       tags: parseTags(memo.tags),
       dataSource: (memo as { dataSource?: string }).dataSource || "webdav",
     })) || [];

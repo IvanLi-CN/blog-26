@@ -35,7 +35,7 @@ async function rpc(body: any, auth?: string) {
     Accept: "application/json, text/event-stream",
     "Mcp-Protocol-Version": PROTOCOL_VERSION,
   };
-  if (auth) headers["Authorization"] = `Bearer ${auth}`;
+  if (auth) headers.Authorization = `Bearer ${auth}`;
   const res = await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify(body) });
   return (await res.json()) as any;
 }
@@ -84,10 +84,15 @@ test.beforeAll(
 test.afterAll(async () => {
   try {
     serverProc?.kill("SIGTERM");
-  } catch {}
+  } catch (error) {
+    // Process might have already exited; ignore cleanup errors.
+    console.debug("serverProc cleanup skipped", error);
+  }
   try {
     dufsProc?.kill("SIGTERM");
-  } catch {}
+  } catch (error) {
+    console.debug("dufsProc cleanup skipped", error);
+  }
 });
 
 test("create memo via MCP (PAT) then open page", async ({ page }) => {

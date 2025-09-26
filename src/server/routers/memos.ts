@@ -60,6 +60,80 @@ function normalizeAttachmentPaths(
   });
 }
 
+type MemoRow = typeof posts.$inferSelect;
+
+const timeDisplaySources = ["publishDate", "updateDate", "lastModified", "unknown"] as const;
+type TimeDisplaySource = (typeof timeDisplaySources)[number];
+
+function toIsoString(value?: number | bigint | null): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  try {
+    const normalized = typeof value === "bigint" ? Number(value) : value;
+    if (!Number.isFinite(normalized)) {
+      return undefined;
+    }
+
+    const timestamp = toMsTimestamp(normalized as number);
+    if (!Number.isFinite(timestamp)) {
+      return undefined;
+    }
+
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveMemoTimestamps(memo: MemoRow): {
+  publishedAt?: string;
+  displayTime: string;
+  updatedAt: string;
+  source: TimeDisplaySource;
+} {
+  const publishIso = toIsoString(memo.publishDate);
+  const updateIso = toIsoString(memo.updateDate ?? undefined);
+  const lastModifiedIso = toIsoString(memo.lastModified ?? undefined);
+
+  if (publishIso) {
+    return {
+      publishedAt: publishIso,
+      displayTime: publishIso,
+      updatedAt: updateIso ?? publishIso,
+      source: "publishDate",
+    };
+  }
+
+  if (updateIso) {
+    return {
+      publishedAt: undefined,
+      displayTime: updateIso,
+      updatedAt: updateIso,
+      source: "updateDate",
+    };
+  }
+
+  if (lastModifiedIso) {
+    return {
+      publishedAt: undefined,
+      displayTime: lastModifiedIso,
+      updatedAt: lastModifiedIso,
+      source: "lastModified",
+    };
+  }
+
+  const fallback = new Date().toISOString();
+  return {
+    publishedAt: undefined,
+    displayTime: fallback,
+    updatedAt: fallback,
+    source: "unknown",
+  };
+}
+
 /**
  * 确保内容源已注册
  */
@@ -274,6 +348,10 @@ export const memosRouter = router({
           parseAttachments(memo.metadata),
           (memo as any).dataSource
         );
+        const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[memos.list] resolved", memo.slug, publishedAt, source);
+        }
         return {
           id: memo.id,
           slug: memo.slug,
@@ -287,10 +365,10 @@ export const memosRouter = router({
           filePath: memo.filePath,
           source: memo.source,
           dataSource: memo.dataSource || "webdav",
-          createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
-          updatedAt: memo.updateDate
-            ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
-            : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
+          createdAt: displayTime,
+          publishedAt,
+          updatedAt,
+          timeDisplaySource: source,
           // 新增：向量化标记
           isVectorized: (memo as any).isVectorized === true,
         };
@@ -313,8 +391,18 @@ export const memosRouter = router({
             filePath: (m as any).filePath,
             source: (m as any).source,
             createdAt: m.createdAt,
+            publishedAt: m.publishedAt,
             updatedAt: m.updatedAt,
+            timeDisplaySource: m.timeDisplaySource,
           }));
+      if (!ctx.isAdmin && process.env.NODE_ENV === "development") {
+        console.debug(
+          "[memos.list] sanitized sample",
+          sanitizedMemos[0]?.slug,
+          sanitizedMemos[0]?.publishedAt,
+          sanitizedMemos[0]?.timeDisplaySource
+        );
+      }
 
       // 生成下一页的 cursor
       let nextCursor: string | undefined;
@@ -370,22 +458,7 @@ export const memosRouter = router({
         (memo as any).dataSource
       );
 
-      // 非管理员：仅返回界面展示所需字段，避免接口泄露内部信息
-      if (!ctx.isAdmin) {
-        return {
-          id: memo.id,
-          slug: memo.slug,
-          title: memo.title || "无标题 Memo",
-          excerpt: memo.excerpt,
-          content: memo.body,
-          isPublic: memo.public,
-          tags: memo.tags ? JSON.parse(memo.tags) : [],
-          createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
-          updatedAt: memo.updateDate
-            ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
-            : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
-        } as const;
-      }
+      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
 
       const base = {
         id: memo.id,
@@ -395,10 +468,10 @@ export const memosRouter = router({
         content: memo.body,
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
-        createdAt: new Date(toMsTimestamp(memo.publishDate)).toISOString(),
-        updatedAt: memo.updateDate
-          ? new Date(toMsTimestamp(memo.updateDate)).toISOString()
-          : new Date(toMsTimestamp(memo.publishDate)).toISOString(),
+        createdAt: displayTime,
+        publishedAt,
+        updatedAt,
+        timeDisplaySource: source,
       } as const;
 
       // 非管理员只返回界面会显示的字段
@@ -540,6 +613,10 @@ export const memosRouter = router({
       // 触发增量数据同步
       await triggerIncrementalSync();
 
+      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(
+        memoData as MemoRow
+      );
+
       return {
         id: memoData.id,
         slug: memoData.slug,
@@ -548,8 +625,10 @@ export const memosRouter = router({
         isPublic: memoData.public,
         tags,
         attachments,
-        createdAt: new Date(toMsTimestamp(now)).toISOString(),
-        updatedAt: new Date(toMsTimestamp(now)).toISOString(),
+        createdAt: displayTime,
+        publishedAt,
+        updatedAt,
+        timeDisplaySource: source,
       };
     } catch (error) {
       console.error("创建 memo 失败:", error);
@@ -625,6 +704,9 @@ export const memosRouter = router({
       // 触发增量数据同步
       await triggerIncrementalSync();
 
+      const updatedRow: MemoRow = { ...existingMemo, ...updateData } as MemoRow;
+      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(updatedRow);
+
       return {
         id,
         slug: existingMemo.slug,
@@ -633,7 +715,10 @@ export const memosRouter = router({
         isPublic: updateData.public,
         tags,
         attachments,
-        updatedAt: new Date(toMsTimestamp(now)).toISOString(),
+        createdAt: displayTime,
+        publishedAt,
+        updatedAt,
+        timeDisplaySource: source,
       };
     } catch (error) {
       if (error instanceof TRPCError) {

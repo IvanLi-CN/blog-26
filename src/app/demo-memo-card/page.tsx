@@ -16,7 +16,9 @@ const sampleMemo: MemoCardData = {
   author: "Admin",
   source: "webdav",
   createdAt: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
+  publishedAt: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
   updatedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
+  timeDisplaySource: "publishDate",
   isVectorized: true,
 };
 

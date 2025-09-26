@@ -523,5 +523,8 @@ async function ensureServer() {
 
 export async function getMcpTransport(): Promise<StreamableHTTPServerTransport> {
   const { transport: t } = await ensureServer();
-  return t!;
+  if (!t) {
+    throw new Error("MCP transport unavailable");
+  }
+  return t;
 }
