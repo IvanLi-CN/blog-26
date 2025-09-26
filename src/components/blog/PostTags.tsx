@@ -121,7 +121,7 @@ export default function PostTags({
                 <span
                   className={`flex items-center gap-1 ${isMultiLevel ? "font-semibold text-primary" : ""}`}
                 >
-                  <Hash className="inline-block sm:hidden md:inline-block w-3 h-3" aria-hidden />
+                  <Hash className="hidden sm:inline-block w-3 h-3" aria-hidden />
                   {String(lastSegment).replace(/^#/, "")}
                 </span>
               </Link>
