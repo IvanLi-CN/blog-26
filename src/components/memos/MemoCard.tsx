@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseContentTags } from "@/lib/tag-parser";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
+import { formatRelativeTime } from "../../lib/utils";
 import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import AnomalyIndicator from "./AnomalyIndicator";
@@ -71,43 +72,12 @@ export interface MemoCardData {
   isVectorized?: boolean;
 }
 
-const FALLBACK_LABEL_MAP: Record<Exclude<MemoCardData["timeDisplaySource"], undefined>, string> = {
-  publishDate: "",
-  updateDate: "（自动选择）",
-  lastModified: "（自动选择）",
-  unknown: "（自动选择）",
-};
+// 不在界面上解释时间来源，因此无需 fallback 标签
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatRelative(date: Date | null): string | null {
-  if (!date) return null;
-
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays > 90) {
-    return date.toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
-
-  if (diffMinutes < 1) return "刚刚";
-  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-  if (diffDays < 7) return `${diffDays}天前`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
-  return `${Math.floor(diffDays / 30)}个月前`;
 }
 
 function formatFull(date: Date | null): string | null {
@@ -209,7 +179,7 @@ export function MemoCard({
   const updatedDate = useMemo(() => parseDate(memo.updatedAt), [memo.updatedAt]);
 
   const formattedPublishDate = useMemo(
-    () => formatRelative(publishDate) ?? "未知时间",
+    () => formatRelativeTime(publishDate ?? undefined) ?? "未知时间",
     [publishDate]
   );
   const fullPublishDate = useMemo(
@@ -217,7 +187,10 @@ export function MemoCard({
     [publishDate, memo.publishedAt, memo.createdAt]
   );
   const fullUpdatedDate = useMemo(() => formatFull(updatedDate), [updatedDate]);
-  const formattedUpdatedDate = useMemo(() => formatRelative(updatedDate), [updatedDate]);
+  const formattedUpdatedDate = useMemo(
+    () => formatRelativeTime(updatedDate ?? undefined),
+    [updatedDate]
+  );
 
   const hasMeaningfulUpdate = useMemo(() => {
     if (!updatedDate) return false;
@@ -225,12 +198,8 @@ export function MemoCard({
     return Math.abs(updatedDate.getTime() - publishDate.getTime()) > 1000;
   }, [publishDate, updatedDate]);
 
-  const timeDisplaySource =
-    memo.timeDisplaySource ?? (memo.publishedAt ? "publishDate" : "unknown");
-  const fallbackLabel =
-    timeDisplaySource !== "publishDate"
-      ? FALLBACK_LABEL_MAP[timeDisplaySource] || FALLBACK_LABEL_MAP.unknown
-      : "";
+  // 不显示任何“自动选择”等解释性标签
+  const fallbackLabel = "";
 
   const publishDateTimeAttr =
     publishDate?.toISOString() ?? memo.publishedAt ?? memo.createdAt ?? memo.updatedAt ?? undefined;

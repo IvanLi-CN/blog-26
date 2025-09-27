@@ -6,8 +6,6 @@
  * 展示单个 memo 的详细内容，支持编辑功能
  */
 
-import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
 import {
   ArrowLeft,
   Calendar,
@@ -29,7 +27,7 @@ import { SITE } from "../../config/site";
 import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { trpc } from "../../lib/trpc";
-import { cn } from "../../lib/utils";
+import { cn, formatRelativeTime } from "../../lib/utils";
 import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -44,13 +42,7 @@ import {
 import AnomalyIndicator from "./AnomalyIndicator";
 import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
-
-const FALLBACK_LABEL_MAP: Record<Exclude<MemoCardData["timeDisplaySource"], undefined>, string> = {
-  publishDate: "",
-  updateDate: "（自动选择）",
-  lastModified: "（自动选择）",
-  unknown: "（自动选择）",
-};
+// 不在界面上解释时间来源，因此无需 fallback 标签映射
 
 export interface MemoDetailPageProps {
   /** Memo slug */
@@ -111,15 +103,12 @@ export function MemoDetailPage({
 
   // 格式化时间
   const formatTime = useCallback((dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return formatDistanceToNow(date, {
-        addSuffix: true,
-        locale: zhCN,
-      });
-    } catch {
+    if (!dateString) {
       return "未知时间";
     }
+
+    const result = formatRelativeTime(dateString);
+    return result ?? "未知时间";
   }, []);
 
   // 处理编辑保存
@@ -184,12 +173,8 @@ export function MemoDetailPage({
 
   const publishDateIso = memo?.publishedAt ?? memo?.createdAt ?? memo?.updatedAt ?? null;
   const updatedAtIso = memo?.updatedAt ?? null;
-  const timeDisplaySource =
-    memo?.timeDisplaySource ?? (memo?.publishedAt ? "publishDate" : "unknown");
-  const fallbackLabel =
-    timeDisplaySource !== "publishDate"
-      ? FALLBACK_LABEL_MAP[timeDisplaySource] || FALLBACK_LABEL_MAP.unknown
-      : "";
+  // 不显示任何“自动选择”等解释性标签
+  const fallbackLabel = "";
 
   const publishRelative = useMemo(
     () => (publishDateIso ? formatTime(publishDateIso) : "未知时间"),

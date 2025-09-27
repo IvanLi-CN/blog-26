@@ -7,6 +7,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { resolveImagePath } from "../../lib/image-utils";
 import { optimizeForPreview } from "../../lib/markdown-utils";
+import { formatRelativeTime } from "../../lib/utils";
 import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import Icon from "../ui/Icon";
@@ -43,13 +44,7 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
     item.type === "memo" ? `/memos/${item.slug}` : item.permalink || `/posts/${item.slug}`;
 
   // 格式化时间
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  };
+  const formatDate = (date: Date) => formatRelativeTime(date) ?? "未知时间";
 
   // 获取类型图标和颜色
   const getTypeIcon = (type: string) => {

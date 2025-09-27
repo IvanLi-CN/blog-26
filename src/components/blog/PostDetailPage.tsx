@@ -7,7 +7,6 @@ import { SITE } from "../../config/site";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { resolveImagePath } from "../../lib/image-utils";
 import { trpc } from "../../lib/trpc";
-import { toMsTimestamp } from "../../lib/utils";
 import CommentSectionWithProvider from "../comments/CommentSectionWithProvider";
 import { useUserInfo } from "../comments/hooks";
 import MarkdownRenderer from "../common/MarkdownRenderer";
@@ -21,6 +20,7 @@ import ReadingTime from "./ReadingTime";
 import RelatedPosts from "./RelatedPosts";
 import SocialShare from "./SocialShare";
 import ToBlogLink from "./ToBlogLink";
+import { resolvePostTiming } from "./time-utils";
 
 interface PostDetailPageProps {
   slug: string;
@@ -62,15 +62,6 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
     );
   }
 
-  // 格式化日期（兼容秒/毫秒）
-  const getFormattedDate = (timestamp: number) => {
-    return new Date(toMsTimestamp(timestamp)).toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   // 转换 post 对象以匹配 Post 类型
   const authorName = post.author?.trim() || SITE.author.name;
 
@@ -84,6 +75,16 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
     tags: post.tags ?? undefined,
   };
 
+  const timing = resolvePostTiming(post);
+  const publishDateTimeAttr = timing.publishDateTimeAttr ?? undefined;
+  const publishTitle = timing.publishTitle ?? undefined;
+  const relativePublish = timing.relativePublish;
+  const relativeUpdate = timing.relativeUpdate;
+  const shouldShowUpdateHint =
+    Boolean(isUserAdmin) && Boolean(relativeUpdate) && timing.shouldShowUpdateHint;
+  const fallbackLabel = Boolean(isUserAdmin) && timing.fallbackLabel ? timing.fallbackLabel : null;
+  const publishDateForLicense = timing.publishDate ?? new Date();
+
   return (
     <PageLayout>
       {/* SEO 结构化数据 */}
@@ -95,12 +96,17 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
             <div className="flex justify-between flex-col sm:flex-row max-w-3xl mx-auto mt-0 mb-2 px-4 sm:px-6 sm:items-center">
               <p className="flex flex-wrap items-center gap-2">
                 <Icon icon="tabler:clock" className="w-4 h-4 -mt-0.5 dark:text-gray-400" />
-                <time
-                  dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
-                  className="inline-block"
-                >
-                  {getFormattedDate(post.publishDate)}
+                <time dateTime={publishDateTimeAttr} title={publishTitle} className="inline-block">
+                  {relativePublish}
                 </time>
+                {shouldShowUpdateHint && relativeUpdate && (
+                  <span className="whitespace-nowrap text-xs text-base-content/50 italic">
+                    (编辑于 {relativeUpdate})
+                  </span>
+                )}
+                {fallbackLabel && (
+                  <span className="text-warning/80 flex-shrink-0">{fallbackLabel}</span>
+                )}
                 <span>·</span>
                 <Icon icon="tabler:user" className="w-4 h-4 -mt-0.5 dark:text-gray-400" />
                 <span className="inline-block">{authorName}</span>
@@ -245,7 +251,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
             {/* 许可证信息 */}
             <ArticleLicense
               author={post.author || SITE.author.name}
-              year={new Date(toMsTimestamp(post.publishDate)).getFullYear()}
+              year={publishDateForLicense.getFullYear()}
             />
 
             {/* 标签单独一行 */}
