@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "../lib/iconify-collections";
 import { ProgressBar } from "../components/common/ProgressBar";
+import { IconifyProvider } from "../components/providers/IconifyProvider";
 import { TRPCProvider } from "../components/providers/TRPCProvider";
 import { SITE } from "../config/site";
 
@@ -140,6 +142,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <IconifyProvider />
         <ProgressBar />
         <TRPCProvider>{children}</TRPCProvider>
       </body>
