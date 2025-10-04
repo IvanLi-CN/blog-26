@@ -229,22 +229,44 @@ export abstract class ContentSourceBase implements IContentSource {
    * 比较当前内容与上次同步的差异
    */
   private async compareWithLastSync(currentItems: ContentItem[], lastSyncTime?: number) {
-    // 这里是一个简化的实现，实际项目中可能需要更复杂的逻辑
-    // 比如从数据库中获取上次同步的状态进行比较
+    // 这里需要查询数据库来判断item是否存在
+    // 如果存在则是update,不存在则是create
+    const { db } = await import("~/server/db");
+    const { posts } = await import("~/server/db/schema");
+    const { eq } = await import("drizzle-orm");
 
-    const changes = currentItems
-      .filter((item) => {
-        // 如果没有上次同步时间，认为所有项目都是新的
-        if (!lastSyncTime) return true;
+    const changes = [];
 
-        // 如果项目的修改时间晚于上次同步时间，认为有变更
-        return item.lastModified > lastSyncTime;
-      })
-      .map((item) => ({
+    for (const item of currentItems) {
+      // 如果没有上次同步时间，认为所有项目都是新的
+      if (!lastSyncTime) {
+        changes.push({
+          item,
+          operation: "create" as SyncOperationType,
+          reason: "首次同步",
+        });
+        continue;
+      }
+
+      // 如果项目的修改时间早于或等于上次同步时间，跳过
+      if (item.lastModified <= lastSyncTime) {
+        continue;
+      }
+
+      // 查询数据库检查item是否已存在
+      const existingItem = await db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(eq(posts.id, item.id))
+        .limit(1)
+        .then((result) => result[0]);
+
+      changes.push({
         item,
-        operation: (!lastSyncTime ? "create" : "update") as SyncOperationType,
-        reason: !lastSyncTime ? "首次同步" : "内容已修改",
-      }));
+        operation: existingItem ? ("update" as SyncOperationType) : ("create" as SyncOperationType),
+        reason: existingItem ? "内容已修改" : "新增内容",
+      });
+    }
 
     return changes;
   }
