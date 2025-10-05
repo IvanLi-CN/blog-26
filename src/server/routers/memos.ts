@@ -659,19 +659,45 @@ export const memosRouter = router({
         });
       }
 
-      // 创建 WebDAV 内容源实例
-      const webdavSource = createWebDAVSource();
+      // 从 file_path 提取实际的文件名（不含路径前缀和.md扩展名）
+      // file_path 格式: /memos/20251003_学习_React_18_新特性.md
+      // 需要提取: 20251003_学习_React_18_新特性 (不含.md,因为updateMemo会自动添加)
+      let fileName = existingMemo.slug; // 默认使用slug
+      if (existingMemo.filePath) {
+        const pathWithoutPrefix = existingMemo.filePath.replace(/^\/+memos\/+/, "");
+        fileName = pathWithoutPrefix.replace(/\.md$/, "");
+      }
 
-      await webdavSource.initialize();
+      // 直接使用 WebDAV 客户端更新文件,跳过连接验证
+      // 这样可以避免 initialize() 中的连接验证失败
+      const { getWebDAVClient } = await import("../../lib/webdav");
+      const webdavClient = getWebDAVClient();
 
-      // 更新 WebDAV 文件
-      await webdavSource.updateMemo(existingMemo.slug, content, {
+      // 构建 markdown 内容
+      const frontmatter: Record<string, unknown> = {
         title,
         isPublic,
         tags,
         attachments,
         authorEmail: ctx.user?.email || "admin@example.com",
-      });
+        updatedAt: new Date().toISOString(),
+      };
+
+      const frontmatterStr = Object.entries(frontmatter)
+        .map(([key, value]) => {
+          if (Array.isArray(value)) {
+            return `${key}: [${value.map((v) => JSON.stringify(v)).join(", ")}]`;
+          }
+          return `${key}: ${JSON.stringify(value)}`;
+        })
+        .join("\n");
+
+      const markdownContent = `---\n${frontmatterStr}\n---\n\n${content}`;
+
+      // 写入到 WebDAV
+      const webdavPath = `/memos/${fileName}.md`;
+
+      await webdavClient.putFileContent(webdavPath, markdownContent);
 
       // 更新数据库
       const now = Math.floor(Date.now() / 1000);
@@ -698,8 +724,6 @@ export const memosRouter = router({
       };
 
       await db.update(posts).set(updateData).where(eq(posts.id, id));
-
-      await webdavSource.dispose();
 
       // 触发增量数据同步
       await triggerIncrementalSync();
