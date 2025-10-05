@@ -243,8 +243,8 @@ export abstract class ContentSourceBase implements IContentSource {
 
     if (needsDatabaseQuery) {
       try {
-        const dbModule = await import("~/server/db");
-        const schemaModule = await import("~/server/db/schema");
+        const dbModule = await import("../../server/db");
+        const schemaModule = await import("../../server/db/schema");
         const ormModule = await import("drizzle-orm");
         db = dbModule.db;
         posts = schemaModule.posts;
