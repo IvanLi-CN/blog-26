@@ -99,6 +99,8 @@ export default defineConfig({
         NODE_ENV: "test",
         // Pass through ADMIN_EMAIL so server and tests agree
         ADMIN_EMAIL,
+        // Enable E2E admin bypass for test environment
+        E2E_BYPASS_ADMIN: "1",
         DB_PATH: "./test-data/sqlite.db", // 测试数据库路径（集中在 test-data/ 下）
         PORT: "25090", // 确保使用25090端口
         LOCAL_CONTENT_BASE_PATH: "./test-data/local", // 测试环境本地内容路径
