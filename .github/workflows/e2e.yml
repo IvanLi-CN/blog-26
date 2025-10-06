@@ -110,19 +110,41 @@ jobs:
             fi
           fi
           echo "> Installed $($BIN_PATH --version)"
+      - name: Start dufs (WebDAV) in background
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tmp
+          # Ensure port 25091 is free first
+          if lsof -i :25091 -sTCP:LISTEN -t >/dev/null 2>&1; then
+            echo "Port 25091 is already in use; listing processes:" >&2
+            lsof -i :25091 || true
+            exit 1
+          fi
+          echo "Starting dufs on :25091 serving test-data/webdav ..."
+          nohup dufs test-data/webdav --port 25091 --allow-all --enable-cors \
+            > tmp/dufs.log 2>&1 & echo $! > tmp/dufs.pid
+          # Wait up to 10s for the server to accept connections
+          for i in {1..20}; do
+            curl -fsS http://localhost:25091/ >/dev/null 2>&1 && break
+            sleep 0.5
+          done
+          curl -fsS http://localhost:25091/ >/dev/null
+          echo "dufs is up. pid=$(cat tmp/dufs.pid)"
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-      - name: Prepare Test Environment
+      - name: Prepare Test Environment (reset + seed + sync)
         run: bun run test-env:reset
         env:
           WEBDAV_URL: http://localhost:25091
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           DB_PATH: ./test-data/sqlite.db
-      - name: Wait for dufs installation
+      - name: Verify WebDAV is reachable
         run: |
-          # 确保dufs已安装并可用
-          which dufs || exit 1
-          echo "dufs is available at: $(which dufs)"
+          set -e
+          curl -fsS http://localhost:25091/ >/dev/null
+          echo "WebDAV ok: http://localhost:25091"
       - name: Verify Test Data (Debug)
         run: bun run test-db:posts
       - name: Run E2E tests
@@ -141,3 +163,11 @@ jobs:
           # Use a single root to avoid multi-path warning on GHES/Gitea
           path: test-results
           if-no-files-found: warn
+      - name: Stop dufs (always)
+        if: always()
+        run: |
+          if [ -f tmp/dufs.pid ]; then
+            PID=$(cat tmp/dufs.pid) || true
+            echo "Stopping dufs pid=$PID"
+            kill "$PID" 2>/dev/null || true
+          fi
