@@ -21,8 +21,12 @@ test.describe("Memo 编辑不重复", () => {
 
     // 获取第一个 memo 并点击编辑
     const firstMemo = memoCards.first();
-    // 使用 aria-label 定位编辑按钮（按钮是图标按钮，没有文字）
-    const editButton = firstMemo.locator('button[aria-label^="编辑 Memo"]');
+    // 使用可访问名称定位编辑按钮，确保滚动到视图后再点击
+    const editButton = firstMemo.getByRole("button", { name: /^编辑 Memo/ });
+    await firstMemo.hover();
+    await editButton.waitFor({ state: "visible" });
+    await editButton.scrollIntoViewIfNeeded();
+    await expect(editButton).toBeEnabled();
     await editButton.click();
 
     // 等待编辑对话框出现

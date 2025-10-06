@@ -1,12 +1,7 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { resolveUserByPersonalAccessToken } from "@/server/services/personal-access-tokens";
-import {
-  getAdminEmail,
-  getSsoEmailHeaderName,
-  isAdminBypassEnabled,
-  isBypassHeaderPresent,
-} from "./admin-config";
+import { getAdminEmail, getSsoEmailHeaderName } from "./admin-config";
 import { db, initializeDB } from "./db";
 import { users } from "./schema";
 import { SESSION_COOKIE_NAME, updateSessionActivity, validateSession } from "./session";
@@ -28,7 +23,6 @@ export interface AuthResult {
 export async function extractAuthFromRequest(request: Request): Promise<AuthResult> {
   let user: AuthResult["user"] | undefined;
   let isAdmin = false; // 默认不是管理员
-  const bypassAdmin = isAdminBypassEnabled() || isBypassHeaderPresent(request.headers);
 
   console.log("🔍 [AUTH-UTILS] 开始权限检查, 默认 isAdmin=false");
 
@@ -96,10 +90,9 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
       adminEmail,
       adminEmailSet: !!adminEmail,
       isMatch: adminEmail ? remoteEmail === adminEmail : false,
-      bypassAdmin,
     });
-    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员；测试场景可通过 bypass 开关放行
-    isAdmin = adminEmail ? remoteEmail === adminEmail : bypassAdmin;
+    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员
+    isAdmin = adminEmail ? remoteEmail === adminEmail : false;
 
     // 如果还没有从 Cookie 中识别出用户，则尝试从数据库查找或创建
     if (!user) {
@@ -150,28 +143,15 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
       adminEmail,
       adminEmailSet: !!adminEmail,
       isMatch: adminEmail && user.email === adminEmail,
-      bypassAdmin,
     });
 
-    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员；或显式 bypass
-    if ((adminEmail && user.email === adminEmail) || bypassAdmin) {
+    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员
+    if (adminEmail && user.email === adminEmail) {
       isAdmin = true;
       console.log("✅ [AUTH-UTILS] 用户被识别为管理员");
     } else {
       console.log("❌ [AUTH-UTILS] 用户不是管理员 (ADMIN_EMAIL未设置或不匹配)");
     }
-  }
-
-  if (bypassAdmin && !user) {
-    const adminEmail = getAdminEmail();
-    user = {
-      id: "bypass-admin",
-      nickname: adminEmail.split("@")[0],
-      email: adminEmail,
-      avatarUrl: undefined,
-    };
-    isAdmin = true;
-    console.log("✅ [AUTH-UTILS] Bypass admin enabled, synthetic admin user injected");
   }
 
   console.log("🔍 [AUTH-UTILS] 最终权限结果:", {

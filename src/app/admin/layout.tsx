@@ -2,12 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import ThemeToggle from "../../components/common/ThemeToggle";
-import {
-  getAdminEmail,
-  getSsoEmailHeaderName,
-  isAdminBypassEnabled,
-  isBypassHeaderPresent,
-} from "../../lib/admin-config";
+import { getAdminEmail, getSsoEmailHeaderName } from "../../lib/admin-config";
 import { isAdminFromRequest } from "../../lib/auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,9 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const isAdmin = await isAdminFromRequest(headersList);
   const headerSaysAdmin = Boolean(adminEmail && remoteEmail === adminEmail);
-  const bypassAdminGuard = isAdminBypassEnabled() || isBypassHeaderPresent(headersList);
-
-  if (!isAdmin && !headerSaysAdmin && !bypassAdminGuard) {
+  if (!isAdmin && !headerSaysAdmin) {
     redirect("/admin-login");
   }
 

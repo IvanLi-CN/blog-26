@@ -1,10 +1,5 @@
 import { cookies } from "next/headers";
-import {
-  getAdminEmail,
-  getSsoEmailHeaderName,
-  isAdminBypassEnabled,
-  isBypassHeaderPresent,
-} from "./admin-config";
+import { getAdminEmail, getSsoEmailHeaderName } from "./admin-config";
 import { extractAuthFromRequest } from "./auth-utils";
 import { SESSION_COOKIE_NAME, validateSession } from "./session";
 
@@ -45,9 +40,6 @@ export async function getUserFromCookies(): Promise<UserInfo | null> {
  */
 export function isAdmin(userEmail: string): boolean {
   try {
-    if (isAdminBypassEnabled()) {
-      return true;
-    }
     const adminEmail = getAdminEmail();
     return Boolean(adminEmail && userEmail === adminEmail);
   } catch {
@@ -61,10 +53,6 @@ export function isAdmin(userEmail: string): boolean {
  */
 export function isAdminFromHeaders(headers: Headers): boolean {
   try {
-    if (isAdminBypassEnabled() || isBypassHeaderPresent(headers)) {
-      return true;
-    }
-
     const adminEmail = getAdminEmail();
     const emailHeaderName = getSsoEmailHeaderName();
 
@@ -105,10 +93,6 @@ export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
 
   if (cookiePairs.length > 0) {
     mockRequest.headers.set("cookie", cookiePairs.join("; "));
-  }
-
-  if (isAdminBypassEnabled() || isBypassHeaderPresent(headers)) {
-    return true;
   }
 
   const { isAdmin: userIsAdmin } = await extractAuthFromRequest(mockRequest);
