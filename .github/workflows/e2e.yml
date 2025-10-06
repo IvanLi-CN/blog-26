@@ -122,7 +122,9 @@ jobs:
             exit 1
           fi
           echo "Starting dufs on :25091 serving test-data/webdav ..."
+          # Run dufs in background and capture PID to avoid blocking the step
           nohup dufs test-data/webdav --port 25091 --allow-all --enable-cors \
+            > tmp/dufs.log 2>&1 & echo $! > tmp/dufs.pid
           # Wait up to 20s for the server to accept connections
           for i in {1..40}; do
             curl -fsS http://localhost:25091/ >/dev/null 2>&1 && break
