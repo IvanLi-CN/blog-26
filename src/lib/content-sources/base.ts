@@ -231,35 +231,8 @@ export abstract class ContentSourceBase implements IContentSource {
   private async compareWithLastSync(currentItems: ContentItem[], lastSyncTime?: number) {
     const changes = [];
 
-    // 延迟导入数据库模块,避免在非运行时环境(如测试初始化)中导入
-    let db: any;
-    let posts: any;
-    let eq: any;
-
-    // 只在需要查询时才导入数据库模块
-    const needsDatabaseQuery = currentItems.some(
-      (item) => lastSyncTime && item.lastModified > lastSyncTime
-    );
-
-    if (needsDatabaseQuery) {
-      try {
-        const dbModule = await import("../../server/db");
-        const schemaModule = await import("../../server/db/schema");
-        const ormModule = await import("drizzle-orm");
-        db = dbModule.db;
-        posts = schemaModule.posts;
-        eq = ormModule.eq;
-      } catch (error) {
-        // 如果数据库模块导入失败(如在测试初始化期间),退回到基于时间的判断
-        console.warn(
-          `[${this.name}] Failed to import database modules, falling back to time-based sync:`,
-          error
-        );
-      }
-    }
-
     for (const item of currentItems) {
-      // 如果没有上次同步时间，认为所有项目都是新的
+      // 如果没有上次同步时间,认为所有项目都是新的
       if (!lastSyncTime) {
         changes.push({
           item,
@@ -269,33 +242,17 @@ export abstract class ContentSourceBase implements IContentSource {
         continue;
       }
 
-      // 如果项目的修改时间早于或等于上次同步时间，跳过
+      // 如果项目的修改时间早于或等于上次同步时间,跳过
       if (item.lastModified <= lastSyncTime) {
         continue;
       }
 
-      // 查询数据库检查item是否已存在
-      let existingItem: any;
-      if (db && posts && eq) {
-        try {
-          existingItem = await db
-            .select({ id: posts.id })
-            .from(posts)
-            .where(eq(posts.id, item.id))
-            .limit(1)
-            .then((result: any[]) => result[0]);
-        } catch (error) {
-          console.warn(
-            `[${this.name}] Failed to query database for item ${item.id}, assuming it's new:`,
-            error
-          );
-        }
-      }
-
+      // 对于修改时间晚于上次同步的项目,标记为更新
+      // 注: 数据库去重逻辑已在 processor 层面通过 upsert 处理
       changes.push({
         item,
-        operation: existingItem ? ("update" as SyncOperationType) : ("create" as SyncOperationType),
-        reason: existingItem ? "内容已修改" : "新增内容",
+        operation: "update" as SyncOperationType,
+        reason: "内容已修改",
       });
     }
 
