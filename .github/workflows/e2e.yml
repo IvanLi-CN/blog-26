@@ -114,7 +114,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p tmp
+          mkdir -p tmp test-data/webdav
           # Ensure port 25091 is free first
           if lsof -i :25091 -sTCP:LISTEN -t >/dev/null 2>&1; then
             echo "Port 25091 is already in use; listing processes:" >&2
@@ -122,15 +122,20 @@ jobs:
             exit 1
           fi
           echo "Starting dufs on :25091 serving test-data/webdav ..."
-          nohup dufs test-data/webdav --port 25091 --allow-all --enable-cors \
-            > tmp/dufs.log 2>&1 & echo $! > tmp/dufs.pid
-          # Wait up to 10s for the server to accept connections
-          for i in {1..20}; do
+          nohup dufs test-data/webdav --port 25091 --host 127.0.0.1 --allow-all --enable-cors \
+          # Wait up to 20s for the server to accept connections
+          for i in {1..40}; do
             curl -fsS http://localhost:25091/ >/dev/null 2>&1 && break
             sleep 0.5
           done
-          curl -fsS http://localhost:25091/ >/dev/null
+          if ! curl -fsS http://localhost:25091/ >/dev/null 2>&1; then
+            echo "dufs did not start in time. Last 100 log lines:" >&2
+            tail -n 100 tmp/dufs.log || true
+            exit 1
+          fi
           echo "dufs is up. pid=$(cat tmp/dufs.pid)"
+
+
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
@@ -143,8 +148,12 @@ jobs:
       - name: Verify WebDAV is reachable
         run: |
           set -e
-          curl -fsS http://localhost:25091/ >/dev/null
-          echo "WebDAV ok: http://localhost:25091"
+          if ! curl -fsS http://localhost:25091/ >/dev/null 2>&1; then
+            echo "dufs did not start in time. Last 100 log lines:" >&2
+            tail -n 100 tmp/dufs.log || true
+            exit 1
+          fi
+          echo "dufs is up. pid=$(cat tmp/dufs.pid)"
       - name: Verify Test Data (Debug)
         run: bun run test-db:posts
       - name: Run E2E tests
