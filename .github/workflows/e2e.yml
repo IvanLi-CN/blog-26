@@ -160,7 +160,8 @@ jobs:
         run: bun run test:e2e
         env:
           NODE_ENV: test
-          CI: true
+          # Force Playwright to reuse existing dufs server to avoid port collisions
+          CI: false
           WEBDAV_URL: http://localhost:25091
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           ADMIN_MODE: true
