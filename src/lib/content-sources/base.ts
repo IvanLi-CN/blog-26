@@ -229,22 +229,32 @@ export abstract class ContentSourceBase implements IContentSource {
    * 比较当前内容与上次同步的差异
    */
   private async compareWithLastSync(currentItems: ContentItem[], lastSyncTime?: number) {
-    // 这里是一个简化的实现，实际项目中可能需要更复杂的逻辑
-    // 比如从数据库中获取上次同步的状态进行比较
+    const changes = [];
 
-    const changes = currentItems
-      .filter((item) => {
-        // 如果没有上次同步时间，认为所有项目都是新的
-        if (!lastSyncTime) return true;
+    for (const item of currentItems) {
+      // 如果没有上次同步时间,认为所有项目都是新的
+      if (!lastSyncTime) {
+        changes.push({
+          item,
+          operation: "create" as SyncOperationType,
+          reason: "首次同步",
+        });
+        continue;
+      }
 
-        // 如果项目的修改时间晚于上次同步时间，认为有变更
-        return item.lastModified > lastSyncTime;
-      })
-      .map((item) => ({
+      // 如果项目的修改时间早于或等于上次同步时间,跳过
+      if (item.lastModified <= lastSyncTime) {
+        continue;
+      }
+
+      // 对于修改时间晚于上次同步的项目,标记为更新
+      // 注: 数据库去重逻辑已在 processor 层面通过 upsert 处理
+      changes.push({
         item,
-        operation: (!lastSyncTime ? "create" : "update") as SyncOperationType,
-        reason: !lastSyncTime ? "首次同步" : "内容已修改",
-      }));
+        operation: "update" as SyncOperationType,
+        reason: "内容已修改",
+      });
+    }
 
     return changes;
   }

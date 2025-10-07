@@ -60,10 +60,7 @@ test.describe("Admin PAT management", () => {
 
       const headers = { ...request.headers() };
       if (requestOrigin === BASE_ORIGIN) {
-        headers[EMAIL_HEADER_NAME] = ADMIN_EMAIL;
-        headers["x-e2e-bypass-admin"] = "1";
-      } else {
-        delete headers["x-e2e-bypass-admin"];
+        headers[EMAIL_HEADER_NAME] = ADMIN_EMAIL; // emulate SSO only
       }
 
       await route.continue({ headers });

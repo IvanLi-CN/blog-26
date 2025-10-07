@@ -2,10 +2,6 @@
 
 // 设置测试环境变量
 // process.env.NODE_ENV = "test"; // 注释掉，因为 NODE_ENV 是只读的
-// 只在没有设置 WEBDAV_URL 时才使用默认值
-if (!process.env.WEBDAV_URL) {
-  process.env.WEBDAV_URL = "http://localhost:8080";
-}
 
 import { resolve } from "node:path";
 import {
@@ -90,40 +86,66 @@ class TestContentSyncTrigger {
   private async registerTestContentSources(manager: ReturnType<typeof getContentSourceManager>) {
     this.log("📝 注册测试环境内容源...");
 
-    // 注册本地内容源（测试数据）
-    const localConfig = LocalContentSource.createDefaultConfig("local-test", 50, {
+    // 注册本地内容源（测试数据）— 使用标准名称，便于应用端按名称获取
+    const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
       contentPath: resolve("./test-data/local"),
     });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);
     this.log("✅ 本地测试内容源注册成功");
 
-    // 注册本地WebDAV测试目录作为内容源（包含图片的memo）
-    const webdavLocalConfig = LocalContentSource.createDefaultConfig("webdav-local-test", 100, {
-      contentPath: resolve("./test-data/webdav"),
-    });
-    const webdavLocalSource = new LocalContentSource(webdavLocalConfig);
-    await manager.registerSource(webdavLocalSource);
-    this.log("✅ 本地WebDAV测试内容源注册成功");
+    const webdavEnabled = isWebDAVEnabled();
 
-    // 如果 WebDAV 可用，注册 WebDAV 内容源（测试数据）
-    if (isWebDAVEnabled()) {
-      try {
-        const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav-test", 200);
-        // 使用测试环境的路径映射（注意：必须是数组格式）
-        webdavConfig.options.pathMappings = {
-          posts: ["/blog"],
-          projects: ["/projects"],
-          memos: ["/memos"],
-        };
-        const webdavSource = new WebDAVContentSource(webdavConfig);
-        await manager.registerSource(webdavSource);
-        this.log("✅ WebDAV 测试内容源注册成功");
-      } catch (error) {
-        this.log(`⚠️ WebDAV 测试内容源注册失败: ${error}`, "warn");
+    if (!webdavEnabled) {
+      throw new Error("WebDAV 服务未启用：测试环境必须提供可访问的 WEBDAV_URL 并启动对应服务");
+    }
+
+    const webdavUrl = process.env.WEBDAV_URL!;
+    await this.assertWebDAVReachable(webdavUrl);
+
+    try {
+      const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav", 200);
+      // 使用测试环境的路径映射（注意：必须是数组格式）
+      webdavConfig.options.pathMappings = {
+        posts: ["/blog"],
+        projects: ["/projects"],
+        memos: ["/memos"],
+      };
+      const webdavSource = new WebDAVContentSource(webdavConfig);
+      await manager.registerSource(webdavSource);
+      this.log("✅ WebDAV 内容源注册成功");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`WebDAV 内容源注册失败: ${errorMessage}`);
+    }
+  }
+
+  private async assertWebDAVReachable(webdavUrl: string) {
+    this.log(`🔍 校验 WebDAV 服务可用性: ${webdavUrl}`);
+    try {
+      const response = await fetch(webdavUrl, { method: "HEAD" });
+      if (!response.ok && response.status !== 405) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
-    } else {
-      this.log("⚠️ WebDAV 未启用，但已注册本地WebDAV测试目录", "warn");
+    } catch (error) {
+      this.log(
+        `❌ WebDAV 服务不可达: ${webdavUrl}，${error instanceof Error ? error.message : error}`,
+        "error"
+      );
+      throw new Error(`无法连接 WebDAV (${webdavUrl})，请确认服务已启动且网络可达`);
+    }
+
+    // HEAD 有些 WebDAV 服务可能不支持，做一次 GET 验证
+    try {
+      const response = await fetch(webdavUrl, { method: "GET" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+      this.log("🟢 WebDAV 服务响应正常");
+    } catch (error) {
+      throw new Error(
+        `WebDAV GET 校验失败：${webdavUrl}，${error instanceof Error ? error.message : error}`
+      );
     }
   }
 

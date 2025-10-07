@@ -1,3 +1,5 @@
+import { dirname, resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
@@ -8,6 +10,12 @@ import { defineConfig, devices } from "@playwright/test";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
+
+// Use absolute paths to avoid CI cwd differences
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const ABS_TEST_DB = resolvePath(__dirname, "test-data/sqlite.db");
+const ABS_LOCAL_CONTENT = resolvePath(__dirname, "test-data/local");
 
 export default defineConfig({
   // 测试目录
@@ -89,28 +97,28 @@ export default defineConfig({
 
   // E2E 测试服务器配置
   webServer: [
-    // 集成的 HTTP + WebSocket 服务器
-    {
-      command: `ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=./test-data/sqlite.db NODE_ENV=test bun --bun next dev --turbopack --port 25090`,
-      url: process.env.BASE_URL || "http://localhost:25090",
-      reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
-      timeout: 120 * 1000, // 2分钟启动超时
-      env: {
-        NODE_ENV: "test",
-        // Pass through ADMIN_EMAIL so server and tests agree
-        ADMIN_EMAIL,
-        DB_PATH: "./test-data/sqlite.db", // 测试数据库路径（集中在 test-data/ 下）
-        PORT: "25090", // 确保使用25090端口
-        LOCAL_CONTENT_BASE_PATH: "./test-data/local", // 测试环境本地内容路径
-        WEBDAV_URL: "http://localhost:25091", // WebDAV服务器地址
-      },
-    },
-    // dufs WebDAV 服务器
+    // 1) dufs WebDAV 服务器
     {
       command: "dufs test-data/webdav --port 25091 --allow-all --enable-cors",
       url: "http://localhost:25091",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 30 * 1000, // 30秒启动超时
+    },
+    // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
+    {
+      command: `WEBDAV_URL=http://localhost:25091 DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=25090 bun --bun next dev --turbopack --port 25090`,
+      url: process.env.BASE_URL || "http://localhost:25090",
+      reuseExistingServer: true, // CI环境不重用，本地开发重用
+      timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
+      env: {
+        NODE_ENV: "test",
+        ADMIN_EMAIL,
+        DB_PATH: ABS_TEST_DB,
+        PORT: "25090",
+        LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
+        WEBDAV_URL: "http://localhost:25091",
+        E2E_MODE: "1", // 启用测试环境下的 Files API 本地回退
+      },
     },
   ],
 });
