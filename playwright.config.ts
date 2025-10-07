@@ -101,14 +101,14 @@ export default defineConfig({
     {
       command: "dufs test-data/webdav --port 25091 --allow-all --enable-cors",
       url: "http://localhost:25091",
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 30 * 1000, // 30秒启动超时
     },
     // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
     {
       command: `WEBDAV_URL=http://localhost:25091 DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=25090 bun --bun next dev --turbopack --port 25090`,
       url: process.env.BASE_URL || "http://localhost:25090",
-      reuseExistingServer: !process.env.CI, // CI环境不重用，本地开发重用
+      reuseExistingServer: true, // CI环境不重用，本地开发重用
       timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
       env: {
         NODE_ENV: "test",
