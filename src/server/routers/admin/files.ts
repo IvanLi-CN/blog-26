@@ -306,28 +306,31 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
 async function ensureContentSourcesRegistered(manager: ReturnType<typeof getContentSourceManager>) {
   const sources = manager.getSources();
 
-  // 如果没有注册的内容源，自动注册默认的内容源
-  if (sources.length === 0) {
-    console.log("🔧 [Files API] 自动注册默认内容源...");
+  // 确保始终存在标准名称的内容源：local、webdav（如果启用）
+  const hasLocal = sources.some((s) => s.name === "local");
+  const hasWebDAV = sources.some((s) => s.name === "webdav");
 
-    // 注册本地内容源
+  // 注册本地内容源（缺失时补齐）
+  if (!hasLocal) {
+    console.log("🔧 [Files API] 注册缺失的本地内容源 'local' ...");
     const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
       contentPath: resolve(LOCAL_PATHS.basePath),
     });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);
     console.log("✅ [Files API] 本地内容源注册成功");
+  }
 
-    // 如果 WebDAV 可用，注册 WebDAV 内容源
-    if (isWebDAVEnabled()) {
-      try {
-        const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav", 100);
-        const webdavSource = new WebDAVContentSource(webdavConfig);
-        await manager.registerSource(webdavSource);
-        console.log("✅ [Files API] WebDAV 内容源注册成功");
-      } catch (error) {
-        console.warn("⚠️ [Files API] WebDAV 内容源注册失败:", error);
-      }
+  // 注册 WebDAV 内容源（开启且缺失时补齐）
+  if (isWebDAVEnabled() && !hasWebDAV) {
+    try {
+      console.log("🔧 [Files API] 注册缺失的 WebDAV 内容源 'webdav' ...");
+      const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav", 100);
+      const webdavSource = new WebDAVContentSource(webdavConfig);
+      await manager.registerSource(webdavSource);
+      console.log("✅ [Files API] WebDAV 内容源注册成功");
+    } catch (error) {
+      console.warn("⚠️ [Files API] WebDAV 内容源注册失败:", error);
     }
   }
 }
