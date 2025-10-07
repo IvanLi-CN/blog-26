@@ -14,9 +14,12 @@ test.describe("Memo 编辑不重复", () => {
     await page.waitForSelector(".memos-list", { timeout: 10000 });
     const memoCards = page.locator('[data-testid="memo-card"]');
 
-    // 记录初始 memo 数量
+    // 记录初始 memo 数量（在 CI 上可能需要等待数据同步完成）
+    // 使用 expect.poll 等待到出现至少 1 条记录，避免瞬时为 0 的误判
+    await test.expect
+      .poll(async () => await memoCards.count(), { timeout: 15000 })
+      .toBeGreaterThan(0);
     const initialCount = await memoCards.count();
-    expect(initialCount).toBeGreaterThan(0);
     console.log(`📊 初始 memo 数量: ${initialCount}`);
 
     // 获取第一个 memo 并点击编辑
