@@ -104,14 +104,7 @@ export function QuickMemoEditor({
           hasEscapedMarkdown: processedContent.includes("\\[") || processedContent.includes("\\]"),
         });
 
-        // 如果当前内容中还未包含 data:image，但编辑区里可能已有 Markdown 文本，尝试从 DOM 读取
-        if (containerRef.current) {
-          const prose = containerRef.current.querySelector(".ProseMirror") as HTMLElement | null;
-          const domText = prose?.textContent || "";
-          if (domText.trim().length > 0) {
-            processedContent = domText.trim();
-          }
-        }
+        // 不再从 DOM textContent 兜底读取，以免丢失 Markdown 语义（列表/换行等）
 
         if (editorRef.current) {
           console.log("🖼️ [QuickMemoEditor] 开始处理内联图片...");
