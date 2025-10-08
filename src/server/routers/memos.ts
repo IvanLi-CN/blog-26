@@ -571,8 +571,8 @@ export const memosRouter = router({
       // 生成数据库 slug（使用 nanoid 确保唯一性）
       const slug = generateNanoidSlug(8);
 
-      // 保存到数据库
-      const now = Math.floor(Date.now() / 1000);
+      // 保存到数据库（统一使用毫秒时间戳，以与种子/历史数据保持一致，确保排序正确）
+      const now = Date.now();
       const memoData = {
         id: `memos/${filePath}`,
         type: "memo" as const,
@@ -700,7 +700,7 @@ export const memosRouter = router({
       await webdavClient.putFileContent(webdavPath, markdownContent);
 
       // 更新数据库
-      const now = Math.floor(Date.now() / 1000);
+      const now = Date.now();
       // 合并并更新元数据
       let meta: any = {};
       try {
@@ -848,17 +848,23 @@ export const memosRouter = router({
 // 辅助函数
 // ============================================================================
 
-function extractTitleFromContent(content: string): string {
+export function extractTitleFromContent(content: string): string {
   const h1Match = content.match(/^#\s+(.+)$/m);
   if (h1Match) return h1Match[1].trim();
 
-  const firstLine = content.split("\n")[0]?.trim();
-  if (firstLine) return firstLine.substring(0, 50);
+  // Fallback: first non-empty line's text as-is (no concatenation)
+  const lines = content.split("\n");
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line.length > 0) {
+      return line.substring(0, 50);
+    }
+  }
 
   return "无标题 Memo";
 }
 
-function generateExcerptFromContent(content: string): string {
+export function generateExcerptFromContent(content: string): string {
   const plainText = content
     .replace(/^#+\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
