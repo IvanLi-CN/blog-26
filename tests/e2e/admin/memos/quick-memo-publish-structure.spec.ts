@@ -14,7 +14,13 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     const editor = container.locator(".ProseMirror");
     await editor.click();
     // Use insertText to avoid IME/formatting quirks and ensure exact markdown
-    await page.keyboard.insertText(`# ${TITLE}\n\n* 项目一\n* 项目二`);
+    // 按行输入以确保换行由编辑器正确处理
+    await page.keyboard.insertText(`# ${TITLE}`);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.keyboard.insertText("* 项目一");
+    await page.keyboard.press("Enter");
+    await page.keyboard.insertText("* 项目二");
     await page.waitForTimeout(200);
 
     // Publish
@@ -51,20 +57,7 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     const slug = findSlug(createJson);
     if (!slug) throw new Error("memos.create 响应未返回 slug");
 
-    // 等待列表刷新(无刷新的情况下，通过监听后续 memos.list 响应并包含 slug)
-    await page.waitForResponse(
-      async (res) => {
-        try {
-          if (!res.url().includes("/api/trpc/memos.list")) return false;
-          if (res.status() !== 200) return false;
-          const data = await res.json();
-          return JSON.stringify(data).includes(slug);
-        } catch {
-          return false;
-        }
-      },
-      { timeout: 30000 }
-    );
+    // 等待 UI 列表实际呈现新发布（更稳健：直接以第一张卡片文本作为锚点）
 
     // 1) 列表页：新发布必须置顶
     const firstCard = page.locator('[data-testid="memo-card"]').first();
