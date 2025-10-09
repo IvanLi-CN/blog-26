@@ -8,8 +8,9 @@ import { defineConfig, devices } from "@playwright/test";
  */
 // Keep server and test-runner using the same emails
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
-const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
-const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
+const _USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
+// Removed header injection for dev/test login flows.
+const _EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
 // Use absolute paths to avoid CI cwd differences
 const __filename = fileURLToPath(import.meta.url);
@@ -69,7 +70,7 @@ export default defineConfig({
 
   // 项目配置 - 三组身份 + 浏览器
   projects: [
-    // 游客访问（不注入 Remote-Email 头）
+    // 游客访问（不注入任何 SSO 头）
     {
       name: "guest-chromium",
       testMatch: ["**/guest/**/*.spec.ts"],
@@ -81,7 +82,8 @@ export default defineConfig({
       testMatch: ["**/user/**/*.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
-        extraHTTPHeaders: { [EMAIL_HEADER_NAME]: USER_EMAIL },
+        // Removed header injection. Tests should establish session via legit login helpers.
+        extraHTTPHeaders: {},
       },
     },
     // 管理员访问（注入管理员邮箱）
@@ -90,7 +92,8 @@ export default defineConfig({
       testMatch: ["**/admin/**/*.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
-        extraHTTPHeaders: { [EMAIL_HEADER_NAME]: ADMIN_EMAIL },
+        // Removed header injection. Tests should establish session via legit login helpers.
+        extraHTTPHeaders: {},
       },
     },
   ],
@@ -106,7 +109,7 @@ export default defineConfig({
     },
     // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
     {
-      command: `WEBDAV_URL=http://localhost:25091 DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=25090 bun --bun next dev --turbopack --port 25090`,
+      command: `WEBDAV_URL=http://localhost:25091 DB_PATH=${ABS_TEST_DB} bun run test-env:reset && DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=25090 bun --bun next dev --turbopack --port 25090`,
       url: process.env.BASE_URL || "http://localhost:25090",
       reuseExistingServer: true, // CI环境不重用，本地开发重用
       timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段

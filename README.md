@@ -130,7 +130,7 @@ Important env hints:
 
 - `NODE_ENV=production`, `PORT=25090` (example)
 - `DB_PATH` should point to a persistent location (e.g., `./sqlite.db` or a mounted volume)
-- `ADMIN_EMAIL` and `SSO_EMAIL_HEADER_NAME` (if your proxy injects email SSO)
+-
 - Content sources: `WEBDAV_URL`, `LOCAL_CONTENT_BASE_PATH`, etc.
 
 ### Environment Storage Layout (Paths)
@@ -173,19 +173,7 @@ bun run -i scripts/validate-config.ts
 
 ### How To Log In
 
-- Option A (recommended for automation/integration): Remote-Email header injection
-  - Inject an admin email via request header; the server reads `SSO_EMAIL_HEADER_NAME` (default: `Remote-Email`).
-  - This repo enables it in `playwright.config.ts`:
-
-    ```ts
-    // excerpt
-    extraHTTPHeaders: {
-      [process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email"]:
-        process.env.ADMIN_EMAIL || "admin@test.com",
-    }
-    ```
-
-- Option B (dev/test only): Privileged endpoints (use fetch in the browser)
+- Dev/test only: Privileged endpoints (use fetch in the browser)
   - These endpoints set a `Set-Cookie` session; the simplest way is to run them in the browser console so the cookie is stored for the current origin.
   - Open the app in a browser (e.g., `http://localhost:25090`), then in DevTools Console run:
 

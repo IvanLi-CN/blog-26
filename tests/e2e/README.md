@@ -4,7 +4,7 @@
 
 ## 📁 测试文件结构
 
-已按“游客 / 普通用户 / 管理员”三组划分，并通过 Playwright 项目分别注入 Remote-Email 请求头（仅 user/admin 组注入）。
+已按“游客 / 普通用户 / 管理员”三组划分。测试运行环境通过合法登录或测试专用入口建立会话，不再在 Playwright 层注入请求头。
 
 ```
 e2e/
@@ -128,7 +128,7 @@ bun run test:e2e:ui
 ### 运行特定测试类别（按身份组）
 
 ```bash
-# 游客组（不注入 Remote-Email 头）
+# 游客组（不带登录会话）
 npx playwright test --project=guest-chromium
 
 # 普通用户组（注入非管理员邮箱）
