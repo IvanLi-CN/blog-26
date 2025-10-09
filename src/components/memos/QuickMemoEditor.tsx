@@ -35,14 +35,6 @@ export interface QuickMemoEditorProps {
   showAdvancedOptions?: boolean;
 }
 
-const DEBUG_MEMO_EDITOR = process.env.NEXT_PUBLIC_DEBUG_MEMO_EDITOR === "1";
-const dlog = (...args: any[]) => {
-  if (DEBUG_MEMO_EDITOR) console.log(...args);
-};
-const dwarn = (...args: any[]) => {
-  if (DEBUG_MEMO_EDITOR) console.warn(...args);
-};
-
 export function QuickMemoEditor({
   placeholder = "写下你的想法...",
   minHeight = 120,
@@ -105,19 +97,14 @@ export function QuickMemoEditor({
             // ignore: getMarkdown may not be available during early mount
           }
         }
-        dlog("🔍 [QuickMemoEditor] 原始内容:", {
-          content: processedContent,
-          length: processedContent.length,
-          hasBase64: processedContent.includes("data:image"),
-          hasEscapedMarkdown: processedContent.includes("\\[") || processedContent.includes("\\]"),
-        });
+        // removed verbose editor debug logs
 
         // 不再从 DOM textContent 兜底读取，以免丢失 Markdown 语义（列表/换行等）
 
         if (editorRef.current) {
-          dlog("🖼️ [QuickMemoEditor] 开始处理内联图片...");
+          // removed verbose editor debug logs
           processedContent = await editorRef.current.processInlineImages(processedContent);
-          dlog("✅ [QuickMemoEditor] 内联图片处理完成");
+          // removed verbose editor debug logs
         }
 
         // 兜底：如仍包含 data:image，则在此处直接完成一次内联上传与替换，确保 e2e 可观察到上传请求
@@ -152,8 +139,8 @@ export function QuickMemoEditor({
                   `![${altText}](${imagePath})`
                 );
               }
-            } catch (e) {
-              dwarn("⚠️ [QuickMemoEditor] 兜底内联上传失败:", e);
+            } catch (_e) {
+              // swallow inline upload fallback error silently in production
             }
           }
         }
