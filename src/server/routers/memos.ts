@@ -516,6 +516,8 @@ export const memosRouter = router({
       const hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
       console.log("🔍 [memos.create] 原始内容包含图片markdown:", hasImageMarkdown);
 
+      // WebDAV 返回的是纯文件名（例如 20251009_title.md），
+      // 数据库与内容源统一使用以 "/memos/" 开头的相对路径作为 id/filePath
       let filePath: string;
 
       // 在测试环境中，如果WebDAV连接失败，跳过WebDAV创建
@@ -542,7 +544,7 @@ export const memosRouter = router({
             authorEmail: ctx.user?.email || "admin@example.com",
           });
 
-          console.log("🔍 [memos.create] WebDAV文件路径:", filePath);
+          console.log("🔍 [memos.create] WebDAV生成的文件名:", filePath);
           await webdavSource.dispose();
         } catch (webdavError) {
           console.log("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
@@ -564,9 +566,12 @@ export const memosRouter = router({
           authorEmail: ctx.user?.email || "admin@example.com",
         });
 
-        console.log("🔍 [memos.create] WebDAV文件路径:", filePath);
+        console.log("🔍 [memos.create] WebDAV生成的文件名:", filePath);
         await webdavSource.dispose();
       }
+
+      // 统一规范：数据库 id/filePath 必须以 "/memos/" 开头（与 WebDAV 扫描保持一致）
+      const dbPath = `/memos/${filePath}`.replace(/\\+/g, "/");
 
       // 生成数据库 slug（使用 nanoid 确保唯一性）
       const slug = generateNanoidSlug(8);
@@ -574,7 +579,7 @@ export const memosRouter = router({
       // 保存到数据库（统一使用毫秒时间戳，以与种子/历史数据保持一致，确保排序正确）
       const now = Date.now();
       const memoData = {
-        id: `memos/${filePath}`,
+        id: dbPath,
         type: "memo" as const,
         slug,
         title: title || extractTitleFromContent(content),
@@ -582,7 +587,7 @@ export const memosRouter = router({
         contentHash: calculateSimpleHash(content),
         lastModified: now,
         source: "webdav",
-        filePath: `memos/${filePath}`,
+        filePath: dbPath,
         draft: false,
         public: isPublic,
         publishDate: now,
