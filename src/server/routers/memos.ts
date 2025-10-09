@@ -349,7 +349,7 @@ export const memosRouter = router({
           (memo as any).dataSource
         );
         const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-        if (process.env.NODE_ENV === "development") {
+        if (process.env.DEBUG_MEMOS === "1") {
           console.debug("[memos.list] resolved", memo.slug, publishedAt, source);
         }
         return {
@@ -395,7 +395,7 @@ export const memosRouter = router({
             updatedAt: m.updatedAt,
             timeDisplaySource: m.timeDisplaySource,
           }));
-      if (!ctx.isAdmin && process.env.NODE_ENV === "development") {
+      if (!ctx.isAdmin && process.env.DEBUG_MEMOS === "1") {
         console.debug(
           "[memos.list] sanitized sample",
           sanitizedMemos[0]?.slug,
@@ -506,15 +506,19 @@ export const memosRouter = router({
     const { content, title, isPublic, tags, attachments } = input;
 
     try {
-      // 调试：输出原始内容和环境信息
-      console.log("🔍 [memos.create] 原始内容长度:", content.length);
-      console.log("🔍 [memos.create] 原始内容预览:", content.substring(0, 200));
-      console.log("🔍 [memos.create] NODE_ENV:", process.env.NODE_ENV);
-      console.log("🔍 [memos.create] 是否为测试环境:", process.env.NODE_ENV === "test");
+      // 调试：输出原始内容和环境信息（仅在 DEBUG_MEMOS=1 时打印）
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug("🔍 [memos.create] 原始内容长度:", content.length);
+        console.debug("🔍 [memos.create] 原始内容预览:", content.substring(0, 200));
+        console.debug("🔍 [memos.create] NODE_ENV:", process.env.NODE_ENV);
+        console.debug("🔍 [memos.create] 是否为测试环境:", process.env.NODE_ENV === "test");
+      }
 
       // 检查内容是否包含图片markdown
       const hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
-      console.log("🔍 [memos.create] 原始内容包含图片markdown:", hasImageMarkdown);
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug("🔍 [memos.create] 原始内容包含图片markdown:", hasImageMarkdown);
+      }
 
       // WebDAV 返回的是纯文件名（例如 20251009_title.md），
       // 数据库与内容源统一使用以 "/memos/" 开头的相对路径作为 id/filePath
@@ -524,7 +528,9 @@ export const memosRouter = router({
       // 检测测试环境：ADMIN_EMAIL包含test或者NODE_ENV为test
       const isTestEnv =
         process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
-      console.log("🔍 [memos.create] 检测到测试环境:", isTestEnv);
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug("🔍 [memos.create] 检测到测试环境:", isTestEnv);
+      }
 
       if (isTestEnv) {
         try {
@@ -532,9 +538,14 @@ export const memosRouter = router({
           const webdavSource = createWebDAVSource();
           await webdavSource.initialize();
 
-          // 发布到 WebDAV
-          console.log("🔍 [memos.create] 准备发送到WebDAV的内容长度:", content.length);
-          console.log("🔍 [memos.create] 准备发送到WebDAV的内容预览:", content.substring(0, 200));
+          // 发布到 WebDAV（仅在调试时输出预览）
+          if (process.env.DEBUG_MEMOS === "1") {
+            console.debug("🔍 [memos.create] 准备发送到WebDAV的内容长度:", content.length);
+            console.debug(
+              "🔍 [memos.create] 准备发送到WebDAV的内容预览:",
+              content.substring(0, 200)
+            );
+          }
 
           filePath = await webdavSource.createMemo(content, {
             title,
@@ -544,10 +555,14 @@ export const memosRouter = router({
             authorEmail: ctx.user?.email || "admin@example.com",
           });
 
-          console.log("🔍 [memos.create] WebDAV生成的文件名:", filePath);
+          if (process.env.DEBUG_MEMOS === "1") {
+            console.debug("🔍 [memos.create] WebDAV生成的文件名:", filePath);
+          }
           await webdavSource.dispose();
         } catch (webdavError) {
-          console.log("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
+          if (process.env.DEBUG_MEMOS === "1") {
+            console.debug("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
+          }
           // 在测试环境中，生成一个模拟的文件路径
           const timestamp = Date.now();
           const slug = title?.replace(/\s+/g, "-").toLowerCase() || `memo-${timestamp}`;
@@ -566,7 +581,9 @@ export const memosRouter = router({
           authorEmail: ctx.user?.email || "admin@example.com",
         });
 
-        console.log("🔍 [memos.create] WebDAV生成的文件名:", filePath);
+        if (process.env.DEBUG_MEMOS === "1") {
+          console.debug("🔍 [memos.create] WebDAV生成的文件名:", filePath);
+        }
         await webdavSource.dispose();
       }
 
@@ -599,21 +616,28 @@ export const memosRouter = router({
         dataSource: "webdav",
       };
 
-      // 调试：输出即将插入数据库的内容
-      console.log("🔍 [memos.create] 即将插入数据库的body长度:", memoData.body.length);
-      console.log("🔍 [memos.create] 即将插入数据库的body预览:", memoData.body.substring(0, 200));
-      console.log(
-        "🔍 [memos.create] 即将插入数据库的body包含图片markdown:",
-        /!\[([^\]]*)\]\([^)]+\)/.test(memoData.body)
-      );
-      console.log(
-        "🔍 [memos.create] 即将插入数据库的body包含<br>标签:",
-        memoData.body.includes("<br")
-      );
+      // 调试：输出即将插入数据库的内容（仅在 DEBUG_MEMOS=1）
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug("🔍 [memos.create] 即将插入数据库的body长度:", memoData.body.length);
+        console.debug(
+          "🔍 [memos.create] 即将插入数据库的body预览:",
+          memoData.body.substring(0, 200)
+        );
+        console.debug(
+          "🔍 [memos.create] 即将插入数据库的body包含图片markdown:",
+          /!\[([^\]]*)\]\([^)]+\)/.test(memoData.body)
+        );
+        console.debug(
+          "🔍 [memos.create] 即将插入数据库的body包含<br>标签:",
+          memoData.body.includes("<br")
+        );
+      }
 
       await db.insert(posts).values(memoData);
 
-      console.log("🔍 [memos.create] 数据库插入完成");
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug("🔍 [memos.create] 数据库插入完成");
+      }
 
       // 触发增量数据同步
       await triggerIncrementalSync();

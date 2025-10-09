@@ -18,6 +18,15 @@ import "@milkdown/crepe/theme/frame.css";
 const editorInstances = new Map<string, Crepe>();
 const initializingEditors = new Set<string>();
 
+// 调试开关与轻量日志函数
+const DEBUG_MEMO_EDITOR = process.env.NEXT_PUBLIC_DEBUG_MEMO_EDITOR === "1";
+const dlog = (...args: any[]) => {
+  if (DEBUG_MEMO_EDITOR) console.log(...args);
+};
+const dwarn = (...args: any[]) => {
+  if (DEBUG_MEMO_EDITOR) console.warn(...args);
+};
+
 // 预处理内容，将 frontmatter 转换为 YAML 代码块
 function preprocessFrontmatterForEditor(content: string): string {
   // 处理 frontmatter
@@ -31,7 +40,7 @@ function preprocessFrontmatterForEditor(content: string): string {
     // 将 frontmatter 转换为 YAML 代码块
     const processedContent = `\`\`\`yaml\n${frontmatter}\n\`\`\`\n\n${bodyContent}`;
 
-    console.log("📝 [MilkdownEditor] 处理 frontmatter:", {
+    dlog("📝 [MilkdownEditor] 处理 frontmatter:", {
       hasFrontmatter: true,
       frontmatterLength: frontmatter.length,
       bodyLength: bodyContent.length,
@@ -56,7 +65,7 @@ function postprocessContentFromEditor(content: string): string {
     // 转换回 frontmatter 格式
     const processedContent = `---\n${yamlContent}\n---\n${bodyContent}`;
 
-    console.log("📝 [MilkdownEditor] 转换回 frontmatter:", {
+    dlog("📝 [MilkdownEditor] 转换回 frontmatter:", {
       hasYamlBlock: true,
       yamlLength: yamlContent.length,
       bodyLength: bodyContent.length,
@@ -135,7 +144,7 @@ function preprocessContentForEditor(
   return content.replace(imageRegex, (_match, alt, src) => {
     // 使用实际的文章路径来确定目录
     const convertedSrc = convertImagePathForEditor(src, articlePath, contentSource);
-    console.log("🖼️ [MilkdownEditor] 转换图片路径:", {
+    dlog("🖼️ [MilkdownEditor] 转换图片路径:", {
       original: src,
       converted: convertedSrc,
       articlePath: articlePath,
@@ -178,7 +187,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         .replace(/\\\(/g, "(")
         .replace(/\\\)/g, ")");
 
-      console.log("🔧 [MilkdownEditor] 反转义处理:", {
+      dlog("🔧 [MilkdownEditor] 反转义处理:", {
         original: `${content.substring(0, 100)}...`,
         unescaped: `${unescapedContent.substring(0, 100)}...`,
         hasEscapedChars: content.includes("\\[") || content.includes("\\]"),
@@ -191,7 +200,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       for (const match of matches) {
         const [fullMatch, altText, imageType, base64Data] = match;
 
-        console.log("🖼️ [MilkdownEditor] 处理内联图片:", {
+        dlog("🖼️ [MilkdownEditor] 处理内联图片:", {
           altText,
           imageType,
           base64Length: base64Data.length,
@@ -240,14 +249,14 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           }
 
           const result = await response.json();
-          console.log("✅ [MilkdownEditor] 内联图片上传成功:", {
+          dlog("✅ [MilkdownEditor] 内联图片上传成功:", {
             uploadPath,
             result,
           });
 
           // 构建新的图片路径 - 始终使用绝对路径，避免相对路径解析问题
           const imagePath = `/api/files/${contentSource}/${uploadPath}`;
-          console.log("✅ [MilkdownEditor] 内联图片处理成功:", {
+          dlog("✅ [MilkdownEditor] 内联图片处理成功:", {
             filename,
             imagePath,
             uploadPath,
@@ -288,16 +297,14 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
       // 检查是否已经有这个 editorId 的实例
       if (editorInstances.has(editorId)) {
-        console.warn(
-          `⚠️ [MilkdownEditor] 编辑器实例 ${editorId} 已存在，但需要重新创建以确保正确挂载`
-        );
+        dwarn(`⚠️ [MilkdownEditor] 编辑器实例 ${editorId} 已存在，但需要重新创建以确保正确挂载`);
         // 移除旧实例，重新创建以确保正确挂载
         const oldInstance = editorInstances.get(editorId);
         if (oldInstance) {
           try {
             oldInstance.destroy();
           } catch (error) {
-            console.warn("销毁旧编辑器实例时出错:", error);
+            dwarn("销毁旧编辑器实例时出错:", error);
           }
         }
         editorInstances.delete(editorId);
@@ -305,14 +312,14 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
       // 检查是否正在初始化
       if (initializingEditors.has(editorId)) {
-        console.warn(`⚠️ [MilkdownEditor] 编辑器 ${editorId} 正在初始化中，跳过重复初始化`);
+        dwarn(`⚠️ [MilkdownEditor] 编辑器 ${editorId} 正在初始化中，跳过重复初始化`);
         return;
       }
 
       const initEditor = async () => {
         try {
           initializingEditors.add(editorId);
-          console.log(`🔨 [MilkdownEditor] 初始化编辑器 ${editorId}...`);
+          dlog(`🔨 [MilkdownEditor] 初始化编辑器 ${editorId}...`);
 
           // 预处理内容，转换 frontmatter 和图片路径
           const frontmatterProcessed = preprocessFrontmatterForEditor(initialContentRef.current);
@@ -346,7 +353,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               },
               [CrepeFeature.ImageBlock]: {
                 onUpload: async (file: File) => {
-                  console.log("📤 [MilkdownEditor] 图片上传:", {
+                  dlog("📤 [MilkdownEditor] 图片上传:", {
                     name: file.name,
                     size: file.size,
                     type: file.type,
@@ -355,7 +362,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
                   if (onImageUploadRef.current) {
                     try {
                       const result = await onImageUploadRef.current(file);
-                      console.log("✅ [MilkdownEditor] 图片上传成功:", result);
+                      dlog("✅ [MilkdownEditor] 图片上传成功:", result);
                       return result;
                     } catch (error) {
                       console.error("❌ [MilkdownEditor] 图片上传失败:", error);
@@ -376,7 +383,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             listener.markdownUpdated((_, markdown) => {
               // 防止循环更新：如果正在更新中，跳过
               if (isUpdatingRef.current) {
-                console.log("🔄 [MilkdownEditor] 正在更新中，跳过 onChange 避免无限循环");
+                dlog("🔄 [MilkdownEditor] 正在更新中，跳过 onChange 避免无限循环");
                 return;
               }
 
@@ -389,7 +396,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 检查内容是否完全相同
               if (isSameContent) {
-                console.log("🔄 [MilkdownEditor] 编辑器内容完全相同，跳过 onChange 避免无限循环");
+                dlog("🔄 [MilkdownEditor] 编辑器内容完全相同，跳过 onChange 避免无限循环");
                 return;
               }
 
@@ -397,18 +404,14 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               const currentTrimmed = currentContent.trim();
               const processedTrimmed = processedMarkdown.trim();
               if (currentTrimmed === processedTrimmed) {
-                console.log(
-                  "🔄 [MilkdownEditor] 编辑器内容仅空白字符差异，跳过 onChange 避免无限循环"
-                );
+                dlog("🔄 [MilkdownEditor] 编辑器内容仅空白字符差异，跳过 onChange 避免无限循环");
                 return;
               }
 
               // 检查长度差异是否过小（可能是格式化差异）
               const lengthDiff = Math.abs(currentContent.length - processedMarkdown.length);
               if (lengthDiff <= 3 && currentTrimmed === processedTrimmed) {
-                console.log(
-                  "🔄 [MilkdownEditor] 编辑器内容仅格式化差异，跳过 onChange 避免无限循环"
-                );
+                dlog("🔄 [MilkdownEditor] 编辑器内容仅格式化差异，跳过 onChange 避免无限循环");
                 return;
               }
 
@@ -418,7 +421,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               // 更新最后内容引用，防止后续循环
               lastContentRef.current = processedMarkdown;
 
-              console.log("📝 [MilkdownEditor] 编辑器内容变化，触发 onChange:", {
+              dlog("📝 [MilkdownEditor] 编辑器内容变化，触发 onChange:", {
                 oldLength: currentContent.length,
                 newLength: processedMarkdown.length,
                 lengthDiff: processedMarkdown.length - currentContent.length,
@@ -439,7 +442,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
           // 保存到实例管理器
           editorInstances.set(editorId, crepe);
-          console.log(`✅ [MilkdownEditor] 编辑器 ${editorId} 初始化完成`);
+          dlog(`✅ [MilkdownEditor] 编辑器 ${editorId} 初始化完成`);
         } catch (error) {
           console.error(`❌ [MilkdownEditor] 编辑器 ${editorId} 初始化失败:`, error);
         } finally {
@@ -451,7 +454,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
       return () => {
         if (crepeRef.current) {
-          console.log(`🧹 [MilkdownEditor] 清理编辑器 ${editorId}...`);
+          dlog(`🧹 [MilkdownEditor] 清理编辑器 ${editorId}...`);
           crepeRef.current.destroy();
           crepeRef.current = null;
           // 从实例管理器中移除
@@ -465,7 +468,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     useEffect(() => {
       if (crepeRef.current && lastContentRef.current !== content && !isUpdatingRef.current) {
         try {
-          console.log("🔄 [MilkdownEditor] 更新编辑器内容:", {
+          dlog("🔄 [MilkdownEditor] 更新编辑器内容:", {
             oldLength: lastContentRef.current.length,
             newLength: content.length,
           });
@@ -476,7 +479,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           const isSameTrimmed = currentContent.trim() === content.trim();
 
           if (isSameContent || isSameTrimmed) {
-            console.log("🔄 [MilkdownEditor] 内容相同或仅空白差异，跳过更新避免无限循环");
+            dlog("🔄 [MilkdownEditor] 内容相同或仅空白差异，跳过更新避免无限循环");
             return;
           }
 
@@ -495,7 +498,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           crepeRef.current.editor.action(replaceAll(processedContent));
           lastContentRef.current = content;
 
-          console.log("✅ [MilkdownEditor] 内容更新成功");
+          dlog("✅ [MilkdownEditor] 内容更新成功");
 
           // 延迟重置标志
           setTimeout(() => {
