@@ -1,10 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Memos - 管理员权限测试（通过 Remote-Email 头注入管理员邮箱）
+ * Memos - 管理员权限测试（通过 dev 登录会话建立管理员身份）
  */
 
 test.describe("Memos 管理员权限", () => {
+  test.beforeEach(async ({ page }) => {
+    // 使用开发登录接口建立管理员会话（测试环境允许）
+    await page.request.post("/api/dev/login", {
+      data: { email: process.env.ADMIN_EMAIL || "admin@example.com" },
+    });
+  });
   test("管理员应该看到完整的管理功能", async ({ page }) => {
     await page.goto("/memos");
     await page.waitForLoadState("networkidle");

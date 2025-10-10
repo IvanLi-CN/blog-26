@@ -100,7 +100,7 @@ class TestContentSyncTrigger {
       throw new Error("WebDAV 服务未启用：测试环境必须提供可访问的 WEBDAV_URL 并启动对应服务");
     }
 
-    const webdavUrl = process.env.WEBDAV_URL!;
+    const webdavUrl = process.env.WEBDAV_URL ?? "";
     await this.assertWebDAVReachable(webdavUrl);
 
     try {

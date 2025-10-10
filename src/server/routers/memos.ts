@@ -142,17 +142,23 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
     // 检查是否已有注册的内容源
     const sourcesStatus = await manager.getAllSourcesStatus();
     if (sourcesStatus.length > 0) {
-      console.log(`🔍 [memo-sync] 发现 ${sourcesStatus.length} 个已注册的内容源`);
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug(`🔍 [memo-sync] 发现 ${sourcesStatus.length} 个已注册的内容源`);
+      }
       return;
     }
 
-    console.log("🔧 [memo-sync] 注册内容源...");
+    if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("🔧 [memo-sync] 注册内容源...");
+    }
 
     // 注册WebDAV内容源
     const webdavSource = createWebDAVSource();
     await manager.registerSource(webdavSource);
 
-    console.log("✅ [memo-sync] WebDAV内容源注册成功");
+    if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("✅ [memo-sync] WebDAV内容源注册成功");
+    }
   } catch (error) {
     console.error("⚠️ [memo-sync] 内容源注册失败:", error);
     // 注册失败不应该阻止同步尝试，让同步函数自己处理
@@ -164,7 +170,9 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
  */
 async function triggerIncrementalSync(): Promise<void> {
   try {
-    console.log("🔄 [memo-sync] 开始触发增量数据同步...");
+    if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("🔄 [memo-sync] 开始触发增量数据同步...");
+    }
 
     const manager = getContentSourceManager({
       maxConcurrentSyncs: 2,
@@ -180,7 +188,9 @@ async function triggerIncrementalSync(): Promise<void> {
     const result = await manager.syncAll();
 
     if (result.success) {
-      console.log(`✅ [memo-sync] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug(`✅ [memo-sync] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+      }
     } else {
       const errorMessages = result.errors.map((e) => e.message).join(", ");
       throw new Error(`增量同步失败: ${errorMessages}`);
@@ -349,9 +359,7 @@ export const memosRouter = router({
           (memo as any).dataSource
         );
         const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-        if (process.env.NODE_ENV === "development") {
-          console.debug("[memos.list] resolved", memo.slug, publishedAt, source);
-        }
+
         return {
           id: memo.id,
           slug: memo.slug,
@@ -395,14 +403,6 @@ export const memosRouter = router({
             updatedAt: m.updatedAt,
             timeDisplaySource: m.timeDisplaySource,
           }));
-      if (!ctx.isAdmin && process.env.NODE_ENV === "development") {
-        console.debug(
-          "[memos.list] sanitized sample",
-          sanitizedMemos[0]?.slug,
-          sanitizedMemos[0]?.publishedAt,
-          sanitizedMemos[0]?.timeDisplaySource
-        );
-      }
 
       // 生成下一页的 cursor
       let nextCursor: string | undefined;
@@ -506,23 +506,17 @@ export const memosRouter = router({
     const { content, title, isPublic, tags, attachments } = input;
 
     try {
-      // 调试：输出原始内容和环境信息
-      console.log("🔍 [memos.create] 原始内容长度:", content.length);
-      console.log("🔍 [memos.create] 原始内容预览:", content.substring(0, 200));
-      console.log("🔍 [memos.create] NODE_ENV:", process.env.NODE_ENV);
-      console.log("🔍 [memos.create] 是否为测试环境:", process.env.NODE_ENV === "test");
-
       // 检查内容是否包含图片markdown
-      const hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
-      console.log("🔍 [memos.create] 原始内容包含图片markdown:", hasImageMarkdown);
+      const _hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
 
+      // WebDAV 返回的是纯文件名（例如 20251009_title.md），
+      // 数据库与内容源统一使用以 "/memos/" 开头的相对路径作为 id/filePath
       let filePath: string;
 
       // 在测试环境中，如果WebDAV连接失败，跳过WebDAV创建
       // 检测测试环境：ADMIN_EMAIL包含test或者NODE_ENV为test
       const isTestEnv =
         process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
-      console.log("🔍 [memos.create] 检测到测试环境:", isTestEnv);
 
       if (isTestEnv) {
         try {
@@ -531,8 +525,6 @@ export const memosRouter = router({
           await webdavSource.initialize();
 
           // 发布到 WebDAV
-          console.log("🔍 [memos.create] 准备发送到WebDAV的内容长度:", content.length);
-          console.log("🔍 [memos.create] 准备发送到WebDAV的内容预览:", content.substring(0, 200));
 
           filePath = await webdavSource.createMemo(content, {
             title,
@@ -542,10 +534,11 @@ export const memosRouter = router({
             authorEmail: ctx.user?.email || "admin@example.com",
           });
 
-          console.log("🔍 [memos.create] WebDAV文件路径:", filePath);
           await webdavSource.dispose();
         } catch (webdavError) {
-          console.log("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
+          if (process.env.DEBUG_MEMOS === "1") {
+            console.debug("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
+          }
           // 在测试环境中，生成一个模拟的文件路径
           const timestamp = Date.now();
           const slug = title?.replace(/\s+/g, "-").toLowerCase() || `memo-${timestamp}`;
@@ -564,17 +557,22 @@ export const memosRouter = router({
           authorEmail: ctx.user?.email || "admin@example.com",
         });
 
-        console.log("🔍 [memos.create] WebDAV文件路径:", filePath);
+        if (process.env.DEBUG_MEMOS === "1") {
+          console.debug("🔍 [memos.create] WebDAV生成的文件名:", filePath);
+        }
         await webdavSource.dispose();
       }
+
+      // 统一规范：数据库 id/filePath 必须以 "/memos/" 开头（与 WebDAV 扫描保持一致）
+      const dbPath = `/memos/${filePath}`.replace(/\\+/g, "/");
 
       // 生成数据库 slug（使用 nanoid 确保唯一性）
       const slug = generateNanoidSlug(8);
 
-      // 保存到数据库
-      const now = Math.floor(Date.now() / 1000);
+      // 保存到数据库（统一使用毫秒时间戳，以与种子/历史数据保持一致，确保排序正确）
+      const now = Date.now();
       const memoData = {
-        id: `memos/${filePath}`,
+        id: dbPath,
         type: "memo" as const,
         slug,
         title: title || extractTitleFromContent(content),
@@ -582,7 +580,7 @@ export const memosRouter = router({
         contentHash: calculateSimpleHash(content),
         lastModified: now,
         source: "webdav",
-        filePath: `memos/${filePath}`,
+        filePath: dbPath,
         draft: false,
         public: isPublic,
         publishDate: now,
@@ -594,21 +592,7 @@ export const memosRouter = router({
         dataSource: "webdav",
       };
 
-      // 调试：输出即将插入数据库的内容
-      console.log("🔍 [memos.create] 即将插入数据库的body长度:", memoData.body.length);
-      console.log("🔍 [memos.create] 即将插入数据库的body预览:", memoData.body.substring(0, 200));
-      console.log(
-        "🔍 [memos.create] 即将插入数据库的body包含图片markdown:",
-        /!\[([^\]]*)\]\([^)]+\)/.test(memoData.body)
-      );
-      console.log(
-        "🔍 [memos.create] 即将插入数据库的body包含<br>标签:",
-        memoData.body.includes("<br")
-      );
-
       await db.insert(posts).values(memoData);
-
-      console.log("🔍 [memos.create] 数据库插入完成");
 
       // 触发增量数据同步
       await triggerIncrementalSync();
@@ -700,7 +684,7 @@ export const memosRouter = router({
       await webdavClient.putFileContent(webdavPath, markdownContent);
 
       // 更新数据库
-      const now = Math.floor(Date.now() / 1000);
+      const now = Date.now();
       // 合并并更新元数据
       let meta: any = {};
       try {
@@ -848,17 +832,23 @@ export const memosRouter = router({
 // 辅助函数
 // ============================================================================
 
-function extractTitleFromContent(content: string): string {
+export function extractTitleFromContent(content: string): string {
   const h1Match = content.match(/^#\s+(.+)$/m);
   if (h1Match) return h1Match[1].trim();
 
-  const firstLine = content.split("\n")[0]?.trim();
-  if (firstLine) return firstLine.substring(0, 50);
+  // Fallback: first non-empty line's text as-is (no concatenation)
+  const lines = content.split("\n");
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line.length > 0) {
+      return line.substring(0, 50);
+    }
+  }
 
   return "无标题 Memo";
 }
 
-function generateExcerptFromContent(content: string): string {
+export function generateExcerptFromContent(content: string): string {
   const plainText = content
     .replace(/^#+\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")

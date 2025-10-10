@@ -9,6 +9,7 @@ import { defineConfig, devices } from "@playwright/test";
 // Keep server and test-runner using the same emails
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
+// E2E header injection (no reverse proxy):
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
 // Use absolute paths to avoid CI cwd differences
@@ -69,7 +70,7 @@ export default defineConfig({
 
   // 项目配置 - 三组身份 + 浏览器
   projects: [
-    // 游客访问（不注入 Remote-Email 头）
+    // 游客访问（不注入任何 SSO 头）
     {
       name: "guest-chromium",
       testMatch: ["**/guest/**/*.spec.ts"],

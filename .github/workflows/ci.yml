@@ -108,11 +108,13 @@ jobs:
         run: NODE_ENV=production bun run build
 
       - name: Upload Next.js build artifacts
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: next-build
           if-no-files-found: error
           include-hidden-files: true
+          retention-days: 1
           path: |
             .next/standalone
             .next/static

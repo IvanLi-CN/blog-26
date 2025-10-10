@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 /**
  * 文章编辑器（管理员）- 通过 slug 参数编辑
- * 通过 Remote-Email 头注入管理员身份后，/admin/posts/editor 应可直接访问。
+ * 通过 dev 登录会话建立管理员身份后，/admin/posts/editor 可直接访问。
  */
 
 test.describe("文章编辑器 - slug 参数 (admin)", () => {

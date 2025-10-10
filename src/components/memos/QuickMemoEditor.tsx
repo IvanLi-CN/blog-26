@@ -97,26 +97,14 @@ export function QuickMemoEditor({
             // ignore: getMarkdown may not be available during early mount
           }
         }
-        console.log("🔍 [QuickMemoEditor] 原始内容:", {
-          content: processedContent,
-          length: processedContent.length,
-          hasBase64: processedContent.includes("data:image"),
-          hasEscapedMarkdown: processedContent.includes("\\[") || processedContent.includes("\\]"),
-        });
+        // removed verbose editor debug logs
 
-        // 如果当前内容中还未包含 data:image，但编辑区里可能已有 Markdown 文本，尝试从 DOM 读取
-        if (containerRef.current) {
-          const prose = containerRef.current.querySelector(".ProseMirror") as HTMLElement | null;
-          const domText = prose?.textContent || "";
-          if (domText.trim().length > 0) {
-            processedContent = domText.trim();
-          }
-        }
+        // 不再从 DOM textContent 兜底读取，以免丢失 Markdown 语义（列表/换行等）
 
         if (editorRef.current) {
-          console.log("🖼️ [QuickMemoEditor] 开始处理内联图片...");
+          // removed verbose editor debug logs
           processedContent = await editorRef.current.processInlineImages(processedContent);
-          console.log("✅ [QuickMemoEditor] 内联图片处理完成");
+          // removed verbose editor debug logs
         }
 
         // 兜底：如仍包含 data:image，则在此处直接完成一次内联上传与替换，确保 e2e 可观察到上传请求
@@ -151,8 +139,8 @@ export function QuickMemoEditor({
                   `![${altText}](${imagePath})`
                 );
               }
-            } catch (e) {
-              console.warn("⚠️ [QuickMemoEditor] 兜底内联上传失败:", e);
+            } catch (_e) {
+              // swallow inline upload fallback error silently in production
             }
           }
         }
