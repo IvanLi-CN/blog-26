@@ -84,6 +84,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     needs: [lint, unit-tests]
     timeout-minutes: 20
     steps:
@@ -107,29 +108,12 @@ jobs:
       - name: Build
         run: NODE_ENV=production bun run build
 
-      - name: Upload Next.js build artifacts
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: next-build
-          if-no-files-found: error
-          include-hidden-files: true
-          retention-days: 1
-          path: |
-            .next/standalone
-            .next/static
-            .next/BUILD_ID
-            .next/*.json
-            public
-            scripts
-            drizzle
-            docker-entrypoint.sh
 
   # Docker 构建和推送
   docker:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    needs: [lint, unit-tests, build]
+    needs: [lint, unit-tests]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/nextjs')
     permissions:
       contents: read
@@ -141,26 +125,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download Next.js build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: next-build
-          path: .
-
-      - name: Prepare Next.js build artifacts layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -d "next-build" ]; then
-            echo "[prep] Found 'next-build' directory from artifact, flattening into workspace root..."
-            # Preserve dotfiles like .next when copying
-            cp -a next-build/. .
-            rm -rf next-build
-          fi
-          # Quick sanity check to fail fast if artifact layout is wrong
-          ls -la . || true
-          ls -la .next || (echo "::error::.next directory missing after artifact preparation" && exit 1)
-          test -f .next/BUILD_ID || (echo "::error::.next/BUILD_ID missing after artifact preparation" && exit 1)
 
       - name: Compute lowercase image name (for registry)
         id: image-name
@@ -213,7 +177,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          target: app-image-prebuilt
+          target: app-image-built
           platforms: ${{ env.PLATFORMS }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
