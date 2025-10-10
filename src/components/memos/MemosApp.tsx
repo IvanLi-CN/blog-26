@@ -8,10 +8,11 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
-
+import { toast } from "react-toastify";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import ToastAlert from "../ui/ToastAlert";
 import { useInfiniteScroll, useMemoEditor, useMemos, useQuickMemo } from "./hooks";
 import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
@@ -71,6 +72,8 @@ export function MemosApp({
     refresh();
   }, [refresh]);
 
+  // 删除/保存反馈通过 react-toastify 统一处理
+
   // 编辑器管理
   const {
     existingMemo,
@@ -128,9 +131,21 @@ export function MemosApp({
     async (memo: MemoCardData) => {
       try {
         await handleDelete(memo.id);
+        toast.success(
+          <ToastAlert
+            type="success"
+            message={`已删除 Memo：${memo.title || memo.slug || "(未命名)"}`}
+            onAction={() => toast.dismiss()}
+          />
+        );
         refresh();
       } catch (error) {
         console.error("删除失败:", error);
+        const message =
+          (error as Error)?.message || (typeof error === "string" ? error : "删除失败，请稍后重试");
+        toast.error(
+          <ToastAlert type="error" message={String(message)} onAction={() => toast.dismiss()} />
+        );
       }
     },
     [handleDelete, refresh]

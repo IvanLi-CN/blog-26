@@ -131,7 +131,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "IMAGE_NAME_LOWER=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+          lower="${GITHUB_REPOSITORY,,}"
+          echo "IMAGE_NAME_LOWER=${lower}" >> "$GITHUB_ENV"
+          echo "image_name_lower=${lower}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -147,7 +149,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}
+          images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -189,8 +191,8 @@ jobs:
             REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
             WITH_PLAYWRIGHT=false
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}:buildcache,mode=max
 
   deploy:
     name: Deploy to Production

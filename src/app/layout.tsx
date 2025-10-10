@@ -3,6 +3,7 @@ import "./globals.css";
 import "../lib/iconify-collections";
 import { ProgressBar } from "../components/common/ProgressBar";
 import { IconifyProvider } from "../components/providers/IconifyProvider";
+import { ToastProvider } from "../components/providers/ToastProvider";
 import { TRPCProvider } from "../components/providers/TRPCProvider";
 import { SITE } from "../config/site";
 
@@ -145,6 +146,7 @@ export default function RootLayout({
         <IconifyProvider />
         <ProgressBar />
         <TRPCProvider>{children}</TRPCProvider>
+        <ToastProvider />
       </body>
     </html>
   );

@@ -39,7 +39,7 @@ export interface MemoCardProps {
   /** 编辑回调 */
   onEdit?: (memo: MemoCardData) => void;
   /** 删除回调 */
-  onDelete?: (memo: MemoCardData) => void;
+  onDelete?: (memo: MemoCardData) => void | Promise<void>;
   /** 样式类名 */
   className?: string;
   /** 是否为最后一个（用于时间线连接线） */
@@ -107,6 +107,8 @@ export function MemoCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCollapsible, setIsCollapsible] = useState<boolean | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const COLLAPSED_MAX_HEIGHT = "50lh";
 
@@ -214,21 +216,27 @@ export function MemoCard({
     [memo, onEdit]
   );
 
-  // 处理删除
-  const handleDeleteClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (
-        confirm(
-          `确定要删除 "${memo.title || "这条 Memo"}" 吗？\n\n⚠️ 此操作不可撤销，Memo 将被永久删除。`
-        )
-      ) {
-        onDelete?.(memo);
-      }
-    },
-    [memo, onDelete]
-  );
+  // 触发删除确认弹窗
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowDeleteConfirm(true);
+  }, []);
+
+  // 确认删除
+  const handleConfirmDelete = useCallback(async () => {
+    if (!onDelete) {
+      setShowDeleteConfirm(false);
+      return;
+    }
+    try {
+      setIsDeleting(true);
+      await onDelete(memo);
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [onDelete, memo]);
 
   return (
     <div className="relative" data-testid="memo-card">
@@ -508,6 +516,99 @@ export function MemoCard({
           </Link>
         </div>
       </div>
+      {showDeleteConfirm && (
+        <div className="modal modal-open z-50" role="dialog" aria-modal="true">
+          <div className="modal-box w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-error/10">
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6 text-error"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-base-content">确认删除</h3>
+                <p className="text-sm text-base-content/60">此操作不可撤销</p>
+              </div>
+            </div>
+
+            <div className="bg-base-100 p-4 rounded-lg border border-base-200 mb-6">
+              <p className="text-sm text-base-content/80">
+                确定要删除 "{memo.title || "这条 Memo"}" 吗？删除后将无法恢复。
+              </p>
+            </div>
+
+            <div className="modal-action">
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="btn btn-error gap-2"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    删除中...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    确认删除
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="btn btn-ghost gap-2"
+                disabled={isDeleting}
+              >
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
