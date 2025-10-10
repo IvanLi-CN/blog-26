@@ -1,0 +1,43 @@
+name: One-off Cleanup Artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/cleanup-artifacts.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all artifacts in repository
+        id: clean
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            let page = 1;
+            let total = 0;
+            for (;;) {
+              const resp = await github.rest.actions.listArtifactsForRepo({ owner, repo, per_page: 100, page });
+              const arts = resp.data.artifacts || [];
+              if (arts.length === 0) break;
+              for (const art of arts) {
+                try {
+                  await github.rest.actions.deleteArtifact({ owner, repo, artifact_id: art.id });
+                  core.info(`Deleted ${art.name} (${art.id})`);
+                  total++;
+                } catch (e) {
+                  core.warning(`Failed to delete artifact ${art.id}: ${e.message}`);
+                }
+              }
+              page++;
+            }
+            core.setOutput('deleted', String(total));
+      - name: Summary
+        run: echo "deleted=${{ steps.clean.outputs.deleted }}"
