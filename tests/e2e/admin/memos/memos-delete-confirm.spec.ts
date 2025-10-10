@@ -8,14 +8,13 @@ import { expect, test } from "@playwright/test";
  */
 
 let seededTitles: { webdav: string; local: string };
-
+let seededTitles: { webdav: string; local: string };
 test.describe("Memos 删除确认 (admin)", () => {
   test.beforeEach(async ({ page }) => {
     // 通过 dev 登录接口建立管理员会话（测试环境允许）
     await page.request.post("/api/dev/login", {
       data: { email: process.env.ADMIN_EMAIL || "admin@example.com" },
     });
-
     // 在 WebDAV 与本地各插入一条带唯一标题的数据，避免互相影响
     const ts = Date.now();
     seededTitles = {
@@ -29,7 +28,7 @@ test.describe("Memos 删除确认 (admin)", () => {
         kind: "memo",
         source: "webdav",
         title: seededTitles.webdav,
-        body: `# ${seededTitles.webdav}\n\nseed for delete - webdav`,
+        body: `# ${seededTitles.webdav}\n\nseed for delete - webdav\n\nmarker: ${seededTitles.webdav}`,
       },
     });
     expect(respWebdav.ok()).toBeTruthy();
@@ -39,7 +38,7 @@ test.describe("Memos 删除确认 (admin)", () => {
         kind: "memo",
         source: "local",
         title: seededTitles.local,
-        body: `# ${seededTitles.local}\n\nseed for delete - local`,
+        body: `# ${seededTitles.local}\n\nseed for delete - local\n\nmarker: ${seededTitles.local}`,
       },
     });
     expect(respLocal.ok()).toBeTruthy();
@@ -62,12 +61,12 @@ test.describe("Memos 删除确认 (admin)", () => {
     const beforeCount = await timeEls.count();
     expect(beforeCount).toBeGreaterThan(0);
 
-    // 删除 WebDAV 种子：通过正文断言定位
-    const cardByTitle = page.locator('[data-testid="memo-card"]').filter({
-      hasText: "seed for delete - webdav",
+    // 删除 WebDAV 种子：通过唯一 marker 标记定位
+    const cardByMarker = page.locator('[data-testid="memo-card"]').filter({
+      hasText: `marker: ${seededTitles.webdav}`,
     });
-    await expect(cardByTitle).toHaveCount(1);
-    const targetCardDeleteBtn = cardByTitle.getByRole("button", { name: /^删除 Memo/ });
+    await expect(cardByMarker).toHaveCount(1);
+    const targetCardDeleteBtn = cardByMarker.getByRole("button", { name: /^删除 Memo/ }).first();
     await expect(targetCardDeleteBtn).toBeVisible();
     const a11yName = await targetCardDeleteBtn.getAttribute("aria-label");
     const memoTitle = a11yName?.replace(/^删除 Memo:\s*/, "")?.trim() || undefined;
@@ -129,9 +128,9 @@ test.describe("Memos 删除确认 (admin)", () => {
 
     const beforeCount = await page.locator('[data-testid="memo-time"]').count();
 
-    // 删除本地种子（失败）：通过正文断言定位
+    // 删除本地种子（失败）：通过唯一 marker 标记定位
     const localCard = page.locator('[data-testid="memo-card"]').filter({
-      hasText: "seed for delete - local",
+      hasText: `marker: ${seededTitles.local}`,
     });
     await expect(localCard).toHaveCount(1);
     const deleteBtn = localCard.getByRole("button", { name: /^删除 Memo/ }).first();

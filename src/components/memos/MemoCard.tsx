@@ -221,7 +221,10 @@ export function MemoCard({
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+<<<<<<< HEAD
     setDeleteError(null);
+=======
+>>>>>>> 8134dec (fix(notify): align toast layout)
     setShowDeleteConfirm(true);
   }, []);
 
@@ -231,11 +234,15 @@ export function MemoCard({
       setShowDeleteConfirm(false);
       return;
     }
+<<<<<<< HEAD
     setDeleteError(null);
+=======
+>>>>>>> 8134dec (fix(notify): align toast layout)
     try {
       setIsDeleting(true);
       await onDelete(memo);
       setShowDeleteConfirm(false);
+<<<<<<< HEAD
     } catch (err) {
       const raw = (err as Error)?.message || (typeof err === "string" ? err : "未知错误");
       const msg =
@@ -243,6 +250,8 @@ export function MemoCard({
           .replace(/^(TRPCClientError:|Error:)/i, "")
           .trim() || "未知错误";
       setDeleteError(`删除失败：${msg}`);
+=======
+>>>>>>> 8134dec (fix(notify): align toast layout)
     } finally {
       setIsDeleting(false);
     }
