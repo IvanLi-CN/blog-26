@@ -175,6 +175,8 @@ jobs:
           # Use a single root to avoid multi-path warning on GHES/Gitea
           path: test-results
           if-no-files-found: warn
+          # Keep E2E reports for short-term debugging only
+          retention-days: 1
       - name: Stop dufs (always)
         if: always()
         run: |
