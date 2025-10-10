@@ -142,17 +142,23 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
     // 检查是否已有注册的内容源
     const sourcesStatus = await manager.getAllSourcesStatus();
     if (sourcesStatus.length > 0) {
-      console.log(`🔍 [memo-sync] 发现 ${sourcesStatus.length} 个已注册的内容源`);
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug(`🔍 [memo-sync] 发现 ${sourcesStatus.length} 个已注册的内容源`);
+      }
       return;
     }
 
-    console.log("🔧 [memo-sync] 注册内容源...");
+    if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("🔧 [memo-sync] 注册内容源...");
+    }
 
     // 注册WebDAV内容源
     const webdavSource = createWebDAVSource();
     await manager.registerSource(webdavSource);
 
-    console.log("✅ [memo-sync] WebDAV内容源注册成功");
+    if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("✅ [memo-sync] WebDAV内容源注册成功");
+    }
   } catch (error) {
     console.error("⚠️ [memo-sync] 内容源注册失败:", error);
     // 注册失败不应该阻止同步尝试，让同步函数自己处理
@@ -164,7 +170,9 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
  */
 async function triggerIncrementalSync(): Promise<void> {
   try {
-    console.log("🔄 [memo-sync] 开始触发增量数据同步...");
+    if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("🔄 [memo-sync] 开始触发增量数据同步...");
+    }
 
     const manager = getContentSourceManager({
       maxConcurrentSyncs: 2,
@@ -180,7 +188,9 @@ async function triggerIncrementalSync(): Promise<void> {
     const result = await manager.syncAll();
 
     if (result.success) {
-      console.log(`✅ [memo-sync] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug(`✅ [memo-sync] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+      }
     } else {
       const errorMessages = result.errors.map((e) => e.message).join(", ");
       throw new Error(`增量同步失败: ${errorMessages}`);

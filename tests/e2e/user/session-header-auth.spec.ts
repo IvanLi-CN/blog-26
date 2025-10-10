@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// 在 Playwright 项目层面已注入 Remote-Email 头代表普通用户
+// 使用 Playwright header 注入（user 项目）进行用户态校验
 
 test.describe("Session & Header Auth (user)", () => {
   test("header 注入后 auth.me 应返回对应用户", async ({ page }) => {

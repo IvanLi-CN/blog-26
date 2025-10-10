@@ -1,14 +1,11 @@
 import { execSync } from "node:child_process";
-import { expect, type Request, type Route, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 const MIGRATE_COMMAND = "DB_PATH=./test-data/sqlite.db bun run migrate";
-const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME ?? "Remote-Email";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:25090";
-const BASE_ORIGIN = new URL(BASE_URL).origin;
 
 let sessionCookie: { name: string; value: string } | null = null;
-let removeBypassRoute: (() => Promise<void>) | null = null;
 
 function assertTokenPrefix(value: string) {
   expect(value.startsWith("blog-")).toBeTruthy();
@@ -34,7 +31,7 @@ test.describe("Admin PAT management", () => {
     };
   });
 
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await context.clearCookies();
     if (sessionCookie) {
       await context.addCookies([
@@ -50,34 +47,11 @@ test.describe("Admin PAT management", () => {
       ]);
     }
 
-    const routeHandler = async (route: Route, request: Request) => {
-      let requestOrigin: string | null = null;
-      try {
-        requestOrigin = new URL(request.url()).origin;
-      } catch (_error) {
-        requestOrigin = null;
-      }
-
-      const headers = { ...request.headers() };
-      if (requestOrigin === BASE_ORIGIN) {
-        headers[EMAIL_HEADER_NAME] = ADMIN_EMAIL; // emulate SSO only
-      }
-
-      await route.continue({ headers });
-    };
-
-    await context.route("**/*", routeHandler);
-    removeBypassRoute = async () => {
-      await context.unroute("**/*", routeHandler);
-    };
+    // 备用：通过 dev 登录接口再次确保会话（容错）
+    await page.request.post("/api/dev/login", { data: { email: ADMIN_EMAIL } });
   });
 
   test.afterEach(async ({ context }) => {
-    if (removeBypassRoute) {
-      await removeBypassRoute();
-      removeBypassRoute = null;
-    }
-
     await context.clearCookies();
   });
 

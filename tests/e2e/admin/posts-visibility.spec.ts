@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Posts visibility badge (admin)", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.request.post("/api/dev/login", {
+      data: { email: process.env.ADMIN_EMAIL || "admin@example.com" },
+    });
+  });
   test("admin should see visibility badge on list", async ({ page }) => {
     await page.goto("/posts");
 
