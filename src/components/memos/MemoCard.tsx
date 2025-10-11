@@ -109,6 +109,7 @@ export function MemoCard({
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const COLLAPSED_MAX_HEIGHT = "50lh";
 
@@ -220,6 +221,7 @@ export function MemoCard({
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setDeleteError(null);
     setShowDeleteConfirm(true);
   }, []);
 
@@ -229,10 +231,18 @@ export function MemoCard({
       setShowDeleteConfirm(false);
       return;
     }
+    setDeleteError(null);
     try {
       setIsDeleting(true);
       await onDelete(memo);
       setShowDeleteConfirm(false);
+    } catch (err) {
+      const raw = (err as Error)?.message || (typeof err === "string" ? err : "未知错误");
+      const msg =
+        String(raw)
+          .replace(/^(TRPCClientError:|Error:)/i, "")
+          .trim() || "未知错误";
+      setDeleteError(`删除失败：${msg}`);
     } finally {
       setIsDeleting(false);
     }
@@ -543,11 +553,30 @@ export function MemoCard({
               </div>
             </div>
 
-            <div className="bg-base-100 p-4 rounded-lg border border-base-200 mb-6">
+            <div className="bg-base-100 p-4 rounded-lg border border-base-200 mb-3">
               <p className="text-sm text-base-content/80">
                 确定要删除 "{memo.title || "这条 Memo"}" 吗？删除后将无法恢复。
               </p>
             </div>
+            {deleteError && (
+              <div className="alert alert-error shadow-sm mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="stroke-current shrink-0 h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-sm">{deleteError}</span>
+              </div>
+            )}
 
             <div className="modal-action">
               <button

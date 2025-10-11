@@ -13,6 +13,35 @@ test.describe("Memos 删除确认 (admin)", () => {
     await page.request.post("/api/dev/login", {
       data: { email: process.env.ADMIN_EMAIL || "admin@example.com" },
     });
+
+    // 确保至少存在 1 条待删除的 Memo（自建，避免受其他用例影响）
+    const seedTitle = "E2E 删除测试种子";
+    const seedContent = "# E2E 删除测试种子\n\n用于验证删除确认流程。";
+
+    await page.goto("/memos");
+    await page.waitForLoadState("networkidle");
+    const editor = page.getByRole("region", { name: "快速发布区域" });
+    await editor.scrollIntoViewIfNeeded();
+
+    // 如果列表为空或未找到该标题，则发布一条
+    const hasSeed = await page.getByRole("heading", { name: seedTitle }).count();
+    if (hasSeed === 0) {
+      const editorBox = editor.getByRole("textbox");
+      await editorBox.click();
+      // 使用 type 触发输入事件
+      await editorBox.type(seedContent, { delay: 1 });
+      const publishBtn = editor.getByRole("button", { name: "发布 Memo" });
+      await expect(publishBtn).toBeEnabled();
+      const [createResp] = await Promise.all([
+        page.waitForResponse(
+          (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200
+        ),
+        publishBtn.click(),
+      ]);
+      // 基本防御
+      if (createResp.status() !== 200) throw new Error("种子 memo 创建失败");
+      await page.waitForTimeout(300);
+    }
   });
 
   test("列表页弹出 daisyUI 确认框并成功删除", async ({ page }) => {
@@ -103,12 +132,13 @@ test.describe("Memos 删除确认 (admin)", () => {
     const confirmBtn = modal.getByRole("button", { name: "确认删除" });
     await confirmBtn.click();
 
-    // 模态应关闭（UI 会在 mutation 回调里关闭）
-    await expect(modal).toBeHidden({ timeout: 10000 });
+    // 失败后模态仍应保持打开，并在对话框内显示错误提示
+    await expect(modal).toBeVisible();
+    await expect(modal.getByText(/删除失败/)).toBeVisible();
 
-    // 错误提示出现（react-toastify + daisyUI 样式）
+    // 不应出现全局错误 toast（对话框内已显示错误信息）
     const failToast = page.locator(".Toastify__toast .alert.alert-error");
-    await expect(failToast).toBeVisible();
+    await expect(failToast).toHaveCount(0);
 
     // 数量不应减少
     const afterCount = await page.locator('[data-testid="memo-time"]').count();
