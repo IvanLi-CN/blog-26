@@ -7,6 +7,8 @@ import { expect, test } from "@playwright/test";
  * - 确认后列表数量应减少，且删除接口返回 200
  */
 
+let seededTitles: { webdav: string; local: string };
+
 test.describe("Memos 删除确认 (admin)", () => {
   test.beforeEach(async ({ page }) => {
     // 通过 dev 登录接口建立管理员会话（测试环境允许）
@@ -14,34 +16,37 @@ test.describe("Memos 删除确认 (admin)", () => {
       data: { email: process.env.ADMIN_EMAIL || "admin@example.com" },
     });
 
-    // 确保至少存在 1 条待删除的 Memo（自建，避免受其他用例影响）
-    const seedTitle = "E2E 删除测试种子";
-    const seedContent = "# E2E 删除测试种子\n\n用于验证删除确认流程。";
+    // 在 WebDAV 与本地各插入一条带唯一标题的数据，避免互相影响
+    const ts = Date.now();
+    seededTitles = {
+      webdav: `E2E 删除测试-WEBDAV-${ts}`,
+      local: `E2E 删除测试-LOCAL-${ts}`,
+    } as const;
 
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
-    const editor = page.getByRole("region", { name: "快速发布区域" });
-    await editor.scrollIntoViewIfNeeded();
+    // 通过 dev API 写入文件到对应内容目录
+    const respWebdav = await page.request.post("/api/dev/test-content", {
+      data: {
+        kind: "memo",
+        source: "webdav",
+        title: seededTitles.webdav,
+        body: `# ${seededTitles.webdav}\n\nseed for delete - webdav`,
+      },
+    });
+    expect(respWebdav.ok()).toBeTruthy();
 
-    // 如果列表为空或未找到该标题，则发布一条
-    const hasSeed = await page.getByRole("heading", { name: seedTitle }).count();
-    if (hasSeed === 0) {
-      const editorBox = editor.getByRole("textbox");
-      await editorBox.click();
-      // 使用 type 触发输入事件
-      await editorBox.type(seedContent, { delay: 1 });
-      const publishBtn = editor.getByRole("button", { name: "发布 Memo" });
-      await expect(publishBtn).toBeEnabled();
-      const [createResp] = await Promise.all([
-        page.waitForResponse(
-          (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200
-        ),
-        publishBtn.click(),
-      ]);
-      // 基本防御
-      if (createResp.status() !== 200) throw new Error("种子 memo 创建失败");
-      await page.waitForTimeout(300);
-    }
+    const respLocal = await page.request.post("/api/dev/test-content", {
+      data: {
+        kind: "memo",
+        source: "local",
+        title: seededTitles.local,
+        body: `# ${seededTitles.local}\n\nseed for delete - local`,
+      },
+    });
+    expect(respLocal.ok()).toBeTruthy();
+
+    // 触发一次内容同步，保证页面可见
+    const syncResp = await page.request.post("/api/dev/sync");
+    expect(syncResp.ok()).toBeTruthy();
   });
 
   test("列表页弹出 daisyUI 确认框并成功删除", async ({ page }) => {
@@ -57,16 +62,18 @@ test.describe("Memos 删除确认 (admin)", () => {
     const beforeCount = await timeEls.count();
     expect(beforeCount).toBeGreaterThan(0);
 
-    // 选择第一条可见的删除按钮（管理员视图才有）
-    const deleteBtn = page.getByRole("button", { name: /^删除 Memo/ }).first();
-    await expect(deleteBtn).toBeVisible();
-
-    // 读取按钮的无障碍名称以提取 memo 标题，便于后续断言
-    const a11yName = await deleteBtn.getAttribute("aria-label");
+    // 删除 WebDAV 种子：通过正文断言定位
+    const cardByTitle = page.locator('[data-testid="memo-card"]').filter({
+      hasText: "seed for delete - webdav",
+    });
+    await expect(cardByTitle).toHaveCount(1);
+    const targetCardDeleteBtn = cardByTitle.getByRole("button", { name: /^删除 Memo/ });
+    await expect(targetCardDeleteBtn).toBeVisible();
+    const a11yName = await targetCardDeleteBtn.getAttribute("aria-label");
     const memoTitle = a11yName?.replace(/^删除 Memo:\s*/, "")?.trim() || undefined;
 
     // 点击删除，应该出现 daisyUI 模态对话框
-    await deleteBtn.click();
+    await targetCardDeleteBtn.click();
 
     const modal = page.locator(".modal.modal-open .modal-box");
     await expect(modal).toBeVisible();
@@ -122,7 +129,12 @@ test.describe("Memos 删除确认 (admin)", () => {
 
     const beforeCount = await page.locator('[data-testid="memo-time"]').count();
 
-    const deleteBtn = page.getByRole("button", { name: /^删除 Memo/ }).first();
+    // 删除本地种子（失败）：通过正文断言定位
+    const localCard = page.locator('[data-testid="memo-card"]').filter({
+      hasText: "seed for delete - local",
+    });
+    await expect(localCard).toHaveCount(1);
+    const deleteBtn = localCard.getByRole("button", { name: /^删除 Memo/ }).first();
     await expect(deleteBtn).toBeVisible();
     await deleteBtn.click();
 
