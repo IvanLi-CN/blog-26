@@ -221,10 +221,7 @@ export function MemoCard({
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-<<<<<<< HEAD
     setDeleteError(null);
-=======
->>>>>>> 8134dec (fix(notify): align toast layout)
     setShowDeleteConfirm(true);
   }, []);
 
@@ -234,15 +231,11 @@ export function MemoCard({
       setShowDeleteConfirm(false);
       return;
     }
-<<<<<<< HEAD
     setDeleteError(null);
-=======
->>>>>>> 8134dec (fix(notify): align toast layout)
     try {
       setIsDeleting(true);
       await onDelete(memo);
       setShowDeleteConfirm(false);
-<<<<<<< HEAD
     } catch (err) {
       const raw = (err as Error)?.message || (typeof err === "string" ? err : "未知错误");
       const msg =
@@ -250,15 +243,18 @@ export function MemoCard({
           .replace(/^(TRPCClientError:|Error:)/i, "")
           .trim() || "未知错误";
       setDeleteError(`删除失败：${msg}`);
-=======
->>>>>>> 8134dec (fix(notify): align toast layout)
     } finally {
       setIsDeleting(false);
     }
   }, [onDelete, memo]);
 
   return (
-    <div className="relative" data-testid="memo-card">
+    <div
+      className="relative"
+      data-testid="memo-card"
+      data-source={memo.source}
+      data-slug={memo.slug}
+    >
       {/* 时间线连接线 - 完全匹配旧项目 */}
       {!isLast && (
         <div className="absolute left-4 sm:left-5 top-10 sm:top-12 w-0.5 h-full bg-gradient-to-b from-primary/30 to-transparent -z-10 hidden sm:block"></div>

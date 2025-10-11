@@ -26,9 +26,11 @@ function writeMemoFile(rootDir: string, title: string, body: string, isPublic: b
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const slug = slugify(title) || randomUUID().slice(0, 8);
   const filename = `${todayPrefix()}_${slug}.md`;
+  const now = new Date().toISOString();
   const frontmatter = [
-    `createdAt: ${new Date().toISOString()}`,
-    `updatedAt: ${new Date().toISOString()}`,
+    `createdAt: ${now}`,
+    `updatedAt: ${now}`,
+    `publishDate: ${now}`,
     `public: ${isPublic ? "true" : "false"}`,
     "tags:",
     "  - e2e",

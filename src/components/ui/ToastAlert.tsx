@@ -1,12 +1,11 @@
 "use client";
 
-import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
 
 export function ToastAlert({
   type = "info",
   message,
-  actionLabel = "关闭",
+  actionLabel,
   onAction,
 }: {
   type?: "success" | "error" | "info" | "warning";
@@ -25,14 +24,15 @@ export function ToastAlert({
       )}
     >
       <span className="flex-1 min-w-0">{message}</span>
-      <button
-        type="button"
-        className="ml-auto inline-flex items-center justify-center rounded-full p-2 hover:bg-base-200/60"
-        aria-label={actionLabel}
-        onClick={onAction}
-      >
-        <Icon icon="tabler:x" className="w-4 h-4" />
-      </button>
+      {onAction && actionLabel && (
+        <button
+          type="button"
+          className="ml-auto inline-flex items-center justify-center rounded-full px-3 py-1 text-sm hover:bg-base-200/60"
+          onClick={onAction}
+        >
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }
