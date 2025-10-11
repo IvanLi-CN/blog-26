@@ -141,11 +141,14 @@ export function MemosApp({
         refresh();
       } catch (error) {
         console.error("删除失败:", error);
-        const message =
-          (error as Error)?.message || (typeof error === "string" ? error : "删除失败，请稍后重试");
-        toast.error(
-          <ToastAlert type="error" message={String(message)} onAction={() => toast.dismiss()} />
-        );
+        const memoLabel = memo.title || memo.slug || "(未命名)";
+        const raw = (error as Error)?.message || (typeof error === "string" ? error : "服务器错误");
+        const reason =
+          String(raw)
+            .replace(/^(TRPCClientError:|Error:)/i, "")
+            .trim() || "未知原因";
+        const msg = `删除 Memo 失败：${memoLabel}（${reason}）`;
+        toast.error(<ToastAlert type="error" message={msg} onAction={() => toast.dismiss()} />);
       }
     },
     [handleDelete, refresh]
