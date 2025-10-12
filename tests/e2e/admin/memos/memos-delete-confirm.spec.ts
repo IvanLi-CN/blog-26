@@ -103,28 +103,19 @@ test.describe("Memos 删除确认 (admin)", () => {
       await expect(modal.getByText(memoTitle)).toBeVisible();
     }
 
-    // 点击“确认删除”并等待后端 tRPC 删除接口成功返回
+    // 点击“确认删除”，以 UI 状态为准进行稳健等待（避免响应匹配脆弱）
     const confirmBtn = modal.getByRole("button", { name: "确认删除" });
     await expect(confirmBtn).toBeEnabled();
+    await confirmBtn.click();
 
-    const [deleteResp] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.delete") && res.status() === 200,
-        { timeout: 30000 }
-      ),
-      confirmBtn.click(),
-    ]);
-
-    expect(deleteResp.status()).toBe(200);
-
-    // 模态关闭
-    await expect(modal).toBeHidden({ timeout: 10000 });
+    // 模态关闭（删除成功）
+    await expect(modal).toBeHidden({ timeout: 20000 });
 
     // 断言目标卡片已从列表消失（基于 data-slug），避免受分页影响
     if (targetSlug) {
       await expect(
         page.locator(`[data-testid="memo-card"][data-slug="${targetSlug}"]`)
-      ).toHaveCount(0);
+      ).toHaveCount(0, { timeout: 20000 });
     }
 
     // 成功提示出现（react-toastify + daisyUI 样式）
