@@ -560,7 +560,7 @@ export function MemoCard({
 
             <div className="bg-base-100 p-4 rounded-lg border border-base-200 mb-3">
               <p className="text-sm text-base-content/80">
-                确定要删除 "{memo.title || "这条 Memo"}" 吗？删除后将无法恢复。
+                确定要删除 &ldquo;{memo.title || "这条 Memo"}&rdquo; 吗？删除后将无法恢复。
               </p>
             </div>
             {deleteError && (
