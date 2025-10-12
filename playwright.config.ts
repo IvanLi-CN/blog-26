@@ -12,6 +12,12 @@ const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
 // E2E header injection (no reverse proxy):
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
+// Allow overriding default ports via environment variables for worktrees/parallel runs
+const WEB_PORT = Number(process.env.WEB_PORT || process.env.PORT || 25090);
+const WEBDAV_PORT = Number(process.env.WEBDAV_PORT || process.env.DAV_PORT || 25091);
+const BASE_URL = process.env.BASE_URL || `http://localhost:${WEB_PORT}`;
+const WEBDAV_URL = process.env.WEBDAV_URL || `http://localhost:${WEBDAV_PORT}`;
+
 // Use absolute paths to avoid CI cwd differences
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -47,7 +53,7 @@ export default defineConfig({
   // 全局测试配置
   use: {
     // 基础URL - 使用环境变量或默认端口
-    baseURL: process.env.BASE_URL || "http://localhost:25090",
+    baseURL: BASE_URL,
 
     // 浏览器配置
     headless: process.env.HEADLESS !== "false",
@@ -100,26 +106,34 @@ export default defineConfig({
   webServer: [
     // 1) dufs WebDAV 服务器
     {
-      command: "dufs test-data/webdav --port 25091 --allow-all --enable-cors",
-      url: "http://localhost:25091",
+      command: `dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
+      url: WEBDAV_URL,
       reuseExistingServer: true,
       timeout: 30 * 1000, // 30秒启动超时
     },
     // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
     {
-      command: `WEBDAV_URL=http://localhost:25091 DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=25090 bun --bun next dev --turbopack --port 25090`,
-      url: process.env.BASE_URL || "http://localhost:25090",
+      command: `WEBDAV_URL=${WEBDAV_URL} DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
+      url: BASE_URL,
       reuseExistingServer: true, // CI环境不重用，本地开发重用
       timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
       env: {
         NODE_ENV: "test",
         ADMIN_EMAIL,
         DB_PATH: ABS_TEST_DB,
-        PORT: "25090",
+        PORT: String(WEB_PORT),
         LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
-        WEBDAV_URL: "http://localhost:25091",
+        WEBDAV_URL,
         E2E_MODE: "1", // 启用测试环境下的 Files API 本地回退
       },
     },
   ],
 });
+
+// Ensure tests that read process.env (Node-side fetch, helpers) see consistent endpoints
+process.env.BASE_URL = BASE_URL;
+process.env.WEB_PORT = String(WEB_PORT);
+process.env.WEBDAV_PORT = String(WEBDAV_PORT);
+process.env.WEBDAV_URL = WEBDAV_URL;
+process.env.SSO_EMAIL_HEADER_NAME = EMAIL_HEADER_NAME;
+process.env.ADMIN_EMAIL = ADMIN_EMAIL;

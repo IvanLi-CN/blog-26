@@ -13,6 +13,21 @@ Produce a production build via `bun run build`, then serve it using `bun run sta
 Lint and format with `bun run check`; auto-fix via `bun run fix`. Run ESLint using `bun run lint`.
 For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset`.
 
+### Dev Services & Ports (Agents)
+
+- Defaults: `25090` (web), `25091` (WebDAV). These are used by the default Playwright config as well.
+- Override via env when needed (no new config required):
+  - `WEB_PORT` or `PORT`: overrides the web server port used by tests and dev.
+  - `WEBDAV_PORT` or `DAV_PORT`: overrides the WebDAV port used by tests.
+  - `BASE_URL`: overrides the Playwright base URL (otherwise derived from `WEB_PORT`).
+  - `WEBDAV_URL`: overrides the WebDAV base URL (otherwise derived from `WEBDAV_PORT`).
+- Reuse vs. new ports:
+  - If a compatible dev stack is already running on the default ports and matches the current codebase/data, prefer reusing it (Playwright `reuseExistingServer: true`).
+  - If defaults are busy or incompatible, pick unused ports and pass overrides, e.g.
+    - `WEB_PORT=25190 WEBDAV_PORT=25191 bun run dev` (manual) and/or
+    - `WEB_PORT=25190 WEBDAV_PORT=25191 bun run test:e2e` (Playwright will start/stop servers for tests).
+  - Do not hijack unrelated processes on 25090/25091. Validate availability first: `lsof -iTCP:25090,25091 -sTCP:LISTEN -n`.
+
 ### Long-running commands & background management
 
 These conventions apply to any automation agent (Codex, CI, or human-operated scripts) that cannot dedicate a foreground terminal to a persistent service.
