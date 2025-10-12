@@ -21,6 +21,14 @@ interface StepResult {
 class CIWorkflowTester {
   private results: StepResult[] = [];
 
+  private stopWebDAVIfRunning(): void {
+    if (this.dufsProc && !this.dufsProc.killed) {
+      console.log("🧹 关闭本地 dufs 服务...");
+      this.dufsProc.kill("SIGTERM");
+      this.dufsProc = null;
+    }
+  }
+
   async runStep(name: string, command: string, args: string[] = []): Promise<boolean> {
     console.log(`\n🔄 ${name}...`);
     const startTime = Date.now();
@@ -116,11 +124,6 @@ class CIWorkflowTester {
         command: "bun",
         args: ["run", "test-db:posts"],
       },
-      {
-        name: "运行E2E测试",
-        command: "bun",
-        args: ["run", "test:e2e"],
-      },
     ];
 
     let allSuccess = true;
@@ -132,6 +135,17 @@ class CIWorkflowTester {
         console.log(`\n❌ 步骤 "${step.name}" 失败，停止执行`);
         break;
       }
+    }
+
+    // 若前置步骤均成功，再运行 E2E。运行前关闭本地 dufs，并清理 WEBDAV_URL，避免与 Playwright webServer 冲突。
+    if (allSuccess) {
+      this.stopWebDAVIfRunning();
+      delete process.env.WEBDAV_URL;
+      // 避免端口复用冲突：为 Playwright 分配一组新端口
+      process.env.WEB_PORT = String(this.webPort + 100);
+      process.env.WEBDAV_PORT = String(this.davPort + 100);
+      const ok = await this.runStep("运行E2E测试", "bun", ["run", "test:e2e"]);
+      if (!ok) allSuccess = false;
     }
 
     this.printSummary(allSuccess);
