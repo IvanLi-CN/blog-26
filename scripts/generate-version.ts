@@ -17,6 +17,41 @@ interface VersionInfo {
   commitShortHash: string;
   repositoryUrl: string;
   commitUrl: string;
+  branchName: string;
+  branchUrl: string | null;
+}
+
+const DETACHED_BRANCH_NAME = "detached";
+
+function normalizeRepositoryUrl(remoteUrl: string): string {
+  const trimmed = remoteUrl.trim();
+  let normalized = trimmed;
+
+  if (trimmed.startsWith("ssh://")) {
+    try {
+      const parsed = new URL(trimmed);
+      normalized = `https://${parsed.hostname}${parsed.pathname}`;
+    } catch {
+      // 无法解析时保留原值，后续再做兜底处理
+    }
+  } else if (trimmed.startsWith("git@")) {
+    const match = trimmed.match(/^git@([^:]+):(.+?)(\.git)?$/);
+    if (match) {
+      normalized = `https://${match[1]}/${match[2]}`;
+    }
+  } else if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    normalized = trimmed;
+  }
+
+  return normalized.replace(/\.git$/, "").replace(/\/$/, "");
+}
+
+function sanitizeBranchName(value: string | undefined | null): string {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return "unknown";
+  }
+  return trimmed;
 }
 
 function generateVersionInfo(): VersionInfo {
@@ -26,18 +61,23 @@ function generateVersionInfo(): VersionInfo {
     const envCommitHash = process.env.COMMIT_HASH;
     const envCommitShortHash = process.env.COMMIT_SHORT_HASH;
     const envRepositoryUrl = process.env.REPOSITORY_URL;
+    const envBranchName = process.env.BRANCH_NAME;
+    const envBranchUrl = process.env.BRANCH_URL;
 
     let buildDate: string;
     let commitHash: string;
     let commitShortHash: string;
     let repositoryUrl: string;
+    let branchName = sanitizeBranchName(envBranchName);
+    let branchUrl: string | null = envBranchUrl ?? null;
 
     if (envBuildDate && envCommitHash && envCommitShortHash && envRepositoryUrl) {
       // 使用环境变量中的信息（Docker 构建场景）
       buildDate = envBuildDate;
       commitHash = envCommitHash;
       commitShortHash = envCommitShortHash;
-      repositoryUrl = envRepositoryUrl;
+      repositoryUrl = normalizeRepositoryUrl(envRepositoryUrl);
+
       console.log("使用环境变量中的 Git 信息");
     } else {
       // 从 Git 获取信息（本地构建场景）
@@ -50,22 +90,39 @@ function generateVersionInfo(): VersionInfo {
       const remoteUrl = execSync("git config --get remote.origin.url", {
         encoding: "utf-8",
       }).trim();
+      repositoryUrl = normalizeRepositoryUrl(remoteUrl);
 
-      // 转换 SSH URL 为 HTTPS URL (如果需要)
-      repositoryUrl = remoteUrl;
-      if (remoteUrl.startsWith("ssh://gitea@")) {
-        // ssh://gitea@git.ivanli.cc:7018/Ivan/blog-nextjs.git
-        // -> https://git.ivanli.cc/Ivan/blog-nextjs
-        repositoryUrl = remoteUrl
-          .replace("ssh://gitea@", "https://")
-          .replace(":7018", "")
-          .replace(".git", "");
-      } else if (remoteUrl.startsWith("git@")) {
-        // git@github.com:user/repo.git -> https://github.com/user/repo
-        repositoryUrl = remoteUrl.replace("git@", "https://").replace(":", "/").replace(".git", "");
+      if (branchName === "unknown") {
+        try {
+          const detectedBranch = execSync("git rev-parse --abbrev-ref HEAD", {
+            encoding: "utf-8",
+          })
+            .trim()
+            .replace(/^refs\/heads\//, "");
+
+          if (!detectedBranch || detectedBranch === "HEAD") {
+            branchName = DETACHED_BRANCH_NAME;
+          } else {
+            branchName = detectedBranch;
+          }
+        } catch {
+          console.warn("无法检测当前分支名称，使用 unknown");
+        }
       }
 
       console.log("从 Git 获取信息");
+    }
+
+    // 确保仓库 URL 统一格式
+    repositoryUrl = normalizeRepositoryUrl(repositoryUrl);
+
+    if (
+      !branchUrl &&
+      branchName &&
+      branchName !== "unknown" &&
+      branchName !== DETACHED_BRANCH_NAME
+    ) {
+      branchUrl = `${repositoryUrl}/tree/${encodeURIComponent(branchName)}`;
     }
 
     // 检查是否有未提交的更改（仅在本地 Git 环境中）
@@ -96,6 +153,8 @@ function generateVersionInfo(): VersionInfo {
       commitShortHash,
       repositoryUrl,
       commitUrl,
+      branchName,
+      branchUrl,
     };
   } catch (error) {
     console.error("Error generating version info:", error);
@@ -122,6 +181,8 @@ function generateVersionInfo(): VersionInfo {
       commitShortHash: "unknown",
       repositoryUrl: "https://github.com/user/blog-nextjs",
       commitUrl: "https://github.com/user/blog-nextjs",
+      branchName: "unknown",
+      branchUrl: null,
     };
   }
 }
@@ -137,6 +198,8 @@ function main() {
   console.log(`  Commit: ${versionInfo.commitShortHash} (${versionInfo.commitHash})`);
   console.log(`  Repository: ${versionInfo.repositoryUrl}`);
   console.log(`  Commit URL: ${versionInfo.commitUrl}`);
+  console.log(`  Branch: ${versionInfo.branchName}`);
+  console.log(`  Branch URL: ${versionInfo.branchUrl ?? "n/a"}`);
 
   // 写入版本信息文件
   const outputPath = path.join(process.cwd(), "src", "generated", "version.json");
