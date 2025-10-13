@@ -133,7 +133,8 @@ export default defineConfig({
     {
       command: `dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
       url: WEBDAV_URL,
-      reuseExistingServer: false,
+      // If a WebDAV URL is provided via env (CI starts dufs separately), reuse the existing server
+      reuseExistingServer: !!process.env.WEBDAV_URL || !!process.env.CI,
       timeout: 30 * 1000, // 30秒启动超时
     },
     // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
