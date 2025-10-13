@@ -161,10 +161,17 @@ jobs:
       - name: Get Git information
         id: git-info
         run: |
-          echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          echo "commit_short_hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "build_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
-          echo "repository_url=https://github.com/${{ github.repository }}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          ref_name="${GITHUB_REF_NAME:-${GITHUB_HEAD_REF:-}}"
+          if [ -z "$ref_name" ]; then
+            ref_name="$(git rev-parse --abbrev-ref HEAD)"
+          fi
+          echo "commit_hash=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "commit_short_hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "build_date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "repository_url=https://github.com/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+          echo "branch_name=${ref_name}" >> "$GITHUB_OUTPUT"
+          echo "branch_url=https://github.com/${{ github.repository }}/tree/${ref_name}" >> "$GITHUB_OUTPUT"
 
       - name: Read drizzle-orm version from package.json
         id: pkg
@@ -189,6 +196,8 @@ jobs:
             COMMIT_HASH=${{ steps.git-info.outputs.commit_hash }}
             COMMIT_SHORT_HASH=${{ steps.git-info.outputs.commit_short_hash }}
             REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
+            BRANCH_NAME=${{ steps.git-info.outputs.branch_name }}
+            BRANCH_URL=${{ steps.git-info.outputs.branch_url }}
             WITH_PLAYWRIGHT=false
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}:buildcache

@@ -54,6 +54,27 @@ function sanitizeBranchName(value: string | undefined | null): string {
   return trimmed;
 }
 
+function extractBranchFromRef(ref: string | undefined | null): string | undefined {
+  if (!ref) {
+    return undefined;
+  }
+  const trimmed = ref.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+  if (trimmed.startsWith("refs/heads/")) {
+    return trimmed.substring("refs/heads/".length);
+  }
+  if (trimmed.startsWith("refs/tags/")) {
+    return trimmed.substring("refs/tags/".length);
+  }
+  if (trimmed.startsWith("refs/")) {
+    const segments = trimmed.split("/");
+    return segments[segments.length - 1];
+  }
+  return trimmed;
+}
+
 function generateVersionInfo(): VersionInfo {
   try {
     // 优先从环境变量获取信息（用于 Docker 构建）
@@ -61,7 +82,11 @@ function generateVersionInfo(): VersionInfo {
     const envCommitHash = process.env.COMMIT_HASH;
     const envCommitShortHash = process.env.COMMIT_SHORT_HASH;
     const envRepositoryUrl = process.env.REPOSITORY_URL;
-    const envBranchName = process.env.BRANCH_NAME;
+    const envBranchName =
+      process.env.BRANCH_NAME ||
+      process.env.GITHUB_REF_NAME ||
+      process.env.GITHUB_HEAD_REF ||
+      extractBranchFromRef(process.env.GITHUB_REF);
     const envBranchUrl = process.env.BRANCH_URL;
 
     let buildDate: string;
