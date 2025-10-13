@@ -6,7 +6,7 @@
  * 模拟GitHub Actions的E2E测试流程，确保本地能正确执行
  */
 
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 
@@ -20,12 +20,49 @@ interface StepResult {
 
 class CIWorkflowTester {
   private results: StepResult[] = [];
+  // 基准端口：从环境或默认值推导，供后续“+100”偏移避免冲突
+  private webPort: number = Number(process.env.WEB_PORT || process.env.PORT || 25090);
+  private davPort: number = Number(process.env.WEBDAV_PORT || process.env.DAV_PORT || 25091);
+  // 本地 dufs 进程句柄（如未启动则保持为 null）
+  private dufsProc: ChildProcess | null = null;
 
   private stopWebDAVIfRunning(): void {
     if (this.dufsProc && !this.dufsProc.killed) {
       console.log("🧹 关闭本地 dufs 服务...");
       this.dufsProc.kill("SIGTERM");
       this.dufsProc = null;
+    }
+  }
+
+  private async startWebDAVIfNeeded(): Promise<void> {
+    if (process.env.WEBDAV_URL) return;
+    const port = this.davPort;
+    console.log(`🔧 启动本地 WebDAV (dufs) at :${port} ...`);
+    const proc = spawn(
+      "dufs",
+      ["test-data/webdav", "--port", String(port), "--allow-all", "--enable-cors"],
+      { stdio: ["ignore", "pipe", "pipe"] }
+    );
+    this.dufsProc = proc;
+    process.env.WEBDAV_URL = `http://localhost:${port}`;
+
+    // 等待服务就绪（最多 5s）
+    const deadline = Date.now() + 5000;
+    let ready = false;
+    while (!ready && Date.now() < deadline) {
+      try {
+        const res = await fetch(process.env.WEBDAV_URL);
+        if (res.ok || res.status === 404) {
+          ready = true;
+          break;
+        }
+      } catch {}
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    if (ready) {
+      console.log(`✅ WebDAV 已就绪: ${process.env.WEBDAV_URL}`);
+    } else {
+      console.warn("⚠️ WebDAV 启动可能失败，后续步骤可能出错 (WEBDAV_URL 已设置)。");
     }
   }
 
@@ -129,6 +166,9 @@ class CIWorkflowTester {
     let allSuccess = true;
 
     for (const step of steps) {
+      if (step.name === "同步内容源数据" && !process.env.WEBDAV_URL) {
+        await this.startWebDAVIfNeeded();
+      }
       const success = await this.runStep(step.name, step.command, step.args);
       if (!success) {
         allSuccess = false;
@@ -149,6 +189,7 @@ class CIWorkflowTester {
     }
 
     this.printSummary(allSuccess);
+    this.stopWebDAVIfRunning();
   }
 
   private printSummary(allSuccess: boolean): void {
