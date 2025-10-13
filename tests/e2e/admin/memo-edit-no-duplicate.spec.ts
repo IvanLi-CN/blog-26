@@ -22,8 +22,8 @@ test.describe("Memo 编辑不重复", () => {
     const initialCount = await memoCards.count();
     console.log(`📊 初始 memo 数量: ${initialCount}`);
 
-    // 记录将要编辑的卡片 slug，用于后续唯一性断言
-    const targetSlug = await memoCards.first().getAttribute("data-slug");
+    // 使用稳定的 data-id（编辑后 slug 可能会变化）
+    const targetId = await memoCards.first().getAttribute("data-id");
 
     // 获取第一个 memo 并点击编辑
     const firstMemo = memoCards.first();
@@ -60,8 +60,8 @@ test.describe("Memo 编辑不重复", () => {
     const finalCount = await memoCards.count();
     console.log(`📊 编辑后 memo 数量: ${finalCount}`);
     expect(finalCount).toBe(initialCount);
-    if (targetSlug) {
-      await expect(page.locator(`[data-slug="${targetSlug}"]`)).toHaveCount(1);
+    if (targetId) {
+      await expect(page.locator(`[data-id="${targetId}"]`)).toHaveCount(1);
     }
 
     // 刷新页面验证持久性
@@ -80,8 +80,8 @@ test.describe("Memo 编辑不重复", () => {
     // 保守断言：数量不应增加；并校验被编辑的卡片未重复
     expect(afterReloadCount).toBeGreaterThan(0);
     expect(afterReloadCount).toBeLessThanOrEqual(initialCount);
-    if (targetSlug) {
-      await expect(page.locator(`[data-slug="${targetSlug}"]`)).toHaveCount(1);
+    if (targetId) {
+      await expect(page.locator(`[data-id="${targetId}"]`)).toHaveCount(1);
     }
   });
 });

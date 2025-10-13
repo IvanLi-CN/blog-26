@@ -252,6 +252,7 @@ export function MemoCard({
     <div
       className="relative"
       data-testid="memo-card"
+      data-id={memo.id}
       data-source={memo.source}
       data-slug={memo.slug}
     >
