@@ -15,8 +15,10 @@ export default function AdminDashboard() {
   const versionBadgeClassName = `badge font-mono text-sm ${
     isDraftBuild ? "badge-warning" : "badge-outline"
   }`;
+  const branchBadgeClassName = "badge badge-outline font-mono text-sm";
   const badgeTitle = `分支: ${versionInfo.branchName} | 提交: ${versionInfo.commitShortHash}`;
   const versionLink = versionInfo.branchUrl ?? versionInfo.commitUrl;
+  const branchLink = versionInfo.branchUrl ?? versionInfo.repositoryUrl;
 
   if (loading) {
     return (
@@ -45,23 +47,41 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-4xl font-bold flex items-center">📊 管理员仪表盘</h1>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-base-content/70">当前版本</span>
-              {versionLink ? (
-                <a
-                  href={versionLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`${versionBadgeClassName} hover:opacity-80 transition-opacity`}
-                  title={badgeTitle}
-                >
-                  {versionInfo.version}
-                </a>
-              ) : (
-                <span className={versionBadgeClassName} title={badgeTitle}>
-                  {versionInfo.version}
-                </span>
-              )}
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-base-content/70">当前版本</span>
+                {versionLink ? (
+                  <a
+                    href={versionLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${versionBadgeClassName} hover:opacity-80 transition-opacity`}
+                    title={badgeTitle}
+                  >
+                    {versionInfo.version}
+                  </a>
+                ) : (
+                  <span className={versionBadgeClassName} title={badgeTitle}>
+                    {versionInfo.version}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base-content/70">当前分支</span>
+                {branchLink ? (
+                  <a
+                    href={branchLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${branchBadgeClassName} hover:opacity-80 transition-opacity`}
+                    title={`查看分支：${versionInfo.branchName}`}
+                  >
+                    {versionInfo.branchName}
+                  </a>
+                ) : (
+                  <span className={branchBadgeClassName}>{versionInfo.branchName}</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
