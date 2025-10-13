@@ -167,15 +167,14 @@ jobs:
           WEBDAV_URL: http://localhost:25091
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           ADMIN_MODE: true
-      - name: Upload Playwright report (always)
-        if: always()
+      - name: Upload Playwright report (disabled for quota)
+        # Artifact quota exceeded for this month; skip to avoid failing the job
+        if: ${{ false }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          # Use a single root to avoid multi-path warning on GHES/Gitea
           path: test-results
           if-no-files-found: warn
-          # Keep E2E reports for short-term debugging only
           retention-days: 1
       - name: Stop dufs (always)
         if: always()

@@ -56,20 +56,21 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     // 进入详情页：直接点击新卡片的详情链接，避免因 slug 结构变化引起的导航失配
     const detailLink = firstCard.locator('a[href^="/memos/"]').first();
     await expect(detailLink).toBeVisible();
-    await detailLink.click();
-    const article = page.locator(".memo-detail-page .prose").first();
-    // 快速判定一次，避免长时间等待
-    if (await article.count()) {
-      await expect(article).toContainText(TITLE, { timeout: 8000 });
+    const href = await detailLink.getAttribute("href");
+    if (href) {
+      await page.goto(href);
     } else {
-      await page.waitForLoadState("networkidle");
-      await expect(article).toBeVisible({ timeout: 8000 });
-      await expect(article).toContainText(TITLE, { timeout: 8000 });
+      await detailLink.click();
+      await page.waitForURL(/\/memos\/.+/);
     }
-    // 使用轮询确保结构渲染完成，但将总等待限制在 8s 内，避免浪费时间
+    const article = page.locator(".memo-detail-page .prose").first();
+    await page.waitForLoadState("networkidle");
+    await expect(article).toBeVisible({ timeout: 15000 });
+    await expect(article).toContainText(TITLE, { timeout: 15000 });
+    // 使用更长的轮询等待列表渲染为 2 项，适配 CI 慢环境
     await expect
       .poll(async () => await article.locator("ul li").count(), {
-        timeout: 8000,
+        timeout: 15000,
         message: "等待列表条目渲染为 2",
       })
       .toBe(2);

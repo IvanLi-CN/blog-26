@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
@@ -13,8 +14,32 @@ const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
 // Allow overriding default ports via environment variables for worktrees/parallel runs
-const WEB_PORT = Number(process.env.WEB_PORT || process.env.PORT || 25090);
-const WEBDAV_PORT = Number(process.env.WEBDAV_PORT || process.env.DAV_PORT || 25091);
+// To avoid CI flakiness when default ports are occupied, pick the first free port from a small pool.
+function isPortBusy(port: number): boolean {
+  try {
+    const out = execSync(`lsof -tiTCP:${port} -sTCP:LISTEN -n || true`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return out.length > 0;
+  } catch {
+    // If lsof is unavailable (e.g., on some runners), assume not busy. Playwright will still verify the URL.
+    return false;
+  }
+}
+
+function pickPort(preferred: number, fallbacks: number[]): number {
+  const candidates = [preferred, ...fallbacks];
+  for (const p of candidates) {
+    if (!isPortBusy(p)) return p;
+  }
+  return preferred;
+}
+
+const baseWeb = Number(process.env.WEB_PORT || process.env.PORT || 25090);
+const baseDav = Number(process.env.WEBDAV_PORT || process.env.DAV_PORT || 25091);
+const WEB_PORT = pickPort(baseWeb, [baseWeb + 100, baseWeb + 200, baseWeb + 300]);
+const WEBDAV_PORT = pickPort(baseDav, [baseDav + 100, baseDav + 200, baseDav + 300]);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${WEB_PORT}`;
 const WEBDAV_URL = process.env.WEBDAV_URL || `http://localhost:${WEBDAV_PORT}`;
 
@@ -108,14 +133,15 @@ export default defineConfig({
     {
       command: `dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
       url: WEBDAV_URL,
-      reuseExistingServer: true,
+      // If a WebDAV URL is provided via env (CI starts dufs separately), reuse the existing server
+      reuseExistingServer: !!process.env.WEBDAV_URL || !!process.env.CI,
       timeout: 30 * 1000, // 30秒启动超时
     },
     // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
     {
       command: `WEBDAV_URL=${WEBDAV_URL} DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
       url: BASE_URL,
-      reuseExistingServer: true, // CI环境不重用，本地开发重用
+      reuseExistingServer: false, // 避免端口/状态复用引发串扰
       timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
       env: {
         NODE_ENV: "test",

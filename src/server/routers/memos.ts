@@ -152,12 +152,16 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
       console.debug("🔧 [memo-sync] 注册内容源...");
     }
 
-    // 注册WebDAV内容源
-    const webdavSource = createWebDAVSource();
-    await manager.registerSource(webdavSource);
-
-    if (process.env.DEBUG_MEMOS === "1") {
-      console.debug("✅ [memo-sync] WebDAV内容源注册成功");
+    // 仅在启用 WebDAV 时注册内容源，避免本地/测试环境初始化失败
+    const { isWebDAVEnabled } = await import("../../lib/webdav");
+    if (isWebDAVEnabled()) {
+      const webdavSource = createWebDAVSource();
+      await manager.registerSource(webdavSource);
+      if (process.env.DEBUG_MEMOS === "1") {
+        console.debug("✅ [memo-sync] WebDAV内容源注册成功");
+      }
+    } else if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("ℹ️ [memo-sync] 跳过注册 WebDAV 内容源：未启用");
     }
   } catch (error) {
     console.error("⚠️ [memo-sync] 内容源注册失败:", error);
@@ -760,18 +764,43 @@ export const memosRouter = router({
         });
       }
 
-      // 创建 WebDAV 内容源实例
-      const webdavSource = createWebDAVSource();
+      // 如果内容来源于 WebDAV，则尝试删除远端文件；
+      // 否则跳过远端删除，仅移除数据库记录（本地/数据库源不依赖 WebDAV）。
+      if ((existingMemo as any).source === "webdav") {
+        try {
+          // 计算实际文件名。不依赖 slug，而是优先从 filePath 推导。
+          let fileName = existingMemo.slug;
+          if (existingMemo.filePath) {
+            const pathWithoutPrefix = existingMemo.filePath.replace(/^\/+memos\/+/, "");
+            fileName = pathWithoutPrefix.replace(/\.md$/, "");
+          }
 
-      await webdavSource.initialize();
+          // 直接使用 WebDAV 客户端删除文件，避免 initialize 失败中断
+          const { getWebDAVClient } = await import("../../lib/webdav");
+          const webdavClient = getWebDAVClient();
+          const webdavPath = `/memos/${fileName}.md`;
 
-      // 从 WebDAV 删除文件
-      await webdavSource.deleteMemo(existingMemo.slug);
+          try {
+            await webdavClient.deleteFile(webdavPath);
+          } catch (err) {
+            // 在开发/测试环境，如远端不存在对应文件，则记录并继续数据库删除
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[memos.delete] WebDAV 删除失败(开发环境忽略)", webdavPath, err);
+            } else {
+              throw err;
+            }
+          }
+        } catch (err) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[memos.delete] 跳过 WebDAV 删除(开发环境)", err);
+          } else {
+            throw err;
+          }
+        }
+      }
 
       // 从数据库删除
       await db.delete(posts).where(eq(posts.id, id));
-
-      await webdavSource.dispose();
 
       // 触发增量数据同步
       await triggerIncrementalSync();

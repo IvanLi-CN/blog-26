@@ -163,6 +163,7 @@
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-markdown": "^10.1.0",
+    "react-toastify": "^11.0.5",
     "refractor": "4.9.0",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",

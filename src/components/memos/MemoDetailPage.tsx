@@ -66,6 +66,7 @@ export function MemoDetailPage({
 
   // 状态管理
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // 获取 memo 数据
   const {
@@ -128,10 +129,14 @@ export function MemoDetailPage({
     [memo, updateMemo]
   );
 
-  // 处理删除
-  const handleDelete = useCallback(async () => {
-    if (!memo || !confirm("确定要删除这个 memo 吗？")) return;
+  // 处理删除：打开确认框
+  const handleAskDelete = useCallback(() => {
+    if (!memo) return;
+    setShowDeleteConfirm(true);
+  }, [memo]);
 
+  const handleConfirmDelete = useCallback(async () => {
+    if (!memo) return;
     await deleteMemo.mutateAsync({ id: memo.id });
   }, [memo, deleteMemo]);
 
@@ -339,7 +344,7 @@ export function MemoDetailPage({
                   在新窗口打开
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                <DropdownMenuItem onClick={handleAskDelete} className="text-destructive">
                   <Trash2 className="w-4 h-4 mr-2" />
                   删除
                 </DropdownMenuItem>
@@ -453,6 +458,101 @@ export function MemoDetailPage({
                 </div>
               )
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 删除确认对话框（daisyUI）*/}
+      {showDeleteConfirm && (
+        <div className="modal modal-open z-50" role="dialog" aria-modal="true">
+          <div className="modal-box w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-error/10">
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6 text-error"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-base-content">确认删除</h3>
+                <p className="text-sm text-base-content/60">此操作不可撤销</p>
+              </div>
+            </div>
+
+            <div className="bg-base-100 p-4 rounded-lg border border-base-200 mb-6">
+              <p className="text-sm text-base-content/80">
+                确定要删除这条 Memo 吗？删除后将无法恢复。
+              </p>
+            </div>
+
+            <div className="modal-action">
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="btn btn-error gap-2"
+                disabled={deleteMemo.isPending}
+              >
+                {deleteMemo.isPending ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    删除中...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    确认删除
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="btn btn-ghost gap-2"
+                disabled={deleteMemo.isPending}
+              >
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                取消
+              </button>
+            </div>
           </div>
         </div>
       )}

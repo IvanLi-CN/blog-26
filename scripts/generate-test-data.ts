@@ -2821,6 +2821,31 @@ async function main() {
   const localMemos = generateLocalMemos();
   const memos = generateMemos();
 
+  // 追加 E2E 专用删除测试数据（各一条，避免与随机数据冲突）
+  const now = new Date();
+  memos.push({
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    public: true,
+    tags: ["e2e", "delete", "webdav"],
+    attachments: [],
+    body: `# E2E 删除测试-WEBDAV\n\nseed for delete - webdav`,
+  });
+
+  localMemos.push({
+    title: "E2E 删除测试-LOCAL",
+    slug: generateSlug("E2E 删除测试-LOCAL"),
+    publishDate: now,
+    updateDate: now,
+    draft: false,
+    public: true,
+    excerpt: "E2E delete seed",
+    category: "闪念",
+    tags: ["e2e", "delete", "local"],
+    author: "Ivan Li",
+    body: `# E2E 删除测试-LOCAL\n\nseed for delete - local`,
+  });
+
   console.log(`\n生成 ${envName} WebDAV 测试数据...`);
 
   // WebDAV 文章
