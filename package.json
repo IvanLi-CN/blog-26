@@ -75,6 +75,7 @@
     "webdav:list": "bun ./scripts/webdav-tools.ts list",
     "webdav:check": "bun ./scripts/webdav-tools.ts check",
     "webdav:dev": "bun ./scripts/start-dev-webdav.ts",
+    "dev-sync:local": "bun ./scripts/dev-sync-local.ts",
     "test-data:generate": "bun ./scripts/generate-test-data.ts",
     "test-data:clean": "bun ./scripts/generate-test-data.ts --clean",
     "test-data:verify": "bun ./scripts/verify-test-data.ts",
