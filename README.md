@@ -23,6 +23,9 @@ What it does:
 - Installs git hooks via `lefthook` (pre-commit, commit-msg with commitlint).
 - Validates dev ports: defaults to `PORT=25090`, `WEBDAV_PORT=26091`; overrides allowed via env. Ports must be free, otherwise the script exits with error. No `.env` files are created.
 - Resets dev DB and seeds sample content by default (pass `--no-db` to skip).
+- Does not perform a content sync. To import Markdown content, use the admin page
+  (`/admin/content-sync`) or run `bun run dev-sync:local` for local files under
+  `./dev-data/local`.
 - Optional E2E browsers install (`--with-e2e`).
 
 Flags: `--dry-run`, `--force-env`, `--no-db`, `--with-e2e`.
@@ -81,6 +84,11 @@ bun run dev
 
 - App URL: `http://localhost:3000` by default; if `PORT` is set in `.env.local` (example: `25090`), that port takes effect.
 - WebDAV dev server: `http://localhost:25091`
+
+#### Trigger Content Sync (manual)
+
+- Admin UI: visit `/admin/content-sync` (login via the dev endpoints in this README), then run a full or incremental sync.
+- CLI (local markdown → DB): `bun run dev-sync:local` (reads from `./dev-data/local`).
 
 #### Reset Dev Data
 
