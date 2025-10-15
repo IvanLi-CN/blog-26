@@ -56,7 +56,9 @@ class CIWorkflowTester {
           ready = true;
           break;
         }
-      } catch {}
+      } catch (_error) {
+        // Ignore transient connection errors while waiting for the server to boot.
+      }
       await new Promise((r) => setTimeout(r, 150));
     }
     if (ready) {
@@ -78,6 +80,9 @@ class CIWorkflowTester {
           NODE_ENV: "test",
           CI: "true",
           DB_PATH: process.env.DB_PATH || path.resolve(process.cwd(), "./test-data/sqlite.db"),
+          LOCAL_CONTENT_BASE_PATH:
+            process.env.LOCAL_CONTENT_BASE_PATH || path.resolve(process.cwd(), "./test-data/local"),
+          WEBDAV_URL: process.env.WEBDAV_URL || `http://localhost:${this.davPort}`,
         },
       });
 

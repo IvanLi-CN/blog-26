@@ -24,8 +24,8 @@ What it does:
 - Validates dev ports: defaults to `PORT=25090`, `WEBDAV_PORT=26091`; overrides allowed via env. Ports must be free, otherwise the script exits with error. No `.env` files are created.
 - Resets dev DB and seeds sample content by default (pass `--no-db` to skip).
 - Does not perform a content sync. To import Markdown content, use the admin page
-  (`/admin/content-sync`) or run `bun run dev-sync:local` for local files under
-  `./dev-data/local`.
+  (`/admin/content-sync`) or run `bun run dev-sync:trigger` after exporting the
+  required environment variables (`DB_PATH`, `LOCAL_CONTENT_BASE_PATH`, `WEBDAV_URL`).
 - Optional E2E browsers install (`--with-e2e`).
 
 Flags: `--dry-run`, `--force-env`, `--no-db`, `--with-e2e`.
@@ -37,8 +37,24 @@ Env overrides: `PORT=<web_port> WEBDAV_PORT=<webdav_port>`
 ```bash
 git worktree add -b feat/some-change ../blog-nextjs-wt-some-change
 ./scripts/setup.sh
-bun run dev
+
+# (Recommended for worktrees: run services separately on non-default ports)
+nohup dufs dev-data/webdav --port 25601 --allow-all --enable-cors --log-format combined \
+  >tmp/webdav-25601.log 2>&1 & echo $! >tmp/webdav-25601.pid
+
+nohup env PORT=25600 DB_PATH=./dev-data/sqlite.db \
+  LOCAL_CONTENT_BASE_PATH=./dev-data/local \
+  WEBDAV_URL=http://localhost:25601 \
+  bun --bun next dev --turbopack \
+  >tmp/next-25600.log 2>&1 & echo $! >tmp/next-25600.pid
+
+DB_PATH=./dev-data/sqlite.db \
+  LOCAL_CONTENT_BASE_PATH=./dev-data/local \
+  WEBDAV_URL=http://localhost:25601 \
+  bun run dev-sync:trigger
 ```
+
+Stop services afterwards with `kill $(cat tmp/next-25600.pid)` and `kill $(cat tmp/webdav-25601.pid)`.
 
 ### Prerequisites
 
@@ -78,6 +94,14 @@ cp .env.development .env.local
 bun run dev-db:reset
 bun run dev-data:generate   # optional: generate dev content data
 
+# Export environment variables (required for correct data sources)
+export DB_PATH=./dev-data/sqlite.db
+export LOCAL_CONTENT_BASE_PATH=./dev-data/local
+export WEBDAV_URL=http://localhost:25601   # match the WebDAV port you plan to use
+
+# Import both local and WebDAV fixtures (requires WebDAV dev server, see notes below)
+bun run dev-sync:trigger
+
 # Start Next.js (with WebDAV dev server)
 bun run dev
 ```
@@ -88,7 +112,7 @@ bun run dev
 #### Trigger Content Sync (manual)
 
 - Admin UI: visit `/admin/content-sync` (login via the dev endpoints in this README), then run a full or incremental sync.
-- CLI (local markdown → DB): `bun run dev-sync:local` (reads from `./dev-data/local`).
+- CLI (local + WebDAV → DB): `bun run dev-sync:trigger` (env vars required as above).
 
 #### Reset Dev Data
 

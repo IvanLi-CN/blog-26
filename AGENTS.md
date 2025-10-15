@@ -16,16 +16,43 @@ For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db
 ### Dev Services & Ports (Agents)
 
 - Defaults: `25090` (web), `25091` (WebDAV). These are used by the default Playwright config as well.
+- When you are working inside a non-primary worktree, you **must** pick alternate ports *before* starting any service. A simple convention is to choose a free pair in the `25600` range (for example `PORT=25600 WEBDAV_PORT=25601`), but always confirm availability with `lsof -iTCP:<port> -sTCP:LISTEN -n`.
 - Override via env when needed (no new config required):
   - `WEB_PORT` or `PORT`: overrides the web server port used by tests and dev.
   - `WEBDAV_PORT` or `DAV_PORT`: overrides the WebDAV port used by tests.
   - `BASE_URL`: overrides the Playwright base URL (otherwise derived from `WEB_PORT`).
   - `WEBDAV_URL`: overrides the WebDAV base URL (otherwise derived from `WEBDAV_PORT`).
+- Always point the dev server at the seeded data by exporting the expected environment variables **before** launching any services:
+
+  ```bash
+  export DB_PATH=./dev-data/sqlite.db
+  export LOCAL_CONTENT_BASE_PATH=./dev-data/local
+  export WEBDAV_URL=http://localhost:25601   # adjust to the port you choose
+  ```
+
+  Never rely on implicit defaults—when these variables are missing, the app will connect to `./sqlite.db`, which is intentionally empty and will make the UI appear blank.
+- When running outside the primary checkout, prefer launching WebDAV and Next.js separately so you can control ports and environment explicitly, for example:
+
+  ```bash
+  nohup dufs dev-data/webdav --port 25601 --allow-all --enable-cors --log-format combined \
+    >tmp/webdav-25601.log 2>&1 & echo $! >tmp/webdav-25601.pid
+
+  nohup env PORT=25600 DB_PATH=./dev-data/sqlite.db \
+    LOCAL_CONTENT_BASE_PATH=./dev-data/local \
+    WEBDAV_URL=http://localhost:25601 \
+    bun --bun next dev --turbopack \
+    >tmp/next-25600.log 2>&1 & echo $! >tmp/next-25600.pid
+
+  bun run dev-sync:trigger
+  ```
+
+  This ensures both the local markdown source and WebDAV source register correctly and prevents `bun run dev` from silently launching on the default ports. Stop services afterwards with `kill $(cat tmp/next-25600.pid)` and `kill $(cat tmp/webdav-25601.pid)`.
 - Reuse vs. new ports:
   - If a compatible dev stack is already running on the default ports and matches the current codebase/data, prefer reusing it (Playwright `reuseExistingServer: true`).
-  - If defaults are busy or incompatible, pick unused ports and pass overrides, e.g.
+  - If defaults are busy or incompatible—or you are in a secondary worktree—pick unused ports and pass overrides, e.g.
     - `WEB_PORT=25190 WEBDAV_PORT=25191 bun run dev` (manual) and/or
     - `WEB_PORT=25190 WEBDAV_PORT=25191 bun run test:e2e` (Playwright will start/stop servers for tests).
+    - To keep different worktrees consistent, prefer starting at `PORT=25600 WEBDAV_PORT=25601` and increment only if needed.
   - Do not hijack unrelated processes on 25090/25091. Validate availability first: `lsof -iTCP:25090,25091 -sTCP:LISTEN -n`.
 
 ### Long-running commands & background management
@@ -74,5 +101,5 @@ Store secrets in `.env.local`; never commit them. SQLite paths default to `./dev
     - `./scripts/setup.sh` (regenerates dev DB+data by default; does not perform content sync)
     - `./scripts/setup.sh --no-db` (skip DB reset and dev data generation)
 - Run the dev stack:
-  - `PORT=<web_port> bun run dev` (Next.js uses `PORT`; WebDAV helper will choose a free port near 25091 and print it in logs.)
-  - Alternatively start services separately if needed.
+  - `PORT=<web_port> bun run dev` (Next.js uses `PORT`; WebDAV helper will choose a free port near 25091 and print it in logs.) — **only after** exporting the environment variables above in the same shell.
+  - Alternatively start services separately if needed. Remember to run `bun run dev-sync:trigger` once to import both local and WebDAV fixtures (after exporting the required env vars).

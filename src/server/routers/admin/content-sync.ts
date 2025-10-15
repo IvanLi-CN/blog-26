@@ -489,11 +489,15 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
   if (sources.length === 0) {
     // 仅当存在 LOCAL_CONTENT_BASE_PATH 且非空时注册本地源
     const basePathEnv = process.env.LOCAL_CONTENT_BASE_PATH;
-    const localEnabled = typeof basePathEnv === "string" && basePathEnv.trim().length > 0;
+    const configuredBasePath =
+      typeof basePathEnv === "string" && basePathEnv.trim().length > 0
+        ? basePathEnv.trim()
+        : SYSTEM_CONFIG.local.basePath;
+    const localEnabled = typeof configuredBasePath === "string" && configuredBasePath.length > 0;
 
     if (localEnabled) {
       const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-        contentPath: SYSTEM_CONFIG.local.basePath,
+        contentPath: configuredBasePath,
       });
       const localSource = new LocalContentSource(localConfig);
       await manager.registerSource(localSource);
