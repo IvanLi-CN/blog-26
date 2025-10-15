@@ -6,8 +6,10 @@
  * 完全按照旧项目的方式实现，使用 @milkdown/crepe
  */
 
+import { editorViewCtx, parserCtx } from "@milkdown/core";
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
-import { replaceAll } from "@milkdown/utils";
+import { Slice } from "@milkdown/prose/model";
+import { TextSelection } from "@milkdown/prose/state";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
@@ -448,9 +450,37 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             contentSource
           );
 
-          // 使用 Milkdown 的 action API 来设置内容
-          crepeRef.current.editor.action(replaceAll(processedContent));
-          lastContentRef.current = content;
+          // 使用 Milkdown 的 action API 来设置内容，并保持光标位置
+          let didUpdateContent = false;
+          crepeRef.current.editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            const parser = ctx.get(parserCtx);
+            const doc = parser(processedContent);
+
+            if (!doc) {
+              return;
+            }
+
+            const { state } = view;
+            const { from, to } = state.selection;
+            const slice = new Slice(doc.content, 0, 0);
+            const tr = state.tr.replace(0, state.doc.content.size, slice);
+            const docSize = tr.doc.content.size;
+            const clampPosition = (position: number) => Math.max(0, Math.min(position, docSize));
+
+            const nextSelection = TextSelection.create(
+              tr.doc,
+              clampPosition(from),
+              clampPosition(to)
+            );
+
+            view.dispatch(tr.setSelection(nextSelection));
+            didUpdateContent = true;
+          });
+
+          if (didUpdateContent) {
+            lastContentRef.current = content;
+          }
 
           // removed log
 
