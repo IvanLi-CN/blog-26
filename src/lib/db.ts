@@ -4,10 +4,10 @@ import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema";
 
-const DB_PATH = process.env.DB_PATH || "./sqlite.db";
-const resolvedDBPath = path.resolve(process.cwd(), DB_PATH);
-
 export let db: ReturnType<typeof drizzle<typeof schema>>;
+
+const DB_PATH = process.env.DB_PATH || "./sqlite.db";
+let resolvedDBPath = path.resolve(process.cwd(), DB_PATH);
 
 export async function initializeDB(force: boolean = false): Promise<void> {
   // 重新计算数据库路径，以防环境变量已更改
@@ -31,6 +31,7 @@ export async function initializeDB(force: boolean = false): Promise<void> {
 
       // 更新全局路径变量
       (global as Record<string, unknown>).resolvedDBPath = currentResolvedDBPath;
+      resolvedDBPath = currentResolvedDBPath;
     } catch (err) {
       console.error("Error initializing database with Drizzle", (err as Error).message);
       throw err;
