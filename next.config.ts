@@ -77,6 +77,13 @@ const nextConfig: NextConfig = {
   experimental: {
     mdxRs: false, // Use the legacy MDX compiler for better plugin compatibility
   },
+
+  async rewrites() {
+    return [
+      // Keep public endpoint at /mcp while serving from Next API route
+      { source: "/mcp", destination: "/api/mcp" },
+    ];
+  },
 };
 
 // Wrap MDX and Next.js config with each other
