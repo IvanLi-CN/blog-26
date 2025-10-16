@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAdminEmail } from "@/lib/admin-config";
 import { getMcpTransport } from "@/server/mcp";
@@ -14,7 +15,7 @@ export const config = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Resolve PAT (Authorization: Bearer <token>) and compute admin status
-    const authHeader = req.headers.authorization || req.headers["Authorization" as any];
+    const authHeader = req.headers.authorization;
     let userEmail: string | undefined;
     let isAdmin = false;
 
@@ -38,7 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await runWithMcpAuth({ isAdmin, userEmail }, async () => {
       const transport = await getMcpTransport();
-      await transport.handleRequest(req as any, res as any);
+      await transport.handleRequest(
+        req as unknown as IncomingMessage,
+        res as unknown as ServerResponse
+      );
     });
   } catch (err) {
     console.error("/api/mcp handler error:", err);
