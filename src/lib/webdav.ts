@@ -15,10 +15,51 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
+ * 构造可读的 WebDAV 请求描述
+ */
+function describeWebDAVRequest(url: string, method: string) {
+  const upperMethod = method.toUpperCase();
+  try {
+    const parsed = new URL(url);
+    const path =
+      (parsed.pathname && parsed.pathname.length > 0 ? parsed.pathname : "/") +
+      (parsed.search ?? "") +
+      (parsed.hash ?? "");
+    return {
+      method: upperMethod,
+      origin: parsed.origin,
+      path: path || "/",
+      href: parsed.href,
+    };
+  } catch {
+    return {
+      method: upperMethod,
+      origin: null as string | null,
+      path: url,
+      href: url,
+    };
+  }
+}
+
+function formatWebDAVLocation(descriptor: ReturnType<typeof describeWebDAVRequest>): string {
+  return descriptor.origin ? `${descriptor.path} @ ${descriptor.origin}` : descriptor.href;
+}
+
+/**
+ * 将请求描述转换为简洁字符串
+ */
+function formatWebDAVRequestLabel(descriptor: ReturnType<typeof describeWebDAVRequest>): string {
+  return `${descriptor.method} ${formatWebDAVLocation(descriptor)}`;
+}
+
+/**
  * 带重试和流控的 HTTP 请求包装函数
  */
 async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
   let lastError: Error | null = null;
+  const method = (options.method ?? "GET").toString().toUpperCase();
+  const requestDescriptor = describeWebDAVRequest(url, method);
+  const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
   for (let attempt = 1; attempt <= WEBDAV_RETRY_ATTEMPTS; attempt++) {
     try {
@@ -28,12 +69,14 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
       if (response.status === 429) {
         if (attempt < WEBDAV_RETRY_ATTEMPTS) {
           const delayMs = WEBDAV_RETRY_BASE_DELAY * attempt + WEBDAV_RATE_LIMIT_DELAY;
-          console.warn(`⏳ WebDAV 速率限制 (429)，第 ${attempt} 次重试，等待 ${delayMs}ms...`);
+          console.warn(
+            `⏳ WebDAV 请求被限流 (${requestLabel})，第 ${attempt} 次重试，等待 ${delayMs}ms...`
+          );
           await delay(delayMs);
           continue;
         } else {
           throw new Error(
-            `WebDAV rate limited after ${WEBDAV_RETRY_ATTEMPTS} attempts: ${response.status} ${response.statusText}`
+            `WebDAV rate limited after ${WEBDAV_RETRY_ATTEMPTS} attempts (${requestLabel}): ${response.status} ${response.statusText}`
           );
         }
       }
@@ -46,7 +89,7 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
       if (attempt < WEBDAV_RETRY_ATTEMPTS) {
         const delayMs = WEBDAV_RETRY_BASE_DELAY * attempt;
         console.warn(
-          `⏳ WebDAV 请求失败，第 ${attempt} 次重试，等待 ${delayMs}ms...`,
+          `⏳ WebDAV 请求失败 (${requestLabel})，第 ${attempt} 次重试，等待 ${delayMs}ms...`,
           (error as Error).message
         );
         await delay(delayMs);
@@ -54,7 +97,12 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
     }
   }
 
-  throw lastError || new Error("WebDAV request failed after all retries");
+  throw new Error(
+    `WebDAV request failed after ${WEBDAV_RETRY_ATTEMPTS} attempts (${requestLabel}): ${
+      lastError?.message ?? "未知错误"
+    }`,
+    { cause: lastError ?? undefined }
+  );
 }
 
 export interface WebDAVFile {
@@ -181,6 +229,8 @@ export class WebDAVClient {
   private async propfind(path: string, depth: number | "infinity" = 1): Promise<WebDAVFile[]> {
     // 如果 path 已经是完整的 URL，直接使用；否则拼接基础 URL
     const url = path.startsWith("http") ? path : `${this.baseUrl}${path}`;
+    const requestDescriptor = describeWebDAVRequest(url, "PROPFIND");
+    const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
     const body = `<?xml version="1.0" encoding="utf-8" ?>
 <D:propfind xmlns:D="DAV:">
@@ -203,7 +253,9 @@ export class WebDAVClient {
     });
 
     if (!response.ok) {
-      throw new Error(`WebDAV PROPFIND failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `WebDAV 请求失败 (${requestLabel}): ${response.status} ${response.statusText}`
+      );
     }
 
     const xmlText = await response.text();
@@ -312,6 +364,8 @@ export class WebDAVClient {
    */
   async getFileContent(filePath: string): Promise<string> {
     const url = `${this.baseUrl}${filePath}`;
+    const requestDescriptor = describeWebDAVRequest(url, "GET");
+    const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
     const headers: Record<string, string> = {};
 
@@ -326,7 +380,7 @@ export class WebDAVClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to get file content: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to GET ${requestLabel}: ${response.status} ${response.statusText}`);
     }
 
     return await response.text();
@@ -339,6 +393,8 @@ export class WebDAVClient {
    */
   async putFileContent(filePath: string, content: string | ArrayBuffer): Promise<void> {
     const url = `${this.baseUrl}${filePath}`;
+    const requestDescriptor = describeWebDAVRequest(url, "PUT");
+    const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
     const headers: Record<string, string> = {
       "Content-Type":
@@ -357,7 +413,7 @@ export class WebDAVClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to put file content: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to PUT ${requestLabel}: ${response.status} ${response.statusText}`);
     }
   }
 
@@ -367,6 +423,8 @@ export class WebDAVClient {
    */
   async deleteFile(filePath: string): Promise<void> {
     const url = `${this.baseUrl}${filePath}`;
+    const requestDescriptor = describeWebDAVRequest(url, "DELETE");
+    const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
     const headers: Record<string, string> = {};
 
@@ -380,7 +438,9 @@ export class WebDAVClient {
     });
 
     if (!response.ok && response.status !== 404) {
-      throw new Error(`Failed to delete file: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to DELETE ${requestLabel}: ${response.status} ${response.statusText}`
+      );
     }
   }
 
@@ -393,6 +453,10 @@ export class WebDAVClient {
     const sourceUrl = `${this.baseUrl}${sourcePath}`;
     // 对目标URL进行编码以处理中文字符
     const destinationUrl = `${this.baseUrl}${encodeURI(destinationPath)}`;
+    const sourceDescriptor = describeWebDAVRequest(sourceUrl, "MOVE");
+    const sourceLabel = formatWebDAVLocation(sourceDescriptor);
+    const destinationDescriptor = describeWebDAVRequest(destinationUrl, "MOVE");
+    const destinationLabel = formatWebDAVLocation(destinationDescriptor);
 
     const headers: Record<string, string> = {
       Destination: destinationUrl,
@@ -410,9 +474,11 @@ export class WebDAVClient {
 
     if (!response.ok) {
       if (response.status === 412) {
-        throw new Error("目标文件或目录已存在");
+        throw new Error(`目标文件或目录已存在: ${destinationLabel}`);
       }
-      throw new Error(`Failed to move file: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to MOVE ${sourceLabel} to ${destinationLabel}: ${response.status} ${response.statusText}`
+      );
     }
   }
 
@@ -422,6 +488,8 @@ export class WebDAVClient {
    */
   async exists(filePath: string): Promise<boolean> {
     const url = `${this.baseUrl}${filePath}`;
+    const requestDescriptor = describeWebDAVRequest(url, "HEAD");
+    const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
     const headers: Record<string, string> = {};
 
@@ -437,7 +505,7 @@ export class WebDAVClient {
 
       return response.ok;
     } catch (error) {
-      console.warn(`WebDAV HEAD request failed for ${filePath}:`, error);
+      console.warn(`WebDAV HEAD request failed for ${requestLabel}:`, error);
       return false;
     }
   }
