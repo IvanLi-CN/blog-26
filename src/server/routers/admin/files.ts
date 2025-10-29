@@ -7,7 +7,7 @@
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { LOCAL_PATHS } from "../../../config/paths";
+import { isLocalContentEnabled, LOCAL_PATHS } from "../../../config/paths";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -61,6 +61,23 @@ export interface DataSource {
   type: "webdav" | "local";
   enabled: boolean;
   description?: string;
+}
+
+function requireLocalBasePath(): string {
+  if (!isLocalContentEnabled()) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "本地内容源未启用",
+    });
+  }
+  const basePath = LOCAL_PATHS.basePath;
+  if (!basePath) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "本地内容根路径未配置",
+    });
+  }
+  return basePath;
 }
 
 /**
@@ -126,7 +143,7 @@ async function listLocalDirectory(path: string): Promise<FileItem[]> {
     const nodePath = await import("node:path");
 
     // 构建完整路径（使用配置的本地内容根路径）
-    const basePath = resolve(LOCAL_PATHS.basePath);
+    const basePath = resolve(requireLocalBasePath());
     const fullPath = nodePath.join(basePath, path || "");
 
     console.log("📂 [Files API] 列出本地目录:", { path, fullPath });
@@ -209,7 +226,7 @@ async function readLocalFile(path: string): Promise<string> {
     const nodePath = await import("node:path");
 
     // 构建完整路径（使用配置的本地内容根路径）
-    const basePath = resolve(LOCAL_PATHS.basePath);
+    const basePath = resolve(requireLocalBasePath());
     const fullPath = nodePath.join(basePath, path);
 
     console.log("📖 [Files API] 读取本地文件:", { path, fullPath });
@@ -267,7 +284,7 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
     const nodePath = await import("node:path");
 
     // 构建完整路径（使用配置的本地内容根路径）
-    const basePath = resolve(LOCAL_PATHS.basePath);
+    const basePath = resolve(requireLocalBasePath());
     const fullOldPath = nodePath.join(basePath, oldPath);
 
     // 构建新路径
@@ -312,13 +329,18 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
 
   // 注册本地内容源（缺失时补齐）
   if (!hasLocal) {
-    console.log("🔧 [Files API] 注册缺失的本地内容源 'local' ...");
-    const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-      contentPath: resolve(LOCAL_PATHS.basePath),
-    });
-    const localSource = new LocalContentSource(localConfig);
-    await manager.registerSource(localSource);
-    console.log("✅ [Files API] 本地内容源注册成功");
+    if (!isLocalContentEnabled()) {
+      console.log("ℹ️ [Files API] 本地内容源未启用，跳过注册");
+    } else {
+      const basePath = requireLocalBasePath();
+      console.log("🔧 [Files API] 注册缺失的本地内容源 'local' ...");
+      const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
+        contentPath: resolve(basePath),
+      });
+      const localSource = new LocalContentSource(localConfig);
+      await manager.registerSource(localSource);
+      console.log("✅ [Files API] 本地内容源注册成功");
+    }
   }
 
   // 注册 WebDAV 内容源（开启且缺失时补齐）

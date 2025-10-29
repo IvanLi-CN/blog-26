@@ -1,4 +1,4 @@
-import { SYSTEM_CONFIG } from "@/config/paths";
+import { isLocalContentEnabled, SYSTEM_CONFIG } from "@/config/paths";
 import { vectorizeAll } from "@/lib/ai/vectorization";
 import {
   getContentSourceManager,
@@ -60,11 +60,13 @@ async function ensureContentSourcesRegistered() {
   const sources = manager.getSources();
   if (sources.length > 0) return manager;
 
-  const basePathEnv = process.env.LOCAL_CONTENT_BASE_PATH;
-  const localEnabled = typeof basePathEnv === "string" && basePathEnv.trim().length > 0;
-  if (localEnabled) {
+  if (isLocalContentEnabled()) {
+    const basePath = SYSTEM_CONFIG.local.basePath;
+    if (!basePath) {
+      throw new Error("Local content source reported as enabled but base path is missing.");
+    }
     const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-      contentPath: SYSTEM_CONFIG.local.basePath,
+      contentPath: basePath,
     });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);

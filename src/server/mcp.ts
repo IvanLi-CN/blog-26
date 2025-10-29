@@ -4,7 +4,7 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import matter from "gray-matter";
 import limax from "limax";
 import { z } from "zod";
-import { LOCAL_PATHS, WEBDAV_PATHS } from "@/config/paths";
+import { isLocalContentEnabled, LOCAL_PATHS, WEBDAV_PATHS } from "@/config/paths";
 import { enhanced as enhancedSearch, semantic as semanticSearch } from "@/lib/ai/search";
 import {
   getContentSourceManager,
@@ -21,6 +21,16 @@ let transport: StreamableHTTPServerTransport | null = null;
 
 function iso(ts: number | string | Date): string {
   return new Date(ts).toISOString();
+}
+
+function getLocalBasePathOrThrow(): string {
+  const base = LOCAL_PATHS.basePath;
+  if (!base || base.length === 0) {
+    throw new Error(
+      "Local content source is disabled. Set LOCAL_CONTENT_BASE_PATH to enable local operations."
+    );
+  }
+  return base;
 }
 
 function buildFrontmatter(input: {
@@ -53,10 +63,12 @@ function buildFrontmatter(input: {
 async function ensureContentSourcesRegistered() {
   const manager = getContentSourceManager({ maxConcurrentSyncs: 2, syncTimeout: 30000 });
   if (manager.getSources().length > 0) return manager;
-  const localCfg = LocalContentSource.createDefaultConfig("local", 50, {
-    contentPath: LOCAL_PATHS.basePath,
-  });
-  await manager.registerSource(new LocalContentSource(localCfg));
+  if (isLocalContentEnabled()) {
+    const localCfg = LocalContentSource.createDefaultConfig("local", 50, {
+      contentPath: getLocalBasePathOrThrow(),
+    });
+    await manager.registerSource(new LocalContentSource(localCfg));
+  }
   if (isWebDAVEnabled()) {
     const wdCfg = WebDAVContentSource.createDefaultConfig("webdav", 100);
     await manager.registerSource(new WebDAVContentSource(wdCfg));
@@ -253,10 +265,10 @@ async function ensureServer() {
         const path = `${base}/${datePrefix}_${limax(input.title)}.md`;
         await dav.putFileContent(path, md);
       } else {
-        // local fallback
+        // write via local source
         const fs = await import("node:fs/promises");
         const p = await import("node:path");
-        const base = LOCAL_PATHS.basePath;
+        const base = getLocalBasePathOrThrow();
         const rel = `${(LOCAL_PATHS.posts[0] || "/blog").replace(/\/$/, "")}/${limax(input.title)}.md`;
         const full = p.join(base, rel);
         await fs.mkdir(p.dirname(full), { recursive: true });
@@ -367,7 +379,7 @@ async function ensureServer() {
       } else {
         const fs = await import("node:fs/promises");
         const p = await import("node:path");
-        await fs.rm(p.join(LOCAL_PATHS.basePath, row.filePath), { force: true });
+        await fs.rm(p.join(getLocalBasePathOrThrow(), row.filePath), { force: true });
       }
       await triggerIncrementalSync();
       return { content: [{ type: "text", text: "ok" }] };
@@ -425,7 +437,7 @@ async function ensureServer() {
     } else {
       const fs = await import("node:fs/promises");
       const p = await import("node:path");
-      const base = LOCAL_PATHS.basePath;
+      const base = getLocalBasePathOrThrow();
       const rel = `${(LOCAL_PATHS.memos[0] || "/memos").replace(/\/$/, "")}/${Date.now()}_${limax(input.title || "memo")}.md`;
       const full = p.join(base, rel);
       await fs.mkdir(p.dirname(full), { recursive: true });
@@ -482,7 +494,7 @@ async function ensureServer() {
     } else {
       const fs = await import("node:fs/promises");
       const p = await import("node:path");
-      await fs.rm(p.join(LOCAL_PATHS.basePath, row.filePath), { force: true });
+      await fs.rm(p.join(getLocalBasePathOrThrow(), row.filePath), { force: true });
     }
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };

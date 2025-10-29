@@ -21,7 +21,7 @@ Tools
 - search.semantic, search.enhanced
 
 Notes
-- All content operations write Markdown with frontmatter (via WebDAV when configured; otherwise local fallback under `LOCAL_PATHS.basePath`).
+- All content operations write Markdown with frontmatter (via WebDAV when configured; if WebDAV is disabled you must provide `LOCAL_CONTENT_BASE_PATH`, otherwise these tools return an error).
 - After each write/delete, the server triggers incremental content sync to refresh the SQLite cache and embeddings metadata.
 
 Quick check

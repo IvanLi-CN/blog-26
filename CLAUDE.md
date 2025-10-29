@@ -90,7 +90,7 @@ bun run docker:build      # Build Docker image
 
 The blog uses a **multi-source content architecture** with intelligent syncing:
 
-- **Local File System**: `dev-data/local/` (dev), `test-data/local/` (test), or configurable via `LOCAL_CONTENT_BASE_PATH`
+- **Local File System**: configurable via `LOCAL_CONTENT_BASE_PATH` (disabled if unset; use `dev-data/local/` or `test-data/local/` during development/testing)
 - **WebDAV Remote**: Configured via `WEBDAV_URL`, `WEBDAV_USERNAME`, `WEBDAV_PASSWORD`
 - **SQLite Cache**: Posts, memos, and metadata cached in database for fast access
 

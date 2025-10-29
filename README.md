@@ -171,13 +171,13 @@ To remove ambiguity, the project standardizes where content and database files l
 
 - Development
   - `DB_PATH`: `./dev-data/sqlite.db`
-  - Local content root: `./dev-data/local`
+  - Local content root: set `LOCAL_CONTENT_BASE_PATH=./dev-data/local` to enable local source
   - WebDAV (dufs): `http://localhost:25091` serving `./dev-data/webdav`
   - Notes: `bun run dev-db:*` now targets `./dev-data/sqlite.db` for reset/check/schema
 
 - Test (E2E and local test server)
   - `DB_PATH`: `./test-data/sqlite.db`
-  - Local content root: `./test-data/local`
+  - Local content root: set `LOCAL_CONTENT_BASE_PATH=./test-data/local` when tests need local content
   - WebDAV (dufs): `http://localhost:25091` serving `./test-data/webdav`
   - Notes: Playwright and `bun run test-env:*` are wired to the paths above
 
@@ -190,7 +190,7 @@ To remove ambiguity, the project standardizes where content and database files l
 Essentials
 
 - Single source of truth for DB location is `DB_PATH`. Scripts and Playwright use environment-specific defaults above.
-- Local content location is governed by `LOCAL_CONTENT_BASE_PATH` and defaults to `./dev-data/local` (dev) or `./test-data/local` (test).
+- Local content is **disabled unless `LOCAL_CONTENT_BASE_PATH` is explicitly set**. Use `./dev-data/local` (dev) or `./test-data/local` (test) if you need the local source.
 - WebDAV URL must be explicit; the dev/test dufs server binds to `25091` and serves the matching directory under `dev-data/` or `test-data/`.
 
 Quick sanity commands

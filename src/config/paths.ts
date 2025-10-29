@@ -26,6 +26,11 @@ export function parsePathsFromEnv(envValue: string): string[] {
     return [];
   }
 
+  const trimmedValue = envValue.trim();
+  if (trimmedValue.length === 0) {
+    return [];
+  }
+
   const paths: string[] = [];
   let currentPath = "";
   let inQuotes = false;
@@ -97,9 +102,15 @@ export const WEBDAV_PATHS = {
  * 本地内容路径配置
  * 支持多路径配置，每个内容类型可以有多个搜索路径
  */
+const rawLocalBasePath = process.env.LOCAL_CONTENT_BASE_PATH;
+const normalizedLocalBasePath =
+  typeof rawLocalBasePath === "string" && rawLocalBasePath.trim().length > 0
+    ? rawLocalBasePath.trim()
+    : null;
+
 export const LOCAL_PATHS = {
   /** 本地内容基础路径 */
-  basePath: process.env.LOCAL_CONTENT_BASE_PATH || "./dev-data/local",
+  basePath: normalizedLocalBasePath,
   /** 博客文章路径 */
   posts: parsePathsFromEnv(process.env.LOCAL_BLOG_PATH || "/blog"),
   /** 项目文档路径 */
@@ -198,6 +209,21 @@ export function getWebDAVUrl(path: string = ""): string {
   const baseUrl = process.env.WEBDAV_URL || "http://localhost:8080";
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${baseUrl.replace(/\/$/, "")}${cleanPath}`;
+}
+
+/**
+ * 判断是否启用本地内容源
+ */
+export function isLocalContentEnabled(): boolean {
+  return typeof LOCAL_PATHS.basePath === "string" && LOCAL_PATHS.basePath.length > 0;
+}
+
+const supportedSources: Array<"local" | "webdav"> = [];
+if (isLocalContentEnabled()) {
+  supportedSources.push("local");
+}
+if (process.env.WEBDAV_URL) {
+  supportedSources.push("webdav");
 }
 
 /**
@@ -311,7 +337,7 @@ export const SYSTEM_CONFIG = {
     paths: LOCAL_PATHS,
     pathMappings: LOCAL_PATH_MAPPINGS,
   },
-  supportedSources: ["local", "webdav"] as const,
+  supportedSources,
 } as const;
 
 // ============================================================================
