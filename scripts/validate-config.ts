@@ -32,7 +32,7 @@ console.log(`  - 项目路径: [${WEBDAV_PATHS.projects.join(", ")}]`);
 console.log(`  - 闪念路径: [${WEBDAV_PATHS.memos.join(", ")}]`);
 
 console.log("\n本地配置:");
-console.log(`  - 基础路径: ${LOCAL_PATHS.basePath}`);
+console.log(`  - 基础路径: ${LOCAL_PATHS.basePath ?? "未启用"}`);
 console.log(`  - 文章路径: [${LOCAL_PATHS.posts.join(", ")}]`);
 console.log(`  - 项目路径: [${LOCAL_PATHS.projects.join(", ")}]`);
 console.log(`  - 闪念路径: [${LOCAL_PATHS.memos.join(", ")}]`);
