@@ -42,6 +42,12 @@ const WEB_PORT = pickPort(baseWeb, [baseWeb + 100, baseWeb + 200, baseWeb + 300]
 const WEBDAV_PORT = pickPort(baseDav, [baseDav + 100, baseDav + 200, baseDav + 300]);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${WEB_PORT}`;
 const WEBDAV_URL = process.env.WEBDAV_URL || `http://localhost:${WEBDAV_PORT}`;
+const REUSE_EXISTING_WEBDAV = (() => {
+  const explicit = process.env.PLAYWRIGHT_REUSE_WEBDAV?.toLowerCase();
+  if (explicit === "true") return true;
+  if (explicit === "false") return false;
+  return Boolean(process.env.WEBDAV_URL);
+})();
 
 // Use absolute paths to avoid CI cwd differences
 const __filename = fileURLToPath(import.meta.url);
@@ -133,8 +139,8 @@ export default defineConfig({
     {
       command: `dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
       url: WEBDAV_URL,
-      // If a WebDAV URL is provided via env (CI starts dufs separately), reuse the existing server
-      reuseExistingServer: !!process.env.WEBDAV_URL || !!process.env.CI,
+      // Only reuse when caller explicitly provides a running endpoint to avoid CI flakiness
+      reuseExistingServer: REUSE_EXISTING_WEBDAV,
       timeout: 30 * 1000, // 30秒启动超时
     },
     // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器

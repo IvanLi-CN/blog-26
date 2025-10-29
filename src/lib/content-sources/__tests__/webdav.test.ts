@@ -39,10 +39,13 @@ describe("WebDAVContentSource", () => {
     (contentSource as unknown as { webdavClient: WebDAVClient }).webdavClient =
       mockClient as WebDAVClient;
 
-    await (contentSource as unknown as { scanWebDAVDirectory: Function }).scanWebDAVDirectory(
-      "/Posts",
-      "posts"
-    );
+    const scanDirectory = (
+      contentSource as unknown as {
+        scanWebDAVDirectory: (path: string, contentType: string) => Promise<void>;
+      }
+    ).scanWebDAVDirectory.bind(contentSource);
+
+    await scanDirectory("/Posts", "posts");
 
     const fileCache = (contentSource as unknown as { fileCache: Map<string, unknown> }).fileCache;
 

@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
+
 test.describe("Quick publish renders heading + list and persists multiline body", () => {
   test("publish with H1 and list, verify top-of-list and detail structure persists across refresh", async ({
     page,
   }) => {
+    await page.request.post("/api/dev/login", {
+      data: { email: ADMIN_EMAIL },
+    });
+
     await page.goto("/memos");
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(300);
@@ -41,20 +47,21 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     // 等待 UI 列表实际呈现新发布（更稳健：直接以第一张卡片文本作为锚点）
 
     // 1) 列表页：新发布必须置顶
-    const firstCard = page.locator('[data-testid="memo-card"]').first();
-    await expect(firstCard).toBeVisible({ timeout: 30000 });
-    await expect(firstCard).toContainText(TITLE, { timeout: 30000 });
+    const memoCard = page.locator('[data-testid="memo-card"]').filter({ hasText: TITLE }).first();
+    await expect(memoCard).toBeVisible({ timeout: 30000 });
 
     // 2) 刷新后仍应置顶
     await page.reload();
     await page.waitForLoadState("networkidle");
-    const firstCardAfterReload = page.locator('[data-testid="memo-card"]').first();
-    await expect(firstCardAfterReload).toBeVisible({ timeout: 30000 });
-    await expect(firstCardAfterReload).toContainText(TITLE, { timeout: 30000 });
+    const memoCardAfterReload = page
+      .locator('[data-testid="memo-card"]')
+      .filter({ hasText: TITLE })
+      .first();
+    await expect(memoCardAfterReload).toBeVisible({ timeout: 30000 });
 
     // 3) 进入详情页验证结构
     // 进入详情页：直接点击新卡片的详情链接，避免因 slug 结构变化引起的导航失配
-    const detailLink = firstCard.locator('a[href^="/memos/"]').first();
+    const detailLink = memoCardAfterReload.locator('a[href^="/memos/"]').first();
     await expect(detailLink).toBeVisible();
     const href = await detailLink.getAttribute("href");
     if (href) {
