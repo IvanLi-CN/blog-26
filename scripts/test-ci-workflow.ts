@@ -187,8 +187,11 @@ class CIWorkflowTester {
       this.stopWebDAVIfRunning();
       delete process.env.WEBDAV_URL;
       // 避免端口复用冲突：为 Playwright 分配一组新端口
-      process.env.WEB_PORT = String(this.webPort + 100);
-      process.env.WEBDAV_PORT = String(this.davPort + 100);
+      this.webPort += 100;
+      this.davPort += 100;
+      process.env.WEB_PORT = String(this.webPort);
+      process.env.WEBDAV_PORT = String(this.davPort);
+      process.env.PLAYWRIGHT_REUSE_WEBDAV = "false";
       const ok = await this.runStep("运行E2E测试", "bun", ["run", "test:e2e"]);
       if (!ok) allSuccess = false;
     }

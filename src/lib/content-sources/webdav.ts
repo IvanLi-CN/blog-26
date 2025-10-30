@@ -281,6 +281,15 @@ export class WebDAVContentSource extends ContentSourceBase {
           isDirectory: webdavFile.type === "directory",
         };
 
+        if (
+          !fileInfo.isDirectory &&
+          isMarkdownFile(fileInfo.path) &&
+          fileInfo.name.startsWith("_")
+        ) {
+          this.log("debug", `跳过以下划线开头的 Markdown 文件: ${webdavFile.filename}`);
+          continue;
+        }
+
         this.fileCache.set(webdavFile.filename, fileInfo);
 
         // 缓存 ETag
