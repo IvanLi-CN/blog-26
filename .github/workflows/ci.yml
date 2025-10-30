@@ -125,6 +125,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Compute lowercase image name (for registry)
         id: image-name
@@ -151,12 +153,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix={{branch}}-
+            type=sha
+            type=ref,event=tag
 
       - name: Get Git information
         id: git-info
@@ -202,20 +201,3 @@ jobs:
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}:buildcache,mode=max
-
-  deploy:
-    name: Deploy to Production
-    runs-on: ubuntu-22.04
-    needs: [docker]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/nextjs')
-    timeout-minutes: 10
-    steps:
-      - name: Notify Watchtower
-        env:
-          WATCHTOWER_TOKEN: ${{ secrets.WATCHTOWER_TOKEN }}
-        run: |
-          set -euo pipefail
-          IMG_LOWER="${REGISTRY}/$(echo "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
-          curl --fail --show-error --silent \
-            --oauth2-bearer "${WATCHTOWER_TOKEN}" \
-            "https://watchtower.ivanli.cc/v1/update?images=${IMG_LOWER}"
