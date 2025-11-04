@@ -123,7 +123,7 @@ if (!ENABLE) {
         id: "w1",
         method: "tools/call",
         params: {
-          name: "memos.create",
+          name: "memos_create",
           arguments: {
             content: "deny-without-pat",
             title: "deny-without-pat",
@@ -143,7 +143,7 @@ if (!ENABLE) {
           id: "w2",
           method: "tools/call",
           params: {
-            name: "memos.create",
+            name: "memos_create",
             arguments: { content: "hello from sdk smoke", title, isPublic: true, tags: [] },
           },
         },
@@ -156,7 +156,7 @@ if (!ENABLE) {
         id: "l1",
         method: "tools/call",
         params: {
-          name: "memos.list",
+          name: "memos_list",
           arguments: { limit: 10, publicOnly: false, search: title },
         },
       });

@@ -186,7 +186,7 @@ async function ensureServer() {
   );
 
   server.tool(
-    "posts.list",
+    "posts_list",
     "List blog posts (public by default)",
     listPostsInput.shape,
     async (args) => {
@@ -242,7 +242,7 @@ async function ensureServer() {
   );
 
   server.tool(
-    "posts.create",
+    "posts_create",
     "Create & publish a post (writes Markdown)",
     createPostInput.shape,
     async (args) => {
@@ -280,7 +280,7 @@ async function ensureServer() {
   );
 
   server.tool(
-    "posts.updateContent",
+    "posts_update_content",
     "Update a post's content/metadata by slug",
     updatePostContentInput.shape,
     async (args) => {
@@ -311,7 +311,7 @@ async function ensureServer() {
   );
 
   server.tool(
-    "posts.updateTime",
+    "posts_update_time",
     "Update publish/update time by slug",
     updatePostTimeInput.shape,
     async (args) => {
@@ -335,7 +335,7 @@ async function ensureServer() {
   );
 
   server.tool(
-    "posts.updateVisibility",
+    "posts_update_visibility",
     "Toggle visibility by slug",
     updatePostVisibilityInput.shape,
     async (args) => {
@@ -359,7 +359,7 @@ async function ensureServer() {
   );
 
   server.tool(
-    "posts.delete",
+    "posts_delete",
     "Delete a post by slug (removes file)",
     deletePostInput.shape,
     async (args) => {
@@ -387,7 +387,7 @@ async function ensureServer() {
   );
 
   server.tool(
-    "memos.list",
+    "memos_list",
     "List memos (supports cursor via date)",
     listMemosInput.shape,
     async (args) => {
@@ -416,7 +416,7 @@ async function ensureServer() {
     }
   );
 
-  server.tool("memos.create", "Create a memo", createMemoInput.shape, async (args) => {
+  server.tool("memos_create", "Create a memo", createMemoInput.shape, async (args) => {
     // 管理员专属
     requireAdmin();
     const input = args as z.infer<typeof createMemoInput>;
@@ -448,7 +448,7 @@ async function ensureServer() {
   });
 
   server.tool(
-    "memos.update",
+    "memos_update",
     "Update memo content/metadata by slug",
     updateMemoInput.shape,
     async (args) => {
@@ -477,7 +477,7 @@ async function ensureServer() {
     }
   );
 
-  server.tool("memos.delete", "Delete memo by slug", deleteMemoInput.shape, async (args) => {
+  server.tool("memos_delete", "Delete memo by slug", deleteMemoInput.shape, async (args) => {
     // 管理员专属
     requireAdmin();
     const input = args as z.infer<typeof deleteMemoInput>;
@@ -501,7 +501,7 @@ async function ensureServer() {
   });
 
   server.tool(
-    "search.semantic",
+    "search_semantic",
     "Semantic search over posts and memos",
     semanticInput.shape,
     async (args) => {
@@ -515,7 +515,7 @@ async function ensureServer() {
       return { content: [{ type: "json", text: JSON.stringify(items) }] };
     }
   );
-  server.tool("search.enhanced", "Semantic+rerank search", enhancedInput.shape, async (args) => {
+  server.tool("search_enhanced", "Semantic+rerank search", enhancedInput.shape, async (args) => {
     const input = args as z.infer<typeof enhancedInput>;
     const items = await enhancedSearch({
       q: input.q,

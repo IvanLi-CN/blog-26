@@ -16,9 +16,9 @@ Endpoints
 - Optional WebDAV: `WEBDAV_URL`, `WEBDAV_USERNAME`, `WEBDAV_PASSWORD`, plus path vars in `src/config/paths.ts`.
 
 Tools
-- posts.list, posts.create, posts.updateContent, posts.updateTime, posts.updateVisibility, posts.delete
-- memos.list, memos.create, memos.update, memos.delete
-- search.semantic, search.enhanced
+- posts_list, posts_create, posts_update_content, posts_update_time, posts_update_visibility, posts_delete
+- memos_list, memos_create, memos_update, memos_delete
+- search_semantic, search_enhanced
 
 Notes
 - All content operations write Markdown with frontmatter (via WebDAV when configured; if WebDAV is disabled you must provide `LOCAL_CONTENT_BASE_PATH`, otherwise these tools return an error).
@@ -48,10 +48,10 @@ curl -sN -X POST http://localhost:25110/mcp \
   -H 'Mcp-Protocol-Version: 2025-03-26' \
   -d '{"jsonrpc":"2.0","id":"2","method":"tools/list","params":{}}'
 
-# call posts.list
+# call posts_list
 curl -sN -X POST http://localhost:25110/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -H 'Mcp-Protocol-Version: 2025-03-26' \
-  -d '{"jsonrpc":"2.0","id":"3","method":"tools/call","params":{"name":"posts.list","arguments":{"page":1,"limit":5}}}'
+  -d '{"jsonrpc":"2.0","id":"3","method":"tools/call","params":{"name":"posts_list","arguments":{"page":1,"limit":5}}}'
 ```

@@ -103,7 +103,7 @@ test("create memo via MCP (PAT) then open page", async ({ page }) => {
       id: "c1",
       method: "tools/call",
       params: {
-        name: "memos.create",
+        name: "memos_create",
         arguments: { content: title, title, isPublic: true, tags: [] },
       },
     },
@@ -115,7 +115,7 @@ test("create memo via MCP (PAT) then open page", async ({ page }) => {
     jsonrpc: "2.0",
     id: "l1",
     method: "tools/call",
-    params: { name: "memos.list", arguments: { limit: 10, publicOnly: false, search: title } },
+    params: { name: "memos_list", arguments: { limit: 10, publicOnly: false, search: title } },
   });
   const items = JSON.parse(listed.result?.content?.[0]?.text || "{}").items || [];
   const memo = items.find((x: any) => x.title?.includes(title));
