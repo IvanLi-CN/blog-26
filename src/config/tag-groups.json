@@ -1,0 +1,77 @@
+{
+  "groups": [
+    {
+      "key": "power-interfaces",
+      "title": "Power & Interfaces",
+      "tags": ["DC-DC", "USB/USB-PD", "design-tools-simulation)。TPS2121", "SC8701", "INA193"]
+    },
+    {
+      "key": "embedded-hardware",
+      "title": "Embedded Hardware",
+      "tags": [
+        "Electronic/PPTC",
+        "Hardware",
+        "Hardware/ATX",
+        "Hardware/Chip",
+        "Hardware/Circuit",
+        "Hardware/Component/OperationalAmplifier",
+        "Hardware/OperationalAmplifier",
+        "Hardware/MCU/STM32G431CB",
+        "Hardware/STM32",
+        "Hardware/STM32G031G8U6",
+        "Hardware/UPS",
+        "Hardware/USB",
+        "Hardware/PCB",
+        "ST/STM32G431RBT6"
+      ]
+    },
+    {
+      "key": "projects",
+      "title": "Projects",
+      "tags": [
+        "Project/ATX 取电转接板",
+        "Project/ElectronicLoad",
+        "Project/LumiDockFlex",
+        "Project/PD-Sink",
+        "Project/PowerDessk",
+        "Project/STM32G031G8U6 Nano 开发板",
+        "Project/UPS",
+        "Project/USB-Hub",
+        "Project/USB-Hub-CH335F",
+        "Project/接口转接板"
+      ]
+    },
+    {
+      "key": "home-lab-infrastructure",
+      "title": "Home Lab & Infrastructure",
+      "tags": ["HomeLab", "HomeLab/PVE", "IDC/ByteVirt", "Kubernetes", "容器编排", "集群管理"]
+    },
+    {
+      "key": "operations-networking",
+      "title": "Operations & Networking",
+      "tags": ["Ops/Docker", "Ops/Linux", "Ops/Podman", "API", "Schema", "GraphQL"]
+    },
+    {
+      "key": "software-dev-tools",
+      "title": "Software & Dev Tools",
+      "tags": ["Software/Gitea", "Redis", "TypeScript", "React", "Hooks", "Develop/Rust"]
+    },
+    {
+      "key": "chinese-topics",
+      "title": "Chinese Topics",
+      "tags": ["函数组件", "性能优化", "泛型", "类型系统", "缓存", "台灯"]
+    },
+    {
+      "key": "special-topics",
+      "title": "Special Topics",
+      "tags": [
+        "CTP - QuantitativeTrading - SHFE",
+        "DIY",
+        "Hardware/STM32G031G8U6",
+        "Hardware/MCU/STM32G431CB",
+        "Project/USB-Hub-CH335F",
+        "Hardware/PCB"
+      ]
+    }
+  ]
+}
