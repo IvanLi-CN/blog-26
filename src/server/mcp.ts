@@ -227,14 +227,18 @@ async function ensureServer() {
       return {
         content: [
           {
-            type: "json",
-            text: JSON.stringify({
-              items: rows,
-              page,
-              limit,
-              total,
-              totalPages: Math.ceil(total / limit),
-            }),
+            type: "text",
+            text: JSON.stringify(
+              {
+                items: rows,
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+              },
+              null,
+              2
+            ),
           },
         ],
       };
@@ -412,7 +416,9 @@ async function ensureServer() {
       let nextCursor: string | undefined;
       if (hasMore && items.length)
         nextCursor = `${iso(items[items.length - 1].publishDate || Date.now())}_${items[items.length - 1].id}`;
-      return { content: [{ type: "json", text: JSON.stringify({ items, nextCursor, hasMore }) }] };
+      return {
+        content: [{ type: "text", text: JSON.stringify({ items, nextCursor, hasMore }, null, 2) }],
+      };
     }
   );
 
@@ -512,7 +518,7 @@ async function ensureServer() {
         type: input.type,
         publishedOnly: input.publishedOnly,
       });
-      return { content: [{ type: "json", text: JSON.stringify(items) }] };
+      return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
     }
   );
   server.tool("search_enhanced", "Semantic+rerank search", enhancedInput.shape, async (args) => {
@@ -525,7 +531,7 @@ async function ensureServer() {
       rerankTopK: input.rerankTopK,
       rerank: input.rerank,
     });
-    return { content: [{ type: "json", text: JSON.stringify(items) }] };
+    return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
   });
 
   transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
