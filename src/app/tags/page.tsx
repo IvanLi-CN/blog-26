@@ -1,12 +1,13 @@
 import Link from "next/link";
 import PageLayout from "@/components/common/PageLayout";
 import Icon from "@/components/ui/Icon";
-import tagGroups from "@/config/tag-groups.json";
+import { readTagGroupsConfig } from "@/server/services/tag-groups-config";
 import { getTagSummaries } from "@/server/services/tag-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function TagsIndexPage() {
+  const tagGroupsConfig = await readTagGroupsConfig();
   const tagSummaries = await getTagSummaries({
     includeDrafts: false,
     includeUnpublished: false,
@@ -14,7 +15,7 @@ export default async function TagsIndexPage() {
 
   // Build tag -> group map from config
   const tagToGroup = new Map<string, { key: string; title: string }>();
-  for (const group of tagGroups.groups) {
+  for (const group of tagGroupsConfig.groups) {
     for (const tag of group.tags) {
       tagToGroup.set(tag, { key: group.key, title: group.title });
     }
@@ -39,7 +40,7 @@ export default async function TagsIndexPage() {
 
   // Preserve config order, append Other at the end if exists
   const orderedGroups = [
-    ...tagGroups.groups
+    ...tagGroupsConfig.groups
       .map((g) => ({ key: g.key, title: g.title, items: grouped.get(g.key)?.items ?? [] }))
       .filter((g) => g.items.length > 0),
   ];
@@ -64,7 +65,7 @@ export default async function TagsIndexPage() {
           </p>
         </div>
 
-        <div className="mt-10">
+        <div className="mt-10 space-y-8">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-xl font-semibold text-base-content">全部标签</h2>
             <span className="text-sm text-base-content/60">共 {tagSummaries.length} 个标签</span>

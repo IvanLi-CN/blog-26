@@ -36,6 +36,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/posts">文章管理</Link>
             </li>
             <li>
+              <Link href="/admin/tags">标签管理</Link>
+            </li>
+            <li>
               <Link href="/admin/comments">评论管理</Link>
             </li>
             <li>

@@ -1,24 +1,11 @@
 import { and, eq, type SQL } from "drizzle-orm";
 import { db, initializeDB } from "@/lib/db";
 import { posts } from "@/lib/schema";
+import type { TaggedPost, TagSummary } from "@/types/tags";
 
 export interface TagServiceOptions {
   includeDrafts?: boolean;
   includeUnpublished?: boolean;
-}
-
-export interface TagSummary {
-  name: string;
-  segments: string[];
-  lastSegment: string;
-  count: number;
-}
-
-export interface TaggedPost {
-  title: string;
-  slug: string;
-  excerpt: string | null;
-  tags: string[];
 }
 
 type PostRow = {
