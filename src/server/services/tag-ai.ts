@@ -51,26 +51,66 @@ export async function organizeTagsWithAI(options?: {
     }
   }
 
-  const systemPrompt = `You are a meticulous Chinese/English bilingual technical editor specialising in taxonomy design.
-Return output that is strictly machine-readable JSON. Never include commentary, Markdown fences, or additional text.`;
-  const tagLines = tags.map((t) => `- ${t.name} (usage=${t.count})`).join("\n");
-  const userPrompt = [
-    `Target group count: ${targetGroups}`,
-    "Full list of tags (each must appear exactly once in the result, no invented tags):",
-    tagLines,
-    "",
-    `Output Requirements (JSON object):`,
-    `{
-  "notes": "<concise rationale <=120 chars>",
+  const systemPrompt = `You are an information architect for a technical blog. Return ONLY valid JSON with no markdown fences or commentary. If you cannot honour every rule from the user, reply with {"error":"reason"}.`;
+  const idealMin = Math.floor(tags.length / targetGroups);
+  const idealMax = Math.ceil(tags.length / targetGroups);
+  const groupSizeRule =
+    idealMin === idealMax
+      ? `Every group must contain exactly ${idealMax} tags.`
+      : `Each group must contain ${idealMin} or ${idealMax} tags; the difference between any two groups may not exceed 1.`;
+  const tagCatalogue = tagSummaries
+    .map((t) => {
+      const segments = t.segments?.length ? t.segments.join(" > ") : (t.lastSegment ?? t.name);
+      return `- ${t.name} | segments: ${segments} | usage=${t.count}`;
+    })
+    .join("\n");
+  const exampleJson = `{
+  "notes": "Split content vs infrastructure; counts balanced 2/2",
   "groups": [
     {
-      "key": "<slug-case identifier>",
-      "title": "<short English noun without connectors like 'and' or '&'>",
-      "tags": ["<full tag path>", "..."]
+      "key": "content-operations",
+      "title": "Content Operations",
+      "tags": ["content/cms", "content/editorial"]
+    },
+    {
+      "key": "platform",
+      "title": "Platform",
+      "tags": ["infra/docker", "infra/kubernetes"]
+    }
+  ]
+}`;
+  const userPrompt = [
+    `We have ${tags.length} distinct tags used across the blog. Each tag string is a full path and must appear exactly once in the output.`,
+    `Target number of groups: ${targetGroups}. ${groupSizeRule}`,
+    "",
+    "Tag catalogue (format: <tag path> | segments | usage count):",
+    tagCatalogue,
+    "",
+    "Rules:",
+    "1. Do not invent, rename, merge, or split tags. Copy the tag path verbatim (case, spaces, slashes).",
+    "2. Choose concise English nouns for titles—no connectors such as 'and', '&', '/', or '+'.",
+    "3. Generate slug-case keys derived from the title (lowercase, hyphen).",
+    "4. Create sharp, domain-specific themes (e.g. Observability, ContentOps, Frontend). Avoid vague buckets like 'API' or 'General'.",
+    "5. Keep semantically related tags together. Use path segments and usage counts as hints when interpreting domain meaning.",
+    "6. If perfect balance is impossible, explain why in 'notes' and deviate by the minimal amount.",
+    "",
+    "JSON response schema:",
+    `{
+  "notes": "<=200 chars explaining the clustering logic or imbalances",
+  "groups": [
+    {
+      "key": "<slug-case>",
+      "title": "<short noun phrase>",
+      "tags": [
+        "<exact tag path>",
+        "..."
+      ]
     }
   ]
 }`,
-    "Keep group sizes balanced (difference <= 2 when possible). Use camel hierarchy exactly as provided for tags.",
+    "",
+    "Example (illustrative only; never reuse these sample tags):",
+    exampleJson,
   ].join("\n");
 
   const openai = new OpenAI({ apiKey, baseURL });

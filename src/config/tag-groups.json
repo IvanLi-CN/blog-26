@@ -1,76 +1,98 @@
 {
   "groups": [
     {
-      "key": "power-interfaces",
-      "title": "Power & Interfaces",
-      "tags": ["DC-DC", "USB/USB-PD", "design-tools-simulation)。TPS2121", "SC8701", "INA193"]
-    },
-    {
-      "key": "embedded-hardware",
-      "title": "Embedded Hardware",
+      "key": "hardware-projects",
+      "title": "Hardware Projects",
       "tags": [
-        "Electronic/PPTC",
-        "Hardware",
-        "Hardware/ATX",
-        "Hardware/Chip",
-        "Hardware/Circuit",
-        "Hardware/Component/OperationalAmplifier",
-        "Hardware/OperationalAmplifier",
-        "Hardware/MCU/STM32G431CB",
-        "Hardware/STM32",
-        "Hardware/STM32G031G8U6",
-        "Hardware/UPS",
-        "Hardware/USB",
-        "Hardware/PCB",
-        "ST/STM32G431RBT6"
-      ]
-    },
-    {
-      "key": "projects",
-      "title": "Projects",
-      "tags": [
+        "Project/接口转接板",
         "Project/ATX 取电转接板",
         "Project/ElectronicLoad",
         "Project/LumiDockFlex",
         "Project/PD-Sink",
         "Project/PowerDessk",
-        "Project/STM32G031G8U6 Nano 开发板",
-        "Project/UPS",
-        "Project/USB-Hub",
-        "Project/USB-Hub-CH335F",
-        "Project/接口转接板"
+        "Project/STM32G031G8U6 Nano 开发板"
       ]
     },
     {
-      "key": "home-lab-infrastructure",
-      "title": "Home Lab & Infrastructure",
-      "tags": ["HomeLab", "HomeLab/PVE", "IDC/ByteVirt", "Kubernetes", "容器编排", "集群管理"]
+      "key": "electronic-components",
+      "title": "Electronic Components",
+      "tags": [
+        "Hardware/Chip",
+        "Hardware/Circuit",
+        "Hardware/Component/OperationalAmplifier",
+        "Hardware/OperationalAmplifier",
+        "Hardware/PCB",
+        "Hardware/STM32",
+        "Hardware/STM32G031G8U6"
+      ]
     },
     {
-      "key": "operations-networking",
-      "title": "Operations & Networking",
-      "tags": ["Ops/Docker", "Ops/Linux", "Ops/Podman", "API", "Schema", "GraphQL"]
+      "key": "power-systems",
+      "title": "Power Systems",
+      "tags": [
+        "DC-DC",
+        "Hardware/UPS",
+        "Project/UPS",
+        "SC8701",
+        "USB/USB-PD",
+        "INA193",
+        "Electronic/PPTC"
+      ]
     },
     {
-      "key": "software-dev-tools",
-      "title": "Software & Dev Tools",
-      "tags": ["Software/Gitea", "Redis", "TypeScript", "React", "Hooks", "Develop/Rust"]
+      "key": "operations",
+      "title": "Operations",
+      "tags": [
+        "Ops/Docker",
+        "Ops/Linux",
+        "Ops/Podman",
+        "HomeLab/PVE",
+        "Kubernetes",
+        "容器编排",
+        "集群管理"
+      ]
     },
     {
-      "key": "chinese-topics",
-      "title": "Chinese Topics",
-      "tags": ["函数组件", "性能优化", "泛型", "类型系统", "缓存", "台灯"]
+      "key": "development",
+      "title": "Development",
+      "tags": [
+        "Develop/Rust",
+        "Software/Gitea",
+        "TypeScript",
+        "泛型",
+        "类型系统",
+        "GraphQL",
+        "Schema"
+      ]
     },
     {
-      "key": "special-topics",
-      "title": "Special Topics",
+      "key": "frontend",
+      "title": "Frontend",
+      "tags": ["React", "函数组件", "Hooks", "缓存", "性能优化", "API", "Redis"]
+    },
+    {
+      "key": "hardware-categories",
+      "title": "Hardware Categories",
+      "tags": [
+        "Hardware",
+        "Hardware/ATX",
+        "Hardware/MCU/STM32G431CB",
+        "ST/STM32G431RBT6",
+        "Hardware/USB",
+        "台灯",
+        "DIY"
+      ]
+    },
+    {
+      "key": "trading-infrastructure",
+      "title": "Trading Infrastructure",
       "tags": [
         "CTP - QuantitativeTrading - SHFE",
-        "DIY",
-        "Hardware/STM32G031G8U6",
-        "Hardware/MCU/STM32G431CB",
+        "IDC/ByteVirt",
+        "HomeLab",
+        "Project/USB-Hub",
         "Project/USB-Hub-CH335F",
-        "Hardware/PCB"
+        "design-tools-simulation)。TPS2121"
       ]
     }
   ]
