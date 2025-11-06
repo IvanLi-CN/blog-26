@@ -5,6 +5,15 @@ import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
 const MODEL_HISTORY_KEY = "tag-ai-model-history";
+const DRAFT_HISTORY_KEY = "tag-ai-drafts";
+const MAX_DRAFTS = 10;
+
+function generateDraftId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `draft-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 interface Props {
   initialGroups: TagGroup[];
@@ -13,9 +22,12 @@ interface Props {
 }
 
 interface AiResultState {
+  id?: string;
+  createdAt?: number;
   groups: TagGroup[];
   notes?: string;
   model?: string;
+  summaryTitle?: string;
 }
 
 function normalizeTargetCount(input: number, fallback: number): number {
@@ -41,6 +53,35 @@ function summarizeCoverage(groups: TagGroup[], tagSummaries: TagSummary[]) {
   return { missing, duplicates, assignedCount: assigned.size, total: all.size };
 }
 
+function deriveDraftTitle(draft: AiResultState): string {
+  if (draft.summaryTitle && draft.summaryTitle.trim().length > 0) {
+    return draft.summaryTitle.trim();
+  }
+  if (draft.notes && draft.notes.trim().length > 0) {
+    return draft.notes.trim().slice(0, 60);
+  }
+  const joined = draft.groups
+    .map((group) => group.title?.trim())
+    .filter((title): title is string => Boolean(title))
+    .slice(0, 3)
+    .join(" / ");
+  return joined || "未命名草稿";
+}
+
+function formatDraftTime(timestamp?: number): string {
+  if (!timestamp) return "";
+  try {
+    return new Intl.DateTimeFormat("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(timestamp));
+  } catch {
+    return new Date(timestamp).toLocaleString();
+  }
+}
+
 export default function TagOrganizerPanel({ initialGroups, tagSummaries, initialModel }: Props) {
   const [targetCount, setTargetCount] = useState(() =>
     normalizeTargetCount(initialGroups.length || 8, 8)
@@ -54,6 +95,7 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   const [isSaving, setIsSaving] = useState(false);
   const [model, setModel] = useState("");
   const [modelHistory, setModelHistory] = useState<string[]>([]);
+  const [drafts, setDrafts] = useState<AiResultState[]>([]);
   const initRef = useRef(false);
   const modelListId = useId();
 
@@ -98,6 +140,28 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
     } catch {
       // ignore storage errors
     }
+    try {
+      const rawDrafts = window.localStorage.getItem(DRAFT_HISTORY_KEY);
+      if (rawDrafts) {
+        const parsed = JSON.parse(rawDrafts);
+        if (Array.isArray(parsed)) {
+          const validDrafts = parsed
+            .filter(
+              (item): item is AiResultState =>
+                typeof item === "object" && item !== null && Array.isArray(item.groups)
+            )
+            .map((item) => ({
+              ...item,
+              id: item.id || generateDraftId(),
+              createdAt: item.createdAt ?? Date.now(),
+            }))
+            .slice(0, MAX_DRAFTS);
+          setDrafts(validDrafts);
+        }
+      }
+    } catch {
+      setDrafts([]);
+    }
   }, [initialModel]);
 
   const rememberModel = useCallback((value: string) => {
@@ -114,6 +178,15 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
       }
       return next;
     });
+  }, []);
+
+  const persistDrafts = useCallback((nextDrafts: AiResultState[]) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(DRAFT_HISTORY_KEY, JSON.stringify(nextDrafts));
+    } catch {
+      // ignore
+    }
   }, []);
 
   async function runAiOrganize(persist = false) {
@@ -142,8 +215,22 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
       if (trimmedModel) {
         rememberModel(trimmedModel);
       }
-      setAiState(data);
-      setWorkingGroups(data.groups);
+      const timestamp = Date.now();
+      const enriched: AiResultState = {
+        ...data,
+        id: data.id || generateDraftId(),
+        createdAt: data.createdAt ?? timestamp,
+      };
+      setAiState(enriched);
+      setWorkingGroups(enriched.groups);
+      setDrafts((prev) => {
+        const next = [enriched, ...prev.filter((draft) => draft.id !== enriched.id)].slice(
+          0,
+          MAX_DRAFTS
+        );
+        persistDrafts(next);
+        return next;
+      });
       if (persist) {
         setBaselineGroups(data.groups);
         setStatus("已生成并保存");
@@ -190,9 +277,42 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
     setError(null);
   }
 
+  const removeDraft = useCallback(
+    (id: string | undefined) => {
+      if (!id) return;
+      setDrafts((prev) => {
+        const next = prev.filter((draft) => draft.id !== id);
+        persistDrafts(next);
+        return next;
+      });
+    },
+    [persistDrafts]
+  );
+
+  const loadDraft = useCallback(
+    (draft: AiResultState) => {
+      setWorkingGroups(draft.groups);
+      setAiState(draft);
+      if (draft.model) {
+        setModel(draft.model);
+        rememberModel(draft.model);
+      }
+      setStatus("已载入草稿");
+      setError(null);
+    },
+    [rememberModel]
+  );
+
+  const clearDrafts = useCallback(() => {
+    setDrafts([]);
+    persistDrafts([]);
+  }, [persistDrafts]);
+
   const hasPendingChanges = useMemo(() => {
     return JSON.stringify(workingGroups) !== JSON.stringify(baselineGroups);
   }, [workingGroups, baselineGroups]);
+
+  const activeDraftId = aiState?.id;
 
   return (
     <section className="rounded-xl border border-base-content/10 bg-base-100/80 p-6 shadow-sm">
@@ -283,10 +403,67 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
             {coverage.missing.length > 0 && (
               <p className="text-warning">未分组：{coverage.missing.join(", ")}</p>
             )}
-            {aiState?.notes && (
-              <p className="mt-2 text-base-content/70">AI Notes: {aiState.notes}</p>
+            {aiState?.summaryTitle && (
+              <p className="mt-2 text-base-content/70">AI Summary: {aiState.summaryTitle}</p>
             )}
+            {aiState?.notes && <p className="text-base-content/70">AI Notes: {aiState.notes}</p>}
             {aiState?.model && <p className="text-base-content/50">Model: {aiState.model}</p>}
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
+              <span>草稿历史</span>
+              {drafts.length > 0 && (
+                <button
+                  className="btn btn-ghost btn-xs text-xs"
+                  type="button"
+                  onClick={clearDrafts}
+                >
+                  清空
+                </button>
+              )}
+            </div>
+            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+              {drafts.length === 0 ? (
+                <p className="text-xs text-base-content/50">暂无草稿，生成后会自动保存喵。</p>
+              ) : (
+                drafts.map((draft) => {
+                  const title = deriveDraftTitle(draft);
+                  const time = formatDraftTime(draft.createdAt);
+                  const isActive = activeDraftId && draft.id === activeDraftId;
+                  return (
+                    <div
+                      key={draft.id ?? `${title}-${draft.createdAt}`}
+                      className={`flex items-start gap-2 rounded-lg border p-2 transition ${
+                        isActive
+                          ? "border-primary bg-primary/10"
+                          : "border-base-content/10 bg-base-100/80"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        className="flex-1 text-left"
+                        onClick={() => loadDraft(draft)}
+                      >
+                        <p className="text-sm font-medium text-base-content">{title}</p>
+                        <p className="mt-1 text-xs text-base-content/50">
+                          {draft.model ? `模型 ${draft.model}` : "默认模型"}
+                          {time ? ` · ${time}` : ""}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        onClick={() => removeDraft(draft.id)}
+                        aria-label="删除草稿"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 

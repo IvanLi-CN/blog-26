@@ -7,6 +7,7 @@ export type AiTagOrganizerResult = {
   groups: TagGroup[];
   notes?: string;
   model?: string;
+  summaryTitle?: string;
 };
 
 async function resolveDefaultGroupCount(): Promise<number> {
@@ -65,6 +66,7 @@ export async function organizeTagsWithAI(options?: {
     })
     .join("\n");
   const exampleJson = `{
+  "summaryTitle": "Content vs Platform",
   "notes": "Split content vs infrastructure; counts balanced 2/2",
   "groups": [
     {
@@ -93,9 +95,11 @@ export async function organizeTagsWithAI(options?: {
     "4. Create sharp, domain-specific themes (e.g. Observability, ContentOps, Frontend). Avoid vague buckets like 'API' or 'General'.",
     "5. Keep semantically related tags together. Use path segments and usage counts as hints when interpreting domain meaning.",
     "6. If perfect balance is impossible, explain why in 'notes' and deviate by the minimal amount.",
+    "7. Populate 'summaryTitle' with a concise <=40 char English title capturing the whole grouping.",
     "",
     "JSON response schema:",
     `{
+  "summaryTitle": "<Title Case summary <=40 chars>",
   "notes": "<=200 chars explaining the clustering logic or imbalances",
   "groups": [
     {
@@ -173,7 +177,7 @@ export async function organizeTagsWithAI(options?: {
     throw new Error("AI output missing JSON object");
   }
   const jsonSlice = text.slice(firstBrace, lastBrace + 1);
-  let parsed: { groups: TagGroup[]; notes?: string };
+  let parsed: { groups: TagGroup[]; notes?: string; summaryTitle?: string };
   try {
     parsed = JSON.parse(jsonSlice);
   } catch {
@@ -213,5 +217,19 @@ export async function organizeTagsWithAI(options?: {
     throw new Error(`AI grouping failed validation: ${validation.errors.join("; ")}`);
   }
 
-  return { groups: parsed.groups, notes: parsed.notes, model };
+  const normalizedSummary =
+    typeof parsed.summaryTitle === "string" ? parsed.summaryTitle.trim() : undefined;
+  const fallbackSummary = parsed.groups
+    .map((group) => group.title?.trim())
+    .filter((title): title is string => Boolean(title))
+    .slice(0, 3)
+    .join(" / ")
+    .slice(0, 60);
+
+  return {
+    groups: parsed.groups,
+    notes: parsed.notes,
+    model,
+    summaryTitle: normalizedSummary || (fallbackSummary ? fallbackSummary : undefined),
+  };
 }

@@ -54,7 +54,7 @@ Persistence
    - 用户选择目标分组数、模型名后点击“生成草稿”；
    - 前端 POST `/api/tags/organize`，附带 `targetGroups`（必填）与 `model`（可选）；
    - API 校验管理员权限 → 调用 `organizeTagsWithAI` → 返回分组草稿，同时给出 `notes`、`model`；
-   - 前端展示分组卡片、覆盖率统计、AI 备注。
+   - 前端展示分组卡片、覆盖率统计、AI 备注，并将结果写入浏览器 `localStorage` 中的草稿堆栈（倒序，最多 10 份，可随时加载或删除）。
 
 3. **生成并保存**：
    - 流程同上，但携带 `persist: true`；
@@ -73,8 +73,8 @@ Persistence
   1. 总标签数与目标分组数；
   2. 自动计算理想组容量（floor/ceil），提供差值 ≤1 的硬约束；
   3. 标签目录：`<tag path> | segments: a > b | usage=n`；
-  4. 六条明确规则（禁止重命名、标题为专业名词、Slug Key、语义聚类、均衡限制、异常需写入 notes）；
-  5. JSON Schema 描述；
+  4. 明确七条规则（禁止重命名、标题为专业名词、Slug Key、语义聚类、均衡限制、`summaryTitle` 必填等）；
+  5. JSON Schema 描述（含 `summaryTitle` 与 `notes`）；
   6. 正反例示范（展示 Content vs Platform 的期望格式）。
 - 温度设为 0.2，最多重试 3 次（对 408/429/5xx 进行线性退避）。
 
@@ -102,7 +102,8 @@ Persistence
 
 - 表单项：目标分组数（2-20）、模型名称（支持 datalist 历史）；
 - 按钮：生成草稿、生成并保存、保存草稿、重置；
-- 状态提示：成功/错误徽章、覆盖率与重复标签提示、AI notes 展示；
+- 状态提示：成功/错误徽章、覆盖率与重复标签提示、AI summary 与 notes 展示；
+- 草稿面板：左侧列展示最近生成的草稿（含模型名、时间、删除/清空功能），点击可回填到主预览。
 - 模型历史：localStorage 记忆最近 5 个手动输入。
 
 ## 失败场景与处理
