@@ -66,7 +66,7 @@ export async function organizeTagsWithAI(options?: {
     })
     .join("\n");
   const exampleJson = `{
-  "summaryTitle": "Content vs Platform",
+  "summaryTitle": "硬软协奏",
   "notes": "Split content vs infrastructure; counts balanced 2/2",
   "groups": [
     {
@@ -95,11 +95,11 @@ export async function organizeTagsWithAI(options?: {
     "4. Create sharp, domain-specific themes (e.g. Observability, ContentOps, Frontend). Avoid vague buckets like 'API' or 'General'.",
     "5. Keep semantically related tags together. Use path segments and usage counts as hints when interpreting domain meaning.",
     "6. If perfect balance is impossible, explain why in 'notes' and deviate by the minimal amount.",
-    "7. Populate 'summaryTitle' with a concise <=40 char English title capturing the whole grouping.",
+    "7. Populate 'summaryTitle' with a vivid yet concise Chinese phrase (<=8 characters) that conveys the overall vibe of the taxonomy. Do not enumerate group titles or use punctuation like '·'; instead blend concepts into a single abstract descriptor (e.g. '硬软协奏', '技术脉络').",
     "",
     "JSON response schema:",
     `{
-  "summaryTitle": "<Title Case summary <=40 chars>",
+  "summaryTitle": "<<=8个中文字符的抽象短语>",
   "notes": "<=200 chars explaining the clustering logic or imbalances",
   "groups": [
     {
@@ -219,12 +219,7 @@ export async function organizeTagsWithAI(options?: {
 
   const normalizedSummary =
     typeof parsed.summaryTitle === "string" ? parsed.summaryTitle.trim() : undefined;
-  const fallbackSummary = parsed.groups
-    .map((group) => group.title?.trim())
-    .filter((title): title is string => Boolean(title))
-    .slice(0, 3)
-    .join(" / ")
-    .slice(0, 60);
+  const fallbackSummary = "技术脉络";
 
   return {
     groups: parsed.groups,

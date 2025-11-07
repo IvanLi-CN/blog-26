@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
@@ -28,6 +29,11 @@ interface AiResultState {
   notes?: string;
   model?: string;
   summaryTitle?: string;
+}
+
+interface HoverState {
+  draft: AiResultState;
+  rect: DOMRect;
 }
 
 function normalizeTargetCount(input: number, fallback: number): number {
@@ -82,6 +88,13 @@ function formatDraftTime(timestamp?: number): string {
   }
 }
 
+function buildDraftTooltip(draft: AiResultState): string {
+  const summaryPart = draft.summaryTitle ? `摘要：${draft.summaryTitle}` : "";
+  const notesPart = draft.notes ? `说明：${draft.notes}` : "";
+  const modelPart = draft.model ? `模型：${draft.model}` : "";
+  return [summaryPart, notesPart, modelPart].filter((segment) => segment.length > 0).join("\n");
+}
+
 export default function TagOrganizerPanel({ initialGroups, tagSummaries, initialModel }: Props) {
   const [targetCount, setTargetCount] = useState(() =>
     normalizeTargetCount(initialGroups.length || 8, 8)
@@ -96,6 +109,7 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   const [model, setModel] = useState("");
   const [modelHistory, setModelHistory] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<AiResultState[]>([]);
+  const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const initRef = useRef(false);
   const modelListId = useId();
 
@@ -308,186 +322,253 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
     persistDrafts([]);
   }, [persistDrafts]);
 
+  const updateHoverState = useCallback((draft: AiResultState, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    setHoverState({ draft, rect });
+  }, []);
+
+  const clearHoverState = useCallback(() => {
+    setHoverState(null);
+  }, []);
+
   const hasPendingChanges = useMemo(() => {
     return JSON.stringify(workingGroups) !== JSON.stringify(baselineGroups);
   }, [workingGroups, baselineGroups]);
 
   const activeDraftId = aiState?.id;
 
+  const hoverCardMeta = useMemo(() => {
+    if (!hoverState || typeof window === "undefined") return null;
+    const tooltip = buildDraftTooltip(hoverState.draft);
+    if (!tooltip) return null;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const cardWidth = 280;
+    const cardHeight = 160;
+    const baseTop = hoverState.rect.top;
+    const top = Math.min(Math.max(16, baseTop), viewportHeight - cardHeight - 16);
+    const baseLeft = hoverState.rect.right + 12;
+    const left = Math.min(baseLeft, viewportWidth - cardWidth - 16);
+    const lines = tooltip.split("\n").filter((line) => line.length > 0);
+    return { top, left, lines };
+  }, [hoverState]);
+
   return (
-    <section className="rounded-xl border border-base-content/10 bg-base-100/80 p-6 shadow-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-semibold text-base-content">AI 标签分组助手</h2>
-        {status && <span className="badge badge-success badge-sm">{status}</span>}
-        {error && <span className="badge badge-error badge-sm">{error}</span>}
-      </div>
-
-      <p className="mt-3 text-sm text-base-content/60">
-        自动根据标签语义生成均衡的分类。确认无误后可以覆盖当前配置。
-      </p>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,280px)_1fr]">
-        <div className="space-y-3 rounded-lg border border-base-content/10 bg-base-200/40 p-4">
-          <label className="flex flex-col gap-2 text-sm text-base-content">
-            目标分类数量
-            <input
-              type="number"
-              className="input input-sm input-bordered"
-              min={2}
-              max={20}
-              value={targetCount}
-              onChange={(event) =>
-                setTargetCount(normalizeTargetCount(Number(event.target.value), targetCount))
-              }
-            />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-base-content">
-            模型名称
-            <input
-              type="text"
-              list={modelListId}
-              className="input input-sm input-bordered"
-              placeholder="例如 glm-4.5"
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-            />
-            <datalist id={modelListId}>
-              {modelHistory.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-          </label>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => runAiOrganize(false)}
-              disabled={isRunning}
-              type="button"
-            >
-              {isRunning ? "生成中…" : "生成草稿"}
-            </button>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => runAiOrganize(true)}
-              disabled={isRunning}
-              type="button"
-            >
-              {isRunning ? "处理中…" : "生成并保存"}
-            </button>
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={saveGroups}
-              disabled={isSaving || !hasPendingChanges}
-              type="button"
-            >
-              {isSaving ? "保存中…" : "保存草稿"}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={resetToCurrent}
-              disabled={isRunning}
-              type="button"
-            >
-              重置
-            </button>
-          </div>
-
-          <div className="text-xs text-base-content/60">
-            <p>
-              覆盖情况：{coverage.assignedCount}/{coverage.total}（缺失 {coverage.missing.length}）
-            </p>
-            {coverage.duplicates.length > 0 && (
-              <p className="text-error">重复：{coverage.duplicates.join(", ")}</p>
-            )}
-            {coverage.missing.length > 0 && (
-              <p className="text-warning">未分组：{coverage.missing.join(", ")}</p>
-            )}
-            {aiState?.summaryTitle && (
-              <p className="mt-2 text-base-content/70">AI Summary: {aiState.summaryTitle}</p>
-            )}
-            {aiState?.notes && <p className="text-base-content/70">AI Notes: {aiState.notes}</p>}
-            {aiState?.model && <p className="text-base-content/50">Model: {aiState.model}</p>}
-          </div>
-
-          <div className="mt-3 space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
-              <span>草稿历史</span>
-              {drafts.length > 0 && (
-                <button
-                  className="btn btn-ghost btn-xs text-xs"
-                  type="button"
-                  onClick={clearDrafts}
-                >
-                  清空
-                </button>
-              )}
-            </div>
-            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-              {drafts.length === 0 ? (
-                <p className="text-xs text-base-content/50">暂无草稿，生成后会自动保存喵。</p>
-              ) : (
-                drafts.map((draft) => {
-                  const title = deriveDraftTitle(draft);
-                  const time = formatDraftTime(draft.createdAt);
-                  const isActive = activeDraftId && draft.id === activeDraftId;
-                  return (
-                    <div
-                      key={draft.id ?? `${title}-${draft.createdAt}`}
-                      className={`flex items-start gap-2 rounded-lg border p-2 transition ${
-                        isActive
-                          ? "border-primary bg-primary/10"
-                          : "border-base-content/10 bg-base-100/80"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="flex-1 text-left"
-                        onClick={() => loadDraft(draft)}
-                      >
-                        <p className="text-sm font-medium text-base-content">{title}</p>
-                        <p className="mt-1 text-xs text-base-content/50">
-                          {draft.model ? `模型 ${draft.model}` : "默认模型"}
-                          {time ? ` · ${time}` : ""}
-                        </p>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => removeDraft(draft.id)}
-                        aria-label="删除草稿"
-                      >
-                        删除
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+    <>
+      <section className="rounded-xl border border-base-content/10 bg-base-100/80 p-6 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-lg font-semibold text-base-content">AI 标签分组助手</h2>
+          {status && <span className="badge badge-success badge-sm">{status}</span>}
+          {error && <span className="badge badge-error badge-sm">{error}</span>}
         </div>
 
-        <div className="space-y-4">
-          {workingGroups.map((group) => (
-            <div
-              key={group.key}
-              className="rounded-lg border border-base-content/10 bg-base-100 p-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-base font-semibold text-base-content">{group.title}</h3>
-                <span className="text-xs text-base-content/50">{group.tags.length}</span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1 text-xs text-base-content/70">
-                {group.tags.map((tag) => (
-                  <span key={tag} className="badge badge-ghost">
-                    {tag}
-                  </span>
+        <p className="mt-3 text-sm text-base-content/60">
+          自动根据标签语义生成均衡的分类。确认无误后可以覆盖当前配置。
+        </p>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,280px)_1fr]">
+          <div className="flex h-full flex-col space-y-3 rounded-lg border border-base-content/10 bg-base-200/40 p-4">
+            <label className="flex flex-col gap-2 text-sm text-base-content">
+              目标分类数量
+              <input
+                type="number"
+                className="input input-sm input-bordered"
+                min={2}
+                max={20}
+                value={targetCount}
+                onChange={(event) =>
+                  setTargetCount(normalizeTargetCount(Number(event.target.value), targetCount))
+                }
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm text-base-content">
+              模型名称
+              <input
+                type="text"
+                list={modelListId}
+                className="input input-sm input-bordered"
+                placeholder="例如 glm-4.5"
+                value={model}
+                onChange={(event) => setModel(event.target.value)}
+              />
+              <datalist id={modelListId}>
+                {modelHistory.map((item) => (
+                  <option key={item} value={item} />
                 ))}
+              </datalist>
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => runAiOrganize(false)}
+                disabled={isRunning}
+                type="button"
+              >
+                {isRunning ? "生成中…" : "生成草稿"}
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => runAiOrganize(true)}
+                disabled={isRunning}
+                type="button"
+              >
+                {isRunning ? "处理中…" : "生成并保存"}
+              </button>
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={saveGroups}
+                disabled={isSaving || !hasPendingChanges}
+                type="button"
+              >
+                {isSaving ? "保存中…" : "保存草稿"}
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={resetToCurrent}
+                disabled={isRunning}
+                type="button"
+              >
+                重置
+              </button>
+            </div>
+
+            <div className="text-xs text-base-content/60">
+              <p>
+                覆盖情况：{coverage.assignedCount}/{coverage.total}（缺失 {coverage.missing.length}
+                ）
+              </p>
+              {coverage.duplicates.length > 0 && (
+                <p className="text-error">重复：{coverage.duplicates.join(", ")}</p>
+              )}
+              {coverage.missing.length > 0 && (
+                <p className="text-warning">未分组：{coverage.missing.join(", ")}</p>
+              )}
+            </div>
+
+            <div className="mt-3 flex flex-1 flex-col">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
+                <span>草稿历史</span>
+                {drafts.length > 0 && (
+                  <button
+                    className="btn btn-ghost btn-xs text-xs"
+                    type="button"
+                    onClick={clearDrafts}
+                  >
+                    清空
+                  </button>
+                )}
+              </div>
+              <div className="mt-2 flex-1 space-y-2 overflow-y-auto overflow-x-visible pr-1">
+                {drafts.length === 0 ? (
+                  <p className="text-xs text-base-content/50">暂无草稿，生成后会自动保存喵。</p>
+                ) : (
+                  drafts.map((draft) => {
+                    const title = deriveDraftTitle(draft);
+                    const time = formatDraftTime(draft.createdAt);
+                    const isActive = activeDraftId && draft.id === activeDraftId;
+                    return (
+                      <div
+                        key={draft.id ?? `${title}-${draft.createdAt}`}
+                        className={`flex items-start gap-2 rounded-lg border p-2 transition ${
+                          isActive
+                            ? "border-primary bg-primary/10"
+                            : "border-base-content/10 bg-base-100/80"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          className="w-full text-left"
+                          onClick={() => loadDraft(draft)}
+                          onFocus={(event) => updateHoverState(draft, event.currentTarget)}
+                          onBlur={clearHoverState}
+                          onMouseEnter={(event) =>
+                            updateHoverState(
+                              draft,
+                              event.currentTarget.closest("div") ?? event.currentTarget
+                            )
+                          }
+                          onMouseMove={(event) =>
+                            updateHoverState(
+                              draft,
+                              event.currentTarget.closest("div") ?? event.currentTarget
+                            )
+                          }
+                          onMouseLeave={clearHoverState}
+                        >
+                          <p className="text-sm font-medium text-base-content">{title}</p>
+                          <p className="mt-1 text-xs text-base-content/50">
+                            {draft.model ? `模型 ${draft.model}` : "默认模型"}
+                            {time ? ` · ${time}` : ""}
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => removeDraft(draft.id)}
+                          aria-label="删除草稿"
+                          onMouseEnter={(event) =>
+                            updateHoverState(
+                              draft,
+                              event.currentTarget.closest("div") ?? event.currentTarget
+                            )
+                          }
+                          onMouseMove={(event) =>
+                            updateHoverState(
+                              draft,
+                              event.currentTarget.closest("div") ?? event.currentTarget
+                            )
+                          }
+                          onMouseLeave={clearHoverState}
+                        >
+                          删除
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-4">
+            {workingGroups.map((group) => (
+              <div
+                key={group.key}
+                className="rounded-lg border border-base-content/10 bg-base-100 p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold text-base-content">{group.title}</h3>
+                  <span className="text-xs text-base-content/50">{group.tags.length}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1 text-xs text-base-content/70">
+                  {group.tags.map((tag) => (
+                    <span key={tag} className="badge badge-ghost">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+      {hoverCardMeta &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-[9999] w-[280px] text-xs"
+            style={{ top: hoverCardMeta.top, left: hoverCardMeta.left }}
+          >
+            <div className="rounded-xl border border-base-content/10 bg-base-100/90 p-3 shadow-lg backdrop-blur">
+              {hoverCardMeta.lines.map((line) => (
+                <p key={line} className="text-base-content/80">
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
