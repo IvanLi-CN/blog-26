@@ -167,6 +167,15 @@
   }
 }
 
+@keyframes tagDraftShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.6s ease-out forwards;
 }
@@ -197,6 +206,60 @@
 
 .editor-highlight-flash {
   animation: highlightFlash 1s ease-out;
+}
+
+.pending-draft-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.pending-draft-text {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  animation: pendingTextPulse 1.2s ease-in-out infinite;
+}
+
+.pending-draft-text::after {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pendingDotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pendingTextPulse {
+  0% {
+    opacity: 0.5;
+    text-shadow: 0 0 0 hsl(var(--primary) / 0);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
+  }
+  100% {
+    opacity: 0.5;
+    text-shadow: 0 0 0 hsl(var(--primary) / 0);
+  }
+}
+
+@keyframes pendingDotPulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.6);
+    opacity: 0.3;
+  }
 }
 
 /* 增强的标签页激活状态样式 */

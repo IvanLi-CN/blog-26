@@ -26,6 +26,7 @@ function assertEnv(name: string): string {
 export async function organizeTagsWithAI(options?: {
   targetGroups?: number;
   model?: string;
+  signal?: AbortSignal;
 }): Promise<AiTagOrganizerResult> {
   const apiKey = assertEnv("OPENAI_API_KEY");
   const model =
@@ -34,6 +35,13 @@ export async function organizeTagsWithAI(options?: {
     process.env.CHAT_COMPLETION_MODEL ||
     "gpt-4o-mini";
   const baseURL = process.env.OPENAI_API_BASE_URL || process.env.OPENAI_BASE_URL;
+  const { signal } = options ?? {};
+  const throwIfAborted = () => {
+    if (signal?.aborted) {
+      throw new DOMException("The operation was aborted", "AbortError");
+    }
+  };
+  throwIfAborted();
   const defaultCount = await resolveDefaultGroupCount();
   const targetGroups = options?.targetGroups ?? Number(process.env.TAG_GROUP_COUNT || defaultCount);
 
@@ -123,15 +131,19 @@ export async function organizeTagsWithAI(options?: {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const attemptLabel = `[ai-tag-organize attempt ${attempt}/${maxAttempts}]`;
     try {
+      throwIfAborted();
       console.time(attemptLabel);
-      completion = await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.2,
-      });
+      completion = await openai.chat.completions.create(
+        {
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.2,
+        },
+        { signal }
+      );
       console.timeEnd(attemptLabel);
       break;
     } catch (error) {
@@ -155,11 +167,27 @@ export async function organizeTagsWithAI(options?: {
       const retryable =
         (err.status && transientStatuses.includes(err.status)) ||
         (err.status === 400 && err.message?.includes("Provider API error"));
+      if (signal?.aborted) {
+        throw new DOMException("The operation was aborted", "AbortError");
+      }
       if (!retryable || attempt === maxAttempts) {
         throw error;
       }
       const waitMs = 1500 * attempt;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      if (signal) {
+        await Promise.race([
+          new Promise((resolve) => setTimeout(resolve, waitMs)),
+          new Promise((_, reject) => {
+            signal.addEventListener(
+              "abort",
+              () => reject(new DOMException("The operation was aborted", "AbortError")),
+              { once: true }
+            );
+          }),
+        ]);
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
     }
   }
 
@@ -171,6 +199,7 @@ export async function organizeTagsWithAI(options?: {
   if (!text) {
     throw new Error("AI response missing content");
   }
+  throwIfAborted();
   const firstBrace = text.indexOf("{");
   const lastBrace = text.lastIndexOf("}");
   if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {

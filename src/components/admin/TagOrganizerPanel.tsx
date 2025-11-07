@@ -29,6 +29,7 @@ interface AiResultState {
   notes?: string;
   model?: string;
   summaryTitle?: string;
+  isPending?: boolean;
 }
 
 interface HoverState {
@@ -104,8 +105,9 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   const [workingGroups, setWorkingGroups] = useState<TagGroup[]>(() => initialGroups);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const pendingControllers = useRef(new Map<string, AbortController>());
+  const [activeJobs, setActiveJobs] = useState(0);
+  const isRunning = activeJobs > 0;
   const [model, setModel] = useState("");
   const [modelHistory, setModelHistory] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<AiResultState[]>([]);
@@ -168,6 +170,7 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
               ...item,
               id: item.id || generateDraftId(),
               createdAt: item.createdAt ?? Date.now(),
+              isPending: false,
             }))
             .slice(0, MAX_DRAFTS);
           setDrafts(validDrafts);
@@ -197,25 +200,50 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   const persistDrafts = useCallback((nextDrafts: AiResultState[]) => {
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem(DRAFT_HISTORY_KEY, JSON.stringify(nextDrafts));
+      const serializable = nextDrafts
+        .filter((draft) => !draft.isPending)
+        .map(({ isPending: _ignored, ...rest }) => rest);
+      window.localStorage.setItem(DRAFT_HISTORY_KEY, JSON.stringify(serializable));
     } catch {
       // ignore
     }
   }, []);
 
-  async function runAiOrganize(persist = false) {
-    setIsRunning(true);
+  async function runAiOrganize() {
+    const draftId = generateDraftId();
+    const trimmedModel = model.trim();
+    const controller = new AbortController();
+    pendingControllers.current.set(draftId, controller);
+
+    const placeholder: AiResultState = {
+      id: draftId,
+      createdAt: Date.now(),
+      groups: [],
+      summaryTitle: "生成中…",
+      model: trimmedModel || "默认模型",
+      isPending: true,
+    };
+
+    setDrafts((prev) => {
+      const next = [placeholder, ...prev.filter((draft) => draft.id !== draftId)].slice(
+        0,
+        MAX_DRAFTS
+      );
+      return next;
+    });
+
     setError(null);
-    setStatus("生成中……");
+    setStatus("已加入生成队列");
+    setActiveJobs((count) => count + 1);
+
     try {
-      const trimmedModel = model.trim();
       const payload: Record<string, unknown> = { targetGroups: targetCount };
-      if (persist) payload.persist = true;
       if (trimmedModel) payload.model = trimmedModel;
       const response = await fetch("/api/tags/organize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
@@ -232,55 +260,39 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
       const timestamp = Date.now();
       const enriched: AiResultState = {
         ...data,
-        id: data.id || generateDraftId(),
+        id: draftId,
         createdAt: data.createdAt ?? timestamp,
+        isPending: false,
       };
       setAiState(enriched);
       setWorkingGroups(enriched.groups);
       setDrafts((prev) => {
-        const next = [enriched, ...prev.filter((draft) => draft.id !== enriched.id)].slice(
-          0,
-          MAX_DRAFTS
-        );
+        const existingIndex = prev.findIndex((draft) => draft.id === draftId);
+        const merged =
+          existingIndex >= 0
+            ? prev.map((draft) => (draft.id === draftId ? enriched : draft))
+            : [enriched, ...prev];
+        const next = merged.slice(0, MAX_DRAFTS);
         persistDrafts(next);
         return next;
       });
-      if (persist) {
-        setBaselineGroups(data.groups);
-        setStatus("已生成并保存");
+      setStatus("草稿已生成");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setStatus("生成已取消");
+        setError(null);
       } else {
-        setStatus("已生成草稿，尚未保存");
+        setError(err instanceof Error ? err.message : "AI 整理失败");
+        setStatus(null);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "AI 整理失败");
-      setStatus(null);
-    } finally {
-      setIsRunning(false);
-    }
-  }
-
-  async function saveGroups() {
-    setIsSaving(true);
-    setError(null);
-    setStatus("保存中……");
-    try {
-      const response = await fetch("/api/tags/organize", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groups: workingGroups }),
+      setDrafts((prev) => {
+        const next = prev.filter((draft) => draft.id !== draftId);
+        persistDrafts(next);
+        return next;
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || "保存失败");
-      }
-      rememberModel(model);
-      setBaselineGroups(workingGroups);
-      setStatus("保存成功");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "保存失败");
-      setStatus(null);
     } finally {
-      setIsSaving(false);
+      pendingControllers.current.delete(draftId);
+      setActiveJobs((count) => Math.max(0, count - 1));
     }
   }
 
@@ -292,10 +304,16 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   }
 
   const removeDraft = useCallback(
-    (id: string | undefined) => {
+    (draft: AiResultState) => {
+      const id = draft.id;
       if (!id) return;
+      if (draft.isPending) {
+        const controller = pendingControllers.current.get(id);
+        controller?.abort();
+        pendingControllers.current.delete(id);
+      }
       setDrafts((prev) => {
-        const next = prev.filter((draft) => draft.id !== id);
+        const next = prev.filter((item) => item.id !== id);
         persistDrafts(next);
         return next;
       });
@@ -305,6 +323,10 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
 
   const loadDraft = useCallback(
     (draft: AiResultState) => {
+      if (draft.isPending) {
+        setStatus("生成中，稍后查看");
+        return;
+      }
       setWorkingGroups(draft.groups);
       setAiState(draft);
       if (draft.model) {
@@ -318,6 +340,10 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   );
 
   const clearDrafts = useCallback(() => {
+    pendingControllers.current.forEach((controller) => {
+      controller.abort();
+    });
+    pendingControllers.current.clear();
     setDrafts([]);
     persistDrafts([]);
   }, [persistDrafts]);
@@ -330,10 +356,6 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   const clearHoverState = useCallback(() => {
     setHoverState(null);
   }, []);
-
-  const hasPendingChanges = useMemo(() => {
-    return JSON.stringify(workingGroups) !== JSON.stringify(baselineGroups);
-  }, [workingGroups, baselineGroups]);
 
   const activeDraftId = aiState?.id;
 
@@ -401,27 +423,10 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
             <div className="flex flex-wrap gap-2">
               <button
                 className="btn btn-primary btn-sm"
-                onClick={() => runAiOrganize(false)}
-                disabled={isRunning}
+                onClick={() => runAiOrganize()}
                 type="button"
               >
                 {isRunning ? "生成中…" : "生成草稿"}
-              </button>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => runAiOrganize(true)}
-                disabled={isRunning}
-                type="button"
-              >
-                {isRunning ? "处理中…" : "生成并保存"}
-              </button>
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={saveGroups}
-                disabled={isSaving || !hasPendingChanges}
-                type="button"
-              >
-                {isSaving ? "保存中…" : "保存草稿"}
               </button>
               <button
                 className="btn btn-ghost btn-sm"
@@ -467,47 +472,52 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                     const title = deriveDraftTitle(draft);
                     const time = formatDraftTime(draft.createdAt);
                     const isActive = activeDraftId && draft.id === activeDraftId;
+                    const cardTone = draft.isPending
+                      ? "pending-draft-card border-primary/60 bg-primary/5"
+                      : isActive
+                        ? "border-primary bg-primary/10"
+                        : "border-base-content/10 bg-base-100/80";
+                    const titleClass = draft.isPending
+                      ? "text-sm font-medium pending-draft-text"
+                      : "text-sm font-medium text-base-content";
                     return (
+                      /* biome-ignore lint/a11y/useSemanticElements: needs button-like behavior while containing other buttons */
                       <div
                         key={draft.id ?? `${title}-${draft.createdAt}`}
-                        className={`rounded-lg border p-2.5 transition ${
-                          isActive
-                            ? "border-primary bg-primary/10"
-                            : "border-base-content/10 bg-base-100/80"
-                        }`}
+                        className={`rounded-lg border p-2.5 transition focus:outline-none focus:ring-2 focus:ring-primary/60 ${cardTone}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-busy={draft.isPending || undefined}
+                        onClick={() => loadDraft(draft)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            loadDraft(draft);
+                          }
+                        }}
+                        onMouseEnter={(event) => updateHoverState(draft, event.currentTarget)}
+                        onMouseMove={(event) => updateHoverState(draft, event.currentTarget)}
+                        onMouseLeave={clearHoverState}
+                        onFocus={(event) => updateHoverState(draft, event.currentTarget)}
+                        onBlur={clearHoverState}
                       >
                         <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            className="min-w-[160px] flex-1 text-left"
-                            onClick={() => loadDraft(draft)}
-                            onFocus={(event) => updateHoverState(draft, event.currentTarget)}
-                            onBlur={clearHoverState}
-                            onMouseEnter={(event) =>
-                              updateHoverState(
-                                draft,
-                                event.currentTarget.closest("div") ?? event.currentTarget
-                              )
-                            }
-                            onMouseMove={(event) =>
-                              updateHoverState(
-                                draft,
-                                event.currentTarget.closest("div") ?? event.currentTarget
-                              )
-                            }
-                            onMouseLeave={clearHoverState}
-                          >
-                            <p className="text-sm font-medium text-base-content">{title}</p>
+                          <div className="min-w-[160px] flex-1 text-left">
+                            <p className={titleClass}>{title}</p>
                             <p className="text-xs text-base-content/50">
                               {draft.model ? `模型 ${draft.model}` : "默认模型"}
                               {time ? ` · ${time}` : ""}
                             </p>
-                          </button>
+                          </div>
                           <div className="flex items-center gap-2 whitespace-nowrap">
                             <button
                               type="button"
                               className="btn btn-secondary btn-xs"
-                              onClick={() => loadDraft(draft)}
+                              disabled={draft.isPending}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                loadDraft(draft);
+                              }}
                               aria-label="应用草稿"
                             >
                               应用
@@ -515,21 +525,11 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                             <button
                               type="button"
                               className="btn btn-link btn-xs px-0 text-error"
-                              onClick={() => removeDraft(draft.id)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeDraft(draft);
+                              }}
                               aria-label="删除草稿"
-                              onMouseEnter={(event) =>
-                                updateHoverState(
-                                  draft,
-                                  event.currentTarget.closest("div") ?? event.currentTarget
-                                )
-                              }
-                              onMouseMove={(event) =>
-                                updateHoverState(
-                                  draft,
-                                  event.currentTarget.closest("div") ?? event.currentTarget
-                                )
-                              }
-                              onMouseLeave={clearHoverState}
                             >
                               删除
                             </button>

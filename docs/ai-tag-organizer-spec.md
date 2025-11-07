@@ -51,14 +51,14 @@ Persistence
    - 前端初始化“模型历史”下拉（localStorage 记忆最近 5 个模型）。
 
 2. **生成草稿**：
-   - 用户选择目标分组数、模型名后点击“生成草稿”；
-   - 前端 POST `/api/tags/organize`，附带 `targetGroups`（必填）与 `model`（可选）；
-   - API 校验管理员权限 → 调用 `organizeTagsWithAI` → 返回分组草稿，同时给出 `notes`、`model`；
-   - 前端展示分组卡片、覆盖率统计、AI 备注，并将结果写入浏览器 `localStorage` 中的草稿堆栈（倒序，最多 10 份，可随时加载或删除）。
+   - 用户选择目标分组数、模型名后点击“生成草稿”；前端立即插入一张“生成中…”占位草稿，可并行触发多次请求；
+   - 每个请求都会 POST `/api/tags/organize`（`targetGroups` 必填、`model` 可选），并附带独立 `AbortController.signal`；
+   - API 校验管理员身份 → 调用 `organizeTagsWithAI`。服务端会把同一 `AbortSignal` 传入 OpenAI SDK 与重试逻辑中，所以删除草稿或关闭页面时，前后端都会及时终止该 LLM 调用，避免算力浪费；
+   - 一旦响应返回，占位草稿会被真实内容替换，展示覆盖率、notes、模型信息，并写入浏览器草稿堆栈（倒序、最多 10 份，可随时加载或删除）。
 
 3. **生成并保存**：
    - 流程同上，但携带 `persist: true`；
-   - API 在写入前用 `validateTagGroupsConfig` 二次校验，再落盘 `tag-groups.json`。
+   - API 在写入前用 `validateTagGroupsConfig` 二次校验，再落盘 `tag-groups.json`，同样支持中途取消。
 
 4. **手动保存草稿**：
    - 管理员可在草稿基础上调整后点击“保存草稿”；
@@ -103,7 +103,7 @@ Persistence
 - 表单项：目标分组数（2-20）、模型名称（支持 datalist 历史）；
 - 按钮：生成草稿、生成并保存、保存草稿、重置；
 - 状态提示：成功/错误徽章、覆盖率与重复标签提示、AI summary（抽象中文短语）与 notes 展示；
-- 草稿面板：左侧列展示最近生成的草稿（含模型名、时间、删除/清空功能），点击可回填到主预览。
+- 草稿面板：左侧列展示最近生成的草稿（含模型名、时间、删除/清空功能），点击即可在右侧预览；“应用”按钮会将该草稿写入工作区并立即生效，但仍需点击“保存草稿”或“生成并保存”才能持久化。
 - 模型历史：localStorage 记忆最近 5 个手动输入。
 
 ## 失败场景与处理
