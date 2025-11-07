@@ -470,59 +470,71 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                     return (
                       <div
                         key={draft.id ?? `${title}-${draft.createdAt}`}
-                        className={`flex items-start gap-2 rounded-lg border p-2 transition ${
+                        className={`rounded-lg border p-2.5 transition ${
                           isActive
                             ? "border-primary bg-primary/10"
                             : "border-base-content/10 bg-base-100/80"
                         }`}
                       >
-                        <button
-                          type="button"
-                          className="w-full text-left"
-                          onClick={() => loadDraft(draft)}
-                          onFocus={(event) => updateHoverState(draft, event.currentTarget)}
-                          onBlur={clearHoverState}
-                          onMouseEnter={(event) =>
-                            updateHoverState(
-                              draft,
-                              event.currentTarget.closest("div") ?? event.currentTarget
-                            )
-                          }
-                          onMouseMove={(event) =>
-                            updateHoverState(
-                              draft,
-                              event.currentTarget.closest("div") ?? event.currentTarget
-                            )
-                          }
-                          onMouseLeave={clearHoverState}
-                        >
-                          <p className="text-sm font-medium text-base-content">{title}</p>
-                          <p className="mt-1 text-xs text-base-content/50">
-                            {draft.model ? `模型 ${draft.model}` : "默认模型"}
-                            {time ? ` · ${time}` : ""}
-                          </p>
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-xs"
-                          onClick={() => removeDraft(draft.id)}
-                          aria-label="删除草稿"
-                          onMouseEnter={(event) =>
-                            updateHoverState(
-                              draft,
-                              event.currentTarget.closest("div") ?? event.currentTarget
-                            )
-                          }
-                          onMouseMove={(event) =>
-                            updateHoverState(
-                              draft,
-                              event.currentTarget.closest("div") ?? event.currentTarget
-                            )
-                          }
-                          onMouseLeave={clearHoverState}
-                        >
-                          删除
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className="min-w-[160px] flex-1 text-left"
+                            onClick={() => loadDraft(draft)}
+                            onFocus={(event) => updateHoverState(draft, event.currentTarget)}
+                            onBlur={clearHoverState}
+                            onMouseEnter={(event) =>
+                              updateHoverState(
+                                draft,
+                                event.currentTarget.closest("div") ?? event.currentTarget
+                              )
+                            }
+                            onMouseMove={(event) =>
+                              updateHoverState(
+                                draft,
+                                event.currentTarget.closest("div") ?? event.currentTarget
+                              )
+                            }
+                            onMouseLeave={clearHoverState}
+                          >
+                            <p className="text-sm font-medium text-base-content">{title}</p>
+                            <p className="text-xs text-base-content/50">
+                              {draft.model ? `模型 ${draft.model}` : "默认模型"}
+                              {time ? ` · ${time}` : ""}
+                            </p>
+                          </button>
+                          <div className="flex items-center gap-2 whitespace-nowrap">
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-xs"
+                              onClick={() => loadDraft(draft)}
+                              aria-label="应用草稿"
+                            >
+                              应用
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-link btn-xs px-0 text-error"
+                              onClick={() => removeDraft(draft.id)}
+                              aria-label="删除草稿"
+                              onMouseEnter={(event) =>
+                                updateHoverState(
+                                  draft,
+                                  event.currentTarget.closest("div") ?? event.currentTarget
+                                )
+                              }
+                              onMouseMove={(event) =>
+                                updateHoverState(
+                                  draft,
+                                  event.currentTarget.closest("div") ?? event.currentTarget
+                                )
+                              }
+                              onMouseLeave={clearHoverState}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     );
                   })
