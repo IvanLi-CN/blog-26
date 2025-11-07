@@ -1,13 +1,13 @@
 import Link from "next/link";
 import PageLayout from "@/components/common/PageLayout";
 import Icon from "@/components/ui/Icon";
-import { readTagGroupsConfig } from "@/server/services/tag-groups-config";
+import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { getTagSummaries } from "@/server/services/tag-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function TagsIndexPage() {
-  const tagGroupsConfig = await readTagGroupsConfig();
+  const tagGroupsConfig = await readTagGroupsFromDB();
   const tagSummaries = await getTagSummaries({
     includeDrafts: false,
     includeUnpublished: false,

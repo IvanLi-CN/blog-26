@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import TagOrganizerPanel from "@/components/admin/TagOrganizerPanel";
 import { getAdminEmail, getSsoEmailHeaderName } from "@/lib/admin-config";
 import { isAdminFromRequest } from "@/lib/auth";
-import { readTagGroupsConfig } from "@/server/services/tag-groups-config";
+import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { getTagSummaries } from "@/server/services/tag-service";
 
 export const metadata = {
@@ -26,7 +26,7 @@ export default async function AdminTagOrganizerPage() {
   }
 
   const [config, summaries] = await Promise.all([
-    readTagGroupsConfig(),
+    readTagGroupsFromDB(),
     getTagSummaries({ includeDrafts: true, includeUnpublished: true }),
   ]);
 
