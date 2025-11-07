@@ -112,6 +112,7 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   const [modelHistory, setModelHistory] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<AiResultState[]>([]);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
   const initRef = useRef(false);
   const modelListId = useId();
 
@@ -322,19 +323,51 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   );
 
   const loadDraft = useCallback(
-    (draft: AiResultState) => {
+    (draft: AiResultState, forceApply = false) => {
       if (draft.isPending) {
         setStatus("生成中，稍后查看");
         return;
       }
-      setWorkingGroups(draft.groups);
-      setAiState(draft);
-      if (draft.model) {
-        setModel(draft.model);
-        rememberModel(draft.model);
+      if (forceApply) {
+        setIsApplying(true);
+        setStatus("应用中…");
+        setError(null);
+        (async () => {
+          try {
+            setWorkingGroups(draft.groups);
+            setAiState(draft);
+            if (draft.model) {
+              setModel(draft.model);
+              rememberModel(draft.model);
+            }
+            const response = await fetch("/api/tags/organize", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ groups: draft.groups }),
+            });
+            if (!response.ok) {
+              const payload = await response.json().catch(() => ({}));
+              throw new Error(payload.error || "应用失败");
+            }
+            setBaselineGroups(draft.groups);
+            setStatus("已应用草稿");
+          } catch (error) {
+            setError(error instanceof Error ? error.message : "应用失败");
+            setStatus(null);
+          } finally {
+            setIsApplying(false);
+          }
+        })();
+      } else {
+        setWorkingGroups(draft.groups);
+        setAiState(draft);
+        if (draft.model) {
+          setModel(draft.model);
+          rememberModel(draft.model);
+        }
+        setStatus("已载入草稿");
+        setError(null);
       }
-      setStatus("已载入草稿");
-      setError(null);
     },
     [rememberModel]
   );
@@ -513,14 +546,14 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                             <button
                               type="button"
                               className="btn btn-secondary btn-xs"
-                              disabled={draft.isPending}
+                              disabled={draft.isPending || isApplying}
                               onClick={(event) => {
                                 event.stopPropagation();
-                                loadDraft(draft);
+                                loadDraft(draft, true);
                               }}
                               aria-label="应用草稿"
                             >
-                              应用
+                              {isApplying ? "应用中…" : "应用"}
                             </button>
                             <button
                               type="button"

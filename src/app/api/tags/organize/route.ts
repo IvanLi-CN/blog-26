@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/auth-utils";
 import { organizeTagsWithAI } from "@/server/services/tag-ai";
 import {
-  readTagGroupsConfig,
+  readTagGroupsFromDB,
   validateTagGroupsConfig,
-  writeTagGroupsConfig,
-} from "@/server/services/tag-groups-config";
+  writeTagGroupsToDB,
+} from "@/server/services/tag-groups";
 import { getTagSummaries } from "@/server/services/tag-service";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return forbidden();
   }
 
-  const current = await readTagGroupsConfig();
+  const current = await readTagGroupsFromDB();
   return NextResponse.json({ success: true, data: current });
 }
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       );
     }
     try {
-      await writeTagGroupsConfig({ groups: result.groups });
+      await writeTagGroupsToDB(result.groups, knownTags);
     } catch (error) {
       return NextResponse.json(
         { success: false, error: error instanceof Error ? error.message : "Persist failed" },
@@ -100,7 +100,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    await writeTagGroupsConfig({ groups });
+    await writeTagGroupsToDB(groups, knownTags);
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : "Persist failed" },

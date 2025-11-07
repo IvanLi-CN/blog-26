@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { TagGroup } from "@/types/tag-groups";
-import { getCurrentGroupCount, validateTagGroupsConfig } from "./tag-groups-config";
+import { getCurrentGroupCount, validateTagGroupsConfig } from "./tag-groups";
 import { getTagSummaries } from "./tag-service";
 
 export type AiTagOrganizerResult = {
