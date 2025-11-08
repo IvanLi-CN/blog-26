@@ -4,6 +4,7 @@ import TagOrganizerPanel from "@/components/admin/TagOrganizerPanel";
 import { getAdminEmail, getSsoEmailHeaderName } from "@/lib/admin-config";
 import { isAdminFromRequest } from "@/lib/auth";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
+import { getAllCategoryIcons, getAllTagIcons } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
 
 export const metadata = {
@@ -25,9 +26,11 @@ export default async function AdminTagOrganizerPage() {
     redirect("/admin-login");
   }
 
-  const [config, summaries] = await Promise.all([
+  const [config, summaries, tagIcons, categoryIcons] = await Promise.all([
     readTagGroupsFromDB(),
     getTagSummaries({ includeDrafts: true, includeUnpublished: true }),
+    getAllTagIcons(),
+    getAllCategoryIcons(),
   ]);
 
   return (
@@ -41,6 +44,8 @@ export default async function AdminTagOrganizerPage() {
       <TagOrganizerPanel
         initialGroups={config.groups}
         tagSummaries={summaries}
+        tagIcons={tagIcons}
+        categoryIcons={categoryIcons}
         initialModel={process.env.TAG_AI_MODEL || process.env.CHAT_COMPLETION_MODEL || undefined}
       />
     </div>

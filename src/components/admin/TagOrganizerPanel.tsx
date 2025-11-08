@@ -22,6 +22,8 @@ function generateDraftId(): string {
 interface Props {
   initialGroups: TagGroup[];
   tagSummaries: TagSummary[];
+  categoryIcons?: Record<string, string | null>;
+  tagIcons?: Record<string, string | null>;
   initialModel?: string;
 }
 
@@ -108,7 +110,13 @@ function buildDraftTooltip(draft: AiResultState): string {
   return [summaryPart, notesPart, modelPart].filter((segment) => segment.length > 0).join("\n");
 }
 
-export default function TagOrganizerPanel({ initialGroups, tagSummaries, initialModel }: Props) {
+export default function TagOrganizerPanel({
+  initialGroups,
+  tagSummaries,
+  categoryIcons = {},
+  tagIcons = {},
+  initialModel,
+}: Props) {
   const [targetCount, setTargetCount] = useState(() =>
     normalizeTargetCount(initialGroups.length || 8, 8)
   );
@@ -667,7 +675,11 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-base font-semibold text-base-content">
-                    <Icon name="mdi:folder-outline" size={18} className="text-base-content/60" />
+                    <Icon
+                      name={categoryIcons[group.key] || "mdi:folder-outline"}
+                      size={18}
+                      className="text-base-content/60"
+                    />
                     <span>{group.title}</span>
                   </div>
                   <span className="text-xs text-base-content/50">{group.tags.length}</span>
@@ -675,7 +687,11 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                 <div className="mt-2 flex flex-wrap gap-1 text-xs text-base-content/70">
                   {group.tags.map((tag) => (
                     <span key={tag} className="badge badge-ghost gap-1">
-                      <Icon name="mdi:tag-outline" size={14} className="text-base-content/60" />
+                      <Icon
+                        name={tagIcons[tag] || "mdi:tag-outline"}
+                        size={14}
+                        className="text-base-content/60"
+                      />
                       {tag}
                     </span>
                   ))}
