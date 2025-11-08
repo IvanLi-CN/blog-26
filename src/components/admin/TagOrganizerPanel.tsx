@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { TagGroup } from "@/types/tag-groups";
-import type { TagSummary } from "@/types/tags";
 
 const MODEL_HISTORY_KEY = "tag-ai-model-history";
 const DRAFT_HISTORY_KEY = "tag-ai-drafts";
@@ -18,7 +17,6 @@ function generateDraftId(): string {
 
 interface Props {
   initialGroups: TagGroup[];
-  tagSummaries: TagSummary[];
   initialModel?: string;
 }
 
@@ -40,24 +38,6 @@ interface HoverState {
 function normalizeTargetCount(input: number, fallback: number): number {
   if (!Number.isFinite(input) || input <= 0) return fallback;
   return Math.min(20, Math.max(2, Math.round(input)));
-}
-
-function summarizeCoverage(groups: TagGroup[], tagSummaries: TagSummary[]) {
-  const all = new Set(tagSummaries.map((t) => t.name));
-  const assigned = new Set<string>();
-  const duplicates: string[] = [];
-  for (const group of groups) {
-    for (const tag of group.tags) {
-      if (!all.has(tag)) continue;
-      if (assigned.has(tag)) {
-        duplicates.push(tag);
-      } else {
-        assigned.add(tag);
-      }
-    }
-  }
-  const missing = Array.from(all).filter((tag) => !assigned.has(tag));
-  return { missing, duplicates, assignedCount: assigned.size, total: all.size };
 }
 
 function deriveDraftTitle(draft: AiResultState): string {
@@ -96,7 +76,7 @@ function buildDraftTooltip(draft: AiResultState): string {
   return [summaryPart, notesPart, modelPart].filter((segment) => segment.length > 0).join("\n");
 }
 
-export default function TagOrganizerPanel({ initialGroups, tagSummaries, initialModel }: Props) {
+export default function TagOrganizerPanel({ initialGroups, initialModel }: Props) {
   const [targetCount, setTargetCount] = useState(() =>
     normalizeTargetCount(initialGroups.length || 8, 8)
   );
@@ -115,16 +95,12 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   const [isApplying, setIsApplying] = useState(false);
   const initRef = useRef(false);
   const modelListId = useId();
+  const [isTouchLayout, setIsTouchLayout] = useState(false);
 
   useEffect(() => {
     setBaselineGroups(initialGroups);
     setWorkingGroups(initialGroups);
   }, [initialGroups]);
-
-  const coverage = useMemo(
-    () => summarizeCoverage(workingGroups, tagSummaries),
-    [workingGroups, tagSummaries]
-  );
 
   useEffect(() => {
     if (initRef.current) return;
@@ -196,6 +172,22 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
       }
       return next;
     });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia?.("(hover: none)");
+    const updateLayout = () => {
+      const prefersNoHover = Boolean(mediaQuery?.matches);
+      setIsTouchLayout(window.innerWidth < 768 || prefersNoHover);
+    };
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    mediaQuery?.addEventListener?.("change", updateLayout);
+    return () => {
+      window.removeEventListener("resize", updateLayout);
+      mediaQuery?.removeEventListener?.("change", updateLayout);
+    };
   }, []);
 
   const persistDrafts = useCallback((nextDrafts: AiResultState[]) => {
@@ -382,6 +374,14 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
   }, [persistDrafts]);
 
   const updateHoverState = useCallback((draft: AiResultState, element: HTMLElement) => {
+    if (typeof window !== "undefined") {
+      const noHoverMedia = window.matchMedia?.("(hover: none)");
+      const prefersNoHover = window.innerWidth < 768 || Boolean(noHoverMedia?.matches);
+      if (prefersNoHover) {
+        setHoverState(null);
+        return;
+      }
+    }
     const rect = element.getBoundingClientRect();
     setHoverState({ draft, rect });
   }, []);
@@ -394,6 +394,10 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
 
   const hoverCardMeta = useMemo(() => {
     if (!hoverState || typeof window === "undefined") return null;
+    const noHoverMedia = window.matchMedia?.("(hover: none)");
+    if (window.innerWidth < 768 || Boolean(noHoverMedia?.matches)) {
+      return null;
+    }
     const tooltip = buildDraftTooltip(hoverState.draft);
     if (!tooltip) return null;
     const viewportWidth = window.innerWidth;
@@ -407,6 +411,17 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
     const lines = tooltip.split("\n").filter((line) => line.length > 0);
     return { top, left, lines };
   }, [hoverState]);
+
+  const mobileDraftDetailLines = useMemo(() => {
+    if (!isTouchLayout || !aiState) return null;
+    const tooltip = buildDraftTooltip(aiState);
+    if (!tooltip) return null;
+    const lines = tooltip
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    return lines.length > 0 ? lines : null;
+  }, [aiState, isTouchLayout]);
 
   return (
     <>
@@ -471,18 +486,7 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
               </button>
             </div>
 
-            <div className="text-xs text-base-content/60">
-              <p>
-                覆盖情况：{coverage.assignedCount}/{coverage.total}（缺失 {coverage.missing.length}
-                ）
-              </p>
-              {coverage.duplicates.length > 0 && (
-                <p className="text-error">重复：{coverage.duplicates.join(", ")}</p>
-              )}
-              {coverage.missing.length > 0 && (
-                <p className="text-warning">未分组：{coverage.missing.join(", ")}</p>
-              )}
-            </div>
+            {/* 覆盖率细节不再展示，避免在控制面板占空间 */}
 
             <div className="mt-3 flex flex-1 flex-col">
               <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
@@ -574,6 +578,16 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                 )}
               </div>
             </div>
+            {mobileDraftDetailLines && (
+              <div className="mt-3 rounded-lg border border-base-content/10 bg-base-100/90 p-3 text-xs text-base-content/70">
+                <p className="text-xs font-semibold text-base-content">草稿说明</p>
+                <ul className="mt-1 space-y-1">
+                  {mobileDraftDetailLines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
