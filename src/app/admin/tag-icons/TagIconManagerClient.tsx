@@ -213,21 +213,20 @@ export default function TagIconManagerClient({
         };
         return (
           <section key={g.key} className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1 text-left transition hover:bg-base-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              onClick={() => toggle(catItem.id, "category", catItem.title)}
+              aria-expanded={Boolean(open[catItem.id])}
+            >
+              <span className="flex items-center gap-2">
                 <Icon
                   name={(catIcons[g.key] || catItem.currentIcon || "tabler:category") as string}
                   className="w-5 h-5 text-primary/80"
                 />
                 <h3 className="text-lg font-semibold">{g.title}</h3>
-              </div>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                onClick={() => toggle(catItem.id, "category", catItem.title)}
-                aria-label="toggle"
-                title="展开"
-              >
+              </span>
+              <span className="text-base-content/70" aria-hidden="true">
                 <Icon
                   name={
                     loading[catItem.id]
@@ -238,8 +237,8 @@ export default function TagIconManagerClient({
                   }
                   className={`w-4 h-4 ${loading[catItem.id] ? "animate-spin" : ""}`}
                 />
-              </button>
-            </div>
+              </span>
+            </button>
             {open[catItem.id] && (
               <Panel item={{ ...catItem, currentIcon: catIcons[g.key] || null }} />
             )}
@@ -258,17 +257,17 @@ export default function TagIconManagerClient({
                     key={id}
                     className="group/card rounded-lg border border-base-content/10 bg-base-100/60 p-3 transition hover:border-primary/60 hover:bg-base-100 shadow-sm"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      onClick={() => toggle(id, "tag", item.title)}
+                      aria-expanded={Boolean(open[id])}
+                    >
+                      <span className="flex items-center gap-2">
                         <Icon name={item.currentIcon || "tabler:tag"} className="w-4 h-4" />
                         <span className="font-medium">{item.title}</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => toggle(id, "tag", item.title)}
-                        aria-label="toggle"
-                      >
+                      </span>
+                      <span className="text-base-content/70" aria-hidden="true">
                         <Icon
                           name={
                             loading[id]
@@ -279,8 +278,8 @@ export default function TagIconManagerClient({
                           }
                           className={`w-4 h-4 ${loading[id] ? "animate-spin" : ""}`}
                         />
-                      </button>
-                    </div>
+                      </span>
+                    </button>
                     {open[id] && <Panel item={item} />}
                   </div>
                 );
