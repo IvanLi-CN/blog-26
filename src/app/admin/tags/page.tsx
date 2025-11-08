@@ -4,6 +4,7 @@ import TagOrganizerPanel from "@/components/admin/TagOrganizerPanel";
 import { getAdminEmail, getSsoEmailHeaderName } from "@/lib/admin-config";
 import { isAdminFromRequest } from "@/lib/auth";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
+import { getTagSummaries } from "@/server/services/tag-service";
 
 export const metadata = {
   title: "标签分组管理",
@@ -24,7 +25,10 @@ export default async function AdminTagOrganizerPage() {
     redirect("/admin-login");
   }
 
-  const config = await readTagGroupsFromDB();
+  const [config, summaries] = await Promise.all([
+    readTagGroupsFromDB(),
+    getTagSummaries({ includeDrafts: true, includeUnpublished: true }),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -36,6 +40,7 @@ export default async function AdminTagOrganizerPage() {
       </div>
       <TagOrganizerPanel
         initialGroups={config.groups}
+        tagSummaries={summaries}
         initialModel={process.env.TAG_AI_MODEL || process.env.CHAT_COMPLETION_MODEL || undefined}
       />
     </div>

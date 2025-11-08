@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { TagGroup } from "@/types/tag-groups";
+import type { TagSummary } from "@/types/tags";
 
 const MODEL_HISTORY_KEY = "tag-ai-model-history";
 const DRAFT_HISTORY_KEY = "tag-ai-drafts";
@@ -17,6 +18,7 @@ function generateDraftId(): string {
 
 interface Props {
   initialGroups: TagGroup[];
+  tagSummaries: TagSummary[];
   initialModel?: string;
 }
 
@@ -38,6 +40,29 @@ interface HoverState {
 function normalizeTargetCount(input: number, fallback: number): number {
   if (!Number.isFinite(input) || input <= 0) return fallback;
   return Math.min(20, Math.max(2, Math.round(input)));
+}
+
+function summarizeCoverage(groups: TagGroup[], tagSummaries: TagSummary[]) {
+  const all = new Set(tagSummaries.map((t) => t.name));
+  const assigned = new Set<string>();
+  const duplicates: string[] = [];
+  for (const group of groups) {
+    for (const tag of group.tags) {
+      if (!all.has(tag)) continue;
+      if (assigned.has(tag)) {
+        duplicates.push(tag);
+      } else {
+        assigned.add(tag);
+      }
+    }
+  }
+  const missing = Array.from(all).filter((tag) => !assigned.has(tag));
+  return { missing, duplicates, assignedCount: assigned.size, total: all.size };
+}
+
+function formatTagList(tags: string[], limit = 6): string {
+  if (tags.length <= limit) return tags.join(", ");
+  return `${tags.slice(0, limit).join(", ")} 等 ${tags.length} 项`;
 }
 
 function deriveDraftTitle(draft: AiResultState): string {
@@ -76,7 +101,7 @@ function buildDraftTooltip(draft: AiResultState): string {
   return [summaryPart, notesPart, modelPart].filter((segment) => segment.length > 0).join("\n");
 }
 
-export default function TagOrganizerPanel({ initialGroups, initialModel }: Props) {
+export default function TagOrganizerPanel({ initialGroups, tagSummaries, initialModel }: Props) {
   const [targetCount, setTargetCount] = useState(() =>
     normalizeTargetCount(initialGroups.length || 8, 8)
   );
@@ -101,6 +126,13 @@ export default function TagOrganizerPanel({ initialGroups, initialModel }: Props
     setBaselineGroups(initialGroups);
     setWorkingGroups(initialGroups);
   }, [initialGroups]);
+
+  const coverage = useMemo(
+    () => summarizeCoverage(workingGroups, tagSummaries),
+    [workingGroups, tagSummaries]
+  );
+  const hasCoverageIssues =
+    coverage.total > 0 && (coverage.missing.length > 0 || coverage.duplicates.length > 0);
 
   useEffect(() => {
     if (initRef.current) return;
@@ -427,7 +459,14 @@ export default function TagOrganizerPanel({ initialGroups, initialModel }: Props
     <>
       <section className="rounded-xl border border-base-content/10 bg-base-100/80 p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-semibold text-base-content">AI 标签分组助手</h2>
+          <h2 className="text-lg font-semibold text-base-content">
+            AI 标签分组助手
+            {hasCoverageIssues && (
+              <span className="ml-2 align-middle text-warning" role="img" aria-label="覆盖不足">
+                ⚠️
+              </span>
+            )}
+          </h2>
           {status && <span className="badge badge-success badge-sm">{status}</span>}
           {error && <span className="badge badge-error badge-sm">{error}</span>}
         </div>
@@ -435,6 +474,20 @@ export default function TagOrganizerPanel({ initialGroups, initialModel }: Props
         <p className="mt-3 text-sm text-base-content/60">
           自动根据标签语义生成均衡的分类。确认无误后可以覆盖当前配置。
         </p>
+
+        {hasCoverageIssues && (
+          <div className="mt-3 rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs text-warning">
+            <p>
+              覆盖不足：{coverage.assignedCount}/{coverage.total}（缺失 {coverage.missing.length}）
+            </p>
+            {coverage.missing.length > 0 && (
+              <p className="mt-1">未分组：{formatTagList(coverage.missing)}</p>
+            )}
+            {coverage.duplicates.length > 0 && (
+              <p className="mt-1">重复：{formatTagList(coverage.duplicates)}</p>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,280px)_1fr]">
           <div className="flex h-full flex-col space-y-3 rounded-lg border border-base-content/10 bg-base-200/40 p-4">
