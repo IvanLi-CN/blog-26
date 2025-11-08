@@ -4,25 +4,25 @@ const TTL = Number(process.env.ICONIFY_VALIDATE_TTL || 86400);
 type CacheEntry = { ok: boolean; ts: number };
 const cache = new Map<string, CacheEntry>();
 
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import bxl from "@iconify-json/bxl/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import carbon from "@iconify-json/carbon/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import cib from "@iconify-json/cib/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import fa6brands from "@iconify-json/fa6-brands/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import gameIcons from "@iconify-json/game-icons/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import lineMd from "@iconify-json/line-md/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import materialSymbols from "@iconify-json/material-symbols/icons.json";
 // Local existence index for allowed single-color sets to avoid network flakiness
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import simpleIcons from "@iconify-json/simple-icons/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack TypeScript declarations.
 import tabler from "@iconify-json/tabler/icons.json";
 
 function buildIndex(): Record<string, Set<string>> {

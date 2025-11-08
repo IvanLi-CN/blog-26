@@ -3,20 +3,21 @@
 // that our app uses so the Iconify runtime resolves icons without network access.
 import { addCollection } from "@iconify/react";
 import type { IconifyJSON } from "@iconify/types";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack runtime type exports.
 import bxl from "@iconify-json/bxl/icons.json";
+// @ts-expect-error Iconify JSON modules lack runtime type exports.
 import carbon from "@iconify-json/carbon/icons.json";
 // Additional single-color sets used by the admin icon picker
 // These may not exist in all environments; import guarded by try/catch in load()
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack runtime type exports.
 import cib from "@iconify-json/cib/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack runtime type exports.
 import fa6brands from "@iconify-json/fa6-brands/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack runtime type exports.
 import gameIcons from "@iconify-json/game-icons/icons.json";
 import lineMd from "@iconify-json/line-md/icons.json";
-// @ts-expect-error
+// @ts-expect-error Iconify JSON modules lack runtime type exports.
 import materialSymbols from "@iconify-json/material-symbols/icons.json";
 import simpleIcons from "@iconify-json/simple-icons/icons.json";
 import tabler from "@iconify-json/tabler/icons.json";
