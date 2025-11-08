@@ -104,6 +104,10 @@ async function prepareDB(): Promise<void> {
 describe("tag-service", () => {
   beforeAll(async () => {
     process.env.DB_PATH = TEST_DB_PATH;
+    const TEST_DB_DIR = path.dirname(TEST_DB_PATH);
+    if (!fs.existsSync(TEST_DB_DIR)) {
+      fs.mkdirSync(TEST_DB_DIR, { recursive: true });
+    }
     if (fs.existsSync(TEST_DB_PATH)) {
       fs.rmSync(TEST_DB_PATH);
     }
