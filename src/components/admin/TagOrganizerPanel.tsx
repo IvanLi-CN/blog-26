@@ -475,20 +475,6 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
           自动根据标签语义生成均衡的分类。确认无误后可以覆盖当前配置。
         </p>
 
-        {hasCoverageIssues && (
-          <div className="mt-3 rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs text-warning">
-            <p>
-              覆盖不足：{coverage.assignedCount}/{coverage.total}（缺失 {coverage.missing.length}）
-            </p>
-            {coverage.missing.length > 0 && (
-              <p className="mt-1">未分组：{formatTagList(coverage.missing)}</p>
-            )}
-            {coverage.duplicates.length > 0 && (
-              <p className="mt-1">重复：{formatTagList(coverage.duplicates)}</p>
-            )}
-          </div>
-        )}
-
         <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,280px)_1fr]">
           <div className="flex h-full flex-col space-y-3 rounded-lg border border-base-content/10 bg-base-200/40 p-4">
             <label className="flex flex-col gap-2 text-sm text-base-content">
@@ -639,6 +625,20 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                     <li key={line}>{line}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+            {hasCoverageIssues && (
+              <div className="mt-3 rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs text-warning">
+                <p>
+                  覆盖不足：{coverage.assignedCount}/{coverage.total}（缺失{" "}
+                  {coverage.missing.length}）
+                </p>
+                {coverage.missing.length > 0 && (
+                  <p className="mt-1">未分组：{formatTagList(coverage.missing)}</p>
+                )}
+                {coverage.duplicates.length > 0 && (
+                  <p className="mt-1">重复：{formatTagList(coverage.duplicates)}</p>
+                )}
               </div>
             )}
           </div>
