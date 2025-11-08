@@ -2,16 +2,18 @@ import Link from "next/link";
 import PageLayout from "@/components/common/PageLayout";
 import Icon from "@/components/ui/Icon";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
+import { getAllCategoryIcons, getAllTagIcons } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function TagsIndexPage() {
-  const tagGroupsConfig = await readTagGroupsFromDB();
-  const tagSummaries = await getTagSummaries({
-    includeDrafts: false,
-    includeUnpublished: false,
-  });
+  const [tagGroupsConfig, tagSummaries, tagIcons, categoryIcons] = await Promise.all([
+    readTagGroupsFromDB(),
+    getTagSummaries({ includeDrafts: false, includeUnpublished: false }),
+    getAllTagIcons(),
+    getAllCategoryIcons(),
+  ]);
 
   // Build tag -> group map from config
   const tagToGroup = new Map<string, { key: string; title: string }>();
@@ -50,7 +52,7 @@ export default async function TagsIndexPage() {
 
   return (
     <PageLayout>
-      <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-4xl">
+      <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-6xl">
         <div className="flex items-center gap-2 mb-4">
           <Icon name="tabler:tag" className="w-6 h-6 text-primary" />
           <h1 className="text-2xl md:text-3xl font-bold">标签</h1>
@@ -78,39 +80,34 @@ export default async function TagsIndexPage() {
               {orderedGroups.map((group) => (
                 <section key={group.key} className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Icon name="tabler:category" className="w-5 h-5 text-primary/80" />
+                    <Icon
+                      name={categoryIcons[group.key] || "tabler:category"}
+                      className="w-5 h-5 text-primary/80"
+                    />
                     <h3 className="text-lg font-semibold text-base-content">{group.title}</h3>
                     <span className="text-xs text-base-content/50">{group.items.length}</span>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                     {group.items.map((tag) => {
                       const fullPathLabel = tag.name !== tag.lastSegment ? tag.name : undefined;
                       return (
                         <div
                           key={tag.name}
-                          className="group rounded-lg border border-base-content/10 bg-base-100/60 p-4 transition hover:border-primary/60 hover:bg-base-100 shadow-sm"
+                          className="rounded-lg border border-base-content/10 bg-base-100/60 p-3 transition hover:border-primary/60 hover:bg-base-100 shadow-sm"
                           title={tag.name}
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-lg font-medium text-base-content">
-                              {tag.lastSegment}
-                            </span>
-                            <span className="text-sm text-primary/80">{tag.count} posts</span>
-                          </div>
-                          {fullPathLabel && (
-                            <span className="mt-1 block text-xs uppercase tracking-wide text-base-content/50">
-                              {fullPathLabel}
-                            </span>
-                          )}
-                          <div className="mt-3 text-xs text-base-content/60">
-                            <Link
-                              className="text-primary hover:underline"
-                              href={`/tags/${encodeURIComponent(tag.name)}`}
-                              prefetch={false}
-                            >
-                              View posts »
-                            </Link>
-                          </div>
+                          <Link
+                            href={`/tags/${encodeURIComponent(tag.name)}`}
+                            prefetch={false}
+                            className="flex items-center gap-2 hover:text-primary"
+                            title={tag.name}
+                          >
+                            <Icon name={tagIcons[tag.name] || "tabler:tag"} className="w-4 h-4" />
+                            <span className="text-base text-base-content">{tag.lastSegment}</span>
+                            {fullPathLabel && (
+                              <span className="text-xs text-base-content/50">{fullPathLabel}</span>
+                            )}
+                          </Link>
                         </div>
                       );
                     })}

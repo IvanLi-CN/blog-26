@@ -67,6 +67,7 @@ export async function readTagGroupsFromDB(tagNames?: string[]): Promise<TagGroup
       id: tagsTable.id,
       categoryKey: tagsTable.categoryKey,
       categoryTitle: tagsTable.categoryTitle,
+      icon: tagsTable.icon,
     })
     .from(tagsTable)
     .where(where);

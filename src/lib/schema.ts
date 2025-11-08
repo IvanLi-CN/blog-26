@@ -103,6 +103,16 @@ export const tags = sqliteTable("tags", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+// 分类元数据表
+export const tagCategories = sqliteTable("tag_categories", {
+  key: text("key").primaryKey(),
+  title: text("title"),
+  icon: text("icon"),
+  description: text("description").notNull().default(""),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // 反应表
 export const reactions = sqliteTable("reactions", {
   id: text("id").primaryKey(),
