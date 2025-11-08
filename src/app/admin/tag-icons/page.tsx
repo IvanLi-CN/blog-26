@@ -1,4 +1,3 @@
-import PageLayout from "@/components/common/PageLayout";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { getAllCategoryIcons, getAllTagIcons } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
@@ -50,16 +49,14 @@ export default async function TagIconsAdminPage() {
   }
 
   return (
-    <PageLayout>
-      <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-7xl">
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold">标签与分类图标匹配</h1>
-          <p className="mt-2 text-base-content/70 text-sm">
-            按分类显示，点击右侧箭头生成并查看图标候选；支持同时打开多个面板进行批量操作。
-          </p>
-        </div>
-        <TagIconManagerClient groups={ordered} iconsMap={tagIcons} categoryIcons={catIcons} />
-      </section>
-    </PageLayout>
+    <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-7xl">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold">标签与分类图标匹配</h1>
+        <p className="mt-2 text-base-content/70 text-sm">
+          按分类显示，点击右侧箭头生成并查看图标候选；支持同时打开多个面板进行批量操作。
+        </p>
+      </div>
+      <TagIconManagerClient groups={ordered} iconsMap={tagIcons} categoryIcons={catIcons} />
+    </section>
   );
 }
