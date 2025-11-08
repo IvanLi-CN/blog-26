@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Icon from "@/components/ui/Icon";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
 const MODEL_HISTORY_KEY = "tag-ai-model-history";
 const DRAFT_HISTORY_KEY = "tag-ai-drafts";
 const MAX_DRAFTS = 10;
+
+type CoverageSummary = ReturnType<typeof summarizeCoverage>;
 
 function generateDraftId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -63,6 +66,10 @@ function summarizeCoverage(groups: TagGroup[], tagSummaries: TagSummary[]) {
 function formatTagList(tags: string[], limit = 6): string {
   if (tags.length <= limit) return tags.join(", ");
   return `${tags.slice(0, limit).join(", ")} 等 ${tags.length} 项`;
+}
+
+function hasCoverageProblem(summary: CoverageSummary) {
+  return summary.total > 0 && (summary.missing.length > 0 || summary.duplicates.length > 0);
 }
 
 function deriveDraftTitle(draft: AiResultState): string {
@@ -127,12 +134,14 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
     setWorkingGroups(initialGroups);
   }, [initialGroups]);
 
-  const coverage = useMemo(
+  const currentCoverage = useMemo(
     () => summarizeCoverage(workingGroups, tagSummaries),
     [workingGroups, tagSummaries]
   );
-  const hasCoverageIssues =
-    coverage.total > 0 && (coverage.missing.length > 0 || coverage.duplicates.length > 0);
+  const hasCurrentCoverageIssues = useMemo(
+    () => hasCoverageProblem(currentCoverage),
+    [currentCoverage]
+  );
 
   useEffect(() => {
     if (initRef.current) return;
@@ -459,14 +468,7 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
     <>
       <section className="rounded-xl border border-base-content/10 bg-base-100/80 p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-semibold text-base-content">
-            AI 标签分组助手
-            {hasCoverageIssues && (
-              <span className="ml-2 align-middle text-warning" role="img" aria-label="覆盖不足">
-                ⚠️
-              </span>
-            )}
-          </h2>
+          <h2 className="text-lg font-semibold text-base-content">AI 标签分组助手</h2>
           {status && <span className="badge badge-success badge-sm">{status}</span>}
           {error && <span className="badge badge-error badge-sm">{error}</span>}
         </div>
@@ -545,6 +547,8 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                   <p className="text-xs text-base-content/50">暂无草稿，生成后会自动保存喵。</p>
                 ) : (
                   drafts.map((draft) => {
+                    const draftCoverage = summarizeCoverage(draft.groups, tagSummaries);
+                    const draftHasCoverageIssues = hasCoverageProblem(draftCoverage);
                     const title = deriveDraftTitle(draft);
                     const time = formatDraftTime(draft.createdAt);
                     const isActive = activeDraftId && draft.id === activeDraftId;
@@ -579,7 +583,19 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                       >
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="min-w-[160px] flex-1 text-left">
-                            <p className={titleClass}>{title}</p>
+                            <div className="flex items-center gap-1">
+                              <p className={titleClass}>{title}</p>
+                              {draftHasCoverageIssues && (
+                                <Icon
+                                  name="mdi:alert-circle-outline"
+                                  className={`text-warning ${
+                                    isActive ? "opacity-100" : "opacity-70"
+                                  }`}
+                                  size={16}
+                                  aria-label="覆盖不足"
+                                />
+                              )}
+                            </div>
                             <p className="text-xs text-base-content/50">
                               {draft.model ? `模型 ${draft.model}` : "默认模型"}
                               {time ? ` · ${time}` : ""}
@@ -627,17 +643,17 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                 </ul>
               </div>
             )}
-            {hasCoverageIssues && (
+            {hasCurrentCoverageIssues && (
               <div className="mt-3 rounded-lg border border-warning/40 bg-warning/5 p-3 text-xs text-warning">
                 <p>
-                  覆盖不足：{coverage.assignedCount}/{coverage.total}（缺失{" "}
-                  {coverage.missing.length}）
+                  覆盖不足：{currentCoverage.assignedCount}/{currentCoverage.total}（缺失{" "}
+                  {currentCoverage.missing.length}）
                 </p>
-                {coverage.missing.length > 0 && (
-                  <p className="mt-1">未分组：{formatTagList(coverage.missing)}</p>
+                {currentCoverage.missing.length > 0 && (
+                  <p className="mt-1">未分组：{formatTagList(currentCoverage.missing)}</p>
                 )}
-                {coverage.duplicates.length > 0 && (
-                  <p className="mt-1">重复：{formatTagList(coverage.duplicates)}</p>
+                {currentCoverage.duplicates.length > 0 && (
+                  <p className="mt-1">重复：{formatTagList(currentCoverage.duplicates)}</p>
                 )}
               </div>
             )}
