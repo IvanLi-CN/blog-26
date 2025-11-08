@@ -666,12 +666,16 @@ export default function TagOrganizerPanel({ initialGroups, tagSummaries, initial
                 className="rounded-lg border border-base-content/10 bg-base-100 p-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-base font-semibold text-base-content">{group.title}</h3>
+                  <div className="flex items-center gap-2 text-base font-semibold text-base-content">
+                    <Icon name="mdi:folder-outline" size={18} className="text-base-content/60" />
+                    <span>{group.title}</span>
+                  </div>
                   <span className="text-xs text-base-content/50">{group.tags.length}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1 text-xs text-base-content/70">
                   {group.tags.map((tag) => (
-                    <span key={tag} className="badge badge-ghost">
+                    <span key={tag} className="badge badge-ghost gap-1">
+                      <Icon name="mdi:tag-outline" size={14} className="text-base-content/60" />
                       {tag}
                     </span>
                   ))}
