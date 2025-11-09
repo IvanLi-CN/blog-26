@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { validateDrizzleJournal } from "./validate-drizzle-journal";
 
 // Pre-commit test runner: run unit tests excluding the `old/` directory
 // This script discovers test files under common roots and invokes `bun test` with explicit file paths.
@@ -55,6 +56,9 @@ function walk(dir: string, files: string[]) {
 }
 
 async function main() {
+  // Ensure the drizzle journal metadata remains monotonic before running tests
+  validateDrizzleJournal();
+
   const files: string[] = [];
 
   const roots = ROOTS.filter((r) => existsSync(r));
