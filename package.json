@@ -88,6 +88,7 @@
     "test": "bun test src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*'",
     "test:watch": "bun test --watch",
     "test:precommit": "bun ./scripts/run-precommit-tests.ts",
+    "db:migrations:validate": "bun ./scripts/validate-drizzle-journal.ts",
     "test:e2e": "playwright test",
     "test:e2e:headless": "HEADLESS=true playwright test",
     "test:e2e:verify": "bun ./scripts/verify-e2e-data.ts",
