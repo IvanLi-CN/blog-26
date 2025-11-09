@@ -102,50 +102,51 @@ export async function writeTagGroupsToDB(groups: TagGroup[], knownTags?: string[
   }
 
   const targetTagList = knownTags && knownTags.length > 0 ? knownTags : Array.from(byTag.keys());
-
-  // Upsert all known tags to ensure row existence
-  for (const tag of targetTagList) {
-    const meta = byTag.get(tag);
-    if (meta) {
-      // upsert: update if exists, else insert
-      await db
-        .insert(tagsTable)
-        .values({
-          id: tag,
-          categoryKey: meta.key,
-          categoryTitle: meta.title,
-          description: "",
-          postCount: 0,
-          memoCount: 0,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: tagsTable.id,
-          set: {
+  // 使用事务，保证写入原子性
+  await db.transaction(async (tx) => {
+    for (const tag of targetTagList) {
+      const meta = byTag.get(tag);
+      if (meta) {
+        // upsert: update if exists, else insert
+        await tx
+          .insert(tagsTable)
+          .values({
+            id: tag,
             categoryKey: meta.key,
             categoryTitle: meta.title,
+            description: "",
+            postCount: 0,
+            memoCount: 0,
+            createdAt: now,
             updatedAt: now,
-          },
-        });
-    } else {
-      // clear category for tags not included
-      await db
-        .insert(tagsTable)
-        .values({
-          id: tag,
-          description: "",
-          postCount: 0,
-          memoCount: 0,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: tagsTable.id,
-          set: { categoryKey: null, categoryTitle: null, updatedAt: now },
-        });
+          })
+          .onConflictDoUpdate({
+            target: tagsTable.id,
+            set: {
+              categoryKey: meta.key,
+              categoryTitle: meta.title,
+              updatedAt: now,
+            },
+          });
+      } else {
+        // clear category for tags not included
+        await tx
+          .insert(tagsTable)
+          .values({
+            id: tag,
+            description: "",
+            postCount: 0,
+            memoCount: 0,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: tagsTable.id,
+            set: { categoryKey: null, categoryTitle: null, updatedAt: now },
+          });
+      }
     }
-  }
+  });
 }
 
 export async function getCurrentGroupCount(): Promise<number> {

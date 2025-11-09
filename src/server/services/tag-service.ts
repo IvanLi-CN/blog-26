@@ -176,6 +176,48 @@ export async function getPostsByTag(
   }));
 }
 
+export async function groupPostsByTag(
+  options: TagServiceOptions = {},
+  limitPerTag?: number
+): Promise<Array<{ tag: TagSummary; posts: TaggedPost[] }>> {
+  const rows = await fetchPosts(options);
+  const groups = new Map<string, { tag: TagSummary; posts: TaggedPost[] }>();
+
+  for (const row of rows) {
+    const tags = Array.from(new Set(normalizeTags(row.tags)));
+    for (const tag of tags) {
+      const { path, segments, lastSegment } = splitTagSegments(tag);
+      if (!path) continue;
+      let bucket = groups.get(path);
+      if (!bucket) {
+        bucket = { tag: { name: path, segments, lastSegment, count: 0 }, posts: [] };
+        groups.set(path, bucket);
+      }
+      bucket.tag.count += 1;
+      bucket.posts.push({
+        title: row.title,
+        slug: row.slug,
+        excerpt: row.excerpt,
+        tags,
+      });
+    }
+  }
+
+  const arr = Array.from(groups.values());
+  // sort like getTagSummaries
+  arr.sort((a, b) => {
+    const c1 = collator.compare(a.tag.lastSegment, b.tag.lastSegment);
+    if (c1 !== 0) return c1;
+    return collator.compare(a.tag.name, b.tag.name);
+  });
+
+  if (typeof limitPerTag === "number") {
+    for (const g of arr) g.posts = g.posts.slice(0, limitPerTag);
+  }
+
+  return arr;
+}
+
 export function decodeTagFromPath(tagPath: string): string {
   try {
     return decodeURIComponent(tagPath);

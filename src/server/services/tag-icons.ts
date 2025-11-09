@@ -23,8 +23,9 @@ export async function suggestTagIcon(tagId: string) {
   return { candidates, ai };
 }
 
-export async function assignTagIcon(tagId: string, icon: string) {
-  if (!isValidIconId(icon)) throw new Error("Invalid icon id");
+export async function assignTagIcon(tagId: string, icon: string | null | undefined) {
+  const normalized = icon?.trim() ? icon : null;
+  const validIcon = normalized && isValidIconId(normalized) ? normalized : null;
   await ensureDB();
   if (!db) throw new Error("DB not initialized");
   const now = Math.floor(Date.now() / 1000);
@@ -32,14 +33,14 @@ export async function assignTagIcon(tagId: string, icon: string) {
     .insert(tagsTable)
     .values({
       id: tagId,
-      icon,
+      icon: validIcon,
       description: "",
       postCount: 0,
       memoCount: 0,
       createdAt: now,
       updatedAt: now,
     })
-    .onConflictDoUpdate({ target: tagsTable.id, set: { icon, updatedAt: now } });
+    .onConflictDoUpdate({ target: tagsTable.id, set: { icon: validIcon, updatedAt: now } });
 }
 
 export async function suggestCategoryIcon(key: string, title?: string) {
@@ -48,15 +49,23 @@ export async function suggestCategoryIcon(key: string, title?: string) {
   return { candidates, ai };
 }
 
-export async function assignCategoryIcon(key: string, icon: string) {
-  if (!isValidIconId(icon)) throw new Error("Invalid icon id");
+export async function assignCategoryIcon(key: string, icon: string | null | undefined) {
+  const normalized = icon?.trim() ? icon : null;
+  const validCatIcon = normalized && isValidIconId(normalized) ? normalized : null;
   await ensureDB();
   if (!db) throw new Error("DB not initialized");
   const now = Math.floor(Date.now() / 1000);
   await db
     .insert(tagCategories)
-    .values({ key, icon, title: key, description: "", createdAt: now, updatedAt: now })
-    .onConflictDoUpdate({ target: tagCategories.key, set: { icon, updatedAt: now } });
+    .values({
+      key,
+      icon: validCatIcon,
+      title: key,
+      description: "",
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({ target: tagCategories.key, set: { icon: validCatIcon, updatedAt: now } });
 }
 
 export async function getCategoryIcon(key: string): Promise<string | null> {

@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 import Icon from "@/components/ui/Icon";
+import ToastAlert from "@/components/ui/ToastAlert";
 
 type SuggestResponse = {
   type: "tag" | "category";
@@ -66,6 +68,40 @@ export default function TagIconManagerClient({
   iconsMap: Record<string, string | null>;
   categoryIcons: Record<string, string | null>;
 }) {
+  // Load extended icon sets only for this admin tool to avoid bloating the public bundle.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { addCollection } = await import("@iconify/react");
+        const sets = await Promise.allSettled([
+          import("@iconify-json/simple-icons/icons.json"),
+          import("@iconify-json/carbon/icons.json"),
+          import("@iconify-json/bxl/icons.json"),
+          import("@iconify-json/cib/icons.json"),
+          import("@iconify-json/fa6-brands/icons.json"),
+          import("@iconify-json/material-symbols/icons.json"),
+          import("@iconify-json/game-icons/icons.json"),
+        ]);
+        if (cancelled) return;
+        for (const s of sets) {
+          if (s.status === "fulfilled") {
+            try {
+              // @ts-expect-error runtime json module default
+              addCollection(s.value.default);
+            } catch {
+              // ignore duplicate registration or optional packages
+            }
+          }
+        }
+      } catch {
+        // ignore load errors; base sets (tabler, line-md) still work
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [suggestion, setSuggestion] = useState<Record<string, SuggestResponse>>({});
@@ -116,15 +152,29 @@ export default function TagIconManagerClient({
   }
 
   async function assign(kind: "tag" | "category", id: string, icon: string) {
-    await fetch("/api/admin/tag-icons/assign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        kind === "tag" ? { type: "tag", name: id, icon } : { type: "category", key: id, icon }
-      ),
-    });
-    if (kind === "tag") setTagIcons((m) => ({ ...m, [id]: icon }));
-    else setCatIcons((m) => ({ ...m, [id]: icon }));
+    try {
+      const res = await fetch("/api/admin/tag-icons/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          kind === "tag" ? { type: "tag", name: id, icon } : { type: "category", key: id, icon }
+        ),
+      });
+      if (!res.ok) {
+        const msg = await res
+          .json()
+          .then((x) => x?.error || "保存失败")
+          .catch(() => "保存失败");
+        toast.error(<ToastAlert type="error" message={msg} />);
+        return;
+      }
+      // 后端已持久化成功，再更新本地状态
+      const next = icon || null;
+      if (kind === "tag") setTagIcons((m) => ({ ...m, [id]: next }));
+      else setCatIcons((m) => ({ ...m, [id]: next }));
+    } catch (_e) {
+      toast.error(<ToastAlert type="error" message="网络错误，请稍后重试" />);
+    }
   }
 
   /* biome-ignore lint/correctness/noNestedComponentDefinitions: UI panel scoped to this file only */
@@ -170,6 +220,15 @@ export default function TagIconManagerClient({
               name={loading[item.id] ? "tabler:loader-2" : "tabler:refresh"}
               className={`w-4 h-4 ${loading[item.id] ? "animate-spin" : ""}`}
             />
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => assign(item.kind, item.id, "")}
+            aria-label="clear"
+            title="清除图标（恢复默认）"
+          >
+            <Icon name="tabler:backspace" className="w-4 h-4" />
           </button>
         </div>
         {sug && (

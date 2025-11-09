@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { isAdminRequest } from "@/lib/auth-utils";
 import { suggestCategoryIcon, suggestTagIcon } from "@/server/services/tag-icons";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,9 @@ type SuggestTagIconRequest = {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isAdminRequest(req))) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
     const body = (await req.json()) as SuggestTagIconRequest;
     const type: SuggestTagIconRequest["type"] = body.type;
     if (type !== "tag" && type !== "category") {

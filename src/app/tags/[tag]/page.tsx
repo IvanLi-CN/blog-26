@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import PageLayout from "@/components/common/PageLayout";
 import Icon from "@/components/ui/Icon";
 import { decodeTagFromPath, getPostsByTag } from "@/server/services/tag-service";
@@ -13,6 +14,10 @@ export default async function TagDetailPage({ params }: PageProps) {
   const { tag } = await params;
   const decoded = decodeTagFromPath(tag || "");
   const posts = await getPostsByTag(decoded, { includeDrafts: false, includeUnpublished: false });
+  if (posts.length === 0) {
+    // 未找到该标签对应的文章，返回 404，避免产生可抓取的空页面
+    notFound();
+  }
 
   return (
     <PageLayout>
@@ -29,9 +34,7 @@ export default async function TagDetailPage({ params }: PageProps) {
           </Link>
         </div>
 
-        {posts.length === 0 ? (
-          <p className="text-base-content/60">No posts yet.</p>
-        ) : (
+        {
           <ul className="space-y-4">
             {posts.map((p) => (
               <li
@@ -47,7 +50,7 @@ export default async function TagDetailPage({ params }: PageProps) {
               </li>
             ))}
           </ul>
-        )}
+        }
 
         <div className="mt-8">
           <Link href="/tags" className="text-sm text-base-content/60 hover:underline">

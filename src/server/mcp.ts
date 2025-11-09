@@ -14,7 +14,7 @@ import {
 import { db, initializeDB } from "@/lib/db";
 import { posts as postsTable } from "@/lib/schema";
 import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
-import { getPostsByTag, getTagSummaries } from "@/server/services/tag-service";
+import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { requireAdmin } from "./mcp-auth-context";
 
 let server: McpServer | null = null;
@@ -476,15 +476,9 @@ async function ensureServer() {
       } = args as z.infer<typeof listAllTagPostsInput>;
       requireAdminIfRequested({ includeDrafts, includeUnpublished });
       const options = { includeDrafts, includeUnpublished };
-      const summaries = await getTagSummaries(options);
-      const bundles = await Promise.all(
-        summaries.map(async (summary) => {
-          const posts = await getPostsByTag(summary.name, options);
-          return {
-            tag: summary,
-            posts: typeof limitPerTag === "number" ? posts.slice(0, limitPerTag) : posts,
-          };
-        })
+      const bundles = await groupPostsByTag(
+        options,
+        typeof limitPerTag === "number" ? limitPerTag : undefined
       );
       return {
         content: [
