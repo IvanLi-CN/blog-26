@@ -164,4 +164,54 @@ if (!ENABLE) {
       const has = items.some((x: any) => x.title?.includes(title));
       expect(has).toBe(true);
     });
+
+    it("should list tags and fetch posts via MCP", async () => {
+      const tagsRes = await rpc({
+        jsonrpc: "2.0",
+        id: "t1",
+        method: "tools/call",
+        params: {
+          name: "tags.list",
+          arguments: {},
+        },
+      });
+
+      expect(tagsRes.error).toBeUndefined();
+      const tagPayload = JSON.parse(tagsRes.result?.content?.[0]?.text || "{}");
+      expect(Array.isArray(tagPayload.items)).toBe(true);
+
+      if (tagPayload.items.length > 0) {
+        const tagName = tagPayload.items[0]?.name;
+        expect(typeof tagName).toBe("string");
+
+        const postsRes = await rpc({
+          jsonrpc: "2.0",
+          id: "t2",
+          method: "tools/call",
+          params: {
+            name: "tags.listPosts",
+            arguments: { tag: tagName },
+          },
+        });
+
+        expect(postsRes.error).toBeUndefined();
+        const postsPayload = JSON.parse(postsRes.result?.content?.[0]?.text || "{}");
+        expect(postsPayload.tag).toBe(tagName);
+        expect(Array.isArray(postsPayload.items)).toBe(true);
+      }
+
+      const bundlesRes = await rpc({
+        jsonrpc: "2.0",
+        id: "t3",
+        method: "tools/call",
+        params: {
+          name: "tags.listAllPosts",
+          arguments: { limitPerTag: 2 },
+        },
+      });
+
+      expect(bundlesRes.error).toBeUndefined();
+      const bundlesPayload = JSON.parse(bundlesRes.result?.content?.[0]?.text || "{}");
+      expect(Array.isArray(bundlesPayload.items)).toBe(true);
+    });
   });

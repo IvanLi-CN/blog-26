@@ -90,6 +90,29 @@ export const postEmbeddings = sqliteTable(
   })
 );
 
+// 标签元数据表（面向单个完整标签路径）
+export const tags = sqliteTable("tags", {
+  id: text("id").primaryKey(), // 完整标签（包含 / 分隔）
+  categoryKey: text("category_key"), // 分组 key（slug-case）
+  categoryTitle: text("category_title"), // 分组显示标题
+  icon: text("icon"), // Iconify 图标 id
+  description: text("description").notNull().default(""), // Markdown 描述
+  postCount: integer("post_count").notNull().default(0), // 冗余计数，可按需更新
+  memoCount: integer("memo_count").notNull().default(0), // 冗余计数，可按需更新
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+// 分类元数据表
+export const tagCategories = sqliteTable("tag_categories", {
+  key: text("key").primaryKey(),
+  title: text("title"),
+  icon: text("icon"),
+  description: text("description").notNull().default(""),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // 反应表
 export const reactions = sqliteTable("reactions", {
   id: text("id").primaryKey(),
@@ -237,6 +260,8 @@ export const jobRuns = sqliteTable(
 // 类型导出
 export type VectorizedFile = typeof vectorizedFiles.$inferSelect; // Infer type for selecting data
 export type NewVectorizedFile = typeof vectorizedFiles.$inferInsert; // Infer type for inserting data
+export type TagRecord = typeof tags.$inferSelect;
+export type NewTagRecord = typeof tags.$inferInsert;
 
 export type PostEmbedding = typeof postEmbeddings.$inferSelect;
 export type NewPostEmbedding = typeof postEmbeddings.$inferInsert;

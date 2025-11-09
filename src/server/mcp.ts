@@ -14,6 +14,7 @@ import {
 import { db, initializeDB } from "@/lib/db";
 import { posts as postsTable } from "@/lib/schema";
 import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
+import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { requireAdmin } from "./mcp-auth-context";
 
 let server: McpServer | null = null;
@@ -171,6 +172,19 @@ const semanticInput = z.object({
 const enhancedInput = semanticInput.extend({
   rerankTopK: z.number().int().min(1).max(50).default(20),
   rerank: z.boolean().default(true),
+});
+
+const listTagsInput = z.object({
+  includeDrafts: z.boolean().default(false),
+  includeUnpublished: z.boolean().default(false),
+});
+
+const listTagPostsInput = listTagsInput.extend({
+  tag: z.string().min(1),
+});
+
+const listAllTagPostsInput = listTagsInput.extend({
+  limitPerTag: z.number().int().min(1).optional(),
 });
 
 function ands(conds: any[]) {
@@ -387,6 +401,97 @@ async function ensureServer() {
       }
       await triggerIncrementalSync();
       return { content: [{ type: "text", text: "ok" }] };
+    }
+  );
+
+  function requireAdminIfRequested(options: {
+    includeDrafts?: boolean;
+    includeUnpublished?: boolean;
+  }) {
+    if (options.includeDrafts || options.includeUnpublished) {
+      requireAdmin();
+    }
+  }
+
+  server.tool(
+    "tags.list",
+    "List aggregated tags (public by default)",
+    listTagsInput.shape,
+    async (args) => {
+      const { includeDrafts = false, includeUnpublished = false } = args as z.infer<
+        typeof listTagsInput
+      >;
+      requireAdminIfRequested({ includeDrafts, includeUnpublished });
+      const summaries = await getTagSummaries({ includeDrafts, includeUnpublished });
+      return {
+        content: [
+          {
+            type: "json",
+            text: JSON.stringify({
+              items: summaries,
+              total: summaries.length,
+            }),
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
+    "tags.listPosts",
+    "List posts that contain the given tag",
+    listTagPostsInput.shape,
+    async (args) => {
+      const {
+        tag,
+        includeDrafts = false,
+        includeUnpublished = false,
+      } = args as z.infer<typeof listTagPostsInput>;
+      requireAdminIfRequested({ includeDrafts, includeUnpublished });
+      const posts = await getPostsByTag(tag, { includeDrafts, includeUnpublished });
+      return {
+        content: [
+          {
+            type: "json",
+            text: JSON.stringify({
+              tag,
+              items: posts,
+              total: posts.length,
+            }),
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
+    "tags.listAllPosts",
+    "List all tags along with their associated posts",
+    listAllTagPostsInput.shape,
+    async (args) => {
+      const {
+        includeDrafts = false,
+        includeUnpublished = false,
+        limitPerTag,
+      } = args as z.infer<typeof listAllTagPostsInput>;
+      requireAdminIfRequested({ includeDrafts, includeUnpublished });
+      const options = { includeDrafts, includeUnpublished };
+      const bundles = await groupPostsByTag(
+        options,
+        typeof limitPerTag === "number" ? limitPerTag : undefined
+      );
+      return {
+        content: [
+          {
+            type: "json",
+            text: JSON.stringify({
+              items: bundles,
+              total: bundles.length,
+              limitPerTag: typeof limitPerTag === "number" ? limitPerTag : undefined,
+            }),
+          },
+        ],
+      };
     }
   );
 

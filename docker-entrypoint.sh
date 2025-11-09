@@ -60,7 +60,8 @@ if [ "$(id -u)" = "0" ]; then
   if gosu ${RUN_UID}:${RUN_GID} env DB_PATH="$DB_PATH" bun ./scripts/migrate.ts; then
     echo "✅ Database migrations completed"
   else
-    echo "❌ Database migrations failed, but continuing..."
+    echo "❌ Database migrations failed. Aborting startup."
+    exit 1
   fi
 
   echo "🌟 Starting app as ${RUN_UID}:${RUN_GID}: ${APP_CMD[*]}"
@@ -77,7 +78,8 @@ else
   if DB_PATH="$DB_PATH" bun ./scripts/migrate.ts; then
     echo "✅ Database migrations completed"
   else
-    echo "❌ Database migrations failed, but continuing..."
+    echo "❌ Database migrations failed. Aborting startup."
+    exit 1
   fi
   echo "🌟 Starting app: ${APP_CMD[*]}"
   exec DB_PATH="$DB_PATH" "${APP_CMD[@]}"

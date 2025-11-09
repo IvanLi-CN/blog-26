@@ -41,7 +41,7 @@ export const footerData = {
   links: [],
   secondaryLinks: [],
   socialLinks: [
-    { ariaLabel: "Gitea", icon: "simple-icons:gitea", href: "https://git.ivanli.cc/Ivan" },
+    { ariaLabel: "Gitea", icon: "tabler:brand-git", href: "https://git.ivanli.cc/Ivan" },
     {
       ariaLabel: "Timeline",
       icon: "tabler:automatic-gearbox",
