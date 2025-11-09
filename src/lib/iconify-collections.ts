@@ -4,12 +4,6 @@
 import { addCollection } from "@iconify/react";
 import type { IconifyJSON } from "@iconify/types";
 import lineMd from "@iconify-json/line-md/icons.json";
-// @ts-expect-error Iconify JSON modules lack runtime type exports.
-import lucide from "@iconify-json/lucide/icons.json";
-// Public UI uses simple-icons (e.g., social links) and admin uses lucide icons broadly.
-// Preload both to keep SSR stable without external fetches.
-// @ts-expect-error Iconify JSON modules lack runtime type exports.
-import simpleIcons from "@iconify-json/simple-icons/icons.json";
 import tabler from "@iconify-json/tabler/icons.json";
 
 function load(collection: IconifyJSON) {
@@ -22,6 +16,5 @@ function load(collection: IconifyJSON) {
 
 load(tabler as unknown as IconifyJSON);
 load(lineMd as unknown as IconifyJSON);
-load(simpleIcons as unknown as IconifyJSON);
-load(lucide as unknown as IconifyJSON);
-// Other heavy sets are loaded on-demand within admin tools.
+// Other heavy sets (e.g., simple-icons, lucide) are loaded on-demand within
+// specific routes/components to keep the initial bundle lean.
