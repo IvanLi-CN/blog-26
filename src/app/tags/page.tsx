@@ -56,6 +56,9 @@ export default async function TagsIndexPage() {
       });
     }
 
+    const tagGridClass =
+      "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6";
+
     return (
       <PageLayout>
         <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-6xl">
@@ -93,28 +96,37 @@ export default async function TagsIndexPage() {
                       <h3 className="text-lg font-semibold text-base-content">{group.title}</h3>
                       <span className="text-xs text-base-content/50">{group.items.length}</span>
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                    <div className={tagGridClass}>
                       {group.items.map((tag) => {
                         const fullPathLabel = tag.name !== tag.lastSegment ? tag.name : undefined;
                         return (
                           <div
                             key={tag.name}
-                            className="rounded-lg border border-base-content/10 bg-base-100/60 p-3 transition hover:border-primary/60 hover:bg-base-100 shadow-sm"
+                            className="h-full rounded-xl border border-base-content/10 bg-base-100/70 p-4 transition hover:border-primary/60 hover:bg-base-100 shadow-sm"
                             title={tag.name}
                           >
                             <Link
                               href={`/tags/${encodeURIComponent(tag.name)}`}
                               prefetch={false}
-                              className="flex items-center gap-2 hover:text-primary"
+                              className="group block h-full"
                               title={tag.name}
                             >
-                              <Icon name={tagIcons[tag.name] || "tabler:tag"} className="w-4 h-4" />
-                              <span className="text-base text-base-content">{tag.lastSegment}</span>
-                              {fullPathLabel && (
-                                <span className="text-xs text-base-content/50">
-                                  {fullPathLabel}
-                                </span>
-                              )}
+                              <div className="flex items-start gap-3">
+                                <Icon
+                                  name={tagIcons[tag.name] || "tabler:tag"}
+                                  className="h-5 w-5 flex-shrink-0 text-primary/80"
+                                />
+                                <div className="min-w-0 space-y-1">
+                                  <p className="text-base font-medium text-base-content truncate">
+                                    {tag.lastSegment}
+                                  </p>
+                                  {fullPathLabel && (
+                                    <p className="text-xs text-base-content/60 truncate">
+                                      {fullPathLabel}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </Link>
                           </div>
                         );
