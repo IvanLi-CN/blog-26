@@ -42,5 +42,8 @@ export function getAllowedPrefixes(): string[] {
 }
 
 export function isValidIconId(id: string): boolean {
-  return /^[a-z0-9-]+:[a-z0-9-]+(?:\/[a-z0-9-]+)*$/.test(id);
+  // Iconify IDs follow: <prefix>:<name>[/<sub-name>...]
+  // Many collections (e.g. material-symbols, game-icons) use snake_case glyph names.
+  // Allow underscores in the name segments while keeping lowercase letters, digits and dashes.
+  return /^[a-z0-9-]+:[a-z0-9_-]+(?:\/[a-z0-9_-]+)*$/.test(id);
 }

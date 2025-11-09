@@ -375,12 +375,6 @@ export default function TagOrganizerPanel({
         setError(null);
         (async () => {
           try {
-            setWorkingGroups(draft.groups);
-            setAiState(draft);
-            if (draft.model) {
-              setModel(draft.model);
-              rememberModel(draft.model);
-            }
             const response = await fetch("/api/tags/organize", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -390,9 +384,18 @@ export default function TagOrganizerPanel({
               const payload = await response.json().catch(() => ({}));
               throw new Error(payload.error || "应用失败");
             }
+            // 后端已持久化成功，再切换本地工作集
+            setWorkingGroups(draft.groups);
+            setAiState(draft);
+            if (draft.model) {
+              setModel(draft.model);
+              rememberModel(draft.model);
+            }
             setBaselineGroups(draft.groups);
             setStatus("已应用草稿");
           } catch (error) {
+            // 失败回滚到基线，保持 UI 与 DB 一致
+            setWorkingGroups(baselineGroups);
             setError(error instanceof Error ? error.message : "应用失败");
             setStatus(null);
           } finally {
@@ -410,7 +413,7 @@ export default function TagOrganizerPanel({
         setError(null);
       }
     },
-    [rememberModel]
+    [rememberModel, baselineGroups]
   );
 
   const clearDrafts = useCallback(() => {

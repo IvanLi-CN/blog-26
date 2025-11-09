@@ -111,19 +111,23 @@ export default function TagIconManagerClient({
   }));
   const inFlightRef = useRef<Set<string>>(new Set());
 
+  const keyOf = (kind: "tag" | "category", id: string) => `${kind}:${id}`;
+
   const toggle = (id: string, kind?: "tag" | "category", title?: string) => {
     setOpen((p) => {
-      const next = { ...p, [id]: !p[id] };
+      const k = kind ? keyOf(kind, id) : id;
+      const next = { ...p, [k]: !p[k] };
       // 仅首次打开自动生成；已生成过则不重复请求
-      if (next[id] && kind && !suggestion[id]) generate(kind, id, title);
+      if (next[k] && kind && !suggestion[k]) generate(kind, id, title);
       return next;
     });
   };
 
   async function generate(kind: "tag" | "category", id: string, title?: string) {
-    if (inFlightRef.current.has(id)) return; // 避免重复请求
-    inFlightRef.current.add(id);
-    setLoading((p) => ({ ...p, [id]: true }));
+    const k = keyOf(kind, id);
+    if (inFlightRef.current.has(k)) return; // 避免重复请求
+    inFlightRef.current.add(k);
+    setLoading((p) => ({ ...p, [k]: true }));
     try {
       const res = await fetch("/api/admin/tag-icons/suggest", {
         method: "POST",
@@ -135,19 +139,19 @@ export default function TagIconManagerClient({
       const data = (await res.json()) as SuggestResponse;
       // 合并历史候选与新候选（去重）
       setSuggestion((p) => {
-        const prev = p[id];
+        const prev = p[k];
         const mergedSet = new Set<string>([
           ...(prev?.candidates || []).map((x) => x.id),
           ...(data.candidates || []).map((x) => x.id),
         ]);
         const merged = Array.from(mergedSet).map((i) => ({ id: i }));
-        return { ...p, [id]: { ...(data || {}), candidates: merged } };
+        return { ...p, [k]: { ...(data || {}), candidates: merged } };
       });
     } catch (e) {
       console.error("suggest failed", e);
     } finally {
-      setLoading((p) => ({ ...p, [id]: false }));
-      inFlightRef.current.delete(id);
+      setLoading((p) => ({ ...p, [k]: false }));
+      inFlightRef.current.delete(k);
     }
   }
 
@@ -179,7 +183,8 @@ export default function TagIconManagerClient({
 
   /* biome-ignore lint/correctness/noNestedComponentDefinitions: UI panel scoped to this file only */
   function Panel({ item }: { item: Item }) {
-    const sug = suggestion[item.id];
+    const k = keyOf(item.kind, item.id);
+    const sug = suggestion[k];
     const current = item.kind === "tag" ? tagIcons[item.id] : catIcons[item.id];
     const aiPick = sug?.ai?.icon || null;
 
@@ -214,11 +219,11 @@ export default function TagIconManagerClient({
             onClick={() => generate(item.kind, item.id, item.title)}
             aria-label="refresh"
             title="刷新"
-            disabled={loading[item.id]}
+            disabled={loading[k]}
           >
             <Icon
-              name={loading[item.id] ? "tabler:loader-2" : "tabler:refresh"}
-              className={`w-4 h-4 ${loading[item.id] ? "animate-spin" : ""}`}
+              name={loading[k] ? "tabler:loader-2" : "tabler:refresh"}
+              className={`w-4 h-4 ${loading[k] ? "animate-spin" : ""}`}
             />
           </button>
           <button
@@ -320,7 +325,7 @@ export default function TagIconManagerClient({
                       type="button"
                       className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                       onClick={() => toggle(id, "tag", item.title)}
-                      aria-expanded={Boolean(open[id])}
+                      aria-expanded={Boolean(open[keyOf("tag", id)])}
                     >
                       <span className="flex items-center gap-2">
                         <Icon name={item.currentIcon || "tabler:tag"} className="w-4 h-4" />
@@ -329,17 +334,17 @@ export default function TagIconManagerClient({
                       <span className="text-base-content/70" aria-hidden="true">
                         <Icon
                           name={
-                            loading[id]
+                            loading[keyOf("tag", id)]
                               ? "tabler:loader-2"
-                              : open[id]
+                              : open[keyOf("tag", id)]
                                 ? "tabler:chevron-down"
                                 : "tabler:chevron-right"
                           }
-                          className={`w-4 h-4 ${loading[id] ? "animate-spin" : ""}`}
+                          className={`w-4 h-4 ${loading[keyOf("tag", id)] ? "animate-spin" : ""}`}
                         />
                       </span>
                     </button>
-                    {open[id] && <Panel item={item} />}
+                    {open[keyOf("tag", id)] && <Panel item={item} />}
                   </div>
                 );
               })}
