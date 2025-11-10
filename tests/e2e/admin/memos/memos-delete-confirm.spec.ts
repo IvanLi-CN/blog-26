@@ -17,9 +17,13 @@ test.describe("Memos 删除确认 (admin)", () => {
     for (let i = 0; i < maxClicks; i++) {
       const count = await locator.count();
       if (count > 0) return true;
-      const loadMore = page.getByRole("button", { name: "加载更多 Memo" });
-      if (!(await loadMore.isVisible().catch(() => false))) break;
-      if (await loadMore.isDisabled()) break;
+      const loadMore = page.getByRole("button", { name: "加载更多 Memo" }).first();
+      const hasLoadMore = (await loadMore.count().catch(() => 0)) > 0;
+      if (!hasLoadMore) break;
+      const visible = await loadMore.isVisible({ timeout: 1000 }).catch(() => false);
+      if (!visible) break;
+      const disabled = await loadMore.isDisabled().catch(() => true);
+      if (disabled) break;
       await loadMore.click();
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(200);
