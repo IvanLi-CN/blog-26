@@ -1,5 +1,15 @@
 # Ivan's Blog - Next.js Migration
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](package.json)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5.3-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.1.1-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.44.5-8A2BE2)](https://orm.drizzle.team/)
+[![tRPC](https://img.shields.io/badge/tRPC-11.5.1-2596BE)](https://trpc.io/)
+[![Playwright](https://img.shields.io/badge/Playwright-1.55.0-45ba4b?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.0-000000?logo=bun&logoColor=white)](https://bun.sh/)
+
 This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
 
 ## Development
@@ -319,16 +329,15 @@ This project uses a multi-source content management system that supports both lo
 
 ### Core Framework
 
-- **Next.js 15.4.6** with App Router
-- **React 19.1.0**
+- **Next.js 15.5.3** with App Router
+- **React 19.1.1**
 - **TypeScript 5.x**
-- **Tailwind CSS 4.x** + daisyUI
+- **Tailwind CSS 4.x** + daisyUI 5.x
 
 ### Backend & Database
 
-- **tRPC 11.4.3** for type-safe APIs
-- **Drizzle ORM 0.44.2** with SQLite
-- **better-sqlite3** for database connection
+- **tRPC 11.5.1** for type-safe APIs
+- **Drizzle ORM 0.44.5** with SQLite (via `bun:sqlite`)
 
 ### AI & Search
 
@@ -353,5 +362,5 @@ Notes:
 
 ### Development Tools
 
-- **Biome 2.0.4** for code formatting and linting
-- **Playwright** for E2E testing (see `tests/e2e/README.md`)
+- **Biome 2.2.4** for code formatting and linting
+- **Playwright 1.55.0** for E2E testing (see `tests/e2e/README.md`)
