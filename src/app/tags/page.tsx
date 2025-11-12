@@ -157,7 +157,7 @@ export default async function TagsIndexPage() {
                               <div className="flex items-start gap-3">
                                 <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                                   <Icon
-                                    name={tagIcons[tag.name] || "tabler:tag"}
+                                    name={tagIcons[tag.name] || "tabler:hash"}
                                     className="h-5 w-5"
                                   />
                                 </span>
