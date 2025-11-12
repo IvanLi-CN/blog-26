@@ -5,7 +5,7 @@ import Icon from "../ui/Icon";
 export default function Footer() {
   return (
     <footer className="bg-neutral text-neutral-content">
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
         {/* 主要内容区域 */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-8">
           {/* 左侧：Logo 和版权信息 */}

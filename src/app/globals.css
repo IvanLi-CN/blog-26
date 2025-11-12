@@ -5,6 +5,18 @@
   themes: all;
 }
 
+html {
+  /* Reserve equal space for scrollbars on both edges to keep layouts visually centered */
+  scrollbar-gutter: stable both-edges;
+}
+
+@media (max-width: 640px) {
+  html {
+    /* Avoid forcing extra gutter on mobile browsers where scrollbars overlay content */
+    scrollbar-gutter: auto;
+  }
+}
+
 /* 自定义滚动条样式 */
 .scrollbar-thin {
   scrollbar-width: thin;
