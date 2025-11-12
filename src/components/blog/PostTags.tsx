@@ -111,7 +111,7 @@ export default function PostTags({
           return (
             <li key={tag.slug} className="inline">
               <Link
-                href={`/tag/${tag.slug}`}
+                href={`/tags/${encodeURIComponent(tag.title)}`}
                 className={`inline-flex items-center ${
                   isMultiLevel
                     ? "bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:from-primary/20 hover:to-secondary/20 hover:border-primary/30"

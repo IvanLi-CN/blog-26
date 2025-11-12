@@ -36,7 +36,9 @@ export default async function TagDetailPage({ params }: PageProps) {
       <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-4xl">
         <div className="flex items-center gap-2 mb-4">
           <Icon name="tabler:tag" className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl md:text-3xl font-bold">#{decoded}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">
+            {decoded.includes("/") ? decoded.split("/").pop() : decoded}
+          </h1>
           <span className="text-base-content/60 text-sm">{posts.length} posts</span>
           <Link
             href={`/tags/${encodeURIComponent(decoded)}/feed.xml`}
@@ -76,13 +78,14 @@ export default async function TagDetailPage({ params }: PageProps) {
 
 function renderTagPageError(tag: string, error: unknown) {
   const { message, details } = formatUnknownError(error);
+  const display = tag.includes("/") ? (tag.split("/").pop() ?? tag) : tag;
   return (
     <PageLayout>
       <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-3xl">
         <div className="rounded-xl border border-error/40 bg-error/10 p-6 text-base-content">
           <div className="flex items-center gap-3 text-error">
             <Icon name="tabler:alert-triangle" className="h-6 w-6" />
-            <h1 className="text-xl font-semibold">无法加载标签 #{tag || "(unknown)"}</h1>
+            <h1 className="text-xl font-semibold">无法加载标签 {display || "(unknown)"}</h1>
           </div>
           <p className="mt-4 text-sm text-base-content/80">
             获取该标签内容时出现错误，详细信息已记录在服务端日志中：
