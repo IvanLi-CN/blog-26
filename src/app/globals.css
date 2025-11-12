@@ -6,8 +6,8 @@
 }
 
 html {
-  /* Reserve equal space for scrollbars on both edges to keep layouts visually centered */
-  scrollbar-gutter: stable both-edges;
+  /* Keep layout stable when scrollbars appear, without forcing extra left gutter */
+  scrollbar-gutter: stable;
 }
 
 @media (max-width: 640px) {
