@@ -6,15 +6,8 @@
 }
 
 html {
-  /* Keep layout stable when scrollbars appear, without forcing extra left gutter */
-  scrollbar-gutter: stable;
-}
-
-@media (max-width: 640px) {
-  html {
-    /* Avoid forcing extra gutter on mobile browsers where scrollbars overlay content */
-    scrollbar-gutter: auto;
-  }
+  /* Avoid reserving extra right gutter on overlay-scrollbar platforms */
+  scrollbar-gutter: auto;
 }
 
 /* 自定义滚动条样式 */
