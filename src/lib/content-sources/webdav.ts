@@ -242,12 +242,21 @@ export class WebDAVContentSource extends ContentSourceBase {
   private async refreshFileCache(): Promise<void> {
     this.fileCache.clear();
 
+    // 统计配置路径下各类型发现的 Markdown 数量
+    const discoveredByType: Record<keyof typeof this.pathMappings, number> = {
+      posts: 0,
+      projects: 0,
+      memos: 0,
+    };
+
     // 扫描所有配置的路径
-    for (const [contentType, webdavPaths] of Object.entries(this.pathMappings)) {
-      // 遍历该内容类型的所有路径
+    for (const [contentType, webdavPaths] of Object.entries(this.pathMappings) as Array<
+      [keyof typeof this.pathMappings, string[]]
+    >) {
       for (const webdavPath of webdavPaths) {
         try {
-          await this.scanWebDAVDirectory(webdavPath, contentType as keyof typeof this.pathMappings);
+          const count = await this.scanWebDAVDirectory(webdavPath, contentType);
+          discoveredByType[contentType] += count;
         } catch (error) {
           this.log("warn", `扫描 WebDAV 目录失败: ${webdavPath}`, undefined, {
             error: error instanceof Error ? error.message : String(error),
@@ -255,54 +264,132 @@ export class WebDAVContentSource extends ContentSourceBase {
         }
       }
     }
+
+    // 当配置路径下没有发现任何 Markdown 时，尝试常见本地回退目录
+    await this.applyFallbackIfEmpty("posts", discoveredByType.posts, ["/blog", "/Blog"]);
+    await this.applyFallbackIfEmpty("projects", discoveredByType.projects, [
+      "/projects",
+      "/Projects",
+    ]);
+    await this.applyFallbackIfEmpty("memos", discoveredByType.memos, ["/memos", "/Memos"]);
   }
 
   /**
    * 扫描 WebDAV 目录
    */
-  private async scanWebDAVDirectory(webdavPath: string, contentType: string): Promise<void> {
+  private async scanWebDAVDirectory(
+    webdavPath: string,
+    contentType: keyof typeof this.pathMappings
+  ): Promise<number> {
     this.log("debug", `开始扫描 WebDAV 目录: ${webdavPath} (类型: ${contentType})`);
 
+    // 某些 WebDAV 服务（例如部分反向代理或实现）不支持 PROPFIND Depth: infinity。
+    // 为了兼容性，这里使用基于 Depth: 1 的手动递归遍历。
+    const visited = new Set<string>();
+    const queue: string[] = [];
+    const normalizeDir = (p: string) => (p.endsWith("/") ? p : `${p}/`);
+
+    queue.push(normalizeDir(webdavPath));
+    let markdownCount = 0;
+
     try {
-      const files = await this.webdavClient.listFiles(webdavPath, false);
-      this.log("debug", `WebDAV 目录 ${webdavPath} 返回 ${files.length} 个文件`);
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (!current) break;
+        if (visited.has(current)) continue;
+        visited.add(current);
 
-      for (const webdavFile of files) {
-        this.log("debug", `处理文件: ${webdavFile.filename} (类型: ${webdavFile.type})`);
-
-        // 转换为标准的 FileInfo 格式
-        const fileInfo: FileInfo = {
-          path: webdavFile.filename,
-          name: webdavFile.basename,
-          extension: webdavFile.basename.split(".").pop()?.toLowerCase() || "",
-          size: webdavFile.size,
-          lastModified: new Date(webdavFile.lastmod).getTime() || Date.now(),
-          etag: webdavFile.etag,
-          isDirectory: webdavFile.type === "directory",
-        };
-
-        if (
-          !fileInfo.isDirectory &&
-          isMarkdownFile(fileInfo.path) &&
-          fileInfo.name.startsWith("_")
-        ) {
-          this.log("debug", `跳过以下划线开头的 Markdown 文件: ${webdavFile.filename}`);
+        let files: Awaited<ReturnType<WebDAVClient["listFiles"]>> = [];
+        try {
+          files = await this.webdavClient.listFiles(current, false);
+        } catch (err) {
+          // 记录并跳过该目录，继续其他目录
+          this.log("warn", `读取目录失败: ${current}`, undefined, {
+            error: err instanceof Error ? err.message : String(err),
+          });
           continue;
         }
 
-        this.fileCache.set(webdavFile.filename, fileInfo);
+        this.log("debug", `目录 ${current} 返回 ${files.length} 个条目`);
 
-        // 缓存 ETag
-        if (this.enableETagCache && webdavFile.etag) {
-          this.etagCache.set(webdavFile.filename, webdavFile.etag);
+        for (const webdavFile of files) {
+          // PROPFIND 返回的结果包含当前目录本身，跳过
+          if (normalizeDir(webdavFile.filename) === current) continue;
+
+          const fileInfo: FileInfo = {
+            path: webdavFile.filename,
+            name: webdavFile.basename,
+            extension: webdavFile.basename.split(".").pop()?.toLowerCase() || "",
+            size: webdavFile.size,
+            lastModified: new Date(webdavFile.lastmod).getTime() || Date.now(),
+            etag: webdavFile.etag,
+            isDirectory: webdavFile.type === "directory",
+          };
+
+          if (
+            !fileInfo.isDirectory &&
+            isMarkdownFile(fileInfo.path) &&
+            fileInfo.name.startsWith("_")
+          ) {
+            this.log("debug", `跳过以下划线开头的 Markdown 文件: ${webdavFile.filename}`);
+            continue;
+          }
+
+          this.fileCache.set(webdavFile.filename, fileInfo);
+          if (!fileInfo.isDirectory && isMarkdownFile(fileInfo.path)) {
+            markdownCount++;
+          }
+
+          if (fileInfo.isDirectory) {
+            queue.push(normalizeDir(webdavFile.filename));
+          }
+
+          // 缓存 ETag
+          if (this.enableETagCache && webdavFile.etag) {
+            this.etagCache.set(webdavFile.filename, webdavFile.etag);
+          }
         }
       }
 
-      this.log("info", `扫描 WebDAV 目录完成: ${webdavPath}，发现 ${files.length} 个项目`);
+      this.log(
+        "info",
+        `扫描 WebDAV 目录完成: ${webdavPath}，累积 Markdown 文件 ${markdownCount} 个`
+      );
+      return markdownCount;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log("error", `扫描 WebDAV 目录失败: ${webdavPath}`, undefined, { error: errorMessage });
       throw error;
+    }
+  }
+
+  /**
+   * 在配置路径未扫描到内容时，尝试常见回退目录（用于本地开发路径大小写或目录不一致的场景）。
+   */
+  private async applyFallbackIfEmpty(
+    contentType: keyof typeof this.pathMappings,
+    discoveredCount: number,
+    fallbackPaths: string[]
+  ): Promise<void> {
+    if (discoveredCount > 0) return;
+
+    const configured = new Set(this.pathMappings[contentType].map((p) => p.trim()));
+    for (const fb of fallbackPaths) {
+      if (configured.has(fb)) continue;
+      try {
+        const count = await this.scanWebDAVDirectory(fb, contentType);
+        if (count > 0) {
+          this.log(
+            "info",
+            `为 ${contentType} 使用回退路径 ${fb}（原配置未发现内容），新增 Markdown ${count} 个`
+          );
+          break; // 找到一个有效回退即可
+        }
+      } catch (error) {
+        this.log("warn", `回退路径扫描失败: ${fb}`, undefined, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   }
 

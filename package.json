@@ -53,6 +53,7 @@
     "prebuild": "bun scripts/generate-version.ts",
     "start": "bun --bun next start",
     "check": "biome check",
+    "lint": "node ./scripts/next-lint.js",
     "fix": "biome check --write",
     "docker:build": "bash ./scripts/docker-build.sh",
     "migrate": "bun ./scripts/migrate.ts",
