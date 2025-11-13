@@ -1,4 +1,4 @@
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
@@ -58,7 +58,7 @@ export const postsRouter = router({
 
     try {
       // 构建查询条件
-      const conditions = [];
+      const conditions = [] as any[];
 
       // 只显示文章类型的内容，排除闪念(memo)和其他类型
       conditions.push(eq(posts.type, "post"));
@@ -82,6 +82,17 @@ export const postsRouter = router({
       // 标签过滤
       if (tag) {
         conditions.push(like(posts.tags, `%${tag}%`));
+      }
+
+      // 可选：仅允许特定内容源（通过环境变量控制）
+      const sourcesEnv =
+        process.env.CONTENT_SOURCES || (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
+      const allowedSources = sourcesEnv
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      if (allowedSources.length > 0) {
+        conditions.push(inArray(posts.source, allowedSources));
       }
 
       // 获取文章列表
@@ -177,7 +188,24 @@ export const postsRouter = router({
       const post = await db
         .select()
         .from(posts)
-        .where(and(eq(posts.slug, slug), eq(posts.draft, false), eq(posts.public, true)))
+        .where(
+          and(
+            eq(posts.slug, slug),
+            eq(posts.draft, false),
+            eq(posts.public, true),
+            // 源过滤（可选）
+            (() => {
+              const sourcesEnv =
+                process.env.CONTENT_SOURCES ||
+                (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
+              const allowedSources = sourcesEnv
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+              return allowedSources.length > 0 ? inArray(posts.source, allowedSources) : sql`1=1`;
+            })()
+          )
+        )
         .limit(1);
 
       console.log("🔍 [posts.get] 查询结果:", post.length > 0 ? "找到文章" : "未找到文章");
@@ -289,7 +317,21 @@ export const postsRouter = router({
             dataSource: posts.dataSource,
           })
           .from(posts)
-          .where(and(...conditions))
+          .where(
+            and(
+              ...conditions,
+              (() => {
+                const sourcesEnv =
+                  process.env.CONTENT_SOURCES ||
+                  (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
+                const allowedSources = sourcesEnv
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0);
+                return allowedSources.length > 0 ? inArray(posts.source, allowedSources) : sql`1=1`;
+              })()
+            )
+          )
           .orderBy(desc(posts.publishDate))
           .limit(limit);
 

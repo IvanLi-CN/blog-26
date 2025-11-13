@@ -197,11 +197,11 @@ export default function TagIconManagerClient({
               <button
                 type="button"
                 className="inline-flex items-center justify-center rounded-md border border-base-content/20 p-1"
-                title={current || (item.kind === "tag" ? "tabler:tag" : "tabler:category")}
-                aria-label={current || (item.kind === "tag" ? "tabler:tag" : "tabler:category")}
+                title={current || (item.kind === "tag" ? "tabler:hash" : "tabler:category")}
+                aria-label={current || (item.kind === "tag" ? "tabler:hash" : "tabler:category")}
               >
                 <Icon
-                  name={current || (item.kind === "tag" ? "tabler:tag" : "tabler:category")}
+                  name={current || (item.kind === "tag" ? "tabler:hash" : "tabler:category")}
                   className="w-5 h-5"
                 />
               </button>
@@ -209,7 +209,7 @@ export default function TagIconManagerClient({
                 className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-base-200 px-2 py-1 text-xs text-base-content shadow opacity-0 group-hover/icon:opacity-100 group-focus-within/icon:opacity-100"
                 role="tooltip"
               >
-                {current || (item.kind === "tag" ? "tabler:tag" : "tabler:category")}
+                {current || (item.kind === "tag" ? "tabler:hash" : "tabler:category")}
               </span>
             </div>
           </div>
@@ -328,7 +328,7 @@ export default function TagIconManagerClient({
                       aria-expanded={Boolean(open[keyOf("tag", id)])}
                     >
                       <span className="flex items-center gap-2">
-                        <Icon name={item.currentIcon || "tabler:tag"} className="w-4 h-4" />
+                        <Icon name={item.currentIcon || "tabler:hash"} className="w-4 h-4" />
                         <span className="font-medium">{item.title}</span>
                       </span>
                       <span className="text-base-content/70" aria-hidden="true">

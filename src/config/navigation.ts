@@ -32,7 +32,7 @@ export const headerData = {
     {
       text: "标签",
       href: "/tags",
-      icon: "tabler:tag",
+      icon: "tabler:hash",
     },
   ] as NavLink[],
 };

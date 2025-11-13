@@ -52,7 +52,6 @@ bun run test-server:start    # Manual test server (port 25090)
 ### Code Quality
 
 ```bash
-bun run lint                 # Next.js ESLint
 bun run check               # Biome format + lint check
 bun run fix                 # Biome auto-fix
 ```

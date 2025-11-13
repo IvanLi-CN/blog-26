@@ -5,6 +5,11 @@
   themes: all;
 }
 
+html {
+  /* Avoid reserving extra right gutter on overlay-scrollbar platforms */
+  scrollbar-gutter: auto;
+}
+
 /* 自定义滚动条样式 */
 .scrollbar-thin {
   scrollbar-width: thin;

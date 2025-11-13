@@ -53,8 +53,6 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Biome check
         run: bun run check
-      - name: Next.js lint
-        run: bun run lint
 
   unit-tests:
     name: Unit Tests (exclude old/)

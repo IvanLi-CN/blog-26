@@ -10,7 +10,7 @@ Install dependencies with `bun install`. Run the full dev stack using `bun run d
 Primary checkout uses `25090` (web) and `25091` (WebDAV). For worktrees, do not use these ports.
 Set custom ports via env vars as noted in "Worktree Development".
 Produce a production build via `bun run build`, then serve it using `bun run start`.
-Lint and format with `bun run check`; auto-fix via `bun run fix`. Run ESLint using `bun run lint`.
+Lint and format with `bun run check`; auto-fix via `bun run fix`.
 For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset`.
 
 ### Dev Services & Ports (Agents)
@@ -67,7 +67,7 @@ These conventions apply to any automation agent (Codex, CI, or human-operated sc
 
 ## Coding Style & Naming Conventions
 
-The project relies on Biome for formatting (2-space indent, max width 100, double quotes, trailing commas). ESLint extends `next/core-web-vitals` with strict TypeScript checks. Follow existing file naming patterns; prefer descriptive, kebab-case filenames within features. Leverage `@/*` imports instead of relative traversals to keep modules readable.
+The project relies on Biome for formatting (2-space indent, max width 100, double quotes, trailing commas). Follow existing file naming patterns; prefer descriptive, kebab-case filenames within features. Leverage `@/*` imports instead of relative traversals to keep modules readable.
 
 ## Testing Guidelines
 
