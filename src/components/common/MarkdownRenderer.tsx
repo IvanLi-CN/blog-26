@@ -5,7 +5,8 @@ import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
-// import rehypeRaw from "rehype-raw"; // 暂时禁用以解决构建问题
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { removeInlineTags } from "@/lib/tag-parser";
@@ -21,6 +22,40 @@ import {
   getVariantConfig,
   mergeClassNames,
 } from "./markdown/utils";
+
+// 基于默认配置扩展允许的 HTML 标签，用于支持受限的原始 HTML 渲染
+const markdownSanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames || []),
+    // 额外允许的语义标签
+    "kbd",
+    "sub",
+    "sup",
+    // 表格相关标签（部分数据表以原始 HTML 形式存储）
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    // 允许基础表格布局属性与样式类名
+    table: [...(defaultSchema.attributes?.table || []), "className"],
+    thead: [...(defaultSchema.attributes?.thead || []), "className"],
+    tbody: [...(defaultSchema.attributes?.tbody || []), "className"],
+    tfoot: [...(defaultSchema.attributes?.tfoot || []), "className"],
+    tr: [...(defaultSchema.attributes?.tr || []), "className"],
+    th: [...(defaultSchema.attributes?.th || []), "className", "colspan", "rowspan"],
+    td: [...(defaultSchema.attributes?.td || []), "className", "colspan", "rowspan"],
+    kbd: [...(defaultSchema.attributes?.kbd || []), "className"],
+    sub: [...(defaultSchema.attributes?.sub || []), "className"],
+    sup: [...(defaultSchema.attributes?.sup || []), "className"],
+  },
+};
 
 // 导入必要的样式
 import "katex/dist/katex.min.css";
@@ -106,21 +141,25 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
     // 配置 rehype 插件
     const rehypePlugins = useMemo(() => {
-      const plugins: unknown[] = [
-        // 响应式表格（需要在其他插件之前）
-        rehypeResponsiveTables,
+      const plugins: unknown[] = [];
 
-        // 图片优化
-        [
-          rehypeImageOptimization,
-          {
-            enableLazyLoading: true,
-            enableLightbox: config.enableImageLightbox,
-            articlePath,
-            contentSource,
-          },
-        ],
-      ];
+      // 先解析原始 HTML，再进行安全过滤，保证后续插件只在已净化的节点上工作
+      plugins.push(rehypeRaw);
+      plugins.push([rehypeSanitize, markdownSanitizeSchema]);
+
+      // 响应式表格（需要在其他插件之前）
+      plugins.push(rehypeResponsiveTables);
+
+      // 图片优化
+      plugins.push([
+        rehypeImageOptimization,
+        {
+          enableLazyLoading: true,
+          enableLightbox: config.enableImageLightbox,
+          articlePath,
+          contentSource,
+        },
+      ]);
 
       // 数学公式支持
       if (config.enableMath) {
@@ -139,12 +178,6 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       // 代码折叠：改由 React 组件 CodeBlock 负责
       // 如果同时启用 rehype 插件与组件，会出现重复按钮。
       // 因此这里不再注入 rehypeCollapsibleCode。
-
-      // HTML 支持（最后添加）
-      // 暂时禁用 rehype-raw 以解决构建问题
-      // if (typeof window !== "undefined") {
-      //   plugins.push(rehypeRaw);
-      // }
 
       return plugins;
     }, [config, articlePath, contentSource]);
