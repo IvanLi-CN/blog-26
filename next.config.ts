@@ -69,9 +69,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+
+  // Explicit Turbopack opt-in so Next 16 knows we're aware of the new default
+  turbopack: {},
 
   // 实验性功能配置
   experimental: {
