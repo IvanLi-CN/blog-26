@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getAdminEmail, getSsoEmailHeaderName } from "./lib/admin-config";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   try {
     const emailHeaderName = getSsoEmailHeaderName();
     const headers = request.headers;

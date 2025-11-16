@@ -137,7 +137,7 @@ The blog uses a **multi-source content architecture** with intelligent syncing:
 
 **Two auth modes** (configured via env):
 
-1. **SSO Header Injection** (production): Proxy injects `Remote-Email` header (or `SSO_EMAIL_HEADER_NAME`), verified in `src/middleware.ts`
+1. **SSO Header Injection** (production): Proxy injects `Remote-Email` header (or `SSO_EMAIL_HEADER_NAME`), verified in `src/proxy.ts`
 2. **Dev Endpoints** (dev/test only): `/api/dev/login` and `/api/dev/register` set session cookies
 
 **Admin Detection**: User email matches `ADMIN_EMAIL` env var
