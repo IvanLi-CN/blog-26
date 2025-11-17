@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { JobRunsList } from "@/components/admin/JobRunsList";
+import { ensureAdminOrInterrupt } from "@/lib/admin-gate";
 
 export default async function JobRunsPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
+  await ensureAdminOrInterrupt();
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">

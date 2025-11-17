@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { ScheduledJobsPanel } from "@/components/admin/ScheduledJobsPanel";
+import { ensureAdminOrInterrupt } from "@/lib/admin-gate";
 
 export const metadata: Metadata = {
   title: "定时任务 - 管理后台",
 };
 
-export default function ScheduledJobsPage() {
+export default async function ScheduledJobsPage() {
+  await ensureAdminOrInterrupt();
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
       <div className="space-y-2">

@@ -298,18 +298,24 @@ export const memosRouter = router({
         conditions.push(like(posts.tags, `%${tag}%`));
       }
 
-      // Cursor 分页条件 - 使用时间戳比较
+      // Cursor 分页条件 - 使用 (publishDate, id) 组合游标，避免同一时间戳的记录被跳过
       if (cursor) {
         try {
           // 解码 URL 编码的 cursor
           const decodedCursor = decodeURIComponent(cursor);
-          const [cursorDate] = decodedCursor.split("_");
+          const [cursorDate, cursorId] = decodedCursor.split("_");
 
-          if (cursorDate) {
+          if (cursorDate && cursorId) {
             // 将日期字符串转换为时间戳进行比较
             const cursorTimestamp = new Date(cursorDate).getTime();
-            // 使用 SQL 函数进行时间戳比较，避免 Date 对象绑定问题
-            conditions.push(sql`${posts.publishDate} < ${cursorTimestamp}`);
+            if (!Number.isNaN(cursorTimestamp)) {
+              // 使用 (publishDate, id) 组合进行严格的“游标之后”判断：
+              // - publishDate 更小的记录
+              // - 或者 publishDate 相同但 id 更小的记录
+              conditions.push(
+                sql`(${posts.publishDate} < ${cursorTimestamp} OR (${posts.publishDate} = ${cursorTimestamp} AND ${posts.id} < ${cursorId}))`
+              );
+            }
           }
         } catch (error) {
           console.error("解析 cursor 失败:", error);

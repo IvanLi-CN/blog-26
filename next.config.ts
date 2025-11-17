@@ -76,6 +76,7 @@ const nextConfig: NextConfig = {
   // 实验性功能配置
   experimental: {
     mdxRs: false, // Use the legacy MDX compiler for better plugin compatibility
+    authInterrupts: true,
   },
 
   async rewrites() {
