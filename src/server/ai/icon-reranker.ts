@@ -99,6 +99,13 @@ export async function pickBestIcon(ctx: RerankContext): Promise<RerankResult> {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[icon-reranker] LLM error", error);
-    return { icon: null, confidence: 0, reason: "llm_error", considered: [] };
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "llm_error";
+    // 将底层错误信息直接透出给管理界面，便于排查（仅管理员接口会看到）
+    return { icon: null, confidence: 0, reason: message, considered: [] };
   }
 }
