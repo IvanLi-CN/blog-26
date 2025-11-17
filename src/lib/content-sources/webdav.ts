@@ -162,9 +162,10 @@ export class WebDAVContentSource extends ContentSourceBase {
         // 更新 WebDAV 相关的字段
         contentItem.lastModified = fileInfo.lastModified;
 
-        // 对于新创建的memo，使用文件的实际修改时间作为发布时间
-        // 这样可以确保排序基于实际的文件创建/修改时间，而不是从文件名提取的日期
-        if (!contentItem.publishDate || contentItem.publishDate < fileInfo.lastModified) {
+        // 仅在缺少发布日期时，回退使用文件的实际修改时间
+        // 已有的 publishDate（frontmatter 或文件名推断）应被视为内容的真实发布时间，
+        // 避免因为批量迁移或重新同步导致所有历史内容“变成最近几个月”的时间线错乱。
+        if (!contentItem.publishDate) {
           contentItem.publishDate = fileInfo.lastModified;
         }
 
