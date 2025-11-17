@@ -59,7 +59,7 @@ export default function AdminNavbar() {
   };
 
   return (
-    <div className="navbar bg-base-100 shadow-lg">
+    <div className="navbar bg-base-100 shadow-lg relative z-20">
       <div className="flex-1">
         <Link className="btn btn-ghost text-xl" href="/admin/dashboard">
           管理后台
