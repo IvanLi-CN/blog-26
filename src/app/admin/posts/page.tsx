@@ -1,4 +1,5 @@
 import AdminPostsManager from "../../../components/admin/AdminPostsManager";
+import { ensureAdminOrInterrupt } from "../../../lib/admin-gate";
 
 export const metadata = {
   title: "文章管理",
@@ -9,6 +10,7 @@ export const metadata = {
   },
 };
 
-export default function AdminPostsPage() {
+export default async function AdminPostsPage() {
+  await ensureAdminOrInterrupt();
   return <AdminPostsManager />;
 }

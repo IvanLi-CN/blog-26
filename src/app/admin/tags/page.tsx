@@ -1,8 +1,5 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import TagOrganizerPanel from "@/components/admin/TagOrganizerPanel";
-import { getAdminEmail, getSsoEmailHeaderName } from "@/lib/admin-config";
-import { isAdminFromRequest } from "@/lib/auth";
+import { ensureAdminOrInterrupt } from "@/lib/admin-gate";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { getAllCategoryIcons, getAllTagIcons } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
@@ -16,15 +13,7 @@ export const metadata = {
 };
 
 export default async function AdminTagOrganizerPage() {
-  const headersList = await headers();
-  const adminEmail = getAdminEmail();
-  const emailHeaderName = getSsoEmailHeaderName();
-  const remoteEmail = headersList.get(emailHeaderName);
-  const isAdmin = await isAdminFromRequest(headersList);
-  const headerSaysAdmin = Boolean(adminEmail && remoteEmail === adminEmail);
-  if (!isAdmin && !headerSaysAdmin) {
-    redirect("/admin-login");
-  }
+  await ensureAdminOrInterrupt();
 
   const [config, summaries, tagIcons, categoryIcons] = await Promise.all([
     readTagGroupsFromDB(),

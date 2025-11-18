@@ -1,3 +1,4 @@
+import { ensureAdminOrInterrupt } from "@/lib/admin-gate";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { getAllCategoryIcons, getAllTagIcons } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
@@ -6,6 +7,7 @@ import TagIconManagerClient from "./TagIconManagerClient";
 export const dynamic = "force-dynamic";
 
 export default async function TagIconsAdminPage() {
+  await ensureAdminOrInterrupt();
   const [groupsCfg, summaries, tagIcons, catIcons] = await Promise.all([
     readTagGroupsFromDB(),
     getTagSummaries({ includeDrafts: false, includeUnpublished: false }),

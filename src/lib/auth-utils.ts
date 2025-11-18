@@ -23,6 +23,7 @@ export interface AuthResult {
 export async function extractAuthFromRequest(request: Request): Promise<AuthResult> {
   let user: AuthResult["user"] | undefined;
   let isAdmin = false; // 默认不是管理员
+  let userSource: "pat" | "cookie" | "header" | null = null;
 
   console.log("🔍 [AUTH-UTILS] 开始权限检查, 默认 isAdmin=false");
 
@@ -42,6 +43,7 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
             email: resolved.user.email,
             avatarUrl: undefined,
           };
+          userSource = "pat";
         }
       } catch (error) {
         console.warn("PAT authentication failed:", error);
@@ -66,6 +68,7 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
               email: sessionInfo.user.email,
               avatarUrl: undefined, // 可以后续添加头像URL逻辑
             };
+            userSource = "cookie";
 
             // 更新session活跃时间
             await updateSessionActivity(sessionId);
@@ -122,6 +125,7 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
             email: dbUser.email,
             avatarUrl: undefined,
           };
+          userSource = "header";
         }
       } catch (err) {
         console.warn("Header-based user lookup/creation failed:", err);
@@ -131,26 +135,19 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
           nickname: remoteEmail.split("@")[0],
           email: remoteEmail,
         };
+        userSource = "header";
       }
     }
   }
 
-  // 如果有用户但还没有确定管理员状态，检查用户邮箱是否为管理员邮箱
-  if (user && !isAdmin) {
+  // 注意：管理员身份现在优先由 SSO/反向代理注入的邮箱请求头判定；
+  // 对于使用 PAT 的脚本调用，则允许在邮箱命中 ADMIN_EMAIL 时提升为管理员，
+  // 但不会再从普通会话 Cookie 中推断管理员身份。
+  if (!isAdmin && user && userSource === "pat") {
     const adminEmail = getAdminEmail();
-    console.log("🔍 [AUTH-UTILS] 权限检查:", {
-      userEmail: user.email,
-      adminEmail,
-      adminEmailSet: !!adminEmail,
-      isMatch: adminEmail && user.email === adminEmail,
-    });
-
-    // 只有当 ADMIN_EMAIL 明确设置且匹配时才认为是管理员
     if (adminEmail && user.email === adminEmail) {
       isAdmin = true;
-      console.log("✅ [AUTH-UTILS] 用户被识别为管理员");
-    } else {
-      console.log("❌ [AUTH-UTILS] 用户不是管理员 (ADMIN_EMAIL未设置或不匹配)");
+      console.log("✅ [AUTH-UTILS] PAT 用户被识别为管理员");
     }
   }
 

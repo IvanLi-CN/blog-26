@@ -1,3 +1,5 @@
+import { ensureAdminOrInterrupt } from "../../../lib/admin-gate";
+
 export const metadata = {
   title: "评论管理",
   description: "管理和审核用户评论",
@@ -7,7 +9,8 @@ export const metadata = {
   },
 };
 
-export default function AdminCommentsPage() {
+export default async function AdminCommentsPage() {
+  await ensureAdminOrInterrupt();
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">

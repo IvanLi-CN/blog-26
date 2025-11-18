@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { ensureAdminOrInterrupt } from "../../../lib/admin-gate";
 
 export const metadata = {
   title: "页面重定向",
@@ -9,7 +10,8 @@ export const metadata = {
   },
 };
 
-export default function AdminCachePage() {
+export default async function AdminCachePage() {
+  await ensureAdminOrInterrupt();
   // 重定向到新的数据同步页面
   redirect("/admin/data-sync");
 }

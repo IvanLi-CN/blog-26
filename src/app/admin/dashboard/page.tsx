@@ -1,4 +1,5 @@
 import AdminDashboard from "../../../components/admin/AdminDashboard";
+import { ensureAdminOrInterrupt } from "../../../lib/admin-gate";
 
 export const metadata = {
   title: "管理员仪表盘",
@@ -9,6 +10,7 @@ export const metadata = {
   },
 };
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  await ensureAdminOrInterrupt();
   return <AdminDashboard />;
 }

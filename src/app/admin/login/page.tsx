@@ -1,8 +1,9 @@
-import AdminLoginForm from "../../../components/admin/AdminLoginForm";
+import AdminAccessDenied from "../../../components/admin/AdminAccessDenied";
+import { getSsoEmailHeaderName } from "../../../lib/admin-config";
 
 export const metadata = {
-  title: "管理员登录",
-  description: "管理员登录界面",
+  title: "管理员访问受限",
+  description: "管理员后台访问说明",
   robots: {
     index: false,
     follow: false,
@@ -10,7 +11,7 @@ export const metadata = {
 };
 
 export default function AdminLoginPage() {
-  const luosimaoSiteKey = process.env.NEXT_PUBLIC_LUOSIMAO_SITE_KEY;
-
-  return <AdminLoginForm luosimaoSiteKey={luosimaoSiteKey} />;
+  const emailHeaderName = getSsoEmailHeaderName();
+  // /admin/login 作为显式访问入口，统一视为“未登录”态
+  return <AdminAccessDenied status={401} emailHeaderName={emailHeaderName} />;
 }

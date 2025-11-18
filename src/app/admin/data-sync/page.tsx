@@ -6,13 +6,15 @@
 
 import type { Metadata } from "next";
 import { ContentSyncManager } from "../../../components/admin/ContentSyncManager";
+import { ensureAdminOrInterrupt } from "../../../lib/admin-gate";
 
 export const metadata: Metadata = {
   title: "数据同步 - 管理后台",
   description: "多源内容采集和数据同步管理",
 };
 
-export default function DataSyncPage() {
+export default async function DataSyncPage() {
+  await ensureAdminOrInterrupt();
   return (
     <div className="px-4 py-8">
       <div className="max-w-6xl mx-auto mb-8">

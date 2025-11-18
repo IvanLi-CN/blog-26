@@ -1,17 +1,7 @@
-import type { Metadata } from "next";
 import AdminAccessDenied from "@/components/admin/AdminAccessDenied";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 
-export const metadata: Metadata = {
-  title: "管理员访问受限",
-  description: "管理员后台访问说明",
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-export default function AdminLoginAliasPage() {
+export default function Unauthorized() {
   const emailHeaderName = getSsoEmailHeaderName();
   return <AdminAccessDenied status={401} emailHeaderName={emailHeaderName} />;
 }
