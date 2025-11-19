@@ -8,15 +8,15 @@ test.describe("Admin access denied (user)", () => {
     expect(response?.status()).toBe(403);
 
     await expect(page.getByRole("heading", { name: "403 权限不足" })).toBeVisible();
-    await expect(page.getByText("邮箱请求头来识别管理员身份")).toBeVisible();
+    await expect(page.getByText("只有具备管理员权限的账户可以访问此区域。")).toBeVisible();
     await page.waitForFunction(() => window.location.pathname === "/admin/tags");
   });
 
-  test("non-admin user sees 401 page on admin login route", async ({ page }) => {
+  test("non-admin user sees 404 page on removed admin login route", async ({ page }) => {
     const response = await page.goto("/admin/login");
-    expect(response?.status()).toBe(200);
+    expect(response?.status()).toBe(404);
 
-    await expect(page.getByRole("heading", { name: "401 未登录" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "404 页面未找到" })).toBeVisible();
     await page.waitForFunction(() => window.location.pathname === "/admin/login");
   });
 });

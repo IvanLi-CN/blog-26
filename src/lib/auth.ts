@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getAdminEmail, getSsoEmailHeaderName } from "./admin-config";
-import { extractAuthFromRequest } from "./auth-utils";
+import { type AuthResult, extractAuthFromRequest } from "./auth-utils";
 import { SESSION_COOKIE_NAME, validateSession } from "./session";
 
 export interface UserInfo {
@@ -73,10 +73,10 @@ export async function isAdminFromCookies(): Promise<boolean> {
 }
 
 /**
- * 综合检查当前用户是否为管理员（支持 cookies 和 headers）
- * 使用统一的认证逻辑
+ * 从请求头和 cookies 中提取统一的认证结果
+ * 用于需要根据是否登录/是否管理员做细分处理的场景
  */
-export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
+export async function getAuthFromHeaders(headers: Headers): Promise<AuthResult> {
   // 创建一个模拟的 Request 对象来复用 auth-utils 的逻辑
   const cookieStore = await cookies();
   const cookiePairs: string[] = [];
@@ -95,22 +95,25 @@ export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
     mockRequest.headers.set("cookie", cookiePairs.join("; "));
   }
 
-  const { isAdmin: userIsAdmin } = await extractAuthFromRequest(mockRequest);
+  return extractAuthFromRequest(mockRequest);
+}
 
-  // 使用统一的权限检查逻辑
-  return userIsAdmin;
+/**
+ * 综合检查当前用户是否为管理员（支持 cookies 和 headers）
+ * 使用统一的认证逻辑
+ */
+export async function isAdminFromRequest(headers: Headers): Promise<boolean> {
+  const auth = await getAuthFromHeaders(headers);
+  return auth.isAdmin;
 }
 
 /**
  * 重定向到管理员登录页面的响应
  */
 export function redirectToAdminLogin(): Response {
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: "/admin/login",
-    },
-  });
+  // 当前不再提供公开的后台登录页面，
+  // 仍有调用方使用该方法时统一返回 403。
+  return forbiddenResponse();
 }
 
 /**
