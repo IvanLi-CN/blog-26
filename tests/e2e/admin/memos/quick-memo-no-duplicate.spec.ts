@@ -1,0 +1,49 @@
+import { expect, test } from "@playwright/test";
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
+
+test.describe("Quick Memo publish no duplicate (admin)", () => {
+  test("publishing a memo should create exactly one card", async ({ page }) => {
+    // 建立管理员会话（与其他 admin 用例保持一致）
+    await page.request.post("/api/dev/login", {
+      data: { email: ADMIN_EMAIL },
+    });
+
+    await page.goto("/memos");
+    await page.waitForLoadState("networkidle");
+
+    const container = page.getByRole("region", { name: "快速发布区域" });
+    await container.waitFor({ state: "visible" });
+
+    const TITLE = `测试发布去重 ${Date.now()}`;
+    const editor = container.locator(".ProseMirror");
+    await editor.click();
+    await page.keyboard.insertText(TITLE);
+
+    const publish = container.getByRole("button", { name: "发布 Memo" });
+    await expect(publish).toBeEnabled();
+
+    // 等待 create 接口成功返回，确保后端写入完成
+    await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200,
+        { timeout: 30000 }
+      ),
+      publish.click(),
+    ]);
+
+    // 等待列表刷新并实际渲染新 Memo
+    // 仅统计最外层 memo 卡片容器，避免内部嵌套的 data-testid 重复计数
+    const cards = page.locator('[data-testid="memo-card"][data-id]');
+    const cardsWithTitle = cards.filter({ hasText: TITLE });
+    await expect(cardsWithTitle).toHaveCount(1, { timeout: 30000 });
+
+    // 刷新页面后再次验证，防止同步过程产生重复记录
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    const cardsAfterReload = page
+      .locator('[data-testid="memo-card"][data-id]')
+      .filter({ hasText: TITLE });
+    await expect(cardsAfterReload).toHaveCount(1, { timeout: 30000 });
+  });
+});

@@ -516,12 +516,12 @@ export const memosRouter = router({
     const { content, title, isPublic, tags, attachments } = input;
 
     try {
-      // 检查内容是否包含图片markdown
+      // 检查内容是否包含图片markdown（当前仅用于调试/日志，占位保留）
       const _hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
 
-      // WebDAV 返回的是纯文件名（例如 20251009_title.md），
-      // 数据库与内容源统一使用以 "/memos/" 开头的相对路径作为 id/filePath
-      let filePath: string;
+      // WebDAV 返回的是纯文件名（例如 20251009_title.md）
+      // 这里记录文件名，方便后续通过 filePath 反查数据库记录
+      let filePath: string | null = null;
 
       // 在测试环境中，如果WebDAV连接失败，跳过WebDAV创建
       // 检测测试环境：ADMIN_EMAIL包含test或者NODE_ENV为test
@@ -535,7 +535,6 @@ export const memosRouter = router({
           await webdavSource.initialize();
 
           // 发布到 WebDAV
-
           filePath = await webdavSource.createMemo(content, {
             title,
             isPublic,
@@ -549,10 +548,54 @@ export const memosRouter = router({
           if (process.env.DEBUG_MEMOS === "1") {
             console.debug("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
           }
-          // 在测试环境中，生成一个模拟的文件路径
+          // 在测试环境中，生成一个模拟的文件路径并直接写入数据库，
+          // 以保证在无 WebDAV 的情况下功能仍可用（不再触发内容源同步，避免重复记录）。
           const timestamp = Date.now();
           const slug = title?.replace(/\s+/g, "-").toLowerCase() || `memo-${timestamp}`;
-          filePath = `${slug}-${timestamp}.md`;
+          const fallbackFileName = `${slug}-${timestamp}.md`;
+          const dbPath = `/memos/${fallbackFileName}`.replace(/\\+/g, "/");
+
+          const now = Date.now();
+          const memoData = {
+            id: dbPath,
+            type: "memo" as const,
+            slug: generateNanoidSlug(8),
+            title: title || extractTitleFromContent(content),
+            excerpt: generateExcerptFromContent(content),
+            contentHash: calculateSimpleHash(content),
+            lastModified: now,
+            source: "webdav",
+            filePath: dbPath,
+            draft: false,
+            public: isPublic,
+            publishDate: now,
+            updateDate: now,
+            tags: JSON.stringify(tags),
+            author: ctx.user?.email || "admin@example.com",
+            metadata: JSON.stringify({ attachments }),
+            body: content,
+            dataSource: "webdav",
+          };
+
+          await db.insert(posts).values(memoData);
+
+          const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(
+            memoData as MemoRow
+          );
+
+          return {
+            id: memoData.id,
+            slug: memoData.slug,
+            title: memoData.title,
+            content: memoData.body,
+            isPublic: memoData.public,
+            tags,
+            attachments,
+            createdAt: displayTime,
+            publishedAt,
+            updatedAt,
+            timeDisplaySource: source,
+          };
         }
       } else {
         // 生产环境中，WebDAV是必需的
@@ -573,52 +616,54 @@ export const memosRouter = router({
         await webdavSource.dispose();
       }
 
-      // 统一规范：数据库 id/filePath 必须以 "/memos/" 开头（与 WebDAV 扫描保持一致）
-      const dbPath = `/memos/${filePath}`.replace(/\\+/g, "/");
-
-      // 生成数据库 slug（使用 nanoid 确保唯一性）
-      const slug = generateNanoidSlug(8);
-
-      // 保存到数据库（统一使用毫秒时间戳，以与种子/历史数据保持一致，确保排序正确）
-      const now = Date.now();
-      const memoData = {
-        id: dbPath,
-        type: "memo" as const,
-        slug,
-        title: title || extractTitleFromContent(content),
-        excerpt: generateExcerptFromContent(content),
-        contentHash: calculateSimpleHash(content),
-        lastModified: now,
-        source: "webdav",
-        filePath: dbPath,
-        draft: false,
-        public: isPublic,
-        publishDate: now,
-        updateDate: now,
-        tags: JSON.stringify(tags),
-        author: ctx.user?.email || "admin@example.com",
-        metadata: JSON.stringify({ attachments }),
-        body: content, // 使用 body 字段匹配实际数据库结构
-        dataSource: "webdav",
-      };
-
-      await db.insert(posts).values(memoData);
-
       // 触发增量数据同步
       await triggerIncrementalSync();
 
-      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(
-        memoData as MemoRow
+      // 通过 filePath 反查刚创建的 memo，以返回与列表/bySlug 相同口径的结构
+      let createdMemo: MemoRow | undefined;
+      if (filePath) {
+        const suffix = `/${filePath}`;
+        createdMemo = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.type, "memo"), like(posts.filePath, `%${suffix}`)))
+          .orderBy(desc(posts.publishDate), desc(posts.id))
+          .limit(1)
+          .then((rows) => rows[0]);
+      }
+
+      if (!createdMemo) {
+        // 兜底：同步过程中未能立即读到记录时，返回最小可用信息，避免前端报错
+        const nowIso = new Date().toISOString();
+        return {
+          id: filePath ? `/memos/${filePath}`.replace(/\\+/g, "/") : `memo-${Date.now()}`,
+          slug: generateNanoidSlug(8),
+          title: title || extractTitleFromContent(content),
+          content,
+          isPublic,
+          tags,
+          attachments,
+          createdAt: nowIso,
+          publishedAt: nowIso,
+          updatedAt: nowIso,
+          timeDisplaySource: "unknown" as TimeDisplaySource,
+        };
+      }
+
+      const normalizedAttachments = normalizeAttachmentPaths(
+        parseAttachments(createdMemo.metadata),
+        (createdMemo as any).dataSource
       );
+      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(createdMemo);
 
       return {
-        id: memoData.id,
-        slug: memoData.slug,
-        title: memoData.title,
-        content: memoData.body, // 使用 body 字段匹配实际数据库结构
-        isPublic: memoData.public,
-        tags,
-        attachments,
+        id: createdMemo.id,
+        slug: createdMemo.slug,
+        title: createdMemo.title || extractTitleFromContent(content),
+        content: createdMemo.body,
+        isPublic: createdMemo.public,
+        tags: createdMemo.tags ? JSON.parse(createdMemo.tags) : tags,
+        attachments: normalizedAttachments.length > 0 ? normalizedAttachments : attachments,
         createdAt: displayTime,
         publishedAt,
         updatedAt,
@@ -653,15 +698,6 @@ export const memosRouter = router({
         });
       }
 
-      // 从 file_path 提取实际的文件名（不含路径前缀和.md扩展名）
-      // file_path 格式: /memos/20251003_学习_React_18_新特性.md
-      // 需要提取: 20251003_学习_React_18_新特性 (不含.md,因为updateMemo会自动添加)
-      let fileName = existingMemo.slug; // 默认使用slug
-      if (existingMemo.filePath) {
-        const pathWithoutPrefix = existingMemo.filePath.replace(/^\/+memos\/+/, "");
-        fileName = pathWithoutPrefix.replace(/\.md$/, "");
-      }
-
       // 直接使用 WebDAV 客户端更新文件,跳过连接验证
       // 这样可以避免 initialize() 中的连接验证失败
       const { getWebDAVClient } = await import("../../lib/webdav");
@@ -688,9 +724,8 @@ export const memosRouter = router({
 
       const markdownContent = `---\n${frontmatterStr}\n---\n\n${content}`;
 
-      // 写入到 WebDAV
-      const webdavPath = `/memos/${fileName}.md`;
-
+      // 写入到 WebDAV（优先使用 filePath，其次回退到 id）
+      const webdavPath = existingMemo.filePath || existingMemo.id;
       await webdavClient.putFileContent(webdavPath, markdownContent);
 
       // 更新数据库
@@ -774,17 +809,10 @@ export const memosRouter = router({
       // 否则跳过远端删除，仅移除数据库记录（本地/数据库源不依赖 WebDAV）。
       if ((existingMemo as any).source === "webdav") {
         try {
-          // 计算实际文件名。不依赖 slug，而是优先从 filePath 推导。
-          let fileName = existingMemo.slug;
-          if (existingMemo.filePath) {
-            const pathWithoutPrefix = existingMemo.filePath.replace(/^\/+memos\/+/, "");
-            fileName = pathWithoutPrefix.replace(/\.md$/, "");
-          }
-
           // 直接使用 WebDAV 客户端删除文件，避免 initialize 失败中断
           const { getWebDAVClient } = await import("../../lib/webdav");
           const webdavClient = getWebDAVClient();
-          const webdavPath = `/memos/${fileName}.md`;
+          const webdavPath = existingMemo.filePath || existingMemo.id;
 
           try {
             await webdavClient.deleteFile(webdavPath);
