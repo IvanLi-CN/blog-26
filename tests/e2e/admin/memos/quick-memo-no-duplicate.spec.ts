@@ -33,16 +33,17 @@ test.describe("Quick Memo publish no duplicate (admin)", () => {
     ]);
 
     // 等待列表刷新并实际渲染新 Memo
-    const cards = page.locator('[data-testid="memo-card"]');
+    // 仅统计最外层 memo 卡片容器，避免内部嵌套的 data-testid 重复计数
+    const cards = page.locator('[data-testid="memo-card"][data-id]');
     const cardsWithTitle = cards.filter({ hasText: TITLE });
     await expect(cardsWithTitle).toHaveCount(1, { timeout: 30000 });
 
     // 刷新页面后再次验证，防止同步过程产生重复记录
     await page.reload();
     await page.waitForLoadState("networkidle");
-    const cardsAfterReload = page.locator('[data-testid="memo-card"]').filter({
-      hasText: TITLE,
-    });
+    const cardsAfterReload = page
+      .locator('[data-testid="memo-card"][data-id]')
+      .filter({ hasText: TITLE });
     await expect(cardsAfterReload).toHaveCount(1, { timeout: 30000 });
   });
 });
