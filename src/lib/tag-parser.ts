@@ -157,8 +157,19 @@ function buildCleanContent(content: string, tagDetails: ParsedTag[]): string {
   let cursor = 0;
 
   for (const tag of tagDetails) {
-    if (cursor < tag.position.start) {
-      segments.push(content.slice(cursor, tag.position.start));
+    // 默认从标签起始位置开始移除
+    let removeStart = tag.position.start;
+
+    // 特殊处理形如 "\#Tag" 的情况：
+    // 当标签前紧挨着一个反斜杠时，这个反斜杠通常是为了在原文里“转义” #，
+    // 对于我们这种“把标签从正文中剥离”的场景，应当把这个反斜杠一并移除，
+    // 否则在标签被清理掉后，会残留一行孤立的 "\"。
+    if (removeStart > 0 && content[removeStart - 1] === "\\") {
+      removeStart -= 1;
+    }
+
+    if (cursor < removeStart) {
+      segments.push(content.slice(cursor, removeStart));
     }
     cursor = Math.max(cursor, tag.position.end);
   }

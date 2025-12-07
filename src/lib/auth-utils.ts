@@ -140,14 +140,24 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
     }
   }
 
-  // 注意：管理员身份现在优先由 SSO/反向代理注入的邮箱请求头判定；
-  // 对于使用 PAT 的脚本调用，则允许在邮箱命中 ADMIN_EMAIL 时提升为管理员，
-  // 但不会再从普通会话 Cookie 中推断管理员身份。
+  // 注意：管理员身份在生产环境中优先由 SSO/反向代理注入的邮箱请求头判定；
+  // 对于使用 PAT 的脚本调用，则允许在邮箱命中 ADMIN_EMAIL 时提升为管理员。
   if (!isAdmin && user && userSource === "pat") {
     const adminEmail = getAdminEmail();
     if (adminEmail && user.email === adminEmail) {
       isAdmin = true;
       console.log("✅ [AUTH-UTILS] PAT 用户被识别为管理员");
+    }
+  }
+
+  // 在开发/测试环境中，为了方便本地验证（包括使用 /api/dev/login 和 UI 表单登录），
+  // 只要当前识别出的用户邮箱命中 ADMIN_EMAIL，就将其视为管理员。
+  // 生产环境仍然只依赖 SSO/反向代理或 PAT 提升权限。
+  if (!isAdmin && user && process.env.NODE_ENV !== "production") {
+    const adminEmail = getAdminEmail();
+    if (adminEmail && user.email === adminEmail) {
+      isAdmin = true;
+      console.log("✅ [AUTH-UTILS] 开发/测试环境中根据邮箱识别管理员用户");
     }
   }
 
