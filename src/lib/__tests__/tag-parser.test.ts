@@ -36,4 +36,20 @@ describe("tag-parser", () => {
     const cleaned = removeInlineTags(content);
     expect(cleaned).toBe("实际内容开始");
   });
+
+  it("should not leave stray backslash when line starts with escaped tag", () => {
+    const content = `Environment=LEGO_DISABLE_CNAME_SUPPORT=true\n\n\\#HomeLab #Software/Traefik #DevOps/Edgeone #DevOps/DNSPOD`;
+    const result = parseContentTags(content);
+
+    // 标签应当被正常解析
+    expect(result.tags.map((t) => t.name)).toEqual([
+      "HomeLab",
+      "Software/Traefik",
+      "DevOps/Edgeone",
+      "DevOps/DNSPOD",
+    ]);
+
+    // 清理后的正文不应残留单独的 "\" 行
+    expect(result.cleanedContent).toBe("Environment=LEGO_DISABLE_CNAME_SUPPORT=true");
+  });
 });
