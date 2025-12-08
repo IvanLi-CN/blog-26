@@ -287,7 +287,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 引用样式
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-400 my-4 bg-gray-50 dark:bg-gray-800 py-2">
+          <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-400 my-4 bg-gray-50 dark:bg-gray-800 py-2 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             {children}
           </blockquote>
         ),
