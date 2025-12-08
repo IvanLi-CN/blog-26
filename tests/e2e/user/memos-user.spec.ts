@@ -35,4 +35,50 @@ test.describe("Memos 普通用户权限", () => {
     await page.waitForTimeout(1000);
     await page.screenshot({ path: "test-results/user-memos-view.png", fullPage: true });
   });
+
+  test("memos 引用块的上下间距应大致对称", async ({ page }) => {
+    await page.goto("/memos");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1000);
+
+    const blockquotes = page.locator(".memos-list .prose blockquote");
+
+    const count = await blockquotes.count();
+    expect(count).toBeGreaterThan(0);
+
+    const blockquote = blockquotes.first();
+    await expect(blockquote).toBeVisible();
+
+    const spacing = await blockquote.evaluate((el) => {
+      const block = el as HTMLElement;
+      const cs = getComputedStyle(block);
+      const rect = block.getBoundingClientRect();
+
+      const first = block.firstElementChild as HTMLElement | null;
+      const last = block.lastElementChild as HTMLElement | null;
+
+      const firstRect = first?.getBoundingClientRect();
+      const lastRect = last?.getBoundingClientRect();
+      const lastStyles = last ? getComputedStyle(last) : null;
+
+      return {
+        paddingTop: cs.paddingTop,
+        paddingBottom: cs.paddingBottom,
+        lastChildMarginBottom: lastStyles?.marginBottom ?? null,
+        topGap: firstRect ? firstRect.top - rect.top : null,
+        bottomGap: lastRect ? rect.bottom - lastRect.bottom : null,
+      };
+    });
+
+    expect(spacing.paddingTop).toBe(spacing.paddingBottom);
+    expect(spacing.lastChildMarginBottom).toBe("0px");
+
+    const diff =
+      spacing.topGap !== null && spacing.bottomGap !== null
+        ? Math.abs(spacing.topGap - spacing.bottomGap)
+        : null;
+
+    expect(diff).not.toBeNull();
+    expect(diff).toBeLessThanOrEqual(4);
+  });
 });
