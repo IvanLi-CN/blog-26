@@ -81,6 +81,11 @@ describe("resolveImagePath", () => {
       expect(resolveImagePath("./images/photo.png", "webdav", "/Memos/my-memo.md")).toBe(
         "/api/files/webdav/Memos/images/photo.png"
       );
+
+      // 博客示例：WebDAV 文章使用 blog/<slug>.md 形式的真实 markdown 路径
+      expect(
+        resolveImagePath("./assets/svg-test-diagram.svg", "webdav", "blog/06-svg-image-test.md")
+      ).toBe("/api/files/webdav/blog/assets/svg-test-diagram.svg");
     });
 
     it("should resolve current directory relative paths for local", () => {
@@ -88,6 +93,10 @@ describe("resolveImagePath", () => {
       expect(resolveImagePath("./assets/image.jpg", "local", "blog/my-post.md")).toBe(
         "/api/files/local/blog/assets/image.jpg"
       );
+      // 博客示例：本地文章使用 blog/<slug>.md 形式的真实 markdown 路径
+      expect(
+        resolveImagePath("./assets/react-hooks.jpg", "local", "blog/01-react-hooks-deep-dive.md")
+      ).toBe("/api/files/local/blog/assets/react-hooks.jpg");
     });
 
     it("should resolve parent directory relative paths", () => {
@@ -112,6 +121,11 @@ describe("resolveImagePath", () => {
       expect(resolveImagePath("assets/image.jpg", "webdav", "/Memos/my-memo.md")).toBe(
         "/api/files/webdav/Memos/assets/image.jpg"
       );
+
+      // 博客示例：不以 ./ 开头的相对路径也应与 ./assets/ 语义一致
+      expect(
+        resolveImagePath("assets/svg-test-diagram.svg", "webdav", "blog/06-svg-image-test.md")
+      ).toBe("/api/files/webdav/blog/assets/svg-test-diagram.svg");
     });
   });
 

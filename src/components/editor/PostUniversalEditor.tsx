@@ -892,6 +892,44 @@ author: ""
     );
   }
 
+  // 基于活动标签页推导编辑器需要的内容源与 Markdown 文件路径信息
+  // 注意：tab.id 使用的是二元ID格式（如 "webdav:/blog/06-svg-image-test.md"），
+  // 不能直接用于判断内容源或文件路径，否则会导致 WebDAV 文章被错误地当成本地文件处理。
+  const { articlePathForEditor, editorContentSource } = (() => {
+    const identifier = activeTab.identifier;
+    const rawPath = identifier?.path || "";
+
+    // 文件型内容（local/webdav）：使用真实的 markdown 文件路径
+    if (identifier && (identifier.source === "local" || identifier.source === "webdav")) {
+      const withoutNew = rawPath.startsWith("__NEW__") ? rawPath.replace("__NEW__", "") : rawPath;
+
+      // 传给图片工具的 markdownFilePath 始终使用去掉前导斜杠的相对路径，
+      // 例如："blog/06-svg-image-test.md"
+      const markdownFilePath = withoutNew.replace(/^\/+/, "");
+
+      // 传给编辑器/Markdown 插件的 articlePath 保持以 / 开头的形式，
+      // 例如："/blog/06-svg-image-test.md" —— 兼容现有基于目录的解析逻辑。
+      const articlePath = `/${markdownFilePath}`;
+
+      return {
+        articlePathForEditor: articlePath,
+        editorContentSource: identifier.source as "local" | "webdav",
+      };
+    }
+
+    // 数据库文章没有真实文件路径，保持历史行为：
+    // - 使用 tab.id 作为 articlePath
+    // - 将内容源视为 local（图片继续走 /api/files/local/...）
+    const fallbackArticlePath = activeTab.id.startsWith("__NEW__")
+      ? activeTab.id.replace("__NEW__", "")
+      : activeTab.id;
+
+    return {
+      articlePathForEditor: fallbackArticlePath,
+      editorContentSource: "local" as const,
+    };
+  })();
+
   return (
     <div className="h-full flex flex-col">
       {/* 标签页栏 */}
@@ -997,10 +1035,9 @@ author: ""
           onContentChange={(content) => handleContentChange(activeTab.id, content)}
           placeholder="开始写作您的文章..."
           attachmentBasePath={getArticleAssetsPath(activeTab.id)}
-          articlePath={
-            activeTab.id.startsWith("__NEW__") ? activeTab.id.replace("__NEW__", "") : activeTab.id
-          }
-          contentSource={activeTab.id.startsWith("/") ? "webdav" : "local"}
+          articlePath={articlePathForEditor}
+          // 使用基于 identifier 的内容源信息，避免将 WebDAV 文章误判为 local
+          contentSource={editorContentSource}
           mode={activeTab.mode as EditorMode}
           onModeChange={(mode) => handleModeChange(activeTab.id, mode)}
           className="h-full"
