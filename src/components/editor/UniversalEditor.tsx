@@ -1,18 +1,12 @@
 "use client";
 
-/**
- * 通用编辑器组件
- *
- * 完全按照旧项目的方式实现，包含 processInlineImages 函数
- */
-
 import { nanoid } from "nanoid";
 import Image from "next/image";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import { resolveRelativePath } from "../../utils/path-resolver";
+import { resolveImagePath } from "@/lib/image-utils";
 import { MilkdownEditor } from "../memos/MilkdownEditor";
 import { SourceEditor } from "./SourceEditor";
 import "highlight.js/styles/github.css";
@@ -341,40 +335,45 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                         return null;
                       }
 
-                      let imageSrc = src || "";
+                      const rawSrc = src || "";
 
-                      // 如果是相对路径，使用路径解析器转换为API URL用于显示
-                      if (
-                        imageSrc.startsWith("./") ||
-                        imageSrc.startsWith("../") ||
-                        imageSrc.startsWith("~/")
-                      ) {
-                        // 从文章路径推断文章目录
-                        const articleDir = articlePath?.startsWith("/")
-                          ? articlePath.substring(1).split("/").slice(0, -1).join("/") +
-                            (articlePath.includes("/") ? "/" : "")
-                          : "";
+                      // 基于文章路径推导用于图片解析的 markdown 文件路径：
+                      // - articlePath 形如 "/blog/06-svg-image-test.md"
+                      // - markdownFilePath 形如 "blog/06-svg-image-test.md"
+                      const markdownFilePath =
+                        typeof articlePath === "string" && articlePath.length > 0
+                          ? articlePath.replace(/^\/+/, "")
+                          : undefined;
 
-                        // 使用路径解析器解析相对路径
-                        const resolvedPath = resolveRelativePath(imageSrc, articleDir);
-                        imageSrc = `/api/files/${contentSource}/${resolvedPath}`;
+                      let imagePathForResolution = rawSrc;
+                      let markdownFilePathForResolution = markdownFilePath;
 
-                        console.log("🖼️ [UniversalEditor] 预览模式转换图片路径:", {
-                          original: src,
-                          converted: imageSrc,
-                          articlePath,
-                          articleDir,
-                          resolvedPath,
-                          contentSource,
-                        });
-                      } else if (
-                        !imageSrc.startsWith("/") &&
-                        !imageSrc.startsWith("http") &&
-                        !imageSrc.startsWith("data:")
-                      ) {
-                        // 其他相对路径格式，根据内容源使用对应的 API
-                        imageSrc = `/api/files/${contentSource}/${imageSrc}`;
+                      // 特殊处理 WebDAV 全局资源前缀 ~/assets/：
+                      // 在编辑器中，这些资源位于内容源根目录下的 assets/，
+                      // 不应附加文章目录前缀，因此在解析时不传入 markdownFilePath。
+                      if (rawSrc.startsWith("~/assets/")) {
+                        imagePathForResolution = rawSrc.replace(/^~\//, "");
+                        markdownFilePathForResolution = undefined;
                       }
+
+                      // 统一使用 resolveImagePath 解析图片路径：
+                      // - 外部 URL、data URL、/api/files/... 会原样返回
+                      // - 相对路径会基于 markdownFilePath 与内容源解析为 /api/files/<source>/...
+                      const resolved = resolveImagePath(
+                        imagePathForResolution,
+                        contentSource,
+                        markdownFilePathForResolution
+                      );
+
+                      const imageSrc = resolved ?? rawSrc;
+
+                      console.log("🖼️ [UniversalEditor] 预览模式解析图片路径:", {
+                        original: rawSrc,
+                        resolved: imageSrc,
+                        articlePath,
+                        markdownFilePath,
+                        contentSource,
+                      });
 
                       return (
                         <Image
