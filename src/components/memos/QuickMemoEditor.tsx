@@ -163,10 +163,6 @@ export function QuickMemoEditor({
         // 这里可以添加 toast 通知
       } catch (error) {
         console.error("保存快速 memo 失败:", error);
-
-        // 显示错误提示（可选）
-        // 这里可以添加 toast 通知
-        alert("发布失败，请重试");
       } finally {
         setIsSaving(false);
       }
