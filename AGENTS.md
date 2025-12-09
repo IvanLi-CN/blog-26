@@ -78,10 +78,9 @@ Unit and integration tests run with Bun's test runner via `bun run test`; keep s
 - Before invoking any runtime verification workflow, validate whether the scenario explicitly requires administrator permissions. Record the decision in your run notes so downstream agents understand the context.
 - When admin access *is* required:
   - Set `ADMIN_EMAIL` for all relevant processes (Next.js dev server, Playwright, MCP tooling). Prefer `.env.local`; or prefix commands, e.g. `ADMIN_EMAIL=admin@example.com bun run dev`.
-- Playwright E2E tests emulate SSO by injecting `SSO_EMAIL_HEADER_NAME` (defaults to `Remote-Email`) via
-  `extraHTTPHeaders`, and a routing helper keeps the header only on the app origin (`BASE_URL`) while stripping
-  it from third-party domains (Iconify/Simplesvg/Unisvg) to avoid CORS issues. Do not run any reverse proxy in
-  development.
+- Playwright E2E tests emulate SSO by using a routing helper to inject `SSO_EMAIL_HEADER_NAME` (defaults to
+  `Remote-Email`) only on requests targeting the app origin (`BASE_URL`), while stripping it from third-party
+  domains (Iconify/Simplesvg/Unisvg) to avoid CORS issues. Do not run any reverse proxy in development.
   - For manual local verification in development, use the dev login API to establish a session: `POST /api/dev/login { email: ADMIN_EMAIL }` (only available in dev/test). Avoid proxy-based header injection during manual checks.
 - When admin access is *not* required, state that explicitly and omit any header/session helpers to avoid masking authorization regressions during verification.
 

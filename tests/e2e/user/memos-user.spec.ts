@@ -2,9 +2,11 @@ import { expect } from "@playwright/test";
 import { userTest as test } from "./fixtures";
 
 /**
- * Memos - 普通用户权限测试（通过 Remote-Email 头注入普通用户邮箱，project extraHTTPHeaders + sso-header-routing
- * 仅作用于 BASE_URL，E2E 专用）
+ * Memos - 普通用户权限测试（通过 sso-header-routing 在 BASE_URL 注入 Remote-Email 普通用户邮箱，E2E 专用）
  */
+
+const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME ?? "Remote-Email";
+const USER_EMAIL = process.env.USER_EMAIL ?? "user@test.local";
 
 test.describe("Memos 普通用户权限", () => {
   test("普通用户不应该看到管理功能", async ({ page }) => {
@@ -12,7 +14,11 @@ test.describe("Memos 普通用户权限", () => {
     await page.waitForLoadState("networkidle");
 
     // 验证用户不是管理员
-    const authResponse = await page.request.get("/api/trpc/auth.me");
+    const authResponse = await page.request.get("/api/trpc/auth.me", {
+      headers: {
+        [EMAIL_HEADER_NAME]: USER_EMAIL,
+      },
+    });
     const authData = await authResponse.json();
     expect(authData.result?.data?.isAdmin).toBe(false);
 

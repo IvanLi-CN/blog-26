@@ -1,15 +1,21 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
 
-// admin-chromium 项目通过 Remote-Email 头注入管理员邮箱（project extraHTTPHeaders + sso-header-routing，仅对
-// BASE_URL 生效的 E2E 模拟，非手工登录方式）
+// admin-chromium 项目通过 sso-header-routing 在 BASE_URL 上注入 Remote-Email（E2E 模拟，仅测试环境使用）
+
+const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME ?? "Remote-Email";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";
 
 test.describe("Session & Header Auth (admin)", () => {
   test("header-only admin should be recognized as admin without dev login", async ({ page }) => {
     await page.context().clearCookies();
     await page.goto("/");
 
-    const authRes = await page.request.get("/api/trpc/auth.me");
+    const authRes = await page.request.get("/api/trpc/auth.me", {
+      headers: {
+        [EMAIL_HEADER_NAME]: ADMIN_EMAIL,
+      },
+    });
     expect(authRes.ok()).toBeTruthy();
 
     const data = await authRes.json();

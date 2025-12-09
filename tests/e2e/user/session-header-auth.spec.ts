@@ -1,13 +1,19 @@
 import { expect } from "@playwright/test";
 import { userTest as test } from "./fixtures";
 
-// 使用 Playwright project 级 header 注入（user 项目）进行用户态校验，header 由 sso-header-routing 仅作用于
-// BASE_URL，第三方域名会剥离（E2E 专用，非手工登录方式）
+// 使用 sso-header-routing 在 BASE_URL 上注入 Remote-Email 进行用户态校验，第三方域名会剥离（E2E 专用，非手工登录方式）
+
+const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME ?? "Remote-Email";
+const USER_EMAIL = process.env.USER_EMAIL ?? "user@test.local";
 
 test.describe("Session & Header Auth (user)", () => {
   test("header 注入后 auth.me 应返回对应用户", async ({ page }) => {
     await page.goto("/");
-    const authRes = await page.request.get("/api/trpc/auth.me");
+    const authRes = await page.request.get("/api/trpc/auth.me", {
+      headers: {
+        [EMAIL_HEADER_NAME]: USER_EMAIL,
+      },
+    });
     expect(authRes.ok()).toBeTruthy();
     const data = await authRes.json();
     const email = data.result?.data?.email as string;
@@ -24,7 +30,11 @@ test.describe("Session & Header Auth (user)", () => {
     expect(logoutRes.ok()).toBeTruthy();
 
     // Cookie 可能被清除，但 Header 仍然存在，仍可识别为已认证用户
-    const authRes2 = await page.request.get("/api/trpc/auth.me");
+    const authRes2 = await page.request.get("/api/trpc/auth.me", {
+      headers: {
+        [EMAIL_HEADER_NAME]: USER_EMAIL,
+      },
+    });
     const data2 = await authRes2.json();
     expect(data2.result?.data?.email).toBeTruthy();
     expect(data2.result?.data?.isAdmin).toBe(false);
