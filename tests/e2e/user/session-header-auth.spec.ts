@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { userTest as test } from "./fixtures";
 
 // 使用 Playwright header 注入（user 项目）进行用户态校验
 

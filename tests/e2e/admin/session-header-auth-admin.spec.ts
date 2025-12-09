@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { adminTest as test } from "./fixtures";
 
 // admin-chromium 项目通过 Remote-Email 头注入管理员邮箱
 

@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { adminTest as test } from "./fixtures";
 
 /**
  * Memos - 管理员权限测试（通过 dev 登录会话建立管理员身份）

@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { adminTest as test } from "./fixtures";
 
 /**
  * 文章编辑器（管理员）- 通过 slug 参数编辑

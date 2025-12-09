@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { adminTest as test } from "./fixtures";
 
 // Small 1x1 PNG (transparent)
 const ONE_BY_ONE_PNG_BASE64 =

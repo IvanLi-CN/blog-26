@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { adminTest as test } from "../fixtures";
 
 test.describe("Quick Memo Editor focus (admin)", () => {
   test("typing does not blur the editor", async ({ page }) => {

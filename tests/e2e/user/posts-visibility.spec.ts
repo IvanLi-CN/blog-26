@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { userTest as test } from "./fixtures";
 
 test.describe("Posts visibility badge (user)", () => {
   test("non-admin user should NOT see visibility badge on list", async ({ page }) => {

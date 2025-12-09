@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { userTest as test } from "./fixtures";
 
 // user-chromium 项目会通过 Remote-Email 头注入普通用户邮箱
 
