@@ -1,10 +1,13 @@
 # E2E 测试完整指南
 
 本目录包含项目的端到端 (E2E) 测试用例，使用 Playwright 测试框架覆盖关键功能和用户交互场景。
+E2E 场景通过项目级 `extraHTTPHeaders` 模拟 SSO（`Remote-Email`/`SSO_EMAIL_HEADER_NAME`），并由
+header 路由 helper 仅对应用 origin (`BASE_URL`) 保留该头、对 Iconify/Simplesvg/Unisvg 等第三方显式剥离，避免
+CORS；生产或手工调试请继续使用 /api/dev/login 或 /dev 页面。
 
 ## 📁 测试文件结构
 
-已按“游客 / 普通用户 / 管理员”三组划分。测试运行环境通过合法登录或测试专用入口建立会话，不再在 Playwright 层注入请求头。
+已按“游客 / 普通用户 / 管理员”三组划分。Header 模拟仅在 E2E 测试中生效，相关 fixtures 已处理 origin 级剥离；手工验证请使用 dev 登录入口或真实 SSO。
 
 ```
 e2e/

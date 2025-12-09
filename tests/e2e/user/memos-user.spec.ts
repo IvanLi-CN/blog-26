@@ -2,7 +2,8 @@ import { expect } from "@playwright/test";
 import { userTest as test } from "./fixtures";
 
 /**
- * Memos - 普通用户权限测试（通过 Remote-Email 头注入普通用户邮箱）
+ * Memos - 普通用户权限测试（通过 Remote-Email 头注入普通用户邮箱，project extraHTTPHeaders + sso-header-routing
+ * 仅作用于 BASE_URL，E2E 专用）
  */
 
 test.describe("Memos 普通用户权限", () => {

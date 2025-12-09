@@ -1,7 +1,8 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
 
-// admin-chromium 项目通过 Remote-Email 头注入管理员邮箱
+// admin-chromium 项目通过 Remote-Email 头注入管理员邮箱（project extraHTTPHeaders + sso-header-routing，仅对
+// BASE_URL 生效的 E2E 模拟，非手工登录方式）
 
 test.describe("Session & Header Auth (admin)", () => {
   test("header-only admin should be recognized as admin without dev login", async ({ page }) => {

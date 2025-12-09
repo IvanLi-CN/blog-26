@@ -1,7 +1,8 @@
 import { expect } from "@playwright/test";
 import { userTest as test } from "./fixtures";
 
-// user-chromium 项目会通过 Remote-Email 头注入普通用户邮箱
+// user-chromium 项目会通过 Remote-Email 头注入普通用户邮箱（project extraHTTPHeaders + sso-header-routing，E2E
+// 专用，第三方域名会剥离）
 
 test.describe("Admin access denied (user)", () => {
   test("non-admin user sees 403 page on admin tags", async ({ page }) => {

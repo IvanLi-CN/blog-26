@@ -1,7 +1,8 @@
 import { expect } from "@playwright/test";
 import { userTest as test } from "./fixtures";
 
-// 使用 Playwright header 注入（user 项目）进行用户态校验
+// 使用 Playwright project 级 header 注入（user 项目）进行用户态校验，header 由 sso-header-routing 仅作用于
+// BASE_URL，第三方域名会剥离（E2E 专用，非手工登录方式）
 
 test.describe("Session & Header Auth (user)", () => {
   test("header 注入后 auth.me 应返回对应用户", async ({ page }) => {
