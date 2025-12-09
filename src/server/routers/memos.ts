@@ -60,7 +60,7 @@ function normalizeAttachmentPaths(
   });
 }
 
-type MemoRow = typeof posts.$inferSelect;
+export type MemoRow = typeof posts.$inferSelect;
 
 const timeDisplaySources = ["publishDate", "updateDate", "lastModified", "unknown"] as const;
 type TimeDisplaySource = (typeof timeDisplaySources)[number];
@@ -205,6 +205,97 @@ async function triggerIncrementalSync(): Promise<void> {
     // 同步失败不应该影响memo操作的成功响应，但需要记录错误
     // 注意：这里我们选择不抛出错误，因为memo操作已经成功完成
   }
+}
+
+// ============================================================================
+// 安全构造响应（可测试）
+// ============================================================================
+
+export interface BuildSafeMemoResponseOptions {
+  inputAttachments: any[];
+  inputTags: string[];
+  fallbackContent: string;
+  fallbackTitle?: string;
+  faultDegrade?: boolean;
+  now?: Date;
+}
+
+export function buildSafeMemoResponse(
+  memo: MemoRow,
+  {
+    inputAttachments,
+    inputTags,
+    fallbackContent,
+    fallbackTitle,
+    faultDegrade = false,
+    now,
+  }: BuildSafeMemoResponseOptions
+) {
+  const fallbackIso = (now ?? new Date()).toISOString();
+
+  let safeAttachments: any[] = inputAttachments;
+  try {
+    const metaForParse = faultDegrade ? "{" : memo.metadata;
+    const parsed = parseAttachments(metaForParse);
+    if (faultDegrade) {
+      throw new Error("forced attachment parsing failure for test");
+    }
+    const normalized = normalizeAttachmentPaths(parsed as any, memo.dataSource);
+    safeAttachments = Array.isArray(normalized) ? normalized : inputAttachments;
+  } catch (error) {
+    console.error("[memos.create] 解析附件失败，使用入参降级:", error);
+    safeAttachments = inputAttachments;
+  }
+  if (!Array.isArray(safeAttachments)) {
+    safeAttachments = inputAttachments;
+  }
+  if (safeAttachments.length === 0 && inputAttachments.length > 0) {
+    safeAttachments = inputAttachments;
+  }
+
+  let memoTags = Array.isArray(inputTags) ? inputTags : [];
+  try {
+    const parsedTags = memo.tags ? JSON.parse(memo.tags) : inputTags;
+    memoTags = Array.isArray(parsedTags) ? parsedTags : Array.isArray(inputTags) ? inputTags : [];
+  } catch (error) {
+    console.error("[memos.create] 解析 tags 失败，使用入参降级:", error);
+    memoTags = Array.isArray(inputTags) ? inputTags : [];
+  }
+
+  let publishedAt = fallbackIso;
+  let displayTime = fallbackIso;
+  let updatedAt = fallbackIso;
+  let source: TimeDisplaySource = "unknown";
+  try {
+    const resolved = faultDegrade
+      ? (() => {
+          throw new Error("forced time parsing failure for test");
+        })()
+      : resolveMemoTimestamps(memo);
+    publishedAt = resolved.publishedAt ?? fallbackIso;
+    displayTime = resolved.displayTime ?? fallbackIso;
+    updatedAt = resolved.updatedAt ?? fallbackIso;
+    source = resolved.source ?? "unknown";
+  } catch (error) {
+    console.error("[memos.create] 解析时间戳失败，使用当前时间降级:", error);
+  }
+
+  const safeTitle = memo.title || fallbackTitle || extractTitleFromContent(fallbackContent);
+  const safeContent = (memo as any).body ?? fallbackContent;
+
+  return {
+    id: memo.id,
+    slug: memo.slug,
+    title: safeTitle,
+    content: safeContent,
+    isPublic: memo.public,
+    tags: memoTags,
+    attachments: safeAttachments,
+    createdAt: displayTime,
+    publishedAt,
+    updatedAt,
+    timeDisplaySource: source,
+  };
 }
 
 // ============================================================================
@@ -515,9 +606,20 @@ export const memosRouter = router({
   create: adminProcedure.input(createMemoSchema).mutation(async ({ input, ctx }) => {
     const { content, title, isPublic, tags, attachments } = input;
     const inputAttachments = Array.isArray(attachments) ? attachments : [];
+    const inputTags = Array.isArray(tags) ? tags : [];
 
     // 检查内容是否包含图片markdown（当前仅用于调试/日志，占位保留）
     const _hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
+
+    const faultInjectionEnabled = process.env.MEMOS_E2E_FAULTS === "1";
+    const forceCoreFail = faultInjectionEnabled && content.includes("[[force-fail]]");
+    const forceDegrade = faultInjectionEnabled && content.includes("[[force-degrade]]");
+    if (forceCoreFail) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "创建 memo 失败（测试注入）",
+      });
+    }
 
     // WebDAV 返回的是纯文件名（例如 20251009_title.md）
     // 这里记录文件名，方便后续通过 filePath 反查数据库记录
@@ -538,72 +640,12 @@ export const memosRouter = router({
         title: title || extractTitleFromContent(content),
         content,
         isPublic,
-        tags: Array.isArray(tags) ? tags : [],
+        tags: inputTags,
         attachments: inputAttachments,
         createdAt: nowIso,
         publishedAt: nowIso,
         updatedAt: nowIso,
         timeDisplaySource: "unknown" as TimeDisplaySource,
-      };
-    };
-
-    const safeBuildResponse = (memo: MemoRow) => {
-      const fallbackIso = new Date().toISOString();
-
-      let safeAttachments: any[] = inputAttachments;
-      try {
-        const parsed = parseAttachments(memo.metadata);
-        const normalized = normalizeAttachmentPaths(parsed, (memo as any).dataSource);
-        safeAttachments = Array.isArray(normalized) ? normalized : inputAttachments;
-      } catch (error) {
-        console.error("[memos.create] 解析附件失败，使用入参降级:", error);
-        safeAttachments = inputAttachments;
-      }
-      if (!Array.isArray(safeAttachments)) {
-        safeAttachments = inputAttachments;
-      }
-      if (safeAttachments.length === 0 && inputAttachments.length > 0) {
-        safeAttachments = inputAttachments;
-      }
-
-      let memoTags = Array.isArray(tags) ? tags : [];
-      try {
-        const parsedTags = memo.tags ? JSON.parse(memo.tags) : tags;
-        memoTags = Array.isArray(parsedTags) ? parsedTags : Array.isArray(tags) ? tags : [];
-      } catch (error) {
-        console.error("[memos.create] 解析 tags 失败，使用入参降级:", error);
-        memoTags = Array.isArray(tags) ? tags : [];
-      }
-
-      let publishedAt = fallbackIso;
-      let displayTime = fallbackIso;
-      let updatedAt = fallbackIso;
-      let source: TimeDisplaySource = "unknown";
-      try {
-        const resolved = resolveMemoTimestamps(memo);
-        publishedAt = resolved.publishedAt ?? fallbackIso;
-        displayTime = resolved.displayTime ?? fallbackIso;
-        updatedAt = resolved.updatedAt ?? fallbackIso;
-        source = resolved.source ?? "unknown";
-      } catch (error) {
-        console.error("[memos.create] 解析时间戳失败，使用当前时间降级:", error);
-      }
-
-      const safeTitle = memo.title || extractTitleFromContent(content);
-      const safeContent = (memo as any).body ?? content;
-
-      return {
-        id: memo.id,
-        slug: memo.slug,
-        title: safeTitle,
-        content: safeContent,
-        isPublic: memo.public,
-        tags: memoTags,
-        attachments: safeAttachments,
-        createdAt: displayTime,
-        publishedAt,
-        updatedAt,
-        timeDisplaySource: source,
       };
     };
 
@@ -713,7 +755,13 @@ export const memosRouter = router({
     }
 
     try {
-      return safeBuildResponse(createdMemo);
+      return buildSafeMemoResponse(createdMemo, {
+        inputAttachments,
+        inputTags,
+        fallbackContent: content,
+        fallbackTitle: title,
+        faultDegrade: forceDegrade,
+      });
     } catch (error) {
       console.error("[memos.create] 构造响应失败，使用降级结构:", error);
       return buildFallbackResponse(createdMemo.id);

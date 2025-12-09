@@ -154,6 +154,7 @@ export default defineConfig({
         LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
         WEBDAV_URL,
         E2E_MODE: "1", // 启用测试环境下的 Files API 本地回退
+        MEMOS_E2E_FAULTS: "1",
       },
     },
   ],
@@ -166,3 +167,4 @@ process.env.WEBDAV_PORT = String(WEBDAV_PORT);
 process.env.WEBDAV_URL = WEBDAV_URL;
 process.env.SSO_EMAIL_HEADER_NAME = EMAIL_HEADER_NAME;
 process.env.ADMIN_EMAIL = ADMIN_EMAIL;
+process.env.MEMOS_E2E_FAULTS = "1";
