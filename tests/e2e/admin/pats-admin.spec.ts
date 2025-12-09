@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { adminTest as test } from "./fixtures";
 
 const MIGRATE_COMMAND = "DB_PATH=./test-data/sqlite.db bun run migrate";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";

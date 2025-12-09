@@ -135,10 +135,15 @@ The blog uses a **multi-source content architecture** with intelligent syncing:
 
 ### Authentication System
 
-**Two auth modes** (configured via env):
+**Two auth modes for runtime traffic** (configured via env):
 
 1. **SSO Header Injection** (production): Proxy injects `Remote-Email` header (or `SSO_EMAIL_HEADER_NAME`), verified in `src/proxy.ts`
 2. **Dev Endpoints** (dev/test only): `/api/dev/login` and `/api/dev/register` set session cookies
+
+**E2E header simulation (tests only)**: Playwright uses a routing helper to inject `SSO_EMAIL_HEADER_NAME`
+only for requests targeting the app origin (`BASE_URL`), while stripping it from third-party domains
+(Iconify/Simplesvg/Unisvg) to avoid CORS. This is not a manual login method—use the dev endpoints above for
+local verification.
 
 **Admin Detection**: User email matches `ADMIN_EMAIL` env var
 

@@ -7,9 +7,8 @@ import { defineConfig, devices } from "@playwright/test";
  * Playwright E2E测试配置
  * 用于测试闪念列表页图片灯箱功能等交互特性
  */
-// Keep server and test-runner using the same emails
+// Keep server and test-runner using the same admin email
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
-const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
 // E2E header injection (no reverse proxy):
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
 
@@ -111,7 +110,7 @@ export default defineConfig({
     {
       name: "guest-chromium",
       testMatch: ["**/guest/**/*.spec.ts"],
-      use: { ...devices["Desktop Chrome"], extraHTTPHeaders: {} },
+      use: { ...devices["Desktop Chrome"] },
     },
     // 普通用户访问（注入非管理员邮箱）
     {
@@ -119,7 +118,6 @@ export default defineConfig({
       testMatch: ["**/user/**/*.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
-        extraHTTPHeaders: { [EMAIL_HEADER_NAME]: USER_EMAIL },
       },
     },
     // 管理员访问（注入管理员邮箱）
@@ -128,7 +126,6 @@ export default defineConfig({
       testMatch: ["**/admin/**/*.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
-        extraHTTPHeaders: { [EMAIL_HEADER_NAME]: ADMIN_EMAIL },
       },
     },
   ],

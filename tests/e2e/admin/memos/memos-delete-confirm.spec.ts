@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { adminTest as test } from "../fixtures";
 
 /**
  * Memos 删除确认（管理员）
