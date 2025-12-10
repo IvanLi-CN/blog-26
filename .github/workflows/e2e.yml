@@ -23,8 +23,15 @@ permissions:
 
 jobs:
   e2e:
-    name: Playwright E2E
+    name: Playwright E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - guest-chromium
+          - user-chromium
+          - admin-chromium
     timeout-minutes: 45
     continue-on-error: true
     steps:
@@ -159,7 +166,7 @@ jobs:
       - name: Verify Test Data (Debug)
         run: bun run test-db:posts
       - name: Run E2E tests
-        run: bun run test:e2e
+        run: bun run test:e2e -- --project=${{ matrix.project }}
         env:
           NODE_ENV: test
           # Force Playwright to reuse existing dufs server to avoid port collisions
