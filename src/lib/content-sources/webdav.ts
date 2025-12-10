@@ -7,7 +7,13 @@
 import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
 import { getWebDAVClient, isWebDAVEnabled, type WebDAVClient } from "../webdav";
 import { ContentSourceBase } from "./base";
-import type { ContentItem, ContentSourceConfig, ContentSourceStatus, FileInfo } from "./types";
+import type {
+  ChangeSet,
+  ContentItem,
+  ContentSourceConfig,
+  ContentSourceStatus,
+  FileInfo,
+} from "./types";
 import {
   createContentItemFromParsed,
   generateMemoFilename,
@@ -51,6 +57,8 @@ export interface MemoMetadata {
  */
 export interface WebDAVContentSourceConfig extends ContentSourceConfig {
   options: {
+    /** 最大并发请求数（用于提高扫描/读取性能，默认 4，建议 1-8 之间） */
+    maxConcurrentRequests?: number;
     /** WebDAV 路径映射 */
     pathMappings: {
       /** 博客文章路径数组 */
@@ -78,6 +86,7 @@ export class WebDAVContentSource extends ContentSourceBase {
   private enableETagCache: boolean;
   private timeout: number;
   private maxRetries: number;
+  private maxConcurrentRequests: number;
   private fileCache = new Map<string, FileInfo>();
   private etagCache = new Map<string, string>();
 
@@ -85,6 +94,7 @@ export class WebDAVContentSource extends ContentSourceBase {
     super(config, "webdav");
 
     const {
+      maxConcurrentRequests = 1,
       pathMappings = {},
       enableETagCache = true,
       timeout = 30000,
@@ -101,6 +111,7 @@ export class WebDAVContentSource extends ContentSourceBase {
     this.enableETagCache = enableETagCache;
     this.timeout = timeout;
     this.maxRetries = maxRetries;
+    this.maxConcurrentRequests = Math.max(1, Math.min(8, maxConcurrentRequests));
 
     // 初始化 WebDAV 客户端（延迟到 initialize 方法中）
     this.webdavClient = null as unknown as WebDAVClient;
@@ -122,17 +133,11 @@ export class WebDAVContentSource extends ContentSourceBase {
       // 获取 WebDAV 客户端实例
       this.webdavClient = getWebDAVClient();
 
-      // 验证连接
-      const isConnected = await this.validateConnection();
-      if (!isConnected) {
-        throw new Error("WebDAV 连接验证失败");
-      }
-
-      // 刷新文件缓存
-      await this.refreshFileCache();
+      // 轻量级连接验证（不做目录遍历），保持 initialize 开销可控
+      await this.validateConnection();
 
       this.isInitialized = true;
-      this.log("info", `WebDAV 内容源初始化成功，发现 ${this.fileCache.size} 个文件`);
+      this.log("info", "WebDAV 内容源初始化成功");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.log("error", `WebDAV 内容源初始化失败: ${errorMessage}`);
@@ -144,6 +149,9 @@ export class WebDAVContentSource extends ContentSourceBase {
     this.ensureInitialized();
 
     this.log("info", "开始扫描 WebDAV 内容文件");
+
+    // 每次扫描前刷新文件缓存，确保使用最新目录结构。
+    await this.refreshFileCache();
 
     const contentItems: ContentItem[] = [];
     const markdownFiles = Array.from(this.fileCache.values()).filter(
@@ -183,6 +191,103 @@ export class WebDAVContentSource extends ContentSourceBase {
 
     this.log("info", `WebDAV 内容扫描完成，处理了 ${contentItems.length} 个有效文件`);
     return contentItems;
+  }
+
+  /**
+   * 检测增量变更
+   *
+   * 对于首次同步（没有 lastSyncTime），退回基类实现；
+   * 对于已有上次同步时间的情况，仅拉取“上次同步之后修改过”的文件内容，
+   * 避免每次增量同步都完整下载所有 Markdown 文件。
+   */
+  async detectChanges(lastSyncTime?: number): Promise<ChangeSet> {
+    // 首次同步仍然使用基类的通用实现（等价于全量视角）
+    if (!lastSyncTime) {
+      return super.detectChanges(lastSyncTime);
+    }
+
+    this.ensureInitialized();
+
+    this.log("info", `WebDAV 增量变更检测，上次同步时间: ${new Date(lastSyncTime).toISOString()}`);
+
+    // 刷新目录索引，仅依赖元数据判断“是否可能发生变更”
+    await this.refreshFileCache();
+
+    const allMarkdownFiles = Array.from(this.fileCache.values()).filter(
+      (file) => !file.isDirectory && isMarkdownFile(file.path)
+    );
+
+    // 仅保留 lastSyncTime 之后修改过的文件
+    const changedFiles = allMarkdownFiles.filter((file) => file.lastModified > lastSyncTime);
+
+    this.log("info", `WebDAV 增量检测命中文件: ${changedFiles.length}/${allMarkdownFiles.length}`);
+
+    const changes: ChangeSet["changes"] = [];
+    const concurrency = this.maxConcurrentRequests;
+    let index = 0;
+
+    const worker = async () => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const currentIndex = index++;
+        if (currentIndex >= changedFiles.length) {
+          break;
+        }
+
+        const fileInfo = changedFiles[currentIndex];
+
+        try {
+          const relativePath = this.getRelativePath(fileInfo.path);
+          const rawContent = await this.webdavClient.getFileContent(fileInfo.path);
+          const parsed = parseMarkdownContent(rawContent, relativePath);
+          const contentItem = createContentItemFromParsed(parsed, relativePath, this.name);
+
+          // 使用 WebDAV 的 lastModified，而不是“解析时间”
+          contentItem.lastModified = fileInfo.lastModified;
+
+          if (!contentItem.publishDate) {
+            contentItem.publishDate = fileInfo.lastModified;
+          }
+
+          if (validateContentItem(contentItem)) {
+            const sanitized = sanitizeContentItem(contentItem);
+            changes.push({
+              item: sanitized,
+              operation: "update",
+              reason: "内容已修改",
+            });
+          } else {
+            this.log("warn", `增量检测期间内容项验证失败，跳过: ${relativePath}`);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.log("error", `增量检测期间处理文件失败: ${fileInfo.path}`, fileInfo.path, {
+            error: errorMessage,
+          });
+        }
+      }
+    };
+
+    const workers = Array.from({ length: concurrency }, () => worker());
+    await Promise.all(workers);
+
+    const total = changes.length;
+    const stats: ChangeSet["stats"] = {
+      total,
+      created: 0,
+      updated: total,
+      deleted: 0,
+      skipped: allMarkdownFiles.length - total,
+    };
+
+    this.log("info", `WebDAV 增量变更检测完成: ${JSON.stringify(stats)}`);
+
+    return {
+      sourceName: this.name,
+      changes,
+      detectedAt: Date.now(),
+      stats,
+    };
   }
 
   async getContent(filePath: string): Promise<string> {
@@ -228,6 +333,7 @@ export class WebDAVContentSource extends ContentSourceBase {
         maxRetries: this.maxRetries,
         cachedFiles: this.fileCache.size,
         cachedETags: this.etagCache.size,
+        maxConcurrentRequests: this.maxConcurrentRequests,
       },
     };
   }
@@ -705,6 +811,7 @@ export class WebDAVContentSource extends ContentSourceBase {
       priority,
       enabled: true,
       options: {
+        maxConcurrentRequests: 1,
         pathMappings: WEBDAV_PATH_MAPPINGS,
         enableETagCache: true,
         timeout: 30000,
