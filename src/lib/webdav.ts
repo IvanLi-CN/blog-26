@@ -205,6 +205,18 @@ export class WebDAVClient {
   }
 
   /**
+   * 构造相对于 baseUrl 的完整 URL，兼容是否带斜杠的路径写法
+   */
+  private buildUrl(path: string): string {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const base = this.baseUrl.endsWith("/") ? this.baseUrl : `${this.baseUrl}/`;
+    const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+    return `${base}${normalizedPath}`;
+  }
+
+  /**
    * 创建基础认证头
    */
   private getAuthHeaders(): Record<string, string> {
@@ -227,8 +239,8 @@ export class WebDAVClient {
    * @param depth 深度，支持数字或 'infinity'
    */
   private async propfind(path: string, depth: number | "infinity" = 1): Promise<WebDAVFile[]> {
-    // 如果 path 已经是完整的 URL，直接使用；否则拼接基础 URL
-    const url = path.startsWith("http") ? path : `${this.baseUrl}${path}`;
+    // 如果 path 已经是完整的 URL，直接使用；否则通过 buildUrl 拼接基础 URL
+    const url = this.buildUrl(path);
     const requestDescriptor = describeWebDAVRequest(url, "PROPFIND");
     const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
@@ -363,7 +375,7 @@ export class WebDAVClient {
    * @param filePath 文件路径
    */
   async getFileContent(filePath: string): Promise<string> {
-    const url = `${this.baseUrl}${filePath}`;
+    const url = this.buildUrl(filePath);
     const requestDescriptor = describeWebDAVRequest(url, "GET");
     const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
@@ -392,7 +404,7 @@ export class WebDAVClient {
    * @param content 文件内容
    */
   async putFileContent(filePath: string, content: string | ArrayBuffer): Promise<void> {
-    const url = `${this.baseUrl}${filePath}`;
+    const url = this.buildUrl(filePath);
     const requestDescriptor = describeWebDAVRequest(url, "PUT");
     const requestLabel = formatWebDAVRequestLabel(requestDescriptor);
 
