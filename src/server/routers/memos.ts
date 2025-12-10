@@ -60,7 +60,7 @@ function normalizeAttachmentPaths(
   });
 }
 
-type MemoRow = typeof posts.$inferSelect;
+export type MemoRow = typeof posts.$inferSelect;
 
 const timeDisplaySources = ["publishDate", "updateDate", "lastModified", "unknown"] as const;
 type TimeDisplaySource = (typeof timeDisplaySources)[number];
@@ -205,6 +205,97 @@ async function triggerIncrementalSync(): Promise<void> {
     // 同步失败不应该影响memo操作的成功响应，但需要记录错误
     // 注意：这里我们选择不抛出错误，因为memo操作已经成功完成
   }
+}
+
+// ============================================================================
+// 安全构造响应（可测试）
+// ============================================================================
+
+export interface BuildSafeMemoResponseOptions {
+  inputAttachments: any[];
+  inputTags: string[];
+  fallbackContent: string;
+  fallbackTitle?: string;
+  faultDegrade?: boolean;
+  now?: Date;
+}
+
+export function buildSafeMemoResponse(
+  memo: MemoRow,
+  {
+    inputAttachments,
+    inputTags,
+    fallbackContent,
+    fallbackTitle,
+    faultDegrade = false,
+    now,
+  }: BuildSafeMemoResponseOptions
+) {
+  const fallbackIso = (now ?? new Date()).toISOString();
+
+  let safeAttachments: any[] = inputAttachments;
+  try {
+    const metaForParse = faultDegrade ? "{" : memo.metadata;
+    const parsed = parseAttachments(metaForParse);
+    if (faultDegrade) {
+      throw new Error("forced attachment parsing failure for test");
+    }
+    const normalized = normalizeAttachmentPaths(parsed as any, memo.dataSource);
+    safeAttachments = Array.isArray(normalized) ? normalized : inputAttachments;
+  } catch (error) {
+    console.error("[memos.create] 解析附件失败，使用入参降级:", error);
+    safeAttachments = inputAttachments;
+  }
+  if (!Array.isArray(safeAttachments)) {
+    safeAttachments = inputAttachments;
+  }
+  if (safeAttachments.length === 0 && inputAttachments.length > 0) {
+    safeAttachments = inputAttachments;
+  }
+
+  let memoTags = Array.isArray(inputTags) ? inputTags : [];
+  try {
+    const parsedTags = memo.tags ? JSON.parse(memo.tags) : inputTags;
+    memoTags = Array.isArray(parsedTags) ? parsedTags : Array.isArray(inputTags) ? inputTags : [];
+  } catch (error) {
+    console.error("[memos.create] 解析 tags 失败，使用入参降级:", error);
+    memoTags = Array.isArray(inputTags) ? inputTags : [];
+  }
+
+  let publishedAt = fallbackIso;
+  let displayTime = fallbackIso;
+  let updatedAt = fallbackIso;
+  let source: TimeDisplaySource = "unknown";
+  try {
+    const resolved = faultDegrade
+      ? (() => {
+          throw new Error("forced time parsing failure for test");
+        })()
+      : resolveMemoTimestamps(memo);
+    publishedAt = resolved.publishedAt ?? fallbackIso;
+    displayTime = resolved.displayTime ?? fallbackIso;
+    updatedAt = resolved.updatedAt ?? fallbackIso;
+    source = resolved.source ?? "unknown";
+  } catch (error) {
+    console.error("[memos.create] 解析时间戳失败，使用当前时间降级:", error);
+  }
+
+  const safeTitle = memo.title || fallbackTitle || extractTitleFromContent(fallbackContent);
+  const safeContent = (memo as any).body ?? fallbackContent;
+
+  return {
+    id: memo.id,
+    slug: memo.slug,
+    title: safeTitle,
+    content: safeContent,
+    isPublic: memo.public,
+    tags: memoTags,
+    attachments: safeAttachments,
+    createdAt: displayTime,
+    publishedAt,
+    updatedAt,
+    timeDisplaySource: source,
+  };
 }
 
 // ============================================================================
@@ -514,20 +605,51 @@ export const memosRouter = router({
   // 创建新 memo（仅管理员）
   create: adminProcedure.input(createMemoSchema).mutation(async ({ input, ctx }) => {
     const { content, title, isPublic, tags, attachments } = input;
+    const inputAttachments = Array.isArray(attachments) ? attachments : [];
+    const inputTags = Array.isArray(tags) ? tags : [];
+
+    // 检查内容是否包含图片markdown（当前仅用于调试/日志，占位保留）
+    const _hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
+
+    const faultInjectionEnabled = process.env.MEMOS_E2E_FAULTS === "1";
+    const forceCoreFail = faultInjectionEnabled && content.includes("[[force-fail]]");
+    const forceDegrade = faultInjectionEnabled && content.includes("[[force-degrade]]");
+    if (forceCoreFail) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "创建 memo 失败（测试注入）",
+      });
+    }
+
+    // WebDAV 返回的是纯文件名（例如 20251009_title.md）
+    // 这里记录文件名，方便后续通过 filePath 反查数据库记录
+    let filePath: string | null = null;
+    let createdMemo: MemoRow | undefined;
+
+    // 在测试环境中，如果WebDAV连接失败，跳过WebDAV创建
+    // 检测测试环境：ADMIN_EMAIL包含test或者NODE_ENV为test
+    const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
+
+    const buildFallbackResponse = (idHint?: string | null) => {
+      const nowIso = new Date().toISOString();
+      const safeId =
+        idHint || (filePath ? `/memos/${filePath}`.replace(/\\+/g, "/") : `memo-${Date.now()}`);
+      return {
+        id: safeId,
+        slug: generateNanoidSlug(8),
+        title: title || extractTitleFromContent(content),
+        content,
+        isPublic,
+        tags: inputTags,
+        attachments: inputAttachments,
+        createdAt: nowIso,
+        publishedAt: nowIso,
+        updatedAt: nowIso,
+        timeDisplaySource: "unknown" as TimeDisplaySource,
+      };
+    };
 
     try {
-      // 检查内容是否包含图片markdown（当前仅用于调试/日志，占位保留）
-      const _hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
-
-      // WebDAV 返回的是纯文件名（例如 20251009_title.md）
-      // 这里记录文件名，方便后续通过 filePath 反查数据库记录
-      let filePath: string | null = null;
-
-      // 在测试环境中，如果WebDAV连接失败，跳过WebDAV创建
-      // 检测测试环境：ADMIN_EMAIL包含test或者NODE_ENV为test
-      const isTestEnv =
-        process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
-
       if (isTestEnv) {
         try {
           // 创建 WebDAV 内容源实例
@@ -539,7 +661,7 @@ export const memosRouter = router({
             title,
             isPublic,
             tags,
-            attachments,
+            attachments: inputAttachments,
             authorEmail: ctx.user?.email || "admin@example.com",
           });
 
@@ -549,7 +671,7 @@ export const memosRouter = router({
             console.debug("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
           }
           // 在测试环境中，生成一个模拟的文件路径并直接写入数据库，
-          // 以保证在无 WebDAV 的情况下功能仍可用（不再触发内容源同步，避免重复记录）。
+          // 以保证在无 WebDAV 的情况下功能仍可用
           const timestamp = Date.now();
           const slug = title?.replace(/\s+/g, "-").toLowerCase() || `memo-${timestamp}`;
           const fallbackFileName = `${slug}-${timestamp}.md`;
@@ -572,30 +694,14 @@ export const memosRouter = router({
             updateDate: now,
             tags: JSON.stringify(tags),
             author: ctx.user?.email || "admin@example.com",
-            metadata: JSON.stringify({ attachments }),
+            metadata: JSON.stringify({ attachments: inputAttachments }),
             body: content,
             dataSource: "webdav",
           };
 
           await db.insert(posts).values(memoData);
-
-          const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(
-            memoData as MemoRow
-          );
-
-          return {
-            id: memoData.id,
-            slug: memoData.slug,
-            title: memoData.title,
-            content: memoData.body,
-            isPublic: memoData.public,
-            tags,
-            attachments,
-            createdAt: displayTime,
-            publishedAt,
-            updatedAt,
-            timeDisplaySource: source,
-          };
+          createdMemo = memoData as MemoRow;
+          filePath = memoData.filePath;
         }
       } else {
         // 生产环境中，WebDAV是必需的
@@ -606,7 +712,7 @@ export const memosRouter = router({
           title,
           isPublic,
           tags,
-          attachments,
+          attachments: inputAttachments,
           authorEmail: ctx.user?.email || "admin@example.com",
         });
 
@@ -615,14 +721,21 @@ export const memosRouter = router({
         }
         await webdavSource.dispose();
       }
+    } catch (error) {
+      console.error("[memos.create] 核心创建失败:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "创建 memo 失败",
+      });
+    }
 
-      // 触发增量数据同步
-      await triggerIncrementalSync();
+    // 触发增量数据同步（内部已处理错误日志）
+    await triggerIncrementalSync();
 
+    try {
       // 通过 filePath 反查刚创建的 memo，以返回与列表/bySlug 相同口径的结构
-      let createdMemo: MemoRow | undefined;
-      if (filePath) {
-        const suffix = `/${filePath}`;
+      if (!createdMemo && filePath) {
+        const suffix = filePath.startsWith("/") ? filePath : `/${filePath}`;
         createdMemo = await db
           .select()
           .from(posts)
@@ -631,50 +744,27 @@ export const memosRouter = router({
           .limit(1)
           .then((rows) => rows[0]);
       }
-
-      if (!createdMemo) {
-        // 兜底：同步过程中未能立即读到记录时，返回最小可用信息，避免前端报错
-        const nowIso = new Date().toISOString();
-        return {
-          id: filePath ? `/memos/${filePath}`.replace(/\\+/g, "/") : `memo-${Date.now()}`,
-          slug: generateNanoidSlug(8),
-          title: title || extractTitleFromContent(content),
-          content,
-          isPublic,
-          tags,
-          attachments,
-          createdAt: nowIso,
-          publishedAt: nowIso,
-          updatedAt: nowIso,
-          timeDisplaySource: "unknown" as TimeDisplaySource,
-        };
-      }
-
-      const normalizedAttachments = normalizeAttachmentPaths(
-        parseAttachments(createdMemo.metadata),
-        (createdMemo as any).dataSource
-      );
-      const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(createdMemo);
-
-      return {
-        id: createdMemo.id,
-        slug: createdMemo.slug,
-        title: createdMemo.title || extractTitleFromContent(content),
-        content: createdMemo.body,
-        isPublic: createdMemo.public,
-        tags: createdMemo.tags ? JSON.parse(createdMemo.tags) : tags,
-        attachments: normalizedAttachments.length > 0 ? normalizedAttachments : attachments,
-        createdAt: displayTime,
-        publishedAt,
-        updatedAt,
-        timeDisplaySource: source,
-      };
     } catch (error) {
-      console.error("创建 memo 失败:", error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "创建 memo 失败",
+      console.error("[memos.create] 通过 filePath 查询 memo 失败:", error);
+      // 不抛错，继续走降级返回
+    }
+
+    if (!createdMemo) {
+      // 兜底：同步过程中未能立即读到记录时，返回最小可用信息，避免前端报错
+      return buildFallbackResponse(filePath);
+    }
+
+    try {
+      return buildSafeMemoResponse(createdMemo, {
+        inputAttachments,
+        inputTags,
+        fallbackContent: content,
+        fallbackTitle: title,
+        faultDegrade: forceDegrade,
       });
+    } catch (error) {
+      console.error("[memos.create] 构造响应失败，使用降级结构:", error);
+      return buildFallbackResponse(createdMemo.id);
     }
   }),
 

@@ -95,9 +95,24 @@ export function MemosApp({
     onSaveSuccess: () => {
       setShowQuickEditor(false);
       refresh();
+      toast.success(
+        <ToastAlert type="success" message="Memo 已发布" onAction={() => toast.dismiss()} />
+      );
     },
     onSaveError: (error) => {
       console.error("快速保存失败:", error);
+      const raw = (error as Error)?.message || (typeof error === "string" ? error : "服务器错误");
+      const reason =
+        String(raw)
+          .replace(/^(TRPCClientError:|Error:)/i, "")
+          .trim() || "未知原因";
+      toast.error(
+        <ToastAlert
+          type="error"
+          message={`发布 Memo 失败：${reason}`}
+          onAction={() => toast.dismiss()}
+        />
+      );
     },
   });
 
