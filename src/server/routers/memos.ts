@@ -794,14 +794,19 @@ export const memosRouter = router({
       const webdavClient = getWebDAVClient();
 
       // 构建 markdown 内容
+      const nowIso = new Date().toISOString();
       const frontmatter: Record<string, unknown> = {
-        title,
-        isPublic,
+        title: title || extractTitleFromContent(content),
+        public: isPublic,
         tags,
         attachments,
         authorEmail: ctx.user?.email || "admin@example.com",
-        updatedAt: new Date().toISOString(),
+        updateDate: nowIso,
       };
+      const existingPublishIso = toIsoString(existingMemo.publishDate ?? null);
+      if (existingPublishIso) {
+        frontmatter.publishDate = existingPublishIso;
+      }
 
       const frontmatterStr = Object.entries(frontmatter)
         .map(([key, value]) => {
