@@ -2,7 +2,24 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getAdminEmail, getSsoEmailHeaderName } from "./lib/admin-config";
 
+const TAGS_PREFIX = "/tags/";
+const FEED_SUFFIX = "/feed.xml";
+
 export function proxy(request: NextRequest) {
+  const url = new URL(request.url);
+
+  if (url.pathname.startsWith(TAGS_PREFIX) && url.pathname.endsWith(FEED_SUFFIX)) {
+    const tagPath = url.pathname.slice(
+      TAGS_PREFIX.length,
+      url.pathname.length - FEED_SUFFIX.length
+    );
+    if (tagPath) {
+      const rewriteUrl = request.nextUrl.clone();
+      rewriteUrl.pathname = `/api/tags/feed/${tagPath}`;
+      return NextResponse.rewrite(rewriteUrl);
+    }
+  }
+
   try {
     const emailHeaderName = getSsoEmailHeaderName();
     const headers = request.headers;
@@ -29,7 +46,6 @@ export function proxy(request: NextRequest) {
     const adminEmail = getAdminEmail();
     const isAdmin = Boolean(adminEmail && forwardedEmail && forwardedEmail === adminEmail);
 
-    const url = new URL(request.url);
     console.log(
       `➡️  [MW] ${request.method} ${url.pathname}${url.search} | ForwardEmail(${emailHeaderName})=` +
         `${forwardedEmail ?? "<none>"} | matchedHeader=${matchedEmailHeader ?? "<none>"} | isAdmin=${isAdmin}`

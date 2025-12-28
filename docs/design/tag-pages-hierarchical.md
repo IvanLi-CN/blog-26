@@ -56,7 +56,10 @@
 将现有 `src/app/tags/[tag]/` 调整为 catch-all：
 
 - `src/app/tags/[...tagSegments]/page.tsx`
-- `src/app/tags/[...tagSegments]/feed.xml/route.ts`（可选：RSS）
+- RSS（可选）：对外仍为 `/tags/<...>/feed.xml`，但由于 Next.js 规则限制（catch-all 必须为最后一段），
+  需通过 `proxy` rewrite 到 API handler：
+  - `src/proxy.ts`（rewrite `/tags/<...>/feed.xml` -> `/api/tags/feed/<...>`）
+  - `src/app/api/tags/feed/[...tagSegments]/route.ts`（生成 RSS）
 
 参数解析策略：
 
@@ -190,4 +193,3 @@
 - 单测：tagPath ↔ urlPath 的编码/解码（确保不生成 `%2F`）
 - 集成：`tags.timeline` 对 `tagPath` 的“精确 + 子标签”过滤与分页稳定性
 - E2E：从 `/memos` 点击标签进入 `/tags/Geek/SMS`，并可加载更多
-

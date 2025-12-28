@@ -119,13 +119,11 @@ export async function GET(
     await initializeDB();
 
     const candidates = [tagPath, `#${tagPath}`];
-    let matchPath = tagPath;
     let items: Awaited<ReturnType<typeof loadTagFeedItems>> = [];
 
     for (const candidate of candidates) {
       const loaded = await loadTagFeedItems(candidate, limit);
       if (loaded.length > 0 || candidate === candidates.at(-1)) {
-        matchPath = candidate;
         items = loaded;
         break;
       }
@@ -161,11 +159,6 @@ export async function GET(
           "Last-Modified": built.lastModified.toUTCString(),
         },
       });
-    }
-
-    // Ensure the tag we used to match doesn't get optimized away in the future.
-    if (!matchPath) {
-      return new NextResponse("Tag not found", { status: 404 });
     }
 
     return new NextResponse(built.rss, {
