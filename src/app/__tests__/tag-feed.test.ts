@@ -6,7 +6,9 @@ import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
+import { toAbsoluteUrl } from "@/lib/rss";
 import { posts } from "@/lib/schema";
+import { buildTagHref } from "@/lib/tag-href";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/tag-feed-route-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -127,10 +129,14 @@ describe("tag feed route", () => {
 
     const xml = await res.text();
     expect(xml).toContain("#Geek/SMS");
-    expect(xml).toContain("http://example.com/posts/post-exact");
-    expect(xml).toContain("http://example.com/memos/memo-child");
+    expect(xml).toContain(`${toAbsoluteUrl("/posts")}/post-exact`);
+    expect(xml).toContain(`${toAbsoluteUrl("/memos")}/memo-child`);
     expect(xml).not.toContain("post-lookalike");
-    expect(xml).toContain("http://example.com/tags/Geek/SMS");
+    const tagUrl = toAbsoluteUrl(buildTagHref("Geek/SMS"));
+    if (!tagUrl) {
+      throw new Error("Expected tag URL to be defined");
+    }
+    expect(xml).toContain(tagUrl);
     expect(xml).not.toContain("%2F");
   });
 });
