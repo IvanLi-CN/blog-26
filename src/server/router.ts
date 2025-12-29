@@ -6,6 +6,7 @@ import { memosRouter } from "./routers/memos";
 import { postsRouter } from "./routers/posts";
 import { reactionsRouter } from "./routers/reactions";
 import { searchRouter } from "./routers/search";
+import { tagsRouter } from "./routers/tags";
 import { createTRPCRouter, publicProcedure } from "./trpc";
 
 export const appRouter = createTRPCRouter({
@@ -20,6 +21,9 @@ export const appRouter = createTRPCRouter({
 
   // Memo 路由
   memos: memosRouter,
+
+  // Tags 路由
+  tags: tagsRouter,
 
   // 评论路由
   comments: commentsRouter,

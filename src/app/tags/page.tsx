@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageLayout from "@/components/common/PageLayout";
 import Icon from "@/components/ui/Icon";
+import { buildTagHref } from "@/lib/tag-href";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { getAllCategoryIcons, getAllTagIcons } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
@@ -147,7 +148,7 @@ export default async function TagsIndexPage() {
                           {group.items.map((tag) => (
                             <Link
                               key={tag.name}
-                              href={`/tags/${encodeURIComponent(tag.name)}`}
+                              href={buildTagHref(tag.name)}
                               prefetch={false}
                               className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-base-content/10 bg-base-100/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-base-100"
                               title={tag.lastSegment}

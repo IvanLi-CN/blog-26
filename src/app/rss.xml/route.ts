@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const location = new URL(
-    "/feed.xml",
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:25090"
-  ).toString();
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const forwardedHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const host = forwardedHost?.split(",")[0]?.trim() || url.host;
+  const proto = forwardedProto?.split(",")[0]?.trim() || url.protocol.replace(":", "");
+  const origin = host ? `${proto}://${host}` : url.origin;
+  const location = new URL("/feed.xml", origin).toString();
   const res = NextResponse.redirect(location, 301);
   res.headers.set("Cache-Control", "public, max-age=86400");
   return res;
