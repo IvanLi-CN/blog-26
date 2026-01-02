@@ -3,7 +3,8 @@ import PageLayout from "@/components/common/PageLayout";
 import Icon from "@/components/ui/Icon";
 import { buildTagHref } from "@/lib/tag-href";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
-import { getAllCategoryIcons, getAllTagIcons } from "@/server/services/tag-icons";
+import { resolveTagIconSvgsForTags, TAG_ICON_HASH_FALLBACK } from "@/server/services/tag-icon-ssr";
+import { getAllCategoryIcons } from "@/server/services/tag-icons";
 import { getTagSummaries } from "@/server/services/tag-service";
 import { formatUnknownError } from "@/utils/error-format";
 
@@ -34,12 +35,15 @@ export const dynamic = "force-dynamic";
 
 export default async function TagsIndexPage() {
   try {
-    const [tagGroupsConfig, tagSummaries, tagIcons, categoryIcons] = await Promise.all([
+    const [tagGroupsConfig, tagSummaries, categoryIcons] = await Promise.all([
       readTagGroupsFromDB(),
       getTagSummaries({ includeDrafts: false, includeUnpublished: false }),
-      getAllTagIcons(),
       getAllCategoryIcons(),
     ]);
+    const { iconMap: tagIconMap, svgMap: tagIconSvgMap } = await resolveTagIconSvgsForTags(
+      tagSummaries.map((tag) => tag.name),
+      { svgHeight: "20" }
+    );
 
     // Build tag -> group map from config
     const tagToGroup = new Map<string, { key: string; title: string }>();
@@ -145,38 +149,48 @@ export default async function TagsIndexPage() {
                       </div>
                       <div className="rounded-2xl border border-base-content/5 bg-base-100/70 p-3 sm:p-4">
                         <div className={tagGridClass}>
-                          {group.items.map((tag) => (
-                            <Link
-                              key={tag.name}
-                              href={buildTagHref(tag.name)}
-                              prefetch={false}
-                              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-base-content/10 bg-base-100/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-base-100"
-                              title={tag.lastSegment}
-                              aria-label={`查看 ${tag.lastSegment} 标签的文章`}
-                            >
-                              <span className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition group-hover:opacity-100" />
-                              <div className="flex items-start gap-3">
-                                <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                          {group.items.map((tag) => {
+                            const resolvedIcon = tagIconMap[tag.name] ?? null;
+                            const iconId = resolvedIcon ?? TAG_ICON_HASH_FALLBACK;
+                            const iconSvg = tagIconSvgMap[iconId] ?? null;
+
+                            return (
+                              <Link
+                                key={tag.name}
+                                href={buildTagHref(tag.name)}
+                                prefetch={false}
+                                className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-base-content/10 bg-base-100/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-base-100"
+                                title={tag.lastSegment}
+                                aria-label={`查看 ${tag.lastSegment} 标签的文章`}
+                              >
+                                <span className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition group-hover:opacity-100" />
+                                <div className="flex items-start gap-3">
+                                  <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                                    {iconSvg ? (
+                                      <span
+                                        className="inline-flex [&>svg]:w-5 [&>svg]:h-5"
+                                        dangerouslySetInnerHTML={{ __html: iconSvg }}
+                                      />
+                                    ) : (
+                                      <Icon name={iconId} className="h-5 w-5" />
+                                    )}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-base font-semibold text-base-content truncate">
+                                      {truncateLeafLabel(tag.lastSegment)}
+                                    </p>
+                                    <p className="mt-1 text-xs text-base-content/60">
+                                      {formatTagCount(tag.count)}
+                                    </p>
+                                  </div>
                                   <Icon
-                                    name={tagIcons[tag.name] || "tabler:hash"}
-                                    className="h-5 w-5"
+                                    name="tabler:chevron-right"
+                                    className="mt-1 h-4 w-4 flex-shrink-0 text-base-content/40 transition group-hover:text-primary"
                                   />
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-base font-semibold text-base-content truncate">
-                                    {truncateLeafLabel(tag.lastSegment)}
-                                  </p>
-                                  <p className="mt-1 text-xs text-base-content/60">
-                                    {formatTagCount(tag.count)}
-                                  </p>
                                 </div>
-                                <Icon
-                                  name="tabler:chevron-right"
-                                  className="mt-1 h-4 w-4 flex-shrink-0 text-base-content/40 transition group-hover:text-primary"
-                                />
-                              </div>
-                            </Link>
-                          ))}
+                              </Link>
+                            );
+                          })}
                         </div>
                       </div>
                     </section>
