@@ -8,7 +8,27 @@ import { buildMockRequestUrl } from "./url-builder";
  */
 export const createCaller = appRouter.createCaller;
 
-// 移除了 createSSRHelpers 函数，因为我们直接使用 createCaller
+export async function createSsrCaller() {
+  const mockRequestUrl = buildMockRequestUrl("/api/trpc");
+  const mockRequest = new Request(mockRequestUrl);
+  const mockHeaders = new Headers();
+
+  const ctx = await createContext({
+    req: mockRequest,
+    resHeaders: mockHeaders,
+    info: {
+      isBatchCall: false,
+      calls: [],
+      accept: "application/jsonl",
+      type: "query" as const,
+      connectionParams: {},
+      signal: new AbortController().signal,
+      url: new URL(mockRequestUrl),
+    },
+  });
+
+  return createCaller(ctx);
+}
 
 /**
  * 获取初始 memo 数据用于 SSR
@@ -16,26 +36,7 @@ export const createCaller = appRouter.createCaller;
 export async function getInitialMemos(
   options: { page?: number; limit?: number; publicOnly?: boolean } = {}
 ) {
-  // 创建模拟的请求对象用于 SSR
-  const mockRequestUrl = buildMockRequestUrl("/api/trpc");
-  const mockRequest = new Request(mockRequestUrl);
-  const mockHeaders = new Headers();
-
-  const caller = createCaller(
-    await createContext({
-      req: mockRequest,
-      resHeaders: mockHeaders,
-      info: {
-        isBatchCall: false,
-        calls: [],
-        accept: "application/jsonl",
-        type: "query" as const,
-        connectionParams: {},
-        signal: new AbortController().signal,
-        url: new URL(mockRequestUrl),
-      },
-    })
-  );
+  const caller = await createSsrCaller();
 
   try {
     const result = await caller.memos.list({

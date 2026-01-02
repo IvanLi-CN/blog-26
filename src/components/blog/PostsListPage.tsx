@@ -1,22 +1,44 @@
 "use client";
 
+import type { inferRouterOutputs } from "@trpc/server";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { trpc } from "../../lib/trpc";
+import type { AppRouter } from "../../server/router";
 import PageLayout from "../common/PageLayout";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import EmptyState from "../ui/EmptyState";
 import BlogList from "./BlogList";
 import BlogPagination from "./BlogPagination";
 
-export default function PostsListPage({ initialIsAdmin = false }: { initialIsAdmin?: boolean }) {
-  const [page, setPage] = useState(1);
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type PostsListOutput = RouterOutputs["posts"]["list"];
 
-  const { data, isLoading, error, refetch } = trpc.posts.list.useQuery({
-    page,
-    limit: 10, // 匹配旧项目的每页数量
-    published: true,
-  });
+export default function PostsListPage({
+  initialIsAdmin = false,
+  initialPosts,
+  tagIconMap,
+  tagIconSvgMap,
+}: {
+  initialIsAdmin?: boolean;
+  initialPosts?: PostsListOutput;
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
+}) {
+  const initialPage = initialPosts?.pagination?.page ?? 1;
+  const [page, setPage] = useState(initialPage);
+
+  const { data, isLoading, error, refetch } = trpc.posts.list.useQuery(
+    {
+      page,
+      limit: 10, // 匹配旧项目的每页数量
+      published: true,
+    },
+    {
+      initialData: page === initialPage ? initialPosts : undefined,
+    }
+  );
 
   const { isAdmin, isLoading: authLoading } = useAuth();
   const effectiveIsAdmin = authLoading ? initialIsAdmin : isAdmin;
@@ -27,7 +49,7 @@ export default function PostsListPage({ initialIsAdmin = false }: { initialIsAdm
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <PageLayout>
         <div className="flex justify-center items-center py-20">
@@ -84,6 +106,8 @@ export default function PostsListPage({ initialIsAdmin = false }: { initialIsAdm
                   : false,
             }))}
             isAdmin={effectiveIsAdmin}
+            tagIconMap={tagIconMap}
+            tagIconSvgMap={tagIconSvgMap}
           />
         ) : (
           <EmptyState

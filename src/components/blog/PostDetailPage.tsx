@@ -1,17 +1,20 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import type { inferRouterOutputs } from "@trpc/server";
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "../../config/site";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { resolveImagePath } from "../../lib/image-utils";
 import { trpc } from "../../lib/trpc";
+import type { AppRouter } from "../../server/router";
 import CommentSectionWithProvider from "../comments/CommentSectionWithProvider";
 import { useUserInfo } from "../comments/hooks";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import PageLayout from "../common/PageLayout";
 import StructuredData from "../seo/StructuredData";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import ArticleLicense from "./ArticleLicense";
 import PostReactions from "./PostReactions";
 import PostStatus from "./PostStatus";
@@ -22,19 +25,40 @@ import SocialShare from "./SocialShare";
 import ToBlogLink from "./ToBlogLink";
 import { resolvePostTiming } from "./time-utils";
 
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type PostGetOutput = RouterOutputs["posts"]["get"];
+type PostsRelatedOutput = RouterOutputs["posts"]["related"];
+
 interface PostDetailPageProps {
   slug: string;
+  initialPost?: PostGetOutput;
+  initialRelatedPosts?: PostsRelatedOutput;
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
 }
 
-export default function PostDetailPage({ slug }: PostDetailPageProps) {
-  const { data: post, isLoading, error } = trpc.posts.get.useQuery({ slug });
-  const { data: relatedPosts } = trpc.posts.related.useQuery({ slug, limit: 5 });
+export default function PostDetailPage({
+  slug,
+  initialPost,
+  initialRelatedPosts,
+  tagIconMap,
+  tagIconSvgMap,
+}: PostDetailPageProps) {
+  const {
+    data: post,
+    isLoading,
+    error,
+  } = trpc.posts.get.useQuery({ slug }, { initialData: initialPost });
+  const { data: relatedPosts } = trpc.posts.related.useQuery(
+    { slug, limit: 5 },
+    { initialData: initialRelatedPosts }
+  );
   const { userInfo } = useUserInfo();
 
   // 检查是否为管理员
   const isUserAdmin = userInfo?.isAdmin || false;
 
-  if (isLoading) {
+  if (isLoading && !post) {
     return (
       <PageLayout>
         <div className="flex justify-center items-center py-20">
@@ -256,7 +280,12 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
 
             {/* 标签单独一行 */}
             <div className="mb-4 mt-6">
-              <PostTags tags={post.tags || undefined} className="flex gap-1 flex-wrap" />
+              <PostTags
+                tags={post.tags || undefined}
+                className="flex gap-1 flex-wrap"
+                iconMap={tagIconMap}
+                iconSvgMap={tagIconSvgMap}
+              />
             </div>
 
             {/* 表态和分享在同一行，两端对齐 */}

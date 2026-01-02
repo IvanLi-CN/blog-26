@@ -38,6 +38,5 @@ export async function resolveTagIconSvgsForTags(
     iconIds.size > 0
       ? await fetchIconifySsrSvgs(Array.from(iconIds), { svgHeight: options.svgHeight ?? "12" })
       : {};
-
   return { iconMap, svgMap };
 }
