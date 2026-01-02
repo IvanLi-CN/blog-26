@@ -2,11 +2,16 @@
  * Memo 相关的自定义 hooks
  */
 
+import type { inferRouterOutputs } from "@trpc/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { trpc } from "../../lib/trpc";
+import type { AppRouter } from "../../server/router";
 import type { MemoCardData } from "./MemoCard";
 import type { MemoData } from "./MemoEditor";
 import type { QuickMemoData } from "./QuickMemoEditor";
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type MemosListOutput = RouterOutputs["memos"]["list"];
 
 // ============================================================================
 // useMemos Hook - 管理 memo 列表
@@ -21,14 +26,25 @@ export interface UseMemosOptions {
   initialSearch?: string;
   /** 初始标签过滤 */
   initialTag?: string;
+  /** SSR 初始数据（首屏） */
+  initialData?: MemosListOutput;
 }
 
 export function useMemos(options: UseMemosOptions = {}) {
-  const { limit = 10, publicOnly = true, initialSearch = "", initialTag = "" } = options;
+  const {
+    limit = 10,
+    publicOnly = true,
+    initialSearch = "",
+    initialTag = "",
+    initialData,
+  } = options;
 
   // 状态管理
   const [search, setSearch] = useState(initialSearch);
   const [tag, setTag] = useState(initialTag);
+
+  const shouldUseInitialData =
+    Boolean(initialData) && search === initialSearch && tag === initialTag;
 
   // tRPC 无限查询
   const {
@@ -49,6 +65,12 @@ export function useMemos(options: UseMemosOptions = {}) {
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
+      initialData: shouldUseInitialData
+        ? {
+            pages: [initialData as MemosListOutput],
+            pageParams: [undefined],
+          }
+        : undefined,
     }
   );
 

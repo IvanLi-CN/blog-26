@@ -1,19 +1,35 @@
 "use client";
 
+import type { inferRouterOutputs } from "@trpc/server";
 import { MemosApp } from "../../components/memos/MemosApp";
+import type { TagIconMap } from "../../components/tag-icons/tag-icon-client";
 import { useAuth } from "../../hooks/useAuth";
+import type { AppRouter } from "../../server/router";
 
 /**
  * Memos 页面内容组件
  *
  * 根据用户权限动态控制功能显示
  */
-export function MemosPageContent({ initialIsAdmin = false }: { initialIsAdmin?: boolean }) {
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type MemosListOutput = RouterOutputs["memos"]["list"];
+
+export function MemosPageContent({
+  initialIsAdmin = false,
+  initialMemos,
+  tagIconMap,
+  tagIconSvgMap,
+}: {
+  initialIsAdmin?: boolean;
+  initialMemos?: MemosListOutput;
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
+}) {
   const { isAdmin, isLoading } = useAuth();
   const effectiveIsAdmin = isLoading ? initialIsAdmin : isAdmin;
 
   // 加载中且无法判定为管理员时，仅显示列表骨架屏（避免闪烁）
-  if (isLoading && !initialIsAdmin) {
+  if (!initialMemos && isLoading && !initialIsAdmin) {
     return (
       <div className="space-y-6 sm:space-y-8">
         {/* 只显示 Memo 列表骨架屏，不显示快速编辑器骨架屏 */}
@@ -44,6 +60,9 @@ export function MemosPageContent({ initialIsAdmin = false }: { initialIsAdmin?: 
       publicOnly={!effectiveIsAdmin}
       showManageFeatures={effectiveIsAdmin}
       initialView="list"
+      initialData={initialMemos}
+      tagIconMap={tagIconMap}
+      tagIconSvgMap={tagIconSvgMap}
     />
   );
 }

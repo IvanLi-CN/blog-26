@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import PageLayout from "../../components/common/PageLayout";
 import { isAdminFromRequest } from "../../lib/auth";
+import { parseContentTags } from "../../lib/tag-parser";
+import { createSsrCaller } from "../../lib/trpc-ssr";
+import { resolveTagIconSvgsForTags } from "../../server/services/tag-icon-ssr";
 import { MemosPageContent } from "./MemosPageContent";
 
 /**
@@ -67,10 +70,84 @@ const structuredData = {
  *
  * TODO: 添加 SSR 支持以提升首屏加载性能
  */
-export default async function MemosPage() {
+function normalizeTags(raw: unknown): string[] {
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    return raw.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
+      }
+    } catch {
+      // ignore JSON parse errors and fall back to comma-separated parsing
+    }
+
+    return trimmed
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }
+
+  return [];
+}
+
+function readSearchParam(
+  value: string | string[] | undefined,
+  options: { maxLength?: number } = {}
+): string {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  const maxLength = options.maxLength ?? 200;
+  if (trimmed.length <= maxLength) return trimmed;
+  return trimmed.slice(0, maxLength);
+}
+
+interface PageProps {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function MemosPage({ searchParams }: PageProps) {
   // SSR 判定是否为管理员，用于首屏快速展示管理功能，避免客户端首次请求延迟
   const h = await headers();
   const initialIsAdmin = await isAdminFromRequest(h);
+
+  const sp = (await searchParams) ?? {};
+  const initialSearch = readSearchParam(sp.search);
+  const initialTag = readSearchParam(sp.tag);
+
+  const caller = await createSsrCaller();
+  const initialMemos = await caller.memos.list({
+    limit: 20,
+    publicOnly: true,
+    search: initialSearch || undefined,
+    tag: initialTag || undefined,
+  });
+
+  const SSR_ICON_MEMO_COUNT = 8;
+  const tagsForSsrIcons = (initialMemos.memos ?? [])
+    .slice(0, SSR_ICON_MEMO_COUNT)
+    .flatMap((memo) => {
+      const parsed = parseContentTags(String((memo as { content?: unknown }).content ?? ""));
+      const inlineTags = parsed.tags.map((tag) => tag.name);
+      const storedTags = normalizeTags((memo as { tags?: unknown }).tags);
+      return Array.from(new Set<string>([...inlineTags, ...storedTags]));
+    });
+
+  const { iconMap, svgMap } = await resolveTagIconSvgsForTags(
+    Array.from(new Set(tagsForSsrIcons)),
+    {
+      svgHeight: "12",
+      includeHashFallback: true,
+    }
+  );
 
   return (
     <PageLayout>
@@ -95,7 +172,12 @@ export default async function MemosPage() {
         </div>
 
         {/* Memos 应用 - 根据用户权限动态显示功能 */}
-        <MemosPageContent initialIsAdmin={initialIsAdmin} />
+        <MemosPageContent
+          initialIsAdmin={initialIsAdmin}
+          initialMemos={initialMemos}
+          tagIconMap={iconMap}
+          tagIconSvgMap={svgMap}
+        />
       </section>
     </PageLayout>
   );
