@@ -10,6 +10,7 @@ import { optimizeForPreview } from "../../lib/markdown-utils";
 import { formatRelativeTime } from "../../lib/utils";
 import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import Icon from "../ui/Icon";
 
 interface TimelineItemProps {
@@ -27,11 +28,19 @@ interface TimelineItemProps {
     permalink?: string;
     dataSource?: string;
   };
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
   isLast?: boolean;
   loading?: boolean;
 }
 
-export default function TimelineItem({ item, isLast = false, loading = false }: TimelineItemProps) {
+export default function TimelineItem({
+  item,
+  tagIconMap,
+  tagIconSvgMap,
+  isLast = false,
+  loading = false,
+}: TimelineItemProps) {
   const connectorRef = useRef<HTMLDivElement>(null);
   const { isAdmin } = useAuth();
 
@@ -251,7 +260,12 @@ export default function TimelineItem({ item, isLast = false, loading = false }: 
 
               {/* 标签：统一使用共享 PostTags（posts 表内容包含 memo） */}
               {item.tags && item.tags.length > 0 && (
-                <PostTags tags={item.tags.slice(0, 3)} className="flex flex-wrap gap-1 mt-3" />
+                <PostTags
+                  tags={item.tags.slice(0, 3)}
+                  className="flex flex-wrap gap-1 mt-3"
+                  iconMap={tagIconMap}
+                  iconSvgMap={tagIconSvgMap}
+                />
               )}
             </div>
           </div>

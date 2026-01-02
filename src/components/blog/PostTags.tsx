@@ -18,6 +18,7 @@ interface PostTagsProps {
   title?: string;
   isCategory?: boolean;
   iconMap?: TagIconMap;
+  iconSvgMap?: Record<string, string | null>;
 }
 
 // 默认统一为 Hash 图标（post 内容标签显示规则）
@@ -56,6 +57,7 @@ export default function PostTags({
   className = "flex gap-1 flex-wrap",
   title,
   iconMap,
+  iconSvgMap,
 }: PostTagsProps) {
   const [resolvedIcons, setResolvedIcons] = useState<TagIconMap>({});
 
@@ -151,6 +153,12 @@ export default function PostTags({
             (normalizedTagPath ? iconMap?.[normalizedTagPath] : undefined) ??
             (normalizedTagPath ? resolvedIcons[normalizedTagPath] : undefined) ??
             null;
+          const resolvedSvg =
+            resolvedIcon && iconSvgMap ? (iconSvgMap[resolvedIcon] ?? null) : null;
+          const hashSvg = iconSvgMap ? (iconSvgMap["tabler:hash"] ?? null) : null;
+          const iconFallbackName = resolvedIcon ?? "tabler:hash";
+          const iconSvg = resolvedSvg ?? hashSvg;
+          const shouldRenderInlineSvg = Boolean(iconSvg);
 
           return (
             <li key={tag.slug} className="inline">
@@ -166,7 +174,14 @@ export default function PostTags({
                   className={`flex items-center gap-1 ${isMultiLevel ? "font-semibold text-primary" : ""}`}
                 >
                   <span className="hidden sm:inline-block" aria-hidden>
-                    <Icon name={resolvedIcon ?? "tabler:hash"} className="w-3 h-3" />
+                    {shouldRenderInlineSvg && iconSvg ? (
+                      <span
+                        className="inline-flex [&>svg]:w-3 [&>svg]:h-3"
+                        dangerouslySetInnerHTML={{ __html: iconSvg }}
+                      />
+                    ) : (
+                      <Icon name={iconFallbackName} className="w-3 h-3" />
+                    )}
                   </span>
                   {String(lastSegment).replace(/^#/, "")}
                 </span>
