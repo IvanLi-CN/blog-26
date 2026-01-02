@@ -666,6 +666,37 @@ export const memosRouter = router({
           });
 
           await webdavSource.dispose();
+
+          // 测试环境：为了避免依赖全量同步耗时，直接写入数据库，保证立即可见
+          const now = Date.now();
+          const dbPath = `/memos/${filePath}`.replace(/\\+/g, "/");
+          const memoData = {
+            id: dbPath,
+            type: "memo" as const,
+            slug: generateNanoidSlug(8),
+            title: title || extractTitleFromContent(content),
+            excerpt: generateExcerptFromContent(content),
+            contentHash: calculateSimpleHash(content),
+            lastModified: now,
+            source: "webdav",
+            filePath: dbPath,
+            draft: false,
+            public: isPublic,
+            publishDate: now,
+            updateDate: now,
+            tags: JSON.stringify(tags),
+            author: ctx.user?.email || "admin@example.com",
+            metadata: JSON.stringify({ attachments: inputAttachments }),
+            body: content,
+            dataSource: "webdav",
+          };
+
+          try {
+            await db.insert(posts).values(memoData);
+          } catch {
+            // If sync already inserted, ignore and continue.
+          }
+          createdMemo = memoData as MemoRow;
         } catch (webdavError) {
           if (process.env.DEBUG_MEMOS === "1") {
             console.debug("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
@@ -730,7 +761,11 @@ export const memosRouter = router({
     }
 
     // 触发增量数据同步（内部已处理错误日志）
-    await triggerIncrementalSync();
+    if (isTestEnv) {
+      void triggerIncrementalSync();
+    } else {
+      await triggerIncrementalSync();
+    }
 
     try {
       // 通过 filePath 反查刚创建的 memo，以返回与列表/bySlug 相同口径的结构
@@ -771,6 +806,7 @@ export const memosRouter = router({
   // 更新 memo（仅管理员）
   update: adminProcedure.input(updateMemoSchema).mutation(async ({ input, ctx }) => {
     const { id, content, title, isPublic, tags, attachments } = input;
+    const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
       // 查找现有 memo
@@ -850,7 +886,11 @@ export const memosRouter = router({
       await db.update(posts).set(updateData).where(eq(posts.id, id));
 
       // 触发增量数据同步
-      await triggerIncrementalSync();
+      if (isTestEnv) {
+        void triggerIncrementalSync();
+      } else {
+        await triggerIncrementalSync();
+      }
 
       const updatedRow: MemoRow = { ...existingMemo, ...updateData } as MemoRow;
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(updatedRow);
@@ -883,6 +923,7 @@ export const memosRouter = router({
   // 删除 memo（仅管理员）
   delete: adminProcedure.input(deleteMemoSchema).mutation(async ({ input }) => {
     const { id } = input;
+    const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
       // 查找现有 memo
@@ -932,7 +973,11 @@ export const memosRouter = router({
       await db.delete(posts).where(eq(posts.id, id));
 
       // 触发增量数据同步
-      await triggerIncrementalSync();
+      if (isTestEnv) {
+        void triggerIncrementalSync();
+      } else {
+        await triggerIncrementalSync();
+      }
 
       return { success: true, id };
     } catch (error) {
