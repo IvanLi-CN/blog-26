@@ -99,7 +99,15 @@ export function QuickMemoEditor({
         }
         // removed verbose editor debug logs
 
-        // 不再从 DOM textContent 兜底读取，以免丢失 Markdown 语义（列表/换行等）
+        // 兜底：Milkdown 的内容更新是异步的；当 state/ref 还没跟上但按钮已可点时，
+        // 避免提交空内容（会导致 memos.create 400）。
+        if (!processedContent && hasEditorContent && containerRef.current) {
+          const prose = containerRef.current.querySelector(".ProseMirror") as HTMLElement | null;
+          const text = (prose?.textContent || "").trim();
+          if (text) {
+            processedContent = text;
+          }
+        }
 
         if (editorRef.current) {
           // removed verbose editor debug logs
