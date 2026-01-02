@@ -1,37 +1,9 @@
-import { iconToSVG } from "@iconify/utils/lib/svg/build";
+import type { ExtendedIconifyIcon, IconifyJSON } from "@iconify/types";
+import { getIconData, iconToSVG } from "@iconify/utils";
 import { getAllowedPrefixes, isValidIconId } from "@/lib/icons/aliases";
 
-type IconifyIcon = {
-  body: string;
-  left?: number;
-  top?: number;
-  width?: number;
-  height?: number;
-  rotate?: number;
-  hFlip?: boolean;
-  vFlip?: boolean;
-};
-
-type IconifyAlias = {
-  parent: string;
-  left?: number;
-  top?: number;
-  width?: number;
-  height?: number;
-  rotate?: number;
-  hFlip?: boolean;
-  vFlip?: boolean;
-};
-
-type IconifyIconSetResponse = {
-  prefix?: string;
-  icons?: Record<string, IconifyIcon>;
-  aliases?: Record<string, IconifyAlias>;
+type IconifyIconSetResponse = IconifyJSON & {
   not_found?: string[];
-  left?: number;
-  top?: number;
-  width?: number;
-  height?: number;
 };
 
 type CacheEntry = { value: string | null; expiresAt: number };
@@ -237,73 +209,14 @@ async function fetchIconifyIconSet(
   }
 }
 
-function resolveIconData(iconSet: IconifyIconSetResponse, name: string): IconifyIcon | null {
-  const icon = iconSet.icons?.[name];
-  if (icon && typeof icon.body === "string") {
-    return withIconSetDefaults(iconSet, icon);
-  }
-
-  const alias = iconSet.aliases?.[name];
-  if (!alias || typeof alias.parent !== "string") return null;
-
-  const resolved = resolveAlias(iconSet, name, new Set());
-  return resolved ? withIconSetDefaults(iconSet, resolved) : null;
-}
-
-function resolveAlias(
+function resolveIconData(
   iconSet: IconifyIconSetResponse,
-  name: string,
-  visited: Set<string>
-): IconifyIcon | null {
-  if (visited.has(name)) return null;
-  visited.add(name);
-
-  const icon = iconSet.icons?.[name];
-  if (icon && typeof icon.body === "string") return { ...icon };
-
-  const alias = iconSet.aliases?.[name];
-  if (!alias || typeof alias.parent !== "string") return null;
-
-  const parent = resolveAlias(iconSet, alias.parent, visited);
-  if (!parent) return null;
-
-  return mergeAlias(parent, alias);
+  name: string
+): ExtendedIconifyIcon | null {
+  return getIconData(iconSet, name);
 }
 
-function mergeAlias(base: IconifyIcon, alias: IconifyAlias): IconifyIcon {
-  const merged: IconifyIcon = { ...base };
-
-  if (typeof alias.left === "number") merged.left = alias.left;
-  if (typeof alias.top === "number") merged.top = alias.top;
-  if (typeof alias.width === "number") merged.width = alias.width;
-  if (typeof alias.height === "number") merged.height = alias.height;
-
-  const baseRotate = typeof merged.rotate === "number" ? merged.rotate : 0;
-  if (typeof alias.rotate === "number" && Number.isFinite(alias.rotate)) {
-    const next = baseRotate + alias.rotate;
-    merged.rotate = ((next % 4) + 4) % 4;
-  }
-
-  if (alias.hFlip === true) merged.hFlip = !(merged.hFlip ?? false);
-  if (alias.vFlip === true) merged.vFlip = !(merged.vFlip ?? false);
-
-  return merged;
-}
-
-function withIconSetDefaults(iconSet: IconifyIconSetResponse, icon: IconifyIcon): IconifyIcon {
-  const widthFallback = typeof iconSet.width === "number" ? iconSet.width : 16;
-  const heightFallback = typeof iconSet.height === "number" ? iconSet.height : 16;
-
-  return {
-    ...icon,
-    left: typeof icon.left === "number" ? icon.left : (iconSet.left ?? 0),
-    top: typeof icon.top === "number" ? icon.top : (iconSet.top ?? 0),
-    width: typeof icon.width === "number" ? icon.width : widthFallback,
-    height: typeof icon.height === "number" ? icon.height : heightFallback,
-  };
-}
-
-function iconDataToSvg(icon: IconifyIcon, customisations: { height: string }): string {
+function iconDataToSvg(icon: ExtendedIconifyIcon, customisations: { height: string }): string {
   const { attributes, body } = iconToSVG(icon, customisations);
   return `<svg ${serialiseSvgAttributes({
     xmlns: "http://www.w3.org/2000/svg",
