@@ -68,7 +68,9 @@ const structuredData = {
  * 完全匹配旧项目 (Astro) 的闪念列表页面样式和布局
  * 包括页面标题、QuickMemoEditor 和时间线样式的 memo 列表
  *
- * TODO: 添加 SSR 支持以提升首屏加载性能
+ * SSR:
+ * - 首屏预取 memo 列表，避免骨架屏作为主内容
+ * - 仅为首屏可见 memo 的标签按需批量解析并内联 SVG 图标
  */
 function normalizeTags(raw: unknown): string[] {
   if (!raw) return [];
