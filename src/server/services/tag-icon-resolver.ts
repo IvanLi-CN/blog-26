@@ -144,10 +144,8 @@ export async function resolveTagIconsForTags(
     const icon =
       sanitizeIconId(exactPath?.icon ?? null, allowedPrefixes) ??
       bestIconByLowerId.get(req.tagPath.toLowerCase()) ??
-      null ??
       sanitizeIconId(exactLeaf?.icon ?? null, allowedPrefixes) ??
       bestIconByLowerId.get(req.leaf.toLowerCase()) ??
-      null ??
       null;
 
     out[req.tagPath] = icon;
