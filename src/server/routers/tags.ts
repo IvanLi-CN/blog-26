@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { posts } from "@/lib/schema";
 import { toMsTimestamp } from "@/lib/utils";
+import { resolveTagIconsForTags } from "@/server/services/tag-icon-resolver";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
 const timelineSchema = z.object({
@@ -163,4 +164,16 @@ export const tagsRouter = createTRPCRouter({
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to load timeline" });
     }
   }),
+
+  icons: publicProcedure
+    .input(
+      z.object({
+        tags: z.array(z.string()).max(200),
+      })
+    )
+    .query(async ({ input }) => {
+      const deduped = Array.from(new Set(input.tags));
+      const icons = await resolveTagIconsForTags(deduped);
+      return { icons };
+    }),
 });
