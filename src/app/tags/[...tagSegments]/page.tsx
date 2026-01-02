@@ -3,13 +3,17 @@ import { notFound } from "next/navigation";
 import PageLayout from "@/components/common/PageLayout";
 import Icon from "@/components/ui/Icon";
 import { buildTagHref } from "@/lib/tag-href";
-import { createCaller } from "@/lib/trpc-ssr";
-import { buildMockRequestUrl } from "@/lib/url-builder";
-import { createContext } from "@/server/context";
+import { createSsrCaller } from "@/lib/trpc-ssr";
+import { resolveTagIconSvgsForTags, TAG_ICON_HASH_FALLBACK } from "@/server/services/tag-icon-ssr";
 import { formatUnknownError } from "@/utils/error-format";
 import TagTimeline from "./TagTimeline";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 20;
+
+type SsrCaller = Awaited<ReturnType<typeof createSsrCaller>>;
+type TimelinePage = Awaited<ReturnType<SsrCaller["tags"]["timeline"]>>;
 
 interface PageProps {
   params: Promise<{ tagSegments?: string[] }>;
@@ -27,13 +31,6 @@ function buildTagPath(tagSegments: string[] | undefined) {
     .join("/");
 }
 
-async function getTrpcCaller() {
-  const mockRequestUrl = buildMockRequestUrl("/api/trpc");
-  const req = new Request(mockRequestUrl);
-  const resHeaders = new Headers();
-  return createCaller(await createContext({ req, resHeaders }));
-}
-
 export default async function TagDetailPage({ params }: PageProps) {
   const { tagSegments } = await params;
   const tagPath = buildTagPath(tagSegments);
@@ -45,16 +42,16 @@ export default async function TagDetailPage({ params }: PageProps) {
   const segments = tagPath.split("/").filter(Boolean);
   const leafTag = segments.at(-1) ?? tagPath;
   let queryTagPath = tagPath;
-  let hasAnyContent = false;
+  let initialTimelinePage: TimelinePage | null = null;
 
   try {
-    const caller = await getTrpcCaller();
+    const caller = await createSsrCaller();
     const candidates = [tagPath, `#${tagPath}`];
     for (const candidate of candidates) {
-      const firstPage = await caller.tags.timeline({ tagPath: candidate, limit: 1 });
-      if (firstPage.items.length > 0) {
+      const page = await caller.tags.timeline({ tagPath: candidate, limit: PAGE_SIZE });
+      if (page.items.length > 0) {
         queryTagPath = candidate;
-        hasAnyContent = true;
+        initialTimelinePage = page;
         break;
       }
     }
@@ -63,10 +60,25 @@ export default async function TagDetailPage({ params }: PageProps) {
     return renderTagPageError(leafTag, error);
   }
 
-  if (!hasAnyContent) {
+  if (!initialTimelinePage || initialTimelinePage.items.length === 0) {
     // 未找到该标签（含子标签）对应的公开内容，返回 404，避免产生可抓取的空页面
     notFound();
   }
+
+  const iconTagPaths = new Set<string>();
+  iconTagPaths.add(tagPath);
+  for (const item of initialTimelinePage.items) {
+    for (const tag of item.tags?.slice(0, 3) ?? []) {
+      iconTagPaths.add(tag);
+    }
+  }
+  const { iconMap: tagIconMap, svgMap: tagIconSvgMap } = await resolveTagIconSvgsForTags(
+    Array.from(iconTagPaths),
+    { svgHeight: "20" }
+  );
+  const resolvedHeaderIcon = tagIconMap[tagPath] ?? null;
+  const headerIconId = resolvedHeaderIcon ?? TAG_ICON_HASH_FALLBACK;
+  const headerIconSvg = tagIconSvgMap[headerIconId] ?? null;
 
   const breadcrumbItems = segments.map((segment, index) => {
     const partialPath = segments.slice(0, index + 1).join("/");
@@ -97,7 +109,14 @@ export default async function TagDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between mb-8">
           <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <Icon name="tabler:hash" className="w-5 h-5 text-primary" />
+              {headerIconSvg ? (
+                <span
+                  className="inline-flex text-primary [&>svg]:w-5 [&>svg]:h-5"
+                  dangerouslySetInnerHTML={{ __html: headerIconSvg }}
+                />
+              ) : (
+                <Icon name={headerIconId} className="w-5 h-5 text-primary" />
+              )}
               <span className="truncate">{leafTag}</span>
             </h1>
             <p className="mt-2 text-sm text-base-content/60 truncate">#{tagPath}</p>
@@ -114,7 +133,12 @@ export default async function TagDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <TagTimeline tagPath={queryTagPath} />
+        <TagTimeline
+          tagPath={queryTagPath}
+          initialPage={initialTimelinePage}
+          tagIconMap={tagIconMap}
+          tagIconSvgMap={tagIconSvgMap}
+        />
       </section>
     </PageLayout>
   );

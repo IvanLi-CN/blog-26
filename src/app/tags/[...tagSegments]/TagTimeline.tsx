@@ -1,7 +1,9 @@
 "use client";
 
+import type { InfiniteData } from "@tanstack/react-query";
 import { useMemo } from "react";
 import TimelineItem from "@/components/home/TimelineItem";
+import type { TagIconMap } from "@/components/tag-icons/tag-icon-client";
 import Icon from "@/components/ui/Icon";
 import { trpc as api } from "@/lib/trpc";
 
@@ -9,11 +11,43 @@ const PAGE_SIZE = 20;
 
 type TimelineUiItem = Parameters<typeof TimelineItem>[0]["item"];
 
-export default function TagTimeline({ tagPath }: { tagPath: string }) {
+type TimelinePage = {
+  items: Array<{
+    type: "post" | "memo";
+    id: string;
+    slug: string;
+    title: string;
+    excerpt?: string;
+    content?: string;
+    publishDate: string;
+    tags: string[];
+    image?: string;
+    dataSource?: string;
+  }>;
+  nextCursor?: string;
+  hasMore: boolean;
+};
+
+export default function TagTimeline({
+  tagPath,
+  initialPage,
+  tagIconMap,
+  tagIconSvgMap,
+}: {
+  tagPath: string;
+  initialPage?: TimelinePage;
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
+}) {
+  const initialData: InfiniteData<TimelinePage, string | undefined> | undefined = useMemo(() => {
+    if (!initialPage) return undefined;
+    return { pages: [initialPage], pageParams: [undefined] };
+  }, [initialPage]);
+
   const { data, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     api.tags.timeline.useInfiniteQuery(
       { tagPath, limit: PAGE_SIZE },
-      { getNextPageParam: (lastPage) => lastPage.nextCursor }
+      { getNextPageParam: (lastPage) => lastPage.nextCursor, initialData }
     );
 
   const timelineItems = useMemo<TimelineUiItem[]>(() => {
@@ -74,6 +108,8 @@ export default function TagTimeline({ tagPath }: { tagPath: string }) {
             <TimelineItem
               key={`${item.type}-${item.id}`}
               item={item}
+              tagIconMap={tagIconMap}
+              tagIconSvgMap={tagIconSvgMap}
               isLast={index === timelineItems.length - 1 && !hasNextPage}
             />
           ))
