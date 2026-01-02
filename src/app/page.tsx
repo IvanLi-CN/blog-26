@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import HomePage from "../components/home/HomePage";
 import { createSsrCaller } from "../lib/trpc-ssr";
 import { resolveTagIconSvgsForTags } from "../server/services/tag-icon-ssr";
@@ -32,7 +33,8 @@ function normalizeTags(raw: unknown): string[] {
 }
 
 export default async function Home() {
-  const caller = await createSsrCaller();
+  const h = await headers();
+  const caller = await createSsrCaller(h);
   const [postsData, memosData] = await Promise.all([
     caller.posts.list({ page: 1, limit: 10, published: true }),
     caller.memos.list({ limit: 5, publicOnly: true }),

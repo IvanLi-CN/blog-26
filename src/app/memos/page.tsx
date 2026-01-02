@@ -125,7 +125,7 @@ export default async function MemosPage({ searchParams }: PageProps) {
   const initialSearch = readSearchParam(sp.search);
   const initialTag = readSearchParam(sp.tag);
 
-  const caller = await createSsrCaller();
+  const caller = await createSsrCaller(h);
   const initialMemos = await caller.memos.list({
     limit: 20,
     publicOnly: true,

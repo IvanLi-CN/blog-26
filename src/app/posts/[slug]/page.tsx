@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import PostDetailPage from "../../../components/blog/PostDetailPage";
 import { SITE } from "../../../config/site";
@@ -88,7 +89,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PostPage({ params }: Props) {
   const { slug } = await params;
 
-  const caller = await createSsrCaller();
+  const h = await headers();
+  const caller = await createSsrCaller(h);
 
   let post: Awaited<ReturnType<(typeof caller)["posts"]["get"]>> | undefined;
   try {

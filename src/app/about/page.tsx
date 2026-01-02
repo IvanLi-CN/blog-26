@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import AboutPage from "../../components/blog/AboutPage";
 import { createSsrCaller } from "../../lib/trpc-ssr";
 
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function About() {
-  const caller = await createSsrCaller();
+  const h = await headers();
+  const caller = await createSsrCaller(h);
   const stats = await caller.posts.stats().catch(() => undefined);
   return <AboutPage stats={stats} />;
 }

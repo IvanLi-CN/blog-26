@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { MemoDetailPage } from "../../../components/memos/MemoDetailPage";
 import { parseContentTags } from "../../../lib/tag-parser";
 import { createSsrCaller } from "../../../lib/trpc-ssr";
@@ -94,7 +95,8 @@ export default async function MemoPage({ params }: MemoPageProps) {
   // 等待 params
   const { slug } = await params;
 
-  const caller = await createSsrCaller();
+  const h = await headers();
+  const caller = await createSsrCaller(h);
   let initialMemo: Awaited<ReturnType<(typeof caller)["memos"]["bySlug"]>> | undefined;
   try {
     initialMemo = await caller.memos.bySlug({ slug });

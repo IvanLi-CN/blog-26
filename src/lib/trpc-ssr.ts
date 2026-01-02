@@ -1,5 +1,9 @@
+import "server-only";
+
+import { cookies } from "next/headers";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
+import { SESSION_COOKIE_NAME } from "./session";
 import { buildMockRequestUrl } from "./url-builder";
 
 /**
@@ -8,9 +12,21 @@ import { buildMockRequestUrl } from "./url-builder";
  */
 export const createCaller = appRouter.createCaller;
 
-export async function createSsrCaller() {
+export async function createSsrCaller(requestHeaders?: HeadersInit) {
   const mockRequestUrl = buildMockRequestUrl("/api/trpc");
-  const mockRequest = new Request(mockRequestUrl);
+  const mergedHeaders = new Headers(requestHeaders);
+
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    if (sessionCookie && !mergedHeaders.has("cookie")) {
+      mergedHeaders.set("cookie", `${SESSION_COOKIE_NAME}=${sessionCookie}`);
+    }
+  } catch {
+    // ignore when cookies() is unavailable (e.g. build-time)
+  }
+
+  const mockRequest = new Request(mockRequestUrl, { headers: mergedHeaders });
   const mockHeaders = new Headers();
 
   const ctx = await createContext({

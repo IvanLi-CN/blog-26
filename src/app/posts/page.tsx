@@ -15,7 +15,7 @@ export default async function PostsPage() {
   const h = await headers();
   const initialIsAdmin = await isAdminFromRequest(h);
 
-  const caller = await createSsrCaller();
+  const caller = await createSsrCaller(h);
   const postsData = await caller.posts.list({ page: 1, limit: 10, published: true });
 
   const tagsForSsrIcons = (postsData.posts ?? []).flatMap((post) => post.tags ?? []);

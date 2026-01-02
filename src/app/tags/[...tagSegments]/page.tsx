@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageLayout from "@/components/common/PageLayout";
@@ -45,7 +46,8 @@ export default async function TagDetailPage({ params }: PageProps) {
   let initialTimelinePage: TimelinePage | null = null;
 
   try {
-    const caller = await createSsrCaller();
+    const h = await headers();
+    const caller = await createSsrCaller(h);
     const candidates = [tagPath, `#${tagPath}`];
     for (const candidate of candidates) {
       const page = await caller.tags.timeline({ tagPath: candidate, limit: PAGE_SIZE });
