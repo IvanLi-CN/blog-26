@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { MemoDetailPage } from "../../../components/memos/MemoDetailPage";
+import { parseContentTags } from "../../../lib/tag-parser";
+import { createSsrCaller } from "../../../lib/trpc-ssr";
+import { resolveTagIconSvgsForTags } from "../../../server/services/tag-icon-ssr";
 
 /**
  * Memo 详情页面
@@ -58,9 +61,59 @@ export async function generateStaticParams() {
   return [];
 }
 
+function normalizeTags(raw: unknown): string[] {
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    return raw.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((tag) => String(tag).trim()).filter((tag) => tag.length > 0);
+      }
+    } catch {
+      // ignore JSON parse errors and fall back to comma-separated parsing
+    }
+
+    return trimmed
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }
+
+  return [];
+}
+
 export default async function MemoPage({ params }: MemoPageProps) {
   // 等待 params
   const { slug } = await params;
+
+  const caller = await createSsrCaller();
+  let initialMemo: Awaited<ReturnType<(typeof caller)["memos"]["bySlug"]>> | undefined;
+  try {
+    initialMemo = await caller.memos.bySlug({ slug });
+  } catch {
+    initialMemo = undefined;
+  }
+
+  const parsed = parseContentTags(String((initialMemo as { content?: unknown })?.content ?? ""));
+  const inlineTags = parsed.tags.map((tag) => tag.name);
+  const storedTags = normalizeTags((initialMemo as { tags?: unknown })?.tags);
+  const derivedTags = Array.from(new Set<string>([...inlineTags, ...storedTags]));
+
+  const { iconMap, svgMap } =
+    derivedTags.length > 0
+      ? await resolveTagIconSvgsForTags(derivedTags, {
+          svgHeight: "12",
+          includeHashFallback: true,
+        })
+      : { iconMap: {}, svgMap: {} };
 
   // 简化的结构化数据
   const structuredData = {
@@ -92,7 +145,14 @@ export default async function MemoPage({ params }: MemoPageProps) {
 
       {/* 页面内容 */}
       <div className="container mx-auto px-4 py-8">
-        <MemoDetailPage slug={slug} showEditFeatures={false} className="max-w-4xl mx-auto" />
+        <MemoDetailPage
+          slug={slug}
+          initialData={initialMemo}
+          tagIconMap={iconMap}
+          tagIconSvgMap={svgMap}
+          showEditFeatures={false}
+          className="max-w-4xl mx-auto"
+        />
       </div>
     </>
   );

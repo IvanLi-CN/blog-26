@@ -141,13 +141,14 @@ export default async function MemosPage({ searchParams }: PageProps) {
       return Array.from(new Set<string>([...inlineTags, ...storedTags]));
     });
 
-  const { iconMap, svgMap } = await resolveTagIconSvgsForTags(
-    Array.from(new Set(tagsForSsrIcons)),
-    {
-      svgHeight: "12",
-      includeHashFallback: true,
-    }
-  );
+  const uniqueTagsForSsrIcons = Array.from(new Set(tagsForSsrIcons));
+  const { iconMap, svgMap } =
+    uniqueTagsForSsrIcons.length > 0
+      ? await resolveTagIconSvgsForTags(uniqueTagsForSsrIcons, {
+          svgHeight: "12",
+          includeHashFallback: true,
+        })
+      : { iconMap: {}, svgMap: {} };
 
   return (
     <PageLayout>
