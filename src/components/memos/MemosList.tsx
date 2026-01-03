@@ -10,6 +10,7 @@
 
 import { useCallback } from "react";
 import { cn } from "../../lib/utils";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import EmptyState from "../ui/EmptyState";
 import { MemoCard, type MemoCardData } from "./MemoCard";
 
@@ -34,6 +35,10 @@ export interface MemosListProps {
   error?: any;
   /** 样式类名 */
   className?: string;
+  /** SSR 标签图标映射（tagPath -> iconId） */
+  tagIconMap?: TagIconMap;
+  /** SSR 标签图标 SVG（iconId -> svg） */
+  tagIconSvgMap?: Record<string, string | null>;
 
   // 保留这些参数以兼容现有调用，但不使用
   onSearch?: (query: string) => void;
@@ -54,6 +59,8 @@ export function MemosList({
   showManageButtons = false,
   showVisibilityIndicator = true,
   className,
+  tagIconMap,
+  tagIconSvgMap,
   // 忽略这些不需要的参数
   onSearch: _onSearch,
   onTagFilter: _onTagFilter,
@@ -144,6 +151,8 @@ export function MemosList({
               showEditButton={showManageButtons}
               showDeleteButton={showManageButtons}
               showVisibilityIndicator={showVisibilityIndicator}
+              tagIconMap={tagIconMap}
+              tagIconSvgMap={tagIconSvgMap}
             />
           ))}
         </div>

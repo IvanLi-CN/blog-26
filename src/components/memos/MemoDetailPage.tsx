@@ -6,6 +6,7 @@
  * 展示单个 memo 的详细内容，支持编辑功能
  */
 
+import type { inferRouterOutputs } from "@trpc/server";
 import {
   ArrowLeft,
   Calendar,
@@ -28,8 +29,10 @@ import { useAuth } from "../../hooks/useAuth";
 import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { trpc } from "../../lib/trpc";
 import { cn, formatRelativeTime } from "../../lib/utils";
+import type { AppRouter } from "../../server/router";
 import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
 import {
@@ -40,15 +43,22 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import AnomalyIndicator from "./AnomalyIndicator";
-import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
+
 // 不在界面上解释时间来源，因此无需 fallback 标签映射
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type MemoDetailOutput = RouterOutputs["memos"]["bySlug"];
 
 export interface MemoDetailPageProps {
   /** Memo slug */
   slug: string;
   /** 初始数据（SSR） */
-  initialData?: MemoCardData;
+  initialData?: MemoDetailOutput;
+  /** SSR 标签图标映射（tagPath -> iconId） */
+  tagIconMap?: TagIconMap;
+  /** SSR 标签图标 SVG（iconId -> svg） */
+  tagIconSvgMap?: Record<string, string | null>;
   /** 是否显示编辑功能 */
   showEditFeatures?: boolean;
   /** 样式类名 */
@@ -57,7 +67,9 @@ export interface MemoDetailPageProps {
 
 export function MemoDetailPage({
   slug,
-  initialData: _initialData,
+  initialData,
+  tagIconMap,
+  tagIconSvgMap,
   showEditFeatures = false,
   className,
 }: MemoDetailPageProps) {
@@ -77,6 +89,7 @@ export function MemoDetailPage({
   } = trpc.memos.bySlug.useQuery(
     { slug },
     {
+      initialData,
       refetchOnMount: false,
     }
   );
@@ -356,7 +369,14 @@ export function MemoDetailPage({
 
       {/* 顶部：标签列表（统一使用 PostTags） */}
       <div className="mb-6">
-        {derivedTags.length > 0 && <PostTags tags={derivedTags} className="flex flex-wrap gap-2" />}
+        {derivedTags.length > 0 && (
+          <PostTags
+            tags={derivedTags}
+            className="flex flex-wrap gap-2"
+            iconMap={tagIconMap}
+            iconSvgMap={tagIconSvgMap}
+          />
+        )}
       </div>
 
       {/* 内容 */}

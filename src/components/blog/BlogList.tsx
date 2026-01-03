@@ -1,5 +1,6 @@
 "use client";
 
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import BlogListItem from "./BlogListItem";
 
 interface Post {
@@ -22,9 +23,11 @@ interface BlogListProps {
   posts: Post[];
   /** 可选的管理员标记（来自服务端首屏判定） */
   isAdmin?: boolean;
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
 }
 
-export default function BlogList({ posts, isAdmin }: BlogListProps) {
+export default function BlogList({ posts, isAdmin, tagIconMap, tagIconSvgMap }: BlogListProps) {
   return (
     <ul className="space-y-4 md:space-y-6">
       {posts.map((post, index) => (
@@ -33,7 +36,12 @@ export default function BlogList({ posts, isAdmin }: BlogListProps) {
           className="animate-fade-in-up"
           style={{ animationDelay: `${index * 100}ms` }}
         >
-          <BlogListItem post={post} forceIsAdmin={isAdmin} />
+          <BlogListItem
+            post={post}
+            forceIsAdmin={isAdmin}
+            tagIconMap={tagIconMap}
+            tagIconSvgMap={tagIconSvgMap}
+          />
         </li>
       ))}
     </ul>

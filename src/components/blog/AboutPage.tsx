@@ -1,12 +1,12 @@
-"use client";
-
+import type { inferRouterOutputs } from "@trpc/server";
 import Link from "next/link";
-import { trpc } from "../../lib/trpc";
+import type { AppRouter } from "../../server/router";
 import PageLayout from "../common/PageLayout";
 
-export default function AboutPage() {
-  const { data: stats } = trpc.posts.stats.useQuery();
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type PostsStatsOutput = RouterOutputs["posts"]["stats"];
 
+export default function AboutPage({ stats }: { stats?: PostsStatsOutput }) {
   return (
     <PageLayout>
       {/* Main Content */}
@@ -251,7 +251,7 @@ export default function AboutPage() {
                   <h3 className="card-title">📊 博客统计</h3>
                   <div className="stats stats-vertical shadow">
                     <div className="stat">
-                      <div className="stat-title">总文章数</div>
+                      <div className="stat-title">总内容数</div>
                       <div className="stat-value text-primary">{stats?.total || 0}</div>
                     </div>
                     <div className="stat">

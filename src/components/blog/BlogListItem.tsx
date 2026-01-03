@@ -6,6 +6,7 @@ import Link from "next/link";
 import { SITE } from "@/config/site";
 import { useAuth } from "../../hooks/useAuth";
 import { resolveImagePath } from "../../lib/image-utils";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import PostStatus from "./PostStatus";
 import PostTags from "./PostTags";
 import { resolvePostTiming } from "./time-utils";
@@ -36,9 +37,16 @@ interface BlogListItemProps {
   post: Post;
   /** 服务端已判定的管理员标记（可选） */
   forceIsAdmin?: boolean;
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
 }
 
-export default function BlogListItem({ post, forceIsAdmin }: BlogListItemProps) {
+export default function BlogListItem({
+  post,
+  forceIsAdmin,
+  tagIconMap,
+  tagIconSvgMap,
+}: BlogListItemProps) {
   const link = `/posts/${post.slug}`;
   const { isAdmin } = useAuth();
   const effectiveIsAdmin = typeof forceIsAdmin === "boolean" ? forceIsAdmin : isAdmin;
@@ -123,7 +131,14 @@ export default function BlogListItem({ post, forceIsAdmin }: BlogListItemProps) 
         {post.excerpt && <p className="flex-grow text-base-content/70 text-lg">{post.excerpt}</p>}
 
         <footer className="mt-auto pt-4 flex items-center gap-2">
-          {tags.length > 0 && <PostTags tags={tags} className="flex gap-1 flex-wrap" />}
+          {tags.length > 0 && (
+            <PostTags
+              tags={tags}
+              className="flex gap-1 flex-wrap"
+              iconMap={tagIconMap}
+              iconSvgMap={tagIconSvgMap}
+            />
+          )}
           {post.isVectorized && (
             <span
               className="ml-auto text-secondary/80 drop-shadow shrink-0"

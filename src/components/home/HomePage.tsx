@@ -1,16 +1,30 @@
 "use client";
 
+import type { inferRouterOutputs } from "@trpc/server";
 import Link from "next/link";
 import { SITE } from "../../config/site";
-import { trpc as api } from "../../lib/trpc";
 import { toMsTimestamp } from "../../lib/utils";
+import type { AppRouter } from "../../server/router";
 import PageLayout from "../common/PageLayout";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import Icon from "../ui/Icon";
 import ProjectCard from "./ProjectCard";
 import TimelineItem from "./TimelineItem";
 
 // 解析标签的辅助函数
-function parseTags(tagsJson: string | null): string[] {
+function parseTags(raw: unknown): string[] {
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((tag): tag is string => typeof tag === "string")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof raw !== "string") return [];
+
+  const tagsJson = raw.trim();
   if (!tagsJson) return [];
   try {
     const parsed = JSON.parse(tagsJson);
@@ -23,19 +37,23 @@ function parseTags(tagsJson: string | null): string[] {
   }
 }
 
-export default function HomePage() {
-  // 获取最新文章
-  const { data: postsData, isLoading: postsLoading } = api.posts.list.useQuery({
-    page: 1,
-    limit: 10,
-    published: true,
-  });
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type PostsListOutput = RouterOutputs["posts"]["list"];
+type MemosListOutput = RouterOutputs["memos"]["list"];
 
-  // 使用 tRPC 查询真实数据
-  const { data: memos, isLoading: memosLoading } = api.memos.list.useQuery({
-    limit: 5,
-    publicOnly: true,
-  });
+export default function HomePage({
+  initialPosts,
+  initialMemos,
+  tagIconMap,
+  tagIconSvgMap,
+}: {
+  initialPosts?: PostsListOutput;
+  initialMemos?: MemosListOutput;
+  tagIconMap?: TagIconMap;
+  tagIconSvgMap?: Record<string, string | null>;
+}) {
+  const postsData = initialPosts;
+  const memos = initialMemos;
 
   // 处理文章数据
   const processedPosts =
@@ -83,17 +101,6 @@ export default function HomePage() {
     { title: "性能监控系统", href: "/projects/performance", category: "监控" },
   ];
 
-  if (postsLoading || memosLoading) {
-    return (
-      <PageLayout>
-        <div className="flex justify-center items-center py-20">
-          <span className="loading loading-spinner loading-lg"></span>
-          <span className="ml-2">正在加载...</span>
-        </div>
-      </PageLayout>
-    );
-  }
-
   return (
     <PageLayout>
       {/* Hero Section */}
@@ -139,6 +146,8 @@ export default function HomePage() {
                 key={`${item.type}-${item.id}`}
                 item={item}
                 isLast={index === timelineItems.length - 1}
+                tagIconMap={tagIconMap}
+                tagIconSvgMap={tagIconSvgMap}
               />
             ))
           ) : (

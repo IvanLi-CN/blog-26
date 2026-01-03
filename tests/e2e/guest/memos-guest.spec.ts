@@ -19,8 +19,9 @@ test.describe("Memos 游客访问", () => {
       await route.continue();
     });
     await page.goto("/memos");
-    const loading = page.locator(".animate-pulse");
-    await expect(loading.first()).toBeVisible();
+    // /memos 已实现首屏 SSR，权限检查延迟不应阻塞主内容渲染
+    await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(".memos-list")).toBeVisible({ timeout: 10000 });
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
   });

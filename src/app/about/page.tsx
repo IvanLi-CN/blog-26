@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import AboutPage from "../../components/blog/AboutPage";
+import { createSsrCaller } from "../../lib/trpc-ssr";
 
 export const metadata: Metadata = {
   title: "关于我 - Ivan's Blog",
@@ -7,6 +9,9 @@ export const metadata: Metadata = {
   keywords: ["Ivan", "全栈开发", "Web开发", "技术博客", "关于"],
 };
 
-export default function About() {
-  return <AboutPage />;
+export default async function About() {
+  const h = await headers();
+  const caller = await createSsrCaller(h);
+  const stats = await caller.posts.stats().catch(() => undefined);
+  return <AboutPage stats={stats} />;
 }

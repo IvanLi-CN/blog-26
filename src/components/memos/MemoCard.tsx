@@ -23,6 +23,7 @@ import { detectContentAnomalies } from "../../lib/content-anomalies";
 import { formatRelativeTime } from "../../lib/utils";
 import PostTags from "../blog/PostTags";
 import MarkdownRenderer from "../common/MarkdownRenderer";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import AnomalyIndicator from "./AnomalyIndicator";
 
 export interface MemoCardProps {
@@ -46,6 +47,10 @@ export interface MemoCardProps {
   isLast?: boolean;
   /** 索引（用于时间线样式） */
   index?: number;
+  /** SSR 标签图标映射（tagPath -> iconId） */
+  tagIconMap?: TagIconMap;
+  /** SSR 标签图标 SVG（iconId -> svg） */
+  tagIconSvgMap?: Record<string, string | null>;
 }
 
 export interface MemoCardData {
@@ -103,6 +108,8 @@ export function MemoCard({
   className: _className,
   isLast = false,
   index: _index = 0,
+  tagIconMap,
+  tagIconSvgMap,
 }: MemoCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCollapsible, setIsCollapsible] = useState<boolean | null>(null);
@@ -508,7 +515,12 @@ export function MemoCard({
 
               {/* 标签显示：统一使用 PostTags（与 posts 表一致） */}
               {derivedTags.length > 0 && (
-                <PostTags tags={derivedTags} className="flex flex-wrap gap-1 mt-2 sm:mt-3" />
+                <PostTags
+                  tags={derivedTags}
+                  className="flex flex-wrap gap-1 mt-2 sm:mt-3"
+                  iconMap={tagIconMap}
+                  iconSvgMap={tagIconSvgMap}
+                />
               )}
             </div>
           </div>

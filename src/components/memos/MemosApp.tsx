@@ -10,10 +10,17 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
 import { cn } from "../../lib/utils";
+import type { TagIconMap } from "../tag-icons/tag-icon-client";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import ToastAlert from "../ui/ToastAlert";
-import { useInfiniteScroll, useMemoEditor, useMemos, useQuickMemo } from "./hooks";
+import {
+  type UseMemosOptions,
+  useInfiniteScroll,
+  useMemoEditor,
+  useMemos,
+  useQuickMemo,
+} from "./hooks";
 import type { MemoCardData } from "./MemoCard";
 import { type MemoData, MemoEditor } from "./MemoEditor";
 import { MemosErrorBoundary } from "./MemosErrorBoundary";
@@ -26,6 +33,12 @@ export interface MemosAppProps {
   showManageFeatures?: boolean;
   /** 是否只显示公开内容 */
   publicOnly?: boolean;
+  /** SSR 首屏初始数据 */
+  initialData?: UseMemosOptions["initialData"];
+  /** SSR 标签图标映射（tagPath -> iconId） */
+  tagIconMap?: TagIconMap;
+  /** SSR 标签图标 SVG（iconId -> svg） */
+  tagIconSvgMap?: Record<string, string | null>;
   /** 初始视图模式 */
   initialView?: "list" | "quick" | "editor";
   /** 样式类名 */
@@ -35,6 +48,9 @@ export interface MemosAppProps {
 export function MemosApp({
   showManageFeatures = false,
   publicOnly = true,
+  initialData,
+  tagIconMap,
+  tagIconSvgMap,
   className,
 }: MemosAppProps) {
   // 获取URL搜索参数
@@ -63,6 +79,7 @@ export function MemosApp({
     publicOnly,
     initialSearch,
     initialTag,
+    initialData,
   });
 
   const handleSaveSuccess = useCallback(() => {
@@ -252,6 +269,8 @@ export function MemosApp({
             showVisibilityIndicator={showManageFeatures}
             viewMode="timeline"
             error={error}
+            tagIconMap={tagIconMap}
+            tagIconSvgMap={tagIconSvgMap}
           />
         </MemosErrorBoundary>
       </div>

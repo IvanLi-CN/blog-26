@@ -1,5 +1,9 @@
+import "server-only";
+
+import { cookies } from "next/headers";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
+import { SESSION_COOKIE_NAME } from "./session";
 import { buildMockRequestUrl } from "./url-builder";
 
 /**
@@ -8,7 +12,39 @@ import { buildMockRequestUrl } from "./url-builder";
  */
 export const createCaller = appRouter.createCaller;
 
-// 移除了 createSSRHelpers 函数，因为我们直接使用 createCaller
+export async function createSsrCaller(requestHeaders?: HeadersInit) {
+  const mockRequestUrl = buildMockRequestUrl("/api/trpc");
+  const mergedHeaders = new Headers(requestHeaders);
+
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    if (sessionCookie && !mergedHeaders.has("cookie")) {
+      mergedHeaders.set("cookie", `${SESSION_COOKIE_NAME}=${sessionCookie}`);
+    }
+  } catch {
+    // ignore when cookies() is unavailable (e.g. build-time)
+  }
+
+  const mockRequest = new Request(mockRequestUrl, { headers: mergedHeaders });
+  const mockHeaders = new Headers();
+
+  const ctx = await createContext({
+    req: mockRequest,
+    resHeaders: mockHeaders,
+    info: {
+      isBatchCall: false,
+      calls: [],
+      accept: "application/jsonl",
+      type: "query" as const,
+      connectionParams: {},
+      signal: new AbortController().signal,
+      url: new URL(mockRequestUrl),
+    },
+  });
+
+  return createCaller(ctx);
+}
 
 /**
  * 获取初始 memo 数据用于 SSR
@@ -16,26 +52,7 @@ export const createCaller = appRouter.createCaller;
 export async function getInitialMemos(
   options: { page?: number; limit?: number; publicOnly?: boolean } = {}
 ) {
-  // 创建模拟的请求对象用于 SSR
-  const mockRequestUrl = buildMockRequestUrl("/api/trpc");
-  const mockRequest = new Request(mockRequestUrl);
-  const mockHeaders = new Headers();
-
-  const caller = createCaller(
-    await createContext({
-      req: mockRequest,
-      resHeaders: mockHeaders,
-      info: {
-        isBatchCall: false,
-        calls: [],
-        accept: "application/jsonl",
-        type: "query" as const,
-        connectionParams: {},
-        signal: new AbortController().signal,
-        url: new URL(mockRequestUrl),
-      },
-    })
-  );
+  const caller = await createSsrCaller();
 
   try {
     const result = await caller.memos.list({

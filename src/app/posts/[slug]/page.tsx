@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import PostDetailPage from "../../../components/blog/PostDetailPage";
 import { SITE } from "../../../config/site";
+import { createSsrCaller } from "../../../lib/trpc-ssr";
+import { resolveTagIconSvgsForTags } from "../../../server/services/tag-icon-ssr";
 
 interface Props {
   params: Promise<{
@@ -84,5 +88,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PostPage({ params }: Props) {
   const { slug } = await params;
-  return <PostDetailPage slug={slug} />;
+
+  const h = await headers();
+  const caller = await createSsrCaller(h);
+
+  let post: Awaited<ReturnType<(typeof caller)["posts"]["get"]>> | undefined;
+  try {
+    post = await caller.posts.get({ slug });
+  } catch {
+    notFound();
+  }
+
+  const relatedPosts = await caller.posts.related({ slug, limit: 5 }).catch(() => []);
+
+  const tagsForSsrIcons = Array.isArray(post?.tags) ? post.tags : [];
+  const { iconMap, svgMap } = await resolveTagIconSvgsForTags(tagsForSsrIcons, {
+    svgHeight: "12",
+    includeHashFallback: true,
+  });
+
+  return (
+    <PostDetailPage
+      slug={slug}
+      initialPost={post}
+      initialRelatedPosts={relatedPosts}
+      tagIconMap={iconMap}
+      tagIconSvgMap={svgMap}
+    />
+  );
 }
