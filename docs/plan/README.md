@@ -55,3 +55,4 @@
 | ID   | Title | Status | Plan | Last | Notes |
 |-----:|-------|--------|------|------|-------|
 | 0001 | 修复 Memos Markdown 主题对比度 | 已完成 | `0001:memos-content-contrast/PLAN.md` | 2026-01-16 | 统一暗色判定 + Markdown token 化 + E2E 覆盖 |
+| 0002 | 内容持久化相对路径（去 API 化，FS-only 准备） | 待实现 | `0002:content-relative-paths/PLAN.md` | 2026-01-16 | - |
