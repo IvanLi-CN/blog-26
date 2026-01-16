@@ -195,7 +195,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           if (isInline) {
             return (
               <code
-                className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono"
+                className="bg-base-200 text-base-content px-1 py-0.5 rounded text-sm font-mono"
                 {...props}
               >
                 {children}
@@ -237,49 +237,45 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 标题样式
         h1: ({ children }) => (
-          <h1 className="text-3xl font-bold mt-8 mb-6 first:mt-0 text-gray-900 dark:text-gray-100">
-            {children}
-          </h1>
+          <h1 className="text-3xl font-bold mt-8 mb-6 first:mt-0 text-base-content">{children}</h1>
         ),
         h2: ({ children }) => (
-          <h2 className="text-2xl font-semibold mt-8 mb-4 first:mt-0 text-gray-900 dark:text-gray-100">
+          <h2 className="text-2xl font-semibold mt-8 mb-4 first:mt-0 text-base-content">
             {children}
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="text-xl font-semibold mt-6 mb-3 first:mt-0 text-gray-900 dark:text-gray-100">
+          <h3 className="text-xl font-semibold mt-6 mb-3 first:mt-0 text-base-content">
             {children}
           </h3>
         ),
         h4: ({ children }) => (
-          <h4 className="text-lg font-semibold mt-6 mb-3 first:mt-0 text-gray-900 dark:text-gray-100">
+          <h4 className="text-lg font-semibold mt-6 mb-3 first:mt-0 text-base-content">
             {children}
           </h4>
         ),
         h5: ({ children }) => (
-          <h5 className="text-base font-semibold mt-4 mb-2 first:mt-0 text-gray-900 dark:text-gray-100">
+          <h5 className="text-base font-semibold mt-4 mb-2 first:mt-0 text-base-content">
             {children}
           </h5>
         ),
         h6: ({ children }) => (
-          <h6 className="text-sm font-semibold mt-4 mb-2 first:mt-0 text-gray-900 dark:text-gray-100">
+          <h6 className="text-sm font-semibold mt-4 mb-2 first:mt-0 text-base-content">
             {children}
           </h6>
         ),
 
         // 段落样式
-        p: ({ children }) => (
-          <p className="mb-4 leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>
-        ),
+        p: ({ children }) => <p className="mb-4 leading-relaxed text-base-content">{children}</p>,
 
         // 列表样式
         ul: ({ children }) => (
-          <ul className="list-disc list-outside pl-6 my-4 space-y-1 text-gray-700 dark:text-gray-300">
+          <ul className="list-disc list-outside pl-6 my-4 space-y-1 text-base-content">
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="list-decimal list-outside pl-6 my-4 space-y-1 text-gray-700 dark:text-gray-300">
+          <ol className="list-decimal list-outside pl-6 my-4 space-y-1 text-base-content">
             {children}
           </ol>
         ),
@@ -287,7 +283,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 引用样式
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-400 my-4 bg-gray-50 dark:bg-gray-800 py-2 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <blockquote className="border-l-4 border-primary/50 pl-4 italic text-base-content/80 my-4 bg-base-200 py-2 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             {children}
           </blockquote>
         ),
@@ -298,20 +294,20 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline transition-colors duration-200"
+            className="link link-primary break-words"
           >
             {children}
           </a>
         ),
 
         // 分割线样式
-        hr: () => <hr className="border-t border-gray-300 dark:border-gray-600 my-6" />,
+        hr: () => <hr className="border-t border-base-300 my-6" />,
 
         // 预格式化文本
         pre: ({ children, className, ...props }) => (
           <pre
             className={mergeClassNames(
-              "my-4 overflow-x-auto bg-gray-50 dark:bg-gray-900 rounded-lg",
+              "my-4 overflow-x-auto bg-base-200 border border-base-300 rounded-lg",
               className
             )}
             {...props}
@@ -325,7 +321,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
     // 如果没有内容，显示占位符
     if (!processedContent.trim()) {
-      return <div className="text-gray-500 italic text-center py-8">暂无内容</div>;
+      return <div className="text-base-content/50 italic text-center py-8">暂无内容</div>;
     }
 
     return (

@@ -96,9 +96,9 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   if (!isClient) {
     return (
       <div
-        className={`mermaid-container bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 my-4 ${className || ""}`}
+        className={`mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4 ${className || ""}`}
       >
-        <div className="flex items-center justify-center text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-center text-base-content/60">
           <span>正在加载图表...</span>
         </div>
       </div>
@@ -108,10 +108,10 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   if (isLoading) {
     return (
       <div
-        className={`mermaid-container bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 my-4 ${className || ""}`}
+        className={`mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4 ${className || ""}`}
       >
-        <div className="flex items-center justify-center text-gray-500 dark:text-gray-400">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-2"></div>
+        <div className="flex items-center justify-center text-base-content/60">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
           <span>正在渲染图表...</span>
         </div>
       </div>
@@ -121,16 +121,14 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   if (hasError) {
     return (
       <div
-        className={`mermaid-container bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 my-4 ${className || ""}`}
+        className={`mermaid-container bg-error/10 border border-error/30 rounded-lg p-6 my-4 ${className || ""}`}
       >
-        <div className="text-red-600 dark:text-red-400">
+        <div className="text-error">
           <h4 className="font-semibold mb-2">Mermaid 图表渲染失败</h4>
-          <p className="text-sm mb-3">{errorMessage}</p>
+          <p className="text-sm mb-3 text-error/90">{errorMessage}</p>
           <details className="text-xs">
-            <summary className="cursor-pointer hover:text-red-700 dark:hover:text-red-300">
-              查看原始代码
-            </summary>
-            <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded overflow-auto">
+            <summary className="cursor-pointer hover:text-error/80">查看原始代码</summary>
+            <pre className="mt-2 p-2 bg-base-200 border border-base-300 rounded overflow-auto text-base-content">
               <code>{chart}</code>
             </pre>
           </details>
@@ -142,7 +140,7 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   return (
     <div
       ref={containerRef}
-      className={`mermaid-container bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-6 my-4 overflow-auto ${className || ""}`}
+      className={`mermaid-container bg-base-100 border border-base-300 rounded-lg p-6 my-4 overflow-auto ${className || ""}`}
     />
   );
 }

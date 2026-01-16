@@ -101,11 +101,11 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 my-4",
+          "mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4",
           className
         )}
       >
-        <div className="flex items-center justify-center text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-center text-base-content/60">
           <span>正在加载图表...</span>
         </div>
       </div>
@@ -116,11 +116,11 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 my-4",
+          "mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4",
           className
         )}
       >
-        <div className="flex items-center justify-center space-x-2 text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-center space-x-2 text-base-content/60">
           <svg
             className="animate-spin h-5 w-5"
             role="img"
@@ -153,13 +153,13 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-error bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 my-4",
+          "mermaid-error bg-error/10 border border-error/30 rounded-lg p-4 my-4",
           className
         )}
       >
         <div className="flex items-start space-x-2">
           <svg
-            className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
+            className="w-5 h-5 text-error mt-0.5 flex-shrink-0"
             fill="currentColor"
             viewBox="0 0 20 20"
             role="img"
@@ -173,15 +173,13 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
             />
           </svg>
           <div className="flex-1">
-            <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
-              Mermaid 图表渲染失败
-            </h4>
-            <p className="mt-1 text-sm text-red-700 dark:text-red-300">{errorMessage}</p>
+            <h4 className="text-sm font-medium text-error">Mermaid 图表渲染失败</h4>
+            <p className="mt-1 text-sm text-error/90">{errorMessage}</p>
             <details className="mt-2">
-              <summary className="text-xs text-red-600 dark:text-red-400 cursor-pointer hover:text-red-800 dark:hover:text-red-200">
+              <summary className="text-xs text-error cursor-pointer hover:text-error/80">
                 查看原始代码
               </summary>
-              <pre className="mt-2 text-xs bg-red-100 dark:bg-red-900/40 p-2 rounded border overflow-x-auto">
+              <pre className="mt-2 text-xs bg-base-200 border border-base-300 p-2 rounded overflow-x-auto text-base-content">
                 <code>{chart}</code>
               </pre>
             </details>
@@ -196,7 +194,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 my-4 overflow-x-auto",
+          "mermaid-container bg-base-100 border border-base-300 rounded-lg p-4 my-4 overflow-x-auto",
           className
         )}
         style={{
@@ -211,7 +209,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     <div
       ref={containerRef}
       className={mergeClassNames(
-        "mermaid-container bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 my-4 overflow-x-auto",
+        "mermaid-container bg-base-100 border border-base-300 rounded-lg p-4 my-4 overflow-x-auto",
         className
       )}
       style={{
