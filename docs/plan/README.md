@@ -54,4 +54,4 @@
 
 | ID   | Title | Status | Plan | Last | Notes |
 |-----:|-------|--------|------|------|-------|
-| 0001 | 修复 Memos Markdown 主题对比度 | 待实现 | `0001:memos-content-contrast/PLAN.md` | 2026-01-15 | 需覆盖所有主题 |
+| 0001 | 修复 Memos Markdown 主题对比度 | 已完成 | `0001:memos-content-contrast/PLAN.md` | 2026-01-16 | 统一暗色判定 + Markdown token 化 + E2E 覆盖 |
