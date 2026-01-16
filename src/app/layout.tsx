@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "../lib/iconify-collections";
 import { ProgressBar } from "../components/common/ProgressBar";
+import { ThemeInit } from "../components/common/ThemeInit";
 import { IconifyProvider } from "../components/providers/IconifyProvider";
 import { ToastProvider } from "../components/providers/ToastProvider";
 import { TRPCProvider } from "../components/providers/TRPCProvider";
-import { SITE } from "../config/site";
+import { SITE, UI } from "../config/site";
 
 // 强制动态渲染
 export const dynamic = "force-dynamic";
@@ -107,12 +108,8 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                const defaultTheme = "system";
-                const darkThemes = [
-                  "dark", "synthwave", "halloween", "forest", "black",
-                  "luxury", "dracula", "night", "coffee", "dim", "sunset",
-                  "abyss"
-                ];
+                const defaultTheme = ${JSON.stringify(UI.theme.default)};
+                const darkThemes = ${JSON.stringify(UI.theme.darkThemes)};
 
                 function applyTheme(theme) {
                   const d = document.documentElement;
@@ -143,6 +140,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <ThemeInit />
         <IconifyProvider />
         <ProgressBar />
         <TRPCProvider>{children}</TRPCProvider>

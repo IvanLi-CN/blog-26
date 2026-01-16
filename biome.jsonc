@@ -9,6 +9,7 @@
     "ignoreUnknown": false,
     "includes": [
       "**",
+      "!src/app/globals.css",
       "!**/node_modules",
       "!**/.next",
       "!**/out",

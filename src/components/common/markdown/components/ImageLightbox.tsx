@@ -111,10 +111,12 @@ export function ImageLightbox({
 
         {/* 错误状态显示 */}
         {hasError && (
-          <div className="inline-block w-full bg-gray-100 dark:bg-gray-800 border border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500">
+          <div className="inline-block w-full bg-base-200 border border-dashed border-base-300 rounded-lg p-4 text-center text-base-content/60">
             <div className="block text-sm">📷 图片加载失败</div>
-            <div className="block text-xs mt-1 text-gray-400">{alt}</div>
-            <div className="block text-xs mt-1 font-mono text-gray-400 break-all">路径: {src}</div>
+            <div className="block text-xs mt-1 text-base-content/50">{alt}</div>
+            <div className="block text-xs mt-1 font-mono text-base-content/50 break-all">
+              路径: {src}
+            </div>
           </div>
         )}
       </span>

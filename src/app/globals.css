@@ -102,42 +102,62 @@ html {
 }
 
 .memo-content p {
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
+  @apply text-base-content;
   margin-bottom: 0.75rem;
 }
 
 .memo-content h1,
 .memo-content h2,
 .memo-content h3 {
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
+  @apply text-base-content;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
 }
 
 .memo-content ul,
 .memo-content ol {
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
+  @apply text-base-content;
   margin: 0.75rem 0;
   padding-left: 1.5rem;
 }
 
 .memo-content blockquote {
-  border-left: 4px solid #e5e7eb;
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
+  @apply border-l-4 border-base-300 bg-base-200 text-base-content/80;
   padding-left: 1rem;
   margin: 0.75rem 0;
   font-style: italic;
 }
 
 .memo-content code {
-  background-color: #f3f4f6;
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
+  @apply bg-base-200 text-base-content;
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
 }
 
 .memo-content pre {
-  background-color: #f3f4f6;
+  /* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind @apply */
+  @apply bg-base-200 border border-base-300;
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
   margin: 0.75rem 0;
+}
+
+/* highlight.js: keep DaisyUI backgrounds and ensure dark mode readability */
+.prose pre .hljs {
+  background: transparent;
+  color: inherit;
+}
+
+.dark .prose pre .hljs,
+.dark .prose pre .hljs * {
+  color: inherit;
 }
 
 /* 动画效果 */

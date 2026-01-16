@@ -122,7 +122,7 @@ export function CodeBlock({
           </code>
           <button
             type="button"
-            className="collapsible-code-expand-btn absolute bottom-0 left-0 right-0 w-full px-3 py-2 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center gap-1 border-t border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800"
+            className="collapsible-code-expand-btn absolute bottom-0 left-0 right-0 w-full px-3 py-2 text-xs text-base-content/60 hover:text-base-content hover:bg-base-300/50 transition-colors duration-200 flex items-center justify-center gap-1 border-t border-base-300 bg-base-200"
             onClick={toggleExpanded}
             data-action="expand"
           >
@@ -158,7 +158,7 @@ export function CodeBlock({
           </code>
           <button
             type="button"
-            className="collapsible-code-collapse-btn absolute bottom-0 left-0 right-0 w-full px-3 py-2 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center gap-1 border-t border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800"
+            className="collapsible-code-collapse-btn absolute bottom-0 left-0 right-0 w-full px-3 py-2 text-xs text-base-content/60 hover:text-base-content hover:bg-base-300/50 transition-colors duration-200 flex items-center justify-center gap-1 border-t border-base-300 bg-base-200"
             onClick={toggleExpanded}
             data-action="collapse"
           >

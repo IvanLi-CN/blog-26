@@ -25,7 +25,8 @@ test.describe("Memos 删除确认 (admin)", () => {
       if (!visible) break;
       const disabled = await loadMore.isDisabled().catch(() => true);
       if (disabled) break;
-      await loadMore.click();
+      // CI 下偶发：加载中的占位/遮罩会拦截 pointer events，导致 click 超时；这里强制点击以降低波动。
+      await loadMore.click({ force: true, timeout: 15_000 });
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(200);
     }

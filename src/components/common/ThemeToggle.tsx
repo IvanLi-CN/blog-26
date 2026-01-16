@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { applyThemeToDocument, isDarkTheme } from "@/lib/theme";
 import { UI } from "../../config/site";
 import Icon from "../ui/Icon";
 
@@ -27,35 +28,8 @@ export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps)
     setCurrentTheme(theme);
     localStorage.setItem("theme", theme);
 
-    // 应用主题逻辑（与layout.tsx中的脚本保持一致）
-    const darkThemes = [
-      "dark",
-      "synthwave",
-      "halloween",
-      "forest",
-      "black",
-      "luxury",
-      "dracula",
-      "night",
-      "coffee",
-      "dim",
-      "sunset",
-      "abyss",
-    ];
-
-    let currentTheme = theme;
-    if (theme === "system") {
-      currentTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    }
-
-    document.documentElement.setAttribute("data-theme", currentTheme);
-
-    const isDark = darkThemes.includes(currentTheme);
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    // 应用主题逻辑（与 layout.tsx 的脚本保持一致）
+    applyThemeToDocument(theme);
 
     setIsDropdownOpen(false);
   };
@@ -90,9 +64,9 @@ export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps)
           type="checkbox"
           className="theme-controller"
           checked={
-            currentTheme === "dark" ||
-            (currentTheme === "system" &&
-              window.matchMedia?.("(prefers-color-scheme: dark)").matches)
+            currentTheme === "system"
+              ? window.matchMedia?.("(prefers-color-scheme: dark)").matches
+              : isDarkTheme(currentTheme)
           }
           onChange={() => {
             // 由 onClick 处理，这里保持空函数以满足React要求
