@@ -56,3 +56,4 @@
 |-----:|-------|--------|------|------|-------|
 | 0001 | 修复 Memos Markdown 主题对比度 | 已完成 | `0001:memos-content-contrast/PLAN.md` | 2026-01-16 | 统一暗色判定 + Markdown token 化 + E2E 覆盖 |
 | 0002 | 内容持久化相对路径（去 API 化，FS-only 准备） | 待实现 | `0002:content-relative-paths/PLAN.md` | 2026-01-16 | - |
+| 0003 | 文章列表标题对比度一致性 | 已完成 | `0003:posts-list-title-contrast/PLAN.md` | 2026-01-17 | 修复 `nord` 下标题过淡；E2E: `tests/e2e/guest/posts-title-contrast.spec.ts` |

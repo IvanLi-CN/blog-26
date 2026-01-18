@@ -47,6 +47,12 @@ const REUSE_EXISTING_WEBDAV = (() => {
   if (explicit === "false") return false;
   return Boolean(process.env.WEBDAV_URL);
 })();
+const REUSE_EXISTING_APP = (() => {
+  const explicit = process.env.PLAYWRIGHT_REUSE_APP?.toLowerCase();
+  if (explicit === "true") return true;
+  if (explicit === "false") return false;
+  return Boolean(process.env.BASE_URL);
+})();
 
 // Use absolute paths to avoid CI cwd differences
 const __filename = fileURLToPath(import.meta.url);
@@ -144,7 +150,8 @@ export default defineConfig({
     {
       command: `WEBDAV_URL=${WEBDAV_URL} DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
       url: BASE_URL,
-      reuseExistingServer: false, // 避免端口/状态复用引发串扰
+      // Default: do not reuse to avoid state bleed; allow opt-in reuse for local runs when a dev server is already running.
+      reuseExistingServer: REUSE_EXISTING_APP,
       timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
       env: {
         NODE_ENV: "test",
