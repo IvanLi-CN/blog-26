@@ -110,9 +110,9 @@ export default function BlogListItem({
             </span>
           </div>
           <div className="flex items-start justify-between gap-3 mb-2">
-            <h2 className="text-xl sm:text-2xl font-bold leading-tight font-heading dark:text-slate-300 flex-grow">
+            <h2 className="text-xl sm:text-2xl font-bold leading-tight font-heading text-base-content flex-grow">
               <Link
-                className="inline-block hover:text-primary dark:hover:text-blue-700 transition-all duration-300 group-hover:translate-x-1"
+                className="inline-block visited:text-base-content hover:text-primary transition-all duration-300 group-hover:translate-x-1"
                 href={link}
               >
                 {post.title}
