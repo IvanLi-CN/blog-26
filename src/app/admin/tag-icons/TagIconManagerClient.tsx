@@ -337,7 +337,6 @@ export default function TagIconManagerClient({
     }
   }
 
-  /* biome-ignore lint/correctness/noNestedComponentDefinitions: UI panel scoped to this file only */
   function Panel({ item }: { item: Item }) {
     const k = keyOf(item.kind, item.id);
     const sug = suggestion[k];
