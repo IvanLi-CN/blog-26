@@ -88,7 +88,7 @@ export function useAdvancedEditorState() {
       expandFolderPath(activeTab.identifier.path);
       setScrollTarget(activeTab.identifier.path);
     }
-  }, [state.activeTabId, state.tabs, expandFolderPath, setScrollTarget, router]);
+  }, [state.activeTabId, state.tabs, router]);
 
   // 滚动目标变化时的副作用
   useEffect(() => {
@@ -146,7 +146,7 @@ export function useAdvancedEditorState() {
       setSelectedPath(identifier.path);
       setScrollTarget(identifier.path);
     },
-    [state.tabs, addTab, setActiveTab, setSelectedPath, setScrollTarget]
+    [state.tabs]
   );
 
   /**
@@ -188,7 +188,7 @@ export function useAdvancedEditorState() {
 
       addTab(newTab);
     },
-    [state.tabs, addTab, setActiveTab]
+    [state.tabs]
   );
 
   /**
@@ -206,7 +206,7 @@ export function useAdvancedEditorState() {
 
       removeTab(tabId);
     },
-    [state.tabs, removeTab]
+    [state.tabs]
   );
 
   /**
@@ -229,7 +229,7 @@ export function useAdvancedEditorState() {
       console.error(`[EditorState] 保存失败:`, error);
       return false;
     }
-  }, [state.activeTabId, state.tabs, setTabDirty]);
+  }, [state.activeTabId, state.tabs]);
 
   /**
    * 获取当前活动标签页
@@ -274,7 +274,7 @@ export function useAdvancedEditorState() {
 
     console.log(`[EditorState] 成功保存 ${unsavedTabs.length} 个文件`);
     return true;
-  }, [getUnsavedTabs, setTabDirty]);
+  }, [getUnsavedTabs]);
 
   /**
    * 重置编辑器状态
@@ -290,7 +290,7 @@ export function useAdvancedEditorState() {
     setScrollTarget(null);
 
     console.log(`[EditorState] 重置编辑器状态`);
-  }, [state.tabs, removeTab, setSelectedPath, setScrollTarget]);
+  }, [state.tabs]);
 
   return {
     // 状态

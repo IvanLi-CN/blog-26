@@ -262,6 +262,8 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       if (!editorRef.current) return;
       if (crepeRef.current) return; // 如果已经有编辑器实例，直接返回
 
+      let cancelled = false;
+
       // 检查是否已经有这个 editorId 的实例
       if (editorInstances.has(editorId)) {
         // removed warn
@@ -275,12 +277,6 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           }
         }
         editorInstances.delete(editorId);
-      }
-
-      // 检查是否正在初始化
-      if (initializingEditors.has(editorId)) {
-        // removed warn
-        return;
       }
 
       const initEditor = async () => {
@@ -341,6 +337,15 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             },
           });
 
+          if (cancelled) {
+            try {
+              crepe.destroy();
+            } catch {
+              // ignore
+            }
+            return;
+          }
+
           // 监听内容变化
           crepe.on((listener) => {
             listener.markdownUpdated((_, markdown) => {
@@ -396,6 +401,16 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
           // 创建编辑器
           await crepe.create();
+
+          if (cancelled) {
+            try {
+              crepe.destroy();
+            } catch {
+              // ignore
+            }
+            return;
+          }
+
           crepeRef.current = crepe;
           lastContentRef.current = initialContentRef.current;
 
@@ -412,14 +427,22 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       initEditor();
 
       return () => {
-        if (crepeRef.current) {
+        cancelled = true;
+        initializingEditors.delete(editorId);
+
+        const instance = crepeRef.current ?? editorInstances.get(editorId) ?? null;
+        if (instance) {
           // removed log
-          crepeRef.current.destroy();
-          crepeRef.current = null;
-          // 从实例管理器中移除
-          editorInstances.delete(editorId);
-          initializingEditors.delete(editorId);
+          try {
+            instance.destroy();
+          } catch {
+            // ignore
+          }
         }
+
+        crepeRef.current = null;
+        // 从实例管理器中移除
+        editorInstances.delete(editorId);
       };
     }, [articlePath, editorId, contentSource, placeholder]); // 只在组件挂载时初始化一次，避免内容变化触发重建
 

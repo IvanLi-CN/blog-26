@@ -9,32 +9,52 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { nanoid } from "nanoid";
 
+const PLACEHOLDER_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
+// 1x1 JPEG placeholder (used in tests)
+const PLACEHOLDER_JPEG_BASE64 =
+  "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/wA==";
+
+const PLACEHOLDER_PNG_BYTES = Buffer.from(PLACEHOLDER_PNG_BASE64, "base64");
+const PLACEHOLDER_JPEG_BYTES = Buffer.from(PLACEHOLDER_JPEG_BASE64, "base64");
+
 // 下载图片到本地（带重试机制）
-async function downloadImage(url: string, filePath: string, maxRetries: number = 3): Promise<void> {
+async function downloadImage(
+  url: string,
+  filePath: string,
+  maxRetries: number = 3,
+  timeoutMs: number = 15_000
+): Promise<void> {
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; TestDataGenerator/1.0)",
-        },
-        // 忽略证书验证错误（仅用于测试数据生成）
-        tls: {
-          rejectUnauthorized: false,
-        },
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; TestDataGenerator/1.0)",
+          },
+          // 忽略证书验证错误（仅用于测试数据生成）
+          tls: {
+            rejectUnauthorized: false,
+          },
+          signal: controller.signal,
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        writeFileSync(filePath, buffer);
+
+        return; // 成功下载，退出重试循环
+      } finally {
+        clearTimeout(timeout);
       }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      writeFileSync(filePath, buffer);
-
-      console.log(`✅ ${filePath.split("/").pop()}`);
-      return; // 成功下载，退出重试循环
     } catch (error) {
       lastError = error as Error;
 
@@ -49,6 +69,12 @@ async function downloadImage(url: string, filePath: string, maxRetries: number =
 
   // 所有重试都失败了
   throw new Error(`下载失败 ${url} (${maxRetries} 次尝试): ${lastError?.message}`);
+}
+
+function writePlaceholderImage(filePath: string): void {
+  const ext = filePath.toLowerCase().split(".").pop();
+  const bytes = ext === "png" ? PLACEHOLDER_PNG_BYTES : PLACEHOLDER_JPEG_BYTES;
+  writeFileSync(filePath, bytes);
 }
 
 // 测试数据配置
@@ -2565,8 +2591,16 @@ function writeMarkdownFile(filePath: string, frontmatter: any, body: string) {
 }
 
 // 下载测试图片
-async function downloadTestImages(webdavDir: string, localDir: string) {
-  console.log("\n📸 下载测试图片...");
+async function downloadTestImages(
+  webdavDir: string,
+  localDir: string,
+  strategy: "remote" | "placeholder"
+) {
+  if (strategy === "placeholder") {
+    console.log("\n📸 生成占位测试图片（离线模式）...");
+  } else {
+    console.log("\n📸 下载测试图片...");
+  }
 
   const images = [
     // WebDAV 文章图片 (ID 1-5)
@@ -2731,16 +2765,25 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
       : []),
   ];
 
-  // 真正的并行下载所有图片（保持5个并发）
-  console.log(`开始并行下载 ${downloadTasks.length} 张图片...`);
+  const totalCount = downloadTasks.length;
+  console.log(
+    strategy === "placeholder"
+      ? `开始生成 ${totalCount} 张占位图片...`
+      : `开始并行下载 ${totalCount} 张图片...`
+  );
 
   let completedCount = 0;
-  const totalCount = downloadTasks.length;
-  const results: Array<{ success: boolean; filename: string; error?: any }> = [];
+  const results: Array<{ success: boolean; filename: string; error?: unknown }> = [];
 
-  const downloadWithProgress = async (task: any) => {
+  const processTask = async (task: (typeof downloadTasks)[number]) => {
     try {
-      await downloadImage(task.url, task.filePath);
+      if (strategy === "placeholder") {
+        writePlaceholderImage(task.filePath);
+      } else {
+        await downloadImage(task.url, task.filePath);
+        console.log(`✅ ${task.filePath.split("/").pop()}`);
+      }
+
       completedCount++;
       console.log(
         `📸 进度: ${completedCount}/${totalCount} (${Math.round((completedCount / totalCount) * 100)}%) - ✅ ${task.filename}`
@@ -2755,31 +2798,32 @@ async function downloadTestImages(webdavDir: string, localDir: string) {
     }
   };
 
-  // 使用 Promise.allSettled 确保真正并行，但限制并发数
-  const concurrencyLimit = 5;
-  const executing: Promise<any>[] = [];
-
-  for (const task of downloadTasks) {
-    const promise = downloadWithProgress(task).then((result) => {
-      results.push(result);
-      return result;
-    });
-
-    executing.push(promise);
-
-    if (executing.length >= concurrencyLimit) {
-      await Promise.race(executing);
-      executing.splice(executing.indexOf(promise), 1);
+  if (strategy === "placeholder") {
+    for (const task of downloadTasks) {
+      results.push(await processTask(task));
     }
+  } else {
+    const queue = [...downloadTasks];
+    const concurrencyLimit = 5;
+    const workerCount = Math.min(concurrencyLimit, queue.length);
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (queue.length > 0) {
+          const task = queue.shift();
+          if (!task) break;
+          results.push(await processTask(task));
+        }
+      })
+    );
   }
-
-  // 等待所有剩余任务完成
-  await Promise.all(executing);
 
   const successCount = results.filter((r) => r.success).length;
   const failCount = results.filter((r) => !r.success).length;
-
-  console.log(`\n📸 图片下载完成: 成功 ${successCount} 张, 失败 ${failCount} 张`);
+  console.log(
+    strategy === "placeholder"
+      ? `\n📸 占位图片生成完成: 成功 ${successCount} 张, 失败 ${failCount} 张`
+      : `\n📸 图片下载完成: 成功 ${successCount} 张, 失败 ${failCount} 张`
+  );
 
   // 创建 SVG 测试图片
   console.log("\n🎨 创建 SVG 测试图片...");
@@ -2812,8 +2856,12 @@ async function main() {
   // 创建目录结构
   createDirectories(WEBDAV_DIR, LOCAL_DIR);
 
-  // 下载测试图片
-  await downloadTestImages(WEBDAV_DIR, LOCAL_DIR);
+  // 下载测试图片（dev）/ 生成占位图（test，避免 E2E/CI 依赖网络）
+  const strategy: "remote" | "placeholder" =
+    environment === "dev" || process.env.TEST_DATA_DOWNLOAD_IMAGES === "1"
+      ? "remote"
+      : "placeholder";
+  await downloadTestImages(WEBDAV_DIR, LOCAL_DIR, strategy);
 
   // 生成数据
   const webdavPosts = generateWebDAVPosts();
