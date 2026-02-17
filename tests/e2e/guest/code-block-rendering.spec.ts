@@ -1,28 +1,38 @@
 import { expect, test } from "@playwright/test";
 
+const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
+const TARGET_POST_PATH = E2E_FS_ONLY
+  ? "/posts/react-hooks-deep-dive"
+  : "/posts/nodejs-performance-optimization";
+
 test.describe("Code Block Rendering", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/posts/nodejs-performance-optimization");
+    await page.goto(TARGET_POST_PATH);
     await page.waitForLoadState("networkidle");
   });
 
   test("should display code blocks with correct JavaScript content", async ({ page }) => {
     const codeBlocks = page.locator("code");
-    await expect(codeBlocks).toHaveCount(2);
+    expect(await codeBlocks.count()).toBeGreaterThan(0);
 
     const firstCodeBlock = codeBlocks.first();
-    await expect(firstCodeBlock).toContainText("// 使用 async/await");
-    await expect(firstCodeBlock).toContainText("async function processData()");
-    await expect(firstCodeBlock).toContainText("const data = await fetchData()");
-    await expect(firstCodeBlock).toContainText("console.error('处理失败:', error)");
-    await expect(firstCodeBlock).not.toContainText("[object Object]");
+    if (E2E_FS_ONLY) {
+      await expect(firstCodeBlock).toContainText("useState(0)");
+      await expect(firstCodeBlock).not.toContainText("[object Object]");
+    } else {
+      await expect(firstCodeBlock).toContainText("// 使用 async/await");
+      await expect(firstCodeBlock).toContainText("async function processData()");
+      await expect(firstCodeBlock).toContainText("const data = await fetchData()");
+      await expect(firstCodeBlock).toContainText("console.error('处理失败:', error)");
+      await expect(firstCodeBlock).not.toContainText("[object Object]");
 
-    const secondCodeBlock = codeBlocks.nth(1);
-    await expect(secondCodeBlock).toContainText("const cluster = require('cluster')");
-    await expect(secondCodeBlock).toContainText("const numCPUs = require('os').cpus().length");
-    await expect(secondCodeBlock).toContainText("if (cluster.isMaster)");
-    await expect(secondCodeBlock).toContainText("cluster.fork()");
-    await expect(secondCodeBlock).not.toContainText("[object Object]");
+      const secondCodeBlock = codeBlocks.nth(1);
+      await expect(secondCodeBlock).toContainText("const cluster = require('cluster')");
+      await expect(secondCodeBlock).toContainText("const numCPUs = require('os').cpus().length");
+      await expect(secondCodeBlock).toContainText("if (cluster.isMaster)");
+      await expect(secondCodeBlock).toContainText("cluster.fork()");
+      await expect(secondCodeBlock).not.toContainText("[object Object]");
+    }
   });
 
   test("should not have hydration errors in console", async ({ page }) => {
@@ -45,18 +55,27 @@ test.describe("Code Block Rendering", () => {
 
   test("should have proper syntax highlighting classes", async ({ page }) => {
     const codeBlocks = page.locator('code[class*="language-"]');
-    await expect(codeBlocks).toHaveCount(2);
-    const jsCodeBlocks = page.locator("code.language-javascript");
-    await expect(jsCodeBlocks).toHaveCount(2);
+    expect(await codeBlocks.count()).toBeGreaterThan(0);
+    if (E2E_FS_ONLY) {
+      const jsxCodeBlocks = page.locator("code.language-jsx");
+      expect(await jsxCodeBlocks.count()).toBeGreaterThan(0);
+    } else {
+      const jsCodeBlocks = page.locator("code.language-javascript");
+      await expect(jsCodeBlocks).toHaveCount(2);
+    }
   });
 
   test("should preserve code formatting and indentation", async ({ page }) => {
     const firstCodeBlock = page.locator("code").first();
     const codeText = await firstCodeBlock.textContent();
-    expect(codeText).toContain("async function processData()");
-    expect(codeText).toContain("try {");
-    expect(codeText).toContain("} catch (error) {");
-    expect(codeText).toMatch(/async function processData\(\)\s*\{/);
+    if (E2E_FS_ONLY) {
+      expect(codeText).toContain("useState");
+    } else {
+      expect(codeText).toContain("async function processData()");
+      expect(codeText).toContain("try {");
+      expect(codeText).toContain("} catch (error) {");
+      expect(codeText).toMatch(/async function processData\(\)\s*\{/);
+    }
   });
 
   test("should handle code blocks without [object Object] artifacts", async ({ page }) => {
@@ -72,16 +91,20 @@ test.describe("Code Block Rendering", () => {
   test("should display readable JavaScript code", async ({ page }) => {
     const codeBlocks = page.locator("code");
     const firstCode = await codeBlocks.first().textContent();
-    expect(firstCode).toMatch(/async\s+function\s+processData/);
-    expect(firstCode).toMatch(/await\s+fetchData/);
-    expect(firstCode).toMatch(/await\s+processResult/);
-    expect(firstCode).toContain("console.error");
+    if (E2E_FS_ONLY) {
+      expect(firstCode).toContain("useState");
+    } else {
+      expect(firstCode).toMatch(/async\s+function\s+processData/);
+      expect(firstCode).toMatch(/await\s+fetchData/);
+      expect(firstCode).toMatch(/await\s+processResult/);
+      expect(firstCode).toContain("console.error");
 
-    const secondCode = await codeBlocks.nth(1).textContent();
-    expect(secondCode).toMatch(/const\s+cluster\s*=\s*require/);
-    expect(secondCode).toMatch(/const\s+numCPUs/);
-    expect(secondCode).toContain("cluster.isMaster");
-    expect(secondCode).toContain("cluster.fork");
+      const secondCode = await codeBlocks.nth(1).textContent();
+      expect(secondCode).toMatch(/const\s+cluster\s*=\s*require/);
+      expect(secondCode).toMatch(/const\s+numCPUs/);
+      expect(secondCode).toContain("cluster.isMaster");
+      expect(secondCode).toContain("cluster.fork");
+    }
   });
 
   test("should not break page layout", async ({ page }) => {

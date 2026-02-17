@@ -152,8 +152,8 @@ describe("resolveImagePath", () => {
       );
     });
 
-    it("should default to webdav when content source not specified", () => {
-      expect(resolveImagePath("/assets/image.jpg")).toBe("/api/files/webdav/assets/image.jpg");
+    it("should default to local when content source not specified", () => {
+      expect(resolveImagePath("/assets/image.jpg")).toBe("/api/files/local/assets/image.jpg");
     });
   });
 

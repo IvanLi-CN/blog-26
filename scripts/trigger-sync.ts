@@ -4,8 +4,8 @@
  * Unified content sync trigger for development and test environments.
  *
  * Usage:
- *   bun ./scripts/trigger-sync.ts dev   # requires DB_PATH, LOCAL_CONTENT_BASE_PATH, optional WEBDAV_URL
- *   bun ./scripts/trigger-sync.ts test  # requires DB_PATH, LOCAL_CONTENT_BASE_PATH, WEBDAV_URL
+ *   bun ./scripts/trigger-sync.ts dev   # requires DB_PATH and at least one of (LOCAL_CONTENT_BASE_PATH, WEBDAV_URL)
+ *   bun ./scripts/trigger-sync.ts test  # requires DB_PATH and at least one of (LOCAL_CONTENT_BASE_PATH, WEBDAV_URL)
  *
  * Required environment variables must be exported by the caller to avoid
  * implicit defaults and keep the workflow reproducible.
@@ -13,6 +13,7 @@
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { parseContentSourcesFromEnv } from "../src/config/paths";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -78,7 +79,8 @@ async function loadDotEnvLocalIfPresent() {
       "LOCAL_CONTENT_BASE_PATH",
       "DB_PATH",
     ];
-    const missing = neededKeys.filter((k) => !process.env[k]);
+    // Treat empty string as explicitly set to avoid accidentally re-enabling WebDAV in FS-only runs.
+    const missing = neededKeys.filter((k) => process.env[k] === undefined);
     if (missing.length === 0) return;
 
     let content = "";
@@ -95,7 +97,7 @@ async function loadDotEnvLocalIfPresent() {
       if (eq <= 0) continue;
       const key = line.slice(0, eq).trim();
       const value = line.slice(eq + 1).trim();
-      if (!process.env[key] && value.length > 0) {
+      if (process.env[key] === undefined && value.length > 0) {
         // 去掉包裹引号
         const unquoted = value.replace(/^"|"$/g, "").replace(/^'|'$/g, "");
         process.env[key] = unquoted;
@@ -149,32 +151,51 @@ async function main() {
   const { targetEnv, opts } = parseArgs();
 
   const dbPath = expectEnv("DB_PATH", targetEnv);
-  // dev 环境允许省略 LOCAL_CONTENT_BASE_PATH（仅 WebDAV 同步）
   const localBase = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
+  const allowedSources = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
+  const requiresLocal = allowedSources ? allowedSources.has("local") : false;
+  const requiresWebDAV = allowedSources ? allowedSources.has("webdav") : false;
 
-  // 任何环境下，如需 WebDAV 同步必须设置 WEBDAV_URL
-  if (!process.env.WEBDAV_URL || process.env.WEBDAV_URL.trim().length === 0) {
-    throw new Error(`(${targetEnv}) 环境变量 WEBDAV_URL 未设置，无法进行 WebDAV 同步。`);
+  if (requiresLocal && (!localBase || localBase.length === 0)) {
+    throw new Error(
+      `(${targetEnv}) CONTENT_SOURCES 要求 local，但 LOCAL_CONTENT_BASE_PATH 未设置。`
+    );
+  }
+  if (requiresWebDAV && !isWebDAVEnabled()) {
+    throw new Error(`(${targetEnv}) CONTENT_SOURCES 要求 webdav，但 WEBDAV_URL 未设置或已禁用。`);
+  }
+
+  const shouldSyncLocal =
+    Boolean(localBase) && (allowedSources ? allowedSources.has("local") : true);
+  const shouldSyncWebDAV = isWebDAVEnabled();
+
+  if (!shouldSyncLocal && !shouldSyncWebDAV) {
+    throw new Error(
+      `(${targetEnv}) 未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL（或调整 CONTENT_SOURCES）。`
+    );
   }
 
   console.log(`🔧 同步环境: ${targetEnv}`);
   console.log(`📁 使用数据库: ${dbPath}`);
-  if (localBase) {
-    console.log(`📂 本地内容目录: ${localBase}`);
-  } else {
-    console.log("📂 本地内容目录: (未设置，跳过本地内容源)");
-  }
-  if (process.env.WEBDAV_URL) {
-    console.log(`🌐 WebDAV: ${process.env.WEBDAV_URL}`);
-  }
+  console.log(`📋 CONTENT_SOURCES: ${process.env.CONTENT_SOURCES || "(未设置，自动检测)"}`);
+  console.log(`📂 local: ${shouldSyncLocal ? localBase : "(disabled)"}`);
+  console.log(`🌐 webdav: ${shouldSyncWebDAV ? process.env.WEBDAV_URL : "(disabled)"}`);
 
   await initializeDB(opts.forceReinit);
 
   const manager = getContentSourceManager(opts);
-  await registerLocalSource(manager, localBase);
-  await registerWebDAVSource(manager);
+  if (shouldSyncLocal) {
+    await registerLocalSource(manager, localBase);
+  }
+  if (shouldSyncWebDAV) {
+    await registerWebDAVSource(manager);
+  }
 
-  console.log("🚀 开始执行全量同步 (local + WebDAV)...");
+  console.log(
+    `🚀 开始执行全量同步 (${[shouldSyncLocal ? "local" : null, shouldSyncWebDAV ? "webdav" : null]
+      .filter(Boolean)
+      .join(" + ")})...`
+  );
   const result = await manager.syncAll(true);
 
   console.log("📊 同步结果:");

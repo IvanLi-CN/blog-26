@@ -4,7 +4,11 @@ import { expect, test } from "@playwright/test";
 const ONE_BY_ONE_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
+const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
+
 test.describe("Files API - inline image upload via WebDAV (guest)", () => {
+  test.skip(E2E_FS_ONLY, "FS-only disables WebDAV uploads.");
+
   test.beforeAll(async ({ request }) => {
     const base = "http://localhost:25091";
     await request.fetch(`${base}/Memos`, { method: "MKCOL" }).catch(() => {
@@ -47,4 +51,32 @@ test.describe("Files API - inline image upload via WebDAV (guest)", () => {
   // Note: Some WebDAV servers (like dufs used in tests) may implicitly create
   // intermediate collection segments, so posting to "...md/inline.png" can succeed.
   // We only verify the correct path succeeds end-to-end in this suite.
+});
+
+test.describe("Files API - FS-only WebDAV disabled behavior (guest)", () => {
+  test.skip(!E2E_FS_ONLY, "Only applies to FS-only runs.");
+
+  test("GET webdav .png returns placeholder and POST returns 410", async ({ request, baseURL }) => {
+    const filename = `inline-${Date.now()}.png`;
+    const url = `${baseURL}/api/files/webdav/Memos/assets/${filename}`;
+    const buffer = Buffer.from(ONE_BY_ONE_PNG_BASE64, "base64");
+
+    const resp = await request.post(url, {
+      multipart: {
+        file: {
+          name: filename,
+          mimeType: "image/png",
+          buffer,
+        },
+      },
+    });
+
+    expect(resp.status()).toBe(410);
+    const json = await resp.json();
+    expect(json.error).toBe("ERR_WEBDAV_DISABLED");
+
+    const read = await request.get(url);
+    expect(read.ok()).toBeTruthy();
+    expect(read.headers()["content-type"]).toContain("image/png");
+  });
 });

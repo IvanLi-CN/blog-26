@@ -154,13 +154,7 @@ export default function BlogListItem({
         <Link className="relative block group" href={link}>
           <div className="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg transition-all duration-300 group-hover:shadow-xl">
             <Image
-              src={
-                imageSrc ||
-                (post.image?.startsWith("./assets/")
-                  ? `/api/files/webdav/${post.image.substring(2)}`
-                  : post.image) ||
-                ""
-              }
+              src={imageSrc}
               className="absolute inset-0 object-cover w-full h-full mb-6 rounded shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-105"
               alt={post.title}
               fill

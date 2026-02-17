@@ -15,6 +15,8 @@ Endpoints
 - Environment
 - `PORT` (Next integrated server port)
 - `DB_PATH` (default `./sqlite.db`, dev: `./dev-data/sqlite.db`)
+- Content root (FS): `LOCAL_CONTENT_BASE_PATH`
+- Content sources allowlist (optional): `CONTENT_SOURCES=local,webdav` (FS-only: `CONTENT_SOURCES=local`)
 - Optional WebDAV: `WEBDAV_URL`, `WEBDAV_USERNAME`, `WEBDAV_PASSWORD`, plus path vars in `src/config/paths.ts`.
 
 Tools
@@ -24,7 +26,9 @@ Tools
 - tags.list, tags.listPosts, tags.listAllPosts
 
 Notes
-- All content operations write Markdown with frontmatter (via WebDAV when configured; if WebDAV is disabled you must provide `LOCAL_CONTENT_BASE_PATH`, otherwise these tools return an error).
+- All content operations write Markdown with frontmatter (content source can be local FS or WebDAV; if WebDAV is disabled you must provide `LOCAL_CONTENT_BASE_PATH`).
+- Persisted content policy (Plan #0002): Markdown + DB metadata must store normalized relative paths (no `/api/files/...`); runtime rendering maps relative paths to `/api/files/<source>/...`.
+- Files API FS-only behavior: when WebDAV is disabled, `GET /api/files/webdav/<...>.png` returns a fixed placeholder PNG (200), while non-image reads and all writes return `410` JSON `{ error: "ERR_WEBDAV_DISABLED", ... }`.
 - After each write/delete, the server triggers incremental content sync to refresh the SQLite cache and embeddings metadata.
 - Tag tools default to published posts only; pass `includeDrafts` / `includeUnpublished` when broader visibility is required. `tags.listAllPosts` accepts an optional `limitPerTag` to trim per-tag payload size.
 - 标签工具仅在读取草稿或非公开文章时需要管理员身份；保持默认参数即可匿名读取公开标签。

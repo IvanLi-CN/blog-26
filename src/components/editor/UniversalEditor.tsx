@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { resolveImagePath } from "@/lib/image-utils";
+import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import { MilkdownEditor } from "../memos/MilkdownEditor";
 import { SourceEditor } from "./SourceEditor";
 import "highlight.js/styles/github.css";
@@ -51,7 +52,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       placeholder = "开始编写...",
       attachmentBasePath = "assets",
       articlePath = "",
-      contentSource = "webdav",
+      contentSource = "local",
       title,
       className = "",
       mode = "wysiwyg",
@@ -119,8 +120,8 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
           const byteArray = new Uint8Array(byteNumbers);
           const blob = new Blob([byteArray], { type: `image/${imageType}` });
 
-          // 使用 /api/files/webdav/<path> API 上传
-          const response = await fetch(`/api/files/webdav/${uploadPath}`, {
+          // Upload via Files API, but persist a normalized relative link (no /api/files/).
+          const response = await fetch(`/api/files/${contentSource}/${uploadPath}`, {
             method: "POST",
             headers: {
               "Content-Type": `image/${imageType}`,
@@ -138,8 +139,8 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
             result,
           });
 
-          // 替换内联图片为上传后的路径（使用 API 路径）
-          const imagePath = `/api/files/webdav/${attachmentBasePath}/${filename}`;
+          // 替换内联图片为上传后的路径（持久化语义：相对路径）
+          const imagePath = `./assets/${filename}`;
           const newImageMarkdown = `![${altText}](${imagePath})`;
           processedContent = processedContent.replace(fullMatch, newImageMarkdown);
 
@@ -175,7 +176,9 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     // };
 
     // 处理图片上传
-    const handleImageUpload = async (file: File): Promise<string> => {
+    const uploadImage = async (
+      file: File
+    ): Promise<{ persistedPath: string; runtimeUrl: string }> => {
       try {
         // 生成唯一文件名：文章slug + nanoid + 原始扩展名
         const articleSlug = getArticleSlug(articlePath);
@@ -193,8 +196,8 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
           uploadPath,
         });
 
-        // 使用 /api/files/webdav/<path> API 上传
-        const response = await fetch(`/api/files/webdav/${uploadPath}`, {
+        // Upload via Files API, but persist a normalized relative link (no /api/files/).
+        const response = await fetch(`/api/files/${contentSource}/${uploadPath}`, {
           method: "POST",
           headers: {
             "Content-Type": file.type,
@@ -212,29 +215,52 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
           result,
         });
 
-        // 返回 API 路径
-        const imagePath = `/api/files/webdav/${attachmentBasePath}/${uniqueFileName}`;
-        return imagePath;
+        const persistedPath = `./assets/${uniqueFileName}`;
+        const runtimeUrl =
+          typeof result?.url === "string" && result.url.length > 0
+            ? result.url
+            : `/api/files/${contentSource}/${uploadPath}`;
+
+        return { persistedPath, runtimeUrl };
       } catch (error) {
         console.error("❌ [UniversalEditor] 图片上传失败:", error);
         throw error;
       }
     };
 
+    // Source editor should insert persisted relative paths.
+    const handleImageUploadForSource = async (file: File): Promise<string> => {
+      const { persistedPath } = await uploadImage(file);
+      return persistedPath;
+    };
+
+    // WYSIWYG editor should use runtime URLs so images render immediately,
+    // while the persisted output is rewritten back to relative paths.
+    const handleImageUploadForWysiwyg = async (file: File): Promise<string> => {
+      const { runtimeUrl } = await uploadImage(file);
+      return runtimeUrl;
+    };
+
     // 将API URL转换回相对路径（用于源码模式显示）
     const convertApiUrlsToRelativePaths = (content: string): string => {
-      // 匹配 /api/files/webdav/ 开头的图片URL
-      const apiUrlRegex = /!\[([^\]]*)\]\(\/api\/files\/webdav\/(.+?)\)/g;
+      // Best-effort conversion for source editing: show persisted relative semantics.
+      const cleanedArticlePath =
+        typeof articlePath === "string" ? articlePath.replace(/^\/+/, "") : "";
+      const baseDir = cleanedArticlePath
+        ? /\.[A-Za-z0-9]+$/.test(cleanedArticlePath)
+          ? cleanedArticlePath
+          : `${cleanedArticlePath.replace(/\/+$/, "")}/__unknown__.md`
+        : (() => {
+            const cleanBase = (attachmentBasePath || "").replace(/^\/+/, "").replace(/\/+$/, "");
+            const parts = cleanBase.split("/").filter(Boolean);
+            const parentDir =
+              parts.length > 0 && parts[parts.length - 1] === "assets"
+                ? parts.slice(0, -1).join("/")
+                : cleanBase;
+            return parentDir ? `${parentDir}/__unknown__.md` : "__unknown__.md";
+          })();
 
-      return content.replace(apiUrlRegex, (_match, alt, relativePath) => {
-        // 确保相对路径以 ./ 开头
-        const normalizedPath = relativePath.startsWith("./") ? relativePath : `./${relativePath}`;
-        console.log("🔄 [UniversalEditor] 转换API URL回相对路径:", {
-          original: _match,
-          converted: `![${alt}](${normalizedPath})`,
-        });
-        return `![${alt}](${normalizedPath})`;
-      });
+      return rewriteApiFilesUrlsToRelative(content, baseDir).content;
     };
 
     // 提取正文内容，用于预览模式（移除 frontmatter）
@@ -300,7 +326,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                 editorId={`wysiwyg-${editorId}`}
                 articlePath={articlePath}
                 contentSource={contentSource}
-                onImageUpload={handleImageUpload}
+                onImageUpload={handleImageUploadForWysiwyg}
               />
             </div>
           )}
@@ -313,7 +339,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                 placeholder={placeholder}
                 className="w-full h-full"
                 data-testid="content-input"
-                onImageUpload={handleImageUpload}
+                onImageUpload={handleImageUploadForSource}
               />
             </div>
           )}

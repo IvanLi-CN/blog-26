@@ -53,7 +53,7 @@ function normalizePath(path: string): string {
 function resolveImagePathFromFile(
   imagePath: string,
   markdownFilePath: string,
-  _contentSource: "local" | "webdav" = "webdav"
+  _contentSource: "local" | "webdav" = "local"
 ): string {
   // 如果是绝对路径，直接使用（去掉开头的斜杠）
   if (imagePath.startsWith("/")) {
@@ -155,7 +155,7 @@ function resolveImagePathFromFile(
  */
 export function resolveImagePath(
   imagePath: string | undefined,
-  contentSource: "local" | "webdav" = "webdav",
+  contentSource: "local" | "webdav" = "local",
   markdownFilePath?: string
 ): string | null {
   // 输入验证
@@ -215,7 +215,7 @@ export function resolveImagePath(
  */
 export function resolveImagePaths(
   imagePaths: (string | undefined)[],
-  contentSource: "local" | "webdav" = "webdav",
+  contentSource: "local" | "webdav" = "local",
   markdownFilePath?: string
 ): string[] {
   return imagePaths
@@ -236,8 +236,8 @@ export function resolveImagePathLegacy(
   imagePath: string | undefined,
   contextPath?: string
 ): string | null {
-  // 默认使用webdav内容源
-  const contentSource = "webdav";
+  // 默认使用 local 内容源（FS-only 默认）
+  const contentSource = "local";
 
   // 尝试从contextPath推断文件路径
   let markdownFilePath: string | undefined;

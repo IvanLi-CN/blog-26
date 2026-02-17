@@ -11,6 +11,7 @@ import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import { Slice } from "@milkdown/prose/model";
 import { TextSelection } from "@milkdown/prose/state";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
 import "@milkdown/crepe/theme/common/style.css";
@@ -91,7 +92,7 @@ interface MilkdownEditorProps {
 function convertImagePathForEditor(
   imagePath: string,
   articlePath: string = "",
-  contentSource: "webdav" | "local" = "webdav"
+  contentSource: "webdav" | "local" = "local"
 ): string {
   // 从文章路径推断文章目录
   const articleDir = articlePath.startsWith("/")
@@ -124,7 +125,7 @@ function convertImagePathForEditor(
 function preprocessContentForEditor(
   content: string,
   articlePath: string = "",
-  contentSource: "webdav" | "local" = "webdav"
+  contentSource: "webdav" | "local" = "local"
 ): string {
   // 处理图片路径
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -148,7 +149,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       onImageUpload,
       editorId = "default",
       articlePath = "",
-      contentSource = "webdav",
+      contentSource = "local",
     },
     ref
   ) => {
@@ -210,7 +211,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             }
           }
 
-          const uploadPath = baseDir ? `${baseDir}/${filename}` : filename;
+          // Persisted semantics: new uploads always go to "./assets/<filename>" next to the markdown file.
+          const uploadBase = baseDir ? `${baseDir}/assets` : "assets";
+          const uploadPath = `${uploadBase}/${filename}`;
           const formData = new FormData();
           formData.append("file", file);
 
@@ -226,12 +229,11 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           const _result = await response.json();
           // removed verbose log
 
-          // 构建新的图片路径 - 始终使用绝对路径，避免相对路径解析问题
-          const imagePath = `/api/files/${contentSource}/${uploadPath}`;
-          // removed verbose log
-
-          // 替换原始的 base64 图片 - 使用绝对路径确保正确显示
-          processedContent = processedContent.replace(fullMatch, `![${altText}](${imagePath})`);
+          // Replace with persisted relative path (no /api/files/).
+          processedContent = processedContent.replace(
+            fullMatch,
+            `![${altText}](./assets/${filename})`
+          );
         } catch (_error) {
           console.error("❌ [MilkdownEditor] 内联图片处理失败:", _error);
           // 保持原始内容不变
@@ -357,10 +359,18 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 后处理内容，将 YAML 代码块转换回 frontmatter
               const processedMarkdown = postprocessContentFromEditor(markdown);
+              const persistedMarkdownFilePath =
+                typeof articlePath === "string" && articlePath.length > 0
+                  ? articlePath.replace(/^\/+/, "")
+                  : "__unknown__.md";
+              const persistedMarkdown = rewriteApiFilesUrlsToRelative(
+                processedMarkdown,
+                persistedMarkdownFilePath
+              ).content;
 
               // 超强防护机制：多重检查避免无限循环
               const currentContent = lastContentRef.current;
-              const isSameContent = currentContent === processedMarkdown;
+              const isSameContent = currentContent === persistedMarkdown;
 
               // 检查内容是否完全相同
               if (isSameContent) {
@@ -387,13 +397,13 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               isUpdatingRef.current = true;
 
               // 更新最后内容引用，防止后续循环
-              lastContentRef.current = processedMarkdown;
+              lastContentRef.current = persistedMarkdown;
 
               // removed log
 
               // 异步调用 onChange，然后重置标志
               setTimeout(() => {
-                onChangeRef.current(processedMarkdown);
+                onChangeRef.current(persistedMarkdown);
                 isUpdatingRef.current = false;
               }, 0);
             });

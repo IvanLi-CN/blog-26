@@ -22,7 +22,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
     enableLazyLoading = true,
     enableLightbox = true,
     articlePath = "",
-    contentSource = "webdav",
+    contentSource = "local",
   } = options;
 
   return (tree: Root, file: unknown) => {

@@ -43,13 +43,13 @@ export function resolveRelativePath(src: string, articleDir: string): string {
     resolvedPath = src.substring(1);
   } else {
     // 没有前缀的相对路径
-    // 对于文章，图片通常在相对于文章目录的 assets 目录下
+    // 持久化语义：无前缀相对路径视为“同目录”（不强制落到 assets/）
     if (src.startsWith("assets/")) {
       // 如果路径已经以 assets/ 开头，添加文章目录前缀
       resolvedPath = `${articleDir}${src}`;
     } else {
-      // 其他情况，视为相对于文章目录的 assets 目录
-      resolvedPath = `${articleDir}assets/${src}`;
+      // 其他情况，视为相对于文章目录
+      resolvedPath = `${articleDir}${src}`;
     }
   }
 
@@ -75,7 +75,7 @@ export function generateOptimizedImageUrl(
     contentSource?: "webdav" | "local";
   } = {}
 ): string {
-  const { contentSource = "webdav" } = options;
+  const { contentSource = "local" } = options;
 
   // 使用现有的文件代理端点
   return `/api/files/${contentSource}/${resolvedPath}`;

@@ -2,7 +2,7 @@
 
 ## 状态
 
-- Status: 待实现
+- Status: 已完成
 - Created: 2026-01-16
 - Last: 2026-02-17
 
@@ -143,11 +143,11 @@
 
 ## 里程碑（Milestones）
 
-- [ ] M1: 冻结“规范化相对路径”与解析规则（含示例与边界），并落到契约文档
-- [ ] M2: 写入端改造口径冻结（文章编辑器 + memo 编辑器 + 服务端入库前规范化）
-- [ ] M3: 渲染链路默认 `local`，且仅在运行时映射为 `/api/files/<source>/...`（不回写）
-- [ ] M4: 迁移与校验工具落地（批处理/同步过程规范化 + 扫描报告）
-- [ ] M5: FS-only 端到端验证通过（重建 DB/向量化 + 核心页面验证）
+- [x] M1: 冻结“规范化相对路径”与解析规则（含示例与边界），并落到契约文档
+- [x] M2: 写入端改造口径冻结（文章编辑器 + memo 编辑器 + 服务端入库前规范化）
+- [x] M3: 渲染链路默认 `local`，且仅在运行时映射为 `/api/files/<source>/...`（不回写）
+- [x] M4: 迁移与校验工具落地（批处理/同步过程规范化 + 扫描报告）
+- [x] M5: FS-only 端到端验证通过（重建 DB/向量化 + 核心页面验证）
 
 ## 方案概述（Approach, high-level）
 
@@ -186,3 +186,7 @@
 - `src/lib/image-utils.ts` / `src/components/common/markdown/plugins/rehype-image-optimization.ts`（运行时路径解析/默认 source 目前偏向 `webdav`）
 - `src/app/api/files/[source]/[...path]/route.ts`（文件代理 API）
 - `src/config/paths.ts`（内容源配置与校验）
+
+## 变更记录 / Change log
+
+- 2026-02-17: 实现“持久化相对路径”不变量（编辑器/服务端守门人/迁移工具），并通过 FS-only E2E 验证门槛。
