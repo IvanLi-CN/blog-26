@@ -4,7 +4,7 @@
 
 - Status: 待实现
 - Created: 2026-01-16
-- Last: 2026-01-16
+- Last: 2026-02-17
 
 ## 背景 / 问题陈述
 
@@ -76,7 +76,8 @@
 | `GET/POST/PUT /api/files/{source}/{...path}` | HTTP API | internal | Modify | ./contracts/http-apis.md | BE | 编辑器上传、渲染读取、迁移校验 | 运行时代理端点；FS-only 下允许禁用 webdav |
 | `memos.*` (tRPC) attachments semantics | RPC | internal | Modify | ./contracts/rpc.md | BE/FE | memo 编辑器、列表/详情 | 上传/保存时考虑相对路径与默认 source |
 | Content source selection defaults | Config | internal | Modify | ./contracts/config.md | BE | 全栈 | 默认 `local`，FS-only 时不要求 WEBDAV 配置 |
-| `content:scan-api-links` (proposed) | CLI | internal | New | ./contracts/cli.md | BE | CI/开发者 | 用于证明“无 `/api/files/` 落盘引用” |
+| `content:scan-api-links` | CLI | internal | New | ./contracts/cli.md | BE | CI/开发者 | 扫描内容与 DB 中的 `/api/files/` 落盘引用 |
+| `content:migrate-api-links` | CLI | internal | New | ./contracts/cli.md | BE | CI/开发者 | 将历史 `/api/files/...` 链接迁移为规范化相对路径（支持 dry-run） |
 
 ### 契约文档（按 Kind 拆分）
 
@@ -126,6 +127,7 @@
 - E2E tests:
   - 文章上传 + 保存 + 刷新后仍能显示（验证“渲染时转成 API，但落盘仍是相对路径”）。
   - memo 上传 + 保存 + 刷新后仍能显示。
+  - FS-only 演练：按 `docs/runbooks/fs-only-migration.md` 执行完整迁移 + 校验 + E2E（作为合并前质量门槛）。
 
 ### Quality checks
 
@@ -137,6 +139,7 @@
 
 - `docs/memos-data-flow.md`: 补充 memo 附件路径“持久化相对路径 / 运行时映射”的口径与示例。
 - `docs/mcp-http.md`（如涉及对外暴露的行为口径变化）: 增补文件代理 API 在 FS-only 下的约定。
+- `docs/runbooks/fs-only-migration.md`: 测试环境完整迁移演练（dry-run → apply → scan → FS-only 启动与回滚）。
 
 ## 里程碑（Milestones）
 
