@@ -157,44 +157,73 @@ export function validatePathConfig(): {
 } {
   const errors: string[] = [];
 
-  // 检查必要的环境变量
-  if (!process.env.WEBDAV_URL && process.env.NODE_ENV !== "test") {
-    errors.push("WEBDAV_URL 环境变量未设置");
-  }
+  // 内容源白名单（可选）：未设置则视为不限制
+  const allowedSources = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
+  const allowLocal = allowedSources ? allowedSources.has("local") : true;
+  const allowWebDAV = allowedSources ? allowedSources.has("webdav") : true;
+
+  const localEnabled = allowLocal && hasLocalBasePath();
+  const webdavEnabled =
+    allowWebDAV &&
+    typeof process.env.WEBDAV_URL === "string" &&
+    process.env.WEBDAV_URL.trim().length > 0;
 
   // 检查 WebDAV 路径格式
-  Object.entries(WEBDAV_PATHS).forEach(([key, paths]) => {
-    if (!Array.isArray(paths) || paths.length === 0) {
-      errors.push(`WebDAV 路径 ${key} 不能为空`);
-      return;
-    }
-
-    paths.forEach((path, index) => {
-      if (!path.startsWith("/")) {
-        errors.push(`WebDAV 路径 ${key}[${index}] 必须以 '/' 开头: ${path}`);
+  if (webdavEnabled) {
+    Object.entries(WEBDAV_PATHS).forEach(([key, paths]) => {
+      if (!Array.isArray(paths) || paths.length === 0) {
+        errors.push(`WebDAV 路径 ${key} 不能为空`);
+        return;
       }
+
+      paths.forEach((path, index) => {
+        if (!path.startsWith("/")) {
+          errors.push(`WebDAV 路径 ${key}[${index}] 必须以 '/' 开头: ${path}`);
+        }
+      });
     });
-  });
+  }
 
   // 检查本地路径格式
-  Object.entries(LOCAL_PATHS).forEach(([key, pathOrPaths]) => {
-    if (key === "basePath") {
-      // basePath 是字符串，不是数组
-      return;
-    }
-
-    const paths = pathOrPaths as string[];
-    if (!Array.isArray(paths) || paths.length === 0) {
-      errors.push(`本地路径 ${key} 不能为空`);
-      return;
-    }
-
-    paths.forEach((path, index) => {
-      if (!path.startsWith("/")) {
-        errors.push(`本地路径 ${key}[${index}] 必须以 '/' 开头: ${path}`);
+  if (localEnabled) {
+    Object.entries(LOCAL_PATHS).forEach(([key, pathOrPaths]) => {
+      if (key === "basePath") {
+        // basePath 是字符串，不是数组
+        return;
       }
+
+      const paths = pathOrPaths as string[];
+      if (!Array.isArray(paths) || paths.length === 0) {
+        errors.push(`本地路径 ${key} 不能为空`);
+        return;
+      }
+
+      paths.forEach((path, index) => {
+        if (!path.startsWith("/")) {
+          errors.push(`本地路径 ${key}[${index}] 必须以 '/' 开头: ${path}`);
+        }
+      });
     });
-  });
+  }
+
+  // 至少启用一个内容源
+  const enabledSources: string[] = [];
+  if (localEnabled) enabledSources.push("local");
+  if (webdavEnabled) enabledSources.push("webdav");
+  if (enabledSources.length === 0) {
+    // Provide a more actionable error that matches CONTENT_SOURCES expectations.
+    if (allowLocal && allowWebDAV) {
+      errors.push(
+        "未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL（或调整 CONTENT_SOURCES）"
+      );
+    } else if (allowLocal) {
+      errors.push("未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH（CONTENT_SOURCES=local）");
+    } else if (allowWebDAV) {
+      errors.push("未启用任何内容源：请配置 WEBDAV_URL（CONTENT_SOURCES=webdav）");
+    } else {
+      errors.push("未启用任何内容源：CONTENT_SOURCES 未包含任何受支持的 source（local/webdav）");
+    }
+  }
 
   return {
     isValid: errors.length === 0,
@@ -206,23 +235,53 @@ export function validatePathConfig(): {
  * 获取完整的 WebDAV URL
  */
 export function getWebDAVUrl(path: string = ""): string {
-  const baseUrl = process.env.WEBDAV_URL || "http://localhost:8080";
+  const baseUrl = process.env.WEBDAV_URL;
+  if (!baseUrl) {
+    throw new Error("WEBDAV_URL 环境变量未设置");
+  }
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${baseUrl.replace(/\/$/, "")}${cleanPath}`;
+}
+
+function hasLocalBasePath(): boolean {
+  return typeof LOCAL_PATHS.basePath === "string" && LOCAL_PATHS.basePath.length > 0;
 }
 
 /**
  * 判断是否启用本地内容源
  */
 export function isLocalContentEnabled(): boolean {
-  return typeof LOCAL_PATHS.basePath === "string" && LOCAL_PATHS.basePath.length > 0;
+  return hasLocalBasePath() && isContentSourceAllowed("local");
+}
+
+export function parseContentSourcesFromEnv(
+  envValue: string | undefined
+): Set<"local" | "webdav"> | null {
+  if (!envValue) return null;
+  const trimmed = envValue.trim();
+  if (trimmed.length === 0) return null;
+
+  const set = new Set<"local" | "webdav">();
+  for (const raw of trimmed.split(",")) {
+    const value = raw.trim();
+    if (value === "local" || value === "webdav") {
+      set.add(value);
+    }
+  }
+  return set.size > 0 ? set : null;
+}
+
+export function isContentSourceAllowed(source: "local" | "webdav"): boolean {
+  const allowed = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
+  if (!allowed) return true;
+  return allowed.has(source);
 }
 
 const supportedSources: Array<"local" | "webdav"> = [];
 if (isLocalContentEnabled()) {
   supportedSources.push("local");
 }
-if (process.env.WEBDAV_URL) {
+if (process.env.WEBDAV_URL && isContentSourceAllowed("webdav")) {
   supportedSources.push("webdav");
 }
 

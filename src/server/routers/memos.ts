@@ -1,15 +1,23 @@
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
-import { WEBDAV_PATH_MAPPINGS } from "../../config/paths";
-import { getContentSourceManager } from "../../lib/content-sources";
-import { generateNanoidSlug } from "../../lib/content-sources/utils";
+import {
+  hasApiFilesReference,
+  normalizePersistedLink,
+  rewriteApiFilesUrlsToRelative,
+} from "@/lib/persisted-paths";
+import { isLocalContentEnabled, LOCAL_PATHS, WEBDAV_PATH_MAPPINGS } from "../../config/paths";
+import { getContentSourceManager, LocalContentSource } from "../../lib/content-sources";
+import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { WebDAVContentSource } from "../../lib/content-sources/webdav";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
 import { toMsTimestamp } from "../../lib/utils";
+import { getWebDAVClient, isWebDAVEnabled } from "../../lib/webdav";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
 // ============================================================================
@@ -44,19 +52,23 @@ function parseAttachments(metadata: string | null | undefined): any[] {
 }
 
 /**
- * 规范化附件路径：将以 "/" 开头的相对站点路径转换为统一的文件 API 路径
+ * 规范化附件路径（持久化语义）：
+ * - persisted metadata 必须是相对路径（no /api/files/）
+ * - 这里作为 API 输出的 best-effort 兜底，也用于兼容历史数据形态
  */
-function normalizeAttachmentPaths(
+function normalizeAttachmentsToPersistedSemantics(
   attachments: Array<{ path: string; [k: string]: any }>,
-  dataSource: string | null | undefined
+  markdownFilePath: string
 ) {
-  const source = dataSource === "local" ? "local" : "webdav";
   return attachments.map((att) => {
-    if (att?.path && typeof att.path === "string" && att.path.startsWith("/")) {
-      const clean = att.path.replace(/^\/+/, "");
-      return { ...att, path: `/api/files/${source}/${clean}` };
+    if (!att?.path || typeof att.path !== "string") return att;
+    try {
+      const normalized = normalizePersistedLink(att.path, markdownFilePath);
+      return normalized === att.path ? att : { ...att, path: normalized };
+    } catch {
+      // Keep original when normalization fails to avoid breaking legacy data unexpectedly.
+      return att;
     }
-    return att;
   });
 }
 
@@ -152,8 +164,22 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
       console.debug("🔧 [memo-sync] 注册内容源...");
     }
 
-    // 仅在启用 WebDAV 时注册内容源，避免本地/测试环境初始化失败
-    const { isWebDAVEnabled } = await import("../../lib/webdav");
+    // 仅在启用对应内容源时注册，避免 FS-only 下的初始化失败
+    if (isLocalContentEnabled()) {
+      const basePath = LOCAL_PATHS.basePath;
+      if (basePath) {
+        const localCfg = LocalContentSource.createDefaultConfig("local", 50, {
+          contentPath: basePath,
+        });
+        await manager.registerSource(new LocalContentSource(localCfg));
+        if (process.env.DEBUG_MEMOS === "1") {
+          console.debug("✅ [memo-sync] local 内容源注册成功");
+        }
+      }
+    } else if (process.env.DEBUG_MEMOS === "1") {
+      console.debug("ℹ️ [memo-sync] 跳过注册 local 内容源：未启用");
+    }
+
     if (isWebDAVEnabled()) {
       const webdavSource = createWebDAVSource();
       await manager.registerSource(webdavSource);
@@ -207,6 +233,71 @@ async function triggerIncrementalSync(): Promise<void> {
   }
 }
 
+function getLocalBasePathOrThrow(): string {
+  const base = LOCAL_PATHS.basePath;
+  if (!base || base.length === 0) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "本地内容源未启用：请设置 LOCAL_CONTENT_BASE_PATH",
+    });
+  }
+  return base;
+}
+
+function pickDefaultMemoSource(): "local" | "webdav" {
+  if (isLocalContentEnabled()) return "local";
+  if (isWebDAVEnabled()) return "webdav";
+  throw new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: "未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL",
+  });
+}
+
+function buildMemoMarkdownDocument(content: string, frontmatter: Record<string, unknown>): string {
+  const frontmatterYaml = Object.entries(frontmatter)
+    .filter(([, v]) => v !== undefined)
+    .map(([key, value]) => {
+      if (Array.isArray(value)) {
+        return `${key}:\n${value.map((v) => `  - ${JSON.stringify(v)}`).join("\n")}`;
+      }
+      return `${key}: ${JSON.stringify(value)}`;
+    })
+    .join("\n");
+
+  return `---\n${frontmatterYaml}\n---\n\n${content}`;
+}
+
+function normalizePersistedMemoInput(opts: {
+  content: string;
+  attachments: Array<{ path: string; [k: string]: any }>;
+  markdownFilePath: string;
+}): { content: string; attachments: Array<{ path: string; [k: string]: any }> } {
+  const rewritten = rewriteApiFilesUrlsToRelative(opts.content, opts.markdownFilePath).content;
+  const normalizedAttachments = normalizeAttachmentsToPersistedSemantics(
+    opts.attachments,
+    opts.markdownFilePath
+  );
+
+  // Optional strict mode: reject any persisted content still containing /api/files/
+  const strict = process.env.PERSISTED_PATHS_STRICT === "1" || process.env.NODE_ENV === "test";
+  if (strict) {
+    if (hasApiFilesReference(rewritten)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "持久化内容不允许包含 /api/files/ 链接，请先转换为相对路径。",
+      });
+    }
+    if (normalizedAttachments.some((att) => hasApiFilesReference(att.path))) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "attachments.path 不允许包含 /api/files/ 链接，请先转换为相对路径。",
+      });
+    }
+  }
+
+  return { content: rewritten, attachments: normalizedAttachments };
+}
+
 // ============================================================================
 // 安全构造响应（可测试）
 // ============================================================================
@@ -232,6 +323,7 @@ export function buildSafeMemoResponse(
   }: BuildSafeMemoResponseOptions
 ) {
   const fallbackIso = (now ?? new Date()).toISOString();
+  const markdownFilePath = memo.filePath || memo.id;
 
   let safeAttachments: any[] = inputAttachments;
   try {
@@ -240,7 +332,7 @@ export function buildSafeMemoResponse(
     if (faultDegrade) {
       throw new Error("forced attachment parsing failure for test");
     }
-    const normalized = normalizeAttachmentPaths(parsed as any, memo.dataSource);
+    const normalized = normalizeAttachmentsToPersistedSemantics(parsed as any, markdownFilePath);
     safeAttachments = Array.isArray(normalized) ? normalized : inputAttachments;
   } catch (error) {
     console.error("[memos.create] 解析附件失败，使用入参降级:", error);
@@ -455,9 +547,10 @@ export const memosRouter = router({
 
       // 转换为 API 响应格式
       const formattedMemos = memosWithVectorStatus.map((memo) => {
-        const attachments = normalizeAttachmentPaths(
+        const markdownFilePath = memo.filePath || memo.id;
+        const attachments = normalizeAttachmentsToPersistedSemantics(
           parseAttachments(memo.metadata),
-          (memo as any).dataSource
+          markdownFilePath
         );
         const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
 
@@ -554,9 +647,10 @@ export const memosRouter = router({
         });
       }
 
-      const attachments = normalizeAttachmentPaths(
+      const markdownFilePath = memo.filePath || memo.id;
+      const attachments = normalizeAttachmentsToPersistedSemantics(
         parseAttachments(memo.metadata),
-        (memo as any).dataSource
+        markdownFilePath
       );
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
@@ -604,16 +698,13 @@ export const memosRouter = router({
 
   // 创建新 memo（仅管理员）
   create: adminProcedure.input(createMemoSchema).mutation(async ({ input, ctx }) => {
-    const { content, title, isPublic, tags, attachments } = input;
+    const { content: rawContent, title, isPublic, tags, attachments } = input;
     const inputAttachments = Array.isArray(attachments) ? attachments : [];
     const inputTags = Array.isArray(tags) ? tags : [];
 
-    // 检查内容是否包含图片markdown（当前仅用于调试/日志，占位保留）
-    const _hasImageMarkdown = /!\[([^\]]*)\]\([^)]+\)/.test(content);
-
     const faultInjectionEnabled = process.env.MEMOS_E2E_FAULTS === "1";
-    const forceCoreFail = faultInjectionEnabled && content.includes("[[force-fail]]");
-    const forceDegrade = faultInjectionEnabled && content.includes("[[force-degrade]]");
+    const forceCoreFail = faultInjectionEnabled && rawContent.includes("[[force-fail]]");
+    const forceDegrade = faultInjectionEnabled && rawContent.includes("[[force-degrade]]");
     if (forceCoreFail) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -621,24 +712,16 @@ export const memosRouter = router({
       });
     }
 
-    // WebDAV 返回的是纯文件名（例如 20251009_title.md）
-    // 这里记录文件名，方便后续通过 filePath 反查数据库记录
-    let filePath: string | null = null;
-    let createdMemo: MemoRow | undefined;
-
-    // 在测试环境中，如果WebDAV连接失败，跳过WebDAV创建
-    // 检测测试环境：ADMIN_EMAIL包含test或者NODE_ENV为test
     const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     const buildFallbackResponse = (idHint?: string | null) => {
       const nowIso = new Date().toISOString();
-      const safeId =
-        idHint || (filePath ? `/memos/${filePath}`.replace(/\\+/g, "/") : `memo-${Date.now()}`);
+      const safeId = idHint || `memo-${Date.now()}`;
       return {
         id: safeId,
-        slug: generateNanoidSlug(8),
-        title: title || extractTitleFromContent(content),
-        content,
+        slug: generateSlugFromPath(safeId),
+        title: title || extractTitleFromContent(rawContent),
+        content: rawContent,
         isPublic,
         tags: inputTags,
         attachments: inputAttachments,
@@ -649,46 +732,96 @@ export const memosRouter = router({
       };
     };
 
-    try {
-      if (isTestEnv) {
-        try {
-          // 创建 WebDAV 内容源实例
+    const candidates: Array<"local" | "webdav"> = [];
+    if (isLocalContentEnabled()) candidates.push("local");
+    if (isWebDAVEnabled()) candidates.push("webdav");
+    if (candidates.length === 0) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL",
+      });
+    }
+
+    let createdId: string | null = null;
+    let createdSource: "local" | "webdav" | null = null;
+    let createdMemo: MemoRow | undefined;
+    let normalizedContent = rawContent;
+    let normalizedAttachments = inputAttachments;
+    let lastError: unknown = null;
+
+    for (const source of candidates) {
+      try {
+        const markdownFilePathForNormalization =
+          source === "webdav" ? "/memos/__new__.md" : "memos/__new__.md";
+
+        const normalized = normalizePersistedMemoInput({
+          content: rawContent,
+          attachments: inputAttachments,
+          markdownFilePath: markdownFilePathForNormalization,
+        });
+
+        normalizedContent = normalized.content;
+        normalizedAttachments = normalized.attachments;
+
+        const now = Date.now();
+        const nowIso = new Date(now).toISOString();
+
+        if (source === "local") {
+          const fileName = generateMemoFilename(normalizedContent, title, now);
+          createdId = `memos/${fileName}`.replace(/\\+/g, "/");
+
+          const frontmatter: Record<string, unknown> = {
+            title: title || extractTitleFromContent(normalizedContent),
+            public: isPublic,
+            tags: inputTags,
+            attachments: normalizedAttachments,
+            authorEmail: ctx.user?.email || "admin@example.com",
+            publishDate: nowIso,
+          };
+
+          const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
+          const basePath = getLocalBasePathOrThrow();
+          const fullPath = join(basePath, createdId);
+          await mkdir(dirname(fullPath), { recursive: true });
+          await writeFile(fullPath, markdownContent, "utf-8");
+        } else {
           const webdavSource = createWebDAVSource();
           await webdavSource.initialize();
 
-          // 发布到 WebDAV
-          filePath = await webdavSource.createMemo(content, {
+          const fileName = await webdavSource.createMemo(normalizedContent, {
             title,
             isPublic,
-            tags,
-            attachments: inputAttachments,
+            tags: inputTags,
+            attachments: normalizedAttachments,
             authorEmail: ctx.user?.email || "admin@example.com",
           });
 
           await webdavSource.dispose();
+          createdId = `/memos/${fileName}`.replace(/\\+/g, "/");
+        }
 
-          // 测试环境：为了避免依赖全量同步耗时，直接写入数据库，保证立即可见
-          const now = Date.now();
-          const dbPath = `/memos/${filePath}`.replace(/\\+/g, "/");
+        createdSource = source;
+
+        if (isTestEnv && createdId) {
           const memoData = {
-            id: dbPath,
+            id: createdId,
             type: "memo" as const,
-            slug: generateNanoidSlug(8),
-            title: title || extractTitleFromContent(content),
-            excerpt: generateExcerptFromContent(content),
-            contentHash: calculateSimpleHash(content),
+            slug: generateSlugFromPath(createdId),
+            title: title || extractTitleFromContent(normalizedContent),
+            excerpt: generateExcerptFromContent(normalizedContent),
+            contentHash: calculateSimpleHash(normalizedContent),
             lastModified: now,
-            source: "webdav",
-            filePath: dbPath,
+            source,
+            filePath: createdId,
             draft: false,
             public: isPublic,
             publishDate: now,
             updateDate: now,
-            tags: JSON.stringify(tags),
+            tags: JSON.stringify(inputTags),
             author: ctx.user?.email || "admin@example.com",
-            metadata: JSON.stringify({ attachments: inputAttachments }),
-            body: content,
-            dataSource: "webdav",
+            metadata: JSON.stringify({ attachments: normalizedAttachments }),
+            body: normalizedContent,
+            dataSource: source,
           };
 
           try {
@@ -697,63 +830,20 @@ export const memosRouter = router({
             // If sync already inserted, ignore and continue.
           }
           createdMemo = memoData as MemoRow;
-        } catch (webdavError) {
-          if (process.env.DEBUG_MEMOS === "1") {
-            console.debug("🔍 [memos.create] WebDAV失败，使用测试模式:", webdavError);
-          }
-          // 在测试环境中，生成一个模拟的文件路径并直接写入数据库，
-          // 以保证在无 WebDAV 的情况下功能仍可用
-          const timestamp = Date.now();
-          const slug = title?.replace(/\s+/g, "-").toLowerCase() || `memo-${timestamp}`;
-          const fallbackFileName = `${slug}-${timestamp}.md`;
-          const dbPath = `/memos/${fallbackFileName}`.replace(/\\+/g, "/");
-
-          const now = Date.now();
-          const memoData = {
-            id: dbPath,
-            type: "memo" as const,
-            slug: generateNanoidSlug(8),
-            title: title || extractTitleFromContent(content),
-            excerpt: generateExcerptFromContent(content),
-            contentHash: calculateSimpleHash(content),
-            lastModified: now,
-            source: "webdav",
-            filePath: dbPath,
-            draft: false,
-            public: isPublic,
-            publishDate: now,
-            updateDate: now,
-            tags: JSON.stringify(tags),
-            author: ctx.user?.email || "admin@example.com",
-            metadata: JSON.stringify({ attachments: inputAttachments }),
-            body: content,
-            dataSource: "webdav",
-          };
-
-          await db.insert(posts).values(memoData);
-          createdMemo = memoData as MemoRow;
-          filePath = memoData.filePath;
         }
-      } else {
-        // 生产环境中，WebDAV是必需的
-        const webdavSource = createWebDAVSource();
-        await webdavSource.initialize();
 
-        filePath = await webdavSource.createMemo(content, {
-          title,
-          isPublic,
-          tags,
-          attachments: inputAttachments,
-          authorEmail: ctx.user?.email || "admin@example.com",
-        });
-
+        lastError = null;
+        break;
+      } catch (error) {
+        lastError = error;
         if (process.env.DEBUG_MEMOS === "1") {
-          console.debug("🔍 [memos.create] WebDAV生成的文件名:", filePath);
+          console.debug(`🔍 [memos.create] ${source} 创建失败，尝试下一个内容源:`, error);
         }
-        await webdavSource.dispose();
       }
-    } catch (error) {
-      console.error("[memos.create] 核心创建失败:", error);
+    }
+
+    if (!createdId || !createdSource) {
+      console.error("[memos.create] 核心创建失败:", lastError);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "创建 memo 失败",
@@ -768,44 +858,42 @@ export const memosRouter = router({
     }
 
     try {
-      // 通过 filePath 反查刚创建的 memo，以返回与列表/bySlug 相同口径的结构
-      if (!createdMemo && filePath) {
-        const suffix = filePath.startsWith("/") ? filePath : `/${filePath}`;
+      // 通过 id 反查刚创建的 memo，以返回与列表/bySlug 相同口径的结构
+      if (!createdMemo && createdId) {
         createdMemo = await db
           .select()
           .from(posts)
-          .where(and(eq(posts.type, "memo"), like(posts.filePath, `%${suffix}`)))
-          .orderBy(desc(posts.publishDate), desc(posts.id))
+          .where(and(eq(posts.type, "memo"), eq(posts.id, createdId)))
           .limit(1)
           .then((rows) => rows[0]);
       }
     } catch (error) {
-      console.error("[memos.create] 通过 filePath 查询 memo 失败:", error);
+      console.error("[memos.create] 通过 id 查询 memo 失败:", error);
       // 不抛错，继续走降级返回
     }
 
     if (!createdMemo) {
       // 兜底：同步过程中未能立即读到记录时，返回最小可用信息，避免前端报错
-      return buildFallbackResponse(filePath);
+      return buildFallbackResponse(createdId);
     }
 
     try {
       return buildSafeMemoResponse(createdMemo, {
-        inputAttachments,
+        inputAttachments: normalizedAttachments,
         inputTags,
-        fallbackContent: content,
+        fallbackContent: normalizedContent,
         fallbackTitle: title,
         faultDegrade: forceDegrade,
       });
     } catch (error) {
       console.error("[memos.create] 构造响应失败，使用降级结构:", error);
-      return buildFallbackResponse(createdMemo.id);
+      return buildFallbackResponse(createdId);
     }
   }),
 
   // 更新 memo（仅管理员）
   update: adminProcedure.input(updateMemoSchema).mutation(async ({ input, ctx }) => {
-    const { id, content, title, isPublic, tags, attachments } = input;
+    const { id, content: rawContent, title, isPublic, tags, attachments } = input;
     const isTestEnv = process.env.NODE_ENV === "test" || process.env.ADMIN_EMAIL?.includes("test");
 
     try {
@@ -824,18 +912,20 @@ export const memosRouter = router({
         });
       }
 
-      // 直接使用 WebDAV 客户端更新文件,跳过连接验证
-      // 这样可以避免 initialize() 中的连接验证失败
-      const { getWebDAVClient } = await import("../../lib/webdav");
-      const webdavClient = getWebDAVClient();
+      const markdownFilePath = existingMemo.filePath || existingMemo.id;
+      const normalized = normalizePersistedMemoInput({
+        content: rawContent,
+        attachments: Array.isArray(attachments) ? attachments : [],
+        markdownFilePath,
+      });
 
       // 构建 markdown 内容
       const nowIso = new Date().toISOString();
       const frontmatter: Record<string, unknown> = {
-        title: title || extractTitleFromContent(content),
+        title: title || extractTitleFromContent(normalized.content),
         public: isPublic,
         tags,
-        attachments,
+        attachments: normalized.attachments,
         authorEmail: ctx.user?.email || "admin@example.com",
         updateDate: nowIso,
       };
@@ -844,20 +934,27 @@ export const memosRouter = router({
         frontmatter.publishDate = existingPublishIso;
       }
 
-      const frontmatterStr = Object.entries(frontmatter)
-        .map(([key, value]) => {
-          if (Array.isArray(value)) {
-            return `${key}: [${value.map((v) => JSON.stringify(v)).join(", ")}]`;
-          }
-          return `${key}: ${JSON.stringify(value)}`;
-        })
-        .join("\n");
+      const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
 
-      const markdownContent = `---\n${frontmatterStr}\n---\n\n${content}`;
-
-      // 写入到 WebDAV（优先使用 filePath，其次回退到 id）
-      const webdavPath = existingMemo.filePath || existingMemo.id;
-      await webdavClient.putFileContent(webdavPath, markdownContent);
+      const memoSource = existingMemo.source === "local" ? "local" : "webdav";
+      if (memoSource === "webdav") {
+        if (!isWebDAVEnabled()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "WebDAV 已禁用：请先将该 memo 迁移为 local（或启用 WEBDAV_URL / CONTENT_SOURCES=webdav）。",
+          });
+        }
+        const webdavClient = getWebDAVClient();
+        const webdavPath = existingMemo.filePath || existingMemo.id;
+        await webdavClient.putFileContent(webdavPath, markdownContent);
+      } else {
+        const basePath = getLocalBasePathOrThrow();
+        const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+        const fullPath = join(basePath, localFilePath);
+        await mkdir(dirname(fullPath), { recursive: true });
+        await writeFile(fullPath, markdownContent, "utf-8");
+      }
 
       // 更新数据库
       const now = Date.now();
@@ -869,18 +966,18 @@ export const memosRouter = router({
         // ignore malformed metadata json
         meta = {};
       }
-      meta.attachments = attachments;
+      meta.attachments = normalized.attachments;
 
       const updateData = {
-        title: title || extractTitleFromContent(content),
-        excerpt: generateExcerptFromContent(content),
-        body: content, // 使用 body 字段匹配实际数据库结构
+        title: title || extractTitleFromContent(normalized.content),
+        excerpt: generateExcerptFromContent(normalized.content),
+        body: normalized.content, // 使用 body 字段匹配实际数据库结构
         public: isPublic,
         tags: JSON.stringify(tags),
         metadata: JSON.stringify(meta),
         updateDate: now,
         lastModified: now,
-        contentHash: calculateSimpleHash(content),
+        contentHash: calculateSimpleHash(normalized.content),
       };
 
       await db.update(posts).set(updateData).where(eq(posts.id, id));
@@ -902,7 +999,7 @@ export const memosRouter = router({
         content: updateData.body, // 使用 body 字段匹配实际数据库结构
         isPublic: updateData.public,
         tags,
-        attachments,
+        attachments: normalized.attachments,
         createdAt: displayTime,
         publishedAt,
         updatedAt,
@@ -941,30 +1038,54 @@ export const memosRouter = router({
         });
       }
 
-      // 如果内容来源于 WebDAV，则尝试删除远端文件；
-      // 否则跳过远端删除，仅移除数据库记录（本地/数据库源不依赖 WebDAV）。
-      if ((existingMemo as any).source === "webdav") {
-        try {
-          // 直接使用 WebDAV 客户端删除文件，避免 initialize 失败中断
-          const { getWebDAVClient } = await import("../../lib/webdav");
-          const webdavClient = getWebDAVClient();
-          const webdavPath = existingMemo.filePath || existingMemo.id;
-
+      const memoSource = existingMemo.source === "local" ? "local" : "webdav";
+      if (memoSource === "webdav") {
+        if (!isWebDAVEnabled()) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[memos.delete] WebDAV 已禁用，跳过远端删除:", existingMemo.id);
+          } else {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "WebDAV 已禁用，无法删除远端 memo 文件。",
+            });
+          }
+        } else {
           try {
-            await webdavClient.deleteFile(webdavPath);
+            // 直接使用 WebDAV 客户端删除文件，避免 initialize 失败中断
+            const webdavClient = getWebDAVClient();
+            const webdavPath = existingMemo.filePath || existingMemo.id;
+
+            try {
+              await webdavClient.deleteFile(webdavPath);
+            } catch (err) {
+              // 在开发/测试环境，如远端不存在对应文件，则记录并继续数据库删除
+              if (process.env.NODE_ENV !== "production") {
+                console.warn("[memos.delete] WebDAV 删除失败(开发环境忽略)", webdavPath, err);
+              } else {
+                throw err;
+              }
+            }
           } catch (err) {
-            // 在开发/测试环境，如远端不存在对应文件，则记录并继续数据库删除
             if (process.env.NODE_ENV !== "production") {
-              console.warn("[memos.delete] WebDAV 删除失败(开发环境忽略)", webdavPath, err);
+              console.warn("[memos.delete] 跳过 WebDAV 删除(开发环境)", err);
             } else {
               throw err;
             }
           }
-        } catch (err) {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn("[memos.delete] 跳过 WebDAV 删除(开发环境)", err);
-          } else {
-            throw err;
+        }
+      } else {
+        // local source: best-effort delete local file (non-fatal in dev/test)
+        if (isLocalContentEnabled()) {
+          const basePath = getLocalBasePathOrThrow();
+          const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+          try {
+            await rm(join(basePath, localFilePath), { force: true });
+          } catch (err) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
+            } else {
+              throw err;
+            }
           }
         }
       }
@@ -997,11 +1118,6 @@ export const memosRouter = router({
     const { filename, content, contentType } = input;
 
     try {
-      // 创建 WebDAV 内容源实例
-      const webdavSource = createWebDAVSource();
-
-      await webdavSource.initialize();
-
       // 将 base64 转换为 ArrayBuffer
       const binaryString = atob(content);
       const bytes = new Uint8Array(binaryString.length);
@@ -1009,14 +1125,29 @@ export const memosRouter = router({
         bytes[i] = binaryString.charCodeAt(i);
       }
 
-      // 上传到 WebDAV
-      const attachmentPath = await webdavSource.uploadMemoAttachment(filename, bytes.buffer);
+      const targetSource = pickDefaultMemoSource();
 
-      await webdavSource.dispose();
+      let persistedPath = `./assets/${filename}`;
+      if (targetSource === "local") {
+        const basePath = getLocalBasePathOrThrow();
+        const fileRelPath = `memos/assets/${filename}`;
+        const fullPath = join(basePath, fileRelPath);
+        await mkdir(dirname(fullPath), { recursive: true });
+        await writeFile(fullPath, bytes);
+      } else {
+        const webdavSource = createWebDAVSource();
+        await webdavSource.initialize();
+
+        const attachmentPath = await webdavSource.uploadMemoAttachment(filename, bytes.buffer);
+        await webdavSource.dispose();
+
+        // Convert WebDAV absolute path to persisted relative.
+        persistedPath = normalizePersistedLink(attachmentPath, "/memos/__new__.md");
+      }
 
       return {
         filename,
-        path: attachmentPath,
+        path: persistedPath,
         contentType,
         size: bytes.length,
         isImage: contentType?.startsWith("image/") || false,

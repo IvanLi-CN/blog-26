@@ -1,6 +1,6 @@
 // WebDAV 客户端库 - 用于与 WebDAV 服务器交互
 
-import { WEBDAV_PATHS } from "../config/paths";
+import { isContentSourceAllowed, WEBDAV_PATHS } from "../config/paths";
 
 // WebDAV 请求配置
 const WEBDAV_RETRY_ATTEMPTS = 3;
@@ -609,7 +609,11 @@ let webdavClient: WebDAVClient | null = null;
  * 检查 WebDAV 是否启用
  */
 export function isWebDAVEnabled(): boolean {
-  return !!process.env.WEBDAV_URL;
+  const url = process.env.WEBDAV_URL;
+  if (!url || url.trim().length === 0) return false;
+  // Respect explicit whitelist (FS-only / local-only mode)
+  if (!isContentSourceAllowed("webdav")) return false;
+  return true;
 }
 
 /**

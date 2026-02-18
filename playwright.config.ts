@@ -11,6 +11,7 @@ import { defineConfig, devices } from "@playwright/test";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 // E2E header injection (no reverse proxy):
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
+const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
 
 // Allow overriding default ports via environment variables for worktrees/parallel runs
 // To avoid CI flakiness when default ports are occupied, pick the first free port from a small pool.
@@ -40,8 +41,10 @@ const baseDav = Number(process.env.WEBDAV_PORT || process.env.DAV_PORT || 25091)
 const WEB_PORT = pickPort(baseWeb, [baseWeb + 100, baseWeb + 200, baseWeb + 300]);
 const WEBDAV_PORT = pickPort(baseDav, [baseDav + 100, baseDav + 200, baseDav + 300]);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${WEB_PORT}`;
-const WEBDAV_URL = process.env.WEBDAV_URL || `http://localhost:${WEBDAV_PORT}`;
+const WEBDAV_URL_NON_FS_ONLY = process.env.WEBDAV_URL || `http://localhost:${WEBDAV_PORT}`;
+const WEBDAV_URL = E2E_FS_ONLY ? undefined : WEBDAV_URL_NON_FS_ONLY;
 const REUSE_EXISTING_WEBDAV = (() => {
+  if (E2E_FS_ONLY) return false;
   const explicit = process.env.PLAYWRIGHT_REUSE_WEBDAV?.toLowerCase();
   if (explicit === "true") return true;
   if (explicit === "false") return false;
@@ -137,41 +140,63 @@ export default defineConfig({
   ],
 
   // E2E 测试服务器配置
-  webServer: [
-    // 1) dufs WebDAV 服务器
-    {
-      command: `dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
-      url: WEBDAV_URL,
-      // Only reuse when caller explicitly provides a running endpoint to avoid CI flakiness
-      reuseExistingServer: REUSE_EXISTING_WEBDAV,
-      timeout: 30 * 1000, // 30秒启动超时
-    },
-    // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
-    {
-      command: `WEBDAV_URL=${WEBDAV_URL} DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test E2E_MODE=1 LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
-      url: BASE_URL,
-      // Default: do not reuse to avoid state bleed; allow opt-in reuse for local runs when a dev server is already running.
-      reuseExistingServer: REUSE_EXISTING_APP,
-      timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
-      env: {
-        NODE_ENV: "test",
-        ADMIN_EMAIL,
-        DB_PATH: ABS_TEST_DB,
-        PORT: String(WEB_PORT),
-        LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
-        WEBDAV_URL,
-        E2E_MODE: "1", // 启用测试环境下的 Files API 本地回退
-        MEMOS_E2E_FAULTS: "1",
-      },
-    },
-  ],
+  webServer: E2E_FS_ONLY
+    ? [
+        // FS-only: No WebDAV. Reset data with CONTENT_SOURCES=local and start Next.js.
+        {
+          command: `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local bun run test-env:reset-fs-only && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
+          url: BASE_URL,
+          reuseExistingServer: REUSE_EXISTING_APP,
+          timeout: 180 * 1000,
+          env: {
+            NODE_ENV: "test",
+            ADMIN_EMAIL,
+            DB_PATH: ABS_TEST_DB,
+            PORT: String(WEB_PORT),
+            LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
+            CONTENT_SOURCES: "local",
+            MEMOS_E2E_FAULTS: "1",
+          },
+        },
+      ]
+    : [
+        // 1) dufs WebDAV 服务器
+        {
+          command: `dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
+          url: WEBDAV_URL_NON_FS_ONLY,
+          // Only reuse when caller explicitly provides a running endpoint to avoid CI flakiness
+          reuseExistingServer: REUSE_EXISTING_WEBDAV,
+          timeout: 30 * 1000, // 30秒启动超时
+        },
+        // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
+        {
+          command: `WEBDAV_URL=${WEBDAV_URL_NON_FS_ONLY} DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
+          url: BASE_URL,
+          // Default: do not reuse to avoid state bleed; allow opt-in reuse for local runs when a dev server is already running.
+          reuseExistingServer: REUSE_EXISTING_APP,
+          timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
+          env: {
+            NODE_ENV: "test",
+            ADMIN_EMAIL,
+            DB_PATH: ABS_TEST_DB,
+            PORT: String(WEB_PORT),
+            LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
+            WEBDAV_URL: WEBDAV_URL_NON_FS_ONLY,
+            MEMOS_E2E_FAULTS: "1",
+          },
+        },
+      ],
 });
 
 // Ensure tests that read process.env (Node-side fetch, helpers) see consistent endpoints
 process.env.BASE_URL = BASE_URL;
 process.env.WEB_PORT = String(WEB_PORT);
 process.env.WEBDAV_PORT = String(WEBDAV_PORT);
-process.env.WEBDAV_URL = WEBDAV_URL;
+if (WEBDAV_URL) {
+  process.env.WEBDAV_URL = WEBDAV_URL;
+} else {
+  delete process.env.WEBDAV_URL;
+}
 process.env.SSO_EMAIL_HEADER_NAME = EMAIL_HEADER_NAME;
 process.env.ADMIN_EMAIL = ADMIN_EMAIL;
 process.env.MEMOS_E2E_FAULTS = "1";

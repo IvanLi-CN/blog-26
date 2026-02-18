@@ -5,8 +5,12 @@ import { adminTest as test } from "./fixtures";
 const ONE_BY_ONE_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
+const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
+
 test.describe("Inline image upload (Milkdown/Memos)", () => {
   test.beforeAll(async ({ request }) => {
+    if (E2E_FS_ONLY) return;
+
     // Ensure WebDAV directories exist: /Memos and /Memos/assets
     // Playwright webServer uses dufs on :25091 as configured in playwright.config.ts
     const base = "http://localhost:25091";
@@ -49,12 +53,15 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     // Wait for the new memo card containing our unique token to appear
     await expect(page.getByText(TOKEN)).toBeVisible();
 
-    // If any images are rendered via /api/files/webdav/, ensure they don't contain ".md/" in path
-    const imgs = page.locator('img[src^="/api/files/webdav/"]');
+    // Ensure runtime image URLs don't contain ".md/" in path (regression guard).
+    const imgs = page.locator('img[src^="/api/files/"]');
     const count = await imgs.count();
     for (let i = 0; i < count; i++) {
       const src = await imgs.nth(i).getAttribute("src");
       expect(src || "").not.toMatch(/\.md\//);
+      if (E2E_FS_ONLY) {
+        expect(src || "").not.toMatch(/^\/api\/files\/webdav\//);
+      }
     }
   });
 });

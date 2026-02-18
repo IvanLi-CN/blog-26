@@ -132,19 +132,17 @@ export function QuickMemoEditor({
               const filename = `inline-${timestamp}.${imageType}`;
               const file = new File([blob], filename, { type: `image/${imageType}` });
 
-              const normalizedArticlePath = "Memos/assets".replace(/^\//, "");
-              const uploadPath = `${normalizedArticlePath}/${filename}`;
+              const uploadPath = `memos/assets/${filename}`;
               const formData = new FormData();
               formData.append("file", file);
-              const resp = await fetch(`/api/files/webdav/${uploadPath}`, {
+              const resp = await fetch(`/api/files/local/${uploadPath}`, {
                 method: "POST",
                 body: formData,
               });
               if (resp.ok) {
-                const imagePath = `/api/files/webdav/${uploadPath}`;
                 processedContent = processedContent.replace(
                   fullMatch,
-                  `![${altText}](${imagePath})`
+                  `![${altText}](./assets/${filename})`
                 );
               }
             } catch (_e) {
@@ -253,8 +251,8 @@ export function QuickMemoEditor({
                   content={content}
                   onChange={setContent}
                   placeholder={placeholder}
-                  articlePath="Memos/assets"
-                  contentSource="webdav"
+                  articlePath="/memos/__draft__.md"
+                  contentSource="local"
                   editorId="quick-memo-editor"
                   className="min-h-full"
                 />

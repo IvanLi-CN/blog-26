@@ -7,6 +7,7 @@
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { hasApiFilesReference, rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import { isLocalContentEnabled, LOCAL_PATHS } from "../../../config/paths";
 import {
   getContentSourceManager,
@@ -512,8 +513,25 @@ export const filesRouter = createTRPCRouter({
         });
       }
 
+      const isMarkdown =
+        input.path.toLowerCase().endsWith(".md") || input.path.toLowerCase().endsWith(".markdown");
+      let contentToWrite = input.content;
+
+      // Final gate: persisted markdown must not contain `/api/files/...` links.
+      if (isMarkdown && hasApiFilesReference(contentToWrite)) {
+        contentToWrite = rewriteApiFilesUrlsToRelative(contentToWrite, input.path).content;
+      }
+
+      const strict = process.env.PERSISTED_PATHS_STRICT === "1" || process.env.NODE_ENV === "test";
+      if (isMarkdown && strict && hasApiFilesReference(contentToWrite)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "持久化 Markdown 不允许包含 /api/files/ 链接，请先转换为相对路径。",
+        });
+      }
+
       // 调用内容源的写入方法
-      await (source as any).writeFile(input.path, input.content);
+      await (source as any).writeFile(input.path, contentToWrite);
 
       console.log(`✅ [Files API] 文件写入成功: ${input.source}:${input.path}`);
 

@@ -262,8 +262,9 @@ export function MemoEditor({
           initialContent={content}
           onContentChange={handleContentChange}
           placeholder="记录你的想法..."
-          attachmentBasePath="Memos/assets"
-          contentSource="webdav"
+          attachmentBasePath="memos/assets"
+          articlePath="/memos/__draft__.md"
+          contentSource="local"
           mode={editorMode}
           onModeChange={setEditorMode}
           editorId={`memo-editor-${stableEditorId}`}

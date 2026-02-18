@@ -12,14 +12,35 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type NextRequest, NextResponse } from "next/server";
-import { getLocalPath, getWebDAVUrl } from "@/config/paths";
+import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
+import { isWebDAVEnabled } from "@/lib/webdav";
 
 // 支持的内容源类型
 type ContentSource = "webdav" | "local";
 
+const WEBDAV_DISABLED_ERROR = {
+  error: "ERR_WEBDAV_DISABLED",
+  message: "WebDAV 已禁用：请将内容中的 /api/files/webdav/... 链接迁移为相对路径",
+} as const;
+
 // 验证内容源是否有效
 function isValidContentSource(source: string): source is ContentSource {
   return source === "webdav" || source === "local";
+}
+
+function isImageRequest(filePath: string, request: NextRequest): boolean {
+  const accept = request.headers.get("accept") || "";
+  if (accept.includes("image/")) return true;
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"].includes(ext);
+}
+
+let webdavDisabledPngCache: Buffer | null = null;
+async function getWebdavDisabledPng(): Promise<Buffer> {
+  if (webdavDisabledPngCache) return webdavDisabledPngCache;
+  const png = await readFile(join(process.cwd(), "public/images/webdav-disabled.png"));
+  webdavDisabledPngCache = png;
+  return png;
 }
 
 // 根据文件扩展名获取 Content-Type
@@ -51,8 +72,12 @@ function getContentType(filePath: string): string {
 
 // WebDAV 文件读取
 async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
-  // 严格按传入路径访问，保持大小写与存储一致
-  const webdavUrl = getWebDAVUrl(filePath);
+  const baseUrl = process.env.WEBDAV_URL;
+  if (!baseUrl) {
+    throw new Error("WebDAV 已禁用");
+  }
+  const cleanPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
+  const webdavUrl = `${baseUrl.replace(/\/$/, "")}${cleanPath}`;
 
   console.log("🌐 [Files API] 请求 WebDAV 文件:", webdavUrl);
 
@@ -81,6 +106,9 @@ async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
 
 // 本地文件读取
 async function readLocalFile(filePath: string): Promise<Buffer> {
+  if (!isLocalContentEnabled()) {
+    throw new Error("本地内容源未启用，请设置 LOCAL_CONTENT_BASE_PATH");
+  }
   // 使用统一配置的本地内容根路径，支持通过环境变量覆盖
   const fullPath = getLocalPath(filePath);
 
@@ -99,7 +127,12 @@ async function uploadWebDAVFile(
   buffer: ArrayBuffer,
   contentType: string
 ): Promise<void> {
-  const webdavUrl = getWebDAVUrl(filePath);
+  const baseUrl = process.env.WEBDAV_URL;
+  if (!baseUrl) {
+    throw new Error("WebDAV 已禁用");
+  }
+  const cleanPath = filePath.startsWith("/") ? filePath : `/${filePath}`;
+  const webdavUrl = `${baseUrl.replace(/\/$/, "")}${cleanPath}`;
 
   console.log("🌐 [Files API] 上传文件到 WebDAV 服务器:", webdavUrl);
 
@@ -129,6 +162,9 @@ async function uploadWebDAVFile(
 
 // 本地文件上传
 async function uploadLocalFile(filePath: string, buffer: Buffer): Promise<void> {
+  if (!isLocalContentEnabled()) {
+    throw new Error("本地内容源未启用，请设置 LOCAL_CONTENT_BASE_PATH");
+  }
   // 使用统一配置的本地内容根路径，支持通过环境变量覆盖
   const fullPath = getLocalPath(filePath);
   const dirPath = join(fullPath, "..");
@@ -145,7 +181,7 @@ async function uploadLocalFile(filePath: string, buffer: Buffer): Promise<void> 
 
 // GET - 读取文件
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ source: string; path: string[] }> }
 ) {
   try {
@@ -162,6 +198,20 @@ export async function GET(
     // 验证路径安全性
     if (filePath.includes("..") || filePath.includes("~")) {
       return NextResponse.json({ error: "不安全的文件路径" }, { status: 400 });
+    }
+
+    // FS-only / whitelist: WebDAV 显式禁用
+    if (source === "webdav" && !isWebDAVEnabled()) {
+      if (isImageRequest(filePath, request)) {
+        const png = await getWebdavDisabledPng();
+        return new NextResponse(png, {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+      return NextResponse.json(WEBDAV_DISABLED_ERROR, { status: 410 });
     }
 
     let fileBuffer: ArrayBuffer | Buffer;
@@ -235,6 +285,11 @@ async function handleFileUpload(
     // 验证路径安全性
     if (filePath.includes("..") || filePath.includes("~")) {
       return NextResponse.json({ error: "不安全的文件路径" }, { status: 400 });
+    }
+
+    // FS-only / whitelist: WebDAV 显式禁用（读写均禁用）
+    if (source === "webdav" && !isWebDAVEnabled()) {
+      return NextResponse.json(WEBDAV_DISABLED_ERROR, { status: 410 });
     }
 
     // 获取文件内容

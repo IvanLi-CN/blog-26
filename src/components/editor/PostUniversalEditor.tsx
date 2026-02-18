@@ -767,7 +767,7 @@ author: ""
     // 3. 提取目录路径（去掉文件名）
     const pathParts = cleanPath.split("/");
     pathParts.pop(); // 移除文件名部分
-    const directoryPath = pathParts.join("/");
+    const directoryPath = pathParts.join("/").replace(/^\/+/, "");
 
     // 3. 构建 assets 路径
     if (directoryPath) {
