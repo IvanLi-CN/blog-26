@@ -88,6 +88,7 @@ logs/
 Thumbs.db
 
 .augment
+.codex/
 .serena/.gitignore
 .serena/project.yml
 .serena/memories/post_task_checklist.md
