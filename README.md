@@ -31,7 +31,7 @@ What it does:
 
 - Installs dependencies with `bun install`.
 - Installs git hooks via `lefthook` (pre-commit, commit-msg with commitlint).
-- Validates dev ports: defaults to `PORT=25090`, `WEBDAV_PORT=26091`; overrides allowed via env. Ports must be free, otherwise the script exits with error. No `.env` files are created.
+- Validates dev ports: defaults to `PORT=25090`, `WEBDAV_PORT=25091`; overrides allowed via env. Ports must be free, otherwise the script exits with error. No `.env` files are created.
 - Resets dev DB and seeds sample content by default (pass `--no-db` to skip).
 - Does not perform a content sync. To import Markdown content, use the admin page
   (`/admin/content-sync`) or run `bun run dev-sync:trigger` after exporting the
@@ -48,23 +48,26 @@ Env overrides: `PORT=<web_port> WEBDAV_PORT=<webdav_port>`
 git worktree add -b feat/some-change ../blog-nextjs-wt-some-change
 ./scripts/setup.sh
 
-# (Recommended for worktrees: run services separately on non-default ports)
-nohup dufs dev-data/webdav --port 25601 --allow-all --enable-cors --log-format combined \
-  >tmp/webdav-25601.log 2>&1 & echo $! >tmp/webdav-25601.pid
+# Recommended for worktrees (Codex / long-running): run via devctl (Zellij background sessions)
+export DB_PATH=./dev-data/sqlite.db
+export LOCAL_CONTENT_BASE_PATH=./dev-data/local
+export PORT=25600
+export WEBDAV_PORT=25601
+export WEBDAV_URL=http://localhost:25601
 
-nohup env PORT=25600 DB_PATH=./dev-data/sqlite.db \
-  LOCAL_CONTENT_BASE_PATH=./dev-data/local \
-  WEBDAV_URL=http://localhost:25601 \
-  bun --bun next dev --turbopack \
-  >tmp/next-25600.log 2>&1 & echo $! >tmp/next-25600.pid
+~/.codex/bin/devctl up web -- env \
+  PORT=$PORT WEBDAV_PORT=$WEBDAV_PORT WEBDAV_URL=$WEBDAV_URL \
+  DB_PATH=$DB_PATH LOCAL_CONTENT_BASE_PATH=$LOCAL_CONTENT_BASE_PATH \
+  bun run dev
 
-DB_PATH=./dev-data/sqlite.db \
-  LOCAL_CONTENT_BASE_PATH=./dev-data/local \
-  WEBDAV_URL=http://localhost:25601 \
-  bun run dev-sync:trigger
+bun run dev-sync:trigger
+
+# Logs / stop:
+~/.codex/bin/devctl logs web -n 200
+~/.codex/bin/devctl down web
 ```
 
-Stop services afterwards with `kill $(cat tmp/next-25600.pid)` and `kill $(cat tmp/webdav-25601.pid)`.
+Fallback (manual nohup) is still OK for humans, but prefer devctl for Codex/agents.
 
 ### Prerequisites
 
