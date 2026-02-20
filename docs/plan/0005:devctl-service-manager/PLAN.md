@@ -60,13 +60,12 @@
 
 ## 里程碑（Milestones）
 
-- [ ] 文档对齐到 devctl 优先（保留 nohup fallback）
-- [ ] WebDAV dev 支持 strict 端口固定（WEBDAV_URL/WEBDAV_PORT）
-- [ ] setup 默认端口对齐 + `.gitignore` 忽略 `.codex/`
-- [ ] 验证（check + test）通过
+- [x] 文档对齐到 devctl 优先（保留 nohup fallback）
+- [x] WebDAV dev 支持 strict 端口固定（WEBDAV_URL/WEBDAV_PORT）
+- [x] setup 默认端口对齐 + `.gitignore` 忽略 `.codex/`
+- [x] 验证（check + test）通过
 
 ## 风险与开放问题
 
 - 若有人希望 `WEBDAV_URL` 指向非本地 WebDAV，本次改动将明确报错；该场景应改用 `bun run dev:next`
   并自行提供远端 `WEBDAV_URL`（不启动 `webdav:dev`）。
-
