@@ -9,11 +9,11 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { resolveDevWebdavConfig } from "@/lib/dev-webdav-config";
+
 // 开发环境 WebDAV 配置
 const DEV_WEBDAV_CONFIG = {
-  port: 25091,
-  host: "localhost",
-  rootPath: join(process.cwd(), "dev-data", "webdav"),
+  ...resolveDevWebdavConfig(process.env),
   maxPortTries: 5,
 };
 
@@ -23,11 +23,15 @@ class DevWebDAVServer {
   private port: number;
   private host: string;
   private rootPath: string;
+  private strict: boolean;
+  private configSource: string;
 
   constructor(config: typeof DEV_WEBDAV_CONFIG) {
     this.port = config.port;
     this.host = config.host;
     this.rootPath = config.rootPath;
+    this.strict = config.strict;
+    this.configSource = config.source;
   }
 
   // 检查端口是否可用
@@ -48,6 +52,17 @@ class DevWebDAVServer {
 
   // 找到可用端口
   private async findAvailablePort(): Promise<number> {
+    if (this.strict) {
+      const available = await this.isPortAvailable(this.port);
+      if (!available) {
+        throw new Error(
+          `WebDAV port ${this.port} is not available (configured via ${this.configSource}). ` +
+            "Pick another port or stop the process using it."
+        );
+      }
+      return this.port;
+    }
+
     for (let i = 0; i < DEV_WEBDAV_CONFIG.maxPortTries; i++) {
       const testPort = this.port + i;
       if (await this.isPortAvailable(testPort)) {
@@ -129,10 +144,10 @@ class DevWebDAVServer {
             console.log(`✅ 开发环境 WebDAV 服务器已启动: http://${this.host}:${this.port}`);
             console.log(`📁 服务目录: ${this.rootPath}`);
             console.log(`🔧 功能: 完整的 WebDAV 支持 (上传、下载、删除)`);
-            console.log(`🌍 环境变量: WEBDAV_URL=http://localhost:${this.port}`);
+            console.log(`🌍 环境变量: WEBDAV_URL=http://${this.host}:${this.port}`);
 
             // 设置环境变量
-            process.env.WEBDAV_URL = `http://localhost:${this.port}`;
+            process.env.WEBDAV_URL = `http://${this.host}:${this.port}`;
             process.env.WEBDAV_USERNAME = "";
             process.env.WEBDAV_PASSWORD = "";
 
@@ -230,9 +245,13 @@ async function main() {
   bun run webdav:dev --help       显示帮助信息
 
 配置:
-  端口: ${DEV_WEBDAV_CONFIG.port} (自动寻找可用端口)
+  端口: ${DEV_WEBDAV_CONFIG.port} (${DEV_WEBDAV_CONFIG.strict ? "strict (no fallback)" : "auto fallback"})
   主机: ${DEV_WEBDAV_CONFIG.host}
   根目录: ${DEV_WEBDAV_CONFIG.rootPath}
+
+环境变量:
+  - WEBDAV_URL=http://localhost:<port>   固定端口（strict；端口占用会直接失败）
+  - WEBDAV_PORT=<port> / DAV_PORT=<port> 固定端口（strict；端口占用会直接失败）
 
 特性:
   - 使用 dufs 提供完整的 WebDAV 支持
