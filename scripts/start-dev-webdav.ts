@@ -9,13 +9,31 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-// 开发环境 WebDAV 配置
-const DEV_WEBDAV_CONFIG = {
-  port: 25091,
-  host: "localhost",
-  rootPath: join(process.cwd(), "dev-data", "webdav"),
-  maxPortTries: 5,
-};
+import { resolveDevWebdavConfig } from "@/lib/dev-webdav-config";
+
+const DEFAULT_HOST = "localhost";
+const DEFAULT_PORT = 25091;
+const MAX_PORT_TRIES = 5;
+
+type ResolvedDevWebdavConfig = ReturnType<typeof resolveDevWebdavConfig>;
+type DevWebdavRuntimeConfig = ResolvedDevWebdavConfig & { maxPortTries: number };
+
+function buildDevWebdavRuntimeConfig(env: NodeJS.ProcessEnv): DevWebdavRuntimeConfig {
+  return {
+    ...resolveDevWebdavConfig(env),
+    maxPortTries: MAX_PORT_TRIES,
+  };
+}
+
+function getDefaultDevWebdavConfig(): ResolvedDevWebdavConfig {
+  return {
+    host: DEFAULT_HOST,
+    port: DEFAULT_PORT,
+    rootPath: join(process.cwd(), "dev-data", "webdav"),
+    strict: false,
+    source: "default",
+  };
+}
 
 // 开发环境 WebDAV 服务器管理器
 class DevWebDAVServer {
@@ -23,18 +41,32 @@ class DevWebDAVServer {
   private port: number;
   private host: string;
   private rootPath: string;
+  private strict: boolean;
+  private configSource: string;
+  private maxPortTries: number;
 
-  constructor(config: typeof DEV_WEBDAV_CONFIG) {
+  constructor(config: DevWebdavRuntimeConfig) {
     this.port = config.port;
     this.host = config.host;
     this.rootPath = config.rootPath;
+    this.strict = config.strict;
+    this.configSource = config.source;
+    this.maxPortTries = config.maxPortTries;
+  }
+
+  private getWebdavOrigin(port: number): string {
+    // Use URL to correctly format IPv6 hosts (e.g. ::1 -> http://[::1]:PORT).
+    const url = new URL("http://localhost");
+    url.hostname = this.host;
+    url.port = port.toString();
+    return url.origin;
   }
 
   // 检查端口是否可用
   private async isPortAvailable(port: number): Promise<boolean> {
     try {
       // 使用 fetch 测试端口是否被占用
-      const _response = await fetch(`http://${this.host}:${port}`, {
+      const _response = await fetch(this.getWebdavOrigin(port), {
         method: "HEAD",
         signal: AbortSignal.timeout(1000),
       });
@@ -48,14 +80,25 @@ class DevWebDAVServer {
 
   // 找到可用端口
   private async findAvailablePort(): Promise<number> {
-    for (let i = 0; i < DEV_WEBDAV_CONFIG.maxPortTries; i++) {
+    if (this.strict) {
+      const available = await this.isPortAvailable(this.port);
+      if (!available) {
+        throw new Error(
+          `WebDAV port ${this.port} is not available (configured via ${this.configSource}). ` +
+            "Pick another port or stop the process using it."
+        );
+      }
+      return this.port;
+    }
+
+    for (let i = 0; i < this.maxPortTries; i++) {
       const testPort = this.port + i;
       if (await this.isPortAvailable(testPort)) {
         return testPort;
       }
     }
     throw new Error(
-      `无法找到可用端口 (尝试了 ${this.port} 到 ${this.port + DEV_WEBDAV_CONFIG.maxPortTries - 1})`
+      `无法找到可用端口 (尝试了 ${this.port} 到 ${this.port + this.maxPortTries - 1})`
     );
   }
 
@@ -126,13 +169,14 @@ class DevWebDAVServer {
             dufsReady = true;
             clearTimeout(timeout);
 
-            console.log(`✅ 开发环境 WebDAV 服务器已启动: http://${this.host}:${this.port}`);
+            const origin = this.getWebdavOrigin(this.port);
+            console.log(`✅ 开发环境 WebDAV 服务器已启动: ${origin}`);
             console.log(`📁 服务目录: ${this.rootPath}`);
             console.log(`🔧 功能: 完整的 WebDAV 支持 (上传、下载、删除)`);
-            console.log(`🌍 环境变量: WEBDAV_URL=http://localhost:${this.port}`);
+            console.log(`🌍 环境变量: WEBDAV_URL=${origin}`);
 
             // 设置环境变量
-            process.env.WEBDAV_URL = `http://localhost:${this.port}`;
+            process.env.WEBDAV_URL = origin;
             process.env.WEBDAV_USERNAME = "";
             process.env.WEBDAV_PASSWORD = "";
 
@@ -167,12 +211,15 @@ class DevWebDAVServer {
   async verify(): Promise<void> {
     try {
       // 尝试多个地址进行验证
-      const addresses = ["127.0.0.1", "localhost"];
+      const addresses = Array.from(new Set([this.host, "127.0.0.1", "localhost"]));
       let verified = false;
 
       for (const addr of addresses) {
         try {
-          const response = await fetch(`http://${addr}:${this.port}/`);
+          const url = new URL("http://localhost/");
+          url.hostname = addr;
+          url.port = this.port.toString();
+          const response = await fetch(url);
           if (response.ok) {
             console.log(`✅ WebDAV 服务器验证成功 (${addr}:${this.port})`);
             verified = true;
@@ -217,12 +264,8 @@ class DevWebDAVServer {
   }
 }
 
-// 主函数
-async function main() {
-  const args = process.argv.slice(2);
-
-  if (args.includes("--help") || args.includes("-h")) {
-    console.log(`
+function printHelp(config: ResolvedDevWebdavConfig, configError?: unknown) {
+  console.log(`
 开发环境 WebDAV 服务器 (dufs)
 
 用法:
@@ -230,9 +273,13 @@ async function main() {
   bun run webdav:dev --help       显示帮助信息
 
 配置:
-  端口: ${DEV_WEBDAV_CONFIG.port} (自动寻找可用端口)
-  主机: ${DEV_WEBDAV_CONFIG.host}
-  根目录: ${DEV_WEBDAV_CONFIG.rootPath}
+  端口: ${config.port} (${config.strict ? "strict (no fallback)" : "auto fallback"})
+  主机: ${config.host}
+  根目录: ${config.rootPath}
+
+环境变量:
+  - WEBDAV_URL=http://localhost:<port>   固定端口（strict；端口占用会直接失败）
+  - WEBDAV_PORT=<port> / DAV_PORT=<port> 固定端口（strict；端口占用会直接失败）
 
 特性:
   - 使用 dufs 提供完整的 WebDAV 支持
@@ -240,11 +287,30 @@ async function main() {
   - 启用 CORS 支持
   - 与测试环境数据隔离
 `);
+
+  if (configError) {
+    const msg = configError instanceof Error ? configError.message : String(configError);
+    console.log(`\n注意: 当前 WEBDAV_* 环境变量无效: ${msg}`);
+  }
+}
+
+// 主函数
+async function main() {
+  const args = process.argv.slice(2);
+
+  if (args.includes("--help") || args.includes("-h")) {
+    // Help should still work even if WEBDAV_* env vars are invalid.
+    try {
+      printHelp(resolveDevWebdavConfig(process.env));
+    } catch (error) {
+      printHelp(getDefaultDevWebdavConfig(), error);
+    }
     return;
   }
 
   try {
-    const server = new DevWebDAVServer(DEV_WEBDAV_CONFIG);
+    const config = buildDevWebdavRuntimeConfig(process.env);
+    const server = new DevWebDAVServer(config);
 
     // 设置优雅关闭
     server.setupGracefulShutdown();
