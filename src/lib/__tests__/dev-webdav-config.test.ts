@@ -19,6 +19,13 @@ describe("resolveDevWebdavConfig", () => {
     expect(cfg.source).toBe("WEBDAV_PORT");
   });
 
+  it("uses DAV_PORT in strict mode", () => {
+    const cfg = resolveDevWebdavConfig({ DAV_PORT: "25601" } as NodeJS.ProcessEnv);
+    expect(cfg.port).toBe(25601);
+    expect(cfg.strict).toBe(true);
+    expect(cfg.source).toBe("DAV_PORT");
+  });
+
   it("uses WEBDAV_URL in strict mode", () => {
     const cfg = resolveDevWebdavConfig({
       WEBDAV_URL: "http://localhost:25601",
@@ -38,6 +45,15 @@ describe("resolveDevWebdavConfig", () => {
   it("throws when WEBDAV_URL host is not local", () => {
     expect(() =>
       resolveDevWebdavConfig({ WEBDAV_URL: "http://example.com:25601" } as NodeJS.ProcessEnv)
+    ).toThrow();
+  });
+
+  it("throws when DAV_PORT does not match WEBDAV_URL port", () => {
+    expect(() =>
+      resolveDevWebdavConfig({
+        DAV_PORT: "25602",
+        WEBDAV_URL: "http://localhost:25601",
+      } as NodeJS.ProcessEnv)
     ).toThrow();
   });
 });

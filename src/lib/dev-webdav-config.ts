@@ -5,7 +5,7 @@ type DevWebdavConfig = {
   port: number;
   rootPath: string;
   strict: boolean;
-  source: "WEBDAV_URL" | "WEBDAV_PORT" | "default";
+  source: "WEBDAV_URL" | "WEBDAV_PORT" | "DAV_PORT" | "default";
 };
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -28,9 +28,9 @@ export function resolveDevWebdavConfig(env: NodeJS.ProcessEnv): DevWebdavConfig 
 
   const portFromEnv =
     typeof env.WEBDAV_PORT === "string"
-      ? parsePort(env.WEBDAV_PORT, "WEBDAV_PORT")
+      ? { port: parsePort(env.WEBDAV_PORT, "WEBDAV_PORT"), source: "WEBDAV_PORT" as const }
       : typeof env.DAV_PORT === "string"
-        ? parsePort(env.DAV_PORT, "DAV_PORT")
+        ? { port: parsePort(env.DAV_PORT, "DAV_PORT"), source: "DAV_PORT" as const }
         : null;
 
   const urlRaw = typeof env.WEBDAV_URL === "string" ? env.WEBDAV_URL.trim() : "";
@@ -56,9 +56,9 @@ export function resolveDevWebdavConfig(env: NodeJS.ProcessEnv): DevWebdavConfig 
 
     const portFromUrl = parsePort(url.port, "WEBDAV_URL port");
 
-    if (portFromEnv !== null && portFromEnv !== portFromUrl) {
+    if (portFromEnv !== null && portFromEnv.port !== portFromUrl) {
       throw new Error(
-        `WEBDAV_PORT (${portFromEnv}) does not match WEBDAV_URL port (${portFromUrl})`
+        `${portFromEnv.source} (${portFromEnv.port}) does not match WEBDAV_URL port (${portFromUrl})`
       );
     }
 
@@ -74,10 +74,10 @@ export function resolveDevWebdavConfig(env: NodeJS.ProcessEnv): DevWebdavConfig 
   if (portFromEnv !== null) {
     return {
       host: "localhost",
-      port: portFromEnv,
+      port: portFromEnv.port,
       rootPath,
       strict: true,
-      source: "WEBDAV_PORT",
+      source: portFromEnv.source,
     };
   }
 
