@@ -31,7 +31,7 @@ For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db
   ```
 
   Never rely on implicit defaults—when these variables are missing, the app will connect to `./sqlite.db`, which is intentionally empty and will make the UI appear blank.
-- When running outside the primary checkout, prefer launching WebDAV and Next.js separately so you can control ports and environment explicitly, for example:
+- When running outside the primary checkout, prefer launching the dev stack with explicit environment variables so you can control ports and data paths deterministically, for example:
 
   ```bash
   export DB_PATH=./dev-data/sqlite.db
