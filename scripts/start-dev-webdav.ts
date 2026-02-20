@@ -34,11 +34,19 @@ class DevWebDAVServer {
     this.configSource = config.source;
   }
 
+  private getWebdavOrigin(port: number): string {
+    // Use URL to correctly format IPv6 hosts (e.g. ::1 -> http://[::1]:PORT).
+    const url = new URL("http://localhost");
+    url.hostname = this.host;
+    url.port = port.toString();
+    return url.origin;
+  }
+
   // 检查端口是否可用
   private async isPortAvailable(port: number): Promise<boolean> {
     try {
       // 使用 fetch 测试端口是否被占用
-      const _response = await fetch(`http://${this.host}:${port}`, {
+      const _response = await fetch(this.getWebdavOrigin(port), {
         method: "HEAD",
         signal: AbortSignal.timeout(1000),
       });
@@ -141,13 +149,14 @@ class DevWebDAVServer {
             dufsReady = true;
             clearTimeout(timeout);
 
-            console.log(`✅ 开发环境 WebDAV 服务器已启动: http://${this.host}:${this.port}`);
+            const origin = this.getWebdavOrigin(this.port);
+            console.log(`✅ 开发环境 WebDAV 服务器已启动: ${origin}`);
             console.log(`📁 服务目录: ${this.rootPath}`);
             console.log(`🔧 功能: 完整的 WebDAV 支持 (上传、下载、删除)`);
-            console.log(`🌍 环境变量: WEBDAV_URL=http://${this.host}:${this.port}`);
+            console.log(`🌍 环境变量: WEBDAV_URL=${origin}`);
 
             // 设置环境变量
-            process.env.WEBDAV_URL = `http://${this.host}:${this.port}`;
+            process.env.WEBDAV_URL = origin;
             process.env.WEBDAV_USERNAME = "";
             process.env.WEBDAV_PASSWORD = "";
 
@@ -182,12 +191,15 @@ class DevWebDAVServer {
   async verify(): Promise<void> {
     try {
       // 尝试多个地址进行验证
-      const addresses = ["127.0.0.1", "localhost"];
+      const addresses = Array.from(new Set([this.host, "127.0.0.1", "localhost"]));
       let verified = false;
 
       for (const addr of addresses) {
         try {
-          const response = await fetch(`http://${addr}:${this.port}/`);
+          const url = new URL("http://localhost/");
+          url.hostname = addr;
+          url.port = this.port.toString();
+          const response = await fetch(url);
           if (response.ok) {
             console.log(`✅ WebDAV 服务器验证成功 (${addr}:${this.port})`);
             verified = true;
