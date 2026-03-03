@@ -1,0 +1,377 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+api_root="${GITHUB_API_URL:-https://api.github.com}"
+repo="${GITHUB_REPOSITORY:-}"
+token="${GITHUB_TOKEN:-}"
+sha="${WORKFLOW_RUN_SHA:-${COMMIT_SHA:-${GITHUB_SHA:-}}}"
+target_branch="${TARGET_BRANCH:-main}"
+is_latest_branch_head="true"
+
+if [[ -z "${repo}" ]]; then
+  echo "release-intent: missing GITHUB_REPOSITORY" >&2
+  exit 2
+fi
+
+if [[ -z "${token}" ]]; then
+  echo "release-intent: missing GITHUB_TOKEN" >&2
+  exit 2
+fi
+
+if [[ -z "${sha}" ]]; then
+  echo "release-intent: missing WORKFLOW_RUN_SHA/COMMIT_SHA/GITHUB_SHA" >&2
+  exit 2
+fi
+
+if [[ -z "${target_branch}" ]]; then
+  echo "release-intent: missing TARGET_BRANCH/main branch name" >&2
+  exit 2
+fi
+
+write_output() {
+  local key="$1"
+  local value="$2"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${key}=${value}" >> "${GITHUB_OUTPUT}"
+  fi
+}
+
+emit_skip() {
+  local reason="$1"
+  echo "release-intent: should_release=false reason=${reason}"
+  write_output "should_release" "false"
+  write_output "bump_level" ""
+  write_output "channel" ""
+  write_output "intent_type" ""
+  write_output "pr_number" ""
+  write_output "pr_url" ""
+  write_output "is_latest_branch_head" "${is_latest_branch_head}"
+  write_output "reason" "${reason}"
+}
+
+emit_failure() {
+  local reason="$1"
+  echo "release-intent: ${reason}" >&2
+  write_output "should_release" "false"
+  write_output "bump_level" ""
+  write_output "channel" ""
+  write_output "intent_type" ""
+  write_output "pr_number" ""
+  write_output "pr_url" ""
+  write_output "is_latest_branch_head" "${is_latest_branch_head}"
+  write_output "reason" "${reason}"
+  exit 3
+}
+
+branch_ref_json=""
+if ! branch_ref_json="$(
+  curl -fsSL \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    --max-time 20 \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${token}" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "${api_root}/repos/${repo}/git/ref/heads/${target_branch}"
+)"; then
+  emit_failure "api_failure:branch_head"
+fi
+
+export branch_ref_json
+branch_head_sha="$(
+  python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+
+payload = json.loads(os.environ["branch_ref_json"])
+sha = payload.get("object", {}).get("sha", "")
+if isinstance(sha, str):
+    print(sha.strip())
+PY
+)"
+
+if [[ -z "${branch_head_sha}" ]]; then
+  emit_failure "api_failure:branch_head_parse"
+fi
+
+if [[ "${branch_head_sha}" != "${sha}" ]]; then
+  is_latest_branch_head="false"
+  echo "release-intent: non-head commit on ${target_branch}; continue with commit-level intent resolution"
+fi
+
+pulls_json=""
+if ! pulls_json="$(
+  curl -fsSL \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    --max-time 20 \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${token}" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "${api_root}/repos/${repo}/commits/${sha}/pulls?per_page=100"
+)"; then
+  emit_failure "api_failure:commit_pulls"
+fi
+
+export pulls_json
+pull_info="$(
+  python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+import sys
+
+pulls = json.loads(os.environ["pulls_json"])
+if not isinstance(pulls, list):
+    print("count=0")
+    sys.exit(0)
+
+print(f"count={len(pulls)}")
+if len(pulls) != 1:
+    sys.exit(0)
+
+pull = pulls[0]
+number = pull.get("number")
+url = pull.get("html_url", "")
+merged_at = pull.get("merged_at", "")
+if not isinstance(number, int):
+    print("count=0")
+    sys.exit(0)
+
+print(f"pr_number={number}")
+print(f"pr_url={url}")
+print(f"pr_merged_at={merged_at}")
+PY
+)"
+
+count="$(echo "${pull_info}" | sed -n 's/^count=//p')"
+pr_number="$(echo "${pull_info}" | sed -n 's/^pr_number=//p')"
+pr_url="$(echo "${pull_info}" | sed -n 's/^pr_url=//p')"
+pr_merged_at="$(echo "${pull_info}" | sed -n 's/^pr_merged_at=//p')"
+
+if [[ "${count}" != "1" ]] || [[ -z "${pr_number}" ]]; then
+  emit_skip "ambiguous_or_missing_pr(count=${count:-0})"
+  exit 0
+fi
+
+if [[ -z "${pr_merged_at}" ]]; then
+  emit_skip "pr_not_merged_or_missing_merged_at"
+  exit 0
+fi
+
+post_merge_release_label_events="0"
+events_page="1"
+events_page_max="30"
+while :; do
+  events_json=""
+  if ! events_json="$(
+    curl -fsSL \
+      --retry 3 \
+      --retry-delay 2 \
+      --retry-all-errors \
+      --max-time 20 \
+      -H "Accept: application/vnd.github+json" \
+      -H "Authorization: Bearer ${token}" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "${api_root}/repos/${repo}/issues/${pr_number}/events?per_page=100&page=${events_page}"
+  )"; then
+    emit_failure "api_failure:pr_issue_events(page=${events_page})"
+  fi
+
+  export events_json pr_merged_at
+  page_analysis="$(
+    python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime, timezone
+
+
+def parse_ts(value: str) -> datetime | None:
+    if not value:
+        return None
+    normalized = value
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        ts = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)
+
+
+merged_at = parse_ts(os.environ.get("pr_merged_at", ""))
+if merged_at is None:
+    print("events=-1")
+    print("mutations=-1")
+    raise SystemExit(0)
+
+payload = json.loads(os.environ["events_json"])
+if not isinstance(payload, list):
+    print("events=-1")
+    print("mutations=-1")
+    raise SystemExit(0)
+
+allowed_prefixes = ("type:", "channel:")
+mutations = 0
+for item in payload:
+    if not isinstance(item, dict):
+        continue
+    event = str(item.get("event", ""))
+    if event not in {"labeled", "unlabeled"}:
+        continue
+    label_name = str(item.get("label", {}).get("name", ""))
+    if not label_name.startswith(allowed_prefixes):
+        continue
+    created_at = parse_ts(str(item.get("created_at", "")))
+    if created_at is None:
+        continue
+    if created_at >= merged_at:
+        mutations += 1
+
+print(f"events={len(payload)}")
+print(f"mutations={mutations}")
+PY
+  )"
+
+  page_events="$(echo "${page_analysis}" | sed -n 's/^events=//p')"
+  page_mutations="$(echo "${page_analysis}" | sed -n 's/^mutations=//p')"
+
+  if [[ "${page_events}" == "-1" ]] || [[ "${page_mutations}" == "-1" ]]; then
+    emit_failure "api_failure:post_merge_label_check"
+  fi
+
+  post_merge_release_label_events="$((post_merge_release_label_events + page_mutations))"
+
+  if [[ "${page_events}" -lt 100 ]]; then
+    break
+  fi
+
+  events_page="$((events_page + 1))"
+  if [[ "${events_page}" -gt "${events_page_max}" ]]; then
+    emit_failure "api_failure:pr_issue_events_page_limit(max=${events_page_max})"
+  fi
+done
+
+if [[ "${post_merge_release_label_events}" != "0" ]]; then
+  emit_failure "post_merge_label_mutation(count=${post_merge_release_label_events})"
+fi
+
+labels_json=""
+if ! labels_json="$(
+  curl -fsSL \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    --max-time 20 \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${token}" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "${api_root}/repos/${repo}/issues/${pr_number}/labels?per_page=100"
+)"; then
+  emit_failure "api_failure:pr_labels"
+fi
+
+export labels_json
+decision="$(
+  python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+
+allowed_types = {
+    "type:docs",
+    "type:skip",
+    "type:patch",
+    "type:minor",
+    "type:major",
+}
+allowed_channels = {"channel:stable", "channel:rc"}
+
+labels = json.loads(os.environ["labels_json"])
+names = [item.get("name", "") for item in labels if isinstance(item, dict)]
+
+type_like = sorted({name for name in names if name.startswith("type:")})
+channel_like = sorted({name for name in names if name.startswith("channel:")})
+
+unknown_type = sorted({name for name in type_like if name not in allowed_types})
+unknown_channel = sorted({name for name in channel_like if name not in allowed_channels})
+present_type = sorted({name for name in names if name in allowed_types})
+present_channel = sorted({name for name in names if name in allowed_channels})
+
+if unknown_type or unknown_channel:
+    unknown_all = unknown_type + unknown_channel
+    print("should_release=false")
+    print("bump_level=")
+    print("channel=")
+    print("intent_type=")
+    print(f"reason=unknown_label({','.join(unknown_all)})")
+    raise SystemExit(0)
+
+if len(present_type) != 1 or len(present_channel) != 1:
+    print("should_release=false")
+    print("bump_level=")
+    print("channel=")
+    print("intent_type=")
+    print(f"reason=invalid_label_count(type={len(present_type)},channel={len(present_channel)})")
+    raise SystemExit(0)
+
+intent = present_type[0]
+channel_label = present_channel[0]
+channel = channel_label.removeprefix("channel:")
+
+if intent in {"type:docs", "type:skip"}:
+    print("should_release=false")
+    print("bump_level=")
+    print(f"channel={channel}")
+    print(f"intent_type={intent}")
+    print("reason=intent_skip")
+    raise SystemExit(0)
+
+bump_level = intent.removeprefix("type:")
+print("should_release=true")
+print(f"bump_level={bump_level}")
+print(f"channel={channel}")
+print(f"intent_type={intent}")
+print("reason=intent_release")
+PY
+)"
+
+should_release="$(echo "${decision}" | sed -n 's/^should_release=//p')"
+bump_level="$(echo "${decision}" | sed -n 's/^bump_level=//p')"
+channel="$(echo "${decision}" | sed -n 's/^channel=//p')"
+intent_type="$(echo "${decision}" | sed -n 's/^intent_type=//p')"
+reason="$(echo "${decision}" | sed -n 's/^reason=//p')"
+
+if [[ "${reason}" == unknown_label\(* ]] || [[ "${reason}" == invalid_label_count\(* ]]; then
+  emit_failure "${reason}"
+fi
+
+echo "release-intent:"
+echo "  sha=${sha}"
+echo "  is_latest_branch_head=${is_latest_branch_head}"
+echo "  pr_number=${pr_number}"
+echo "  intent_type=${intent_type:-<none>}"
+echo "  channel=${channel:-<none>}"
+echo "  should_release=${should_release}"
+echo "  bump_level=${bump_level:-<none>}"
+echo "  reason=${reason}"
+
+write_output "should_release" "${should_release}"
+write_output "bump_level" "${bump_level}"
+write_output "channel" "${channel}"
+write_output "intent_type" "${intent_type}"
+write_output "pr_number" "${pr_number}"
+write_output "pr_url" "${pr_url}"
+write_output "is_latest_branch_head" "${is_latest_branch_head}"
+write_output "reason" "${reason}"

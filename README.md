@@ -361,3 +361,21 @@ Notes:
 
 - **Biome 2.2.4** for code formatting and linting
 - **Playwright 1.55.0** for E2E testing (see `tests/e2e/README.md`)
+
+## 🚀 PR Label Release
+
+This repository uses a PR label-driven release contract for PRs targeting `main`.
+
+- Required PR labels:
+  - exactly one `type:*`: `type:major` / `type:minor` / `type:patch` / `type:docs` / `type:skip`
+  - exactly one `channel:*`: `channel:stable` / `channel:rc`
+- Gate:
+  - `PR Label Gate` fails early for missing/conflicting/unknown labels.
+- Trigger:
+  - release workflow runs from successful `CI/CD Pipeline` on `main` (`workflow_run`).
+- Outputs:
+  - stable (`channel:stable` + release type): `vX.Y.Z` tag + GitHub Release + GHCR `:vX.Y.Z` (and `:latest` only when that commit is the current `main` head)
+  - rc (`channel:rc` + release type): `vX.Y.Z-rc.<sha7>` tag + prerelease + GHCR rc tag only
+  - docs/skip: no release artifacts
+
+For details and troubleshooting, see `docs/runbooks/pr-label-release.md`.

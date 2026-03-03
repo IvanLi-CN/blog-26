@@ -1,0 +1,75 @@
+name: PR Label Gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+
+concurrency:
+  group: label-gate-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  label-gate:
+    name: Release intent label gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release intent labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const allowedTypes = new Set([
+              "type:docs",
+              "type:skip",
+              "type:patch",
+              "type:minor",
+              "type:major",
+            ]);
+            const allowedChannels = new Set(["channel:stable", "channel:rc"]);
+
+            const labels = (context.payload.pull_request?.labels ?? [])
+              .map((label) => label?.name)
+              .filter((name) => typeof name === "string" && name.length > 0);
+
+            const typeLike = labels.filter((name) => name.startsWith("type:"));
+            const channelLike = labels.filter((name) => name.startsWith("channel:"));
+            const presentTypes = labels.filter((name) => allowedTypes.has(name));
+            const presentChannels = labels.filter((name) => allowedChannels.has(name));
+            const unknownTypes = typeLike.filter((name) => !allowedTypes.has(name));
+            const unknownChannels = channelLike.filter((name) => !allowedChannels.has(name));
+
+            core.info(`Labels on PR: ${Array.from(new Set(labels)).sort().join(", ")}`);
+            core.info(`Allowed type labels: ${Array.from(allowedTypes).sort().join(", ")}`);
+            core.info(`Allowed channel labels: ${Array.from(allowedChannels).sort().join(", ")}`);
+
+            if (unknownTypes.length > 0 || unknownChannels.length > 0) {
+              const unknown = [...unknownTypes, ...unknownChannels];
+              core.setFailed(`Unknown release labels: ${Array.from(new Set(unknown)).sort().join(", ")}`);
+              return;
+            }
+
+            if (presentTypes.length !== 1) {
+              core.setFailed(
+                `PR must contain exactly one type label; found ${presentTypes.length}: ${Array.from(new Set(presentTypes)).sort().join(", ") || "<none>"}`,
+              );
+              return;
+            }
+
+            if (presentChannels.length !== 1) {
+              core.setFailed(
+                `PR must contain exactly one channel label; found ${presentChannels.length}: ${Array.from(new Set(presentChannels)).sort().join(", ") || "<none>"}`,
+              );
+              return;
+            }
+
+            const intent = presentTypes[0];
+            const channel = presentChannels[0];
+            const shouldRelease = !["type:docs", "type:skip"].includes(intent);
+
+            core.notice(`Release intent OK: ${intent} + ${channel} (shouldRelease=${shouldRelease})`);
