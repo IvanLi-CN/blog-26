@@ -41,6 +41,20 @@ Unknown `type:*` or `channel:*` labels fail the `PR Label Gate` check.
    - GitHub Release
    - GHCR image tags based on channel (`latest` only when the release commit is current `main` head, re-checked again right before publish)
 
+## Stable release drill (manual)
+
+Use this flow when you want to validate the full stable publish path end-to-end.
+
+1. Open a PR to `main` with labels: `type:patch` + `channel:stable`.
+2. Wait for required checks to pass (`PR Label Gate` + `CI/CD Pipeline`).
+3. Merge PR and wait for:
+   - `CI/CD Pipeline` (push on `main`)
+   - `Release (PR Label Driven)` (`workflow_run`)
+4. Verify outputs:
+   - a new stable tag `vX.Y.Z`
+   - a GitHub Release with `prerelease=false`
+   - GHCR tags `vX.Y.Z` and `latest` (only when release commit is current `main` head)
+
 ## Troubleshooting
 
 ### `PR Label Gate` failed
