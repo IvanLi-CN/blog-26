@@ -16,8 +16,9 @@ on:
   workflow_dispatch: # 允许手动触发
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Keep PR churn fast while preserving every push run for workflow_run release triggering.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Minimal default permissions for all jobs on GitHub Actions
 permissions:
