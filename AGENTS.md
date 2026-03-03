@@ -40,16 +40,14 @@ For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db
   export WEBDAV_PORT=25601
   export WEBDAV_URL=http://localhost:25601
 
-  # Long-running services should use devctl (Zellij background sessions)
-  ~/.codex/bin/devctl up web -- env \
-    PORT=$PORT WEBDAV_PORT=$WEBDAV_PORT WEBDAV_URL=$WEBDAV_URL \
+  PORT=$PORT WEBDAV_PORT=$WEBDAV_PORT WEBDAV_URL=$WEBDAV_URL \
     DB_PATH=$DB_PATH LOCAL_CONTENT_BASE_PATH=$LOCAL_CONTENT_BASE_PATH \
     bun run dev
 
   bun run dev-sync:trigger
   ```
 
-  This ensures both the local markdown source and WebDAV source register correctly and prevents `bun run dev` from silently launching on the default ports. Stop services afterwards with `~/.codex/bin/devctl down web`.
+  This ensures both the local markdown source and WebDAV source register correctly and prevents `bun run dev` from silently launching on the default ports.
 - Reuse vs. new ports:
   - If a compatible dev stack is already running on the default ports and matches the current codebase/data, prefer reusing it (Playwright `reuseExistingServer: true`).
   - If defaults are busy or incompatible—or you are in a secondary worktree—pick unused ports and pass overrides, e.g.
@@ -62,15 +60,11 @@ For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db
 
 These conventions apply to any automation agent (Codex, CI, or human-operated scripts) that cannot dedicate a foreground terminal to a persistent service.
 
-- **Preferred (Codex/agents)**: run long-lived services via `~/.codex/bin/devctl` so they survive turn boundaries.
-  - Start: `~/.codex/bin/devctl up web -- bun run dev`
-  - Status: `~/.codex/bin/devctl status web`
-  - Logs: `~/.codex/bin/devctl logs web -n 200` (writes to `./.codex/logs/web.log`)
-  - Stop: `~/.codex/bin/devctl down web` (or `~/.codex/bin/devctl down-all`)
-- **Fallback (manual)**: `nohup bun run dev >tmp/dev.log 2>&1 & echo $! >tmp/dev.pid`
+- Start (foreground): `bun run dev`
+- Background option (manual): `nohup bun run dev >tmp/dev.log 2>&1 & echo $! >tmp/dev.pid`
   - Stop: `kill $(cat tmp/dev.pid)` then `rm tmp/dev.pid`
   - Logs: `tail -f tmp/dev.log`
-- **Other scripts that persist**: `bun run dev:next`, `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, and direct calls to `bun run src/scripts/start-integrated-server.ts` all remain active until terminated. Manage each with its own `devctl` service (preferred) or a PID file/log pair (fallback).
+- **Other scripts that persist**: `bun run dev:next`, `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, and direct calls to `bun run src/scripts/start-integrated-server.ts` all remain active until terminated. Manage each with an explicit process lifecycle (PID file/log pair or your team-approved process manager).
 - **Playwright utilities**: interactive helpers—`bun run test:e2e:ui`, `bun run test:e2e:debug`, `bun run test:e2e:headed`, and `bun run test:e2e:report` (Playwright’s report viewer)—block until the UI is closed. Schedule an explicit `SIGINT`/`kill` in automated pipelines if they must be invoked.
 
 ## Coding Style & Naming Conventions

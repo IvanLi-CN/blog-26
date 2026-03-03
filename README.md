@@ -48,26 +48,20 @@ Env overrides: `PORT=<web_port> WEBDAV_PORT=<webdav_port>`
 git worktree add -b feat/some-change ../blog-nextjs-wt-some-change
 ./scripts/setup.sh
 
-# Recommended for worktrees (Codex / long-running): run via devctl (Zellij background sessions)
 export DB_PATH=./dev-data/sqlite.db
 export LOCAL_CONTENT_BASE_PATH=./dev-data/local
 export PORT=25600
 export WEBDAV_PORT=25601
 export WEBDAV_URL=http://localhost:25601
 
-~/.codex/bin/devctl up web -- env \
-  PORT=$PORT WEBDAV_PORT=$WEBDAV_PORT WEBDAV_URL=$WEBDAV_URL \
+PORT=$PORT WEBDAV_PORT=$WEBDAV_PORT WEBDAV_URL=$WEBDAV_URL \
   DB_PATH=$DB_PATH LOCAL_CONTENT_BASE_PATH=$LOCAL_CONTENT_BASE_PATH \
   bun run dev
 
 bun run dev-sync:trigger
-
-# Logs / stop:
-~/.codex/bin/devctl logs web -n 200
-~/.codex/bin/devctl down web
 ```
 
-Fallback (manual nohup) is still OK for humans, but prefer devctl for Codex/agents.
+For long-running sessions, use your team-approved background strategy and keep logs/process ownership explicit.
 
 ### Prerequisites
 
