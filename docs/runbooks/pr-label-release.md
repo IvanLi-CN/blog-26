@@ -33,9 +33,10 @@ Unknown `type:*` or `channel:*` labels fail the `PR Label Gate` check.
 
 1. `CI/CD Pipeline` runs on PR and push.
 2. `release.yml` triggers on successful `workflow_run` for `main`.
-3. `prepare` job resolves release intent from merged PR labels.
-4. If `should_release=false`, workflow exits with summary only.
-5. If `should_release=true`, it computes tag/version and publishes:
+3. `prepare` first checks that `workflow_run.head_sha` is still the latest `main` head.
+4. `prepare` job resolves release intent from merged PR labels.
+5. If `should_release=false`, workflow exits with summary only.
+6. If `should_release=true`, it computes tag/version and publishes:
    - tag
    - GitHub Release
    - GHCR image tags based on channel
@@ -52,6 +53,7 @@ Unknown `type:*` or `channel:*` labels fail the `PR Label Gate` check.
 - Open release workflow logs and inspect `reason` output from `release-intent.sh`.
 - Common reasons:
   - `ambiguous_or_missing_pr`
+  - `non_head_main_commit(...)`
   - `invalid_label_count`
   - `unknown_label`
   - `intent_skip`

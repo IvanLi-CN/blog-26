@@ -61,6 +61,7 @@ We need a deterministic release contract driven by PR labels, aligned with exist
 
 1. Add dedicated `label-gate.yml` workflow for early PR failure.
 2. Add `.github/scripts/release-intent.sh`:
+   - skip non-latest `main` commits to avoid out-of-order releases
    - map commit SHA to PR via `/commits/{sha}/pulls`
    - require exactly one PR; otherwise conservative skip
    - evaluate labels and export outputs:
@@ -100,6 +101,7 @@ We need a deterministic release contract driven by PR labels, aligned with exist
 
 ### Mitigations
 
+- skip non-latest `main` commits in `release-intent.sh` to avoid release reordering
 - Conservative skip with explicit `reason` output for ambiguity.
 - Required check policy includes `PR Label Gate`.
 - Runbook documents label matrix and troubleshooting.

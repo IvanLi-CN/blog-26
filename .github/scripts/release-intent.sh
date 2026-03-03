@@ -5,6 +5,7 @@ api_root="${GITHUB_API_URL:-https://api.github.com}"
 repo="${GITHUB_REPOSITORY:-}"
 token="${GITHUB_TOKEN:-}"
 sha="${WORKFLOW_RUN_SHA:-${COMMIT_SHA:-${GITHUB_SHA:-}}}"
+target_branch="${TARGET_BRANCH:-main}"
 
 if [[ -z "${repo}" ]]; then
   echo "release-intent: missing GITHUB_REPOSITORY" >&2
@@ -18,6 +19,11 @@ fi
 
 if [[ -z "${sha}" ]]; then
   echo "release-intent: missing WORKFLOW_RUN_SHA/COMMIT_SHA/GITHUB_SHA" >&2
+  exit 2
+fi
+
+if [[ -z "${target_branch}" ]]; then
+  echo "release-intent: missing TARGET_BRANCH/main branch name" >&2
   exit 2
 fi
 
@@ -54,6 +60,45 @@ emit_failure() {
   write_output "reason" "${reason}"
   exit 3
 }
+
+branch_ref_json=""
+if ! branch_ref_json="$(
+  curl -fsSL \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    --max-time 20 \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${token}" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "${api_root}/repos/${repo}/git/ref/heads/${target_branch}"
+)"; then
+  emit_failure "api_failure:branch_head"
+fi
+
+export branch_ref_json
+branch_head_sha="$(
+  python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+
+payload = json.loads(os.environ["branch_ref_json"])
+sha = payload.get("object", {}).get("sha", "")
+if isinstance(sha, str):
+    print(sha.strip())
+PY
+)"
+
+if [[ -z "${branch_head_sha}" ]]; then
+  emit_failure "api_failure:branch_head_parse"
+fi
+
+if [[ "${branch_head_sha}" != "${sha}" ]]; then
+  emit_skip "non_head_${target_branch}_commit(expected=${branch_head_sha},got=${sha})"
+  exit 0
+fi
 
 pulls_json=""
 if ! pulls_json="$(
