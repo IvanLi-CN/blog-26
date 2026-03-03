@@ -49,7 +49,7 @@ We need a deterministic release contract driven by PR labels, aligned with exist
   - stable => `prerelease=false`
   - rc => `prerelease=true`
 - GHCR image tags:
-  - stable => `:vX.Y.Z` and `:latest`
+  - stable => `:vX.Y.Z`, and update `:latest` only when the release commit is the current `main` head
   - rc => `:vX.Y.Z-rc.<sha7>` only
 
 ### 4.3 Release trigger
@@ -101,7 +101,11 @@ We need a deterministic release contract driven by PR labels, aligned with exist
 
 ### Mitigations
 
-- skip non-latest `main` commits in `release-intent.sh` to avoid release reordering
+- resolve release intent strictly by triggering commit SHA (do not skip only because branch head advanced)
+- use per-run concurrency keys on CI push/release workflow runs so intermediate commits are not dropped in queue churn
+- re-check branch head right before publish; only then allow stable `latest` update
+- fail-fast for `unknown_label` / `invalid_label_count` in release prepare job to prevent silent skips when gate drifts
+- block release when release labels (`type:*`/`channel:*`) are mutated after PR merge (`post_merge_label_mutation`) to keep merge-time intent stable
 - Conservative skip with explicit `reason` output for ambiguity.
 - Required check policy includes `PR Label Gate`.
 - Runbook documents label matrix and troubleshooting.

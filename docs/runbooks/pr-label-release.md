@@ -25,7 +25,7 @@ Unknown `type:*` or `channel:*` labels fail the `PR Label Gate` check.
 
 | type | channel | should release | Git tag | GitHub Release | GHCR tags |
 |---|---|---|---|---|---|
-| `type:major`/`type:minor`/`type:patch` | `channel:stable` | yes | `vX.Y.Z` | prerelease = false | `vX.Y.Z`, `latest` |
+| `type:major`/`type:minor`/`type:patch` | `channel:stable` | yes | `vX.Y.Z` | prerelease = false | `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
 | `type:major`/`type:minor`/`type:patch` | `channel:rc` | yes | `vX.Y.Z-rc.<sha7>` | prerelease = true | `vX.Y.Z-rc.<sha7>` |
 | `type:docs`/`type:skip` | `channel:stable` or `channel:rc` | no | none | none | none |
 
@@ -33,13 +33,13 @@ Unknown `type:*` or `channel:*` labels fail the `PR Label Gate` check.
 
 1. `CI/CD Pipeline` runs on PR and push.
 2. `release.yml` triggers on successful `workflow_run` for `main`.
-3. `prepare` first checks that `workflow_run.head_sha` is still the latest `main` head.
-4. `prepare` job resolves release intent from merged PR labels.
+3. `prepare` resolves release intent by the triggering commit SHA, even when `main` has already moved forward.
+4. `prepare` verifies no post-merge mutations on release labels (`type:*` / `channel:*`), then resolves release intent from merged PR labels.
 5. If `should_release=false`, workflow exits with summary only.
 6. If `should_release=true`, it computes tag/version and publishes:
    - tag
    - GitHub Release
-   - GHCR image tags based on channel
+   - GHCR image tags based on channel (`latest` only when the release commit is current `main` head, re-checked again right before publish)
 
 ## Troubleshooting
 
@@ -53,10 +53,19 @@ Unknown `type:*` or `channel:*` labels fail the `PR Label Gate` check.
 - Open release workflow logs and inspect `reason` output from `release-intent.sh`.
 - Common reasons:
   - `ambiguous_or_missing_pr`
-  - `non_head_main_commit(...)`
-  - `invalid_label_count`
-  - `unknown_label`
+  - `pr_not_merged_or_missing_merged_at`
   - `intent_skip`
+
+### Release failed in `prepare`
+
+- This is fail-fast by design to avoid silent wrong releases.
+- Common failure reasons:
+  - `invalid_label_count(...)`
+  - `unknown_label(...)`
+  - `post_merge_label_mutation(...)`
+  - `api_failure:pr_issue_events(page=...)`
+  - `api_failure:pr_issue_events_page_limit(...)`
+  - `api_failure:*`
 
 ### Version/tag not as expected
 

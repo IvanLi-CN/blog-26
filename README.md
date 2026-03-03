@@ -380,7 +380,7 @@ This repository uses a PR label-driven release contract for PRs targeting `main`
 - Trigger:
   - release workflow runs from successful `CI/CD Pipeline` on `main` (`workflow_run`).
 - Outputs:
-  - stable (`channel:stable` + release type): `vX.Y.Z` tag + GitHub Release + GHCR `:vX.Y.Z` and `:latest`
+  - stable (`channel:stable` + release type): `vX.Y.Z` tag + GitHub Release + GHCR `:vX.Y.Z` (and `:latest` only when that commit is the current `main` head)
   - rc (`channel:rc` + release type): `vX.Y.Z-rc.<sha7>` tag + prerelease + GHCR rc tag only
   - docs/skip: no release artifacts
 

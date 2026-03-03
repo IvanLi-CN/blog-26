@@ -6,6 +6,7 @@ repo="${GITHUB_REPOSITORY:-}"
 token="${GITHUB_TOKEN:-}"
 sha="${WORKFLOW_RUN_SHA:-${COMMIT_SHA:-${GITHUB_SHA:-}}}"
 target_branch="${TARGET_BRANCH:-main}"
+is_latest_branch_head="true"
 
 if [[ -z "${repo}" ]]; then
   echo "release-intent: missing GITHUB_REPOSITORY" >&2
@@ -45,6 +46,7 @@ emit_skip() {
   write_output "intent_type" ""
   write_output "pr_number" ""
   write_output "pr_url" ""
+  write_output "is_latest_branch_head" "${is_latest_branch_head}"
   write_output "reason" "${reason}"
 }
 
@@ -57,6 +59,7 @@ emit_failure() {
   write_output "intent_type" ""
   write_output "pr_number" ""
   write_output "pr_url" ""
+  write_output "is_latest_branch_head" "${is_latest_branch_head}"
   write_output "reason" "${reason}"
   exit 3
 }
@@ -96,8 +99,8 @@ if [[ -z "${branch_head_sha}" ]]; then
 fi
 
 if [[ "${branch_head_sha}" != "${sha}" ]]; then
-  emit_skip "non_head_${target_branch}_commit(expected=${branch_head_sha},got=${sha})"
-  exit 0
+  is_latest_branch_head="false"
+  echo "release-intent: non-head commit on ${target_branch}; continue with commit-level intent resolution"
 fi
 
 pulls_json=""
@@ -136,22 +139,131 @@ if len(pulls) != 1:
 pull = pulls[0]
 number = pull.get("number")
 url = pull.get("html_url", "")
+merged_at = pull.get("merged_at", "")
 if not isinstance(number, int):
     print("count=0")
     sys.exit(0)
 
 print(f"pr_number={number}")
 print(f"pr_url={url}")
+print(f"pr_merged_at={merged_at}")
 PY
 )"
 
 count="$(echo "${pull_info}" | sed -n 's/^count=//p')"
 pr_number="$(echo "${pull_info}" | sed -n 's/^pr_number=//p')"
 pr_url="$(echo "${pull_info}" | sed -n 's/^pr_url=//p')"
+pr_merged_at="$(echo "${pull_info}" | sed -n 's/^pr_merged_at=//p')"
 
 if [[ "${count}" != "1" ]] || [[ -z "${pr_number}" ]]; then
   emit_skip "ambiguous_or_missing_pr(count=${count:-0})"
   exit 0
+fi
+
+if [[ -z "${pr_merged_at}" ]]; then
+  emit_skip "pr_not_merged_or_missing_merged_at"
+  exit 0
+fi
+
+post_merge_release_label_events="0"
+events_page="1"
+events_page_max="30"
+while :; do
+  events_json=""
+  if ! events_json="$(
+    curl -fsSL \
+      --retry 3 \
+      --retry-delay 2 \
+      --retry-all-errors \
+      --max-time 20 \
+      -H "Accept: application/vnd.github+json" \
+      -H "Authorization: Bearer ${token}" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "${api_root}/repos/${repo}/issues/${pr_number}/events?per_page=100&page=${events_page}"
+  )"; then
+    emit_failure "api_failure:pr_issue_events(page=${events_page})"
+  fi
+
+  export events_json pr_merged_at
+  page_analysis="$(
+    python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime, timezone
+
+
+def parse_ts(value: str) -> datetime | None:
+    if not value:
+        return None
+    normalized = value
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        ts = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)
+
+
+merged_at = parse_ts(os.environ.get("pr_merged_at", ""))
+if merged_at is None:
+    print("events=-1")
+    print("mutations=-1")
+    raise SystemExit(0)
+
+payload = json.loads(os.environ["events_json"])
+if not isinstance(payload, list):
+    print("events=-1")
+    print("mutations=-1")
+    raise SystemExit(0)
+
+allowed_prefixes = ("type:", "channel:")
+mutations = 0
+for item in payload:
+    if not isinstance(item, dict):
+        continue
+    event = str(item.get("event", ""))
+    if event not in {"labeled", "unlabeled"}:
+        continue
+    label_name = str(item.get("label", {}).get("name", ""))
+    if not label_name.startswith(allowed_prefixes):
+        continue
+    created_at = parse_ts(str(item.get("created_at", "")))
+    if created_at is None:
+        continue
+    if created_at >= merged_at:
+        mutations += 1
+
+print(f"events={len(payload)}")
+print(f"mutations={mutations}")
+PY
+  )"
+
+  page_events="$(echo "${page_analysis}" | sed -n 's/^events=//p')"
+  page_mutations="$(echo "${page_analysis}" | sed -n 's/^mutations=//p')"
+
+  if [[ "${page_events}" == "-1" ]] || [[ "${page_mutations}" == "-1" ]]; then
+    emit_failure "api_failure:post_merge_label_check"
+  fi
+
+  post_merge_release_label_events="$((post_merge_release_label_events + page_mutations))"
+
+  if [[ "${page_events}" -lt 100 ]]; then
+    break
+  fi
+
+  events_page="$((events_page + 1))"
+  if [[ "${events_page}" -gt "${events_page_max}" ]]; then
+    emit_failure "api_failure:pr_issue_events_page_limit(max=${events_page_max})"
+  fi
+done
+
+if [[ "${post_merge_release_label_events}" != "0" ]]; then
+  emit_failure "post_merge_label_mutation(count=${post_merge_release_label_events})"
 fi
 
 labels_json=""
@@ -241,8 +353,13 @@ channel="$(echo "${decision}" | sed -n 's/^channel=//p')"
 intent_type="$(echo "${decision}" | sed -n 's/^intent_type=//p')"
 reason="$(echo "${decision}" | sed -n 's/^reason=//p')"
 
+if [[ "${reason}" == unknown_label\(* ]] || [[ "${reason}" == invalid_label_count\(* ]]; then
+  emit_failure "${reason}"
+fi
+
 echo "release-intent:"
 echo "  sha=${sha}"
+echo "  is_latest_branch_head=${is_latest_branch_head}"
 echo "  pr_number=${pr_number}"
 echo "  intent_type=${intent_type:-<none>}"
 echo "  channel=${channel:-<none>}"
@@ -256,4 +373,5 @@ write_output "channel" "${channel}"
 write_output "intent_type" "${intent_type}"
 write_output "pr_number" "${pr_number}"
 write_output "pr_url" "${pr_url}"
+write_output "is_latest_branch_head" "${is_latest_branch_head}"
 write_output "reason" "${reason}"
