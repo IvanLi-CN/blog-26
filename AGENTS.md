@@ -56,16 +56,15 @@ For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db
     - To keep different worktrees consistent, prefer starting at `PORT=25600 WEBDAV_PORT=25601` and increment only if needed.
   - Do not hijack unrelated processes on 25090/25091. Validate availability first: `lsof -iTCP:25090,25091 -sTCP:LISTEN -n`.
 
-### Long-running commands & background management
+### Long-running commands & process lifecycle
 
-These conventions apply to any automation agent (Codex, CI, or human-operated scripts) that cannot dedicate a foreground terminal to a persistent service.
+These conventions apply to any automation agent (Codex, CI, or human-operated scripts).
 
-- Start (foreground): `bun run dev`
-- Background option (manual): `nohup bun run dev >tmp/dev.log 2>&1 & echo $! >tmp/dev.pid`
-  - Stop: `kill $(cat tmp/dev.pid)` then `rm tmp/dev.pid`
-  - Logs: `tail -f tmp/dev.log`
-- **Other scripts that persist**: `bun run dev:next`, `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, and direct calls to `bun run src/scripts/start-integrated-server.ts` all remain active until terminated. Manage each with an explicit process lifecycle (PID file/log pair or your team-approved process manager).
-- **Playwright utilities**: interactive helpers—`bun run test:e2e:ui`, `bun run test:e2e:debug`, `bun run test:e2e:headed`, and `bun run test:e2e:report` (Playwright’s report viewer)—block until the UI is closed. Schedule an explicit `SIGINT`/`kill` in automated pipelines if they must be invoked.
+- Prefer foreground execution for active development tasks: `bun run dev`.
+- If a non-blocking run is required, the caller must manage process lifecycle explicitly (start/stop ownership and log destination).
+- Validate ports before launch and avoid interrupting unrelated processes.
+- Treat `bun run dev:next`, `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, and `bun run src/scripts/start-integrated-server.ts` as long-running commands that require explicit lifecycle handling.
+- Playwright interactive helpers (`bun run test:e2e:ui`, `bun run test:e2e:debug`, `bun run test:e2e:headed`, `bun run test:e2e:report`) block until closed; automated flows must include a shutdown step.
 
 ## Coding Style & Naming Conventions
 
