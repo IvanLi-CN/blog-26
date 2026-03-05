@@ -5,6 +5,12 @@ on:
     workflows: ["CI/CD Pipeline"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Commit SHA on main to backfill release for
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,9 +22,11 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   PLATFORMS: linux/amd64
+  RELEASE_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.workflow_run.head_sha }}
+  RELEASE_HEAD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.workflow_run.head_branch }}
 
 concurrency:
-  group: release-${{ github.event.workflow_run.id }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 jobs:
@@ -26,10 +34,12 @@ jobs:
     name: Prepare release metadata
     runs-on: ubuntu-latest
     if: >-
+      (github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
+      github.event.workflow_run.head_repository.full_name == github.repository) ||
+      github.event_name == 'workflow_dispatch'
     outputs:
       should_release: ${{ steps.meta.outputs.should_release }}
       bump_level: ${{ steps.meta.outputs.bump_level }}
@@ -49,15 +59,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ env.RELEASE_HEAD_SHA }}
 
       - name: Resolve release intent from PR labels
         id: intent
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
-          TARGET_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WORKFLOW_RUN_SHA: ${{ env.RELEASE_HEAD_SHA }}
+          TARGET_BRANCH: ${{ env.RELEASE_HEAD_BRANCH }}
         run: bash ./.github/scripts/release-intent.sh
 
       - name: Compute release version/tag
@@ -67,7 +77,7 @@ jobs:
         env:
           BUMP_LEVEL: ${{ steps.intent.outputs.bump_level }}
           CHANNEL: ${{ steps.intent.outputs.channel }}
-          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+          COMMIT_SHA: ${{ env.RELEASE_HEAD_SHA }}
         run: bash ./.github/scripts/compute-version.sh
 
       - name: Export metadata
@@ -76,8 +86,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-          echo "head_branch=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${{ env.RELEASE_HEAD_SHA }}" >> "$GITHUB_OUTPUT"
+          echo "head_branch=${{ env.RELEASE_HEAD_BRANCH }}" >> "$GITHUB_OUTPUT"
 
           echo "should_release=${{ steps.intent.outputs.should_release }}" >> "$GITHUB_OUTPUT"
           echo "bump_level=${{ steps.intent.outputs.bump_level }}" >> "$GITHUB_OUTPUT"
@@ -124,7 +134,7 @@ jobs:
         run: |
           {
             echo "### Release intent result"
-            echo "- head_sha: \`${{ github.event.workflow_run.head_sha }}\`"
+            echo "- head_sha: \`${{ env.RELEASE_HEAD_SHA }}\`"
             echo "- pr_number: \`${{ steps.intent.outputs.pr_number || 'n/a' }}\`"
             echo "- intent_type: \`${{ steps.intent.outputs.intent_type || 'n/a' }}\`"
             echo "- channel: \`${{ steps.intent.outputs.channel || 'n/a' }}\`"
