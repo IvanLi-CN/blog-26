@@ -1,7 +1,9 @@
 import {
   DEFAULT_LOCAL_MEMO_ROOT_PATH,
   getServerLocalMemoRootPath,
+  getServerLocalMemoRootPaths,
   isMemoContentPath,
+  parseMemoRootsFromEnv,
 } from "@/lib/memo-paths";
 import { parsePathsFromEnv } from "@/lib/path-config";
 
@@ -24,38 +26,68 @@ export { parsePathsFromEnv } from "@/lib/path-config";
 // 环境变量配置
 // ============================================================================
 
+const configuredContentSources = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
+const localSourceAllowed = configuredContentSources ? configuredContentSources.has("local") : true;
+const webdavSourceAllowed = configuredContentSources
+  ? configuredContentSources.has("webdav")
+  : true;
+
+const rawLocalBasePath = process.env.LOCAL_CONTENT_BASE_PATH;
+const normalizedLocalBasePath =
+  typeof rawLocalBasePath === "string" && rawLocalBasePath.trim().length > 0
+    ? rawLocalBasePath.trim()
+    : null;
+const localSourceEnabled = localSourceAllowed && normalizedLocalBasePath !== null;
+
+const rawWebDAVUrl = process.env.WEBDAV_URL;
+const normalizedWebDAVUrl =
+  typeof rawWebDAVUrl === "string" && rawWebDAVUrl.trim().length > 0 ? rawWebDAVUrl.trim() : null;
+const webdavSourceEnabled = webdavSourceAllowed && normalizedWebDAVUrl !== null;
+
+function parseEnabledSourcePaths(
+  envValue: string | undefined,
+  fallback: string,
+  enabled: boolean
+): string[] {
+  return parsePathsFromEnv(enabled ? envValue || fallback : fallback);
+}
+
 /**
  * WebDAV 路径配置
  * 支持多路径配置，每个内容类型可以有多个搜索路径
  */
 export const WEBDAV_PATHS = {
   /** 博客文章路径 */
-  posts: parsePathsFromEnv(process.env.WEBDAV_BLOG_PATH || "/blog"),
+  posts: parseEnabledSourcePaths(process.env.WEBDAV_BLOG_PATH, "/blog", webdavSourceEnabled),
   /** 项目文档路径 */
-  projects: parsePathsFromEnv(process.env.WEBDAV_PROJECTS_PATH || "/projects"),
+  projects: parseEnabledSourcePaths(
+    process.env.WEBDAV_PROJECTS_PATH,
+    "/projects",
+    webdavSourceEnabled
+  ),
   /** 闪念内容路径 */
-  memos: parsePathsFromEnv(process.env.WEBDAV_MEMOS_PATH || "/memos"),
+  memos: parseEnabledSourcePaths(process.env.WEBDAV_MEMOS_PATH, "/memos", webdavSourceEnabled),
 } as const;
 
 /**
  * 本地内容路径配置
  * 支持多路径配置，每个内容类型可以有多个搜索路径
  */
-const rawLocalBasePath = process.env.LOCAL_CONTENT_BASE_PATH;
-const normalizedLocalBasePath =
-  typeof rawLocalBasePath === "string" && rawLocalBasePath.trim().length > 0
-    ? rawLocalBasePath.trim()
-    : null;
-
 export const LOCAL_PATHS = {
   /** 本地内容基础路径 */
   basePath: normalizedLocalBasePath,
   /** 博客文章路径 */
-  posts: parsePathsFromEnv(process.env.LOCAL_BLOG_PATH || "/blog"),
+  posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog", localSourceEnabled),
   /** 项目文档路径 */
-  projects: parsePathsFromEnv(process.env.LOCAL_PROJECTS_PATH || "/projects"),
+  projects: parseEnabledSourcePaths(
+    process.env.LOCAL_PROJECTS_PATH,
+    "/projects",
+    localSourceEnabled
+  ),
   /** 闪念内容路径 */
-  memos: parsePathsFromEnv(process.env.LOCAL_MEMOS_PATH || DEFAULT_LOCAL_MEMO_ROOT_PATH),
+  memos: localSourceEnabled
+    ? getServerLocalMemoRootPaths()
+    : parseMemoRootsFromEnv(undefined, DEFAULT_LOCAL_MEMO_ROOT_PATH),
 } as const;
 
 // ============================================================================
@@ -97,15 +129,8 @@ export function validatePathConfig(): {
   const errors: string[] = [];
 
   // 内容源白名单（可选）：未设置则视为不限制
-  const allowedSources = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
-  const allowLocal = allowedSources ? allowedSources.has("local") : true;
-  const allowWebDAV = allowedSources ? allowedSources.has("webdav") : true;
-
-  const localEnabled = allowLocal && hasLocalBasePath();
-  const webdavEnabled =
-    allowWebDAV &&
-    typeof process.env.WEBDAV_URL === "string" &&
-    process.env.WEBDAV_URL.trim().length > 0;
+  const localEnabled = localSourceEnabled;
+  const webdavEnabled = webdavSourceEnabled;
 
   // 检查 WebDAV 路径格式
   if (webdavEnabled) {
@@ -156,13 +181,13 @@ export function validatePathConfig(): {
   if (webdavEnabled) enabledSources.push("webdav");
   if (enabledSources.length === 0) {
     // Provide a more actionable error that matches CONTENT_SOURCES expectations.
-    if (allowLocal && allowWebDAV) {
+    if (localSourceAllowed && webdavSourceAllowed) {
       errors.push(
         "未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL（或调整 CONTENT_SOURCES）"
       );
-    } else if (allowLocal) {
+    } else if (localSourceAllowed) {
       errors.push("未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH（CONTENT_SOURCES=local）");
-    } else if (allowWebDAV) {
+    } else if (webdavSourceAllowed) {
       errors.push("未启用任何内容源：请配置 WEBDAV_URL（CONTENT_SOURCES=webdav）");
     } else {
       errors.push("未启用任何内容源：CONTENT_SOURCES 未包含任何受支持的 source（local/webdav）");
@@ -250,7 +275,7 @@ const supportedSources: Array<"local" | "webdav"> = [];
 if (isLocalContentEnabled()) {
   supportedSources.push("local");
 }
-if (process.env.WEBDAV_URL && isContentSourceAllowed("webdav")) {
+if (webdavSourceEnabled) {
   supportedSources.push("webdav");
 }
 
@@ -359,8 +384,8 @@ export function getLocalPathForType(contentType: ContentType): string {
  */
 export const SYSTEM_CONFIG = {
   webdav: {
-    enabled: !!process.env.WEBDAV_URL,
-    url: process.env.WEBDAV_URL || null,
+    enabled: webdavSourceEnabled,
+    url: normalizedWebDAVUrl,
     paths: WEBDAV_PATHS,
     pathMappings: WEBDAV_PATH_MAPPINGS,
   },

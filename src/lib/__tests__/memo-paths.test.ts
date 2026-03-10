@@ -89,6 +89,23 @@ describe("memo-paths", () => {
     expect(JSON.parse(result.stdout)).toEqual({ root: "/Memos", dir: "Memos" });
   });
 
+  it("normalizes slashless LOCAL_MEMOS_PATH values when config paths are imported", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_MEMOS_PATH="Memos"; try { const mod = await import("./src/config/paths.ts?slashless-memo-config-test"); console.log(JSON.stringify({ memos: mod.LOCAL_PATHS.memos })); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ memos: ["/Memos"] });
+  });
+
   it("keeps shared config path parsing strict for non-memo envs", () => {
     const result = spawnSync(
       "bun",
@@ -104,6 +121,40 @@ describe("memo-paths", () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("路径必须以 '/' 开头");
+  });
+
+  it("ignores invalid local path envs when the local source is disabled", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.CONTENT_SOURCES="webdav"; process.env.WEBDAV_URL="http://localhost:1"; process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_BLOG_PATH="blog"; try { await import("./src/config/paths.ts?disabled-local-path-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("ok");
+  });
+
+  it("ignores invalid webdav path envs when the webdav source is disabled", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.CONTENT_SOURCES="local"; process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.WEBDAV_BLOG_PATH="blog"; try { await import("./src/config/paths.ts?disabled-webdav-path-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("ok");
   });
 
   it("uses the first LOCAL_MEMOS_PATH entry for server-side helpers", () => {

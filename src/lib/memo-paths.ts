@@ -1,4 +1,4 @@
-import { getPrimaryPathFromEnv } from "./path-config";
+import { splitPathCandidates } from "./path-config";
 
 const FALLBACK_LOCAL_MEMO_ROOT_PATH = "/Memos";
 
@@ -18,12 +18,27 @@ const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(process.env.NEXT_PUBLIC_L
 
 export { DEFAULT_LOCAL_MEMO_ROOT_PATH };
 
-export function getServerLocalMemoRootPath(): string {
-  const configuredRoot = getPrimaryPathFromEnv(
+export function parseMemoRootsFromEnv(
+  envValue: string | undefined,
+  fallback: string | undefined = DEFAULT_LOCAL_MEMO_ROOT_PATH
+): string[] {
+  const candidates = splitPathCandidates(envValue);
+  const normalizedRoots = (candidates.length > 0 ? candidates : [fallback]).map((candidate) =>
+    normalizeMemoRoot(candidate)
+  );
+
+  return normalizedRoots.filter((root, index) => normalizedRoots.indexOf(root) === index);
+}
+
+export function getServerLocalMemoRootPaths(): string[] {
+  return parseMemoRootsFromEnv(
     process.env.LOCAL_MEMOS_PATH,
     process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH || FALLBACK_LOCAL_MEMO_ROOT_PATH
   );
-  return normalizeMemoRoot(configuredRoot);
+}
+
+export function getServerLocalMemoRootPath(): string {
+  return getServerLocalMemoRootPaths()[0] || FALLBACK_LOCAL_MEMO_ROOT_PATH;
 }
 
 export function getServerLocalMemoRootDir(): string {

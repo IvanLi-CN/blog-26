@@ -1,4 +1,4 @@
-function splitPathCandidates(envValue: string | undefined): string[] {
+export function splitPathCandidates(envValue: string | undefined): string[] {
   if (!envValue || typeof envValue !== "string") {
     return [];
   }
