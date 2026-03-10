@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { nanoid } from "nanoid";
+import { getMemoRootDir } from "../src/lib/memo-paths";
 
 const PLACEHOLDER_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
@@ -2525,6 +2526,8 @@ function generateMemos() {
 }
 
 // 创建目录
+const localMemoDir = getMemoRootDir();
+
 function createDirectories(webdavDir: string, localDir: string) {
   const dirs = [
     webdavDir,
@@ -2539,8 +2542,8 @@ function createDirectories(webdavDir: string, localDir: string) {
     join(localDir, "blog", "assets"), // 本地文章图片目录
     join(localDir, "projects"), // 本地项目目录（独立的顶级目录）
     join(localDir, "projects", "assets"), // 本地项目图片目录
-    join(localDir, "memos"), // 本地闪念目录
-    join(localDir, "memos", "assets"), // 本地闪念图片目录
+    join(localDir, localMemoDir), // 本地闪念目录
+    join(localDir, localMemoDir, "assets"), // 本地闪念图片目录
   ];
 
   dirs.forEach((dir) => {
@@ -2940,7 +2943,7 @@ async function main() {
   localMemos.forEach((memo, index) => {
     const { body, ...frontmatter } = memo;
     const fileName = `${String(index + 1).padStart(2, "0")}-${memo.slug}.md`;
-    writeMarkdownFile(join(LOCAL_DIR, "memos", fileName), frontmatter, body);
+    writeMarkdownFile(join(LOCAL_DIR, localMemoDir, fileName), frontmatter, body);
   });
 
   console.log(`\n✅ ${envName}测试数据生成完成！`);

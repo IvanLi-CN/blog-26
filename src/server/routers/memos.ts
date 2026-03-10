@@ -6,11 +6,23 @@ import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import {
+  buildMemoAssetPath,
+  buildMemoRelativePath,
+  buildMemoRootPath,
+  getMemoNewPath,
+  getMemoRootPath,
+} from "@/lib/memo-paths";
+import {
   hasApiFilesReference,
   normalizePersistedLink,
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
-import { isLocalContentEnabled, LOCAL_PATHS, WEBDAV_PATH_MAPPINGS } from "../../config/paths";
+import {
+  isLocalContentEnabled,
+  LOCAL_PATHS,
+  WEBDAV_PATH_MAPPINGS,
+  WEBDAV_PATHS,
+} from "../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../lib/content-sources";
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { WebDAVContentSource } from "../../lib/content-sources/webdav";
@@ -231,6 +243,14 @@ async function triggerIncrementalSync(): Promise<void> {
     // 同步失败不应该影响memo操作的成功响应，但需要记录错误
     // 注意：这里我们选择不抛出错误，因为memo操作已经成功完成
   }
+}
+
+function getLocalMemoRootPath(): string {
+  return getMemoRootPath(LOCAL_PATHS.memos[0]);
+}
+
+function getWebDAVMemoRootPath(): string {
+  return getMemoRootPath(WEBDAV_PATHS.memos[0]);
 }
 
 function getLocalBasePathOrThrow(): string {
@@ -752,7 +772,9 @@ export const memosRouter = router({
     for (const source of candidates) {
       try {
         const markdownFilePathForNormalization =
-          source === "webdav" ? "/memos/__new__.md" : "memos/__new__.md";
+          source === "webdav"
+            ? getMemoNewPath(getWebDAVMemoRootPath())
+            : buildMemoRelativePath("__new__.md", getLocalMemoRootPath());
 
         const normalized = normalizePersistedMemoInput({
           content: rawContent,
@@ -768,7 +790,7 @@ export const memosRouter = router({
 
         if (source === "local") {
           const fileName = generateMemoFilename(normalizedContent, title, now);
-          createdId = `memos/${fileName}`.replace(/\\+/g, "/");
+          createdId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
 
           const frontmatter: Record<string, unknown> = {
             title: title || extractTitleFromContent(normalizedContent),
@@ -797,7 +819,7 @@ export const memosRouter = router({
           });
 
           await webdavSource.dispose();
-          createdId = `/memos/${fileName}`.replace(/\\+/g, "/");
+          createdId = buildMemoRootPath(fileName, getWebDAVMemoRootPath()).replace(/\\+/g, "/");
         }
 
         createdSource = source;
@@ -1130,7 +1152,7 @@ export const memosRouter = router({
       let persistedPath = `./assets/${filename}`;
       if (targetSource === "local") {
         const basePath = getLocalBasePathOrThrow();
-        const fileRelPath = `memos/assets/${filename}`;
+        const fileRelPath = buildMemoAssetPath(filename, getLocalMemoRootPath());
         const fullPath = join(basePath, fileRelPath);
         await mkdir(dirname(fullPath), { recursive: true });
         await writeFile(fullPath, bytes);
@@ -1142,7 +1164,10 @@ export const memosRouter = router({
         await webdavSource.dispose();
 
         // Convert WebDAV absolute path to persisted relative.
-        persistedPath = normalizePersistedLink(attachmentPath, "/memos/__new__.md");
+        persistedPath = normalizePersistedLink(
+          attachmentPath,
+          getMemoNewPath(getWebDAVMemoRootPath())
+        );
       }
 
       return {

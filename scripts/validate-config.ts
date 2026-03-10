@@ -55,9 +55,11 @@ envVars.forEach((varName) => {
 // 4. 路径一致性检查
 console.log("\n🔄 路径一致性检查:");
 
-// 检查 memos 路径是否统一为小写
-const memosPathConsistent = WEBDAV_PATHS.memos.includes("/memos");
-console.log(`  - Memos 路径包含小写路径: ${memosPathConsistent ? "✅" : "❌"}`);
+// 检查 memos 路径是否保持 Memos 根目录语义（大小写可配置）
+const memosPathConsistent = [WEBDAV_PATHS.memos, LOCAL_PATHS.memos].every((paths) =>
+  paths.some((path) => path.toLowerCase() === "/memos")
+);
+console.log(`  - Memos 路径配置有效: ${memosPathConsistent ? "✅" : "❌"}`);
 
 // 检查项目路径是否为独立路径
 const projectsPathIndependent = WEBDAV_PATHS.projects.includes("/projects");
@@ -73,7 +75,7 @@ console.log(`  - 路径解析功能: ✅ (支持逗号分隔和引号包裹)`);
 // 5. 总结
 console.log("\n📝 配置重构总结:");
 console.log("✅ 消除了重复的路径配置代码");
-console.log("✅ 统一了 memos 路径为小写 /memos");
+console.log("✅ 统一了 memo 根目录语义（支持 /Memos 与 /memos 配置）");
 console.log("✅ 确保了 projects 为独立的顶级路径 /projects");
 console.log("✅ 创建了统一的配置管理系统");
 console.log("✅ 所有模块现在使用统一的配置源");

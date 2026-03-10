@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { getMemoAssetsDir, getMemoDraftPath } from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -132,7 +133,7 @@ export function QuickMemoEditor({
               const filename = `inline-${timestamp}.${imageType}`;
               const file = new File([blob], filename, { type: `image/${imageType}` });
 
-              const uploadPath = `memos/assets/${filename}`;
+              const uploadPath = `${getMemoAssetsDir()}/${filename}`;
               const formData = new FormData();
               formData.append("file", file);
               const resp = await fetch(`/api/files/local/${uploadPath}`, {
@@ -251,7 +252,7 @@ export function QuickMemoEditor({
                   content={content}
                   onChange={setContent}
                   placeholder={placeholder}
-                  articlePath="/memos/__draft__.md"
+                  articlePath={getMemoDraftPath()}
                   contentSource="local"
                   editorId="quick-memo-editor"
                   className="min-h-full"

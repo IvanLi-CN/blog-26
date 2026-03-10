@@ -1,3 +1,5 @@
+import { getMemoRootDir } from "@/lib/memo-paths";
+
 /**
  * 图片路径解析工具
  *
@@ -244,13 +246,14 @@ export function resolveImagePathLegacy(
   if (contextPath) {
     const cleanPath = contextPath.startsWith("/") ? contextPath.substring(1) : contextPath;
     const parts = cleanPath.split("/");
+    const rootSegment = parts[0]?.toLowerCase();
 
-    if (parts[0] === "posts") {
+    if (rootSegment === "posts") {
       // posts类型映射到blog目录
       markdownFilePath = parts.length > 1 ? `blog/${parts[1]}.md` : undefined;
-    } else if (parts[0] === "memos") {
-      // memos类型映射到memos目录
-      markdownFilePath = parts.length > 1 ? `memos/${parts[1]}.md` : undefined;
+    } else if (rootSegment === "memos") {
+      // memos类型映射到本地 memo 根目录，保留大小写约定
+      markdownFilePath = parts.length > 1 ? `${getMemoRootDir()}/${parts[1]}.md` : undefined;
     }
   }
 

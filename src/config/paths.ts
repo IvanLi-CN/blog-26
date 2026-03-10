@@ -1,3 +1,5 @@
+import { DEFAULT_LOCAL_MEMO_ROOT_PATH, isMemoContentPath } from "@/lib/memo-paths";
+
 /**
  * 统一的路径配置管理
  *
@@ -94,7 +96,7 @@ export const WEBDAV_PATHS = {
   posts: parsePathsFromEnv(process.env.WEBDAV_BLOG_PATH || "/blog"),
   /** 项目文档路径 */
   projects: parsePathsFromEnv(process.env.WEBDAV_PROJECTS_PATH || "/projects"),
-  /** 闪念内容路径 - 统一使用小写 */
+  /** 闪念内容路径 */
   memos: parsePathsFromEnv(process.env.WEBDAV_MEMOS_PATH || "/memos"),
 } as const;
 
@@ -116,7 +118,7 @@ export const LOCAL_PATHS = {
   /** 项目文档路径 */
   projects: parsePathsFromEnv(process.env.LOCAL_PROJECTS_PATH || "/projects"),
   /** 闪念内容路径 */
-  memos: parsePathsFromEnv(process.env.LOCAL_MEMOS_PATH || "/memos"),
+  memos: parsePathsFromEnv(process.env.LOCAL_MEMOS_PATH || DEFAULT_LOCAL_MEMO_ROOT_PATH),
 } as const;
 
 // ============================================================================
@@ -308,17 +310,21 @@ export type ContentType = "post" | "project" | "memo";
  * 根据文件路径推断内容类型
  */
 export function inferContentType(filePath: string): ContentType | null {
-  const normalizedPath = filePath.toLowerCase();
+  const normalizedPath = filePath.toLowerCase().replace(/\\/g, "/");
 
-  if (normalizedPath.includes("/blog/") || normalizedPath.includes("posts/")) {
+  if (
+    normalizedPath.includes("/blog/") ||
+    normalizedPath.startsWith("blog/") ||
+    normalizedPath.startsWith("posts/")
+  ) {
     return "post";
   }
 
-  if (normalizedPath.includes("/projects/")) {
+  if (normalizedPath.includes("/projects/") || normalizedPath.startsWith("projects/")) {
     return "project";
   }
 
-  if (normalizedPath.includes("/memos/")) {
+  if (isMemoContentPath(filePath)) {
     return "memo";
   }
 

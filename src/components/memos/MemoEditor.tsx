@@ -8,6 +8,7 @@
 
 import { Edit3, Eye, Plus, Save, X } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
+import { getMemoAssetsDir, getMemoDraftPath } from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { UniversalEditor } from "../editor/UniversalEditor";
 import { Badge } from "../ui/badge";
@@ -262,8 +263,8 @@ export function MemoEditor({
           initialContent={content}
           onContentChange={handleContentChange}
           placeholder="记录你的想法..."
-          attachmentBasePath="memos/assets"
-          articlePath="/memos/__draft__.md"
+          attachmentBasePath={getMemoAssetsDir()}
+          articlePath={getMemoDraftPath()}
           contentSource="local"
           mode={editorMode}
           onModeChange={setEditorMode}

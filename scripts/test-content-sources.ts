@@ -84,6 +84,7 @@ const testPaths = [
   "/content/posts/hello-world.md",
   "/content/projects/my-project.md",
   "/content/memos/quick-note.md",
+  "/content/Memos/quick-note-2.md",
   "/some/other/path.md",
 ];
 

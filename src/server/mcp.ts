@@ -12,6 +12,7 @@ import {
   WebDAVContentSource,
 } from "@/lib/content-sources";
 import { db, initializeDB } from "@/lib/db";
+import { buildMemoRelativePath, getMemoRootPath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
 import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
@@ -540,7 +541,7 @@ async function ensureServer() {
     const md = `${fm}${input.content}`;
     if (isWebDAVEnabled()) {
       const dav = new WebDAVClient();
-      const base = (WEBDAV_PATHS.memos[0] || "/memos").replace(/\/$/, "");
+      const base = getMemoRootPath(WEBDAV_PATHS.memos[0]).replace(/\/$/, "");
       const d = new Date();
       const datePrefix = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
       const path = `${base}/${datePrefix}_${limax(input.title || "memo")}.md`;
@@ -549,7 +550,10 @@ async function ensureServer() {
       const fs = await import("node:fs/promises");
       const p = await import("node:path");
       const base = getLocalBasePathOrThrow();
-      const rel = `${(LOCAL_PATHS.memos[0] || "/memos").replace(/\/$/, "")}/${Date.now()}_${limax(input.title || "memo")}.md`;
+      const rel = buildMemoRelativePath(
+        `${Date.now()}_${limax(input.title || "memo")}.md`,
+        LOCAL_PATHS.memos[0]
+      );
       const full = p.join(base, rel);
       await fs.mkdir(p.dirname(full), { recursive: true });
       await fs.writeFile(full, md, "utf-8");
