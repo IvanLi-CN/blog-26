@@ -11,7 +11,14 @@ function normalizeMemoRoot(input: string | undefined): string {
   const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   const normalized = withLeadingSlash.replace(/\\/g, "/").replace(/\/+/g, "/");
   const withoutTrailingSlash = normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
-  return withoutTrailingSlash || FALLBACK_LOCAL_MEMO_ROOT_PATH;
+  const memoRoot = withoutTrailingSlash || FALLBACK_LOCAL_MEMO_ROOT_PATH;
+  const segments = memoRoot.replace(/^\/+/, "").split("/");
+
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    throw new Error(`memo 根目录不能包含 '.' 或 '..' 段: ${trimmed}`);
+  }
+
+  return memoRoot;
 }
 
 const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH);

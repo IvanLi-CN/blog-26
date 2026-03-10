@@ -123,6 +123,23 @@ describe("memo-paths", () => {
     expect(result.stderr).toContain("路径必须以 '/' 开头");
   });
 
+  it("rejects memo roots with dot segments", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_MEMOS_PATH="../outside"; process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?invalid-memo-root-test"); console.log("unexpected-success"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("memo 根目录不能包含");
+  });
+
   it("ignores invalid local path envs when the local source is disabled", () => {
     const result = spawnSync(
       "bun",

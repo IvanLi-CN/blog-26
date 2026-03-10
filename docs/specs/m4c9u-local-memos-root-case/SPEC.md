@@ -48,6 +48,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - `inferContentType` and memo path detection are case-insensitive for `memos` roots.
 - Shared content-path env parsing stays strict for non-memo settings; slashless normalization is limited to memo-root helpers.
+- Memo-root helpers reject `.` or `..` path segments so local writes cannot escape the configured content base path.
 - Disabled content sources fall back to default path mappings so stale env overrides for inactive sources do not block startup.
 - Legacy frontend memo routes still resolve image URLs into the configured local memo root.
 
@@ -59,6 +60,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 4. Unit tests cover uppercase local memo root helpers and uppercase memo type detection.
 5. Slashless memo-root env overrides resolve to the same effective memo directory without relaxing validation for other content-path envs.
 6. Invalid path overrides for disabled local or WebDAV sources do not fail module initialization.
+7. Memo-root overrides reject `.` and `..` segments before any local file writes are derived.
 
 ## 6. Risks and rollback
 
@@ -83,3 +85,4 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - 2026-03-10: Review hardening kept shared content-path env parsing strict while preserving slashless memo-root compatibility.
 - 2026-03-10: Disabled source path parsing now ignores inactive-source overrides so stale env values do not break startup.
+- 2026-03-10: Memo-root normalization now rejects dot segments before deriving local write paths.
