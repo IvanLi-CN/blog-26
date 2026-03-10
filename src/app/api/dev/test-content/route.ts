@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { NextResponse } from "next/server";
-import { getMemoRootDir } from "@/lib/memo-paths";
+import { getServerLocalMemoRootDir } from "@/lib/memo-paths";
 
 function todayPrefix() {
   const d = new Date();
@@ -23,7 +23,7 @@ function slugify(title: string) {
 }
 
 function writeMemoFile(rootDir: string, title: string, body: string, isPublic: boolean) {
-  const dir = join(rootDir, getMemoRootDir());
+  const dir = join(rootDir, getServerLocalMemoRootDir());
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const slug = slugify(title) || randomUUID().slice(0, 8);
   const filename = `${todayPrefix()}_${slug}.md`;

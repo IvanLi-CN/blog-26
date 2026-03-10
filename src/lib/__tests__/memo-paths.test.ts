@@ -55,6 +55,23 @@ describe("memo-paths", () => {
     expect(JSON.parse(result.stdout)).toEqual({ root: "/memos" });
   });
 
+  it("uses LOCAL_MEMOS_PATH for server-side helpers", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?server-env-test"); console.log(JSON.stringify({ root: mod.getServerLocalMemoRootPath(), dir: mod.getServerLocalMemoRootDir() }));',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ root: "/memos", dir: "memos" });
+  });
+
   it("maps legacy memo routes to the configured local memo root", () => {
     expect(resolveImagePathLegacy("./assets/image.png", "/memos/test-note")).toBe(
       "/api/files/local/Memos/assets/image.png"

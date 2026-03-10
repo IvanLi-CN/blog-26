@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { nanoid } from "nanoid";
-import { getMemoRootDir } from "../src/lib/memo-paths";
+import { getServerLocalMemoRootDir } from "../src/lib/memo-paths";
 
 const PLACEHOLDER_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
@@ -2526,7 +2526,7 @@ function generateMemos() {
 }
 
 // 创建目录
-const localMemoDir = getMemoRootDir();
+const localMemoDir = getServerLocalMemoRootDir();
 
 function createDirectories(webdavDir: string, localDir: string) {
   const dirs = [
