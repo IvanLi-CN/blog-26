@@ -72,6 +72,24 @@ describe("memo-paths", () => {
     expect(JSON.parse(result.stdout)).toEqual({ root: "/memos", dir: "memos" });
   });
 
+  it("fails fast when client and server memo roots diverge", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_MEMOS_PATH="/memos"; try { await import("./src/config/paths.ts?memo-root-mismatch-test"); console.log("unexpected-success"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("LOCAL_MEMOS_PATH");
+    expect(result.stderr).toContain("NEXT_PUBLIC_LOCAL_MEMOS_PATH");
+  });
+
   it("maps legacy memo routes to the configured local memo root", () => {
     expect(resolveImagePathLegacy("./assets/image.png", "/memos/test-note")).toBe(
       "/api/files/local/Memos/assets/image.png"

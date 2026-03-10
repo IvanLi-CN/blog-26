@@ -186,6 +186,11 @@ export function validatePathConfig(): {
     });
   }
 
+  const localMemoRootConsistencyError = getLocalMemoRootConsistencyError();
+  if (localMemoRootConsistencyError) {
+    errors.push(localMemoRootConsistencyError);
+  }
+
   // 检查本地路径格式
   if (localEnabled) {
     Object.entries(LOCAL_PATHS).forEach(([key, pathOrPaths]) => {
@@ -277,6 +282,31 @@ export function isContentSourceAllowed(source: "local" | "webdav"): boolean {
   const allowed = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
   if (!allowed) return true;
   return allowed.has(source);
+}
+
+export function getLocalMemoRootConsistencyError(): string | null {
+  if (!hasLocalBasePath() || !isContentSourceAllowed("local")) {
+    return null;
+  }
+
+  const serverMemoRoot = LOCAL_PATHS.memos[0] || DEFAULT_LOCAL_MEMO_ROOT_PATH;
+  const clientMemoRoot = DEFAULT_LOCAL_MEMO_ROOT_PATH;
+
+  if (serverMemoRoot === clientMemoRoot) {
+    return null;
+  }
+
+  return [
+    "本地 memo 根目录配置不一致：",
+    `LOCAL_MEMOS_PATH 解析为 ${serverMemoRoot}，`,
+    `NEXT_PUBLIC_LOCAL_MEMOS_PATH 解析为 ${clientMemoRoot}。`,
+    `请将 NEXT_PUBLIC_LOCAL_MEMOS_PATH 设置为 ${serverMemoRoot}，或移除 LOCAL_MEMOS_PATH 覆盖。`,
+  ].join("");
+}
+
+const localMemoRootConsistencyError = getLocalMemoRootConsistencyError();
+if (localMemoRootConsistencyError) {
+  throw new Error(localMemoRootConsistencyError);
 }
 
 const supportedSources: Array<"local" | "webdav"> = [];

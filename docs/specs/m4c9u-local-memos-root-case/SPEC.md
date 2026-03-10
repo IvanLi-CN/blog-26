@@ -66,6 +66,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - Centralize memo root helpers in one shared module.
 - Update test-data generators and targeted regression tests alongside the code change.
+- Fail fast when local client/server memo roots resolve to different directories.
 - Keep explicit `LOCAL_MEMOS_PATH=/memos` support for server-side helpers and `NEXT_PUBLIC_LOCAL_MEMOS_PATH=/memos` support for client editors.
 
 ### Rollback
