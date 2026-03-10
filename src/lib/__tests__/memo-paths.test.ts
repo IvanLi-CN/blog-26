@@ -6,6 +6,7 @@ import {
   buildMemoAssetPath,
   buildMemoRelativePath,
   DEFAULT_LOCAL_MEMO_ROOT_PATH,
+  getConfiguredClientLocalMemoRootPath,
   getMemoDraftPath,
   getMemoRootDir,
   isMemoContentPath,
@@ -36,6 +37,25 @@ describe("memo-paths", () => {
   it("infers memo content type for uppercase relative paths", () => {
     expect(inferContentType("Memos/test.md")).toBe("memo");
     expect(inferContentType("/Memos/test.md")).toBe("memo");
+  });
+
+  it("rejects invalid NEXT_PUBLIC_LOCAL_MEMOS_PATH values in the strict client getter", () => {
+    expect(() => getConfiguredClientLocalMemoRootPath()).not.toThrow();
+
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { const mod = await import("./src/lib/memo-paths.ts?client-strict-env-test"); console.log(mod.getConfiguredClientLocalMemoRootPath()); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("memo 根目录不能包含");
   });
 
   it("uses NEXT_PUBLIC_LOCAL_MEMOS_PATH for client-safe overrides", () => {

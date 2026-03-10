@@ -41,7 +41,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - Local memo creation writes to the configured memo root instead of hard-coded `memos/`.
 - Local memo attachment upload writes to `<memo-root>/assets/`.
-- Client editors use the same memo-root helper for draft/article paths and upload paths.
+- Client editors use the strict client memo-root getter for draft/article paths and upload paths, while disabled local mode falls back before those editors run.
 - Generic editor type detection treats `Memos/*.md` as memo content.
 
 ### 4.3 Compatibility
@@ -87,3 +87,4 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 - 2026-03-10: Disabled source path parsing now ignores inactive-source overrides so stale env values do not break startup.
 - 2026-03-10: Memo-root normalization now rejects dot segments before deriving local write paths.
 - 2026-03-10: Disabled local mode now ignores invalid client memo-root overrides while keeping enabled local mode strict.
+- 2026-03-10: Client editor write paths now read the strict client memo-root getter instead of the fallback default helper.

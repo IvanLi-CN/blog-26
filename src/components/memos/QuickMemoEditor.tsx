@@ -16,7 +16,11 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { getMemoAssetsDir, getMemoDraftPath } from "@/lib/memo-paths";
+import {
+  getConfiguredClientLocalMemoRootPath,
+  getMemoAssetsDir,
+  getMemoDraftPath,
+} from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -46,6 +50,7 @@ export function QuickMemoEditor({
   const [content, setContent] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const clientMemoRoot = getConfiguredClientLocalMemoRootPath();
   const editorRef = useRef<MilkdownEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const helpId = useId();
@@ -133,7 +138,7 @@ export function QuickMemoEditor({
               const filename = `inline-${timestamp}.${imageType}`;
               const file = new File([blob], filename, { type: `image/${imageType}` });
 
-              const uploadPath = `${getMemoAssetsDir()}/${filename}`;
+              const uploadPath = `${getMemoAssetsDir(clientMemoRoot)}/${filename}`;
               const formData = new FormData();
               formData.append("file", file);
               const resp = await fetch(`/api/files/local/${uploadPath}`, {
@@ -174,7 +179,7 @@ export function QuickMemoEditor({
         setIsSaving(false);
       }
     },
-    [content, isPublic, onSave, resetEditorHeight, isSaving, hasEditorContent]
+    [content, isPublic, onSave, resetEditorHeight, isSaving, hasEditorContent, clientMemoRoot]
   );
 
   // 处理键盘快捷键
@@ -252,7 +257,7 @@ export function QuickMemoEditor({
                   content={content}
                   onChange={setContent}
                   placeholder={placeholder}
-                  articlePath={getMemoDraftPath()}
+                  articlePath={getMemoDraftPath(clientMemoRoot)}
                   contentSource="local"
                   editorId="quick-memo-editor"
                   className="min-h-full"
