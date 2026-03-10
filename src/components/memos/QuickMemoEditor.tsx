@@ -16,7 +16,12 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { getMemoAssetsDir, getMemoDraftPath, resolveClientMemoRootPath } from "@/lib/memo-paths";
+import {
+  getMemoAssetsDir,
+  getMemoDraftPath,
+  getMemoEditorContentSource,
+  resolveClientMemoRootPath,
+} from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -54,6 +59,7 @@ export function QuickMemoEditor({
     localSourceEnabled,
     memoRoot: localMemoRootPath,
   });
+  const memoContentSource = getMemoEditorContentSource(localSourceEnabled);
   const editorRef = useRef<MilkdownEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const helpId = useId();
@@ -144,7 +150,7 @@ export function QuickMemoEditor({
               const uploadPath = `${getMemoAssetsDir(clientMemoRoot)}/${filename}`;
               const formData = new FormData();
               formData.append("file", file);
-              const resp = await fetch(`/api/files/local/${uploadPath}`, {
+              const resp = await fetch(`/api/files/${memoContentSource}/${uploadPath}`, {
                 method: "POST",
                 body: formData,
               });
@@ -182,7 +188,16 @@ export function QuickMemoEditor({
         setIsSaving(false);
       }
     },
-    [content, isPublic, onSave, resetEditorHeight, isSaving, hasEditorContent, clientMemoRoot]
+    [
+      content,
+      isPublic,
+      onSave,
+      resetEditorHeight,
+      isSaving,
+      hasEditorContent,
+      clientMemoRoot,
+      memoContentSource,
+    ]
   );
 
   // 处理键盘快捷键
@@ -261,7 +276,7 @@ export function QuickMemoEditor({
                   onChange={setContent}
                   placeholder={placeholder}
                   articlePath={getMemoDraftPath(clientMemoRoot)}
-                  contentSource="local"
+                  contentSource={memoContentSource}
                   editorId="quick-memo-editor"
                   className="min-h-full"
                 />

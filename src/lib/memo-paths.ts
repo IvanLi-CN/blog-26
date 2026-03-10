@@ -61,6 +61,10 @@ export function resolveClientMemoRootPath(options: ResolveClientMemoRootOptions 
   return getConfiguredClientLocalMemoRootPath();
 }
 
+export function getMemoEditorContentSource(localSourceEnabled = true): "local" | "webdav" {
+  return localSourceEnabled ? "local" : "webdav";
+}
+
 export function parseMemoRootsFromEnv(
   envValue: string | undefined,
   fallback: string | undefined = DEFAULT_LOCAL_MEMO_ROOT_PATH

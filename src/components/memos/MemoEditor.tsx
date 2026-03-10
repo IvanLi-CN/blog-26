@@ -8,7 +8,12 @@
 
 import { Edit3, Eye, Plus, Save, X } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
-import { getMemoAssetsDir, getMemoDraftPath, resolveClientMemoRootPath } from "@/lib/memo-paths";
+import {
+  getMemoAssetsDir,
+  getMemoDraftPath,
+  getMemoEditorContentSource,
+  resolveClientMemoRootPath,
+} from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { UniversalEditor } from "../editor/UniversalEditor";
 import { Badge } from "../ui/badge";
@@ -82,6 +87,7 @@ export function MemoEditor({
     localSourceEnabled,
     memoRoot: localMemoRootPath,
   });
+  const memoContentSource = getMemoEditorContentSource(localSourceEnabled);
 
   // 编辑器模式
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "source" | "preview">("wysiwyg");
@@ -275,7 +281,7 @@ export function MemoEditor({
           placeholder="记录你的想法..."
           attachmentBasePath={getMemoAssetsDir(clientMemoRoot)}
           articlePath={getMemoDraftPath(clientMemoRoot)}
-          contentSource="local"
+          contentSource={memoContentSource}
           mode={editorMode}
           onModeChange={setEditorMode}
           editorId={`memo-editor-${stableEditorId}`}

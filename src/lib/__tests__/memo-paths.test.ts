@@ -8,6 +8,7 @@ import {
   DEFAULT_LOCAL_MEMO_ROOT_PATH,
   getConfiguredClientLocalMemoRootPath,
   getMemoDraftPath,
+  getMemoEditorContentSource,
   getMemoRootDir,
   isMemoContentPath,
   resolveClientMemoRootPath,
@@ -98,6 +99,11 @@ describe("memo-paths", () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("memo 根目录不能包含");
+  });
+
+  it("switches memo editor uploads to webdav when local source is disabled", () => {
+    expect(getMemoEditorContentSource(true)).toBe("local");
+    expect(getMemoEditorContentSource(false)).toBe("webdav");
   });
 
   it("uses NEXT_PUBLIC_LOCAL_MEMOS_PATH for client-safe overrides", () => {

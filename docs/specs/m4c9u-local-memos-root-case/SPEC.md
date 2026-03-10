@@ -41,7 +41,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - Local memo creation writes to the configured memo root instead of hard-coded `memos/`.
 - Local memo attachment upload writes to `<memo-root>/assets/`.
-- Client editors use the strict client memo-root getter for draft/article paths and upload paths, while disabled local mode falls back before those editors run.
+- Client editors use the strict client memo-root getter for draft/article paths and upload paths, while disabled local mode falls back before those editors run and routes inline uploads through WebDAV-backed file APIs.
 - Generic editor type detection treats `Memos/*.md` as memo content.
 
 ### 4.3 Compatibility
@@ -83,6 +83,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 ## 7. Change log
 
+- 2026-03-10: WebDAV-only memo editors now keep the canonical `/Memos` draft paths while routing inline uploads through the WebDAV file API instead of the disabled local endpoint.
 - 2026-03-10: Inactive local-mode client overrides now fall back to the canonical `/Memos` root instead of reusing stale `NEXT_PUBLIC_LOCAL_MEMOS_PATH` values in webdav-only admin editors.
 - 2026-03-10: Memos admin SSR now passes the server-validated local memo root into client editors so inactive local overrides still fall back safely in webdav-only deployments.
 - 2026-03-10: Review hardening kept shared content-path env parsing strict while preserving slashless memo-root compatibility.
