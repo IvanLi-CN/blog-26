@@ -1,5 +1,6 @@
 import {
   DEFAULT_LOCAL_MEMO_ROOT_PATH,
+  getConfiguredClientLocalMemoRootPath,
   getServerLocalMemoRootPath,
   getServerLocalMemoRootPaths,
   isMemoContentPath,
@@ -252,7 +253,7 @@ export function getLocalMemoRootConsistencyError(): string | null {
   }
 
   const serverMemoRoot = getServerLocalMemoRootPath();
-  const clientMemoRoot = DEFAULT_LOCAL_MEMO_ROOT_PATH;
+  const clientMemoRoot = getConfiguredClientLocalMemoRootPath();
 
   if (serverMemoRoot === clientMemoRoot) {
     return null;

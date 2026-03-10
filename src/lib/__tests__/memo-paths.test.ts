@@ -140,6 +140,23 @@ describe("memo-paths", () => {
     expect(result.stderr).toContain("memo 根目录不能包含");
   });
 
+  it("ignores invalid client memo roots when the local source is disabled", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.CONTENT_SOURCES="webdav"; process.env.WEBDAV_URL="http://localhost:1"; process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?disabled-local-memo-root-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("ok");
+  });
+
   it("ignores invalid local path envs when the local source is disabled", () => {
     const result = spawnSync(
       "bun",

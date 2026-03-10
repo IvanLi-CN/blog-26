@@ -2,7 +2,15 @@ import { splitPathCandidates } from "./path-config";
 
 const FALLBACK_LOCAL_MEMO_ROOT_PATH = "/Memos";
 
-function normalizeMemoRoot(input: string | undefined): string {
+type NormalizeMemoRootOptions = {
+  strict?: boolean;
+};
+
+function normalizeMemoRoot(
+  input: string | undefined,
+  options: NormalizeMemoRootOptions = {}
+): string {
+  const { strict = true } = options;
   const trimmed = input?.trim();
   if (!trimmed) {
     return FALLBACK_LOCAL_MEMO_ROOT_PATH;
@@ -15,15 +23,24 @@ function normalizeMemoRoot(input: string | undefined): string {
   const segments = memoRoot.replace(/^\/+/, "").split("/");
 
   if (segments.some((segment) => segment === "." || segment === "..")) {
+    if (!strict) {
+      return FALLBACK_LOCAL_MEMO_ROOT_PATH;
+    }
     throw new Error(`memo 根目录不能包含 '.' 或 '..' 段: ${trimmed}`);
   }
 
   return memoRoot;
 }
 
-const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH);
+const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH, {
+  strict: false,
+});
 
 export { DEFAULT_LOCAL_MEMO_ROOT_PATH };
+
+export function getConfiguredClientLocalMemoRootPath(): string {
+  return normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH);
+}
 
 export function parseMemoRootsFromEnv(
   envValue: string | undefined,
