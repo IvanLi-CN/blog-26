@@ -89,6 +89,23 @@ describe("memo-paths", () => {
     expect(JSON.parse(result.stdout)).toEqual({ root: "/Memos", dir: "Memos" });
   });
 
+  it("keeps shared config path parsing strict for non-memo envs", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_BLOG_PATH="../outside"; try { await import("./src/config/paths.ts?strict-path-test"); console.log("unexpected-success"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("路径必须以 '/' 开头");
+  });
+
   it("uses the first LOCAL_MEMOS_PATH entry for server-side helpers", () => {
     const result = spawnSync(
       "bun",

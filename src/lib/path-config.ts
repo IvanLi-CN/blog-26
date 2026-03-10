@@ -1,4 +1,4 @@
-export function parsePathsFromEnv(envValue: string | undefined): string[] {
+function splitPathCandidates(envValue: string | undefined): string[] {
   if (!envValue || typeof envValue !== "string") {
     return [];
   }
@@ -38,15 +38,23 @@ export function parsePathsFromEnv(envValue: string | undefined): string[] {
     paths.push(trimmedPath);
   }
 
-  const validPaths = paths
-    .map((path) => path.trim())
-    .filter((path) => path.length > 0)
-    .map((path) => (path.startsWith("/") ? path : `/${path}`));
+  return paths.map((path) => path.trim()).filter((path) => path.length > 0);
+}
+
+export function parsePathsFromEnv(envValue: string | undefined): string[] {
+  const validPaths = splitPathCandidates(envValue).map((path) => {
+    if (!path.startsWith("/")) {
+      throw new Error(`路径必须以 '/' 开头: ${path}`);
+    }
+    return path;
+  });
 
   return validPaths.length > 0 ? validPaths : [];
 }
 
 export function getPrimaryPathFromEnv(envValue: string | undefined, fallback: string): string {
-  const paths = parsePathsFromEnv(envValue);
+  const paths = splitPathCandidates(envValue).map((path) =>
+    path.startsWith("/") ? path : `/${path}`
+  );
   return paths[0] || fallback;
 }
