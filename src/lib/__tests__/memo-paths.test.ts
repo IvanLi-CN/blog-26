@@ -72,6 +72,23 @@ describe("memo-paths", () => {
     expect(JSON.parse(result.stdout)).toEqual({ root: "/memos", dir: "memos" });
   });
 
+  it("normalizes slashless LOCAL_MEMOS_PATH values", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_MEMOS_PATH="Memos"; const mod = await import("./src/lib/memo-paths.ts?server-slashless-env-test"); console.log(JSON.stringify({ root: mod.getServerLocalMemoRootPath(), dir: mod.getServerLocalMemoRootDir() }));',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ root: "/Memos", dir: "Memos" });
+  });
+
   it("uses the first LOCAL_MEMOS_PATH entry for server-side helpers", () => {
     const result = spawnSync(
       "bun",

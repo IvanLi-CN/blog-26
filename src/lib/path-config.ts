@@ -41,12 +41,7 @@ export function parsePathsFromEnv(envValue: string | undefined): string[] {
   const validPaths = paths
     .map((path) => path.trim())
     .filter((path) => path.length > 0)
-    .map((path) => {
-      if (!path.startsWith("/")) {
-        throw new Error(`路径必须以 '/' 开头: ${path}`);
-      }
-      return path;
-    });
+    .map((path) => (path.startsWith("/") ? path : `/${path}`));
 
   return validPaths.length > 0 ? validPaths : [];
 }
