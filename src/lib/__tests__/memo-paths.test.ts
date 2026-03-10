@@ -72,6 +72,40 @@ describe("memo-paths", () => {
     expect(JSON.parse(result.stdout)).toEqual({ root: "/memos", dir: "memos" });
   });
 
+  it("uses the first LOCAL_MEMOS_PATH entry for server-side helpers", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_MEMOS_PATH="/memos,/Memos"; const mod = await import("./src/lib/memo-paths.ts?server-multi-env-test"); console.log(JSON.stringify({ root: mod.getServerLocalMemoRootPath(), dir: mod.getServerLocalMemoRootDir() }));',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ root: "/memos", dir: "memos" });
+  });
+
+  it("treats normalized memo roots as equivalent during config validation", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_MEMOS_PATH="/Memos/"; try { await import("./src/config/paths.ts?memo-root-normalized-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("ok");
+  });
+
   it("fails fast when client and server memo roots diverge", () => {
     const result = spawnSync(
       "bun",

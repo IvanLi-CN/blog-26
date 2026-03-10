@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { NextResponse } from "next/server";
-import { getServerLocalMemoRootDir } from "@/lib/memo-paths";
+import { WEBDAV_PATHS } from "@/config/paths";
+import { getMemoRootDir, getServerLocalMemoRootDir } from "@/lib/memo-paths";
 
 function todayPrefix() {
   const d = new Date();
@@ -22,8 +23,18 @@ function slugify(title: string) {
     .trim();
 }
 
-function writeMemoFile(rootDir: string, title: string, body: string, isPublic: boolean) {
-  const dir = join(rootDir, getServerLocalMemoRootDir());
+function getMemoDirForSource(source: "local" | "webdav"): string {
+  return source === "local" ? getServerLocalMemoRootDir() : getMemoRootDir(WEBDAV_PATHS.memos[0]);
+}
+
+function writeMemoFile(
+  rootDir: string,
+  source: "local" | "webdav",
+  title: string,
+  body: string,
+  isPublic: boolean
+) {
+  const dir = join(rootDir, getMemoDirForSource(source));
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const slug = slugify(title) || randomUUID().slice(0, 8);
   const filename = `${todayPrefix()}_${slug}.md`;
@@ -60,6 +71,6 @@ export async function POST(req: Request) {
   }
 
   const rootDir = source === "local" ? resolve("./test-data/local") : resolve("./test-data/webdav");
-  const result = writeMemoFile(rootDir, title, body, isPublic);
+  const result = writeMemoFile(rootDir, source, title, body, isPublic);
   return NextResponse.json({ ok: true, kind, source, ...result });
 }

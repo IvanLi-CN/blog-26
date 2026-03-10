@@ -1,4 +1,11 @@
-import { DEFAULT_LOCAL_MEMO_ROOT_PATH, isMemoContentPath } from "@/lib/memo-paths";
+import {
+  DEFAULT_LOCAL_MEMO_ROOT_PATH,
+  getServerLocalMemoRootPath,
+  isMemoContentPath,
+} from "@/lib/memo-paths";
+import { parsePathsFromEnv } from "@/lib/path-config";
+
+export { parsePathsFromEnv } from "@/lib/path-config";
 
 /**
  * 统一的路径配置管理
@@ -11,77 +18,7 @@ import { DEFAULT_LOCAL_MEMO_ROOT_PATH, isMemoContentPath } from "@/lib/memo-path
 // 路径解析工具
 // ============================================================================
 
-/**
- * 解析环境变量中的路径配置
- * 支持逗号分隔的多个路径，正确处理包含空格的路径（用引号包裹）
- *
- * @param envValue 环境变量值
- * @returns 解析后的路径数组
- *
- * @example
- * parsePathsFromEnv("/blog") → ["/blog"]
- * parsePathsFromEnv("/blog,/articles") → ["/blog", "/articles"]
- * parsePathsFromEnv("/blog, '/my posts' , /articles") → ["/blog", "/my posts", "/articles"]
- */
-export function parsePathsFromEnv(envValue: string): string[] {
-  if (!envValue || typeof envValue !== "string") {
-    return [];
-  }
-
-  const trimmedValue = envValue.trim();
-  if (trimmedValue.length === 0) {
-    return [];
-  }
-
-  const paths: string[] = [];
-  let currentPath = "";
-  let inQuotes = false;
-  let quoteChar = "";
-
-  for (let i = 0; i < envValue.length; i++) {
-    const char = envValue[i];
-
-    if (!inQuotes && (char === '"' || char === "'")) {
-      // 开始引号
-      inQuotes = true;
-      quoteChar = char;
-    } else if (inQuotes && char === quoteChar) {
-      // 结束引号
-      inQuotes = false;
-      quoteChar = "";
-    } else if (!inQuotes && char === ",") {
-      // 路径分隔符
-      const trimmedPath = currentPath.trim();
-      if (trimmedPath) {
-        paths.push(trimmedPath);
-      }
-      currentPath = "";
-    } else {
-      // 普通字符
-      currentPath += char;
-    }
-  }
-
-  // 处理最后一个路径
-  const trimmedPath = currentPath.trim();
-  if (trimmedPath) {
-    paths.push(trimmedPath);
-  }
-
-  // 验证和清理路径
-  const validPaths = paths
-    .map((path) => path.trim())
-    .filter((path) => path.length > 0)
-    .map((path) => {
-      // 确保路径以 / 开头
-      if (!path.startsWith("/")) {
-        throw new Error(`路径必须以 '/' 开头: ${path}`);
-      }
-      return path;
-    });
-
-  return validPaths.length > 0 ? validPaths : [];
-}
+// `parsePathsFromEnv` is shared with memo-root helpers via `@/lib/path-config`.
 
 // ============================================================================
 // 环境变量配置
@@ -289,7 +226,7 @@ export function getLocalMemoRootConsistencyError(): string | null {
     return null;
   }
 
-  const serverMemoRoot = LOCAL_PATHS.memos[0] || DEFAULT_LOCAL_MEMO_ROOT_PATH;
+  const serverMemoRoot = getServerLocalMemoRootPath();
   const clientMemoRoot = DEFAULT_LOCAL_MEMO_ROOT_PATH;
 
   if (serverMemoRoot === clientMemoRoot) {

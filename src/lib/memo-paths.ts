@@ -1,3 +1,5 @@
+import { getPrimaryPathFromEnv } from "./path-config";
+
 const FALLBACK_LOCAL_MEMO_ROOT_PATH = "/Memos";
 
 function normalizeMemoRoot(input: string | undefined): string {
@@ -17,9 +19,11 @@ const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(process.env.NEXT_PUBLIC_L
 export { DEFAULT_LOCAL_MEMO_ROOT_PATH };
 
 export function getServerLocalMemoRootPath(): string {
-  return normalizeMemoRoot(
-    process.env.LOCAL_MEMOS_PATH || process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH
+  const configuredRoot = getPrimaryPathFromEnv(
+    process.env.LOCAL_MEMOS_PATH,
+    process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH || FALLBACK_LOCAL_MEMO_ROOT_PATH
   );
+  return normalizeMemoRoot(configuredRoot);
 }
 
 export function getServerLocalMemoRootDir(): string {
