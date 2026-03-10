@@ -35,6 +35,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
   - memo asset directory
   - relative file IDs
 - Lower-case `/memos` remains supported when server-side flows read `LOCAL_MEMOS_PATH` and client editors read `NEXT_PUBLIC_LOCAL_MEMOS_PATH`.
+- Memo-root helpers normalize slashless `LOCAL_MEMOS_PATH` and `NEXT_PUBLIC_LOCAL_MEMOS_PATH` primary entries into rooted paths before deriving memo file locations.
 
 ### 4.2 Editor and API behavior
 
@@ -46,6 +47,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 ### 4.3 Compatibility
 
 - `inferContentType` and memo path detection are case-insensitive for `memos` roots.
+- Shared content-path env parsing stays strict for non-memo settings; slashless normalization is limited to memo-root helpers.
 - Legacy frontend memo routes still resolve image URLs into the configured local memo root.
 
 ## 5. Acceptance criteria
@@ -54,6 +56,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 2. A local inline image upload lands under `Memos/assets/*` and persists as a relative markdown link.
 3. Opening `Memos/foo.md` in the generic editor keeps memo behavior instead of falling back to post behavior.
 4. Unit tests cover uppercase local memo root helpers and uppercase memo type detection.
+5. Slashless memo-root env overrides resolve to the same effective memo directory without relaxing validation for other content-path envs.
 
 ## 6. Risks and rollback
 
@@ -73,3 +76,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - Revert the memo-root helper usage and restore the previous local memo root default.
 - Repoint production bind mounts back to the previous lowercase destination and rerun sync if needed.
+
+## 7. Change log
+
+- 2026-03-10: Review hardening kept shared content-path env parsing strict while preserving slashless memo-root compatibility.
