@@ -9,8 +9,7 @@
 import { skipToken } from "@tanstack/react-query";
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { inferContentType } from "../../config/paths";
-import { parseMarkdownContent } from "../../lib/content-sources/utils";
+import { inferContentTypeFromPath, parseMarkdownContent } from "../../lib/content-sources/utils";
 import { processInlineImagesCompat } from "../../lib/image-processing";
 import { trpc } from "../../lib/trpc";
 import { generateContentUrl } from "../../lib/url-utils";
@@ -437,13 +436,7 @@ export function PostUniversalEditor({
           slug: contentSource.filePath.replace(/[^a-zA-Z0-9]/g, "-"),
           body: localFile.content,
           excerpt: "",
-          type: contentSource.filePath.startsWith("posts/")
-            ? "post"
-            : contentSource.filePath.startsWith("projects/")
-              ? "project"
-              : contentSource.filePath.startsWith("memos/")
-                ? "memo"
-                : "post",
+          type: inferContentTypeFromPath(contentSource.filePath),
           draft: false,
           public: true,
         },
@@ -587,7 +580,7 @@ author: ""
         const filePath = tabId.includes(":") ? tabId.split(":").slice(1).join(":") : tabId;
 
         // 判断内容类型
-        const contentType = inferContentType(filePath);
+        const contentType = inferContentTypeFromPath(filePath);
 
         let frontendUrl = "";
 

@@ -8,6 +8,12 @@
 
 import { Edit3, Eye, Plus, Save, X } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
+import {
+  getMemoAssetsDir,
+  getMemoDraftPath,
+  getMemoEditorContentSource,
+  resolveClientMemoRootPath,
+} from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { UniversalEditor } from "../editor/UniversalEditor";
 import { Badge } from "../ui/badge";
@@ -37,6 +43,10 @@ export interface MemoEditorProps {
   className?: string;
   /** 是否显示高级选项 */
   showAdvancedOptions?: boolean;
+  /** local source 是否启用 */
+  localSourceEnabled?: boolean;
+  /** 服务端校验后的 memo 根目录 */
+  localMemoRootPath?: string;
 }
 
 export interface MemoData {
@@ -57,6 +67,8 @@ export function MemoEditor({
   onPreviewToggle,
   className,
   showAdvancedOptions = true,
+  localSourceEnabled = true,
+  localMemoRootPath,
 }: MemoEditorProps) {
   const publicSwitchId = useId();
   const titleInputId = useId();
@@ -71,6 +83,11 @@ export function MemoEditor({
   const [newTag, setNewTag] = useState("");
   const [isPreview, setIsPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const clientMemoRoot = resolveClientMemoRootPath({
+    localSourceEnabled,
+    memoRoot: localMemoRootPath,
+  });
+  const memoContentSource = getMemoEditorContentSource(localSourceEnabled);
 
   // 编辑器模式
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "source" | "preview">("wysiwyg");
@@ -262,9 +279,9 @@ export function MemoEditor({
           initialContent={content}
           onContentChange={handleContentChange}
           placeholder="记录你的想法..."
-          attachmentBasePath="memos/assets"
-          articlePath="/memos/__draft__.md"
-          contentSource="local"
+          attachmentBasePath={getMemoAssetsDir(clientMemoRoot)}
+          articlePath={getMemoDraftPath(clientMemoRoot)}
+          contentSource={memoContentSource}
           mode={editorMode}
           onModeChange={setEditorMode}
           editorId={`memo-editor-${stableEditorId}`}

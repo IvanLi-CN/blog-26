@@ -60,7 +60,9 @@ async function testLocalMemoRecognition() {
     console.log(`\n🔍 测试路径类型推断:`);
     const testPaths = [
       "memos/test-memo-1.md",
-      "/memos/test-memo-2.md",
+      "Memos/test-memo-2.md",
+      "/memos/test-memo-3.md",
+      "/Memos/test-memo-4.md",
       "posts/test-post.md",
       "projects/test-project.md",
     ];

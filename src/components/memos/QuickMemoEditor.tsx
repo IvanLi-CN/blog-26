@@ -16,6 +16,12 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  getMemoAssetsDir,
+  getMemoDraftPath,
+  getMemoEditorContentSource,
+  resolveClientMemoRootPath,
+} from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -33,6 +39,8 @@ export interface QuickMemoEditorProps {
   onSave?: (data: QuickMemoData) => Promise<void>;
   className?: string;
   showAdvancedOptions?: boolean;
+  localSourceEnabled?: boolean;
+  localMemoRootPath?: string;
 }
 
 export function QuickMemoEditor({
@@ -41,10 +49,17 @@ export function QuickMemoEditor({
   maxHeight = 600,
   onSave,
   className,
+  localSourceEnabled = true,
+  localMemoRootPath,
 }: QuickMemoEditorProps) {
   const [content, setContent] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const clientMemoRoot = resolveClientMemoRootPath({
+    localSourceEnabled,
+    memoRoot: localMemoRootPath,
+  });
+  const memoContentSource = getMemoEditorContentSource(localSourceEnabled);
   const editorRef = useRef<MilkdownEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const helpId = useId();
@@ -132,10 +147,10 @@ export function QuickMemoEditor({
               const filename = `inline-${timestamp}.${imageType}`;
               const file = new File([blob], filename, { type: `image/${imageType}` });
 
-              const uploadPath = `memos/assets/${filename}`;
+              const uploadPath = `${getMemoAssetsDir(clientMemoRoot)}/${filename}`;
               const formData = new FormData();
               formData.append("file", file);
-              const resp = await fetch(`/api/files/local/${uploadPath}`, {
+              const resp = await fetch(`/api/files/${memoContentSource}/${uploadPath}`, {
                 method: "POST",
                 body: formData,
               });
@@ -173,7 +188,16 @@ export function QuickMemoEditor({
         setIsSaving(false);
       }
     },
-    [content, isPublic, onSave, resetEditorHeight, isSaving, hasEditorContent]
+    [
+      content,
+      isPublic,
+      onSave,
+      resetEditorHeight,
+      isSaving,
+      hasEditorContent,
+      clientMemoRoot,
+      memoContentSource,
+    ]
   );
 
   // 处理键盘快捷键
@@ -251,8 +275,8 @@ export function QuickMemoEditor({
                   content={content}
                   onChange={setContent}
                   placeholder={placeholder}
-                  articlePath="/memos/__draft__.md"
-                  contentSource="local"
+                  articlePath={getMemoDraftPath(clientMemoRoot)}
+                  contentSource={memoContentSource}
                   editorId="quick-memo-editor"
                   className="min-h-full"
                 />

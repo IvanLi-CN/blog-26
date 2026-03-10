@@ -1,3 +1,15 @@
+import {
+  DEFAULT_LOCAL_MEMO_ROOT_PATH,
+  getConfiguredClientLocalMemoRootPath,
+  getServerLocalMemoRootPath,
+  getServerLocalMemoRootPaths,
+  isMemoContentPath,
+  parseMemoRootsFromEnv,
+} from "@/lib/memo-paths";
+import { parsePathsFromEnv } from "@/lib/path-config";
+
+export { parsePathsFromEnv } from "@/lib/path-config";
+
 /**
  * 统一的路径配置管理
  *
@@ -9,81 +21,37 @@
 // 路径解析工具
 // ============================================================================
 
-/**
- * 解析环境变量中的路径配置
- * 支持逗号分隔的多个路径，正确处理包含空格的路径（用引号包裹）
- *
- * @param envValue 环境变量值
- * @returns 解析后的路径数组
- *
- * @example
- * parsePathsFromEnv("/blog") → ["/blog"]
- * parsePathsFromEnv("/blog,/articles") → ["/blog", "/articles"]
- * parsePathsFromEnv("/blog, '/my posts' , /articles") → ["/blog", "/my posts", "/articles"]
- */
-export function parsePathsFromEnv(envValue: string): string[] {
-  if (!envValue || typeof envValue !== "string") {
-    return [];
-  }
-
-  const trimmedValue = envValue.trim();
-  if (trimmedValue.length === 0) {
-    return [];
-  }
-
-  const paths: string[] = [];
-  let currentPath = "";
-  let inQuotes = false;
-  let quoteChar = "";
-
-  for (let i = 0; i < envValue.length; i++) {
-    const char = envValue[i];
-
-    if (!inQuotes && (char === '"' || char === "'")) {
-      // 开始引号
-      inQuotes = true;
-      quoteChar = char;
-    } else if (inQuotes && char === quoteChar) {
-      // 结束引号
-      inQuotes = false;
-      quoteChar = "";
-    } else if (!inQuotes && char === ",") {
-      // 路径分隔符
-      const trimmedPath = currentPath.trim();
-      if (trimmedPath) {
-        paths.push(trimmedPath);
-      }
-      currentPath = "";
-    } else {
-      // 普通字符
-      currentPath += char;
-    }
-  }
-
-  // 处理最后一个路径
-  const trimmedPath = currentPath.trim();
-  if (trimmedPath) {
-    paths.push(trimmedPath);
-  }
-
-  // 验证和清理路径
-  const validPaths = paths
-    .map((path) => path.trim())
-    .filter((path) => path.length > 0)
-    .map((path) => {
-      // 确保路径以 / 开头
-      if (!path.startsWith("/")) {
-        throw new Error(`路径必须以 '/' 开头: ${path}`);
-      }
-      return path;
-    });
-
-  return validPaths.length > 0 ? validPaths : [];
-}
+// `parsePathsFromEnv` is shared with memo-root helpers via `@/lib/path-config`.
 
 // ============================================================================
 // 环境变量配置
 // ============================================================================
+
+const configuredContentSources = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
+const localSourceAllowed = configuredContentSources ? configuredContentSources.has("local") : true;
+const webdavSourceAllowed = configuredContentSources
+  ? configuredContentSources.has("webdav")
+  : true;
+
+const rawLocalBasePath = process.env.LOCAL_CONTENT_BASE_PATH;
+const normalizedLocalBasePath =
+  typeof rawLocalBasePath === "string" && rawLocalBasePath.trim().length > 0
+    ? rawLocalBasePath.trim()
+    : null;
+const localSourceEnabled = localSourceAllowed && normalizedLocalBasePath !== null;
+
+const rawWebDAVUrl = process.env.WEBDAV_URL;
+const normalizedWebDAVUrl =
+  typeof rawWebDAVUrl === "string" && rawWebDAVUrl.trim().length > 0 ? rawWebDAVUrl.trim() : null;
+const webdavSourceEnabled = webdavSourceAllowed && normalizedWebDAVUrl !== null;
+
+function parseEnabledSourcePaths(
+  envValue: string | undefined,
+  fallback: string,
+  enabled: boolean
+): string[] {
+  return parsePathsFromEnv(enabled ? envValue || fallback : fallback);
+}
 
 /**
  * WebDAV 路径配置
@@ -91,32 +59,36 @@ export function parsePathsFromEnv(envValue: string): string[] {
  */
 export const WEBDAV_PATHS = {
   /** 博客文章路径 */
-  posts: parsePathsFromEnv(process.env.WEBDAV_BLOG_PATH || "/blog"),
+  posts: parseEnabledSourcePaths(process.env.WEBDAV_BLOG_PATH, "/blog", webdavSourceEnabled),
   /** 项目文档路径 */
-  projects: parsePathsFromEnv(process.env.WEBDAV_PROJECTS_PATH || "/projects"),
-  /** 闪念内容路径 - 统一使用小写 */
-  memos: parsePathsFromEnv(process.env.WEBDAV_MEMOS_PATH || "/memos"),
+  projects: parseEnabledSourcePaths(
+    process.env.WEBDAV_PROJECTS_PATH,
+    "/projects",
+    webdavSourceEnabled
+  ),
+  /** 闪念内容路径 */
+  memos: parseEnabledSourcePaths(process.env.WEBDAV_MEMOS_PATH, "/memos", webdavSourceEnabled),
 } as const;
 
 /**
  * 本地内容路径配置
  * 支持多路径配置，每个内容类型可以有多个搜索路径
  */
-const rawLocalBasePath = process.env.LOCAL_CONTENT_BASE_PATH;
-const normalizedLocalBasePath =
-  typeof rawLocalBasePath === "string" && rawLocalBasePath.trim().length > 0
-    ? rawLocalBasePath.trim()
-    : null;
-
 export const LOCAL_PATHS = {
   /** 本地内容基础路径 */
   basePath: normalizedLocalBasePath,
   /** 博客文章路径 */
-  posts: parsePathsFromEnv(process.env.LOCAL_BLOG_PATH || "/blog"),
+  posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog", localSourceEnabled),
   /** 项目文档路径 */
-  projects: parsePathsFromEnv(process.env.LOCAL_PROJECTS_PATH || "/projects"),
+  projects: parseEnabledSourcePaths(
+    process.env.LOCAL_PROJECTS_PATH,
+    "/projects",
+    localSourceEnabled
+  ),
   /** 闪念内容路径 */
-  memos: parsePathsFromEnv(process.env.LOCAL_MEMOS_PATH || "/memos"),
+  memos: localSourceEnabled
+    ? getServerLocalMemoRootPaths()
+    : parseMemoRootsFromEnv(undefined, DEFAULT_LOCAL_MEMO_ROOT_PATH),
 } as const;
 
 // ============================================================================
@@ -158,15 +130,8 @@ export function validatePathConfig(): {
   const errors: string[] = [];
 
   // 内容源白名单（可选）：未设置则视为不限制
-  const allowedSources = parseContentSourcesFromEnv(process.env.CONTENT_SOURCES);
-  const allowLocal = allowedSources ? allowedSources.has("local") : true;
-  const allowWebDAV = allowedSources ? allowedSources.has("webdav") : true;
-
-  const localEnabled = allowLocal && hasLocalBasePath();
-  const webdavEnabled =
-    allowWebDAV &&
-    typeof process.env.WEBDAV_URL === "string" &&
-    process.env.WEBDAV_URL.trim().length > 0;
+  const localEnabled = localSourceEnabled;
+  const webdavEnabled = webdavSourceEnabled;
 
   // 检查 WebDAV 路径格式
   if (webdavEnabled) {
@@ -182,6 +147,11 @@ export function validatePathConfig(): {
         }
       });
     });
+  }
+
+  const localMemoRootConsistencyError = getLocalMemoRootConsistencyError();
+  if (localMemoRootConsistencyError) {
+    errors.push(localMemoRootConsistencyError);
   }
 
   // 检查本地路径格式
@@ -212,13 +182,13 @@ export function validatePathConfig(): {
   if (webdavEnabled) enabledSources.push("webdav");
   if (enabledSources.length === 0) {
     // Provide a more actionable error that matches CONTENT_SOURCES expectations.
-    if (allowLocal && allowWebDAV) {
+    if (localSourceAllowed && webdavSourceAllowed) {
       errors.push(
         "未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL（或调整 CONTENT_SOURCES）"
       );
-    } else if (allowLocal) {
+    } else if (localSourceAllowed) {
       errors.push("未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH（CONTENT_SOURCES=local）");
-    } else if (allowWebDAV) {
+    } else if (webdavSourceAllowed) {
       errors.push("未启用任何内容源：请配置 WEBDAV_URL（CONTENT_SOURCES=webdav）");
     } else {
       errors.push("未启用任何内容源：CONTENT_SOURCES 未包含任何受支持的 source（local/webdav）");
@@ -277,11 +247,36 @@ export function isContentSourceAllowed(source: "local" | "webdav"): boolean {
   return allowed.has(source);
 }
 
+export function getLocalMemoRootConsistencyError(): string | null {
+  if (!hasLocalBasePath() || !isContentSourceAllowed("local")) {
+    return null;
+  }
+
+  const serverMemoRoot = getServerLocalMemoRootPath();
+  const clientMemoRoot = getConfiguredClientLocalMemoRootPath();
+
+  if (serverMemoRoot === clientMemoRoot) {
+    return null;
+  }
+
+  return [
+    "本地 memo 根目录配置不一致：",
+    `LOCAL_MEMOS_PATH 解析为 ${serverMemoRoot}，`,
+    `NEXT_PUBLIC_LOCAL_MEMOS_PATH 解析为 ${clientMemoRoot}。`,
+    `请将 NEXT_PUBLIC_LOCAL_MEMOS_PATH 设置为 ${serverMemoRoot}，或移除 LOCAL_MEMOS_PATH 覆盖。`,
+  ].join("");
+}
+
+const localMemoRootConsistencyError = getLocalMemoRootConsistencyError();
+if (localMemoRootConsistencyError) {
+  throw new Error(localMemoRootConsistencyError);
+}
+
 const supportedSources: Array<"local" | "webdav"> = [];
 if (isLocalContentEnabled()) {
   supportedSources.push("local");
 }
-if (process.env.WEBDAV_URL && isContentSourceAllowed("webdav")) {
+if (webdavSourceEnabled) {
   supportedSources.push("webdav");
 }
 
@@ -308,17 +303,21 @@ export type ContentType = "post" | "project" | "memo";
  * 根据文件路径推断内容类型
  */
 export function inferContentType(filePath: string): ContentType | null {
-  const normalizedPath = filePath.toLowerCase();
+  const normalizedPath = filePath.toLowerCase().replace(/\\/g, "/");
 
-  if (normalizedPath.includes("/blog/") || normalizedPath.includes("posts/")) {
+  if (
+    normalizedPath.includes("/blog/") ||
+    normalizedPath.startsWith("blog/") ||
+    normalizedPath.startsWith("posts/")
+  ) {
     return "post";
   }
 
-  if (normalizedPath.includes("/projects/")) {
+  if (normalizedPath.includes("/projects/") || normalizedPath.startsWith("projects/")) {
     return "project";
   }
 
-  if (normalizedPath.includes("/memos/")) {
+  if (isMemoContentPath(filePath)) {
     return "memo";
   }
 
@@ -386,8 +385,8 @@ export function getLocalPathForType(contentType: ContentType): string {
  */
 export const SYSTEM_CONFIG = {
   webdav: {
-    enabled: !!process.env.WEBDAV_URL,
-    url: process.env.WEBDAV_URL || null,
+    enabled: webdavSourceEnabled,
+    url: normalizedWebDAVUrl,
     paths: WEBDAV_PATHS,
     pathMappings: WEBDAV_PATH_MAPPINGS,
   },

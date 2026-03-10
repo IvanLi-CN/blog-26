@@ -41,6 +41,10 @@ export interface MemosAppProps {
   tagIconSvgMap?: Record<string, string | null>;
   /** 初始视图模式 */
   initialView?: "list" | "quick" | "editor";
+  /** local source 是否启用 */
+  localSourceEnabled?: boolean;
+  /** 服务端校验后的 memo 根目录 */
+  localMemoRootPath?: string;
   /** 样式类名 */
   className?: string;
 }
@@ -51,6 +55,8 @@ export function MemosApp({
   initialData,
   tagIconMap,
   tagIconSvgMap,
+  localSourceEnabled = true,
+  localMemoRootPath,
   className,
 }: MemosAppProps) {
   // 获取URL搜索参数
@@ -248,7 +254,11 @@ export function MemosApp({
         {/* 管理员快速编辑器 - 匹配旧项目 */}
         {showManageFeatures && (
           <MemosErrorBoundary>
-            <QuickMemoEditor onSave={handleQuickSave} />
+            <QuickMemoEditor
+              onSave={handleQuickSave}
+              localSourceEnabled={localSourceEnabled}
+              localMemoRootPath={localMemoRootPath}
+            />
           </MemosErrorBoundary>
         )}
 
@@ -291,6 +301,8 @@ export function MemosApp({
             onSave={handleEditorSave}
             onCancel={() => setShowEditor(false)}
             showAdvancedOptions
+            localSourceEnabled={localSourceEnabled}
+            localMemoRootPath={localMemoRootPath}
           />
         </DialogContent>
       </Dialog>
