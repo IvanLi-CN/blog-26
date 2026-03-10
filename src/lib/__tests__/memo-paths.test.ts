@@ -71,7 +71,7 @@ describe("memo-paths", () => {
       "bun",
       [
         "-e",
-        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; const mod = await import("./src/lib/memo-paths.ts?client-disabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: false }));',
+        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?client-disabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: false }));',
       ],
       {
         cwd: process.cwd(),

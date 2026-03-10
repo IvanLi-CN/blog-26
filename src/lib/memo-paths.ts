@@ -51,7 +51,7 @@ export function resolveClientMemoRootPath(options: ResolveClientMemoRootOptions 
   const { localSourceEnabled = true, memoRoot } = options;
 
   if (!localSourceEnabled) {
-    return DEFAULT_LOCAL_MEMO_ROOT_PATH;
+    return FALLBACK_LOCAL_MEMO_ROOT_PATH;
   }
 
   if (memoRoot) {
