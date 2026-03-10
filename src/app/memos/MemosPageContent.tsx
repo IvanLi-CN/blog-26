@@ -19,11 +19,15 @@ export function MemosPageContent({
   initialMemos,
   tagIconMap,
   tagIconSvgMap,
+  localSourceEnabled = true,
+  localMemoRootPath,
 }: {
   initialIsAdmin?: boolean;
   initialMemos?: MemosListOutput;
   tagIconMap?: TagIconMap;
   tagIconSvgMap?: Record<string, string | null>;
+  localSourceEnabled?: boolean;
+  localMemoRootPath?: string;
 }) {
   const { isAdmin, isLoading } = useAuth();
   const effectiveIsAdmin = isLoading ? initialIsAdmin : isAdmin;
@@ -63,6 +67,8 @@ export function MemosPageContent({
       initialData={initialMemos}
       tagIconMap={tagIconMap}
       tagIconSvgMap={tagIconSvgMap}
+      localSourceEnabled={localSourceEnabled}
+      localMemoRootPath={localMemoRootPath}
     />
   );
 }

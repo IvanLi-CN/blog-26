@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import PageLayout from "../../components/common/PageLayout";
+import { isLocalContentEnabled } from "../../config/paths";
 import { isAdminFromRequest } from "../../lib/auth";
+import { getServerLocalMemoRootPath } from "../../lib/memo-paths";
 import { parseContentTags } from "../../lib/tag-parser";
 import { createSsrCaller } from "../../lib/trpc-ssr";
 import { resolveTagIconSvgsForTags } from "../../server/services/tag-icon-ssr";
@@ -126,6 +128,8 @@ export default async function MemosPage({ searchParams }: PageProps) {
   const initialTag = readSearchParam(sp.tag);
 
   const caller = await createSsrCaller(h);
+  const localSourceEnabled = isLocalContentEnabled();
+  const localMemoRootPath = localSourceEnabled ? getServerLocalMemoRootPath() : undefined;
   const initialMemos = await caller.memos.list({
     limit: 20,
     publicOnly: true,
@@ -180,6 +184,8 @@ export default async function MemosPage({ searchParams }: PageProps) {
           initialMemos={initialMemos}
           tagIconMap={iconMap}
           tagIconSvgMap={svgMap}
+          localSourceEnabled={localSourceEnabled}
+          localMemoRootPath={localMemoRootPath}
         />
       </section>
     </PageLayout>

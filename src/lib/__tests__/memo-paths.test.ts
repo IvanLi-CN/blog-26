@@ -10,6 +10,7 @@ import {
   getMemoDraftPath,
   getMemoRootDir,
   isMemoContentPath,
+  resolveClientMemoRootPath,
 } from "../memo-paths";
 
 describe("memo-paths", () => {
@@ -47,6 +48,47 @@ describe("memo-paths", () => {
       [
         "-e",
         'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { const mod = await import("./src/lib/memo-paths.ts?client-strict-env-test"); console.log(mod.getConfiguredClientLocalMemoRootPath()); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("memo 根目录不能包含");
+  });
+
+  it("falls back to the default client memo root when local source is disabled", () => {
+    expect(
+      resolveClientMemoRootPath({
+        localSourceEnabled: false,
+        memoRoot: "/memos",
+      })
+    ).toBe("/Memos");
+
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; const mod = await import("./src/lib/memo-paths.ts?client-disabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: false }));',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe("/Memos");
+  });
+
+  it("keeps strict validation when local source stays enabled", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { const mod = await import("./src/lib/memo-paths.ts?client-enabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: true })); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),

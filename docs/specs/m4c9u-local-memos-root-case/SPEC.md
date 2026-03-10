@@ -83,6 +83,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 ## 7. Change log
 
+- 2026-03-10: Memos admin SSR now passes the server-validated local memo root into client editors so inactive local overrides still fall back safely in webdav-only deployments.
 - 2026-03-10: Review hardening kept shared content-path env parsing strict while preserving slashless memo-root compatibility.
 - 2026-03-10: Disabled source path parsing now ignores inactive-source overrides so stale env values do not break startup.
 - 2026-03-10: Memo-root normalization now rejects dot segments before deriving local write paths.

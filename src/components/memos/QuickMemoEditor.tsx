@@ -16,11 +16,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import {
-  getConfiguredClientLocalMemoRootPath,
-  getMemoAssetsDir,
-  getMemoDraftPath,
-} from "@/lib/memo-paths";
+import { getMemoAssetsDir, getMemoDraftPath, resolveClientMemoRootPath } from "@/lib/memo-paths";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -38,6 +34,8 @@ export interface QuickMemoEditorProps {
   onSave?: (data: QuickMemoData) => Promise<void>;
   className?: string;
   showAdvancedOptions?: boolean;
+  localSourceEnabled?: boolean;
+  localMemoRootPath?: string;
 }
 
 export function QuickMemoEditor({
@@ -46,11 +44,16 @@ export function QuickMemoEditor({
   maxHeight = 600,
   onSave,
   className,
+  localSourceEnabled = true,
+  localMemoRootPath,
 }: QuickMemoEditorProps) {
   const [content, setContent] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const clientMemoRoot = getConfiguredClientLocalMemoRootPath();
+  const clientMemoRoot = resolveClientMemoRootPath({
+    localSourceEnabled,
+    memoRoot: localMemoRootPath,
+  });
   const editorRef = useRef<MilkdownEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const helpId = useId();

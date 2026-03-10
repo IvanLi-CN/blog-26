@@ -42,6 +42,25 @@ export function getConfiguredClientLocalMemoRootPath(): string {
   return normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH);
 }
 
+type ResolveClientMemoRootOptions = {
+  localSourceEnabled?: boolean;
+  memoRoot?: string;
+};
+
+export function resolveClientMemoRootPath(options: ResolveClientMemoRootOptions = {}): string {
+  const { localSourceEnabled = true, memoRoot } = options;
+
+  if (!localSourceEnabled) {
+    return DEFAULT_LOCAL_MEMO_ROOT_PATH;
+  }
+
+  if (memoRoot) {
+    return getMemoRootPath(memoRoot);
+  }
+
+  return getConfiguredClientLocalMemoRootPath();
+}
+
 export function parseMemoRootsFromEnv(
   envValue: string | undefined,
   fallback: string | undefined = DEFAULT_LOCAL_MEMO_ROOT_PATH
