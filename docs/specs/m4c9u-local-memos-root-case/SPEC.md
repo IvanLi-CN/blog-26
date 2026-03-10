@@ -16,7 +16,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 1. Keep local memo write paths aligned with the real `Memos/` directory.
 2. Preserve memo route URLs as `/memos/<slug>` while allowing uppercase on-disk roots.
 3. Make memo creation, inline uploads, and generic editor type detection case-safe.
-4. Keep lower-case memo roots configurable for dev/test overrides when explicitly requested.
+4. Keep lower-case memo roots configurable for explicit dev/test overrides, including client editors.
 
 ## 3. Non-goals
 
@@ -34,7 +34,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
   - new-file placeholder path
   - memo asset directory
   - relative file IDs
-- Lower-case `/memos` remains supported only when explicitly configured.
+- Lower-case `/memos` remains supported when `LOCAL_MEMOS_PATH` is set for server flows and `NEXT_PUBLIC_LOCAL_MEMOS_PATH` is set for client editors.
 
 ### 4.2 Editor and API behavior
 
@@ -66,7 +66,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - Centralize memo root helpers in one shared module.
 - Update test-data generators and targeted regression tests alongside the code change.
-- Keep explicit `LOCAL_MEMOS_PATH=/memos` override support for fallback scenarios.
+- Keep explicit `LOCAL_MEMOS_PATH=/memos` plus `NEXT_PUBLIC_LOCAL_MEMOS_PATH=/memos` fallback support for full-stack overrides.
 
 ### Rollback
 

@@ -38,12 +38,12 @@ describe("memo-paths", () => {
     expect(inferContentType("/Memos/test.md")).toBe("memo");
   });
 
-  it("falls back to LOCAL_MEMOS_PATH when no public override is provided", () => {
+  it("uses NEXT_PUBLIC_LOCAL_MEMOS_PATH for client-safe overrides", () => {
     const result = spawnSync(
       "bun",
       [
         "-e",
-        'process.env.LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?local-env-test"); console.log(JSON.stringify({ root: mod.DEFAULT_LOCAL_MEMO_ROOT_PATH }));',
+        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?public-env-test"); console.log(JSON.stringify({ root: mod.DEFAULT_LOCAL_MEMO_ROOT_PATH }));',
       ],
       {
         cwd: process.cwd(),

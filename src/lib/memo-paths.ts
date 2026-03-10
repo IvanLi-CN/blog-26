@@ -12,9 +12,7 @@ function normalizeMemoRoot(input: string | undefined): string {
   return withoutTrailingSlash || FALLBACK_LOCAL_MEMO_ROOT_PATH;
 }
 
-const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(
-  process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH || process.env.LOCAL_MEMOS_PATH
-);
+const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH);
 
 export { DEFAULT_LOCAL_MEMO_ROOT_PATH };
 
