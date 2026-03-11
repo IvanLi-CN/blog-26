@@ -6,6 +6,13 @@
 
 import { promises as fs } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { LOCAL_PATH_MAPPINGS } from "@/config/paths";
+import {
+  type ContentPathMappings,
+  getConfiguredContentRootDirs,
+  isPathWithinConfiguredRoots,
+  normalizeRelativeContentPath,
+} from "@/lib/content-path-mappings";
 import { ContentSourceBase } from "./base";
 import type { ContentItem, ContentSourceConfig, ContentSourceStatus, FileInfo } from "./types";
 import {
@@ -29,6 +36,8 @@ export interface LocalContentSourceOptions extends Record<string, unknown> {
   excludePatterns?: string[];
   /** 是否监听文件变更 */
   watchChanges?: boolean;
+  /** 内容类型到真实目录的映射 */
+  pathMappings?: ContentPathMappings;
 }
 
 /**
@@ -46,6 +55,8 @@ export class LocalContentSource extends ContentSourceBase {
   private recursive: boolean;
   private excludePatterns: string[];
   private watchChanges: boolean;
+  private pathMappings: Required<ContentPathMappings>;
+  private configuredRootDirs: string[];
   private fileCache = new Map<string, FileInfo>();
 
   constructor(config: LocalContentSourceConfig) {
@@ -56,12 +67,19 @@ export class LocalContentSource extends ContentSourceBase {
       recursive = true,
       excludePatterns = [],
       watchChanges = false,
+      pathMappings = {},
     } = config.options;
 
     this.contentPath = resolve(contentPath);
     this.recursive = recursive;
     this.excludePatterns = excludePatterns;
     this.watchChanges = watchChanges;
+    this.pathMappings = {
+      posts: [...(pathMappings.posts || LOCAL_PATH_MAPPINGS.posts)],
+      projects: [...(pathMappings.projects || LOCAL_PATH_MAPPINGS.projects)],
+      memos: [...(pathMappings.memos || LOCAL_PATH_MAPPINGS.memos)],
+    };
+    this.configuredRootDirs = getConfiguredContentRootDirs(this.pathMappings);
   }
 
   // ============================================================================
@@ -112,7 +130,9 @@ export class LocalContentSource extends ContentSourceBase {
 
         const rawContent = await fs.readFile(fileInfo.path, "utf-8");
         const parsed = parseMarkdownContent(rawContent, relativePath);
-        const contentItem = createContentItemFromParsed(parsed, relativePath, this.name);
+        const contentItem = createContentItemFromParsed(parsed, relativePath, this.name, {
+          pathMappings: this.pathMappings,
+        });
 
         // 更新文件系统相关的字段
         contentItem.lastModified = fileInfo.lastModified;
@@ -166,8 +186,9 @@ export class LocalContentSource extends ContentSourceBase {
 
       // 更新文件缓存
       const stats = await fs.stat(fullPath);
-      const extension = filePath.split(".").pop()?.toLowerCase() || "";
-      const fileName = filePath.split("/").pop() || "";
+      const normalizedRelativePath = this.getRelativePath(fullPath);
+      const extension = normalizedRelativePath.split(".").pop()?.toLowerCase() || "";
+      const fileName = normalizedRelativePath.split("/").pop() || "";
 
       this.fileCache.set(fullPath, {
         path: fullPath,
@@ -211,6 +232,8 @@ export class LocalContentSource extends ContentSourceBase {
         excludePatterns: this.excludePatterns,
         watchChanges: this.watchChanges,
         cachedFiles: this.fileCache.size,
+        configuredRootDirs: this.configuredRootDirs,
+        pathMappings: this.pathMappings,
       },
     };
   }
@@ -224,7 +247,23 @@ export class LocalContentSource extends ContentSourceBase {
    */
   private async refreshFileCache(): Promise<void> {
     this.fileCache.clear();
-    await this.scanDirectory(this.contentPath);
+
+    const rootsToScan = this.configuredRootDirs.length > 0 ? this.configuredRootDirs : [""];
+    for (const rootDir of rootsToScan) {
+      const absoluteRoot = rootDir ? join(this.contentPath, rootDir) : this.contentPath;
+      try {
+        const stats = await fs.stat(absoluteRoot);
+        if (!stats.isDirectory()) {
+          continue;
+        }
+        await this.scanDirectory(absoluteRoot);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.log("debug", `跳过不存在的本地内容根目录: ${rootDir || "/"}`, undefined, {
+          error: errorMessage,
+        });
+      }
+    }
   }
 
   /**
@@ -290,13 +329,27 @@ export class LocalContentSource extends ContentSourceBase {
    * 解析内容路径
    */
   private resolveContentPath(filePath: string): string {
-    // 如果是绝对路径且在内容目录内，直接使用
-    if (filePath.startsWith(this.contentPath)) {
-      return filePath;
+    const relativePath = filePath.startsWith(this.contentPath)
+      ? this.getRelativePath(filePath)
+      : normalizeRelativeContentPath(filePath);
+    const normalizedRelativePath = this.assertAllowedRelativePath(relativePath);
+    return resolve(this.contentPath, normalizedRelativePath);
+  }
+
+  private assertAllowedRelativePath(filePath: string): string {
+    const normalizedRelativePath = normalizeRelativeContentPath(filePath);
+    if (!normalizedRelativePath) {
+      throw new Error("文件路径不能为空");
     }
 
-    // 否则作为相对路径处理
-    return resolve(this.contentPath, filePath);
+    if (
+      this.configuredRootDirs.length > 0 &&
+      !isPathWithinConfiguredRoots(normalizedRelativePath, this.pathMappings)
+    ) {
+      throw new Error(`文件路径不在已配置的本地内容根目录内: ${normalizedRelativePath}`);
+    }
+
+    return normalizedRelativePath;
   }
 
   /**
@@ -342,6 +395,7 @@ export class LocalContentSource extends ContentSourceBase {
         recursive: true,
         excludePatterns: ["*.tmp", "*.bak", "*~"],
         watchChanges: false,
+        pathMappings: LOCAL_PATH_MAPPINGS,
         ...options,
       },
     };

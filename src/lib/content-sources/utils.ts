@@ -7,6 +7,11 @@
 import matter from "gray-matter";
 import limax from "limax";
 import { nanoid } from "nanoid";
+import {
+  type ContentPathMappings,
+  inferContentTypeFromConfiguredPaths,
+} from "@/lib/content-path-mappings";
+import { isMemoContentPath } from "@/lib/memo-paths";
 import { parseContentTags } from "@/lib/tag-parser";
 import type { ContentItem, ContentType, FileInfo, ParsedContent } from "./types";
 
@@ -46,12 +51,17 @@ export function parseMarkdownContent(rawContent: string, filePath: string): Pars
 export function createContentItemFromParsed(
   parsed: ParsedContent,
   filePath: string,
-  source: string
+  source: string,
+  options: {
+    contentType?: ContentType;
+    pathMappings?: ContentPathMappings;
+  } = {}
 ): ContentItem {
   const { frontmatter, body, contentHash } = parsed;
 
   // 从文件路径推断内容类型
-  const contentType = inferContentTypeFromPath(filePath);
+  const contentType =
+    options.contentType || inferContentTypeFromPath(filePath, options.pathMappings);
 
   // 生成 slug
   const slug = generateSlugFromPath(filePath, frontmatter.slug as string);
@@ -203,11 +213,26 @@ export function calculateFileInfoHash(fileInfo: FileInfo): string {
  * 从文件路径推断内容类型
  * @param filePath 文件路径
  */
-export function inferContentTypeFromPath(filePath: string): ContentType {
+export function inferContentTypeFromPath(
+  filePath: string,
+  pathMappings?: ContentPathMappings
+): ContentType {
+  const configuredType = pathMappings
+    ? inferContentTypeFromConfiguredPaths(filePath, pathMappings)
+    : null;
+  if (configuredType) {
+    return configuredType;
+  }
+
   const normalizedPath = filePath.toLowerCase().replace(/\\/g, "/");
 
   // 检查路径是否包含特定目录（路径使用复数，但返回单数类型）
-  if (normalizedPath.includes("/posts/") || normalizedPath.startsWith("posts/")) {
+  if (
+    normalizedPath.includes("/posts/") ||
+    normalizedPath.startsWith("posts/") ||
+    normalizedPath.includes("/blog/") ||
+    normalizedPath.startsWith("blog/")
+  ) {
     return "post";
   }
 
@@ -215,7 +240,7 @@ export function inferContentTypeFromPath(filePath: string): ContentType {
     return "project";
   }
 
-  if (normalizedPath.includes("/memos/") || normalizedPath.startsWith("memos/")) {
+  if (isMemoContentPath(filePath)) {
     return "memo";
   }
 

@@ -7,8 +7,13 @@
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import {
+  getConfiguredContentRootDirs,
+  isPathWithinConfiguredRoots,
+  normalizeRelativeContentPath,
+} from "@/lib/content-path-mappings";
 import { hasApiFilesReference, rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
-import { isLocalContentEnabled, LOCAL_PATHS } from "../../../config/paths";
+import { isLocalContentEnabled, LOCAL_PATH_MAPPINGS, LOCAL_PATHS } from "../../../config/paths";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -81,6 +86,37 @@ function requireLocalBasePath(): string {
   return basePath;
 }
 
+function getLocalConfiguredRootDirs(): string[] {
+  return getConfiguredContentRootDirs(LOCAL_PATH_MAPPINGS);
+}
+
+function normalizeLocalBrowserPath(path: string): string {
+  return normalizeRelativeContentPath(path || "");
+}
+
+function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } = {}): string {
+  const normalizedPath = normalizeLocalBrowserPath(path);
+  if (!normalizedPath) {
+    if (options.allowRoot) {
+      return "";
+    }
+
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "本地路径不能为空",
+    });
+  }
+
+  if (!isPathWithinConfiguredRoots(normalizedPath, LOCAL_PATH_MAPPINGS)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `路径不在已配置的本地内容根目录内: ${normalizedPath}`,
+    });
+  }
+
+  return normalizedPath;
+}
+
 /**
  * 列出 WebDAV 目录内容
  */
@@ -145,16 +181,45 @@ async function listLocalDirectory(path: string): Promise<FileItem[]> {
 
     // 构建完整路径（使用配置的本地内容根路径）
     const basePath = resolve(requireLocalBasePath());
-    const fullPath = nodePath.join(basePath, path || "");
+    const normalizedPath = normalizeLocalBrowserPath(path);
 
-    console.log("📂 [Files API] 列出本地目录:", { path, fullPath });
+    if (!normalizedPath) {
+      const rootItems: FileItem[] = [];
+      for (const rootDir of getLocalConfiguredRootDirs()) {
+        const fullRootPath = nodePath.join(basePath, rootDir);
+        try {
+          const stats = await fs.stat(fullRootPath);
+          if (!stats.isDirectory()) {
+            continue;
+          }
+
+          const subEntries = await fs.readdir(fullRootPath);
+          rootItems.push({
+            name: nodePath.basename(rootDir),
+            path: rootDir,
+            type: "directory",
+            count: subEntries.length,
+          });
+        } catch (error) {
+          console.warn(`⚠️ [Files API] 跳过不存在的本地根目录 ${rootDir}:`, error);
+        }
+      }
+
+      console.log(`📂 [Files API] 本地根目录找到 ${rootItems.length} 个配置目录`);
+      return rootItems;
+    }
+
+    const safePath = assertLocalPathAllowed(normalizedPath);
+    const fullPath = nodePath.join(basePath, safePath);
+
+    console.log("📂 [Files API] 列出本地目录:", { path: safePath, fullPath });
 
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
 
     const items: FileItem[] = [];
 
     for (const entry of entries) {
-      const itemPath = nodePath.join(path || "", entry.name);
+      const itemPath = nodePath.join(safePath, entry.name);
       const fullItemPath = nodePath.join(fullPath, entry.name);
 
       if (entry.isDirectory()) {
@@ -195,30 +260,6 @@ async function listLocalDirectory(path: string): Promise<FileItem[]> {
 }
 
 /**
- * 读取 WebDAV 文件内容
- */
-async function readWebDAVFile(path: string): Promise<string> {
-  if (!isWebDAVEnabled()) {
-    throw new Error("WebDAV 未启用");
-  }
-
-  try {
-    const webdavClient = getWebDAVClient();
-    const content = await webdavClient.getFileContent(path);
-
-    if (typeof content === "string") {
-      return content;
-    } else {
-      // 如果是 Buffer，转换为字符串
-      return (content as Buffer).toString("utf-8");
-    }
-  } catch (error) {
-    console.error("❌ [Files API] WebDAV 文件读取失败:", error);
-    throw error;
-  }
-}
-
-/**
  * 读取本地文件内容
  */
 async function readLocalFile(path: string): Promise<string> {
@@ -228,9 +269,10 @@ async function readLocalFile(path: string): Promise<string> {
 
     // 构建完整路径（使用配置的本地内容根路径）
     const basePath = resolve(requireLocalBasePath());
-    const fullPath = nodePath.join(basePath, path);
+    const safePath = assertLocalPathAllowed(path);
+    const fullPath = nodePath.join(basePath, safePath);
 
-    console.log("📖 [Files API] 读取本地文件:", { path, fullPath });
+    console.log("📖 [Files API] 读取本地文件:", { path: safePath, fullPath });
 
     const content = await fs.readFile(fullPath, "utf-8");
 
@@ -286,10 +328,19 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
 
     // 构建完整路径（使用配置的本地内容根路径）
     const basePath = resolve(requireLocalBasePath());
-    const fullOldPath = nodePath.join(basePath, oldPath);
+    const safeOldPath = assertLocalPathAllowed(oldPath);
+    const configuredRoots = new Set(getLocalConfiguredRootDirs());
+    if (configuredRoots.has(safeOldPath)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "不能直接重命名已配置的本地内容根目录",
+      });
+    }
+
+    const fullOldPath = nodePath.join(basePath, safeOldPath);
 
     // 构建新路径
-    const pathParts = oldPath.split("/");
+    const pathParts = safeOldPath.split("/");
     pathParts[pathParts.length - 1] = newName;
     const newPath = pathParts.join("/");
     const fullNewPath = nodePath.join(basePath, newPath);
@@ -337,6 +388,7 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
       console.log("🔧 [Files API] 注册缺失的本地内容源 'local' ...");
       const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
         contentPath: resolve(basePath),
+        pathMappings: LOCAL_PATH_MAPPINGS,
       });
       const localSource = new LocalContentSource(localConfig);
       await manager.registerSource(localSource);
@@ -355,6 +407,30 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
     } catch (error) {
       console.warn("⚠️ [Files API] WebDAV 内容源注册失败:", error);
     }
+  }
+}
+
+/**
+ * 读取 WebDAV 文件内容
+ */
+async function readWebDAVFile(path: string): Promise<string> {
+  if (!isWebDAVEnabled()) {
+    throw new Error("WebDAV 未启用");
+  }
+
+  try {
+    const webdavClient = getWebDAVClient();
+    const content = await webdavClient.getFileContent(path);
+
+    if (typeof content === "string") {
+      return content;
+    } else {
+      // 如果是 Buffer，转换为字符串
+      return (content as Buffer).toString("utf-8");
+    }
+  } catch (error) {
+    console.error("❌ [Files API] WebDAV 文件读取失败:", error);
+    throw error;
   }
 }
 
