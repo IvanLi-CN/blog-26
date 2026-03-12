@@ -1,3 +1,4 @@
+import { inferContentTypeFromConfiguredPaths } from "@/lib/content-path-mappings";
 import {
   DEFAULT_LOCAL_MEMO_ROOT_PATH,
   getConfiguredClientLocalMemoRootPath,
@@ -303,6 +304,15 @@ export type ContentType = "post" | "project" | "memo";
  * 根据文件路径推断内容类型
  */
 export function inferContentType(filePath: string): ContentType | null {
+  const configuredType = inferContentTypeFromConfiguredPaths(filePath, {
+    posts: [...LOCAL_PATHS.posts, ...WEBDAV_PATHS.posts],
+    projects: [...LOCAL_PATHS.projects, ...WEBDAV_PATHS.projects],
+    memos: [...LOCAL_PATHS.memos, ...WEBDAV_PATHS.memos],
+  });
+  if (configuredType) {
+    return configuredType;
+  }
+
   const normalizedPath = filePath.toLowerCase().replace(/\\/g, "/");
 
   if (
