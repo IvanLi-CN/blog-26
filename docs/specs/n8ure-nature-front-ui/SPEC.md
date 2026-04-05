@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `in-progress`
-- Last Updated: `2026-04-05`
+- Last Updated: `2026-04-06`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -66,7 +66,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ## 7. Visual Evidence
 
-- Evidence captured against local branch `th/nature-front-redesign` at base HEAD `494cf5f` plus the uncommitted frontend redesign worktree state.
+- Evidence captured against local branch `th/nature-front-redesign` on the refreshed Nature frontend worktree state after the width, comment-form, and code-highlighting fixes.
 - Assets stored under `docs/specs/n8ure-nature-front-ui/assets/`.
 
 PR: include
@@ -83,6 +83,11 @@ PR: include
 
 ![Search mobile light](./assets/search-mobile-light.png)
 
+![Comment form fixed](./assets/comment-form-fixed.png)
+
+![Code highlight fixed](./assets/code-highlight-fixed.png)
+
 ## 8. Change log
 
 - 2026-04-05: Created spec for the public Nature redesign and DaisyUI decoupling.
+- 2026-04-06: Refreshed local visual evidence after the layout, comment-form, and syntax-highlighting fixes.

@@ -48,7 +48,7 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
       </span>
       <button
         type="button"
-        className="nature-icon-button rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button inline-flex rtl:ml-0 rtl:mr-2"
         title="Twitter Share"
         onClick={() => handleShare("twitter")}
       >
@@ -56,7 +56,7 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
       </button>
       <button
         type="button"
-        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button inline-flex ml-2 rtl:ml-0 rtl:mr-2"
         title="Facebook Share"
         onClick={() => handleShare("facebook")}
       >
@@ -64,7 +64,7 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
       </button>
       <button
         type="button"
-        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button inline-flex ml-2 rtl:ml-0 rtl:mr-2"
         title="Linkedin Share"
         onClick={() => handleShare("linkedin")}
       >
@@ -72,7 +72,7 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
       </button>
       <button
         type="button"
-        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button inline-flex ml-2 rtl:ml-0 rtl:mr-2"
         title="Whatsapp Share"
         onClick={() => handleShare("whatsapp")}
       >
@@ -80,7 +80,7 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
       </button>
       <button
         type="button"
-        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button inline-flex ml-2 rtl:ml-0 rtl:mr-2"
         title="Email Share"
         onClick={() => handleShare("mail")}
       >

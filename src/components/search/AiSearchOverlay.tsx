@@ -127,7 +127,7 @@ export default function AiSearchOverlay({
             </div>
             <button
               type="button"
-              className="nature-icon-button"
+              className="nature-icon-button inline-flex"
               aria-label="关闭"
               onClick={handleClose}
             >

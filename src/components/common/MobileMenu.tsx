@@ -47,7 +47,7 @@ export default function MobileMenu() {
     <>
       <button
         type="button"
-        className="nature-icon-button md:hidden"
+        className="nature-icon-button inline-flex md:!hidden"
         aria-label="Toggle Menu"
         onClick={toggleMenu}
       >
@@ -70,7 +70,7 @@ export default function MobileMenu() {
               </Link>
               <button
                 type="button"
-                className="nature-icon-button"
+                className="nature-icon-button inline-flex"
                 aria-label="Close menu"
                 onClick={closeMenu}
               >
@@ -140,7 +140,7 @@ export default function MobileMenu() {
                     <div className="flex items-center gap-3">
                       <ThemeToggle iconClass="w-5 h-5" />
                       <a
-                        className="nature-icon-button"
+                        className="nature-icon-button inline-flex"
                         aria-label="RSS Feed"
                         title="RSS Feed"
                         href="/rss.xml"

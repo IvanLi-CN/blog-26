@@ -167,7 +167,7 @@ export default async function MemosPage({ searchParams }: PageProps) {
       />
 
       {/* 页面内容 - 完全匹配旧项目的布局和样式 */}
-      <section className="nature-reading-container px-6 py-8 sm:py-12 lg:py-16">
+      <section className="nature-container px-6 py-8 sm:py-12 lg:py-16">
         <div className="mb-8 text-center sm:mb-12">
           <span className="nature-kicker justify-center">Flow Notes</span>
           <h1 className="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">Memos</h1>

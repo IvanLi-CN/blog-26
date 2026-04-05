@@ -135,7 +135,7 @@ export function ImageLightbox({
           {/* 关闭按钮 */}
           <button
             type="button"
-            className="nature-icon-button absolute right-4 top-4 z-10 text-white hover:text-white"
+            className="nature-icon-button absolute right-4 top-4 z-10 inline-flex text-white hover:text-white"
             onClick={closeLightbox}
             aria-label="关闭图片预览"
           >

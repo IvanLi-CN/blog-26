@@ -6,6 +6,7 @@
  * 集成所有子组件，统一状态管理
  */
 
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
@@ -22,11 +23,25 @@ import {
   useQuickMemo,
 } from "./hooks";
 import type { MemoCardData } from "./MemoCard";
-import { type MemoData, MemoEditor } from "./MemoEditor";
+import type { MemoData } from "./MemoEditor";
 import { MemosErrorBoundary } from "./MemosErrorBoundary";
 import { MemosList } from "./MemosList";
-import { QuickMemoEditModal, type QuickMemoEditValues } from "./QuickMemoEditModal";
-import { type QuickMemoData, QuickMemoEditor } from "./QuickMemoEditor";
+import type { QuickMemoEditValues } from "./QuickMemoEditModal";
+import type { QuickMemoData } from "./QuickMemoEditor";
+
+const QuickMemoEditor = dynamic(
+  () => import("./QuickMemoEditor").then((module) => module.QuickMemoEditor),
+  { ssr: false }
+);
+
+const MemoEditor = dynamic(() => import("./MemoEditor").then((module) => module.MemoEditor), {
+  ssr: false,
+});
+
+const QuickMemoEditModal = dynamic(
+  () => import("./QuickMemoEditModal").then((module) => module.QuickMemoEditModal),
+  { ssr: false }
+);
 
 export interface MemosAppProps {
   /** 是否显示管理功能 */

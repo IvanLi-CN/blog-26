@@ -108,7 +108,7 @@ export default function SearchBox({
     <div className="relative">
       <button
         type="button"
-        className="nature-icon-button md:hidden"
+        className="nature-icon-button inline-flex md:!hidden"
         aria-label={buttonLabel}
         onClick={() => router.push("/search")}
       >
@@ -116,7 +116,7 @@ export default function SearchBox({
       </button>
 
       <form onSubmit={handleDesktopSubmit} className="hidden xl:flex items-center w-auto">
-        <label className="nature-input-shell min-w-[18rem]">
+        <label className="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
           <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
           <input
             ref={desktopInputRef}
@@ -135,7 +135,7 @@ export default function SearchBox({
 
       <button
         type="button"
-        className="nature-icon-button hidden md:flex xl:hidden search-trigger-medium"
+        className="nature-icon-button hidden md:!inline-flex xl:!hidden search-trigger-medium"
         aria-label={buttonLabel}
         onClick={openMediumOverlay}
       >
@@ -160,7 +160,7 @@ export default function SearchBox({
                 />
                 <button
                   type="submit"
-                  className="nature-icon-button absolute right-2 top-2"
+                  className="nature-icon-button absolute right-2 top-2 inline-flex"
                   aria-label={buttonLabel}
                 >
                   <Icon name="tabler:search" className="w-6 h-6" />
@@ -170,7 +170,7 @@ export default function SearchBox({
             </form>
             <button
               type="button"
-              className="nature-icon-button absolute right-4 top-4"
+              className="nature-icon-button absolute right-4 top-4 inline-flex"
               aria-label="关闭搜索"
               onClick={closeModal}
             >

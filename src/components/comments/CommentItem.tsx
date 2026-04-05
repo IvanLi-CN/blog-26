@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import Icon from "../ui/Icon";
+import { Textarea } from "../ui/textarea";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import CommentForm from "./CommentForm";
@@ -125,12 +126,14 @@ export default function CommentItem({
 
           {isEditing ? (
             <div className="space-y-4">
-              <textarea
-                className="nature-textarea min-h-[6rem]"
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                placeholder="编辑评论内容..."
-              />
+              <div className="nature-input-shell nature-textarea-shell min-h-[8rem]">
+                <Textarea
+                  className="min-h-[6rem] resize-y border-0 bg-transparent px-0 py-0 text-base leading-7 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  placeholder="编辑评论内容..."
+                />
+              </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"

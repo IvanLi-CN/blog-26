@@ -45,7 +45,7 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
 
   return (
     <div className="w-full">
-      <div className="nature-reading-container mb-4">
+      <div className="nature-container mb-4">
         <div className="nature-surface px-6 py-7 sm:px-8">
           <span className="nature-kicker mb-3 inline-flex">Search Stream</span>
           <h1 className="nature-title text-3xl font-semibold">搜索</h1>
@@ -55,7 +55,7 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="nature-reading-container mb-6">
+      <form onSubmit={onSubmit} className="nature-container mb-6">
         <label className="nature-input-shell w-full">
           <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
           <input
@@ -71,7 +71,7 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
         </label>
       </form>
 
-      <section className="nature-reading-container">
+      <section className="nature-container">
         {error && (
           <div role="alert" className="nature-alert nature-alert-error mb-4">
             <Icon name="tabler:alert-triangle" className="w-5 h-5" />

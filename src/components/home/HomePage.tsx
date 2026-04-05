@@ -163,7 +163,7 @@ export default function HomePage({
       </section>
 
       <section className="px-3 py-6 sm:px-4 md:py-10">
-        <div className="nature-reading-container">
+        <div className="nature-container">
           <div className="timeline flex flex-col">
             {timelineItems.length > 0 ? (
               timelineItems.map((item, index) => (

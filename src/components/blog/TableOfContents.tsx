@@ -103,7 +103,7 @@ export default function TableOfContents({ content, className = "" }: TableOfCont
         <button
           type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="nature-icon-button h-8 w-8"
+          className="nature-icon-button inline-flex h-8 w-8"
           aria-label={isCollapsed ? "展开目录" : "收起目录"}
         >
           <Icon

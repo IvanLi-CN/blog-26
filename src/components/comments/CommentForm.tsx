@@ -4,6 +4,7 @@ import Image from "next/image";
 import type React from "react";
 import { useCallback, useEffect, useId, useState } from "react";
 import Icon from "../ui/Icon";
+import { Textarea } from "../ui/textarea";
 import type { UserInfo } from "./types";
 
 interface CommentFormProps {
@@ -165,33 +166,37 @@ export default function CommentForm({
           >
             评论内容 *
           </label>
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-            <textarea
-              id={contentId}
-              className="nature-textarea min-h-[7rem]"
-              placeholder="分享你的想法..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-              aria-label="评论内容"
-            />
-            <button
-              type="submit"
-              className="nature-button nature-button-primary min-h-11 justify-center px-5 py-3"
-              disabled={isPosting || !content.trim()}
-            >
-              {isPosting ? (
-                <>
-                  <span className="nature-spinner h-4 w-4" />
-                  提交中...
-                </>
-              ) : (
-                <>
-                  <Icon name="tabler:send-2" className="h-4 w-4" />
-                  提交
-                </>
-              )}
-            </button>
+          <div className="space-y-3">
+            <div className="nature-input-shell nature-textarea-shell">
+              <Textarea
+                id={contentId}
+                className="min-h-[9rem] resize-y border-0 bg-transparent px-0 py-0 text-base leading-7 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                placeholder="分享你的想法..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                required
+                aria-label="评论内容"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="nature-button nature-button-primary min-h-11 justify-center px-5 py-3"
+                disabled={isPosting || !content.trim()}
+              >
+                {isPosting ? (
+                  <>
+                    <span className="nature-spinner h-4 w-4" />
+                    提交中...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="tabler:send-2" className="h-4 w-4" />
+                    提交
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 

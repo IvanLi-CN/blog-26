@@ -266,7 +266,7 @@ export function MemoCard({
                 <button
                   type="button"
                   onClick={handleEditClick}
-                  className="nature-icon-button"
+                  className="nature-icon-button inline-flex"
                   title={`编辑 Memo: ${memo.title || "无标题"}`}
                   aria-label={`编辑 Memo: ${memo.title || "无标题"}`}
                 >
@@ -278,7 +278,7 @@ export function MemoCard({
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="nature-icon-button text-[color:var(--nature-danger)]"
+                  className="nature-icon-button inline-flex text-[color:var(--nature-danger)]"
                   title={`删除 Memo: ${memo.title || "无标题"}`}
                   aria-label={`删除 Memo: ${memo.title || "无标题"}`}
                 >

@@ -63,7 +63,7 @@ export default function Footer() {
                   {footerData.socialLinks.map((social) => (
                     <a
                       key={social.href}
-                      className="nature-icon-button h-10 w-10"
+                      className="nature-icon-button inline-flex h-10 w-10"
                       aria-label={social.ariaLabel}
                       href={social.href}
                       target="_blank"

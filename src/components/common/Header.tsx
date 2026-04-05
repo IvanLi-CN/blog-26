@@ -74,7 +74,7 @@ export default function Header({
             {showToggleTheme && <ThemeToggle iconClass="h-4 w-4" />}
             {showRssFeed && (
               <a
-                className="nature-icon-button"
+                className="nature-icon-button inline-flex"
                 aria-label="RSS Feed"
                 title="RSS Feed"
                 href="/rss.xml"

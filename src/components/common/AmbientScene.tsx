@@ -11,13 +11,6 @@ type Particle = {
   alpha: number;
 };
 
-type Ripple = {
-  x: number;
-  y: number;
-  radius: number;
-  alpha: number;
-};
-
 function readRgbVar(name: string, fallback: string) {
   if (typeof window === "undefined") return fallback;
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -28,10 +21,10 @@ function buildParticles(width: number, height: number, count: number): Particle[
   return Array.from({ length: count }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
-    r: 1.5 + Math.random() * 5,
-    dx: (Math.random() - 0.5) * 0.18,
-    dy: (Math.random() - 0.5) * 0.18,
-    alpha: 0.08 + Math.random() * 0.14,
+    r: 1.2 + Math.random() * 2.8,
+    dx: (Math.random() - 0.5) * 0.12,
+    dy: (Math.random() - 0.5) * 0.12,
+    alpha: 0.04 + Math.random() * 0.08,
   }));
 }
 
@@ -48,10 +41,8 @@ export default function AmbientScene() {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let width = 0;
     let height = 0;
-    let frame = 0;
     let raf = 0;
-    let particles = buildParticles(window.innerWidth, window.innerHeight, 22);
-    const ripples: Ripple[] = [];
+    let particles = buildParticles(window.innerWidth, window.innerHeight, 14);
 
     const resize = () => {
       width = window.innerWidth;
@@ -62,22 +53,12 @@ export default function AmbientScene() {
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      particles = buildParticles(width, height, reducedMotion.matches ? 8 : 22);
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (reducedMotion.matches) return;
-      ripples.push({ x: event.clientX, y: event.clientY, radius: 8, alpha: 0.22 });
-      if (ripples.length > 10) {
-        ripples.shift();
-      }
+      particles = buildParticles(width, height, reducedMotion.matches ? 5 : 14);
     };
 
     const draw = () => {
-      frame += 1;
       const accent = readRgbVar("--nature-accent-rgb", "92, 142, 119");
       const mist = readRgbVar("--nature-mist-rgb", "245, 248, 244");
-      const highlight = readRgbVar("--nature-highlight-rgb", "255, 255, 255");
 
       ctx.clearRect(0, 0, width, height);
 
@@ -107,32 +88,6 @@ export default function AmbientScene() {
         ctx.fill();
       }
 
-      for (let index = ripples.length - 1; index >= 0; index -= 1) {
-        const ripple = ripples[index];
-        ripple.radius += 0.9;
-        ripple.alpha -= 0.008;
-
-        if (ripple.alpha <= 0) {
-          ripples.splice(index, 1);
-          continue;
-        }
-
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(${highlight}, ${ripple.alpha})`;
-        ctx.lineWidth = 1.25;
-        ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      if (!reducedMotion.matches && frame % 90 === 0 && ripples.length < 4) {
-        ripples.push({
-          x: width * (0.18 + Math.random() * 0.64),
-          y: height * (0.12 + Math.random() * 0.66),
-          radius: 16,
-          alpha: 0.08,
-        });
-      }
-
       raf = window.requestAnimationFrame(draw);
     };
 
@@ -140,13 +95,11 @@ export default function AmbientScene() {
     draw();
 
     window.addEventListener("resize", resize);
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
     reducedMotion.addEventListener("change", resize);
 
     return () => {
       window.cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
-      window.removeEventListener("pointermove", handlePointerMove);
       reducedMotion.removeEventListener("change", resize);
     };
   }, []);

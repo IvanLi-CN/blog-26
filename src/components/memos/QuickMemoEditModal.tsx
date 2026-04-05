@@ -148,7 +148,7 @@ export function QuickMemoEditModal({
           </div>
           <button
             type="button"
-            className="nature-icon-button"
+            className="nature-icon-button inline-flex"
             aria-label="关闭快速编辑"
             onClick={handleClose}
             disabled={saving}

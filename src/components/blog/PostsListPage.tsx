@@ -83,7 +83,7 @@ export default function PostsListPage({
 
   return (
     <PageLayout>
-      <section className="nature-reading-container px-6 py-12 sm:py-16 lg:py-20">
+      <section className="nature-container px-6 py-12 sm:py-16 lg:py-20">
         <div className="mb-8 text-center sm:mb-12">
           <span className="nature-kicker justify-center">Archive</span>
           <h1 className="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">文章</h1>

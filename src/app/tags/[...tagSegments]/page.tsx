@@ -89,7 +89,7 @@ export default async function TagDetailPage({ params }: PageProps) {
 
   return (
     <PageLayout>
-      <section className="nature-reading-container px-6 py-8 lg:py-12">
+      <section className="nature-container px-6 py-8 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-4">
           <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[color:var(--nature-text-soft)]">
             <li>
@@ -160,7 +160,7 @@ function renderTagPageError(tagLeaf: string, error: unknown) {
   const { message, details } = formatUnknownError(error);
   return (
     <PageLayout>
-      <section className="nature-reading-container px-6 py-10">
+      <section className="nature-container px-6 py-10">
         <div className="nature-alert nature-alert-error block p-6">
           <div className="flex items-center gap-3 text-[color:var(--nature-danger)]">
             <Icon name="tabler:alert-triangle" className="h-6 w-6" />
