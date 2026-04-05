@@ -36,60 +36,57 @@ export default function Header({
     <header
       className={`
         ${isSticky ? "sticky" : "relative"}
-        top-0 z-40 flex-none mx-auto w-full border-b border-gray-50/0 transition-[opacity] ease-in-out
+        top-0 z-40 flex-none w-full px-3 pt-3 sm:px-4
       `}
     >
-      <div className="navbar bg-base-100 w-full mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="flex-1">
+      <div className="nature-container">
+        <div className="nature-surface flex items-center gap-4 px-4 py-3 sm:px-5">
           <Link
             href="/"
-            className="inline-block px-4 font-bold text-xl 2xl:text-2xl hover:text-primary drop-shadow drop-shadow-secondary/30 transition-colors cursor-pointer"
+            className="min-w-fit pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
           >
             {SITE.name}
           </Link>
-        </div>
 
-        {/* 桌面端导航 */}
-        <nav
-          className="items-center w-full md:w-auto hidden md:flex md:mx-5"
-          aria-label="Main navigation"
-        >
-          <ul className="flex flex-col md:flex-row md:self-center w-full md:w-auto text-xl md:text-[0.9375rem] tracking-[0.01rem] font-medium md:justify-center">
-            {headerData.links.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  prefetch={!(link.href === "/projects" || link.href === "/tags")}
-                  className={`btn btn-ghost ${isActive(link.href) ? "aw-link-active" : ""}`}
-                >
-                  {link.text}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+          <nav className="hidden md:flex" aria-label="Main navigation">
+            <ul className="flex items-center gap-1 text-sm font-medium">
+              {headerData.links.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    prefetch={!(link.href === "/projects" || link.href === "/tags")}
+                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition ${
+                      isActive(link.href)
+                        ? "aw-link-active"
+                        : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
+                    }`}
+                  >
+                    <Icon name={link.icon} className="h-4 w-4" />
+                    {link.text}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        {/* 桌面端搜索和操作 */}
-        <div className="hidden md:flex items-center ml-4 mr-4">
-          {showSearchBox && <SearchBox />}
-          <div className="ml-6 flex">
-            {showToggleTheme && <ThemeToggle iconClass="w-5 h-5" />}
+          <div className="ml-auto hidden items-center gap-3 md:flex">
+            {showSearchBox && <SearchBox />}
+            {showToggleTheme && <ThemeToggle iconClass="h-4 w-4" />}
             {showRssFeed && (
               <a
-                className="btn btn-ghost btn-circle"
+                className="nature-icon-button"
                 aria-label="RSS Feed"
                 title="RSS Feed"
                 href="/rss.xml"
               >
-                <Icon name="tabler:rss" className="w-5 h-5" />
+                <Icon name="tabler:rss" className="h-5 w-5" />
               </a>
             )}
           </div>
-        </div>
 
-        {/* 移动端菜单切换 */}
-        <div className="flex items-center md:hidden">
-          <MobileMenu />
+          <div className="ml-auto flex items-center md:hidden">
+            <MobileMenu />
+          </div>
         </div>
       </div>
     </header>

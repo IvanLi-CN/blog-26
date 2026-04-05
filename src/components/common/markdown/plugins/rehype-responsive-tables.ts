@@ -25,8 +25,9 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
               "overflow-x-auto",
               "my-4",
               "border",
-              "border-base-300",
-              "rounded-lg",
+              "border-[rgba(var(--nature-border-rgb),0.72)]",
+              "rounded-[1.25rem]",
+              "bg-[rgba(var(--nature-surface-rgb),0.72)]",
             ],
           },
           children: [
@@ -38,7 +39,7 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
                   ...(Array.isArray(node.properties?.className) ? node.properties.className : []),
                   "min-w-full",
                   "divide-y",
-                  "divide-base-300",
+                  "divide-[rgba(var(--nature-border-rgb),0.56)]",
                 ],
               },
             },
@@ -61,7 +62,7 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
 
         node.properties = {
           ...node.properties,
-          className: [...existingClasses, "bg-base-200"],
+          className: [...existingClasses, "bg-[rgba(var(--nature-highlight-rgb),0.2)]"],
         };
       }
 
@@ -81,7 +82,7 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
             "text-left",
             "text-xs",
             "font-medium",
-            "text-base-content/60",
+            "text-[color:var(--nature-text-soft)]",
             "uppercase",
             "tracking-wider",
           ],
@@ -97,7 +98,12 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
 
         node.properties = {
           ...node.properties,
-          className: [...existingClasses, "bg-base-100", "divide-y", "divide-base-300"],
+          className: [
+            ...existingClasses,
+            "bg-[rgba(var(--nature-surface-rgb),0.72)]",
+            "divide-y",
+            "divide-[rgba(var(--nature-border-rgb),0.56)]",
+          ],
         };
       }
 
@@ -116,7 +122,7 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
             "py-4",
             "whitespace-nowrap",
             "text-sm",
-            "text-base-content",
+            "text-[color:var(--nature-text)]",
           ],
         };
       }
@@ -130,7 +136,12 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
 
         node.properties = {
           ...node.properties,
-          className: [...existingClasses, "hover:bg-base-200", "transition-colors", "duration-150"],
+          className: [
+            ...existingClasses,
+            "transition-colors",
+            "duration-150",
+            "hover:bg-[rgba(var(--nature-highlight-rgb),0.16)]",
+          ],
         };
       }
     });

@@ -1,3 +1,4 @@
+import AmbientScene from "./AmbientScene";
 import Footer from "./Footer";
 import Header from "./Header";
 
@@ -18,16 +19,19 @@ export default function PageLayout({
   headerProps = {},
 }: PageLayoutProps) {
   return (
-    <div className={`min-h-screen bg-base-100 flex flex-col ${className}`}>
-      <Header
-        isSticky={true}
-        showSearchBox={true}
-        showToggleTheme={true}
-        showRssFeed={true}
-        {...headerProps}
-      />
-      <main className="flex-grow">{children}</main>
-      <Footer />
+    <div className={`nature-app-shell flex min-h-screen flex-col ${className}`}>
+      <AmbientScene />
+      <div className="nature-content-layer flex min-h-screen flex-col">
+        <Header
+          isSticky={true}
+          showSearchBox={true}
+          showToggleTheme={true}
+          showRssFeed={true}
+          {...headerProps}
+        />
+        <main className="nature-main">{children}</main>
+        <Footer />
+      </div>
     </div>
   );
 }

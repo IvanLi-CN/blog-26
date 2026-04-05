@@ -73,14 +73,14 @@ export default function BlogListItem({
   const fallbackLabel = effectiveIsAdmin && timing.fallbackLabel ? timing.fallbackLabel : null;
 
   return (
-    <article className="max-w-md mx-auto md:max-w-none grid gap-6 md:gap-8 md:grid-cols-2 relative group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-lg p-4 hover:bg-base-100/50">
+    <article className="nature-panel relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8">
       <div
         className={`mt-2 ${imageSrc ? "md:col-start-2 md:row-start-1" : "md:col-span-2"} h-full flex flex-col`}
       >
         <header>
           <div className="mb-1">
-            <span className="text-sm flex flex-wrap items-center gap-1">
-              <Icon icon="tabler:clock" className="w-3.5 h-3.5 -mt-0.5 dark:text-gray-400" />
+            <span className="nature-muted flex flex-wrap items-center gap-1 text-sm">
+              <Icon icon="tabler:clock" className="w-3.5 h-3.5 -mt-0.5" />
               <time
                 dateTime={publishDateTimeAttr}
                 title={publishTitle ?? undefined}
@@ -89,20 +89,25 @@ export default function BlogListItem({
                 {timing.relativePublish}
               </time>
               {showUpdateHint && timing.relativeUpdate && (
-                <span className="text-xs text-base-content/50 italic">
+                <span className="text-xs italic text-[color:var(--nature-text-faint)]">
                   (编辑于 {timing.relativeUpdate})
                 </span>
               )}
               {fallbackLabel && (
-                <span className="text-warning/80 flex-shrink-0">{fallbackLabel}</span>
+                <span className="flex-shrink-0 text-[color:var(--nature-warning)]">
+                  {fallbackLabel}
+                </span>
               )}
               <span>·</span>
-              <Icon icon="tabler:user" className="w-3.5 h-3.5 -mt-0.5 dark:text-gray-400" />
+              <Icon icon="tabler:user" className="w-3.5 h-3.5 -mt-0.5" />
               <span>{displayAuthor}</span>
               {post.category && (
                 <>
                   <span>·</span>
-                  <Link className="hover:underline" href={`/category/${post.category}`}>
+                  <Link
+                    className="transition-colors hover:text-[color:var(--nature-accent-strong)] hover:underline"
+                    href={`/category/${post.category}`}
+                  >
                     {post.category}
                   </Link>
                 </>
@@ -110,9 +115,9 @@ export default function BlogListItem({
             </span>
           </div>
           <div className="flex items-start justify-between gap-3 mb-2">
-            <h2 className="text-xl sm:text-2xl font-bold leading-tight font-heading text-base-content flex-grow">
+            <h2 className="nature-title flex-grow font-heading text-xl font-bold leading-tight sm:text-2xl">
               <Link
-                className="inline-block visited:text-base-content hover:text-primary transition-all duration-300 group-hover:translate-x-1"
+                className="inline-block transition-all duration-300 hover:translate-x-1 hover:text-[color:var(--nature-accent-strong)]"
                 href={link}
               >
                 {post.title}
@@ -128,7 +133,7 @@ export default function BlogListItem({
           </div>
         </header>
 
-        {post.excerpt && <p className="flex-grow text-base-content/70 text-lg">{post.excerpt}</p>}
+        {post.excerpt && <p className="nature-muted flex-grow text-lg leading-8">{post.excerpt}</p>}
 
         <footer className="mt-auto pt-4 flex items-center gap-2">
           {tags.length > 0 && (
@@ -141,7 +146,7 @@ export default function BlogListItem({
           )}
           {post.isVectorized && (
             <span
-              className="ml-auto text-secondary/80 drop-shadow shrink-0"
+              className="ml-auto shrink-0 text-[color:var(--nature-secondary)] drop-shadow"
               title="已向量化（当前模型，哈希匹配）"
             >
               <Icon icon="tabler:sparkles" className="w-5 h-5" aria-hidden="true" />
@@ -152,10 +157,10 @@ export default function BlogListItem({
 
       {imageSrc && (
         <Link className="relative block group" href={link}>
-          <div className="relative h-0 pb-[56.25%] md:pb-[75%] md:h-72 lg:pb-[56.25%] overflow-hidden bg-gray-400 dark:bg-slate-700 rounded shadow-lg transition-all duration-300 group-hover:shadow-xl">
+          <div className="relative h-0 overflow-hidden rounded-[1.75rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] pb-[56.25%] shadow-[var(--nature-shadow)] transition-all duration-300 group-hover:shadow-[var(--nature-shadow-strong)] md:h-72 md:pb-[75%] lg:pb-[56.25%]">
             <Image
               src={imageSrc}
-              className="absolute inset-0 object-cover w-full h-full mb-6 rounded shadow-lg bg-gray-400 dark:bg-slate-700 transition-transform duration-300 group-hover:scale-105"
+              className="absolute inset-0 mb-6 h-full w-full rounded-[1.75rem] bg-[rgba(var(--nature-highlight-rgb),0.12)] object-cover shadow-lg transition-transform duration-300 group-hover:scale-105"
               alt={post.title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

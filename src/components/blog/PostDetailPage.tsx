@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from "@iconify/react";
 import type { inferRouterOutputs } from "@trpc/server";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,6 +14,7 @@ import MarkdownRenderer from "../common/MarkdownRenderer";
 import PageLayout from "../common/PageLayout";
 import StructuredData from "../seo/StructuredData";
 import type { TagIconMap } from "../tag-icons/tag-icon-client";
+import Icon from "../ui/Icon";
 import ArticleLicense from "./ArticleLicense";
 import PostReactions from "./PostReactions";
 import PostStatus from "./PostStatus";
@@ -54,16 +54,16 @@ export default function PostDetailPage({
     { initialData: initialRelatedPosts }
   );
   const { userInfo } = useUserInfo();
-
-  // 检查是否为管理员
   const isUserAdmin = userInfo?.isAdmin || false;
 
   if (isLoading && !post) {
     return (
       <PageLayout>
-        <div className="flex justify-center items-center py-20">
-          <span className="loading loading-spinner loading-lg"></span>
-          <span className="ml-2">正在加载文章...</span>
+        <div className="nature-container py-20">
+          <div className="nature-panel flex items-center justify-center gap-3 px-6 py-8 text-[color:var(--nature-text-soft)]">
+            <span className="nature-spinner h-5 w-5" />
+            <span>正在加载文章...</span>
+          </div>
         </div>
       </PageLayout>
     );
@@ -72,12 +72,16 @@ export default function PostDetailPage({
   if (error || !post) {
     return (
       <PageLayout>
-        <div className="container mx-auto px-4 py-20">
-          <div className="text-center">
-            <div className="text-6xl mb-4">😵</div>
-            <h1 className="text-4xl font-bold mb-4">文章不存在</h1>
-            <p className="text-base-content/70 mb-8">抱歉，您访问的文章不存在或已被删除。</p>
-            <Link href="/" className="btn btn-primary">
+        <div className="nature-reading-container py-20 text-center">
+          <div className="nature-empty">
+            <div className="nature-empty-icon text-2xl">∿</div>
+            <h1 className="font-heading text-4xl font-semibold text-[color:var(--nature-text)]">
+              文章不存在
+            </h1>
+            <p className="text-[color:var(--nature-text-soft)]">
+              抱歉，您访问的文章不存在或已被删除。
+            </p>
+            <Link href="/" className="nature-button nature-button-primary">
               返回首页
             </Link>
           </div>
@@ -86,9 +90,7 @@ export default function PostDetailPage({
     );
   }
 
-  // 转换 post 对象以匹配 Post 类型
   const authorName = post.author?.trim() || SITE.author.name;
-
   const postForStructuredData = {
     ...post,
     excerpt: post.excerpt ?? undefined,
@@ -108,140 +110,116 @@ export default function PostDetailPage({
     Boolean(isUserAdmin) && Boolean(relativeUpdate) && timing.shouldShowUpdateHint;
   const fallbackLabel = Boolean(isUserAdmin) && timing.fallbackLabel ? timing.fallbackLabel : null;
   const publishDateForLicense = timing.publishDate ?? new Date();
+  const anomalies = detectContentAnomalies(post.body || "");
 
   return (
     <PageLayout>
-      {/* SEO 结构化数据 */}
       <StructuredData post={postForStructuredData} />
 
-      <section className="py-8 sm:py-16 lg:py-20 mx-auto">
+      <section className="nature-reading-container py-10 lg:py-14">
         <article>
-          <header className={post.image ? "mb-6" : "mb-6"}>
-            <div className="flex justify-between flex-col sm:flex-row max-w-3xl mx-auto mt-0 mb-2 px-4 sm:px-6 sm:items-center">
-              <p className="flex flex-wrap items-center gap-2">
-                <Icon icon="tabler:clock" className="w-4 h-4 -mt-0.5 dark:text-gray-400" />
-                <time dateTime={publishDateTimeAttr} title={publishTitle} className="inline-block">
-                  {relativePublish}
-                </time>
+          <header className="space-y-6">
+            <div className="nature-surface px-6 py-7 sm:px-8">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
+                <span className="nature-chip nature-chip-info gap-1">
+                  <Icon name="tabler:clock" className="h-3.5 w-3.5" />
+                  <time dateTime={publishDateTimeAttr} title={publishTitle}>
+                    {relativePublish}
+                  </time>
+                </span>
                 {shouldShowUpdateHint && relativeUpdate && (
-                  <span className="whitespace-nowrap text-xs text-base-content/50 italic">
-                    (编辑于 {relativeUpdate})
+                  <span className="text-xs italic text-[color:var(--nature-text-faint)]">
+                    编辑于 {relativeUpdate}
                   </span>
                 )}
                 {fallbackLabel && (
-                  <span className="text-warning/80 flex-shrink-0">{fallbackLabel}</span>
+                  <span className="text-xs text-[color:var(--nature-danger)]">{fallbackLabel}</span>
                 )}
-                <span>·</span>
-                <Icon icon="tabler:user" className="w-4 h-4 -mt-0.5 dark:text-gray-400" />
-                <span className="inline-block">{authorName}</span>
+                <span className="nature-chip gap-1">
+                  <Icon name="tabler:user" className="h-3.5 w-3.5" />
+                  {authorName}
+                </span>
                 {post.category && (
-                  <>
-                    <span>·</span>
-                    <Link
-                      className="hover:underline inline-block"
-                      href={`/category/${post.category.toLowerCase().replace(/\s+/g, "-")}`}
-                    >
-                      {post.category}
-                    </Link>
-                  </>
+                  <Link
+                    className="nature-chip nature-chip-accent"
+                    href={`/category/${post.category.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    {post.category}
+                  </Link>
                 )}
-                <span>·</span>
-                <ReadingTime content={post.body} />
-              </p>
+                <span className="nature-chip gap-1">
+                  <Icon name="tabler:hourglass" className="h-3.5 w-3.5" />
+                  <ReadingTime content={post.body} />
+                </span>
+              </div>
 
-              {/* 向量化状态已移除，因为 post 对象中没有 vectorizationStatus 属性 */}
-            </div>
-
-            <div className="px-4 sm:px-6 max-w-3xl mx-auto">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <h1 className="text-4xl md:text-5xl font-bold leading-tighter tracking-tighter font-heading flex-grow">
+              <div className="mt-5 flex items-start justify-between gap-4">
+                <h1 className="flex-grow font-heading text-4xl font-semibold leading-tight tracking-[-0.05em] text-[color:var(--nature-text)] md:text-5xl">
                   {post.title}
                 </h1>
                 <PostStatus
                   post={post}
                   size="md"
-                  className="flex-shrink-0 mt-2"
+                  className="mt-1 flex-shrink-0"
                   isAdmin={isUserAdmin}
                 />
               </div>
 
-              {(() => {
-                const anomalies = detectContentAnomalies(post.body || "");
-                return isUserAdmin && anomalies.hasInlineDataImages ? (
-                  <div className="-mt-2 mb-2 text-warning">
-                    <div
-                      className="tooltip tooltip-bottom"
-                      data-tip={
-                        (anomalies.details || []).join("；") ||
-                        "检测到异常数据：包含 base64 内嵌图片"
-                      }
-                    >
-                      <span className="inline-flex items-center gap-1 text-xs">
-                        <Icon icon="tabler:alert-triangle" className="w-4 h-4 text-warning" />
-                        <span>异常数据</span>
-                      </span>
-                    </div>
-                  </div>
-                ) : null;
-              })()}
+              {isUserAdmin && anomalies.hasInlineDataImages && (
+                <div className="mt-4">
+                  <span
+                    className="nature-chip nature-chip-warning gap-1"
+                    title={
+                      (anomalies.details || []).join("；") || "检测到异常数据：包含 base64 内嵌图片"
+                    }
+                  >
+                    <Icon name="tabler:alert-triangle" className="h-3.5 w-3.5" />
+                    异常数据
+                  </span>
+                </div>
+              )}
+
+              {isUserAdmin && (
+                <div className="nature-panel-soft mt-5 flex flex-wrap items-center gap-3 px-4 py-4">
+                  <span className="nature-chip nature-chip-info gap-1">
+                    <Icon name="tabler:shield-check" className="h-3.5 w-3.5" />
+                    管理员视图
+                  </span>
+                  {post.draft ? (
+                    <span className="nature-chip nature-chip-warning">草稿</span>
+                  ) : post.public === false ? (
+                    <span className="nature-chip nature-chip-danger">私有</span>
+                  ) : (
+                    <span className="nature-chip nature-chip-success">已发布</span>
+                  )}
+                  <Link
+                    href={`/admin/posts/editor?slug=${encodeURIComponent(post.slug)}`}
+                    className="nature-button nature-button-outline ml-auto"
+                    title="编辑文章"
+                  >
+                    <Icon name="tabler:edit" className="h-4 w-4" />
+                    编辑
+                  </Link>
+                </div>
+              )}
+
+              {post.excerpt && (
+                <p className="nature-muted mt-5 max-w-3xl text-base sm:text-lg">{post.excerpt}</p>
+              )}
             </div>
 
-            {isUserAdmin && (
-              <div className="max-w-3xl mx-auto mt-4 px-4 sm:px-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      icon="tabler:shield-check"
-                      className="w-5 h-5 text-blue-600 dark:text-blue-400"
-                    />
-                    <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                      管理员视图
-                    </span>
-                    <div className="ml-auto flex items-center gap-3">
-                      {post.draft ? (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700">
-                          草稿
-                        </span>
-                      ) : post.public === false ? (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-300 dark:border-orange-700">
-                          私有
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-300 dark:border-green-700">
-                          已发布
-                        </span>
-                      )}
-                      <Link
-                        href={`/admin/posts/editor?slug=${encodeURIComponent(post.slug)}`}
-                        className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 rounded-md transition-colors duration-200"
-                        title="编辑文章"
-                      >
-                        <Icon icon="tabler:edit" className="w-4 h-4" />
-                        编辑
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <p className="max-w-3xl mx-auto mt-4 mb-8 px-4 sm:px-6 text-md font-serif font-light text-justify">
-              {post.excerpt}
-            </p>
-
             {post.image ? (
-              <div className="max-w-full lg:max-w-[900px] mx-auto mb-6">
+              <div className="overflow-hidden rounded-[2rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.78)] p-3 shadow-[0_18px_40px_rgba(8,21,16,0.12)]">
                 <Image
                   src={
                     resolveImagePath(
                       post.image || undefined,
                       (post.dataSource === "local" ? "local" : "webdav") as "local" | "webdav",
-                      // 使用实际 markdown 文件路径来解析相对封面路径，避免以数据库 id 解析导致的 404
                       (post.filePath as string | undefined) ||
                         (post.slug ? `blog/${post.slug}.md` : undefined)
                     ) || ""
                   }
-                  className="max-w-full mx-auto mb-6 sm:rounded-md bg-gray-400 dark:bg-slate-700 content-image cursor-pointer max-h-[50vh] sm:max-h-[60vh] md:max-w-2xl md:max-h-96 lg:max-h-[506px] xl:max-h-[50vh] h-auto object-contain"
+                  className="max-h-[60vh] w-full rounded-[1.5rem] object-contain"
                   alt={post.excerpt || ""}
                   width={900}
                   height={506}
@@ -249,13 +227,11 @@ export default function PostDetailPage({
                 />
               </div>
             ) : (
-              <div className="max-w-3xl mx-auto px-4 sm:px-6">
-                <div className="border-t dark:border-slate-700" />
-              </div>
+              <div className="nature-divider" />
             )}
           </header>
 
-          <div className="mx-auto px-6 sm:px-6 max-w-3xl mt-8">
+          <div className="nature-panel mt-8 px-6 py-7 sm:px-8">
             <MarkdownRenderer
               content={post.body}
               variant="article"
@@ -267,29 +243,26 @@ export default function PostDetailPage({
               previewCodeLines={20}
               articlePath={post.filePath || (post.slug ? `blog/${post.slug}.md` : undefined)}
               contentSource={post.dataSource === "local" ? "local" : "webdav"}
-              className="prose prose-md xl:text-lg dark:prose-invert dark:prose-headings:text-slate-300 prose-headings:font-heading prose-headings:leading-tighter prose-headings:tracking-tighter prose-headings:font-bold prose-a:text-primary dark:prose-a:text-blue-400 prose-img:rounded-md prose-img:shadow-lg prose-headings:scroll-mt-[80px] prose-li:my-0"
+              className="nature-prose max-w-none prose-headings:scroll-mt-[90px]"
             />
           </div>
 
-          <div className="mx-auto px-6 sm:px-6 max-w-3xl mt-8">
-            {/* 许可证信息 */}
+          <div className="nature-panel mt-8 px-6 py-6 sm:px-8">
             <ArticleLicense
               author={post.author || SITE.author.name}
               year={publishDateForLicense.getFullYear()}
             />
 
-            {/* 标签单独一行 */}
-            <div className="mb-4 mt-6">
+            <div className="mt-6">
               <PostTags
                 tags={post.tags || undefined}
-                className="flex gap-1 flex-wrap"
+                className="flex flex-wrap gap-1.5"
                 iconMap={tagIconMap}
                 iconSvgMap={tagIconSvgMap}
               />
             </div>
 
-            {/* 表态和分享在同一行，两端对齐 */}
-            <div className="flex justify-between items-center">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center">
                 <PostReactions postSlug={post.slug} />
               </div>
@@ -297,14 +270,13 @@ export default function PostDetailPage({
                 <SocialShare
                   url={typeof window !== "undefined" ? window.location.href : ""}
                   text={post.title}
-                  className="text-gray-500 dark:text-slate-600"
                 />
               </div>
             </div>
           </div>
         </article>
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+        <div className="mt-10">
           <CommentSectionWithProvider postSlug={slug} />
         </div>
       </section>
@@ -319,7 +291,6 @@ export default function PostDetailPage({
             tags: p.tags ?? undefined,
             author: p.author ?? undefined,
             image: p.image ?? undefined,
-            // 避免使用 any：仅在存在该属性时读取
             dataSource: "dataSource" in p ? (p as { dataSource?: string }).dataSource : undefined,
           }))}
           currentPostCategory={post.category || undefined}

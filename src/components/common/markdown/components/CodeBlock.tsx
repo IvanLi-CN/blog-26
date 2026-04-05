@@ -122,7 +122,7 @@ export function CodeBlock({
           </code>
           <button
             type="button"
-            className="collapsible-code-expand-btn absolute bottom-0 left-0 right-0 w-full px-3 py-2 text-xs text-base-content/60 hover:text-base-content hover:bg-base-300/50 transition-colors duration-200 flex items-center justify-center gap-1 border-t border-base-300 bg-base-200"
+            className="collapsible-code-expand-btn absolute bottom-0 left-0 right-0 flex w-full items-center justify-center gap-1 border-t border-[rgba(var(--nature-border-rgb),0.68)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-3 py-2 text-xs text-[color:var(--nature-text-soft)] transition-colors duration-200 hover:bg-[rgba(var(--nature-highlight-rgb),0.38)] hover:text-[color:var(--nature-text)]"
             onClick={toggleExpanded}
             data-action="expand"
           >
@@ -158,7 +158,7 @@ export function CodeBlock({
           </code>
           <button
             type="button"
-            className="collapsible-code-collapse-btn absolute bottom-0 left-0 right-0 w-full px-3 py-2 text-xs text-base-content/60 hover:text-base-content hover:bg-base-300/50 transition-colors duration-200 flex items-center justify-center gap-1 border-t border-base-300 bg-base-200"
+            className="collapsible-code-collapse-btn absolute bottom-0 left-0 right-0 flex w-full items-center justify-center gap-1 border-t border-[rgba(var(--nature-border-rgb),0.68)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-3 py-2 text-xs text-[color:var(--nature-text-soft)] transition-colors duration-200 hover:bg-[rgba(var(--nature-highlight-rgb),0.38)] hover:text-[color:var(--nature-text)]"
             onClick={toggleExpanded}
             data-action="collapse"
           >

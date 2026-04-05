@@ -89,18 +89,28 @@ export default async function TagDetailPage({ params }: PageProps) {
 
   return (
     <PageLayout>
-      <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-4xl">
+      <section className="nature-reading-container px-6 py-8 lg:py-12">
         <nav aria-label="Breadcrumb" className="mb-4">
-          <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/60">
+          <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[color:var(--nature-text-soft)]">
             <li>
-              <Link href="/tags" className="hover:text-primary transition-colors">
+              <Link
+                href="/tags"
+                className="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+              >
                 标签
               </Link>
             </li>
             {breadcrumbItems.map((item) => (
               <li key={item.href} className="flex items-center gap-2">
-                <Icon name="tabler:chevron-right" className="h-4 w-4 text-base-content/40" />
-                <Link href={item.href} prefetch={false} className="hover:text-primary">
+                <Icon
+                  name="tabler:chevron-right"
+                  className="h-4 w-4 text-[color:var(--nature-text-faint)]"
+                />
+                <Link
+                  href={item.href}
+                  prefetch={false}
+                  className="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+                >
                   {item.label}
                 </Link>
               </li>
@@ -108,27 +118,27 @@ export default async function TagDetailPage({ params }: PageProps) {
           </ol>
         </nav>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="nature-surface mb-8 flex items-center justify-between gap-4 px-5 py-5">
           <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)] md:text-3xl">
               {headerIconSvg ? (
                 <span
-                  className="inline-flex text-primary [&>svg]:w-5 [&>svg]:h-5"
+                  className="inline-flex text-[color:var(--nature-accent-strong)] [&>svg]:h-5 [&>svg]:w-5"
                   dangerouslySetInnerHTML={{ __html: headerIconSvg }}
                 />
               ) : (
-                <Icon name={headerIconId} className="w-5 h-5 text-primary" />
+                <Icon
+                  name={headerIconId}
+                  className="h-5 w-5 text-[color:var(--nature-accent-strong)]"
+                />
               )}
               <span className="truncate">{leafTag}</span>
             </h1>
-            <p className="mt-2 text-sm text-base-content/60 truncate">#{tagPath}</p>
+            <p className="mt-2 truncate text-sm text-[color:var(--nature-text-soft)]">#{tagPath}</p>
           </div>
 
-          <div className="flex items-center gap-4 text-sm flex-shrink-0">
-            <Link
-              href="/tags"
-              className="flex items-center gap-1 text-muted hover:text-primary transition-colors"
-            >
+          <div className="flex flex-shrink-0 items-center gap-4 text-sm">
+            <Link href="/tags" className="nature-button nature-button-ghost min-h-10 px-4 py-2">
               <Icon name="tabler:tags" className="w-4 h-4" />
               返回
             </Link>
@@ -150,21 +160,23 @@ function renderTagPageError(tagLeaf: string, error: unknown) {
   const { message, details } = formatUnknownError(error);
   return (
     <PageLayout>
-      <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-3xl">
-        <div className="rounded-xl border border-error/40 bg-error/10 p-6 text-base-content">
-          <div className="flex items-center gap-3 text-error">
+      <section className="nature-reading-container px-6 py-10">
+        <div className="nature-alert nature-alert-error block p-6">
+          <div className="flex items-center gap-3 text-[color:var(--nature-danger)]">
             <Icon name="tabler:alert-triangle" className="h-6 w-6" />
             <h1 className="text-xl font-semibold">无法加载标签 {tagLeaf || "(unknown)"}</h1>
           </div>
-          <p className="mt-4 text-sm text-base-content/80">
+          <p className="mt-4 text-sm text-[color:var(--nature-text-soft)]">
             获取该标签内容时出现错误，详细信息已记录在服务端日志中：
           </p>
-          <p className="mt-2 text-base font-mono whitespace-pre-wrap text-error">{message}</p>
-          <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-base-100/70 p-4 text-xs">
+          <p className="mt-2 whitespace-pre-wrap font-mono text-base text-[color:var(--nature-danger)]">
+            {message}
+          </p>
+          <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-[1.25rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.72)] p-4 text-xs">
             {details}
           </pre>
-          <div className="mt-4 flex flex-wrap gap-3 text-sm text-base-content/70">
-            <Link href="/tags" className="text-primary hover:underline">
+          <div className="mt-4 flex flex-wrap gap-3 text-sm text-[color:var(--nature-text-soft)]">
+            <Link href="/tags" className="nature-link-inline">
               返回标签列表
             </Link>
             <span>刷新页面或稍后重试以重新触发请求。</span>

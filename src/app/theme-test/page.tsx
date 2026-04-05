@@ -1,141 +1,151 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import ThemeToggle from "@/components/common/ThemeToggle";
+import Icon from "@/components/ui/Icon";
+
+const chips = ["Organic", "Ripple", "Mist", "Glass", "Gooey", "Breath"];
 
 export default function ThemeTestPage() {
-  const [selectedTheme, setSelectedTheme] = useState("synthwave");
-
-  const themes = [
-    "light",
-    "dark",
-    "cupcake",
-    "bumblebee",
-    "emerald",
-    "corporate",
-    "synthwave",
-    "retro",
-    "cyberpunk",
-    "valentine",
-  ];
+  const [query, setQuery] = useState("");
+  const previewCards = useMemo(
+    () => [
+      {
+        title: "液态卡片",
+        description: "用于展示前台面板、摘要和信息容器的默认材质。",
+      },
+      {
+        title: "静谧阅读",
+        description: "长文模式只保留微弱呼吸感，避免干扰内容吸收。",
+      },
+      {
+        title: "磁性反馈",
+        description: "按钮与胶囊以柔和的边界和光泽反馈触碰。",
+      },
+    ],
+    []
+  );
 
   return (
-    <div className="min-h-screen p-8 bg-base-100">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-4xl font-bold text-base-content mb-8">DaisyUI 局部主题作用域测试</h1>
-
-        {/* 主题选择器 */}
-        <div className="card bg-base-200 shadow-xl p-6">
-          <h2 className="text-2xl font-semibold mb-4">选择测试主题：</h2>
-          <div className="flex flex-wrap gap-2">
-            {themes.map((theme) => (
-              <button
-                key={theme}
-                type="button"
-                className={`btn btn-sm ${selectedTheme === theme ? "btn-primary" : "btn-outline"}`}
-                onClick={() => setSelectedTheme(theme)}
-              >
-                {theme}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 全局主题区域 */}
-        <div className="card bg-base-200 shadow-xl p-6">
-          <h2 className="text-2xl font-semibold mb-4">全局主题（当前页面主题）</h2>
-          <div className="flex flex-wrap gap-4">
-            <button type="button" className="btn btn-primary">
-              Primary Button
-            </button>
-            <button type="button" className="btn btn-secondary">
-              Secondary Button
-            </button>
-            <button type="button" className="btn btn-accent">
-              Accent Button
-            </button>
-            <div className="badge badge-primary">Primary Badge</div>
-            <div className="badge badge-secondary">Secondary Badge</div>
-            <div className="badge badge-accent">Accent Badge</div>
-          </div>
-        </div>
-
-        {/* 局部主题区域 */}
-        <div className="card bg-base-200 shadow-xl p-6" data-theme={selectedTheme}>
-          <h2 className="text-2xl font-semibold mb-4">局部主题区域（{selectedTheme} 主题）</h2>
-          <div className="flex flex-wrap gap-4">
-            <button type="button" className="btn btn-primary">
-              Primary Button
-            </button>
-            <button type="button" className="btn btn-secondary">
-              Secondary Button
-            </button>
-            <button type="button" className="btn btn-accent">
-              Accent Button
-            </button>
-            <div className="badge badge-primary">Primary Badge</div>
-            <div className="badge badge-secondary">Secondary Badge</div>
-            <div className="badge badge-accent">Accent Badge</div>
-          </div>
-
-          {/* 嵌套的局部主题 */}
-          <div className="mt-6 p-4 rounded-lg bg-base-100" data-theme="valentine">
-            <h3 className="text-lg font-medium mb-3">嵌套主题区域（valentine 主题）</h3>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-sm btn-primary">
-                Primary
-              </button>
-              <button type="button" className="btn btn-sm btn-secondary">
-                Secondary
-              </button>
-              <button type="button" className="btn btn-sm btn-accent">
-                Accent
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 颜色变量测试 */}
-        <div className="card bg-base-200 shadow-xl p-6">
-          <h2 className="text-2xl font-semibold mb-4">CSS 变量测试</h2>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-medium mb-3">全局变量</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-primary"></div>
-                  <span className="text-sm">--color-primary</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-secondary"></div>
-                  <span className="text-sm">--color-secondary</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-accent"></div>
-                  <span className="text-sm">--color-accent</span>
-                </div>
+    <main className="nature-app-shell min-h-screen">
+      <div className="nature-content-layer">
+        <section className="nature-container px-4 py-10 sm:px-6 lg:py-14">
+          <div className="nature-surface px-6 py-7 sm:px-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <span className="nature-kicker gap-2">
+                  <Icon name="tabler:palette" className="h-4 w-4" />
+                  Theme Test
+                </span>
+                <h1 className="nature-title mt-4 text-4xl sm:text-5xl">Nature 视觉基线</h1>
+                <p className="nature-muted mt-4 max-w-2xl">
+                  用于校验 light / dark / system
+                  三态主题、公开页面的表面材质、交互控件和阅读区样式。
+                </p>
               </div>
-            </div>
-
-            <div data-theme={selectedTheme}>
-              <h3 className="text-lg font-medium mb-3">局部变量（{selectedTheme}）</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-primary"></div>
-                  <span className="text-sm">--color-primary</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-secondary"></div>
-                  <span className="text-sm">--color-secondary</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-accent"></div>
-                  <span className="text-sm">--color-accent</span>
-                </div>
-              </div>
+              <ThemeToggle iconClass="h-4 w-4" />
             </div>
           </div>
-        </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
+            <section className="space-y-6">
+              <div className="nature-panel px-5 py-5 sm:px-6">
+                <h2 className="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                  组件预览
+                </h2>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {chips.map((chip) => (
+                    <span key={chip} className="nature-chip nature-chip-accent">
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button type="button" className="nature-button nature-button-primary">
+                    Primary Action
+                  </button>
+                  <button type="button" className="nature-button nature-button-outline">
+                    Secondary Action
+                  </button>
+                  <button type="button" className="nature-button nature-button-ghost">
+                    Quiet Action
+                  </button>
+                </div>
+                <label className="nature-input-shell mt-5">
+                  <Icon
+                    name="tabler:search"
+                    className="h-4 w-4 text-[color:var(--nature-text-faint)]"
+                  />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    className="nature-input"
+                    placeholder="搜索主题、颜色或组件"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-3">
+                {previewCards.map((card) => (
+                  <article key={card.title} className="nature-panel-soft px-5 py-5">
+                    <h3 className="text-lg font-semibold text-[color:var(--nature-text)]">
+                      {card.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-[color:var(--nature-text-soft)]">
+                      {card.description}
+                    </p>
+                  </article>
+                ))}
+              </div>
+
+              <article className="nature-panel px-6 py-6 sm:px-7">
+                <h2 className="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                  阅读块
+                </h2>
+                <div className="nature-prose mt-5">
+                  <p>
+                    这里模拟文章正文区域。标题、段落、行距、引用和行内代码都应统一使用 Nature
+                    token，而不是 DaisyUI 的基础色语义。
+                  </p>
+                  <blockquote>
+                    界面应该像水一样适应容器，像烟雾一样柔和过渡，像生物一样对触碰产生有机反应。
+                  </blockquote>
+                  <p>
+                    行内代码例如 <code>data-ui-theme</code> 与 <code>prefers-reduced-motion</code>{" "}
+                    在深浅主题下都要保持可读。
+                  </p>
+                </div>
+              </article>
+            </section>
+
+            <aside className="space-y-6">
+              <section className="nature-panel px-5 py-5">
+                <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                  验收点
+                </h2>
+                <ul className="mt-4 space-y-2 text-sm leading-7 text-[color:var(--nature-text-soft)]">
+                  <li>公开主题切换只保留 light / dark / system。</li>
+                  <li>卡片、按钮、输入框与阅读面板全部使用 Nature token。</li>
+                  <li>减少动态偏好时，粒子与呼吸动效显著减弱。</li>
+                </ul>
+              </section>
+
+              <section className="nature-panel-soft px-5 py-5">
+                <div className="nature-stat-grid">
+                  <div className="nature-stat">
+                    <div className="nature-stat-label">Themes</div>
+                    <div className="nature-stat-value">3</div>
+                  </div>
+                  <div className="nature-stat">
+                    <div className="nature-stat-label">Surface Modes</div>
+                    <div className="nature-stat-value">6</div>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

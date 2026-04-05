@@ -10,27 +10,28 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", ...props }, ref) => {
+    const variantClasses = {
+      default: "nature-button nature-button-primary",
+      destructive: "nature-button nature-button-danger",
+      outline: "nature-button nature-button-outline",
+      secondary: "nature-button nature-button-outline",
+      ghost: "nature-button nature-button-ghost",
+      link: "nature-link-inline px-0 py-0 bg-transparent border-none shadow-none",
+    } as const;
+
+    const sizeClasses = {
+      default: "min-h-11 px-4 py-2.5",
+      sm: "min-h-9 px-3 py-2 text-sm",
+      lg: "min-h-12 px-6 py-3 text-base",
+      icon: "nature-icon-button size-10 p-0",
+    } as const;
+
     return (
       <button
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-          {
-            // Use DaisyUI tokens to ensure proper contrast
-            "bg-primary text-primary-content hover:bg-primary/90": variant === "default",
-            "bg-destructive text-destructive-foreground hover:bg-destructive/90":
-              variant === "destructive",
-            "border border-input bg-background hover:bg-accent hover:text-accent-foreground":
-              variant === "outline",
-            "bg-secondary text-secondary-content hover:bg-secondary/80": variant === "secondary",
-            "hover:bg-accent hover:text-accent-foreground": variant === "ghost",
-            "text-primary underline-offset-4 hover:underline": variant === "link",
-          },
-          {
-            "h-10 px-4 py-2": size === "default",
-            "h-9 rounded-md px-3": size === "sm",
-            "h-11 rounded-md px-8": size === "lg",
-            "h-10 w-10": size === "icon",
-          },
+          "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50",
+          variantClasses[variant],
+          sizeClasses[size],
           className
         )}
         ref={ref}

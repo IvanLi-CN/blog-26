@@ -114,15 +114,18 @@ export default function TagTimeline({
             />
           ))
         ) : (
-          <div className="text-center py-10 text-muted">
-            <Icon name="tabler:timeline" className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <div className="nature-empty py-10">
+            <Icon
+              name="tabler:timeline"
+              className="mx-auto mb-2 h-8 w-8 text-[color:var(--nature-text-faint)]"
+            />
             <p>暂无内容</p>
           </div>
         )}
       </div>
 
       {isError && (
-        <div className="alert alert-error max-w-2xl mx-auto my-8">
+        <div className="nature-alert nature-alert-error mx-auto my-8 max-w-2xl">
           <Icon name="tabler:alert-triangle" className="h-5 w-5" />
           <span>{error?.message || "加载失败，请稍后重试"}</span>
         </div>
@@ -133,13 +136,13 @@ export default function TagTimeline({
           <button
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
-            className="btn btn-outline btn-primary gap-2"
+            className="nature-button nature-button-outline min-h-11 gap-2 px-5 py-3"
             type="button"
             aria-label="加载更多"
           >
             {isFetchingNextPage ? (
               <>
-                <span className="loading loading-spinner loading-sm"></span>
+                <span className="nature-spinner h-4 w-4" />
                 加载中...
               </>
             ) : (
@@ -154,7 +157,9 @@ export default function TagTimeline({
 
       {!hasNextPage && timelineItems.length > 0 && !showInitialSkeleton && (
         <div className="text-center py-8">
-          <div className="text-base-content/60">已显示所有 {timelineItems.length} 条内容</div>
+          <div className="text-[color:var(--nature-text-soft)]">
+            已显示所有 {timelineItems.length} 条内容
+          </div>
         </div>
       )}
     </>

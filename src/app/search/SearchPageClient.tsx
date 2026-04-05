@@ -45,34 +45,35 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
 
   return (
     <div className="w-full">
-      {/* Heading */}
-      <div className="mx-auto w-full max-w-3xl mb-4">
-        <h1 className="text-2xl font-semibold">搜索</h1>
+      <div className="nature-reading-container mb-4">
+        <div className="nature-surface px-6 py-7 sm:px-8">
+          <span className="nature-kicker mb-3 inline-flex">Search Stream</span>
+          <h1 className="nature-title text-3xl font-semibold">搜索</h1>
+          <p className="nature-muted mt-3 text-sm leading-7 sm:text-base">
+            语义检索和全文检索都收拢到更柔和的表面里，减少工具感。
+          </p>
+        </div>
       </div>
 
-      {/* Search bar */}
-      <form onSubmit={onSubmit} className="mx-auto w-full max-w-3xl mb-6">
-        <label className="input input-bordered flex items-center gap-2 w-full">
-          <Icon name="tabler:search" className="w-5 h-5 opacity-60" />
+      <form onSubmit={onSubmit} className="nature-reading-container mb-6">
+        <label className="nature-input-shell w-full">
+          <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
           <input
             ref={inputRef}
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="输入关键词后回车…"
-            className="grow"
+            className="nature-input"
             autoComplete="off"
           />
-          {(isFetching || isLoading) && (
-            <span className="loading loading-spinner loading-xs ml-1" />
-          )}
+          {(isFetching || isLoading) && <span className="nature-spinner ml-1" />}
         </label>
       </form>
 
-      {/* Results */}
-      <section className="mx-auto w-full max-w-3xl">
+      <section className="nature-reading-container">
         {error && (
-          <div role="alert" className="alert alert-error mb-4">
+          <div role="alert" className="nature-alert nature-alert-error mb-4">
             <Icon name="tabler:alert-triangle" className="w-5 h-5" />
             <span>
               {(() => {
@@ -86,14 +87,14 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
         )}
 
         {!canSearch && (
-          <div className="p-10 text-center text-base-content/60">
+          <div className="nature-empty">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Icon name="tabler:stars" className="w-5 h-5" />
               <span>输入关键词开始搜索</span>
             </div>
             <div className="text-sm">
-              <kbd className="kbd kbd-xxs">⌘</kbd>
-              <kbd className="kbd kbd-xxs ml-1">K</kbd>
+              <kbd className="nature-kbd">⌘</kbd>
+              <kbd className="nature-kbd ml-1">K</kbd>
               <span className="ml-2">可打开全局搜索</span>
             </div>
           </div>
@@ -103,11 +104,11 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
           <div className="space-y-4">
             {["k1", "k2", "k3", "k4", "k5", "k6"].map((k) => (
               <div key={k} className="flex items-start gap-4">
-                <div className="skeleton w-10 h-10 rounded" />
+                <div className="nature-skeleton h-10 w-10 rounded-full" />
                 <div className="flex-1 space-y-2">
-                  <div className="skeleton h-4 w-1/3" />
-                  <div className="skeleton h-3 w-5/6" />
-                  <div className="skeleton h-3 w-2/3" />
+                  <div className="nature-skeleton h-4 w-1/3 rounded-full" />
+                  <div className="nature-skeleton h-3 w-5/6 rounded-full" />
+                  <div className="nature-skeleton h-3 w-2/3 rounded-full" />
                 </div>
               </div>
             ))}
@@ -115,7 +116,7 @@ export default function SearchPageClient({ initialQuery = "" }: { initialQuery?:
         )}
 
         {!isLoading && !isFetching && canSearch && (data?.length || 0) === 0 && (
-          <div className="p-10 text-center text-base-content/60">
+          <div className="nature-empty">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Icon name="tabler:mood-empty" className="w-5 h-5" />
               <span>没有找到相关结果</span>

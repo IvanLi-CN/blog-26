@@ -45,10 +45,9 @@ export default function MobileMenu() {
 
   return (
     <>
-      {/* 移动端菜单按钮 */}
       <button
         type="button"
-        className="btn btn-ghost btn-circle md:hidden"
+        className="nature-icon-button md:hidden"
         aria-label="Toggle Menu"
         onClick={toggleMenu}
       >
@@ -58,24 +57,20 @@ export default function MobileMenu() {
         />
       </button>
 
-      {/* 移动端全屏菜单模态框 */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 bg-base-100 md:hidden flex flex-col">
-          {/* 顶部栏 */}
-          <div className="navbar bg-base-100 max-w-7xl mx-auto">
-            <div className="flex-1">
+        <div className="fixed inset-0 z-50 flex flex-col bg-[rgba(8,12,10,0.56)] backdrop-blur-xl md:hidden">
+          <div className="nature-container flex items-center justify-between px-2 py-4">
+            <div className="nature-surface flex w-full items-center justify-between px-4 py-3">
               <Link
                 href="/"
-                className="inline-block px-4 font-bold text-xl 2xl:text-2xl hover:text-primary drop-shadow drop-shadow-secondary/30 transition-colors cursor-pointer"
+                className="font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]"
                 onClick={closeMenu}
               >
                 {SITE.name}
               </Link>
-            </div>
-            <div className="flex items-center">
               <button
                 type="button"
-                className="btn btn-ghost btn-circle"
+                className="nature-icon-button"
                 aria-label="Close menu"
                 onClick={closeMenu}
               >
@@ -84,72 +79,76 @@ export default function MobileMenu() {
             </div>
           </div>
 
-          {/* 内容区域 */}
-          <div className="flex-grow flex flex-col container mx-auto px-8">
-            {/* 搜索表单（顶部） */}
-            <div className="py-8 flex justify-center px-4">
-              <form onSubmit={handleSearchSubmit} className="w-full max-w-md">
-                <label className="input input-bordered flex items-center gap-2 text-lg shadow-sm focus-within:shadow-md transition-shadow">
-                  <Icon name="tabler:search" className="w-5 h-5 opacity-60" />
-                  <input type="text" name="q" placeholder="搜索文章..." className="grow" />
-                </label>
-              </form>
-            </div>
-
-            {/* 主要内容（居中的导航） */}
-            <div className="flex-grow flex flex-col justify-center items-center">
-              <nav>
-                <ul className="text-3xl font-bold space-y-4">
-                  {headerData.links.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        prefetch={!(link.href === "/projects" || link.href === "/tags")}
-                        className="hover:text-primary transition-colors flex items-center gap-3"
-                        onClick={closeMenu}
-                      >
-                        <Icon name={link.icon} className="w-8 h-8" />
-                        <span>{link.text}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            </div>
-
-            {/* 底部操作（推到底部） */}
-            <div className="py-8">
-              {/* 社交链接 */}
-              <div className="grid justify-center gap-y-4 mb-6">
-                {footerData.socialLinks.map((social) => (
-                  <a
-                    key={social.href}
-                    className="inline-grid grid-cols-[auto_1fr] items-center gap-x-3 text-gray-600 dark:text-gray-400 hover:text-primary"
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Icon name={social.icon} className="w-6 h-6" />
-                    <span className="text-left">{social.ariaLabel}</span>
-                  </a>
-                ))}
+          <div className="flex-grow overflow-auto px-4 pb-8">
+            <div className="nature-container flex h-full flex-col">
+              <div className="flex justify-center px-4 py-8">
+                <form onSubmit={handleSearchSubmit} className="w-full max-w-md">
+                  <label className="nature-input-shell text-lg">
+                    <Icon
+                      name="tabler:search"
+                      className="w-5 h-5 text-[color:var(--nature-text-faint)]"
+                    />
+                    <input
+                      type="text"
+                      name="q"
+                      placeholder="搜索文章..."
+                      className="nature-input"
+                    />
+                  </label>
+                </form>
               </div>
 
-              {/* 版权和切换器 */}
-              <div className="flex justify-between items-center w-full">
-                <div className="text-sm text-gray-500">
-                  &copy; {new Date().getFullYear()} {SITE.name}
-                </div>
-                <div className="flex items-center gap-4">
-                  <ThemeToggle iconClass="w-6 h-6" />
-                  <a
-                    className="btn btn-ghost btn-circle"
-                    aria-label="RSS Feed"
-                    title="RSS Feed"
-                    href="/rss.xml"
-                  >
-                    <Icon name="tabler:rss" className="w-6 h-6" />
-                  </a>
+              <div className="nature-surface flex flex-1 flex-col justify-between px-6 py-8">
+                <nav className="flex flex-1 items-center justify-center">
+                  <ul className="space-y-4 text-3xl font-semibold">
+                    {headerData.links.map((link) => (
+                      <li key={link.href}>
+                        <Link
+                          href={link.href}
+                          prefetch={!(link.href === "/projects" || link.href === "/tags")}
+                          className="flex items-center gap-3 text-[color:var(--nature-text)] transition hover:text-[color:var(--nature-accent-strong)]"
+                          onClick={closeMenu}
+                        >
+                          <Icon name={link.icon} className="w-8 h-8" />
+                          <span>{link.text}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+
+                <div className="space-y-6">
+                  <div className="grid justify-center gap-y-4">
+                    {footerData.socialLinks.map((social) => (
+                      <a
+                        key={social.href}
+                        className="inline-grid grid-cols-[auto_1fr] items-center gap-x-3 text-[color:var(--nature-text-soft)] transition hover:text-[color:var(--nature-accent-strong)]"
+                        href={social.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Icon name={social.icon} className="w-6 h-6" />
+                        <span className="text-left">{social.ariaLabel}</span>
+                      </a>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-sm text-[color:var(--nature-text-soft)]">
+                      &copy; {new Date().getFullYear()} {SITE.name}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <ThemeToggle iconClass="w-5 h-5" />
+                      <a
+                        className="nature-icon-button"
+                        aria-label="RSS Feed"
+                        title="RSS Feed"
+                        href="/rss.xml"
+                      >
+                        <Icon name="tabler:rss" className="w-5 h-5" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -96,30 +96,38 @@ export default function AiSearchOverlay({
   if (!open) return null;
 
   return (
-    <div className="modal modal-open">
-      <div className="modal-box w-11/12 max-w-4xl p-0 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center gap-3 p-3 border-b border-base-300 bg-base-100">
+    <div className="nature-modal">
+      <button
+        type="button"
+        className="nature-modal-backdrop"
+        onClick={handleClose}
+        aria-label="Close search"
+      />
+      <div className="nature-modal-panel w-[min(100%,64rem)] overflow-hidden p-0">
+        <div className="flex items-center gap-3 border-b border-[color:var(--nature-line)] px-4 py-4">
           <form onSubmit={onSubmit} className="flex items-center gap-2 flex-1">
-            <div className="input input-bordered flex items-center gap-2 w-full">
-              <Icon name="tabler:search" className="w-5 h-5 opacity-60" />
+            <div className="nature-input-shell w-full">
+              <Icon
+                name="tabler:search"
+                className="w-5 h-5 text-[color:var(--nature-text-faint)]"
+              />
               <input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="AI 搜索：输入关键词..."
-                className="grow"
+                className="nature-input"
                 autoComplete="off"
               />
-              <div className="hidden md:flex items-center gap-1 text-xs text-base-content/60">
-                <kbd className="kbd kbd-xs">Enter</kbd>
+              <div className="hidden items-center gap-1 text-xs text-[color:var(--nature-text-soft)] md:flex">
+                <kbd className="nature-kbd">Enter</kbd>
                 <span>to search</span>
               </div>
             </div>
             <button
               type="button"
-              className="btn btn-ghost btn-circle"
+              className="nature-icon-button"
               aria-label="关闭"
               onClick={handleClose}
             >
@@ -128,25 +136,24 @@ export default function AiSearchOverlay({
           </form>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-base-300 bg-base-100">
-          <div className="tabs tabs-bordered">
+        <div className="flex items-center justify-between border-b border-[color:var(--nature-line)] px-4 py-3">
+          <div className="nature-tabs">
             <button
-              className={`tab ${filter === "all" ? "tab-active" : ""}`}
+              className={`nature-tab ${filter === "all" ? "is-active" : ""}`}
               onClick={() => setFilter("all")}
               type="button"
             >
               All
             </button>
             <button
-              className={`tab ${filter === "post" ? "tab-active" : ""}`}
+              className={`nature-tab ${filter === "post" ? "is-active" : ""}`}
               onClick={() => setFilter("post")}
               type="button"
             >
               Posts
             </button>
             <button
-              className={`tab ${filter === "memo" ? "tab-active" : ""}`}
+              className={`nature-tab ${filter === "memo" ? "is-active" : ""}`}
               onClick={() => setFilter("memo")}
               type="button"
             >
@@ -154,12 +161,12 @@ export default function AiSearchOverlay({
             </button>
           </div>
 
-          <div className="join">
+          <div className="nature-tabs">
             {modes.map((m) => (
               <button
                 key={m.key}
                 type="button"
-                className={`btn btn-sm join-item ${mode === m.key ? "btn-primary" : "btn-ghost"}`}
+                className={`nature-tab ${mode === m.key ? "is-active" : ""}`}
                 onClick={() => setMode(m.key)}
               >
                 {m.label}
@@ -168,44 +175,43 @@ export default function AiSearchOverlay({
           </div>
         </div>
 
-        {/* Results */}
-        <div className="max-h-[60vh] overflow-auto divide-y divide-base-200">
+        <div className="max-h-[60vh] overflow-auto px-4 py-4">
           {error && (
-            <div role="alert" className="alert alert-error m-4">
+            <div role="alert" className="nature-alert nature-alert-error mb-4">
               <Icon name="tabler:alert-triangle" className="w-5 h-5" />
               <span>{error}</span>
             </div>
           )}
 
           {isLoading ? (
-            <div className="p-4 space-y-4">
+            <div className="space-y-4">
               {(["s1", "s2", "s3", "s4", "s5"] as const).map((k) => (
                 <div key={k} className="flex items-start gap-4">
-                  <div className="skeleton w-10 h-10 rounded"></div>
+                  <div className="nature-skeleton h-10 w-10 rounded-full"></div>
                   <div className="flex-1 space-y-2">
-                    <div className="skeleton h-4 w-1/3"></div>
-                    <div className="skeleton h-3 w-5/6"></div>
-                    <div className="skeleton h-3 w-2/3"></div>
+                    <div className="nature-skeleton h-4 w-1/3 rounded-full"></div>
+                    <div className="nature-skeleton h-3 w-5/6 rounded-full"></div>
+                    <div className="nature-skeleton h-3 w-2/3 rounded-full"></div>
                   </div>
                 </div>
               ))}
             </div>
           ) : query.trim().length === 0 ? (
-            <div className="p-10 text-center text-base-content/60">
+            <div className="nature-empty">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Icon name="tabler:stars" className="w-5 h-5" />
                 <span>键入关键词开始 AI 搜索</span>
               </div>
               <div className="text-sm">
-                <kbd className="kbd kbd-xs">⌘</kbd>
-                <kbd className="kbd kbd-xs ml-1">K</kbd>
+                <kbd className="nature-kbd">⌘</kbd>
+                <kbd className="nature-kbd ml-1">K</kbd>
                 <span className="ml-2">打开搜索，按</span>
-                <kbd className="kbd kbd-xs ml-1">Esc</kbd>
+                <kbd className="nature-kbd ml-1">Esc</kbd>
                 <span className="ml-2">关闭</span>
               </div>
             </div>
           ) : !isLoading && filteredResults.length === 0 ? (
-            <div className="p-10 text-center text-base-content/60">
+            <div className="nature-empty">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Icon name="tabler:mood-empty" className="w-5 h-5" />
                 <span>没有找到相关结果</span>
@@ -220,35 +226,25 @@ export default function AiSearchOverlay({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-2 border-t border-base-300 bg-base-100 flex items-center justify-between text-sm">
-          <div className="text-base-content/60 flex items-center gap-2">
+        <div className="flex items-center justify-between border-t border-[color:var(--nature-line)] px-4 py-3 text-sm">
+          <div className="flex items-center gap-2 text-[color:var(--nature-text-soft)]">
             <Icon name="tabler:keyboard" className="w-4 h-4" />
             <span>
-              使用 <kbd className="kbd kbd-xxs">↑</kbd> <kbd className="kbd kbd-xxs">↓</kbd> 导航，
-              <kbd className="kbd kbd-xxs">Enter</kbd> 打开，<kbd className="kbd kbd-xxs">Esc</kbd>{" "}
+              使用 <kbd className="nature-kbd">↑</kbd> <kbd className="nature-kbd">↓</kbd> 导航，
+              <kbd className="nature-kbd">Enter</kbd> 打开，<kbd className="nature-kbd">Esc</kbd>{" "}
               关闭
             </span>
           </div>
           {query.trim() && (
             <Link
               href={`/search?q=${encodeURIComponent(query.trim())}`}
-              className="link link-hover"
+              className="nature-link-inline"
             >
               View all results
             </Link>
           )}
         </div>
       </div>
-      <button
-        type="button"
-        className="modal-backdrop"
-        onClick={handleClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") handleClose();
-        }}
-        aria-label="Close search"
-      />
     </div>
   );
 }

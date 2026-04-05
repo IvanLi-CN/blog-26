@@ -62,12 +62,16 @@ export default function TimelineItem({
 
   // 使用 DaisyUI 语义色而不是硬编码颜色，确保与主题一致
   const getTypeColor = (type: string) => {
-    return type === "memo" ? "text-accent" : "text-primary";
+    return type === "memo"
+      ? "text-[color:var(--nature-secondary)]"
+      : "text-[color:var(--nature-accent-strong)]";
   };
 
   // 语义化背景色（淡色，无边框、无ring）
   const getTypeBgClass = (type: string) => {
-    return type === "memo" ? "bg-accent/10" : "bg-primary/10";
+    return type === "memo"
+      ? "bg-[color:var(--nature-secondary-soft)]"
+      : "bg-[color:var(--nature-accent-soft)]";
   };
 
   // 动态调整时间线连接线高度
@@ -107,10 +111,10 @@ export default function TimelineItem({
       <div className="flex flex-col items-center relative">
         {/* 时间线节点：干净的圆形，无明显边框。背景用语义色淡化 */}
         <div
-          className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full ${getTypeBgClass(item.type)} flex-shrink-0 z-10`}
+          className={`z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-[color:var(--nature-line)] ${getTypeBgClass(item.type)} sm:h-10 sm:w-10`}
         >
           {loading ? (
-            <div className="w-5 h-5 bg-base-300 rounded-full animate-pulse"></div>
+            <div className="nature-skeleton h-5 w-5 rounded-full"></div>
           ) : (
             <Icon
               name={getTypeIcon(item.type)}
@@ -123,7 +127,7 @@ export default function TimelineItem({
         {!isLast && (
           <div
             ref={connectorRef}
-            className="timeline-connector w-0.5 bg-base-300 opacity-30 absolute top-8 sm:top-10 left-1/2 transform -translate-x-1/2"
+            className="timeline-connector absolute left-1/2 top-8 w-0.5 -translate-x-1/2 bg-[linear-gradient(180deg,rgba(var(--nature-accent-rgb),0.22),transparent)] opacity-60 sm:top-10"
             style={{ height: "100vh" }}
           ></div>
         )}
@@ -135,33 +139,31 @@ export default function TimelineItem({
         <div className="flex items-center gap-2 mb-2">
           {loading ? (
             <>
-              <div className="h-4 bg-base-300 rounded w-20 animate-pulse"></div>
-              <div className="h-5 bg-base-300 rounded w-12 animate-pulse"></div>
+              <div className="nature-skeleton h-4 w-20 rounded-full"></div>
+              <div className="nature-skeleton h-5 w-12 rounded-full"></div>
             </>
           ) : (
             <>
-              <span className="text-sm md:text-base text-muted">
+              <span className="nature-muted text-sm md:text-base">
                 {formatDate(item.publishDate)}
               </span>
-              <span className="badge badge-outline badge-xs">
-                {item.type === "memo" ? "闪念" : "文章"}
-              </span>
+              <span className="nature-chip text-xs">{item.type === "memo" ? "闪念" : "文章"}</span>
             </>
           )}
         </div>
 
         {/* 内容卡片 */}
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-3 sm:p-4">
-              <div className="h-20 bg-base-200 rounded mb-2 animate-pulse"></div>
-              <div className="h-3 bg-base-300 rounded w-3/4 mb-1 animate-pulse"></div>
-              <div className="h-3 bg-base-300 rounded w-1/2 animate-pulse"></div>
+          <div className="nature-panel nature-panel-soft">
+            <div className="nature-panel-body p-3 sm:p-4">
+              <div className="nature-skeleton mb-2 h-20 rounded-[1rem]"></div>
+              <div className="nature-skeleton mb-1 h-3 w-3/4 rounded-full"></div>
+              <div className="nature-skeleton h-3 w-1/2 rounded-full"></div>
             </div>
           </div>
         ) : (
-          <div className="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 border border-base-200 hover:border-base-300">
-            <div className="card-body p-3 sm:p-4">
+          <div className="nature-panel nature-panel-soft">
+            <div className="nature-panel-body p-3 sm:p-4">
               {item.type === "post" && (
                 <div className="flex gap-4">
                   {/* 文章封面图 */}
@@ -178,7 +180,7 @@ export default function TimelineItem({
                           ) || ""
                         }
                         alt={item.title || "文章封面"}
-                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded"
+                        className="h-20 w-20 rounded-[1rem] object-cover sm:h-24 sm:w-24"
                         width={96}
                         height={96}
                       />
@@ -190,7 +192,7 @@ export default function TimelineItem({
                     {/* 文章标题 */}
                     {item.title && (
                       <Link href={itemUrl} className="block">
-                        <h3 className="card-title text-lg md:text-xl mb-2 line-clamp-2 hover:text-primary transition-colors">
+                        <h3 className="nature-title mb-2 line-clamp-2 text-lg font-semibold transition-colors hover:text-[color:var(--nature-accent-strong)] md:text-xl">
                           {item.title}
                         </h3>
                       </Link>
@@ -198,7 +200,9 @@ export default function TimelineItem({
 
                     {/* 文章摘要 */}
                     {item.excerpt && (
-                      <p className="text-sm md:text-base text-muted line-clamp-3">{item.excerpt}</p>
+                      <p className="nature-muted line-clamp-3 text-sm md:text-base">
+                        {item.excerpt}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -224,7 +228,7 @@ export default function TimelineItem({
                         maxCodeLines={5}
                         previewCodeLines={3}
                         articlePath={`/memos/${item.slug}`}
-                        className="prose prose-sm max-w-none text-sm md:text-base [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-24 [&_img]:object-cover [&_img]:rounded [&_blockquote]:text-xs [&_blockquote]:py-1 [&_ul]:text-sm [&_ol]:text-sm"
+                        className="nature-prose-preview prose prose-sm max-w-none text-sm md:text-base [&_h1]:text-base [&_h1]:font-medium [&_h2]:text-sm [&_h2]:font-medium [&_h3]:text-sm [&_h3]:font-medium [&_img]:max-h-24 [&_img]:object-cover [&_img]:rounded-2xl [&_blockquote]:text-xs [&_blockquote]:py-1 [&_ul]:text-sm [&_ol]:text-sm"
                       />
                     </div>
                   )}
@@ -232,7 +236,7 @@ export default function TimelineItem({
                   <div className="mt-3">
                     <Link
                       href={itemUrl}
-                      className="text-sm text-primary hover:text-primary-focus inline-flex items-center gap-1 hover:gap-2 transition-all duration-200"
+                      className="nature-feedback-link inline-flex items-center gap-1 text-sm transition-all duration-200 hover:gap-2"
                     >
                       查看详情
                       <span className="text-xs">→</span>
@@ -240,19 +244,17 @@ export default function TimelineItem({
                   </div>
 
                   {isAdmin && anomalies?.hasInlineDataImages && (
-                    <div className="mt-2 text-warning flex items-center gap-2">
-                      <div
-                        className="tooltip tooltip-bottom"
-                        data-tip={
+                    <div className="mt-2 flex items-center gap-2 text-[color:var(--nature-warning)]">
+                      <span
+                        className="inline-flex items-center gap-1 text-xs"
+                        title={
                           (anomalies.details || []).join("；") ||
                           "检测到异常数据：包含 base64 内嵌图片"
                         }
                       >
-                        <span className="inline-flex items-center gap-1 text-xs">
-                          <Icon name="tabler:alert-triangle" className="w-4 h-4 text-warning" />
-                          <span>异常数据</span>
-                        </span>
-                      </div>
+                        <Icon name="tabler:alert-triangle" className="w-4 h-4" />
+                        <span>异常数据</span>
+                      </span>
                     </div>
                   )}
                 </>

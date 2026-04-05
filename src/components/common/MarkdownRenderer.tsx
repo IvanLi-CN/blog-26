@@ -195,7 +195,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           if (isInline) {
             return (
               <code
-                className="bg-base-200 text-base-content px-1 py-0.5 rounded text-sm font-mono"
+                className="rounded-md bg-[rgba(var(--nature-highlight-rgb),0.28)] px-1.5 py-0.5 text-sm font-mono text-[color:var(--nature-text)]"
                 {...props}
               >
                 {children}
@@ -237,45 +237,49 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 标题样式
         h1: ({ children }) => (
-          <h1 className="text-3xl font-bold mt-8 mb-6 first:mt-0 text-base-content">{children}</h1>
+          <h1 className="mt-8 mb-6 font-heading text-3xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] first:mt-0">
+            {children}
+          </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="text-2xl font-semibold mt-8 mb-4 first:mt-0 text-base-content">
+          <h2 className="mt-8 mb-4 font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)] first:mt-0">
             {children}
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="text-xl font-semibold mt-6 mb-3 first:mt-0 text-base-content">
+          <h3 className="mt-6 mb-3 font-heading text-xl font-semibold tracking-[-0.02em] text-[color:var(--nature-text)] first:mt-0">
             {children}
           </h3>
         ),
         h4: ({ children }) => (
-          <h4 className="text-lg font-semibold mt-6 mb-3 first:mt-0 text-base-content">
+          <h4 className="mt-6 mb-3 text-lg font-semibold text-[color:var(--nature-text)] first:mt-0">
             {children}
           </h4>
         ),
         h5: ({ children }) => (
-          <h5 className="text-base font-semibold mt-4 mb-2 first:mt-0 text-base-content">
+          <h5 className="mt-4 mb-2 text-base font-semibold text-[color:var(--nature-text)] first:mt-0">
             {children}
           </h5>
         ),
         h6: ({ children }) => (
-          <h6 className="text-sm font-semibold mt-4 mb-2 first:mt-0 text-base-content">
+          <h6 className="mt-4 mb-2 text-sm font-semibold text-[color:var(--nature-text-soft)] first:mt-0">
             {children}
           </h6>
         ),
 
         // 段落样式
-        p: ({ children }) => <p className="mb-4 leading-relaxed text-base-content">{children}</p>,
+        p: ({ children }) => (
+          <p className="mb-4 leading-8 text-[color:var(--nature-text)]">{children}</p>
+        ),
 
         // 列表样式
         ul: ({ children }) => (
-          <ul className="list-disc list-outside pl-6 my-4 space-y-1 text-base-content">
+          <ul className="my-4 list-outside list-disc space-y-1 pl-6 text-[color:var(--nature-text)]">
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="list-decimal list-outside pl-6 my-4 space-y-1 text-base-content">
+          <ol className="my-4 list-outside list-decimal space-y-1 pl-6 text-[color:var(--nature-text)]">
             {children}
           </ol>
         ),
@@ -283,7 +287,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 引用样式
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-primary/50 pl-4 italic text-base-content/80 my-4 bg-base-200 py-2 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <blockquote className="my-5 rounded-[1.4rem] border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-5 py-4 italic text-[color:var(--nature-text-soft)] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             {children}
           </blockquote>
         ),
@@ -294,20 +298,20 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="link link-primary break-words"
+            className="nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4"
           >
             {children}
           </a>
         ),
 
         // 分割线样式
-        hr: () => <hr className="border-t border-base-300 my-6" />,
+        hr: () => <hr className="my-8 border-none nature-divider" />,
 
         // 预格式化文本
         pre: ({ children, className, ...props }) => (
           <pre
             className={mergeClassNames(
-              "my-4 overflow-x-auto bg-base-200 border border-base-300 rounded-lg",
+              "my-4 overflow-x-auto rounded-[1.2rem] border border-[rgba(var(--nature-border-rgb),0.7)] bg-[rgba(var(--nature-highlight-rgb),0.24)]",
               className
             )}
             {...props}
@@ -321,7 +325,11 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
     // 如果没有内容，显示占位符
     if (!processedContent.trim()) {
-      return <div className="text-base-content/50 italic text-center py-8">暂无内容</div>;
+      return (
+        <div className="py-8 text-center italic text-[color:var(--nature-text-faint)]">
+          暂无内容
+        </div>
+      );
     }
 
     return (

@@ -43,61 +43,48 @@ export default function SocialShare({ text, url, className = "inline-block" }: S
 
   return (
     <div className={`flex items-center ${className}`}>
-      <span className="font-bold text-slate-500 dark:text-slate-400 mr-2">Share:</span>
+      <span className="mr-2 text-sm font-semibold text-[color:var(--nature-text-soft)]">
+        Share:
+      </span>
       <button
         type="button"
-        className="rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button rtl:ml-0 rtl:mr-2"
         title="Twitter Share"
         onClick={() => handleShare("twitter")}
       >
-        <Icon
-          icon="tabler:brand-x"
-          className="w-6 h-6 text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300"
-        />
+        <Icon icon="tabler:brand-x" className="w-5 h-5" />
       </button>
       <button
         type="button"
-        className="ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
         title="Facebook Share"
         onClick={() => handleShare("facebook")}
       >
-        <Icon
-          icon="tabler:brand-facebook"
-          className="w-6 h-6 text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300"
-        />
+        <Icon icon="tabler:brand-facebook" className="w-5 h-5" />
       </button>
       <button
         type="button"
-        className="ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
         title="Linkedin Share"
         onClick={() => handleShare("linkedin")}
       >
-        <Icon
-          icon="tabler:brand-linkedin"
-          className="w-6 h-6 text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300"
-        />
+        <Icon icon="tabler:brand-linkedin" className="w-5 h-5" />
       </button>
       <button
         type="button"
-        className="ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
         title="Whatsapp Share"
         onClick={() => handleShare("whatsapp")}
       >
-        <Icon
-          icon="tabler:brand-whatsapp"
-          className="w-6 h-6 text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300"
-        />
+        <Icon icon="tabler:brand-whatsapp" className="w-5 h-5" />
       </button>
       <button
         type="button"
-        className="ml-2 rtl:ml-0 rtl:mr-2"
+        className="nature-icon-button ml-2 rtl:ml-0 rtl:mr-2"
         title="Email Share"
         onClick={() => handleShare("mail")}
       >
-        <Icon
-          icon="tabler:mail"
-          className="w-6 h-6 text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300"
-        />
+        <Icon icon="tabler:mail" className="w-5 h-5" />
       </button>
     </div>
   );

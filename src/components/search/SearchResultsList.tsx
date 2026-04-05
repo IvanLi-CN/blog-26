@@ -24,33 +24,32 @@ export default function SearchResultsList({
   linkClassName?: string;
 }) {
   return (
-    <ul className={cn("menu bg-base-100 p-0 w-full", containerClassName)}>
+    <ul className={cn("flex w-full flex-col gap-3", containerClassName)}>
       {results.map((r) => {
         const type = (r.type || "post") as ResultType;
         const href = type === "memo" ? `/memos/${r.slug}` : `/posts/${r.slug}`;
         return (
-          <li key={r.slug}>
-            <Link href={href} className={linkClassName}>
+          <li key={r.slug} className="list-none">
+            <Link
+              href={href}
+              className={cn("nature-panel nature-panel-soft block px-4 py-4", linkClassName)}
+            >
               <div className="flex items-start gap-4">
-                <div className="avatar placeholder">
-                  <div className="bg-base-200 text-base-content/70 rounded w-10">
-                    <span>{type === "memo" ? "M" : "P"}</span>
-                  </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.22)] text-[color:var(--nature-text-soft)]">
+                  <span>{type === "memo" ? "M" : "P"}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium truncate max-w-[75%]">{r.title || r.slug}</span>
-                    <span className="badge badge-xs badge-outline capitalize">{type}</span>
+                    <span className="max-w-[75%] truncate font-medium">{r.title || r.slug}</span>
+                    <span className="nature-chip capitalize">{type}</span>
                     {typeof r.final === "number" && (
-                      <span className="badge badge-xs badge-ghost">
+                      <span className="nature-chip nature-chip-accent">
                         {(r.final * 100).toFixed(0)}%
                       </span>
                     )}
                   </div>
-                  {r.excerpt && (
-                    <p className="text-sm text-base-content/70 line-clamp-2">{r.excerpt}</p>
-                  )}
-                  <div className="text-xs text-base-content/50">{href}</div>
+                  {r.excerpt && <p className="nature-muted line-clamp-2 text-sm">{r.excerpt}</p>}
+                  <div className="text-xs text-[color:var(--nature-text-faint)]">{href}</div>
                 </div>
               </div>
             </Link>

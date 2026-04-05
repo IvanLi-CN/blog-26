@@ -106,39 +106,36 @@ export default function SearchBox({
 
   return (
     <div className="relative">
-      {/* 移动端搜索按钮：跳转到独立搜索页 */}
       <button
         type="button"
-        className="btn btn-ghost btn-circle md:hidden"
+        className="nature-icon-button md:hidden"
         aria-label={buttonLabel}
         onClick={() => router.push("/search")}
       >
         <Icon name="tabler:search" className="w-5 h-5" />
       </button>
 
-      {/* 大屏搜索框 */}
       <form onSubmit={handleDesktopSubmit} className="hidden xl:flex items-center w-auto">
-        <label className="input input-bordered flex items-center gap-2">
-          <Icon name="tabler:search" className="w-5 h-5 opacity-50" />
+        <label className="nature-input-shell min-w-[18rem]">
+          <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
           <input
             ref={desktopInputRef}
             type="text"
             name="q"
             placeholder={placeholder}
-            className="grow"
+            className="nature-input"
           />
           <span className={`flex items-center gap-1 ${isLoading ? "hidden" : ""}`}>
-            <kbd className="kbd kbd-sm">⌘</kbd>
-            <kbd className="kbd kbd-sm">K</kbd>
+            <kbd className="nature-kbd">⌘</kbd>
+            <kbd className="nature-kbd">K</kbd>
           </span>
-          {isLoading && <span className="loading loading-spinner loading-xs ml-2"></span>}
+          {isLoading && <span className="nature-spinner ml-2"></span>}
         </label>
       </form>
 
-      {/* 中屏搜索按钮 */}
       <button
         type="button"
-        className="btn btn-ghost btn-circle hidden md:flex xl:hidden search-trigger-medium"
+        className="nature-icon-button hidden md:flex xl:hidden search-trigger-medium"
         aria-label={buttonLabel}
         onClick={openMediumOverlay}
       >
@@ -149,7 +146,8 @@ export default function SearchBox({
 
       {/* 全屏搜索模态框 */}
       {isModalOpen && (
-        <div className="search-modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+        <div className="nature-modal">
+          <div className="nature-modal-backdrop" />
           <div className="container mx-auto px-4 h-full flex items-center justify-center">
             <form onSubmit={handleMobileSubmit} className="w-full max-w-lg">
               <div className="relative">
@@ -158,23 +156,21 @@ export default function SearchBox({
                   type="text"
                   name="q"
                   placeholder={placeholder}
-                  className="input input-bordered w-full pr-10 text-lg"
+                  className="nature-input-shell w-full pr-10 text-lg"
                 />
                 <button
                   type="submit"
-                  className="btn btn-ghost btn-circle absolute right-0 top-0"
+                  className="nature-icon-button absolute right-2 top-2"
                   aria-label={buttonLabel}
                 >
                   <Icon name="tabler:search" className="w-6 h-6" />
                 </button>
-                {isLoading && (
-                  <span className="loading loading-spinner loading-sm absolute right-12 top-2.5"></span>
-                )}
+                {isLoading && <span className="nature-spinner absolute right-14 top-4"></span>}
               </div>
             </form>
             <button
               type="button"
-              className="btn btn-ghost btn-circle absolute right-4 top-4"
+              className="nature-icon-button absolute right-4 top-4"
               aria-label="关闭搜索"
               onClick={closeModal}
             >

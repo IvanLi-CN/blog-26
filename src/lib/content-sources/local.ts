@@ -195,7 +195,7 @@ export class LocalContentSource extends ContentSourceBase {
         name: fileName,
         extension,
         size: stats.size,
-        lastModified: stats.mtimeMs,
+        lastModified: Math.trunc(stats.mtimeMs),
         isDirectory: false,
       });
     } catch (error) {
@@ -307,7 +307,7 @@ export class LocalContentSource extends ContentSourceBase {
             name: entry.name,
             extension,
             size: stats.size,
-            lastModified: stats.mtimeMs,
+            lastModified: Math.trunc(stats.mtimeMs),
             isDirectory: false,
           });
         }

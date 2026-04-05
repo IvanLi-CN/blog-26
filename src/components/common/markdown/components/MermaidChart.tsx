@@ -101,11 +101,11 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4",
+          "mermaid-container my-4 rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-6",
           className
         )}
       >
-        <div className="flex items-center justify-center text-base-content/60">
+        <div className="flex items-center justify-center text-[color:var(--nature-text-soft)]">
           <span>正在加载图表...</span>
         </div>
       </div>
@@ -116,11 +116,11 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4",
+          "mermaid-container my-4 rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-6",
           className
         )}
       >
-        <div className="flex items-center justify-center space-x-2 text-base-content/60">
+        <div className="flex items-center justify-center space-x-2 text-[color:var(--nature-text-soft)]">
           <svg
             className="animate-spin h-5 w-5"
             role="img"
@@ -153,7 +153,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-error bg-error/10 border border-error/30 rounded-lg p-4 my-4",
+          "mermaid-error my-4 rounded-[1.4rem] border border-[color:color-mix(in_srgb,var(--nature-danger)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--nature-danger)_10%,transparent)] p-4",
           className
         )}
       >
@@ -176,10 +176,10 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
             <h4 className="text-sm font-medium text-error">Mermaid 图表渲染失败</h4>
             <p className="mt-1 text-sm text-error/90">{errorMessage}</p>
             <details className="mt-2">
-              <summary className="text-xs text-error cursor-pointer hover:text-error/80">
+              <summary className="cursor-pointer text-xs text-[color:var(--nature-danger)] hover:opacity-80">
                 查看原始代码
               </summary>
-              <pre className="mt-2 text-xs bg-base-200 border border-base-300 p-2 rounded overflow-x-auto text-base-content">
+              <pre className="mt-2 overflow-x-auto rounded-xl border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.22)] p-2 text-xs text-[color:var(--nature-text)]">
                 <code>{chart}</code>
               </pre>
             </details>
@@ -194,7 +194,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container bg-base-100 border border-base-300 rounded-lg p-4 my-4 overflow-x-auto",
+          "mermaid-container my-4 overflow-x-auto rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4",
           className
         )}
         style={{
@@ -209,7 +209,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     <div
       ref={containerRef}
       className={mergeClassNames(
-        "mermaid-container bg-base-100 border border-base-300 rounded-lg p-4 my-4 overflow-x-auto",
+        "mermaid-container my-4 overflow-x-auto rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4",
         className
       )}
       style={{

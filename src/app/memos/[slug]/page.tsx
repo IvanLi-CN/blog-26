@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import PageLayout from "../../../components/common/PageLayout";
 import { MemoDetailPage } from "../../../components/memos/MemoDetailPage";
 import { parseContentTags } from "../../../lib/tag-parser";
 import { createSsrCaller } from "../../../lib/trpc-ssr";
@@ -136,26 +137,23 @@ export default async function MemoPage({ params }: MemoPageProps) {
   };
 
   return (
-    <>
-      {/* 结构化数据 */}
+    <PageLayout>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(structuredData),
         }}
       />
-
-      {/* 页面内容 */}
-      <div className="container mx-auto px-4 py-8">
+      <section className="nature-reading-container px-6 py-10">
         <MemoDetailPage
           slug={slug}
           initialData={initialMemo}
           tagIconMap={iconMap}
           tagIconSvgMap={svgMap}
           showEditFeatures={false}
-          className="max-w-4xl mx-auto"
+          className="mx-auto max-w-4xl"
         />
-      </div>
-    </>
+      </section>
+    </PageLayout>
   );
 }
