@@ -42,12 +42,15 @@ test.describe("Memo 编辑可见性", () => {
     const dialog = await openMemoEditDialog(page, editButton);
 
     const visibilityToggle = dialog.locator('input[type="checkbox"]').first();
+    const save = dialog.getByRole("button", { name: "保存更改" });
+
+    await expect(visibilityToggle).toBeEnabled({ timeout: 30_000 });
+    await expect(save).toBeEnabled({ timeout: 30_000 });
     await expect(visibilityToggle).toBeChecked();
     await visibilityToggle.click();
     await expect(visibilityToggle).not.toBeChecked();
     await expect(dialog.getByText("私有保存")).toBeVisible();
 
-    const save = dialog.getByRole("button", { name: "保存更改" });
     await expect(save).toBeEnabled({ timeout: 30_000 });
     await Promise.all([waitForTrpcSuccess(page, "memos.update"), save.click()]);
 

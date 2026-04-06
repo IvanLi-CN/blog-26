@@ -4,7 +4,7 @@
 
 import type { inferRouterOutputs } from "@trpc/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { trpc } from "../../lib/trpc";
+import { trpc, trpcVanilla } from "../../lib/trpc";
 import type { AppRouter } from "../../server/router";
 import type { MemoCardData } from "./MemoCard";
 import type { MemoData } from "./MemoEditor";
@@ -193,10 +193,16 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
   // 保存 memo
   const saveMemo = useCallback(
     async (data: MemoData) => {
-      if (memoId && existingMemo) {
+      if (memoId) {
+        const resolvedMemo =
+          existingMemo ??
+          (await trpcVanilla.memos.bySlug.query({
+            slug: memoId,
+          }));
+
         // 更新现有 memo
         await updateMemo.mutateAsync({
-          id: existingMemo.id,
+          id: resolvedMemo.id,
           content: data.content,
           title: data.title,
           isPublic: data.isPublic,

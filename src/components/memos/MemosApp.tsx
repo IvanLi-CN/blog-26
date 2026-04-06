@@ -249,6 +249,7 @@ export function MemosApp({
   const quickEditArticlePath = existingMemo?.filePath ?? editingMemo?.filePath ?? editingMemo?.slug;
   const quickEditSource = existingMemo?.source ?? editingMemo?.source;
   const quickEditContentSource = quickEditSource === "local" ? "local" : "webdav";
+  const quickEditPending = Boolean(editingMemo && (isLoadingMemo || !existingMemo));
   const quickEditErrorMessage =
     saveError instanceof Error ? saveError.message : saveError ? String(saveError) : undefined;
 
@@ -330,7 +331,7 @@ export function MemosApp({
         initialIsPublic={quickEditIsPublic}
         articlePath={quickEditArticlePath}
         contentSource={quickEditContentSource}
-        isLoading={isLoadingMemo && !!editingMemo}
+        isLoading={quickEditPending}
         isSaving={isSavingMemo}
         errorMessage={quickEditErrorMessage}
         onSave={handleQuickEditSave}
