@@ -203,22 +203,29 @@ export function QuickMemoEditModal({
 
           <div className="border-t border-[rgba(var(--nature-border-rgb),0.62)] px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <label className="flex cursor-pointer items-center gap-3">
+              <label
+                className={cn(
+                  "flex items-center gap-3",
+                  disableActions ? "cursor-not-allowed" : "cursor-pointer"
+                )}
+              >
                 <span className="text-sm text-[color:var(--nature-text-soft)]">
                   {isPublic ? "公开发布" : "私有保存"}
                 </span>
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={isPublic}
-                  onChange={(event) => setIsPublic(event.target.checked)}
-                  disabled={disableActions}
-                />
-                <span
-                  className="nature-switch"
-                  data-state={isPublic ? "checked" : "unchecked"}
-                  aria-disabled={disableActions ? "true" : "false"}
-                />
+                <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    className="nature-switch-input peer absolute inset-0 m-0 cursor-inherit opacity-0"
+                    checked={isPublic}
+                    onChange={(event) => setIsPublic(event.target.checked)}
+                    disabled={disableActions}
+                  />
+                  <span
+                    className="nature-switch pointer-events-none"
+                    data-state={isPublic ? "checked" : "unchecked"}
+                    aria-disabled={disableActions ? "true" : "false"}
+                  />
+                </span>
               </label>
 
               <div className="flex items-center gap-2">

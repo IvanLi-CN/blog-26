@@ -292,19 +292,26 @@ export function QuickMemoEditor({
 
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <label className="flex cursor-pointer items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    className="sr-only"
-                    disabled={isSaving}
-                  />
-                  <span
-                    className="nature-switch"
-                    data-state={isPublic ? "checked" : "unchecked"}
-                    aria-disabled={isSaving ? "true" : "false"}
-                  />
+                <label
+                  className={cn(
+                    "flex items-center gap-3",
+                    isSaving ? "cursor-not-allowed" : "cursor-pointer"
+                  )}
+                >
+                  <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      className="nature-switch-input peer absolute inset-0 m-0 cursor-inherit opacity-0"
+                      disabled={isSaving}
+                    />
+                    <span
+                      className="nature-switch pointer-events-none"
+                      data-state={isPublic ? "checked" : "unchecked"}
+                      aria-disabled={isSaving ? "true" : "false"}
+                    />
+                  </span>
                   <span className="text-sm">
                     {isPublic ? (
                       <span className="flex items-center space-x-1 text-[color:var(--nature-accent-strong)]">

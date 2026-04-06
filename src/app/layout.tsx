@@ -79,7 +79,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" data-ui-theme="light" data-ui-preference="system" data-theme="light">
+    <html
+      lang="zh-CN"
+      suppressHydrationWarning
+      data-ui-theme="light"
+      data-ui-preference="system"
+      data-theme="light"
+      style={{ colorScheme: "light" }}
+    >
       <head>
         {/* RSS Feed */}
         <link
