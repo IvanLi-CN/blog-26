@@ -50,6 +50,15 @@ export async function waitForTrpcSuccess(page: Page, procedureName: string, time
   );
 }
 
+export async function waitForMemoCardByText(page: Page, text: string, timeout = 60_000) {
+  const memoCard = page
+    .locator('[data-testid="memo-card"][data-id]')
+    .filter({ hasText: text })
+    .first();
+  await expect(memoCard).toBeVisible({ timeout });
+  return memoCard;
+}
+
 export async function openMemoDeleteDialog(page: Page, trigger: Locator) {
   const modal = page.locator('[data-testid="memo-delete-dialog-panel"]');
 
@@ -101,6 +110,7 @@ export async function openMemoEditDialog(page: Page, trigger: Locator) {
 export async function openMemoDetailFromCard(page: Page, card: Locator) {
   const detailLink = card.locator('a[href^="/memos/"]').first();
   await expect(detailLink).toBeVisible({ timeout: 60_000 });
+  await detailLink.scrollIntoViewIfNeeded();
 
   const href = await detailLink.getAttribute("href");
   if (href) {
@@ -114,4 +124,9 @@ export async function openMemoDetailFromCard(page: Page, card: Locator) {
       // The route may already be hydrated and settled before Playwright starts waiting.
     });
   }
+
+  await page.waitForURL(/\/memos\/.+/, { timeout: 60_000 }).catch(() => {
+    // `goto()` may already have completed before the explicit URL wait starts.
+  });
+  await page.waitForSelector(".memo-detail-page", { timeout: 60_000 });
 }

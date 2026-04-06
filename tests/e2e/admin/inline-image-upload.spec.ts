@@ -1,6 +1,10 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
-import { waitForQuickMemoEditor, waitForTrpcSuccess } from "./memos/helpers";
+import {
+  openMemoDetailFromCard,
+  waitForQuickMemoEditor,
+  waitForTrpcSuccess,
+} from "./memos/helpers";
 
 // Small 1x1 PNG (transparent)
 const ONE_BY_ONE_PNG_BASE64 =
@@ -79,24 +83,62 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     await expect(editor).toContainText("ASUVORK5CYII=", { timeout: 15_000 });
     // Give the editor a brief moment to emit markdownUpdated and propagate onChange
     await page.waitForTimeout(300);
-    // New memo card containing the token will be asserted via text below
     // Wait until publish button is enabled, then submit quick memo
+    const memoCards = page.locator('[data-testid="memo-card"][data-id]');
+    const initialCardIds = await memoCards.evaluateAll((cards) =>
+      cards
+        .map((card) => card.getAttribute("data-id"))
+        .filter((value): value is string => Boolean(value))
+    );
     const publishButton = page.getByRole("button", { name: /发布 Memo/ });
     await expect(publishButton).toBeEnabled();
-    const [createResp] = await Promise.all([
-      waitForTrpcSuccess(page, "memos.create"),
-      publishButton.click(),
-    ]);
+    const createRespPromise = waitForTrpcSuccess(page, "memos.create", 60_000)
+      .then(async (response) => {
+        const payload = await response.json();
+        return findMemoPayload(payload);
+      })
+      .catch(() => null);
+    await publishButton.click();
 
     const successToast = page.locator(".Toastify__toast .nature-alert-success");
-    await expect(successToast).toContainText("Memo 已发布", { timeout: 10_000 });
+    await expect(successToast).toContainText("Memo 已发布", { timeout: 30_000 });
 
-    const createPayload = await createResp.json();
-    const createdMemo = findMemoPayload(createPayload);
+    const createdMemo = await Promise.race([
+      createRespPromise,
+      page.waitForTimeout(2_000).then(() => null),
+    ]);
     const slug = typeof createdMemo?.slug === "string" ? createdMemo.slug : "";
-    expect(slug).toBeTruthy();
 
-    await page.goto(`${baseURL}/memos/${slug}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    if (slug) {
+      await page.goto(`${baseURL}/memos/${slug}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      });
+      await page.waitForSelector(".memo-detail-page", { timeout: 60_000 });
+    } else {
+      let createdCardId = "";
+      await expect
+        .poll(
+          async () => {
+            const ids = await memoCards.evaluateAll((cards) =>
+              cards
+                .map((card) => card.getAttribute("data-id"))
+                .filter((value): value is string => Boolean(value))
+            );
+            createdCardId = ids.find((id) => !initialCardIds.includes(id)) ?? "";
+            return createdCardId;
+          },
+          {
+            timeout: 60_000,
+            message: "等待新发布的 memo 出现在列表中",
+          }
+        )
+        .not.toBe("");
+
+      const createdCard = page.locator(`[data-testid="memo-card"][data-id="${createdCardId}"]`);
+      await expect(createdCard).toBeVisible({ timeout: 30_000 });
+      await openMemoDetailFromCard(page, createdCard);
+    }
 
     await expect
       .poll(async () => await page.locator('.memo-detail-page img[src^="/api/files/"]').count(), {

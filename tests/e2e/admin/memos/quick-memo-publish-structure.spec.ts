@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { openMemoDetailFromCard, waitForQuickMemoEditor } from "./helpers";
+import { openMemoDetailFromCard, waitForMemoCardByText, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -49,27 +49,22 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     // 等待 UI 列表实际呈现新发布（更稳健：直接以第一张卡片文本作为锚点）
 
     // 1) 列表页：新发布必须置顶
-    const memoCard = page.locator('[data-testid="memo-card"]').filter({ hasText: TITLE }).first();
-    await expect(memoCard).toBeVisible({ timeout: 30000 });
+    await waitForMemoCardByText(page, TITLE);
 
     // 2) 刷新后仍应置顶
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForSelector(".memos-list", { timeout: 15000 });
-    const memoCardAfterReload = page
-      .locator('[data-testid="memo-card"]')
-      .filter({ hasText: TITLE })
-      .first();
-    await expect(memoCardAfterReload).toBeVisible({ timeout: 30000 });
+    const memoCardAfterReload = await waitForMemoCardByText(page, TITLE);
 
     // 3) 进入详情页验证结构
     await openMemoDetailFromCard(page, memoCardAfterReload);
-    const article = page.locator(".memo-detail-page .prose").first();
-    await expect(article).toBeVisible({ timeout: 30_000 });
-    await expect(article).toContainText(TITLE, { timeout: 30_000 });
+    const article = page.locator(".memo-detail-page .nature-prose").first();
+    await expect(article).toBeVisible({ timeout: 60_000 });
+    await expect(article).toContainText(TITLE, { timeout: 60_000 });
     // 使用更长的轮询等待列表渲染为 2 项，适配 CI 慢环境
     await expect
       .poll(async () => await article.locator("ul li").count(), {
-        timeout: 30_000,
+        timeout: 60_000,
         message: "等待列表条目渲染为 2",
       })
       .toBe(2);

@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
+import { openMemoEditDialog, waitForMemoCardByText, waitForQuickMemoEditor } from "./memos/helpers";
 
 /**
  * Memo 编辑不重复测试
@@ -8,73 +9,75 @@ import { adminTest as test } from "./fixtures";
 
 test.describe("Memo 编辑不重复", () => {
   test("编辑 memo 后列表中不应出现重复项", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
+    test.setTimeout(150_000);
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
 
     // 等待 memo 列表加载
-    await page.waitForSelector(".memos-list", { timeout: 10000 });
-    // 仅统计最外层 memo 卡片容器，避免内部嵌套的 data-testid 重复计数
+    await page.waitForSelector(".memos-list", { timeout: 30_000 });
     const memoCards = page.locator('[data-testid="memo-card"][data-id]');
 
-    // 记录初始 memo 数量（在 CI 上可能需要等待数据同步完成）
-    // 使用 expect.poll 等待到出现至少 1 条记录，避免瞬时为 0 的误判
     await test.expect
-      .poll(async () => await memoCards.count(), { timeout: 15000 })
+      .poll(async () => await memoCards.count(), { timeout: 30_000 })
       .toBeGreaterThan(0);
     const initialCount = await memoCards.count();
     console.log(`📊 初始 memo 数量: ${initialCount}`);
 
-    // 使用稳定的 data-id（编辑后 slug 可能会变化）
-    const targetId = await memoCards.first().getAttribute("data-id");
+    const { container: quickEditor, editor: quickEditorInput } = await waitForQuickMemoEditor(page);
+    const title = `编辑去重测试 ${Date.now()}`;
+    const initialContent = `初始内容 ${Date.now()}`;
+    await quickEditorInput.click();
+    await page.keyboard.insertText(`# ${title}`);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.keyboard.insertText(initialContent);
+    await page.waitForTimeout(150);
 
-    // 获取第一个 memo 并点击编辑
-    const firstMemo = memoCards.first();
-    // 使用可访问名称定位编辑按钮，确保滚动到视图后再点击
-    const editButton = firstMemo.getByRole("button", { name: /^编辑 Memo/ });
-    await firstMemo.hover();
-    await editButton.waitFor({ state: "visible" });
-    await editButton.scrollIntoViewIfNeeded();
-    await expect(editButton).toBeEnabled();
-    await editButton.click();
+    const publish = quickEditor.getByRole("button", { name: "发布 Memo" });
+    await expect(publish).toBeEnabled();
+    await publish.click();
 
-    // 等待编辑对话框出现
-    const dialog = page.locator('[role="dialog"]');
-    await expect(dialog).toBeVisible();
+    const successToast = page.locator(".Toastify__toast .nature-alert-success");
+    await expect(successToast).toContainText("Memo 已发布", { timeout: 30_000 });
+
+    const createdCard = await waitForMemoCardByText(page, title);
+    const targetId = await createdCard.getAttribute("data-id");
+    expect(targetId).toBeTruthy();
+
+    const editButton = createdCard.getByRole("button", { name: /^编辑 Memo/ });
+    const dialog = await openMemoEditDialog(page, editButton);
 
     // 修改内容
     const editor = dialog.locator('[contenteditable="true"]').first();
     await editor.click();
     await page.keyboard.press("Control+a");
-    const newContent = `测试编辑 - ${Date.now()}`;
-    await page.keyboard.type(newContent);
+    const newContent = `更新内容 ${Date.now()}`;
+    await page.keyboard.insertText(newContent);
 
     // 保存编辑
-    const saveButton = dialog.locator("button").filter({ hasText: /保存|save/i });
+    const saveButton = dialog.getByRole("button", { name: "保存更改" });
+    await expect(saveButton).toBeEnabled({ timeout: 30_000 });
     await saveButton.click();
 
     // 等待保存完成（对话框关闭）
-    await expect(dialog).not.toBeVisible({ timeout: 5000 });
-
-    // 等待一段时间让同步完成
-    await page.waitForTimeout(2000);
+    await expect(dialog).not.toBeVisible({ timeout: 60_000 });
 
     // 验证编辑后列表中不存在重复的目标 memo
     const finalCount = await memoCards.count();
     console.log(`📊 编辑后 memo 数量: ${finalCount}`);
     if (targetId) {
-      await expect(page.locator(`[data-id="${targetId}"]`)).toHaveCount(1);
+      const updatedCard = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
+      await expect(updatedCard).toHaveCount(1);
     }
 
     // 刷新页面验证持久性
-    await page.reload();
-    await page.waitForLoadState("networkidle");
-    await page.waitForSelector(".memos-list", { timeout: 10000 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".memos-list", { timeout: 30_000 });
 
     // 刷新后等待列表回稳
     const memoCardsAfterReload = page.locator('[data-testid="memo-card"][data-id]');
     await test.expect
       .poll(async () => await memoCardsAfterReload.count(), {
-        timeout: 20000,
+        timeout: 30_000,
       })
       .toBeGreaterThan(0);
     const afterReloadCount = await memoCardsAfterReload.count();
@@ -82,7 +85,8 @@ test.describe("Memo 编辑不重复", () => {
     // 校验被编辑的卡片未重复
     expect(afterReloadCount).toBeGreaterThan(0);
     if (targetId) {
-      await expect(page.locator(`[data-id="${targetId}"]`)).toHaveCount(1);
+      const reloadedCard = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
+      await expect(reloadedCard).toHaveCount(1);
     }
   });
 });

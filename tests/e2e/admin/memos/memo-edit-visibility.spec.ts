@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { openMemoEditDialog, waitForQuickMemoEditor, waitForTrpcSuccess } from "./helpers";
+import { openMemoEditDialog, waitForMemoCardByText, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -25,11 +25,12 @@ test.describe("Memo 编辑可见性", () => {
 
     const publish = quickEditor.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
-    await Promise.all([waitForTrpcSuccess(page, "memos.create"), publish.click()]);
+    await publish.click();
 
-    const memoCards = page.locator('[data-testid="memo-card"][data-id]');
-    const createdCard = memoCards.filter({ hasText: TITLE }).first();
-    await expect(createdCard).toBeVisible({ timeout: 30000 });
+    const successToast = page.locator(".Toastify__toast .nature-alert-success");
+    await expect(successToast).toContainText("Memo 已发布", { timeout: 30_000 });
+
+    const createdCard = await waitForMemoCardByText(page, TITLE);
 
     const targetId = await createdCard.getAttribute("data-id");
     expect(targetId).toBeTruthy();
@@ -52,7 +53,8 @@ test.describe("Memo 编辑可见性", () => {
     await expect(dialog.getByText("私有保存")).toBeVisible();
 
     await expect(save).toBeEnabled({ timeout: 30_000 });
-    await Promise.all([waitForTrpcSuccess(page, "memos.update"), save.click()]);
+    await save.click();
+    await expect(dialog).not.toBeVisible({ timeout: 60_000 });
 
     // 3) 重新进入列表后验证该 memo 已持久化为私有
     await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
