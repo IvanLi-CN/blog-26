@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
-import { openMemoEditDialog, waitForMemoCardByText, waitForQuickMemoEditor } from "./memos/helpers";
+import { waitForMemoCardByText, waitForQuickMemoEditor } from "./memos/helpers";
 
 /**
  * Memo 编辑不重复测试
@@ -17,9 +17,9 @@ test.describe("Memo 编辑不重复", () => {
       data: { email: ADMIN_EMAIL },
     });
 
-    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    await page.goto("/memos", { timeout: 60_000, waitUntil: "commit" });
+    await expect(page.locator("body")).toBeVisible();
 
-    // 等待 memo 列表加载
     await page.waitForSelector(".memos-list", { timeout: 30_000 });
     const memoCards = page.locator('[data-testid="memo-card"][data-id]');
 
@@ -41,46 +41,63 @@ test.describe("Memo 编辑不重复", () => {
 
     const publish = quickEditor.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
-    await publish.click();
-
-    const successToast = page.locator(".Toastify__toast .nature-alert-success");
-    await expect(successToast).toContainText("Memo 已发布", { timeout: 30_000 });
+    await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200,
+        { timeout: 30_000 }
+      ),
+      publish.click(),
+    ]);
 
     const createdCard = await waitForMemoCardByText(page, title);
     const targetId = await createdCard.getAttribute("data-id");
     expect(targetId).toBeTruthy();
 
-    const editButton = createdCard.getByRole("button", { name: /^编辑 Memo/ });
-    const dialog = await openMemoEditDialog(page, editButton);
+    const countAfterCreate = await memoCards.count();
+    console.log(`📊 创建后 memo 数量: ${countAfterCreate}`);
 
-    // 修改内容
+    const editButton = createdCard.getByRole("button", { name: /^编辑 Memo/ });
+    await createdCard.hover();
+    await editButton.waitFor({ state: "visible" });
+    await editButton.scrollIntoViewIfNeeded();
+    await expect(editButton).toBeEnabled();
+    await editButton.click();
+
+    const modalHeader = page.getByTestId("quick-memo-edit-header");
+    await expect(modalHeader).toBeVisible({ timeout: 60_000 });
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible({ timeout: 60_000 });
+
     const editor = dialog.locator('[contenteditable="true"]').first();
     await editor.click();
     await page.keyboard.press("Control+a");
-    const newContent = `更新内容 ${Date.now()}`;
-    await page.keyboard.insertText(newContent);
+    const newContent = `# 测试编辑 - ${Date.now()}`;
+    await page.keyboard.type(newContent);
 
-    // 保存编辑
-    const saveButton = dialog.getByRole("button", { name: "保存更改" });
-    await expect(saveButton).toBeEnabled({ timeout: 30_000 });
-    await saveButton.click();
+    const saveButton = dialog.getByRole("button", { name: /保存更改|保存|save/i });
+    await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes("/api/trpc/memos.update") && res.status() === 200,
+        { timeout: 30_000 }
+      ),
+      saveButton.click(),
+    ]);
 
-    // 等待保存完成（对话框卸载）
-    await expect(dialog).toHaveCount(0, { timeout: 60_000 });
+    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+    await page.waitForTimeout(2000);
 
-    // 验证编辑后列表中不存在重复的目标 memo
     const finalCount = await memoCards.count();
     console.log(`📊 编辑后 memo 数量: ${finalCount}`);
+    expect(finalCount).toBe(countAfterCreate);
     if (targetId) {
       const updatedCard = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
       await expect(updatedCard).toHaveCount(1);
     }
 
-    // 刷新页面验证持久性
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".memos-list", { timeout: 30_000 });
+    await page.reload({ timeout: 60_000, waitUntil: "commit" });
+    await expect(page.locator("body")).toBeVisible();
+    await page.waitForSelector(".memos-list", { timeout: 10_000 });
 
-    // 刷新后等待列表回稳
     const memoCardsAfterReload = page.locator('[data-testid="memo-card"][data-id]');
     await test.expect
       .poll(async () => await memoCardsAfterReload.count(), {
@@ -89,8 +106,7 @@ test.describe("Memo 编辑不重复", () => {
       .toBeGreaterThan(0);
     const afterReloadCount = await memoCardsAfterReload.count();
     console.log(`📊 刷新后 memo 数量: ${afterReloadCount}`);
-    // 校验被编辑的卡片未重复
-    expect(afterReloadCount).toBeGreaterThan(0);
+    expect(afterReloadCount).toBe(countAfterCreate);
     if (targetId) {
       const reloadedCard = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
       await expect(reloadedCard).toHaveCount(1);

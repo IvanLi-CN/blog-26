@@ -220,13 +220,19 @@ export function MemoCard({
                 name="tabler:clock"
                 className="h-4 w-4 flex-shrink-0 text-[color:var(--nature-accent-strong)]"
               />
-              <time title={fullPublishDate} dateTime={publishDateTimeAttr} className="truncate">
+              <time
+                title={fullPublishDate}
+                dateTime={publishDateTimeAttr}
+                className="truncate"
+                suppressHydrationWarning
+              >
                 {formattedPublishDate}
               </time>
               {showAdminView && hasMeaningfulUpdate && formattedUpdatedDate && (
                 <span
                   className="whitespace-nowrap italic text-[color:var(--nature-text-faint)]"
                   title={fullUpdatedDate ?? undefined}
+                  suppressHydrationWarning
                 >
                   (编辑于 {formattedUpdatedDate})
                 </span>

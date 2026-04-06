@@ -291,12 +291,20 @@ function buildMemoMarkdownDocument(content: string, frontmatter: Record<string, 
   return `---\n${frontmatterYaml}\n---\n\n${content}`;
 }
 
+export function normalizeEscapedMilkdownMarkdown(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => line.replace(/^(\s*)\\(?=(?:#{1,6}|[-*+]|\d+\.|>)\s+)/, "$1"))
+    .join("\n");
+}
+
 function normalizePersistedMemoInput(opts: {
   content: string;
   attachments: Array<{ path: string; [k: string]: any }>;
   markdownFilePath: string;
 }): { content: string; attachments: Array<{ path: string; [k: string]: any }> } {
-  const rewritten = rewriteApiFilesUrlsToRelative(opts.content, opts.markdownFilePath).content;
+  const normalizedContent = normalizeEscapedMilkdownMarkdown(opts.content);
+  const rewritten = rewriteApiFilesUrlsToRelative(normalizedContent, opts.markdownFilePath).content;
   const normalizedAttachments = normalizeAttachmentsToPersistedSemantics(
     opts.attachments,
     opts.markdownFilePath
@@ -1197,11 +1205,12 @@ export const memosRouter = router({
 // ============================================================================
 
 export function extractTitleFromContent(content: string): string {
-  const h1Match = content.match(/^#\s+(.+)$/m);
+  const normalizedContent = normalizeEscapedMilkdownMarkdown(content);
+  const h1Match = normalizedContent.match(/^#\s+(.+)$/m);
   if (h1Match) return h1Match[1].trim();
 
   // Fallback: first non-empty line's text as-is (no concatenation)
-  const lines = content.split("\n");
+  const lines = normalizedContent.split("\n");
   for (const raw of lines) {
     const line = raw.trim();
     if (line.length > 0) {
@@ -1213,7 +1222,7 @@ export function extractTitleFromContent(content: string): string {
 }
 
 export function generateExcerptFromContent(content: string): string {
-  const plainText = content
+  const plainText = normalizeEscapedMilkdownMarkdown(content)
     .replace(/^#+\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")

@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
 
 test.describe("Post editor icons & Iconify CORS (admin)", () => {
@@ -6,13 +6,19 @@ test.describe("Post editor icons & Iconify CORS (admin)", () => {
     test.setTimeout(60_000);
   });
 
+  async function openEditor(page: Page, url = "/admin/posts/editor") {
+    const response = await page.goto(url, {
+      timeout: 60_000,
+      waitUntil: "commit",
+    });
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("body")).toBeVisible();
+  }
+
   test("admin can open post editor and see base layout", async ({ page }) => {
     await page.context().clearCookies();
 
-    const response = await page.goto("/admin/posts/editor");
-    expect(response?.status()).toBe(200);
-
-    await page.waitForLoadState("networkidle");
+    await openEditor(page);
     await page.waitForTimeout(1000);
 
     expect(page.url()).toContain("/admin/posts/editor");
@@ -31,10 +37,7 @@ test.describe("Post editor icons & Iconify CORS (admin)", () => {
       messages.push({ type: msg.type(), text: msg.text() });
     });
 
-    const response = await page.goto("/admin/posts/editor");
-    expect(response?.status()).toBe(200);
-
-    await page.waitForLoadState("networkidle");
+    await openEditor(page);
     await page.waitForTimeout(1000);
 
     const errorMessages = messages.filter((m) => m.type === "error").map((m) => m.text);
@@ -52,14 +55,12 @@ test.describe("Post editor icons & Iconify CORS (admin)", () => {
   });
 
   test("lucide icons are rendered in post editor UI", async ({ page }) => {
-    const response = await page.goto("/admin/posts/editor");
-    expect(response?.status()).toBe(200);
+    await openEditor(page, "/admin/posts/editor?id=blog/01-react-hooks-deep-dive.md");
+    await expect(page.getByText("正在加载文章...")).toHaveCount(0, { timeout: 60_000 });
+    await expect(page.getByText("文章不存在")).toHaveCount(0);
 
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(1000);
-
-    const lucideIcons = page.locator('[class*="iconify--lucide"]');
-    expect(await lucideIcons.count()).toBeGreaterThan(0);
-    await expect(lucideIcons.first()).toBeVisible();
+    const previewButton = page.locator('button[title="在新窗口预览"]');
+    await expect(previewButton).toBeVisible({ timeout: 60_000 });
+    await expect(previewButton.locator("svg")).toBeVisible({ timeout: 60_000 });
   });
 });

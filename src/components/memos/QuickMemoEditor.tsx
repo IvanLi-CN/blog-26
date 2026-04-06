@@ -65,10 +65,17 @@ export function QuickMemoEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const helpId = useId();
   const [hasEditorContent, setHasEditorContent] = useState(false);
+  const [shortcutKey, setShortcutKey] = useState<"Ctrl" | "⌘">("Ctrl");
 
-  const isMac =
-    typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-  const shortcutKey = isMac ? "⌘" : "Ctrl";
+  useEffect(() => {
+    if (typeof navigator === "undefined") {
+      return;
+    }
+
+    if (navigator.platform.toUpperCase().includes("MAC")) {
+      setShortcutKey("⌘");
+    }
+  }, []);
 
   // 重置编辑器高度的函数
   const resetEditorHeight = useCallback(() => {

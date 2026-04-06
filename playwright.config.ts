@@ -162,7 +162,7 @@ export default defineConfig({
     : [
         // 1) dufs WebDAV 服务器
         {
-          command: `dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
+          command: `mkdir -p test-data/webdav && dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
           url: WEBDAV_URL_NON_FS_ONLY,
           // Only reuse when caller explicitly provides a running endpoint to avoid CI flakiness
           reuseExistingServer: REUSE_EXISTING_WEBDAV,

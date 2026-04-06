@@ -181,23 +181,23 @@ function WebDAVSubDirectory({
                 )}
               </span>
               <span className="truncate flex-1">{subFile.name}</span>
-              {subFile.type === "directory" && onCreateFile && (
-                <DirectoryActions
-                  directoryPath={subFile.path}
-                  source={source}
-                  onCreateFile={onCreateFile}
-                  onRename={onRename}
-                />
-              )}
-              {subFile.type === "file" && onRename && (
-                <FileActions filePath={subFile.path} source={source} onRename={onRename} />
-              )}
               {subFile.type === "file" && subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                   {Math.round(subFile.size / 1024)}KB
                 </span>
               ) : null}
             </button>
+            {subFile.type === "directory" && onCreateFile && (
+              <DirectoryActions
+                directoryPath={subFile.path}
+                source={source}
+                onCreateFile={onCreateFile}
+                onRename={onRename}
+              />
+            )}
+            {subFile.type === "file" && onRename && (
+              <FileActions filePath={subFile.path} source={source} onRename={onRename} />
+            )}
           </div>
           {/* 递归渲染子目录 */}
           <WebDAVSubDirectory
@@ -285,23 +285,23 @@ function LocalSubDirectory({
                 )}
               </span>
               <span className="truncate flex-1">{subFile.name}</span>
-              {subFile.type === "directory" && onCreateFile && (
-                <DirectoryActions
-                  directoryPath={`${file.path}/${subFile.path}`}
-                  source={source}
-                  onCreateFile={onCreateFile}
-                  onRename={onRename}
-                />
-              )}
-              {subFile.type === "file" && onRename && (
-                <FileActions filePath={subFile.path} source={source} onRename={onRename} />
-              )}
               {subFile.type === "file" && subFile.size ? (
                 <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                   {Math.round(subFile.size / 1024)}KB
                 </span>
               ) : null}
             </button>
+            {subFile.type === "directory" && onCreateFile && (
+              <DirectoryActions
+                directoryPath={`${file.path}/${subFile.path}`}
+                source={source}
+                onCreateFile={onCreateFile}
+                onRename={onRename}
+              />
+            )}
+            {subFile.type === "file" && onRename && (
+              <FileActions filePath={subFile.path} source={source} onRename={onRename} />
+            )}
           </div>
           {/* 递归渲染子目录 */}
           <LocalSubDirectory
@@ -354,7 +354,7 @@ const DirectoryActions = ({
   onCreateFile: (directoryPath: string, source: string) => void;
   onRename?: (path: string, source: string, type: "directory") => void;
 }) => (
-  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
+  <div className="ml-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
     <button
       type="button"
       onClick={(e) => {
@@ -392,7 +392,7 @@ const FileActions = ({
   source: string;
   onRename?: (path: string, source: string, type: "file") => void;
 }) => (
-  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
+  <div className="ml-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
     {onRename && (
       <button
         type="button"
@@ -678,18 +678,18 @@ export function DirectoryTree({
                   <span className="mr-2">{sourceIcon}</span>
                   <FolderIcon isOpen={isExpanded} />
                   <span className="font-medium">{source.name}</span>
-                  {source.enabled && (
-                    <DirectoryActions
-                      directoryPath=""
-                      source={source.name}
-                      onCreateFile={handleCreateFile}
-                      onRename={handleRename}
-                    />
-                  )}
                   <span className="ml-auto text-xs text-base-content/60 text-right min-w-[4rem] mr-1">
                     {source.enabled ? source.type.toUpperCase() : "禁用"}
                   </span>
                 </button>
+                {source.enabled && (
+                  <DirectoryActions
+                    directoryPath=""
+                    source={source.name}
+                    onCreateFile={handleCreateFile}
+                    onRename={handleRename}
+                  />
+                )}
               </div>
 
               {/* 数据源内容 */}
@@ -730,27 +730,27 @@ export function DirectoryTree({
                               )}
                             </span>
                             <span className="truncate flex-1">{file.name}</span>
-                            {file.type === "directory" && (
-                              <DirectoryActions
-                                directoryPath={file.path}
-                                source="webdav"
-                                onCreateFile={handleCreateFile}
-                                onRename={handleRename}
-                              />
-                            )}
-                            {file.type === "file" && (
-                              <FileActions
-                                filePath={file.path}
-                                source="webdav"
-                                onRename={handleRename}
-                              />
-                            )}
                             {file.type === "file" && file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                                 {Math.round(file.size / 1024)}KB
                               </span>
                             ) : null}
                           </button>
+                          {file.type === "directory" && (
+                            <DirectoryActions
+                              directoryPath={file.path}
+                              source="webdav"
+                              onCreateFile={handleCreateFile}
+                              onRename={handleRename}
+                            />
+                          )}
+                          {file.type === "file" && (
+                            <FileActions
+                              filePath={file.path}
+                              source="webdav"
+                              onRename={handleRename}
+                            />
+                          )}
                         </div>
                         <WebDAVSubDirectory
                           file={file}
@@ -795,27 +795,27 @@ export function DirectoryTree({
                               )}
                             </span>
                             <span className="truncate flex-1">{file.name}</span>
-                            {file.type === "directory" && (
-                              <DirectoryActions
-                                directoryPath={file.path}
-                                source="local"
-                                onCreateFile={handleCreateFile}
-                                onRename={handleRename}
-                              />
-                            )}
-                            {file.type === "file" && (
-                              <FileActions
-                                filePath={file.path}
-                                source="local"
-                                onRename={handleRename}
-                              />
-                            )}
                             {file.type === "file" && file.size ? (
                               <span className="ml-auto text-xs text-base-content/40 flex-shrink-0 text-right min-w-[3rem] mr-1">
                                 {Math.round(file.size / 1024)}KB
                               </span>
                             ) : null}
                           </button>
+                          {file.type === "directory" && (
+                            <DirectoryActions
+                              directoryPath={file.path}
+                              source="local"
+                              onCreateFile={handleCreateFile}
+                              onRename={handleRename}
+                            />
+                          )}
+                          {file.type === "file" && (
+                            <FileActions
+                              filePath={file.path}
+                              source="local"
+                              onRename={handleRename}
+                            />
+                          )}
                         </div>
                         <LocalSubDirectory
                           file={file}
