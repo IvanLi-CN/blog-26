@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
+import { waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -11,15 +12,13 @@ test.describe("Quick publish renders heading + list and persists multiline body"
       data: { email: ADMIN_EMAIL },
     });
 
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".memos-list", { timeout: 15000 });
     await page.waitForTimeout(300);
 
     // Scope to quick editor region for stable queries
-    const container = page.getByRole("region", { name: "快速发布区域" });
-    await container.waitFor({ state: "visible" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
     const TITLE = `测试标题 ${Date.now()}`;
-    const editor = container.locator(".ProseMirror");
     await editor.click();
     // Use insertText to avoid IME/formatting quirks and ensure exact markdown
     // 按行输入以确保换行由编辑器正确处理
@@ -52,8 +51,8 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     await expect(memoCard).toBeVisible({ timeout: 30000 });
 
     // 2) 刷新后仍应置顶
-    await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".memos-list", { timeout: 15000 });
     const memoCardAfterReload = page
       .locator('[data-testid="memo-card"]')
       .filter({ hasText: TITLE })
@@ -66,13 +65,12 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     await expect(detailLink).toBeVisible();
     const href = await detailLink.getAttribute("href");
     if (href) {
-      await page.goto(href);
+      await page.goto(href, { waitUntil: "domcontentloaded" });
     } else {
       await detailLink.click();
       await page.waitForURL(/\/memos\/.+/);
     }
     const article = page.locator(".memo-detail-page .prose").first();
-    await page.waitForLoadState("networkidle");
     await expect(article).toBeVisible({ timeout: 15000 });
     await expect(article).toContainText(TITLE, { timeout: 15000 });
     // 使用更长的轮询等待列表渲染为 2 项，适配 CI 慢环境

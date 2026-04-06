@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
+import { openMemoDeleteDialog } from "./helpers";
 
 /**
  * Memos 删除确认（管理员）
@@ -29,7 +30,7 @@ test.describe("Memos 删除确认 (admin)", () => {
       if (disabled) break;
       // CI 下偶发：加载中的占位/遮罩会拦截 pointer events，导致 click 超时；这里强制点击以降低波动。
       await loadMore.click({ force: true, timeout: 15_000 });
-      await page.waitForLoadState("networkidle");
+      await page.waitForSelector(".memos-list", { timeout: 15000 });
       await page.waitForTimeout(200);
     }
     return (await locator.count()) > 0;
@@ -77,9 +78,7 @@ test.describe("Memos 删除确认 (admin)", () => {
   });
 
   test("列表页弹出 daisyUI 确认框并成功删除", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
-
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
     // 等待列表渲染稳定
     await page.waitForSelector(".memos-list", { timeout: 15000 });
     await page.waitForTimeout(300);
@@ -113,10 +112,7 @@ test.describe("Memos 删除确认 (admin)", () => {
     const memoTitle = a11yName?.replace(/^删除 Memo:\s*/, "")?.trim() || undefined;
 
     // 点击删除，应该出现 daisyUI 模态对话框
-    await targetCardDeleteBtn.click();
-
-    const modal = page.locator(".modal.modal-open .modal-box");
-    await expect(modal).toBeVisible();
+    const modal = await openMemoDeleteDialog(page, targetCardDeleteBtn);
     await expect(modal.getByRole("heading", { name: "确认删除" })).toBeVisible();
     await expect(modal.getByText("此操作不可撤销")).toBeVisible();
     if (memoTitle) {
@@ -139,15 +135,14 @@ test.describe("Memos 删除确认 (admin)", () => {
     }
 
     // 成功提示出现（react-toastify + daisyUI 样式）
-    const successToast = page.locator(".Toastify__toast .alert.alert-success");
+    const successToast = page.locator(".Toastify__toast .nature-alert-success");
     await expect(successToast).toBeVisible();
 
     // 注意：页面其他操作可能触发非相关的错误提示，此处不做全局错误断言以避免干扰
   });
 
   test("删除失败时显示错误提示", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".memos-list", { timeout: 15000 });
 
     // 拦截删除接口并返回 500
@@ -171,9 +166,7 @@ test.describe("Memos 删除确认 (admin)", () => {
     const beforeSlug = await localCard.getAttribute("data-slug").catch(() => null);
     const deleteBtn = localCard.getByRole("button", { name: /^删除 Memo/ }).first();
     await expect(deleteBtn).toBeVisible();
-    await deleteBtn.click();
-
-    const modal = page.locator(".modal.modal-open .modal-box");
+    const modal = await openMemoDeleteDialog(page, deleteBtn);
     await expect(modal.getByRole("heading", { name: "确认删除" })).toBeVisible();
 
     const confirmBtn = modal.getByRole("button", { name: "确认删除" });
@@ -184,7 +177,7 @@ test.describe("Memos 删除确认 (admin)", () => {
     await expect(modal.getByText(/删除失败/)).toBeVisible();
 
     // 不应出现全局错误 toast（对话框内已显示错误信息）
-    const failToast = page.locator(".Toastify__toast .alert.alert-error");
+    const failToast = page.locator(".Toastify__toast .nature-alert-error");
     await expect(failToast).toHaveCount(0);
 
     // 目标卡片仍应存在（没有被移除）

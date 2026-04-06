@@ -12,11 +12,13 @@ import { SITE, UI } from "../config/site";
 const bodyFont = Noto_Sans_SC({
   variable: "--font-body",
   weight: ["400", "500", "700"],
+  preload: false,
 });
 
 const displayFont = Noto_Serif_SC({
   variable: "--font-display",
   weight: ["400", "500", "700"],
+  preload: false,
 });
 
 // 强制动态渲染
@@ -115,13 +117,6 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="manifest" href="/site.webmanifest" />
 
-        {/* DNS Prefetch */}
-        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="//www.google-analytics.com" />
-
-        {/* Preconnect */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

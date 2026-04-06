@@ -10,13 +10,12 @@ test.describe("Memo 编辑可见性", () => {
       data: { email: ADMIN_EMAIL },
     });
 
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".memos-list", { timeout: 10000 });
 
     // 1) 先发布一条公开 memo，作为稳定的编辑目标
     const quickEditor = page.getByRole("region", { name: "快速发布区域" });
-    await quickEditor.waitFor({ state: "visible" });
+    await quickEditor.waitFor({ state: "visible", timeout: 30000 });
     const TITLE = `可见性测试 ${Date.now()}`;
     const editor = quickEditor.locator(".ProseMirror");
     await editor.click();
@@ -73,8 +72,7 @@ test.describe("Memo 编辑可见性", () => {
     await expect(updatedCard.locator('[data-testid="public-indicator"]')).toHaveCount(0);
 
     // 4) 刷新后仍应保持私有
-    await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForSelector(".memos-list", { timeout: 10000 });
     const updatedCardAfterReload = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
     await expect(updatedCardAfterReload).toBeVisible({ timeout: 30000 });

@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
+import { waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -17,12 +18,8 @@ test.describe("Quick memo publish feedback (admin)", () => {
       await dialog.dismiss();
     });
 
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
-
-    const container = page.getByRole("region", { name: "快速发布区域" });
-    await container.waitFor({ state: "visible" });
-    const editor = container.locator(".ProseMirror");
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
     await editor.click();
 
     const marker = `E2E 快速发布成功 ${Date.now()}`;
@@ -42,7 +39,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
     ]);
     expect(createResp.status()).toBe(200);
 
-    const toast = page.locator(".Toastify__toast .alert-success");
+    const toast = page.locator(".Toastify__toast .nature-alert-success");
     await expect(toast).toContainText("Memo 已发布", { timeout: 10000 });
 
     await expect
@@ -59,13 +56,8 @@ test.describe("Quick memo publish feedback (admin)", () => {
   });
 
   test("core creation failure shows error toast and no new memo", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
-
-    const container = page.getByRole("region", { name: "快速发布区域" });
-    await container.waitFor({ state: "visible" });
-
-    const editor = container.locator(".ProseMirror");
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
     const marker = `E2E 强制失败 ${Date.now()} [[force-fail]]`;
     await editor.click();
     await page.keyboard.insertText(marker);
@@ -84,7 +76,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
     ]);
     expect(createResp.status()).toBeGreaterThanOrEqual(500);
 
-    const errorToast = page.locator(".Toastify__toast .alert-error");
+    const errorToast = page.locator(".Toastify__toast .nature-alert-error");
     await expect(errorToast).toContainText("发布 Memo 失败", { timeout: 10000 });
 
     await expect
@@ -99,12 +91,8 @@ test.describe("Quick memo publish feedback (admin)", () => {
   });
 
   test("degraded response still treated as success", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
-
-    const container = page.getByRole("region", { name: "快速发布区域" });
-    await container.waitFor({ state: "visible" });
-    const editor = container.locator(".ProseMirror");
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
 
     const marker = `E2E 降级返回 ${Date.now()} [[force-degrade]]`;
     await editor.click();
@@ -124,7 +112,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
     ]);
     expect(createResp.status()).toBe(200);
 
-    const toast = page.locator(".Toastify__toast .alert-success");
+    const toast = page.locator(".Toastify__toast .nature-alert-success");
     await expect(toast).toContainText("Memo 已发布", { timeout: 10000 });
 
     const memoCard = page.locator('[data-testid="memo-card"]').filter({ hasText: "E2E 降级返回" });

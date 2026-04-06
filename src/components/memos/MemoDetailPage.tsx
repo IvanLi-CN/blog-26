@@ -240,7 +240,7 @@ export function MemoDetailPage({
   const anomalies = detectContentAnomalies(memo.content || "");
 
   return (
-    <article className={cn("space-y-8", className)}>
+    <article className={cn("memo-detail-page space-y-8", className)}>
       <section className="nature-surface px-5 py-6 sm:px-7 sm:py-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button
@@ -340,7 +340,7 @@ export function MemoDetailPage({
           articlePath={memo.filePath}
           contentSource={memo.source === "local" ? "local" : "webdav"}
           removeTags={false}
-          className="nature-prose max-w-none"
+          className="nature-prose prose max-w-none"
         />
 
         <div className="nature-divider my-6" />

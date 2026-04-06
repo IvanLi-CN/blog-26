@@ -356,14 +356,22 @@ export function MemoCard({
       </div>
 
       {showDeleteConfirm && (
-        <div className="nature-modal modal modal-open z-50" role="dialog" aria-modal="true">
+        <div
+          className="nature-modal z-50"
+          role="dialog"
+          aria-modal="true"
+          data-testid="memo-delete-dialog"
+        >
           <button
             type="button"
             className="nature-modal-backdrop"
             aria-label="关闭删除确认"
             onClick={() => setShowDeleteConfirm(false)}
           />
-          <div className="nature-modal-panel modal-box w-full max-w-md">
+          <div
+            className="nature-modal-panel w-full max-w-md"
+            data-testid="memo-delete-dialog-panel"
+          >
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,var(--nature-danger)_14%,transparent)] text-[color:var(--nature-danger)]">
                 <Icon name="tabler:alert-triangle" className="h-6 w-6" />

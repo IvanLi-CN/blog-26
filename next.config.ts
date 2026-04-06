@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // Configure `pageExtensions` to include markdown and MDX files
   pageExtensions: ["js", "jsx", "ts", "tsx"],
 
+  // Keep dev/test runs free of overlay-driven requests that can delay Playwright navigations.
+  devIndicators: false,
+
   // Configure images for external domains
   images: {
     remotePatterns: [
