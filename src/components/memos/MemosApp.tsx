@@ -227,19 +227,21 @@ export function MemosApp({
 
   const handleQuickEditSave = useCallback(
     async ({ content, isPublic }: QuickMemoEditValues) => {
-      if (!existingMemo) {
+      const memoForQuickEdit = existingMemo ?? editingMemo;
+
+      if (!memoForQuickEdit) {
         console.warn("尝试在未加载完成时保存闪念，已忽略");
         return;
       }
 
       await saveMemo({
         content,
-        title: existingMemo.title,
+        title: memoForQuickEdit.title,
         isPublic,
-        tags: existingMemo.tags ?? [],
+        tags: memoForQuickEdit.tags ?? [],
       });
     },
-    [existingMemo, saveMemo]
+    [editingMemo, existingMemo, saveMemo]
   );
 
   const quickEditTitle =
@@ -249,7 +251,7 @@ export function MemosApp({
   const quickEditArticlePath = existingMemo?.filePath ?? editingMemo?.filePath ?? editingMemo?.slug;
   const quickEditSource = existingMemo?.source ?? editingMemo?.source;
   const quickEditContentSource = quickEditSource === "local" ? "local" : "webdav";
-  const quickEditPending = Boolean(editingMemo && (isLoadingMemo || !existingMemo));
+  const quickEditPending = Boolean(editingMemo && isLoadingMemo && !quickEditContent);
   const quickEditErrorMessage =
     saveError instanceof Error ? saveError.message : saveError ? String(saveError) : undefined;
 
