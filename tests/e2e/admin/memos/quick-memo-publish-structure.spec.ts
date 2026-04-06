@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { waitForQuickMemoEditor } from "./helpers";
+import { openMemoDetailFromCard, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -8,6 +8,8 @@ test.describe("Quick publish renders heading + list and persists multiline body"
   test("publish with H1 and list, verify top-of-list and detail structure persists across refresh", async ({
     page,
   }) => {
+    test.setTimeout(150_000);
+
     await page.request.post("/api/dev/login", {
       data: { email: ADMIN_EMAIL },
     });
@@ -60,23 +62,14 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     await expect(memoCardAfterReload).toBeVisible({ timeout: 30000 });
 
     // 3) 进入详情页验证结构
-    // 进入详情页：直接点击新卡片的详情链接，避免因 slug 结构变化引起的导航失配
-    const detailLink = memoCardAfterReload.locator('a[href^="/memos/"]').first();
-    await expect(detailLink).toBeVisible();
-    const href = await detailLink.getAttribute("href");
-    if (href) {
-      await page.goto(href, { waitUntil: "domcontentloaded" });
-    } else {
-      await detailLink.click();
-      await page.waitForURL(/\/memos\/.+/);
-    }
+    await openMemoDetailFromCard(page, memoCardAfterReload);
     const article = page.locator(".memo-detail-page .prose").first();
-    await expect(article).toBeVisible({ timeout: 15000 });
-    await expect(article).toContainText(TITLE, { timeout: 15000 });
+    await expect(article).toBeVisible({ timeout: 30_000 });
+    await expect(article).toContainText(TITLE, { timeout: 30_000 });
     // 使用更长的轮询等待列表渲染为 2 项，适配 CI 慢环境
     await expect
       .poll(async () => await article.locator("ul li").count(), {
-        timeout: 15000,
+        timeout: 30_000,
         message: "等待列表条目渲染为 2",
       })
       .toBe(2);

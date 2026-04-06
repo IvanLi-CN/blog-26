@@ -49,3 +49,21 @@ export async function openMemoDeleteDialog(page: Page, trigger: Locator) {
 
   return modal;
 }
+
+export async function openMemoDetailFromCard(page: Page, card: Locator) {
+  const detailLink = card.locator('a[href^="/memos/"]').first();
+  await expect(detailLink).toBeVisible({ timeout: 60_000 });
+
+  const href = await detailLink.getAttribute("href");
+  if (href) {
+    await page.goto(href, {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
+  } else {
+    await Promise.all([page.waitForURL(/\/memos\/.+/, { timeout: 60_000 }), detailLink.click()]);
+    await page.waitForLoadState("domcontentloaded", { timeout: 60_000 }).catch(() => {
+      // The route may already be hydrated and settled before Playwright starts waiting.
+    });
+  }
+}

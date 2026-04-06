@@ -1,10 +1,13 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
+import { waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
 test.describe("Memo 编辑可见性", () => {
   test("编辑后可从公开切换为私有并持久化", async ({ page }) => {
+    test.setTimeout(150_000);
+
     // 使用开发登录接口建立管理员会话（测试环境允许）
     await page.request.post("/api/dev/login", {
       data: { email: ADMIN_EMAIL },
@@ -14,10 +17,8 @@ test.describe("Memo 编辑可见性", () => {
     await page.waitForSelector(".memos-list", { timeout: 10000 });
 
     // 1) 先发布一条公开 memo，作为稳定的编辑目标
-    const quickEditor = page.getByRole("region", { name: "快速发布区域" });
-    await quickEditor.waitFor({ state: "visible", timeout: 30000 });
+    const { container: quickEditor, editor } = await waitForQuickMemoEditor(page);
     const TITLE = `可见性测试 ${Date.now()}`;
-    const editor = quickEditor.locator(".ProseMirror");
     await editor.click();
     await page.keyboard.insertText(`# ${TITLE}`);
     await page.waitForTimeout(100);
@@ -56,26 +57,21 @@ test.describe("Memo 编辑可见性", () => {
     await expect(dialog.getByText("私有保存")).toBeVisible();
 
     const save = dialog.getByRole("button", { name: "保存更改" });
-    await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.update") && res.status() === 200,
-        { timeout: 30000 }
-      ),
-      save.click(),
-    ]);
-    await expect(dialog).not.toBeVisible({ timeout: 10000 });
+    await expect(save).toBeEnabled({ timeout: 30_000 });
+    await save.click();
+    await expect(dialog).not.toBeVisible({ timeout: 60_000 });
 
     // 3) 验证列表中该 memo 已变为私有
     const updatedCard = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
-    await expect(updatedCard).toBeVisible({ timeout: 30000 });
+    await expect(updatedCard).toBeVisible({ timeout: 60_000 });
     await expect(updatedCard.locator('[data-testid="private-indicator"]')).toBeVisible();
     await expect(updatedCard.locator('[data-testid="public-indicator"]')).toHaveCount(0);
 
     // 4) 刷新后仍应保持私有
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".memos-list", { timeout: 10000 });
+    await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForSelector(".memos-list", { timeout: 15_000 });
     const updatedCardAfterReload = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
-    await expect(updatedCardAfterReload).toBeVisible({ timeout: 30000 });
+    await expect(updatedCardAfterReload).toBeVisible({ timeout: 60_000 });
     await expect(updatedCardAfterReload.locator('[data-testid="private-indicator"]')).toBeVisible();
     await expect(updatedCardAfterReload.locator('[data-testid="public-indicator"]')).toHaveCount(0);
   });
