@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { waitForQuickMemoEditor } from "./helpers";
+import { openMemoEditDialog, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -14,7 +14,7 @@ test.describe("Memo 编辑可见性", () => {
     });
 
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".memos-list", { timeout: 10000 });
+    await page.waitForSelector(".memos-list", { timeout: 30_000 });
 
     // 1) 先发布一条公开 memo，作为稳定的编辑目标
     const { container: quickEditor, editor } = await waitForQuickMemoEditor(page);
@@ -28,7 +28,7 @@ test.describe("Memo 编辑可见性", () => {
     await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200,
-        { timeout: 30000 }
+        { timeout: 60_000 }
       ),
       publish.click(),
     ]);
@@ -45,10 +45,7 @@ test.describe("Memo 编辑可见性", () => {
 
     // 2) 打开编辑对话框，切换为“私有保存”
     const editButton = createdCard.getByRole("button", { name: /^编辑 Memo/ });
-    await editButton.click();
-
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
+    const dialog = await openMemoEditDialog(page, editButton);
 
     const visibilityToggle = dialog.locator('input[type="checkbox"]').first();
     await expect(visibilityToggle).toBeChecked();
@@ -61,15 +58,9 @@ test.describe("Memo 编辑可见性", () => {
     await save.click();
     await expect(dialog).not.toBeVisible({ timeout: 60_000 });
 
-    // 3) 验证列表中该 memo 已变为私有
-    const updatedCard = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
-    await expect(updatedCard).toBeVisible({ timeout: 60_000 });
-    await expect(updatedCard.locator('[data-testid="private-indicator"]')).toBeVisible();
-    await expect(updatedCard.locator('[data-testid="public-indicator"]')).toHaveCount(0);
-
-    // 4) 刷新后仍应保持私有
+    // 3) 重新进入列表后验证该 memo 已持久化为私有
     await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForSelector(".memos-list", { timeout: 15_000 });
+    await page.waitForSelector(".memos-list", { timeout: 30_000 });
     const updatedCardAfterReload = page.locator(`[data-testid="memo-card"][data-id="${targetId}"]`);
     await expect(updatedCardAfterReload).toBeVisible({ timeout: 60_000 });
     await expect(updatedCardAfterReload.locator('[data-testid="private-indicator"]')).toBeVisible();

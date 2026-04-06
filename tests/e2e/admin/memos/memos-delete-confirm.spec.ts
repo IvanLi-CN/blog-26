@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { openMemoDeleteDialog } from "./helpers";
+import { openMemoDeleteDialog, triggerDevSync } from "./helpers";
 
 /**
  * Memos 删除确认（管理员）
@@ -73,8 +73,7 @@ test.describe("Memos 删除确认 (admin)", () => {
     expect(respLocal.ok()).toBeTruthy();
 
     // 触发一次内容同步，保证页面可见
-    const syncResp = await page.request.post("/api/dev/sync");
-    expect(syncResp.ok()).toBeTruthy();
+    await triggerDevSync(page);
   });
 
   test("列表页弹出 daisyUI 确认框并成功删除", async ({ page }) => {

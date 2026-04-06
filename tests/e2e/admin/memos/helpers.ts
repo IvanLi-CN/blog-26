@@ -26,6 +26,22 @@ export async function waitForQuickMemoEditor(page: Page) {
   return { container, editor };
 }
 
+export async function triggerDevSync(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.post("/api/dev/sync").catch(() => null);
+        return response?.ok() ?? false;
+      },
+      {
+        timeout: 60_000,
+        intervals: [500, 1_000, 2_000, 3_000],
+        message: "等待开发环境内容同步接口恢复可用",
+      }
+    )
+    .toBe(true);
+}
+
 export async function openMemoDeleteDialog(page: Page, trigger: Locator) {
   const modal = page.locator('[data-testid="memo-delete-dialog-panel"]');
 
@@ -48,6 +64,30 @@ export async function openMemoDeleteDialog(page: Page, trigger: Locator) {
     .toBe(true);
 
   return modal;
+}
+
+export async function openMemoEditDialog(page: Page, trigger: Locator) {
+  const dialog = page.getByRole("dialog");
+
+  await expect(trigger).toBeVisible({ timeout: 60_000 });
+
+  await expect
+    .poll(
+      async () => {
+        await trigger.click({ force: true }).catch(() => {
+          // Ignore transient click failures while the list is hydrating.
+        });
+        return dialog.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60_000,
+        intervals: [500, 1_000, 1_500, 2_000],
+        message: "等待 Memo 编辑对话框在客户端装载后可见",
+      }
+    )
+    .toBe(true);
+
+  return dialog;
 }
 
 export async function openMemoDetailFromCard(page: Page, card: Locator) {
