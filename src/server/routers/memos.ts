@@ -158,6 +158,10 @@ function resolveMemoTimestamps(memo: MemoRow): {
   };
 }
 
+function normalizeFaultInjectionMarkers(content: string) {
+  return content.replace(/\\(?=[[\]])/g, "");
+}
+
 /**
  * 确保内容源已注册
  */
@@ -723,8 +727,9 @@ export const memosRouter = router({
     const inputTags = Array.isArray(tags) ? tags : [];
 
     const faultInjectionEnabled = process.env.MEMOS_E2E_FAULTS === "1";
-    const forceCoreFail = faultInjectionEnabled && rawContent.includes("[[force-fail]]");
-    const forceDegrade = faultInjectionEnabled && rawContent.includes("[[force-degrade]]");
+    const faultMarkerContent = normalizeFaultInjectionMarkers(rawContent);
+    const forceCoreFail = faultInjectionEnabled && faultMarkerContent.includes("[[force-fail]]");
+    const forceDegrade = faultInjectionEnabled && faultMarkerContent.includes("[[force-degrade]]");
     if (forceCoreFail) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",

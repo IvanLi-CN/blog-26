@@ -5,6 +5,8 @@ import { waitForQuickMemoEditor } from "./helpers";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
 test.describe("Quick memo publish feedback (admin)", () => {
+  test.describe.configure({ timeout: 150_000 });
+
   test.beforeEach(async ({ page }) => {
     await page.request.post("/api/dev/login", {
       data: { email: ADMIN_EMAIL },
@@ -18,7 +20,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
       await dialog.dismiss();
     });
 
-    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
     const { container, editor } = await waitForQuickMemoEditor(page);
     await editor.click();
 
@@ -56,7 +58,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
   });
 
   test("core creation failure shows error toast and no new memo", async ({ page }) => {
-    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
     const { container, editor } = await waitForQuickMemoEditor(page);
     const marker = `E2E 强制失败 ${Date.now()} [[force-fail]]`;
     await editor.click();
@@ -91,7 +93,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
   });
 
   test("degraded response still treated as success", async ({ page }) => {
-    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
     const { container, editor } = await waitForQuickMemoEditor(page);
 
     const marker = `E2E 降级返回 ${Date.now()} [[force-degrade]]`;

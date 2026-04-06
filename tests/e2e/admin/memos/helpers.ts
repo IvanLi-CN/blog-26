@@ -42,6 +42,14 @@ export async function triggerDevSync(page: Page) {
     .toBe(true);
 }
 
+export async function waitForTrpcSuccess(page: Page, procedureName: string, timeout = 60_000) {
+  return page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/trpc/${procedureName}`) && response.status() === 200,
+    { timeout }
+  );
+}
+
 export async function openMemoDeleteDialog(page: Page, trigger: Locator) {
   const modal = page.locator('[data-testid="memo-delete-dialog-panel"]');
 

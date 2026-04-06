@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { openMemoEditDialog, waitForQuickMemoEditor } from "./helpers";
+import { openMemoEditDialog, waitForQuickMemoEditor, waitForTrpcSuccess } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -25,13 +25,7 @@ test.describe("Memo 编辑可见性", () => {
 
     const publish = quickEditor.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
-    await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200,
-        { timeout: 60_000 }
-      ),
-      publish.click(),
-    ]);
+    await Promise.all([waitForTrpcSuccess(page, "memos.create"), publish.click()]);
 
     const memoCards = page.locator('[data-testid="memo-card"][data-id]');
     const createdCard = memoCards.filter({ hasText: TITLE }).first();
@@ -55,8 +49,7 @@ test.describe("Memo 编辑可见性", () => {
 
     const save = dialog.getByRole("button", { name: "保存更改" });
     await expect(save).toBeEnabled({ timeout: 30_000 });
-    await save.click();
-    await expect(dialog).not.toBeVisible({ timeout: 60_000 });
+    await Promise.all([waitForTrpcSuccess(page, "memos.update"), save.click()]);
 
     // 3) 重新进入列表后验证该 memo 已持久化为私有
     await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { processInlineImagesCompat } from "@/lib/image-processing";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -96,6 +97,13 @@ export function QuickMemoEditModal({
           processedContent = await editorRef.current.processInlineImages(processedContent);
         }
 
+        processedContent = await processInlineImagesCompat(
+          processedContent,
+          contentSource,
+          articlePath || memoTitle || "__unknown__.md",
+          "relative"
+        );
+
         await onSave({
           content: processedContent,
           isPublic,
@@ -106,7 +114,7 @@ export function QuickMemoEditModal({
         setIsSubmitting(false);
       }
     },
-    [content, isPublic, onSave, isSaving, isSubmitting]
+    [articlePath, content, contentSource, isPublic, isSaving, isSubmitting, memoTitle, onSave]
   );
 
   const handleKeyDown = useCallback(

@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { processInlineImagesCompat } from "@/lib/image-processing";
 import {
   getMemoAssetsDir,
   getMemoDraftPath,
@@ -130,14 +131,23 @@ export function QuickMemoEditor({
           // removed verbose editor debug logs
         }
 
+        processedContent = await processInlineImagesCompat(
+          processedContent,
+          memoContentSource,
+          getMemoDraftPath(clientMemoRoot),
+          "relative"
+        );
+
         // 兜底：如仍包含 data:image，则在此处直接完成一次内联上传与替换，确保 e2e 可观察到上传请求
         if (processedContent.includes("data:image")) {
-          const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
+          const base64ImageRegex =
+            /!\[([^\]]*)\]\s*\(\s*data:image\/([^;]+);base64,([A-Za-z0-9+/=\r\n]+)\s*\)/g;
           const matches = Array.from(processedContent.matchAll(base64ImageRegex));
           for (const match of matches) {
             const [fullMatch, altText, imageType, base64Data] = match;
             try {
-              const byteCharacters = atob(base64Data);
+              const normalizedBase64 = base64Data.replace(/\s+/g, "");
+              const byteCharacters = atob(normalizedBase64);
               const byteNumbers = new Array(byteCharacters.length);
               for (let i = 0; i < byteCharacters.length; i++)
                 byteNumbers[i] = byteCharacters.charCodeAt(i);

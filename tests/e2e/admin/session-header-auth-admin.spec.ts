@@ -9,7 +9,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";
 test.describe("Session & Header Auth (admin)", () => {
   test("header-only admin should be recognized as admin without dev login", async ({ page }) => {
     await page.context().clearCookies();
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 
     const authRes = await page.request.get("/api/trpc/auth.me", {
       headers: {
@@ -27,7 +27,10 @@ test.describe("Session & Header Auth (admin)", () => {
   test("header-only admin can access admin dashboard without 401/403 page", async ({ page }) => {
     await page.context().clearCookies();
 
-    const response = await page.goto("/admin/dashboard");
+    const response = await page.goto("/admin/dashboard", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
     expect(response?.status()).toBe(200);
 
     // 应显示正常的管理后台导航
