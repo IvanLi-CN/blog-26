@@ -927,9 +927,9 @@ export function ContentSyncManager() {
                               </tr>
                             </thead>
                             <tbody>
-                              {syncLogs.map((log, index) => (
+                              {syncLogs.map((log) => (
                                 <tr
-                                  key={`${log.id}-${log.createdAt}-${index}`}
+                                  key={`${log.id}-${log.createdAt}`}
                                   className={`hover:bg-base-200 transition-colors duration-200 ${
                                     newLogIds.has(log.id) ? "log-entry-animation" : ""
                                   }`}
@@ -1037,9 +1037,9 @@ export function ContentSyncManager() {
                           className="block md:hidden max-h-96 overflow-y-auto space-y-3"
                           onScroll={handleLogScroll}
                         >
-                          {syncLogs.map((log, index) => (
+                          {syncLogs.map((log) => (
                             <div
-                              key={`${log.id}-${log.createdAt}-${index}`}
+                              key={`${log.id}-${log.createdAt}`}
                               className={`card bg-base-100 shadow-sm border border-base-300 hover:shadow-md transition-shadow duration-200 ${
                                 newLogIds.has(log.id) ? "log-entry-animation" : ""
                               }`}

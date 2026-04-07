@@ -43,4 +43,4 @@ const AvatarFallback = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTM
 );
 AvatarFallback.displayName = "AvatarFallback";
 
-export { Avatar, AvatarImage, AvatarFallback };
+export { Avatar, AvatarFallback, AvatarImage };

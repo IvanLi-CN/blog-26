@@ -24,7 +24,7 @@ export function detectContentAnomalies(content: string): ContentAnomalies {
     details: [],
   };
 
-  if (!content || !content.trim()) return result;
+  if (!content?.trim()) return result;
 
   // 匹配 data:image/*;base64,xxxx
   const dataImageRegex = /data:image\/[a-zA-Z.+-]+;base64,[A-Za-z0-9+/=]+/g;

@@ -9,6 +9,7 @@ interface JobRunDetailProps {
 }
 
 type ParsedLogEntry = {
+  key: string;
   ts: string;
   level: string;
   message: string;
@@ -76,7 +77,10 @@ export function JobRunDetail({ runId }: JobRunDetailProps) {
       .map((line) => {
         try {
           const parsed = JSON.parse(line) as ParsedLogEntry;
-          return parsed;
+          return {
+            ...parsed,
+            key: `${parsed.ts}-${parsed.level}-${parsed.message}-${line}`,
+          };
         } catch (_err) {
           const legacyMatch = line.match(/^\[(.+?)\]\s*(.*)$/);
           let ts = new Date().toISOString();
@@ -88,6 +92,7 @@ export function JobRunDetail({ runId }: JobRunDetailProps) {
             message = rest.trim();
           }
           return {
+            key: `${ts}-info-${message}-${line}`,
             ts,
             level: "info",
             message,
@@ -195,11 +200,11 @@ export function JobRunDetail({ runId }: JobRunDetailProps) {
           ) : log?.exists ? (
             logEvents.length > 0 ? (
               <ol className="divide-y divide-base-200 rounded-box border border-base-200 overflow-hidden">
-                {logEvents.map((entry, index) => {
+                {logEvents.map((entry) => {
                   const dotClass = LEVEL_DOT_CLASSES[entry.level] ?? LEVEL_DOT_CLASSES.info;
                   const ts = describeTimestamp(entry.ts);
                   return (
-                    <li key={`${entry.ts}-${index}`} className="flex gap-4 px-5 py-4">
+                    <li key={entry.key} className="flex gap-4 px-5 py-4">
                       <div className="flex flex-col items-start gap-1 w-28">
                         <span
                           className="text-xs font-semibold text-base-content/70"

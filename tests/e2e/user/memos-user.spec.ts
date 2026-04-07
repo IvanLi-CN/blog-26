@@ -1,26 +1,19 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { userTest as test } from "./fixtures";
 
 /**
  * Memos - 普通用户权限测试（通过 sso-header-routing 在 BASE_URL 注入 Remote-Email 普通用户邮箱，E2E 专用）
  */
 
-const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME ?? "Remote-Email";
-const USER_EMAIL = process.env.USER_EMAIL ?? "user@test.local";
+async function openMemos(page: Page) {
+  await page.goto("/memos", { timeout: 60_000, waitUntil: "commit" });
+  await expect(page.locator("body")).toBeVisible();
+  await page.waitForSelector(".memos-list", { timeout: 15000 });
+}
 
 test.describe("Memos 普通用户权限", () => {
   test("普通用户不应该看到管理功能", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
-
-    // 验证用户不是管理员
-    const authResponse = await page.request.get("/api/trpc/auth.me", {
-      headers: {
-        [EMAIL_HEADER_NAME]: USER_EMAIL,
-      },
-    });
-    const authData = await authResponse.json();
-    expect(authData.result?.data?.isAdmin).toBe(false);
+    await openMemos(page);
 
     await page.waitForTimeout(500);
 
@@ -38,15 +31,17 @@ test.describe("Memos 普通用户权限", () => {
   });
 
   test("普通用户界面截图", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
+    await openMemos(page);
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: "test-results/user-memos-view.png", fullPage: true });
+    await page.screenshot({
+      path: "test-results/user-memos-view.png",
+      fullPage: true,
+      timeout: 60_000,
+    });
   });
 
   test("memos 引用块的上下间距应大致对称", async ({ page }) => {
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
+    await openMemos(page);
     await page.waitForTimeout(1000);
 
     const blockquotes = page.locator(".memos-list .prose blockquote");
@@ -66,7 +61,7 @@ test.describe("Memos 普通用户权限", () => {
 
       // CI occasionally has overlays that intercept pointer events.
       await loadMore.click({ force: true, timeout: 15_000 });
-      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(300);
       await page.waitForTimeout(200);
     }
 

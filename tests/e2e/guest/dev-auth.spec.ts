@@ -47,7 +47,6 @@ test.describe("特权认证系统", () => {
 
     test("登录后应该设置认证 Cookie", async ({ page }) => {
       await page.request.post("/api/dev/login", { data: { email: TEST_EMAIL } });
-      await page.goto("/");
       const cookies = await page.context().cookies();
       const sessionCookie = cookies.find((c) => c.name === "session_id");
       expect(sessionCookie).toBeDefined();
@@ -93,7 +92,6 @@ test.describe("特权认证系统", () => {
       await page.request.post("/api/dev/register", {
         data: { nickname: TEST_NICKNAME, email: uniqueEmail },
       });
-      await page.goto("/");
       const cookies = await page.context().cookies();
       const sessionCookie = cookies.find((c) => c.name === "session_id");
       expect(sessionCookie).toBeDefined();

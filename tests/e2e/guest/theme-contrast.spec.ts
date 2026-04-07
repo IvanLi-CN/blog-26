@@ -1,11 +1,23 @@
 import { expect, type Page, test } from "@playwright/test";
-import type { UI } from "../../../src/config/site";
+import { UI } from "../../../src/config/site";
 
 type ThemePreference = (typeof UI.theme.options)[number];
+type ResolvedTheme = Exclude<ThemePreference, "system">;
+
+const THEMES_EXCEPT_SYSTEM = UI.theme.options.filter(
+  (theme): theme is ResolvedTheme => theme !== "system"
+);
+const DARK_THEMES = new Set<ResolvedTheme>(UI.theme.darkResolved);
+
+async function openHome(page: Page) {
+  await page.goto("/", { timeout: 60_000, waitUntil: "commit" });
+  await expect(page.locator("body")).toBeVisible();
+}
 
 async function gotoWithTheme(page: Page, route: string, theme: ThemePreference) {
   await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
-  await page.goto(route, { waitUntil: "domcontentloaded" });
+  await page.goto(route, { timeout: 60_000, waitUntil: "commit" });
+  await expect(page.locator("body")).toBeVisible();
 }
 
 async function readMemoSampleColors(page: Page) {
@@ -31,6 +43,26 @@ async function readMemoSampleColors(page: Page) {
     }))),
   };
 }
+
+test.describe("Theme application", () => {
+  test.describe.configure({ timeout: 180_000 });
+
+  test("data-theme 与 dark class 对齐（全部主题）", async ({ page }) => {
+    for (const theme of THEMES_EXCEPT_SYSTEM) {
+      const themedPage = await page.context().newPage();
+      await themedPage.addInitScript((value) => localStorage.setItem("theme", value), theme);
+
+      await openHome(themedPage);
+
+      await expect(themedPage.locator("html")).toHaveAttribute("data-theme", theme);
+      const hasDark = await themedPage
+        .locator("html")
+        .evaluate((el) => el.classList.contains("dark"));
+      expect(hasDark).toBe(DARK_THEMES.has(theme));
+      await themedPage.close();
+    }
+  });
+});
 
 test.describe("Theme runtime", () => {
   test("theme toggle only exposes light / dark / system", async ({ page }) => {

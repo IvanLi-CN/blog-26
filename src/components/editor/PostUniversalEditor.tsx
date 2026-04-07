@@ -844,29 +844,31 @@ author: ""
         <div className="flex-shrink-0 border-b border-base-300">
           <div className="flex items-center overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
             {tabs.map((tab) => (
-              <button
-                type="button"
+              <div
                 key={tab.id}
-                className={`flex items-center px-4 py-2 border-r border-base-300 cursor-pointer flex-shrink-0 min-w-0 max-w-xs ${
+                className={`group flex items-stretch border-r border-base-300 flex-shrink-0 min-w-0 max-w-xs ${
                   tab.id === activeTabId ? "bg-base-200" : "hover:bg-base-100"
                 }`}
-                onClick={() => handleTabChange(tab.id)}
               >
-                <span className="mr-2 flex-shrink-0">{tab.isDirty ? "●" : ""}</span>
-                <span className="text-sm truncate flex-1 min-w-0" title={tab.title}>
-                  {tab.title}
-                </span>
                 <button
                   type="button"
-                  className="ml-2 text-xs hover:text-error flex-shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTabClose(tab.id);
-                  }}
+                  className="flex min-w-0 flex-1 items-center px-4 py-2 text-left"
+                  onClick={() => handleTabChange(tab.id)}
+                >
+                  <span className="mr-2 flex-shrink-0">{tab.isDirty ? "●" : ""}</span>
+                  <span className="text-sm truncate flex-1 min-w-0" title={tab.title}>
+                    {tab.title}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-2 text-xs hover:text-error flex-shrink-0"
+                  onClick={() => handleTabClose(tab.id)}
+                  aria-label={`关闭 ${tab.title}`}
                 >
                   ✕
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -929,31 +931,33 @@ author: ""
       <div className="flex-shrink-0 border-b border-base-300">
         <div className="flex items-center overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           {tabs.map((tab) => (
-            <button
-              type="button"
+            <div
               key={tab.id}
-              className={`flex items-center px-4 py-2 border-r border-base-300 cursor-pointer flex-shrink-0 min-w-0 max-w-xs transition-all duration-200 ${
+              className={`group flex items-stretch border-r border-base-300 flex-shrink-0 min-w-0 max-w-xs transition-all duration-200 ${
                 tab.id === activeTabId
                   ? "editor-tab-active bg-base-100 text-primary shadow-sm"
                   : "hover:bg-base-100 hover:shadow-sm"
               }`}
-              onClick={() => handleTabChange(tab.id)}
             >
-              <span className="mr-2 flex-shrink-0">{tab.isDirty ? "●" : ""}</span>
-              <span className="text-sm truncate flex-1 min-w-0" title={tab.title}>
-                {tab.title}
-              </span>
               <button
                 type="button"
-                className="ml-2 text-xs hover:text-error flex-shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleTabClose(tab.id);
-                }}
+                className="flex min-w-0 flex-1 items-center px-4 py-2 text-left"
+                onClick={() => handleTabChange(tab.id)}
+              >
+                <span className="mr-2 flex-shrink-0">{tab.isDirty ? "●" : ""}</span>
+                <span className="text-sm truncate flex-1 min-w-0" title={tab.title}>
+                  {tab.title}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="px-3 py-2 text-xs hover:text-error flex-shrink-0"
+                onClick={() => handleTabClose(tab.id)}
+                aria-label={`关闭 ${tab.title}`}
               >
                 ✕
               </button>
-            </button>
+            </div>
           ))}
         </div>
       </div>

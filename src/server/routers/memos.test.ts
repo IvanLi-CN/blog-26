@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { buildSafeMemoResponse, type MemoRow } from "./memos";
+import { buildSafeMemoResponse, type MemoRow, normalizeEscapedMilkdownMarkdown } from "./memos";
 
 const baseMemo: MemoRow = {
   id: "/memos/memo-1.md",
@@ -72,5 +72,24 @@ describe("buildSafeMemoResponse", () => {
     expect(res.updatedAt).toBe(now.toISOString());
     expect(res.timeDisplaySource).toBe("unknown");
     expect(res.content).toBe(baseMemo.body);
+  });
+});
+
+describe("normalizeEscapedMilkdownMarkdown", () => {
+  it("unescapes leading heading and list markers emitted by the quick memo editor", () => {
+    const input = [
+      "\\# Escaped heading",
+      "",
+      "\\* item one",
+      "  \\- item two",
+      "\\1. item three",
+      "\\> quoted",
+    ].join("\n");
+
+    expect(normalizeEscapedMilkdownMarkdown(input)).toBe(
+      ["# Escaped heading", "", "* item one", "  - item two", "1. item three", "> quoted"].join(
+        "\n"
+      )
+    );
   });
 });
