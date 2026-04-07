@@ -147,8 +147,15 @@ None
 
 ## Visual Evidence
 
-- 2026-04-07: 已在本地预览复核 `/`、`/memos`、`/admin/posts/editor`，并将首页、Memos、后台编辑器的修复后截图回传给主人验收。
-- 本轮不把截图文件提交入仓；PR 正文默认无图，保留聊天回图作为 owner-facing 视觉证据。
+- 2026-04-07: 已在本地预览复核 `/`、`/memos`、`/admin/posts/editor`，并将首页、Memos、后台编辑器的修复后截图回传给主人验收；以下资产与当前 `HEAD` 绑定。
+
+![首页修复后](./assets/home-final-20260407.png)
+
+![Memos 修复后](./assets/memos-final-20260407.png)
+
+![后台编辑器修复后](./assets/admin-editor-final-20260407.png)
+
+- PR 正文默认无图，保留以上 spec 资产作为 owner-facing 视觉证据来源。
 
 ## 资产晋升（Asset promotion）
 
