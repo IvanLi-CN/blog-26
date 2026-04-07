@@ -1,110 +1,109 @@
 import { expect, type Page, test } from "@playwright/test";
-import { UI } from "../../../src/config/site";
+import type { UI } from "../../../src/config/site";
 
-const THEMES_EXCEPT_SYSTEM = Array.from(
-  new Set([...UI.theme.mainThemes, ...UI.theme.allThemes])
-).filter((theme) => theme !== "system");
+type ThemePreference = (typeof UI.theme.options)[number];
 
-test.describe("Theme application", () => {
-  test("data-theme 与 dark class 对齐（全部主题）", async ({ page }) => {
-    for (const theme of THEMES_EXCEPT_SYSTEM) {
-      const themedPage = await page.context().newPage();
-      await themedPage.addInitScript((t) => localStorage.setItem("theme", t), theme);
+async function gotoWithTheme(page: Page, route: string, theme: ThemePreference) {
+  await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+  await page.goto(route, { waitUntil: "domcontentloaded" });
+}
 
-      await themedPage.goto("/", { waitUntil: "domcontentloaded" });
+async function readMemoSampleColors(page: Page) {
+  const card = page.locator('[data-testid="memo-card"]').first();
+  const sample = card.locator("p, li, blockquote").first();
+  const panel = card.locator(".nature-panel").first();
+  await expect(sample).toBeVisible();
+  await expect(panel).toBeVisible();
 
-      await expect(themedPage.locator("html")).toHaveAttribute("data-theme", theme);
-      const hasDark = await themedPage
-        .locator("html")
-        .evaluate((el) => el.classList.contains("dark"));
-      expect(hasDark).toBe(UI.theme.darkThemes.includes(theme));
-      await themedPage.close();
-    }
+  return {
+    ...(await sample.evaluate((element) => ({
+      fg: getComputedStyle(element as HTMLElement).color,
+    }))),
+    ...(await panel.evaluate((element) => ({
+      panelBgColor: getComputedStyle(element as HTMLElement).backgroundColor,
+      panelBgImage: getComputedStyle(element as HTMLElement).backgroundImage,
+      panelBackdropFilter: getComputedStyle(element as HTMLElement).backdropFilter,
+    }))),
+    ...(await page.locator("html").evaluate((element) => ({
+      uiTheme: element.getAttribute("data-ui-theme"),
+      uiPreference: element.getAttribute("data-ui-preference"),
+      legacyTheme: element.getAttribute("data-theme"),
+    }))),
+  };
+}
+
+test.describe("Theme runtime", () => {
+  test("theme toggle only exposes light / dark / system", async ({ page }) => {
+    await gotoWithTheme(page, "/", "system");
+
+    const toggleButtons = page.locator(
+      'header button[title="Auto"], header button[title="Light"], header button[title="Dark"]'
+    );
+
+    await expect(page.getByRole("button", { name: /auto/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /light/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /dark/i })).toBeVisible();
+    await expect(toggleButtons).toHaveCount(3);
   });
 
-  test.describe("system theme 映射", () => {
+  test("light preference resolves to light runtime attributes", async ({ page }) => {
+    await gotoWithTheme(page, "/", "light");
+
+    const html = page.locator("html");
+    await expect(html).toHaveAttribute("data-ui-preference", "light");
+    await expect(html).toHaveAttribute("data-ui-theme", "light");
+    await expect(html).toHaveAttribute("data-theme", "light");
+  });
+
+  test.describe("system preference mapping", () => {
     test.use({ colorScheme: "light" });
 
-    test("prefers-color-scheme: light → data-theme=light 且不加 dark", async ({ page }) => {
-      await page.addInitScript(() => localStorage.setItem("theme", "system"));
-      await page.goto("/", { waitUntil: "domcontentloaded" });
+    test("system + light OS resolves to light", async ({ page }) => {
+      await gotoWithTheme(page, "/", "system");
 
-      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-      const hasDark = await page.locator("html").evaluate((el) => el.classList.contains("dark"));
-      expect(hasDark).toBe(false);
+      const html = page.locator("html");
+      await expect(html).toHaveAttribute("data-ui-preference", "system");
+      await expect(html).toHaveAttribute("data-ui-theme", "light");
+      await expect(html).toHaveAttribute("data-theme", "light");
     });
   });
 
-  test.describe("system theme 映射（dark）", () => {
+  test.describe("system preference mapping (dark)", () => {
     test.use({ colorScheme: "dark" });
 
-    test("prefers-color-scheme: dark → data-theme=dark 且加 dark", async ({ page }) => {
-      await page.addInitScript(() => localStorage.setItem("theme", "system"));
-      await page.goto("/", { waitUntil: "domcontentloaded" });
+    test("system + dark OS resolves to dark", async ({ page }) => {
+      await gotoWithTheme(page, "/", "system");
 
-      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-      const hasDark = await page.locator("html").evaluate((el) => el.classList.contains("dark"));
-      expect(hasDark).toBe(true);
+      const html = page.locator("html");
+      await expect(html).toHaveAttribute("data-ui-preference", "system");
+      await expect(html).toHaveAttribute("data-ui-theme", "dark");
+      await expect(html).toHaveAttribute("data-theme", "dark");
     });
   });
 });
 
-test.describe("Memos theme contrast", () => {
-  async function getFirstMemoSample(page: Page) {
-    const memoCard = page.locator('.memos-list [data-testid="memo-card"]').first();
-    await expect(memoCard).toBeVisible();
-    const sample = memoCard.locator(".prose").first().locator("p, li, blockquote").first();
-    await expect(sample).toBeVisible();
+test.describe("Memos contrast", () => {
+  test("light theme keeps memo copy legible", async ({ page }) => {
+    await gotoWithTheme(page, "/memos", "light");
+    const sample = await readMemoSampleColors(page);
 
-    return sample.evaluate((el) => {
-      const isTransparent = (color: string) =>
-        color === "transparent" || color === "rgba(0, 0, 0, 0)";
-
-      const fg = getComputedStyle(el as HTMLElement).color;
-
-      let node: HTMLElement | null = el as HTMLElement;
-      let bg = "";
-      while (node) {
-        const candidate = getComputedStyle(node).backgroundColor;
-        if (candidate && !isTransparent(candidate)) {
-          bg = candidate;
-          break;
-        }
-        node = node.parentElement;
-      }
-      if (!bg) {
-        bg = getComputedStyle(document.body).backgroundColor;
-      }
-
-      return {
-        className: (el as HTMLElement).className,
-        fg,
-        bg,
-      };
-    });
-  }
-
-  test("light 主题：正文对比度不应过低", async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem("theme", "light"));
-    await page.goto("/memos", { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".memos-list", { timeout: 15000 });
-
-    const sample = await getFirstMemoSample(page);
-    expect(sample.className).toContain("text-base-content");
-    expect(sample.className).not.toMatch(/text-gray-|dark:text-|bg-gray-|dark:bg-/);
+    expect(sample.uiPreference).toBe("light");
+    expect(sample.uiTheme).toBe("light");
+    expect(sample.legacyTheme).toBe("light");
     expect(sample.fg).not.toBe("rgba(0, 0, 0, 0)");
-    expect(sample.bg).not.toBe("rgba(0, 0, 0, 0)");
+    expect(sample.panelBgColor !== "rgba(0, 0, 0, 0)" || sample.panelBgImage !== "none").toBe(true);
+    expect(sample.panelBackdropFilter).not.toBe("none");
   });
 
-  test("dark 主题：正文对比度不应过低", async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem("theme", "dark"));
-    await page.goto("/memos", { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".memos-list", { timeout: 15000 });
+  test("dark theme keeps memo copy legible", async ({ page }) => {
+    await gotoWithTheme(page, "/memos", "dark");
+    const sample = await readMemoSampleColors(page);
 
-    const sample = await getFirstMemoSample(page);
-    expect(sample.className).toContain("text-base-content");
-    expect(sample.className).not.toMatch(/text-gray-|dark:text-|bg-gray-|dark:bg-/);
+    expect(sample.uiPreference).toBe("dark");
+    expect(sample.uiTheme).toBe("dark");
+    expect(sample.legacyTheme).toBe("dark");
     expect(sample.fg).not.toBe("rgba(0, 0, 0, 0)");
-    expect(sample.bg).not.toBe("rgba(0, 0, 0, 0)");
+    expect(sample.panelBgColor !== "rgba(0, 0, 0, 0)" || sample.panelBgImage !== "none").toBe(true);
+    expect(sample.panelBackdropFilter).not.toBe("none");
   });
 });

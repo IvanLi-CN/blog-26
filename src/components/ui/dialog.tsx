@@ -31,10 +31,10 @@ const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="presentation">
+    <div className="nature-modal" role="presentation">
       <button
         type="button"
-        className="fixed inset-0 bg-black/50"
+        className="nature-modal-backdrop"
         onClick={() => onOpenChange?.(false)}
         aria-label="Close dialog"
       />
@@ -48,7 +48,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
     <div
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg",
+        "nature-modal-panel fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200",
         className
       )}
       role="dialog"
@@ -81,7 +81,11 @@ const DialogDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+  <p
+    ref={ref}
+    className={cn("text-sm text-[color:var(--nature-text-soft)]", className)}
+    {...props}
+  />
 ));
 DialogDescription.displayName = "DialogDescription";
 
@@ -93,4 +97,4 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 );
 DialogFooter.displayName = "DialogFooter";
 
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter };
+export { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle };

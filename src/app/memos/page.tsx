@@ -167,13 +167,11 @@ export default async function MemosPage({ searchParams }: PageProps) {
       />
 
       {/* 页面内容 - 完全匹配旧项目的布局和样式 */}
-      <section className="px-4 sm:px-6 py-8 sm:py-12 lg:py-16 mx-auto max-w-4xl">
-        {/* 页面标题 - 匹配旧项目的 Headline 组件样式 */}
-        <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-base-content mb-4">
-            Memos
-          </h1>
-          <p className="text-base sm:text-lg text-base-content/70 max-w-2xl mx-auto">
+      <section className="nature-container px-6 py-8 sm:py-12 lg:py-16">
+        <div className="mb-8 text-center sm:mb-12">
+          <span className="nature-kicker justify-center">Flow Notes</span>
+          <h1 className="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">Memos</h1>
+          <p className="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">
             记录想法、灵感和日常思考的快速笔记
           </p>
         </div>

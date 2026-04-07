@@ -80,15 +80,13 @@ export function MemosList({
     <div className="space-y-6 sm:space-y-8">
       {["a", "b", "c"].map((id) => (
         <div key={`skeleton-${id}`} className="flex gap-4 sm:gap-6">
-          {/* 时间线圆点骨架 */}
-          <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-base-300 rounded-full animate-pulse hidden sm:block" />
-          {/* 卡片骨架 */}
-          <div className="flex-1 bg-base-200 rounded-lg p-4 animate-pulse">
-            <div className="h-4 bg-base-300 rounded w-1/4 mb-2"></div>
-            <div className="h-16 bg-base-300 rounded mb-2"></div>
+          <div className="hidden h-8 w-8 flex-shrink-0 rounded-full nature-skeleton sm:block sm:h-10 sm:w-10" />
+          <div className="flex-1 rounded-[1.8rem] border border-[rgba(var(--nature-border-rgb),0.64)] bg-[rgba(var(--nature-surface-rgb),0.78)] p-4">
+            <div className="mb-2 h-4 w-1/4 rounded nature-skeleton"></div>
+            <div className="mb-2 h-16 rounded nature-skeleton"></div>
             <div className="flex gap-2">
-              <div className="h-6 bg-base-300 rounded w-16"></div>
-              <div className="h-6 bg-base-300 rounded w-16"></div>
+              <div className="h-6 w-16 rounded nature-skeleton"></div>
+              <div className="h-6 w-16 rounded nature-skeleton"></div>
             </div>
           </div>
         </div>
@@ -105,7 +103,7 @@ export function MemosList({
       description={showManageButtons ? "开始记录你的第一个想法吧！" : "这里暂时没有公开的内容"}
       size={showManageButtons ? "lg" : "md"}
       tone={showManageButtons ? "brand" : "neutral"}
-      variant={showManageButtons ? "plain" : "card"}
+      variant={showManageButtons ? "plain" : "panel"}
       links={
         showManageButtons
           ? undefined
@@ -164,13 +162,13 @@ export function MemosList({
           <button
             onClick={handleLoadMore}
             disabled={loading}
-            className="btn btn-outline btn-primary gap-2"
+            className="nature-button nature-button-outline gap-2"
             type="button"
             aria-label="加载更多 Memo"
           >
             {loading ? (
               <>
-                <span className="loading loading-spinner loading-sm"></span>
+                <span className="nature-spinner h-4 w-4" />
                 加载中...
               </>
             ) : (
@@ -198,21 +196,8 @@ export function MemosList({
 
       {/* 错误状态 */}
       {error && (
-        <div className="alert alert-error max-w-md mx-auto my-8">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="stroke-current shrink-0 h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+        <div className="nature-alert nature-alert-error mx-auto my-8 max-w-md">
+          <span className="text-lg">!</span>
           <span>加载失败，请稍后重试</span>
         </div>
       )}
@@ -222,7 +207,9 @@ export function MemosList({
       {/* 已加载完所有内容提示 */}
       {!hasMore && memos.length > 0 && !loading && (
         <div className="text-center py-8">
-          <div className="text-base-content/60">已显示所有 {memos.length} 条 Memo</div>
+          <div className="text-[color:var(--nature-text-soft)]">
+            已显示所有 {memos.length} 条 Memo
+          </div>
         </div>
       )}
     </div>

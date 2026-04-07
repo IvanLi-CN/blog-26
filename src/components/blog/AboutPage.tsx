@@ -1,335 +1,254 @@
+"use client";
+
 import type { inferRouterOutputs } from "@trpc/server";
 import Link from "next/link";
 import type { AppRouter } from "../../server/router";
 import PageLayout from "../common/PageLayout";
+import Icon from "../ui/Icon";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type PostsStatsOutput = RouterOutputs["posts"]["stats"];
 
+const skillGroups = [
+  {
+    title: "前台与体验",
+    accent: "nature-chip-accent",
+    items: ["React", "Next.js", "TypeScript", "Tailwind CSS", "Astro", "交互设计"],
+  },
+  {
+    title: "服务端与数据",
+    accent: "nature-chip-info",
+    items: ["Node.js", "tRPC", "Prisma", "PostgreSQL", "Redis", "WebDAV"],
+  },
+  {
+    title: "工程化",
+    accent: "nature-chip-success",
+    items: ["Docker", "GitHub Actions", "监控", "CI/CD", "测试自动化", "Linux"],
+  },
+];
+
+const experienceItems = [
+  {
+    period: "2022 - 至今",
+    title: "高级全栈开发工程师",
+    company: "科技公司",
+    points: [
+      "负责核心产品前后端开发与体验优化。",
+      "推动复杂系统模块化和可观测性建设。",
+      "建立代码审查与交付规范，降低回归风险。",
+    ],
+  },
+  {
+    period: "2020 - 2022",
+    title: "全栈开发工程师",
+    company: "创业公司",
+    points: [
+      "从零搭建业务主站与后台能力。",
+      "主导技术选型与核心流程设计。",
+      "在高速迭代环境下保持稳定发布。",
+    ],
+  },
+  {
+    period: "2018 - 2020",
+    title: "前端开发工程师",
+    company: "互联网公司",
+    points: [
+      "开发多个 Web 应用并推动响应式适配。",
+      "与设计和后端协作优化复杂交互。",
+      "持续沉淀组件化与页面性能方案。",
+    ],
+  },
+];
+
+const recentMoments = [
+  { year: "2024", text: "博客系统迁移到 Next.js 15，并继续打磨内容工作流。" },
+  { year: "2023", text: "开始稳定写作与沉淀技术笔记。" },
+];
+
 export default function AboutPage({ stats }: { stats?: PostsStatsOutput }) {
   return (
     <PageLayout>
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            {/* Hero Section */}
-            <div className="text-center mb-12">
-              <div className="avatar mb-6">
-                <div className="w-32 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                  <div className="bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-content text-4xl font-bold">
-                    I
-                  </div>
+      <section className="nature-container px-4 py-10 sm:px-6 lg:py-14">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.9fr)_minmax(18rem,0.95fr)]">
+          <div className="space-y-8">
+            <section className="nature-surface overflow-hidden px-6 py-8 sm:px-8">
+              <div className="nature-avatar-ring mb-6">
+                <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(var(--nature-accent-rgb),0.45),rgba(var(--nature-accent-2-rgb),0.7))] font-heading text-4xl font-semibold text-white">
+                  I
                 </div>
               </div>
-              <h1 className="text-5xl font-bold mb-4">你好，我是 Ivan</h1>
-              <p className="text-xl text-base-content/70 max-w-2xl mx-auto">
-                全栈开发者，技术爱好者，开源贡献者。专注于现代 Web 开发技术，热爱分享知识和经验。
+              <span className="nature-kicker gap-2">
+                <Icon name="tabler:leaf" className="h-4 w-4" />
+                About
+              </span>
+              <h1 className="nature-title mt-4 text-4xl sm:text-5xl">你好，我是 Ivan</h1>
+              <p className="nature-muted mt-4 max-w-3xl text-base sm:text-lg">
+                全栈开发者，偏爱干净的工程结构，也在意界面的呼吸感。这个站点既是技术记录，也是我整理长期工作方法与审美判断的地方。
               </p>
-            </div>
-
-            {/* About Content */}
-            <div className="space-y-8">
-              {/* Introduction */}
-              <section className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h2 className="card-title text-3xl mb-4">
-                    <span className="text-primary">👨‍💻</span>
-                    关于我
-                  </h2>
-                  <div className="prose prose-lg max-w-none">
-                    <p>
-                      我是一名充满热情的全栈开发者，拥有多年的 Web
-                      开发经验。我专注于构建高质量、可扩展的现代 Web 应用程序，
-                      并且热衷于学习和分享最新的技术趋势。
-                    </p>
-                    <p>
-                      在我的职业生涯中，我参与了从小型创业公司到大型企业的各种项目，积累了丰富的实战经验。
-                      我相信技术应该服务于人，通过优雅的代码和用户友好的界面来解决实际问题。
-                    </p>
-                    <p>
-                      除了编程，我还喜欢写作、阅读和探索新技术。这个博客是我分享技术见解、项目经验和生活感悟的地方。
-                    </p>
-                  </div>
+              <div className="nature-stat-grid mt-8">
+                <div className="nature-stat">
+                  <div className="nature-stat-label">总内容</div>
+                  <div className="nature-stat-value">{stats?.total ?? 0}</div>
                 </div>
-              </section>
-
-              {/* Skills */}
-              <section className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h2 className="card-title text-3xl mb-6">
-                    <span className="text-secondary">🛠️</span>
-                    技术栈
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-xl font-bold mb-3 text-primary">前端技术</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="badge badge-primary">React</span>
-                        <span className="badge badge-primary">Next.js</span>
-                        <span className="badge badge-primary">TypeScript</span>
-                        <span className="badge badge-primary">Tailwind CSS</span>
-                        <span className="badge badge-primary">Vue.js</span>
-                        <span className="badge badge-primary">Astro</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold mb-3 text-secondary">后端技术</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="badge badge-secondary">Node.js</span>
-                        <span className="badge badge-secondary">Python</span>
-                        <span className="badge badge-secondary">tRPC</span>
-                        <span className="badge badge-secondary">Prisma</span>
-                        <span className="badge badge-secondary">PostgreSQL</span>
-                        <span className="badge badge-secondary">Redis</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold mb-3 text-accent">云服务与工具</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="badge badge-accent">AWS</span>
-                        <span className="badge badge-accent">Vercel</span>
-                        <span className="badge badge-accent">Docker</span>
-                        <span className="badge badge-accent">GitHub Actions</span>
-                        <span className="badge badge-accent">Kubernetes</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold mb-3 text-info">其他技能</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="badge badge-info">Git</span>
-                        <span className="badge badge-info">Linux</span>
-                        <span className="badge badge-info">Figma</span>
-                        <span className="badge badge-info">Photoshop</span>
-                        <span className="badge badge-info">技术写作</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="nature-stat">
+                  <div className="nature-stat-label">分类</div>
+                  <div className="nature-stat-value">{stats?.categories.length ?? 0}</div>
                 </div>
-              </section>
-
-              {/* Experience */}
-              <section className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h2 className="card-title text-3xl mb-6">
-                    <span className="text-success">💼</span>
-                    工作经历
-                  </h2>
-                  <div className="space-y-6">
-                    <div className="border-l-4 border-primary pl-6">
-                      <h3 className="text-xl font-bold text-primary">高级全栈开发工程师</h3>
-                      <p className="text-base-content/70 mb-2">科技公司 • 2022 - 至今</p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>负责核心产品的前后端开发，服务数万用户</li>
-                        <li>设计和实现微服务架构，提升系统可扩展性</li>
-                        <li>优化应用性能，页面加载速度提升 40%</li>
-                        <li>指导初级开发者，建立代码审查流程</li>
-                      </ul>
-                    </div>
-                    <div className="border-l-4 border-secondary pl-6">
-                      <h3 className="text-xl font-bold text-secondary">全栈开发工程师</h3>
-                      <p className="text-base-content/70 mb-2">创业公司 • 2020 - 2022</p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>从零开始构建公司核心产品</li>
-                        <li>负责技术选型和架构设计</li>
-                        <li>实现 CI/CD 流程，提升开发效率</li>
-                        <li>参与产品设计和用户体验优化</li>
-                      </ul>
-                    </div>
-                    <div className="border-l-4 border-accent pl-6">
-                      <h3 className="text-xl font-bold text-accent">前端开发工程师</h3>
-                      <p className="text-base-content/70 mb-2">互联网公司 • 2018 - 2020</p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>开发和维护多个 Web 应用</li>
-                        <li>与设计师和后端工程师紧密合作</li>
-                        <li>实现响应式设计和移动端适配</li>
-                        <li>参与开源项目贡献</li>
-                      </ul>
-                    </div>
-                  </div>
+                <div className="nature-stat">
+                  <div className="nature-stat-label">公开项目</div>
+                  <div className="nature-stat-value">6</div>
                 </div>
-              </section>
+              </div>
+            </section>
 
-              {/* Projects */}
-              <section className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h2 className="card-title text-3xl mb-6">
-                    <span className="text-warning">🚀</span>
-                    项目展示
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="card bg-base-200 shadow-md">
-                      <div className="card-body">
-                        <h3 className="card-title text-primary">Ivan&apos;s Blog</h3>
-                        <p className="text-sm text-base-content/70">
-                          基于 Next.js 15 + tRPC + daisyUI 构建的现代化博客系统，
-                          支持文章管理、评论系统、管理员后台等功能。
-                        </p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          <span className="badge badge-outline badge-xs">Next.js</span>
-                          <span className="badge badge-outline badge-xs">tRPC</span>
-                          <span className="badge badge-outline badge-xs">daisyUI</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="card bg-base-200 shadow-md">
-                      <div className="card-body">
-                        <h3 className="card-title text-secondary">开源项目</h3>
-                        <p className="text-sm text-base-content/70">
-                          参与多个开源项目的开发和维护，包括 React 组件库、 Node.js
-                          工具包等，累计获得数百个 GitHub Stars。
-                        </p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          <span className="badge badge-outline badge-xs">React</span>
-                          <span className="badge badge-outline badge-xs">Node.js</span>
-                          <span className="badge badge-outline badge-xs">TypeScript</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
+            <section className="nature-panel px-6 py-6 sm:px-7">
+              <h2 className="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                关于我
+              </h2>
+              <div className="nature-prose mt-5 space-y-4 text-[color:var(--nature-text-soft)]">
+                <p>
+                  我长期关注现代 Web
+                  开发、内容系统与设计工程之间的连接点。对我来说，代码不仅要能跑，还要足够稳、足够清晰，能被未来的自己和协作者继续接住。
+                </p>
+                <p>
+                  在职业工作之外，我会把一些能复用的方法论、踩坑记录和产品观察整理成文章或
+                  Memo。这个过程既是输出，也是重新理解问题的方式。
+                </p>
+              </div>
+            </section>
 
-              {/* Contact */}
-              <section className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h2 className="card-title text-3xl mb-6">
-                    <span className="text-error">📬</span>
-                    联系方式
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-xl font-bold mb-3">找到我</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">📧</span>
-                          <span>ivan@example.com</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">🐙</span>
-                          <a href="https://github.com" className="link link-primary">
-                            GitHub
-                          </a>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">💼</span>
-                          <a href="https://linkedin.com" className="link link-primary">
-                            LinkedIn
-                          </a>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">🐦</span>
-                          <a href="https://twitter.com" className="link link-primary">
-                            Twitter
-                          </a>
-                        </div>
-                      </div>
+            <section className="nature-panel px-6 py-6 sm:px-7">
+              <h2 className="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                技术栈
+              </h2>
+              <div className="mt-6 grid gap-5 md:grid-cols-3">
+                {skillGroups.map((group) => (
+                  <article
+                    key={group.title}
+                    className="rounded-[1.6rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.16)] p-4"
+                  >
+                    <h3 className="text-base font-semibold text-[color:var(--nature-text)]">
+                      {group.title}
+                    </h3>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {group.items.map((item) => (
+                        <span key={item} className={`nature-chip ${group.accent}`}>
+                          {item}
+                        </span>
+                      ))}
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold mb-3">合作机会</h3>
-                      <p className="text-base-content/70 mb-4">我对以下类型的合作机会感兴趣：</p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>技术咨询和架构设计</li>
-                        <li>开源项目合作</li>
-                        <li>技术分享和演讲</li>
-                        <li>产品开发合作</li>
-                      </ul>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="nature-panel px-6 py-6 sm:px-7">
+              <h2 className="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                工作经历
+              </h2>
+              <div className="mt-6 space-y-6">
+                {experienceItems.map((item) => (
+                  <article
+                    key={`${item.period}-${item.title}`}
+                    className="rounded-[1.6rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.72)] p-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="nature-chip nature-chip-info">{item.period}</span>
+                      <h3 className="text-lg font-semibold text-[color:var(--nature-text)]">
+                        {item.title}
+                      </h3>
+                      <span className="text-sm text-[color:var(--nature-text-soft)]">
+                        {item.company}
+                      </span>
                     </div>
-                  </div>
-                </div>
-              </section>
-            </div>
+                    <ul className="mt-4 space-y-2 text-sm leading-7 text-[color:var(--nature-text-soft)]">
+                      {item.points.map((point) => (
+                        <li key={point} className="flex gap-3">
+                          <span className="mt-2 h-2 w-2 rounded-full bg-[rgba(var(--nature-accent-rgb),0.72)]" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            </section>
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="space-y-6">
-              {/* Quick Stats */}
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h3 className="card-title">📊 博客统计</h3>
-                  <div className="stats stats-vertical shadow">
-                    <div className="stat">
-                      <div className="stat-title">总内容数</div>
-                      <div className="stat-value text-primary">{stats?.total || 0}</div>
+          <aside className="space-y-6">
+            <section className="nature-panel px-5 py-5">
+              <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                最近动态
+              </h2>
+              <div className="mt-5 space-y-4">
+                {recentMoments.map((item) => (
+                  <div key={item.year} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(var(--nature-accent-rgb),0.14)] text-sm font-semibold text-[color:var(--nature-accent-strong)]">
+                        {item.year.slice(-2)}
+                      </span>
+                      <span className="mt-2 h-full w-px bg-[rgba(var(--nature-border-rgb),0.72)]" />
                     </div>
-                    <div className="stat">
-                      <div className="stat-title">分类数量</div>
-                      <div className="stat-value text-secondary">
-                        {stats?.categories.length || 0}
+                    <div className="pb-3">
+                      <div className="text-sm font-medium text-[color:var(--nature-text)]">
+                        {item.year}
                       </div>
+                      <p className="mt-1 text-sm leading-6 text-[color:var(--nature-text-soft)]">
+                        {item.text}
+                      </p>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
+            </section>
 
-              {/* Timeline */}
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <h3 className="card-title">⏰ 近期动态</h3>
-                  <ul className="timeline timeline-vertical">
-                    <li>
-                      <div className="timeline-start">2024</div>
-                      <div className="timeline-middle">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          role="img"
-                          aria-label="Timeline checkpoint 2024"
-                          fill="currentColor"
-                          className="w-5 h-5"
-                        >
-                          <title>Timeline checkpoint 2024</title>
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L8.23 10.661a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                      <div className="timeline-end timeline-box">博客系统迁移到 Next.js 15</div>
-                    </li>
-                    <li>
-                      <div className="timeline-start">2023</div>
-                      <div className="timeline-middle">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          role="img"
-                          aria-label="Timeline checkpoint 2023"
-                          fill="currentColor"
-                          className="w-5 h-5"
-                        >
-                          <title>Timeline checkpoint 2023</title>
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L8.23 10.661a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                      <div className="timeline-end timeline-box">开始技术博客写作</div>
-                    </li>
-                  </ul>
+            <section className="nature-panel px-5 py-5">
+              <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
+                联系与合作
+              </h2>
+              <div className="mt-4 space-y-3 text-sm text-[color:var(--nature-text-soft)]">
+                <div className="flex items-center gap-3">
+                  <Icon
+                    name="tabler:mail"
+                    className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
+                  />
+                  <span>ivan@example.com</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Icon
+                    name="tabler:brand-github"
+                    className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
+                  />
+                  <a href="https://github.com" className="nature-link-inline">
+                    GitHub
+                  </a>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Icon
+                    name="tabler:brand-linkedin"
+                    className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
+                  />
+                  <a href="https://linkedin.com" className="nature-link-inline">
+                    LinkedIn
+                  </a>
                 </div>
               </div>
-
-              {/* Back to Home */}
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <Link href="/" className="btn btn-primary w-full">
-                    🏠 返回首页
-                  </Link>
-                  <Link href="/posts" className="btn btn-outline w-full">
-                    📚 浏览文章
-                  </Link>
-                </div>
+              <div className="nature-divider my-5" />
+              <p className="text-sm leading-7 text-[color:var(--nature-text-soft)]">
+                我愿意参与技术咨询、架构梳理、内容系统、复杂前台体验和工程化交付相关的合作。
+              </p>
+              <div className="mt-5 flex flex-col gap-3">
+                <Link href="/" className="nature-button nature-button-primary justify-center">
+                  返回首页
+                </Link>
+                <Link href="/posts" className="nature-button nature-button-outline justify-center">
+                  浏览文章
+                </Link>
               </div>
-            </div>
-          </div>
+            </section>
+          </aside>
         </div>
-      </div>
+      </section>
     </PageLayout>
   );
 }

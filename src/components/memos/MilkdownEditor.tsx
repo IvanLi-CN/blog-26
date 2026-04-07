@@ -11,6 +11,7 @@ import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import { Slice } from "@milkdown/prose/model";
 import { TextSelection } from "@milkdown/prose/state";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { processInlineImagesCompat } from "@/lib/image-processing";
 import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
@@ -163,84 +164,12 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
     // 处理内联图片上传 - 与 UniversalEditor 相同的逻辑
     const processInlineImages = async (content: string): Promise<string> => {
-      // 首先反转义 Markdown 语法，因为 Milkdown 可能会转义输出
-      const unescapedContent = content
-        .replace(/\\!/g, "!")
-        .replace(/\\\[/g, "[")
-        .replace(/\\\]/g, "]")
-        .replace(/\\\(/g, "(")
-        .replace(/\\\)/g, ")");
-
-      // removed verbose log
-
-      const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
-      let processedContent = unescapedContent;
-      const matches = Array.from(unescapedContent.matchAll(base64ImageRegex));
-
-      for (const match of matches) {
-        const [fullMatch, altText, imageType, base64Data] = match;
-
-        // removed verbose log
-
-        try {
-          // 将 base64 转换为 Blob
-          const byteCharacters = atob(base64Data);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], { type: `image/${imageType}` });
-
-          // 创建 File 对象
-          const timestamp = Date.now();
-          const filename = `inline-${timestamp}.${imageType}`;
-          const file = new File([blob], filename, { type: `image/${imageType}` });
-
-          // 上传文件路径：基于文章所在目录，而不是文件本身
-          // 例如：/Memos/xxx.md -> Memos/；Memos/assets -> Memos/assets/
-          const normalizedArticlePath = (articlePath || "").replace(/^\//, "");
-          const segments = normalizedArticlePath.split("/").filter(Boolean);
-          let baseDir = normalizedArticlePath;
-
-          if (segments.length > 0) {
-            const last = segments[segments.length - 1];
-            // 如果最后一段看起来是文件（包含扩展名），则取其父目录
-            if (/\.[A-Za-z0-9]+$/.test(last)) {
-              baseDir = segments.slice(0, -1).join("/");
-            }
-          }
-
-          // Persisted semantics: new uploads always go to "./assets/<filename>" next to the markdown file.
-          const uploadBase = baseDir ? `${baseDir}/assets` : "assets";
-          const uploadPath = `${uploadBase}/${filename}`;
-          const formData = new FormData();
-          formData.append("file", file);
-
-          const response = await fetch(`/api/files/${contentSource}/${uploadPath}`, {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) {
-            throw new Error(`上传失败: ${response.statusText}`);
-          }
-
-          const _result = await response.json();
-          // removed verbose log
-
-          // Replace with persisted relative path (no /api/files/).
-          processedContent = processedContent.replace(
-            fullMatch,
-            `![${altText}](./assets/${filename})`
-          );
-        } catch (_error) {
-          console.error("❌ [MilkdownEditor] 内联图片处理失败:", _error);
-          // 保持原始内容不变
-        }
-      }
-
-      return processedContent;
+      return processInlineImagesCompat(
+        content,
+        contentSource,
+        articlePath || "__unknown__.md",
+        "relative"
+      );
     };
 
     // 暴露给外部的方法

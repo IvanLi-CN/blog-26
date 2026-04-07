@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { processInlineImagesCompat } from "@/lib/image-processing";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -88,6 +89,7 @@ export function QuickMemoEditModal({
         return;
       }
 
+      let didSaveSucceed = false;
       setIsSubmitting(true);
       try {
         let processedContent = content.trim();
@@ -96,17 +98,39 @@ export function QuickMemoEditModal({
           processedContent = await editorRef.current.processInlineImages(processedContent);
         }
 
+        processedContent = await processInlineImagesCompat(
+          processedContent,
+          contentSource,
+          articlePath || memoTitle || "__unknown__.md",
+          "relative"
+        );
+
         await onSave({
           content: processedContent,
           isPublic,
         });
+        didSaveSucceed = true;
       } catch (error) {
         console.error("快速编辑保存失败:", error);
       } finally {
         setIsSubmitting(false);
       }
+
+      if (didSaveSucceed) {
+        onClose();
+      }
     },
-    [content, isPublic, onSave, isSaving, isSubmitting]
+    [
+      articlePath,
+      content,
+      contentSource,
+      isPublic,
+      isSaving,
+      isSubmitting,
+      memoTitle,
+      onClose,
+      onSave,
+    ]
   );
 
   const handleKeyDown = useCallback(
@@ -128,26 +152,37 @@ export function QuickMemoEditModal({
   }
 
   return (
-    <div className="modal modal-open z-50" role="dialog" aria-modal="true">
-      <div className="modal-box w-11/12 max-w-4xl p-0 max-h-[85vh] overflow-hidden flex flex-col">
+    <div
+      className="nature-modal z-50"
+      role="dialog"
+      aria-modal="true"
+      data-testid="quick-memo-edit-modal"
+    >
+      <button
+        type="button"
+        className="nature-modal-backdrop"
+        aria-label="关闭快速编辑"
+        onClick={handleClose}
+      />
+      <div className="nature-modal-panel flex max-h-[85vh] w-11/12 max-w-4xl flex-col overflow-hidden p-0">
         <div
-          className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-base-200 bg-base-100"
+          className="sticky top-0 z-10 flex items-center justify-between border-b border-[rgba(var(--nature-border-rgb),0.62)] bg-[rgba(var(--nature-surface-rgb),0.92)] px-6 py-4"
           data-testid="quick-memo-edit-header"
         >
           <div>
-            <h3 className="font-semibold text-lg text-base-content">快速编辑 Memo</h3>
-            <p className="text-sm text-base-content/60 line-clamp-1">
+            <h3 className="text-lg font-semibold text-[color:var(--nature-text)]">快速编辑 Memo</h3>
+            <p className="line-clamp-1 text-sm text-[color:var(--nature-text-soft)]">
               {memoTitle ? `正在编辑：${memoTitle}` : "使用富文本快速调整闪念内容"}
             </p>
           </div>
           <button
             type="button"
-            className="btn btn-ghost btn-sm btn-circle"
+            className="nature-icon-button inline-flex"
             aria-label="关闭快速编辑"
             onClick={handleClose}
             disabled={saving}
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
 
@@ -161,7 +196,7 @@ export function QuickMemoEditModal({
             <section
               ref={containerRef}
               className={cn(
-                "border border-base-300 rounded-xl bg-base-100",
+                "overflow-hidden rounded-[1.5rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)]",
                 showSkeleton && "animate-pulse"
               )}
               data-testid="quick-memo-edit-container"
@@ -181,51 +216,51 @@ export function QuickMemoEditModal({
                   data-testid="quick-memo-edit-editor"
                 />
               )}
-              <div className="px-4 py-2 bg-base-200 border-t border-base-300 flex items-center justify-between text-sm text-base-content/60">
+              <div className="flex items-center justify-between border-t border-[rgba(var(--nature-border-rgb),0.62)] bg-[rgba(var(--nature-highlight-rgb),0.18)] px-4 py-2 text-sm text-[color:var(--nature-text-soft)]">
                 <span>{content.length} 字符</span>
                 <span>{shortcutKey}+Enter 保存</span>
               </div>
             </section>
 
             {errorMessage && (
-              <div className="alert alert-error shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L4.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
+              <div className="nature-alert nature-alert-error shadow-sm">
+                <span className="text-lg">!</span>
                 <span>{errorMessage}</span>
               </div>
             )}
           </div>
 
-          {/* 状态切换 */}
-          <div className="border-t border-base-200 px-6 py-4">
+          <div className="border-t border-[rgba(var(--nature-border-rgb),0.62)] px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <label className="label cursor-pointer gap-3 px-0">
-                <span className="label-text text-sm">{isPublic ? "公开发布" : "私有保存"}</span>
-                <input
-                  type="checkbox"
-                  className="toggle toggle-primary"
-                  checked={isPublic}
-                  onChange={(event) => setIsPublic(event.target.checked)}
-                  disabled={disableActions}
-                />
+              <label
+                className={cn(
+                  "flex items-center gap-3",
+                  disableActions ? "cursor-not-allowed" : "cursor-pointer"
+                )}
+              >
+                <span className="text-sm text-[color:var(--nature-text-soft)]">
+                  {isPublic ? "公开发布" : "私有保存"}
+                </span>
+                <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    className="nature-switch-input peer absolute inset-0 m-0 cursor-inherit opacity-0"
+                    checked={isPublic}
+                    onChange={(event) => setIsPublic(event.target.checked)}
+                    disabled={disableActions}
+                  />
+                  <span
+                    className="nature-switch pointer-events-none"
+                    data-state={isPublic ? "checked" : "unchecked"}
+                    aria-disabled={disableActions ? "true" : "false"}
+                  />
+                </span>
               </label>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="nature-button nature-button-ghost min-h-10 px-4 py-2 text-sm"
                   onClick={handleClose}
                   disabled={saving}
                 >
@@ -233,9 +268,10 @@ export function QuickMemoEditModal({
                 </button>
                 <button
                   type="submit"
-                  className={cn("btn btn-primary btn-sm gap-2", saving && "loading")}
+                  className="nature-button nature-button-primary min-h-10 gap-2 px-4 py-2 text-sm"
                   disabled={disableActions || !content.trim()}
                 >
+                  {saving && <span className="nature-spinner h-4 w-4" />}
                   {saving ? "保存中..." : "保存更改"}
                 </button>
               </div>
@@ -243,12 +279,6 @@ export function QuickMemoEditModal({
           </div>
         </form>
       </div>
-      <button
-        type="button"
-        className="modal-backdrop"
-        aria-label="关闭快速编辑"
-        onClick={handleClose}
-      />
     </div>
   );
 }

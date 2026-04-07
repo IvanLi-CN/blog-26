@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Icon from "../ui/Icon";
 import CommentForm from "./CommentForm";
 import CommentList from "./CommentList";
 import { useComments, usePostComment, useUserInfo } from "./hooks";
 
-// 文本配置
 const DEFAULT_TEXTS = {
   title: "留言",
   submitSuccess: "留言已提交，正在等待审核。",
@@ -25,7 +25,6 @@ export default function CommentSection({ postSlug, title, texts = {} }: CommentS
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // 标记为客户端环境
     setIsClient(true);
 
     const scriptId = "luosimao-captcha-script";
@@ -67,82 +66,65 @@ export default function CommentSection({ postSlug, title, texts = {} }: CommentS
   const handleCommentPosted = async (message: string = finalTexts.submitSuccess) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(""), 5000);
-    refetch(); // Refetch comments to show the new one
+    refetch();
   };
 
-  // 只有在客户端环境才渲染组件
   if (!isClient) {
     return null;
   }
 
   return (
-    <section className="mt-12">
-      {/* 优雅的标题设计 */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5 text-primary"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
+    <section className="mt-16">
+      <div className="mb-8 flex items-center gap-3">
+        <div className="nature-empty-icon h-10 w-10">
+          <Icon name="tabler:messages" className="h-5 w-5" />
         </div>
-        <h2 className="text-2xl font-bold text-base-content">{displayTitle}</h2>
+        <div>
+          <div className="nature-kicker">Conversation</div>
+          <h2 className="mt-2 text-2xl font-semibold text-[color:var(--nature-text)]">
+            {displayTitle}
+          </h2>
+        </div>
       </div>
 
       {successMessage && (
-        <div role="alert" className="alert alert-success mb-6 shadow-sm">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="stroke-current shrink-0 h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+        <div role="alert" className="nature-alert nature-alert-success mb-6">
+          <Icon name="tabler:circle-check" className="h-5 w-5" />
           <span>{successMessage}</span>
         </div>
       )}
 
-      {isUserLoading ? (
-        <div className="flex items-center justify-center p-8">
-          <span className="loading loading-spinner" />
-        </div>
-      ) : (
-        <CommentForm
-          postSlug={postSlug}
-          onCommentPosted={handleCommentPosted}
-          userInfo={userInfo}
-          postComment={postComment}
-          isPosting={isPosting}
-          error={postError}
-          onLogout={logout}
-          onLoginSuccess={refetchUserInfo}
-        />
-      )}
+      <div className="nature-panel px-5 py-5 sm:px-6">
+        {isUserLoading ? (
+          <div className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]">
+            <span className="nature-spinner h-5 w-5" />
+          </div>
+        ) : (
+          <CommentForm
+            postSlug={postSlug}
+            onCommentPosted={handleCommentPosted}
+            userInfo={userInfo}
+            postComment={postComment}
+            isPosting={isPosting}
+            error={postError}
+            onLogout={logout}
+            onLoginSuccess={refetchUserInfo}
+          />
+        )}
+      </div>
 
       <div className="mt-8">
         {isCommentsLoading && page === 1 && (
-          <div className="flex items-center justify-center p-8">
-            <span className="loading loading-spinner" />
+          <div className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]">
+            <span className="nature-spinner h-5 w-5" />
           </div>
         )}
-        {commentsError && <p className="text-error">{commentsError}</p>}
+        {commentsError && (
+          <div className="nature-alert nature-alert-error mb-6">
+            <Icon name="tabler:alert-triangle" className="h-5 w-5" />
+            <span>{commentsError}</span>
+          </div>
+        )}
 
         <CommentList
           comments={comments}
@@ -158,35 +140,21 @@ export default function CommentSection({ postSlug, title, texts = {} }: CommentS
         />
 
         {page < liveTotalPages && (
-          <div className="text-center mt-8">
+          <div className="mt-8 text-center">
             <button
               type="button"
               onClick={loadMore}
-              className="btn btn-outline btn-primary gap-2"
+              className="nature-button nature-button-outline gap-2"
               disabled={isCommentsLoading}
             >
               {isCommentsLoading ? (
                 <>
-                  <span className="loading loading-spinner loading-sm"></span>
+                  <span className="nature-spinner h-4 w-4" />
                   {finalTexts.loadingText}
                 </>
               ) : (
                 <>
-                  <svg
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  <Icon name="tabler:arrow-down" className="h-4 w-4" />
                   {finalTexts.loadMoreText}
                 </>
               )}

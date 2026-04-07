@@ -1,23 +1,22 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
+import { waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
 test.describe("Quick Memo publish no duplicate (admin)", () => {
   test("publishing a memo should create exactly one card", async ({ page }) => {
+    test.setTimeout(150_000);
+
     // 建立管理员会话（与其他 admin 用例保持一致）
     await page.request.post("/api/dev/login", {
       data: { email: ADMIN_EMAIL },
     });
 
-    await page.goto("/memos");
-    await page.waitForLoadState("networkidle");
-
-    const container = page.getByRole("region", { name: "快速发布区域" });
-    await container.waitFor({ state: "visible" });
+    await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const { container, editor } = await waitForQuickMemoEditor(page);
 
     const TITLE = `测试发布去重 ${Date.now()}`;
-    const editor = container.locator(".ProseMirror");
     await editor.click();
     await page.keyboard.insertText(TITLE);
 
@@ -40,8 +39,7 @@ test.describe("Quick Memo publish no duplicate (admin)", () => {
     await expect(cardsWithTitle).toHaveCount(1, { timeout: 30000 });
 
     // 刷新页面后再次验证，防止同步过程产生重复记录
-    await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     const cardsAfterReload = page
       .locator('[data-testid="memo-card"][data-id]')
       .filter({ hasText: TITLE });

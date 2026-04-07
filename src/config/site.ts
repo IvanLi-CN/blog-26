@@ -84,10 +84,10 @@ export const SITE: SiteConfig = {
 
 export const UI = {
   theme: {
-    default: "system",
-    mainThemes: ["system", "light", "dark"],
-    lightThemes: [
-      "light",
+    default: "system" as const,
+    options: ["light", "dark", "system"] as const,
+    darkResolved: ["dark"] as const,
+    legacyLight: [
       "cupcake",
       "bumblebee",
       "emerald",
@@ -109,9 +109,8 @@ export const UI = {
       "sunset",
       "caramellatte",
       "silk",
-    ],
-    darkThemes: [
-      "dark",
+    ] as const,
+    legacyDark: [
       "synthwave",
       "halloween",
       "forest",
@@ -124,43 +123,9 @@ export const UI = {
       "coffee",
       "dim",
       "abyss",
-    ],
-    allThemes: [
-      "light",
-      "dark",
-      "cupcake",
-      "bumblebee",
-      "emerald",
-      "corporate",
-      "synthwave",
-      "retro",
-      "cyberpunk",
-      "valentine",
-      "halloween",
-      "garden",
-      "forest",
-      "aqua",
-      "lofi",
-      "pastel",
-      "fantasy",
-      "wireframe",
-      "black",
-      "luxury",
-      "dracula",
-      "cmyk",
-      "autumn",
-      "business",
-      "acid",
-      "lemonade",
-      "night",
-      "coffee",
-      "winter",
-      "dim",
-      "nord",
-      "sunset",
-      "caramellatte",
-      "abyss",
-      "silk",
-    ],
+    ] as const,
   },
 };
+
+export type UiThemeSelection = (typeof UI.theme.options)[number];
+export type UiResolvedTheme = Exclude<UiThemeSelection, "system">;

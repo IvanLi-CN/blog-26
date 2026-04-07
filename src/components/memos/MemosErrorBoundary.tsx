@@ -39,11 +39,10 @@ export class MemosErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      // 默认错误 UI - 匹配 DaisyUI 样式
       return (
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body text-center">
-            <div className="text-error mb-4">
+        <div className="nature-panel text-center">
+          <div className="px-5 py-6">
+            <div className="mb-4 text-[color:var(--nature-danger)]">
               <svg
                 className="w-16 h-16 mx-auto"
                 fill="none"
@@ -62,15 +61,19 @@ export class MemosErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
 
-            <h2 className="card-title justify-center text-error">Oops! 出现了一些问题</h2>
+            <h2 className="justify-center font-heading text-2xl font-semibold text-[color:var(--nature-danger)]">
+              Oops! 出现了一些问题
+            </h2>
 
-            <p className="text-base-content/70 mb-4">加载 Memos 时遇到了错误，请尝试刷新页面。</p>
+            <p className="mb-4 text-[color:var(--nature-text-soft)]">
+              加载 Memos 时遇到了错误，请尝试刷新页面。
+            </p>
 
-            <div className="card-actions justify-center">
+            <div className="flex justify-center gap-3">
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="btn btn-primary"
+                className="nature-button nature-button-primary"
               >
                 刷新页面
               </button>
@@ -78,7 +81,7 @@ export class MemosErrorBoundary extends Component<Props, State> {
               <button
                 type="button"
                 onClick={() => this.setState({ hasError: false })}
-                className="btn btn-ghost"
+                className="nature-button nature-button-ghost"
               >
                 重试
               </button>
@@ -86,10 +89,10 @@ export class MemosErrorBoundary extends Component<Props, State> {
 
             {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mt-4 text-left">
-                <summary className="cursor-pointer text-sm text-base-content/60">
+                <summary className="cursor-pointer text-sm text-[color:var(--nature-text-soft)]">
                   错误详情 (开发模式)
                 </summary>
-                <pre className="text-xs mt-2 p-2 bg-base-200 rounded overflow-auto">
+                <pre className="mt-2 overflow-auto rounded-xl bg-[rgba(var(--nature-highlight-rgb),0.18)] p-2 text-xs">
                   {this.state.error.stack}
                 </pre>
               </details>

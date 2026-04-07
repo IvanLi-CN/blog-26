@@ -37,12 +37,12 @@ export default function BlogPagination({
   }
 
   return (
-    <div className="container flex">
-      <div className="flex flex-row mx-auto container justify-between">
+    <div className="flex">
+      <div className="mx-auto flex w-full flex-row justify-between gap-3">
         <button
           type="button"
           onClick={handlePrevClick}
-          className={`btn btn-ghost md:px-3 px-3 mr-2 ${!hasPrev ? "invisible" : ""}`}
+          className={`nature-button nature-button-ghost px-4 ${!hasPrev ? "invisible" : ""}`}
           disabled={!hasPrev}
         >
           <Icon icon="tabler:chevron-left" className="w-6 h-6" />
@@ -52,7 +52,7 @@ export default function BlogPagination({
         <button
           type="button"
           onClick={handleNextClick}
-          className={`btn btn-ghost md:px-3 px-3 ${!hasNext ? "invisible" : ""}`}
+          className={`nature-button nature-button-ghost px-4 ${!hasNext ? "invisible" : ""}`}
           disabled={!hasNext}
         >
           <span className="mr-2">{nextText}</span>

@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { processInlineImagesCompat } from "@/lib/image-processing";
 import {
   getMemoAssetsDir,
   getMemoDraftPath,
@@ -130,14 +131,23 @@ export function QuickMemoEditor({
           // removed verbose editor debug logs
         }
 
+        processedContent = await processInlineImagesCompat(
+          processedContent,
+          memoContentSource,
+          getMemoDraftPath(clientMemoRoot),
+          "relative"
+        );
+
         // 兜底：如仍包含 data:image，则在此处直接完成一次内联上传与替换，确保 e2e 可观察到上传请求
         if (processedContent.includes("data:image")) {
-          const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
+          const base64ImageRegex =
+            /!\[([^\]]*)\]\s*\(\s*data:image\/([^;]+);base64,([A-Za-z0-9+/=\r\n]+)\s*\)/g;
           const matches = Array.from(processedContent.matchAll(base64ImageRegex));
           for (const match of matches) {
             const [fullMatch, altText, imageType, base64Data] = match;
             try {
-              const byteCharacters = atob(base64Data);
+              const normalizedBase64 = base64Data.replace(/\s+/g, "");
+              const byteCharacters = atob(normalizedBase64);
               const byteNumbers = new Array(byteCharacters.length);
               for (let i = 0; i < byteCharacters.length; i++)
                 byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -237,11 +247,11 @@ export function QuickMemoEditor({
       onKeyDown={handleKeyDown}
       aria-label="快速发布区域"
     >
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body p-4 sm:p-6">
-          <h2 className="card-title text-lg sm:text-xl mb-4">
+      <div className="nature-panel overflow-hidden">
+        <div className="p-4 sm:p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--nature-text)] sm:text-xl">
             <svg
-              className="w-5 h-5 sm:w-6 sm:h-6 text-primary"
+              className="h-5 w-5 text-[color:var(--nature-accent-strong)] sm:h-6 sm:w-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -259,11 +269,10 @@ export function QuickMemoEditor({
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="form-control">
-              {/* 使用 MilkdownEditor 支持 Markdown 原地渲染 */}
+            <div className="space-y-2">
               <div
                 ref={containerRef}
-                className="border border-base-300 rounded-lg overflow-hidden"
+                className="overflow-hidden rounded-[1.5rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
                 style={{
                   minHeight: `${minHeight}px`,
                   maxHeight: `${maxHeight}px`,
@@ -282,27 +291,40 @@ export function QuickMemoEditor({
                 />
               </div>
 
-              <div className="label !mt-1" id={helpId}>
-                <span className="label-text-alt text-base-content/60">{content.length} 字符</span>
-                <span className="label-text-alt text-base-content/60">
-                  {shortcutKey}+Enter 发布
-                </span>
+              <div
+                className="flex items-center justify-between px-1 text-xs text-[color:var(--nature-text-soft)]"
+                id={helpId}
+              >
+                <span>{content.length} 字符</span>
+                <span>{shortcutKey}+Enter 发布</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <div className="form-control">
-                <label className="label cursor-pointer space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    className="checkbox checkbox-primary checkbox-sm"
-                    disabled={isSaving}
-                  />
-                  <span className="label-text text-sm">
+              <div className="flex items-center gap-3">
+                <label
+                  className={cn(
+                    "flex items-center gap-3",
+                    isSaving ? "cursor-not-allowed" : "cursor-pointer"
+                  )}
+                >
+                  <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      className="nature-switch-input peer absolute inset-0 m-0 cursor-inherit opacity-0"
+                      disabled={isSaving}
+                    />
+                    <span
+                      className="nature-switch pointer-events-none"
+                      data-state={isPublic ? "checked" : "unchecked"}
+                      aria-disabled={isSaving ? "true" : "false"}
+                    />
+                  </span>
+                  <span className="text-sm">
                     {isPublic ? (
-                      <span className="flex items-center space-x-1 text-info">
+                      <span className="flex items-center space-x-1 text-[color:var(--nature-accent-strong)]">
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -321,7 +343,7 @@ export function QuickMemoEditor({
                         <span>公开发布</span>
                       </span>
                     ) : (
-                      <span className="flex items-center space-x-1 text-warning">
+                      <span className="flex items-center space-x-1 text-[color:var(--nature-text-soft)]">
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -347,11 +369,13 @@ export function QuickMemoEditor({
               <button
                 type="submit"
                 disabled={!(content.trim().length > 0 || hasEditorContent) || isSaving}
-                className={cn("btn btn-primary btn-sm gap-2", isSaving && "loading")}
+                className="nature-button nature-button-primary min-h-10 gap-2 px-4 py-2 text-sm"
                 aria-label={isSaving ? "正在发布 Memo..." : "发布 Memo"}
                 aria-describedby={helpId}
               >
-                {!isSaving && (
+                {isSaving ? (
+                  <span className="nature-spinner h-4 w-4" />
+                ) : (
                   <svg
                     className="w-4 h-4"
                     fill="none"

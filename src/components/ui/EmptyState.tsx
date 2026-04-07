@@ -4,7 +4,7 @@
  * 通用空状态组件
  *
  * 提供一致的空状态视觉设计，支持自定义图标、文案和行动按钮
- * 完全响应式设计，与项目的DaisyUI主题系统完美集成
+ * 完全响应式设计，适配 Nature 前台视觉系统
  */
 
 import { cn } from "../../lib/utils";
@@ -36,8 +36,8 @@ export interface EmptyStateProps {
     href: string;
     icon?: string;
   }>;
-  /** 展示样式：plain 为极简，card 为强调空状态 */
-  variant?: "plain" | "card";
+  /** 展示样式：plain 为极简，panel 为强调空状态 */
+  variant?: "plain" | "panel";
 }
 
 export function EmptyState({
@@ -82,16 +82,17 @@ export function EmptyState({
   const config = sizeConfig[size];
   const toneConfig = {
     brand: {
-      iconContainer: "bg-primary/10",
-      icon: "text-primary/60",
+      iconContainer: "bg-[rgba(var(--nature-accent-rgb),0.12)]",
+      icon: "text-[color:var(--nature-accent-strong)]",
     },
     muted: {
-      iconContainer: "bg-base-200/70",
-      icon: "text-base-content/50",
+      iconContainer: "bg-[rgba(var(--nature-highlight-rgb),0.32)]",
+      icon: "text-[color:var(--nature-text-faint)]",
     },
     neutral: {
-      iconContainer: "bg-base-100 ring-1 ring-base-300",
-      icon: "text-base-content/40",
+      iconContainer:
+        "bg-[rgba(var(--nature-surface-rgb),0.86)] ring-1 ring-[rgba(var(--nature-border-rgb),0.72)]",
+      icon: "text-[color:var(--nature-text-faint)]",
     },
   } as const;
 
@@ -101,8 +102,8 @@ export function EmptyState({
         "flex flex-col items-center justify-center text-center animate-fade-in-up",
         config.container,
         config.spacing,
-        variant === "card" &&
-          "rounded-2xl bg-base-100/60 ring-1 ring-base-300/60 border border-dashed border-base-300",
+        variant === "panel" &&
+          "rounded-[2rem] border border-dashed border-[rgba(var(--nature-border-rgb),0.74)] bg-[rgba(var(--nature-surface-rgb),0.7)] ring-1 ring-[rgba(var(--nature-border-rgb),0.42)]",
         className
       )}
     >
@@ -120,11 +121,13 @@ export function EmptyState({
       {/* 文字内容 */}
       <div className={cn("max-w-md", config.spacing)}>
         {/* 主标题 */}
-        <h3 className={cn("text-base-content mb-2", config.title)}>{title}</h3>
+        <h3 className={cn("mb-2 text-[color:var(--nature-text)]", config.title)}>{title}</h3>
 
         {/* 副标题描述 */}
         {description && (
-          <p className={cn("text-base-content/60", config.description)}>{description}</p>
+          <p className={cn("text-[color:var(--nature-text-soft)]", config.description)}>
+            {description}
+          </p>
         )}
       </div>
 
@@ -149,12 +152,12 @@ export function EmptyState({
 
       {/* 次级引导链接 */}
       {links && links.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-base-content/70">
-          {links.map((l, i) => (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
+          {links.map((l) => (
             <a
-              key={`${l.label}-${i}`}
+              key={`${l.href}-${l.label}`}
               href={l.href}
-              className="inline-flex items-center gap-1 rounded-full px-3 py-1 ring-1 ring-base-300 hover:ring-base-400 hover:text-base-content transition-colors"
+              className="inline-flex items-center gap-1 rounded-full border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.72)] px-3 py-1.5 transition-colors hover:border-[rgba(var(--nature-accent-rgb),0.5)] hover:text-[color:var(--nature-text)]"
             >
               {l.icon && <Icon name={l.icon} className="w-4 h-4 opacity-70" />}
               <span>{l.label}</span>

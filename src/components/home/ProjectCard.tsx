@@ -8,14 +8,18 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ title, href, category }: ProjectCardProps) {
   return (
-    <div className="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200">
-      <div className="card-body p-2 sm:p-3">
-        <h3 className="card-title text-sm mb-1 line-clamp-1">
-          <Link href={href} prefetch={false} className="hover:text-primary transition-colors">
+    <div className="nature-panel nature-panel-soft h-full">
+      <div className="nature-panel-body flex h-full flex-col gap-3 p-4">
+        <h3 className="line-clamp-1 text-sm font-semibold text-[color:var(--nature-text)] sm:text-base">
+          <Link
+            href={href}
+            prefetch={false}
+            className="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+          >
             {title}
           </Link>
         </h3>
-        <span className="badge badge-outline badge-xs">{category}</span>
+        <span className="nature-chip w-fit text-xs">{category}</span>
       </div>
     </div>
   );

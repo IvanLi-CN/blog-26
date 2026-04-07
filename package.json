@@ -53,6 +53,7 @@
     "prebuild": "bun scripts/generate-version.ts",
     "start": "bun --bun next start",
     "check": "biome check",
+    "check:public-no-daisy": "bun ./scripts/check-public-no-daisy.ts",
     "lint": "node ./scripts/next-lint.js",
     "fix": "biome check --write",
     "docker:build": "bash ./scripts/docker-build.sh",

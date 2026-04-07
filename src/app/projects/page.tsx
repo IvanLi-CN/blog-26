@@ -16,12 +16,18 @@ const featuredProjects = [
 export default function ProjectsPage() {
   return (
     <PageLayout>
-      <section className="px-3 sm:px-4 md:px-6 py-6 md:py-8 mx-auto max-w-6xl">
-        <div className="flex items-center gap-2 mb-6">
-          <Icon name="tabler:code" className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl md:text-3xl font-bold">项目总览</h1>
+      <section className="nature-container px-4 py-8 sm:px-6 lg:py-12">
+        <div className="nature-surface mb-8 px-6 py-7">
+          <span className="nature-kicker gap-2">
+            <Icon name="tabler:code" className="h-4 w-4" />
+            Projects
+          </span>
+          <h1 className="nature-title mt-4 text-3xl md:text-4xl">项目总览</h1>
+          <p className="nature-muted mt-3 max-w-2xl">
+            这里展示了一些示例项目条目。实际项目内容尚在建设中。
+          </p>
         </div>
-        <p className="text-base-content/70 mb-6">
+        <p className="nature-muted mb-6 px-1">
           这里展示了一些示例项目条目。实际项目内容尚在建设中。
         </p>
 

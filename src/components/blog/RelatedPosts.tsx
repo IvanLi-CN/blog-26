@@ -66,10 +66,13 @@ export default function RelatedPosts({
   });
 
   return (
-    <section className="max-w-3xl mx-auto px-4 sm:px-6 mt-12">
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Icon icon="tabler:article" className="w-6 h-6 text-primary" />
+    <section className="mx-auto mt-12 max-w-3xl px-4 sm:px-6">
+      <div className="border-t border-[rgba(var(--nature-border-rgb),0.72)] pt-8">
+        <h2 className="mb-6 flex items-center gap-2 font-heading text-2xl font-semibold text-[color:var(--nature-text)]">
+          <Icon
+            icon="tabler:article"
+            className="w-6 h-6 text-[color:var(--nature-accent-strong)]"
+          />
           相关文章
         </h2>
         <div className="grid gap-6 md:grid-cols-2">
@@ -82,7 +85,7 @@ export default function RelatedPosts({
             >
               <Link
                 href={`/posts/${post.slug}`}
-                className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary/30 dark:hover:border-primary/30 hover:shadow-md transition-all duration-200"
+                className="nature-panel block p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.42)]"
                 itemProp="url"
               >
                 {post.image && (
@@ -105,7 +108,7 @@ export default function RelatedPosts({
                 )}
 
                 <h3
-                  className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors duration-200 line-clamp-2"
+                  className="mb-2 line-clamp-2 text-lg font-semibold text-[color:var(--nature-text)] transition-colors duration-200 group-hover:text-[color:var(--nature-accent-strong)]"
                   itemProp="headline"
                 >
                   {post.title}
@@ -113,14 +116,14 @@ export default function RelatedPosts({
 
                 {post.excerpt && (
                   <p
-                    className="text-sm text-base-content/70 mb-3 line-clamp-2"
+                    className="mb-3 line-clamp-2 text-sm text-[color:var(--nature-text-soft)]"
                     itemProp="description"
                   >
                     {post.excerpt}
                   </p>
                 )}
 
-                <div className="flex items-center justify-between text-xs text-base-content/50">
+                <div className="flex items-center justify-between text-xs text-[color:var(--nature-text-faint)]">
                   <time
                     dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
                     itemProp="datePublished"
@@ -137,10 +140,7 @@ export default function RelatedPosts({
 
                 {post.category && (
                   <div className="mt-2">
-                    <span
-                      className="inline-block px-2 py-1 text-xs bg-primary/10 text-primary rounded-full"
-                      itemProp="articleSection"
-                    >
+                    <span className="nature-chip nature-chip-accent" itemProp="articleSection">
                       {post.category}
                     </span>
                   </div>

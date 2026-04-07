@@ -63,7 +63,7 @@ export interface ProcessInlineImagesResult {
  */
 function hasBase64Images(content: string): boolean {
   // 创建新的正则表达式实例，避免全局正则的状态问题
-  const regex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/;
+  const regex = /!\[([^\]]*)\]\s*\(\s*data:image\/([^;]+);base64,([^)]+)\s*\)/;
   return regex.test(content);
 }
 
@@ -140,8 +140,9 @@ function generateAssetsPath(articlePath: string): string {
  */
 function validateBase64(base64Data: string): boolean {
   try {
+    const normalized = base64Data.replace(/\s+/g, "");
     // 尝试解码 Base64 数据
-    const decoded = atob(base64Data);
+    const decoded = atob(normalized);
     return decoded.length > 0;
   } catch {
     return false;
@@ -152,7 +153,8 @@ function validateBase64(base64Data: string): boolean {
  * 将 Base64 数据转换为 Blob
  */
 function base64ToBlob(base64Data: string, mimeType: string): Blob {
-  const byteCharacters = atob(base64Data);
+  const normalized = base64Data.replace(/\s+/g, "");
+  const byteCharacters = atob(normalized);
   const byteNumbers = new Array(byteCharacters.length);
 
   for (let i = 0; i < byteCharacters.length; i++) {
@@ -257,7 +259,7 @@ export async function processInlineImages(
 
   // 查找所有 Base64 图片
   // 创建新的正则表达式实例，避免全局正则的状态问题
-  const base64ImageRegex = /!\[([^\]]*)\]\(data:image\/([^;]+);base64,([^)]+)\)/g;
+  const base64ImageRegex = /!\[([^\]]*)\]\s*\(\s*data:image\/([^;]+);base64,([^)]+)\s*\)/g;
   const matches = Array.from(unescapedContent.matchAll(base64ImageRegex));
 
   log("🔍 [ImageProcessing] 发现 Base64 图片:", {

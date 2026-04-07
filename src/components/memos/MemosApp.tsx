@@ -6,6 +6,7 @@
  * 集成所有子组件，统一状态管理
  */
 
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
@@ -22,11 +23,25 @@ import {
   useQuickMemo,
 } from "./hooks";
 import type { MemoCardData } from "./MemoCard";
-import { type MemoData, MemoEditor } from "./MemoEditor";
+import type { MemoData } from "./MemoEditor";
 import { MemosErrorBoundary } from "./MemosErrorBoundary";
 import { MemosList } from "./MemosList";
-import { QuickMemoEditModal, type QuickMemoEditValues } from "./QuickMemoEditModal";
-import { type QuickMemoData, QuickMemoEditor } from "./QuickMemoEditor";
+import type { QuickMemoEditValues } from "./QuickMemoEditModal";
+import type { QuickMemoData } from "./QuickMemoEditor";
+
+const QuickMemoEditor = dynamic(
+  () => import("./QuickMemoEditor").then((module) => module.QuickMemoEditor),
+  { ssr: false }
+);
+
+const MemoEditor = dynamic(() => import("./MemoEditor").then((module) => module.MemoEditor), {
+  ssr: false,
+});
+
+const QuickMemoEditModal = dynamic(
+  () => import("./QuickMemoEditModal").then((module) => module.QuickMemoEditModal),
+  { ssr: false }
+);
 
 export interface MemosAppProps {
   /** 是否显示管理功能 */
@@ -107,6 +122,7 @@ export function MemosApp({
     handleDelete,
   } = useMemoEditor({
     memoId: editingMemo?.slug,
+    memoRecordId: editingMemo?.id,
     onSaveSuccess: handleSaveSuccess,
     onSaveError: (error) => {
       console.error("保存失败:", error);
@@ -212,19 +228,21 @@ export function MemosApp({
 
   const handleQuickEditSave = useCallback(
     async ({ content, isPublic }: QuickMemoEditValues) => {
-      if (!existingMemo) {
+      const memoForQuickEdit = existingMemo ?? editingMemo;
+
+      if (!memoForQuickEdit) {
         console.warn("尝试在未加载完成时保存闪念，已忽略");
         return;
       }
 
       await saveMemo({
         content,
-        title: existingMemo.title,
+        title: memoForQuickEdit.title,
         isPublic,
-        tags: existingMemo.tags ?? [],
+        tags: memoForQuickEdit.tags ?? [],
       });
     },
-    [existingMemo, saveMemo]
+    [editingMemo, existingMemo, saveMemo]
   );
 
   const quickEditTitle =
@@ -234,6 +252,7 @@ export function MemosApp({
   const quickEditArticlePath = existingMemo?.filePath ?? editingMemo?.filePath ?? editingMemo?.slug;
   const quickEditSource = existingMemo?.source ?? editingMemo?.source;
   const quickEditContentSource = quickEditSource === "local" ? "local" : "webdav";
+  const quickEditPending = Boolean(editingMemo && isLoadingMemo && !quickEditContent);
   const quickEditErrorMessage =
     saveError instanceof Error ? saveError.message : saveError ? String(saveError) : undefined;
 
@@ -315,7 +334,7 @@ export function MemosApp({
         initialIsPublic={quickEditIsPublic}
         articlePath={quickEditArticlePath}
         contentSource={quickEditContentSource}
-        isLoading={isLoadingMemo && !!editingMemo}
+        isLoading={quickEditPending}
         isSaving={isSavingMemo}
         errorMessage={quickEditErrorMessage}
         onSave={handleQuickEditSave}

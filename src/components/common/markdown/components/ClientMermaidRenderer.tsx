@@ -96,9 +96,9 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   if (!isClient) {
     return (
       <div
-        className={`mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4 ${className || ""}`}
+        className={`mermaid-container my-4 rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-6 ${className || ""}`}
       >
-        <div className="flex items-center justify-center text-base-content/60">
+        <div className="flex items-center justify-center text-[color:var(--nature-text-soft)]">
           <span>正在加载图表...</span>
         </div>
       </div>
@@ -108,10 +108,10 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   if (isLoading) {
     return (
       <div
-        className={`mermaid-container bg-base-200 border border-base-300 rounded-lg p-6 my-4 ${className || ""}`}
+        className={`mermaid-container my-4 rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-6 ${className || ""}`}
       >
-        <div className="flex items-center justify-center text-base-content/60">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+        <div className="flex items-center justify-center text-[color:var(--nature-text-soft)]">
+          <div className="nature-spinner mr-2 h-6 w-6"></div>
           <span>正在渲染图表...</span>
         </div>
       </div>
@@ -121,14 +121,14 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   if (hasError) {
     return (
       <div
-        className={`mermaid-container bg-error/10 border border-error/30 rounded-lg p-6 my-4 ${className || ""}`}
+        className={`mermaid-container my-4 rounded-[1.4rem] border border-[color:color-mix(in_srgb,var(--nature-danger)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--nature-danger)_10%,transparent)] p-6 ${className || ""}`}
       >
-        <div className="text-error">
+        <div className="text-[color:var(--nature-danger)]">
           <h4 className="font-semibold mb-2">Mermaid 图表渲染失败</h4>
-          <p className="text-sm mb-3 text-error/90">{errorMessage}</p>
+          <p className="mb-3 text-sm text-[color:var(--nature-danger)]">{errorMessage}</p>
           <details className="text-xs">
-            <summary className="cursor-pointer hover:text-error/80">查看原始代码</summary>
-            <pre className="mt-2 p-2 bg-base-200 border border-base-300 rounded overflow-auto text-base-content">
+            <summary className="cursor-pointer hover:opacity-80">查看原始代码</summary>
+            <pre className="mt-2 overflow-auto rounded-xl border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.22)] p-2 text-[color:var(--nature-text)]">
               <code>{chart}</code>
             </pre>
           </details>
@@ -140,7 +140,7 @@ export function ClientMermaidRenderer({ chart, className }: ClientMermaidRendere
   return (
     <div
       ref={containerRef}
-      className={`mermaid-container bg-base-100 border border-base-300 rounded-lg p-6 my-4 overflow-auto ${className || ""}`}
+      className={`mermaid-container my-4 overflow-auto rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-6 ${className || ""}`}
     />
   );
 }

@@ -23,10 +23,10 @@ function TocItemComponent({ item, activeId, onItemClick }: TocItemComponentProps
       <button
         type="button"
         onClick={() => onItemClick(item.id)}
-        className={`block w-full text-left py-1 px-2 rounded text-sm transition-colors duration-200 ${
+        className={`block w-full rounded-xl px-3 py-2 text-left text-sm transition-colors duration-200 ${
           isActive
-            ? "text-primary bg-primary/10 font-medium"
-            : "text-gray-600 dark:text-gray-400 hover:text-primary hover:bg-primary/5"
+            ? "bg-[rgba(var(--nature-accent-rgb),0.14)] font-medium text-[color:var(--nature-accent-strong)]"
+            : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-highlight-rgb),0.18)] hover:text-[color:var(--nature-text)]"
         }`}
         style={{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }}
       >
@@ -34,9 +34,9 @@ function TocItemComponent({ item, activeId, onItemClick }: TocItemComponentProps
       </button>
       {item.children && item.children.length > 0 && (
         <ul className="mt-1">
-          {item.children.map((child, index) => (
+          {item.children.map((child) => (
             <TocItemComponent
-              key={`${child.id}-${index}`}
+              key={child.id}
               item={child}
               activeId={activeId}
               onItemClick={onItemClick}
@@ -94,16 +94,16 @@ export default function TableOfContents({ content, className = "" }: TableOfCont
   }
 
   return (
-    <div className={`bg-base-100 border border-base-300 rounded-lg p-4 ${className}`}>
+    <div className={`nature-panel-soft p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-base-content flex items-center gap-2">
+        <h3 className="flex items-center gap-2 font-semibold text-[color:var(--nature-text)]">
           <Icon icon="tabler:list" className="w-4 h-4" />
           目录
         </h3>
         <button
           type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="btn btn-ghost btn-xs"
+          className="nature-icon-button inline-flex h-8 w-8"
           aria-label={isCollapsed ? "展开目录" : "收起目录"}
         >
           <Icon
@@ -116,9 +116,9 @@ export default function TableOfContents({ content, className = "" }: TableOfCont
       {!isCollapsed && (
         <nav aria-label="文章目录">
           <ul className="space-y-1">
-            {tocItems.map((item, index) => (
+            {tocItems.map((item) => (
               <TocItemComponent
-                key={`${item.id}-${index}`}
+                key={item.id}
                 item={item}
                 activeId={activeId}
                 onItemClick={handleItemClick}

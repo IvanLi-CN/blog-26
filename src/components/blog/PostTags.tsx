@@ -34,22 +34,22 @@ function getTagColorTheme(tagTitle: string): string {
     lowerTitle === "stm32" ||
     lowerTitle === "usb"
   )
-    return "bg-blue-100 border-blue-300 hover:bg-blue-200 hover:border-blue-400 text-blue-800";
+    return "border border-[rgba(132,167,181,0.28)] bg-[rgba(132,167,181,0.14)] text-[color:var(--nature-secondary)]";
 
   // 项目相关 - 绿色主题
   if (lowerTitle.includes("project") || lowerTitle === "diy")
-    return "bg-green-100 border-green-300 hover:bg-green-200 hover:border-green-400 text-green-800";
+    return "border border-[rgba(var(--nature-accent-rgb),0.3)] bg-[rgba(var(--nature-accent-rgb),0.12)] text-[color:var(--nature-accent-strong)]";
 
   // 编程语言 - 紫色主题
   if (lowerTitle === "rust" || lowerTitle.includes("code") || lowerTitle.includes("software"))
-    return "bg-purple-100 border-purple-300 hover:bg-purple-200 hover:border-purple-400 text-purple-800";
+    return "border border-[rgba(157,123,196,0.34)] bg-[rgba(157,123,196,0.12)] text-[rgb(117,77,170)] dark:text-[rgb(202,179,241)]";
 
   // 电源相关 - 橙色主题
   if (lowerTitle.includes("pd-sink") || lowerTitle.includes("power") || lowerTitle.includes("ups"))
-    return "bg-orange-100 border-orange-300 hover:bg-orange-200 hover:border-orange-400 text-orange-800";
+    return "border border-[rgba(188,131,74,0.32)] bg-[rgba(188,131,74,0.1)] text-[color:var(--nature-warning)]";
 
   // 默认主题
-  return "bg-base-200 border-base-300 hover:bg-primary/10 hover:border-primary/20";
+  return "border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.24)] text-[color:var(--nature-text-soft)]";
 }
 
 export default function PostTags({
@@ -164,15 +164,13 @@ export default function PostTags({
             <li key={tag.slug} className="inline">
               <Link
                 href={buildTagHref(tag.title)}
-                className={`inline-flex items-center ${
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                   isMultiLevel
-                    ? "bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:from-primary/20 hover:to-secondary/20 hover:border-primary/30"
+                    ? "border border-[rgba(var(--nature-accent-rgb),0.28)] bg-[linear-gradient(90deg,rgba(var(--nature-accent-rgb),0.12),rgba(132,167,181,0.16))] text-[color:var(--nature-accent-strong)]"
                     : getTagColorTheme(tag.title)
-                } px-2 py-1 rounded-full text-sm font-medium transition-all duration-200 hover:shadow-md hover:-translate-y-0.5`}
+                }`}
               >
-                <span
-                  className={`flex items-center gap-1 ${isMultiLevel ? "font-semibold text-primary" : ""}`}
-                >
+                <span className={`flex items-center gap-1 ${isMultiLevel ? "font-semibold" : ""}`}>
                   <span className="hidden sm:inline-block" aria-hidden>
                     {shouldRenderInlineSvg && iconSvg ? (
                       <span

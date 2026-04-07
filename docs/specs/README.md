@@ -15,6 +15,7 @@ Legacy plans in `docs/plan/` remain readable but are no longer the preferred pla
 
 | ID | Title | Status | Spec | Last | Notes |
 |---|---|---|---|---|---|
+| n8ure | Nature frontend redesign without DaisyUI | in-progress | `n8ure-nature-front-ui/SPEC.md` | 2026-04-05 | Replace public DaisyUI styling with a dedicated Nature design system and stable visual evidence flow. |
 | ey3mm | PR + label driven release | in-progress | `ey3mm-pr-label-release/SPEC.md` | 2026-03-03 | Introduce deterministic release gate from PR labels and channel. |
 | m4c9u | Local memo root keeps `Memos` case | done | `m4c9u-local-memos-root-case/SPEC.md` | 2026-03-10 | Keep local memo writes aligned with the synced `Memos` tree, keep active env parsing strict, ignore inactive local client overrides in webdav-only memo UI, route webdav-only memo uploads through the WebDAV file API, and block dot-segment memo roots. |
 | mivez | Local content source uses real directory layout | in-progress | `mivez-local-real-content-layout/SPEC.md` | 2026-03-11 | Remove synthetic local wrapper directories, classify content from configured real roots, and keep admin local browsing aligned with the actual note tree. |

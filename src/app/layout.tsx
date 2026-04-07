@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import "../lib/iconify-collections";
 import { ProgressBar } from "../components/common/ProgressBar";
@@ -7,6 +8,18 @@ import { IconifyProvider } from "../components/providers/IconifyProvider";
 import { ToastProvider } from "../components/providers/ToastProvider";
 import { TRPCProvider } from "../components/providers/TRPCProvider";
 import { SITE, UI } from "../config/site";
+
+const bodyFont = Noto_Sans_SC({
+  variable: "--font-body",
+  weight: ["400", "500", "700"],
+  preload: false,
+});
+
+const displayFont = Noto_Serif_SC({
+  variable: "--font-display",
+  weight: ["400", "500", "700"],
+  preload: false,
+});
 
 // 强制动态渲染
 export const dynamic = "force-dynamic";
@@ -68,7 +81,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" data-theme="light">
+    <html
+      lang="zh-CN"
+      suppressHydrationWarning
+      data-ui-theme="light"
+      data-ui-preference="system"
+      data-theme="light"
+      style={{ colorScheme: "light" }}
+    >
       <head>
         {/* RSS Feed */}
         <link
@@ -97,41 +117,41 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="manifest" href="/site.webmanifest" />
 
-        {/* DNS Prefetch */}
-        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="//www.google-analytics.com" />
-
-        {/* Preconnect */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 const defaultTheme = ${JSON.stringify(UI.theme.default)};
-                const darkThemes = ${JSON.stringify(UI.theme.darkThemes)};
+                const legacyLightThemes = ${JSON.stringify(UI.theme.legacyLight)};
+                const legacyDarkThemes = ${JSON.stringify(UI.theme.legacyDark)};
+
+                function normalizeTheme(theme) {
+                  if (theme === "dark" || legacyDarkThemes.includes(theme)) return "dark";
+                  if (theme === "light" || legacyLightThemes.includes(theme)) return "light";
+                  return "system";
+                }
+
+                function resolveTheme(theme) {
+                  const normalizedTheme = normalizeTheme(theme);
+                  if (normalizedTheme === "dark") return "dark";
+                  if (normalizedTheme === "light") return "light";
+                  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+                }
 
                 function applyTheme(theme) {
                   const d = document.documentElement;
-                  let currentTheme = theme;
-
-                  if (theme === "system") {
-                    currentTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-                      ? "dark"
-                      : "light";
-                  }
-
-                  d.setAttribute("data-theme", currentTheme);
-
-                  const isDark = darkThemes.includes(currentTheme);
-                  if (isDark) {
-                    d.classList.add("dark");
-                  } else {
-                    d.classList.remove("dark");
+                  const normalizedTheme = normalizeTheme(theme);
+                  const resolvedTheme = resolveTheme(normalizedTheme);
+                  d.setAttribute("data-ui-theme", resolvedTheme);
+                  d.setAttribute("data-ui-preference", normalizedTheme);
+                  d.setAttribute("data-theme", resolvedTheme);
+                  d.classList.toggle("dark", resolvedTheme === "dark");
+                  d.style.colorScheme = resolvedTheme;
+                  if (theme !== normalizedTheme) {
+                    localStorage.setItem("theme", normalizedTheme);
                   }
                 }
 
-                // Apply theme immediately to prevent FOUC
                 const theme = localStorage.getItem("theme") || defaultTheme;
                 applyTheme(theme);
               })();
@@ -139,7 +159,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased">
+      <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`}>
         <ThemeInit />
         <IconifyProvider />
         <ProgressBar />

@@ -16,7 +16,7 @@ function CloseBtn({ closeToast, ariaLabel }: CloseButtonProps) {
       }}
       className={cn(
         "ml-auto mr-1 inline-flex items-center justify-center rounded-full p-2",
-        "hover:bg-base-200/60 text-base-content/70"
+        "text-[color:var(--nature-text-soft)] transition-colors duration-200 hover:bg-[rgba(var(--nature-highlight-rgb),0.24)] hover:text-[color:var(--nature-text)]"
       )}
       data-testid="toast-close"
     >
@@ -48,16 +48,15 @@ export function ToastProvider() {
       hideProgressBar
       autoClose={3000}
       icon={false}
-      // Use react-toastify's closeButton to render our DaisyUI-style icon button
+      // Keep the toast shell inert and let the alert body carry the visible styling.
       closeButton={CloseBtn}
       toastClassName={() =>
         cn(
-          "Toastify__toast !p-0 !bg-transparent !shadow-none !border-0 !rounded-none mx-auto w-full max-w-xl"
+          "Toastify__toast !p-0 !bg-transparent !shadow-none !border-0 !rounded-none mx-auto w-full max-w-xl",
+          "[&_.Toastify__toast-body]:!m-0 [&_.Toastify__toast-body]:!p-0"
         )
       }
-      bodyClassName={() => cn("!p-0 !m-0")}
-      className={cn("Toastify__toast-container !p-4 pointer-events-none")}
-      containerClassName={cn("!static")}
+      className={cn("Toastify__toast-container !static !p-4 pointer-events-none")}
       // Allow clicks only inside actual toasts so layout doesn’t block page
       toastStyle={{ pointerEvents: "auto" }}
       theme="auto"

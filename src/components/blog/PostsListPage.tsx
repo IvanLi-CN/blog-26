@@ -52,9 +52,11 @@ export default function PostsListPage({
   if (isLoading && !data) {
     return (
       <PageLayout>
-        <div className="flex justify-center items-center py-20">
-          <span className="loading loading-spinner loading-lg"></span>
-          <span className="ml-2">正在加载文章...</span>
+        <div className="nature-container py-20">
+          <div className="nature-panel flex items-center justify-center gap-3 px-6 py-8 text-[color:var(--nature-text-soft)]">
+            <span className="nature-spinner h-5 w-5" />
+            <span>正在加载文章...</span>
+          </div>
         </div>
       </PageLayout>
     );
@@ -63,10 +65,14 @@ export default function PostsListPage({
   if (error) {
     return (
       <PageLayout>
-        <div className="container mx-auto px-4 py-20">
-          <div className="alert alert-error">
+        <div className="nature-container py-20">
+          <div className="nature-alert nature-alert-error items-center justify-between">
             <span>加载文章失败</span>
-            <button type="button" onClick={() => refetch()} className="btn btn-sm">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="nature-button nature-button-outline min-h-9 px-3 py-2 text-sm"
+            >
               重试
             </button>
           </div>
@@ -77,13 +83,11 @@ export default function PostsListPage({
 
   return (
     <PageLayout>
-      <section className="px-6 sm:px-6 py-12 sm:py-16 lg:py-20 mx-auto max-w-4xl">
-        {/* 页面标题 - 匹配首页和闪念页面的样式 */}
-        <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-base-content mb-4">
-            文章
-          </h1>
-          <p className="text-base sm:text-lg text-base-content/70 max-w-2xl mx-auto">
+      <section className="nature-container px-6 py-12 sm:py-16 lg:py-20">
+        <div className="mb-8 text-center sm:mb-12">
+          <span className="nature-kicker justify-center">Archive</span>
+          <h1 className="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">文章</h1>
+          <p className="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">
             一些想法、记录、分享
           </p>
         </div>
@@ -116,7 +120,7 @@ export default function PostsListPage({
             description={effectiveIsAdmin ? "开始写下你的第一篇文章吧！" : "这里暂时没有公开的内容"}
             size={effectiveIsAdmin ? "lg" : "md"}
             tone={effectiveIsAdmin ? "brand" : "neutral"}
-            variant={effectiveIsAdmin ? "plain" : "card"}
+            variant={effectiveIsAdmin ? "plain" : "panel"}
             links={
               effectiveIsAdmin
                 ? undefined

@@ -4,7 +4,7 @@
 
 import type { inferRouterOutputs } from "@trpc/server";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { trpc } from "../../lib/trpc";
+import { trpc, trpcVanilla } from "../../lib/trpc";
 import type { AppRouter } from "../../server/router";
 import type { MemoCardData } from "./MemoCard";
 import type { MemoData } from "./MemoEditor";
@@ -143,6 +143,8 @@ export function useMemos(options: UseMemosOptions = {}) {
 export interface UseMemoEditorOptions {
   /** 编辑模式下的 memo ID */
   memoId?: string;
+  /** 编辑模式下已知的数据库记录 ID */
+  memoRecordId?: string;
   /** 保存成功回调 */
   onSaveSuccess?: (memo: unknown) => void;
   /** 保存失败回调 */
@@ -150,7 +152,7 @@ export interface UseMemoEditorOptions {
 }
 
 export function useMemoEditor(options: UseMemoEditorOptions = {}) {
-  const { memoId, onSaveSuccess, onSaveError } = options;
+  const { memoId, memoRecordId, onSaveSuccess, onSaveError } = options;
   const utils = trpc.useUtils();
 
   // tRPC mutations
@@ -193,10 +195,20 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
   // 保存 memo
   const saveMemo = useCallback(
     async (data: MemoData) => {
-      if (memoId && existingMemo) {
+      if (memoId) {
+        const resolvedMemo =
+          existingMemo ??
+          (memoRecordId
+            ? {
+                id: memoRecordId,
+              }
+            : await trpcVanilla.memos.bySlug.query({
+                slug: memoId,
+              }));
+
         // 更新现有 memo
         await updateMemo.mutateAsync({
-          id: existingMemo.id,
+          id: resolvedMemo.id,
           content: data.content,
           title: data.title,
           isPublic: data.isPublic,
@@ -214,7 +226,7 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
         });
       }
     },
-    [memoId, existingMemo, createMemo, updateMemo]
+    [memoId, memoRecordId, existingMemo, createMemo, updateMemo]
   );
 
   // 删除 memo

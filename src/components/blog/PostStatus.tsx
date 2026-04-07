@@ -21,7 +21,6 @@ function getPostStatus(post: Post) {
       type: "private",
       label: "私有",
       icon: "tabler:eye-off",
-      badgeClass: "badge-error",
       iconClass: "text-error",
     };
   }
@@ -32,7 +31,6 @@ function getPostStatus(post: Post) {
       type: "draft",
       label: "草稿",
       icon: "tabler:edit",
-      badgeClass: "badge-warning",
       iconClass: "text-warning",
     };
   }
@@ -42,7 +40,6 @@ function getPostStatus(post: Post) {
     type: "published",
     label: "公开",
     icon: "tabler:eye",
-    badgeClass: "badge-success",
     iconClass: "text-success",
   };
 }
@@ -61,17 +58,14 @@ export default function PostStatus({
   // 根据 size 确定样式
   const sizeClasses = {
     sm: {
-      badge: "badge-sm",
       icon: "w-3 h-3",
       text: "text-xs",
     },
     md: {
-      badge: "badge-md",
       icon: "w-4 h-4",
       text: "text-sm",
     },
     lg: {
-      badge: "badge-lg",
       icon: "w-5 h-5",
       text: "text-base",
     },
@@ -82,7 +76,13 @@ export default function PostStatus({
   if (showText) {
     return (
       <span
-        className={`badge ${status.badgeClass} ${sizeClass.badge} gap-1 ${className}`}
+        className={`nature-chip ${
+          status.type === "private"
+            ? "nature-chip-danger"
+            : status.type === "draft"
+              ? "nature-chip-warning"
+              : "nature-chip-success"
+        } gap-1 ${className}`}
         data-testid="post-status-badge"
       >
         <Icon icon={status.icon} className={sizeClass.icon} />
@@ -92,11 +92,7 @@ export default function PostStatus({
   }
 
   return (
-    <div
-      className={`tooltip tooltip-bottom ${className}`}
-      data-tip={status.label}
-      data-testid="post-status-icon"
-    >
+    <div className={className} title={status.label} data-testid="post-status-icon">
       <Icon icon={status.icon} className={`${sizeClass.icon} ${status.iconClass}`} />
     </div>
   );
