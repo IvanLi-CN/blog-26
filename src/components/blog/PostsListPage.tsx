@@ -120,7 +120,7 @@ export default function PostsListPage({
             description={effectiveIsAdmin ? "开始写下你的第一篇文章吧！" : "这里暂时没有公开的内容"}
             size={effectiveIsAdmin ? "lg" : "md"}
             tone={effectiveIsAdmin ? "brand" : "neutral"}
-            variant={effectiveIsAdmin ? "plain" : "card"}
+            variant={effectiveIsAdmin ? "plain" : "panel"}
             links={
               effectiveIsAdmin
                 ? undefined

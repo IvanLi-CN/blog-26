@@ -52,12 +52,11 @@ export function ToastProvider() {
       closeButton={CloseBtn}
       toastClassName={() =>
         cn(
-          "Toastify__toast !p-0 !bg-transparent !shadow-none !border-0 !rounded-none mx-auto w-full max-w-xl"
+          "Toastify__toast !p-0 !bg-transparent !shadow-none !border-0 !rounded-none mx-auto w-full max-w-xl",
+          "[&_.Toastify__toast-body]:!m-0 [&_.Toastify__toast-body]:!p-0"
         )
       }
-      bodyClassName={() => cn("!p-0 !m-0")}
-      className={cn("Toastify__toast-container !p-4 pointer-events-none")}
-      containerClassName={cn("!static")}
+      className={cn("Toastify__toast-container !static !p-4 pointer-events-none")}
       // Allow clicks only inside actual toasts so layout doesn’t block page
       toastStyle={{ pointerEvents: "auto" }}
       theme="auto"

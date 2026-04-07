@@ -103,7 +103,7 @@ export function MemosList({
       description={showManageButtons ? "开始记录你的第一个想法吧！" : "这里暂时没有公开的内容"}
       size={showManageButtons ? "lg" : "md"}
       tone={showManageButtons ? "brand" : "neutral"}
-      variant={showManageButtons ? "plain" : "card"}
+      variant={showManageButtons ? "plain" : "panel"}
       links={
         showManageButtons
           ? undefined
