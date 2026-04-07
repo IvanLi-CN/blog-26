@@ -1,17 +1,14 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export async function waitForQuickMemoEditor(page: Page) {
-  const container = page.getByRole("region", { name: "快速发布区域" });
+  const container = page.locator('[data-testid="quick-memo-editor"]').first();
 
   await expect
     .poll(
       async () => {
         const count = await container.count();
         if (count === 0) return false;
-        return container
-          .first()
-          .isVisible()
-          .catch(() => false);
+        return container.isVisible().catch(() => false);
       },
       {
         timeout: 90_000,

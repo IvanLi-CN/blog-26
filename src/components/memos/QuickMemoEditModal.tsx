@@ -89,6 +89,7 @@ export function QuickMemoEditModal({
         return;
       }
 
+      let didSaveSucceed = false;
       setIsSubmitting(true);
       try {
         let processedContent = content.trim();
@@ -108,13 +109,28 @@ export function QuickMemoEditModal({
           content: processedContent,
           isPublic,
         });
+        didSaveSucceed = true;
       } catch (error) {
         console.error("快速编辑保存失败:", error);
       } finally {
         setIsSubmitting(false);
       }
+
+      if (didSaveSucceed) {
+        onClose();
+      }
     },
-    [articlePath, content, contentSource, isPublic, isSaving, isSubmitting, memoTitle, onSave]
+    [
+      articlePath,
+      content,
+      contentSource,
+      isPublic,
+      isSaving,
+      isSubmitting,
+      memoTitle,
+      onClose,
+      onSave,
+    ]
   );
 
   const handleKeyDown = useCallback(

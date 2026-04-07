@@ -7,9 +7,16 @@ import { openMemoEditDialog, waitForMemoCardByText, waitForQuickMemoEditor } fro
  * 验证编辑 memo 后不会在列表中创建重复项
  */
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
+
 test.describe("Memo 编辑不重复", () => {
   test("编辑 memo 后列表中不应出现重复项", async ({ page }) => {
     test.setTimeout(150_000);
+
+    await page.request.post("/api/dev/login", {
+      data: { email: ADMIN_EMAIL },
+    });
+
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
 
     // 等待 memo 列表加载

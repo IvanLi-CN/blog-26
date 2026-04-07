@@ -11,6 +11,7 @@ const ONE_BY_ONE_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
 const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
 function findMemoPayload(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null;
@@ -54,6 +55,10 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
 
   test("uploads base64 inline image and avoids '.md/' in path", async ({ page, baseURL }) => {
     const TOKEN = `__INLINE_${Date.now()}__`;
+    await page.request.post("/api/dev/login", {
+      data: { email: ADMIN_EMAIL },
+    });
+
     // Navigate to memos page as admin (header is injected by project config)
     await page.goto(`${baseURL}/memos`, { waitUntil: "domcontentloaded", timeout: 60_000 });
 
