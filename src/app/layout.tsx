@@ -122,20 +122,34 @@ export default function RootLayout({
             __html: `
               (function() {
                 const defaultTheme = ${JSON.stringify(UI.theme.default)};
+                const legacyLightThemes = ${JSON.stringify(UI.theme.legacyLight)};
+                const legacyDarkThemes = ${JSON.stringify(UI.theme.legacyDark)};
+
+                function normalizeTheme(theme) {
+                  if (theme === "dark" || legacyDarkThemes.includes(theme)) return "dark";
+                  if (theme === "light" || legacyLightThemes.includes(theme)) return "light";
+                  return "system";
+                }
+
                 function resolveTheme(theme) {
-                  if (theme === "dark") return "dark";
-                  if (theme === "light") return "light";
+                  const normalizedTheme = normalizeTheme(theme);
+                  if (normalizedTheme === "dark") return "dark";
+                  if (normalizedTheme === "light") return "light";
                   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
                 }
 
                 function applyTheme(theme) {
                   const d = document.documentElement;
-                  const resolvedTheme = resolveTheme(theme);
+                  const normalizedTheme = normalizeTheme(theme);
+                  const resolvedTheme = resolveTheme(normalizedTheme);
                   d.setAttribute("data-ui-theme", resolvedTheme);
-                  d.setAttribute("data-ui-preference", theme === "dark" ? "dark" : theme === "light" ? "light" : "system");
+                  d.setAttribute("data-ui-preference", normalizedTheme);
                   d.setAttribute("data-theme", resolvedTheme);
                   d.classList.toggle("dark", resolvedTheme === "dark");
                   d.style.colorScheme = resolvedTheme;
+                  if (theme !== normalizedTheme) {
+                    localStorage.setItem("theme", normalizedTheme);
+                  }
                 }
 
                 const theme = localStorage.getItem("theme") || defaultTheme;
