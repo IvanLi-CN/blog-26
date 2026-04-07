@@ -143,6 +143,8 @@ export function useMemos(options: UseMemosOptions = {}) {
 export interface UseMemoEditorOptions {
   /** 编辑模式下的 memo ID */
   memoId?: string;
+  /** 编辑模式下已知的数据库记录 ID */
+  memoRecordId?: string;
   /** 保存成功回调 */
   onSaveSuccess?: (memo: unknown) => void;
   /** 保存失败回调 */
@@ -150,7 +152,7 @@ export interface UseMemoEditorOptions {
 }
 
 export function useMemoEditor(options: UseMemoEditorOptions = {}) {
-  const { memoId, onSaveSuccess, onSaveError } = options;
+  const { memoId, memoRecordId, onSaveSuccess, onSaveError } = options;
   const utils = trpc.useUtils();
 
   // tRPC mutations
@@ -196,9 +198,13 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
       if (memoId) {
         const resolvedMemo =
           existingMemo ??
-          (await trpcVanilla.memos.bySlug.query({
-            slug: memoId,
-          }));
+          (memoRecordId
+            ? {
+                id: memoRecordId,
+              }
+            : await trpcVanilla.memos.bySlug.query({
+                slug: memoId,
+              }));
 
         // 更新现有 memo
         await updateMemo.mutateAsync({
@@ -220,7 +226,7 @@ export function useMemoEditor(options: UseMemoEditorOptions = {}) {
         });
       }
     },
-    [memoId, existingMemo, createMemo, updateMemo]
+    [memoId, memoRecordId, existingMemo, createMemo, updateMemo]
   );
 
   // 删除 memo

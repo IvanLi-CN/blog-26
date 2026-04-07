@@ -65,8 +65,8 @@ test.describe("Memo 编辑不重复", () => {
     await expect(saveButton).toBeEnabled({ timeout: 30_000 });
     await saveButton.click();
 
-    // 等待保存完成（对话框关闭）
-    await expect(dialog).not.toBeVisible({ timeout: 60_000 });
+    // 等待保存完成（对话框卸载）
+    await expect(dialog).toHaveCount(0, { timeout: 60_000 });
 
     // 验证编辑后列表中不存在重复的目标 memo
     const finalCount = await memoCards.count();

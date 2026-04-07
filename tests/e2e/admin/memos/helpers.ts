@@ -81,7 +81,7 @@ export async function openMemoDeleteDialog(page: Page, trigger: Locator) {
 }
 
 export async function openMemoEditDialog(page: Page, trigger: Locator) {
-  const dialog = page.getByRole("dialog");
+  const dialog = page.locator('[data-testid="quick-memo-edit-modal"]');
 
   await expect(trigger).toBeVisible({ timeout: 60_000 });
 
@@ -91,6 +91,8 @@ export async function openMemoEditDialog(page: Page, trigger: Locator) {
         await trigger.click({ force: true }).catch(() => {
           // Ignore transient click failures while the list is hydrating.
         });
+        const count = await dialog.count();
+        if (count === 0) return false;
         return dialog.isVisible().catch(() => false);
       },
       {

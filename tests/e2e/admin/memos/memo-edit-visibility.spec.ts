@@ -54,7 +54,7 @@ test.describe("Memo 编辑可见性", () => {
 
     await expect(save).toBeEnabled({ timeout: 30_000 });
     await save.click();
-    await expect(dialog).not.toBeVisible({ timeout: 60_000 });
+    await expect(dialog).toHaveCount(0, { timeout: 60_000 });
 
     // 3) 重新进入列表后验证该 memo 已持久化为私有
     await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });

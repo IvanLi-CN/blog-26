@@ -152,7 +152,12 @@ export function QuickMemoEditModal({
   }
 
   return (
-    <div className="nature-modal z-50" role="dialog" aria-modal="true">
+    <div
+      className="nature-modal z-50"
+      role="dialog"
+      aria-modal="true"
+      data-testid="quick-memo-edit-modal"
+    >
       <button
         type="button"
         className="nature-modal-backdrop"

@@ -122,6 +122,7 @@ export function MemosApp({
     handleDelete,
   } = useMemoEditor({
     memoId: editingMemo?.slug,
+    memoRecordId: editingMemo?.id,
     onSaveSuccess: handleSaveSuccess,
     onSaveError: (error) => {
       console.error("保存失败:", error);
