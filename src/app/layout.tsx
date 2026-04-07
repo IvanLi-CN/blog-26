@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
+import "./nature-restored.css";
 import "../lib/iconify-collections";
 import { ProgressBar } from "../components/common/ProgressBar";
 import { ThemeInit } from "../components/common/ThemeInit";

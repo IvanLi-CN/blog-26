@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./nature-restored.css";
 
 export const metadata: Metadata = {
   title: "Ivan's Blog",

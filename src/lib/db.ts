@@ -7,12 +7,15 @@ import * as schema from "./schema";
 export let db: ReturnType<typeof drizzle<typeof schema>>;
 
 const DB_PATH = process.env.DB_PATH || "./sqlite.db";
-let resolvedDBPath = path.resolve(process.cwd(), DB_PATH);
+let resolvedDBPath = path.resolve(/* turbopackIgnore: true */ process.cwd(), DB_PATH);
 
 export async function initializeDB(force: boolean = false): Promise<void> {
   // 重新计算数据库路径，以防环境变量已更改
   const currentDBPath = process.env.DB_PATH || "./sqlite.db";
-  const currentResolvedDBPath = path.resolve(process.cwd(), currentDBPath);
+  const currentResolvedDBPath = path.resolve(
+    /* turbopackIgnore: true */ process.cwd(),
+    currentDBPath
+  );
 
   // 如果强制重新初始化，或者数据库未初始化，或者路径已更改
   if (force || !db || resolvedDBPath !== currentResolvedDBPath) {

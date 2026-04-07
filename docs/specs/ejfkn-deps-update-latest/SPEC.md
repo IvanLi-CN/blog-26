@@ -2,9 +2,9 @@
 
 ## 状态
 
-- Status: done
+- Status: in_progress
 - Created: 2026-04-06
-- Last: 2026-04-06
+- Last: 2026-04-07
 
 ## 背景 / 问题陈述
 
@@ -126,7 +126,7 @@ None
 
 ### UI / Storybook (if applicable)
 
-- Not applicable unless dependency upgrades cause visible UI regressions that require evidence during PR convergence.
+- 依赖升级曾引入公开页面样式回归，已通过本地浏览器复核与聊天回图完成 owner-facing 验证。
 
 ### Quality checks
 
@@ -147,7 +147,8 @@ None
 
 ## Visual Evidence
 
-本计划默认不需要视觉证据；若依赖升级在 PR 收敛阶段引入可见 UI 行为变化，再按仓库规则补充。
+- 2026-04-07: 已在本地预览复核 `/`、`/memos`、`/admin/posts/editor`，并将首页、Memos、后台编辑器的修复后截图回传给主人验收。
+- 本轮不把截图文件提交入仓；PR 正文默认无图，保留聊天回图作为 owner-facing 视觉证据。
 
 ## 资产晋升（Asset promotion）
 
@@ -169,7 +170,7 @@ None
 ## 风险 / 开放问题 / 假设（Risks, Open Questions, Assumptions）
 
 - 风险：远端 CI 仍可能暴露本地未覆盖的平台差异，但本地验证已全部通过。
-- 风险：开发态仍会输出若干非阻断警告，包括 Next/Turbopack NFT tracing、`sitemap.xml` 生成时的 repo-root `sqlite.db` 缺表日志、首页/列表页的相对时间 hydration warning、以及文章编辑器现有的嵌套 `button` hydration warning；本轮未扩 scope 处理这些既有问题。
+- 风险：`bun run build` 仍保留 1 条 Next/Turbopack NFT tracing warning，当前不影响构建产物与运行行为，但后续若继续深挖 Turbopack tracing，可能需要再做一轮定向收敛。
 - 需要决策的问题：None。
 - 假设（需主人确认）：None。
 
@@ -177,15 +178,16 @@ None
 
 - direct `dependencies` / `devDependencies` 已升级到执行时的 latest stable；`next` / `@next/mdx` 升级到 `16.2.2`，`typescript` 升级到 `6.0.2`，`@biomejs/biome` 升级到 `2.4.10`，`playwright` / `@playwright/test` 升级到 `1.59.1`，`tailwindcss` 升级到 `4.2.2`，并同步刷新 `bun.lock`。
 - 为适配升级后的工具链，补充了最小必要的源码与测试修复，包括 Biome schema 更新、Bun test 排除 E2E 的配置、Milkdown 快速编辑器内容持久化归一化、若干 hydration 修复，以及一批 Playwright 导航/等待策略调整。
+- 2026-04-07 追加修复了依赖升级引出的回归：恢复 Nature 基础样式层、修正本地 dev login 的后台权限闸门、收敛主题/特权认证/代码块相关 E2E 脆弱性，并移除文章编辑器中的嵌套 `button` hydration 问题。
 - 本轮未引入额外功能、性能调参或依赖替换。
 
 ## 验证结果（Validation Results）
 
 - `bun outdated`: 通过，输出为空。
-- `bun run check`: 通过；仍有既有 warning（`noArrayIndexKey`、`useOptionalChain`、单个 `noNonNullAssertion`），无阻断错误。
+- `bun run check`: 通过，当前为 0 warning / 0 error。
 - `bun test`: 通过，`277 pass / 0 fail`。
-- `bun run build`: 通过；保留既有 NFT tracing warning 与 `sitemap.xml` 生成时的 sqlite 缺表日志。
-- `bun run test:e2e`: 通过，`71 passed / 1 skipped`。
+- `bun run build`: 通过；当前仅剩 1 条 Next/Turbopack NFT tracing warning。
+- `bun run test:e2e`: 通过，`78 passed / 1 skipped`。
 
 ## 变更记录（Change log）
 

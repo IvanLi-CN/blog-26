@@ -104,7 +104,7 @@
     "pr:create": "bun ./scripts/create-pr.ts"
   },
   "dependencies": {
-    "@fingerprintjs/fingerprintjs": "^5.1.0",
+    "@fingerprintjs/fingerprintjs": "^5.2.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@iconify-json/bxl": "^1.2.4",
     "@iconify-json/carbon": "^1.2.20",
@@ -113,7 +113,7 @@
     "@iconify-json/game-icons": "^1.2.3",
     "@iconify-json/lucide": "^1.2.101",
     "@iconify-json/material-symbols": "^1.2.65",
-    "@iconify-json/simple-icons": "^1.2.76",
+    "@iconify-json/simple-icons": "^1.2.77",
     "@iconify/react": "^6.0.2",
     "@llamaindex/core": "^0.6.23",
     "@llamaindex/env": "^0.1.31",
@@ -214,7 +214,7 @@
     "commitlint-plugin-function-rules": "^4.3.2",
     "concurrently": "^9.2.1",
     "js-yaml": "^4.1.1",
-    "lefthook": "^2.1.4",
+    "lefthook": "^2.1.5",
     "mdast-util-to-string": "^4.0.0",
     "reading-time": "^1.5.0",
     "sharp": "0.34.5",

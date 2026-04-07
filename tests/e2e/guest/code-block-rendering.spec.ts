@@ -1,14 +1,19 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
 const TARGET_POST_PATH = E2E_FS_ONLY
   ? "/posts/react-hooks-deep-dive"
   : "/posts/nodejs-performance-optimization";
 
+async function openTargetPost(page: Page) {
+  await page.goto(TARGET_POST_PATH, { timeout: 60_000, waitUntil: "commit" });
+  await expect(page.locator("article")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("code").first()).toBeVisible({ timeout: 30_000 });
+}
+
 test.describe("Code Block Rendering", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(TARGET_POST_PATH);
-    await page.waitForLoadState("networkidle");
+    await openTargetPost(page);
   });
 
   test("should display code blocks with correct JavaScript content", async ({ page }) => {
@@ -40,8 +45,9 @@ test.describe("Code Block Rendering", () => {
     page.on("console", (msg) => {
       if (msg.type() === "error") consoleErrors.push(msg.text());
     });
-    await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.reload({ timeout: 60_000, waitUntil: "commit" });
+    await expect(page.locator("article")).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("code").first()).toBeVisible({ timeout: 30_000 });
     const relevantErrors = consoleErrors.filter(
       (e) => !e.includes("Download the React DevTools") && !e.includes("React DevTools")
     );

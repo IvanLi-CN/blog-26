@@ -2,10 +2,12 @@ import { expect, type Page, test } from "@playwright/test";
 import { UI } from "../../../src/config/site";
 
 type ThemePreference = (typeof UI.theme.options)[number];
+type ResolvedTheme = Exclude<ThemePreference, "system">;
 
-const THEMES_EXCEPT_SYSTEM = Array.from(
-  new Set([...UI.theme.mainThemes, ...UI.theme.allThemes])
-).filter((theme): theme is ThemePreference => theme !== "system");
+const THEMES_EXCEPT_SYSTEM = UI.theme.options.filter(
+  (theme): theme is ResolvedTheme => theme !== "system"
+);
+const DARK_THEMES = new Set<ResolvedTheme>(UI.theme.darkResolved);
 
 async function openHome(page: Page) {
   await page.goto("/", { timeout: 60_000, waitUntil: "commit" });
@@ -56,7 +58,7 @@ test.describe("Theme application", () => {
       const hasDark = await themedPage
         .locator("html")
         .evaluate((el) => el.classList.contains("dark"));
-      expect(hasDark).toBe(UI.theme.darkThemes.includes(theme));
+      expect(hasDark).toBe(DARK_THEMES.has(theme));
       await themedPage.close();
     }
   });
