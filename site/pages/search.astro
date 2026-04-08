@@ -1,0 +1,9 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SearchPageIsland from "../components/SearchPageIsland";
+---
+<BaseLayout pathname="/search" title="搜索 - Ivan's Blog" description="搜索文章与公开 Memos">
+  <main class="min-h-[60vh] py-8">
+    <SearchPageIsland client:load />
+  </main>
+</BaseLayout>

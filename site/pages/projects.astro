@@ -1,0 +1,32 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { featuredProjects } from "../lib/projects";
+import Icon from "@/components/ui/Icon";
+---
+<BaseLayout pathname="/projects" title="项目总览 - Ivan's Blog" description="浏览公开项目索引与实践条目">
+  <section class="nature-container px-4 py-8 sm:px-6 lg:py-12">
+    <div class="nature-surface mb-8 px-6 py-7">
+      <span class="nature-kicker gap-2">
+        <Icon name="tabler:code" className="h-4 w-4" />
+        Projects
+      </span>
+      <h1 class="nature-title mt-4 text-3xl md:text-4xl">项目总览</h1>
+      <p class="nature-muted mt-3 max-w-2xl">这里展示了一些示例项目条目。实际项目内容尚在建设中。</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      {featuredProjects.map((project) => (
+        <div class="nature-panel nature-panel-soft h-full">
+          <div class="nature-panel-body flex h-full flex-col gap-3 p-4">
+            <h3 class="line-clamp-1 text-sm font-semibold text-[color:var(--nature-text)] sm:text-base">
+              <a href={project.href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+                {project.title}
+              </a>
+            </h3>
+            <span class="nature-chip w-fit text-xs">{project.category}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

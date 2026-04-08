@@ -1,0 +1,71 @@
+---
+import Icon from "@/components/ui/Icon";
+import { footerData } from "@/config/navigation";
+import { SITE } from "@/config/site";
+---
+<footer class="relative z-10 px-3 pb-4 pt-8 sm:px-4 sm:pb-6 sm:pt-10">
+  <div class="nature-container">
+    <div class="nature-surface px-5 py-6 sm:px-7 sm:py-7">
+      <div class="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center gap-3">
+            <div class="nature-avatar-ring flex h-12 w-12 items-center justify-center bg-[radial-gradient(circle_at_30%_30%,rgba(var(--nature-accent-rgb),0.45),rgba(var(--nature-accent-2-rgb),0.7))] text-lg font-semibold text-white">
+              I
+            </div>
+            <div>
+              <div class="font-heading text-xl font-semibold tracking-[-0.04em]">{SITE.name}</div>
+              <div class="text-sm text-[color:var(--nature-text-soft)]">
+                Digital greenhouse for notes, memos, and making.
+              </div>
+            </div>
+          </div>
+
+          <div class="max-w-xl text-sm leading-7 text-[color:var(--nature-text-soft)]">
+            以更柔和的界面去承载技术记录、生活片段与项目痕迹，让内容像水一样自然流过页面。
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
+            <span>Copyright © {new Date().getFullYear()} {SITE.owner}</span>
+            <span class="nature-chip">Code: MIT</span>
+            <a
+              href="https://creativecommons.org/licenses/by-nc-nd/4.0/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="nature-chip"
+            >
+              Content: CC BY-NC-ND 4.0
+            </a>
+          </div>
+        </div>
+
+        <div class="flex min-w-[16rem] flex-col gap-4">
+          <h6 class="text-sm font-medium uppercase tracking-[0.22em] text-[color:var(--nature-text-faint)]">
+            Social
+          </h6>
+          <div class="flex flex-wrap gap-2">
+            {footerData.socialLinks.map((social) => (
+              <a
+                class="nature-icon-button inline-flex h-10 w-10"
+                aria-label={social.ariaLabel}
+                href={social.href}
+                target={social.href.startsWith("/") ? undefined : "_blank"}
+                rel={social.href.startsWith("/") ? undefined : "noopener noreferrer"}
+              >
+                <Icon name={social.icon} className="text-lg" />
+              </a>
+            ))}
+          </div>
+
+          <a
+            target="_blank"
+            rel="noopener nofollow"
+            href="https://beian.miit.gov.cn"
+            class="text-sm text-[color:var(--nature-text-soft)] transition-colors hover:text-[color:var(--nature-accent-strong)]"
+          >
+            闽ICP备2023000043号
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>

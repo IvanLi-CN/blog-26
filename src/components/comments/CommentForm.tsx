@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type React from "react";
 import { useCallback, useEffect, useId, useState } from "react";
 import Icon from "../ui/Icon";
@@ -94,10 +93,11 @@ export default function CommentForm({
       {userInfo && (
         <div className="nature-panel-soft flex items-center gap-4 px-4 py-4">
           <div className="overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
-            <Image
+            {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}
+            <img
               src={userInfo.avatarUrl || "/default-avatar.png"}
               alt={userInfo.nickname}
-              className="rounded-full"
+              className="h-12 w-12 rounded-full object-cover"
               width={48}
               height={48}
             />

@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVisitorId } from "../../lib/fingerprint";
-import { trpc } from "../../lib/trpc";
 import type { UserInfo } from "../comments/types";
 
 interface ReactionsProps {
@@ -11,61 +10,91 @@ interface ReactionsProps {
   userInfo: UserInfo | null;
 }
 
+interface ReactionItem {
+  emoji: string;
+  count: number;
+  userReacted?: boolean;
+}
+
 const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "🤔"];
+
+async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, init);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      typeof payload?.error === "string"
+        ? payload.error
+        : `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+  return payload as T;
+}
 
 export default function Reactions({ targetType, targetId, userInfo }: ReactionsProps) {
   const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [items, setItems] = useState<ReactionItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userInfo) {
-      getVisitorId().then(setFingerprint);
+      void getVisitorId()
+        .then(setFingerprint)
+        .catch(() => setFingerprint(null));
     }
   }, [userInfo]);
 
-  const canFetch = targetType && targetId && (userInfo || fingerprint);
-
-  // 使用 tRPC 查询
-  const { data, error, isLoading, refetch } = trpc.reactions.getReactions.useQuery(
-    {
-      targetType,
-      targetId,
-    },
-    {
-      enabled: !!canFetch,
-      retry: false,
-    }
+  const canFetch = useMemo(
+    () => Boolean(targetType && targetId && (userInfo || fingerprint)),
+    [fingerprint, targetId, targetType, userInfo]
   );
 
-  // 使用 tRPC mutation
-  const toggleReaction = trpc.reactions.toggle.useMutation({
-    onSuccess: () => {
-      refetch();
-    },
-  });
+  const fetchReactions = useCallback(async () => {
+    if (!canFetch) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await readJson<{ reactions: ReactionItem[] }>(
+        `/api/public/reactions?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`
+      );
+      setItems(data.reactions ?? []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [canFetch, targetId, targetType]);
+
+  useEffect(() => {
+    void fetchReactions();
+  }, [fetchReactions]);
 
   const handleEmojiClick = useCallback(
     async (emoji: string) => {
       if (!canFetch) return;
 
       try {
-        await toggleReaction.mutateAsync({
-          targetType,
-          targetId,
-          emoji,
+        setIsLoading(true);
+        await readJson(`/api/public/reactions/toggle`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ targetType, targetId, emoji }),
         });
-      } catch (error) {
-        console.error("Failed to toggle reaction:", error);
+        await fetchReactions();
+      } catch (err) {
+        console.error("Failed to toggle reaction:", err);
+        setError(err instanceof Error ? err.message : String(err));
+        setIsLoading(false);
       }
     },
-    [canFetch, targetType, targetId, toggleReaction]
+    [canFetch, fetchReactions, targetId, targetType]
   );
-
-  const displayedReactions = data?.reactions ?? [];
 
   return (
     <div className="flex items-center gap-2">
       {EMOJI_OPTIONS.map((emoji) => {
-        const reaction = displayedReactions.find((r) => r.emoji === emoji);
+        const reaction = items.find((r) => r.emoji === emoji);
         const userReacted = reaction?.userReacted ?? false;
         const count = reaction?.count ?? 0;
 
@@ -73,7 +102,7 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
           <button
             type="button"
             key={emoji}
-            onClick={() => handleEmojiClick(emoji)}
+            onClick={() => void handleEmojiClick(emoji)}
             disabled={isLoading}
             className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all ${
               userReacted
@@ -83,7 +112,7 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
             aria-label={`React with ${emoji}`}
           >
             <span className="text-sm">{emoji}</span>
-            {count > 0 && <span className="text-xs ml-1">{count}</span>}
+            {count > 0 && <span className="ml-1 text-xs">{count}</span>}
             {isLoading && <span className="nature-spinner h-3.5 w-3.5" />}
           </button>
         );

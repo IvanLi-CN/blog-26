@@ -1,0 +1,77 @@
+---
+import Icon from "@/components/ui/Icon";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getGroupedTags, getSnapshot, pickTagIconSvg } from "../../lib/public-site";
+import { buildTagHref } from "@/lib/tag-href";
+
+const snapshot = await getSnapshot();
+const groups = getGroupedTags(snapshot);
+---
+<BaseLayout pathname="/tags" title="标签 - Ivan's Blog" description="浏览所有公开标签与分类">
+  <section class="nature-container w-full px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+    <div class="space-y-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div class="space-y-3">
+          <span class="nature-kicker w-fit gap-2">
+            <Icon name="tabler:tags" className="h-4 w-4" />
+            标签
+          </span>
+          <div>
+            <h1 class="nature-title text-3xl sm:text-4xl">浏览所有标签</h1>
+            <p class="nature-muted mt-2 text-sm">最新公开内容使用到的标签都会记录在这里。</p>
+          </div>
+        </div>
+        <div class="nature-panel-soft flex items-center gap-4 px-4 py-3 text-sm text-[color:var(--nature-text-soft)]">
+          <div>
+            <p class="nature-stat-label">标签数量</p>
+            <p class="nature-stat-value text-2xl">{snapshot.tags.summaries.length}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-10">
+        {groups.map((group) => (
+          <section class="space-y-4">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span class="nature-chip gap-2 text-sm">
+                <Icon name={snapshot.tags.categoryIcons[group.key] || "tabler:category"} className="h-4 w-4 text-[color:var(--nature-accent-strong)]" />
+                {group.title}
+              </span>
+              <span class="text-xs text-[color:var(--nature-text-faint)]">{group.items.length} 个标签</span>
+            </div>
+
+            <div class="nature-surface p-3 sm:p-4">
+              <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3 sm:gap-4">
+                {group.items.map((tag) => {
+                  const { iconId, iconSvg } = pickTagIconSvg(tag.name, snapshot.tags.tagIconMap, snapshot.tags.tagIconSvgMap);
+                  return (
+                    <a
+                      href={buildTagHref(tag.name)}
+                      class="group relative flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.92)] p-4 shadow-[0_14px_32px_rgba(8,21,16,0.08)] transition duration-300 hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.5)]"
+                    >
+                      <span class="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[rgba(var(--nature-accent-rgb),0.6)] to-transparent opacity-0 transition group-hover:opacity-100" />
+                      <div class="flex items-start gap-3">
+                        <span class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[rgba(var(--nature-accent-rgb),0.12)] text-[color:var(--nature-accent-strong)]">
+                          {iconSvg ? (
+                            <span class="inline-flex [&>svg]:h-5 [&>svg]:w-5" set:html={iconSvg} />
+                          ) : (
+                            <Icon name={iconId} className="h-5 w-5" />
+                          )}
+                        </span>
+                        <div class="min-w-0 flex-1">
+                          <p class="truncate text-base font-semibold text-[color:var(--nature-text)]">{tag.lastSegment}</p>
+                          <p class="mt-1 text-xs text-[color:var(--nature-text-soft)]">{tag.count} 篇内容</p>
+                        </div>
+                        <Icon name="tabler:chevron-right" className="mt-1 h-4 w-4 flex-shrink-0 text-[color:var(--nature-text-faint)] transition group-hover:text-[color:var(--nature-accent-strong)]" />
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

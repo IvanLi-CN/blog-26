@@ -1,0 +1,29 @@
+---
+import Icon from "@/components/ui/Icon";
+import { buildTagHref } from "@/lib/tag-href";
+import { pickTagIconSvg } from "../lib/public-site";
+
+interface Props {
+  tag: string;
+  iconMap?: Record<string, string | null>;
+  iconSvgMap?: Record<string, string | null>;
+  className?: string;
+}
+
+const { tag, iconMap = {}, iconSvgMap = {}, className = "" } = Astro.props;
+const label = String(tag).split("/").filter(Boolean).at(-1)?.replace(/^#/, "") ?? String(tag);
+const { iconId, iconSvg } = pickTagIconSvg(String(tag), iconMap, iconSvgMap);
+---
+<a
+  href={buildTagHref(String(tag))}
+  class={`inline-flex items-center gap-1 rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.24)] px-2.5 py-1 text-sm font-medium text-[color:var(--nature-text-soft)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.36)] hover:text-[color:var(--nature-accent-strong)] ${className}`}
+>
+  <span class="hidden sm:inline-flex text-[color:var(--nature-accent-strong)]" aria-hidden="true">
+    {iconSvg ? (
+      <span class="inline-flex [&>svg]:h-3 [&>svg]:w-3" set:html={iconSvg} />
+    ) : (
+      <Icon name={iconId} className="h-3 w-3" />
+    )}
+  </span>
+  <span>{label}</span>
+</a>

@@ -1,0 +1,66 @@
+---
+import Icon from "@/components/ui/Icon";
+import { resolveImagePath } from "@/lib/image-utils";
+import { extractTextSummary } from "@/lib/markdown-utils";
+import { formatAbsoluteDate } from "../lib/format";
+import TagBadge from "./TagBadge.astro";
+
+interface Props {
+  item: {
+    type: "post" | "memo";
+    slug: string;
+    title: string | null;
+    excerpt: string | null;
+    content: string | null;
+    publishDate: string;
+    tags: string[];
+    image: string | null;
+    dataSource: string | null;
+    filePath: string | null;
+  };
+  iconMap?: Record<string, string | null>;
+  iconSvgMap?: Record<string, string | null>;
+}
+
+const { item, iconMap = {}, iconSvgMap = {} } = Astro.props;
+const href = item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`;
+const preview = item.excerpt || extractTextSummary(item.content || "", 180);
+const imageSrc = item.image
+  ? resolveImagePath(
+      item.image,
+      (item.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
+      item.filePath || (item.type === "memo" ? `memos/${item.slug}.md` : `blog/${item.slug}.md`)
+    )
+  : null;
+---
+<article class="nature-panel nature-panel-soft px-4 py-4 sm:px-5">
+  <div class="flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+    <span class="nature-chip gap-1">
+      <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
+      {item.type === "memo" ? "闪念" : "文章"}
+    </span>
+    <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
+  </div>
+  <div class="mt-3 flex flex-col gap-4 md:flex-row">
+    {imageSrc && item.type === "post" && (
+      <a href={href} class="block overflow-hidden rounded-[1.25rem] md:w-48">
+        <img src={imageSrc} alt={item.title || item.slug} class="h-32 w-full object-cover md:h-full" loading="lazy" />
+      </a>
+    )}
+    <div class="min-w-0 flex-1">
+      <h2 class="nature-title text-xl font-semibold">
+        <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+          {item.title || item.slug}
+        </a>
+      </h2>
+      {preview && <p class="nature-muted mt-3 text-base leading-7">{preview}</p>}
+      {item.tags.length > 0 && (
+        <div class="mt-4 flex flex-wrap gap-2">
+          {item.tags.slice(0, 4).map((tag) => (
+            <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</article>

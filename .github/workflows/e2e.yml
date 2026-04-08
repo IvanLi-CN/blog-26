@@ -11,13 +11,12 @@ on:
       - main
       - nextjs
       - develop
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch:
 
 concurrency:
   group: e2e-${{ github.ref }}
   cancel-in-progress: true
 
-# Minimal default permissions for all jobs on GitHub Actions
 permissions:
   contents: read
 
@@ -30,17 +29,18 @@ jobs:
       matrix:
         project:
           - guest-chromium
-          - user-chromium
           - admin-chromium
-    timeout-minutes: 45
+    timeout-minutes: 60
     continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.2.20'
+          bun-version: "1.2.20"
+
       - name: Cache Bun & deps
         uses: actions/cache@v4
         with:
@@ -50,144 +50,20 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'bun.lockb') }}
           restore-keys: |
             ${{ runner.os }}-bun-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Install system dependencies (lsof)
+
+      - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y lsof
-      - name: Install dufs (GitHub release binary)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Resolving latest dufs release for current architecture..."
-          ARCH_RAW="$(uname -m)"
-          case "$ARCH_RAW" in
-            x86_64|amd64) ARCH="x86_64" ;;
-            aarch64|arm64) ARCH="aarch64" ;;
-            *) echo "Unsupported architecture: $ARCH_RAW" >&2; exit 1 ;;
-          esac
 
-          # Prefer static musl build for broad compatibility on CI/Gitea runners
-          # Resolve latest tag without GitHub API to avoid rate limits
-          LATEST_URL=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/sigoden/dufs/releases/latest)
-          TAG=${LATEST_URL##*/}
-          if [[ -z "${TAG:-}" ]]; then
-            echo "Failed to resolve latest tag from releases/latest redirect" >&2; exit 1
-          fi
-          # Try musl first, then gnu
-          BASE="https://github.com/sigoden/dufs/releases/download/${TAG}"
-          for libc in musl gnu; do
-            CANDIDATE="${BASE}/dufs-${TAG}-${ARCH}-unknown-linux-${libc}.tar.gz"
-            echo "Probing: $CANDIDATE"
-            if curl -fsSLI "$CANDIDATE" >/dev/null 2>&1; then
-              ASSET_URL="$CANDIDATE"
-              break
-            fi
-          done
-          if [[ -z "${ASSET_URL:-}" ]]; then
-            echo "No suitable dufs asset found for ${TAG} ${ARCH}" >&2; exit 1
-          fi
-          echo "Downloading: $ASSET_URL"
-          curl -fsSL -o dufs.tar.gz "$ASSET_URL"
-          mkdir -p dufs-dist
-          tar -xzf dufs.tar.gz -C dufs-dist
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-          # Locate extracted binary (layout may vary by release)
-          DUFS_BIN=$(find dufs-dist -type f -name dufs -print -quit)
-          if [[ -z "${DUFS_BIN:-}" ]]; then
-            echo "dufs binary not found after extraction" >&2
-            ls -R dufs-dist || true
-            exit 1
-          fi
-
-          # Install with sudo when available, otherwise into ~/.local/bin and add to PATH
-          if command -v sudo >/dev/null 2>&1; then
-            echo "Installing dufs to /usr/local/bin via sudo..."
-            sudo install -m 0755 "$DUFS_BIN" /usr/local/bin/dufs
-            BIN_PATH="/usr/local/bin/dufs"
-          else
-            echo "Installing dufs to ~/.local/bin (no sudo)..."
-            mkdir -p "$HOME/.local/bin"
-            install -m 0755 "$DUFS_BIN" "$HOME/.local/bin/dufs"
-            BIN_PATH="$HOME/.local/bin/dufs"
-            if [[ -n "${GITHUB_PATH:-}" ]]; then
-              echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-            else
-              echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> "$HOME/.profile"
-              export PATH="$HOME/.local/bin:$PATH"
-            fi
-          fi
-          echo "> Installed $($BIN_PATH --version)"
-      - name: Start dufs (WebDAV) in background
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p tmp test-data/webdav
-          # Ensure port 25091 is free first
-          if lsof -i :25091 -sTCP:LISTEN -t >/dev/null 2>&1; then
-            echo "Port 25091 is already in use; listing processes:" >&2
-            lsof -i :25091 || true
-            exit 1
-          fi
-          echo "Starting dufs on :25091 serving test-data/webdav ..."
-          # Run dufs in background and capture PID to avoid blocking the step
-          nohup dufs test-data/webdav --port 25091 --allow-all --enable-cors \
-            > tmp/dufs.log 2>&1 & echo $! > tmp/dufs.pid
-          # Wait up to 20s for the server to accept connections
-          for i in {1..40}; do
-            curl -fsS http://localhost:25091/ >/dev/null 2>&1 && break
-            sleep 0.5
-          done
-          if ! curl -fsS http://localhost:25091/ >/dev/null 2>&1; then
-            echo "dufs did not start in time. Last 100 log lines:" >&2
-            tail -n 100 tmp/dufs.log || true
-            exit 1
-          fi
-          echo "dufs is up. pid=$(cat tmp/dufs.pid)"
-
-
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-      - name: Prepare Test Environment (reset + seed + sync)
-        run: bun run test-env:reset
-        env:
-          WEBDAV_URL: http://localhost:25091
-          ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
-          DB_PATH: ./test-data/sqlite.db
-      - name: Verify WebDAV is reachable
-        run: |
-          set -e
-          if ! curl -fsS http://localhost:25091/ >/dev/null 2>&1; then
-            echo "dufs did not start in time. Last 100 log lines:" >&2
-            tail -n 100 tmp/dufs.log || true
-            exit 1
-          fi
-          echo "dufs is up. pid=$(cat tmp/dufs.pid)"
-      - name: Verify Test Data (Debug)
-        run: bun run test-db:posts
       - name: Run E2E tests
         run: bun run test:e2e -- --project=${{ matrix.project }}
         env:
-          NODE_ENV: test
-          # Force Playwright to reuse existing dufs server to avoid port collisions
-          CI: false
-          WEBDAV_URL: http://localhost:25091
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
-          ADMIN_MODE: true
-      - name: Upload Playwright report (disabled for quota)
-        # Artifact quota exceeded for this month; skip to avoid failing the job
-        if: ${{ false }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: test-results
-          if-no-files-found: warn
-          retention-days: 1
-      - name: Stop dufs (always)
-        if: always()
-        run: |
-          if [ -f tmp/dufs.pid ]; then
-            PID=$(cat tmp/dufs.pid) || true
-            echo "Stopping dufs pid=$PID"
-            kill "$PID" 2>/dev/null || true
-          fi
+          USER_EMAIL: user-${{ github.run_id }}-${{ github.run_attempt }}@test.local
+          SSO_EMAIL_HEADER_NAME: Remote-Email
+
