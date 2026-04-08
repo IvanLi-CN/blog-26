@@ -117,8 +117,8 @@ function buildPlaceholderSvg(filePath: string): string {
       <stop offset="100%" stop-color="${accent}" stop-opacity="0" />
     </radialGradient>
   </defs>
-  <rect width="800" height="450" rx="36" fill="url(#bg)" />
-  <rect x="1" y="1" width="798" height="448" rx="35" fill="none" stroke="rgba(15,23,42,0.08)" />
+  <rect width="800" height="450" fill="url(#bg)" />
+  <rect x="1" y="1" width="798" height="448" fill="none" stroke="rgba(15,23,42,0.08)" />
   <circle cx="120" cy="100" r="180" fill="url(#glow)" />
   <circle cx="700" cy="370" r="140" fill="${accent}" opacity="0.12" />
   <rect x="56" y="56" width="92" height="92" rx="28" fill="${accent}" opacity="0.18" />
@@ -134,7 +134,9 @@ function buildPlaceholderSvg(filePath: string): string {
 async function writePlaceholderImage(filePath: string): Promise<void> {
   const ext = filePath.toLowerCase().split(".").pop();
   const svg = buildPlaceholderSvg(filePath);
-  const image = sharp(Buffer.from(svg)).resize(800, 450, { fit: "cover" });
+  const image = sharp(Buffer.from(svg))
+    .resize(800, 450, { fit: "cover" })
+    .flatten({ background: "#f6fbf8" });
 
   if (ext === "png") {
     await image.png({ compressionLevel: 9 }).toFile(filePath);

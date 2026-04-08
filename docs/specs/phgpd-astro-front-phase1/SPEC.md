@@ -179,3 +179,7 @@ Phase 1 splits the public surface away from the legacy runtime without changing 
 ### Posts cover images
 
 ![Astro posts cover images](./assets/posts-covers-fixed.png)
+
+### Post detail cover corners
+
+![Astro post detail cover corners](./assets/post-detail-cover-corners-fixed.png)
