@@ -24,6 +24,9 @@ export INTERNAL_NEXT_PORT="${INTERNAL_NEXT_PORT:-$((PORT + 2))}"
 export SITE_PORT="${SITE_PORT:-$((PORT + 3))}"
 export SITE_DIST_DIR="${SITE_DIST_DIR:-/app/site-dist}"
 export PUBLIC_SNAPSHOT_PATH="${PUBLIC_SNAPSHOT_PATH:-/app/site/generated/public-snapshot.json}"
+export ASTRO_TYPES_DIR="${ASTRO_TYPES_DIR:-/app/.astro}"
+export ASTRO_CACHE_DIR="${ASTRO_CACHE_DIR:-${SITE_DIST_DIR}/.astro-cache}"
+export VITE_CACHE_DIR="${VITE_CACHE_DIR:-${SITE_DIST_DIR}/.vite-cache}"
 
 if [ -z "${PUBLIC_SITE_URL:-}" ] && [ -n "${NEXT_PUBLIC_SITE_URL:-}" ]; then
   export PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}"
@@ -40,8 +43,11 @@ DB_DIR="$(dirname "$DB_PATH")"
 echo "📁 Database path: $DB_PATH"
 echo "🌿 Public snapshot path: $PUBLIC_SNAPSHOT_PATH"
 echo "🌐 Gateway port: $PORT | internal Next: $INTERNAL_NEXT_PORT | Astro build dir: $SITE_DIST_DIR"
+echo "🧩 Astro types dir: $ASTRO_TYPES_DIR"
+echo "🪐 Astro cache dir: $ASTRO_CACHE_DIR"
+echo "⚡ Vite cache dir: $VITE_CACHE_DIR"
 
-mkdir -p "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")"
+mkdir -p "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
 
 requires_webdav() {
   local sources="${CONTENT_SOURCES:-}"
@@ -82,10 +88,10 @@ if [ "$(id -u)" = "0" ]; then
     : > "$DB_PATH" || true
   fi
 
-  chmod 2775 "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" || true
+  chmod 2775 "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" || true
   chmod 664 "$DB_PATH" 2>/dev/null || true
 
-  if chown -R "${RUN_UID}:${RUN_GID}" "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" 2>/dev/null; then
+  if chown -R "${RUN_UID}:${RUN_GID}" "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" 2>/dev/null; then
     echo "✅ Owned runtime directories by ${RUN_UID}:${RUN_GID}"
   else
     echo "⚠️  Could not chown runtime directories (likely bind mount without perms); continuing"
@@ -103,6 +109,8 @@ if run_as_target_user env \
   INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
   SITE_PORT="$SITE_PORT" \
   PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+  ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+  VITE_CACHE_DIR="$VITE_CACHE_DIR" \
   NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
   PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
   bun ./scripts/migrate.ts; then
@@ -120,6 +128,8 @@ if [ "${SKIP_SITE_BUILD:-false}" != "true" ]; then
     INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
     SITE_PORT="$SITE_PORT" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+    ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+    VITE_CACHE_DIR="$VITE_CACHE_DIR" \
     NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
     PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
     bun run site:build; then
@@ -141,6 +151,8 @@ if [ "$(id -u)" = "0" ]; then
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+    ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+    VITE_CACHE_DIR="$VITE_CACHE_DIR" \
     NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
     PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
     "${APP_CMD[@]}"
@@ -152,6 +164,8 @@ else
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+    ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+    VITE_CACHE_DIR="$VITE_CACHE_DIR" \
     NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
     PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
     "${APP_CMD[@]}"
