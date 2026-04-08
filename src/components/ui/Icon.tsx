@@ -14,6 +14,13 @@ export default function Icon({ name, icon, className = "", size, style }: IconPr
   if (!iconName) return null;
 
   return (
-    <IconifyIcon icon={iconName} className={className} width={size} height={size} style={style} />
+    <IconifyIcon
+      icon={iconName}
+      className={className}
+      width={size}
+      height={size}
+      style={style}
+      ssr
+    />
   );
 }
