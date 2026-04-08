@@ -175,3 +175,7 @@ Phase 1 splits the public surface away from the legacy runtime without changing 
 ### Footer social icons
 
 ![Astro footer social icons](./assets/footer-social-fixed.png)
+
+### Posts cover images
+
+![Astro posts cover images](./assets/posts-covers-fixed.png)
