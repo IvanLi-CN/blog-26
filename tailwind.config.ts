@@ -6,6 +6,7 @@ const config: Config & { daisyui?: any } = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./site/**/*.{astro,js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {

@@ -1,0 +1,34 @@
+---
+import Icon from "@/components/ui/Icon";
+import type { PublicMemoRecord } from "@/public-site/snapshot";
+import { formatAbsoluteDate } from "../lib/format";
+import TagBadge from "./TagBadge.astro";
+
+interface Props {
+  memo: PublicMemoRecord;
+  iconMap?: Record<string, string | null>;
+  iconSvgMap?: Record<string, string | null>;
+}
+
+const { memo, iconMap = {}, iconSvgMap = {} } = Astro.props;
+const displayDate = memo.publishedAt ?? memo.createdAt;
+---
+<article class="nature-panel px-5 py-5 sm:px-6">
+  <div class="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+    <Icon name="tabler:bulb" className="h-4 w-4 text-[color:var(--nature-secondary)]" />
+    <time dateTime={displayDate}>{formatAbsoluteDate(displayDate)}</time>
+  </div>
+  <h2 class="nature-title text-xl font-semibold">
+    <a href={`/memos/${memo.slug}`} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+      {memo.title}
+    </a>
+  </h2>
+  {memo.excerpt && <p class="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>}
+  {memo.tags.length > 0 && (
+    <div class="mt-4 flex flex-wrap gap-2">
+      {memo.tags.map((tag) => (
+        <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
+      ))}
+    </div>
+  )}
+</article>

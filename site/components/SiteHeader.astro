@@ -1,0 +1,65 @@
+---
+import Icon from "@/components/ui/Icon";
+import ThemeToggle from "@/components/common/ThemeToggle";
+import { headerData } from "@/config/navigation";
+import { SITE } from "@/config/site";
+
+interface Props {
+  pathname?: string;
+}
+
+const { pathname = "/" } = Astro.props;
+
+function isActive(href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+---
+<header class="sticky top-0 z-40 flex-none w-full px-3 pt-3 sm:px-4">
+  <div class="nature-container">
+    <div class="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+      <a
+        href="/"
+        class="min-w-fit pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
+      >
+        {SITE.name}
+      </a>
+
+      <nav class="order-3 w-full md:order-2 md:ml-2 md:w-auto" aria-label="Main navigation">
+        <ul class="flex flex-wrap items-center gap-1 text-sm font-medium">
+          {headerData.links.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                class={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition ${
+                  isActive(link.href)
+                    ? "aw-link-active"
+                    : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
+                }`}
+              >
+                <Icon name={link.icon} className="h-4 w-4" />
+                {link.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div class="order-2 ml-auto flex items-center gap-3 md:order-3">
+        <form action="/search" method="get" class="hidden xl:flex items-center w-auto">
+          <label class="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
+            <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
+            <input type="text" name="q" placeholder="搜索文章..." class="nature-input" />
+          </label>
+        </form>
+        <a href="/search" class="nature-icon-button inline-flex xl:hidden" aria-label="搜索">
+          <Icon name="tabler:search" className="h-5 w-5" />
+        </a>
+        <ThemeToggle client:load iconClass="h-4 w-4" />
+        <a class="nature-icon-button inline-flex" aria-label="RSS Feed" title="RSS Feed" href="/rss.xml">
+          <Icon name="tabler:rss" className="h-5 w-5" />
+        </a>
+      </div>
+    </div>
+  </div>
+</header>

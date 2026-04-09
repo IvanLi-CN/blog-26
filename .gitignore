@@ -21,6 +21,7 @@ performance-report.json
 
 # next.js
 /.next/
+/.astro/
 /out/
 
 # production
@@ -102,3 +103,7 @@ Thumbs.db
 
 # temp runtime artifacts
 /tmp/
+
+site/generated/
+
+site-dist/

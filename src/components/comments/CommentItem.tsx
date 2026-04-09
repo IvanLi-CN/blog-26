@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import Icon from "../ui/Icon";
 import { Textarea } from "../ui/textarea";
@@ -96,10 +95,11 @@ export default function CommentItem({
     <article className="nature-panel px-5 py-5">
       <div className="flex items-start gap-4">
         <div className="overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
-          <Image
+          {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}
+          <img
             src={comment.author.avatarUrl}
             alt={comment.author.nickname || "用户"}
-            className="rounded-full"
+            className="h-12 w-12 rounded-full object-cover"
             width={48}
             height={48}
           />

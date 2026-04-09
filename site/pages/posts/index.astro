@@ -1,0 +1,30 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getSnapshot } from "../../lib/public-site";
+import PostCard from "../../components/PostCard.astro";
+
+const snapshot = await getSnapshot();
+---
+<BaseLayout pathname="/posts" title="文章 - Ivan's Blog" description="浏览所有公开文章">
+  <section class="nature-container px-6 py-12 sm:py-16 lg:py-20">
+    <div class="mb-8 text-center sm:mb-12">
+      <span class="nature-kicker justify-center">Archive</span>
+      <h1 class="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">文章</h1>
+      <p class="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">一些想法、记录、分享</p>
+    </div>
+
+    {snapshot.posts.length > 0 ? (
+      <ul class="space-y-4 md:space-y-6">
+        {snapshot.posts.map((post, index) => (
+          <li class="animate-fade-in-up" style={`animation-delay: ${index * 80}ms`}>
+            <PostCard post={post} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div class="nature-empty">
+        <p>暂无公开文章</p>
+      </div>
+    )}
+  </section>
+</BaseLayout>

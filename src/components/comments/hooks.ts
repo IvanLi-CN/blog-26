@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import { trpcVanilla } from "../../lib/trpc";
-import type { UserInfo } from "./types";
+import type { Comment, UserInfo } from "./types";
 
-// 使用 tRPC 推导的类型
-type CommentWithAuthorAndReplies = Awaited<
-  ReturnType<typeof trpcVanilla.comments.getComments.query>
->["comments"][0];
+async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, init);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      typeof payload?.error === "string"
+        ? payload.error
+        : `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+  return payload as T;
+}
 
-// --- User Info Hook ---
+type CommentWithAuthorAndReplies = Comment;
+
 export function useUserInfo() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -15,7 +23,7 @@ export function useUserInfo() {
   const fetchUserInfo = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await trpcVanilla.auth.me.query();
+      const data = await readJson<UserInfo | null>("/api/public/auth/me");
       setUserInfo(data);
     } catch {
       setUserInfo(null);
@@ -25,17 +33,14 @@ export function useUserInfo() {
   }, []);
 
   useEffect(() => {
-    fetchUserInfo();
+    void fetchUserInfo();
   }, [fetchUserInfo]);
 
   const logout = useCallback(async () => {
     try {
-      // Use tRPC for logout
-      await trpcVanilla.auth.logout.mutate();
+      await readJson("/api/public/auth/logout", { method: "POST" });
     } finally {
-      // Regardless of server outcome, update UI state
       setUserInfo(null);
-      // Force a reload to ensure server-side state is reflected
       window.location.reload();
     }
   }, []);
@@ -43,7 +48,6 @@ export function useUserInfo() {
   return { userInfo, logout, isLoading, refetchUserInfo: fetchUserInfo };
 }
 
-// --- API Hooks ---
 interface UseCommentsProps {
   postSlug: string;
 }
@@ -61,17 +65,17 @@ export function useComments({ postSlug }: UseCommentsProps) {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await trpcVanilla.comments.getComments.query({
-          slug: postSlug,
-          page: pageNum,
-          limit: 10,
-        });
+        const data = await readJson<{
+          comments: CommentWithAuthorAndReplies[];
+          totalPages: number;
+          isAdmin: boolean;
+        }>(`/api/public/comments?slug=${encodeURIComponent(postSlug)}&page=${pageNum}&limit=10`);
         setComments((prev) =>
           pageNum === 1 || refresh ? data.comments : [...prev, ...data.comments]
         );
         setTotalPages(data.totalPages);
         setIsAdmin(data.isAdmin || false);
-        setPage(pageNum); // Update page state
+        setPage(pageNum);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -84,17 +88,16 @@ export function useComments({ postSlug }: UseCommentsProps) {
 
   const loadMore = () => {
     if (page < totalPages && !isLoading) {
-      const nextPage = page + 1;
-      fetchComments(nextPage);
+      void fetchComments(page + 1);
     }
   };
 
   const refetch = () => {
-    fetchComments(1, true);
+    void fetchComments(1, true);
   };
 
   useEffect(() => {
-    fetchComments(1);
+    void fetchComments(1);
   }, [fetchComments]);
 
   return { comments, isLoading, error, totalPages, page, loadMore, refetch, isAdmin };
@@ -109,10 +112,14 @@ export function useModerateComment() {
       setIsModerating(true);
       setError(null);
       try {
-        const result = await trpcVanilla.comments.moderateComment.mutate({
-          commentId,
-          status,
-        });
+        const result = await readJson(
+          `/api/public/comments/${encodeURIComponent(commentId)}/moderate`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ status }),
+          }
+        );
         return result;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -138,15 +145,15 @@ export function usePostComment() {
       content: string;
       parentId?: string;
       author?: Omit<UserInfo, "id" | "avatarUrl">;
+      captchaResponse?: string;
     }) => {
       setIsPosting(true);
       setError(null);
       try {
-        const result = await trpcVanilla.comments.createComment.mutate({
-          postSlug: commentData.postSlug,
-          content: commentData.content,
-          parentId: commentData.parentId,
-          author: commentData.author,
+        const result = await readJson(`/api/public/comments`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(commentData),
         });
 
         return { ok: true, json: () => Promise.resolve(result) };
@@ -172,11 +179,11 @@ export function useEditComment() {
     setIsEditing(true);
     setError(null);
     try {
-      const result = await trpcVanilla.comments.editComment.mutate({
-        commentId,
-        content,
+      return await readJson(`/api/public/comments/${encodeURIComponent(commentId)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ content }),
       });
-      return result;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -197,10 +204,9 @@ export function useDeleteComment() {
     setIsDeleting(true);
     setError(null);
     try {
-      const result = await trpcVanilla.comments.deleteComment.mutate({
-        commentId,
+      return await readJson(`/api/public/comments/${encodeURIComponent(commentId)}`, {
+        method: "DELETE",
       });
-      return result;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);

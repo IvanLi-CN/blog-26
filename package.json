@@ -47,11 +47,11 @@
   },
   "scripts": {
     "setup": "bash ./scripts/setup.sh",
-    "dev": "bun scripts/generate-version.ts && concurrently --names \"WebDAV,Next.js\" --prefix-colors \"cyan,magenta\" \"bun run webdav:dev\" \"bun --bun next dev --turbopack\"",
-    "dev:next": "bun --bun next dev --turbopack",
-    "build": "bun run prebuild && bun --bun next build",
+    "dev": "bun scripts/generate-version.ts && concurrently --names \"WebDAV,Next.js,Astro,Gateway\" --prefix-colors \"cyan,magenta,yellow,green\" \"bun run webdav:dev\" \"bun run dev:next:internal\" \"bun run site:dev\" \"bun run gateway:dev\"",
+    "dev:next": "bun run dev:next:internal",
+    "build": "bun run prebuild && bun --bun next build && bun run site:build",
     "prebuild": "bun scripts/generate-version.ts",
-    "start": "bun --bun next start",
+    "start": "bun run gateway:start",
     "check": "biome check",
     "check:public-no-daisy": "bun ./scripts/check-public-no-daisy.ts",
     "lint": "node ./scripts/next-lint.js",
@@ -101,7 +101,13 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "HEADLESS=false playwright test --headed",
     "test:e2e:report": "playwright show-report test-results/html-report",
-    "pr:create": "bun ./scripts/create-pr.ts"
+    "pr:create": "bun ./scripts/create-pr.ts",
+    "dev:next:internal": "sh -c 'PORT=${INTERNAL_NEXT_PORT:-25092}; export PORT; bun --bun next dev --turbopack --port ${PORT}'",
+    "public:export": "bun ./scripts/export-public-site-data.ts",
+    "site:dev": "sh -c 'bun run public:export && bunx astro dev --host 127.0.0.1 --port ${SITE_PORT:-25093}'",
+    "site:build": "bun run public:export && bunx astro build",
+    "gateway:dev": "bun ./scripts/start-gateway.ts",
+    "gateway:start": "NODE_ENV=production bun ./scripts/start-gateway.ts"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.2.0",
@@ -192,6 +198,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
+    "@astrojs/react": "^5.0.3",
     "@biomejs/biome": "2.4.10",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
@@ -211,6 +218,7 @@
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "astro": "^6.1.4",
     "commitlint-plugin-function-rules": "^4.3.2",
     "concurrently": "^9.2.1",
     "js-yaml": "^4.1.1",

@@ -1,0 +1,116 @@
+---
+import "@/lib/iconify-collections";
+import "../../src/app/globals.css";
+import "../../src/app/nature-restored.css";
+import AmbientScene from "@/components/common/AmbientScene";
+import { SITE, UI } from "@/config/site";
+import IconifyBoot from "../components/IconifyBoot";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import { getCanonicalUrl, getSiteUrl } from "../lib/public-site";
+
+interface Props {
+  title?: string;
+  description?: string;
+  pathname?: string;
+  image?: string;
+}
+
+const {
+  title = SITE.title,
+  description = SITE.description,
+  pathname = "/",
+  image = SITE.images.default,
+} = Astro.props;
+const siteUrl = getSiteUrl();
+const canonical = getCanonicalUrl(pathname);
+const resolvedImage = image.startsWith("http") ? image : new URL(image, siteUrl).toString();
+---
+<html
+  lang="zh-CN"
+  data-ui-theme="light"
+  data-ui-preference="system"
+  data-theme="light"
+  style={{ colorScheme: "light" }}
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content={SITE.keywords.join(",")} />
+    <meta name="generator" content="Astro" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="alternate" type="application/rss+xml" title={`${SITE.title} RSS Feed`} href="/feed.xml" />
+    <link rel="alternate" type="application/atom+xml" title={`${SITE.title} Atom Feed`} href="/atom.xml" />
+    <link rel="alternate" type="application/feed+json" title={`${SITE.title} JSON Feed`} href="/feed.json" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content={SITE.seo.openGraph.locale} />
+    <meta property="og:site_name" content={SITE.seo.openGraph.siteName} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={resolvedImage} />
+    <meta name="twitter:card" content={SITE.seo.twitter.card} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={resolvedImage} />
+    <meta name="twitter:creator" content={SITE.seo.twitter.creator} />
+    <meta name="twitter:site" content={SITE.seo.twitter.site} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+    <script is:inline>
+      {`(function() {
+        const defaultTheme = ${JSON.stringify(UI.theme.default)};
+        const legacyLightThemes = ${JSON.stringify(UI.theme.legacyLight)};
+        const legacyDarkThemes = ${JSON.stringify(UI.theme.legacyDark)};
+
+        function normalizeTheme(theme) {
+          if (theme === "dark" || legacyDarkThemes.includes(theme)) return "dark";
+          if (theme === "light" || legacyLightThemes.includes(theme)) return "light";
+          return "system";
+        }
+
+        function resolveTheme(theme) {
+          const normalizedTheme = normalizeTheme(theme);
+          if (normalizedTheme === "dark") return "dark";
+          if (normalizedTheme === "light") return "light";
+          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+
+        function applyTheme(theme) {
+          const d = document.documentElement;
+          const normalizedTheme = normalizeTheme(theme);
+          const resolvedTheme = resolveTheme(normalizedTheme);
+          d.setAttribute("data-ui-theme", resolvedTheme);
+          d.setAttribute("data-ui-preference", normalizedTheme);
+          d.setAttribute("data-theme", resolvedTheme);
+          d.classList.toggle("dark", resolvedTheme === "dark");
+          d.style.colorScheme = resolvedTheme;
+          if (theme !== normalizedTheme) {
+            localStorage.setItem("theme", normalizedTheme);
+          }
+        }
+
+        const theme = localStorage.getItem("theme") || defaultTheme;
+        applyTheme(theme);
+      })();`}
+    </script>
+  </head>
+  <body>
+    <IconifyBoot client:load />
+    <div class="nature-app-shell flex min-h-screen flex-col">
+      <AmbientScene client:load />
+      <div class="nature-content-layer flex min-h-screen flex-col">
+        <SiteHeader pathname={pathname} />
+        <main class="nature-main">
+          <slot />
+        </main>
+        <SiteFooter />
+      </div>
+    </div>
+  </body>
+</html>

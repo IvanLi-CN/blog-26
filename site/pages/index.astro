@@ -1,0 +1,101 @@
+---
+import { SITE } from "@/config/site";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { featuredProjects } from "../lib/projects";
+import { buildHomeTimeline, getSnapshot } from "../lib/public-site";
+import TimelineCard from "../components/TimelineCard.astro";
+import Icon from "@/components/ui/Icon";
+
+const snapshot = await getSnapshot();
+const timeline = buildHomeTimeline(snapshot);
+---
+<BaseLayout pathname="/" title={SITE.title} description={SITE.description}>
+  <section class="px-3 py-8 sm:px-4 md:py-12">
+    <div class="nature-container">
+      <div class="nature-surface px-5 py-8 text-center sm:px-8 sm:py-12">
+        <span class="nature-kicker mx-auto mb-5">Nature Interface</span>
+        <h1 class="nature-title mx-auto max-w-4xl text-4xl font-bold sm:text-5xl md:text-6xl">
+          Ivan&apos;s <span class="text-[color:var(--nature-accent-strong)]">Blog</span>，在流动的数字温室里安放想法。
+        </h1>
+        <p class="nature-muted mx-auto mt-5 max-w-3xl text-base leading-8 sm:text-lg">
+          {SITE.description}
+        </p>
+        <div class="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <a href="/posts" class="nature-button nature-button-primary">
+            <Icon name="tabler:article" className="h-4 w-4" />
+            浏览文章
+          </a>
+          <a href="/memos" class="nature-button nature-button-outline">
+            <Icon name="tabler:bulb" className="h-4 w-4" />
+            进入 Memos
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-3 py-6 sm:px-4 md:py-8">
+    <div class="nature-container grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+      <div class="nature-surface-quiet px-5 py-5 sm:px-6">
+        <div class="nature-kicker mb-4">Latest Flow</div>
+        <h2 class="nature-title text-2xl font-semibold sm:text-3xl">最新动态</h2>
+        <p class="nature-muted mt-2 text-sm sm:text-base">
+          文章与闪念混合排列，像水流一样按时间缓慢向下展开。
+        </p>
+      </div>
+
+      <div class="nature-panel nature-panel-soft overflow-hidden px-5 py-5">
+        <div class="nature-kicker mb-4">Featured Grid</div>
+        <h2 class="nature-title text-2xl font-semibold">精选项目</h2>
+        <p class="nature-muted mt-2 text-sm leading-7">
+          一组更轻的索引入口，用湿润、圆润的表面保持页面呼吸感。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-3 py-6 sm:px-4 md:py-10">
+    <div class="nature-container space-y-4">
+      {timeline.length > 0 ? (
+        timeline.map((item) => (
+          <TimelineCard item={item} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
+        ))
+      ) : (
+        <div class="nature-empty">
+          <Icon name="tabler:timeline" className="mx-auto mb-2 h-8 w-8 opacity-50" />
+          <p>暂无内容</p>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="px-3 py-6 sm:px-4 md:py-8">
+    <div class="nature-container">
+      <div class="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h2 class="nature-title flex items-center gap-3 text-2xl font-semibold sm:text-3xl">
+            <Icon name="tabler:code" className="h-6 w-6 text-[color:var(--nature-accent-strong)]" />
+            精选项目 ({featuredProjects.length})
+          </h2>
+          <p class="nature-muted mt-2 text-sm">不再使用硬朗卡片网格，而是改成更柔和的气泡索引。</p>
+        </div>
+        <a href="/projects" class="nature-button nature-button-ghost">查看全部</a>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        {featuredProjects.map((project) => (
+          <div class="nature-panel nature-panel-soft h-full">
+            <div class="nature-panel-body flex h-full flex-col gap-3 p-4">
+              <h3 class="line-clamp-1 text-sm font-semibold text-[color:var(--nature-text)] sm:text-base">
+                <a href={project.href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+                  {project.title}
+                </a>
+              </h3>
+              <span class="nature-chip w-fit text-xs">{project.category}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,30 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import MemoCard from "../../components/MemoCard.astro";
+import { getSnapshot } from "../../lib/public-site";
+
+const snapshot = await getSnapshot();
+---
+<BaseLayout pathname="/memos" title="Memos - Ivan's Blog" description="浏览所有公开 Memos">
+  <section class="nature-container px-6 py-8 sm:py-12 lg:py-16">
+    <div class="mb-8 text-center sm:mb-12">
+      <span class="nature-kicker justify-center">Flow Notes</span>
+      <h1 class="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">Memos</h1>
+      <p class="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">
+        记录想法、灵感和日常思考的快速笔记
+      </p>
+    </div>
+
+    {snapshot.memos.length > 0 ? (
+      <div class="memos-list space-y-4">
+        {snapshot.memos.map((memo) => (
+          <MemoCard memo={memo} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
+        ))}
+      </div>
+    ) : (
+      <div class="nature-empty">
+        <p>暂无公开 Memos</p>
+      </div>
+    )}
+  </section>
+</BaseLayout>

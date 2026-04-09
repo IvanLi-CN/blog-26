@@ -3,9 +3,6 @@ set -euo pipefail
 
 echo "🚀 Starting Docker container..."
 
-# Note: we rely on Docker build-time to produce artifacts; runtime does not validate again.
-
-# Print all environment variables (sorted) for diagnostics
 echo "🌐 Environment variables (startup):"
 if command -v printenv >/dev/null 2>&1; then
   printenv | sort
@@ -13,74 +10,163 @@ else
   env | sort
 fi
 
-# 允许使用 RUN_UID/GID 或 APP_UID/GID（后者与 compose/.env.docker 注释一致）
 RUN_UID=${RUN_UID:-${APP_UID:-1000}}
 RUN_GID=${RUN_GID:-${APP_GID:-1000}}
-APP_CMD=("${@:-bun server.js}")
+if [ "$#" -gt 0 ]; then
+  APP_CMD=("$@")
+else
+  APP_CMD=(bun run gateway:start)
+fi
 
-# 设置数据库路径（与 compose/.env.docker 保持一致）
 export DB_PATH="${DB_PATH:-/app/data/sqlite.db}"
+export PORT="${PORT:-25090}"
+export INTERNAL_NEXT_PORT="${INTERNAL_NEXT_PORT:-$((PORT + 2))}"
+export SITE_PORT="${SITE_PORT:-$((PORT + 3))}"
+export SITE_DIST_DIR="${SITE_DIST_DIR:-/app/site-dist}"
+export PUBLIC_SNAPSHOT_PATH="${PUBLIC_SNAPSHOT_PATH:-/app/site/generated/public-snapshot.json}"
+export ASTRO_TYPES_DIR="${ASTRO_TYPES_DIR:-/app/.astro}"
+export ASTRO_CACHE_DIR="${ASTRO_CACHE_DIR:-${SITE_DIST_DIR}/.astro-cache}"
+export VITE_CACHE_DIR="${VITE_CACHE_DIR:-${SITE_DIST_DIR}/.vite-cache}"
+
+if [ -z "${PUBLIC_SITE_URL:-}" ] && [ -n "${NEXT_PUBLIC_SITE_URL:-}" ]; then
+  export PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}"
+fi
+if [ -z "${NEXT_PUBLIC_SITE_URL:-}" ] && [ -n "${PUBLIC_SITE_URL:-}" ]; then
+  export NEXT_PUBLIC_SITE_URL="${PUBLIC_SITE_URL}"
+fi
+if [ -z "${NEXT_PUBLIC_SITE_URL:-}" ] && [ -n "${SITE_URL:-}" ]; then
+  export NEXT_PUBLIC_SITE_URL="${SITE_URL}"
+  export PUBLIC_SITE_URL="${SITE_URL}"
+fi
+
 DB_DIR="$(dirname "$DB_PATH")"
 echo "📁 Database path: $DB_PATH"
+echo "🌿 Public snapshot path: $PUBLIC_SNAPSHOT_PATH"
+echo "🌐 Gateway port: $PORT | internal Next: $INTERNAL_NEXT_PORT | Astro build dir: $SITE_DIST_DIR"
+echo "🧩 Astro types dir: $ASTRO_TYPES_DIR"
+echo "🪐 Astro cache dir: $ASTRO_CACHE_DIR"
+echo "⚡ Vite cache dir: $VITE_CACHE_DIR"
 
-# 确保数据目录存在
-mkdir -p "$DB_DIR"
+mkdir -p "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
 
-# 在 root 下预修复目录与文件权限，然后再降权
+requires_webdav() {
+  local sources="${CONTENT_SOURCES:-}"
+  if [ -z "$sources" ]; then
+    return 0
+  fi
+  case ",$sources," in
+    *,webdav,*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+validate_runtime_config() {
+  if requires_webdav && [ -z "${WEBDAV_URL:-}" ]; then
+    echo "❌ Config validation failed: WEBDAV_URL is required when WebDAV source is enabled"
+    exit 1
+  fi
+  echo "✅ Runtime configuration validated"
+}
+
+run_as_target_user() {
+  if [ "$(id -u)" = "0" ]; then
+    gosu "${RUN_UID}:${RUN_GID}" "$@"
+  else
+    "$@"
+  fi
+}
+
 if [ "$(id -u)" = "0" ]; then
   echo "👤 Preparing runtime uid:gid ${RUN_UID}:${RUN_GID}"
 
-  # 创建数据库文件（若不存在），避免 SQLite 初始创建时因权限导致失败
   if [ ! -f "$DB_PATH" ]; then
     echo "🧩 Creating empty database file at $DB_PATH"
     : > "$DB_PATH" || true
   fi
 
-  # 目录权限：rwxrwsr-x (2775)，便于同组用户写入；文件权限：rw-rw-r-- (664)
-  chmod 2775 "$DB_DIR" || true
+  chmod 2775 "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" || true
   chmod 664 "$DB_PATH" 2>/dev/null || true
 
-  # 目录/文件归属权交给目标 uid:gid（忽略失败以适配某些 bind mount 限制）
-  if chown -R ${RUN_UID}:${RUN_GID} "$DB_DIR" 2>/dev/null; then
-    echo "✅ Owned $DB_DIR by ${RUN_UID}:${RUN_GID}"
+  if chown -R "${RUN_UID}:${RUN_GID}" "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" 2>/dev/null; then
+    echo "✅ Owned runtime directories by ${RUN_UID}:${RUN_GID}"
   else
-    echo "⚠️  Could not chown $DB_DIR (likely bind mount without perms); continuing"
+    echo "⚠️  Could not chown runtime directories (likely bind mount without perms); continuing"
   fi
-
-  # 校验关键配置（以便尽早失败）
-  echo "🧪 Validating configuration as ${RUN_UID}:${RUN_GID}..."
-  if [ -z "${WEBDAV_URL:-}" ]; then
-    echo "❌ Config validation failed: WEBDAV_URL is not set"
-    exit 1
-  fi
-  echo "✅ Config validation passed (WEBDAV_URL present)"
-
-  # 以目标身份执行迁移（可容忍失败，避免影响服务启动）
-  echo "🔄 Running database migrations as ${RUN_UID}:${RUN_GID}..."
-  if gosu ${RUN_UID}:${RUN_GID} env DB_PATH="$DB_PATH" bun ./scripts/migrate.ts; then
-    echo "✅ Database migrations completed"
-  else
-    echo "❌ Database migrations failed. Aborting startup."
-    exit 1
-  fi
-
-  echo "🌟 Starting app as ${RUN_UID}:${RUN_GID}: ${APP_CMD[*]}"
-  exec gosu ${RUN_UID}:${RUN_GID} env DB_PATH="$DB_PATH" "${APP_CMD[@]}"
 else
   echo "👤 Already running as uid:gid=$(id -u):$(id -g)"
-  echo "🧪 Validating configuration as current user..."
-  if [ -z "${WEBDAV_URL:-}" ]; then
-    echo "❌ Config validation failed: WEBDAV_URL is not set"
-    exit 1
-  fi
-  echo "✅ Config validation passed (WEBDAV_URL present)"
-  echo "🔄 Running database migrations as current user..."
-  if DB_PATH="$DB_PATH" bun ./scripts/migrate.ts; then
-    echo "✅ Database migrations completed"
+fi
+
+validate_runtime_config
+
+echo "🔄 Running database migrations..."
+if run_as_target_user env \
+  DB_PATH="$DB_PATH" \
+  PORT="$PORT" \
+  INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
+  SITE_PORT="$SITE_PORT" \
+  PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+  ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+  VITE_CACHE_DIR="$VITE_CACHE_DIR" \
+  NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
+  PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
+  bun ./scripts/migrate.ts; then
+  echo "✅ Database migrations completed"
+else
+  echo "❌ Database migrations failed. Aborting startup."
+  exit 1
+fi
+
+if [ "${SKIP_SITE_BUILD:-false}" != "true" ]; then
+  echo "🌿 Building Astro public site from current synced content..."
+  if run_as_target_user env \
+    DB_PATH="$DB_PATH" \
+    PORT="$PORT" \
+    INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
+    SITE_PORT="$SITE_PORT" \
+    PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+    ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+    VITE_CACHE_DIR="$VITE_CACHE_DIR" \
+    NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
+    PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
+    bun run site:build; then
+    echo "✅ Astro public site build completed"
   else
-    echo "❌ Database migrations failed. Aborting startup."
+    echo "❌ Astro public site build failed. Aborting startup."
     exit 1
   fi
-  echo "🌟 Starting app: ${APP_CMD[*]}"
-  exec DB_PATH="$DB_PATH" "${APP_CMD[@]}"
+else
+  echo "⏭️  Skipping Astro public site build because SKIP_SITE_BUILD=true"
+fi
+
+echo "🌟 Starting app: ${APP_CMD[*]}"
+if [ "$(id -u)" = "0" ]; then
+  exec gosu "${RUN_UID}:${RUN_GID}" env \
+    DB_PATH="$DB_PATH" \
+    PORT="$PORT" \
+    INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
+    SITE_PORT="$SITE_PORT" \
+    SITE_DIST_DIR="$SITE_DIST_DIR" \
+    PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+    ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+    VITE_CACHE_DIR="$VITE_CACHE_DIR" \
+    NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
+    PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
+    "${APP_CMD[@]}"
+else
+  exec env \
+    DB_PATH="$DB_PATH" \
+    PORT="$PORT" \
+    INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
+    SITE_PORT="$SITE_PORT" \
+    SITE_DIST_DIR="$SITE_DIST_DIR" \
+    PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+    ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+    VITE_CACHE_DIR="$VITE_CACHE_DIR" \
+    NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
+    PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
+    "${APP_CMD[@]}"
 fi

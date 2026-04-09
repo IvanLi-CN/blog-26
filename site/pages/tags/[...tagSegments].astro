@@ -1,0 +1,87 @@
+---
+import Icon from "@/components/ui/Icon";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getSnapshot, pickTagIconSvg } from "../../lib/public-site";
+import { buildTagHref } from "@/lib/tag-href";
+import { formatAbsoluteDate } from "../../lib/format";
+
+export async function getStaticPaths() {
+  const snapshot = await getSnapshot();
+  return snapshot.tags.summaries.map((summary) => ({
+    params: { tagSegments: summary.segments.join("/") },
+    props: { summary },
+  }));
+}
+
+const { summary } = Astro.props as {
+  summary: { name: string; segments: string[]; lastSegment: string; count: number };
+};
+const snapshot = await getSnapshot();
+const items = snapshot.tags.timelines[summary.name] ?? [];
+const breadcrumbs = summary.segments.map((segment, index) => ({
+  label: segment,
+  href: buildTagHref(summary.segments.slice(0, index + 1).join("/")),
+}));
+const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMap, snapshot.tags.tagIconSvgMap);
+---
+<BaseLayout pathname={buildTagHref(summary.name)} title={`#${summary.name} - Ivan's Blog`} description={`标签 ${summary.name} 的公开内容时间线`}>
+  <section class="nature-container px-6 py-8 lg:py-12">
+    <nav aria-label="Breadcrumb" class="mb-4">
+      <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[color:var(--nature-text-soft)]">
+        <li><a href="/tags" class="transition-colors hover:text-[color:var(--nature-accent-strong)]">标签</a></li>
+        {breadcrumbs.map((item) => (
+          <li class="flex items-center gap-2">
+            <Icon name="tabler:chevron-right" className="h-4 w-4 text-[color:var(--nature-text-faint)]" />
+            <a href={item.href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">{item.label}</a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+
+    <div class="nature-surface mb-8 flex items-center justify-between gap-4 px-5 py-5">
+      <div class="min-w-0">
+        <h1 class="flex items-center gap-2 font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)] md:text-3xl">
+          {iconSvg ? (
+            <span class="inline-flex text-[color:var(--nature-accent-strong)] [&>svg]:h-5 [&>svg]:w-5" set:html={iconSvg} />
+          ) : (
+            <Icon name={iconId} className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
+          )}
+          <span class="truncate">{summary.lastSegment}</span>
+        </h1>
+        <p class="mt-2 truncate text-sm text-[color:var(--nature-text-soft)]">#{summary.name}</p>
+      </div>
+
+      <a href="/tags" class="nature-button nature-button-ghost min-h-10 px-4 py-2">
+        <Icon name="tabler:tags" className="h-4 w-4" />
+        返回
+      </a>
+    </div>
+
+    {items.length > 0 ? (
+      <div class="space-y-4">
+        {items.map((item) => {
+          const href = item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`;
+          return (
+            <article class="nature-panel nature-panel-soft px-5 py-5 sm:px-6">
+              <div class="flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+                <span class="nature-chip gap-1">
+                  <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
+                  {item.type === "memo" ? "闪念" : "文章"}
+                </span>
+                <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
+              </div>
+              <h2 class="nature-title mt-3 text-xl font-semibold">
+                <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+                  {item.title}
+                </a>
+              </h2>
+              {item.excerpt && <p class="nature-muted mt-3 text-base leading-7">{item.excerpt}</p>}
+            </article>
+          );
+        })}
+      </div>
+    ) : (
+      <div class="nature-empty"><p>该标签下暂无公开内容。</p></div>
+    )}
+  </section>
+</BaseLayout>

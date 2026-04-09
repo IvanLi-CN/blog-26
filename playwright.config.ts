@@ -3,18 +3,10 @@ import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
-/**
- * Playwright E2E测试配置
- * 用于测试闪念列表页图片灯箱功能等交互特性
- */
-// Keep server and test-runner using the same admin email
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
-// E2E header injection (no reverse proxy):
+const USER_EMAIL = process.env.USER_EMAIL || "user@test.local";
 const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME || "Remote-Email";
-const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
 
-// Allow overriding default ports via environment variables for worktrees/parallel runs
-// To avoid CI flakiness when default ports are occupied, pick the first free port from a small pool.
 function isPortBusy(port: number): boolean {
   try {
     const out = execSync(`lsof -tiTCP:${port} -sTCP:LISTEN -n || true`, {
@@ -23,180 +15,102 @@ function isPortBusy(port: number): boolean {
     }).trim();
     return out.length > 0;
   } catch {
-    // If lsof is unavailable (e.g., on some runners), assume not busy. Playwright will still verify the URL.
     return false;
   }
 }
 
 function pickPort(preferred: number, fallbacks: number[]): number {
-  const candidates = [preferred, ...fallbacks];
-  for (const p of candidates) {
-    if (!isPortBusy(p)) return p;
+  for (const candidate of [preferred, ...fallbacks]) {
+    if (!isPortBusy(candidate)) return candidate;
   }
   return preferred;
 }
 
 const baseWeb = Number(process.env.WEB_PORT || process.env.PORT || 25090);
-const baseDav = Number(process.env.WEBDAV_PORT || process.env.DAV_PORT || 25091);
 const WEB_PORT = pickPort(baseWeb, [baseWeb + 100, baseWeb + 200, baseWeb + 300]);
-const WEBDAV_PORT = pickPort(baseDav, [baseDav + 100, baseDav + 200, baseDav + 300]);
+const INTERNAL_NEXT_PORT = Number(process.env.INTERNAL_NEXT_PORT || WEB_PORT + 2);
+const SITE_PORT = Number(process.env.SITE_PORT || WEB_PORT + 3);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${WEB_PORT}`;
-const WEBDAV_URL_NON_FS_ONLY = process.env.WEBDAV_URL || `http://localhost:${WEBDAV_PORT}`;
-const WEBDAV_URL = E2E_FS_ONLY ? undefined : WEBDAV_URL_NON_FS_ONLY;
-const REUSE_EXISTING_WEBDAV = (() => {
-  if (E2E_FS_ONLY) return false;
-  const explicit = process.env.PLAYWRIGHT_REUSE_WEBDAV?.toLowerCase();
-  if (explicit === "true") return true;
-  if (explicit === "false") return false;
-  return Boolean(process.env.WEBDAV_URL);
-})();
-const REUSE_EXISTING_APP = (() => {
-  const explicit = process.env.PLAYWRIGHT_REUSE_APP?.toLowerCase();
-  if (explicit === "true") return true;
-  if (explicit === "false") return false;
-  return Boolean(process.env.BASE_URL);
-})();
 
-// Use absolute paths to avoid CI cwd differences
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ABS_TEST_DB = resolvePath(__dirname, "test-data/sqlite.db");
 const ABS_LOCAL_CONTENT = resolvePath(__dirname, "test-data/local");
 
+const resetCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local bun run test-env:reset-fs-only`;
+const buildCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=${BASE_URL} PUBLIC_SITE_URL=${BASE_URL} bun run build`;
+const startCommand = `NODE_ENV=production DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=${BASE_URL} PUBLIC_SITE_URL=${BASE_URL} PORT=${WEB_PORT} INTERNAL_NEXT_PORT=${INTERNAL_NEXT_PORT} SITE_PORT=${SITE_PORT} bun run gateway:start`;
+
 export default defineConfig({
-  // 测试目录
   testDir: "./tests/e2e",
-
-  // 测试超时设置
-  timeout: 60 * 1000, // 60秒
+  timeout: 60 * 1000,
   expect: {
-    timeout: 10 * 1000, // 10秒
+    timeout: 10 * 1000,
   },
-
-  // 测试配置
-  fullyParallel: false, // 禁用并行运行，避免测试干扰
-  forbidOnly: !!process.env.CI, // CI环境禁止only
-  retries: process.env.CI ? 2 : 0, // CI环境重试2次
-  workers: 1, // 使用单个worker确保测试隔离
-
-  // 报告配置
+  fullyParallel: false,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: 1,
   reporter: [
     ["html", { outputFolder: "test-results/html-report", open: "never" }],
     ["json", { outputFile: "test-results/results.json" }],
     ["line"],
   ],
-
-  // 输出目录
   outputDir: "test-results/artifacts/",
-
-  // 全局测试配置
   use: {
-    // 基础URL - 使用环境变量或默认端口
     baseURL: BASE_URL,
-
-    // 浏览器配置
     headless: process.env.HEADLESS !== "false",
     viewport: { width: 1280, height: 720 },
-
-    // 截图和视频
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     trace: "retain-on-failure",
-
-    // 网络配置
     ignoreHTTPSErrors: true,
-
-    // 注意：不在全局层面注入认证头，分别在项目维度注入（guest/admin/user 分组）
-
-    // 等待配置
-    actionTimeout: 10 * 1000, // 10秒
-    navigationTimeout: 30 * 1000, // 30秒
+    actionTimeout: 10 * 1000,
+    navigationTimeout: 30 * 1000,
   },
-
-  // 项目配置 - 三组身份 + 浏览器
   projects: [
-    // 游客访问（不注入任何 SSO 头）
     {
       name: "guest-chromium",
-      testMatch: ["**/guest/**/*.spec.ts"],
+      testMatch: ["**/guest/astro-front-phase1.spec.ts", "**/guest/admin-access-denied.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
-    // 普通用户访问（注入非管理员邮箱）
-    {
-      name: "user-chromium",
-      testMatch: ["**/user/**/*.spec.ts"],
-      use: {
-        ...devices["Desktop Chrome"],
-      },
-    },
-    // 管理员访问（注入管理员邮箱）
     {
       name: "admin-chromium",
-      testMatch: ["**/admin/**/*.spec.ts"],
-      use: {
-        ...devices["Desktop Chrome"],
-      },
+      testMatch: ["**/admin/session-header-auth-admin.spec.ts"],
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
-
-  // E2E 测试服务器配置
-  webServer: E2E_FS_ONLY
-    ? [
-        // FS-only: No WebDAV. Reset data with CONTENT_SOURCES=local and start Next.js.
-        {
-          command: `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local bun run test-env:reset-fs-only && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
-          url: BASE_URL,
-          reuseExistingServer: REUSE_EXISTING_APP,
-          timeout: 180 * 1000,
-          env: {
-            NODE_ENV: "test",
-            ADMIN_EMAIL,
-            DB_PATH: ABS_TEST_DB,
-            PORT: String(WEB_PORT),
-            LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
-            CONTENT_SOURCES: "local",
-            MEMOS_E2E_FAULTS: "1",
-          },
-        },
-      ]
-    : [
-        // 1) dufs WebDAV 服务器
-        {
-          command: `mkdir -p test-data/webdav && dufs test-data/webdav --port ${WEBDAV_PORT} --allow-all --enable-cors`,
-          url: WEBDAV_URL_NON_FS_ONLY,
-          // Only reuse when caller explicitly provides a running endpoint to avoid CI flakiness
-          reuseExistingServer: REUSE_EXISTING_WEBDAV,
-          timeout: 30 * 1000, // 30秒启动超时
-        },
-        // 2) Next.js 应用：先 reset 测试数据，再启动 dev 服务器
-        {
-          command: `WEBDAV_URL=${WEBDAV_URL_NON_FS_ONLY} DB_PATH=${ABS_TEST_DB} bun run test-env:reset && ADMIN_EMAIL=${ADMIN_EMAIL} SSO_EMAIL_HEADER_NAME=${EMAIL_HEADER_NAME} DB_PATH=${ABS_TEST_DB} NODE_ENV=test LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} PORT=${WEB_PORT} bun --bun next dev --turbopack --port ${WEB_PORT}`,
-          url: BASE_URL,
-          // Default: do not reuse to avoid state bleed; allow opt-in reuse for local runs when a dev server is already running.
-          reuseExistingServer: REUSE_EXISTING_APP,
-          timeout: 180 * 1000, // 3分钟启动超时，包含 reset 阶段
-          env: {
-            NODE_ENV: "test",
-            ADMIN_EMAIL,
-            DB_PATH: ABS_TEST_DB,
-            PORT: String(WEB_PORT),
-            LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
-            WEBDAV_URL: WEBDAV_URL_NON_FS_ONLY,
-            MEMOS_E2E_FAULTS: "1",
-          },
-        },
-      ],
+  webServer: {
+    command: `${resetCommand} && ${buildCommand} && ${startCommand}`,
+    url: BASE_URL,
+    reuseExistingServer: Boolean(process.env.BASE_URL),
+    timeout: 8 * 60 * 1000,
+    env: {
+      ADMIN_EMAIL,
+      USER_EMAIL,
+      DB_PATH: ABS_TEST_DB,
+      LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
+      CONTENT_SOURCES: "local",
+      NEXT_PUBLIC_SITE_URL: BASE_URL,
+      PUBLIC_SITE_URL: BASE_URL,
+      PORT: String(WEB_PORT),
+      INTERNAL_NEXT_PORT: String(INTERNAL_NEXT_PORT),
+      SITE_PORT: String(SITE_PORT),
+      MEMOS_E2E_FAULTS: "1",
+      SSO_EMAIL_HEADER_NAME: EMAIL_HEADER_NAME,
+    },
+  },
 });
 
-// Ensure tests that read process.env (Node-side fetch, helpers) see consistent endpoints
 process.env.BASE_URL = BASE_URL;
 process.env.WEB_PORT = String(WEB_PORT);
-process.env.WEBDAV_PORT = String(WEBDAV_PORT);
-if (WEBDAV_URL) {
-  process.env.WEBDAV_URL = WEBDAV_URL;
-} else {
-  delete process.env.WEBDAV_URL;
-}
+process.env.PORT = String(WEB_PORT);
+process.env.INTERNAL_NEXT_PORT = String(INTERNAL_NEXT_PORT);
+process.env.SITE_PORT = String(SITE_PORT);
+process.env.DB_PATH = ABS_TEST_DB;
+process.env.LOCAL_CONTENT_BASE_PATH = ABS_LOCAL_CONTENT;
+process.env.CONTENT_SOURCES = "local";
 process.env.SSO_EMAIL_HEADER_NAME = EMAIL_HEADER_NAME;
 process.env.ADMIN_EMAIL = ADMIN_EMAIL;
+process.env.USER_EMAIL = USER_EMAIL;
 process.env.MEMOS_E2E_FAULTS = "1";

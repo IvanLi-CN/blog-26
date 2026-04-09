@@ -61,7 +61,7 @@ ENV TSC_COMPILE_ON_ERROR=1
 # Reuse Next.js build cache across runs
 RUN --mount=type=cache,target=/app/.next/cache \
     bun run prebuild && \
-    bun run build
+    bun --bun next build
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
@@ -78,6 +78,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
+ENV INTERNAL_NEXT_PORT=25092
+ENV SITE_PORT=25093
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -85,23 +87,31 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/BUILD_ID ./.next/BUILD_ID
 # Copy all Next.js manifest JSONs (routes, build, images, etc.)
 COPY --from=builder /app/.next/*.json ./.next/
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/bun.lock ./bun.lock
+COPY --from=builder /app/astro.config.mjs ./astro.config.mjs
+COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
+COPY --from=builder /app/tailwind.config.ts ./tailwind.config.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/bunfig.toml ./bunfig.toml
+COPY --from=builder /app/site ./site
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=builder /ms-playwright /ms-playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data && \
+    mkdir -p /app/data /app/site/generated /app/site-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
-# Provide drizzle-orm for runtime migration scripts without resolving deps in final stage
-COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 EXPOSE 25090
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["bun", "server.js"]
+CMD ["bun", "run", "gateway:start"]
 
 # Prebuilt target: use prebuilt Next.js output from build artifacts
 FROM oven/bun:1-slim AS app-image-prebuilt
@@ -120,6 +130,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
+ENV INTERNAL_NEXT_PORT=25092
+ENV SITE_PORT=25093
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 # Copy from build artifacts already present in the build context
 COPY public ./public
@@ -128,18 +140,26 @@ COPY .next/static ./.next/static
 COPY .next/BUILD_ID ./.next/BUILD_ID
 # Copy all Next.js manifest JSONs (routes, build, images, etc.)
 COPY .next/*.json ./.next/
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./package.json
+COPY bun.lock ./bun.lock
+COPY astro.config.mjs ./astro.config.mjs
+COPY postcss.config.mjs ./postcss.config.mjs
+COPY tailwind.config.ts ./tailwind.config.ts
+COPY tsconfig.json ./tsconfig.json
+COPY bunfig.toml ./bunfig.toml
+COPY site ./site
+COPY src ./src
 COPY scripts ./scripts
 COPY drizzle ./drizzle
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data && \
+    mkdir -p /app/data /app/site/generated /app/site-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
-# Provide drizzle-orm for runtime migration scripts without resolving deps in final stage
-COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 EXPOSE 25090
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["bun", "server.js"]
+CMD ["bun", "run", "gateway:start"]

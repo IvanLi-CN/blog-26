@@ -8,16 +8,8 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { nanoid } from "nanoid";
+import sharp from "sharp";
 import { getServerLocalMemoRootDir } from "../src/lib/memo-paths";
-
-const PLACEHOLDER_PNG_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
-// 1x1 JPEG placeholder (used in tests)
-const PLACEHOLDER_JPEG_BASE64 =
-  "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/wA==";
-
-const PLACEHOLDER_PNG_BYTES = Buffer.from(PLACEHOLDER_PNG_BASE64, "base64");
-const PLACEHOLDER_JPEG_BYTES = Buffer.from(PLACEHOLDER_JPEG_BASE64, "base64");
 
 // 下载图片到本地（带重试机制）
 async function downloadImage(
@@ -72,10 +64,86 @@ async function downloadImage(
   throw new Error(`下载失败 ${url} (${maxRetries} 次尝试): ${lastError?.message}`);
 }
 
-function writePlaceholderImage(filePath: string): void {
+function humanizeFilename(filePath: string): string {
+  const filename = filePath.split("/").pop() || "placeholder";
+  const withoutExt = filename.replace(/\.[^.]+$/, "");
+  return withoutExt
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map((segment) => {
+      if (/^[a-z0-9]+$/i.test(segment)) {
+        return segment.charAt(0).toUpperCase() + segment.slice(1);
+      }
+      return segment;
+    })
+    .join(" ");
+}
+
+function hashString(input: string): number {
+  let hash = 0;
+  for (const char of input) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return hash;
+}
+
+function buildPlaceholderSvg(filePath: string): string {
+  const title = humanizeFilename(filePath);
+  const hash = hashString(filePath);
+  const palettes = [
+    ["#7cc6a8", "#dff3ea", "#285943"],
+    ["#7ea9ff", "#e7efff", "#24417a"],
+    ["#f0b56e", "#fff0df", "#7a4d1a"],
+    ["#d89cff", "#f5e9ff", "#66308b"],
+    ["#5cc2d6", "#dff7fb", "#0d5564"],
+  ] as const;
+  const [accent, soft, deep] = palettes[hash % palettes.length];
+  const badge = title
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("")
+    .slice(0, 3);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="450" viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${soft}" />
+      <stop offset="100%" stop-color="#ffffff" />
+    </linearGradient>
+    <radialGradient id="glow" cx="20%" cy="20%" r="80%">
+      <stop offset="0%" stop-color="${accent}" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="${accent}" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)" />
+  <rect x="1" y="1" width="798" height="448" fill="none" stroke="rgba(15,23,42,0.08)" />
+  <circle cx="120" cy="100" r="180" fill="url(#glow)" />
+  <circle cx="700" cy="370" r="140" fill="${accent}" opacity="0.12" />
+  <rect x="56" y="56" width="92" height="92" rx="28" fill="${accent}" opacity="0.18" />
+  <text x="102" y="112" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="700" fill="${deep}">${badge || "BL"}</text>
+  <text x="56" y="214" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="600" fill="${deep}" opacity="0.72">Preview Cover</text>
+  <text x="56" y="272" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700" fill="${deep}">${title}</text>
+  <text x="56" y="324" font-family="Inter, Arial, sans-serif" font-size="22" fill="${deep}" opacity="0.65">Offline placeholder generated for stable local preview and CI.</text>
+  <rect x="56" y="364" width="188" height="32" rx="16" fill="#ffffff" opacity="0.88" />
+  <text x="150" y="386" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="${deep}">blog fixture</text>
+</svg>`;
+}
+
+async function writePlaceholderImage(filePath: string): Promise<void> {
   const ext = filePath.toLowerCase().split(".").pop();
-  const bytes = ext === "png" ? PLACEHOLDER_PNG_BYTES : PLACEHOLDER_JPEG_BYTES;
-  writeFileSync(filePath, bytes);
+  const svg = buildPlaceholderSvg(filePath);
+  const image = sharp(Buffer.from(svg))
+    .resize(800, 450, { fit: "cover" })
+    .flatten({ background: "#f6fbf8" });
+
+  if (ext === "png") {
+    await image.png({ compressionLevel: 9 }).toFile(filePath);
+    return;
+  }
+
+  await image.jpeg({ quality: 90, mozjpeg: true }).toFile(filePath);
 }
 
 // 测试数据配置
@@ -2781,7 +2849,7 @@ async function downloadTestImages(
   const processTask = async (task: (typeof downloadTasks)[number]) => {
     try {
       if (strategy === "placeholder") {
-        writePlaceholderImage(task.filePath);
+        await writePlaceholderImage(task.filePath);
       } else {
         await downloadImage(task.url, task.filePath);
         console.log(`✅ ${task.filePath.split("/").pop()}`);
