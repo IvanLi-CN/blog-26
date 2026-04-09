@@ -258,7 +258,19 @@ jobs:
           grep -q "GraphQL API 设计最佳实践" /tmp/docker-posts.html
 
           curl -fsSL "http://127.0.0.1:25090/posts/graphql-api-best-practices" >/tmp/docker-post.html
-          grep -q "留言" /tmp/docker-post.html
+          grep -q "GraphQL API 设计最佳实践" /tmp/docker-post.html
+
+          curl -fsSL "http://127.0.0.1:25090/api/public/comments?slug=graphql-api-best-practices" \
+            >/tmp/docker-comments.json
+          python3 - <<'PY'
+          import json
+          with open("/tmp/docker-comments.json", "r", encoding="utf-8") as f:
+              payload = json.load(f)
+          assert isinstance(payload, dict), payload
+          assert "comments" in payload, payload
+          assert "totalPages" in payload, payload
+          assert "isAdmin" in payload, payload
+          PY
 
           admin_status="$(curl -s -o /tmp/docker-admin.html -w '%{http_code}' "http://127.0.0.1:25090/admin")"
           test "$admin_status" = "401"
