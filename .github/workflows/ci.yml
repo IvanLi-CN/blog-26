@@ -225,6 +225,49 @@ jobs:
 
           mkdir -p ./test-data/job-logs
 
+          wait_for_status() {
+            local expected_status="$1"
+            local url="$2"
+            local output_file="$3"
+            local attempts="${4:-90}"
+            local sleep_seconds="${5:-2}"
+            local status=""
+
+            for _ in $(seq 1 "$attempts"); do
+              status="$(curl -sS -o "$output_file" -w '%{http_code}' "$url" || true)"
+              if [ "$status" = "$expected_status" ]; then
+                return 0
+              fi
+              sleep "$sleep_seconds"
+            done
+
+            echo "Timed out waiting for ${url} to return ${expected_status}; last status=${status}" >&2
+            cat "$output_file" >&2 || true
+            return 1
+          }
+
+          wait_for_status_with_grep() {
+            local expected_status="$1"
+            local url="$2"
+            local output_file="$3"
+            local pattern="$4"
+            local attempts="${5:-90}"
+            local sleep_seconds="${6:-2}"
+            local status=""
+
+            for _ in $(seq 1 "$attempts"); do
+              status="$(curl -sS -o "$output_file" -w '%{http_code}' "$url" || true)"
+              if [ "$status" = "$expected_status" ] && grep -q "$pattern" "$output_file"; then
+                return 0
+              fi
+              sleep "$sleep_seconds"
+            done
+
+            echo "Timed out waiting for ${url} to return ${expected_status} with pattern ${pattern}; last status=${status}" >&2
+            cat "$output_file" >&2 || true
+            return 1
+          }
+
           docker rm -f blog-nextjs-ci-smoke >/dev/null 2>&1 || true
 
           docker run -d \
@@ -237,14 +280,8 @@ jobs:
             -v "$PWD/test-data:/app/data" \
             blog-nextjs:ci-smoke
 
-          for _ in $(seq 1 90); do
-            if curl -fsSL "http://127.0.0.1:25090/api/health" > /tmp/docker-health.json 2>/dev/null; then
-              break
-            fi
-            sleep 2
-          done
-
-          curl -fsSL "http://127.0.0.1:25090/api/health" | tee /tmp/docker-health.json
+          wait_for_status "200" "http://127.0.0.1:25090/api/health" "/tmp/docker-health.json"
+          cat /tmp/docker-health.json
           python3 - <<'PY'
           import json
           with open("/tmp/docker-health.json", "r", encoding="utf-8") as f:
@@ -254,14 +291,22 @@ jobs:
           assert health["legacyNext"]["status"] == "ok", health
           PY
 
-          curl -fsSL "http://127.0.0.1:25090/posts" >/tmp/docker-posts.html
-          grep -q "GraphQL API 设计最佳实践" /tmp/docker-posts.html
+          wait_for_status_with_grep \
+            "200" \
+            "http://127.0.0.1:25090/posts" \
+            "/tmp/docker-posts.html" \
+            "GraphQL API 设计最佳实践"
 
-          curl -fsSL "http://127.0.0.1:25090/posts/graphql-api-best-practices" >/tmp/docker-post.html
-          grep -q "GraphQL API 设计最佳实践" /tmp/docker-post.html
+          wait_for_status_with_grep \
+            "200" \
+            "http://127.0.0.1:25090/posts/graphql-api-best-practices" \
+            "/tmp/docker-post.html" \
+            "GraphQL API 设计最佳实践"
 
-          curl -fsSL "http://127.0.0.1:25090/api/public/comments?slug=graphql-api-best-practices" \
-            >/tmp/docker-comments.json
+          wait_for_status \
+            "200" \
+            "http://127.0.0.1:25090/api/public/comments?slug=graphql-api-best-practices" \
+            "/tmp/docker-comments.json"
           python3 - <<'PY'
           import json
           with open("/tmp/docker-comments.json", "r", encoding="utf-8") as f:
@@ -272,8 +317,7 @@ jobs:
           assert "isAdmin" in payload, payload
           PY
 
-          admin_status="$(curl -s -o /tmp/docker-admin.html -w '%{http_code}' "http://127.0.0.1:25090/admin")"
-          test "$admin_status" = "401"
+          wait_for_status "401" "http://127.0.0.1:25090/admin" "/tmp/docker-admin.html"
 
       - name: Dump docker smoke logs on failure
         if: failure()

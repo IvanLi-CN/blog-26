@@ -129,6 +129,7 @@ Phase 1 splits the public surface away from the legacy runtime without changing 
   - build `app-image-built`
   - run one container with `CONTENT_SOURCES=local`
   - verify `/api/health`, `/posts`, `/posts/:slug`, `/api/public/*`, and `/admin` auth gate through the single exposed port
+  - gate each checked route on ready HTTP responses instead of assuming `/api/health` alone proves every downstream path is warm
 
 ## 9. Milestones
 
