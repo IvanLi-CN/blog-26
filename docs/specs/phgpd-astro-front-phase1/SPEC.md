@@ -1,7 +1,7 @@
 # SPEC: Astro Public Frontend Migration + Single-Image Transition
 
 - Spec ID: `phgpd`
-- Status: `in-progress`
+- Status: `done`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -133,11 +133,11 @@ Phase 1 splits the public surface away from the legacy runtime without changing 
 
 ## 9. Milestones
 
-- [ ] M1: Add the spec, public snapshot export pipeline, and Astro site skeleton.
-- [ ] M2: Migrate all scoped public routes to Astro and wire public interaction islands to `/api/public/*`.
-- [ ] M3: Add gateway + single-image runtime transition and update Docker/start scripts.
-- [ ] M4: Update CI/E2E/release workflows for the new topology.
-- [ ] M5: Capture visual evidence and converge review/validation to merge-ready.
+- [x] M1: Add the spec, public snapshot export pipeline, and Astro site skeleton.
+- [x] M2: Migrate all scoped public routes to Astro and wire public interaction islands to `/api/public/*`.
+- [x] M3: Add gateway + single-image runtime transition and update Docker/start scripts.
+- [x] M4: Update CI/E2E/release workflows for the new topology.
+- [x] M5: Capture visual evidence and converge review/validation to merge-ready.
 
 ## 10. Approach
 
@@ -168,7 +168,7 @@ Phase 1 splits the public surface away from the legacy runtime without changing 
 - 空白裁剪=无需裁剪
 - 聊天回图=已展示
 - 证据落盘=已落盘
-- 证据绑定sha=`6f5d34dd70900b3b3eaf55a23b18eb8a5c2e6ec6`
+- 证据绑定sha=`47f290062209664b79b82a869d2c0b55ef0f9a1f`
 - 视觉证据原因=公开站无 Storybook，使用当前 worktree 租约端口 `http://127.0.0.1:30170` 的真实浏览器视口作为前台 Phase 1 验收来源。
 
 ### Home
