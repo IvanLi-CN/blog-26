@@ -172,6 +172,8 @@ jobs:
           target: app-image-built
           platforms: ${{ env.PLATFORMS }}
           push: false
+          load: true
+          tags: blog-nextjs:ci-smoke
           labels: |
             org.opencontainers.image.revision=${{ steps.git-info.outputs.commit_hash }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -186,3 +188,60 @@ jobs:
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Smoke test single-image runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ./test-data/job-logs
+
+          docker rm -f blog-nextjs-ci-smoke >/dev/null 2>&1 || true
+
+          docker run -d \
+            --name blog-nextjs-ci-smoke \
+            -p 127.0.0.1:25090:25090 \
+            -e CONTENT_SOURCES=local \
+            -e LOCAL_CONTENT_BASE_PATH=/app/data/local \
+            -e DB_PATH=/app/data/sqlite.db \
+            -e SITE_URL=http://127.0.0.1:25090 \
+            -v "$PWD/test-data:/app/data" \
+            blog-nextjs:ci-smoke
+
+          for _ in $(seq 1 90); do
+            if curl -fsSL "http://127.0.0.1:25090/api/health" > /tmp/docker-health.json 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl -fsSL "http://127.0.0.1:25090/api/health" | tee /tmp/docker-health.json
+          python3 - <<'PY'
+          import json
+          with open("/tmp/docker-health.json", "r", encoding="utf-8") as f:
+              health = json.load(f)
+          assert health["status"] == "ok", health
+          assert health["site"]["status"] == "ok", health
+          assert health["legacyNext"]["status"] == "ok", health
+          PY
+
+          curl -fsSL "http://127.0.0.1:25090/posts" >/tmp/docker-posts.html
+          grep -q "GraphQL API 设计最佳实践" /tmp/docker-posts.html
+
+          curl -fsSL "http://127.0.0.1:25090/posts/graphql-api-best-practices" >/tmp/docker-post.html
+          grep -q "留言" /tmp/docker-post.html
+
+          admin_status="$(curl -s -o /tmp/docker-admin.html -w '%{http_code}' "http://127.0.0.1:25090/admin")"
+          test "$admin_status" = "401"
+
+      - name: Dump docker smoke logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          docker logs blog-nextjs-ci-smoke || true
+
+      - name: Cleanup docker smoke container
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f blog-nextjs-ci-smoke >/dev/null 2>&1 || true

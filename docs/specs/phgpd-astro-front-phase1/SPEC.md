@@ -125,6 +125,10 @@ Phase 1 splits the public surface away from the legacy runtime without changing 
 - `bun run test:e2e -- --project=guest-chromium`
 - `bun run test:e2e -- --project=admin-chromium`
 - Docker single-image smoke build/start through CI workflow
+- Shared testbox smoke:
+  - build `app-image-built`
+  - run one container with `CONTENT_SOURCES=local`
+  - verify `/api/health`, `/posts`, `/posts/:slug`, `/api/public/*`, and `/admin` auth gate through the single exposed port
 
 ## 9. Milestones
 
@@ -149,7 +153,13 @@ Phase 1 splits the public surface away from the legacy runtime without changing 
 - Risk: compatibility APIs are still implemented inside the legacy runtime during Phase 1, so we must keep their resource contracts future-Rust-friendly.
 - Assumption: synced content in SQLite remains the source of truth for the exported public snapshot.
 
-## 12. Visual Evidence
+## 12. Docker Runtime Notes
+
+- The single release image rebuilds Astro output during container startup against the mounted runtime data volume.
+- Runtime Astro build artifacts must use writable cache directories inside the container, including Astro type generation output and Vite dependency cache output.
+- CI must validate both image build success and container startup success; build-only validation is insufficient because startup performs migrations plus Astro rebuilds.
+
+## 13. Visual Evidence
 
 - Storybook覆盖=不适用
 - 视觉证据目标源=mock_ui
