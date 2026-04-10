@@ -8,7 +8,7 @@ import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import TagBadge from "../../components/TagBadge.astro";
-import PostCard from "../../components/PostCard.astro";
+import RelatedPostCard from "../../components/RelatedPostCard.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
 import { getRelatedPosts, getSnapshot } from "../../lib/public-site";
 
@@ -114,7 +114,7 @@ const structuredData = {
           enableMath={true}
           enableMermaid={true}
           enableCodeFolding={true}
-          articlePath={`/posts/${post.slug}`}
+          articlePath={post.filePath || `blog/${post.slug}.md`}
           contentSource={(post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
         />
       </div>
@@ -128,24 +128,22 @@ const structuredData = {
       </div>
 
       <CommentSectionWithProvider client:load postSlug={post.slug} />
-
-      {relatedPosts.length > 0 && (
-        <section class="mt-12 space-y-6">
-          <div class="flex items-center gap-3">
-            <Icon name="tabler:article" className="h-6 w-6 text-[color:var(--nature-accent-strong)]" />
-            <h2 class="font-heading text-2xl font-semibold text-[color:var(--nature-text)]">相关文章</h2>
-          </div>
-          <div class="grid gap-6">
-            {relatedPosts.map((relatedPost) => (
-              <PostCard
-                post={relatedPost}
-                iconMap={snapshot.tags.tagIconMap}
-                iconSvgMap={snapshot.tags.tagIconSvgMap}
-              />
-            ))}
-          </div>
-        </section>
-      )}
     </article>
   </section>
+
+  {relatedPosts.length > 0 && (
+    <section class="nature-container px-6 pb-12 sm:pb-16 lg:pb-20">
+      <div class="space-y-6 border-t border-[rgba(var(--nature-border-rgb),0.72)] pt-8">
+        <div class="flex items-center gap-3">
+          <Icon name="tabler:article" className="h-6 w-6 text-[color:var(--nature-accent-strong)]" />
+          <h2 class="font-heading text-2xl font-semibold text-[color:var(--nature-text)]">相关文章</h2>
+        </div>
+        <div class="grid items-start gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {relatedPosts.map((relatedPost) => (
+            <RelatedPostCard post={relatedPost} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
 </BaseLayout>
