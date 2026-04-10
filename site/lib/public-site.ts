@@ -40,11 +40,123 @@ export function getMemoBySlug(snapshot: PublicSnapshot, slug: string) {
   return snapshot.memos.find((memo) => memo.slug === slug);
 }
 
+function getTopLevelContentRoot(filePath: string | null | undefined) {
+  const normalized = filePath?.trim().replace(/^\/+/, "") ?? "";
+  if (!normalized) return null;
+  return normalized.split("/")[0] || null;
+}
+
+function firstNonEmptyString(values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function normalizeTagSet(tags: string[]) {
+  return new Set(tags.map((tag) => tag.trim()).filter(Boolean));
+}
+
+function countSharedTags(left: string[], right: string[]) {
+  const rightSet = normalizeTagSet(right);
+  return left.reduce((count, tag) => count + (rightSet.has(tag.trim()) ? 1 : 0), 0);
+}
+
+function getMeaningfulTags(tags: string[]) {
+  const genericRoots = new Set(["Hardware", "HomeLab", "Ops", "Project", "Memos"]);
+  return tags.map((tag) => tag.trim()).filter((tag) => tag && !genericRoots.has(tag));
+}
+
+function isExternalUrl(value: string) {
+  return /^https?:\/\//.test(value.trim());
+}
+
+function normalizeWikiImageTarget(target: string) {
+  return target
+    .split("|")[0]
+    .trim()
+    .replace(/^。\//u, "./")
+    .replace(/^\.。\//u, "./");
+}
+
+function extractCoverCandidate(post: PublicPostRecord) {
+  const metadata = post.metadata as Record<string, unknown>;
+  const metadataImages = Array.isArray(metadata.images) ? metadata.images : [];
+  const frontmatterImage = firstNonEmptyString([post.image, ...metadataImages]);
+  if (frontmatterImage) return frontmatterImage;
+
+  const markdownImage = post.body.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
+  if (markdownImage?.trim()) return markdownImage.trim();
+
+  const wikiImage = post.body.match(/!\[\[([^\]]+)\]\]/)?.[1];
+  if (wikiImage?.trim()) return normalizeWikiImageTarget(wikiImage);
+
+  return null;
+}
+
+function hasDisplayCover(post: PublicPostRecord) {
+  const coverCandidate = extractCoverCandidate(post);
+  return Boolean(coverCandidate && !isExternalUrl(coverCandidate));
+}
+
+function scoreRelatedPost(current: PublicPostRecord, candidate: PublicPostRecord) {
+  const currentRoot = getTopLevelContentRoot(current.filePath);
+  const candidateRoot = getTopLevelContentRoot(candidate.filePath);
+  const sharedAllTags = countSharedTags(current.tags, candidate.tags);
+  const sharedMeaningfulTags = countSharedTags(
+    getMeaningfulTags(current.tags),
+    getMeaningfulTags(candidate.tags)
+  );
+
+  let score = 0;
+  if (currentRoot && candidateRoot && currentRoot === candidateRoot) {
+    score += 100;
+  }
+  score += sharedMeaningfulTags * 20;
+  score += sharedAllTags * 5;
+  if (hasDisplayCover(candidate)) {
+    score += 60;
+  }
+
+  if (candidate.publishDate <= current.publishDate) {
+    score += 3;
+  }
+
+  return score;
+}
+
 export function getRelatedPosts(snapshot: PublicSnapshot, slug: string) {
-  const relatedSlugs = snapshot.relatedPosts[slug] ?? [];
-  return relatedSlugs
-    .map((candidateSlug) => snapshot.posts.find((post) => post.slug === candidateSlug))
-    .filter((post): post is PublicPostRecord => Boolean(post));
+  const currentPost = getPostBySlug(snapshot, slug);
+  if (!currentPost) {
+    return [];
+  }
+
+  const seenTitles = new Set<string>([currentPost.title.trim()]);
+
+  return snapshot.posts
+    .filter((candidate) => candidate.slug !== currentPost.slug)
+    .filter((candidate) => !(candidate.filePath ?? "").includes(".sync-conflict-"))
+    .filter((candidate) => candidate.title.trim() !== currentPost.title.trim())
+    .sort((left, right) => {
+      const scoreDiff = scoreRelatedPost(currentPost, right) - scoreRelatedPost(currentPost, left);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      const dateDiff = right.publishDate.localeCompare(left.publishDate);
+      if (dateDiff !== 0) return dateDiff;
+
+      return left.title.localeCompare(right.title, "zh-Hans");
+    })
+    .filter((candidate) => {
+      const normalizedTitle = candidate.title.trim();
+      if (seenTitles.has(normalizedTitle)) {
+        return false;
+      }
+      seenTitles.add(normalizedTitle);
+      return true;
+    })
+    .slice(0, 4);
 }
 
 export function getGroupedTags(snapshot: PublicSnapshot) {

@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `in-progress`
-- Last Updated: `2026-04-06`
+- Last Updated: `2026-04-10`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -87,7 +87,19 @@ PR: include
 
 ![Code highlight fixed](./assets/code-highlight-fixed.png)
 
+### Related posts responsive cards
+
+- Evidence bound to local HEAD `f0606193b047c9e2e466fd17cac9e1a98a811ed1` from the stable local Astro preview.
+- Desktop keeps four equal cards, tablet keeps two reduced-height wide cards, and mobile keeps one adaptive column where no-cover cards omit the media block.
+
+![Related posts desktop](./assets/related-posts-desktop.png)
+
+![Related posts tablet](./assets/related-posts-tablet.png)
+
+![Related posts mobile](./assets/related-posts-mobile.png)
+
 ## 8. Change log
 
 - 2026-04-05: Created spec for the public Nature redesign and DaisyUI decoupling.
 - 2026-04-06: Refreshed local visual evidence after the layout, comment-form, and syntax-highlighting fixes.
+- 2026-04-10: Added responsive related-post card evidence for desktop, tablet, and mobile states.
