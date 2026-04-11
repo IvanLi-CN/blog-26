@@ -153,27 +153,31 @@ export default function SearchPageIsland() {
               const href = type === "memo" ? `/memos/${result.slug}` : `/posts/${result.slug}`;
               return (
                 <li key={`${type}-${result.slug}`} className="list-none">
-                  <a href={href} className="nature-panel nature-panel-soft block px-4 py-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.22)] text-[color:var(--nature-text-soft)]">
-                        <span>{type === "memo" ? "M" : "P"}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="max-w-[75%] truncate font-medium">
-                            {result.title || result.slug}
-                          </span>
-                          <span className="nature-chip capitalize">{type}</span>
-                          {typeof result.final === "number" && (
-                            <span className="nature-chip nature-chip-accent">
-                              {(result.final * 100).toFixed(0)}%
-                            </span>
-                          )}
+                  <a href={href} className="nature-hover-hitbox group block">
+                    <div className="nature-panel nature-panel-soft nature-hover-lift nature-hover-surface [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.32)] [--nature-hover-lift-offset:-0.125rem] px-4 py-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.22)] text-[color:var(--nature-text-soft)]">
+                          <span>{type === "memo" ? "M" : "P"}</span>
                         </div>
-                        {result.excerpt && (
-                          <p className="nature-muted line-clamp-2 text-sm">{result.excerpt}</p>
-                        )}
-                        <div className="text-xs text-[color:var(--nature-text-faint)]">{href}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="max-w-[75%] truncate font-medium">
+                              {result.title || result.slug}
+                            </span>
+                            <span className="nature-chip capitalize">{type}</span>
+                            {typeof result.final === "number" && (
+                              <span className="nature-chip nature-chip-accent">
+                                {(result.final * 100).toFixed(0)}%
+                              </span>
+                            )}
+                          </div>
+                          {result.excerpt && (
+                            <p className="nature-muted line-clamp-2 text-sm">{result.excerpt}</p>
+                          )}
+                          <div className="text-xs text-[color:var(--nature-text-faint)]">
+                            {href}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </a>

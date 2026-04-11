@@ -71,7 +71,12 @@ export default defineConfig({
   projects: [
     {
       name: "guest-chromium",
-      testMatch: ["**/guest/astro-front-phase1.spec.ts", "**/guest/admin-access-denied.spec.ts"],
+      testMatch: [
+        "**/guest/astro-front-phase1.spec.ts",
+        "**/guest/hover-stability.spec.ts",
+        "**/guest/nature-front-coverage.spec.ts",
+        "**/guest/admin-access-denied.spec.ts",
+      ],
       use: { ...devices["Desktop Chrome"] },
     },
     {

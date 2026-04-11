@@ -242,10 +242,48 @@ h6 {
     background-color 260ms var(--nature-ease);
 }
 
-.nature-panel:hover {
+.nature-panel:not(.nature-hover-lift):is(:hover, :focus-visible, :focus-within) {
   transform: translateY(-2px);
   border-color: var(--nature-line-strong);
   box-shadow: var(--nature-shadow-strong);
+}
+
+.nature-hover-hitbox {
+  position: relative;
+  display: block;
+}
+
+.nature-hover-hitbox-inline {
+  display: inline-flex;
+}
+
+.nature-hover-lift {
+  --nature-hover-lift-offset: -2px;
+}
+
+.nature-hover-surface {
+  --nature-hover-border-color: var(--nature-line-strong);
+  --nature-hover-shadow: var(--nature-shadow-strong);
+}
+
+.nature-hover-hitbox:is(:focus-visible, :focus-within) .nature-hover-lift {
+  transform: translateY(var(--nature-hover-lift-offset));
+}
+
+.nature-hover-hitbox:is(:focus-visible, :focus-within) .nature-hover-surface {
+  border-color: var(--nature-hover-border-color);
+  box-shadow: var(--nature-hover-shadow);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nature-hover-hitbox:hover .nature-hover-lift {
+    transform: translateY(var(--nature-hover-lift-offset));
+  }
+
+  .nature-hover-hitbox:hover .nature-hover-surface {
+    border-color: var(--nature-hover-border-color);
+    box-shadow: var(--nature-hover-shadow);
+  }
 }
 
 .nature-panel-body {

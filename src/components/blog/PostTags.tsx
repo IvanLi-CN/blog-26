@@ -164,24 +164,26 @@ export default function PostTags({
             <li key={tag.slug} className="inline">
               <Link
                 href={buildTagHref(tag.title)}
-                className={`inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
-                  isMultiLevel
-                    ? "border border-[rgba(var(--nature-accent-rgb),0.28)] bg-[linear-gradient(90deg,rgba(var(--nature-accent-rgb),0.12),rgba(132,167,181,0.16))] text-[color:var(--nature-accent-strong)]"
-                    : getTagColorTheme(tag.title)
-                }`}
+                className="nature-hover-hitbox nature-hover-hitbox-inline group align-middle"
               >
-                <span className={`flex items-center gap-1 ${isMultiLevel ? "font-semibold" : ""}`}>
-                  <span className="hidden sm:inline-block" aria-hidden>
-                    {shouldRenderInlineSvg && iconSvg ? (
-                      <span
-                        className="inline-flex [&>svg]:w-3 [&>svg]:h-3"
-                        dangerouslySetInnerHTML={{ __html: iconSvg }}
-                      />
-                    ) : (
-                      <Icon name={iconFallbackName} className="w-3 h-3" />
-                    )}
+                <span
+                  className={`nature-hover-lift nature-hover-surface inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium shadow-none transition-all duration-200 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.36)] [--nature-hover-lift-offset:-0.125rem] [--nature-hover-shadow:0_12px_24px_rgba(8,21,16,0.08)] ${isMultiLevel ? "border border-[rgba(var(--nature-accent-rgb),0.28)] bg-[linear-gradient(90deg,rgba(var(--nature-accent-rgb),0.12),rgba(132,167,181,0.16))] text-[color:var(--nature-accent-strong)]" : getTagColorTheme(tag.title)}`}
+                >
+                  <span
+                    className={`flex items-center gap-1 ${isMultiLevel ? "font-semibold" : ""}`}
+                  >
+                    <span className="hidden sm:inline-block" aria-hidden>
+                      {shouldRenderInlineSvg && iconSvg ? (
+                        <span
+                          className="inline-flex [&>svg]:w-3 [&>svg]:h-3"
+                          dangerouslySetInnerHTML={{ __html: iconSvg }}
+                        />
+                      ) : (
+                        <Icon name={iconFallbackName} className="w-3 h-3" />
+                      )}
+                    </span>
+                    {String(lastSegment).replace(/^#/, "")}
                   </span>
-                  {String(lastSegment).replace(/^#/, "")}
                 </span>
               </Link>
             </li>

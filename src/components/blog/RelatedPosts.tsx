@@ -77,74 +77,73 @@ export default function RelatedPosts({
         </h2>
         <div className="grid gap-6 md:grid-cols-2">
           {sortedPosts.map((post) => (
-            <article
-              key={post.id}
-              className="group"
-              itemScope
-              itemType="https://schema.org/Article"
-            >
+            <article key={post.id} itemScope itemType="https://schema.org/Article">
               <Link
                 href={`/posts/${post.slug}`}
-                className="nature-panel block p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.42)]"
+                className="nature-hover-hitbox group block"
                 itemProp="url"
               >
-                {post.image && (
-                  <div className="mb-3 overflow-hidden rounded-md">
-                    <Image
-                      src={
-                        resolveImagePath(
-                          post.image,
-                          (post.dataSource === "local" ? "local" : "webdav") as "local" | "webdav",
-                          `blog/${post.slug}.md`
-                        ) || post.image
-                      }
-                      alt={post.title}
-                      className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                      itemProp="image"
-                      width={640}
-                      height={240}
-                    />
+                <div className="nature-panel nature-hover-lift nature-hover-surface [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.42)] [--nature-hover-lift-offset:-0.125rem] [--nature-hover-shadow:0_20px_44px_rgba(8,21,16,0.14)] p-4 transition-all duration-200">
+                  {post.image && (
+                    <div className="mb-3 overflow-hidden rounded-md">
+                      <Image
+                        src={
+                          resolveImagePath(
+                            post.image,
+                            (post.dataSource === "local" ? "local" : "webdav") as
+                              | "local"
+                              | "webdav",
+                            `blog/${post.slug}.md`
+                          ) || post.image
+                        }
+                        alt={post.title}
+                        className="w-full h-32 object-cover transition-transform duration-200 group-hover:scale-105"
+                        itemProp="image"
+                        width={640}
+                        height={240}
+                      />
+                    </div>
+                  )}
+
+                  <h3
+                    className="mb-2 line-clamp-2 text-lg font-semibold text-[color:var(--nature-text)] transition-colors duration-200 group-hover:text-[color:var(--nature-accent-strong)]"
+                    itemProp="headline"
+                  >
+                    {post.title}
+                  </h3>
+
+                  {post.excerpt && (
+                    <p
+                      className="mb-3 line-clamp-2 text-sm text-[color:var(--nature-text-soft)]"
+                      itemProp="description"
+                    >
+                      {post.excerpt}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-[color:var(--nature-text-faint)]">
+                    <time
+                      dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
+                      itemProp="datePublished"
+                    >
+                      {new Date(toMsTimestamp(post.publishDate)).toLocaleDateString("zh-CN", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </time>
+
+                    <ReadingTime content={post.body} />
                   </div>
-                )}
 
-                <h3
-                  className="mb-2 line-clamp-2 text-lg font-semibold text-[color:var(--nature-text)] transition-colors duration-200 group-hover:text-[color:var(--nature-accent-strong)]"
-                  itemProp="headline"
-                >
-                  {post.title}
-                </h3>
-
-                {post.excerpt && (
-                  <p
-                    className="mb-3 line-clamp-2 text-sm text-[color:var(--nature-text-soft)]"
-                    itemProp="description"
-                  >
-                    {post.excerpt}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-[color:var(--nature-text-faint)]">
-                  <time
-                    dateTime={new Date(toMsTimestamp(post.publishDate)).toISOString()}
-                    itemProp="datePublished"
-                  >
-                    {new Date(toMsTimestamp(post.publishDate)).toLocaleDateString("zh-CN", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </time>
-
-                  <ReadingTime content={post.body} />
+                  {post.category && (
+                    <div className="mt-2">
+                      <span className="nature-chip nature-chip-accent" itemProp="articleSection">
+                        {post.category}
+                      </span>
+                    </div>
+                  )}
                 </div>
-
-                {post.category && (
-                  <div className="mt-2">
-                    <span className="nature-chip nature-chip-accent" itemProp="articleSection">
-                      {post.category}
-                    </span>
-                  </div>
-                )}
               </Link>
             </article>
           ))}

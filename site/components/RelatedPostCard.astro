@@ -128,9 +128,9 @@ async function resolveCardImageSrc(record: PublicPostRecord, contentSource: "loc
 const imageSrc = await resolveCardImageSrc(post, source);
 const hasCover = Boolean(imageSrc);
 const excerpt = post.excerpt?.trim() || "";
-const articleClass = "group min-w-0 self-start";
+const articleClass = "min-w-0 self-start";
 const linkClass =
-  "nature-panel flex min-h-0 overflow-hidden p-0 transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(var(--nature-accent-rgb),0.42)] hover:shadow-[0_20px_44px_rgba(8,21,16,0.14)] flex-col md:grid md:aspect-[12/5] md:grid-cols-[40%_1fr] md:grid-rows-1 lg:flex lg:aspect-square lg:flex-col lg:grid-cols-none";
+  "nature-panel nature-hover-lift nature-hover-surface flex min-h-0 overflow-hidden p-0 transition-all duration-300 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.42)] [--nature-hover-lift-offset:-0.25rem] [--nature-hover-shadow:0_20px_44px_rgba(8,21,16,0.14)] flex-col md:grid md:aspect-[12/5] md:grid-cols-[40%_1fr] md:grid-rows-1 lg:flex lg:aspect-square lg:flex-col lg:grid-cols-none";
 const mediaClass =
   "relative aspect-[16/9] overflow-hidden border-b border-[rgba(var(--nature-border-rgb),0.68)] bg-[linear-gradient(135deg,rgba(var(--nature-accent-rgb),0.18),rgba(var(--nature-secondary-rgb),0.12))] md:h-full md:min-h-0 md:aspect-auto md:border-b-0 md:border-r lg:basis-[44%] lg:border-r-0 lg:border-b";
 const placeholderClass =
@@ -143,39 +143,41 @@ const excerptClass =
 ---
 
 <article class={articleClass} itemprop="isRelatedTo" itemscope itemtype="https://schema.org/Article">
-  <a class={linkClass} href={`/posts/${post.slug}`} itemprop="url">
-    {hasCover ? (
-      <div class={mediaClass}>
-        <img
-          src={imageSrc}
-          alt={post.title}
-          class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
-          loading="lazy"
-          decoding="async"
-          itemprop="image"
-        />
-      </div>
-    ) : (
-      <div class={`${mediaClass} hidden md:block`}>
-        <div class={placeholderClass}>
-          <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_38%),linear-gradient(135deg,rgba(var(--nature-accent-rgb),0.22),rgba(var(--nature-secondary-rgb),0.12))]" />
-          <div class="absolute inset-x-4 bottom-4 z-0 space-y-2 opacity-70">
-            <div class="h-2 rounded-full bg-white/55" />
-            <div class="h-2 w-3/4 rounded-full bg-white/35" />
-            <div class="h-2 w-1/2 rounded-full bg-white/25" />
-          </div>
-          <Icon
-            name="tabler:article"
-            className="absolute -right-3 -top-3 h-20 w-20 text-[color:var(--nature-accent-strong)]/10 md:h-14 md:w-14 lg:h-20 lg:w-20"
+  <a class="nature-hover-hitbox group block" href={`/posts/${post.slug}`} itemprop="url">
+    <div class={linkClass}>
+      {hasCover ? (
+        <div class={mediaClass}>
+          <img
+            src={imageSrc}
+            alt={post.title}
+            class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+            loading="lazy"
+            decoding="async"
+            itemprop="image"
           />
         </div>
+      ) : (
+        <div class={`${mediaClass} hidden md:block`}>
+          <div class={placeholderClass}>
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_38%),linear-gradient(135deg,rgba(var(--nature-accent-rgb),0.22),rgba(var(--nature-secondary-rgb),0.12))]" />
+            <div class="absolute inset-x-4 bottom-4 z-0 space-y-2 opacity-70">
+              <div class="h-2 rounded-full bg-white/55" />
+              <div class="h-2 w-3/4 rounded-full bg-white/35" />
+              <div class="h-2 w-1/2 rounded-full bg-white/25" />
+            </div>
+            <Icon
+              name="tabler:article"
+              className="absolute -right-3 -top-3 h-20 w-20 text-[color:var(--nature-accent-strong)]/10 md:h-14 md:w-14 lg:h-20 lg:w-20"
+            />
+          </div>
+        </div>
+      )}
+
+      <div class={bodyClass}>
+        <h3 class={titleClass} itemprop="headline">{post.title}</h3>
+
+        <p class={excerptClass} itemprop="description">{excerpt}</p>
       </div>
-    )}
-
-    <div class={bodyClass}>
-      <h3 class={titleClass} itemprop="headline">{post.title}</h3>
-
-      <p class={excerptClass} itemprop="description">{excerpt}</p>
     </div>
   </a>
 </article>
