@@ -1,7 +1,7 @@
 # SPEC: Nature Frontend Redesign Without DaisyUI
 
 - Spec ID: `n8ure`
-- Status: `in-progress`
+- Status: `done`
 - Last Updated: `2026-04-11`
 - Owner: `main-agent`
 
@@ -60,8 +60,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `git diff --name-only -- '*.ts' '*.tsx' '*.css' '*.json' '*.md' | xargs bunx biome check`
 - `bun test src/lib/__tests__/theme.test.ts`
 - `DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=http://localhost:30090 PUBLIC_SITE_URL=http://localhost:30090 bun run build`
-- `BASE_URL=http://localhost:30090 WEBDAV_URL=http://localhost:30091 PLAYWRIGHT_REUSE_APP=true PLAYWRIGHT_REUSE_WEBDAV=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest-chromium`
-- `BASE_URL=http://localhost:30091 WEBDAV_URL=http://localhost:30090 PORT=30091 WEBDAV_PORT=30090 PLAYWRIGHT_REUSE_APP=true PLAYWRIGHT_REUSE_WEBDAV=true bunx playwright test tests/e2e/guest/nature-front-coverage.spec.ts tests/e2e/guest/theme-contrast.spec.ts tests/e2e/guest/posts-title-contrast.spec.ts tests/e2e/guest/memos-guest.spec.ts tests/e2e/guest/posts-visibility.spec.ts --project=guest-chromium`
+- `BASE_URL=http://localhost:30090 WEBDAV_URL=http://localhost:30091 PLAYWRIGHT_REUSE_APP=true PLAYWRIGHT_REUSE_WEBDAV=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest-chromium`
 - `bun run check` is still blocked by pre-existing repository-wide issues outside this scope:
   - `biome.jsonc` schema mismatch against the globally installed Biome CLI
   - existing admin/editor lint findings unrelated to the public Nature redesign
@@ -120,3 +119,4 @@ PR: include
 - 2026-04-06: Refreshed local visual evidence after the layout, comment-form, and syntax-highlighting fixes.
 - 2026-04-10: Added responsive related-post card evidence for desktop, tablet, and mobile states.
 - 2026-04-11: Added a shared hover hitbox/lift contract, refreshed dense-list coverage, and stored hover-stability visual evidence for related posts, tags, and search results.
+- 2026-04-11: Closed the spec after the final Astro public-route, theme shell, and hover-stability regression pass.
