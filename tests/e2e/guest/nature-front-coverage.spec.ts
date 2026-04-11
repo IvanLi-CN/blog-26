@@ -26,11 +26,11 @@ test.describe("Nature frontend public coverage", () => {
   });
 
   test("detail routes and tag drill-down remain navigable", async ({ page }) => {
-    await gotoWithTheme(page, "/posts/web-security-protection-guide", "light");
-    await expect(page.locator("main h1").first()).toHaveText("Web 安全防护指南");
+    await gotoWithTheme(page, "/posts/react-hooks-deep-dive", "light");
+    await expect(page.locator("main h1").first()).toHaveText("React Hooks 深度解析");
 
-    await gotoWithTheme(page, "/memos/e2e-shan1-chu2-ce4-shi4-webdav", "light");
-    await expect(page.locator("main h1").first()).toHaveText("E2E 删除测试-WEBDAV");
+    await gotoWithTheme(page, "/memos/e2e-local", "light");
+    await expect(page.locator("main h1").first()).toHaveText("E2E 删除测试-LOCAL");
 
     await gotoWithTheme(page, "/tags", "light");
     const firstTag = page.locator('a[href^="/tags/"]').first();
@@ -40,27 +40,16 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator("main h1").first()).toBeVisible();
   });
 
-  test("mobile menu search still redirects correctly", async ({ page }) => {
+  test("mobile search entry still redirects correctly", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoWithTheme(page, "/", "light");
 
-    const toggleMenu = page.getByRole("button", { name: "Toggle Menu" });
-    const closeMenu = page.getByRole("button", { name: "Close menu" });
-    await expect(toggleMenu).toBeVisible();
-    let opened = false;
+    const searchEntry = page.getByRole("link", { name: "搜索" });
+    await expect(searchEntry).toBeVisible();
+    await searchEntry.click();
+    await expect(page).toHaveURL(/\/search$/);
 
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      await toggleMenu.click();
-      if (await closeMenu.isVisible().catch(() => false)) {
-        opened = true;
-        break;
-      }
-      await page.waitForTimeout(1000);
-    }
-
-    expect(opened).toBe(true);
-
-    const searchInput = page.locator('div.fixed.inset-0 input[placeholder="搜索文章..."]').first();
+    const searchInput = page.getByRole("textbox").first();
     await expect(searchInput).toBeVisible();
     await searchInput.fill("Vue");
     await searchInput.press("Enter");
