@@ -215,6 +215,23 @@ h6 {
   box-shadow: var(--nature-shadow);
 }
 
+.theme-toggle-option {
+  color: var(--nature-text-soft);
+  background: transparent;
+}
+
+.theme-toggle-option:hover {
+  background: rgba(var(--nature-highlight-rgb), 0.26);
+  color: var(--nature-text);
+}
+
+html[data-ui-preference="light"] .theme-toggle-option[data-theme-option="light"],
+html[data-ui-preference="dark"] .theme-toggle-option[data-theme-option="dark"],
+html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system"] {
+  background: rgba(var(--nature-accent-rgb), 0.16);
+  color: var(--nature-accent-strong);
+}
+
 .nature-surface-quiet {
   border: 1px solid var(--nature-line);
   background: var(--nature-surface-muted);

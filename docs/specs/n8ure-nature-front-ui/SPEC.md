@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-04-11`
+- Last Updated: `2026-04-12`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -120,3 +120,4 @@ PR: include
 - 2026-04-10: Added responsive related-post card evidence for desktop, tablet, and mobile states.
 - 2026-04-11: Added a shared hover hitbox/lift contract, refreshed dense-list coverage, and stored hover-stability visual evidence for related posts, tags, and search results.
 - 2026-04-11: Closed the spec after the final Astro public-route, theme shell, and hover-stability regression pass.
+- 2026-04-12: Fixed the Astro public theme bootstrap regression so dark/system-dark theme state persists across route navigation and extended the Astro guest regression suite to block the issue.

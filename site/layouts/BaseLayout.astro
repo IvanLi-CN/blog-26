@@ -62,12 +62,14 @@ const resolvedImage = image.startsWith("http") ? image : new URL(image, siteUrl)
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet" />
-    <script is:inline>
-      {`(function() {
-        const defaultTheme = ${JSON.stringify(UI.theme.default)};
-        const legacyLightThemes = ${JSON.stringify(UI.theme.legacyLight)};
-        const legacyDarkThemes = ${JSON.stringify(UI.theme.legacyDark)};
-
+    <script
+      define:vars={{
+        defaultTheme: UI.theme.default,
+        legacyLightThemes: UI.theme.legacyLight,
+        legacyDarkThemes: UI.theme.legacyDark,
+      }}
+    >
+      (() => {
         function normalizeTheme(theme) {
           if (theme === "dark" || legacyDarkThemes.includes(theme)) return "dark";
           if (theme === "light" || legacyLightThemes.includes(theme)) return "light";
@@ -90,6 +92,7 @@ const resolvedImage = image.startsWith("http") ? image : new URL(image, siteUrl)
           d.setAttribute("data-theme", resolvedTheme);
           d.classList.toggle("dark", resolvedTheme === "dark");
           d.style.colorScheme = resolvedTheme;
+
           if (theme !== normalizedTheme) {
             localStorage.setItem("theme", normalizedTheme);
           }
@@ -97,7 +100,7 @@ const resolvedImage = image.startsWith("http") ? image : new URL(image, siteUrl)
 
         const theme = localStorage.getItem("theme") || defaultTheme;
         applyTheme(theme);
-      })();`}
+      })();
     </script>
   </head>
   <body>

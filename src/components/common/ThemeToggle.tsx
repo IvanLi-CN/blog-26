@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { applyThemeToDocument, isDarkTheme } from "@/lib/theme";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { applyThemeToDocument, isDarkTheme, normalizeThemeSelection } from "@/lib/theme";
 import { UI, type UiThemeSelection } from "../../config/site";
 import Icon from "../ui/Icon";
 
@@ -9,14 +9,31 @@ interface ThemeToggleProps {
   iconClass?: string;
 }
 
-export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps) {
-  const [currentTheme, setCurrentTheme] = useState<UiThemeSelection>("system");
+const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-  useEffect(() => {
-    const theme = localStorage.getItem("theme") || "system";
-    if (theme === "light" || theme === "dark" || theme === "system") {
-      setCurrentTheme(theme);
+function readThemeSelectionFromDocument(): UiThemeSelection {
+  if (typeof document !== "undefined") {
+    const documentTheme = document.documentElement.getAttribute("data-ui-preference");
+    if (documentTheme) {
+      return normalizeThemeSelection(documentTheme);
     }
+  }
+
+  if (typeof window !== "undefined") {
+    const storedTheme = window.localStorage.getItem("theme");
+    if (storedTheme) {
+      return normalizeThemeSelection(storedTheme);
+    }
+  }
+
+  return UI.theme.default;
+}
+
+export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps) {
+  const [currentTheme, setCurrentTheme] = useState<UiThemeSelection | null>(null);
+
+  useSafeLayoutEffect(() => {
+    setCurrentTheme(readThemeSelectionFromDocument());
   }, []);
 
   const setTheme = (theme: UiThemeSelection) => {
@@ -43,11 +60,8 @@ export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps)
           key={theme}
           type="button"
           onClick={() => setTheme(theme)}
-          className={`inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm transition ${
-            currentTheme === theme
-              ? "bg-[rgba(var(--nature-accent-rgb),0.16)] text-[color:var(--nature-accent-strong)]"
-              : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-highlight-rgb),0.26)] hover:text-[color:var(--nature-text)]"
-          }`}
+          className="theme-toggle-option inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm transition"
+          data-theme-option={theme}
           aria-pressed={currentTheme === theme}
           title={label}
         >

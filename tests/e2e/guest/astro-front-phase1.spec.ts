@@ -1,4 +1,58 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+
+async function gotoWithTheme(page: Page, route: string, theme: "light" | "dark" | "system") {
+  await page.goto(route, { waitUntil: "domcontentloaded" });
+  await page.evaluate((value) => localStorage.setItem("theme", value), theme);
+  await page.reload({ waitUntil: "domcontentloaded" });
+}
+
+async function readToggleVisualState(page: Page) {
+  return page.evaluate(() => {
+    const read = (label: string) => {
+      const button = Array.from(document.querySelectorAll<HTMLButtonElement>("button[title]")).find(
+        (candidate) => candidate.title === label
+      );
+      if (!button) return null;
+
+      const styles = getComputedStyle(button);
+      return {
+        ariaPressed: button.getAttribute("aria-pressed"),
+        backgroundColor: styles.backgroundColor,
+        color: styles.color,
+      };
+    };
+
+    return {
+      light: read("Light"),
+      dark: read("Dark"),
+      auto: read("Auto"),
+    };
+  });
+}
+
+async function expectThemeState(
+  page: Page,
+  preference: "light" | "dark" | "system",
+  resolved: "light" | "dark"
+) {
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-ui-preference", preference);
+  await expect(html).toHaveAttribute("data-ui-theme", resolved);
+  await expect(html).toHaveAttribute("data-theme", resolved);
+  await expect
+    .poll(async () =>
+      page.evaluate(() => ({
+        storedTheme: localStorage.getItem("theme"),
+        colorScheme: document.documentElement.style.colorScheme,
+        hasDark: document.documentElement.classList.contains("dark"),
+      }))
+    )
+    .toEqual({
+      storedTheme: preference,
+      colorScheme: resolved,
+      hasDark: resolved === "dark",
+    });
+}
 
 test.describe("Astro public front (phase 1)", () => {
   test("renders migrated public routes and islands", async ({ page }) => {
@@ -114,5 +168,82 @@ test.describe("Astro public front (phase 1)", () => {
         ]),
       })
     );
+  });
+
+  test("shows the stored light theme in the toggle before hydration finishes", async ({ page }) => {
+    await page.route(/ThemeToggle\..*\.js$/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      await route.continue();
+    });
+
+    await gotoWithTheme(page, "/", "light");
+    await expectThemeState(page, "light", "light");
+
+    await expect
+      .poll(async () => readToggleVisualState(page))
+      .toEqual({
+        light: expect.objectContaining({
+          ariaPressed: "false",
+          backgroundColor: "rgba(124, 169, 139, 0.16)",
+          color: "rgb(78, 126, 96)",
+        }),
+        dark: expect.objectContaining({
+          ariaPressed: "false",
+          backgroundColor: "rgba(0, 0, 0, 0)",
+        }),
+        auto: expect.objectContaining({
+          ariaPressed: "false",
+          backgroundColor: "rgba(0, 0, 0, 0)",
+        }),
+      });
+
+    await expect(page.getByRole("button", { name: "Light" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(page.getByRole("button", { name: "Auto" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+  });
+
+  test("keeps dark theme across Astro public page navigation", async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    await gotoWithTheme(page, "/", "dark");
+    await expectThemeState(page, "dark", "dark");
+
+    await page.goto("/posts", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "文章" })).toBeVisible();
+    await expectThemeState(page, "dark", "dark");
+
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
+    await expectThemeState(page, "dark", "dark");
+
+    expect(pageErrors).not.toContain("UI is not defined");
+  });
+
+  test.describe("system theme follows dark OS across Astro public page navigation", () => {
+    test.use({ colorScheme: "dark" });
+
+    test("keeps resolved dark state on home, posts, and memos", async ({ page }) => {
+      const pageErrors: string[] = [];
+      page.on("pageerror", (error) => pageErrors.push(error.message));
+
+      await gotoWithTheme(page, "/", "system");
+      await expectThemeState(page, "system", "dark");
+
+      await page.goto("/posts", { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: "文章" })).toBeVisible();
+      await expectThemeState(page, "system", "dark");
+
+      await page.goto("/memos", { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
+      await expectThemeState(page, "system", "dark");
+
+      expect(pageErrors).not.toContain("UI is not defined");
+    });
   });
 });
