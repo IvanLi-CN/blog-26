@@ -55,11 +55,25 @@ jobs:
       head_sha: ${{ steps.meta.outputs.head_sha }}
       head_branch: ${{ steps.meta.outputs.head_branch }}
     steps:
+      - name: Resolve release head sha
+        id: release-head
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_sha="${RELEASE_HEAD_SHA}"
+          if [[ ! "${target_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid head_sha: ${target_sha}" >&2
+            exit 1
+          fi
+          echo "release_head_sha=${target_sha}" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_REQUESTED_SHA=${target_sha}"
+          echo "RELEASE_TARGET_SHA=${target_sha}"
+
       - name: Checkout workflow head
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ env.RELEASE_HEAD_SHA }}
+          ref: ${{ steps.release-head.outputs.release_head_sha }}
 
       - name: Resolve release intent from PR labels
         id: intent

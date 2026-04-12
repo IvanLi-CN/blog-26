@@ -17,6 +17,7 @@ Legacy plans in `docs/plan/` remain readable but are no longer the preferred pla
 | ID | Title | Status | Spec | Last | Notes |
 |---|---|---|---|---|---|
 | n8ure | Nature frontend redesign without DaisyUI | done | `n8ure-nature-front-ui/SPEC.md` | 2026-04-11 | Replace public DaisyUI styling with a dedicated Nature design system and stable visual evidence flow; final hover-stability and Astro public-route verification passed. |
+| n338y | Release failure Telegram alerts | in-progress | `n338y-release-failure-telegram-alerts/SPEC.md` | 2026-04-12 | Add a repo-local release failure notifier wrapper, emit explicit release target SHA markers, and keep a manual smoke path for Telegram alert validation. |
 | ey3mm | PR + label driven release | in-progress | `ey3mm-pr-label-release/SPEC.md` | 2026-03-03 | Introduce deterministic release gate from PR labels and channel. |
 | m4c9u | Local memo root keeps `Memos` case | done | `m4c9u-local-memos-root-case/SPEC.md` | 2026-03-10 | Keep local memo writes aligned with the synced `Memos` tree, keep active env parsing strict, ignore inactive local client overrides in webdav-only memo UI, route webdav-only memo uploads through the WebDAV file API, and block dot-segment memo roots. |
 | mivez | Local content source uses real directory layout | in-progress | `mivez-local-real-content-layout/SPEC.md` | 2026-03-11 | Remove synthetic local wrapper directories, classify content from configured real roots, and keep admin local browsing aligned with the actual note tree. |
