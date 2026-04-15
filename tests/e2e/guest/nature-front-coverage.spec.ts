@@ -25,6 +25,51 @@ test.describe("Nature frontend public coverage", () => {
     }
   });
 
+  test("public shell persists across client-side navigation without losing theme", async ({
+    page,
+  }) => {
+    await gotoWithTheme(page, "/", "dark");
+
+    const publicShell = page.getByTestId("public-site-shell");
+    await expect(publicShell).toBeVisible();
+    const shellInstanceId = await page.locator("html").getAttribute("data-public-session-id");
+
+    expect(shellInstanceId).toBeTruthy();
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "dark");
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-public-session-id",
+      shellInstanceId ?? ""
+    );
+
+    const mainNavigation = page.getByRole("navigation", { name: "Main navigation" });
+
+    await mainNavigation.getByRole("link", { name: "文章", exact: true }).click();
+    await expect(page).toHaveURL(/\/posts$/);
+    await expect(page.getByRole("heading", { name: "文章" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-public-session-id",
+      shellInstanceId ?? ""
+    );
+
+    await mainNavigation.getByRole("link", { name: "标签", exact: true }).click();
+    await expect(page).toHaveURL(/\/tags$/);
+    await expect(page.getByRole("heading", { name: "浏览所有标签" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-public-session-id",
+      shellInstanceId ?? ""
+    );
+
+    const firstTag = page.locator('a[href^="/tags/"]').first();
+    await firstTag.click();
+    await expect(page).toHaveURL(/\/tags\//);
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-public-session-id",
+      shellInstanceId ?? ""
+    );
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "dark");
+  });
+
   test("detail routes and tag drill-down remain navigable", async ({ page }) => {
     await gotoWithTheme(page, "/posts/react-hooks-deep-dive", "light");
     await expect(page.locator("main h1").first()).toHaveText("React Hooks 深度解析");
@@ -44,6 +89,7 @@ test.describe("Nature frontend public coverage", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoWithTheme(page, "/", "light");
 
+    const shellInstanceId = await page.locator("html").getAttribute("data-public-session-id");
     const searchEntry = page.getByRole("link", { name: "搜索" });
     await expect(searchEntry).toBeVisible();
     await searchEntry.click();
@@ -56,6 +102,10 @@ test.describe("Nature frontend public coverage", () => {
 
     await expect(page).toHaveURL(/\/search\?q=Vue/);
     await expect(page.getByRole("heading", { name: "搜索" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-public-session-id",
+      shellInstanceId ?? ""
+    );
   });
 
   test.describe("system theme and reduced motion", () => {

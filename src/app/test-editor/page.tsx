@@ -10,6 +10,7 @@
  * 4. 滚动定位功能
  */
 
+import { Suspense } from "react";
 import { EditorStateProvider } from "../../components/editor/EditorStateContext";
 import { useAdvancedEditorState } from "../../components/editor/hooks/useEditorState";
 import { createContentSource } from "../../components/editor/utils/pathUtils";
@@ -220,8 +221,10 @@ function TestEditorContent() {
 
 export default function TestEditorPage() {
   return (
-    <EditorStateProvider>
-      <TestEditorContent />
-    </EditorStateProvider>
+    <Suspense fallback={<div className="min-h-screen bg-base-200 p-4" />}>
+      <EditorStateProvider>
+        <TestEditorContent />
+      </EditorStateProvider>
+    </Suspense>
   );
 }
