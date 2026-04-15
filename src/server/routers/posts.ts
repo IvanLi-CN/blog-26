@@ -176,8 +176,9 @@ export const postsRouter = router({
   }),
 
   // 获取单个文章
-  get: publicProcedure.input(getPostSchema).query(async ({ input }) => {
+  get: publicProcedure.input(getPostSchema).query(async ({ input, ctx }) => {
     let { slug } = input;
+    const isAdminPreview = ctx.isAdmin && ctx.req.headers.get("x-admin-preview") === "1";
 
     try {
       // 解码 URL 编码的 slug
@@ -185,27 +186,29 @@ export const postsRouter = router({
 
       console.log("🔍 [posts.get] 开始查询文章:", slug);
 
+      const conditions = [eq(posts.slug, slug), eq(posts.type, "post")] as any[];
+
+      if (!isAdminPreview) {
+        conditions.push(eq(posts.draft, false), eq(posts.public, true));
+      }
+
+      conditions.push(
+        (() => {
+          const sourcesEnv =
+            process.env.CONTENT_SOURCES ||
+            (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
+          const allowedSources = sourcesEnv
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+          return allowedSources.length > 0 ? inArray(posts.source, allowedSources) : sql`1=1`;
+        })()
+      );
+
       const post = await db
         .select()
         .from(posts)
-        .where(
-          and(
-            eq(posts.slug, slug),
-            eq(posts.draft, false),
-            eq(posts.public, true),
-            // 源过滤（可选）
-            (() => {
-              const sourcesEnv =
-                process.env.CONTENT_SOURCES ||
-                (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
-              const allowedSources = sourcesEnv
-                .split(",")
-                .map((s) => s.trim())
-                .filter((s) => s.length > 0);
-              return allowedSources.length > 0 ? inArray(posts.source, allowedSources) : sql`1=1`;
-            })()
-          )
-        )
+        .where(and(...conditions))
         .limit(1);
 
       console.log("🔍 [posts.get] 查询结果:", post.length > 0 ? "找到文章" : "未找到文章");

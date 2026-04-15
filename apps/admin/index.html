@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Admin Console</title>
+    <script>
+      (() => {
+        const defaultTheme = "system";
+        const legacyLightThemes = [
+          "cupcake",
+          "bumblebee",
+          "emerald",
+          "corporate",
+          "retro",
+          "cyberpunk",
+          "valentine",
+          "garden",
+          "lofi",
+          "pastel",
+          "fantasy",
+          "wireframe",
+          "cmyk",
+          "autumn",
+          "acid",
+          "lemonade",
+          "winter",
+          "nord",
+          "sunset",
+          "caramellatte",
+          "silk",
+        ];
+        const legacyDarkThemes = [
+          "synthwave",
+          "halloween",
+          "forest",
+          "aqua",
+          "black",
+          "luxury",
+          "dracula",
+          "business",
+          "night",
+          "coffee",
+          "dim",
+          "abyss",
+        ];
+
+        function normalizeTheme(theme) {
+          if (theme === "dark" || legacyDarkThemes.includes(theme)) return "dark";
+          if (theme === "light" || legacyLightThemes.includes(theme)) return "light";
+          return "system";
+        }
+
+        function resolveTheme(theme) {
+          const normalizedTheme = normalizeTheme(theme);
+          if (normalizedTheme === "dark") return "dark";
+          if (normalizedTheme === "light") return "light";
+          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+
+        function applyTheme(theme) {
+          const root = document.documentElement;
+          const normalizedTheme = normalizeTheme(theme);
+          const resolvedTheme = resolveTheme(normalizedTheme);
+          root.setAttribute("data-ui-theme", resolvedTheme);
+          root.setAttribute("data-ui-preference", normalizedTheme);
+          root.setAttribute("data-theme", resolvedTheme);
+          root.classList.toggle("dark", resolvedTheme === "dark");
+          root.style.colorScheme = resolvedTheme;
+          if (theme !== normalizedTheme) {
+            localStorage.setItem("theme", normalizedTheme);
+          }
+        }
+
+        applyTheme(localStorage.getItem("theme") || defaultTheme);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

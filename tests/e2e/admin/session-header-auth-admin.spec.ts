@@ -11,7 +11,7 @@ test.describe("Session & Header Auth (admin)", () => {
     await page.context().clearCookies();
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 
-    const authRes = await page.request.get("/api/trpc/auth.me", {
+    const authRes = await page.request.get("/api/admin/session", {
       headers: {
         [EMAIL_HEADER_NAME]: ADMIN_EMAIL,
       },
@@ -19,9 +19,9 @@ test.describe("Session & Header Auth (admin)", () => {
     expect(authRes.ok()).toBeTruthy();
 
     const data = await authRes.json();
-    const email = data.result?.data?.email as string;
+    const email = data.user?.email as string;
     expect(typeof email).toBe("string");
-    expect(data.result?.data?.isAdmin).toBe(true);
+    expect(data.isAdmin).toBe(true);
   });
 
   test("header-only admin can access admin dashboard without 401/403 page", async ({ page }) => {
@@ -35,9 +35,10 @@ test.describe("Session & Header Auth (admin)", () => {
 
     // 应显示正常的管理后台导航
     await expect(page.getByRole("link", { name: "管理后台" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "管理员仪表盘" })).toBeVisible();
 
     // 不应出现 401/403 提示
-    await expect(page.getByText("401 未登录")).toHaveCount(0);
-    await expect(page.getByText("403 权限不足")).toHaveCount(0);
+    await expect(page.getByText("Authentication required")).toHaveCount(0);
+    await expect(page.getByText("Admin access denied")).toHaveCount(0);
   });
 });

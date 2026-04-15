@@ -7,7 +7,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 interface VersionInfo {
@@ -212,6 +212,27 @@ function generateVersionInfo(): VersionInfo {
   }
 }
 
+function resolveOutputPath() {
+  const configured = process.env.VERSION_INFO_OUTPUT_PATH?.trim();
+  if (configured) {
+    return path.isAbsolute(configured) ? configured : path.resolve(process.cwd(), configured);
+  }
+
+  return path.join(process.cwd(), "src", "generated", "version.json");
+}
+
+function canReuseExistingVersionFile(
+  error: unknown,
+  outputPath: string
+): error is NodeJS.ErrnoException {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const errnoError = error as NodeJS.ErrnoException;
+  return (errnoError.code === "EACCES" || errnoError.code === "EROFS") && existsSync(outputPath);
+}
+
 function main() {
   console.log("🔧 Generating version information...");
 
@@ -227,7 +248,7 @@ function main() {
   console.log(`  Branch URL: ${versionInfo.branchUrl ?? "n/a"}`);
 
   // 写入版本信息文件
-  const outputPath = path.join(process.cwd(), "src", "generated", "version.json");
+  const outputPath = resolveOutputPath();
 
   // 确保目录存在
   const outputDir = path.dirname(outputPath);
@@ -237,7 +258,21 @@ function main() {
     // 忽略错误，可能目录已存在
   }
 
-  writeFileSync(outputPath, JSON.stringify(versionInfo, null, 2));
+  const serialized = JSON.stringify(versionInfo, null, 2);
+
+  try {
+    writeFileSync(outputPath, serialized);
+  } catch (error) {
+    if (canReuseExistingVersionFile(error, outputPath)) {
+      const errnoError = error as NodeJS.ErrnoException;
+      console.warn(
+        `⚠️ Version info file is not writable (${errnoError.code}); keeping existing file: ${outputPath}`
+      );
+      return;
+    }
+
+    throw error;
+  }
 
   console.log(`✅ Version info written to: ${outputPath}`);
 }

@@ -1,0 +1,476 @@
+@import "tailwindcss";
+
+:root {
+  --radius: 1rem;
+}
+
+:root,
+html[data-ui-theme="dark"] {
+  color-scheme: dark;
+  --background: 222 47% 11%;
+  --foreground: 210 40% 96%;
+  --card: 222 40% 14%;
+  --card-foreground: 210 40% 96%;
+  --popover: 222 40% 14%;
+  --popover-foreground: 210 40% 96%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 12%;
+  --secondary: 262 83% 68%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 217 33% 19%;
+  --accent-foreground: 210 40% 96%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 96%;
+  --border: 216 34% 24%;
+  --input: 216 34% 24%;
+  --ring: 217 91% 60%;
+  --editor-surface-top: 222 41% 14%;
+  --editor-surface-bottom: 223 44% 10%;
+  --editor-heading: 210 40% 98%;
+  --editor-text-soft: 214 18% 84%;
+  --editor-link: 206 100% 76%;
+  --editor-inline-code: 35 89% 74%;
+  --editor-code-bg: 222 44% 9%;
+  --editor-inline-code-bg: 222 31% 18%;
+  --editor-blockquote-bg: 222 31% 18%;
+  --editor-code-foreground: 210 40% 86%;
+  --editor-code-comment: 215 14% 60%;
+  --editor-code-keyword: 5 93% 72%;
+  --editor-code-string: 204 94% 82%;
+  --editor-code-number: 204 100% 74%;
+  --editor-code-function: 267 100% 82%;
+  --editor-code-variable: 145 63% 70%;
+  --editor-code-literal: 26 100% 70%;
+  --editor-code-meta: 215 72% 72%;
+}
+
+html[data-ui-theme="light"] {
+  color-scheme: light;
+  --background: 210 33% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 221 70% 97%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 40%;
+  --accent: 214 32% 91%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 221 83% 53%;
+  --editor-surface-top: 210 60% 99%;
+  --editor-surface-bottom: 210 36% 96%;
+  --editor-heading: 222 47% 11%;
+  --editor-text-soft: 222 25% 30%;
+  --editor-link: 221 83% 53%;
+  --editor-inline-code: 24 95% 34%;
+  --editor-code-bg: 220 27% 97%;
+  --editor-inline-code-bg: 220 23% 94%;
+  --editor-blockquote-bg: 214 32% 92%;
+  --editor-code-foreground: 222 47% 16%;
+  --editor-code-comment: 215 13% 45%;
+  --editor-code-keyword: 350 65% 47%;
+  --editor-code-string: 213 85% 26%;
+  --editor-code-number: 212 100% 39%;
+  --editor-code-function: 267 48% 49%;
+  --editor-code-variable: 142 61% 32%;
+  --editor-code-literal: 27 87% 40%;
+  --editor-code-meta: 221 83% 46%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family:
+      InterVariable, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition:
+      background-color 180ms ease,
+      color 180ms ease;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+  }
+}
+
+.admin-scrollbar {
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.admin-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.admin-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+}
+
+.markdown-body {
+  color: hsl(var(--foreground));
+  line-height: 1.75;
+}
+
+.markdown-body :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.25rem 0 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote {
+  margin: 0.75rem 0;
+}
+
+.markdown-body code {
+  border-radius: 0.5rem;
+  background: hsl(var(--muted));
+  padding: 0.15rem 0.35rem;
+  font-size: 0.9em;
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+  background: hsl(var(--muted));
+  padding: 1rem;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.admin-editor-surface {
+  background:
+    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 32%),
+    linear-gradient(
+      180deg,
+      hsl(var(--editor-surface-top)),
+      hsl(var(--editor-surface-bottom))
+    );
+}
+
+.admin-editor-surface .milkdown {
+  --crepe-color-background: hsl(var(--background));
+  --crepe-color-on-background: hsl(var(--foreground));
+  --crepe-color-surface: hsl(var(--card));
+  --crepe-color-surface-low: hsl(var(--muted));
+  --crepe-color-on-surface: hsl(var(--foreground));
+  --crepe-color-on-surface-variant: hsl(var(--muted-foreground));
+  --crepe-color-outline: hsl(var(--border));
+  --crepe-color-primary: hsl(var(--primary));
+  --crepe-color-secondary: hsl(var(--accent));
+  --crepe-color-on-secondary: hsl(var(--accent-foreground));
+  --crepe-color-inverse: hsl(var(--foreground));
+  --crepe-color-on-inverse: hsl(var(--background));
+  --crepe-color-inline-code: hsl(var(--editor-inline-code));
+  --crepe-color-error: hsl(var(--destructive));
+  --crepe-color-hover: hsl(var(--accent));
+  --crepe-color-selected: hsl(var(--accent) / 0.8);
+  --crepe-color-inline-area: hsl(var(--accent));
+  --crepe-shadow-1:
+    0 10px 28px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  --crepe-shadow-2:
+    0 18px 48px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.admin-editor-surface .milkdown,
+.admin-editor-surface .milkdown .editor,
+.admin-editor-surface .milkdown .ProseMirror,
+.admin-editor-surface .milkdown .cm-editor,
+.admin-editor-surface .milkdown .cm-scroller,
+.admin-editor-surface .milkdown .cm-gutters {
+  background: transparent;
+  color: hsl(var(--foreground));
+}
+
+.admin-editor-surface .milkdown .editor {
+  min-height: 100%;
+}
+
+.admin-editor-surface .milkdown .ProseMirror {
+  padding: 1.5rem 1.5rem 2rem;
+  caret-color: hsl(var(--primary));
+}
+
+.admin-editor-surface .milkdown .ProseMirror::selection,
+.admin-editor-surface .milkdown .ProseMirror *::selection,
+.admin-editor-surface .milkdown .cm-content ::selection {
+  background: hsl(var(--primary) / 0.24);
+}
+
+.admin-editor-surface .milkdown .ProseMirror p,
+.admin-editor-surface .milkdown .ProseMirror li,
+.admin-editor-surface .milkdown .ProseMirror blockquote,
+.admin-editor-surface .milkdown .ProseMirror label,
+.admin-editor-surface .milkdown .ProseMirror td,
+.admin-editor-surface .milkdown .ProseMirror th {
+  color: hsl(var(--foreground));
+}
+
+.admin-editor-surface .milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  color: hsl(var(--editor-heading));
+}
+
+.admin-editor-surface .milkdown .ProseMirror a {
+  color: hsl(var(--editor-link));
+}
+
+.admin-editor-surface .milkdown .ProseMirror code,
+.admin-editor-preview code:not(pre code) {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--editor-inline-code-bg));
+  color: hsl(var(--editor-inline-code));
+}
+
+.admin-editor-surface .milkdown .ProseMirror pre,
+.admin-editor-preview pre {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--editor-code-bg));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.admin-editor-surface .milkdown .ProseMirror blockquote,
+.admin-editor-preview blockquote {
+  border-left: 3px solid hsl(var(--primary) / 0.55);
+  background: hsl(var(--editor-blockquote-bg) / 0.6);
+  color: hsl(var(--editor-text-soft));
+  padding: 0.8rem 1rem;
+  border-radius: 0.75rem;
+}
+
+.admin-editor-surface .milkdown .tableWrapper,
+.admin-editor-preview table {
+  border-radius: 1rem;
+  border: 1px solid hsl(var(--border));
+  overflow: hidden;
+  background: hsl(var(--card));
+}
+
+.admin-editor-surface .milkdown th,
+.admin-editor-preview th {
+  background: hsl(var(--muted));
+}
+
+.admin-editor-surface .milkdown td,
+.admin-editor-surface .milkdown th,
+.admin-editor-preview td,
+.admin-editor-preview th {
+  border-color: hsl(var(--border));
+}
+
+.admin-editor-surface .milkdown .cm-gutters {
+  border-right: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+.admin-editor-surface .milkdown .cm-activeLine,
+.admin-editor-surface .milkdown .cm-activeLineGutter {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.admin-editor-surface .milkdown .cm-selectionBackground,
+.admin-editor-surface
+  .milkdown
+  .cm-editor.cm-focused
+  > .cm-scroller
+  > .cm-selectionLayer
+  .cm-selectionBackground {
+  background: hsl(var(--primary) / 0.2);
+}
+
+.admin-editor-surface .milkdown .cm-cursor {
+  border-left-color: hsl(var(--primary));
+}
+
+.admin-editor-surface .milkdown-toolbar {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card) / 0.96) !important;
+  box-shadow:
+    0 12px 28px rgba(3, 7, 18, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+}
+
+.admin-editor-surface .milkdown-toolbar .toolbar-item {
+  color: hsl(var(--foreground) / 0.92) !important;
+  opacity: 1 !important;
+}
+
+.admin-editor-surface .milkdown-toolbar .toolbar-item:hover,
+.admin-editor-surface .milkdown-toolbar .toolbar-item:focus-visible {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+  outline: none;
+}
+
+.admin-editor-surface .milkdown-toolbar .toolbar-item[aria-pressed="true"],
+.admin-editor-surface .milkdown-toolbar .toolbar-item[data-active="true"],
+.admin-editor-surface .milkdown-toolbar .toolbar-item.active {
+  background: hsl(var(--primary) / 0.16) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.admin-editor-surface .milkdown-toolbar .toolbar-item .milkdown-icon,
+.admin-editor-surface .milkdown-toolbar .toolbar-item svg,
+.admin-editor-surface .milkdown-toolbar .toolbar-item svg path,
+.admin-editor-surface .milkdown-toolbar .toolbar-item svg rect,
+.admin-editor-surface .milkdown-toolbar .toolbar-item svg circle,
+.admin-editor-surface .milkdown-toolbar .toolbar-item svg g {
+  color: inherit !important;
+  fill: currentColor !important;
+  stroke: none !important;
+  opacity: 1 !important;
+}
+
+.admin-editor-surface .milkdown-toolbar .divider {
+  background: hsl(var(--border)) !important;
+  opacity: 1 !important;
+}
+
+.admin-editor-preview {
+  color: hsl(var(--foreground));
+}
+
+.admin-editor-preview :is(h1, h2, h3, h4, h5, h6) {
+  color: hsl(var(--editor-heading));
+}
+
+.admin-editor-preview p,
+.admin-editor-preview li {
+  color: hsl(var(--editor-text-soft));
+}
+
+.admin-editor-preview a {
+  color: hsl(var(--editor-link));
+}
+
+.admin-editor-preview hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1.5rem 0;
+}
+
+.admin-editor-preview .hljs {
+  background: transparent;
+  color: hsl(var(--editor-code-foreground));
+}
+
+.admin-editor-preview .hljs-subst,
+.admin-editor-preview .hljs-punctuation {
+  color: hsl(var(--editor-code-foreground));
+}
+
+.admin-editor-preview .hljs-comment,
+.admin-editor-preview .hljs-quote {
+  color: hsl(var(--editor-code-comment));
+}
+
+.admin-editor-preview .hljs-keyword,
+.admin-editor-preview .hljs-selector-tag,
+.admin-editor-preview .hljs-meta .hljs-keyword,
+.admin-editor-preview .hljs-doctag {
+  color: hsl(var(--editor-code-keyword));
+}
+
+.admin-editor-preview .hljs-string,
+.admin-editor-preview .hljs-attr,
+.admin-editor-preview .hljs-regexp,
+.admin-editor-preview .hljs-template-variable {
+  color: hsl(var(--editor-code-string));
+}
+
+.admin-editor-preview .hljs-number,
+.admin-editor-preview .hljs-literal,
+.admin-editor-preview .hljs-symbol,
+.admin-editor-preview .hljs-bullet {
+  color: hsl(var(--editor-code-number));
+}
+
+.admin-editor-preview .hljs-title,
+.admin-editor-preview .hljs-title.class_,
+.admin-editor-preview .hljs-title.class_.inherited__,
+.admin-editor-preview .hljs-title.function_,
+.admin-editor-preview .hljs-function .hljs-title,
+.admin-editor-preview .hljs-property {
+  color: hsl(var(--editor-code-function));
+}
+
+.admin-editor-preview .hljs-variable,
+.admin-editor-preview .hljs-name,
+.admin-editor-preview .hljs-params,
+.admin-editor-preview .hljs-attribute {
+  color: hsl(var(--editor-code-variable));
+}
+
+.admin-editor-preview .hljs-built_in,
+.admin-editor-preview .hljs-type,
+.admin-editor-preview .hljs-link {
+  color: hsl(var(--editor-code-literal));
+}
+
+.admin-editor-preview .hljs-meta,
+.admin-editor-preview .hljs-selector-id,
+.admin-editor-preview .hljs-selector-class,
+.admin-editor-preview .hljs-section {
+  color: hsl(var(--editor-code-meta));
+}

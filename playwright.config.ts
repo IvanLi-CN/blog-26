@@ -81,7 +81,15 @@ export default defineConfig({
     },
     {
       name: "admin-chromium",
-      testMatch: ["**/admin/session-header-auth-admin.spec.ts"],
+      testMatch: [
+        "**/admin/session-header-auth-admin.spec.ts",
+        "**/admin/admin-spa-phase2.spec.ts",
+      ],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "user-chromium",
+      testMatch: ["**/user/admin-access-denied.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
   ],

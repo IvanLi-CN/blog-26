@@ -1,7 +1,11 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { resolveUserByPersonalAccessToken } from "@/server/services/personal-access-tokens";
-import { getAdminEmail, getSsoEmailHeaderName } from "./admin-config";
+import {
+  allowAdminSessionInProduction,
+  getAdminEmail,
+  getSsoEmailHeaderName,
+} from "./admin-config";
 import { db, initializeDB } from "./db";
 import { users } from "./schema";
 import { SESSION_COOKIE_NAME, updateSessionActivity, validateSession } from "./session";
@@ -152,12 +156,19 @@ export async function extractAuthFromRequest(request: Request): Promise<AuthResu
 
   // 在开发/测试环境中，为了方便本地验证（包括使用 /api/dev/login 和 UI 表单登录），
   // 只要当前识别出的用户邮箱命中 ADMIN_EMAIL，就将其视为管理员。
-  // 生产环境仍然只依赖 SSO/反向代理或 PAT 提升权限。
-  if (!isAdmin && user && process.env.NODE_ENV !== "production") {
+  // 对本地 production preview，可通过显式环境变量允许 session admin 继续生效；
+  // 默认生产环境仍然只依赖 SSO/反向代理或 PAT 提升权限。
+  const allowSessionAdmin =
+    process.env.NODE_ENV !== "production" || allowAdminSessionInProduction();
+  if (!isAdmin && user && allowSessionAdmin) {
     const adminEmail = getAdminEmail();
     if (adminEmail && user.email === adminEmail) {
       isAdmin = true;
-      console.log("✅ [AUTH-UTILS] 开发/测试环境中根据邮箱识别管理员用户");
+      console.log(
+        `✅ [AUTH-UTILS] ${
+          process.env.NODE_ENV === "production" ? "显式允许的 production preview" : "开发/测试环境"
+        }中根据邮箱识别管理员用户`
+      );
     }
   }
 

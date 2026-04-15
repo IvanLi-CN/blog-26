@@ -10,11 +10,13 @@
     "includes": [
       "**",
       "!src/app/globals.css",
+      "!apps/admin/src/styles.css",
       "!**/*.astro",
       "!**/.astro",
       "!**/.astro",
       "!**/node_modules",
       "!**/.next",
+      "!**/admin-dist",
       "!**/out",
       "!**/dist",
       "!**/build",

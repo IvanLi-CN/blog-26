@@ -23,6 +23,7 @@ export PORT="${PORT:-25090}"
 export INTERNAL_NEXT_PORT="${INTERNAL_NEXT_PORT:-$((PORT + 2))}"
 export SITE_PORT="${SITE_PORT:-$((PORT + 3))}"
 export SITE_DIST_DIR="${SITE_DIST_DIR:-/app/site-dist}"
+export ADMIN_DIST_DIR="${ADMIN_DIST_DIR:-/app/admin-dist}"
 export PUBLIC_SNAPSHOT_PATH="${PUBLIC_SNAPSHOT_PATH:-/app/site/generated/public-snapshot.json}"
 export ASTRO_TYPES_DIR="${ASTRO_TYPES_DIR:-/app/.astro}"
 export ASTRO_CACHE_DIR="${ASTRO_CACHE_DIR:-${SITE_DIST_DIR}/.astro-cache}"
@@ -42,12 +43,12 @@ fi
 DB_DIR="$(dirname "$DB_PATH")"
 echo "📁 Database path: $DB_PATH"
 echo "🌿 Public snapshot path: $PUBLIC_SNAPSHOT_PATH"
-echo "🌐 Gateway port: $PORT | internal Next: $INTERNAL_NEXT_PORT | Astro build dir: $SITE_DIST_DIR"
+echo "🌐 Gateway port: $PORT | internal Next: $INTERNAL_NEXT_PORT | Astro build dir: $SITE_DIST_DIR | Admin build dir: $ADMIN_DIST_DIR"
 echo "🧩 Astro types dir: $ASTRO_TYPES_DIR"
 echo "🪐 Astro cache dir: $ASTRO_CACHE_DIR"
 echo "⚡ Vite cache dir: $VITE_CACHE_DIR"
 
-mkdir -p "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
+mkdir -p "$DB_DIR" "$SITE_DIST_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
 
 requires_webdav() {
   local sources="${CONTENT_SOURCES:-}"
@@ -88,10 +89,10 @@ if [ "$(id -u)" = "0" ]; then
     : > "$DB_PATH" || true
   fi
 
-  chmod 2775 "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" || true
+  chmod 2775 "$DB_DIR" "$SITE_DIST_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" || true
   chmod 664 "$DB_PATH" 2>/dev/null || true
 
-  if chown -R "${RUN_UID}:${RUN_GID}" "$DB_DIR" "$SITE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" 2>/dev/null; then
+  if chown -R "${RUN_UID}:${RUN_GID}" "$DB_DIR" "$SITE_DIST_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" 2>/dev/null; then
     echo "✅ Owned runtime directories by ${RUN_UID}:${RUN_GID}"
   else
     echo "⚠️  Could not chown runtime directories (likely bind mount without perms); continuing"
@@ -142,6 +143,30 @@ else
   echo "⏭️  Skipping Astro public site build because SKIP_SITE_BUILD=true"
 fi
 
+if [ "${SKIP_ADMIN_BUILD:-false}" != "true" ]; then
+  echo "🛡️ Building admin SPA bundle..."
+  if run_as_target_user env \
+    DB_PATH="$DB_PATH" \
+    PORT="$PORT" \
+    INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
+    SITE_PORT="$SITE_PORT" \
+    SITE_DIST_DIR="$SITE_DIST_DIR" \
+    ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
+    PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+    ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+    VITE_CACHE_DIR="$VITE_CACHE_DIR" \
+    NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
+    PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
+    bun run admin:build; then
+    echo "✅ Admin SPA build completed"
+  else
+    echo "❌ Admin SPA build failed. Aborting startup."
+    exit 1
+  fi
+else
+  echo "⏭️  Skipping admin SPA build because SKIP_ADMIN_BUILD=true"
+fi
+
 echo "🌟 Starting app: ${APP_CMD[*]}"
 if [ "$(id -u)" = "0" ]; then
   exec gosu "${RUN_UID}:${RUN_GID}" env \
@@ -150,6 +175,7 @@ if [ "$(id -u)" = "0" ]; then
     INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
+    ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
     VITE_CACHE_DIR="$VITE_CACHE_DIR" \
@@ -163,6 +189,7 @@ else
     INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
+    ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
     VITE_CACHE_DIR="$VITE_CACHE_DIR" \

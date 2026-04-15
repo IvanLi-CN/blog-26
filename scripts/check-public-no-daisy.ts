@@ -6,6 +6,7 @@ import ts from "typescript";
 const ROOT = process.cwd();
 
 const includeGlobs = [
+  "apps/admin/**/*.tsx",
   "src/app/about/**/*.tsx",
   "src/app/memos/**/*.tsx",
   "src/app/not-found.tsx",
@@ -192,11 +193,11 @@ for (const relativeFile of files) {
 }
 
 if (violations.length > 0) {
-  console.error("Public UI DaisyUI guard failed. Remaining legacy tokens:");
+  console.error("Shipped-surface DaisyUI guard failed. Remaining legacy tokens:");
   for (const violation of violations) {
     console.error(`- ${violation.file} [${violation.label}] ${violation.context}`);
   }
   process.exit(1);
 }
 
-console.log(`Public UI DaisyUI guard passed for ${files.length} files.`);
+console.log(`Shipped-surface DaisyUI guard passed for ${files.length} files.`);

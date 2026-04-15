@@ -10,7 +10,10 @@ test.describe("Admin access denied (guest)", () => {
     });
     expect(response?.status()).toBe(401);
 
-    await expect(page.locator("html#__next_error__")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Authentication required" })).toBeVisible();
+    await expect(
+      page.getByText("Open the admin area with a valid development session or SSO identity.")
+    ).toBeVisible();
 
     // URL 应恢复为原始访问地址，刷新时仍然访问 /admin/dashboard
     await page.waitForFunction(() => window.location.pathname === "/admin/dashboard");
@@ -23,7 +26,7 @@ test.describe("Admin access denied (guest)", () => {
     });
     expect(response?.status()).toBe(404);
 
-    await expect(page.getByRole("heading", { name: "404 页面未找到" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Admin login removed" })).toBeVisible();
     await page.waitForFunction(() => window.location.pathname === "/admin/login");
   });
 });

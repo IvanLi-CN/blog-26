@@ -32,14 +32,26 @@ function normalizeMemoRoot(
   return memoRoot;
 }
 
-const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH, {
-  strict: false,
-});
+function readProcessEnv(name: string): string | undefined {
+  if (typeof process === "undefined" || !process.env) {
+    return undefined;
+  }
+
+  const value = process.env[name];
+  return typeof value === "string" ? value : undefined;
+}
+
+const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(
+  readProcessEnv("NEXT_PUBLIC_LOCAL_MEMOS_PATH"),
+  {
+    strict: false,
+  }
+);
 
 export { DEFAULT_LOCAL_MEMO_ROOT_PATH };
 
 export function getConfiguredClientLocalMemoRootPath(): string {
-  return normalizeMemoRoot(process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH);
+  return normalizeMemoRoot(readProcessEnv("NEXT_PUBLIC_LOCAL_MEMOS_PATH"));
 }
 
 type ResolveClientMemoRootOptions = {
@@ -79,8 +91,8 @@ export function parseMemoRootsFromEnv(
 
 export function getServerLocalMemoRootPaths(): string[] {
   return parseMemoRootsFromEnv(
-    process.env.LOCAL_MEMOS_PATH,
-    process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH || FALLBACK_LOCAL_MEMO_ROOT_PATH
+    readProcessEnv("LOCAL_MEMOS_PATH"),
+    readProcessEnv("NEXT_PUBLIC_LOCAL_MEMOS_PATH") || FALLBACK_LOCAL_MEMO_ROOT_PATH
   );
 }
 

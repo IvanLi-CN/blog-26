@@ -103,7 +103,7 @@ COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=builder /ms-playwright /ms-playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/site/generated /app/site-dist && \
+    mkdir -p /app/data /app/site/generated /app/site-dist /app/admin-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
@@ -154,7 +154,7 @@ COPY scripts ./scripts
 COPY drizzle ./drizzle
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/site/generated /app/site-dist && \
+    mkdir -p /app/data /app/site/generated /app/site-dist /app/admin-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
