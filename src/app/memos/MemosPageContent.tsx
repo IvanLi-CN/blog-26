@@ -35,25 +35,30 @@ export function MemosPageContent({
   // 加载中且无法判定为管理员时，仅显示列表骨架屏（避免闪烁）
   if (!initialMemos && isLoading && !initialIsAdmin) {
     return (
-      <div className="space-y-6 sm:space-y-8">
-        <div className="space-y-6">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="rounded-[1.8rem] border border-[rgba(var(--nature-border-rgb),0.64)] bg-[rgba(var(--nature-surface-rgb),0.78)] px-4 py-4 sm:px-6 sm:py-5"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="nature-skeleton h-4 w-24 rounded"></div>
-                <div className="nature-skeleton h-4 w-16 rounded"></div>
+      <div className="nature-timeline" data-testid="memos-page-loading">
+        {[1, 2, 3].map((i, index, list) => (
+          <div key={i} className="nature-timeline-item" data-is-last={index === list.length - 1}>
+            <div className="nature-timeline-rail" aria-hidden="true">
+              <div className="nature-timeline-node" data-timeline-kind="memo">
+                <div className="nature-skeleton h-4 w-4 rounded-full" />
               </div>
-              <div className="space-y-2">
-                <div className="nature-skeleton h-4 w-full rounded"></div>
-                <div className="nature-skeleton h-4 w-3/4 rounded"></div>
-                <div className="nature-skeleton h-4 w-1/2 rounded"></div>
+              {index !== list.length - 1 && <div className="nature-timeline-connector" />}
+            </div>
+            <div className="nature-timeline-content">
+              <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="nature-skeleton h-4 w-24 rounded"></div>
+                  <div className="nature-skeleton h-4 w-16 rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="nature-skeleton h-4 w-full rounded"></div>
+                  <div className="nature-skeleton h-4 w-3/4 rounded"></div>
+                  <div className="nature-skeleton h-4 w-1/2 rounded"></div>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     );
   }

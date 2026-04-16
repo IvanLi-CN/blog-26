@@ -99,6 +99,28 @@ PR: include
 
 ![Related posts mobile](./assets/related-posts-mobile.png)
 
+### Home and memos timeline restoration
+
+- Evidence captured from the stable production gateway preview on local branch `th/timeline-visual-restore`.
+- Desktop restores a shared timeline rail and node rhythm across `/` and `/memos`, verifies the memos guide line in both light and dark themes, and removes the extra intro cards that previously sat between the home hero and the first timeline item.
+- Mobile keeps a reduced-but-visible rail instead of collapsing into plain stacked cards, and the memo detail affordance is hidden there so it does not compete with tags or content.
+
+PR: include
+![Home timeline light](./assets/home-timeline-light-final.png)
+
+PR: include
+![Home timeline dark](./assets/home-timeline-dark-final.png)
+
+PR: include
+![Memos timeline light](./assets/memos-timeline-light-final.png)
+
+PR: include
+![Memos timeline dark](./assets/memos-timeline-dark-final.png)
+
+![Home timeline mobile](./assets/home-timeline-mobile.png)
+
+![Memos timeline mobile](./assets/memos-timeline-mobile.png)
+
 ### Hover stability on dense public lists
 
 - Evidence captured from the local hover-stability preview on `2026-04-11` using the shared `nature-hover-hitbox` + `nature-hover-lift` contract.
@@ -121,3 +143,4 @@ PR: include
 - 2026-04-11: Added a shared hover hitbox/lift contract, refreshed dense-list coverage, and stored hover-stability visual evidence for related posts, tags, and search results.
 - 2026-04-11: Closed the spec after the final Astro public-route, theme shell, and hover-stability regression pass.
 - 2026-04-12: Fixed the Astro public theme bootstrap regression so dark/system-dark theme state persists across route navigation and extended the Astro guest regression suite to block the issue.
+- 2026-04-16: Restored the shared public timeline rail/node contract for the home mixed feed and memos list, refreshed light/dark/mobile evidence, removed the extra home intro cards, and extended guest regression coverage for timeline visibility.

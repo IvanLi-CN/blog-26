@@ -6,29 +6,77 @@ import TagBadge from "./TagBadge.astro";
 
 interface Props {
   memo: PublicMemoRecord;
+  isLast?: boolean;
   iconMap?: Record<string, string | null>;
   iconSvgMap?: Record<string, string | null>;
 }
 
-const { memo, iconMap = {}, iconSvgMap = {} } = Astro.props;
+const { memo, isLast = true, iconMap = {}, iconSvgMap = {} } = Astro.props;
 const displayDate = memo.publishedAt ?? memo.createdAt;
+const showMobileDetailLink = !memo.title;
 ---
-<article class="nature-panel px-5 py-5 sm:px-6">
-  <div class="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-    <Icon name="tabler:bulb" className="h-4 w-4 text-[color:var(--nature-secondary)]" />
-    <time dateTime={displayDate}>{formatAbsoluteDate(displayDate)}</time>
-  </div>
-  <h2 class="nature-title text-xl font-semibold">
-    <a href={`/memos/${memo.slug}`} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
-      {memo.title}
-    </a>
-  </h2>
-  {memo.excerpt && <p class="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>}
-  {memo.tags.length > 0 && (
-    <div class="mt-4 flex flex-wrap gap-2">
-      {memo.tags.map((tag) => (
-        <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
-      ))}
+<article
+  class="nature-timeline-item"
+  data-is-last={isLast}
+  data-testid="memo-card"
+  data-slug={memo.slug}
+>
+  <div class="nature-timeline-rail" aria-hidden="true">
+    <div class="nature-timeline-node text-[color:var(--nature-accent-strong)]" data-testid="timeline-node" data-timeline-kind="memo">
+      <Icon name="tabler:bulb" className="h-4 w-4 sm:h-5 sm:w-5" />
     </div>
-  )}
+    {!isLast && <div class="nature-timeline-connector" data-testid="timeline-connector"></div>}
+  </div>
+
+  <div class="nature-timeline-content">
+    <div class="nature-panel nature-timeline-card px-5 py-5 sm:px-6">
+      <div class="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+        <Icon name="tabler:clock" className="h-4 w-4 text-[color:var(--nature-accent-strong)]" />
+        <time dateTime={displayDate}>{formatAbsoluteDate(displayDate)}</time>
+      </div>
+
+      {memo.title && (
+        <h2 class="nature-title text-xl font-semibold">
+          <a href={`/memos/${memo.slug}`} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+            {memo.title}
+          </a>
+        </h2>
+      )}
+
+      {memo.excerpt && <p class="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>}
+
+      <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div class="flex flex-col gap-3">
+          {memo.tags.length > 0 ? (
+            <div class="flex flex-wrap gap-2">
+              {memo.tags.map((tag) => (
+                <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
+              ))}
+            </div>
+          ) : null}
+
+          {showMobileDetailLink && (
+            <a
+              href={`/memos/${memo.slug}`}
+              class="nature-link-inline inline-flex items-center gap-1 self-start text-sm sm:hidden"
+              aria-label="查看详情"
+              title="查看详情"
+            >
+              <span>查看详情</span>
+              <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
+            </a>
+          )}
+        </div>
+
+        <a
+          href={`/memos/${memo.slug}`}
+          class="hidden h-10 w-10 shrink-0 items-center justify-center self-start rounded-full bg-[rgba(var(--nature-accent-rgb),0.9)] text-white shadow-[0_14px_28px_rgba(var(--nature-accent-rgb),0.28)] transition-transform duration-200 hover:translate-x-0.5 sm:inline-flex sm:self-end"
+          aria-label={`查看详情: ${memo.title ?? "无标题"}`}
+          title={`查看详情: ${memo.title ?? "无标题"}`}
+        >
+          <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
+        </a>
+      </div>
+    </div>
+  </div>
 </article>

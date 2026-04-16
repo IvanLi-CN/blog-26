@@ -34,32 +34,19 @@ const timeline = buildHomeTimeline(snapshot);
     </div>
   </section>
 
-  <section class="px-3 py-6 sm:px-4 md:py-8">
-    <div class="nature-container grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-      <div class="nature-surface-quiet px-5 py-5 sm:px-6">
-        <div class="nature-kicker mb-4">Latest Flow</div>
-        <h2 class="nature-title text-2xl font-semibold sm:text-3xl">最新动态</h2>
-        <p class="nature-muted mt-2 text-sm sm:text-base">
-          文章与闪念混合排列，像水流一样按时间缓慢向下展开。
-        </p>
-      </div>
-
-      <div class="nature-panel nature-panel-soft overflow-hidden px-5 py-5">
-        <div class="nature-kicker mb-4">Featured Grid</div>
-        <h2 class="nature-title text-2xl font-semibold">精选项目</h2>
-        <p class="nature-muted mt-2 text-sm leading-7">
-          一组更轻的索引入口，用湿润、圆润的表面保持页面呼吸感。
-        </p>
-      </div>
-    </div>
-  </section>
-
   <section class="px-3 py-6 sm:px-4 md:py-10">
-    <div class="nature-container space-y-4">
+    <div class="nature-container">
       {timeline.length > 0 ? (
-        timeline.map((item) => (
-          <TimelineCard item={item} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
-        ))
+        <div class="nature-timeline" data-testid="home-timeline">
+          {timeline.map((item, index) => (
+            <TimelineCard
+              item={item}
+              isLast={index === timeline.length - 1}
+              iconMap={snapshot.tags.tagIconMap}
+              iconSvgMap={snapshot.tags.tagIconSvgMap}
+            />
+          ))}
+        </div>
       ) : (
         <div class="nature-empty">
           <Icon name="tabler:timeline" className="mx-auto mb-2 h-8 w-8 opacity-50" />

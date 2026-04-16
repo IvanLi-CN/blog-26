@@ -16,9 +16,14 @@ const snapshot = await getSnapshot();
     </div>
 
     {snapshot.memos.length > 0 ? (
-      <div class="memos-list space-y-4">
-        {snapshot.memos.map((memo) => (
-          <MemoCard memo={memo} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
+      <div class="memos-list nature-timeline" data-testid="memos-timeline">
+        {snapshot.memos.map((memo, index) => (
+          <MemoCard
+            memo={memo}
+            isLast={index === snapshot.memos.length - 1}
+            iconMap={snapshot.tags.tagIconMap}
+            iconSvgMap={snapshot.tags.tagIconSvgMap}
+          />
         ))}
       </div>
     ) : (

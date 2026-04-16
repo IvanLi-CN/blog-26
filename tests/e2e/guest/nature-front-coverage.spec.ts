@@ -108,6 +108,49 @@ test.describe("Nature frontend public coverage", () => {
     );
   });
 
+  test("home and memos timelines keep visible nodes and rails across breakpoints", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1200 });
+
+    await gotoWithTheme(page, "/", "light");
+    const homeTimeline = page.getByTestId("home-timeline");
+    await expect(homeTimeline).toBeVisible();
+    await expect(homeTimeline.getByTestId("timeline-item").first()).toBeVisible();
+    await expect(homeTimeline.getByTestId("timeline-node").first()).toBeVisible();
+    await expect(homeTimeline.getByTestId("timeline-connector").first()).toBeVisible();
+    expect(await homeTimeline.getByTestId("timeline-item").count()).toBeGreaterThan(1);
+
+    await gotoWithTheme(page, "/memos", "light");
+    const memosTimeline = page.getByTestId("memos-timeline");
+    await expect(memosTimeline).toBeVisible();
+    await expect(memosTimeline.getByTestId("memo-card").first()).toBeVisible();
+    await expect(memosTimeline.getByTestId("timeline-node").first()).toBeVisible();
+    await expect(memosTimeline.getByTestId("timeline-connector").first()).toBeVisible();
+    expect(await memosTimeline.getByTestId("memo-card").count()).toBeGreaterThan(1);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoWithTheme(page, "/memos", "light");
+    const mobileTimeline = page.getByTestId("memos-timeline");
+    const mobileNode = mobileTimeline.getByTestId("timeline-node").first();
+    const mobileConnector = mobileTimeline.getByTestId("timeline-connector").first();
+    await expect(mobileNode).toBeVisible();
+    await expect(mobileConnector).toBeVisible();
+
+    const nodeBox = await mobileNode.boundingBox();
+    const connectorBox = await mobileConnector.boundingBox();
+
+    expect(nodeBox).not.toBeNull();
+    expect(connectorBox).not.toBeNull();
+
+    if (!nodeBox || !connectorBox) {
+      throw new Error("timeline node or connector is not measurable on mobile");
+    }
+
+    expect(nodeBox.width).toBeGreaterThan(8);
+    expect(connectorBox.height).toBeGreaterThan(24);
+  });
+
   test.describe("system theme and reduced motion", () => {
     test("theme-test renders with resolved dark theme when motion is reduced", async ({ page }) => {
       await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });

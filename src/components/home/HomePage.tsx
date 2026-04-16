@@ -128,43 +128,9 @@ export default function HomePage({
         </div>
       </section>
 
-      <section className="px-3 py-6 sm:px-4 md:py-8">
-        <div className="nature-container grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-          <div className="nature-surface-quiet px-5 py-5 sm:px-6">
-            <div className="nature-kicker mb-4">Latest Flow</div>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="nature-title text-2xl font-semibold sm:text-3xl">最新动态</h2>
-                <p className="nature-muted mt-2 text-sm sm:text-base">
-                  文章与闪念混合排列，像水流一样按时间缓慢向下展开。
-                </p>
-              </div>
-              <div className="hidden flex-wrap gap-2 sm:flex">
-                <Link href="/posts" className="nature-chip">
-                  <Icon name="tabler:article" className="h-3.5 w-3.5" />
-                  文章
-                </Link>
-                <Link href="/memos" className="nature-chip nature-chip-accent">
-                  <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
-                  闪念
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="nature-panel nature-panel-soft overflow-hidden px-5 py-5">
-            <div className="nature-kicker mb-4">Featured Grid</div>
-            <h2 className="nature-title text-2xl font-semibold">精选项目</h2>
-            <p className="nature-muted mt-2 text-sm leading-7">
-              一组更轻的索引入口，用湿润、圆润的表面保持页面呼吸感。
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section className="px-3 py-6 sm:px-4 md:py-10">
         <div className="nature-container">
-          <div className="timeline flex flex-col">
+          <div className="nature-timeline" data-testid="home-timeline">
             {timelineItems.length > 0 ? (
               timelineItems.map((item, index) => (
                 <TimelineItem

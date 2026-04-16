@@ -77,16 +77,27 @@ export function MemosList({
 
   // 渲染加载骨架
   const renderSkeleton = () => (
-    <div className="space-y-6 sm:space-y-8">
-      {["a", "b", "c"].map((id) => (
-        <div key={`skeleton-${id}`} className="flex gap-4 sm:gap-6">
-          <div className="hidden h-8 w-8 flex-shrink-0 rounded-full nature-skeleton sm:block sm:h-10 sm:w-10" />
-          <div className="flex-1 rounded-[1.8rem] border border-[rgba(var(--nature-border-rgb),0.64)] bg-[rgba(var(--nature-surface-rgb),0.78)] p-4">
-            <div className="mb-2 h-4 w-1/4 rounded nature-skeleton"></div>
-            <div className="mb-2 h-16 rounded nature-skeleton"></div>
-            <div className="flex gap-2">
-              <div className="h-6 w-16 rounded nature-skeleton"></div>
-              <div className="h-6 w-16 rounded nature-skeleton"></div>
+    <div className="nature-timeline" data-testid="memos-timeline-skeleton">
+      {["a", "b", "c"].map((id, index, list) => (
+        <div
+          key={`skeleton-${id}`}
+          className="nature-timeline-item"
+          data-is-last={index === list.length - 1}
+        >
+          <div className="nature-timeline-rail" aria-hidden="true">
+            <div className="nature-timeline-node" data-timeline-kind="memo">
+              <div className="nature-skeleton h-4 w-4 rounded-full" />
+            </div>
+            {index !== list.length - 1 && <div className="nature-timeline-connector" />}
+          </div>
+          <div className="nature-timeline-content">
+            <div className="nature-panel nature-timeline-card p-4">
+              <div className="mb-2 h-4 w-1/4 rounded nature-skeleton"></div>
+              <div className="mb-2 h-16 rounded nature-skeleton"></div>
+              <div className="flex gap-2">
+                <div className="h-6 w-16 rounded nature-skeleton"></div>
+                <div className="h-6 w-16 rounded nature-skeleton"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -137,7 +148,7 @@ export function MemosList({
 
       {/* Memo 列表 - 时间线样式 */}
       {memos.length > 0 && (
-        <div className="space-y-6 sm:space-y-8">
+        <div className="nature-timeline" data-testid="memos-timeline">
           {memos.map((memo, index) => (
             <MemoCard
               key={memo.id}

@@ -76,7 +76,7 @@ export function MemoCard({
   onEdit,
   onDelete,
   className,
-  isLast = false,
+  isLast = true,
   tagIconMap,
   tagIconSvgMap,
 }: MemoCardProps) {
@@ -102,6 +102,7 @@ export function MemoCard({
 
   const anomalies = useMemo(() => detectContentAnomalies(memo.content || ""), [memo.content]);
   const displayContent = parsedContent.cleanedContent || memo.excerpt || "";
+  const showMobileDetailLink = !memo.title;
 
   useLayoutEffect(() => {
     if (isExpanded) return;
@@ -197,23 +198,26 @@ export function MemoCard({
 
   return (
     <div
-      className={className}
+      className={`nature-timeline-item ${className ?? ""}`}
+      data-is-last={isLast}
       data-testid="memo-card"
       data-id={memo.id}
       data-source={memo.source}
       data-slug={memo.slug}
     >
-      <div className="flex items-start gap-0 sm:gap-5">
-        <div className="relative hidden sm:flex sm:flex-col sm:items-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(var(--nature-accent-rgb),0.92),rgba(var(--nature-accent-2-rgb),0.76))] text-white shadow-[0_18px_30px_rgba(var(--nature-accent-rgb),0.28)]">
-            <Icon name="tabler:leaf" className="h-5 w-5" />
-          </div>
-          {!isLast && (
-            <div className="mt-2 h-full w-px bg-gradient-to-b from-[rgba(var(--nature-accent-rgb),0.28)] to-transparent" />
-          )}
+      <div className="nature-timeline-rail" aria-hidden="true">
+        <div
+          className="nature-timeline-node text-[color:var(--nature-accent-strong)]"
+          data-testid="timeline-node"
+          data-timeline-kind="memo"
+        >
+          <Icon name="tabler:bulb" className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
+        {!isLast && <div className="nature-timeline-connector" data-testid="timeline-connector" />}
+      </div>
 
-        <div className="nature-panel relative flex-1 overflow-hidden px-0 py-0">
+      <div className="nature-timeline-content">
+        <div className="nature-panel nature-timeline-card relative flex-1 overflow-hidden px-0 py-0">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(var(--nature-border-rgb),0.62)] bg-[rgba(var(--nature-highlight-rgb),0.18)] px-4 py-3 sm:px-6">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)] sm:text-sm">
               <Icon
@@ -297,7 +301,14 @@ export function MemoCard({
           <div className="px-4 py-4 sm:px-6 sm:py-5">
             {memo.title && (
               <h3 className="mb-3 font-heading text-xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">
-                {memo.title}
+                <Link
+                  href={`/memos/${memo.slug}`}
+                  className="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+                  title={`查看详情: ${memo.title}`}
+                  aria-label={`查看详情: ${memo.title}`}
+                >
+                  {memo.title}
+                </Link>
               </h3>
             )}
 
@@ -340,24 +351,40 @@ export function MemoCard({
               </button>
             )}
 
-            {derivedTags.length > 0 && (
-              <PostTags
-                tags={derivedTags}
-                className="mt-4 flex flex-wrap gap-1.5"
-                iconMap={tagIconMap}
-                iconSvgMap={tagIconSvgMap}
-              />
-            )}
-          </div>
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex flex-col gap-3">
+                {derivedTags.length > 0 ? (
+                  <PostTags
+                    tags={derivedTags}
+                    className="flex flex-wrap gap-1.5"
+                    iconMap={tagIconMap}
+                    iconSvgMap={tagIconSvgMap}
+                  />
+                ) : null}
 
-          <Link
-            href={`/memos/${memo.slug}`}
-            className="absolute bottom-4 right-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(var(--nature-accent-rgb),0.9)] text-white shadow-[0_14px_28px_rgba(var(--nature-accent-rgb),0.28)] transition-transform duration-200 hover:translate-x-0.5"
-            title={`查看详情: ${memo.title || "无标题"}`}
-            aria-label={`查看详情: ${memo.title || "无标题"}`}
-          >
-            <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
-          </Link>
+                {showMobileDetailLink && (
+                  <Link
+                    href={`/memos/${memo.slug}`}
+                    className="nature-link-inline inline-flex items-center gap-1 self-start text-sm sm:hidden"
+                    title="查看详情"
+                    aria-label="查看详情"
+                  >
+                    <span>查看详情</span>
+                    <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
+                  </Link>
+                )}
+              </div>
+
+              <Link
+                href={`/memos/${memo.slug}`}
+                className="hidden h-10 w-10 shrink-0 items-center justify-center self-start rounded-full bg-[rgba(var(--nature-accent-rgb),0.9)] text-white shadow-[0_14px_28px_rgba(var(--nature-accent-rgb),0.28)] transition-transform duration-200 hover:translate-x-0.5 sm:inline-flex sm:self-end"
+                title={`查看详情: ${memo.title || "无标题"}`}
+                aria-label={`查看详情: ${memo.title || "无标题"}`}
+              >
+                <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 

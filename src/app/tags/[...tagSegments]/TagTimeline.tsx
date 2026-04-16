@@ -84,7 +84,7 @@ export default function TagTimeline({
 
   return (
     <>
-      <div className="timeline flex flex-col">
+      <div className="timeline nature-timeline flex flex-col">
         {showInitialSkeleton ? (
           Array.from({ length: 6 }).map((_, index) => (
             <TimelineItem

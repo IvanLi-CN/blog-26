@@ -18,11 +18,12 @@ interface Props {
     dataSource: string | null;
     filePath: string | null;
   };
+  isLast?: boolean;
   iconMap?: Record<string, string | null>;
   iconSvgMap?: Record<string, string | null>;
 }
 
-const { item, iconMap = {}, iconSvgMap = {} } = Astro.props;
+const { item, isLast = true, iconMap = {}, iconSvgMap = {} } = Astro.props;
 const href = item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`;
 const preview = item.excerpt || extractTextSummary(item.content || "", 180);
 const imageSrc = item.image
@@ -33,34 +34,56 @@ const imageSrc = item.image
     )
   : null;
 ---
-<article class="nature-panel nature-panel-soft px-4 py-4 sm:px-5">
-  <div class="flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-    <span class="nature-chip gap-1">
-      <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
-      {item.type === "memo" ? "闪念" : "文章"}
-    </span>
-    <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
+<article class="nature-timeline-item" data-is-last={isLast} data-testid="timeline-item">
+  <div class="nature-timeline-rail" aria-hidden="true">
+    <div class="nature-timeline-node" data-testid="timeline-node" data-timeline-kind={item.type}>
+      <Icon
+        name={item.type === "memo" ? "tabler:bulb" : "tabler:article"}
+        className={`h-4 w-4 sm:h-5 sm:w-5 ${item.type === "memo" ? "text-[color:var(--nature-secondary)]" : "text-[color:var(--nature-accent-strong)]"}`}
+      />
+    </div>
+    {!isLast && <div class="nature-timeline-connector" data-testid="timeline-connector"></div>}
   </div>
-  <div class="mt-3 flex flex-col gap-4 md:flex-row">
-    {imageSrc && item.type === "post" && (
-      <a href={href} class="block overflow-hidden rounded-[1.25rem] md:w-48">
-        <img src={imageSrc} alt={item.title || item.slug} class="h-32 w-full object-cover md:h-full" loading="lazy" />
-      </a>
-    )}
-    <div class="min-w-0 flex-1">
-      <h2 class="nature-title text-xl font-semibold">
-        <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
-          {item.title || item.slug}
-        </a>
-      </h2>
-      {preview && <p class="nature-muted mt-3 text-base leading-7">{preview}</p>}
-      {item.tags.length > 0 && (
-        <div class="mt-4 flex flex-wrap gap-2">
-          {item.tags.slice(0, 4).map((tag) => (
-            <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
-          ))}
+
+  <div class="nature-timeline-content pb-1 sm:pb-2">
+    <div class="mb-2 flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+      <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
+      <span class="nature-chip gap-1">
+        <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
+        {item.type === "memo" ? "闪念" : "文章"}
+      </span>
+    </div>
+
+    <div class="nature-hover-hitbox group block">
+      <div class="nature-panel nature-panel-soft nature-hover-lift nature-hover-surface nature-timeline-card px-4 py-4 sm:px-5 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.3)] [--nature-hover-lift-offset:-0.125rem] [--nature-hover-shadow:0_22px_42px_rgba(8,21,16,0.14)]">
+        <div class="flex flex-col gap-4 md:flex-row">
+          {imageSrc && item.type === "post" && (
+            <a href={href} class="block overflow-hidden rounded-[1.25rem] md:w-48">
+              <img
+                src={imageSrc}
+                alt={item.title || item.slug}
+                class="h-32 w-full object-cover md:h-full"
+                loading="lazy"
+              />
+            </a>
+          )}
+          <div class="min-w-0 flex-1">
+            <h2 class="nature-title text-xl font-semibold">
+              <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+                {item.title || item.slug}
+              </a>
+            </h2>
+            {preview && <p class="nature-muted mt-3 text-base leading-7">{preview}</p>}
+            {item.tags.length > 0 && (
+              <div class="mt-4 flex flex-wrap gap-2">
+                {item.tags.slice(0, 4).map((tag) => (
+                  <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   </div>
 </article>
