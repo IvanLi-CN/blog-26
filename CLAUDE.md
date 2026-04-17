@@ -44,10 +44,10 @@ bun run test:e2e:headed      # Show browser UI
 
 # Test environment setup
 bun run test-env:reset       # Full test env reset (DB + WebDAV content)
-bun run test-server:start    # Manual test server (port 25090)
+bun run test-server:start    # Manual gateway-backed test server (port 25090)
 ```
 
-**Note**: E2E tests automatically start test services (Next.js on 25090, WebDAV on 25091). See `tests/e2e/README.md` for detailed guidance.
+**Note**: E2E tests automatically start the gateway-backed test stack on 25090 and WebDAV on 25091. See `tests/e2e/README.md` for detailed guidance.
 
 ### Code Quality
 
