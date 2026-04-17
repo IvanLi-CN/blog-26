@@ -1,4 +1,4 @@
-import AdminAccessDenied from "@/components/admin/AdminAccessDenied";
+import AdminAccessDenied from "@/components/auth/AdminAccessDenied";
 
 export default function Forbidden() {
   return <AdminAccessDenied status={403} />;

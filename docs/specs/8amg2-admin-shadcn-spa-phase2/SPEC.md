@@ -1,14 +1,12 @@
 # SPEC: Admin shadcn SPA + `/admin/*` ownership migration
 
 - Spec ID: `8amg2`
-- Status: `in-progress`
+- Status: `done`
 - Owner: `main-agent`
-- Created: `2026-04-09`
-- Last: `2026-04-09`
 
 ## 1. Background
 
-Phase 1 moved the public frontend to Astro while intentionally keeping `/admin/*` on the legacy Next App Router runtime. The repo still ships DaisyUI-heavy admin pages under `src/app/admin/**`, and those pages talk directly to tRPC/Next route handlers.
+Phase 1 moved the public frontend to Astro while intentionally keeping `/admin/*` on the legacy Next App Router runtime. Before this phase, the repo shipped DaisyUI-heavy admin pages under `src/app/admin/**`, and those pages talked directly to tRPC/Next route handlers.
 
 That shape blocks the project-wide “no Next.js UI runtime” direction and keeps backend/admin contracts coupled to page-layer implementation details. Phase 2 splits the admin surface into an explicit SPA boundary and introduces stable admin HTTP resources that the future Rust service can adopt without changing the browser contract.
 
@@ -93,6 +91,7 @@ Detailed shape lives in [contracts/http-apis.md](./contracts/http-apis.md).
 
 ## 8. Validation
 
+- Phase 2 shipped on `main` via PR #66 and keeps `/admin/*` owned by the gateway + `apps/admin` SPA topology.
 - `DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local WEBDAV_URL=http://127.0.0.1:30101 bun run build` ✅
 - `bun run test` ✅ (`277 pass`)
 - `bun run check` ✅
@@ -101,6 +100,7 @@ Detailed shape lives in [contracts/http-apis.md](./contracts/http-apis.md).
 - `BASE_URL=http://127.0.0.1:30100 bunx playwright test tests/e2e/user/admin-access-denied.spec.ts --project=user-chromium` ✅ (`1 passed`)
 - `BASE_URL=http://127.0.0.1:30100 bunx playwright test tests/e2e/admin/session-header-auth-admin.spec.ts tests/e2e/admin/admin-spa-phase2.spec.ts --project=admin-chromium` ✅ (`4 passed`)
 - Browser verification on `http://127.0.0.1:30100/admin` ✅ (401 / 403 / admin session, alias routing, `/api/admin/*` only, no `/_next/*`)
+- Closeout cleanup removed the obsolete legacy Next admin page layer (`src/app/admin/**`, `src/components/admin/**`) while keeping the shared 401/403 UI in `src/components/auth/AdminAccessDenied.tsx` for Next-owned status pages.
 
 ## 9. Milestones
 
@@ -108,14 +108,14 @@ Detailed shape lives in [contracts/http-apis.md](./contracts/http-apis.md).
 - [x] M2: Deliver the new admin SPA shell, shadcn theme, auth bootstrap, and `/api/admin/*` data layer.
 - [x] M3: Migrate the standard admin pages plus compatibility aliases to the new SPA.
 - [x] M4: Migrate the posts editor off Next page/router dependencies and keep editor workflows functional.
-- [ ] M5: Upgrade the shipped-surface Daisy guard, capture visual evidence, and converge validation/PR state to merge-ready.
+- [x] M5: Upgrade the shipped-surface Daisy guard, capture visual evidence, converge validation/PR state to merge-ready, and remove the obsolete legacy Next admin page layer during closeout.
 
 ## 10. Approach
 
 - Keep the repository transitional: Phase 2 introduces the browser/runtime contract and page ownership split, but it does not force the final Rust cutover in the same patch.
 - Implement the admin HTTP resources as a compatibility layer backed by the current server services/tRPC caller pattern.
 - Use the gateway as the single routing/auth truth for `/admin/*`, including status code preservation for 401/403/404 cases.
-- Freeze legacy `src/app/admin/**` and `src/components/admin/**` as compat-only implementation sources during migration; new shipped admin UI lives under `apps/admin/**`.
+- Keep `apps/admin/**` as the only shipped admin UI, then remove the obsolete `src/app/admin/**` and `src/components/admin/**` page layer once gateway ownership and validation are proven stable.
 - Contain Daisy cleanup to shipped public/admin surfaces while enforcing “no new Daisy on shipped UI” with a guard script.
 
 ## 11. Risks / Assumptions

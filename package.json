@@ -1,7 +1,7 @@
 {
   "name": "@ivanli-cn/blog",
   "version": "1.0.0",
-  "description": "Ivan's Blog - A modern personal blog system built with Next.js",
+  "description": "Ivan's Blog - A hybrid Astro public site, admin SPA, and legacy Next runtime",
   "type": "module",
   "private": true,
   "author": {
@@ -47,7 +47,7 @@
   },
   "scripts": {
     "setup": "bash ./scripts/setup.sh",
-    "dev": "bun scripts/generate-version.ts && concurrently --names \"WebDAV,Next.js,Astro,Admin,Gateway\" --prefix-colors \"cyan,magenta,yellow,blue,green\" \"bun run webdav:dev\" \"bun run dev:next:internal\" \"bun run site:dev\" \"bun run admin:dev\" \"bun run gateway:dev\"",
+    "dev": "bun scripts/generate-version.ts && concurrently --names \"WebDAV,LegacyNext,Astro,Admin,Gateway\" --prefix-colors \"cyan,magenta,yellow,blue,green\" \"bun run webdav:dev\" \"bun run dev:next:internal\" \"bun run site:dev\" \"bun run admin:dev\" \"bun run gateway:dev\"",
     "dev:next": "bun run dev:next:internal",
     "build": "bun run prebuild && bun --bun next build && bun run site:build && bun run admin:build",
     "prebuild": "bun scripts/generate-version.ts",
@@ -86,7 +86,7 @@
     "test-env:reset": "DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} WEBDAV_URL=${WEBDAV_URL:-http://localhost:25091} bun run test-env:clean && DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} WEBDAV_URL=${WEBDAV_URL:-http://localhost:25091} bun run migrate && DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} WEBDAV_URL=${WEBDAV_URL:-http://localhost:25091} bun run seed && bun run test-data:generate && DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} WEBDAV_URL=${WEBDAV_URL:-http://localhost:25091} bun run test-sync:trigger && bun scripts/generate-version.ts",
     "test-env:reset-fs-only": "DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} CONTENT_SOURCES=local bun run test-env:clean && DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} CONTENT_SOURCES=local bun run migrate && DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} CONTENT_SOURCES=local bun run seed && bun run test-data:generate && DB_PATH=${DB_PATH:-./test-data/sqlite.db} LOCAL_CONTENT_BASE_PATH=${LOCAL_CONTENT_BASE_PATH:-./test-data/local} CONTENT_SOURCES=local bun run test-sync:trigger && bun scripts/generate-version.ts",
     "test-sync:trigger": "bun ./scripts/trigger-sync.ts test",
-    "test-server:start": "bun run test-env:reset && concurrently --names \"WebDAV,Next.js\" --prefix-colors \"cyan,magenta\" \"dufs test-data/webdav --port 25091 --allow-all --enable-cors\" \"NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test-data/sqlite.db PORT=25090 bun --bun next dev --turbopack\"",
+    "test-server:start": "bun run test-env:reset && concurrently --names \"WebDAV,LegacyNext,Astro,Admin,Gateway\" --prefix-colors \"cyan,magenta,yellow,blue,green\" \"dufs test-data/webdav --port 25091 --allow-all --enable-cors\" \"NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local WEBDAV_URL=http://127.0.0.1:25091 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:25090 PUBLIC_SITE_URL=http://127.0.0.1:25090 INTERNAL_NEXT_PORT=25092 bun run dev:next:internal\" \"DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local WEBDAV_URL=http://127.0.0.1:25091 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:25090 PUBLIC_SITE_URL=http://127.0.0.1:25090 SITE_PORT=25093 bun run site:dev\" \"ADMIN_PORT=25094 bun run admin:dev\" \"NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local WEBDAV_URL=http://127.0.0.1:25091 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:25090 PUBLIC_SITE_URL=http://127.0.0.1:25090 PORT=25090 INTERNAL_NEXT_PORT=25092 SITE_PORT=25093 ADMIN_PORT=25094 bun run gateway:dev\"",
     "dev-data:generate": "bun ./scripts/generate-test-data.ts --dev",
     "dev-data:clean": "bun ./scripts/generate-test-data.ts --dev --clean",
     "test": "bun test src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*'",

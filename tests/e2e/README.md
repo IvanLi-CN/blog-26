@@ -183,7 +183,7 @@ bun run test:e2e:report
 - 默认使用 Chromium 浏览器
 - 视口大小：1280x720
 - 支持移动端和平板端测试
-- 自动启动一体化测试服务（Next.js 应用）：端口 25090
+- 自动启动一体化测试服务（gateway + Astro public + admin SPA + legacy Next）：端口 25090
 - 自动启动 WebDAV 测试服务器（dufs）：端口 25091
 - 实时通道采用 tRPC + HTTP SSE（不使用 WebSocket）
 

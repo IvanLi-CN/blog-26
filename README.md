@@ -1,16 +1,18 @@
-# Ivan's Blog - Next.js Migration
+# Ivan's Blog - Astro Public + Admin SPA
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](package.json)
-[![Next.js](https://img.shields.io/badge/Next.js-15.5.3-black?logo=next.js&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.1.1-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![Astro](https://img.shields.io/badge/Astro-6.1.4-FF5D01?logo=astro&logoColor=white)](https://astro.build/)
+[![Legacy Next](https://img.shields.io/badge/Legacy_Next-16.2.2-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2.4-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.44.5-8A2BE2)](https://orm.drizzle.team/)
-[![tRPC](https://img.shields.io/badge/tRPC-11.5.1-2596BE)](https://trpc.io/)
-[![Playwright](https://img.shields.io/badge/Playwright-1.55.0-45ba4b?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.45.2-8A2BE2)](https://orm.drizzle.team/)
+[![tRPC](https://img.shields.io/badge/tRPC-11.16.0-2596BE)](https://trpc.io/)
+[![Playwright](https://img.shields.io/badge/Playwright-1.59.1-45ba4b?logo=playwright&logoColor=white)](https://playwright.dev/)
 [![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.0-000000?logo=bun&logoColor=white)](https://bun.sh/)
 
-This is the Next.js version of Ivan's Blog, migrated from Astro 5.0.
+This repository serves the public site through Astro, the admin through a Vite/React SPA, and
+retains a legacy internal Next runtime for remaining APIs, preview, and compatibility paths.
 
 ## Development
 
@@ -45,7 +47,7 @@ Env overrides: `PORT=<web_port> WEBDAV_PORT=<webdav_port>`
 ### Worktree Development (Quick Start)
 
 ```bash
-git worktree add -b feat/some-change ../blog-nextjs-wt-some-change
+git worktree add -b feat/some-change ../blog-25-wt-some-change
 ./scripts/setup.sh
 
 export DB_PATH=./dev-data/sqlite.db
@@ -109,7 +111,7 @@ export WEBDAV_URL=http://localhost:25601   # match the WebDAV port you plan to u
 # Import both local and WebDAV fixtures (requires WebDAV dev server, see notes below)
 bun run dev-sync:trigger
 
-# Start Next.js (with WebDAV dev server)
+# Start the hybrid dev stack (gateway + Astro + admin SPA + legacy Next)
 bun run dev
 ```
 
@@ -140,7 +142,7 @@ bun run dev-db:check && bun run webdav:check
 # One-shot reset + prepare test fixtures
 bun run test-env:reset
 
-# Start test services only (manual verification): Next.js (test) + WebDAV
+# Start test services only (manual verification): gateway-backed test stack + WebDAV
 bun run test-server:start
 
 # Run E2E tests (automatically starts services)
@@ -148,7 +150,7 @@ bun run test:e2e
 ```
 
 - Install browsers before running tests: `bunx playwright install`
-- Default ports in test: app `25090`, WebDAV `25091`
+- Default ports in test: gateway `25090`, WebDAV `25091`
 
 - For deeper E2E guidance, see `tests/e2e/README.md`.
 
@@ -158,7 +160,7 @@ bun run test:e2e
 # Prebuild (generate version info)
 bun run prebuild
 
-# Build Next.js assets
+# Build the release assets (gateway + Astro + admin SPA + legacy Next)
 bun run build
 
 # Start (make sure .env.local or env vars are configured)
@@ -253,21 +255,19 @@ bun run -i scripts/validate-config.ts
 
 ```text
 src/
-├── app/                    # Next.js App Router pages
-│   ├── api/trpc/          # tRPC API routes
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   └── TRPCProvider.tsx   # tRPC client provider
-├── lib/                   # Core libraries
-│   ├── db.ts             # Database connection
-│   ├── schema.ts         # Database schema
-│   └── trpc.ts           # tRPC client
-├── server/               # tRPC server
-│   ├── router.ts         # Main router
-│   └── trpc.ts           # tRPC setup
-└── utils/                # Utility functions
+├── app/                     # Legacy Next runtime: compatibility APIs, preview/dev/test pages
+├── components/              # Shared React components that remain in the Next-owned tree
+├── lib/                     # Shared runtime libraries and API clients
+├── server/                  # Compatibility routers used by gateway/public/admin APIs
+apps/
+├── admin/                   # Vite + React + TanStack Router admin SPA
+site/
+├── pages/                   # Astro public frontend routes
+├── components/              # Astro/shared public UI components
+scripts/
+├── start-gateway.ts         # Single-port gateway for public/admin/legacy runtime ownership
+docs/specs/
+└── */SPEC.md                # Delivery specs and follow-up runtime contracts
 ```
 
 ## 🔄 Development Environment Data Regeneration
@@ -281,7 +281,7 @@ This project uses a multi-source content management system that supports both lo
 - **SQLite Database** - Primary data storage (posts, memos, comments, users, etc.)
 - **Local File System** - Development content (`src/content/`, `dev-data/local/`)
 - **WebDAV Remote Storage** - Remote content sync (`dev-data/webdav/`, `test-data/webdav/`)
-- **Cache Layer** - Redis cache, build cache (`.next/`)
+- **Cache Layer** - Redis cache, Next build cache (`.next/`), and generated site/admin build output
 
 **Content Sync Mechanism**:
 
@@ -326,10 +326,11 @@ This project uses a multi-source content management system that supports both lo
 
 ### Core Framework
 
-- **Next.js 15.5.3** with App Router
-- **React 19.1.1**
+- **Astro 6.1.4** for the public site
+- **Vite + React 19.2.4** for the admin SPA
+- **Next.js 16.2.2** as the legacy internal runtime for compatibility paths
 - **TypeScript 5.x**
-- **Tailwind CSS 4.x** + daisyUI 5.x
+- **Tailwind CSS 4.x** + shadcn/ui for shipped admin UI, with DaisyUI retained only for legacy/internal surfaces
 
 ### Backend & Database
 
