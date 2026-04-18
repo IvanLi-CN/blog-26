@@ -10,11 +10,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "ssh://gitea@git.ivanli.cc:7018/Ivan/blog-astrowind.git"
+    "url": "git@github.com:IvanLi-CN/blog-26.git"
   },
-  "homepage": "https://git.ivanli.cc/Ivan/blog-astrowind",
+  "homepage": "https://github.com/IvanLi-CN/blog-26",
   "bugs": {
-    "url": "https://git.ivanli.cc/Ivan/blog-astrowind/issues"
+    "url": "https://github.com/IvanLi-CN/blog-26/issues"
   },
   "license": "MIT",
   "keywords": [

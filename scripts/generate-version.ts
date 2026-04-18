@@ -204,8 +204,8 @@ function generateVersionInfo(): VersionInfo {
       buildDate,
       commitHash: "unknown",
       commitShortHash: "unknown",
-      repositoryUrl: "https://github.com/user/blog-nextjs",
-      commitUrl: "https://github.com/user/blog-nextjs",
+      repositoryUrl: "https://github.com/IvanLi-CN/blog-26",
+      commitUrl: "https://github.com/IvanLi-CN/blog-26",
       branchName: "unknown",
       branchUrl: null,
     };
