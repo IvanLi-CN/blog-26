@@ -73,7 +73,7 @@ test.describe("Astro public front (phase 1)", () => {
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Local Development Environment Setup" })
+      page.getByRole("link", { name: "Local Development Environment Setup", exact: true })
     ).toBeVisible();
 
     await page.goto("/memos/local-development-environment-setup", {

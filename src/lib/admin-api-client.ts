@@ -242,6 +242,40 @@ export interface TagIconsOverviewResponse {
   categoryIcons: Record<string, string | null>;
 }
 
+export interface AdminPreviewPost {
+  kind: "post";
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
+  excerpt?: string | null;
+  tags?: string[];
+  category?: string | null;
+  image?: string | null;
+  draft?: boolean;
+  public?: boolean;
+  filePath?: string | null;
+  source?: string | null;
+  metadata?: unknown;
+}
+
+export interface AdminPreviewMemo {
+  kind: "memo";
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+  excerpt?: string | null;
+  isPublic: boolean;
+  tags?: string[];
+  attachments?: Array<{ filename?: string; path: string; isImage?: boolean }>;
+  filePath?: string | null;
+  source?: string | null;
+  createdAt: string;
+  publishedAt?: string;
+  updatedAt: string;
+}
+
 async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (!headers.has("accept")) {
@@ -280,6 +314,10 @@ function buildSearch(params: Record<string, string | number | boolean | undefine
 
 export const adminApi = {
   session: () => adminRequest<AdminSession>("/api/admin/session"),
+  previewPost: (slug: string) =>
+    adminRequest<AdminPreviewPost>(`/api/admin/preview/posts/${encodeURIComponent(slug)}`),
+  previewMemo: (slug: string) =>
+    adminRequest<AdminPreviewMemo>(`/api/admin/preview/memos/${encodeURIComponent(slug)}`),
   dashboardStats: () => adminRequest<DashboardStats>("/api/admin/dashboard/stats"),
   dashboardRecentActivity: (limit = 10) =>
     adminRequest<ActivityItem[]>(`/api/admin/dashboard/recent-activity${buildSearch({ limit })}`),

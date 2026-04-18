@@ -1,7 +1,7 @@
 # SPEC: Next runtime reduction after admin SPA migration
 
 - Spec ID: `cbwu4`
-- Status: `ready`
+- Status: `done`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -78,13 +78,16 @@ Those remaining ownership islands are now the primary blocker for shrinking the 
 
 - Inventory verified against `scripts/start-gateway.ts`, `src/app/api/**`, `src/proxy.ts`, and the remaining Next-owned test coverage.
 - `8amg2` closeout verified that `/admin/*` no longer depends on `src/app/admin/**` or `src/components/admin/**`.
+- Production gateway ownership verified for `/api/public/*`, `/api/admin/*`, `/api/files/*`, `/api/health`, and `/mcp`, with other legacy `/api/*`, `/_next/*`, and non-production tooling routes returning `404` in production mode.
+- Preview compatibility verified through `/api/admin/preview/posts/:slug` and `/api/admin/preview/memos/:slug`, plus legacy `?admin-preview=1` redirect coverage in the gateway.
+- MCP compatibility verified through direct gateway `/mcp` initialize flow and the PAT-based SDK smoke suite.
 
 ## 9. Milestones
 
-- [ ] M1: Freeze the remaining Next ownership inventory and successor contracts.
-- [ ] M2: Migrate browser-visible legacy contracts (admin preview, memos admin APIs) off broad Next ownership.
-- [ ] M3: Isolate or retire internal-only tooling/demo routes.
-- [ ] M4: Re-assess whether the internal Next runtime can shrink further or be removed from production topology.
+- [x] M1: Freeze the remaining Next ownership inventory and successor contracts.
+- [x] M2: Migrate browser-visible legacy contracts (admin preview, memos admin APIs) off broad Next ownership.
+- [x] M3: Isolate or retire internal-only tooling/demo routes.
+- [x] M4: Re-assess whether the internal Next runtime can shrink further or be removed from production topology.
 
 ## 10. Approach
 

@@ -194,8 +194,16 @@ function deriveExcerptFromContent(content: string) {
 
 function buildAdminPreviewUrl(path: string) {
   const previewUrl = new URL(path, window.location.origin);
-  previewUrl.searchParams.set("admin-preview", "1");
-  return `${previewUrl.pathname}${previewUrl.search}`;
+  const pathname = previewUrl.pathname.replace(/\/+$/, "");
+  if (pathname.startsWith("/posts/")) {
+    const slug = pathname.replace(/^\/posts\//, "");
+    return `/admin/preview/posts/${slug}`;
+  }
+  if (pathname.startsWith("/memos/")) {
+    const slug = pathname.replace(/^\/memos\//, "");
+    return `/admin/preview/memos/${slug}`;
+  }
+  return `/admin/preview/posts/${pathname.replace(/^\/+/, "")}`;
 }
 
 function normalizeTreePath(path: string | null | undefined) {

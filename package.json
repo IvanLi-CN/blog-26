@@ -49,7 +49,7 @@
     "setup": "bash ./scripts/setup.sh",
     "dev": "bun scripts/generate-version.ts && concurrently --names \"WebDAV,LegacyNext,Astro,Admin,Gateway\" --prefix-colors \"cyan,magenta,yellow,blue,green\" \"bun run webdav:dev\" \"bun run dev:next:internal\" \"bun run site:dev\" \"bun run admin:dev\" \"bun run gateway:dev\"",
     "dev:next": "bun run dev:next:internal",
-    "build": "bun run prebuild && bun --bun next build && bun run site:build && bun run admin:build",
+    "build": "bun run prebuild && bun run site:build && bun run admin:build",
     "prebuild": "bun scripts/generate-version.ts",
     "start": "bun run gateway:start",
     "check": "biome check",

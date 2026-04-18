@@ -3,6 +3,7 @@ import Icon from "@/components/ui/Icon";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { PublicMemoDetailControlsIsland } from "../../components/PublicMemoAuthoring";
 import TagBadge from "../../components/TagBadge.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
 import { getSnapshot } from "../../lib/public-site";
@@ -44,44 +45,48 @@ const structuredData = {
 
   <section class="nature-reading-container px-6 py-10">
     <article class="space-y-8">
-      <div class="nature-surface px-5 py-6 sm:px-7 sm:py-7">
-        <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
-          <span class="nature-chip nature-chip-info gap-1">
-            <Icon name="tabler:clock" className="h-3.5 w-3.5" />
-            <time dateTime={displayDate} title={formatDateTime(displayDate)}>
-              {formatAbsoluteDate(displayDate)}
-            </time>
-          </span>
-          <span class="nature-chip gap-1">
-            <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
-            Memo
-          </span>
+      <PublicMemoDetailControlsIsland client:load slug={memo.slug} />
+
+      <div data-public-memo-static-shell>
+        <div class="nature-surface px-5 py-6 sm:px-7 sm:py-7">
+          <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
+            <span class="nature-chip nature-chip-info gap-1">
+              <Icon name="tabler:clock" className="h-3.5 w-3.5" />
+              <time dateTime={displayDate} title={formatDateTime(displayDate)}>
+                {formatAbsoluteDate(displayDate)}
+              </time>
+            </span>
+            <span class="nature-chip gap-1">
+              <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+              Memo
+            </span>
+          </div>
+
+          <h1 class="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">{memo.title}</h1>
+          {memo.excerpt && <p class="nature-muted mt-4 text-base leading-7">{memo.excerpt}</p>}
+
+          {memo.tags.length > 0 && (
+            <div class="mt-5 flex flex-wrap gap-2">
+              {memo.tags.map((tag) => (
+                <TagBadge tag={tag} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
+              ))}
+            </div>
+          )}
         </div>
 
-        <h1 class="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">{memo.title}</h1>
-        {memo.excerpt && <p class="nature-muted mt-4 text-base leading-7">{memo.excerpt}</p>}
-
-        {memo.tags.length > 0 && (
-          <div class="mt-5 flex flex-wrap gap-2">
-            {memo.tags.map((tag) => (
-              <TagBadge tag={tag} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div class="nature-panel px-6 py-7 sm:px-8">
-        <MarkdownRenderer
-          client:load
-          content={memo.content}
-          variant="article"
-          enableMath={true}
-          enableMermaid={true}
-          enableCodeFolding={true}
-          removeTags={true}
-          articlePath={`/memos/${memo.slug}`}
-          contentSource={(memo.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
-        />
+        <div class="nature-panel px-6 py-7 sm:px-8">
+          <MarkdownRenderer
+            client:load
+            content={memo.content}
+            variant="article"
+            enableMath={true}
+            enableMermaid={true}
+            enableCodeFolding={true}
+            removeTags={true}
+            articlePath={`/memos/${memo.slug}`}
+            contentSource={(memo.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
+          />
+        </div>
       </div>
     </article>
   </section>

@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import matter from "gray-matter";
 import limax from "limax";
@@ -18,8 +20,8 @@ import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { requireAdmin } from "./mcp-auth-context";
 
-let server: McpServer | null = null;
-let transport: StreamableHTTPServerTransport | null = null;
+let cachedServer: McpServer | null = null;
+let cachedTransport: StreamableHTTPServerTransport | null = null;
 
 function iso(ts: number | string | Date): string {
   return new Date(ts).toISOString();
@@ -192,10 +194,9 @@ function ands(conds: any[]) {
   return conds.length ? and(...conds) : undefined;
 }
 
-async function ensureServer() {
-  if (server && transport) return { server, transport };
+async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
   await initializeDB(false);
-  server = new McpServer(
+  const server = new McpServer(
     { name: "blog-mcp-http", version: "0.1.0" },
     { capabilities: { tools: {} } }
   );
@@ -427,7 +428,7 @@ async function ensureServer() {
       return {
         content: [
           {
-            type: "json",
+            type: "text",
             text: JSON.stringify({
               items: summaries,
               total: summaries.length,
@@ -453,7 +454,7 @@ async function ensureServer() {
       return {
         content: [
           {
-            type: "json",
+            type: "text",
             text: JSON.stringify({
               tag,
               items: posts,
@@ -484,7 +485,7 @@ async function ensureServer() {
       return {
         content: [
           {
-            type: "json",
+            type: "text",
             text: JSON.stringify({
               items: bundles,
               total: bundles.length,
@@ -643,15 +644,36 @@ async function ensureServer() {
     return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
   });
 
-  transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-  await server.connect(transport);
-  return { server, transport };
+  await server.connect(nextTransport as any);
+  return { server, transport: nextTransport };
+}
+
+async function ensureServer() {
+  if (cachedServer && cachedTransport) {
+    return { server: cachedServer, transport: cachedTransport };
+  }
+
+  const created = await buildConnectedServer(
+    new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+  );
+  cachedServer = created.server;
+  cachedTransport = created.transport;
+  return created;
+}
+
+export async function createMcpWebTransport(): Promise<{
+  server: McpServer;
+  transport: WebStandardStreamableHTTPServerTransport;
+}> {
+  return buildConnectedServer(
+    new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() })
+  );
 }
 
 export async function getMcpTransport(): Promise<StreamableHTTPServerTransport> {
-  const { transport: t } = await ensureServer();
-  if (!t) {
+  const { transport } = await ensureServer();
+  if (!transport) {
     throw new Error("MCP transport unavailable");
   }
-  return t;
+  return transport;
 }

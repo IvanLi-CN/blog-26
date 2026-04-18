@@ -1,10 +1,11 @@
-import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
-import { extname, isAbsolute, resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
+import { handleFilesApiRequest } from "@/server/files-api/router";
+import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
 
 type GatewayMode = "dev" | "production";
@@ -20,19 +21,12 @@ const siteDistDir = resolve(process.cwd(), process.env.SITE_DIST_DIR || "site-di
 const adminDistDir = resolve(process.cwd(), process.env.ADMIN_DIST_DIR || "admin-dist");
 const localPreviewSsoEmail = process.env.LOCAL_PREVIEW_SSO_EMAIL?.trim();
 
-let nextProcess: ChildProcess | null = null;
-
 function log(message: string, extra?: Record<string, unknown>) {
   if (extra) {
     console.log(`[gateway] ${message}`, extra);
   } else {
     console.log(`[gateway] ${message}`);
   }
-}
-
-function toAbsolutePath(input: string | undefined) {
-  if (!input) return input;
-  return isAbsolute(input) ? input : resolve(process.cwd(), input);
 }
 
 function isPublicApiPath(pathname: string) {
@@ -43,6 +37,10 @@ function isAdminApiPath(pathname: string) {
   return pathname === "/api/admin" || pathname.startsWith("/api/admin/");
 }
 
+function isFilesApiPath(pathname: string) {
+  return pathname === "/api/files" || pathname.startsWith("/api/files/");
+}
+
 function isAdminPath(pathname: string) {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
@@ -51,32 +49,43 @@ function isPreviewableContentPath(pathname: string) {
   return pathname.startsWith("/posts/") || pathname.startsWith("/memos/");
 }
 
-function isAdminPreviewRequest(pathname: string, searchParams: URLSearchParams) {
+function isLegacyPreviewRequest(pathname: string, searchParams: URLSearchParams) {
   return isPreviewableContentPath(pathname) && searchParams.get("admin-preview") === "1";
 }
 
-function isLegacyPath(pathname: string) {
-  if (pathname === "/api") return true;
-  if (
-    pathname.startsWith("/api/") &&
-    !isPublicApiPath(pathname) &&
-    !isAdminApiPath(pathname) &&
-    pathname !== "/api/health"
-  ) {
+function isNonProductionUiToolPath(pathname: string) {
+  const prefixes = ["/dev", "/theme-test", "/test-editor", "/demo-integration", "/demo-memo-card"];
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isLegacyDevApiPath(pathname: string) {
+  if (pathname === "/api" || pathname === "/_next" || pathname.startsWith("/_next/")) {
     return true;
   }
 
-  const legacyPrefixes = [
-    "/_next",
-    "/mcp",
-    "/dev",
-    "/theme-test",
-    "/test-editor",
-    "/demo-integration",
-    "/demo-memo-card",
-  ];
+  if (!pathname.startsWith("/api/")) {
+    return false;
+  }
 
-  return legacyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return (
+    !isPublicApiPath(pathname) &&
+    !isAdminApiPath(pathname) &&
+    !isFilesApiPath(pathname) &&
+    pathname !== "/api/health" &&
+    pathname !== "/mcp"
+  );
+}
+
+function buildAdminPreviewPath(pathname: string) {
+  if (pathname.startsWith("/posts/")) {
+    const slug = pathname.replace(/^\/posts\//, "");
+    return `/admin/preview/posts/${slug}`;
+  }
+  if (pathname.startsWith("/memos/")) {
+    const slug = pathname.replace(/^\/memos\//, "");
+    return `/admin/preview/memos/${slug}`;
+  }
+  return "/admin";
 }
 
 function isHtmlNavigationRequest(request: Request, pathname: string) {
@@ -101,12 +110,14 @@ function shouldInjectLocalPreviewIdentity(pathname: string, searchParams: URLSea
   return (
     isAdminPath(pathname) ||
     isAdminApiPath(pathname) ||
+    isFilesApiPath(pathname) ||
     pathname === "/api/files" ||
     pathname.startsWith("/api/files/") ||
     pathname === "/api/tags/organize" ||
     pathname.startsWith("/api/tags/organize/") ||
-    isLegacyPath(pathname) ||
-    isAdminPreviewRequest(pathname, searchParams)
+    isLegacyDevApiPath(pathname) ||
+    isNonProductionUiToolPath(pathname) ||
+    isLegacyPreviewRequest(pathname, searchParams)
   );
 }
 
@@ -123,12 +134,6 @@ function withLocalPreviewIdentity(
   const headers = new Headers(request.headers);
   headers.set(headerName, localPreviewSsoEmail);
 
-  return new Request(request, { headers });
-}
-
-function withAdminPreviewHeader(request: Request) {
-  const headers = new Headers(request.headers);
-  headers.set("x-admin-preview", "1");
   return new Request(request, { headers });
 }
 
@@ -339,60 +344,88 @@ async function checkAdminHealth() {
   }
 }
 
-async function checkNextHealth() {
-  try {
-    const response = await fetch(`http://${internalHostname}:${nextPort}/api/health`, {
-      signal: AbortSignal.timeout(1500),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
+async function checkGatewayApiHealth() {
+  const origin = `http://${internalHostname}:${publicPort}`;
+  const publicApi = await handlePublicApiRequest(
+    new Request(`${origin}/api/public/posts?limit=1`),
+    "/posts"
+  )
+    .then((response) => response.ok)
+    .catch(() => false);
 
-function startInternalNextIfNeeded() {
-  if (mode !== "production") return;
-  if (process.env.GATEWAY_SPAWN_INTERNAL_NEXT === "false") return;
-  if (nextProcess) return;
+  const adminApi = await handleAdminApiRequest(
+    new Request(`${origin}/api/admin/session`),
+    "/session"
+  )
+    .then((response) => response.ok)
+    .catch(() => false);
 
-  const env = {
-    ...process.env,
-    NODE_ENV: "production",
-    PORT: String(nextPort),
-    HOSTNAME: internalHostname,
-    DB_PATH: toAbsolutePath(process.env.DB_PATH),
-    LOCAL_CONTENT_BASE_PATH: toAbsolutePath(process.env.LOCAL_CONTENT_BASE_PATH),
-    PUBLIC_SNAPSHOT_PATH: toAbsolutePath(process.env.PUBLIC_SNAPSHOT_PATH),
+  const filesApi = await handleFilesApiRequest(new Request(`${origin}/api/files/invalid/health`), {
+    source: "invalid",
+    path: ["health"],
+  })
+    .then((response) => response.status === 400)
+    .catch(() => false);
+
+  const mcp = await (async () => {
+    try {
+      const initializeResponse = await handleMcpHttpRequest(
+        new Request(`${origin}/mcp`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            "mcp-protocol-version": "2025-03-26",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: "health-check",
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-03-26",
+              capabilities: {},
+              clientInfo: { name: "gateway-health", version: "1.0.0" },
+            },
+          }),
+        })
+      );
+
+      if (!initializeResponse.ok) {
+        return false;
+      }
+
+      const sessionId =
+        initializeResponse.headers.get("mcp-session-id") ||
+        initializeResponse.headers.get("Mcp-Session-Id");
+
+      if (!sessionId) {
+        return false;
+      }
+
+      const closeResponse = await handleMcpHttpRequest(
+        new Request(`${origin}/mcp`, {
+          method: "DELETE",
+          headers: {
+            accept: "application/json, text/event-stream",
+            "mcp-session-id": sessionId,
+            "mcp-protocol-version": "2025-03-26",
+          },
+        })
+      );
+
+      return closeResponse.ok;
+    } catch {
+      return false;
+    }
+  })();
+
+  return {
+    publicApi,
+    adminApi,
+    filesApi,
+    mcp,
   };
-  const standaloneServer = resolve(process.cwd(), "server.js");
-  const localStandaloneServer = resolve(process.cwd(), ".next/standalone/server.js");
-  const command =
-    process.env.INTERNAL_NEXT_COMMAND?.trim() ||
-    (existsSync(standaloneServer)
-      ? "bun server.js"
-      : existsSync(localStandaloneServer)
-        ? "bun .next/standalone/server.js"
-        : "bun --bun next start");
-
-  log("starting internal legacy Next", { nextPort, command });
-  nextProcess = spawn("sh", ["-lc", command], {
-    cwd: process.cwd(),
-    env,
-    stdio: "inherit",
-  });
-
-  nextProcess.on("exit", (code, signal) => {
-    log("internal legacy Next exited", { code, signal });
-    nextProcess = null;
-  });
 }
-
-function stopInternalNext() {
-  if (!nextProcess || nextProcess.exitCode !== null) return;
-  nextProcess.kill("SIGTERM");
-}
-
-startInternalNextIfNeeded();
 
 const server = Bun.serve({
   hostname,
@@ -403,12 +436,31 @@ const server = Bun.serve({
     const effectiveRequest = withLocalPreviewIdentity(request, pathname, searchParams);
 
     if (pathname === "/api/health") {
-      const [siteHealthy, adminHealthy, nextHealthy] = await Promise.all([
+      const [siteHealthy, adminHealthy, gatewayApis] = await Promise.all([
         checkSiteHealth(),
         checkAdminHealth(),
-        checkNextHealth(),
+        mode === "production"
+          ? checkGatewayApiHealth()
+          : Promise.resolve({
+              publicApi: true,
+              adminApi: true,
+              filesApi: true,
+              mcp: true,
+            }),
       ]);
-      const status = siteHealthy && adminHealthy && nextHealthy ? 200 : 503;
+      const nextHealthy =
+        mode === "dev"
+          ? await fetch(`http://${internalHostname}:${nextPort}/api/health`, {
+              signal: AbortSignal.timeout(1500),
+            })
+              .then((response) => response.ok)
+              .catch(() => false)
+          : null;
+      const gatewayApisHealthy = Object.values(gatewayApis).every(Boolean);
+      const status =
+        siteHealthy && adminHealthy && gatewayApisHealthy && (mode === "production" || nextHealthy)
+          ? 200
+          : 503;
       return Response.json(
         {
           status: status === 200 ? "ok" : "degraded",
@@ -420,14 +472,18 @@ const server = Bun.serve({
             target: mode === "production" ? siteDistDir : `http://${internalHostname}:${sitePort}`,
           },
           legacyNext: {
-            status: nextHealthy ? "ok" : "down",
-            target: `http://${internalHostname}:${nextPort}`,
+            status: mode === "production" ? "not-applicable" : nextHealthy ? "ok" : "down",
+            target: mode === "production" ? null : `http://${internalHostname}:${nextPort}`,
           },
           admin: {
             status: adminHealthy ? "ok" : "down",
             mode: mode === "production" ? "static" : "proxy",
             target:
               mode === "production" ? adminDistDir : `http://${internalHostname}:${adminPort}`,
+          },
+          gatewayApis: {
+            status: gatewayApisHealthy ? "ok" : "degraded",
+            checks: gatewayApis,
           },
         },
         {
@@ -449,6 +505,22 @@ const server = Bun.serve({
       return handleAdminApiRequest(effectiveRequest, subPath);
     }
 
+    if (isFilesApiPath(pathname)) {
+      const match = pathname.match(/^\/api\/files\/([^/]+)\/?(.*)$/);
+      if (!match) {
+        return new Response("Not Found", { status: 404 });
+      }
+      const source = decodeURIComponent(match[1]);
+      const tail = match[2] || "";
+      const pathSegments =
+        tail.length > 0 ? tail.split("/").filter(Boolean).map(decodeURIComponent) : [];
+      return handleFilesApiRequest(effectiveRequest, { source, path: pathSegments });
+    }
+
+    if (pathname === "/mcp") {
+      return handleMcpHttpRequest(effectiveRequest);
+    }
+
     if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
       return renderHtmlStatusPage(
         404,
@@ -457,12 +529,10 @@ const server = Bun.serve({
       );
     }
 
-    if (isAdminPreviewRequest(pathname, searchParams)) {
-      const previewRequest = withAdminPreviewHeader(effectiveRequest);
-      const isHtmlRequest = isHtmlNavigationRequest(previewRequest, pathname);
-
+    if (isLegacyPreviewRequest(pathname, searchParams)) {
+      const isHtmlRequest = isHtmlNavigationRequest(effectiveRequest, pathname);
       if (isHtmlRequest) {
-        const auth = await extractAuthFromRequest(previewRequest);
+        const auth = await extractAuthFromRequest(effectiveRequest);
         if (!auth.user) {
           return renderHtmlStatusPage(
             401,
@@ -479,9 +549,7 @@ const server = Bun.serve({
           );
         }
       }
-
-      const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${nextPort}`);
-      return proxyRequest(previewRequest, target);
+      return Response.redirect(new URL(buildAdminPreviewPath(pathname), url), 307);
     }
 
     if (isAdminPath(pathname)) {
@@ -536,9 +604,36 @@ const server = Bun.serve({
       });
     }
 
-    if (isLegacyPath(pathname)) {
+    if (mode === "dev" && (isLegacyDevApiPath(pathname) || isNonProductionUiToolPath(pathname))) {
       const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${nextPort}`);
       return proxyRequest(effectiveRequest, target);
+    }
+
+    if (pathname.startsWith("/_next/")) {
+      if (mode === "dev") {
+        const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${nextPort}`);
+        return proxyRequest(effectiveRequest, target);
+      }
+      return new Response("Not Found", { status: 404 });
+    }
+
+    if (pathname.startsWith("/api/")) {
+      if (mode === "dev") {
+        const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${nextPort}`);
+        return proxyRequest(effectiveRequest, target);
+      }
+      return Response.json(
+        {
+          error: "Not Found",
+          message:
+            "This API is not available in production. Use /api/public/*, /api/admin/*, /api/files/*, /api/health, or /mcp.",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (isNonProductionUiToolPath(pathname)) {
+      return new Response("Not Found", { status: 404 });
     }
 
     if (mode === "dev") {
@@ -573,7 +668,6 @@ log("gateway ready", {
 
 const shutdown = () => {
   log("shutting down gateway");
-  stopInternalNext();
   server.stop();
 };
 

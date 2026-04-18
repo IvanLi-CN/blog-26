@@ -92,15 +92,72 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
     }
 
     if (pathname === "/memos") {
-      if (request.method !== "GET") return methodNotAllowed(request.method);
-      const result = await caller.memos.list({
-        cursor: url.searchParams.get("cursor") || undefined,
-        limit: Number(url.searchParams.get("limit") || 20),
-        search: url.searchParams.get("search") || undefined,
-        tag: url.searchParams.get("tag") || undefined,
-        publicOnly: url.searchParams.get("publicOnly") !== "false",
-      });
-      return json(result, { status: 200 }, resHeaders);
+      if (request.method === "GET") {
+        const result = await caller.memos.list({
+          cursor: url.searchParams.get("cursor") || undefined,
+          limit: Number(url.searchParams.get("limit") || 20),
+          search: url.searchParams.get("search") || undefined,
+          tag: url.searchParams.get("tag") || undefined,
+          publicOnly: url.searchParams.get("publicOnly") !== "false",
+        });
+        return json(result, { status: 200 }, resHeaders);
+      }
+
+      if (request.method === "POST") {
+        const body = ((await parseBody(request)) || {}) as {
+          content?: string;
+          title?: string;
+          isPublic?: boolean;
+          tags?: string[];
+          attachments?: Array<{ path: string }>;
+        };
+        const result = await caller.memos.create({
+          content: body.content || "",
+          title: body.title,
+          isPublic: body.isPublic ?? true,
+          tags: Array.isArray(body.tags) ? body.tags : [],
+          attachments: Array.isArray(body.attachments) ? body.attachments : [],
+        });
+        return json(result, { status: 200 }, resHeaders);
+      }
+
+      return methodNotAllowed(request.method);
+    }
+
+    const memoMatch = pathname.match(/^\/memos\/([^/]+)$/);
+    if (memoMatch) {
+      const slug = decodeURIComponent(memoMatch[1]);
+      if (request.method === "GET") {
+        const result = await caller.memos.bySlug({ slug });
+        return json(result, { status: 200 }, resHeaders);
+      }
+      if (request.method === "PATCH") {
+        const body = ((await parseBody(request)) || {}) as {
+          content?: string;
+          title?: string;
+          isPublic?: boolean;
+          tags?: string[];
+          attachments?: Array<{ path: string }>;
+        };
+        const existing = await caller.memos.bySlug({ slug });
+        const result = await caller.memos.update({
+          id: existing.id,
+          content: typeof body.content === "string" ? body.content : existing.content,
+          title: body.title ?? existing.title,
+          isPublic: body.isPublic ?? existing.isPublic,
+          tags: Array.isArray(body.tags) ? body.tags : (existing.tags ?? []),
+          attachments: Array.isArray(body.attachments)
+            ? body.attachments
+            : ((existing as { attachments?: Array<{ path: string }> }).attachments ?? []),
+        });
+        return json(result, { status: 200 }, resHeaders);
+      }
+      if (request.method === "DELETE") {
+        const existing = await caller.memos.bySlug({ slug });
+        const result = await caller.memos.delete({ id: existing.id });
+        return json(result, { status: 200 }, resHeaders);
+      }
+      return methodNotAllowed(request.method);
     }
 
     if (pathname === "/tags/timeline") {
