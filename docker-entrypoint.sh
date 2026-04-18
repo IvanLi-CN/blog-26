@@ -84,7 +84,7 @@ validate_prebuilt_assets() {
 }
 
 run_as_target_user() {
-  if [ "$(id -u)" = "0" ]; then
+  if [ "$(id -u)" = "0" ] && { [ "$RUN_UID" != "$(id -u)" ] || [ "$RUN_GID" != "$(id -g)" ]; }; then
     gosu "${RUN_UID}:${RUN_GID}" "$@"
   else
     "$@"
@@ -152,7 +152,7 @@ else
 fi
 
 echo "🌟 Starting app: ${APP_CMD[*]}"
-if [ "$(id -u)" = "0" ]; then
+if [ "$(id -u)" = "0" ] && { [ "$RUN_UID" != "$(id -u)" ] || [ "$RUN_GID" != "$(id -g)" ]; }; then
   exec gosu "${RUN_UID}:${RUN_GID}" env \
     DB_PATH="$DB_PATH" \
     PORT="$PORT" \
