@@ -58,8 +58,11 @@ ENV BRANCH_URL=${BRANCH_URL}
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TSC_COMPILE_ON_ERROR=1
-# Production image now builds only the Astro public site and admin SPA.
-RUN bun run build
+# Docker builder needs a populated content DB before exporting the Astro public snapshot.
+RUN DB_PATH=./dev-data/sqlite.db bun run dev-db:reset && \
+    bun run dev-data:generate && \
+    DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local CONTENT_SOURCES=local bun run dev-sync:trigger && \
+    DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run build
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
