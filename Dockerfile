@@ -59,9 +59,11 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TSC_COMPILE_ON_ERROR=1
 # Docker builder needs a populated content DB before exporting the Astro public snapshot.
-RUN DB_PATH=./dev-data/sqlite.db bun run dev-db:reset && \
-    bun run dev-data:generate && \
-    DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local CONTENT_SOURCES=local bun run dev-sync:trigger && \
+# Keep the build stage itself production-like, but run the disposable fixture seeding chain
+# under development semantics so seed.ts keeps its production guard for real runtime flows.
+RUN NODE_ENV=development DB_PATH=./dev-data/sqlite.db bun run dev-db:reset && \
+    NODE_ENV=development bun run dev-data:generate && \
+    NODE_ENV=development DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local CONTENT_SOURCES=local bun run dev-sync:trigger && \
     DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run build
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
