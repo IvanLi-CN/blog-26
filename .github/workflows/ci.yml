@@ -288,7 +288,7 @@ jobs:
               health = json.load(f)
           assert health["status"] == "ok", health
           assert health["site"]["status"] == "ok", health
-          assert health["legacyNext"]["status"] == "ok", health
+          assert health["legacyNext"]["status"] == "not-applicable", health
           PY
 
           wait_for_status_with_grep \
