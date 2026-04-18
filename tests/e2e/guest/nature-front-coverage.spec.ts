@@ -15,7 +15,6 @@ test.describe("Nature frontend public coverage", () => {
       { path: "/search", heading: "搜索" },
       { path: "/about", heading: /你好，我是 Ivan/ },
       { path: "/projects", heading: "项目总览" },
-      { path: "/theme-test", heading: "Nature 视觉基线" },
     ] as const;
 
     for (const route of routes) {
@@ -152,9 +151,9 @@ test.describe("Nature frontend public coverage", () => {
   });
 
   test.describe("system theme and reduced motion", () => {
-    test("theme-test renders with resolved dark theme when motion is reduced", async ({ page }) => {
+    test("public shell resolves dark theme when motion is reduced", async ({ page }) => {
       await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
-      await gotoWithTheme(page, "/theme-test", "system");
+      await gotoWithTheme(page, "/", "system");
 
       await expect(page.locator("html")).toHaveAttribute("data-ui-preference", "system");
       await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "dark");
@@ -166,7 +165,14 @@ test.describe("Nature frontend public coverage", () => {
 
       expect(media.prefersDark).toBe(true);
       expect(media.prefersReducedMotion).toBe(true);
-      await expect(page.getByRole("heading", { name: "Nature 视觉基线" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /Ivan's Blog/ })).toBeVisible();
     });
+  });
+
+  test("non-production tooling routes return 404 in production gateway", async ({ request }) => {
+    for (const route of ["/theme-test", "/test-editor", "/demo-integration", "/demo-memo-card"]) {
+      const response = await request.get(route);
+      expect(response.status(), route).toBe(404);
+    }
   });
 });
