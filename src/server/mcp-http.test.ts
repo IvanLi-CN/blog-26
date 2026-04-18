@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { resolveMcpSessionPersistenceKey } from "./mcp-http";
+import { resolveMcpSessionPersistenceKey } from "./mcp-session";
 
 describe("resolveMcpSessionPersistenceKey", () => {
   it("uses the server-issued transport session id for new transports", () => {

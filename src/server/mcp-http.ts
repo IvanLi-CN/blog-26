@@ -1,6 +1,7 @@
 import { getAdminEmail } from "@/lib/admin-config";
 import { createMcpWebTransport } from "@/server/mcp";
 import { runWithMcpAuth } from "@/server/mcp-auth-context";
+import { resolveMcpSessionPersistenceKey } from "@/server/mcp-session";
 import { resolveUserByPersonalAccessToken } from "@/server/services/personal-access-tokens";
 
 type McpWebTransportState = Awaited<ReturnType<typeof createMcpWebTransport>>;
@@ -62,22 +63,6 @@ function readMcpSessionId(request: Request, response?: Response) {
     response?.headers.get("Mcp-Session-Id") ||
     undefined
   );
-}
-
-export function resolveMcpSessionPersistenceKey(params: {
-  requestedSessionId?: string;
-  responseSessionId?: string;
-  transportSessionId?: string;
-  hasExistingSession: boolean;
-}) {
-  const { requestedSessionId, responseSessionId, transportSessionId, hasExistingSession } = params;
-  if (responseSessionId) {
-    return responseSessionId;
-  }
-  if (hasExistingSession) {
-    return requestedSessionId || transportSessionId;
-  }
-  return transportSessionId;
 }
 
 export async function handleMcpHttpRequest(request: Request) {
