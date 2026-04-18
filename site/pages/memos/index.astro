@@ -3,8 +3,12 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import MemoCard from "../../components/MemoCard.astro";
 import { PublicMemoComposerIsland } from "../../components/PublicMemoAuthoring";
 import { getSnapshot } from "../../lib/public-site";
+import { isLocalContentEnabled } from "@/config/paths";
+import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 
 const snapshot = await getSnapshot();
+const localSourceEnabled = isLocalContentEnabled();
+const localMemoRootPath = localSourceEnabled ? getServerLocalMemoRootPath() : undefined;
 ---
 <BaseLayout pathname="/memos" title="Memos - Ivan's Blog" description="浏览所有公开 Memos">
   <section class="nature-container px-6 py-8 sm:py-12 lg:py-16">
@@ -16,7 +20,11 @@ const snapshot = await getSnapshot();
       </p>
     </div>
 
-    <PublicMemoComposerIsland client:load />
+    <PublicMemoComposerIsland
+      client:load
+      localSourceEnabled={localSourceEnabled}
+      localMemoRootPath={localMemoRootPath}
+    />
 
     {snapshot.memos.length > 0 ? (
       <div

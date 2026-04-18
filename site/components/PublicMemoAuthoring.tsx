@@ -147,7 +147,13 @@ function PublicMemoList({
   );
 }
 
-export function PublicMemoComposerIsland() {
+export function PublicMemoComposerIsland({
+  localSourceEnabled = true,
+  localMemoRootPath,
+}: {
+  localSourceEnabled?: boolean;
+  localMemoRootPath?: string;
+}) {
   const { isAdmin, isLoading } = useAuth();
   const [memos, setMemos] = useState<PublicMemoRecord[]>([]);
   const [isListLoading, setIsListLoading] = useState(false);
@@ -212,7 +218,11 @@ export function PublicMemoComposerIsland() {
             当前为管理员视角：这里会直接调用 `/api/public/memos/*`，不再走 `/api/trpc/memos.*`。
           </span>
         </div>
-        <QuickMemoEditor onSave={handleSave} />
+        <QuickMemoEditor
+          onSave={handleSave}
+          localSourceEnabled={localSourceEnabled}
+          localMemoRootPath={localMemoRootPath}
+        />
       </div>
 
       {createdMemo ? (
@@ -431,7 +441,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               enableMermaid={true}
               enableCodeFolding={true}
               removeTags={true}
-              articlePath={`/memos/${memo.slug}`}
+              articlePath={memo.filePath || memo.slug}
               contentSource={memo.source === "local" ? "local" : "webdav"}
             />
           </div>
