@@ -95,6 +95,14 @@ async function createCallerForRequest(request: Request) {
   };
 }
 
+function withExtraHeaders(request: Request, extraHeaders: HeadersInit) {
+  const headers = new Headers(request.headers);
+  for (const [key, value] of new Headers(extraHeaders).entries()) {
+    headers.set(key, value);
+  }
+  return new Request(request, { headers });
+}
+
 async function createAdminCallerForRequest(request: Request) {
   const state = await createCallerForRequest(request);
   if (!state.ctx.user) {
@@ -179,6 +187,38 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     }
 
     const { caller, resHeaders } = await createAdminCallerForRequest(request);
+
+    const previewPostMatch = pathname.match(/^\/preview\/posts\/(.+)$/);
+    if (previewPostMatch) {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const slug = decodeURIComponent(previewPostMatch[1]);
+      const previewRequest = withExtraHeaders(request, { "x-admin-preview": "1" });
+      const previewState = await createCallerForRequest(previewRequest);
+      const post = await previewState.caller.posts.get({ slug });
+      return json(
+        {
+          kind: "post",
+          ...post,
+        },
+        { status: 200 },
+        previewState.resHeaders
+      );
+    }
+
+    const previewMemoMatch = pathname.match(/^\/preview\/memos\/(.+)$/);
+    if (previewMemoMatch) {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const slug = decodeURIComponent(previewMemoMatch[1]);
+      const memo = await caller.memos.bySlug({ slug });
+      return json(
+        {
+          kind: "memo",
+          ...memo,
+        },
+        { status: 200 },
+        resHeaders
+      );
+    }
 
     if (pathname === "/dashboard/stats") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);

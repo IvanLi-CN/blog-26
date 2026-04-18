@@ -6,6 +6,7 @@ import { DashboardPage } from "~/pages/dashboard";
 import { EditorPage } from "~/pages/editor";
 import { PatsPage } from "~/pages/pats";
 import { PostsPage } from "~/pages/posts";
+import { MemoPreviewPage, PostPreviewPage } from "~/pages/preview";
 import { ScheduleDetailPage } from "~/pages/schedule-detail";
 import { ScheduleRunDetailPage } from "~/pages/schedule-run-detail";
 import { SchedulesPage } from "~/pages/schedules";
@@ -85,6 +86,16 @@ const patsRoute = createRoute({
   path: "pats",
   component: PatsPage,
 });
+const postPreviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "preview/posts/$slug",
+  component: PostPreviewPage,
+});
+const memoPreviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "preview/memos/$slug",
+  component: MemoPreviewPage,
+});
 
 const dataSyncAliasRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -115,6 +126,8 @@ export const routeTree = rootRoute.addChildren([
   tagsRoute,
   tagIconsRoute,
   patsRoute,
+  postPreviewRoute,
+  memoPreviewRoute,
   dataSyncAliasRoute,
   cacheAliasRoute,
 ]);

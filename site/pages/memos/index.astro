@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import MemoCard from "../../components/MemoCard.astro";
+import { PublicMemoComposerIsland } from "../../components/PublicMemoAuthoring";
 import { getSnapshot } from "../../lib/public-site";
 
 const snapshot = await getSnapshot();
@@ -15,8 +16,14 @@ const snapshot = await getSnapshot();
       </p>
     </div>
 
+    <PublicMemoComposerIsland client:load />
+
     {snapshot.memos.length > 0 ? (
-      <div class="memos-list nature-timeline" data-testid="memos-timeline">
+      <div
+        class="memos-list nature-timeline"
+        data-testid="memos-timeline"
+        data-public-memos-static-list
+      >
         {snapshot.memos.map((memo, index) => (
           <MemoCard
             memo={memo}

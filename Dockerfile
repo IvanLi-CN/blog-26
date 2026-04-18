@@ -58,10 +58,8 @@ ENV BRANCH_URL=${BRANCH_URL}
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TSC_COMPILE_ON_ERROR=1
-# Reuse Next.js build cache across runs
-RUN --mount=type=cache,target=/app/.next/cache \
-    bun run prebuild && \
-    bun --bun next build
+# Production image now builds only the Astro public site and admin SPA.
+RUN bun run build
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
@@ -82,11 +80,6 @@ ENV INTERNAL_NEXT_PORT=25092
 ENV SITE_PORT=25093
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/.next/BUILD_ID ./.next/BUILD_ID
-# Copy all Next.js manifest JSONs (routes, build, images, etc.)
-COPY --from=builder /app/.next/*.json ./.next/
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/bun.lock ./bun.lock
@@ -133,13 +126,7 @@ ENV PORT=25090
 ENV INTERNAL_NEXT_PORT=25092
 ENV SITE_PORT=25093
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-# Copy from build artifacts already present in the build context
 COPY public ./public
-COPY .next/standalone ./
-COPY .next/static ./.next/static
-COPY .next/BUILD_ID ./.next/BUILD_ID
-# Copy all Next.js manifest JSONs (routes, build, images, etc.)
-COPY .next/*.json ./.next/
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./package.json
 COPY bun.lock ./bun.lock
