@@ -97,6 +97,8 @@ COPY --from=builder /app/site ./site
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/site-dist ./site-dist
+COPY --from=builder /app/admin-dist ./admin-dist
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=builder /ms-playwright /ms-playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
@@ -144,6 +146,8 @@ COPY site ./site
 COPY src ./src
 COPY scripts ./scripts
 COPY drizzle ./drizzle
+COPY site-dist ./site-dist
+COPY admin-dist ./admin-dist
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && \
     mkdir -p /app/data /app/site/generated /app/site-dist /app/admin-dist && \
