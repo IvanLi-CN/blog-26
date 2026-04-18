@@ -64,6 +64,22 @@ function readMcpSessionId(request: Request, response?: Response) {
   );
 }
 
+export function resolveMcpSessionPersistenceKey(params: {
+  requestedSessionId?: string;
+  responseSessionId?: string;
+  transportSessionId?: string;
+  hasExistingSession: boolean;
+}) {
+  const { requestedSessionId, responseSessionId, transportSessionId, hasExistingSession } = params;
+  if (responseSessionId) {
+    return responseSessionId;
+  }
+  if (hasExistingSession) {
+    return requestedSessionId || transportSessionId;
+  }
+  return transportSessionId;
+}
+
 export async function handleMcpHttpRequest(request: Request) {
   const authHeader = request.headers.get("authorization");
   let userEmail: string | undefined;
@@ -87,17 +103,27 @@ export async function handleMcpHttpRequest(request: Request) {
   }
 
   return runWithMcpAuth({ isAdmin, userEmail }, async () => {
-    const sessionId = readMcpSessionId(request);
-    const transportState = sessionId
-      ? mcpWebTransportSessions.get(sessionId) || (await createMcpWebTransport())
-      : await createMcpWebTransport();
+    const requestedSessionId = readMcpSessionId(request);
+    const existingTransportState = requestedSessionId
+      ? mcpWebTransportSessions.get(requestedSessionId)
+      : undefined;
+
+    if (request.method === "DELETE" && requestedSessionId && !existingTransportState) {
+      return new Response(null, { status: 204 });
+    }
+
+    const transportState = existingTransportState || (await createMcpWebTransport());
     const { parsedBody, transportRequest } = await normalizeMcpRequest(request);
     const response = await transportState.transport.handleRequest(
       transportRequest,
       parsedBody !== undefined ? { parsedBody } : undefined
     );
-    const resolvedSessionId =
-      readMcpSessionId(request, response) || transportState.transport.sessionId;
+    const resolvedSessionId = resolveMcpSessionPersistenceKey({
+      requestedSessionId,
+      responseSessionId: readMcpSessionId(new Request(request.url), response),
+      transportSessionId: transportState.transport.sessionId,
+      hasExistingSession: !!existingTransportState,
+    });
 
     if (resolvedSessionId) {
       transportState.transport.onclose = () => {

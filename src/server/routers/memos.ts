@@ -458,7 +458,7 @@ const createMemoSchema = z.object({
 
 const updateMemoSchema = z.object({
   id: z.string(),
-  content: z.string().min(1, "内容不能为空"),
+  content: z.string(),
   title: z.string().optional(),
   isPublic: z.boolean().default(true),
   tags: z.array(z.string()).default([]),

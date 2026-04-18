@@ -154,8 +154,6 @@ export function PublicMemoComposerIsland() {
   const [createdMemo, setCreatedMemo] = useState<PublicMemoRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useHideStaticSnapshot("[data-public-memos-static-list]", isAdmin);
-
   const loadLiveMemos = useCallback(async () => {
     setIsListLoading(true);
     setErrorMessage(null);
@@ -239,7 +237,8 @@ export function PublicMemoComposerIsland() {
               管理员实时 Memo 视图
             </p>
             <p className="text-sm text-[color:var(--nature-text-soft)]">
-              这里展示 `/api/public/memos/*` 返回的实时数据；下方静态公开列表已为管理员隐藏。
+              这里展示最近 50 条 `/api/public/memos/*`
+              实时数据，便于管理；完整公开时间线仍保留在下方静态列表中。
             </p>
           </div>
           <button

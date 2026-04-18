@@ -142,7 +142,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         const existing = await caller.memos.bySlug({ slug });
         const result = await caller.memos.update({
           id: existing.id,
-          content: body.content || existing.content,
+          content: typeof body.content === "string" ? body.content : existing.content,
           title: body.title ?? existing.title,
           isPublic: body.isPublic ?? existing.isPublic,
           tags: Array.isArray(body.tags) ? body.tags : (existing.tags ?? []),

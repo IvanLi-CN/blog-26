@@ -330,4 +330,44 @@ describe("HTTP compatibility APIs", () => {
     expect(secondaryPayload.title).toBe("Other Target");
     expect(secondaryPayload.content).toContain("original secondary body");
   });
+
+  it("allows clearing a memo body via /api/public/memos/:slug", async () => {
+    await seedPost({
+      id: "memos/clearable-body.md",
+      filePath: "memos/clearable-body.md",
+      slug: "clearable-body",
+      type: "memo",
+      title: "Clearable Body",
+      body: "body to remove",
+      public: true,
+    });
+
+    const patchResponse = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/memos/clearable-body",
+        {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            content: "",
+            title: "Cleared Memo",
+            isPublic: false,
+            tags: [],
+            attachments: [],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/memos/clearable-body"
+    );
+
+    expect(patchResponse.status).toBe(200);
+    const updated = await readJson(patchResponse);
+    expect(updated.slug).toBe("clearable-body");
+    expect(updated.title).toBe("Cleared Memo");
+    expect(updated.content).toBe("");
+    expect(updated.isPublic).toBe(false);
+  });
 });
