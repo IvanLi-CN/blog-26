@@ -61,7 +61,7 @@ ENV TSC_COMPILE_ON_ERROR=1
 # Build only the admin SPA in-image. The public Astro site is regenerated at
 # runtime from the mounted content/database so production does not serve
 # fixture-baked HTML.
-RUN bun run admin:build
+RUN bun run prebuild && bun run admin:build
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
