@@ -58,13 +58,10 @@ ENV BRANCH_URL=${BRANCH_URL}
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TSC_COMPILE_ON_ERROR=1
-# Docker builder needs a populated content DB before exporting the Astro public snapshot.
-# Keep the build stage itself production-like, but run the disposable fixture seeding chain
-# under development semantics so seed.ts keeps its production guard for real runtime flows.
-RUN NODE_ENV=development DB_PATH=./dev-data/sqlite.db bun run dev-db:reset && \
-    NODE_ENV=development bun run dev-data:generate && \
-    NODE_ENV=development DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local CONTENT_SOURCES=local bun run dev-sync:trigger && \
-    DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run build
+# Build only the admin SPA in-image. The public Astro site is regenerated at
+# runtime from the mounted content/database so production does not serve
+# fixture-baked HTML.
+RUN bun run admin:build
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
@@ -97,7 +94,6 @@ COPY --from=builder /app/site ./site
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/site-dist ./site-dist
 COPY --from=builder /app/admin-dist ./admin-dist
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=builder /ms-playwright /ms-playwright

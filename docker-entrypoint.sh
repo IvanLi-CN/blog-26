@@ -74,24 +74,13 @@ validate_runtime_config() {
 }
 
 validate_prebuilt_assets() {
-  local missing=0
-
-  if [ ! -f "${SITE_DIST_DIR}/index.html" ]; then
-    echo "❌ Missing prebuilt public site asset: ${SITE_DIST_DIR}/index.html"
-    missing=1
-  fi
-
   if [ ! -f "${ADMIN_DIST_DIR}/index.html" ]; then
     echo "❌ Missing prebuilt admin SPA asset: ${ADMIN_DIST_DIR}/index.html"
-    missing=1
-  fi
-
-  if [ "$missing" -ne 0 ]; then
     echo "❌ Prebuilt runtime assets are incomplete. Aborting startup."
     exit 1
   fi
 
-  echo "✅ Prebuilt site/admin assets detected"
+  echo "✅ Prebuilt admin SPA assets detected"
 }
 
 run_as_target_user() {
@@ -140,6 +129,25 @@ if run_as_target_user env \
   echo "✅ Database migrations completed"
 else
   echo "❌ Database migrations failed. Aborting startup."
+  exit 1
+fi
+
+echo "🌿 Building Astro public site from runtime content..."
+if run_as_target_user env \
+  DB_PATH="$DB_PATH" \
+  PORT="$PORT" \
+  INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
+  SITE_PORT="$SITE_PORT" \
+  SITE_DIST_DIR="$SITE_DIST_DIR" \
+  PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
+  ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
+  VITE_CACHE_DIR="$VITE_CACHE_DIR" \
+  NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
+  PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
+  bun run site:build; then
+  echo "✅ Astro public site build completed"
+else
+  echo "❌ Astro public site build failed. Aborting startup."
   exit 1
 fi
 
