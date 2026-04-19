@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import Icon from "@/components/ui/Icon";
 import { resolveImagePath } from "@/lib/image-utils";
 import type { PublicPostRecord } from "@/public-site/snapshot";
+import { toPublicAssetUrl } from "../lib/runtime-urls";
 
 interface Props {
   post: PublicPostRecord;
@@ -122,7 +123,7 @@ async function resolveCardImageSrc(record: PublicPostRecord, contentSource: "loc
     }
   }
 
-  return resolveImagePath(coverCandidate, contentSource, markdownFilePath);
+  return toPublicAssetUrl(resolveImagePath(coverCandidate, contentSource, markdownFilePath));
 }
 
 const imageSrc = await resolveCardImageSrc(post, source);

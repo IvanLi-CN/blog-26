@@ -3,6 +3,7 @@ import Icon from "@/components/ui/Icon";
 import { resolveImagePath } from "@/lib/image-utils";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import { formatAbsoluteDate } from "../lib/format";
+import { toPublicAssetUrl } from "../lib/runtime-urls";
 import TagBadge from "./TagBadge.astro";
 
 interface Props {
@@ -27,11 +28,11 @@ const { item, isLast = true, iconMap = {}, iconSvgMap = {} } = Astro.props;
 const href = item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`;
 const preview = item.excerpt || extractTextSummary(item.content || "", 180);
 const imageSrc = item.image
-  ? resolveImagePath(
+  ? toPublicAssetUrl(resolveImagePath(
       item.image,
       (item.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
       item.filePath || (item.type === "memo" ? `memos/${item.slug}.md` : `blog/${item.slug}.md`)
-    )
+    ))
   : null;
 ---
 <article class="nature-timeline-item" data-is-last={isLast} data-testid="timeline-item">

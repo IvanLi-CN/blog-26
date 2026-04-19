@@ -49,7 +49,7 @@
     "setup": "bash ./scripts/setup.sh",
     "dev": "bun scripts/generate-version.ts && concurrently --names \"WebDAV,LegacyNext,Astro,Admin,Gateway\" --prefix-colors \"cyan,magenta,yellow,blue,green\" \"bun run webdav:dev\" \"bun run dev:next:internal\" \"bun run site:dev\" \"bun run admin:dev\" \"bun run gateway:dev\"",
     "dev:next": "bun run dev:next:internal",
-    "build": "bun run prebuild && bun run site:build && bun run admin:build",
+    "build": "bun run prebuild && bun run site:build && bun run admin:build && bun run backend:dist",
     "prebuild": "bun scripts/generate-version.ts",
     "start": "bun run gateway:start",
     "check": "biome check",
@@ -89,7 +89,7 @@
     "test-server:start": "bun run test-env:reset && concurrently --names \"WebDAV,LegacyNext,Astro,Admin,Gateway\" --prefix-colors \"cyan,magenta,yellow,blue,green\" \"dufs test-data/webdav --port 25091 --allow-all --enable-cors\" \"NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local WEBDAV_URL=http://127.0.0.1:25091 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:25090 PUBLIC_SITE_URL=http://127.0.0.1:25090 INTERNAL_NEXT_PORT=25092 bun run dev:next:internal\" \"DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local WEBDAV_URL=http://127.0.0.1:25091 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:25090 PUBLIC_SITE_URL=http://127.0.0.1:25090 SITE_PORT=25093 bun run site:dev\" \"ADMIN_PORT=25094 bun run admin:dev\" \"NODE_ENV=test ADMIN_EMAIL=admin-test@test.local DB_PATH=./test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./test-data/local WEBDAV_URL=http://127.0.0.1:25091 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:25090 PUBLIC_SITE_URL=http://127.0.0.1:25090 PORT=25090 INTERNAL_NEXT_PORT=25092 SITE_PORT=25093 ADMIN_PORT=25094 bun run gateway:dev\"",
     "dev-data:generate": "bun ./scripts/generate-test-data.ts --dev",
     "dev-data:clean": "bun ./scripts/generate-test-data.ts --dev --clean",
-    "test": "bun test src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*'",
+    "test": "bun test src tests/integration tests/lib tests/server --exclude='tests/e2e/**/*' --exclude='backend-dist/**/*'",
     "test:watch": "bun test --watch",
     "test:precommit": "bun ./scripts/run-precommit-tests.ts",
     "db:migrations:validate": "bun ./scripts/validate-drizzle-journal.ts",
@@ -110,7 +110,11 @@
     "gateway:start": "NODE_ENV=production bun ./scripts/start-gateway.ts",
     "admin:dev": "sh -c \"bunx vite --config apps/admin/vite.config.ts --configLoader runner --host 127.0.0.1 --port ${ADMIN_PORT:-25094}\"",
     "admin:build": "bun run prebuild && bunx vite build --config apps/admin/vite.config.ts --configLoader runner",
-    "admin:preview": "sh -c \"bunx vite preview --config apps/admin/vite.config.ts --configLoader runner --host 127.0.0.1 --port ${ADMIN_PORT:-25094}\""
+    "admin:preview": "sh -c \"bunx vite preview --config apps/admin/vite.config.ts --configLoader runner --host 127.0.0.1 --port ${ADMIN_PORT:-25094}\"",
+    "frontend:fetch-content": "bash ./scripts/fetch-public-content-bundle.sh",
+    "frontend:build": "bun run prebuild && bun run site:build",
+    "backend:dist": "bash ./scripts/prepare-backend-dist.sh",
+    "backend:build": "bun run prebuild && bun run admin:build && bun run backend:dist"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.2.0",

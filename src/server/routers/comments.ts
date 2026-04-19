@@ -12,6 +12,7 @@ import {
   extractIpAddress,
   SESSION_COOKIE_NAME,
 } from "../../lib/session";
+import { createSessionCookieHeader } from "../../lib/session-cookie";
 import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -288,7 +289,10 @@ export const commentsRouter = createTRPCRouter({
         // 设置 session cookie
         ctx.resHeaders.set(
           "Set-Cookie",
-          `${SESSION_COOKIE_NAME}=${session.id}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
+          createSessionCookieHeader(ctx.req, SESSION_COOKIE_NAME, {
+            value: session.id,
+            maxAge: 7 * 24 * 60 * 60,
+          })
         );
       }
 

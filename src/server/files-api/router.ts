@@ -5,19 +5,48 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
+import { extractAuthFromRequest } from "@/lib/auth-utils";
+import {
+  appendPublicCorsHeaders,
+  createPublicCorsPreflightResponse,
+  resolveRequestOrigin,
+} from "@/lib/public-cors";
 import { isWebDAVEnabled } from "@/lib/webdav";
 
 type ContentSource = "webdav" | "local";
 
+const FILES_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PUT", "OPTIONS"] as const;
 const WEBDAV_DISABLED_ERROR = {
   error: "ERR_WEBDAV_DISABLED",
   message: "WebDAV 已禁用：请将内容中的 /api/files/webdav/... 链接迁移为相对路径",
 } as const;
 
-function json(data: unknown, init: ResponseInit = {}) {
+function normalizeOrigin(raw: string | null | undefined) {
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return null;
+  }
+}
+
+function isCrossOriginWriteRequest(request: Request) {
+  const callerOrigin = normalizeOrigin(request.headers.get("origin"));
+  const requestOrigin = resolveRequestOrigin(request);
+  return Boolean(callerOrigin && requestOrigin && callerOrigin !== requestOrigin);
+}
+
+function json(request: Request, data: unknown, init: ResponseInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json; charset=utf-8");
+  appendPublicCorsHeaders(headers, request, FILES_API_ALLOWED_METHODS);
   return new Response(JSON.stringify(data), { ...init, headers });
+}
+
+function withCors(headersInit: HeadersInit | undefined, request: Request) {
+  const headers = new Headers(headersInit);
+  appendPublicCorsHeaders(headers, request, FILES_API_ALLOWED_METHODS);
+  return headers;
 }
 
 function isValidContentSource(source: string): source is ContentSource {
@@ -159,11 +188,11 @@ async function uploadLocalFile(filePath: string, buffer: Buffer): Promise<void> 
 
 function validateFileRequest(source: string, filePath: string) {
   if (!isValidContentSource(source)) {
-    return json({ error: "不支持的内容源" }, { status: 400 });
+    return { error: "不支持的内容源", status: 400 } as const;
   }
 
   if (filePath.includes("..") || filePath.includes("~")) {
-    return json({ error: "不安全的文件路径" }, { status: 400 });
+    return { error: "不安全的文件路径", status: 400 } as const;
   }
 
   if (source === "webdav" && !isWebDAVEnabled()) {
@@ -177,12 +206,16 @@ export async function handleFilesApiRequest(
   request: Request,
   params: { source: string; path: string[] }
 ) {
+  if (request.method === "OPTIONS") {
+    return createPublicCorsPreflightResponse(request, FILES_API_ALLOWED_METHODS);
+  }
+
   const { source, path: pathSegments } = params;
   const filePath = pathSegments?.join("/") || "";
   const validation = validateFileRequest(source, filePath);
 
-  if (validation instanceof Response) {
-    return validation;
+  if (validation && validation !== "webdav-disabled") {
+    return json(request, { error: validation.error }, { status: validation.status });
   }
 
   try {
@@ -192,29 +225,45 @@ export async function handleFilesApiRequest(
           const png = await getWebdavDisabledPng();
           return new Response(request.method === "HEAD" ? null : png, {
             status: 200,
-            headers: {
-              "Content-Type": "image/png",
-              "Cache-Control": "no-store",
-            },
+            headers: withCors(
+              {
+                "Content-Type": "image/png",
+                "Cache-Control": "no-store",
+              },
+              request
+            ),
           });
         }
-        return json(WEBDAV_DISABLED_ERROR, { status: 410 });
+        return json(request, WEBDAV_DISABLED_ERROR, { status: 410 });
       }
 
       const fileBuffer =
         source === "webdav" ? await readWebDAVFile(filePath) : await readLocalFile(filePath);
       const contentType = getContentType(filePath);
       return new Response(request.method === "HEAD" ? null : (fileBuffer as BodyInit), {
-        headers: {
-          "Content-Type": contentType,
-          "Cache-Control": "public, max-age=31536000",
-        },
+        headers: withCors(
+          {
+            "Content-Type": contentType,
+            "Cache-Control": "public, max-age=31536000",
+          },
+          request
+        ),
       });
     }
 
     if (request.method === "POST" || request.method === "PUT") {
       if (validation === "webdav-disabled") {
-        return json(WEBDAV_DISABLED_ERROR, { status: 410 });
+        return json(request, WEBDAV_DISABLED_ERROR, { status: 410 });
+      }
+
+      if (isCrossOriginWriteRequest(request)) {
+        const auth = await extractAuthFromRequest(request);
+        if (!auth.user) {
+          return json(request, { error: "Authentication required" }, { status: 401 });
+        }
+        if (!auth.isAdmin) {
+          return json(request, { error: "Admin access required" }, { status: 403 });
+        }
       }
 
       const contentType = request.headers.get("content-type") || "";
@@ -224,7 +273,7 @@ export async function handleFilesApiRequest(
         const formData = await request.formData();
         const file = formData.get("file");
         if (!(file instanceof File)) {
-          return json({ error: "表单中未找到文件" }, { status: 400 });
+          return json(request, { error: "表单中未找到文件" }, { status: 400 });
         }
         buffer = await file.arrayBuffer();
       } else {
@@ -233,7 +282,7 @@ export async function handleFilesApiRequest(
 
       const fileBuffer = Buffer.from(buffer);
       if (fileBuffer.length > 10 * 1024 * 1024) {
-        return json({ error: "文件太大。最大支持 10MB" }, { status: 400 });
+        return json(request, { error: "文件太大。最大支持 10MB" }, { status: 400 });
       }
 
       const finalContentType = contentType.includes("multipart/form-data")
@@ -246,21 +295,26 @@ export async function handleFilesApiRequest(
         await uploadLocalFile(filePath, fileBuffer);
       }
 
-      return json({
-        success: true,
-        path: filePath,
-        url: `/api/files/${source}/${filePath}`,
-      });
+      return json(
+        request,
+        {
+          success: true,
+          path: filePath,
+          url: `/api/files/${source}/${filePath}`,
+        },
+        { status: 200 }
+      );
     }
 
-    return json({ error: `Method ${request.method} not allowed` }, { status: 405 });
+    return json(request, { error: `Method ${request.method} not allowed` }, { status: 405 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("404")) {
-      return json({ error: "文件不存在" }, { status: 404 });
+      return json(request, { error: "文件不存在" }, { status: 404 });
     }
     console.error("❌ [Files API] 请求失败:", error);
     return json(
+      request,
       {
         error:
           request.method === "GET" || request.method === "HEAD" ? "读取文件失败" : "文件上传失败",

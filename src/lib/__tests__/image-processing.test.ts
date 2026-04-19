@@ -17,10 +17,14 @@ mock.module("nanoid", () => ({
 describe("processInlineImages", () => {
   beforeEach(() => {
     mockFetch.mockClear();
+    delete process.env.PUBLIC_API_BASE_URL;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
   });
 
   afterEach(() => {
     mockFetch.mockClear();
+    delete process.env.PUBLIC_API_BASE_URL;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
   });
 
   const defaultOptions: ProcessInlineImagesOptions = {
@@ -81,6 +85,22 @@ describe("processInlineImages", () => {
       });
 
       expect(relativeResult.content).toContain("![test](./assets/test-article-test1234.png)");
+    });
+
+    it("应该将上传请求重写到配置的公开后端域名", async () => {
+      process.env.PUBLIC_API_BASE_URL = "https://api.example.test/";
+      const content =
+        "![test](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==)";
+
+      await processInlineImages(content, defaultOptions);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0]?.[0]).toBe(
+        "https://api.example.test/api/files/webdav/blog/assets/test-article-test1234.png"
+      );
+      expect(mockFetch.mock.calls[0]?.[1]).toMatchObject({
+        credentials: "include",
+      });
     });
   });
 

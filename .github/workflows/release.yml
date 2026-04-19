@@ -17,6 +17,8 @@ permissions:
   packages: write
   issues: read
   pull-requests: read
+  pages: write
+  id-token: write
 
 env:
   REGISTRY: ghcr.io
@@ -49,9 +51,15 @@ jobs:
       pr_url: ${{ steps.meta.outputs.pr_url }}
       is_latest_branch_head: ${{ steps.meta.outputs.is_latest_branch_head }}
       reason: ${{ steps.meta.outputs.reason }}
-      release_tag: ${{ steps.meta.outputs.release_tag }}
-      app_version: ${{ steps.meta.outputs.app_version }}
-      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+      frontend_release: ${{ steps.meta.outputs.frontend_release }}
+      backend_release: ${{ steps.meta.outputs.backend_release }}
+      components: ${{ steps.meta.outputs.components }}
+      frontend_release_tag: ${{ steps.meta.outputs.frontend_release_tag }}
+      frontend_app_version: ${{ steps.meta.outputs.frontend_app_version }}
+      frontend_is_prerelease: ${{ steps.meta.outputs.frontend_is_prerelease }}
+      backend_release_tag: ${{ steps.meta.outputs.backend_release_tag }}
+      backend_app_version: ${{ steps.meta.outputs.backend_app_version }}
+      backend_is_prerelease: ${{ steps.meta.outputs.backend_is_prerelease }}
       head_sha: ${{ steps.meta.outputs.head_sha }}
       head_branch: ${{ steps.meta.outputs.head_branch }}
     steps:
@@ -84,42 +92,86 @@ jobs:
           TARGET_BRANCH: ${{ env.RELEASE_HEAD_BRANCH }}
         run: bash ./.github/scripts/release-intent.sh
 
-      - name: Compute release version/tag
-        if: ${{ steps.intent.outputs.should_release == 'true' }}
-        id: version
+      - name: Compute frontend release version/tag
+        if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' }}
+        id: frontend-version
         shell: bash
         env:
+          COMPONENT: frontend
           BUMP_LEVEL: ${{ steps.intent.outputs.bump_level }}
           CHANNEL: ${{ steps.intent.outputs.channel }}
           COMMIT_SHA: ${{ env.RELEASE_HEAD_SHA }}
         run: bash ./.github/scripts/compute-version.sh
 
-      - name: Export metadata
-        id: meta
+      - name: Compute backend release version/tag
+        if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' }}
+        id: backend-version
         shell: bash
+        env:
+          COMPONENT: backend
+          BUMP_LEVEL: ${{ steps.intent.outputs.bump_level }}
+          CHANNEL: ${{ steps.intent.outputs.channel }}
+          COMMIT_SHA: ${{ env.RELEASE_HEAD_SHA }}
+        run: bash ./.github/scripts/compute-version.sh
+
+      - name: Validate component major alignment
+        if: ${{ steps.intent.outputs.should_release == 'true' }}
+        shell: bash
+        env:
+          FRONTEND_RELEASE: ${{ steps.intent.outputs.frontend_release }}
+          BACKEND_RELEASE: ${{ steps.intent.outputs.backend_release }}
+          FRONTEND_VERSION: ${{ steps.frontend-version.outputs.app_version }}
+          BACKEND_VERSION: ${{ steps.backend-version.outputs.app_version }}
         run: |
           set -euo pipefail
 
-          echo "head_sha=${{ env.RELEASE_HEAD_SHA }}" >> "$GITHUB_OUTPUT"
-          echo "head_branch=${{ env.RELEASE_HEAD_BRANCH }}" >> "$GITHUB_OUTPUT"
+          latest_stable_major() {
+            local component="$1"
+            local tag
+            tag="$({ git tag -l "${component}-v*" | grep -E "^${component}-v[0-9]+\.[0-9]+\.[0-9]+$" || true; } | sort -V | tail -n 1)"
+            if [[ -n "${tag}" ]]; then
+              echo "${tag#${component}-v}" | cut -d. -f1
+              return
+            fi
+            tag="$({ git tag -l "v*" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sort -V | tail -n 1)"
+            if [[ -n "${tag}" ]]; then
+              echo "${tag#v}" | cut -d. -f1
+              return
+            fi
+            node -e "const p=require('./package.json'); process.stdout.write(String((p.version||'0.0.0').split('.')[0]||'0'))"
+          }
 
-          echo "should_release=${{ steps.intent.outputs.should_release }}" >> "$GITHUB_OUTPUT"
-          echo "bump_level=${{ steps.intent.outputs.bump_level }}" >> "$GITHUB_OUTPUT"
-          echo "channel=${{ steps.intent.outputs.channel }}" >> "$GITHUB_OUTPUT"
-          echo "intent_type=${{ steps.intent.outputs.intent_type }}" >> "$GITHUB_OUTPUT"
-          echo "pr_number=${{ steps.intent.outputs.pr_number }}" >> "$GITHUB_OUTPUT"
-          echo "pr_url=${{ steps.intent.outputs.pr_url }}" >> "$GITHUB_OUTPUT"
-          echo "is_latest_branch_head=${{ steps.intent.outputs.is_latest_branch_head }}" >> "$GITHUB_OUTPUT"
-          echo "reason=${{ steps.intent.outputs.reason }}" >> "$GITHUB_OUTPUT"
+          extract_major() {
+            local version="$1"
+            echo "${version%%-*}" | cut -d. -f1
+          }
 
-          if [[ "${{ steps.intent.outputs.should_release }}" == "true" ]]; then
-            echo "release_tag=${{ steps.version.outputs.release_tag }}" >> "$GITHUB_OUTPUT"
-            echo "app_version=${{ steps.version.outputs.app_version }}" >> "$GITHUB_OUTPUT"
-            echo "is_prerelease=${{ steps.version.outputs.is_prerelease }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "release_tag=" >> "$GITHUB_OUTPUT"
-            echo "app_version=" >> "$GITHUB_OUTPUT"
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          if [[ "${FRONTEND_RELEASE}" == "true" && "${BACKEND_RELEASE}" == "true" ]]; then
+            frontend_major="$(extract_major "${FRONTEND_VERSION}")"
+            backend_major="$(extract_major "${BACKEND_VERSION}")"
+            if [[ "${frontend_major}" != "${backend_major}" ]]; then
+              echo "frontend major (${frontend_major}) does not match backend major (${backend_major})" >&2
+              exit 1
+            fi
+            exit 0
+          fi
+
+          if [[ "${FRONTEND_RELEASE}" == "true" ]]; then
+            frontend_major="$(extract_major "${FRONTEND_VERSION}")"
+            backend_major="$(latest_stable_major backend)"
+            if [[ "${frontend_major}" != "${backend_major}" ]]; then
+              echo "frontend major (${frontend_major}) does not match latest backend major (${backend_major})" >&2
+              exit 1
+            fi
+          fi
+
+          if [[ "${BACKEND_RELEASE}" == "true" ]]; then
+            backend_major="$(extract_major "${BACKEND_VERSION}")"
+            frontend_major="$(latest_stable_major frontend)"
+            if [[ "${backend_major}" != "${frontend_major}" ]]; then
+              echo "backend major (${backend_major}) does not match latest frontend major (${frontend_major})" >&2
+              exit 1
+            fi
           fi
 
       - name: Configure Git user
@@ -128,19 +180,56 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Create and push tag (if missing)
-        if: ${{ steps.intent.outputs.should_release == 'true' }}
+      - name: Create and push frontend tag (if missing)
+        if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
-          tag="${{ steps.version.outputs.release_tag }}"
+          tag="${{ steps.frontend-version.outputs.release_tag }}"
           if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
             echo "Tag ${tag} already exists. Skip creating."
             exit 0
           fi
-
           git tag -a "${tag}" -m "${tag}"
           git push origin "${tag}"
+
+      - name: Create and push backend tag (if missing)
+        if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.backend-version.outputs.release_tag }}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists. Skip creating."
+            exit 0
+          fi
+          git tag -a "${tag}" -m "${tag}"
+          git push origin "${tag}"
+
+      - name: Export metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "head_sha=${{ env.RELEASE_HEAD_SHA }}" >> "$GITHUB_OUTPUT"
+          echo "head_branch=${{ env.RELEASE_HEAD_BRANCH }}" >> "$GITHUB_OUTPUT"
+          echo "should_release=${{ steps.intent.outputs.should_release }}" >> "$GITHUB_OUTPUT"
+          echo "bump_level=${{ steps.intent.outputs.bump_level }}" >> "$GITHUB_OUTPUT"
+          echo "channel=${{ steps.intent.outputs.channel }}" >> "$GITHUB_OUTPUT"
+          echo "intent_type=${{ steps.intent.outputs.intent_type }}" >> "$GITHUB_OUTPUT"
+          echo "frontend_release=${{ steps.intent.outputs.frontend_release }}" >> "$GITHUB_OUTPUT"
+          echo "backend_release=${{ steps.intent.outputs.backend_release }}" >> "$GITHUB_OUTPUT"
+          echo "components=${{ steps.intent.outputs.components }}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${{ steps.intent.outputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          echo "pr_url=${{ steps.intent.outputs.pr_url }}" >> "$GITHUB_OUTPUT"
+          echo "is_latest_branch_head=${{ steps.intent.outputs.is_latest_branch_head }}" >> "$GITHUB_OUTPUT"
+          echo "reason=${{ steps.intent.outputs.reason }}" >> "$GITHUB_OUTPUT"
+          echo "frontend_release_tag=${{ steps.frontend-version.outputs.release_tag || '' }}" >> "$GITHUB_OUTPUT"
+          echo "frontend_app_version=${{ steps.frontend-version.outputs.app_version || '' }}" >> "$GITHUB_OUTPUT"
+          echo "frontend_is_prerelease=${{ steps.frontend-version.outputs.is_prerelease || 'false' }}" >> "$GITHUB_OUTPUT"
+          echo "backend_release_tag=${{ steps.backend-version.outputs.release_tag || '' }}" >> "$GITHUB_OUTPUT"
+          echo "backend_app_version=${{ steps.backend-version.outputs.app_version || '' }}" >> "$GITHUB_OUTPUT"
+          echo "backend_is_prerelease=${{ steps.backend-version.outputs.is_prerelease || 'false' }}" >> "$GITHUB_OUTPUT"
 
       - name: Write summary
         if: always()
@@ -152,23 +241,199 @@ jobs:
             echo "- pr_number: \`${{ steps.intent.outputs.pr_number || 'n/a' }}\`"
             echo "- intent_type: \`${{ steps.intent.outputs.intent_type || 'n/a' }}\`"
             echo "- channel: \`${{ steps.intent.outputs.channel || 'n/a' }}\`"
-            echo "- is_latest_branch_head: \`${{ steps.intent.outputs.is_latest_branch_head || 'false' }}\`"
+            echo "- components: \`${{ steps.intent.outputs.components || 'n/a' }}\`"
             echo "- should_release: \`${{ steps.intent.outputs.should_release }}\`"
+            echo "- frontend_release_tag: \`${{ steps.frontend-version.outputs.release_tag || 'n/a' }}\`"
+            echo "- backend_release_tag: \`${{ steps.backend-version.outputs.release_tag || 'n/a' }}\`"
             echo "- reason: \`${{ steps.intent.outputs.reason }}\`"
-            echo "- release_tag: \`${{ steps.version.outputs.release_tag || 'n/a' }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-  publish:
-    name: Publish release artifacts
+  publish_frontend:
+    name: Publish frontend release + Pages artifact
     runs-on: ubuntu-latest
     needs: [prepare]
-    if: ${{ needs.prepare.outputs.should_release == 'true' }}
+    if: ${{ needs.prepare.outputs.should_release == 'true' && needs.prepare.outputs.frontend_release == 'true' }}
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout workflow head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.head_sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.20
+
+      - name: Cache Bun & deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Fetch content bundle
+        env:
+          PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
+        run: bash ./scripts/fetch-public-content-bundle.sh
+
+      - name: Resolve frontend API base URL
+        shell: bash
+        env:
+          PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          api_base="${PUBLIC_API_BASE_URL:-}"
+          if [[ -z "${api_base}" ]]; then
+            echo "PUBLIC_API_BASE_URL is required for frontend releases" >&2
+            exit 1
+          fi
+          echo "PUBLIC_API_BASE_URL=${api_base}" >> "$GITHUB_ENV"
+
+      - name: Build frontend static site
+        env:
+          PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
+          NEXT_PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+        run: bun run frontend:build
+
+      - name: Package frontend release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.prepare.outputs.frontend_app_version }}"
+          mkdir -p release-assets/frontend
+          tar -C site-dist -czf "release-assets/frontend/frontend-site-dist-${version}.tar.gz" .
+          sha256sum "release-assets/frontend/frontend-site-dist-${version}.tar.gz" > "release-assets/frontend/frontend-sha256-${version}.txt"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site-dist
+
+      - name: Create or update frontend GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.prepare.outputs.frontend_release_tag }}
+          name: ${{ needs.prepare.outputs.frontend_release_tag }}
+          generateReleaseNotes: true
+          allowUpdates: true
+          omitBodyDuringUpdate: true
+          prerelease: ${{ needs.prepare.outputs.frontend_is_prerelease }}
+          artifacts: |
+            release-assets/frontend/frontend-site-dist-${{ needs.prepare.outputs.frontend_app_version }}.tar.gz
+            release-assets/frontend/frontend-sha256-${{ needs.prepare.outputs.frontend_app_version }}.txt
+
+  deploy_frontend_pages:
+    name: Deploy frontend to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [prepare, publish_frontend]
+    if: ${{ needs.publish_frontend.result == 'success' && needs.prepare.outputs.is_latest_branch_head == 'true' }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Re-check branch head before deploying Pages
+        id: latest-head
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = "${{ needs.prepare.outputs.head_branch }}";
+            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${branch}`,
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`latest-head check: branch=${branch} expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+
+      - name: Configure GitHub Pages
+        if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
+        uses: actions/deploy-pages@v4
+
+  publish_backend:
+    name: Publish backend release artifacts
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    if: ${{ needs.prepare.outputs.should_release == 'true' && needs.prepare.outputs.backend_release == 'true' }}
+    permissions:
+      contents: write
+      packages: write
     timeout-minutes: 60
     steps:
       - name: Checkout workflow head
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare.outputs.head_sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.20
+
+      - name: Cache Bun & deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build backend runtime + admin artifacts
+        run: bun run backend:build
+
+      - name: Package backend release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.prepare.outputs.backend_app_version }}"
+          mkdir -p release-assets/backend
+          tar -C backend-dist -czf "release-assets/backend/backend-runtime-dist-${version}.tar.gz" .
+          tar -C admin-dist -czf "release-assets/backend/backend-admin-dist-${version}.tar.gz" .
+          sha256sum \
+            "release-assets/backend/backend-runtime-dist-${version}.tar.gz" \
+            "release-assets/backend/backend-admin-dist-${version}.tar.gz" \
+            > "release-assets/backend/backend-sha256-${version}.txt"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -208,7 +473,7 @@ jobs:
         run: |
           set -euo pipefail
           image="${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}"
-          release_tag="${{ needs.prepare.outputs.release_tag }}"
+          release_tag="${{ needs.prepare.outputs.backend_release_tag }}"
           channel="${{ needs.prepare.outputs.channel }}"
           is_latest_branch_head="${{ needs.prepare.outputs.is_latest_branch_head }}"
           is_current_head="${{ steps.latest-head.outputs.is_current_head }}"
@@ -218,7 +483,7 @@ jobs:
             echo "tags<<EOF"
             echo "${image}:${release_tag}"
             if [[ "${channel}" == "stable" && "${is_latest_branch_head}" == "true" && "${is_current_head}" == "true" ]]; then
-              echo "${image}:latest"
+              echo "${image}:backend-latest"
             fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
@@ -250,7 +515,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and push backend Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -260,10 +525,10 @@ jobs:
           push: true
           tags: ${{ steps.docker-tags.outputs.tags }}
           labels: |
-            org.opencontainers.image.version=${{ needs.prepare.outputs.app_version }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.backend_app_version }}
             org.opencontainers.image.revision=${{ needs.prepare.outputs.head_sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.ref.name=${{ needs.prepare.outputs.release_tag }}
+            org.opencontainers.image.ref.name=${{ needs.prepare.outputs.backend_release_tag }}
           build-args: |
             BUILD_DATE=${{ steps.git-info.outputs.build_date }}
             COMMIT_HASH=${{ steps.git-info.outputs.commit_hash }}
@@ -273,14 +538,20 @@ jobs:
             BRANCH_URL=${{ steps.git-info.outputs.branch_url }}
             WITH_PLAYWRIGHT=false
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Create or update GitHub Release
+      - name: Create or update backend GitHub Release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ needs.prepare.outputs.release_tag }}
-          name: ${{ needs.prepare.outputs.release_tag }}
+          tag: ${{ needs.prepare.outputs.backend_release_tag }}
+          name: ${{ needs.prepare.outputs.backend_release_tag }}
           generateReleaseNotes: true
           allowUpdates: true
           omitBodyDuringUpdate: true
-          prerelease: ${{ needs.prepare.outputs.is_prerelease }}
+          prerelease: ${{ needs.prepare.outputs.backend_is_prerelease }}
+          artifacts: |
+            release-assets/backend/backend-runtime-dist-${{ needs.prepare.outputs.backend_app_version }}.tar.gz
+            release-assets/backend/backend-admin-dist-${{ needs.prepare.outputs.backend_app_version }}.tar.gz
+            release-assets/backend/backend-sha256-${{ needs.prepare.outputs.backend_app_version }}.txt

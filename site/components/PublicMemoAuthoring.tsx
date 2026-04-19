@@ -5,7 +5,7 @@ import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
-import { useAuth } from "@/hooks/useAuth";
+import { toPublicApiUrl } from "../lib/runtime-urls";
 
 type PublicMemoRecord = {
   id: string;
@@ -24,9 +24,17 @@ type PublicMemoListResponse = {
   memos?: PublicMemoRecord[];
 };
 
+type PublicAuthUser = {
+  id: string;
+  nickname: string;
+  email: string;
+  avatarUrl: string;
+  isAdmin: boolean;
+};
+
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
-    credentials: "same-origin",
+    credentials: "include",
     ...init,
   });
   const payload = await response.json().catch(() => null);
@@ -45,8 +53,37 @@ async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promis
   return payload as T;
 }
 
+function usePublicAuth() {
+  const [user, setUser] = useState<PublicAuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refetch = useCallback(() => {
+    setIsLoading(true);
+    void readJson<PublicAuthUser | null>(toPublicApiUrl("/api/public/auth/me"))
+      .then((nextUser) => {
+        setUser(nextUser);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return {
+    isAdmin: user?.isAdmin || false,
+    isLoading,
+    refetch,
+  };
+}
+
 function buildPreviewHref(slug: string) {
-  return `/admin/preview/memos/${encodeURIComponent(slug)}`;
+  return toPublicApiUrl(`/admin/preview/memos/${encodeURIComponent(slug)}`);
 }
 
 function useHideStaticSnapshot(selector: string, active: boolean) {
@@ -154,7 +191,7 @@ export function PublicMemoComposerIsland({
   localSourceEnabled?: boolean;
   localMemoRootPath?: string;
 }) {
-  const { isAdmin, isLoading } = useAuth();
+  const { isAdmin, isLoading } = usePublicAuth();
   const [memos, setMemos] = useState<PublicMemoRecord[]>([]);
   const [isListLoading, setIsListLoading] = useState(false);
   const [createdMemo, setCreatedMemo] = useState<PublicMemoRecord | null>(null);
@@ -165,7 +202,7 @@ export function PublicMemoComposerIsland({
     setErrorMessage(null);
     try {
       const result = await readJson<PublicMemoListResponse>(
-        "/api/public/memos?publicOnly=false&limit=50"
+        toPublicApiUrl("/api/public/memos?publicOnly=false&limit=50")
       );
       setMemos(normalizeMemoList(result));
     } catch (error) {
@@ -185,7 +222,7 @@ export function PublicMemoComposerIsland({
   const handleSave = useCallback(async (data: QuickMemoData) => {
     setErrorMessage(null);
     try {
-      const result = await readJson<PublicMemoRecord>("/api/public/memos", {
+      const result = await readJson<PublicMemoRecord>(toPublicApiUrl("/api/public/memos"), {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -276,7 +313,7 @@ export function PublicMemoComposerIsland({
 }
 
 export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
-  const { isAdmin, isLoading } = useAuth();
+  const { isAdmin, isLoading } = usePublicAuth();
   const [memo, setMemo] = useState<PublicMemoRecord | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -290,7 +327,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
     setErrorMessage(null);
     try {
       const result = await readJson<PublicMemoRecord>(
-        `/api/public/memos/${encodeURIComponent(slug)}`
+        toPublicApiUrl(`/api/public/memos/${encodeURIComponent(slug)}`)
       );
       setMemo(result);
     } catch (error) {
@@ -312,7 +349,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
       setErrorMessage(null);
       try {
         const updated = await readJson<PublicMemoRecord>(
-          `/api/public/memos/${encodeURIComponent(slug)}`,
+          toPublicApiUrl(`/api/public/memos/${encodeURIComponent(slug)}`),
           {
             method: "PATCH",
             headers: {
@@ -344,9 +381,12 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
     setIsDeleting(true);
     setErrorMessage(null);
     try {
-      await readJson<{ success: boolean }>(`/api/public/memos/${encodeURIComponent(slug)}`, {
-        method: "DELETE",
-      });
+      await readJson<{ success: boolean }>(
+        toPublicApiUrl(`/api/public/memos/${encodeURIComponent(slug)}`),
+        {
+          method: "DELETE",
+        }
+      );
       window.location.href = "/memos";
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));

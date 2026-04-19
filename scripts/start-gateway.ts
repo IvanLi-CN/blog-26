@@ -19,6 +19,8 @@ const hostname = process.env.HOSTNAME || "0.0.0.0";
 const internalHostname = process.env.INTERNAL_HOSTNAME || "127.0.0.1";
 const siteDistDir = resolve(process.cwd(), process.env.SITE_DIST_DIR || "site-dist");
 const adminDistDir = resolve(process.cwd(), process.env.ADMIN_DIST_DIR || "admin-dist");
+const servePublicSite =
+  mode === "dev" ? true : (process.env.SERVE_PUBLIC_SITE || "false").trim() === "true";
 const localPreviewSsoEmail = process.env.LOCAL_PREVIEW_SSO_EMAIL?.trim();
 
 function log(message: string, extra?: Record<string, unknown>) {
@@ -316,6 +318,10 @@ async function proxyRequest(request: Request, target: URL) {
 }
 
 async function checkSiteHealth() {
+  if (!servePublicSite) {
+    return true;
+  }
+
   if (mode === "production") {
     return existsSync(resolve(siteDistDir, "index.html"));
   }
@@ -467,9 +473,13 @@ const server = Bun.serve({
           mode,
           gateway: { status: "ok", port: publicPort },
           site: {
-            status: siteHealthy ? "ok" : "down",
-            mode: mode === "production" ? "static" : "proxy",
-            target: mode === "production" ? siteDistDir : `http://${internalHostname}:${sitePort}`,
+            status: servePublicSite ? (siteHealthy ? "ok" : "down") : "external",
+            mode: servePublicSite ? (mode === "production" ? "static" : "proxy") : "external",
+            target: servePublicSite
+              ? mode === "production"
+                ? siteDistDir
+                : `http://${internalHostname}:${sitePort}`
+              : null,
           },
           legacyNext: {
             status: mode === "production" ? "not-applicable" : nextHealthy ? "ok" : "down",
@@ -639,6 +649,10 @@ const server = Bun.serve({
     if (mode === "dev") {
       const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${sitePort}`);
       return proxyRequest(request, target);
+    }
+
+    if (!servePublicSite) {
+      return new Response("Not Found", { status: 404 });
     }
 
     const staticFile = await resolveStaticAsset(pathname);

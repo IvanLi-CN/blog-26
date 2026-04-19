@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: app-image-prebuilt
+      target: app-image-built
       args:
         BUILD_DATE: ${BUILD_DATE:-$(date +%Y%m%d)}
         COMMIT_HASH: ${COMMIT_HASH:-dev}

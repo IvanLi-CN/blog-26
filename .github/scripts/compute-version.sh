@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+component="${COMPONENT:-}"
 bump_level="${BUMP_LEVEL:-}"
 channel="${CHANNEL:-}"
 commit_sha="${COMMIT_SHA:-${WORKFLOW_RUN_SHA:-${GITHUB_SHA:-}}}"
+
+if [[ -z "${component}" ]]; then
+  echo "compute-version: missing COMPONENT (frontend|backend)" >&2
+  exit 2
+fi
+
+case "${component}" in
+  frontend|backend) ;;
+  *)
+    echo "compute-version: invalid COMPONENT=${component}" >&2
+    exit 2
+    ;;
+esac
 
 if [[ -z "${bump_level}" ]]; then
   echo "compute-version: missing BUMP_LEVEL (major|minor|patch)" >&2
@@ -42,9 +56,11 @@ if [[ ${#sha7} -ne 7 ]]; then
   exit 2
 fi
 
-if ! git fetch --tags --force >/dev/null 2>&1; then
-  echo "compute-version: failed to fetch tags from remote" >&2
-  exit 3
+if [[ "${SKIP_FETCH_TAGS:-false}" != "true" ]]; then
+  if ! git fetch --tags --force >/dev/null 2>&1; then
+    echo "compute-version: failed to fetch tags from remote" >&2
+    exit 3
+  fi
 fi
 
 write_output() {
@@ -63,69 +79,58 @@ write_env() {
   fi
 }
 
+stable_pattern="^${component}-v[0-9]+\.[0-9]+\.[0-9]+$"
+rc_pattern="^${component}-v[0-9]+\.[0-9]+\.[0-9]+-rc\.${sha7}$"
+
 head_tags="$(git tag --points-at "${commit_sha}" || true)"
 if [[ "${channel}" == "stable" ]]; then
-  existing_stable_tag="$(
-    echo "${head_tags}" \
-      | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-      | sort -V \
-      | tail -n 1 \
-      || true
-  )"
-  if [[ -n "${existing_stable_tag}" ]]; then
-    release_tag="${existing_stable_tag}"
-    app_version="${release_tag#v}"
-    is_prerelease="false"
-    write_output "release_tag" "${release_tag}"
-    write_output "app_version" "${app_version}"
-    write_output "is_prerelease" "${is_prerelease}"
-    write_env "RELEASE_TAG" "${release_tag}"
-    write_env "APP_EFFECTIVE_VERSION" "${app_version}"
-    write_env "IS_PRERELEASE" "${is_prerelease}"
-    echo "compute-version: reusing existing stable tag ${release_tag}"
-    exit 0
-  fi
+  existing_tag="$({ echo "${head_tags}" | grep -E "${stable_pattern}" || true; } | sort -V | tail -n 1)"
 else
-  existing_rc_tag="$(
-    echo "${head_tags}" \
-      | grep -E "^v[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.${sha7}$" \
-      | sort -V \
-      | tail -n 1 \
-      || true
-  )"
-  if [[ -n "${existing_rc_tag}" ]]; then
-    release_tag="${existing_rc_tag}"
-    app_version="${release_tag#v}"
-    is_prerelease="true"
-    write_output "release_tag" "${release_tag}"
-    write_output "app_version" "${app_version}"
-    write_output "is_prerelease" "${is_prerelease}"
-    write_env "RELEASE_TAG" "${release_tag}"
-    write_env "APP_EFFECTIVE_VERSION" "${app_version}"
-    write_env "IS_PRERELEASE" "${is_prerelease}"
-    echo "compute-version: reusing existing rc tag ${release_tag}"
-    exit 0
-  fi
+  existing_tag="$({ echo "${head_tags}" | grep -E "${rc_pattern}" || true; } | sort -V | tail -n 1)"
 fi
 
-max_stable_tag="$(
-  git tag -l \
-    | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
-    | sed -E 's/^v//' \
-    | sort -Vu \
-    | tail -n 1 \
-    || true
-)"
+if [[ -n "${existing_tag}" ]]; then
+  release_tag="${existing_tag}"
+  app_version="${release_tag#${component}-v}"
+  release_major="$(echo "${app_version}" | cut -d. -f1)"
+  is_prerelease="$([[ "${channel}" == "rc" ]] && echo true || echo false)"
+  write_output "release_tag" "${release_tag}"
+  write_output "app_version" "${app_version}"
+  write_output "is_prerelease" "${is_prerelease}"
+  write_output "release_major" "${release_major}"
+  write_env "RELEASE_TAG" "${release_tag}"
+  write_env "APP_EFFECTIVE_VERSION" "${app_version}"
+  write_env "IS_PRERELEASE" "${is_prerelease}"
+  write_env "RELEASE_MAJOR" "${release_major}"
+  echo "compute-version: reusing existing ${component} tag ${release_tag}"
+  exit 0
+fi
 
-package_version="$(
+max_stable_tag="$({
+  git tag -l "${component}-v*" \
+    | grep -E "${stable_pattern}" \
+    | sed -E "s/^${component}-v//" \
+    || true
+} | sort -Vu | tail -n 1)"
+
+legacy_stable_tag="$({
+  git tag -l "v*" \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sed -E 's/^v//' \
+    || true
+} | sort -Vu | tail -n 1)"
+
+package_version="$({
   node -e "const p=require('./package.json'); process.stdout.write((p.version||'').trim())"
-)"
+} || true)"
 
 if [[ -z "${max_stable_tag}" ]]; then
-  if [[ "${package_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if [[ -n "${legacy_stable_tag}" ]]; then
+    base_version="${legacy_stable_tag}"
+  elif [[ "${package_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     base_version="${package_version}"
   else
-    echo "compute-version: no stable tags and package.json version is not semver: ${package_version}" >&2
+    echo "compute-version: no stable ${component} or legacy tag and package.json version is not semver: ${package_version}" >&2
     exit 2
   fi
 else
@@ -156,28 +161,32 @@ esac
 
 if [[ "${channel}" == "stable" ]]; then
   candidate_patch="${next_patch}"
-  while git rev-parse -q --verify "refs/tags/v${next_major}.${next_minor}.${candidate_patch}" >/dev/null; do
+  while git rev-parse -q --verify "refs/tags/${component}-v${next_major}.${next_minor}.${candidate_patch}" >/dev/null; do
     candidate_patch="$((candidate_patch + 1))"
   done
   stable_version="${next_major}.${next_minor}.${candidate_patch}"
-  release_tag="v${stable_version}"
+  release_tag="${component}-v${stable_version}"
   is_prerelease="false"
 else
   stable_version="${next_major}.${next_minor}.${next_patch}"
-  release_tag="v${stable_version}-rc.${sha7}"
+  release_tag="${component}-v${stable_version}-rc.${sha7}"
   is_prerelease="true"
 fi
 
-app_version="${release_tag#v}"
+app_version="${release_tag#${component}-v}"
+release_major="${next_major}"
 
 write_output "release_tag" "${release_tag}"
 write_output "app_version" "${app_version}"
 write_output "is_prerelease" "${is_prerelease}"
+write_output "release_major" "${release_major}"
 write_env "RELEASE_TAG" "${release_tag}"
 write_env "APP_EFFECTIVE_VERSION" "${app_version}"
 write_env "IS_PRERELEASE" "${is_prerelease}"
+write_env "RELEASE_MAJOR" "${release_major}"
 
 echo "compute-version:"
+echo "  component=${component}"
 echo "  base_version=${base_version}"
 echo "  bump_level=${bump_level}"
 echo "  channel=${channel}"

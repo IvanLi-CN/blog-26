@@ -44,6 +44,9 @@ emit_skip() {
   write_output "bump_level" ""
   write_output "channel" ""
   write_output "intent_type" ""
+  write_output "frontend_release" "false"
+  write_output "backend_release" "false"
+  write_output "components" ""
   write_output "pr_number" ""
   write_output "pr_url" ""
   write_output "is_latest_branch_head" "${is_latest_branch_head}"
@@ -57,6 +60,9 @@ emit_failure() {
   write_output "bump_level" ""
   write_output "channel" ""
   write_output "intent_type" ""
+  write_output "frontend_release" "false"
+  write_output "backend_release" "false"
+  write_output "components" ""
   write_output "pr_number" ""
   write_output "pr_url" ""
   write_output "is_latest_branch_head" "${is_latest_branch_head}"
@@ -80,7 +86,7 @@ if ! branch_ref_json="$(
 fi
 
 export branch_ref_json
-branch_head_sha="$(
+branch_head_sha="$({
   python3 - <<'PY'
 from __future__ import annotations
 
@@ -92,7 +98,7 @@ sha = payload.get("object", {}).get("sha", "")
 if isinstance(sha, str):
     print(sha.strip())
 PY
-)"
+} || true)"
 
 if [[ -z "${branch_head_sha}" ]]; then
   emit_failure "api_failure:branch_head_parse"
@@ -119,7 +125,7 @@ if ! pulls_json="$(
 fi
 
 export pulls_json
-pull_info="$(
+pull_info="$({
   python3 - <<'PY'
 from __future__ import annotations
 
@@ -148,7 +154,7 @@ print(f"pr_number={number}")
 print(f"pr_url={url}")
 print(f"pr_merged_at={merged_at}")
 PY
-)"
+} || true)"
 
 count="$(echo "${pull_info}" | sed -n 's/^count=//p')"
 pr_number="$(echo "${pull_info}" | sed -n 's/^pr_number=//p')"
@@ -185,7 +191,7 @@ while :; do
   fi
 
   export events_json pr_merged_at
-  page_analysis="$(
+  page_analysis="$({
     python3 - <<'PY'
 from __future__ import annotations
 
@@ -221,7 +227,7 @@ if not isinstance(payload, list):
     print("mutations=-1")
     raise SystemExit(0)
 
-allowed_prefixes = ("type:", "channel:")
+allowed_prefixes = ("type:", "channel:", "release:")
 mutations = 0
 for item in payload:
     if not isinstance(item, dict):
@@ -241,7 +247,7 @@ for item in payload:
 print(f"events={len(payload)}")
 print(f"mutations={mutations}")
 PY
-  )"
+  } || true)"
 
   page_events="$(echo "${page_analysis}" | sed -n 's/^events=//p')"
   page_mutations="$(echo "${page_analysis}" | sed -n 's/^mutations=//p')"
@@ -282,7 +288,7 @@ if ! labels_json="$(
 fi
 
 export labels_json
-decision="$(
+decision="$({
   python3 - <<'PY'
 from __future__ import annotations
 
@@ -297,24 +303,31 @@ allowed_types = {
     "type:major",
 }
 allowed_channels = {"channel:stable", "channel:rc"}
+allowed_components = {"release:frontend", "release:backend"}
 
 labels = json.loads(os.environ["labels_json"])
 names = [item.get("name", "") for item in labels if isinstance(item, dict)]
 
 type_like = sorted({name for name in names if name.startswith("type:")})
 channel_like = sorted({name for name in names if name.startswith("channel:")})
+component_like = sorted({name for name in names if name.startswith("release:")})
 
 unknown_type = sorted({name for name in type_like if name not in allowed_types})
 unknown_channel = sorted({name for name in channel_like if name not in allowed_channels})
+unknown_component = sorted({name for name in component_like if name not in allowed_components})
 present_type = sorted({name for name in names if name in allowed_types})
 present_channel = sorted({name for name in names if name in allowed_channels})
+present_component = sorted({name for name in names if name in allowed_components})
 
-if unknown_type or unknown_channel:
-    unknown_all = unknown_type + unknown_channel
+if unknown_type or unknown_channel or unknown_component:
+    unknown_all = unknown_type + unknown_channel + unknown_component
     print("should_release=false")
     print("bump_level=")
     print("channel=")
     print("intent_type=")
+    print("frontend_release=false")
+    print("backend_release=false")
+    print("components=")
     print(f"reason=unknown_label({','.join(unknown_all)})")
     raise SystemExit(0)
 
@@ -323,7 +336,12 @@ if len(present_type) != 1 or len(present_channel) != 1:
     print("bump_level=")
     print("channel=")
     print("intent_type=")
-    print(f"reason=invalid_label_count(type={len(present_type)},channel={len(present_channel)})")
+    print("frontend_release=false")
+    print("backend_release=false")
+    print("components=")
+    print(
+        f"reason=invalid_label_count(type={len(present_type)},channel={len(present_channel)},release={len(present_component)})"
+    )
     raise SystemExit(0)
 
 intent = present_type[0]
@@ -335,25 +353,66 @@ if intent in {"type:docs", "type:skip"}:
     print("bump_level=")
     print(f"channel={channel}")
     print(f"intent_type={intent}")
+    print("frontend_release=false")
+    print("backend_release=false")
+    print("components=")
     print("reason=intent_skip")
     raise SystemExit(0)
 
+if len(present_component) == 0:
+    print("should_release=false")
+    print("bump_level=")
+    print(f"channel={channel}")
+    print(f"intent_type={intent}")
+    print("frontend_release=false")
+    print("backend_release=false")
+    print("components=")
+    print(
+        f"reason=invalid_label_count(type={len(present_type)},channel={len(present_channel)},release={len(present_component)})"
+    )
+    raise SystemExit(0)
+
 bump_level = intent.removeprefix("type:")
+if bump_level == "major" and len(present_component) != len(allowed_components):
+    print("should_release=false")
+    print(f"bump_level={bump_level}")
+    print(f"channel={channel}")
+    print(f"intent_type={intent}")
+    print("frontend_release=false")
+    print("backend_release=false")
+    print("components=")
+    print("reason=invalid_major_release_targets")
+    raise SystemExit(0)
+
+components = []
+frontend_release = "release:frontend" in present_component
+backend_release = "release:backend" in present_component
+if frontend_release:
+    components.append("frontend")
+if backend_release:
+    components.append("backend")
+
 print("should_release=true")
 print(f"bump_level={bump_level}")
 print(f"channel={channel}")
 print(f"intent_type={intent}")
+print(f"frontend_release={'true' if frontend_release else 'false'}")
+print(f"backend_release={'true' if backend_release else 'false'}")
+print(f"components={','.join(components)}")
 print("reason=intent_release")
 PY
-)"
+} || true)"
 
 should_release="$(echo "${decision}" | sed -n 's/^should_release=//p')"
 bump_level="$(echo "${decision}" | sed -n 's/^bump_level=//p')"
 channel="$(echo "${decision}" | sed -n 's/^channel=//p')"
 intent_type="$(echo "${decision}" | sed -n 's/^intent_type=//p')"
+frontend_release="$(echo "${decision}" | sed -n 's/^frontend_release=//p')"
+backend_release="$(echo "${decision}" | sed -n 's/^backend_release=//p')"
+components="$(echo "${decision}" | sed -n 's/^components=//p')"
 reason="$(echo "${decision}" | sed -n 's/^reason=//p')"
 
-if [[ "${reason}" == unknown_label\(* ]] || [[ "${reason}" == invalid_label_count\(* ]]; then
+if [[ "${reason}" == unknown_label\(* ]] || [[ "${reason}" == invalid_label_count\(* ]] || [[ "${reason}" == "invalid_major_release_targets" ]]; then
   emit_failure "${reason}"
 fi
 
@@ -364,6 +423,7 @@ echo "  pr_number=${pr_number}"
 echo "  intent_type=${intent_type:-<none>}"
 echo "  channel=${channel:-<none>}"
 echo "  should_release=${should_release}"
+echo "  components=${components:-<none>}"
 echo "  bump_level=${bump_level:-<none>}"
 echo "  reason=${reason}"
 
@@ -371,6 +431,9 @@ write_output "should_release" "${should_release}"
 write_output "bump_level" "${bump_level}"
 write_output "channel" "${channel}"
 write_output "intent_type" "${intent_type}"
+write_output "frontend_release" "${frontend_release}"
+write_output "backend_release" "${backend_release}"
+write_output "components" "${components}"
 write_output "pr_number" "${pr_number}"
 write_output "pr_url" "${pr_url}"
 write_output "is_latest_branch_head" "${is_latest_branch_head}"

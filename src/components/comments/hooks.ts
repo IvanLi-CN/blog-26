@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { toPublicApiUrl } from "@/lib/public-runtime-url";
 import type { Comment, UserInfo } from "./types";
 
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
+  const response = await fetch(input, {
+    credentials: "include",
+    ...init,
+  });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message =
@@ -23,7 +27,7 @@ export function useUserInfo() {
   const fetchUserInfo = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await readJson<UserInfo | null>("/api/public/auth/me");
+      const data = await readJson<UserInfo | null>(toPublicApiUrl("/api/public/auth/me"));
       setUserInfo(data);
     } catch {
       setUserInfo(null);
@@ -38,7 +42,7 @@ export function useUserInfo() {
 
   const logout = useCallback(async () => {
     try {
-      await readJson("/api/public/auth/logout", { method: "POST" });
+      await readJson(toPublicApiUrl("/api/public/auth/logout"), { method: "POST" });
     } finally {
       setUserInfo(null);
       window.location.reload();
@@ -69,7 +73,11 @@ export function useComments({ postSlug }: UseCommentsProps) {
           comments: CommentWithAuthorAndReplies[];
           totalPages: number;
           isAdmin: boolean;
-        }>(`/api/public/comments?slug=${encodeURIComponent(postSlug)}&page=${pageNum}&limit=10`);
+        }>(
+          toPublicApiUrl(
+            `/api/public/comments?slug=${encodeURIComponent(postSlug)}&page=${pageNum}&limit=10`
+          )
+        );
         setComments((prev) =>
           pageNum === 1 || refresh ? data.comments : [...prev, ...data.comments]
         );
@@ -113,7 +121,7 @@ export function useModerateComment() {
       setError(null);
       try {
         const result = await readJson(
-          `/api/public/comments/${encodeURIComponent(commentId)}/moderate`,
+          toPublicApiUrl(`/api/public/comments/${encodeURIComponent(commentId)}/moderate`),
           {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -150,7 +158,7 @@ export function usePostComment() {
       setIsPosting(true);
       setError(null);
       try {
-        const result = await readJson(`/api/public/comments`, {
+        const result = await readJson(toPublicApiUrl("/api/public/comments"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(commentData),
@@ -179,11 +187,14 @@ export function useEditComment() {
     setIsEditing(true);
     setError(null);
     try {
-      return await readJson(`/api/public/comments/${encodeURIComponent(commentId)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
+      return await readJson(
+        toPublicApiUrl(`/api/public/comments/${encodeURIComponent(commentId)}`),
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ content }),
+        }
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -204,9 +215,12 @@ export function useDeleteComment() {
     setIsDeleting(true);
     setError(null);
     try {
-      return await readJson(`/api/public/comments/${encodeURIComponent(commentId)}`, {
-        method: "DELETE",
-      });
+      return await readJson(
+        toPublicApiUrl(`/api/public/comments/${encodeURIComponent(commentId)}`),
+        {
+          method: "DELETE",
+        }
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);

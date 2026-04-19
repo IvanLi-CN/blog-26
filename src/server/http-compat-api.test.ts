@@ -16,6 +16,7 @@ const USER_EMAIL = "user-test@test.local";
 
 let handleAdminApiRequest: typeof import("@/server/admin-api/router").handleAdminApiRequest;
 let handlePublicApiRequest: typeof import("@/server/public-api/router").handlePublicApiRequest;
+let handleFilesApiRequest: typeof import("@/server/files-api/router").handleFilesApiRequest;
 
 function buildRequest(pathname: string, init: RequestInit = {}, email?: string) {
   const headers = new Headers(init.headers);
@@ -87,6 +88,7 @@ describe("HTTP compatibility APIs", () => {
     process.env.DB_PATH = TEST_DB_PATH;
     process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
     process.env.CONTENT_SOURCES = "local";
+    process.env.PUBLIC_SITE_URL = "https://pages.example.test";
     delete process.env.WEBDAV_URL;
 
     fs.mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
@@ -103,6 +105,7 @@ describe("HTTP compatibility APIs", () => {
 
     ({ handleAdminApiRequest } = await import("@/server/admin-api/router"));
     ({ handlePublicApiRequest } = await import("@/server/public-api/router"));
+    ({ handleFilesApiRequest } = await import("@/server/files-api/router"));
 
     await initializeDB(true);
   });
@@ -162,6 +165,117 @@ describe("HTTP compatibility APIs", () => {
     expect(payload.slug).toBe("preview-secret");
     expect(payload.title).toBe("Preview Secret");
     expect(payload.draft).toBe(true);
+  });
+
+  it("adds CORS headers for configured Pages frontend origins", async () => {
+    await seedPost({
+      id: "blog/cors-visible.md",
+      filePath: "blog/cors-visible.md",
+      slug: "cors-visible",
+      title: "CORS Visible",
+      body: "Visible over public API",
+      public: true,
+    });
+
+    const preflight = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/memos",
+        {
+          method: "OPTIONS",
+          headers: {
+            origin: "https://pages.example.test",
+            "access-control-request-headers": "content-type",
+          },
+        },
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
+    expect(preflight.headers.get("access-control-allow-credentials")).toBe("true");
+
+    const response = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/posts?limit=1",
+        {
+          headers: {
+            origin: "https://pages.example.test",
+          },
+        },
+        ADMIN_EMAIL
+      ),
+      "/posts"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
+  });
+
+  it("requires admin auth for cross-origin file uploads while preserving Pages CORS", async () => {
+    const pathname = "/api/files/local/Memos/uploads/http-upload.txt";
+    const params = { source: "local", path: ["Memos", "uploads", "http-upload.txt"] };
+    const headers = {
+      origin: "https://pages.example.test",
+      "content-type": "text/plain",
+    };
+
+    const unauthorized = await handleFilesApiRequest(
+      buildRequest(pathname, { method: "POST", headers, body: "hello" }),
+      params
+    );
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get("access-control-allow-origin")).toBe(
+      "https://pages.example.test"
+    );
+
+    const forbidden = await handleFilesApiRequest(
+      buildRequest(pathname, { method: "POST", headers, body: "hello" }, USER_EMAIL),
+      params
+    );
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
+
+    const ok = await handleFilesApiRequest(
+      buildRequest(pathname, { method: "POST", headers, body: "hello" }, ADMIN_EMAIL),
+      params
+    );
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
+
+    const payload = await readJson(ok);
+    expect(payload.success).toBe(true);
+    expect(payload.path).toBe("Memos/uploads/http-upload.txt");
+
+    const uploadedFile = path.join(LOCAL_CONTENT_BASE_PATH, "Memos/uploads/http-upload.txt");
+    expect(fs.existsSync(uploadedFile)).toBe(true);
+    expect(fs.readFileSync(uploadedFile, "utf-8")).toBe("hello");
+  });
+
+  it("keeps same-origin file uploads compatible without admin auth", async () => {
+    const pathname = "/api/files/local/Memos/uploads/http-upload-same-origin.txt";
+    const params = {
+      source: "local",
+      path: ["Memos", "uploads", "http-upload-same-origin.txt"],
+    };
+
+    const response = await handleFilesApiRequest(
+      buildRequest(pathname, { method: "POST", body: "same-origin-ok" }),
+      params
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await readJson(response);
+    expect(payload.success).toBe(true);
+    expect(payload.path).toBe("Memos/uploads/http-upload-same-origin.txt");
+
+    const uploadedFile = path.join(
+      LOCAL_CONTENT_BASE_PATH,
+      "Memos/uploads/http-upload-same-origin.txt"
+    );
+    expect(fs.existsSync(uploadedFile)).toBe(true);
+    expect(fs.readFileSync(uploadedFile, "utf-8")).toBe("same-origin-ok");
   });
 
   it("serves memo CRUD from /api/public/memos/* without tRPC routing", async () => {

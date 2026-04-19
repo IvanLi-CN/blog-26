@@ -1,4 +1,5 @@
 import { resolveImagePath as resolveImagePathCommon } from "@/lib/image-utils";
+import { toPublicAssetUrl } from "@/lib/public-runtime-url";
 import type { VariantConfig } from "./types";
 
 /**
@@ -120,7 +121,7 @@ export function generateOptimizedImageUrl(
 
   // 统一走公共图片路径解析，保持大小写与实际文件一致
   const resolved = resolveImagePathCommon(imagePath, contentSource);
-  return resolved ?? imagePath;
+  return toPublicAssetUrl(resolved ?? imagePath) ?? imagePath;
 }
 
 /**

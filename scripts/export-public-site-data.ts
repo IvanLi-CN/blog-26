@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { writePublicSnapshot } from "@/public-site/snapshot";
@@ -8,6 +9,12 @@ const outputPath = resolve(
 );
 
 await mkdir(dirname(outputPath), { recursive: true });
+
+if (process.env.PUBLIC_CONTENT_BUNDLE_URL && existsSync(outputPath)) {
+  console.log(`Reusing public snapshot from downloaded content bundle: ${outputPath}`);
+  process.exit(0);
+}
+
 const snapshot = await writePublicSnapshot(outputPath);
 console.log(`Exported public snapshot to ${outputPath}`);
 console.log(`Posts: ${snapshot.posts.length}`);
