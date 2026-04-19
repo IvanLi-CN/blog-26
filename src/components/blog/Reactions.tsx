@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVisitorId } from "../../lib/fingerprint";
+import { toPublicApiUrl } from "../../lib/public-runtime-url";
 import type { UserInfo } from "../comments/types";
 
 interface ReactionsProps {
@@ -19,7 +20,10 @@ interface ReactionItem {
 const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "🤔"];
 
 async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
+  const response = await fetch(input, {
+    credentials: "include",
+    ...init,
+  });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message =
@@ -56,7 +60,9 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
     setError(null);
     try {
       const data = await readJson<{ reactions: ReactionItem[] }>(
-        `/api/public/reactions?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`
+        toPublicApiUrl(
+          `/api/public/reactions?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`
+        )
       );
       setItems(data.reactions ?? []);
     } catch (err: unknown) {
@@ -76,7 +82,7 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
 
       try {
         setIsLoading(true);
-        await readJson(`/api/public/reactions/toggle`, {
+        await readJson(toPublicApiUrl("/api/public/reactions/toggle"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ targetType, targetId, emoji }),

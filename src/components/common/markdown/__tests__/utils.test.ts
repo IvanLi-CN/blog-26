@@ -1,7 +1,23 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 import { removeInlineTags } from "@/lib/tag-parser";
+import { generateOptimizedImageUrl } from "../utils";
+
+afterEach(() => {
+  delete process.env.PUBLIC_API_BASE_URL;
+  delete process.env.NEXT_PUBLIC_API_BASE_URL;
+});
 
 describe("Markdown Utils", () => {
+  describe("generateOptimizedImageUrl", () => {
+    it("rewrites file-api assets to the configured public api origin", () => {
+      process.env.PUBLIC_API_BASE_URL = "https://api.example.test";
+
+      expect(generateOptimizedImageUrl("./assets/image.jpg", "webdav")).toBe(
+        "https://api.example.test/api/files/webdav/assets/image.jpg"
+      );
+    });
+  });
+
   describe("removeInlineTags (from tag-parser)", () => {
     it("should remove inline tags from content", () => {
       const content = "This is content with #tag1 and #tag2";

@@ -287,21 +287,29 @@ jobs:
           with open("/tmp/docker-health.json", "r", encoding="utf-8") as f:
               health = json.load(f)
           assert health["status"] == "ok", health
-          assert health["site"]["status"] == "ok", health
+          assert health["site"]["status"] == "external", health
           assert health["legacyNext"]["status"] == "not-applicable", health
           PY
 
-          wait_for_status_with_grep \
-            "200" \
+          wait_for_status \
+            "404" \
             "http://127.0.0.1:25090/posts" \
-            "/tmp/docker-posts.html" \
-            "GraphQL API 设计最佳实践"
+            "/tmp/docker-posts.html"
 
-          wait_for_status_with_grep \
+          wait_for_status \
             "200" \
-            "http://127.0.0.1:25090/posts/graphql-api-best-practices" \
-            "/tmp/docker-post.html" \
-            "GraphQL API 设计最佳实践"
+            "http://127.0.0.1:25090/api/public/posts?limit=1" \
+            "/tmp/docker-posts.json"
+
+          python3 - <<'PY'
+          import json
+          with open("/tmp/docker-posts.json", "r", encoding="utf-8") as f:
+              payload = json.load(f)
+          assert isinstance(payload, dict), payload
+          assert "posts" in payload, payload
+          assert payload["posts"], payload
+          assert payload["pagination"]["totalPages"] >= 1, payload
+          PY
 
           wait_for_status \
             "200" \

@@ -15,6 +15,7 @@ import {
   extractIpAddress,
   SESSION_COOKIE_NAME,
 } from "../../lib/session";
+import { createSessionCookieHeader } from "../../lib/session-cookie";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
 // 输入验证 schemas
@@ -64,7 +65,7 @@ export const authRouter = createTRPCRouter({
     // 清除 cookie
     ctx.resHeaders.set(
       "Set-Cookie",
-      `${SESSION_COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`
+      createSessionCookieHeader(ctx.req, SESSION_COOKIE_NAME, { maxAge: 0 })
     );
 
     return {
@@ -261,7 +262,10 @@ export const authRouter = createTRPCRouter({
       // 设置 session cookie
       ctx.resHeaders.set(
         "Set-Cookie",
-        `${SESSION_COOKIE_NAME}=${session.id}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
+        createSessionCookieHeader(ctx.req, SESSION_COOKIE_NAME, {
+          value: session.id,
+          maxAge: 7 * 24 * 60 * 60,
+        })
       );
 
       // 删除已使用的验证码

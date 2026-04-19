@@ -13,6 +13,7 @@ import { TextSelection } from "@milkdown/prose/state";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { processInlineImagesCompat } from "@/lib/image-processing";
 import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
+import { toPublicAssetUrl } from "@/lib/public-runtime-url";
 import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
 import "@milkdown/crepe/theme/common/style.css";
@@ -116,7 +117,7 @@ function convertImagePathForEditor(
     const resolvedPath = resolveRelativePath(imagePath, articleDir);
 
     // 根据内容源使用对应的文件代理路径
-    return `/api/files/${contentSource}/${resolvedPath}`;
+    return toPublicAssetUrl(`/api/files/${contentSource}/${resolvedPath}`) ?? imagePath;
   }
 
   return imagePath;

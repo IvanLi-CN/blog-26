@@ -1,66 +1,85 @@
 # PR + Label Release Runbook
 
-This runbook documents the label-driven release workflow for `IvanLi-CN/blog-25`.
+This runbook documents the component-aware label-driven release workflow for this repository.
 
 ## Required PR labels
 
-Each PR targeting `main` must have exactly one `type:*` and exactly one `channel:*` label.
+Each PR targeting `main` must have exactly one `type:*`, exactly one `channel:*`, and at least one `release:*` when release intent is enabled.
 
 ### `type:*`
 
-- `type:major`
-- `type:minor`
-- `type:patch`
 - `type:docs`
 - `type:skip`
+- `type:patch`
+- `type:minor`
+- `type:major`
 
 ### `channel:*`
 
 - `channel:stable`
 - `channel:rc`
 
-Unknown `type:*` or `channel:*` labels fail the `PR Label Gate` check.
+### `release:*`
+
+- `release:frontend`
+- `release:backend`
+
+Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` check.
 
 ## Release matrix
 
-| type | channel | should release | Git tag | GitHub Release | GHCR tags |
-|---|---|---|---|---|---|
-| `type:major`/`type:minor`/`type:patch` | `channel:stable` | yes | `vX.Y.Z` | prerelease = false | `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
-| `type:major`/`type:minor`/`type:patch` | `channel:rc` | yes | `vX.Y.Z-rc.<sha7>` | prerelease = true | `vX.Y.Z-rc.<sha7>` |
-| `type:docs`/`type:skip` | `channel:stable` or `channel:rc` | no | none | none | none |
+| labels | should release | Git tag | GitHub Release | Additional publish |
+|---|---|---|---|---|
+| `type:*` + `channel:stable` + `release:frontend` | yes | `frontend-vX.Y.Z` | stable frontend release | deploy GitHub Pages |
+| `type:*` + `channel:rc` + `release:frontend` | yes | `frontend-vX.Y.Z-rc.<sha7>` | prerelease frontend release | deploy GitHub Pages |
+| `type:*` + `channel:stable` + `release:backend` | yes | `backend-vX.Y.Z` | stable backend release | GHCR `backend-vX.Y.Z` (+ `backend-latest` only when commit is current `main` head) |
+| `type:*` + `channel:rc` + `release:backend` | yes | `backend-vX.Y.Z-rc.<sha7>` | prerelease backend release | GHCR `backend-vX.Y.Z-rc.<sha7>` |
+| both `release:frontend` + `release:backend` | yes | both component tags | both component releases | Pages + GHCR |
+
+> `type:major` is only valid when both `release:frontend` and `release:backend` are present. Single-component majors are rejected before release so the shared major version cannot drift.
+| `type:docs`/`type:skip` | no | none | none | none |
+
+## Version contract
+
+- `frontend` and `backend` keep independent semver histories.
+- CI validates that both components always share the same **major** version.
+- If only one component is being released, its major version is checked against the latest stable major tag of the other component (falling back to `package.json` major when no stable component tag exists yet).
 
 ## Workflow behavior
 
 1. `CI/CD Pipeline` runs on PR and push.
 2. `release.yml` triggers on successful `workflow_run` for `main`.
 3. `prepare` resolves release intent by the triggering commit SHA, even when `main` has already moved forward.
-4. `prepare` verifies no post-merge mutations on release labels (`type:*` / `channel:*`), then resolves release intent from merged PR labels.
+4. `prepare` verifies no post-merge mutations on release labels (`type:*` / `channel:*` / `release:*`), then resolves release intent from merged PR labels.
 5. If `should_release=false`, workflow exits with summary only.
-6. If `should_release=true`, it computes tag/version and publishes:
-   - tag
-   - GitHub Release
-   - GHCR image tags based on channel (`latest` only when the release commit is current `main` head, re-checked again right before publish)
+6. If `release:frontend` is present, the workflow:
+   - downloads `PUBLIC_CONTENT_BUNDLE_URL`
+   - reuses the bundled `public-snapshot.json`
+   - builds `site-dist`
+   - uploads frontend release assets
+   - deploys the same build output to GitHub Pages
+7. If `release:backend` is present, the workflow:
+   - builds `admin-dist`
+   - prepares `backend-dist`
+   - uploads backend release assets
+   - builds and pushes the backend/admin Docker image to GHCR
 
-## Stable release drill (manual)
+## Frontend content bundle
 
-Use this flow when you want to validate the full stable publish path end-to-end.
-
-1. Open a PR to `main` with labels: `type:patch` + `channel:stable`.
-2. Wait for required checks to pass (`PR Label Gate` + `CI/CD Pipeline`).
-3. Merge PR and wait for:
-   - `CI/CD Pipeline` (push on `main`)
-   - `Release (PR Label Driven)` (`workflow_run`)
-4. Verify outputs:
-   - a new stable tag `vX.Y.Z`
-   - a GitHub Release with `prerelease=false`
-   - GHCR tags `vX.Y.Z` and `latest` (only when release commit is current `main` head)
+- Store the bundle URL in GitHub secrets as `PUBLIC_CONTENT_BUNDLE_URL`.
+- The URL may contain an embedded token; do not expose it in `PUBLIC_*` client config.
+- The workflow can consume either:
+  - a raw `public-snapshot.json`, or
+  - an archive containing `public-snapshot.json`
+- Pages runtime requests use `PUBLIC_API_BASE_URL`, and it must point at the live backend origin.
 
 ## Troubleshooting
 
 ### `PR Label Gate` failed
 
 - Check PR has one and only one `type:*` + `channel:*`.
-- Remove conflicting labels before re-running checks.
+- Check at least one valid `release:*` label exists for release-bearing PRs.
+- Remove conflicting or unknown labels before re-running checks.
 
 ### Release skipped unexpectedly
 
@@ -72,24 +91,19 @@ Use this flow when you want to validate the full stable publish path end-to-end.
 
 ### Release failed in `prepare`
 
-- This is fail-fast by design to avoid silent wrong releases.
 - Common failure reasons:
   - `invalid_label_count(...)`
   - `unknown_label(...)`
   - `post_merge_label_mutation(...)`
-  - `api_failure:pr_issue_events(page=...)`
-  - `api_failure:pr_issue_events_page_limit(...)`
-  - `api_failure:*`
+  - component major mismatch
 
-### Version/tag not as expected
+### Frontend build failed
 
-- Confirm stable tags history (`git tag -l 'v*'`).
-- Confirm merged PR `type:*` bump level.
-- For reruns, tag reuse is expected when tag already points at HEAD.
+- Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
+- Confirm the bundle contains `public-snapshot.json`.
+- Confirm `PUBLIC_API_BASE_URL` points to the backend origin if the Pages site must call backend APIs cross-origin.
 
-## Branch protection recommendation
+### Backend image missing expected assets
 
-Require these checks on `main`:
-
-- `PR Label Gate / Release intent label gate`
-- `CI/CD Pipeline` (or required jobs inside it)
+- Verify `bun run backend:build` generated both `admin-dist/` and `backend-dist/`.
+- Verify Docker runtime health at `/api/health`; site status should be `external`, not `down`.

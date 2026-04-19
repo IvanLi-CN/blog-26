@@ -39,7 +39,7 @@ const ABS_LOCAL_CONTENT = resolvePath(__dirname, "test-data/local");
 
 const resetCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local bun run test-env:reset-fs-only`;
 const buildCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=${BASE_URL} PUBLIC_SITE_URL=${BASE_URL} bun run build`;
-const startCommand = `NODE_ENV=production DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=${BASE_URL} PUBLIC_SITE_URL=${BASE_URL} PORT=${WEB_PORT} INTERNAL_NEXT_PORT=${INTERNAL_NEXT_PORT} SITE_PORT=${SITE_PORT} bun run gateway:start`;
+const startCommand = `NODE_ENV=production DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=${BASE_URL} PUBLIC_SITE_URL=${BASE_URL} SERVE_PUBLIC_SITE=true PORT=${WEB_PORT} INTERNAL_NEXT_PORT=${INTERNAL_NEXT_PORT} SITE_PORT=${SITE_PORT} bun run gateway:start`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -106,6 +106,7 @@ export default defineConfig({
       CONTENT_SOURCES: "local",
       NEXT_PUBLIC_SITE_URL: BASE_URL,
       PUBLIC_SITE_URL: BASE_URL,
+      SERVE_PUBLIC_SITE: "true",
       PORT: String(WEB_PORT),
       INTERNAL_NEXT_PORT: String(INTERNAL_NEXT_PORT),
       SITE_PORT: String(SITE_PORT),

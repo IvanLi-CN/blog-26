@@ -23,6 +23,7 @@ import {
   getMemoEditorContentSource,
   resolveClientMemoRootPath,
 } from "@/lib/memo-paths";
+import { toPublicAssetUrl } from "@/lib/public-runtime-url";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
 
@@ -167,10 +168,14 @@ export function QuickMemoEditor({
               const uploadPath = `${getMemoAssetsDir(clientMemoRoot)}/${filename}`;
               const formData = new FormData();
               formData.append("file", file);
-              const resp = await fetch(`/api/files/${memoContentSource}/${uploadPath}`, {
-                method: "POST",
-                body: formData,
-              });
+              const resp = await fetch(
+                toPublicAssetUrl(`/api/files/${memoContentSource}/${uploadPath}`),
+                {
+                  method: "POST",
+                  credentials: "include",
+                  body: formData,
+                }
+              );
               if (resp.ok) {
                 processedContent = processedContent.replace(
                   fullMatch,

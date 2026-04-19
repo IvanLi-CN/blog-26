@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { toPublicApiUrl } from "../lib/runtime-urls";
 
 type ResultType = "post" | "memo";
 
@@ -12,7 +13,9 @@ type SearchResultItem = {
 };
 
 async function search(query: string) {
-  const response = await fetch(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`);
+  const response = await fetch(
+    toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`)
+  );
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
     const message =

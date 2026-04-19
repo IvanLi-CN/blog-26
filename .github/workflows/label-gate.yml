@@ -32,6 +32,7 @@ jobs:
               "type:major",
             ]);
             const allowedChannels = new Set(["channel:stable", "channel:rc"]);
+            const allowedReleaseTargets = new Set(["release:frontend", "release:backend"]);
 
             const labels = (context.payload.pull_request?.labels ?? [])
               .map((label) => label?.name)
@@ -39,17 +40,21 @@ jobs:
 
             const typeLike = labels.filter((name) => name.startsWith("type:"));
             const channelLike = labels.filter((name) => name.startsWith("channel:"));
+            const releaseLike = labels.filter((name) => name.startsWith("release:"));
             const presentTypes = labels.filter((name) => allowedTypes.has(name));
             const presentChannels = labels.filter((name) => allowedChannels.has(name));
+            const presentReleaseTargets = labels.filter((name) => allowedReleaseTargets.has(name));
             const unknownTypes = typeLike.filter((name) => !allowedTypes.has(name));
             const unknownChannels = channelLike.filter((name) => !allowedChannels.has(name));
+            const unknownReleaseTargets = releaseLike.filter((name) => !allowedReleaseTargets.has(name));
 
             core.info(`Labels on PR: ${Array.from(new Set(labels)).sort().join(", ")}`);
             core.info(`Allowed type labels: ${Array.from(allowedTypes).sort().join(", ")}`);
             core.info(`Allowed channel labels: ${Array.from(allowedChannels).sort().join(", ")}`);
+            core.info(`Allowed release labels: ${Array.from(allowedReleaseTargets).sort().join(", ")}`);
 
-            if (unknownTypes.length > 0 || unknownChannels.length > 0) {
-              const unknown = [...unknownTypes, ...unknownChannels];
+            if (unknownTypes.length > 0 || unknownChannels.length > 0 || unknownReleaseTargets.length > 0) {
+              const unknown = [...unknownTypes, ...unknownChannels, ...unknownReleaseTargets];
               core.setFailed(`Unknown release labels: ${Array.from(new Set(unknown)).sort().join(", ")}`);
               return;
             }
@@ -72,4 +77,18 @@ jobs:
             const channel = presentChannels[0];
             const shouldRelease = !["type:docs", "type:skip"].includes(intent);
 
-            core.notice(`Release intent OK: ${intent} + ${channel} (shouldRelease=${shouldRelease})`);
+            if (shouldRelease && presentReleaseTargets.length === 0) {
+              core.setFailed("PR must contain at least one release target label when release intent is enabled: release:frontend and/or release:backend");
+              return;
+            }
+
+            if (intent === "type:major" && presentReleaseTargets.length !== allowedReleaseTargets.size) {
+              core.setFailed(
+                "type:major releases must target both release:frontend and release:backend so the shared major version stays aligned",
+              );
+              return;
+            }
+
+            core.notice(
+              `Release intent OK: ${intent} + ${channel} + ${Array.from(new Set(presentReleaseTargets)).sort().join(", ") || "<none>"} (shouldRelease=${shouldRelease})`,
+            );

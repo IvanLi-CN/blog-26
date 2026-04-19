@@ -160,10 +160,10 @@ bun run test:e2e
 # Prebuild (generate version info)
 bun run prebuild
 
-# Build the release assets (gateway + Astro + admin SPA + legacy Next)
+# Build the local verification assets (frontend SSG + admin SPA + backend runtime bundle)
 bun run build
 
-# Start (make sure .env.local or env vars are configured)
+# Start backend/admin runtime (make sure .env.local or env vars are configured)
 bun run start
 ```
 
@@ -370,13 +370,23 @@ This repository uses a PR label-driven release contract for PRs targeting `main`
 - Required PR labels:
   - exactly one `type:*`: `type:major` / `type:minor` / `type:patch` / `type:docs` / `type:skip`
   - exactly one `channel:*`: `channel:stable` / `channel:rc`
+  - at least one `release:*`: `release:frontend` and/or `release:backend`
+  - `type:major` additionally requires both `release:frontend` and `release:backend`
 - Gate:
   - `PR Label Gate` fails early for missing/conflicting/unknown labels.
 - Trigger:
   - release workflow runs from successful `CI/CD Pipeline` on `main` (`workflow_run`).
 - Outputs:
-  - stable (`channel:stable` + release type): `vX.Y.Z` tag + GitHub Release + GHCR `:vX.Y.Z` (and `:latest` only when that commit is the current `main` head)
-  - rc (`channel:rc` + release type): `vX.Y.Z-rc.<sha7>` tag + prerelease + GHCR rc tag only
+  - frontend stable: `frontend-vX.Y.Z` tag + GitHub Release + GitHub Pages deploy
+  - frontend rc: `frontend-vX.Y.Z-rc.<sha7>` tag + prerelease + GitHub Pages deploy
+  - backend stable: `backend-vX.Y.Z` tag + GitHub Release + GHCR `:backend-vX.Y.Z` (and `:backend-latest` only when that commit is the current `main` head)
+  - backend rc: `backend-vX.Y.Z-rc.<sha7>` tag + prerelease + GHCR `:backend-vX.Y.Z-rc.<sha7>`
   - docs/skip: no release artifacts
+
+### Frontend content bundle in CI
+
+- `release:frontend` builds must provide `PUBLIC_CONTENT_BUNDLE_URL` in GitHub secrets.
+- The workflow downloads the content bundle, reuses the included `public-snapshot.json`, then runs Astro SSG.
+- Pages frontend runtime API/file requests are rewritten against `PUBLIC_API_BASE_URL`, which must point at the live backend origin.
 
 For details and troubleshooting, see `docs/runbooks/pr-label-release.md`.

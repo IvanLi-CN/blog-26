@@ -9,6 +9,7 @@
  */
 
 import { nanoid } from "nanoid";
+import { toPublicAssetUrl } from "./public-runtime-url";
 
 /**
  * 图片处理选项
@@ -174,13 +175,11 @@ async function uploadImage(
   contentSource: "local" | "webdav",
   mimeType: string
 ): Promise<void> {
-  const uploadUrl =
-    contentSource === "webdav"
-      ? `/api/files/webdav/${uploadPath}`
-      : `/api/files/local/${uploadPath}`;
+  const uploadUrl = toPublicAssetUrl(`/api/files/${contentSource}/${uploadPath}`);
 
   const response = await fetch(uploadUrl, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": `image/${mimeType}`,
     },
