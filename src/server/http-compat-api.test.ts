@@ -213,6 +213,63 @@ describe("HTTP compatibility APIs", () => {
     expect(response.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
   });
 
+  it("exports a live public snapshot from /api/public/snapshot", async () => {
+    await seedPost({
+      id: "blog/http-snapshot-post.md",
+      filePath: "blog/http-snapshot-post.md",
+      slug: "http-snapshot-post",
+      type: "post",
+      title: "HTTP Snapshot Post",
+      excerpt: "snapshot post excerpt",
+      body: "snapshot post body",
+      public: true,
+      draft: false,
+      tags: JSON.stringify(["Hardware/DC-DC", "Project/Pages"]),
+    });
+
+    await seedPost({
+      id: "Memos/http-snapshot-memo.md",
+      filePath: "Memos/http-snapshot-memo.md",
+      slug: "http-snapshot-memo",
+      type: "memo",
+      title: "HTTP Snapshot Memo",
+      excerpt: "snapshot memo excerpt",
+      body: "# memo body\n\n#Hardware/DC-DC",
+      public: true,
+      draft: false,
+      tags: JSON.stringify(["Hardware/DC-DC"]),
+      source: "local",
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/snapshot",
+        {
+          headers: {
+            origin: "https://pages.example.test",
+          },
+        },
+        ADMIN_EMAIL
+      ),
+      "/snapshot"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
+
+    const payload = await readJson(response);
+    expect(typeof payload.generatedAt).toBe("string");
+    expect(Array.isArray(payload.posts)).toBe(true);
+    expect(Array.isArray(payload.memos)).toBe(true);
+    expect(payload.posts.some((post: { slug: string }) => post.slug === "http-snapshot-post")).toBe(
+      true
+    );
+    expect(payload.memos.some((memo: { slug: string }) => memo.slug === "http-snapshot-memo")).toBe(
+      true
+    );
+  });
+
   it("requires admin auth for cross-origin file uploads while preserving Pages CORS", async () => {
     const pathname = "/api/files/local/Memos/uploads/http-upload.txt";
     const params = { source: "local", path: ["Memos", "uploads", "http-upload.txt"] };
@@ -276,6 +333,65 @@ describe("HTTP compatibility APIs", () => {
     );
     expect(fs.existsSync(uploadedFile)).toBe(true);
     expect(fs.readFileSync(uploadedFile, "utf-8")).toBe("same-origin-ok");
+  });
+
+  it("returns a missing-image friendly 404 for local files", async () => {
+    const response = await handleFilesApiRequest(
+      buildRequest("/api/files/local/blog/assets/missing-cover.jpg", {
+        method: "GET",
+        headers: {
+          accept: "image/jpeg,image/*",
+          origin: "https://pages.example.test",
+        },
+      }),
+      { source: "local", path: ["blog", "assets", "missing-cover.jpg"] }
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-type")).toBe("image/jpeg");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
+    const body = new Uint8Array(await response.arrayBuffer());
+    expect(body.byteLength).toBe(0);
+  });
+
+  it("keeps WebDAV 404 infrastructure errors as server failures", async () => {
+    const originalWebdavUrl = process.env.WEBDAV_URL;
+    const originalContentSources = process.env.CONTENT_SOURCES;
+    const originalFetch = globalThis.fetch;
+    process.env.WEBDAV_URL = "https://webdav.example.test";
+    process.env.CONTENT_SOURCES = "local,webdav";
+    globalThis.fetch = (async () => new Response("missing", { status: 404 })) as typeof fetch;
+
+    try {
+      const response = await handleFilesApiRequest(
+        buildRequest("/api/files/webdav/blog/assets/missing-cover.jpg", {
+          method: "GET",
+          headers: {
+            origin: "https://pages.example.test",
+          },
+        }),
+        { source: "webdav", path: ["blog", "assets", "missing-cover.jpg"] }
+      );
+
+      expect(response.status).toBe(500);
+      expect(response.headers.get("access-control-allow-origin")).toBe(
+        "https://pages.example.test"
+      );
+      await expect(readJson(response)).resolves.toMatchObject({ error: "读取文件失败" });
+    } finally {
+      if (originalWebdavUrl) {
+        process.env.WEBDAV_URL = originalWebdavUrl;
+      } else {
+        delete process.env.WEBDAV_URL;
+      }
+      if (originalContentSources) {
+        process.env.CONTENT_SOURCES = originalContentSources;
+      } else {
+        delete process.env.CONTENT_SOURCES;
+      }
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("serves memo CRUD from /api/public/memos/* without tRPC routing", async () => {

@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
+import { buildPublicSnapshot } from "@/public-site/snapshot";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
 
@@ -72,6 +73,18 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
 
     const url = new URL(request.url);
     const pathname = subPath.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+
+    if (pathname === "/snapshot") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      const snapshot = await buildPublicSnapshot();
+      return json(request, snapshot, {
+        status: 200,
+        headers: {
+          "cache-control": "no-store",
+        },
+      });
+    }
+
     const { caller, resHeaders } = await createCallerForRequest(request);
 
     if (pathname === "/auth/me") {
