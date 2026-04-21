@@ -10,6 +10,8 @@ export interface PostCoverCandidate {
   relativeAssetPath: string | null;
 }
 
+type PostCoverSource = PostCoverCandidate["source"];
+
 function firstNonEmptyString(values: unknown[]) {
   for (const value of values) {
     if (typeof value === "string" && value.trim().length > 0) {
@@ -91,13 +93,13 @@ function getWikiImage(body: string) {
   return normalizeWikiImageTarget(wikiImage);
 }
 
-export function extractPostCoverCandidate(record: PublicPostRecord): PostCoverCandidate | null {
+export function extractPostCoverCandidates(record: PublicPostRecord): PostCoverCandidate[] {
   const metadata = record.metadata as Record<string, unknown>;
   const metadataImages = Array.isArray(metadata.images) ? metadata.images : [];
   const markdownFilePath = getMarkdownFilePath(record);
   const contentSource = getContentSource(record);
 
-  const candidates: Array<{ value: string | null; source: PostCoverCandidate["source"] }> = [
+  const candidates: Array<{ value: string | null; source: PostCoverSource }> = [
     {
       value: firstNonEmptyString([record.image]),
       source: "frontmatter",
@@ -116,19 +118,24 @@ export function extractPostCoverCandidate(record: PublicPostRecord): PostCoverCa
     },
   ];
 
+  const resolvedCandidates: PostCoverCandidate[] = [];
   for (const candidate of candidates) {
     if (!candidate.value) continue;
-    return {
+    resolvedCandidates.push({
       raw: candidate.value,
       source: candidate.source,
       markdownFilePath,
       contentSource,
       isExternal: isExternalCoverUrl(candidate.value),
       relativeAssetPath: resolveRelativeAssetPath(candidate.value, markdownFilePath),
-    };
+    });
   }
 
-  return null;
+  return resolvedCandidates;
+}
+
+export function extractPostCoverCandidate(record: PublicPostRecord): PostCoverCandidate | null {
+  return extractPostCoverCandidates(record)[0] ?? null;
 }
 
 export function resolvePostCoverImageSrc(

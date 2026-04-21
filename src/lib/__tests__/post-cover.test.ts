@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import {
   extractPostCoverCandidate,
+  extractPostCoverCandidates,
   normalizeWikiImageTarget,
   resolvePostCoverImageSrc,
   resolveRelativeAssetPath,
@@ -61,6 +62,21 @@ describe("post cover helper", () => {
         source: "metadata",
       })
     );
+  });
+
+  it("keeps later wiki candidates available when the first markdown image is external", () => {
+    const candidates = extractPostCoverCandidates(
+      makePost({
+        body: "![External cover](https://example.com/cover.webp)\n\n![[./assets/wiki-cover.png]]",
+      })
+    );
+
+    expect(
+      candidates.map((candidate) => [candidate.source, candidate.raw, candidate.isExternal])
+    ).toEqual([
+      ["markdown", "https://example.com/cover.webp", true],
+      ["wiki", "./assets/wiki-cover.png", false],
+    ]);
   });
 
   it("falls back to the first markdown image and resolves a local API src", () => {

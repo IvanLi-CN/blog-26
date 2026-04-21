@@ -69,6 +69,7 @@
 - 当提取到的是本地相对路径图片时，继续通过现有 `/api/files/<source>/...` 解析显示。
 - 当提取到的是外链图片时，`/posts` 直接把外链作为卡片封面展示。
 - `RelatedPostCard` 只复用候选提取与路径规范化，本地图片继续优先转 data URL，外链仍然不显示。
+- 当正文第一张 Markdown 图片是外链、但后续存在本地 wiki 图片时，`RelatedPostCard` 继续跳过这张外链 Markdown 图，并允许后续 wiki 图片补位。
 
 ### Edge cases / errors
 
@@ -169,6 +170,7 @@ None
 
 - 2026-04-21: 创建 spec，冻结 `/posts` 正文首图封面回退的范围、优先级与验证口径。
 - 2026-04-21: 完成共享封面 helper、`/posts`/`RelatedPostCard` 接入、测试夹具、回归验证与视觉证据落盘。
+- 2026-04-21: 根据 review 修正 `RelatedPostCard` 的候选选择，保留“外链 Markdown 图可被后续本地 wiki 图补位”的旧行为。
 
 ## 参考（References）
 
