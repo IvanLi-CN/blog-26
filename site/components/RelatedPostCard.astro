@@ -3,9 +3,12 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import Icon from "@/components/ui/Icon";
-import { resolveImagePath } from "@/lib/image-utils";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { toPublicAssetUrl } from "../lib/runtime-urls";
+import {
+  extractRelatedPostCoverCandidate,
+  resolvePostCoverCandidateSrc,
+} from "../lib/post-cover";
 
 interface Props {
   post: PublicPostRecord;
@@ -13,74 +16,6 @@ interface Props {
 
 const { post } = Astro.props as Props;
 const source = (post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav";
-
-function firstNonEmptyString(values: unknown[]): string | null {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return null;
-}
-
-function isExternalUrl(value: string) {
-  return /^https?:\/\//.test(value.trim());
-}
-
-function normalizeWikiImageTarget(target: string) {
-  return target
-    .split("|")[0]
-    .trim()
-    .replace(/^。\//u, "./")
-    .replace(/^\.。\//u, "./");
-}
-
-function extractCoverCandidate(record: PublicPostRecord) {
-  const metadata = record.metadata as Record<string, unknown>;
-  const metadataImages = Array.isArray(metadata.images) ? metadata.images : [];
-  const frontmatterImage = firstNonEmptyString([record.image, ...metadataImages]);
-  if (frontmatterImage) return frontmatterImage;
-
-  const markdownImage = record.body.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
-  if (markdownImage?.trim() && !isExternalUrl(markdownImage)) return markdownImage.trim();
-
-  const wikiImage = record.body.match(/!\[\[([^\]]+)\]\]/)?.[1];
-  if (wikiImage?.trim()) return normalizeWikiImageTarget(wikiImage);
-
-  return null;
-}
-
-function resolveRelativeAssetPath(imagePath: string, markdownFilePath: string) {
-  const clean = imagePath.trim();
-  if (!clean) return null;
-
-  if (clean.startsWith("/")) {
-    return clean.replace(/^\/+/, "");
-  }
-
-  const normalizedFilePath = markdownFilePath.replace(/\\/g, "/");
-  const markdownDir = normalizedFilePath.includes("/")
-    ? normalizedFilePath.slice(0, normalizedFilePath.lastIndexOf("/"))
-    : "";
-
-  const baseSegments = markdownDir.split("/").filter(Boolean);
-  const pathSegments = clean.replace(/\\/g, "/").split("/");
-
-  if (!clean.startsWith("./") && !clean.startsWith("../")) {
-    return [...baseSegments, ...pathSegments.filter(Boolean)].join("/");
-  }
-
-  for (const segment of pathSegments) {
-    if (!segment || segment === ".") continue;
-    if (segment === "..") {
-      baseSegments.pop();
-      continue;
-    }
-    baseSegments.push(segment);
-  }
-
-  return baseSegments.join("/");
-}
 
 function decodeAssetPath(path: string) {
   try {
@@ -101,16 +36,14 @@ function getMimeType(filePath: string) {
 }
 
 async function resolveCardImageSrc(record: PublicPostRecord, contentSource: "local" | "webdav") {
-  const coverCandidate = extractCoverCandidate(record);
-  if (!coverCandidate || isExternalUrl(coverCandidate)) {
+  const candidate = extractRelatedPostCoverCandidate(record);
+  if (!candidate || candidate.isExternal) {
     return null;
   }
 
-  const markdownFilePath = record.filePath || `blog/${record.slug}.md`;
-
   if (contentSource === "local") {
     const contentBasePath = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
-    const relativeAssetPath = resolveRelativeAssetPath(coverCandidate, markdownFilePath);
+    const relativeAssetPath = candidate.relativeAssetPath;
 
     if (contentBasePath && relativeAssetPath) {
       const absoluteBasePath = resolve(contentBasePath);
@@ -123,7 +56,7 @@ async function resolveCardImageSrc(record: PublicPostRecord, contentSource: "loc
     }
   }
 
-  return toPublicAssetUrl(resolveImagePath(coverCandidate, contentSource, markdownFilePath));
+  return toPublicAssetUrl(resolvePostCoverCandidateSrc(candidate));
 }
 
 const imageSrc = await resolveCardImageSrc(post, source);

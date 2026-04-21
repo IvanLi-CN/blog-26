@@ -455,6 +455,32 @@ async function updateUser(id, data) {
 Redis 让数据访问变得更加快速高效。
 `,
     },
+    {
+      title: "文章列表封面回退测试",
+      slug: "posts-cover-fallback-local",
+      publishDate: generateRandomDate(),
+      updateDate: generateRandomDate(),
+      draft: false,
+      public: true,
+      excerpt:
+        "验证 /posts 在缺少 frontmatter.image 时，会回退使用正文第一张本地图片作为卡片封面。",
+      category: "测试",
+      tags: ["测试", "封面回退"],
+      author: "Ivan Li",
+      image: "",
+      body: `![列表封面回退图](./assets/react-hooks.jpg)
+
+# 文章列表封面回退测试
+
+这篇文章专门用于验证 \`/posts\` 列表卡片的封面回退行为。
+
+- frontmatter 中的 \`image\` 字段为空；
+- 正文第一张图是本地相对路径图片；
+- 文章列表应当显示左侧封面，而不是退化成纯文本卡片。
+
+后续的正文内容仅用于确保首图之后仍然是正常的文章内容，不影响封面回退逻辑。
+`,
+    },
   ];
 }
 

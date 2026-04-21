@@ -1,10 +1,10 @@
 ---
-import { resolveImagePath } from "@/lib/image-utils";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import Icon from "@/components/ui/Icon";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
 import { toPublicAssetUrl } from "../lib/runtime-urls";
+import { resolvePostCoverImageSrc } from "../lib/post-cover";
 import TagBadge from "./TagBadge.astro";
 
 interface Props {
@@ -15,11 +15,7 @@ interface Props {
 
 const { post, iconMap = {}, iconSvgMap = {} } = Astro.props;
 const readingTime = formatReadingTime(calculateReadingTime(post.body || ""));
-const imageSrc = toPublicAssetUrl(resolveImagePath(
-  post.image || undefined,
-  (post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
-  post.filePath || `blog/${post.slug}.md`
-));
+const imageSrc = toPublicAssetUrl(resolvePostCoverImageSrc(post, { allowExternal: true }));
 ---
 <article class="nature-panel relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8">
   <div class={`mt-2 ${imageSrc ? "md:col-start-2 md:row-start-1" : "md:col-span-2"} flex h-full flex-col`}>

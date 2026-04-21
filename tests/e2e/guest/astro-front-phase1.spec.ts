@@ -96,6 +96,40 @@ test.describe("Astro public front (phase 1)", () => {
     await expect(page.locator('a[href="/posts/react-hooks-deep-dive"]').first()).toBeVisible();
   });
 
+  test("falls back to the first body image on /posts when frontmatter image is empty", async ({
+    page,
+  }) => {
+    await page.goto("/posts", { waitUntil: "domcontentloaded" });
+
+    const card = page
+      .locator("article")
+      .filter({
+        has: page.locator('a[href="/posts/posts-cover-fallback-local"]'),
+      })
+      .first();
+
+    await expect(card).toBeVisible();
+    const image = card.locator('img[alt="文章列表封面回退测试"]').first();
+    const titleLink = card.locator('a[href="/posts/posts-cover-fallback-local"]').first();
+
+    await expect(image).toBeVisible();
+    await expect(image).toHaveAttribute(
+      "src",
+      /\/api\/files\/local\/blog\/assets\/react-hooks\.jpg$/
+    );
+
+    const imageBox = await image.boundingBox();
+    const titleBox = await titleLink.boundingBox();
+
+    expect(imageBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
+    if (!imageBox || !titleBox) {
+      throw new Error("Expected both the fallback image and title link bounding boxes to exist.");
+    }
+
+    expect(imageBox.x).toBeLessThan(titleBox.x);
+  });
+
   test("serves feed, sitemap, and public APIs through the gateway", async ({ request }) => {
     const feed = await request.get("/feed.xml");
     expect(feed.ok()).toBeTruthy();

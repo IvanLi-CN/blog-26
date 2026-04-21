@@ -7,6 +7,7 @@ import type {
   PublicTagSummary,
   PublicTagTimelineItem,
 } from "@/public-site/snapshot";
+import { extractPostCoverCandidate } from "./post-cover";
 
 const snapshotPath = resolve(
   process.cwd(),
@@ -46,15 +47,6 @@ function getTopLevelContentRoot(filePath: string | null | undefined) {
   return normalized.split("/")[0] || null;
 }
 
-function firstNonEmptyString(values: unknown[]) {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return null;
-}
-
 function normalizeTagSet(tags: string[]) {
   return new Set(tags.map((tag) => tag.trim()).filter(Boolean));
 }
@@ -69,36 +61,9 @@ function getMeaningfulTags(tags: string[]) {
   return tags.map((tag) => tag.trim()).filter((tag) => tag && !genericRoots.has(tag));
 }
 
-function isExternalUrl(value: string) {
-  return /^https?:\/\//.test(value.trim());
-}
-
-function normalizeWikiImageTarget(target: string) {
-  return target
-    .split("|")[0]
-    .trim()
-    .replace(/^。\//u, "./")
-    .replace(/^\.。\//u, "./");
-}
-
-function extractCoverCandidate(post: PublicPostRecord) {
-  const metadata = post.metadata as Record<string, unknown>;
-  const metadataImages = Array.isArray(metadata.images) ? metadata.images : [];
-  const frontmatterImage = firstNonEmptyString([post.image, ...metadataImages]);
-  if (frontmatterImage) return frontmatterImage;
-
-  const markdownImage = post.body.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
-  if (markdownImage?.trim()) return markdownImage.trim();
-
-  const wikiImage = post.body.match(/!\[\[([^\]]+)\]\]/)?.[1];
-  if (wikiImage?.trim()) return normalizeWikiImageTarget(wikiImage);
-
-  return null;
-}
-
 function hasDisplayCover(post: PublicPostRecord) {
-  const coverCandidate = extractCoverCandidate(post);
-  return Boolean(coverCandidate && !isExternalUrl(coverCandidate));
+  const coverCandidate = extractPostCoverCandidate(post);
+  return Boolean(coverCandidate && !coverCandidate.isExternal);
 }
 
 function scoreRelatedPost(current: PublicPostRecord, candidate: PublicPostRecord) {
