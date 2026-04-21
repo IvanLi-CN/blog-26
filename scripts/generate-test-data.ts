@@ -456,7 +456,7 @@ Redis 让数据访问变得更加快速高效。
 `,
     },
     {
-      title: "文章列表封面回退测试",
+      title: "首图封面回退测试",
       slug: "posts-cover-fallback-local",
       publishDate: generateRandomDate(),
       updateDate: generateRandomDate(),
@@ -470,7 +470,7 @@ Redis 让数据访问变得更加快速高效。
       image: "",
       body: `![列表封面回退图](./assets/react-hooks.jpg)
 
-# 文章列表封面回退测试
+# 首图封面回退测试
 
 这篇文章专门用于验证 \`/posts\` 列表卡片的封面回退行为。
 

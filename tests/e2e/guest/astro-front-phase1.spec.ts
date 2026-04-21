@@ -109,7 +109,7 @@ test.describe("Astro public front (phase 1)", () => {
       .first();
 
     await expect(card).toBeVisible();
-    const image = card.locator('img[alt="文章列表封面回退测试"]').first();
+    const image = card.locator('img[alt="首图封面回退测试"]').first();
     const titleLink = card.locator('a[href="/posts/posts-cover-fallback-local"]').first();
 
     await expect(image).toBeVisible();

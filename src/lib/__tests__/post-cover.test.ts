@@ -14,7 +14,7 @@ function makePost(overrides: Partial<PublicPostRecord> = {}): PublicPostRecord {
   return {
     id: "blog/posts-cover-fallback-local.md",
     slug: "posts-cover-fallback-local",
-    title: "文章列表封面回退测试",
+    title: "首图封面回退测试",
     excerpt: "测试正文首图封面回退。",
     body: "",
     publishDate: "2026-02-10T08:00:00.000Z",
