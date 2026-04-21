@@ -67,6 +67,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 ## Frontend content bundle
 
 - Store the bundle URL in GitHub secrets as `PUBLIC_CONTENT_BUNDLE_URL`.
+- Preferred value: `https://ivanli.cc/api/public/snapshot`.
 - The URL may contain an embedded token; do not expose it in `PUBLIC_*` client config.
 - Configure these repository variables for GitHub Pages frontend releases:
   - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`

@@ -202,6 +202,34 @@ function validateFileRequest(source: string, filePath: string) {
   return null;
 }
 
+function isMissingFileError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const maybeCode = (error as Error & { code?: string }).code;
+  return (
+    error.message.includes("文件不存在") || error.message.includes("404") || maybeCode === "ENOENT"
+  );
+}
+
+function notFoundResponse(request: Request, filePath: string) {
+  if (isImageRequest(filePath, request)) {
+    return new Response(request.method === "HEAD" ? null : new Uint8Array(), {
+      status: 404,
+      headers: withCors(
+        {
+          "Content-Type": getContentType(filePath),
+          "Cache-Control": "no-store",
+        },
+        request
+      ),
+    });
+  }
+
+  return json(request, { error: "文件不存在" }, { status: 404 });
+}
+
 export async function handleFilesApiRequest(
   request: Request,
   params: { source: string; path: string[] }
@@ -308,9 +336,8 @@ export async function handleFilesApiRequest(
 
     return json(request, { error: `Method ${request.method} not allowed` }, { status: 405 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("404")) {
-      return json(request, { error: "文件不存在" }, { status: 404 });
+    if (isMissingFileError(error)) {
+      return notFoundResponse(request, filePath);
     }
     console.error("❌ [Files API] 请求失败:", error);
     return json(
