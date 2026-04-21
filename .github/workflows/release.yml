@@ -305,14 +305,34 @@ jobs:
           fi
           echo "PUBLIC_API_BASE_URL=${api_base}" >> "$GITHUB_ENV"
 
+      - name: Resolve frontend Pages site config
+        shell: bash
+        env:
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH }}
+          NEXT_PUBLIC_SITE_BASE_PATH: ${{ vars.NEXT_PUBLIC_SITE_BASE_PATH }}
+        run: |
+          set -euo pipefail
+          site_url="${PUBLIC_SITE_URL:-${NEXT_PUBLIC_SITE_URL:-}}"
+          site_base_path="${PUBLIC_SITE_BASE_PATH:-${NEXT_PUBLIC_SITE_BASE_PATH:-}}"
+          if [[ -z "${site_url}" ]]; then
+            echo "PUBLIC_SITE_URL is required for frontend releases" >&2
+            exit 1
+          fi
+          if [[ -z "${site_base_path}" ]]; then
+            echo "PUBLIC_SITE_BASE_PATH is required for frontend releases" >&2
+            exit 1
+          fi
+          echo "NEXT_PUBLIC_SITE_URL=${site_url}" >> "$GITHUB_ENV"
+          echo "PUBLIC_SITE_URL=${site_url}" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SITE_BASE_PATH=${site_base_path}" >> "$GITHUB_ENV"
+          echo "PUBLIC_SITE_BASE_PATH=${site_base_path}" >> "$GITHUB_ENV"
+
       - name: Build frontend static site
         env:
           PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
-          NEXT_PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
-          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || vars.NEXT_PUBLIC_SITE_BASE_PATH }}
-          PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || vars.NEXT_PUBLIC_SITE_BASE_PATH }}
         run: bun run frontend:build
 
       - name: Package frontend release assets

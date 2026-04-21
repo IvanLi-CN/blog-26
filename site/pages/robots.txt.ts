@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
-import { getCanonicalUrl, getSiteUrl } from "../lib/public-site";
+import { getCanonicalUrl, getSiteOrigin } from "../lib/public-site";
 
 export const GET: APIRoute = async () => {
-  const baseUrl = getSiteUrl().replace(/\/$/, "");
+  const baseUrl = getSiteOrigin();
   const body = [
     "User-agent: *",
     "Allow: /",

@@ -18,6 +18,17 @@ function normalizeBasePath(raw) {
   return normalized === "/" ? "" : normalized;
 }
 
+function deriveBasePathFromSiteUrl(rawSiteUrl) {
+  const siteUrl = typeof rawSiteUrl === "string" ? rawSiteUrl.trim() : "";
+  if (!siteUrl) return "";
+
+  try {
+    return normalizeBasePath(new URL(siteUrl).pathname);
+  } catch {
+    return "";
+  }
+}
+
 function resolveAstroSite(rawSiteUrl, rawBasePath) {
   const siteUrl = typeof rawSiteUrl === "string" ? rawSiteUrl.trim() : "";
   if (!siteUrl) return undefined;
@@ -36,7 +47,8 @@ function resolveAstroSite(rawSiteUrl, rawBasePath) {
   }
 }
 
-const astroBasePath = normalizeBasePath(configuredSiteBasePath);
+const astroBasePath =
+  normalizeBasePath(configuredSiteBasePath) || deriveBasePathFromSiteUrl(configuredSiteUrl);
 const astroSiteUrl = resolveAstroSite(configuredSiteUrl, astroBasePath);
 
 export default defineConfig({

@@ -29,6 +29,7 @@ function assertIncludesSome(
 const basePath = (process.env.PUBLIC_SITE_BASE_PATH || "").trim();
 const siteUrl = (process.env.PUBLIC_SITE_URL || "").trim();
 const apiBaseUrl = (process.env.PUBLIC_API_BASE_URL || "").trim();
+const siteOrigin = new URL(siteUrl).origin;
 
 if (!basePath || !siteUrl) {
   throw new Error("PUBLIC_SITE_URL and PUBLIC_SITE_BASE_PATH are required");
@@ -89,6 +90,11 @@ const checks = [
     file: "site-dist/default-avatar.svg",
     includes: ["<svg"],
     excludes: [],
+  },
+  {
+    file: "site-dist/robots.txt",
+    includes: [`Host: ${siteOrigin}`, `Sitemap: ${siteUrl}/sitemap.xml`],
+    excludes: siteOrigin === siteUrl ? [] : [`Host: ${siteUrl}`],
   },
 ];
 

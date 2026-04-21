@@ -20,6 +20,15 @@ export function getSiteUrl() {
   return getPublicSiteUrl() || SITE.url;
 }
 
+export function getSiteOrigin() {
+  const siteUrl = getSiteUrl();
+  try {
+    return new URL(siteUrl).origin;
+  } catch {
+    return siteUrl.replace(/\/+$/, "");
+  }
+}
+
 export function getCanonicalUrl(pathname = "/") {
   if (/^https?:\/\//.test(pathname)) {
     return pathname;
