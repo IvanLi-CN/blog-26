@@ -455,6 +455,26 @@ async function updateUser(id, data) {
 Redis 让数据访问变得更加快速高效。
 `,
     },
+    {
+      title: "首图封面回退验证",
+      slug: "posts-cover-fallback",
+      publishDate: generateRandomDate(),
+      updateDate: generateRandomDate(),
+      draft: false,
+      public: true,
+      excerpt: "用于验证 /posts 列表在缺少 frontmatter image 时会回退渲染正文首图。",
+      category: "测试夹具",
+      tags: ["E2E", "CoverFallback"],
+      author: "Ivan Li",
+      body: `# 首图封面回退验证
+
+这篇文章故意不设置 \`image\` frontmatter，只在正文里放置第一张图片，供 \`/posts\` 列表卡片回退封面时使用。
+
+![封面回退夹具](./assets/hello-world.jpg)
+
+后续正文可以继续包含其他内容，但列表卡片应该优先拿到这张首图。
+`,
+    },
   ];
 }
 

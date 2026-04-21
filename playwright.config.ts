@@ -76,6 +76,7 @@ export default defineConfig({
         "**/guest/hover-stability.spec.ts",
         "**/guest/nature-front-coverage.spec.ts",
         "**/guest/admin-access-denied.spec.ts",
+        "**/guest/posts-cover-fallback.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"] },
     },

@@ -1,5 +1,6 @@
 ---
 import { resolveImagePath } from "@/lib/image-utils";
+import { extractPostCoverCandidate } from "@/lib/post-cover";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import Icon from "@/components/ui/Icon";
 import type { PublicPostRecord } from "@/public-site/snapshot";
@@ -15,13 +16,18 @@ interface Props {
 
 const { post, iconMap = {}, iconSvgMap = {} } = Astro.props;
 const readingTime = formatReadingTime(calculateReadingTime(post.body || ""));
-const imageSrc = toPublicAssetUrl(resolveImagePath(
-  post.image || undefined,
-  (post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
-  post.filePath || `blog/${post.slug}.md`
-));
+const contentSource = (post.dataSource?.includes("local") ? "local" : "webdav") as
+  | "local"
+  | "webdav";
+const coverCandidate = extractPostCoverCandidate(post, { allowExternal: true });
+const imageSrc = coverCandidate
+  ? toPublicAssetUrl(resolveImagePath(coverCandidate, contentSource, post.filePath || `blog/${post.slug}.md`))
+  : null;
 ---
-<article class="nature-panel relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8">
+<article
+  class="nature-panel relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8"
+  data-testid="post-card"
+>
   <div class={`mt-2 ${imageSrc ? "md:col-start-2 md:row-start-1" : "md:col-span-2"} flex h-full flex-col`}>
     <header>
       <div class="mb-1">
@@ -68,7 +74,12 @@ const imageSrc = toPublicAssetUrl(resolveImagePath(
   </div>
 
   {imageSrc && (
-    <a class="relative block group" href={toPublicSitePath(`/posts/${post.slug}`)}>
+    <a
+      class="relative block group"
+      href={toPublicSitePath(`/posts/${post.slug}`)}
+      data-post-card-cover
+      data-testid="post-card-cover"
+    >
       <div class="relative h-0 overflow-hidden rounded-[1.75rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] pb-[56.25%] shadow-[var(--nature-shadow)] transition-all duration-300 group-hover:shadow-[var(--nature-shadow-strong)] md:h-72 md:pb-[75%] lg:pb-[56.25%]">
         <img
           src={imageSrc}
