@@ -388,6 +388,7 @@ This repository uses a PR label-driven release contract for PRs targeting `main`
 
 - `release:frontend` builds must provide `PUBLIC_CONTENT_BUNDLE_URL` in GitHub secrets.
 - Preferred value: `https://ivanli.cc/api/public/snapshot` so Pages always builds from the live public dataset instead of a manually exported dev bundle.
+- If that live snapshot route is unavailable on the public mirror, point the secret at the repo-hosted fallback bundle instead: `https://raw.githubusercontent.com/IvanLi-CN/blog-26/public-content-bundle/public-bundles/live/public-snapshot.json`.
 - The workflow downloads the content bundle, reuses the included `public-snapshot.json`, then runs Astro SSG.
 - Configure repository variables before the first Pages release:
   - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`

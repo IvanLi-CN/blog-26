@@ -68,6 +68,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 - Store the bundle URL in GitHub secrets as `PUBLIC_CONTENT_BUNDLE_URL`.
 - Preferred value: `https://ivanli.cc/api/public/snapshot`.
+- If the live snapshot endpoint is not wired to the public mirror yet, use the repo-hosted fallback bundle instead: `https://raw.githubusercontent.com/IvanLi-CN/blog-26/public-content-bundle/public-bundles/live/public-snapshot.json`.
 - The URL may contain an embedded token; do not expose it in `PUBLIC_*` client config.
 - Configure these repository variables for GitHub Pages frontend releases:
   - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`
