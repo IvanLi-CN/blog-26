@@ -75,6 +75,7 @@
 
 - `image: ""`、空白字符串或无效 `metadata.images[]` 必须被视为“无封面”。
 - wiki 图片路径中的 `。/`、`.。/` 和 `|caption` 片段必须被规范化。
+- Markdown 图片目的地中的可选 title 片段不能被并入最终封面 URL。
 - 没有任何可用图片时，卡片必须维持现有无图布局。
 
 ## 接口契约（Interfaces & Contracts）
@@ -171,6 +172,7 @@ None
 - 2026-04-21: 创建 spec，冻结 `/posts` 正文首图封面回退的范围、优先级与验证口径。
 - 2026-04-21: 完成共享封面 helper、`/posts`/`RelatedPostCard` 接入、测试夹具、回归验证与视觉证据落盘。
 - 2026-04-21: 根据 review 修正 `RelatedPostCard` 的候选选择，保留“外链 Markdown 图可被后续本地 wiki 图补位”的旧行为。
+- 2026-04-21: 根据 review 修正 Markdown 图片可选 title 的解析，并让 `RelatedPostCard` 复用已选中的候选封面而不是重新回退。
 
 ## 参考（References）
 

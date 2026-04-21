@@ -84,7 +84,19 @@ export function resolveRelativeAssetPath(imagePath: string, markdownFilePath: st
 }
 
 function getMarkdownImage(body: string) {
-  return body.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1]?.trim() || null;
+  const markdownImage = body.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1]?.trim();
+  if (!markdownImage) return null;
+
+  if (markdownImage.startsWith("<")) {
+    const endIndex = markdownImage.indexOf(">");
+    if (endIndex > 1) {
+      return markdownImage.slice(1, endIndex).trim() || null;
+    }
+  }
+
+  const withOptionalTitle = markdownImage.match(/^(\S+)(?:\s+("[^"]*"|'[^']*'|\([^)]*\)))?\s*$/);
+
+  return withOptionalTitle?.[1] || markdownImage;
 }
 
 function getWikiImage(body: string) {
@@ -138,6 +150,10 @@ export function extractPostCoverCandidate(record: PublicPostRecord): PostCoverCa
   return extractPostCoverCandidates(record)[0] ?? null;
 }
 
+export function resolvePostCoverCandidateSrc(candidate: PostCoverCandidate) {
+  return resolveImagePath(candidate.raw, candidate.contentSource, candidate.markdownFilePath);
+}
+
 export function resolvePostCoverImageSrc(
   record: PublicPostRecord,
   options: { allowExternal?: boolean } = {}
@@ -146,5 +162,5 @@ export function resolvePostCoverImageSrc(
   const candidate = extractPostCoverCandidate(record);
   if (!candidate) return null;
   if (candidate.isExternal && !allowExternal) return null;
-  return resolveImagePath(candidate.raw, candidate.contentSource, candidate.markdownFilePath);
+  return resolvePostCoverCandidateSrc(candidate);
 }

@@ -4,6 +4,7 @@ import {
   extractPostCoverCandidate,
   extractPostCoverCandidates,
   normalizeWikiImageTarget,
+  resolvePostCoverCandidateSrc,
   resolvePostCoverImageSrc,
   resolveRelativeAssetPath,
 } from "../../../site/lib/post-cover";
@@ -79,6 +80,23 @@ describe("post cover helper", () => {
     ]);
   });
 
+  it("resolves a selected later wiki candidate without reparsing the original record", () => {
+    const candidate = extractPostCoverCandidates(
+      makePost({
+        body: "![External cover](https://example.com/cover.webp)\n\n![[./assets/wiki-cover.png]]",
+      })
+    ).find((item) => !(item.source === "markdown" && item.isExternal));
+
+    expect(candidate).toBeDefined();
+    if (!candidate) {
+      throw new Error("Expected a non-external fallback candidate for the related-post flow.");
+    }
+
+    expect(resolvePostCoverCandidateSrc(candidate)).toBe(
+      "/api/files/local/blog/assets/wiki-cover.png"
+    );
+  });
+
   it("falls back to the first markdown image and resolves a local API src", () => {
     const imageSrc = resolvePostCoverImageSrc(
       makePost({
@@ -106,6 +124,19 @@ describe("post cover helper", () => {
         source: "wiki",
       })
     );
+  });
+
+  it("strips optional markdown image titles from fallback destinations", () => {
+    const imageSrc = resolvePostCoverImageSrc(
+      makePost({
+        body: '![Body cover](https://example.com/body-cover.webp "Body cover title")',
+        dataSource: "webdav",
+        filePath: "/Hardware/posts-cover-fallback-local.md",
+      }),
+      { allowExternal: true }
+    );
+
+    expect(imageSrc).toBe("https://example.com/body-cover.webp");
   });
 
   it("allows external cover fallbacks only when explicitly enabled", () => {
