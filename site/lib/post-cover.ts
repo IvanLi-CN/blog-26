@@ -150,6 +150,16 @@ export function extractPostCoverCandidate(record: PublicPostRecord): PostCoverCa
   return extractPostCoverCandidates(record)[0] ?? null;
 }
 
+export function extractRelatedPostCoverCandidate(
+  record: PublicPostRecord
+): PostCoverCandidate | null {
+  return (
+    extractPostCoverCandidates(record).find(
+      (candidate) => !(candidate.source === "markdown" && candidate.isExternal)
+    ) ?? null
+  );
+}
+
 export function resolvePostCoverCandidateSrc(candidate: PostCoverCandidate) {
   return resolveImagePath(candidate.raw, candidate.contentSource, candidate.markdownFilePath);
 }

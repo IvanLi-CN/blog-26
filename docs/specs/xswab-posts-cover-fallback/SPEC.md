@@ -173,6 +173,7 @@ None
 - 2026-04-21: 完成共享封面 helper、`/posts`/`RelatedPostCard` 接入、测试夹具、回归验证与视觉证据落盘。
 - 2026-04-21: 根据 review 修正 `RelatedPostCard` 的候选选择，保留“外链 Markdown 图可被后续本地 wiki 图补位”的旧行为。
 - 2026-04-21: 根据 review 修正 Markdown 图片可选 title 的解析，并让 `RelatedPostCard` 复用已选中的候选封面而不是重新回退。
+- 2026-04-21: 根据 review 让相关文章打分与真实封面选择保持一致，避免“能显示封面但仍按无封面排序”的偏差。
 
 ## 参考（References）
 

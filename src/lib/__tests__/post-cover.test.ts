@@ -3,6 +3,7 @@ import type { PublicPostRecord } from "@/public-site/snapshot";
 import {
   extractPostCoverCandidate,
   extractPostCoverCandidates,
+  extractRelatedPostCoverCandidate,
   normalizeWikiImageTarget,
   resolvePostCoverCandidateSrc,
   resolvePostCoverImageSrc,
@@ -81,11 +82,11 @@ describe("post cover helper", () => {
   });
 
   it("resolves a selected later wiki candidate without reparsing the original record", () => {
-    const candidate = extractPostCoverCandidates(
+    const candidate = extractRelatedPostCoverCandidate(
       makePost({
         body: "![External cover](https://example.com/cover.webp)\n\n![[./assets/wiki-cover.png]]",
       })
-    ).find((item) => !(item.source === "markdown" && item.isExternal));
+    );
 
     expect(candidate).toBeDefined();
     if (!candidate) {

@@ -7,7 +7,7 @@ import type {
   PublicTagSummary,
   PublicTagTimelineItem,
 } from "@/public-site/snapshot";
-import { extractPostCoverCandidate } from "./post-cover";
+import { extractRelatedPostCoverCandidate } from "./post-cover";
 
 const snapshotPath = resolve(
   process.cwd(),
@@ -62,7 +62,7 @@ function getMeaningfulTags(tags: string[]) {
 }
 
 function hasDisplayCover(post: PublicPostRecord) {
-  const coverCandidate = extractPostCoverCandidate(post);
+  const coverCandidate = extractRelatedPostCoverCandidate(post);
   return Boolean(coverCandidate && !coverCandidate.isExternal);
 }
 
