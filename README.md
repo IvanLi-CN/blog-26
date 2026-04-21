@@ -391,7 +391,7 @@ This repository uses a PR label-driven release contract for PRs targeting `main`
 - Configure repository variables before the first Pages release:
   - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`
   - `PUBLIC_SITE_BASE_PATH=/blog-26`
-  - `PUBLIC_API_BASE_URL=https://blog.ivanli.cc`
+  - `PUBLIC_API_BASE_URL=https://ivanli.cc`
 - Pages frontend runtime API/file requests are rewritten against `PUBLIC_API_BASE_URL`, which must point at the live backend origin.
 - This phase targets the default project Pages URL only. Custom EO domain routing is a later phase.
 

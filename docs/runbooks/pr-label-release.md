@@ -71,7 +71,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Configure these repository variables for GitHub Pages frontend releases:
   - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`
   - `PUBLIC_SITE_BASE_PATH=/blog-26`
-  - `PUBLIC_API_BASE_URL=https://blog.ivanli.cc`
+  - `PUBLIC_API_BASE_URL=https://ivanli.cc`
 - The workflow can consume either:
   - a raw `public-snapshot.json`, or
   - an archive containing `public-snapshot.json`
