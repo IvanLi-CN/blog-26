@@ -2,6 +2,7 @@
 
 import type React from "react";
 import { useCallback, useEffect, useId, useState } from "react";
+import { toPublicSitePath } from "@/lib/public-runtime-url";
 import Icon from "../ui/Icon";
 import { Textarea } from "../ui/textarea";
 import type { UserInfo } from "./types";
@@ -22,6 +23,7 @@ interface CommentFormProps {
   error: string | null;
   onLogout: () => void;
   onLoginSuccess: () => Promise<void>;
+  usePublicSitePaths?: boolean;
 }
 
 export default function CommentForm({
@@ -34,6 +36,7 @@ export default function CommentForm({
   error,
   onLogout,
   onLoginSuccess: _onLoginSuccess,
+  usePublicSitePaths = false,
 }: CommentFormProps) {
   const [content, setContent] = useState("");
   const [nickname, setNickname] = useState("");
@@ -45,6 +48,9 @@ export default function CommentForm({
 
   const [captchaResponse, setCaptchaResponse] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const fallbackAvatarUrl = usePublicSitePaths
+    ? (toPublicSitePath("/default-avatar.svg") ?? "/default-avatar.svg")
+    : "/default-avatar.svg";
 
   const handleCaptchaSuccess = useCallback((response: string) => {
     setCaptchaResponse(response);
@@ -95,7 +101,7 @@ export default function CommentForm({
           <div className="overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
             {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}
             <img
-              src={userInfo.avatarUrl || "/default-avatar.png"}
+              src={userInfo.avatarUrl || fallbackAvatarUrl}
               alt={userInfo.nickname}
               className="h-12 w-12 rounded-full object-cover"
               width={48}

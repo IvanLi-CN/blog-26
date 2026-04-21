@@ -5,7 +5,7 @@ import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
-import { toPublicApiUrl } from "../lib/runtime-urls";
+import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 type PublicMemoRecord = {
   id: string;
@@ -387,7 +387,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
           method: "DELETE",
         }
       );
-      window.location.href = "/memos";
+      window.location.href = toPublicSitePath("/memos");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -481,6 +481,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               enableMermaid={true}
               enableCodeFolding={true}
               removeTags={true}
+              rewritePublicSitePaths={true}
               articlePath={memo.filePath || memo.slug}
               contentSource={memo.source === "local" ? "local" : "webdav"}
             />

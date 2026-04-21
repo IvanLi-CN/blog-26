@@ -311,6 +311,8 @@ jobs:
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
           NEXT_PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || vars.NEXT_PUBLIC_SITE_BASE_PATH }}
+          PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH || vars.NEXT_PUBLIC_SITE_BASE_PATH }}
         run: bun run frontend:build
 
       - name: Package frontend release assets

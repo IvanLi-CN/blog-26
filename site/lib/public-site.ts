@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { SITE } from "@/config/site";
+import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 import type {
   PublicPostRecord,
   PublicSnapshot,
@@ -16,11 +17,19 @@ const snapshotPath = resolve(
 let snapshotPromise: Promise<PublicSnapshot> | undefined;
 
 export function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || process.env.PUBLIC_SITE_URL || SITE.url;
+  return getPublicSiteUrl() || SITE.url;
 }
 
 export function getCanonicalUrl(pathname = "/") {
-  return new URL(pathname, getSiteUrl()).toString();
+  if (/^https?:\/\//.test(pathname)) {
+    return pathname;
+  }
+  const siteUrl = getSiteUrl().replace(/\/+$/, "");
+  return new URL(toPublicSitePath(pathname) ?? pathname, `${siteUrl}/`).toString();
+}
+
+export function toAbsoluteSiteUrl(pathname: string) {
+  return getCanonicalUrl(pathname);
 }
 
 export async function getSnapshot() {

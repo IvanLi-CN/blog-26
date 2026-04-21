@@ -1,6 +1,7 @@
 ---
 import Icon from "@/components/ui/Icon";
 import { buildTagHref } from "@/lib/tag-href";
+import { toPublicSitePath } from "../lib/runtime-urls";
 import { pickTagIconSvg } from "../lib/public-site";
 
 interface Props {
@@ -15,7 +16,7 @@ const label = String(tag).split("/").filter(Boolean).at(-1)?.replace(/^#/, "") ?
 const { iconId, iconSvg } = pickTagIconSvg(String(tag), iconMap, iconSvgMap);
 ---
 <a
-  href={buildTagHref(String(tag))}
+  href={toPublicSitePath(buildTagHref(String(tag)))}
   class={`nature-hover-hitbox nature-hover-hitbox-inline group align-middle ${className}`}
 >
   <span class="nature-hover-lift nature-hover-surface inline-flex items-center gap-1 rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.24)] px-2.5 py-1 text-sm font-medium text-[color:var(--nature-text-soft)] transition-all duration-200 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.36)] [--nature-hover-lift-offset:-0.125rem] [--nature-hover-shadow:0_12px_24px_rgba(8,21,16,0.08)] group-hover:text-[color:var(--nature-accent-strong)]">

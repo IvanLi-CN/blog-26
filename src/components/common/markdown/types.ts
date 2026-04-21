@@ -30,6 +30,8 @@ export interface MarkdownRendererProps {
   contentSource?: "local" | "webdav";
   /** 是否移除内容中的标签 */
   removeTags?: boolean;
+  /** 是否为 GitHub Pages 公开前台改写站内根路径 */
+  rewritePublicSitePaths?: boolean;
 }
 
 /**

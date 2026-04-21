@@ -4,6 +4,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getSnapshot, pickTagIconSvg } from "../../lib/public-site";
 import { buildTagHref } from "@/lib/tag-href";
 import { formatAbsoluteDate } from "../../lib/format";
+import { toPublicSitePath } from "../../lib/runtime-urls";
 
 export async function getStaticPaths() {
   const snapshot = await getSnapshot();
@@ -20,7 +21,7 @@ const snapshot = await getSnapshot();
 const items = snapshot.tags.timelines[summary.name] ?? [];
 const breadcrumbs = summary.segments.map((segment, index) => ({
   label: segment,
-  href: buildTagHref(summary.segments.slice(0, index + 1).join("/")),
+  href: toPublicSitePath(buildTagHref(summary.segments.slice(0, index + 1).join("/"))),
 }));
 const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMap, snapshot.tags.tagIconSvgMap);
 ---
@@ -28,7 +29,11 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
   <section class="nature-container px-6 py-8 lg:py-12">
     <nav aria-label="Breadcrumb" class="mb-4">
       <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[color:var(--nature-text-soft)]">
-        <li><a href="/tags" class="transition-colors hover:text-[color:var(--nature-accent-strong)]">标签</a></li>
+        <li>
+          <a href={toPublicSitePath("/tags")} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+            标签
+          </a>
+        </li>
         {breadcrumbs.map((item) => (
           <li class="flex items-center gap-2">
             <Icon name="tabler:chevron-right" className="h-4 w-4 text-[color:var(--nature-text-faint)]" />
@@ -51,7 +56,7 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
         <p class="mt-2 truncate text-sm text-[color:var(--nature-text-soft)]">#{summary.name}</p>
       </div>
 
-      <a href="/tags" class="nature-button nature-button-ghost min-h-10 px-4 py-2">
+      <a href={toPublicSitePath("/tags")} class="nature-button nature-button-ghost min-h-10 px-4 py-2">
         <Icon name="tabler:tags" className="h-4 w-4" />
         返回
       </a>
@@ -60,7 +65,9 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
     {items.length > 0 ? (
       <div class="space-y-4">
         {items.map((item) => {
-          const href = item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`;
+          const href = toPublicSitePath(
+            item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`
+          );
           return (
             <article class="nature-panel nature-panel-soft px-5 py-5 sm:px-6">
               <div class="flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">

@@ -8,7 +8,8 @@ import { SITE, UI } from "@/config/site";
 import IconifyBoot from "../components/IconifyBoot";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
-import { getCanonicalUrl, getSiteUrl } from "../lib/public-site";
+import { getCanonicalUrl, toAbsoluteSiteUrl } from "../lib/public-site";
+import { toPublicSitePath } from "../lib/runtime-urls";
 
 interface Props {
   title?: string;
@@ -23,9 +24,11 @@ const {
   pathname = "/",
   image = SITE.images.default,
 } = Astro.props;
-const siteUrl = getSiteUrl();
 const canonical = getCanonicalUrl(pathname);
-const resolvedImage = image.startsWith("http") ? image : new URL(image, siteUrl).toString();
+const resolvedImage =
+  image.startsWith("http") || image.startsWith("data:")
+    ? image
+    : toAbsoluteSiteUrl(toPublicSitePath(image) ?? image);
 ---
 <html
   lang="zh-CN"
@@ -43,10 +46,25 @@ const resolvedImage = image.startsWith("http") ? image : new URL(image, siteUrl)
     <meta name="keywords" content={SITE.keywords.join(",")} />
     <meta name="generator" content="Astro" />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href="/favicon.ico" />
-    <link rel="alternate" type="application/rss+xml" title={`${SITE.title} RSS Feed`} href="/feed.xml" />
-    <link rel="alternate" type="application/atom+xml" title={`${SITE.title} Atom Feed`} href="/atom.xml" />
-    <link rel="alternate" type="application/feed+json" title={`${SITE.title} JSON Feed`} href="/feed.json" />
+    <link rel="icon" href={toPublicSitePath("/favicon.ico")} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={`${SITE.title} RSS Feed`}
+      href={toPublicSitePath("/feed.xml")}
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title={`${SITE.title} Atom Feed`}
+      href={toPublicSitePath("/atom.xml")}
+    />
+    <link
+      rel="alternate"
+      type="application/feed+json"
+      title={`${SITE.title} JSON Feed`}
+      href={toPublicSitePath("/feed.json")}
+    />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={SITE.seo.openGraph.locale} />
     <meta property="og:site_name" content={SITE.seo.openGraph.siteName} />

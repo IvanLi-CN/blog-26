@@ -68,10 +68,15 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 - Store the bundle URL in GitHub secrets as `PUBLIC_CONTENT_BUNDLE_URL`.
 - The URL may contain an embedded token; do not expose it in `PUBLIC_*` client config.
+- Configure these repository variables for GitHub Pages frontend releases:
+  - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`
+  - `PUBLIC_SITE_BASE_PATH=/blog-26`
+  - `PUBLIC_API_BASE_URL=https://blog.ivanli.cc`
 - The workflow can consume either:
   - a raw `public-snapshot.json`, or
   - an archive containing `public-snapshot.json`
 - Pages runtime requests use `PUBLIC_API_BASE_URL`, and it must point at the live backend origin.
+- The first-phase deployment target is the default project Pages URL above; custom domains and EO path splitting stay out of scope.
 
 ## Troubleshooting
 
@@ -102,6 +107,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
 - Confirm the bundle contains `public-snapshot.json`.
 - Confirm `PUBLIC_API_BASE_URL` points to the backend origin if the Pages site must call backend APIs cross-origin.
+- Confirm `PUBLIC_SITE_URL` and `PUBLIC_SITE_BASE_PATH` match the project Pages target (`https://ivanli-cn.github.io/blog-26` + `/blog-26`).
 
 ### Backend image missing expected assets
 

@@ -2,6 +2,7 @@
 import Icon from "@/components/ui/Icon";
 import { footerData } from "@/config/navigation";
 import { SITE } from "@/config/site";
+import { toPublicSitePath } from "../lib/runtime-urls";
 ---
 <footer class="relative z-10 px-3 pb-4 pt-8 sm:px-4 sm:pb-6 sm:pt-10">
   <div class="nature-container">
@@ -47,7 +48,7 @@ import { SITE } from "@/config/site";
               <a
                 class="nature-icon-button inline-flex h-10 w-10"
                 aria-label={social.ariaLabel}
-                href={social.href}
+                href={social.href.startsWith("/") ? toPublicSitePath(social.href) : social.href}
                 target={social.href.startsWith("/") ? undefined : "_blank"}
                 rel={social.href.startsWith("/") ? undefined : "noopener noreferrer"}
               >

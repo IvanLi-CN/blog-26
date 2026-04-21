@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { featuredProjects } from "../lib/projects";
 import Icon from "@/components/ui/Icon";
+import { toPublicSitePath } from "../lib/runtime-urls";
 ---
 <BaseLayout pathname="/projects" title="项目总览 - Ivan's Blog" description="浏览公开项目索引与实践条目">
   <section class="nature-container px-4 py-8 sm:px-6 lg:py-12">
@@ -19,7 +20,10 @@ import Icon from "@/components/ui/Icon";
         <div class="nature-panel nature-panel-soft h-full">
           <div class="nature-panel-body flex h-full flex-col gap-3 p-4">
             <h3 class="line-clamp-1 text-sm font-semibold text-[color:var(--nature-text)] sm:text-base">
-              <a href={project.href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+              <a
+                href={toPublicSitePath(project.href)}
+                class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+              >
                 {project.title}
               </a>
             </h3>

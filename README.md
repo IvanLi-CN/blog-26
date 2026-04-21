@@ -352,7 +352,8 @@ Your readers can follow updates via standard syndication formats. All endpoints 
 Notes:
 - Limit items via `?limit=30` (defaults to 30, max 50).
 - Short URL `/rss.xml` permanently redirects to `/feed.xml`.
-- Absolute URLs are generated using `NEXT_PUBLIC_SITE_URL` (falls back to site config when unset).
+- Absolute URLs are generated using `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL`.
+- When the public frontend is deployed as a project Pages site, also set `PUBLIC_SITE_BASE_PATH` (for `IvanLi-CN/blog-26`, use `/blog-26`).
 
 - **OpenAI API** for AI features
 - **LlamaIndex** for RAG functionality
@@ -387,6 +388,11 @@ This repository uses a PR label-driven release contract for PRs targeting `main`
 
 - `release:frontend` builds must provide `PUBLIC_CONTENT_BUNDLE_URL` in GitHub secrets.
 - The workflow downloads the content bundle, reuses the included `public-snapshot.json`, then runs Astro SSG.
+- Configure repository variables before the first Pages release:
+  - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`
+  - `PUBLIC_SITE_BASE_PATH=/blog-26`
+  - `PUBLIC_API_BASE_URL=https://blog.ivanli.cc`
 - Pages frontend runtime API/file requests are rewritten against `PUBLIC_API_BASE_URL`, which must point at the live backend origin.
+- This phase targets the default project Pages URL only. Custom EO domain routing is a later phase.
 
 For details and troubleshooting, see `docs/runbooks/pr-label-release.md`.

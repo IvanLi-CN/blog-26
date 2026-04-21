@@ -2,6 +2,7 @@
 import Icon from "@/components/ui/Icon";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
+import { toPublicSitePath } from "../lib/runtime-urls";
 import TagBadge from "./TagBadge.astro";
 
 interface Props {
@@ -37,7 +38,10 @@ const showMobileDetailLink = !memo.title;
 
       {memo.title && (
         <h2 class="nature-title text-xl font-semibold">
-          <a href={`/memos/${memo.slug}`} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+          <a
+            href={toPublicSitePath(`/memos/${memo.slug}`)}
+            class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+          >
             {memo.title}
           </a>
         </h2>
@@ -57,7 +61,7 @@ const showMobileDetailLink = !memo.title;
 
           {showMobileDetailLink && (
             <a
-              href={`/memos/${memo.slug}`}
+              href={toPublicSitePath(`/memos/${memo.slug}`)}
               class="nature-link-inline inline-flex items-center gap-1 self-start text-sm sm:hidden"
               aria-label="查看详情"
               title="查看详情"
@@ -69,7 +73,7 @@ const showMobileDetailLink = !memo.title;
         </div>
 
         <a
-          href={`/memos/${memo.slug}`}
+          href={toPublicSitePath(`/memos/${memo.slug}`)}
           class="hidden h-10 w-10 shrink-0 items-center justify-center self-start rounded-full bg-[rgba(var(--nature-accent-rgb),0.9)] text-white shadow-[0_14px_28px_rgba(var(--nature-accent-rgb),0.28)] transition-transform duration-200 hover:translate-x-0.5 sm:inline-flex sm:self-end"
           aria-label={`查看详情: ${memo.title ?? "无标题"}`}
           title={`查看详情: ${memo.title ?? "无标题"}`}

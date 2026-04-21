@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { toPublicSitePath } from "../lib/runtime-urls";
 ---
 <BaseLayout pathname="/404" title="页面未找到 - Ivan's Blog" description="你访问的页面不存在或已被移动。">
   <section class="nature-container px-6 py-16 sm:py-24">
@@ -7,7 +8,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       <h1 class="nature-title text-4xl sm:text-5xl">404</h1>
       <p class="nature-muted mt-4 text-base sm:text-lg">这片叶子不在这里了，试试回到首页继续逛逛吧。</p>
       <div class="mt-6 flex justify-center">
-        <a href="/" class="nature-button nature-button-primary">返回首页</a>
+        <a href={toPublicSitePath("/")} class="nature-button nature-button-primary">返回首页</a>
       </div>
     </div>
   </section>

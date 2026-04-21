@@ -3,6 +3,7 @@ import { SITE } from "@/config/site";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { featuredProjects } from "../lib/projects";
 import { buildHomeTimeline, getSnapshot } from "../lib/public-site";
+import { toPublicSitePath } from "../lib/runtime-urls";
 import TimelineCard from "../components/TimelineCard.astro";
 import Icon from "@/components/ui/Icon";
 
@@ -21,11 +22,11 @@ const timeline = buildHomeTimeline(snapshot);
           {SITE.description}
         </p>
         <div class="mt-7 flex flex-wrap items-center justify-center gap-3">
-          <a href="/posts" class="nature-button nature-button-primary">
+          <a href={toPublicSitePath("/posts")} class="nature-button nature-button-primary">
             <Icon name="tabler:article" className="h-4 w-4" />
             浏览文章
           </a>
-          <a href="/memos" class="nature-button nature-button-outline">
+          <a href={toPublicSitePath("/memos")} class="nature-button nature-button-outline">
             <Icon name="tabler:bulb" className="h-4 w-4" />
             进入 Memos
           </a>
@@ -66,7 +67,9 @@ const timeline = buildHomeTimeline(snapshot);
           </h2>
           <p class="nature-muted mt-2 text-sm">不再使用硬朗卡片网格，而是改成更柔和的气泡索引。</p>
         </div>
-        <a href="/projects" class="nature-button nature-button-ghost">查看全部</a>
+        <a href={toPublicSitePath("/projects")} class="nature-button nature-button-ghost">
+          查看全部
+        </a>
       </div>
 
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
@@ -74,7 +77,10 @@ const timeline = buildHomeTimeline(snapshot);
           <div class="nature-panel nature-panel-soft h-full">
             <div class="nature-panel-body flex h-full flex-col gap-3 p-4">
               <h3 class="line-clamp-1 text-sm font-semibold text-[color:var(--nature-text)] sm:text-base">
-                <a href={project.href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+                <a
+                  href={toPublicSitePath(project.href)}
+                  class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+                >
                   {project.title}
                 </a>
               </h3>

@@ -4,7 +4,7 @@ import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import Icon from "@/components/ui/Icon";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
-import { toPublicAssetUrl } from "../lib/runtime-urls";
+import { toPublicAssetUrl, toPublicSitePath } from "../lib/runtime-urls";
 import TagBadge from "./TagBadge.astro";
 
 interface Props {
@@ -49,7 +49,7 @@ const imageSrc = toPublicAssetUrl(resolveImagePath(
       <h2 class="nature-title font-heading text-xl font-bold leading-tight sm:text-2xl">
         <a
           class="inline-block transition-all duration-300 hover:translate-x-1 hover:text-[color:var(--nature-accent-strong)]"
-          href={`/posts/${post.slug}`}
+          href={toPublicSitePath(`/posts/${post.slug}`)}
         >
           {post.title}
         </a>
@@ -68,7 +68,7 @@ const imageSrc = toPublicAssetUrl(resolveImagePath(
   </div>
 
   {imageSrc && (
-    <a class="relative block group" href={`/posts/${post.slug}`}>
+    <a class="relative block group" href={toPublicSitePath(`/posts/${post.slug}`)}>
       <div class="relative h-0 overflow-hidden rounded-[1.75rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] pb-[56.25%] shadow-[var(--nature-shadow)] transition-all duration-300 group-hover:shadow-[var(--nature-shadow-strong)] md:h-72 md:pb-[75%] lg:pb-[56.25%]">
         <img
           src={imageSrc}

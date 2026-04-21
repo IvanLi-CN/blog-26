@@ -120,8 +120,19 @@ jobs:
           DB_PATH: ./test-data/sqlite.db
           LOCAL_CONTENT_BASE_PATH: ./test-data/local
           CONTENT_SOURCES: local
-          NEXT_PUBLIC_SITE_URL: http://localhost:25090
-          PUBLIC_SITE_URL: http://localhost:25090
+          NEXT_PUBLIC_API_BASE_URL: https://blog.ivanli.cc
+          PUBLIC_API_BASE_URL: https://blog.ivanli.cc
+          NEXT_PUBLIC_SITE_URL: https://ivanli-cn.github.io/blog-26
+          PUBLIC_SITE_URL: https://ivanli-cn.github.io/blog-26
+          NEXT_PUBLIC_SITE_BASE_PATH: /blog-26
+          PUBLIC_SITE_BASE_PATH: /blog-26
+
+      - name: Verify GitHub Pages project-path output
+        run: bun ./scripts/verify-pages-build.ts
+        env:
+          PUBLIC_API_BASE_URL: https://blog.ivanli.cc
+          PUBLIC_SITE_URL: https://ivanli-cn.github.io/blog-26
+          PUBLIC_SITE_BASE_PATH: /blog-26
 
   # Docker 仅构建校验（不推送）
   docker:

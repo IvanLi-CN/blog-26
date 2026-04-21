@@ -10,7 +10,12 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import TagBadge from "../../components/TagBadge.astro";
 import RelatedPostCard from "../../components/RelatedPostCard.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
-import { getRelatedPosts, getSnapshot } from "../../lib/public-site";
+import {
+  getCanonicalUrl,
+  getRelatedPosts,
+  getSnapshot,
+  toAbsoluteSiteUrl,
+} from "../../lib/public-site";
 import { toPublicAssetUrl } from "../../lib/runtime-urls";
 
 export async function getStaticPaths() {
@@ -30,9 +35,9 @@ const imageSrc = toPublicAssetUrl(resolveImagePath(
   post.filePath || `blog/${post.slug}.md`
 ));
 const absoluteImageSrc = imageSrc
-  ? imageSrc.startsWith("http")
+  ? imageSrc.startsWith("http") || imageSrc.startsWith("data:")
     ? imageSrc
-    : new URL(imageSrc, snapshot.site.url).toString()
+    : toAbsoluteSiteUrl(imageSrc)
   : undefined;
 const readingTime = formatReadingTime(calculateReadingTime(post.body || ""));
 const structuredData = {
@@ -48,7 +53,7 @@ const structuredData = {
   },
   mainEntityOfPage: {
     "@type": "WebPage",
-    "@id": `${snapshot.site.url}/posts/${post.slug}`,
+    "@id": getCanonicalUrl(`/posts/${post.slug}`),
   },
   image: absoluteImageSrc,
 };
@@ -120,6 +125,7 @@ const structuredData = {
           enableMath={true}
           enableMermaid={true}
           enableCodeFolding={true}
+          rewritePublicSitePaths={true}
           articlePath={post.filePath || `blog/${post.slug}.md`}
           contentSource={(post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
         />
@@ -133,7 +139,7 @@ const structuredData = {
         <PostReactions client:load postSlug={post.slug} />
       </div>
 
-      <CommentSectionWithProvider client:load postSlug={post.slug} />
+      <CommentSectionWithProvider client:load postSlug={post.slug} usePublicSitePaths={true} />
     </article>
   </section>
 
