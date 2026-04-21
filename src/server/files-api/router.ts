@@ -94,6 +94,12 @@ function getContentType(filePath: string): string {
   }
 }
 
+function createMissingFileError(message = "文件不存在") {
+  const error = new Error(message) as Error & { code?: string };
+  error.code = "ENOENT";
+  return error;
+}
+
 async function readWebDAVFile(filePath: string): Promise<ArrayBuffer> {
   const baseUrl = process.env.WEBDAV_URL;
   if (!baseUrl) {
@@ -131,7 +137,7 @@ async function readLocalFile(filePath: string): Promise<Buffer> {
   const fullPath = getLocalPath(filePath);
 
   if (!existsSync(fullPath)) {
-    throw new Error("文件不存在");
+    throw createMissingFileError();
   }
 
   return readFile(fullPath);
@@ -208,9 +214,7 @@ function isMissingFileError(error: unknown) {
   }
 
   const maybeCode = (error as Error & { code?: string }).code;
-  return (
-    error.message.includes("文件不存在") || error.message.includes("404") || maybeCode === "ENOENT"
-  );
+  return error.message.includes("文件不存在") || maybeCode === "ENOENT";
 }
 
 function notFoundResponse(request: Request, filePath: string) {

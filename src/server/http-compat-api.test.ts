@@ -355,6 +355,45 @@ describe("HTTP compatibility APIs", () => {
     expect(body.byteLength).toBe(0);
   });
 
+  it("keeps WebDAV 404 infrastructure errors as server failures", async () => {
+    const originalWebdavUrl = process.env.WEBDAV_URL;
+    const originalContentSources = process.env.CONTENT_SOURCES;
+    const originalFetch = globalThis.fetch;
+    process.env.WEBDAV_URL = "https://webdav.example.test";
+    process.env.CONTENT_SOURCES = "local,webdav";
+    globalThis.fetch = (async () => new Response("missing", { status: 404 })) as typeof fetch;
+
+    try {
+      const response = await handleFilesApiRequest(
+        buildRequest("/api/files/webdav/blog/assets/missing-cover.jpg", {
+          method: "GET",
+          headers: {
+            origin: "https://pages.example.test",
+          },
+        }),
+        { source: "webdav", path: ["blog", "assets", "missing-cover.jpg"] }
+      );
+
+      expect(response.status).toBe(500);
+      expect(response.headers.get("access-control-allow-origin")).toBe(
+        "https://pages.example.test"
+      );
+      await expect(readJson(response)).resolves.toMatchObject({ error: "读取文件失败" });
+    } finally {
+      if (originalWebdavUrl) {
+        process.env.WEBDAV_URL = originalWebdavUrl;
+      } else {
+        delete process.env.WEBDAV_URL;
+      }
+      if (originalContentSources) {
+        process.env.CONTENT_SOURCES = originalContentSources;
+      } else {
+        delete process.env.CONTENT_SOURCES;
+      }
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("serves memo CRUD from /api/public/memos/* without tRPC routing", async () => {
     const createResponse = await handlePublicApiRequest(
       buildRequest(
