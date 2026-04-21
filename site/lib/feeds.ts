@@ -1,7 +1,9 @@
 import { SITE } from "@/config/site";
-import { type BuiltFeed, buildFeed, toAbsoluteUrl } from "@/lib/rss";
+import { resolveImagePath } from "@/lib/image-utils";
+import { type BuiltFeed, buildFeed } from "@/lib/rss";
 import type { PublicSnapshot } from "@/public-site/snapshot";
-import { buildTagFeedItems, getCanonicalUrl, getSiteUrl } from "./public-site";
+import { buildTagFeedItems, getCanonicalUrl, getSiteUrl, toAbsoluteSiteUrl } from "./public-site";
+import { toPublicAssetUrl } from "./runtime-urls";
 
 type FeedFormat = "rss" | "atom" | "json";
 
@@ -13,8 +15,8 @@ function buildMeta(feedPath: string) {
     id: baseUrl,
     link: baseUrl,
     language: "zh-CN",
-    image: toAbsoluteUrl(SITE.images.default),
-    favicon: toAbsoluteUrl(SITE.images.favicon),
+    image: toAbsoluteSiteUrl(SITE.images.default),
+    favicon: toAbsoluteSiteUrl(SITE.images.favicon),
     author: { name: SITE.author.name, email: SITE.author.email },
     feedLinks:
       feedPath === "/atom.xml"
@@ -35,40 +37,70 @@ function buildOptions(format: FeedFormat) {
   };
 }
 
+function resolveContentImageUrl(
+  image: string | null | undefined,
+  dataSource: string | null | undefined,
+  filePath: string | null | undefined,
+  fallbackPath: string
+) {
+  const resolved = resolveImagePath(
+    image || undefined,
+    (dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
+    filePath || fallbackPath
+  );
+  return toPublicAssetUrl(resolved ?? image ?? undefined) ?? undefined;
+}
+
 export function buildSiteFeed(snapshot: PublicSnapshot, format: FeedFormat): BuiltFeed {
-  const items = snapshot.posts.slice(0, 30).map((post) => ({
-    id: getCanonicalUrl(`/posts/${post.slug}`),
-    title: post.title,
-    link: getCanonicalUrl(`/posts/${post.slug}`),
-    description: post.excerpt ?? undefined,
-    content: post.body,
-    authorName: post.author ?? SITE.author.name,
-    authorEmail: SITE.author.email,
-    categories: post.tags,
-    image: post.image ?? undefined,
-    publishedAt: new Date(post.publishDate),
-    updatedAt: new Date(post.updateDate ?? post.publishDate),
-    enclosureUrl: post.image ?? undefined,
-  }));
+  const items = snapshot.posts.slice(0, 30).map((post) => {
+    const imageUrl = resolveContentImageUrl(
+      post.image,
+      post.dataSource,
+      post.filePath,
+      `blog/${post.slug}.md`
+    );
+    return {
+      id: getCanonicalUrl(`/posts/${post.slug}`),
+      title: post.title,
+      link: getCanonicalUrl(`/posts/${post.slug}`),
+      description: post.excerpt ?? undefined,
+      content: post.body,
+      authorName: post.author ?? SITE.author.name,
+      authorEmail: SITE.author.email,
+      categories: post.tags,
+      image: imageUrl,
+      publishedAt: new Date(post.publishDate),
+      updatedAt: new Date(post.updateDate ?? post.publishDate),
+      enclosureUrl: imageUrl,
+    };
+  });
 
   const feedPath = format === "atom" ? "/atom.xml" : format === "json" ? "/feed.json" : "/feed.xml";
   return buildFeed(buildMeta(feedPath), items, buildOptions(format));
 }
 
 export function buildMemosFeed(snapshot: PublicSnapshot): BuiltFeed {
-  const items = snapshot.memos.slice(0, 30).map((memo) => ({
-    id: getCanonicalUrl(`/memos/${memo.slug}`),
-    title: memo.title,
-    link: getCanonicalUrl(`/memos/${memo.slug}`),
-    description: memo.excerpt ?? undefined,
-    content: memo.content,
-    authorName: SITE.author.name,
-    authorEmail: SITE.author.email,
-    categories: memo.tags,
-    image: memo.image ?? undefined,
-    publishedAt: new Date(memo.publishedAt ?? memo.createdAt),
-    updatedAt: new Date(memo.updatedAt ?? memo.publishedAt ?? memo.createdAt),
-  }));
+  const items = snapshot.memos.slice(0, 30).map((memo) => {
+    const imageUrl = resolveContentImageUrl(
+      memo.image,
+      memo.dataSource,
+      memo.filePath,
+      `Memos/${memo.slug}.md`
+    );
+    return {
+      id: getCanonicalUrl(`/memos/${memo.slug}`),
+      title: memo.title,
+      link: getCanonicalUrl(`/memos/${memo.slug}`),
+      description: memo.excerpt ?? undefined,
+      content: memo.content,
+      authorName: SITE.author.name,
+      authorEmail: SITE.author.email,
+      categories: memo.tags,
+      image: imageUrl,
+      publishedAt: new Date(memo.publishedAt ?? memo.createdAt),
+      updatedAt: new Date(memo.updatedAt ?? memo.publishedAt ?? memo.createdAt),
+    };
+  });
 
   return buildFeed(
     {

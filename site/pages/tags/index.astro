@@ -3,6 +3,7 @@ import Icon from "@/components/ui/Icon";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getGroupedTags, getSnapshot, pickTagIconSvg } from "../../lib/public-site";
 import { buildTagHref } from "@/lib/tag-href";
+import { toPublicSitePath } from "../../lib/runtime-urls";
 
 const snapshot = await getSnapshot();
 const groups = getGroupedTags(snapshot);
@@ -46,7 +47,7 @@ const groups = getGroupedTags(snapshot);
                   const { iconId, iconSvg } = pickTagIconSvg(tag.name, snapshot.tags.tagIconMap, snapshot.tags.tagIconSvgMap);
                   return (
                     <a
-                      href={buildTagHref(tag.name)}
+                      href={toPublicSitePath(buildTagHref(tag.name))}
                       class="nature-hover-hitbox group block h-full rounded-[1.7rem]"
                     >
                       <div class="nature-hover-lift nature-hover-surface relative flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.92)] p-4 shadow-[0_14px_32px_rgba(8,21,16,0.08)] transition duration-300 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.5)] [--nature-hover-lift-offset:-0.125rem] [--nature-hover-shadow:0_18px_40px_rgba(8,21,16,0.14)]">

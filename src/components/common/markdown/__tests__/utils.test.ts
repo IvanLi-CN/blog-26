@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { removeInlineTags } from "@/lib/tag-parser";
-import { generateOptimizedImageUrl } from "../utils";
+import { defaultUrlTransform, generateOptimizedImageUrl, publicSiteUrlTransform } from "../utils";
 
 afterEach(() => {
   delete process.env.PUBLIC_API_BASE_URL;
   delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  delete process.env.PUBLIC_SITE_BASE_PATH;
+  delete process.env.NEXT_PUBLIC_SITE_BASE_PATH;
 });
 
 describe("Markdown Utils", () => {
@@ -175,6 +177,44 @@ More content with`);
       const content = "Use # for headings, not #validtag or #123 numbers";
       const result = removeInlineTags(content);
       expect(result).toBe("Use # for headings, not or numbers");
+    });
+  });
+
+  describe("defaultUrlTransform", () => {
+    it("keeps root-relative links unchanged by default", () => {
+      process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
+
+      expect(defaultUrlTransform("/posts/react-hooks-deep-dive")).toBe(
+        "/posts/react-hooks-deep-dive"
+      );
+      expect(defaultUrlTransform("/tags/React")).toBe("/tags/React");
+    });
+
+    it("keeps backend API links unprefixed", () => {
+      process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
+
+      expect(defaultUrlTransform("/api/files/webdav/assets/image.jpg")).toBe(
+        "/api/files/webdav/assets/image.jpg"
+      );
+    });
+  });
+
+  describe("publicSiteUrlTransform", () => {
+    it("prefixes root-relative public site links with the configured base path", () => {
+      process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
+
+      expect(publicSiteUrlTransform("/posts/react-hooks-deep-dive")).toBe(
+        "/blog-26/posts/react-hooks-deep-dive"
+      );
+      expect(publicSiteUrlTransform("/tags/React")).toBe("/blog-26/tags/React");
+    });
+
+    it("keeps backend API links unprefixed", () => {
+      process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
+
+      expect(publicSiteUrlTransform("/api/files/webdav/assets/image.jpg")).toBe(
+        "/api/files/webdav/assets/image.jpg"
+      );
     });
   });
 });

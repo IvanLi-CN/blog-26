@@ -21,6 +21,7 @@ import {
   extractTextContent,
   getVariantConfig,
   mergeClassNames,
+  publicSiteUrlTransform,
 } from "./markdown/utils";
 
 // 基于默认配置扩展允许的 HTML 标签，用于支持受限的原始 HTML 渲染
@@ -88,6 +89,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     articlePath,
     contentSource = "webdav",
     removeTags = false,
+    rewritePublicSitePaths = false,
   }) => {
     // 获取变体配置
     const variantConfig = useMemo(() => getVariantConfig(variant), [variant]);
@@ -181,6 +183,11 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
       return plugins;
     }, [config, articlePath, contentSource]);
+
+    const urlTransform = useMemo(
+      () => (rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform),
+      [rewritePublicSitePaths]
+    );
 
     // 自定义组件映射
     const components = useMemo<Components>(
@@ -338,7 +345,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           remarkPlugins={remarkPlugins as never[]}
           rehypePlugins={rehypePlugins as never[]}
           components={components}
-          urlTransform={defaultUrlTransform}
+          urlTransform={urlTransform}
         >
           {processedContent}
         </ReactMarkdown>

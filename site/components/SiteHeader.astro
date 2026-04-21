@@ -3,6 +3,7 @@ import Icon from "@/components/ui/Icon";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { headerData } from "@/config/navigation";
 import { SITE } from "@/config/site";
+import { toPublicSitePath } from "../lib/runtime-urls";
 
 interface Props {
   pathname?: string;
@@ -19,7 +20,7 @@ function isActive(href: string) {
   <div class="nature-container">
     <div class="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
       <a
-        href="/"
+        href={toPublicSitePath("/")}
         class="min-w-fit pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
       >
         {SITE.name}
@@ -30,7 +31,7 @@ function isActive(href: string) {
           {headerData.links.map((link) => (
             <li>
               <a
-                href={link.href}
+                href={toPublicSitePath(link.href)}
                 class={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition ${
                   isActive(link.href)
                     ? "aw-link-active"
@@ -46,17 +47,22 @@ function isActive(href: string) {
       </nav>
 
       <div class="order-2 ml-auto flex items-center gap-3 md:order-3">
-        <form action="/search" method="get" class="hidden xl:flex items-center w-auto">
+        <form action={toPublicSitePath("/search")} method="get" class="hidden xl:flex items-center w-auto">
           <label class="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
             <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
             <input type="text" name="q" placeholder="搜索文章..." class="nature-input" />
           </label>
         </form>
-        <a href="/search" class="nature-icon-button inline-flex xl:hidden" aria-label="搜索">
+        <a href={toPublicSitePath("/search")} class="nature-icon-button inline-flex xl:hidden" aria-label="搜索">
           <Icon name="tabler:search" className="h-5 w-5" />
         </a>
         <ThemeToggle client:load transition:persist iconClass="h-4 w-4" />
-        <a class="nature-icon-button inline-flex" aria-label="RSS Feed" title="RSS Feed" href="/rss.xml">
+        <a
+          class="nature-icon-button inline-flex"
+          aria-label="RSS Feed"
+          title="RSS Feed"
+          href={toPublicSitePath("/rss.xml")}
+        >
           <Icon name="tabler:rss" className="h-5 w-5" />
         </a>
       </div>

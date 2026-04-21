@@ -6,12 +6,58 @@ const sitePort = Number(process.env.SITE_PORT || 25093);
 const siteHost = process.env.SITE_HOST || "127.0.0.1";
 const astroCacheDir = process.env.ASTRO_CACHE_DIR || "./.astro";
 const viteCacheDir = process.env.VITE_CACHE_DIR || "./node_modules/.vite";
+const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.PUBLIC_SITE_URL ?? "";
+const configuredSiteBasePath =
+  process.env.NEXT_PUBLIC_SITE_BASE_PATH ?? process.env.PUBLIC_SITE_BASE_PATH ?? "";
+
+function normalizeBasePath(raw) {
+  const value = typeof raw === "string" ? raw.trim() : "";
+  if (!value || value === "/") return "";
+  const withLeadingSlash = value.startsWith("/") ? value : `/${value}`;
+  const normalized = withLeadingSlash.replace(/\/+$/, "");
+  return normalized === "/" ? "" : normalized;
+}
+
+function deriveBasePathFromSiteUrl(rawSiteUrl) {
+  const siteUrl = typeof rawSiteUrl === "string" ? rawSiteUrl.trim() : "";
+  if (!siteUrl) return "";
+
+  try {
+    return normalizeBasePath(new URL(siteUrl).pathname);
+  } catch {
+    return "";
+  }
+}
+
+function resolveAstroSite(rawSiteUrl, rawBasePath) {
+  const siteUrl = typeof rawSiteUrl === "string" ? rawSiteUrl.trim() : "";
+  if (!siteUrl) return undefined;
+
+  try {
+    const url = new URL(siteUrl);
+    const basePath = normalizeBasePath(rawBasePath);
+    if (basePath && (url.pathname === basePath || url.pathname === `${basePath}/`)) {
+      url.pathname = "/";
+      url.search = "";
+      url.hash = "";
+    }
+    return url.toString();
+  } catch {
+    return siteUrl;
+  }
+}
+
+const astroBasePath =
+  normalizeBasePath(configuredSiteBasePath) || deriveBasePathFromSiteUrl(configuredSiteUrl);
+const astroSiteUrl = resolveAstroSite(configuredSiteUrl, astroBasePath);
 
 export default defineConfig({
   integrations: [react()],
   output: "static",
   srcDir: "./site",
   outDir: "./site-dist",
+  site: astroSiteUrl,
+  base: astroBasePath || undefined,
   cacheDir: astroCacheDir,
   server: {
     host: siteHost,
@@ -37,6 +83,9 @@ export default defineConfig({
       ),
       "process.env.NEXT_PUBLIC_SITE_URL": JSON.stringify(
         process.env.NEXT_PUBLIC_SITE_URL ?? process.env.PUBLIC_SITE_URL ?? ""
+      ),
+      "process.env.NEXT_PUBLIC_SITE_BASE_PATH": JSON.stringify(
+        process.env.NEXT_PUBLIC_SITE_BASE_PATH ?? process.env.PUBLIC_SITE_BASE_PATH ?? ""
       ),
     },
   },

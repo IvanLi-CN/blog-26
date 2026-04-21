@@ -20,6 +20,7 @@ interface CommentListProps {
   onLogout: () => void;
   onLoginSuccess: () => Promise<void>;
   isAdmin: boolean;
+  usePublicSitePaths?: boolean;
 }
 
 export default function CommentList({
@@ -33,6 +34,7 @@ export default function CommentList({
   onLogout,
   onLoginSuccess,
   isAdmin,
+  usePublicSitePaths = false,
 }: CommentListProps) {
   if (comments.length === 0) {
     return (
@@ -65,6 +67,7 @@ export default function CommentList({
           onLogout={onLogout}
           onLoginSuccess={onLoginSuccess}
           isAdmin={isAdmin}
+          usePublicSitePaths={usePublicSitePaths}
         />
       ))}
     </div>

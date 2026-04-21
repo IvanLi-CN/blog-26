@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import Icon from "@/components/ui/Icon";
 import { resolveImagePath } from "@/lib/image-utils";
 import type { PublicPostRecord } from "@/public-site/snapshot";
-import { toPublicAssetUrl } from "../lib/runtime-urls";
+import { toPublicAssetUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 interface Props {
   post: PublicPostRecord;
@@ -144,7 +144,11 @@ const excerptClass =
 ---
 
 <article class={articleClass} itemprop="isRelatedTo" itemscope itemtype="https://schema.org/Article">
-  <a class="nature-hover-hitbox group block" href={`/posts/${post.slug}`} itemprop="url">
+  <a
+    class="nature-hover-hitbox group block"
+    href={toPublicSitePath(`/posts/${post.slug}`)}
+    itemprop="url"
+  >
     <div class={linkClass}>
       {hasCover ? (
         <div class={mediaClass}>

@@ -1,5 +1,5 @@
 import { resolveImagePath as resolveImagePathCommon } from "@/lib/image-utils";
-import { toPublicAssetUrl } from "@/lib/public-runtime-url";
+import { toPublicAssetUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 import type { VariantConfig } from "./types";
 
 /**
@@ -145,8 +145,12 @@ export function defaultUrlTransform(url: string): string {
       return "";
     }
 
-    // 相对 URL 直接返回
-    if (url.startsWith("/") || url.startsWith("./") || url.startsWith("../")) {
+    // 站内根路径默认保留原状；公开前台改写由 publicSiteUrlTransform 显式启用
+    if (url.startsWith("/")) {
+      return url;
+    }
+
+    if (url.startsWith("./") || url.startsWith("../")) {
       return url;
     }
 
@@ -162,6 +166,15 @@ export function defaultUrlTransform(url: string): string {
 
   // 不安全的 URL，返回空字符串
   return "";
+}
+
+export function publicSiteUrlTransform(url: string): string {
+  const safeUrl = defaultUrlTransform(url);
+  if (!safeUrl?.startsWith("/")) {
+    return safeUrl;
+  }
+
+  return toPublicSitePath(safeUrl) ?? safeUrl;
 }
 
 /**

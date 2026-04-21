@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
-import { toPublicApiUrl } from "../lib/runtime-urls";
+import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 type ResultType = "post" | "memo";
 
@@ -153,7 +153,9 @@ export default function SearchPageIsland() {
           <ul className="flex w-full flex-col gap-3">
             {results.map((result) => {
               const type = result.type || "post";
-              const href = type === "memo" ? `/memos/${result.slug}` : `/posts/${result.slug}`;
+              const href = toPublicSitePath(
+                type === "memo" ? `/memos/${result.slug}` : `/posts/${result.slug}`
+              );
               return (
                 <li key={`${type}-${result.slug}`} className="list-none">
                   <a href={href} className="nature-hover-hitbox group block">

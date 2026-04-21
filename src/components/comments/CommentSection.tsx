@@ -17,9 +17,15 @@ interface CommentSectionProps {
   postSlug: string;
   title?: string;
   texts?: Partial<typeof DEFAULT_TEXTS>;
+  usePublicSitePaths?: boolean;
 }
 
-export default function CommentSection({ postSlug, title, texts = {} }: CommentSectionProps) {
+export default function CommentSection({
+  postSlug,
+  title,
+  texts = {},
+  usePublicSitePaths = false,
+}: CommentSectionProps) {
   const finalTexts = { ...DEFAULT_TEXTS, ...texts };
   const displayTitle = title || finalTexts.title;
   const [isClient, setIsClient] = useState(false);
@@ -109,6 +115,7 @@ export default function CommentSection({ postSlug, title, texts = {} }: CommentS
             error={postError}
             onLogout={logout}
             onLoginSuccess={refetchUserInfo}
+            usePublicSitePaths={usePublicSitePaths}
           />
         )}
       </div>
@@ -137,6 +144,7 @@ export default function CommentSection({ postSlug, title, texts = {} }: CommentS
           onLogout={logout}
           onLoginSuccess={refetchUserInfo}
           isAdmin={isAdmin}
+          usePublicSitePaths={usePublicSitePaths}
         />
 
         {page < liveTotalPages && (

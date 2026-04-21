@@ -26,6 +26,7 @@ interface CommentItemProps {
   onLogout: () => void;
   onLoginSuccess: () => Promise<void>;
   isAdmin: boolean;
+  usePublicSitePaths?: boolean;
 }
 
 function formatDate(timestamp: number) {
@@ -43,6 +44,7 @@ export default function CommentItem({
   onLogout,
   onLoginSuccess,
   isAdmin,
+  usePublicSitePaths = false,
 }: CommentItemProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -252,6 +254,7 @@ export default function CommentItem({
                 error={error}
                 onLogout={onLogout}
                 onLoginSuccess={onLoginSuccess}
+                usePublicSitePaths={usePublicSitePaths}
               />
             </div>
           )}
@@ -276,6 +279,7 @@ export default function CommentItem({
                 onLogout={onLogout}
                 onLoginSuccess={onLoginSuccess}
                 isAdmin={isAdmin}
+                usePublicSitePaths={usePublicSitePaths}
               />
             </div>
           )}

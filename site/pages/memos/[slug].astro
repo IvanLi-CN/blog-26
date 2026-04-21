@@ -6,7 +6,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { PublicMemoDetailControlsIsland } from "../../components/PublicMemoAuthoring";
 import TagBadge from "../../components/TagBadge.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
-import { getSnapshot } from "../../lib/public-site";
+import { getCanonicalUrl, getSnapshot } from "../../lib/public-site";
 
 export async function getStaticPaths() {
   const snapshot = await getSnapshot();
@@ -32,7 +32,7 @@ const structuredData = {
   },
   mainEntityOfPage: {
     "@type": "WebPage",
-    "@id": `${snapshot.site.url}/memos/${memo.slug}`,
+    "@id": getCanonicalUrl(`/memos/${memo.slug}`),
   },
 };
 ---
@@ -83,6 +83,7 @@ const structuredData = {
             enableMermaid={true}
             enableCodeFolding={true}
             removeTags={true}
+            rewritePublicSitePaths={true}
             articlePath={`/memos/${memo.slug}`}
             contentSource={(memo.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
           />
