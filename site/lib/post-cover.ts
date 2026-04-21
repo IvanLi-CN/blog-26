@@ -84,7 +84,45 @@ export function resolveRelativeAssetPath(imagePath: string, markdownFilePath: st
 }
 
 function getMarkdownImage(body: string) {
-  const markdownImage = body.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1]?.trim();
+  const opener = /!\[[^\]]*\]\(/g;
+  const match = opener.exec(body);
+  if (!match) return null;
+
+  let depth = 1;
+  let cursor = match.index + match[0].length;
+  let content = "";
+
+  while (cursor < body.length) {
+    const char = body[cursor];
+
+    if (char === "\\" && cursor + 1 < body.length) {
+      content += body.slice(cursor, cursor + 2);
+      cursor += 2;
+      continue;
+    }
+
+    if (char === "(") {
+      depth += 1;
+      content += char;
+      cursor += 1;
+      continue;
+    }
+
+    if (char === ")") {
+      depth -= 1;
+      if (depth === 0) break;
+      content += char;
+      cursor += 1;
+      continue;
+    }
+
+    content += char;
+    cursor += 1;
+  }
+
+  if (depth !== 0) return null;
+
+  const markdownImage = content.trim();
   if (!markdownImage) return null;
 
   if (markdownImage.startsWith("<")) {

@@ -174,6 +174,7 @@ None
 - 2026-04-21: 根据 review 修正 `RelatedPostCard` 的候选选择，保留“外链 Markdown 图可被后续本地 wiki 图补位”的旧行为。
 - 2026-04-21: 根据 review 修正 Markdown 图片可选 title 的解析，并让 `RelatedPostCard` 复用已选中的候选封面而不是重新回退。
 - 2026-04-21: 根据 review 让相关文章打分与真实封面选择保持一致，避免“能显示封面但仍按无封面排序”的偏差。
+- 2026-04-21: 根据 review 把 Markdown 首图解析改为按括号层级取完整目标，避免带括号文件名或签名 URL 被截断。
 
 ## 参考（References）
 

@@ -140,6 +140,17 @@ describe("post cover helper", () => {
     expect(imageSrc).toBe("https://example.com/body-cover.webp");
   });
 
+  it("preserves parentheses in markdown image destinations", () => {
+    const imageSrc = resolvePostCoverImageSrc(
+      makePost({
+        body: "![Body cover](./assets/body-cover(1).jpg)",
+      }),
+      { allowExternal: true }
+    );
+
+    expect(imageSrc).toBe("/api/files/local/blog/assets/body-cover(1).jpg");
+  });
+
   it("allows external cover fallbacks only when explicitly enabled", () => {
     const record = makePost({
       body: "![External cover](https://example.com/cover.webp)",
