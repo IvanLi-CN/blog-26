@@ -47,12 +47,32 @@ describe("public-runtime-url", () => {
     expect(toPublicSitePath("/search?q=React")).toBe("/blog-26/search?q=React");
   });
 
+  it("keeps public site routes root-relative when PUBLIC_SITE_BASE_PATH is /", () => {
+    process.env.PUBLIC_SITE_URL = "https://ivanli.cc";
+    process.env.PUBLIC_SITE_BASE_PATH = "/";
+
+    expect(getPublicSiteUrl()).toBe("https://ivanli.cc");
+    expect(getPublicSiteBasePath()).toBe("");
+    expect(toPublicSitePath("/")).toBe("/");
+    expect(toPublicSitePath("/posts/react-hooks-deep-dive")).toBe("/posts/react-hooks-deep-dive");
+    expect(toPublicSitePath("/search?q=React")).toBe("/search?q=React");
+  });
+
   it("keeps api routes and already-prefixed site routes unchanged", () => {
     process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
 
     expect(toPublicSitePath("/api/public/search?q=React")).toBe("/api/public/search?q=React");
     expect(toPublicSitePath("/admin/preview/memos/test")).toBe("/admin/preview/memos/test");
     expect(toPublicSitePath("/blog-26/posts/react-hooks-deep-dive")).toBe(
+      "/blog-26/posts/react-hooks-deep-dive"
+    );
+  });
+
+  it("derives a project base path from PUBLIC_SITE_URL when no explicit base path is set", () => {
+    process.env.PUBLIC_SITE_URL = "https://pages.example.test/blog-26";
+
+    expect(getPublicSiteBasePath()).toBe("/blog-26");
+    expect(toPublicSitePath("/posts/react-hooks-deep-dive")).toBe(
       "/blog-26/posts/react-hooks-deep-dive"
     );
   });

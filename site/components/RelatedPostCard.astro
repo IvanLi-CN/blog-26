@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import Icon from "@/components/ui/Icon";
 import { resolveImagePath } from "@/lib/image-utils";
+import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { toPublicAssetUrl, toPublicSitePath } from "../lib/runtime-urls";
 
@@ -13,42 +14,6 @@ interface Props {
 
 const { post } = Astro.props as Props;
 const source = (post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav";
-
-function firstNonEmptyString(values: unknown[]): string | null {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return null;
-}
-
-function isExternalUrl(value: string) {
-  return /^https?:\/\//.test(value.trim());
-}
-
-function normalizeWikiImageTarget(target: string) {
-  return target
-    .split("|")[0]
-    .trim()
-    .replace(/^。\//u, "./")
-    .replace(/^\.。\//u, "./");
-}
-
-function extractCoverCandidate(record: PublicPostRecord) {
-  const metadata = record.metadata as Record<string, unknown>;
-  const metadataImages = Array.isArray(metadata.images) ? metadata.images : [];
-  const frontmatterImage = firstNonEmptyString([record.image, ...metadataImages]);
-  if (frontmatterImage) return frontmatterImage;
-
-  const markdownImage = record.body.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
-  if (markdownImage?.trim() && !isExternalUrl(markdownImage)) return markdownImage.trim();
-
-  const wikiImage = record.body.match(/!\[\[([^\]]+)\]\]/)?.[1];
-  if (wikiImage?.trim()) return normalizeWikiImageTarget(wikiImage);
-
-  return null;
-}
 
 function resolveRelativeAssetPath(imagePath: string, markdownFilePath: string) {
   const clean = imagePath.trim();
@@ -101,8 +66,8 @@ function getMimeType(filePath: string) {
 }
 
 async function resolveCardImageSrc(record: PublicPostRecord, contentSource: "local" | "webdav") {
-  const coverCandidate = extractCoverCandidate(record);
-  if (!coverCandidate || isExternalUrl(coverCandidate)) {
+  const coverCandidate = extractPostCoverCandidate(record);
+  if (!coverCandidate || isExternalImageUrl(coverCandidate)) {
     return null;
   }
 
