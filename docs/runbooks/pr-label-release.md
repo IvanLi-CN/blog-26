@@ -71,14 +71,15 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - If the live snapshot endpoint is not wired to the public mirror yet, use the repo-hosted fallback bundle instead: `https://raw.githubusercontent.com/IvanLi-CN/blog-26/public-content-bundle/public-bundles/live/public-snapshot.json`.
 - The URL may contain an embedded token; do not expose it in `PUBLIC_*` client config.
 - Configure these repository variables for GitHub Pages frontend releases:
-  - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`
-  - `PUBLIC_SITE_BASE_PATH=/blog-26`
+  - `PUBLIC_SITE_URL=https://ivanli.cc`
+  - `PUBLIC_SITE_BASE_PATH=/`
   - `PUBLIC_API_BASE_URL=https://ivanli.cc`
+- If old project-Pages variables are still present, the workflow auto-normalizes them to the `public/CNAME` custom domain during release.
 - The workflow can consume either:
   - a raw `public-snapshot.json`, or
   - an archive containing `public-snapshot.json`
 - Pages runtime requests use `PUBLIC_API_BASE_URL`, and it must point at the live backend origin.
-- The first-phase deployment target is the default project Pages URL above; custom domains and EO path splitting stay out of scope.
+- The primary deployment target is the `ivanli.cc` custom domain. The raw `ivanli-cn.github.io/blog-26` URL is only a fallback/debug path.
 
 ## Troubleshooting
 
@@ -109,7 +110,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
 - Confirm the bundle contains `public-snapshot.json`.
 - Confirm `PUBLIC_API_BASE_URL` points to the backend origin if the Pages site must call backend APIs cross-origin.
-- Confirm `PUBLIC_SITE_URL` and `PUBLIC_SITE_BASE_PATH` match the project Pages target (`https://ivanli-cn.github.io/blog-26` + `/blog-26`).
+- Confirm `PUBLIC_SITE_URL` and `PUBLIC_SITE_BASE_PATH` match the custom-domain target (`https://ivanli.cc` + `/`).
 
 ### Backend image missing expected assets
 

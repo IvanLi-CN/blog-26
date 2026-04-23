@@ -353,7 +353,7 @@ Notes:
 - Limit items via `?limit=30` (defaults to 30, max 50).
 - Short URL `/rss.xml` permanently redirects to `/feed.xml`.
 - Absolute URLs are generated using `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL`.
-- When the public frontend is deployed as a project Pages site, also set `PUBLIC_SITE_BASE_PATH` (for `IvanLi-CN/blog-26`, use `/blog-26`).
+- Set `PUBLIC_SITE_BASE_PATH=/` for the `ivanli.cc` custom-domain deploy. Use `/blog-26` only if you intentionally publish to the raw project Pages URL.
 
 - **OpenAI API** for AI features
 - **LlamaIndex** for RAG functionality
@@ -391,10 +391,11 @@ This repository uses a PR label-driven release contract for PRs targeting `main`
 - If that live snapshot route is unavailable on the public mirror, point the secret at the repo-hosted fallback bundle instead: `https://raw.githubusercontent.com/IvanLi-CN/blog-26/public-content-bundle/public-bundles/live/public-snapshot.json`.
 - The workflow downloads the content bundle, reuses the included `public-snapshot.json`, then runs Astro SSG.
 - Configure repository variables before the first Pages release:
-  - `PUBLIC_SITE_URL=https://ivanli-cn.github.io/blog-26`
-  - `PUBLIC_SITE_BASE_PATH=/blog-26`
+  - `PUBLIC_SITE_URL=https://ivanli.cc`
+  - `PUBLIC_SITE_BASE_PATH=/`
   - `PUBLIC_API_BASE_URL=https://ivanli.cc`
+- If legacy project-Pages values are still stored in repo variables, the release workflow automatically normalizes them to the root custom domain whenever `public/CNAME` is present.
 - Pages frontend runtime API/file requests are rewritten against `PUBLIC_API_BASE_URL`, which must point at the live backend origin.
-- This phase targets the default project Pages URL only. Custom EO domain routing is a later phase.
+- The shipped target is the `ivanli.cc` custom domain. Keep the raw project Pages URL only as a fallback/debug endpoint.
 
 For details and troubleshooting, see `docs/runbooks/pr-label-release.md`.

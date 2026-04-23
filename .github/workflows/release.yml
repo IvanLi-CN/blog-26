@@ -314,8 +314,37 @@ jobs:
           NEXT_PUBLIC_SITE_BASE_PATH: ${{ vars.NEXT_PUBLIC_SITE_BASE_PATH }}
         run: |
           set -euo pipefail
-          site_url="${PUBLIC_SITE_URL:-${NEXT_PUBLIC_SITE_URL:-}}"
-          site_base_path="${PUBLIC_SITE_BASE_PATH:-${NEXT_PUBLIC_SITE_BASE_PATH:-}}"
+          trim() {
+            local value="${1:-}"
+            printf '%s' "${value}" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+          }
+
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          legacy_project_url="https://ivanli-cn.github.io/${repo_name}"
+          legacy_project_base="/${repo_name}"
+
+          custom_domain=""
+          if [[ -f "./public/CNAME" ]]; then
+            custom_domain="$(trim "$(head -n 1 ./public/CNAME || true)")"
+          fi
+
+          default_site_url=""
+          if [[ -n "${custom_domain}" ]]; then
+            default_site_url="https://${custom_domain}"
+          fi
+
+          site_url="$(trim "${PUBLIC_SITE_URL:-${NEXT_PUBLIC_SITE_URL:-${default_site_url}}}")"
+          site_base_path="$(trim "${PUBLIC_SITE_BASE_PATH:-${NEXT_PUBLIC_SITE_BASE_PATH:-}}")"
+
+          if [[ -n "${custom_domain}" ]]; then
+            if [[ -z "${site_url}" || "${site_url}" == "${legacy_project_url}" ]]; then
+              site_url="${default_site_url}"
+            fi
+            if [[ -z "${site_base_path}" || "${site_base_path}" == "${legacy_project_base}" ]]; then
+              site_base_path="/"
+            fi
+          fi
+
           if [[ -z "${site_url}" ]]; then
             echo "PUBLIC_SITE_URL is required for frontend releases" >&2
             exit 1

@@ -3,6 +3,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+const TRAILING_SLASH = /\/+$/;
+
 function assertIncludes(content: string, needle: string, file: string) {
   if (!content.includes(needle)) {
     throw new Error(`Expected ${file} to include: ${needle}`);
@@ -26,50 +28,78 @@ function assertIncludesSome(
   }
 }
 
-const basePath = (process.env.PUBLIC_SITE_BASE_PATH || "").trim();
+function normalizeBasePath(raw: string) {
+  const value = raw.trim();
+  if (!value || value === "/") return "";
+  const withLeadingSlash = value.startsWith("/") ? value : `/${value}`;
+  const normalized = withLeadingSlash.replace(TRAILING_SLASH, "");
+  return normalized === "/" ? "" : normalized;
+}
+
+function deriveBasePathFromSiteUrl(rawSiteUrl: string) {
+  if (!rawSiteUrl) return "";
+  try {
+    return normalizeBasePath(new URL(rawSiteUrl).pathname);
+  } catch {
+    return "";
+  }
+}
+
+function toExpectedSitePath(basePath: string, pathname: string) {
+  if (!basePath) return pathname;
+  return pathname === "/" ? `${basePath}/` : `${basePath}${pathname}`;
+}
+
+const rawBasePath = (process.env.PUBLIC_SITE_BASE_PATH || "").trim();
 const siteUrl = (process.env.PUBLIC_SITE_URL || "").trim();
 const apiBaseUrl = (process.env.PUBLIC_API_BASE_URL || "").trim();
+const basePath = normalizeBasePath(rawBasePath) || deriveBasePathFromSiteUrl(siteUrl);
 const siteOrigin = new URL(siteUrl).origin;
+const siteHost = new URL(siteUrl).hostname;
 
-if (!basePath || !siteUrl) {
-  throw new Error("PUBLIC_SITE_URL and PUBLIC_SITE_BASE_PATH are required");
+if (!siteUrl) {
+  throw new Error("PUBLIC_SITE_URL is required");
 }
 
 const checks = [
   {
     file: "site-dist/index.html",
     includes: [
-      `href="${basePath}/posts"`,
-      `href="${basePath}/memos"`,
-      `href="${basePath}/projects"`,
-      `action="${basePath}/search"`,
-      `href="${basePath}/rss.xml"`,
+      `href="${toExpectedSitePath(basePath, "/posts")}"`,
+      `href="${toExpectedSitePath(basePath, "/memos")}"`,
+      `href="${toExpectedSitePath(basePath, "/projects")}"`,
+      `action="${toExpectedSitePath(basePath, "/search")}"`,
+      `href="${toExpectedSitePath(basePath, "/rss.xml")}"`,
       `<link rel="canonical" href="${siteUrl}/"`,
     ],
-    excludes: ['href="/posts"', 'href="/memos"', 'action="/search"'],
+    excludes: basePath
+      ? ['href="/posts"', 'href="/memos"', 'action="/search"']
+      : ['href="//posts"', 'href="//memos"', 'action="//search"'],
   },
   {
     file: "site-dist/posts/react-hooks-deep-dive/index.html",
     includes: [
-      `href="${basePath}/tags/React"`,
-      `href="${basePath}/posts/`,
+      `href="${toExpectedSitePath(basePath, "/tags/React")}"`,
+      `href="${toExpectedSitePath(basePath, "/posts/")}`,
       `<link rel="canonical" href="${siteUrl}/posts/react-hooks-deep-dive"`,
     ],
-    excludes: ['href="/tags/React"', 'href="/posts/'],
+    excludes: basePath ? ['href="/tags/React"', 'href="/posts/'] : ['href="//posts/'],
   },
   {
     file: "site-dist/tags/React/index.html",
     includes: [
-      `href="${basePath}/tags"`,
-      `href="${basePath}/posts/react-hooks-deep-dive"`,
+      `href="${toExpectedSitePath(basePath, "/tags")}"`,
+      `href="${toExpectedSitePath(basePath, "/posts/react-hooks-deep-dive")}"`,
       `<link rel="canonical" href="${siteUrl}/tags/React"`,
     ],
-    excludes: ['href="/tags"', 'href="/posts/react-hooks-deep-dive"'],
+    excludes: basePath
+      ? ['href="/tags"', 'href="/posts/react-hooks-deep-dive"']
+      : ['href="//tags"', 'href="//posts/react-hooks-deep-dive"'],
   },
   {
     file: "site-dist/404.html",
-    includes: [`href="${basePath}/"`],
-    excludes: ['href="/"'],
+    includes: [`href="${toExpectedSitePath(basePath, "/")}"`],
+    excludes: basePath ? ['href="/"'] : ['href="//"'],
   },
   {
     file: "site-dist/feed.xml",
@@ -97,6 +127,14 @@ const checks = [
     excludes: siteOrigin === siteUrl ? [] : [`Host: ${siteUrl}`],
   },
 ];
+
+if (!basePath) {
+  checks.push({
+    file: "site-dist/CNAME",
+    includes: [siteHost],
+    excludes: [],
+  });
+}
 
 const contents = new Map<string, string>();
 
@@ -155,4 +193,4 @@ if (apiBaseUrl) {
   );
 }
 
-console.log("GitHub Pages project-path output verified.");
+console.log(`GitHub Pages output verified for ${siteUrl}${basePath || "/"}.`);
