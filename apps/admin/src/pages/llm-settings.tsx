@@ -654,6 +654,10 @@ export function LlmSettingsPage() {
 
   const pickerValue = editor ? editor[picker.tier].model : "";
 
+  if (settingsQuery.error) {
+    return <Alert tone="danger">{getErrorMessage(settingsQuery.error)}</Alert>;
+  }
+
   if (settingsQuery.isLoading || !editor) {
     return (
       <div className="flex min-h-[320px] items-center justify-center gap-3 text-sm text-muted-foreground">
@@ -661,10 +665,6 @@ export function LlmSettingsPage() {
         正在加载 LLM 设置…
       </div>
     );
-  }
-
-  if (settingsQuery.error) {
-    return <Alert tone="danger">{getErrorMessage(settingsQuery.error)}</Alert>;
   }
 
   const payload = settingsQuery.data;

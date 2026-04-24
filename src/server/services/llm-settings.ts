@@ -662,6 +662,9 @@ function buildNextChildTierRecord({
     record: {
       model: normalizeOptionalText(input.model),
       baseUrlMode: useCustomProvider ? "custom" : "inherit",
+      // Intentionally preserve the last custom provider fields when operators switch the tier
+      // back to inherited mode. The advanced toggle decides whether those fields are active;
+      // previously saved values stay available if the operator re-enables advanced settings.
       baseUrl: useCustomProvider
         ? normalizeValidatedBaseUrl(`${label} baseURL`, input.baseUrl)
         : current.baseUrl,

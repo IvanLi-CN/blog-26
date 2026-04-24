@@ -241,6 +241,62 @@ describe("llm settings service", () => {
     ).rejects.toThrow("嵌入模型 开启高级设置后，baseURL 为必填项");
   });
 
+  it("preserves saved custom provider values when advanced settings are turned off", async () => {
+    await updateAdminLlmSettings({
+      chat: {
+        model: "",
+        baseUrl: "https://chat.example.test",
+        apiKeyInput: "chat-secret-value",
+      },
+      embedding: {
+        model: "openai/text-embedding-3-small",
+        useCustomProvider: true,
+        baseUrlMode: "custom",
+        baseUrl: "https://embed.example.test",
+        apiKeyMode: "custom",
+        apiKeyInput: "embed-secret-value",
+      },
+      rerank: {
+        model: "",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+    });
+
+    await updateAdminLlmSettings({
+      chat: {
+        model: "",
+        baseUrl: "https://chat.example.test",
+      },
+      embedding: {
+        model: "openai/text-embedding-3-small",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+      rerank: {
+        model: "",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+    });
+
+    const payload = await getAdminLlmSettingsPayload();
+    expect(payload.settings.embedding.useCustomProvider).toBe(false);
+    expect(payload.settings.embedding.baseUrl).toBe("https://embed.example.test/v1");
+    expect(payload.settings.embedding.apiKey.hasValue).toBe(true);
+    expect(payload.resolved.embedding.baseUrl).toBe("https://chat.example.test/v1");
+    expect(payload.resolved.embedding.apiKeyAvailable).toBe(true);
+  });
+
   it("validates baseURL format and can test unsaved settings", async () => {
     const originalFetch = globalThis.fetch;
     const fetchCalls: string[] = [];
