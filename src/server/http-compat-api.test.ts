@@ -6,7 +6,7 @@ import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
-import { posts, sessions, users } from "@/lib/schema";
+import { llmSettings, posts, sessions, users } from "@/lib/schema";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -89,7 +89,10 @@ describe("HTTP compatibility APIs", () => {
     process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
     process.env.CONTENT_SOURCES = "local";
     process.env.PUBLIC_SITE_URL = "https://pages.example.test";
+    process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
     delete process.env.WEBDAV_URL;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_BASE_URL;
 
     fs.mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
     fs.mkdirSync(LOCAL_CONTENT_BASE_PATH, { recursive: true });
@@ -123,12 +126,319 @@ describe("HTTP compatibility APIs", () => {
       throw new Error("Database has not been initialised");
     }
 
+    await db.delete(llmSettings);
     await db.delete(sessions);
     await db.delete(posts);
     await db.delete(users);
 
     fs.rmSync(LOCAL_CONTENT_BASE_PATH, { recursive: true, force: true });
     fs.mkdirSync(LOCAL_CONTENT_BASE_PATH, { recursive: true });
+  });
+
+  it("returns masked LLM settings, persists overrides, and can clear saved keys", async () => {
+    const initial = await handleAdminApiRequest(
+      buildRequest("/api/admin/llm-settings", {}, ADMIN_EMAIL),
+      "/llm-settings"
+    );
+    expect(initial.status).toBe(200);
+    const initialPayload = await readJson(initial);
+    expect(initialPayload.settings.chat.model).toBe("");
+    expect(initialPayload.resolved.chat.model).toBeDefined();
+    expect(initialPayload.settings.chat.apiKey.hasValue).toBe(false);
+
+    const saved = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/llm-settings",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat: {
+              model: "openai/gpt-4.1-mini",
+              baseUrl: "https://api.example.test",
+              apiKeyInput: "sk-test-chat-123456",
+            },
+            embedding: {
+              model: "openai/text-embedding-3-small",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+              apiKeyInput: "",
+            },
+            rerank: {
+              model: "cohere/rerank-v3.5",
+              useCustomProvider: true,
+              baseUrlMode: "custom",
+              baseUrl: "https://rerank.example.test",
+              apiKeyMode: "custom",
+              apiKeyInput: "sk-rerank-123456",
+            },
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/llm-settings"
+    );
+    expect(saved.status).toBe(200);
+    const savedPayload = await readJson(saved);
+    expect(savedPayload.settings.chat.apiKey.hasValue).toBe(true);
+    expect(savedPayload.settings.chat.apiKey.maskedValue).not.toContain("sk-test-chat-123456");
+    expect(savedPayload.settings.chat.apiKey.maskedValue).toBe("•".repeat(19));
+    expect(savedPayload.resolved.chat.baseUrl).toBe("https://api.example.test/v1");
+    expect(savedPayload.resolved.embedding.baseUrl).toBe("https://api.example.test/v1");
+    expect(savedPayload.resolved.embedding.apiKeyAvailable).toBe(true);
+    expect(savedPayload.settings.rerank.apiKey.hasValue).toBe(true);
+
+    const reloaded = await handleAdminApiRequest(
+      buildRequest("/api/admin/llm-settings", {}, ADMIN_EMAIL),
+      "/llm-settings"
+    );
+    expect(reloaded.status).toBe(200);
+    const reloadedPayload = await readJson(reloaded);
+    expect(reloadedPayload.settings.chat.model).toBe("openai/gpt-4.1-mini");
+    expect(reloadedPayload.settings.chat.apiKey.hasValue).toBe(true);
+    expect(reloadedPayload.settings.chat.apiKey.maskedValue).not.toContain("sk-test-chat-123456");
+    expect(reloadedPayload.settings.chat.apiKey.maskedValue).toBe("•".repeat(19));
+
+    const cleared = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/llm-settings",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat: {
+              model: "openai/gpt-4.1-mini",
+              baseUrl: "",
+              clearApiKey: true,
+            },
+            embedding: {
+              model: "openai/text-embedding-3-small",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
+            rerank: {
+              model: "cohere/rerank-v3.5",
+              useCustomProvider: true,
+              baseUrlMode: "custom",
+              baseUrl: "https://rerank.example.test",
+              apiKeyMode: "custom",
+            },
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/llm-settings"
+    );
+    expect(cleared.status).toBe(200);
+    const clearedPayload = await readJson(cleared);
+    expect(clearedPayload.settings.chat.apiKey.hasValue).toBe(false);
+    expect(clearedPayload.settings.rerank.apiKey.hasValue).toBe(true);
+  });
+
+  it("rejects baseURL saves without an available API key", async () => {
+    delete process.env.OPENAI_API_KEY;
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/llm-settings",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat: {
+              model: "",
+              baseUrl: "https://api.example.test",
+            },
+            embedding: {
+              model: "",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
+            rerank: {
+              model: "",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/llm-settings"
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await readJson(response);
+    expect(payload.error.message).toContain("必须同时提供 API Key");
+  });
+
+  it("returns tier-filtered model catalog entries for admin LLM settings", async () => {
+    const response = await handleAdminApiRequest(
+      buildRequest("/api/admin/llm-settings/catalog?tier=embedding", {}, ADMIN_EMAIL),
+      "/llm-settings/catalog"
+    );
+    expect(response.status).toBe(200);
+    const payload = await readJson(response);
+    expect(Array.isArray(payload.items)).toBe(true);
+    expect(payload.items.length).toBeGreaterThan(0);
+    expect(payload.items.every((item: any) => item.capabilities.includes("embeddings"))).toBe(true);
+  });
+
+  it("validates URLs and can test unsaved LLM settings through the admin API", async () => {
+    const invalidResponse = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/llm-settings",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat: {
+              model: "",
+              baseUrl: "not-a-url",
+            },
+            embedding: {
+              model: "",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
+            rerank: {
+              model: "",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/llm-settings"
+    );
+    expect(invalidResponse.status).toBe(400);
+    expect((await readJson(invalidResponse)).error.message).toContain("不是合法的 URL");
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/chat/completions")) {
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "pong" } }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+      return new Response("unexpected", { status: 500 });
+    }) as typeof fetch;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/llm-settings/test",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              tier: "chat",
+              settings: {
+                chat: {
+                  model: "openai/gpt-4.1-mini",
+                  baseUrl: "https://chat.example.test",
+                  apiKeyInput: "sk-chat-test-123456",
+                },
+                embedding: {
+                  model: "",
+                  useCustomProvider: false,
+                  baseUrlMode: "inherit",
+                  baseUrl: "",
+                  apiKeyMode: "inherit",
+                  apiKeyInput: "",
+                },
+                rerank: {
+                  model: "",
+                  useCustomProvider: false,
+                  baseUrlMode: "inherit",
+                  baseUrl: "",
+                  apiKeyMode: "inherit",
+                  apiKeyInput: "",
+                },
+              },
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/llm-settings/test"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = await readJson(response);
+      expect(payload.ok).toBe(true);
+      expect(payload.summary).toContain("测试通过");
+      expect(payload.baseUrl).toBe("https://chat.example.test/v1");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("returns 500 for operational LLM settings save failures", async () => {
+    const previousMasterKey = process.env.LLM_SETTINGS_MASTER_KEY;
+    delete process.env.LLM_SETTINGS_MASTER_KEY;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/llm-settings",
+          {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              chat: {
+                model: "openai/gpt-4.1-mini",
+                baseUrl: "https://api.example.test",
+                apiKeyInput: "sk-test-chat-123456",
+              },
+              embedding: {
+                model: "openai/text-embedding-3-small",
+                useCustomProvider: false,
+                baseUrlMode: "inherit",
+                baseUrl: "",
+                apiKeyMode: "inherit",
+                apiKeyInput: "",
+              },
+              rerank: {
+                model: "",
+                useCustomProvider: false,
+                baseUrlMode: "inherit",
+                baseUrl: "",
+                apiKeyMode: "inherit",
+                apiKeyInput: "",
+              },
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/llm-settings"
+      );
+
+      expect(response.status).toBe(500);
+      const payload = await readJson(response);
+      expect(payload.error.code).toBe("INTERNAL_SERVER_ERROR");
+    } finally {
+      if (previousMasterKey === undefined) {
+        delete process.env.LLM_SETTINGS_MASTER_KEY;
+      } else {
+        process.env.LLM_SETTINGS_MASTER_KEY = previousMasterKey;
+      }
+    }
   });
 
   it("requires admin auth for /api/admin/preview/posts/:slug and allows draft previews", async () => {

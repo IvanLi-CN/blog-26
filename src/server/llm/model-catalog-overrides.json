@@ -1,0 +1,47 @@
+[
+  {
+    "id": "openai/text-embedding-3-small",
+    "name": "OpenAI: text-embedding-3-small",
+    "description": "Small embedding model suited for lightweight semantic retrieval and indexing workloads.",
+    "contextLength": 8191,
+    "capabilities": ["embeddings"],
+    "availableOnProvider": null,
+    "source": "curated"
+  },
+  {
+    "id": "openai/text-embedding-3-large",
+    "name": "OpenAI: text-embedding-3-large",
+    "description": "Higher-quality embedding model for semantic search and indexing tasks that benefit from stronger recall.",
+    "contextLength": 8191,
+    "capabilities": ["embeddings"],
+    "availableOnProvider": null,
+    "source": "curated"
+  },
+  {
+    "id": "cohere/rerank-v3.5",
+    "name": "Cohere: rerank-v3.5",
+    "description": "General-purpose reranker for search result ordering and retrieval refinement.",
+    "contextLength": 4096,
+    "capabilities": ["rerank"],
+    "availableOnProvider": null,
+    "source": "curated"
+  },
+  {
+    "id": "cohere/rerank-4-fast",
+    "name": "Cohere: rerank-4-fast",
+    "description": "Low-latency reranker optimized for fast retrieval refinement.",
+    "contextLength": 4096,
+    "capabilities": ["rerank"],
+    "availableOnProvider": null,
+    "source": "curated"
+  },
+  {
+    "id": "cohere/rerank-4-pro",
+    "name": "Cohere: rerank-4-pro",
+    "description": "Higher-quality reranker tuned for production retrieval ranking.",
+    "contextLength": 4096,
+    "capabilities": ["rerank"],
+    "availableOnProvider": null,
+    "source": "curated"
+  }
+]

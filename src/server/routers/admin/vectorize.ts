@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { vectorizeAll, vectorizeOneBySlug } from "@/lib/ai/vectorization";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 type Progress = {
@@ -77,7 +78,8 @@ export const adminVectorizeRouter = createTRPCRouter({
   }),
 
   getVectorizationStats: adminProcedure.query(async () => {
-    const model = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+    const resolved = await getResolvedLlmConfig();
+    const model = resolved.embedding.model || "BAAI/bge-m3";
     const stats = await EmbeddingsRepository.stats(model);
     return {
       indexed: stats.indexed,

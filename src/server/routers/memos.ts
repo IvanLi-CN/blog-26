@@ -17,6 +17,7 @@ import {
   normalizePersistedLink,
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import {
   isLocalContentEnabled,
   LOCAL_PATHS,
@@ -552,7 +553,8 @@ export const memosRouter = router({
       const actualMemos = hasMore ? memoList.slice(0, limit) : memoList;
 
       // 计算向量化状态（与 /posts 相同口径：当前模型名 + 输入拼接哈希一致且存在向量）
-      const modelName = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+      const resolved = await getResolvedLlmConfig();
+      const modelName = resolved.embedding.model || "BAAI/bge-m3";
       const memosWithVectorStatus = await Promise.all(
         actualMemos.map(async (m) => {
           try {

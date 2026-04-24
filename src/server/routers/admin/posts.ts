@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { EmbeddingsRepository, type VectorizationStatus } from "@/lib/ai/embeddings-repo";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../../lib/db";
 import { type Post as PostRow, posts } from "../../../lib/schema";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
@@ -105,7 +106,8 @@ export const adminPostsRouter = createTRPCRouter({
       const total = totalResult[0]?.count || 0;
 
       // 计算向量化状态
-      const model = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+      const resolved = await getResolvedLlmConfig();
+      const model = resolved.embedding.model || "BAAI/bge-m3";
       type PostWithVector = PostRow & { vectorizationStatus?: VectorizationStatus };
       const postsWithVector: PostWithVector[] = await Promise.all(
         postsList.map(async (p) => {
