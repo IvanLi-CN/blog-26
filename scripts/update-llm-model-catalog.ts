@@ -27,6 +27,7 @@ type OpenRouterModel = Record<string, unknown>;
 const OUTPUT_PATH = path.join(process.cwd(), "src/generated/llm-model-catalog.json");
 const FALLBACK_PATH = path.join(process.cwd(), "src/server/llm/model-catalog-fallback.json");
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
+const DEFAULT_REFRESH_TIMEOUT_MS = 10_000;
 const CAPABILITY_ORDER: ModelCapability[] = [
   "chat",
   "embeddings",
@@ -136,9 +137,21 @@ function normalizeEntry(raw: OpenRouterModel): CatalogEntry | null {
   };
 }
 
+function getRefreshTimeoutMs() {
+  const raw = process.env.LLM_MODEL_CATALOG_REFRESH_TIMEOUT_MS?.trim();
+  if (!raw) return DEFAULT_REFRESH_TIMEOUT_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_REFRESH_TIMEOUT_MS;
+  }
+  return Math.floor(parsed);
+}
+
 async function fetchOpenRouterModels() {
+  const timeoutMs = getRefreshTimeoutMs();
   const response = await fetch(OPENROUTER_MODELS_URL, {
     headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
     throw new Error(`OpenRouter models fetch failed: ${response.status} ${response.statusText}`);

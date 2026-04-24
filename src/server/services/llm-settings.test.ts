@@ -20,6 +20,7 @@ describe("llm settings service", () => {
   beforeAll(async () => {
     process.env.DB_PATH = TEST_DB_PATH;
     process.env.LLM_SETTINGS_MASTER_KEY = "service-test-master-key";
+    delete process.env.LLM_SETTINGS_TEST_TIMEOUT_MS;
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_BASE_URL;
     delete process.env.EMBEDDING_MODEL_NAME;
@@ -368,6 +369,51 @@ describe("llm settings service", () => {
       expect(result.summary).toContain("测试通过");
       expect(fetchCalls[0]).toBe("https://chat.example.test/v1/chat/completions");
     } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("times out hanging provider tests instead of waiting forever", async () => {
+    const originalFetch = globalThis.fetch;
+    process.env.LLM_SETTINGS_TEST_TIMEOUT_MS = "5";
+    globalThis.fetch = ((_: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise((_, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => reject(new DOMException("Timed out", "TimeoutError")),
+          { once: true }
+        );
+      });
+    }) as typeof fetch;
+
+    try {
+      await expect(
+        testAdminLlmSettings("chat", {
+          chat: {
+            model: "openai/gpt-4.1-mini",
+            baseUrl: "https://chat.example.test",
+            apiKeyInput: "sk-chat-test-123",
+          },
+          embedding: {
+            model: "",
+            useCustomProvider: false,
+            baseUrlMode: "inherit",
+            baseUrl: "",
+            apiKeyMode: "inherit",
+            apiKeyInput: "",
+          },
+          rerank: {
+            model: "",
+            useCustomProvider: false,
+            baseUrlMode: "inherit",
+            baseUrl: "",
+            apiKeyMode: "inherit",
+            apiKeyInput: "",
+          },
+        })
+      ).rejects.toThrow("对话模型测试超时：5ms 内没有收到响应");
+    } finally {
+      delete process.env.LLM_SETTINGS_TEST_TIMEOUT_MS;
       globalThis.fetch = originalFetch;
     }
   });

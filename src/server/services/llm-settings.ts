@@ -21,6 +21,7 @@ const DEFAULT_ROW_ID = "default";
 const DEFAULT_CHAT_MODEL = "gpt-4o-mini";
 const DEFAULT_EMBEDDING_MODEL = "BAAI/bge-m3";
 const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_LLM_TEST_TIMEOUT_MS = 10_000;
 
 type ResolvedValueSource = ResolvedTierSummary["sources"]["model"];
 type ChildTierKey = "embedding" | "rerank";
@@ -61,6 +62,16 @@ function normalizeOptionalText(value: string | null | undefined): string | undef
   return trimmed ? trimmed : undefined;
 }
 
+function getPositiveIntEnv(name: string, fallback: number) {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.floor(parsed);
+}
+
 export function normalizeOpenAiCompatibleBaseUrl(value: string | null | undefined): string | null {
   const trimmed = normalizeOptionalText(value);
   if (!trimmed) return null;
@@ -96,6 +107,35 @@ function normalizeValidatedBaseUrl(
 function maskSecret(value: string): string {
   const trimmed = value.trim();
   return "•".repeat(trimmed.length);
+}
+
+function isAbortLikeError(error: unknown) {
+  if (error instanceof DOMException) {
+    return error.name === "AbortError" || error.name === "TimeoutError";
+  }
+  if (error instanceof Error) {
+    return error.name === "AbortError" || error.name === "TimeoutError";
+  }
+  return false;
+}
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+  timeoutLabel: string
+) {
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    if (isAbortLikeError(error)) {
+      throw new Error(`${timeoutLabel}：${timeoutMs}ms 内没有收到响应`);
+    }
+    throw error;
+  }
 }
 
 function deriveMasterKey(): Buffer | null {
@@ -784,18 +824,24 @@ async function runLlmConnectionTest({
     "Content-Type": "application/json",
     Authorization: `Bearer ${resolved.apiKey}`,
   };
+  const timeoutMs = getPositiveIntEnv("LLM_SETTINGS_TEST_TIMEOUT_MS", DEFAULT_LLM_TEST_TIMEOUT_MS);
 
   if (tier === "chat") {
-    const response = await fetch(`${resolved.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: resolved.model,
-        messages: [{ role: "user", content: "Reply with pong." }],
-        max_tokens: 8,
-        temperature: 0,
-      }),
-    });
+    const response = await fetchWithTimeout(
+      `${resolved.baseUrl}/chat/completions`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: resolved.model,
+          messages: [{ role: "user", content: "Reply with pong." }],
+          max_tokens: 8,
+          temperature: 0,
+        }),
+      },
+      timeoutMs,
+      "对话模型测试超时"
+    );
     if (!response.ok) {
       const details = await response.text().catch(() => "");
       throw new Error(`对话模型测试失败：${response.status} ${response.statusText} ${details}`);
@@ -815,14 +861,19 @@ async function runLlmConnectionTest({
   }
 
   if (tier === "embedding") {
-    const response = await fetch(`${resolved.baseUrl}/embeddings`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: resolved.model,
-        input: "ping",
-      }),
-    });
+    const response = await fetchWithTimeout(
+      `${resolved.baseUrl}/embeddings`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: resolved.model,
+          input: "ping",
+        }),
+      },
+      timeoutMs,
+      "嵌入模型测试超时"
+    );
     if (!response.ok) {
       const details = await response.text().catch(() => "");
       throw new Error(`嵌入模型测试失败：${response.status} ${response.statusText} ${details}`);
@@ -844,16 +895,21 @@ async function runLlmConnectionTest({
     };
   }
 
-  const response = await fetch(`${resolved.baseUrl}/rerank`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: resolved.model,
-      query: "test query",
-      documents: ["first document", "second document"],
-      top_n: 2,
-    }),
-  });
+  const response = await fetchWithTimeout(
+    `${resolved.baseUrl}/rerank`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: resolved.model,
+        query: "test query",
+        documents: ["first document", "second document"],
+        top_n: 2,
+      }),
+    },
+    timeoutMs,
+    "重排序模型测试超时"
+  );
   if (!response.ok) {
     const details = await response.text().catch(() => "");
     throw new Error(`重排序模型测试失败：${response.status} ${response.statusText} ${details}`);

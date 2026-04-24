@@ -65,6 +65,7 @@ The project previously let each AI-related module read environment variables dir
 - If a tier saves a non-empty `baseURL`, the resolved configuration must still have an API key available; reject saves that would leave the tier pointing at a provider URL without credentials.
 - Provider `/models` data is advisory availability metadata, not the canonical catalog.
 - Catalog refresh must fail open so local builds remain usable without network access.
+- Bound both the build-time OpenRouter refresh and admin-side provider test calls with request timeouts so offline or half-open endpoints fail back to the UI/build flow instead of hanging indefinitely.
 
 # References
 

@@ -108,6 +108,7 @@ AI runtime defaults
 - Admin overrides saved from `/admin/llm-settings` take precedence over those env values at runtime and are stored in SQLite.
 - API keys saved from the admin UI are encrypted at rest and require `LLM_SETTINGS_MASTER_KEY` on the server to write or decrypt persisted secrets.
 - Model catalog data is refreshed during `bun run prebuild` from OpenRouter when available, but builds fall back to the repo-tracked catalog metadata if the refresh is unavailable.
+- `LLM_MODEL_CATALOG_REFRESH_TIMEOUT_MS` can shorten or extend the build-time OpenRouter refresh timeout; `LLM_SETTINGS_TEST_TIMEOUT_MS` does the same for admin-side provider test requests.
 
 ### Start Dev Environment
 
