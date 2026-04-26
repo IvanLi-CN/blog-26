@@ -563,4 +563,52 @@ describe("llm settings service", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it("lets tier-level tests ignore unrelated incomplete custom provider edits", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchCalls: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      fetchCalls.push(String(input));
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "pong" } }],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }
+      );
+    }) as typeof fetch;
+
+    try {
+      const result = await testAdminLlmSettings("chat", {
+        chat: {
+          model: "openai/gpt-4.1-mini",
+          baseUrl: "https://chat.example.test",
+          apiKeyInput: "sk-chat-test-123",
+        },
+        embedding: {
+          model: "openai/text-embedding-3-small",
+          useCustomProvider: true,
+          baseUrlMode: "custom",
+          baseUrl: "",
+          apiKeyMode: "custom",
+          apiKeyInput: "",
+        },
+        rerank: {
+          model: "",
+          useCustomProvider: false,
+          baseUrlMode: "inherit",
+          baseUrl: "",
+          apiKeyMode: "inherit",
+          apiKeyInput: "",
+        },
+      });
+
+      expect(result.ok).toBe(true);
+      expect(fetchCalls[0]).toBe("https://chat.example.test/v1/chat/completions");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

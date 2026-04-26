@@ -725,8 +725,14 @@ function buildNextChildTierRecord({
 
 function buildNextRecordFromInput(
   record: LlmSettingsRecord,
-  input: AdminLlmSettingsUpdateInput
-): { record: LlmSettingsRecord; resolved: ResolvedLlmConfig } {
+  input: AdminLlmSettingsUpdateInput,
+  options?: { validateAllTiers?: boolean }
+): {
+  record: LlmSettingsRecord;
+  resolved: ResolvedLlmConfig;
+  nextEmbeddingState: ReturnType<typeof buildNextChildTierRecord>;
+  nextRerankState: ReturnType<typeof buildNextChildTierRecord>;
+} {
   const parsed = adminLlmSettingsUpdateSchema.parse(input);
 
   const nextChat = buildNextChatRecord(record, parsed);
@@ -750,28 +756,35 @@ function buildNextRecordFromInput(
   };
   const nextResolved = resolveLlmConfigFromRecord(nextRecord);
 
-  const embeddingCustomSecret = readPersistedSecretValue(nextRecord.embedding.apiKey).value;
-  const rerankCustomSecret = readPersistedSecretValue(nextRecord.rerank.apiKey).value;
+  if (options?.validateAllTiers !== false) {
+    const embeddingCustomSecret = readPersistedSecretValue(nextRecord.embedding.apiKey).value;
+    const rerankCustomSecret = readPersistedSecretValue(nextRecord.rerank.apiKey).value;
 
-  assertApiKeyProvidedForConfiguredBaseUrl({
-    label: "对话模型",
-    baseUrl: nextChat.baseUrl,
-    apiKeyAvailable: nextResolved.chat.apiKeyAvailable,
-  });
-  assertIndependentProviderConfigured({
-    label: "嵌入模型",
-    useCustomProvider: nextEmbeddingState.useCustomProvider,
-    baseUrl: nextRecord.embedding.baseUrl,
-    customApiKeyAvailable: Boolean(embeddingCustomSecret),
-  });
-  assertIndependentProviderConfigured({
-    label: "重排序模型",
-    useCustomProvider: nextRerankState.useCustomProvider,
-    baseUrl: nextRecord.rerank.baseUrl,
-    customApiKeyAvailable: Boolean(rerankCustomSecret),
-  });
+    assertApiKeyProvidedForConfiguredBaseUrl({
+      label: "对话模型",
+      baseUrl: nextChat.baseUrl,
+      apiKeyAvailable: nextResolved.chat.apiKeyAvailable,
+    });
+    assertIndependentProviderConfigured({
+      label: "嵌入模型",
+      useCustomProvider: nextEmbeddingState.useCustomProvider,
+      baseUrl: nextRecord.embedding.baseUrl,
+      customApiKeyAvailable: Boolean(embeddingCustomSecret),
+    });
+    assertIndependentProviderConfigured({
+      label: "重排序模型",
+      useCustomProvider: nextRerankState.useCustomProvider,
+      baseUrl: nextRecord.rerank.baseUrl,
+      customApiKeyAvailable: Boolean(rerankCustomSecret),
+    });
+  }
 
-  return { record: nextRecord, resolved: nextResolved };
+  return {
+    record: nextRecord,
+    resolved: nextResolved,
+    nextEmbeddingState,
+    nextRerankState,
+  };
 }
 
 function buildNextRecordWithTimestamps({
@@ -954,7 +967,37 @@ export async function testAdminLlmSettings(
   input: AdminLlmSettingsUpdateInput
 ) {
   const { record } = await getPersistedLlmSettings();
-  const prepared = buildNextRecordFromInput(record, input);
+  const prepared = buildNextRecordFromInput(record, input, { validateAllTiers: false });
+  if (tier === "embedding" && prepared.nextEmbeddingState.useCustomProvider) {
+    const embeddingCustomSecret = readPersistedSecretValue(prepared.record.embedding.apiKey).value;
+    assertIndependentProviderConfigured({
+      label: "嵌入模型",
+      useCustomProvider: true,
+      baseUrl: prepared.record.embedding.baseUrl,
+      customApiKeyAvailable: Boolean(embeddingCustomSecret),
+    });
+  }
+  if (tier === "rerank") {
+    if (prepared.nextRerankState.useCustomProvider) {
+      const rerankCustomSecret = readPersistedSecretValue(prepared.record.rerank.apiKey).value;
+      assertIndependentProviderConfigured({
+        label: "重排序模型",
+        useCustomProvider: true,
+        baseUrl: prepared.record.rerank.baseUrl,
+        customApiKeyAvailable: Boolean(rerankCustomSecret),
+      });
+    } else if (prepared.nextEmbeddingState.useCustomProvider) {
+      const embeddingCustomSecret = readPersistedSecretValue(
+        prepared.record.embedding.apiKey
+      ).value;
+      assertIndependentProviderConfigured({
+        label: "嵌入模型",
+        useCustomProvider: true,
+        baseUrl: prepared.record.embedding.baseUrl,
+        customApiKeyAvailable: Boolean(embeddingCustomSecret),
+      });
+    }
+  }
   return runLlmConnectionTest({
     tier,
     resolved: prepared.resolved[tier],
