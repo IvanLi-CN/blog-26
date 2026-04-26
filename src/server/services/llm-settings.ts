@@ -362,7 +362,10 @@ function resolveLlmConfigFromRecord(record: LlmSettingsRecord): ResolvedLlmConfi
     envValue: chatEnv.baseUrl ?? undefined,
     defaultValue: DEFAULT_OPENAI_BASE_URL,
   });
-  const chatApiKey = resolveDirectSecret({ dbValue: chatSecret.value, envValue: chatEnv.apiKey });
+  const chatApiKey = resolveDirectSecret({
+    dbValue: chatSecret.value,
+    envValue: chatSecret.requiresMasterKey ? undefined : chatEnv.apiKey,
+  });
 
   const embeddingModel = resolveDirectValue({
     dbValue: normalizeOptionalText(record.embedding.model),
@@ -380,7 +383,10 @@ function resolveLlmConfigFromRecord(record: LlmSettingsRecord): ResolvedLlmConfi
   const embeddingSecret = readPersistedSecretValue(record.embedding.apiKey);
   const embeddingApiKey =
     record.embedding.apiKeyMode === "custom"
-      ? resolveDirectSecret({ dbValue: embeddingSecret.value, envValue: embeddingEnv.apiKey })
+      ? resolveDirectSecret({
+          dbValue: embeddingSecret.value,
+          envValue: embeddingSecret.requiresMasterKey ? undefined : embeddingEnv.apiKey,
+        })
       : buildInheritedValue({ value: chatApiKey.value });
 
   const rerankModel = resolveDirectValue({
@@ -399,7 +405,10 @@ function resolveLlmConfigFromRecord(record: LlmSettingsRecord): ResolvedLlmConfi
   const rerankSecret = readPersistedSecretValue(record.rerank.apiKey);
   const rerankApiKey =
     record.rerank.apiKeyMode === "custom"
-      ? resolveDirectSecret({ dbValue: rerankSecret.value, envValue: rerankEnv.apiKey })
+      ? resolveDirectSecret({
+          dbValue: rerankSecret.value,
+          envValue: rerankSecret.requiresMasterKey ? undefined : rerankEnv.apiKey,
+        })
       : buildInheritedValue({ value: embeddingApiKey.value });
 
   return {

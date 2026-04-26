@@ -642,6 +642,58 @@ describe("llm settings service", () => {
     }
   });
 
+  it("does not fall back to env API keys when saved secrets cannot be decrypted", async () => {
+    const originalMasterKey = process.env.LLM_SETTINGS_MASTER_KEY;
+    process.env.OPENAI_API_KEY = "env-shared-key";
+
+    await updateAdminLlmSettings({
+      chat: {
+        model: "openai/gpt-4.1-mini",
+        baseUrl: "https://chat.example.test",
+        apiKeyInput: "chat-secret-value",
+      },
+      embedding: {
+        model: "openai/text-embedding-3-small",
+        useCustomProvider: true,
+        baseUrlMode: "custom",
+        baseUrl: "https://embed.example.test",
+        apiKeyMode: "custom",
+        apiKeyInput: "embed-secret-value",
+      },
+      rerank: {
+        model: "cohere/rerank-v3.5",
+        useCustomProvider: true,
+        baseUrlMode: "custom",
+        baseUrl: "https://rerank.example.test",
+        apiKeyMode: "custom",
+        apiKeyInput: "rerank-secret-value",
+      },
+    });
+
+    process.env.LLM_SETTINGS_MASTER_KEY = "wrong-master-key";
+
+    try {
+      const resolved = await getResolvedLlmConfig();
+      expect(resolved.chat.baseUrl).toBe("https://chat.example.test/v1");
+      expect(resolved.chat.apiKey).toBeNull();
+      expect(resolved.chat.apiKeyAvailable).toBe(false);
+      expect(resolved.embedding.baseUrl).toBe("https://embed.example.test/v1");
+      expect(resolved.embedding.apiKey).toBeNull();
+      expect(resolved.embedding.apiKeyAvailable).toBe(false);
+      expect(resolved.rerank.baseUrl).toBe("https://rerank.example.test/v1");
+      expect(resolved.rerank.apiKey).toBeNull();
+      expect(resolved.rerank.apiKeyAvailable).toBe(false);
+
+      const payload = await getAdminLlmSettingsPayload();
+      expect(payload.settings.chat.apiKey.requiresMasterKey).toBe(true);
+      expect(payload.settings.embedding.apiKey.requiresMasterKey).toBe(true);
+      expect(payload.settings.rerank.apiKey.requiresMasterKey).toBe(true);
+    } finally {
+      process.env.LLM_SETTINGS_MASTER_KEY = originalMasterKey;
+      delete process.env.OPENAI_API_KEY;
+    }
+  });
+
   it("lets tier-level tests ignore unrelated incomplete custom provider edits", async () => {
     const originalFetch = globalThis.fetch;
     const fetchCalls: string[] = [];
