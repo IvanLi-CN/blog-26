@@ -564,6 +564,84 @@ describe("llm settings service", () => {
     }
   });
 
+  it("accepts env-backed API keys for custom child provider settings", async () => {
+    const originalFetch = globalThis.fetch;
+    process.env.OPENAI_API_KEY = "env-custom-tier-key";
+    globalThis.fetch = (async (_input: RequestInfo | URL) => {
+      return new Response(
+        JSON.stringify({
+          data: [{ embedding: [0.1, 0.2, 0.3] }],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }
+      );
+    }) as typeof fetch;
+
+    try {
+      await expect(
+        updateAdminLlmSettings({
+          chat: {
+            model: "openai/gpt-4.1-mini",
+            baseUrl: "https://chat.example.test",
+            apiKeyInput: "",
+          },
+          embedding: {
+            model: "openai/text-embedding-3-small",
+            useCustomProvider: true,
+            baseUrlMode: "custom",
+            baseUrl: "https://embed.example.test",
+            apiKeyMode: "custom",
+            apiKeyInput: "",
+          },
+          rerank: {
+            model: "",
+            useCustomProvider: false,
+            baseUrlMode: "inherit",
+            baseUrl: "",
+            apiKeyMode: "inherit",
+            apiKeyInput: "",
+          },
+        })
+      ).resolves.toBeDefined();
+
+      const result = await testAdminLlmSettings("embedding", {
+        chat: {
+          model: "openai/gpt-4.1-mini",
+          baseUrl: "https://chat.example.test",
+          apiKeyInput: "",
+        },
+        embedding: {
+          model: "openai/text-embedding-3-small",
+          useCustomProvider: true,
+          baseUrlMode: "custom",
+          baseUrl: "https://embed.example.test",
+          apiKeyMode: "custom",
+          apiKeyInput: "",
+        },
+        rerank: {
+          model: "",
+          useCustomProvider: false,
+          baseUrlMode: "inherit",
+          baseUrl: "",
+          apiKeyMode: "inherit",
+          apiKeyInput: "",
+        },
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.baseUrl).toBe("https://embed.example.test/v1");
+
+      const resolved = await getResolvedLlmConfig();
+      expect(resolved.embedding.apiKey).toBe("env-custom-tier-key");
+      expect(resolved.embedding.sources.apiKey).toBe("env");
+    } finally {
+      delete process.env.OPENAI_API_KEY;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("lets tier-level tests ignore unrelated incomplete custom provider edits", async () => {
     const originalFetch = globalThis.fetch;
     const fetchCalls: string[] = [];

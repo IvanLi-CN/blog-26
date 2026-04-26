@@ -52,6 +52,18 @@ export class LlmSettingsInputError extends Error {
   }
 }
 
+export class LlmSettingsTestError extends Error {
+  status: number;
+  code: string;
+
+  constructor(message: string, status = 502, code = "PROVIDER_TEST_FAILED") {
+    super(message);
+    this.name = "LlmSettingsTestError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 function getEnvText(name: string): string | undefined {
   const value = process.env[name]?.trim();
   return value ? value : undefined;
@@ -132,7 +144,11 @@ async function fetchWithTimeout(
     });
   } catch (error) {
     if (isAbortLikeError(error)) {
-      throw new Error(`${timeoutLabel}：${timeoutMs}ms 内没有收到响应`);
+      throw new LlmSettingsTestError(
+        `${timeoutLabel}：${timeoutMs}ms 内没有收到响应`,
+        504,
+        "PROVIDER_TEST_TIMEOUT"
+      );
     }
     throw error;
   }
@@ -658,18 +674,18 @@ function assertIndependentProviderConfigured({
   label,
   useCustomProvider,
   baseUrl,
-  customApiKeyAvailable,
+  apiKeyAvailable,
 }: {
   label: string;
   useCustomProvider: boolean;
   baseUrl?: string;
-  customApiKeyAvailable: boolean;
+  apiKeyAvailable: boolean;
 }) {
   if (!useCustomProvider) return;
   if (!baseUrl) {
     throw new LlmSettingsInputError(`${label} 开启高级设置后，baseURL 为必填项`);
   }
-  if (!customApiKeyAvailable) {
+  if (!apiKeyAvailable) {
     throw new LlmSettingsInputError(`${label} 开启高级设置后，API Key 为必填项`);
   }
 }
@@ -757,9 +773,6 @@ function buildNextRecordFromInput(
   const nextResolved = resolveLlmConfigFromRecord(nextRecord);
 
   if (options?.validateAllTiers !== false) {
-    const embeddingCustomSecret = readPersistedSecretValue(nextRecord.embedding.apiKey).value;
-    const rerankCustomSecret = readPersistedSecretValue(nextRecord.rerank.apiKey).value;
-
     assertApiKeyProvidedForConfiguredBaseUrl({
       label: "对话模型",
       baseUrl: nextChat.baseUrl,
@@ -769,13 +782,13 @@ function buildNextRecordFromInput(
       label: "嵌入模型",
       useCustomProvider: nextEmbeddingState.useCustomProvider,
       baseUrl: nextRecord.embedding.baseUrl,
-      customApiKeyAvailable: Boolean(embeddingCustomSecret),
+      apiKeyAvailable: nextResolved.embedding.apiKeyAvailable,
     });
     assertIndependentProviderConfigured({
       label: "重排序模型",
       useCustomProvider: nextRerankState.useCustomProvider,
       baseUrl: nextRecord.rerank.baseUrl,
-      customApiKeyAvailable: Boolean(rerankCustomSecret),
+      apiKeyAvailable: nextResolved.rerank.apiKeyAvailable,
     });
   }
 
@@ -840,6 +853,13 @@ async function runLlmConnectionTest({
     Authorization: `Bearer ${resolved.apiKey}`,
   };
   const timeoutMs = getPositiveIntEnv("LLM_SETTINGS_TEST_TIMEOUT_MS", DEFAULT_LLM_TEST_TIMEOUT_MS);
+  const parseJsonPayload = async <T>(response: Response, failureMessage: string): Promise<T> => {
+    try {
+      return (await response.json()) as T;
+    } catch {
+      throw new LlmSettingsTestError(failureMessage);
+    }
+  };
 
   if (tier === "chat") {
     const response = await fetchWithTimeout(
@@ -859,11 +879,13 @@ async function runLlmConnectionTest({
     );
     if (!response.ok) {
       const details = await response.text().catch(() => "");
-      throw new Error(`对话模型测试失败：${response.status} ${response.statusText} ${details}`);
+      throw new LlmSettingsTestError(
+        `对话模型测试失败：${response.status} ${response.statusText} ${details}`.trim()
+      );
     }
-    const payload = (await response.json()) as {
+    const payload = await parseJsonPayload<{
       choices?: Array<{ message?: { content?: string | null } }>;
-    };
+    }>(response, "对话模型测试失败：响应不是合法 JSON");
     const content = payload.choices?.[0]?.message?.content?.trim() || "(empty)";
     return {
       tier,
@@ -891,14 +913,16 @@ async function runLlmConnectionTest({
     );
     if (!response.ok) {
       const details = await response.text().catch(() => "");
-      throw new Error(`嵌入模型测试失败：${response.status} ${response.statusText} ${details}`);
+      throw new LlmSettingsTestError(
+        `嵌入模型测试失败：${response.status} ${response.statusText} ${details}`.trim()
+      );
     }
-    const payload = (await response.json()) as {
+    const payload = await parseJsonPayload<{
       data?: Array<{ embedding?: number[] }>;
-    };
+    }>(response, "嵌入模型测试失败：响应不是合法 JSON");
     const dimension = payload.data?.[0]?.embedding?.length ?? 0;
     if (!dimension) {
-      throw new Error("嵌入模型测试失败：响应里没有可用向量");
+      throw new LlmSettingsTestError("嵌入模型测试失败：响应里没有可用向量");
     }
     return {
       tier,
@@ -927,11 +951,13 @@ async function runLlmConnectionTest({
   );
   if (!response.ok) {
     const details = await response.text().catch(() => "");
-    throw new Error(`重排序模型测试失败：${response.status} ${response.statusText} ${details}`);
+    throw new LlmSettingsTestError(
+      `重排序模型测试失败：${response.status} ${response.statusText} ${details}`.trim()
+    );
   }
-  const payload = (await response.json()) as {
+  const payload = await parseJsonPayload<{
     data?: Array<{ index?: number; score?: number }>;
-  };
+  }>(response, "重排序模型测试失败：响应不是合法 JSON");
   const first = payload.data?.[0];
   return {
     tier,
@@ -969,32 +995,27 @@ export async function testAdminLlmSettings(
   const { record } = await getPersistedLlmSettings();
   const prepared = buildNextRecordFromInput(record, input, { validateAllTiers: false });
   if (tier === "embedding" && prepared.nextEmbeddingState.useCustomProvider) {
-    const embeddingCustomSecret = readPersistedSecretValue(prepared.record.embedding.apiKey).value;
     assertIndependentProviderConfigured({
       label: "嵌入模型",
       useCustomProvider: true,
       baseUrl: prepared.record.embedding.baseUrl,
-      customApiKeyAvailable: Boolean(embeddingCustomSecret),
+      apiKeyAvailable: prepared.resolved.embedding.apiKeyAvailable,
     });
   }
   if (tier === "rerank") {
     if (prepared.nextRerankState.useCustomProvider) {
-      const rerankCustomSecret = readPersistedSecretValue(prepared.record.rerank.apiKey).value;
       assertIndependentProviderConfigured({
         label: "重排序模型",
         useCustomProvider: true,
         baseUrl: prepared.record.rerank.baseUrl,
-        customApiKeyAvailable: Boolean(rerankCustomSecret),
+        apiKeyAvailable: prepared.resolved.rerank.apiKeyAvailable,
       });
     } else if (prepared.nextEmbeddingState.useCustomProvider) {
-      const embeddingCustomSecret = readPersistedSecretValue(
-        prepared.record.embedding.apiKey
-      ).value;
       assertIndependentProviderConfigured({
         label: "嵌入模型",
         useCustomProvider: true,
         baseUrl: prepared.record.embedding.baseUrl,
-        customApiKeyAvailable: Boolean(embeddingCustomSecret),
+        apiKeyAvailable: prepared.resolved.embedding.apiKeyAvailable,
       });
     }
   }

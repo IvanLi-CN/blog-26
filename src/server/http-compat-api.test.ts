@@ -441,6 +441,64 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("returns actionable provider test failures instead of a generic 500", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/chat/completions")) {
+        return new Response("bad credentials", { status: 401, statusText: "Unauthorized" });
+      }
+      return new Response("unexpected", { status: 500 });
+    }) as typeof fetch;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/llm-settings/test",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              tier: "chat",
+              settings: {
+                chat: {
+                  model: "openai/gpt-4.1-mini",
+                  baseUrl: "https://chat.example.test",
+                  apiKeyInput: "sk-chat-test-123456",
+                },
+                embedding: {
+                  model: "",
+                  useCustomProvider: false,
+                  baseUrlMode: "inherit",
+                  baseUrl: "",
+                  apiKeyMode: "inherit",
+                  apiKeyInput: "",
+                },
+                rerank: {
+                  model: "",
+                  useCustomProvider: false,
+                  baseUrlMode: "inherit",
+                  baseUrl: "",
+                  apiKeyMode: "inherit",
+                  apiKeyInput: "",
+                },
+              },
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/llm-settings/test"
+      );
+
+      expect(response.status).toBe(502);
+      const payload = await readJson(response);
+      expect(payload.error.code).toBe("PROVIDER_TEST_FAILED");
+      expect(payload.error.message).toContain("对话模型测试失败：401 Unauthorized bad credentials");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("requires admin auth for /api/admin/preview/posts/:slug and allows draft previews", async () => {
     await seedPost({
       id: "blog/preview-secret.md",

@@ -9,6 +9,7 @@ import {
   getAdminLlmSettingsPayload,
   getResolvedLlmConfig,
   LlmSettingsInputError,
+  LlmSettingsTestError,
   testAdminLlmSettings,
   updateAdminLlmSettings,
 } from "@/server/services/llm-settings";
@@ -246,6 +247,18 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
               },
             },
             { status: 400 },
+            resHeaders
+          );
+        }
+        if (error instanceof LlmSettingsTestError) {
+          return json(
+            {
+              error: {
+                code: error.code,
+                message: error.message,
+              },
+            },
+            { status: error.status },
             resHeaders
           );
         }
