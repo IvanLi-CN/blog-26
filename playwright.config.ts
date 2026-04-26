@@ -85,6 +85,7 @@ export default defineConfig({
       testMatch: [
         "**/admin/session-header-auth-admin.spec.ts",
         "**/admin/admin-spa-phase2.spec.ts",
+        "**/admin/llm-settings.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"] },
     },
@@ -113,6 +114,7 @@ export default defineConfig({
       SITE_PORT: String(SITE_PORT),
       MEMOS_E2E_FAULTS: "1",
       SSO_EMAIL_HEADER_NAME: EMAIL_HEADER_NAME,
+      LLM_SETTINGS_MASTER_KEY: process.env.LLM_SETTINGS_MASTER_KEY || "playwright-master-key",
     },
   },
 });

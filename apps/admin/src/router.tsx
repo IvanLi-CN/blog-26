@@ -4,6 +4,7 @@ import { CommentsPage } from "~/pages/comments";
 import { ContentSyncPage } from "~/pages/content-sync";
 import { DashboardPage } from "~/pages/dashboard";
 import { EditorPage } from "~/pages/editor";
+import { LlmSettingsPage } from "~/pages/llm-settings";
 import { PatsPage } from "~/pages/pats";
 import { PostsPage } from "~/pages/posts";
 import { MemoPreviewPage, PostPreviewPage } from "~/pages/preview";
@@ -86,6 +87,11 @@ const patsRoute = createRoute({
   path: "pats",
   component: PatsPage,
 });
+const llmSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "llm-settings",
+  component: LlmSettingsPage,
+});
 const postPreviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "preview/posts/$slug",
@@ -126,6 +132,7 @@ export const routeTree = rootRoute.addChildren([
   tagsRoute,
   tagIconsRoute,
   patsRoute,
+  llmSettingsRoute,
   postPreviewRoute,
   memoPreviewRoute,
   dataSyncAliasRoute,

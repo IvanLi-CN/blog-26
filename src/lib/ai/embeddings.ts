@@ -1,7 +1,5 @@
 import crypto from "node:crypto";
-
-const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL || "";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -166,14 +164,14 @@ export async function createEmbedding(
   model?: string,
   opts?: { onRetry?: BackoffOptions["onRetry"] }
 ): Promise<EmbeddingResponse> {
-  if (!OPENAI_API_BASE_URL || !OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_BASE_URL or OPENAI_API_KEY is not configured");
+  const resolved = await getResolvedLlmConfig();
+  const modelName = model || resolved.embedding.model;
+  const apiBase = resolved.embedding.baseUrl;
+  const apiKey = resolved.embedding.apiKey;
+
+  if (!apiBase || !apiKey || !modelName) {
+    throw new Error("Embedding model/baseUrl/apiKey is not configured");
   }
-
-  const modelName = model || process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
-
-  const base = OPENAI_API_BASE_URL.replace(/\/$/, "");
-  const apiBase = base.endsWith("/v1") ? base : `${base}/v1`;
   await acquireGlobalSlot();
   let res: Response | undefined;
   try {
@@ -183,7 +181,7 @@ export async function createEmbedding(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({ model: modelName, input }),
         }),

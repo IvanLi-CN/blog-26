@@ -113,6 +113,13 @@ export const tagCategories = sqliteTable("tag_categories", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+export const llmSettings = sqliteTable("llm_settings", {
+  id: text("id").primaryKey(),
+  config: text("config").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // 反应表
 export const reactions = sqliteTable("reactions", {
   id: text("id").primaryKey(),
@@ -265,6 +272,9 @@ export type NewTagRecord = typeof tags.$inferInsert;
 
 export type PostEmbedding = typeof postEmbeddings.$inferSelect;
 export type NewPostEmbedding = typeof postEmbeddings.$inferInsert;
+
+export type LlmSettingsRow = typeof llmSettings.$inferSelect;
+export type NewLlmSettingsRow = typeof llmSettings.$inferInsert;
 
 export type ContentSyncLog = typeof contentSyncLogs.$inferSelect;
 export type NewContentSyncLog = typeof contentSyncLogs.$inferInsert;

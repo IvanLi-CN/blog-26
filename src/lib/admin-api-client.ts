@@ -1,3 +1,10 @@
+import type {
+  AdminLlmCatalogResponse,
+  AdminLlmSettingsPayload,
+  AdminLlmSettingsTestResponse,
+  AdminLlmSettingsUpdateInput,
+  LlmTier,
+} from "@/lib/llm-settings";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
@@ -469,6 +476,21 @@ export const adminApi = {
     }),
   getTagIconsOverview: () =>
     adminRequest<TagIconsOverviewResponse>("/api/admin/tag-icons/overview"),
+  getLlmSettings: () => adminRequest<AdminLlmSettingsPayload>("/api/admin/llm-settings"),
+  updateLlmSettings: (input: AdminLlmSettingsUpdateInput) =>
+    adminRequest<AdminLlmSettingsPayload>("/api/admin/llm-settings", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  getLlmCatalog: (tier?: LlmTier) =>
+    adminRequest<AdminLlmCatalogResponse>(
+      `/api/admin/llm-settings/catalog${buildSearch({ tier })}`
+    ),
+  testLlmSettings: (tier: LlmTier, settings: AdminLlmSettingsUpdateInput) =>
+    adminRequest<AdminLlmSettingsTestResponse>("/api/admin/llm-settings/test", {
+      method: "POST",
+      body: JSON.stringify({ tier, settings }),
+    }),
   suggestTagIcon: (input: {
     type: "tag" | "category";
     name?: string;
