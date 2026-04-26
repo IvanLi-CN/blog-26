@@ -186,6 +186,152 @@ describe("llm settings service", () => {
     expect(payload.hints.currentResolvedModel).toBe("BAAI/bge-m3");
   });
 
+  it("prefers the resolved embedding model when evaluating reindex status", async () => {
+    if (!db) throw new Error("Database has not been initialised");
+
+    const now = Date.now();
+    await db.insert(posts).values([
+      {
+        id: "old-post-a",
+        slug: "old-post-a",
+        type: "post",
+        title: "Old Post A",
+        excerpt: "old a",
+        body: "old a body",
+        publishDate: now - 50_000,
+        updateDate: now - 50_000,
+        draft: false,
+        public: true,
+        category: "demo",
+        tags: JSON.stringify(["demo"]),
+        author: "tester",
+        metadata: JSON.stringify({}),
+        dataSource: "database",
+        contentHash: "old-hash-a",
+        lastModified: now - 50_000,
+        source: "local",
+        filePath: "old-post-a.md",
+      },
+      {
+        id: "old-post-b",
+        slug: "old-post-b",
+        type: "post",
+        title: "Old Post B",
+        excerpt: "old b",
+        body: "old b body",
+        publishDate: now - 40_000,
+        updateDate: now - 40_000,
+        draft: false,
+        public: true,
+        category: "demo",
+        tags: JSON.stringify(["demo"]),
+        author: "tester",
+        metadata: JSON.stringify({}),
+        dataSource: "database",
+        contentHash: "old-hash-b",
+        lastModified: now - 40_000,
+        source: "local",
+        filePath: "old-post-b.md",
+      },
+      {
+        id: "new-post",
+        slug: "new-post",
+        type: "post",
+        title: "New Post",
+        excerpt: "new",
+        body: "new body",
+        publishDate: now - 30_000,
+        updateDate: now - 30_000,
+        draft: false,
+        public: true,
+        category: "demo",
+        tags: JSON.stringify(["demo"]),
+        author: "tester",
+        metadata: JSON.stringify({}),
+        dataSource: "database",
+        contentHash: "new-hash",
+        lastModified: now - 30_000,
+        source: "local",
+        filePath: "new-post.md",
+      },
+    ]);
+
+    await updateAdminLlmSettings({
+      chat: {
+        model: "",
+        baseUrl: "https://chat.example.test",
+        apiKeyInput: "chat-secret-value",
+      },
+      embedding: {
+        model: "openai/text-embedding-3-small",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+      rerank: {
+        model: "",
+        useCustomProvider: false,
+        baseUrlMode: "inherit",
+        baseUrl: "",
+        apiKeyMode: "inherit",
+        apiKeyInput: "",
+      },
+    });
+
+    await db.insert(postEmbeddings).values([
+      {
+        id: "old-embedding-a",
+        postId: "old-post-a",
+        slug: "old-post-a",
+        type: "post",
+        modelName: "BAAI/bge-m3",
+        dim: 1,
+        contentHash: "old-hash-a",
+        chunkIndex: -1,
+        vector: new Uint8Array([0]),
+        errorMessage: null,
+        createdAt: now - 20_000,
+        updatedAt: now - 20_000,
+      },
+      {
+        id: "old-embedding-b",
+        postId: "old-post-b",
+        slug: "old-post-b",
+        type: "post",
+        modelName: "BAAI/bge-m3",
+        dim: 1,
+        contentHash: "old-hash-b",
+        chunkIndex: -1,
+        vector: new Uint8Array([0]),
+        errorMessage: null,
+        createdAt: now - 19_000,
+        updatedAt: now - 19_000,
+      },
+      {
+        id: "new-embedding",
+        postId: "new-post",
+        slug: "new-post",
+        type: "post",
+        modelName: "openai/text-embedding-3-small",
+        dim: 1,
+        contentHash: "new-hash",
+        chunkIndex: -1,
+        vector: new Uint8Array([0]),
+        errorMessage: null,
+        createdAt: now + 5_000,
+        updatedAt: now + 5_000,
+      },
+    ]);
+
+    const payload = await getAdminLlmSettingsPayload();
+    expect(payload.hints.embeddingReindexRequired).toBe(false);
+    expect(payload.hints.embeddingReindexSuggested).toBe(false);
+    expect(payload.hints.currentIndexedModel).toBe("openai/text-embedding-3-small");
+    expect(payload.hints.currentResolvedModel).toBe("openai/text-embedding-3-small");
+  });
+
   it("requires an API key when a baseURL is configured", async () => {
     delete process.env.OPENAI_API_KEY;
 

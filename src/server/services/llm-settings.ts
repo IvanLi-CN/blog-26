@@ -473,7 +473,7 @@ function buildSecretState({
   return { hasValue: false, maskedValue: null, source: "missing" };
 }
 
-async function getPrimaryIndexedEmbeddingModel() {
+async function getIndexedEmbeddingModelState(preferredModel?: string | null) {
   await ensureDbReady();
   const rows = await db
     .select({
@@ -484,10 +484,12 @@ async function getPrimaryIndexedEmbeddingModel() {
     })
     .from(postEmbeddings)
     .groupBy(postEmbeddings.modelName)
-    .orderBy(desc(sql`count(*)`), desc(sql`max(${postEmbeddings.updatedAt})`))
-    .limit(1);
+    .orderBy(desc(sql`max(${postEmbeddings.updatedAt})`), desc(sql`count(*)`));
 
-  const row = rows[0];
+  const row =
+    (preferredModel
+      ? rows.find((candidate) => candidate.modelName === preferredModel)
+      : undefined) ?? rows[0];
   if (!row) {
     return {
       modelName: null,
@@ -553,7 +555,7 @@ export async function getAdminLlmSettingsPayload(): Promise<AdminLlmSettingsPayl
   const chatEnv = getChatEnvDefaults();
   const embeddingEnv = getEmbeddingEnvDefaults();
   const rerankEnv = getRerankEnvDefaults();
-  const indexState = await getPrimaryIndexedEmbeddingModel();
+  const indexState = await getIndexedEmbeddingModelState(resolved.embedding.model);
 
   const embeddingConfigUpdatedAt = record.updatedAt.embedding ?? null;
   const embeddingReindexRequired = Boolean(

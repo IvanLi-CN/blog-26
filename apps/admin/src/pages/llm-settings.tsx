@@ -641,6 +641,7 @@ export function LlmSettingsPage() {
     mutationFn: (payload: SettingsEditor) => adminApi.updateLlmSettings(payload),
     onSuccess: (payload) => {
       queryClient.setQueryData(["admin-llm-settings"], payload);
+      queryClient.invalidateQueries({ queryKey: ["admin-llm-settings-catalog"] });
       setEditor(settingsToEditor(payload));
       setNotice(
         payload.hints.embeddingReindexRequired
