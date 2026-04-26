@@ -642,6 +642,56 @@ describe("llm settings service", () => {
     }
   });
 
+  it("tests unsaved API keys without requiring the persistence master key", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalMasterKey = process.env.LLM_SETTINGS_MASTER_KEY;
+    delete process.env.LLM_SETTINGS_MASTER_KEY;
+    globalThis.fetch = (async () => {
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "pong" } }],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }
+      );
+    }) as typeof fetch;
+
+    try {
+      const result = await testAdminLlmSettings("chat", {
+        chat: {
+          model: "openai/gpt-4.1-mini",
+          baseUrl: "https://chat.example.test",
+          apiKeyInput: "sk-chat-transient-123",
+        },
+        embedding: {
+          model: "",
+          useCustomProvider: false,
+          baseUrlMode: "inherit",
+          baseUrl: "",
+          apiKeyMode: "inherit",
+          apiKeyInput: "",
+        },
+        rerank: {
+          model: "",
+          useCustomProvider: false,
+          baseUrlMode: "inherit",
+          baseUrl: "",
+          apiKeyMode: "inherit",
+          apiKeyInput: "",
+        },
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.summary).toBe("对话模型测试通过");
+      expect(result.baseUrl).toBe("https://chat.example.test/v1");
+    } finally {
+      process.env.LLM_SETTINGS_MASTER_KEY = originalMasterKey;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("does not fall back to env API keys when saved secrets cannot be decrypted", async () => {
     const originalMasterKey = process.env.LLM_SETTINGS_MASTER_KEY;
     process.env.OPENAI_API_KEY = "env-shared-key";

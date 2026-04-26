@@ -647,10 +647,12 @@ function updateSecretPayload({
   existing,
   nextInput,
   clear,
+  persist = true,
 }: {
   existing?: LlmSettingsRecord["chat"]["apiKey"];
   nextInput?: string;
   clear?: boolean;
+  persist?: boolean;
 }) {
   const trimmed = normalizeOptionalText(nextInput);
   if (clear && trimmed) {
@@ -660,6 +662,9 @@ function updateSecretPayload({
     return null;
   }
   if (trimmed) {
+    if (!persist) {
+      return existing ?? null;
+    }
     return encryptSecret(trimmed);
   }
   return existing ?? null;
@@ -701,7 +706,8 @@ function assertIndependentProviderConfigured({
 
 function buildNextChatRecord(
   record: LlmSettingsRecord,
-  parsed: AdminLlmSettingsUpdateInput
+  parsed: AdminLlmSettingsUpdateInput,
+  options?: { persistSecrets?: boolean }
 ): LlmSettingsRecord["chat"] {
   return {
     model: normalizeOptionalText(parsed.chat.model),
@@ -710,6 +716,7 @@ function buildNextChatRecord(
       existing: record.chat.apiKey,
       nextInput: parsed.chat.apiKeyInput,
       clear: parsed.chat.clearApiKey,
+      persist: options?.persistSecrets,
     }),
   };
 }
@@ -718,10 +725,12 @@ function buildNextChildTierRecord({
   label,
   current,
   input,
+  persistSecrets,
 }: {
   label: string;
   current: ChildTierRecord;
   input: AdminLlmSettingsUpdateInput["embedding"] | AdminLlmSettingsUpdateInput["rerank"];
+  persistSecrets?: boolean;
 }) {
   const useCustomProvider = input.useCustomProvider;
 
@@ -741,6 +750,7 @@ function buildNextChildTierRecord({
             existing: current.apiKey,
             nextInput: input.apiKeyInput,
             clear: input.clearApiKey,
+            persist: persistSecrets,
           })
         : current.apiKey,
     } satisfies ChildTierRecord,
@@ -748,10 +758,78 @@ function buildNextChildTierRecord({
   };
 }
 
+function applyTransientSecretInputs({
+  parsed,
+  resolved,
+  nextEmbeddingState,
+  nextRerankState,
+}: {
+  parsed: AdminLlmSettingsUpdateInput;
+  resolved: ResolvedLlmConfig;
+  nextEmbeddingState: ReturnType<typeof buildNextChildTierRecord>;
+  nextRerankState: ReturnType<typeof buildNextChildTierRecord>;
+}): ResolvedLlmConfig {
+  const chatApiKeyInput = normalizeOptionalText(parsed.chat.apiKeyInput);
+  if (chatApiKeyInput) {
+    resolved.chat = {
+      ...resolved.chat,
+      apiKey: chatApiKeyInput,
+      apiKeyAvailable: true,
+      sources: { ...resolved.chat.sources, apiKey: "db" },
+    };
+  }
+
+  if (nextEmbeddingState.useCustomProvider) {
+    const embeddingApiKeyInput = normalizeOptionalText(parsed.embedding.apiKeyInput);
+    if (embeddingApiKeyInput) {
+      resolved.embedding = {
+        ...resolved.embedding,
+        apiKey: embeddingApiKeyInput,
+        apiKeyAvailable: true,
+        sources: { ...resolved.embedding.sources, apiKey: "db" },
+      };
+    }
+  } else {
+    resolved.embedding = {
+      ...resolved.embedding,
+      apiKey: resolved.chat.apiKey,
+      apiKeyAvailable: resolved.chat.apiKeyAvailable,
+      sources: {
+        ...resolved.embedding.sources,
+        apiKey: resolved.chat.apiKey ? "inherited" : "missing",
+      },
+    };
+  }
+
+  if (nextRerankState.useCustomProvider) {
+    const rerankApiKeyInput = normalizeOptionalText(parsed.rerank.apiKeyInput);
+    if (rerankApiKeyInput) {
+      resolved.rerank = {
+        ...resolved.rerank,
+        apiKey: rerankApiKeyInput,
+        apiKeyAvailable: true,
+        sources: { ...resolved.rerank.sources, apiKey: "db" },
+      };
+    }
+  } else {
+    resolved.rerank = {
+      ...resolved.rerank,
+      apiKey: resolved.embedding.apiKey,
+      apiKeyAvailable: resolved.embedding.apiKeyAvailable,
+      sources: {
+        ...resolved.rerank.sources,
+        apiKey: resolved.embedding.apiKey ? "inherited" : "missing",
+      },
+    };
+  }
+
+  return resolved;
+}
+
 function buildNextRecordFromInput(
   record: LlmSettingsRecord,
   input: AdminLlmSettingsUpdateInput,
-  options?: { validateAllTiers?: boolean }
+  options?: { validateAllTiers?: boolean; persistSecrets?: boolean }
 ): {
   record: LlmSettingsRecord;
   resolved: ResolvedLlmConfig;
@@ -760,16 +838,20 @@ function buildNextRecordFromInput(
 } {
   const parsed = adminLlmSettingsUpdateSchema.parse(input);
 
-  const nextChat = buildNextChatRecord(record, parsed);
+  const nextChat = buildNextChatRecord(record, parsed, {
+    persistSecrets: options?.persistSecrets,
+  });
   const nextEmbeddingState = buildNextChildTierRecord({
     label: "嵌入模型",
     current: record.embedding,
     input: parsed.embedding,
+    persistSecrets: options?.persistSecrets,
   });
   const nextRerankState = buildNextChildTierRecord({
     label: "重排序模型",
     current: record.rerank,
     input: parsed.rerank,
+    persistSecrets: options?.persistSecrets,
   });
 
   const nextRecord: LlmSettingsRecord = {
@@ -779,7 +861,15 @@ function buildNextRecordFromInput(
     embedding: nextEmbeddingState.record,
     rerank: nextRerankState.record,
   };
-  const nextResolved = resolveLlmConfigFromRecord(nextRecord);
+  const nextResolved =
+    options?.persistSecrets === false
+      ? applyTransientSecretInputs({
+          parsed,
+          resolved: resolveLlmConfigFromRecord(nextRecord),
+          nextEmbeddingState,
+          nextRerankState,
+        })
+      : resolveLlmConfigFromRecord(nextRecord);
 
   if (options?.validateAllTiers !== false) {
     assertApiKeyProvidedForConfiguredBaseUrl({
@@ -1002,7 +1092,10 @@ export async function testAdminLlmSettings(
   input: AdminLlmSettingsUpdateInput
 ) {
   const { record } = await getPersistedLlmSettings();
-  const prepared = buildNextRecordFromInput(record, input, { validateAllTiers: false });
+  const prepared = buildNextRecordFromInput(record, input, {
+    validateAllTiers: false,
+    persistSecrets: false,
+  });
   if (tier === "embedding" && prepared.nextEmbeddingState.useCustomProvider) {
     assertIndependentProviderConfigured({
       label: "嵌入模型",

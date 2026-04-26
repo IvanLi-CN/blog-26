@@ -114,6 +114,10 @@ function settingsToEditor(payload: AdminLlmSettingsPayload): SettingsEditor {
   };
 }
 
+function areEditorsEqual(left: SettingsEditor | null, right: SettingsEditor | null) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function formatContextLength(value: number | null) {
   if (!value) return "-";
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -631,11 +635,18 @@ export function LlmSettingsPage() {
   const [editor, setEditor] = useState<SettingsEditor | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState>({ open: false, tier: "chat" });
+  const savedEditor = useMemo(
+    () => (settingsQuery.data ? settingsToEditor(settingsQuery.data) : null),
+    [settingsQuery.data]
+  );
+  const editorDirty = useMemo(() => !areEditorsEqual(editor, savedEditor), [editor, savedEditor]);
 
   useEffect(() => {
-    if (!settingsQuery.data) return;
-    setEditor(settingsToEditor(settingsQuery.data));
-  }, [settingsQuery.data]);
+    if (!savedEditor) return;
+    if (editor === null || !editorDirty) {
+      setEditor(savedEditor);
+    }
+  }, [editor, editorDirty, savedEditor]);
 
   const saveMutation = useMutation({
     mutationFn: (payload: SettingsEditor) => adminApi.updateLlmSettings(payload),
