@@ -77,11 +77,11 @@ jobs:
           echo "RELEASE_REQUESTED_SHA=${target_sha}"
           echo "RELEASE_TARGET_SHA=${target_sha}"
 
-      - name: Checkout workflow head
+      - name: Checkout release tooling
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ steps.release-head.outputs.release_head_sha }}
+          ref: ${{ env.RELEASE_HEAD_BRANCH }}
 
       - name: Resolve release intent from PR labels
         id: intent
