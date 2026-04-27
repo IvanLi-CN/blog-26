@@ -128,6 +128,10 @@ Detailed shape lives in [contracts/http-apis.md](./contracts/http-apis.md).
 
 ## 12. Visual Evidence
 
+### LLM model picker
+
+![Admin LLM model picker](./assets/admin-llm-model-picker.png)
+
 ### Admin shell / dashboard
 
 ![Admin dashboard](./assets/admin-dashboard.png)

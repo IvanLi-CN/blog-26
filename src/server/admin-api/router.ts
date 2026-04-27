@@ -1,5 +1,11 @@
 import { TRPCError } from "@trpc/server";
+import OpenAI from "openai";
 import { isValidIconId } from "@/lib/icons/aliases";
+import {
+  decorateUpstreamLlmModelNames,
+  type LlmModelSource,
+  toBuiltinLlmModelOptions,
+} from "@/lib/llm-models";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
 import { organizeTagsWithAI } from "@/server/services/tag-ai";
@@ -83,6 +89,24 @@ function getString(value: string | null): string | undefined {
 function getNumber(value: string | null, fallback: number): number {
   const raw = Number(value);
   return Number.isFinite(raw) ? raw : fallback;
+}
+
+async function listUpstreamLlmModels() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Missing required env: OPENAI_API_KEY",
+    });
+  }
+
+  const client = new OpenAI({
+    apiKey,
+    baseURL: process.env.OPENAI_API_BASE_URL || process.env.OPENAI_BASE_URL,
+  });
+  const page = await client.models.list();
+  const modelIds = page.data.map((model) => model.id);
+  return decorateUpstreamLlmModelNames(modelIds);
 }
 
 async function createCallerForRequest(request: Request) {
@@ -545,6 +569,17 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         { status: 200 },
         resHeaders
       );
+    }
+
+    if (pathname === "/llm/models") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const source = (url.searchParams.get("source") || "upstream") as LlmModelSource;
+      if (source !== "upstream" && source !== "builtin") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid model source" });
+      }
+      const models =
+        source === "builtin" ? toBuiltinLlmModelOptions() : await listUpstreamLlmModels();
+      return json({ source, models }, { status: 200 }, resHeaders);
     }
 
     if (pathname === "/tags/overview") {
