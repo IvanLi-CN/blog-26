@@ -121,7 +121,53 @@ if ! pulls_json="$(
     -H "X-GitHub-Api-Version: 2022-11-28" \
     "${api_root}/repos/${repo}/commits/${sha}/pulls?per_page=100"
 )"; then
-  emit_failure "api_failure:commit_pulls"
+  echo "release-intent: commit_pulls API failed; falling back to closed PR merge_commit_sha scan" >&2
+
+  closed_pulls_json=""
+  if ! closed_pulls_json="$(
+    curl -fsSL \
+      --retry 3 \
+      --retry-delay 2 \
+      --retry-all-errors \
+      --max-time 20 \
+      -H "Accept: application/vnd.github+json" \
+      -H "Authorization: Bearer ${token}" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "${api_root}/repos/${repo}/pulls?state=closed&base=${target_branch}&sort=updated&direction=desc&per_page=100"
+  )"; then
+    emit_failure "api_failure:commit_pulls"
+  fi
+
+  export closed_pulls_json sha
+  pulls_json="$({
+    python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+
+target_sha = os.environ["sha"]
+payload = json.loads(os.environ["closed_pulls_json"])
+if not isinstance(payload, list):
+    print("[]")
+    raise SystemExit(0)
+
+matches = []
+for pull in payload:
+    if not isinstance(pull, dict):
+        continue
+    merge_sha = str(pull.get("merge_commit_sha") or "")
+    head_sha = str((pull.get("head") or {}).get("sha") or "")
+    if target_sha in {merge_sha, head_sha}:
+        matches.append(pull)
+
+print(json.dumps(matches))
+PY
+  } || true)"
+
+  if [[ -z "${pulls_json}" ]]; then
+    emit_failure "api_failure:commit_pulls_fallback_parse"
+  fi
 fi
 
 export pulls_json
