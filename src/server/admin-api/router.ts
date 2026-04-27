@@ -103,17 +103,18 @@ function getNumber(value: string | null, fallback: number): number {
 }
 
 async function listUpstreamLlmModels() {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const resolved = await getResolvedLlmConfig();
+  const apiKey = resolved.chat.apiKey;
   if (!apiKey) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Missing required env: OPENAI_API_KEY",
+      message: "Chat model API key is not configured",
     });
   }
 
   const client = new OpenAI({
     apiKey,
-    baseURL: process.env.OPENAI_API_BASE_URL || process.env.OPENAI_BASE_URL,
+    baseURL: resolved.chat.baseUrl || undefined,
   });
   const page = await client.models.list();
   const modelIds = page.data.map((model) => model.id);
