@@ -279,7 +279,7 @@ describe("HTTP compatibility APIs", () => {
     expect(payload.error.message).toContain("必须同时提供 API Key");
   });
 
-  it("uses resolved chat LLM settings when listing upstream models", async () => {
+  it("uses resolved tier LLM settings when listing upstream models", async () => {
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_BASE_URL;
 
@@ -297,10 +297,11 @@ describe("HTTP compatibility APIs", () => {
             },
             embedding: {
               model: "",
-              useCustomProvider: false,
-              baseUrlMode: "inherit",
-              baseUrl: "",
-              apiKeyMode: "inherit",
+              useCustomProvider: true,
+              baseUrlMode: "custom",
+              baseUrl: "https://embedding-models.example.test",
+              apiKeyMode: "custom",
+              apiKeyInput: "sk-test-embedding-123456",
             },
             rerank: {
               model: "",
@@ -331,6 +332,18 @@ describe("HTTP compatibility APIs", () => {
           { status: 200, headers: { "content-type": "application/json" } }
         );
       }
+      if (url === "https://embedding-models.example.test/v1/models") {
+        return new Response(
+          JSON.stringify({
+            object: "list",
+            data: [
+              { id: "text-embedding-3-small", object: "model", created: 0, owned_by: "openai" },
+              { id: "provider-embedding-custom", object: "model", created: 0, owned_by: "custom" },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
       return new Response("unexpected", { status: 500 });
     }) as typeof fetch;
 
@@ -350,7 +363,41 @@ describe("HTTP compatibility APIs", () => {
           known: true,
         }),
       ]);
-      expect(seenUrls).toEqual(["https://models.example.test/v1/models"]);
+
+      const embeddingResponse = await handleAdminApiRequest(
+        buildRequest("/api/admin/llm/models?source=upstream&tier=embedding", {}, ADMIN_EMAIL),
+        "/llm/models"
+      );
+
+      expect(embeddingResponse.status).toBe(200);
+      const embeddingPayload = await readJson(embeddingResponse);
+      expect(embeddingPayload.models).toEqual([
+        expect.objectContaining({
+          capabilities: ["embedding"],
+          id: "provider-embedding-custom",
+          known: false,
+          name: "provider-embedding-custom",
+        }),
+        expect.objectContaining({
+          capabilities: ["embedding"],
+          id: "text-embedding-3-small",
+          name: "Text Embedding 3 Small",
+          known: true,
+        }),
+      ]);
+      expect(seenUrls).toEqual([
+        "https://models.example.test/v1/models",
+        "https://embedding-models.example.test/v1/models",
+      ]);
+
+      const invalidTierResponse = await handleAdminApiRequest(
+        buildRequest("/api/admin/llm/models?source=upstream&tier=invalid", {}, ADMIN_EMAIL),
+        "/llm/models"
+      );
+
+      expect(invalidTierResponse.status).toBe(400);
+      const invalidTierPayload = await readJson(invalidTierResponse);
+      expect(invalidTierPayload.error.code).toBe("BAD_REQUEST");
     } finally {
       globalThis.fetch = originalFetch;
     }

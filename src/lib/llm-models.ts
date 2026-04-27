@@ -299,6 +299,57 @@ export const MODEL_INFO_DATABASE: LlmModelInfo[] = [
     capabilities: ["embedding"],
   },
   {
+    id: "BAAI/bge-m3",
+    name: "BGE-M3",
+    description:
+      "BAAI multilingual embedding model for dense, lexical, and multi-vector retrieval.",
+    provider: "BAAI",
+    capabilities: ["embedding"],
+  },
+  {
+    id: "jina-embeddings-v3",
+    name: "Jina Embeddings v3",
+    description: "Jina AI multilingual embedding model for retrieval and clustering workflows.",
+    provider: "Jina AI",
+    capabilities: ["embedding"],
+  },
+  {
+    id: "voyage-3-large",
+    name: "Voyage 3 Large",
+    description: "Voyage AI high-quality embedding model for production semantic retrieval.",
+    provider: "Voyage AI",
+    capabilities: ["embedding"],
+  },
+  {
+    id: "rerank-english-v3.0",
+    name: "Rerank English v3.0",
+    description: "Cohere English reranking model for improving retrieval result ordering.",
+    provider: "Cohere",
+    capabilities: ["rerank"],
+  },
+  {
+    id: "rerank-multilingual-v3.0",
+    name: "Rerank Multilingual v3.0",
+    description: "Cohere multilingual reranking model for cross-language retrieval workflows.",
+    provider: "Cohere",
+    capabilities: ["rerank"],
+  },
+  {
+    id: "jina-reranker-v2-base-multilingual",
+    name: "Jina Reranker v2 Base Multilingual",
+    description:
+      "Jina AI multilingual reranker for relevance scoring and search result refinement.",
+    provider: "Jina AI",
+    capabilities: ["rerank"],
+  },
+  {
+    id: "BAAI/bge-reranker-v2-m3",
+    name: "BGE Reranker v2 M3",
+    description: "BAAI multilingual reranker for refining semantic search results.",
+    provider: "BAAI",
+    capabilities: ["rerank"],
+  },
+  {
     id: "x-ai/grok-3-mini",
     name: "Grok 3 mini",
     description: "xAI compact model for fast chat and reasoning prompts.",
@@ -325,14 +376,17 @@ export function findLlmModelInfo(modelId: string): LlmModelInfo | undefined {
 }
 
 export function toBuiltinLlmModelOptions(): LlmModelOption[] {
-  return BUILTIN_LLM_MODELS.map((model) => ({
+  return MODEL_INFO_DATABASE.map((model) => ({
     ...model,
     source: "builtin",
     known: true,
   }));
 }
 
-export function decorateUpstreamLlmModelNames(modelIds: string[]): LlmModelOption[] {
+export function decorateUpstreamLlmModelNames(
+  modelIds: string[],
+  fallbackCapability?: LlmModelCapability
+): LlmModelOption[] {
   const uniqueIds = [...new Set(modelIds.map((id) => id.trim()).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b)
   );
@@ -344,7 +398,8 @@ export function decorateUpstreamLlmModelNames(modelIds: string[]): LlmModelOptio
       name: modelInfo?.name ?? id,
       description: modelInfo?.description,
       provider: modelInfo?.provider,
-      capabilities: modelInfo?.capabilities,
+      capabilities:
+        modelInfo?.capabilities ?? (fallbackCapability ? [fallbackCapability] : undefined),
       source: "upstream",
       known: Boolean(modelInfo),
     };

@@ -42,6 +42,35 @@ test.describe("admin llm settings", () => {
         }),
       });
     });
+    await page.route("**/api/admin/llm/models?source=upstream&tier=embedding", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          source: "upstream",
+          models: [
+            {
+              id: "openai/text-embedding-3-small",
+              name: "Text Embedding 3 Small",
+              provider: "OpenAI",
+              description: "Small OpenAI embedding model for semantic search and retrieval.",
+              capabilities: ["embedding"],
+              source: "upstream",
+              known: true,
+            },
+            {
+              id: "BAAI/bge-m3",
+              name: "BGE-M3",
+              provider: "BAAI",
+              description: "Multilingual embedding model for dense retrieval workflows.",
+              capabilities: ["embedding"],
+              source: "upstream",
+              known: true,
+            },
+          ],
+        }),
+      });
+    });
 
     const response = await page.goto("/admin/llm-settings", {
       waitUntil: "domcontentloaded",
@@ -58,9 +87,9 @@ test.describe("admin llm settings", () => {
     await expect(page.getByText("返回内容：pong")).toBeVisible();
 
     await page.getByRole("button", { name: "选择嵌入模型" }).click();
-    const pickerDialog = page.getByRole("dialog", { name: "选择嵌入模型" });
-    await expect(pickerDialog.getByRole("heading", { name: "选择嵌入模型" })).toBeVisible();
-    await pickerDialog.getByRole("button", { name: /^embeddings$/ }).click();
+    const pickerDialog = page.getByRole("dialog", { name: "选择模型" });
+    await expect(pickerDialog.getByRole("heading", { name: "选择模型" })).toBeVisible();
+    await pickerDialog.getByRole("button", { name: /^Embedding 2$/ }).click();
     await pickerDialog
       .getByRole("button", { name: /text-embedding-3-small/i })
       .first()

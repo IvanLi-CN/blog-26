@@ -28,5 +28,11 @@ describe("llm model database", () => {
 
   it("returns builtin options from the local database", () => {
     expect(toBuiltinLlmModelOptions().some((model) => model.id === "gpt-4o-mini")).toBe(true);
+    expect(toBuiltinLlmModelOptions().some((model) => model.id === "text-embedding-3-small")).toBe(
+      true
+    );
+    expect(
+      toBuiltinLlmModelOptions().some((model) => model.id === "rerank-multilingual-v3.0")
+    ).toBe(true);
   });
 });
