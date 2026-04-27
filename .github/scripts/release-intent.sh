@@ -6,6 +6,7 @@ repo="${GITHUB_REPOSITORY:-}"
 token="${GITHUB_TOKEN:-}"
 sha="${WORKFLOW_RUN_SHA:-${COMMIT_SHA:-${GITHUB_SHA:-}}}"
 target_branch="${TARGET_BRANCH:-main}"
+pr_number_override="${PR_NUMBER_OVERRIDE:-}"
 is_latest_branch_head="true"
 
 if [[ -z "${repo}" ]]; then
@@ -25,6 +26,11 @@ fi
 
 if [[ -z "${target_branch}" ]]; then
   echo "release-intent: missing TARGET_BRANCH/main branch name" >&2
+  exit 2
+fi
+
+if [[ -n "${pr_number_override}" && ! "${pr_number_override}" =~ ^[0-9]+$ ]]; then
+  echo "release-intent: invalid PR_NUMBER_OVERRIDE: ${pr_number_override}" >&2
   exit 2
 fi
 
@@ -110,7 +116,43 @@ if [[ "${branch_head_sha}" != "${sha}" ]]; then
 fi
 
 pulls_json=""
-if ! pulls_json="$(
+if [[ -n "${pr_number_override}" ]]; then
+  override_pull_json=""
+  if ! override_pull_json="$(
+    curl -fsSL \
+      --retry 3 \
+      --retry-delay 2 \
+      --retry-all-errors \
+      --max-time 20 \
+      -H "Accept: application/vnd.github+json" \
+      -H "Authorization: Bearer ${token}" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "${api_root}/repos/${repo}/pulls/${pr_number_override}"
+  )"; then
+    emit_failure "api_failure:pr_override(${pr_number_override})"
+  fi
+
+  override_pull_file="$(mktemp)"
+  printf '%s' "${override_pull_json}" > "${override_pull_file}"
+  export override_pull_file
+  pulls_json="$({
+    python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+
+with open(os.environ["override_pull_file"], "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
+print(json.dumps([payload] if isinstance(payload, dict) else []))
+PY
+  } || true)"
+  rm -f "${override_pull_file}"
+
+  if [[ -z "${pulls_json}" ]]; then
+    emit_failure "api_failure:pr_override_parse(${pr_number_override})"
+  fi
+elif ! pulls_json="$(
   curl -fsSL \
     --retry 3 \
     --retry-delay 2 \
@@ -196,6 +238,7 @@ pull = pulls[0]
 number = pull.get("number")
 url = pull.get("html_url", "")
 merged_at = pull.get("merged_at", "")
+merge_commit_sha = pull.get("merge_commit_sha", "")
 if not isinstance(number, int):
     print("count=0")
     sys.exit(0)
@@ -203,6 +246,7 @@ if not isinstance(number, int):
 print(f"pr_number={number}")
 print(f"pr_url={url}")
 print(f"pr_merged_at={merged_at}")
+print(f"pr_merge_commit_sha={merge_commit_sha}")
 PY
 } || true)"
 
@@ -210,6 +254,7 @@ count="$(echo "${pull_info}" | sed -n 's/^count=//p')"
 pr_number="$(echo "${pull_info}" | sed -n 's/^pr_number=//p')"
 pr_url="$(echo "${pull_info}" | sed -n 's/^pr_url=//p')"
 pr_merged_at="$(echo "${pull_info}" | sed -n 's/^pr_merged_at=//p')"
+pr_merge_commit_sha="$(echo "${pull_info}" | sed -n 's/^pr_merge_commit_sha=//p')"
 
 if [[ "${count}" != "1" ]] || [[ -z "${pr_number}" ]]; then
   emit_skip "ambiguous_or_missing_pr(count=${count:-0})"
@@ -219,6 +264,10 @@ fi
 if [[ -z "${pr_merged_at}" ]]; then
   emit_skip "pr_not_merged_or_missing_merged_at"
   exit 0
+fi
+
+if [[ -n "${pr_number_override}" && "${pr_merge_commit_sha}" != "${sha}" ]]; then
+  emit_failure "pr_override_sha_mismatch(pr=${pr_number_override})"
 fi
 
 post_merge_release_label_events="0"

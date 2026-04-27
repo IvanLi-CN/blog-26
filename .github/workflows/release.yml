@@ -11,6 +11,10 @@ on:
         description: Commit SHA on main to backfill release for
         required: true
         type: string
+      pr_number:
+        description: Optional merged PR number to use for release labels
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -26,6 +30,7 @@ env:
   PLATFORMS: linux/amd64
   RELEASE_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.workflow_run.head_sha }}
   RELEASE_HEAD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.workflow_run.head_branch }}
+  RELEASE_PR_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || '' }}
 
 concurrency:
   group: release-${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.workflow_run.head_sha }}
@@ -90,6 +95,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKFLOW_RUN_SHA: ${{ env.RELEASE_HEAD_SHA }}
           TARGET_BRANCH: ${{ env.RELEASE_HEAD_BRANCH }}
+          PR_NUMBER_OVERRIDE: ${{ env.RELEASE_PR_NUMBER }}
         run: bash ./.github/scripts/release-intent.sh
 
       - name: Compute frontend release version/tag
