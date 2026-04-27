@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
 import { cosineSimilarity, createEmbedding } from "./embeddings";
@@ -66,7 +67,8 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
 }
 
 export async function semantic(input: SemanticSearchInput): Promise<SearchResult[]> {
-  const model = input.model || process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+  const resolved = await getResolvedLlmConfig();
+  const model = input.model || resolved.embedding.model || "BAAI/bge-m3";
 
   // 若当前模型尚无向量索引，降级为关键字搜索
   try {
@@ -142,8 +144,9 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
 export async function enhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean }
 ) {
+  const resolved = await getResolvedLlmConfig();
   const base = await semantic(input);
-  const shouldRerank = input.rerank !== false && !!(process.env.RERANKER_MODEL_NAME || input.model);
+  const shouldRerank = input.rerank !== false && Boolean(resolved.rerank.model);
   if (!shouldRerank) return base;
 
   const docs = base
@@ -151,7 +154,7 @@ export async function enhanced(
     .map((r) => `${r.title || r.slug}\n\n${r.excerpt || ""}`);
   try {
     const items = await rerankApi(input.q, docs, {
-      model: process.env.RERANKER_MODEL_NAME || undefined,
+      model: resolved.rerank.model || undefined,
       topN: docs.length,
     });
     const maxR = Math.max(...items.map((i) => i.score));

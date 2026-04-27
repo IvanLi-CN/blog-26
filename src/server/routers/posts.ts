@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
 import { publicProcedure, router } from "../trpc";
@@ -128,7 +129,8 @@ export const postsRouter = router({
       }));
 
       // 计算每条记录是否已按当前模型完成向量化（哈希匹配且存在向量）
-      const modelName = process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+      const resolved = await getResolvedLlmConfig();
+      const modelName = resolved.embedding.model || "BAAI/bge-m3";
       const postsWithVectorStatus = await Promise.all(
         normalizedPosts.map(async (p) => {
           try {

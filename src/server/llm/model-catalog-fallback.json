@@ -1,0 +1,98 @@
+[
+  {
+    "id": "openai/gpt-4.1-mini",
+    "name": "GPT-4.1 mini",
+    "description": "Fast general-purpose chat model with tool use and structured output support.",
+    "contextLength": 1047576,
+    "capabilities": ["chat", "tools", "structured-output"],
+    "source": "fallback"
+  },
+  {
+    "id": "openai/gpt-4o-mini",
+    "name": "GPT-4o mini",
+    "description": "Low-latency multimodal chat model suitable for admin automations and tagging flows.",
+    "contextLength": 128000,
+    "capabilities": ["chat", "vision", "tools", "structured-output"],
+    "source": "fallback"
+  },
+  {
+    "id": "openai/gpt-4.1",
+    "name": "GPT-4.1",
+    "description": "High-quality general-purpose chat model.",
+    "contextLength": 1047576,
+    "capabilities": ["chat", "tools", "structured-output"],
+    "source": "fallback"
+  },
+  {
+    "id": "google/gemini-2.5-flash",
+    "name": "Gemini 2.5 Flash",
+    "description": "Fast multimodal model with large context and broad tool support.",
+    "contextLength": 1048576,
+    "capabilities": ["chat", "vision", "audio", "tools", "structured-output"],
+    "source": "fallback"
+  },
+  {
+    "id": "anthropic/claude-3.7-sonnet",
+    "name": "Claude 3.7 Sonnet",
+    "description": "Reasoning-oriented chat model with strong long-context performance.",
+    "contextLength": 200000,
+    "capabilities": ["chat", "vision", "tools", "structured-output"],
+    "source": "fallback"
+  },
+  {
+    "id": "openai/text-embedding-3-small",
+    "name": "text-embedding-3-small",
+    "description": "Compact OpenAI embedding model for semantic search and indexing.",
+    "contextLength": 8192,
+    "capabilities": ["embeddings"],
+    "source": "fallback"
+  },
+  {
+    "id": "openai/text-embedding-3-large",
+    "name": "text-embedding-3-large",
+    "description": "Higher-quality OpenAI embedding model for retrieval and clustering.",
+    "contextLength": 8192,
+    "capabilities": ["embeddings"],
+    "source": "fallback"
+  },
+  {
+    "id": "qwen/qwen3-embedding-0.6b",
+    "name": "Qwen3 Embedding 0.6B",
+    "description": "Lightweight multilingual embedding model available through OpenRouter.",
+    "contextLength": 32768,
+    "capabilities": ["embeddings"],
+    "source": "fallback"
+  },
+  {
+    "id": "BAAI/bge-m3",
+    "name": "BAAI/bge-m3",
+    "description": "Multilingual embedding model used by the current local vectorization defaults.",
+    "contextLength": 8192,
+    "capabilities": ["embeddings"],
+    "source": "fallback"
+  },
+  {
+    "id": "cohere/rerank-v3.5",
+    "name": "Rerank v3.5",
+    "description": "Cohere rerank model for semantic search post-ranking.",
+    "contextLength": 4096,
+    "capabilities": ["rerank"],
+    "source": "fallback"
+  },
+  {
+    "id": "cohere/rerank-4-fast",
+    "name": "Rerank 4 Fast",
+    "description": "Low-latency rerank model for retrieval pipelines.",
+    "contextLength": 32768,
+    "capabilities": ["rerank"],
+    "source": "fallback"
+  },
+  {
+    "id": "cohere/rerank-4-pro",
+    "name": "Rerank 4 Pro",
+    "description": "Higher-quality rerank model with larger context support.",
+    "contextLength": 32768,
+    "capabilities": ["rerank"],
+    "source": "fallback"
+  }
+]

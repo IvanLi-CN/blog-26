@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import type { TagGroup } from "@/types/tag-groups";
 import { getCurrentGroupCount, validateTagGroupsConfig } from "./tag-groups";
 import { getTagSummaries } from "./tag-service";
@@ -15,27 +16,19 @@ async function resolveDefaultGroupCount(): Promise<number> {
   return configured > 0 ? configured : 8;
 }
 
-function assertEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required env: ${name}`);
-  }
-  return value;
-}
-
 export async function organizeTagsWithAI(options?: {
   targetGroups?: number;
   model?: string;
   signal?: AbortSignal;
 }): Promise<AiTagOrganizerResult> {
-  const apiKey = assertEnv("OPENAI_API_KEY");
-  const model =
-    options?.model?.trim() ||
-    process.env.TAG_AI_MODEL ||
-    process.env.CHAT_COMPLETION_MODEL ||
-    "gpt-4o-mini";
-  const baseURL = process.env.OPENAI_API_BASE_URL || process.env.OPENAI_BASE_URL;
+  const resolved = await getResolvedLlmConfig();
+  const apiKey = resolved.chat.apiKey;
+  const model = options?.model?.trim() || resolved.chat.model || "gpt-4o-mini";
+  const baseURL = resolved.chat.baseUrl || undefined;
   const { signal } = options ?? {};
+  if (!apiKey) {
+    throw new Error("Chat model API key is not configured");
+  }
   const throwIfAborted = () => {
     if (signal?.aborted) {
       throw new DOMException("The operation was aborted", "AbortError");

@@ -96,6 +96,20 @@ To customize locally, create `.env.local` (e.g., if you must pin ports for paral
 cp .env.development .env.local
 # edit only what you need locally; do not commit
 ```
+
+AI runtime defaults
+
+- Environment variables still provide the initial defaults for AI-backed features:
+  - `OPENAI_API_KEY`
+  - `OPENAI_API_BASE_URL` or `OPENAI_BASE_URL`
+  - `CHAT_COMPLETION_MODEL` / `TAG_AI_MODEL`
+  - `EMBEDDING_MODEL_NAME`
+  - `RERANKER_MODEL_NAME`
+- Admin overrides saved from `/admin/llm-settings` take precedence over those env values at runtime and are stored in SQLite.
+- API keys saved from the admin UI are encrypted at rest and require `LLM_SETTINGS_MASTER_KEY` on the server to write or decrypt persisted secrets.
+- Model catalog data is refreshed during `bun run prebuild` from OpenRouter when available, but builds fall back to the repo-tracked catalog metadata if the refresh is unavailable.
+- `LLM_MODEL_CATALOG_REFRESH_TIMEOUT_MS` can shorten or extend the build-time OpenRouter refresh timeout; `LLM_SETTINGS_TEST_TIMEOUT_MS` does the same for admin-side provider test requests.
+
 ### Start Dev Environment
 
 ```bash
@@ -339,6 +353,12 @@ This project uses a multi-source content management system that supports both lo
 
 ### AI & Search
 
+- **OpenAI-compatible runtime config** for chat, embedding, and rerank workflows
+- **Admin-managed LLM settings** persisted in SQLite with env fallback defaults
+- **OpenRouter + curated fallback catalog** for model picker metadata
+- **LlamaIndex** for RAG functionality
+- **Redis** for caching (ioredis)
+
 ## 🔔 Subscribe
 
 Your readers can follow updates via standard syndication formats. All endpoints support HTTP caching with `ETag` and `Last-Modified`:
@@ -354,10 +374,6 @@ Notes:
 - Short URL `/rss.xml` permanently redirects to `/feed.xml`.
 - Absolute URLs are generated using `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL`.
 - Set `PUBLIC_SITE_BASE_PATH=/` for the `ivanli.cc` custom-domain deploy. Use `/blog-26` only if you intentionally publish to the raw project Pages URL.
-
-- **OpenAI API** for AI features
-- **LlamaIndex** for RAG functionality
-- **Redis** for caching (ioredis)
 
 ### Development Tools
 

@@ -1,13 +1,24 @@
 import { TRPCError } from "@trpc/server";
 import OpenAI from "openai";
+import { ZodError } from "zod";
 import { isValidIconId } from "@/lib/icons/aliases";
 import {
   decorateUpstreamLlmModelNames,
   type LlmModelSource,
   toBuiltinLlmModelOptions,
 } from "@/lib/llm-models";
+import { llmTierSchema } from "@/lib/llm-settings";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
+import { getAdminLlmModelCatalog } from "@/server/services/llm-model-catalog";
+import {
+  getAdminLlmSettingsPayload,
+  getResolvedLlmConfig,
+  LlmSettingsInputError,
+  LlmSettingsTestError,
+  testAdminLlmSettings,
+  updateAdminLlmSettings,
+} from "@/server/services/llm-settings";
 import { organizeTagsWithAI } from "@/server/services/tag-ai";
 import {
   readTagGroupsFromDB,
@@ -211,6 +222,100 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     }
 
     const { caller, resHeaders } = await createAdminCallerForRequest(request);
+
+    if (pathname === "/llm-settings") {
+      if (request.method === "GET") {
+        return json(await getAdminLlmSettingsPayload(), { status: 200 }, resHeaders);
+      }
+      if (request.method === "PUT") {
+        const body = await parseJsonBody(request);
+        try {
+          return json(await updateAdminLlmSettings(body as never), { status: 200 }, resHeaders);
+        } catch (error) {
+          if (error instanceof ZodError || error instanceof LlmSettingsInputError) {
+            return json(
+              {
+                error: {
+                  code: "BAD_REQUEST",
+                  message: error.message,
+                },
+              },
+              { status: 400 },
+              resHeaders
+            );
+          }
+          throw error;
+        }
+      }
+      return methodNotAllowed(request.method, resHeaders);
+    }
+
+    if (pathname === "/llm-settings/test") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      const body = await parseJsonBody(request);
+      try {
+        const payload = body as { tier?: unknown; settings?: unknown };
+        const tier = llmTierSchema.parse(payload.tier);
+        return json(
+          await testAdminLlmSettings(tier, payload.settings as never),
+          { status: 200 },
+          resHeaders
+        );
+      } catch (error) {
+        if (error instanceof ZodError || error instanceof LlmSettingsInputError) {
+          return json(
+            {
+              error: {
+                code: "BAD_REQUEST",
+                message: error.message,
+              },
+            },
+            { status: 400 },
+            resHeaders
+          );
+        }
+        if (error instanceof LlmSettingsTestError) {
+          return json(
+            {
+              error: {
+                code: error.code,
+                message: error.message,
+              },
+            },
+            { status: error.status },
+            resHeaders
+          );
+        }
+        throw error;
+      }
+    }
+
+    if (pathname === "/llm-settings/catalog") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const tierValue = getString(url.searchParams.get("tier"));
+      try {
+        const tier = tierValue ? llmTierSchema.parse(tierValue) : undefined;
+        return json(
+          await getAdminLlmModelCatalog({ tier, signal: request.signal }),
+          { status: 200 },
+          resHeaders
+        );
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return json(
+            {
+              error: {
+                code: "BAD_REQUEST",
+                message: error.message,
+              },
+            },
+            { status: 400 },
+            resHeaders
+          );
+        }
+        throw error;
+      }
+    }
 
     const previewPostMatch = pathname.match(/^\/preview\/posts\/(.+)$/);
     if (previewPostMatch) {
@@ -596,7 +701,7 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
           tagSummaries: summaries,
           tagIcons,
           categoryIcons,
-          initialModel: process.env.TAG_AI_MODEL || process.env.CHAT_COMPLETION_MODEL || null,
+          initialModel: (await getResolvedLlmConfig()).chat.model,
         },
         { status: 200 },
         resHeaders

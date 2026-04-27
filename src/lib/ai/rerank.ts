@@ -1,5 +1,4 @@
-const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL || "";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -48,7 +47,8 @@ export async function rerank(
   documents: string[],
   opts?: { model?: string; topN?: number }
 ): Promise<RerankItem[]> {
-  const modelName = opts?.model || process.env.RERANKER_MODEL_NAME;
+  const resolved = await getResolvedLlmConfig();
+  const modelName = opts?.model || resolved.rerank.model;
   if (!modelName) {
     interface RerankerUnavailable extends Error {
       code: "RERANKER_UNAVAILABLE";
@@ -58,8 +58,10 @@ export async function rerank(
     err.code = "RERANKER_UNAVAILABLE";
     throw err;
   }
-  if (!OPENAI_API_BASE_URL || !OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_BASE_URL or OPENAI_API_KEY is not configured");
+  const apiBase = resolved.rerank.baseUrl;
+  const apiKey = resolved.rerank.apiKey;
+  if (!apiBase || !apiKey) {
+    throw new Error("Rerank model/baseUrl/apiKey is not configured");
   }
 
   const payload: { model: string; query: string; documents: string[]; top_n?: number } = {
@@ -68,15 +70,13 @@ export async function rerank(
     documents,
     top_n: opts?.topN,
   };
-  const base = OPENAI_API_BASE_URL.replace(/\/$/, "");
-  const apiBase = base.endsWith("/v1") ? base : `${base}/v1`;
   const res = await fetchWithBackoff(
     () =>
       fetch(`${apiBase}/rerank`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify(payload),
       }),

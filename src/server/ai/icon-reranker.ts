@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { getAllowedPrefixes, isValidIconId } from "@/lib/icons/aliases";
 import { validateIconExists } from "@/server/services/icon-validate";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 export type RerankContext = {
   type: "tag" | "category";
@@ -17,11 +18,11 @@ export type RerankResult = {
 };
 
 export async function pickBestIcon(ctx: RerankContext): Promise<RerankResult> {
-  const key = process.env.OPENAI_API_KEY || "";
-  const baseURLRaw = (process.env.OPENAI_API_BASE_URL || process.env.OPENAI_BASE_URL || "").trim();
-  const model = process.env.TAG_AI_MODEL || process.env.CHAT_COMPLETION_MODEL || "gpt-4o-mini";
+  const resolved = await getResolvedLlmConfig();
+  const key = resolved.chat.apiKey || "";
+  const model = resolved.chat.model || "gpt-4o-mini";
   if (!key) return { icon: null, confidence: 0, reason: "llm_unavailable", considered: [] };
-  const baseTrim = (baseURLRaw || "https://api.openai.com/v1").replace(/\/+$/, "");
+  const baseTrim = (resolved.chat.baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
   // eslint-disable-next-line no-console
   console.log("[icon-reranker] model=", model, " base=", baseTrim);
 

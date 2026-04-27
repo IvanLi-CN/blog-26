@@ -1,5 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db, initializeDB } from "../db";
 import { posts } from "../schema";
 import { syncEventManager } from "../sync-events";
@@ -63,7 +64,8 @@ export async function vectorizeAll(params: {
   chunking?: boolean;
 }) {
   await initializeDB();
-  const modelName = params.model || process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+  const resolved = await getResolvedLlmConfig();
+  const modelName = params.model || resolved.embedding.model || "BAAI/bge-m3";
   const chunking = params.chunking ?? process.env.EMBED_CHUNKING_ENABLED !== "false";
   const chunkSize = Number(process.env.EMBED_CHUNK_SIZE || 1400);
   const chunkOverlap = Number(process.env.EMBED_CHUNK_OVERLAP || 200);
@@ -226,7 +228,8 @@ export async function vectorizeOneBySlug(params: {
   chunking?: boolean;
 }) {
   await initializeDB();
-  const modelName = params.model || process.env.EMBEDDING_MODEL_NAME || "BAAI/bge-m3";
+  const resolved = await getResolvedLlmConfig();
+  const modelName = params.model || resolved.embedding.model || "BAAI/bge-m3";
   const chunking = params.chunking ?? process.env.EMBED_CHUNKING_ENABLED !== "false";
   const chunkSize = Number(process.env.EMBED_CHUNK_SIZE || 1400);
   const chunkOverlap = Number(process.env.EMBED_CHUNK_OVERLAP || 200);

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
+  BrainCircuit,
   ClipboardList,
   FilePenLine,
   Files,
@@ -45,6 +46,7 @@ const navItems = [
   { to: "/tags", label: "标签分组", icon: Tags },
   { to: "/tag-icons", label: "图标匹配", icon: ScanSearch },
   { to: "/pats", label: "访问令牌", icon: KeyRound },
+  { to: "/llm-settings", label: "LLM 设置", icon: BrainCircuit },
 ] as const;
 
 export function useAppShellSidebar(panel: AppShellSidebarPanel | null) {
