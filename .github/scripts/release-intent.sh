@@ -138,7 +138,9 @@ if ! pulls_json="$(
     emit_failure "api_failure:commit_pulls"
   fi
 
-  export closed_pulls_json sha
+  closed_pulls_file="$(mktemp)"
+  printf '%s' "${closed_pulls_json}" > "${closed_pulls_file}"
+  export closed_pulls_file sha
   pulls_json="$({
     python3 - <<'PY'
 from __future__ import annotations
@@ -147,7 +149,8 @@ import json
 import os
 
 target_sha = os.environ["sha"]
-payload = json.loads(os.environ["closed_pulls_json"])
+with open(os.environ["closed_pulls_file"], "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
 if not isinstance(payload, list):
     print("[]")
     raise SystemExit(0)
@@ -164,6 +167,7 @@ for pull in payload:
 print(json.dumps(matches))
 PY
   } || true)"
+  rm -f "${closed_pulls_file}"
 
   if [[ -z "${pulls_json}" ]]; then
     emit_failure "api_failure:commit_pulls_fallback_parse"
