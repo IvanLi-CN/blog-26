@@ -23,6 +23,7 @@ performance-report.json
 /.next/
 /.astro/
 /out/
+/storybook-static/
 
 # production
 /build
