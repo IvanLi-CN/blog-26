@@ -279,6 +279,83 @@ describe("HTTP compatibility APIs", () => {
     expect(payload.error.message).toContain("必须同时提供 API Key");
   });
 
+  it("uses resolved chat LLM settings when listing upstream models", async () => {
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_BASE_URL;
+
+    const saved = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/llm-settings",
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat: {
+              model: "openai/gpt-4.1-mini",
+              baseUrl: "https://models.example.test",
+              apiKeyInput: "sk-test-chat-123456",
+            },
+            embedding: {
+              model: "",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
+            rerank: {
+              model: "",
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/llm-settings"
+    );
+    expect(saved.status).toBe(200);
+
+    const originalFetch = globalThis.fetch;
+    const seenUrls: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      seenUrls.push(url);
+      if (url === "https://models.example.test/v1/models") {
+        return new Response(
+          JSON.stringify({
+            object: "list",
+            data: [{ id: "gpt-4o-mini", object: "model", created: 0, owned_by: "openai" }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+      return new Response("unexpected", { status: 500 });
+    }) as typeof fetch;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest("/api/admin/llm/models?source=upstream", {}, ADMIN_EMAIL),
+        "/llm/models"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = await readJson(response);
+      expect(payload.source).toBe("upstream");
+      expect(payload.models).toEqual([
+        expect.objectContaining({
+          id: "gpt-4o-mini",
+          name: "GPT-4o mini",
+          known: true,
+        }),
+      ]);
+      expect(seenUrls).toEqual(["https://models.example.test/v1/models"]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("returns tier-filtered model catalog entries for admin LLM settings", async () => {
     const response = await handleAdminApiRequest(
       buildRequest("/api/admin/llm-settings/catalog?tier=embedding", {}, ADMIN_EMAIL),

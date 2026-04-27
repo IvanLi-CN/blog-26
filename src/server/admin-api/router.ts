@@ -1,6 +1,12 @@
 import { TRPCError } from "@trpc/server";
+import OpenAI from "openai";
 import { ZodError } from "zod";
 import { isValidIconId } from "@/lib/icons/aliases";
+import {
+  decorateUpstreamLlmModelNames,
+  type LlmModelSource,
+  toBuiltinLlmModelOptions,
+} from "@/lib/llm-models";
 import { llmTierSchema } from "@/lib/llm-settings";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
@@ -94,6 +100,25 @@ function getString(value: string | null): string | undefined {
 function getNumber(value: string | null, fallback: number): number {
   const raw = Number(value);
   return Number.isFinite(raw) ? raw : fallback;
+}
+
+async function listUpstreamLlmModels() {
+  const resolved = await getResolvedLlmConfig();
+  const apiKey = resolved.chat.apiKey;
+  if (!apiKey) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Chat model API key is not configured",
+    });
+  }
+
+  const client = new OpenAI({
+    apiKey,
+    baseURL: resolved.chat.baseUrl || undefined,
+  });
+  const page = await client.models.list();
+  const modelIds = page.data.map((model) => model.id);
+  return decorateUpstreamLlmModelNames(modelIds);
 }
 
 async function createCallerForRequest(request: Request) {
@@ -650,6 +675,17 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
         { status: 200 },
         resHeaders
       );
+    }
+
+    if (pathname === "/llm/models") {
+      if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
+      const source = (url.searchParams.get("source") || "upstream") as LlmModelSource;
+      if (source !== "upstream" && source !== "builtin") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid model source" });
+      }
+      const models =
+        source === "builtin" ? toBuiltinLlmModelOptions() : await listUpstreamLlmModels();
+      return json({ source, models }, { status: 200 }, resHeaders);
     }
 
     if (pathname === "/tags/overview") {

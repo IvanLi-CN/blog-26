@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WandSparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { adminApi } from "@/lib/admin-api-client";
+import { type LlmModelSource, toBuiltinLlmModelOptions } from "@/lib/llm-models";
 import type { TagGroup } from "@/types/tag-groups";
+import { LlmModelPicker } from "~/components/llm-model-picker";
 import {
   Alert,
   Badge,
@@ -26,14 +28,29 @@ export function TagsPage() {
   });
   const [targetGroups, setTargetGroups] = useState("8");
   const [model, setModel] = useState("");
+  const [modelSource, setModelSource] = useState<LlmModelSource>("upstream");
   const [draftJson, setDraftJson] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const builtinModelOptions = useMemo(() => toBuiltinLlmModelOptions(), []);
+  const upstreamModelsQuery = useQuery({
+    queryKey: ["admin-llm-models", "upstream"],
+    queryFn: () => adminApi.getLlmModels("upstream"),
+    enabled: modelSource === "upstream",
+    retry: false,
+  });
 
   useEffect(() => {
     if (!overviewQuery.data) return;
     setDraftJson(JSON.stringify(overviewQuery.data.groups, null, 2));
     setModel(overviewQuery.data.initialModel ?? "");
   }, [overviewQuery.data]);
+
+  useEffect(() => {
+    if (modelSource !== "builtin") return;
+    if (model && !builtinModelOptions.some((option) => option.id === model)) {
+      setModel("");
+    }
+  }, [builtinModelOptions, model, modelSource]);
 
   const organizeMutation = useMutation({
     mutationFn: () =>
@@ -106,17 +123,32 @@ export function TagsPage() {
       ) : null}
 
       <Card>
-        <CardContent className="grid gap-4 p-5 lg:grid-cols-[180px_220px_minmax(0,1fr)]">
+        <CardContent className="grid gap-4 p-5 lg:grid-cols-[180px_360px_minmax(0,1fr)]">
           <div>
             <FieldLabel>目标分组数</FieldLabel>
             <Input value={targetGroups} onChange={(event) => setTargetGroups(event.target.value)} />
           </div>
           <div>
-            <FieldLabel>模型</FieldLabel>
-            <Input
+            <LlmModelPicker
+              source={modelSource}
+              onSourceChange={setModelSource}
+              onRefreshUpstream={() => {
+                void upstreamModelsQuery.refetch();
+              }}
               value={model}
-              onChange={(event) => setModel(event.target.value)}
-              placeholder="留空则用默认模型"
+              onValueChange={setModel}
+              models={
+                modelSource === "builtin"
+                  ? builtinModelOptions
+                  : (upstreamModelsQuery.data?.models ?? [])
+              }
+              isLoading={modelSource === "upstream" && upstreamModelsQuery.isLoading}
+              error={
+                modelSource === "upstream" && upstreamModelsQuery.error
+                  ? getErrorMessage(upstreamModelsQuery.error)
+                  : null
+              }
+              preferredCapability="chat"
             />
           </div>
           <div className="text-sm text-muted-foreground">

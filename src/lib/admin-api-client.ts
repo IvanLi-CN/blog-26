@@ -7,6 +7,7 @@ import type {
 } from "@/lib/llm-settings";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
+import type { LlmModelOption, LlmModelSource } from "./llm-models";
 
 export interface AdminUser {
   id: string;
@@ -237,6 +238,11 @@ export interface TagsOverviewResponse {
   initialModel: string | null;
 }
 
+export interface LlmModelsResponse {
+  source: LlmModelSource;
+  models: LlmModelOption[];
+}
+
 export interface TagIconOverviewGroup {
   key: string;
   title: string;
@@ -461,6 +467,8 @@ export const adminApi = {
       method: "POST",
     }),
   getTagsOverview: () => adminRequest<TagsOverviewResponse>("/api/admin/tags/overview"),
+  getLlmModels: (source: LlmModelSource = "upstream") =>
+    adminRequest<LlmModelsResponse>(`/api/admin/llm/models${buildSearch({ source })}`),
   organizeTags: (input: Record<string, unknown>) =>
     adminRequest<{
       success: boolean;
