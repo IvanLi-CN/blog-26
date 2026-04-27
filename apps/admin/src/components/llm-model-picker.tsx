@@ -15,6 +15,9 @@ export interface LlmModelPickerProps {
   isLoading?: boolean;
   error?: string | null;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
   preferredCapability?: LlmModelCapability;
 }
 
@@ -28,56 +31,77 @@ export function LlmModelPicker({
   isLoading = false,
   error,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
   preferredCapability,
 }: LlmModelPickerProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (nextOpen: boolean) => {
+    onOpenChange?.(nextOpen);
+    if (controlledOpen === undefined) {
+      setUncontrolledOpen(nextOpen);
+    }
+  };
   const [filter, setFilter] = useState("");
   const [capabilityFilter, setCapabilityFilter] = useState<LlmModelCapability | "all">(
     preferredCapability ?? "all"
   );
+  const fallbackCapability = preferredCapability ?? "chat";
   const selectedModel = models.find((model) => model.id === value);
-  const displayedModel = selectedModel ?? (value.trim() ? customModelOption(value, source) : null);
-  const capabilityFilters = getCapabilityFilters(models);
+  const displayedModel =
+    selectedModel ?? (value.trim() ? customModelOption(value, source, fallbackCapability) : null);
+  const capabilityFilters = getCapabilityFilters(models, fallbackCapability);
   const activeCapabilityFilter = capabilityFilters.some((item) => item.key === capabilityFilter)
     ? capabilityFilter
     : "all";
-  const categoryModels = filterModelsByCapability(models, activeCapabilityFilter);
+  const categoryModels = filterModelsByCapability(
+    models,
+    activeCapabilityFilter,
+    fallbackCapability
+  );
   const filteredModels = filterModels(categoryModels, filter);
-  const customModel = createCustomModelOption(models, filter, source);
+  const customModel = createCustomModelOption(models, filter, source, fallbackCapability);
   const displayedCustomModel =
-    customModel && (activeCapabilityFilter === "all" || activeCapabilityFilter === "custom")
+    customModel &&
+    (activeCapabilityFilter === "all" ||
+      getModelCapabilities(customModel, fallbackCapability).includes(activeCapabilityFilter))
       ? customModel
       : null;
 
   useEffect(() => {
-    if (!open || !preferredCapability) return;
-    setCapabilityFilter(preferredCapability);
+    if (!open) return;
+    setFilter("");
+    setCapabilityFilter(preferredCapability ?? "all");
   }, [open, preferredCapability]);
 
   return (
     <>
-      <div className="space-y-2">
-        <FieldLabel>模型</FieldLabel>
-        <button
-          type="button"
-          className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => setOpen(true)}
-        >
-          <span className="min-w-0">
-            <span className="block truncate font-medium">
-              {displayedModel?.name ?? "留空则用默认模型"}
-            </span>
-            {displayedModel ? (
-              <span className="block truncate font-mono text-xs text-muted-foreground">
-                {displayedModel.id}
+      {hideTrigger ? null : (
+        <div className="space-y-2">
+          <FieldLabel>模型</FieldLabel>
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => setOpen(true)}
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-medium">
+                {displayedModel?.name ?? "留空则用默认模型"}
               </span>
-            ) : null}
-          </span>
-          <span className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
-            选择模型
-          </span>
-        </button>
-      </div>
+              {displayedModel ? (
+                <span className="block truncate font-mono text-xs text-muted-foreground">
+                  {displayedModel.id}
+                </span>
+              ) : null}
+            </span>
+            <span className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
+              选择模型
+            </span>
+          </button>
+        </div>
+      )}
 
       {open ? (
         <div
@@ -167,6 +191,7 @@ export function LlmModelPicker({
                     model={model}
                     selected={model.id === value}
                     onSelect={() => onValueChange(model.id)}
+                    fallbackCapability={fallbackCapability}
                   />
                 ))}
                 {displayedCustomModel ? (
@@ -174,6 +199,7 @@ export function LlmModelPicker({
                     model={displayedCustomModel}
                     selected={displayedCustomModel.id === value}
                     onSelect={() => onValueChange(displayedCustomModel.id)}
+                    fallbackCapability={fallbackCapability}
                   />
                 ) : null}
                 {!isLoading && !error && models.length === 0 ? (
@@ -233,14 +259,17 @@ const CAPABILITY_LABELS: Record<LlmModelCapability, string> = {
   routing: "Routing",
 };
 
-function getCapabilityFilters(models: LlmModelOption[]): Array<{
+function getCapabilityFilters(
+  models: LlmModelOption[],
+  fallbackCapability: LlmModelCapability
+): Array<{
   key: LlmModelCapability | "all";
   label: string;
   count: number;
 }> {
   const counts = new Map<LlmModelCapability, number>();
   for (const model of models) {
-    for (const capability of model.capabilities ?? ["chat"]) {
+    for (const capability of getModelCapabilities(model, fallbackCapability)) {
       counts.set(capability, (counts.get(capability) ?? 0) + 1);
     }
   }
@@ -259,10 +288,13 @@ function getCapabilityFilters(models: LlmModelOption[]): Array<{
 
 function filterModelsByCapability(
   models: LlmModelOption[],
-  capabilityFilter: LlmModelCapability | "all"
+  capabilityFilter: LlmModelCapability | "all",
+  fallbackCapability: LlmModelCapability
 ): LlmModelOption[] {
   if (capabilityFilter === "all") return models;
-  return models.filter((model) => (model.capabilities ?? ["chat"]).includes(capabilityFilter));
+  return models.filter((model) =>
+    getModelCapabilities(model, fallbackCapability).includes(capabilityFilter)
+  );
 }
 
 function filterModels(models: LlmModelOption[], filter: string): LlmModelOption[] {
@@ -279,22 +311,25 @@ function filterModels(models: LlmModelOption[], filter: string): LlmModelOption[
 function createCustomModelOption(
   models: LlmModelOption[],
   filter: string,
-  source: LlmModelSource
+  source: LlmModelSource,
+  fallbackCapability: LlmModelCapability
 ): LlmModelOption | null {
   const id = filter.trim();
   if (!id) return null;
   if (models.some((model) => model.id === id)) return null;
-  return customModelOption(id, source);
+  return customModelOption(id, source, fallbackCapability);
 }
 
 function ModelRow({
   model,
   selected,
   onSelect,
+  fallbackCapability,
 }: {
   model: LlmModelOption;
   selected: boolean;
   onSelect: () => void;
+  fallbackCapability: LlmModelCapability;
 }) {
   return (
     <button
@@ -314,7 +349,7 @@ function ModelRow({
           </code>
         </span>
         <span className="mt-2 flex flex-wrap gap-1.5">
-          {(model.capabilities ?? ["chat"]).map((capability) => (
+          {getModelCapabilities(model, fallbackCapability).map((capability) => (
             <CapabilityBadge key={capability} capability={capability} />
           ))}
         </span>
@@ -384,12 +419,25 @@ function providerInitials(provider: string): string {
   return initials.toUpperCase() || provider.slice(0, 2).toUpperCase();
 }
 
-function customModelOption(id: string, source: LlmModelSource): LlmModelOption {
+function getModelCapabilities(
+  model: LlmModelOption,
+  fallbackCapability: LlmModelCapability
+): LlmModelCapability[] {
+  return model.capabilities && model.capabilities.length > 0
+    ? model.capabilities
+    : [fallbackCapability];
+}
+
+function customModelOption(
+  id: string,
+  source: LlmModelSource,
+  fallbackCapability: LlmModelCapability
+): LlmModelOption {
   return {
     id,
     name: "自定义模型",
     provider: "自定义",
-    capabilities: ["custom"],
+    capabilities: fallbackCapability === "custom" ? ["custom"] : [fallbackCapability, "custom"],
     source,
     known: false,
   };

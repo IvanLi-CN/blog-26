@@ -467,8 +467,8 @@ export const adminApi = {
       method: "POST",
     }),
   getTagsOverview: () => adminRequest<TagsOverviewResponse>("/api/admin/tags/overview"),
-  getLlmModels: (source: LlmModelSource = "upstream") =>
-    adminRequest<LlmModelsResponse>(`/api/admin/llm/models${buildSearch({ source })}`),
+  getLlmModels: (source: LlmModelSource = "upstream", tier?: LlmTier) =>
+    adminRequest<LlmModelsResponse>(`/api/admin/llm/models${buildSearch({ source, tier })}`),
   organizeTags: (input: Record<string, unknown>) =>
     adminRequest<{
       success: boolean;

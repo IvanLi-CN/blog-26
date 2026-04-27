@@ -4,10 +4,11 @@ import { ZodError } from "zod";
 import { isValidIconId } from "@/lib/icons/aliases";
 import {
   decorateUpstreamLlmModelNames,
+  type LlmModelCapability,
   type LlmModelSource,
   toBuiltinLlmModelOptions,
 } from "@/lib/llm-models";
-import { llmTierSchema } from "@/lib/llm-settings";
+import { type LlmTier, llmTierSchema } from "@/lib/llm-settings";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
 import { getAdminLlmModelCatalog } from "@/server/services/llm-model-catalog";
@@ -102,23 +103,30 @@ function getNumber(value: string | null, fallback: number): number {
   return Number.isFinite(raw) ? raw : fallback;
 }
 
-async function listUpstreamLlmModels() {
+async function listUpstreamLlmModels(tier: LlmTier = "chat") {
   const resolved = await getResolvedLlmConfig();
-  const apiKey = resolved.chat.apiKey;
+  const target = resolved[tier];
+  const apiKey = target.apiKey;
   if (!apiKey) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Chat model API key is not configured",
+      message: `${tier} model API key is not configured`,
     });
   }
 
   const client = new OpenAI({
     apiKey,
-    baseURL: resolved.chat.baseUrl || undefined,
+    baseURL: target.baseUrl || undefined,
   });
   const page = await client.models.list();
   const modelIds = page.data.map((model) => model.id);
-  return decorateUpstreamLlmModelNames(modelIds);
+  return decorateUpstreamLlmModelNames(modelIds, modelCapabilityForTier(tier));
+}
+
+function modelCapabilityForTier(tier: LlmTier): LlmModelCapability {
+  if (tier === "embedding") return "embedding";
+  if (tier === "rerank") return "rerank";
+  return "chat";
 }
 
 async function createCallerForRequest(request: Request) {
@@ -680,12 +688,30 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     if (pathname === "/llm/models") {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       const source = (url.searchParams.get("source") || "upstream") as LlmModelSource;
+      const tierValue = getString(url.searchParams.get("tier"));
       if (source !== "upstream" && source !== "builtin") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid model source" });
       }
-      const models =
-        source === "builtin" ? toBuiltinLlmModelOptions() : await listUpstreamLlmModels();
-      return json({ source, models }, { status: 200 }, resHeaders);
+      try {
+        const tier = tierValue ? llmTierSchema.parse(tierValue) : "chat";
+        const models =
+          source === "builtin" ? toBuiltinLlmModelOptions() : await listUpstreamLlmModels(tier);
+        return json({ source, models }, { status: 200 }, resHeaders);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          return json(
+            {
+              error: {
+                code: "BAD_REQUEST",
+                message: error.message,
+              },
+            },
+            { status: 400 },
+            resHeaders
+          );
+        }
+        throw error;
+      }
     }
 
     if (pathname === "/tags/overview") {
