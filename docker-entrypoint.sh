@@ -3,19 +3,21 @@ set -euo pipefail
 
 echo "🚀 Starting Docker container..."
 
-echo "🌐 Environment variables (startup):"
-if command -v printenv >/dev/null 2>&1; then
-  printenv | sort
-else
-  env | sort
-fi
-
 RUN_UID=${RUN_UID:-${APP_UID:-1000}}
 RUN_GID=${RUN_GID:-${APP_GID:-1000}}
 if [ "$#" -gt 0 ]; then
   APP_CMD=("$@")
 else
   APP_CMD=(bun run gateway:start)
+fi
+
+RUNTIME_ENV_FILE="${RUNTIME_ENV_FILE:-/run/secrets/blog_env}"
+if [ -r "$RUNTIME_ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$RUNTIME_ENV_FILE"
+  set +a
+  echo "🔐 Loaded runtime environment file: $RUNTIME_ENV_FILE"
 fi
 
 export DB_PATH="${DB_PATH:-/app/data/sqlite.db}"
@@ -29,6 +31,26 @@ export ASTRO_TYPES_DIR="${ASTRO_TYPES_DIR:-/app/.astro}"
 export ASTRO_CACHE_DIR="${ASTRO_CACHE_DIR:-${SITE_DIST_DIR}/.astro-cache}"
 export VITE_CACHE_DIR="${VITE_CACHE_DIR:-${SITE_DIST_DIR}/.vite-cache}"
 export SERVE_PUBLIC_SITE="${SERVE_PUBLIC_SITE:-false}"
+
+env_status() {
+  local name="$1"
+  if [ -n "${!name:-}" ]; then
+    echo "set"
+  else
+    echo "unset"
+  fi
+}
+
+echo "🌐 Runtime configuration:"
+echo "  NODE_ENV=${NODE_ENV:-unset}"
+echo "  DB_PATH=$DB_PATH"
+echo "  PORT=$PORT"
+echo "  INTERNAL_NEXT_PORT=$INTERNAL_NEXT_PORT"
+echo "  SITE_PORT=$SITE_PORT"
+echo "  SERVE_PUBLIC_SITE=$SERVE_PUBLIC_SITE"
+echo "  CONTENT_SOURCES=${CONTENT_SOURCES:-default}"
+echo "  WEBDAV_URL=$(env_status WEBDAV_URL)"
+echo "  LLM_SETTINGS_MASTER_KEY=$(env_status LLM_SETTINGS_MASTER_KEY)"
 
 if [ -z "${PUBLIC_SITE_URL:-}" ] && [ -n "${NEXT_PUBLIC_SITE_URL:-}" ]; then
   export PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}"
@@ -49,8 +71,6 @@ echo "🧩 Astro types dir: $ASTRO_TYPES_DIR"
 echo "🪐 Astro cache dir: $ASTRO_CACHE_DIR"
 echo "⚡ Vite cache dir: $VITE_CACHE_DIR"
 
-mkdir -p "$DB_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
-
 requires_webdav() {
   local sources="${CONTENT_SOURCES:-}"
   if [ -z "$sources" ]; then
@@ -66,9 +86,29 @@ requires_webdav() {
   esac
 }
 
+requires_llm_settings_master_key() {
+  if [ "${NODE_ENV:-}" != "production" ]; then
+    return 1
+  fi
+
+  local command_text="${APP_CMD[*]}"
+  case "$command_text" in
+    *gateway:start*|*start-gateway.ts*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 validate_runtime_config() {
   if requires_webdav && [ -z "${WEBDAV_URL:-}" ]; then
     echo "❌ Config validation failed: WEBDAV_URL is required when WebDAV source is enabled"
+    exit 1
+  fi
+  if requires_llm_settings_master_key && [ -z "${LLM_SETTINGS_MASTER_KEY:-}" ]; then
+    echo "❌ Config validation failed: LLM_SETTINGS_MASTER_KEY is required in production to store admin LLM API keys"
     exit 1
   fi
   echo "✅ Runtime configuration validated"
@@ -127,6 +167,7 @@ else
 fi
 
 validate_runtime_config
+mkdir -p "$DB_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
 validate_prebuilt_assets
 validate_public_site_assets
 

@@ -17,6 +17,7 @@
 - Added SQLite table `llm_settings` with a single-row config payload and timestamps.
 - Persisted config is validated through Zod before save/load.
 - API keys are stored as AES-256-GCM encrypted payloads and require `LLM_SETTINGS_MASTER_KEY`.
+- Missing `LLM_SETTINGS_MASTER_KEY` on secret writes returns `LLM_SETTINGS_MASTER_KEY_MISSING` with a Chinese operator action message.
 - Admin responses expose masked secret state only; plaintext keys never leave server memory.
 
 ### Runtime resolution
@@ -43,6 +44,12 @@
 - Every tier now has a `测试` action next to `选择模型`; a result bubble shows staged progress labels while pending and returns success or error details inline.
 - URL handling is validated in two layers: browser `type=url` inputs plus server-side `http|https` normalization/validation.
 - Model selection uses a reusable dialog with search, capability badge filters, context length, descriptions, source labels, and provider availability hints.
+- The model picker shows explicit loading, not-yet-fetched, upstream-empty, filtered-empty, and error states with retry/preset/custom-model paths.
+
+### Container runtime guardrails
+
+- Production gateway/admin startup sources `/run/secrets/blog_env` when present, then requires `LLM_SETTINGS_MASTER_KEY` and exits before app start when it is still missing.
+- The entrypoint logs only set/unset status for sensitive runtime inputs and no longer prints the full environment.
 
 ### Catalog data pipeline
 

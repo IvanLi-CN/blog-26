@@ -54,6 +54,8 @@ The project previously let each AI-related module read environment variables dir
 7. Validate all provider URLs through browser `type=url` inputs plus server-side `http|https` URL parsing and normalization.
 8. Expose a tier-level connectivity test endpoint and UI bubble so operators can validate unsaved form state before saving.
 9. Back the model picker with generated OpenRouter snapshot data, repo fallback metadata, curated overrides, and best-effort provider `/models` availability annotations.
+10. Return `LLM_SETTINGS_MASTER_KEY_MISSING` when an operator tries to persist a secret without the master key, so the admin UI can show the exact server-side fix instead of a generic internal error.
+11. In production container startup, source the mounted runtime secret file when present, fail before application start if the gateway/admin runtime still lacks `LLM_SETTINGS_MASTER_KEY`, and log only set/unset status for sensitive runtime inputs.
 
 # Guardrails / Reuse notes
 
@@ -66,6 +68,8 @@ The project previously let each AI-related module read environment variables dir
 - Provider `/models` data is advisory availability metadata, not the canonical catalog.
 - Catalog refresh must fail open so local builds remain usable without network access.
 - Bound both the build-time OpenRouter refresh and admin-side provider test calls with request timeouts so offline or half-open endpoints fail back to the UI/build flow instead of hanging indefinitely.
+- Model fetching UI must distinguish loading, upstream-empty, filtered-empty, and provider error states; an empty `/models` response is actionable provider feedback, not a silent no-op.
+- Do not print full environment dumps from container entrypoints; secrets may arrive through `env_file`, mounted files, or inherited runtime env and must never be echoed to Docker logs.
 
 # References
 

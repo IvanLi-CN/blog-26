@@ -298,17 +298,38 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("content-type", "application/json");
   }
 
-  const response = await fetch(path, {
-    credentials: "same-origin",
-    ...init,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      credentials: "same-origin",
+      ...init,
+      headers,
+    });
+  } catch (error) {
+    throw new AdminApiError(
+      "网络请求失败，请检查连接后重试",
+      0,
+      "NETWORK_ERROR",
+      error instanceof Error ? { name: error.name } : undefined
+    );
+  }
 
   const text = await response.text();
-  const data = text ? (JSON.parse(text) as T & AdminApiErrorShape) : ({} as T & AdminApiErrorShape);
+  let data = {} as T & AdminApiErrorShape;
+  if (text) {
+    try {
+      data = JSON.parse(text) as T & AdminApiErrorShape;
+    } catch {
+      throw new AdminApiError(
+        response.ok ? "服务器返回了无法解析的响应" : "服务器返回了异常响应，请稍后重试",
+        response.status,
+        "INVALID_JSON_RESPONSE"
+      );
+    }
+  }
 
   if (!response.ok) {
-    const message = data?.error?.message || response.statusText || "Request failed";
+    const message = data?.error?.message || response.statusText || "请求失败";
     throw new AdminApiError(message, response.status, data?.error?.code, data?.error?.details);
   }
 

@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Database, Server, Sparkles, X } from "lucide-react";
+import { AlertCircle, Check, Database, RefreshCw, Server, Sparkles, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import type { LlmModelCapability, LlmModelOption, LlmModelSource } from "@/lib/llm-models";
@@ -13,6 +13,7 @@ export interface LlmModelPickerProps {
   onValueChange: (value: string) => void;
   models: LlmModelOption[];
   isLoading?: boolean;
+  hasLoaded?: boolean;
   error?: string | null;
   defaultOpen?: boolean;
   open?: boolean;
@@ -29,6 +30,7 @@ export function LlmModelPicker({
   onValueChange,
   models,
   isLoading = false,
+  hasLoaded = true,
   error,
   defaultOpen = false,
   open: controlledOpen,
@@ -69,6 +71,12 @@ export function LlmModelPicker({
       getModelCapabilities(customModel, fallbackCapability).includes(activeCapabilityFilter))
       ? customModel
       : null;
+  const hasModels = models.length > 0;
+  const showInitialPrompt =
+    !isLoading && !error && source === "upstream" && !hasLoaded && !hasModels;
+  const showEmptySource = !isLoading && !error && hasLoaded && !hasModels;
+  const showFilteredEmpty =
+    !isLoading && !error && hasModels && filteredModels.length === 0 && !displayedCustomModel;
 
   useEffect(() => {
     if (!open) return;
@@ -152,8 +160,15 @@ export function LlmModelPicker({
                   <div className="flex justify-start gap-1.5 sm:justify-end">
                     <SourceButton
                       active={source === "upstream"}
-                      icon={<Server className="size-3.5" />}
-                      label="获取"
+                      disabled={isLoading}
+                      icon={
+                        isLoading && source === "upstream" ? (
+                          <Spinner className="size-3.5" />
+                        ) : (
+                          <Server className="size-3.5" />
+                        )
+                      }
+                      label={isLoading && source === "upstream" ? "获取中" : "获取"}
                       onClick={() => {
                         onSourceChange("upstream");
                         onRefreshUpstream?.();
@@ -161,6 +176,7 @@ export function LlmModelPicker({
                     />
                     <SourceButton
                       active={source === "builtin"}
+                      disabled={isLoading}
                       icon={<Database className="size-3.5" />}
                       label="预设"
                       onClick={() => onSourceChange("builtin")}
@@ -202,19 +218,64 @@ export function LlmModelPicker({
                     fallbackCapability={fallbackCapability}
                   />
                 ) : null}
-                {!isLoading && !error && models.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    当前来源没有可选择模型。
-                  </div>
+                {isLoading && !hasModels ? <LoadingRows /> : null}
+                {showInitialPrompt ? (
+                  <ModelPickerEmptyState
+                    title="还没有获取上游模型"
+                    description="点击获取从当前提供方读取模型列表，也可以直接输入自定义模型 ID。"
+                    action={
+                      <Button type="button" size="sm" onClick={onRefreshUpstream}>
+                        <RefreshCw className="size-3.5" />
+                        获取模型
+                      </Button>
+                    }
+                  />
                 ) : null}
-                {!isLoading &&
-                !error &&
-                models.length > 0 &&
-                filteredModels.length === 0 &&
-                !displayedCustomModel ? (
-                  <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    没有匹配的模型。
-                  </div>
+                {showEmptySource ? (
+                  <ModelPickerEmptyState
+                    title={source === "upstream" ? "上游返回 0 个模型" : "当前来源没有可选择模型"}
+                    description={
+                      source === "upstream"
+                        ? "请检查提供方 /models 是否返回列表，或切换预设、输入自定义模型 ID。"
+                        : "可以切换到上游获取，或直接输入自定义模型 ID。"
+                    }
+                    action={
+                      <div className="flex flex-wrap gap-2">
+                        {source === "upstream" ? (
+                          <>
+                            <Button type="button" size="sm" onClick={onRefreshUpstream}>
+                              <RefreshCw className="size-3.5" />
+                              重试获取
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onSourceChange("builtin")}
+                            >
+                              <Database className="size-3.5" />
+                              使用预设
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => onSourceChange("upstream")}
+                          >
+                            <Server className="size-3.5" />
+                            获取上游
+                          </Button>
+                        )}
+                      </div>
+                    }
+                  />
+                ) : null}
+                {showFilteredEmpty ? (
+                  <ModelPickerEmptyState
+                    title="没有匹配的模型"
+                    description="换一个关键词，或使用当前输入作为自定义模型 ID。"
+                  />
                 ) : null}
               </div>
 
@@ -245,6 +306,38 @@ export function LlmModelPicker({
         </div>
       ) : null}
     </>
+  );
+}
+
+function LoadingRows() {
+  return (
+    <div className="space-y-2" role="status" aria-label="正在加载模型列表">
+      {[0, 1, 2].map((index) => (
+        <div key={index} className="rounded-md border border-border bg-background/60 p-3">
+          <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
+          <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-muted/80" />
+          <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-muted/70" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ModelPickerEmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="rounded-md border border-dashed border-border bg-background/50 p-4 text-sm">
+      <div className="font-medium text-foreground">{title}</div>
+      <div className="mt-1 text-muted-foreground">{description}</div>
+      {action ? <div className="mt-3">{action}</div> : null}
+    </div>
   );
 }
 
@@ -445,11 +538,13 @@ function customModelOption(
 
 function SourceButton({
   active,
+  disabled,
   icon,
   label,
   onClick,
 }: {
   active: boolean;
+  disabled?: boolean;
   icon: ReactNode;
   label: string;
   onClick: () => void;
@@ -459,6 +554,7 @@ function SourceButton({
       type="button"
       variant={active ? "default" : "outline"}
       className={cn("h-9 px-2.5 text-xs", active && "shadow-sm")}
+      disabled={disabled}
       onClick={onClick}
     >
       {icon}

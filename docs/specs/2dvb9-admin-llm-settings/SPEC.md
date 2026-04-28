@@ -36,7 +36,7 @@ The admin needs a durable control plane for LLM configuration with safe secret h
   - `GET /api/admin/llm-settings/catalog`
   - `POST /api/admin/llm-settings/test`
 - SQLite single-row persistence for encrypted secrets and non-secret overrides.
-- AES-GCM secret handling gated by `LLM_SETTINGS_MASTER_KEY`.
+- AES-GCM secret handling gated by `LLM_SETTINGS_MASTER_KEY`; secret writes without it return an actionable admin API error instead of a generic internal error.
 - Runtime resolution for chat, embedding, and rerank settings with inheritance.
 - Build-time OpenRouter catalog refresh plus repo fallback metadata.
 - UI validation, tests, and visual evidence for the settings page and model picker.
@@ -105,10 +105,11 @@ The admin needs a durable control plane for LLM configuration with safe secret h
 4. Embedding settings affect vectorization, semantic search, and admin vectorization status checks.
 5. Rerank settings affect enhanced search reranking defaults.
 6. API keys remain masked in API responses and the UI, with replace/clear semantics working as documented.
-7. The model picker dialog supports capability badge filtering, search, and selection from fallback data without network access.
+7. The model picker dialog supports capability badge filtering, search, and selection from fallback data without network access; upstream fetch states distinguish loading, not-yet-fetched, upstream-empty, filtered-empty, and error outcomes.
 8. Changing embedding settings surfaces a reindex notice without auto-triggering a job; model mismatches are treated as required reindexing, while provider-only changes surface an advisory resync warning.
 9. Embedding and rerank hide independent provider fields while `高级设置` is off, preserve previously saved custom values, and require both `baseURL` and `API Key` when the switch is on.
 10. Tier test actions return visible progress and result feedback without leaving the page.
+11. Production gateway/admin container startup fails fast when `LLM_SETTINGS_MASTER_KEY` is missing and does not print raw environment variables or secret values to startup logs.
 
 ## 7. Validation
 
@@ -137,3 +138,11 @@ The admin needs a durable control plane for LLM configuration with safe secret h
 ### Advanced settings enabled with preserved provider data
 
 ![LLM settings saved state](./assets/llm-settings-saved.png)
+
+### Model picker loading and feedback states
+
+![LLM model picker loading](./assets/llm-model-picker-loading-20260428.png)
+
+![LLM model picker empty upstream response](./assets/llm-model-picker-empty-20260428.png)
+
+![LLM model picker upstream error](./assets/llm-model-picker-error-20260428.png)

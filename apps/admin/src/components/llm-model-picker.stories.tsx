@@ -111,6 +111,7 @@ function ControlledPicker(props: ControlledPickerProps) {
                 onValueChange={setValue}
                 models={models}
                 isLoading={props.isLoading}
+                hasLoaded={props.hasLoaded}
                 error={props.error}
                 defaultOpen={props.defaultOpen}
                 preferredCapability={props.preferredCapability}
@@ -189,7 +190,36 @@ export const BuiltinData: Story = {
 };
 
 export const LoadingUpstream: Story = {
-  render: () => <ControlledPicker source="upstream" models={[]} isLoading defaultOpen />,
+  render: () => (
+    <ControlledPicker source="upstream" models={[]} isLoading hasLoaded={false} defaultOpen />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialog = canvas.getByRole("dialog", { name: "选择模型" });
+    await expect(within(dialog).getByText("获取中")).toBeInTheDocument();
+    await expect(within(dialog).getByLabelText("正在加载模型列表")).toBeInTheDocument();
+  },
+};
+
+export const UpstreamNotFetched: Story = {
+  render: () => <ControlledPicker source="upstream" models={[]} hasLoaded={false} defaultOpen />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialog = canvas.getByRole("dialog", { name: "选择模型" });
+    await expect(within(dialog).getByText("还没有获取上游模型")).toBeInTheDocument();
+    await expect(within(dialog).getByRole("button", { name: "获取模型" })).toBeInTheDocument();
+  },
+};
+
+export const EmptyUpstream: Story = {
+  render: () => <ControlledPicker source="upstream" models={[]} hasLoaded defaultOpen />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialog = canvas.getByRole("dialog", { name: "选择模型" });
+    await expect(within(dialog).getByText("上游返回 0 个模型")).toBeInTheDocument();
+    await expect(within(dialog).getByRole("button", { name: "重试获取" })).toBeInTheDocument();
+    await expect(within(dialog).getByRole("button", { name: "使用预设" })).toBeInTheDocument();
+  },
 };
 
 export const UpstreamError: Story = {
