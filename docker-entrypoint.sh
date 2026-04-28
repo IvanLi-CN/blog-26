@@ -146,6 +146,9 @@ run_as_target_user() {
   fi
 }
 
+validate_runtime_config
+mkdir -p "$DB_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
+
 if [ "$(id -u)" = "0" ]; then
   echo "👤 Preparing runtime uid:gid ${RUN_UID}:${RUN_GID}"
 
@@ -166,8 +169,6 @@ else
   echo "👤 Already running as uid:gid=$(id -u):$(id -g)"
 fi
 
-validate_runtime_config
-mkdir -p "$DB_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR"
 validate_prebuilt_assets
 validate_public_site_assets
 
