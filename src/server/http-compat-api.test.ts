@@ -513,7 +513,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("returns 500 for operational LLM settings save failures", async () => {
+  it("returns an actionable config error when the LLM settings master key is missing", async () => {
     const previousMasterKey = process.env.LLM_SETTINGS_MASTER_KEY;
     delete process.env.LLM_SETTINGS_MASTER_KEY;
 
@@ -553,9 +553,10 @@ describe("HTTP compatibility APIs", () => {
         "/llm-settings"
       );
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(503);
       const payload = await readJson(response);
-      expect(payload.error.code).toBe("INTERNAL_SERVER_ERROR");
+      expect(payload.error.code).toBe("LLM_SETTINGS_MASTER_KEY_MISSING");
+      expect(payload.error.message).toContain("LLM_SETTINGS_MASTER_KEY");
     } finally {
       if (previousMasterKey === undefined) {
         delete process.env.LLM_SETTINGS_MASTER_KEY;

@@ -52,6 +52,18 @@ export class LlmSettingsInputError extends Error {
   }
 }
 
+export class LlmSettingsConfigError extends Error {
+  status: number;
+  code: string;
+
+  constructor(message: string, code = "LLM_SETTINGS_MASTER_KEY_MISSING", status = 503) {
+    super(message);
+    this.name = "LlmSettingsConfigError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export class LlmSettingsTestError extends Error {
   status: number;
   code: string;
@@ -163,7 +175,9 @@ function deriveMasterKey(): Buffer | null {
 function encryptSecret(value: string) {
   const key = deriveMasterKey();
   if (!key) {
-    throw new Error("LLM_SETTINGS_MASTER_KEY is required to store API keys");
+    throw new LlmSettingsConfigError(
+      "服务器缺少 LLM_SETTINGS_MASTER_KEY，无法安全保存 API Key。请先配置该环境变量并重启服务。"
+    );
   }
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);

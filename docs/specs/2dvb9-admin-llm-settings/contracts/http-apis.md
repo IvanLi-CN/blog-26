@@ -90,6 +90,7 @@ Behavior rules:
 - Empty `apiKeyInput` keeps the current stored secret unless `clearApiKey=true`.
 - `clearApiKey=true` removes the stored encrypted secret for that tier.
 - Secret write requests require `LLM_SETTINGS_MASTER_KEY`.
+- Missing `LLM_SETTINGS_MASTER_KEY` on secret write returns `LLM_SETTINGS_MASTER_KEY_MISSING` with an operator-facing message instead of a generic 500.
 - Child tiers use `useCustomProvider` as the authoritative toggle for whether independent `baseURL` / `API Key` settings are active.
 - Turning `useCustomProvider=false` keeps any previously saved child-tier custom provider data in storage, but the resolved runtime falls back to the default chain.
 - Turning `useCustomProvider=true` requires both a valid `baseURL` and a usable custom API key for that tier.

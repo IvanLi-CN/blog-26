@@ -302,6 +302,7 @@ jobs:
             -e LOCAL_CONTENT_BASE_PATH=/app/data/local \
             -e DB_PATH=/app/data/sqlite.db \
             -e SITE_URL=http://127.0.0.1:25090 \
+            -e LLM_SETTINGS_MASTER_KEY=ci-smoke-llm-settings-master-key \
             -v "$PWD/test-data:/app/data" \
             blog-nextjs:ci-smoke
 

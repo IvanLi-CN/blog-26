@@ -15,6 +15,7 @@ import { getAdminLlmModelCatalog } from "@/server/services/llm-model-catalog";
 import {
   getAdminLlmSettingsPayload,
   getResolvedLlmConfig,
+  LlmSettingsConfigError,
   LlmSettingsInputError,
   LlmSettingsTestError,
   testAdminLlmSettings,
@@ -250,6 +251,18 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
                 },
               },
               { status: 400 },
+              resHeaders
+            );
+          }
+          if (error instanceof LlmSettingsConfigError) {
+            return json(
+              {
+                error: {
+                  code: error.code,
+                  message: error.message,
+                },
+              },
+              { status: error.status },
               resHeaders
             );
           }

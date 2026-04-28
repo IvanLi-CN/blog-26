@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { BrainCircuit, ExternalLink, FlaskConical, WandSparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { adminApi } from "@/lib/admin-api-client";
+import { AdminApiError, adminApi } from "@/lib/admin-api-client";
 import {
   type LlmModelCapability,
   type LlmModelOption,
@@ -149,6 +149,60 @@ function SecretField({
 
 const TEST_PROGRESS_LABELS = ["正在校验配置…", "正在连接模型提供方…", "正在等待测试结果…"];
 
+function describeAdminActionError(error: unknown): {
+  title: string;
+  message: string;
+  action?: string;
+} {
+  if (error instanceof AdminApiError) {
+    if (error.code === "LLM_SETTINGS_MASTER_KEY_MISSING") {
+      return {
+        title: "无法保存 API Key",
+        message: error.message,
+        action: "运维处理：在服务端配置 LLM_SETTINGS_MASTER_KEY 后重启容器，再重新保存。",
+      };
+    }
+    if (error.code === "NETWORK_ERROR") {
+      return {
+        title: "请求没有发出",
+        message: error.message,
+        action: "检查当前登录状态和网络连接后重试。",
+      };
+    }
+    if (error.code === "INVALID_JSON_RESPONSE") {
+      return {
+        title: "服务器响应异常",
+        message: error.message,
+        action: "查看服务日志确认接口是否返回了 HTML、空响应或代理错误。",
+      };
+    }
+    return {
+      title: error.status >= 500 ? "服务器处理失败" : "请求被拒绝",
+      message: error.message,
+      action: error.code ? `错误码：${error.code}` : undefined,
+    };
+  }
+
+  return {
+    title: "请求失败",
+    message: getErrorMessage(error),
+  };
+}
+
+function AdminActionErrorAlert({ error }: { error: unknown }) {
+  const description = describeAdminActionError(error);
+
+  return (
+    <Alert tone="danger" className="space-y-1">
+      <div className="font-medium">{description.title}</div>
+      <div>{description.message}</div>
+      {description.action ? (
+        <div className="text-xs text-destructive-foreground/80">{description.action}</div>
+      ) : null}
+    </Alert>
+  );
+}
+
 function TestResultPopover({
   tier,
   open,
@@ -204,7 +258,7 @@ function TestResultPopover({
           </div>
         </div>
       ) : error ? (
-        <Alert tone="danger">{getErrorMessage(error)}</Alert>
+        <AdminActionErrorAlert error={error} />
       ) : (
         <div className="text-sm text-muted-foreground">点击测试后会在这里显示进度和结果。</div>
       )}
@@ -437,6 +491,9 @@ export function LlmSettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (payload: SettingsEditor) => adminApi.updateLlmSettings(payload),
+    onMutate: () => {
+      setNotice(null);
+    },
     onSuccess: (payload) => {
       queryClient.setQueryData(["admin-llm-settings"], payload);
       queryClient.invalidateQueries({ queryKey: ["admin-llm-models"] });
@@ -481,15 +538,14 @@ export function LlmSettingsPage() {
         description="把对话、嵌入、重排序模型配置持久化到数据库；环境变量只作为缺省值。"
         actions={
           <Button onClick={() => saveMutation.mutate(editor)} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? <Spinner /> : null}
             {saveMutation.isPending ? "保存中…" : "保存设置"}
           </Button>
         }
       />
 
       {notice ? <Alert tone="success">{notice}</Alert> : null}
-      {saveMutation.error ? (
-        <Alert tone="danger">{getErrorMessage(saveMutation.error)}</Alert>
-      ) : null}
+      {saveMutation.error ? <AdminActionErrorAlert error={saveMutation.error} /> : null}
 
       {payload.hints.embeddingReindexRequired ? (
         <Alert tone="warning">
@@ -597,10 +653,11 @@ export function LlmSettingsPage() {
           setPicker((current) => ({ ...current, open: false }));
         }}
         models={pickerModels}
-        isLoading={pickerSource === "upstream" && upstreamModelsQuery.isLoading}
+        isLoading={pickerSource === "upstream" && upstreamModelsQuery.isFetching}
+        hasLoaded={pickerSource === "builtin" || upstreamModelsQuery.isFetched}
         error={
           pickerSource === "upstream" && upstreamModelsQuery.error
-            ? getErrorMessage(upstreamModelsQuery.error)
+            ? describeAdminActionError(upstreamModelsQuery.error).message
             : null
         }
         open={picker.open}

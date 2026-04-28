@@ -145,4 +145,53 @@ test.describe("admin llm settings", () => {
     expect(payload.settings.chat.apiKey.maskedValue).toBe("•".repeat(19));
     expect(payload.settings.chat.apiKey.maskedValue).not.toContain("sk-chat-e2e-xyz1234");
   });
+
+  test("surfaces actionable save and upstream model loading failures", async ({ page }) => {
+    await page.route("**/api/admin/llm-settings", async (route) => {
+      if (route.request().method() !== "PUT") {
+        await route.fallback();
+        return;
+      }
+
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "LLM_SETTINGS_MASTER_KEY_MISSING",
+            message:
+              "服务器缺少 LLM_SETTINGS_MASTER_KEY，无法安全保存 API Key。请先配置该环境变量并重启服务。",
+          },
+        }),
+      });
+    });
+
+    await page.route("**/api/admin/llm/models?source=upstream&tier=chat", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ source: "upstream", models: [] }),
+      });
+    });
+
+    const response = await page.goto("/admin/llm-settings", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
+    expect(response?.status()).toBe(200);
+
+    await page.getByRole("button", { name: "选择对话模型" }).click();
+    const pickerDialog = page.getByRole("dialog", { name: "选择模型" });
+    await expect(pickerDialog.getByText("上游返回 0 个模型")).toBeVisible();
+    await expect(pickerDialog.getByRole("button", { name: "重试获取" })).toBeVisible();
+    await expect(pickerDialog.getByRole("button", { name: "使用预设" })).toBeVisible();
+    await pickerDialog.getByRole("button", { name: "完成" }).click();
+
+    await page.getByLabel("对话模型 API Key").fill("sk-chat-e2e-missing-master");
+    await page.getByRole("button", { name: "保存设置" }).click();
+
+    await expect(page.getByText("无法保存 API Key")).toBeVisible();
+    await expect(page.getByText(/配置 LLM_SETTINGS_MASTER_KEY/)).toBeVisible();
+    await expect(page.getByText(/重启容器/)).toBeVisible();
+  });
 });
