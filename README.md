@@ -396,8 +396,9 @@ This repository uses a PR label-driven release contract for PRs targeting `main`
 - Outputs:
   - frontend stable: `frontend-vX.Y.Z` tag + GitHub Release + GitHub Pages deploy
   - frontend rc: `frontend-vX.Y.Z-rc.<sha7>` tag + prerelease + GitHub Pages deploy
-  - backend stable: `backend-vX.Y.Z` tag + GitHub Release + GHCR `:backend-vX.Y.Z` (and `:backend-latest` only when that commit is the current `main` head)
-  - backend rc: `backend-vX.Y.Z-rc.<sha7>` tag + prerelease + GHCR `:backend-vX.Y.Z-rc.<sha7>`
+  - backend stable: `backend-vX.Y.Z` tag + GitHub Release + unified GHCR `:vX.Y.Z`
+  - backend rc: `backend-vX.Y.Z-rc.<sha7>` tag + prerelease + unified GHCR `:vX.Y.Z-rc.<sha7>`
+  - unified Docker image: includes frontend `site-dist`, backend runtime, and admin SPA; stable current-head releases also update GHCR `:latest`
   - docs/skip: no release artifacts
 
 ### Frontend content bundle in CI

@@ -65,6 +65,9 @@ jobs:
       backend_release_tag: ${{ steps.meta.outputs.backend_release_tag }}
       backend_app_version: ${{ steps.meta.outputs.backend_app_version }}
       backend_is_prerelease: ${{ steps.meta.outputs.backend_is_prerelease }}
+      image_release_tag: ${{ steps.meta.outputs.image_release_tag }}
+      image_app_version: ${{ steps.meta.outputs.image_app_version }}
+      image_is_prerelease: ${{ steps.meta.outputs.image_is_prerelease }}
       head_sha: ${{ steps.meta.outputs.head_sha }}
       head_branch: ${{ steps.meta.outputs.head_branch }}
     steps:
@@ -115,6 +118,17 @@ jobs:
         shell: bash
         env:
           COMPONENT: backend
+          BUMP_LEVEL: ${{ steps.intent.outputs.bump_level }}
+          CHANNEL: ${{ steps.intent.outputs.channel }}
+          COMMIT_SHA: ${{ env.RELEASE_HEAD_SHA }}
+        run: bash ./.github/scripts/compute-version.sh
+
+      - name: Compute Docker image version/tag
+        if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') }}
+        id: image-version
+        shell: bash
+        env:
+          COMPONENT: image
           BUMP_LEVEL: ${{ steps.intent.outputs.bump_level }}
           CHANNEL: ${{ steps.intent.outputs.channel }}
           COMMIT_SHA: ${{ env.RELEASE_HEAD_SHA }}
@@ -196,7 +210,7 @@ jobs:
             echo "Tag ${tag} already exists. Skip creating."
             exit 0
           fi
-          git tag -a "${tag}" -m "${tag}"
+          git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
           git push origin "${tag}"
 
       - name: Create and push backend tag (if missing)
@@ -209,7 +223,20 @@ jobs:
             echo "Tag ${tag} already exists. Skip creating."
             exit 0
           fi
-          git tag -a "${tag}" -m "${tag}"
+          git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
+          git push origin "${tag}"
+
+      - name: Create and push Docker image tag (if missing)
+        if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.image-version.outputs.release_tag }}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists. Skip creating."
+            exit 0
+          fi
+          git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
           git push origin "${tag}"
 
       - name: Export metadata
@@ -236,6 +263,9 @@ jobs:
           echo "backend_release_tag=${{ steps.backend-version.outputs.release_tag || '' }}" >> "$GITHUB_OUTPUT"
           echo "backend_app_version=${{ steps.backend-version.outputs.app_version || '' }}" >> "$GITHUB_OUTPUT"
           echo "backend_is_prerelease=${{ steps.backend-version.outputs.is_prerelease || 'false' }}" >> "$GITHUB_OUTPUT"
+          echo "image_release_tag=${{ steps.image-version.outputs.release_tag || '' }}" >> "$GITHUB_OUTPUT"
+          echo "image_app_version=${{ steps.image-version.outputs.app_version || '' }}" >> "$GITHUB_OUTPUT"
+          echo "image_is_prerelease=${{ steps.image-version.outputs.is_prerelease || 'false' }}" >> "$GITHUB_OUTPUT"
 
       - name: Write summary
         if: always()
@@ -251,6 +281,7 @@ jobs:
             echo "- should_release: \`${{ steps.intent.outputs.should_release }}\`"
             echo "- frontend_release_tag: \`${{ steps.frontend-version.outputs.release_tag || 'n/a' }}\`"
             echo "- backend_release_tag: \`${{ steps.backend-version.outputs.release_tag || 'n/a' }}\`"
+            echo "- image_release_tag: \`${{ steps.image-version.outputs.release_tag || 'n/a' }}\`"
             echo "- reason: \`${{ steps.intent.outputs.reason }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
@@ -438,6 +469,198 @@ jobs:
         if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
         uses: actions/deploy-pages@v4
 
+  publish_image:
+    name: Publish unified Docker image
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    if: ${{ needs.prepare.outputs.should_release == 'true' && (needs.prepare.outputs.frontend_release == 'true' || needs.prepare.outputs.backend_release == 'true') }}
+    permissions:
+      contents: read
+      packages: write
+    timeout-minutes: 60
+    steps:
+      - name: Checkout workflow head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.head_sha }}
+
+      - name: Fetch content bundle
+        env:
+          PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
+        run: bash ./scripts/fetch-public-content-bundle.sh
+
+      - name: Resolve Docker public site config
+        id: public-site-config
+        shell: bash
+        env:
+          PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH }}
+          NEXT_PUBLIC_SITE_BASE_PATH: ${{ vars.NEXT_PUBLIC_SITE_BASE_PATH }}
+        run: |
+          set -euo pipefail
+          trim() {
+            local value="${1:-}"
+            printf '%s' "${value}" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+          }
+
+          api_base="$(trim "${PUBLIC_API_BASE_URL:-}")"
+          if [[ -z "${api_base}" ]]; then
+            echo "PUBLIC_API_BASE_URL is required for Docker image releases" >&2
+            exit 1
+          fi
+
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          legacy_project_url="https://ivanli-cn.github.io/${repo_name}"
+          legacy_project_base="/${repo_name}"
+
+          custom_domain=""
+          if [[ -f "./public/CNAME" ]]; then
+            custom_domain="$(trim "$(head -n 1 ./public/CNAME || true)")"
+          fi
+
+          default_site_url=""
+          if [[ -n "${custom_domain}" ]]; then
+            default_site_url="https://${custom_domain}"
+          fi
+
+          site_url="$(trim "${PUBLIC_SITE_URL:-${NEXT_PUBLIC_SITE_URL:-${default_site_url}}}")"
+          site_base_path="$(trim "${PUBLIC_SITE_BASE_PATH:-${NEXT_PUBLIC_SITE_BASE_PATH:-}}")"
+
+          if [[ -n "${custom_domain}" ]]; then
+            if [[ -z "${site_url}" || "${site_url}" == "${legacy_project_url}" ]]; then
+              site_url="${default_site_url}"
+            fi
+            if [[ -z "${site_base_path}" || "${site_base_path}" == "${legacy_project_base}" ]]; then
+              site_base_path="/"
+            fi
+          fi
+
+          if [[ -z "${site_url}" ]]; then
+            echo "PUBLIC_SITE_URL is required for Docker image releases" >&2
+            exit 1
+          fi
+          if [[ -z "${site_base_path}" ]]; then
+            echo "PUBLIC_SITE_BASE_PATH is required for Docker image releases" >&2
+            exit 1
+          fi
+
+          echo "api_base=${api_base}" >> "$GITHUB_OUTPUT"
+          echo "site_url=${site_url}" >> "$GITHUB_OUTPUT"
+          echo "site_base_path=${site_base_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compute lowercase image name
+        id: image-name
+        shell: bash
+        run: |
+          set -euo pipefail
+          lower="${GITHUB_REPOSITORY,,}"
+          echo "image_name_lower=${lower}" >> "$GITHUB_OUTPUT"
+
+      - name: Re-check branch head before pushing latest
+        id: latest-head
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = "${{ needs.prepare.outputs.head_branch }}";
+            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${branch}`,
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`latest-head check: branch=${branch} expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+
+      - name: Compute Docker tags by channel
+        id: docker-tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}"
+          release_tag="${{ needs.prepare.outputs.image_release_tag }}"
+          channel="${{ needs.prepare.outputs.channel }}"
+          is_latest_branch_head="${{ needs.prepare.outputs.is_latest_branch_head }}"
+          is_current_head="${{ steps.latest-head.outputs.is_current_head }}"
+
+          {
+            echo "image=${image}"
+            echo "tags<<EOF"
+            echo "${image}:${release_tag}"
+            if [[ "${channel}" == "stable" && "${is_latest_branch_head}" == "true" && "${is_current_head}" == "true" ]]; then
+              echo "${image}:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Gather git metadata
+        id: git-info
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "commit_hash=${{ needs.prepare.outputs.head_sha }}" >> "$GITHUB_OUTPUT"
+          echo "commit_short_hash=$(echo '${{ needs.prepare.outputs.head_sha }}' | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          echo "build_date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "repository_url=https://github.com/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+          echo "branch_name=${{ needs.prepare.outputs.head_branch }}" >> "$GITHUB_OUTPUT"
+          echo "branch_url=https://github.com/${{ github.repository }}/tree/${{ needs.prepare.outputs.head_branch }}" >> "$GITHUB_OUTPUT"
+
+      - name: Read drizzle-orm version from package.json
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          ver=$(node -e "const p=require('./package.json'); const v=(p.dependencies&&p.dependencies['drizzle-orm'])||(p.devDependencies&&p.devDependencies['drizzle-orm'])||''; process.stdout.write(String(v||'').replace(/^\\D+/,''));")
+          echo "drizzle_version=${ver}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push unified Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: app-image-built
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: ${{ steps.docker-tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ needs.prepare.outputs.image_app_version }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.head_sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.ref.name=${{ needs.prepare.outputs.image_release_tag }}
+          build-args: |
+            BUILD_DATE=${{ steps.git-info.outputs.build_date }}
+            COMMIT_HASH=${{ steps.git-info.outputs.commit_hash }}
+            COMMIT_SHORT_HASH=${{ steps.git-info.outputs.commit_short_hash }}
+            REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
+            BRANCH_NAME=${{ steps.git-info.outputs.branch_name }}
+            BRANCH_URL=${{ steps.git-info.outputs.branch_url }}
+            PUBLIC_API_BASE_URL=${{ steps.public-site-config.outputs.api_base }}
+            PUBLIC_SITE_URL=${{ steps.public-site-config.outputs.site_url }}
+            PUBLIC_SITE_BASE_PATH=${{ steps.public-site-config.outputs.site_base_path }}
+            PUBLIC_CONTENT_BUNDLE_URL=preloaded
+            WITH_PLAYWRIGHT=false
+            DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   publish_backend:
     name: Publish backend release artifacts
     runs-on: ubuntu-latest
@@ -445,7 +668,6 @@ jobs:
     if: ${{ needs.prepare.outputs.should_release == 'true' && needs.prepare.outputs.backend_release == 'true' }}
     permissions:
       contents: write
-      packages: write
     timeout-minutes: 60
     steps:
       - name: Checkout workflow head
@@ -491,112 +713,6 @@ jobs:
             "release-assets/backend/backend-runtime-dist-${version}.tar.gz" \
             "release-assets/backend/backend-admin-dist-${version}.tar.gz" \
             > "release-assets/backend/backend-sha256-${version}.txt"
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Compute lowercase image name
-        id: image-name
-        shell: bash
-        run: |
-          set -euo pipefail
-          lower="${GITHUB_REPOSITORY,,}"
-          echo "image_name_lower=${lower}" >> "$GITHUB_OUTPUT"
-
-      - name: Re-check branch head before pushing latest
-        id: latest-head
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const branch = "${{ needs.prepare.outputs.head_branch }}";
-            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
-            const { data } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `heads/${branch}`,
-            });
-            const currentSha = data?.object?.sha ?? "";
-            const isCurrentHead = currentSha === expectedSha;
-            core.info(`latest-head check: branch=${branch} expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
-            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
-
-      - name: Compute Docker tags by channel
-        id: docker-tags
-        shell: bash
-        run: |
-          set -euo pipefail
-          image="${{ env.REGISTRY }}/${{ steps.image-name.outputs.image_name_lower }}"
-          release_tag="${{ needs.prepare.outputs.backend_release_tag }}"
-          channel="${{ needs.prepare.outputs.channel }}"
-          is_latest_branch_head="${{ needs.prepare.outputs.is_latest_branch_head }}"
-          is_current_head="${{ steps.latest-head.outputs.is_current_head }}"
-
-          {
-            echo "image=${image}"
-            echo "tags<<EOF"
-            echo "${image}:${release_tag}"
-            if [[ "${channel}" == "stable" && "${is_latest_branch_head}" == "true" && "${is_current_head}" == "true" ]]; then
-              echo "${image}:backend-latest"
-            fi
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Gather git metadata
-        id: git-info
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "commit_hash=${{ needs.prepare.outputs.head_sha }}" >> "$GITHUB_OUTPUT"
-          echo "commit_short_hash=$(echo '${{ needs.prepare.outputs.head_sha }}' | cut -c1-7)" >> "$GITHUB_OUTPUT"
-          echo "build_date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
-          echo "repository_url=https://github.com/${{ github.repository }}" >> "$GITHUB_OUTPUT"
-          echo "branch_name=${{ needs.prepare.outputs.head_branch }}" >> "$GITHUB_OUTPUT"
-          echo "branch_url=https://github.com/${{ github.repository }}/tree/${{ needs.prepare.outputs.head_branch }}" >> "$GITHUB_OUTPUT"
-
-      - name: Read drizzle-orm version from package.json
-        id: pkg
-        shell: bash
-        run: |
-          set -euo pipefail
-          ver=$(node -e "const p=require('./package.json'); const v=(p.dependencies&&p.dependencies['drizzle-orm'])||(p.devDependencies&&p.devDependencies['drizzle-orm'])||''; process.stdout.write(String(v||'').replace(/^\\D+/,''));")
-          echo "drizzle_version=${ver}" >> "$GITHUB_OUTPUT"
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push backend Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          target: app-image-built
-          platforms: ${{ env.PLATFORMS }}
-          push: true
-          tags: ${{ steps.docker-tags.outputs.tags }}
-          labels: |
-            org.opencontainers.image.version=${{ needs.prepare.outputs.backend_app_version }}
-            org.opencontainers.image.revision=${{ needs.prepare.outputs.head_sha }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.ref.name=${{ needs.prepare.outputs.backend_release_tag }}
-          build-args: |
-            BUILD_DATE=${{ steps.git-info.outputs.build_date }}
-            COMMIT_HASH=${{ steps.git-info.outputs.commit_hash }}
-            COMMIT_SHORT_HASH=${{ steps.git-info.outputs.commit_short_hash }}
-            REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
-            BRANCH_NAME=${{ steps.git-info.outputs.branch_name }}
-            BRANCH_URL=${{ steps.git-info.outputs.branch_url }}
-            WITH_PLAYWRIGHT=false
-            DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Create or update backend GitHub Release
         uses: ncipollo/release-action@v1

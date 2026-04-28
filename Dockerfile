@@ -46,6 +46,10 @@ ARG COMMIT_SHORT_HASH
 ARG REPOSITORY_URL
 ARG BRANCH_NAME
 ARG BRANCH_URL
+ARG PUBLIC_API_BASE_URL
+ARG PUBLIC_SITE_URL
+ARG PUBLIC_SITE_BASE_PATH
+ARG PUBLIC_CONTENT_BUNDLE_URL=preloaded
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /ms-playwright /ms-playwright
 COPY . .
@@ -55,11 +59,18 @@ ENV COMMIT_SHORT_HASH=${COMMIT_SHORT_HASH}
 ENV REPOSITORY_URL=${REPOSITORY_URL}
 ENV BRANCH_NAME=${BRANCH_NAME}
 ENV BRANCH_URL=${BRANCH_URL}
+ENV PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
+ENV NEXT_PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
+ENV PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
+ENV NEXT_PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
+ENV PUBLIC_SITE_BASE_PATH=${PUBLIC_SITE_BASE_PATH}
+ENV NEXT_PUBLIC_SITE_BASE_PATH=${PUBLIC_SITE_BASE_PATH}
+ENV PUBLIC_CONTENT_BUNDLE_URL=${PUBLIC_CONTENT_BUNDLE_URL}
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TSC_COMPILE_ON_ERROR=1
-# Build only the backend runtime bundle and admin SPA in-image.
-RUN bun run backend:build
+# Build the public site, backend runtime bundle, and admin SPA in-image.
+RUN bun run frontend:build && bun run backend:build
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2
@@ -78,12 +89,14 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
 ENV INTERNAL_NEXT_PORT=25092
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
+ENV SERVE_PUBLIC_SITE=true
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/backend-dist/ ./
 COPY --from=builder /app/admin-dist ./admin-dist
+COPY --from=builder /app/site-dist ./site-dist
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/admin-dist && \
+    mkdir -p /app/data /app/admin-dist /app/site-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
@@ -112,12 +125,14 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
 ENV INTERNAL_NEXT_PORT=25092
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
+ENV SERVE_PUBLIC_SITE=true
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend-dist/ ./
 COPY admin-dist ./admin-dist
+COPY site-dist ./site-dist
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/admin-dist && \
+    mkdir -p /app/data /app/admin-dist /app/site-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
