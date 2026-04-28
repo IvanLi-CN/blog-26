@@ -7,12 +7,12 @@ channel="${CHANNEL:-}"
 commit_sha="${COMMIT_SHA:-${WORKFLOW_RUN_SHA:-${GITHUB_SHA:-}}}"
 
 if [[ -z "${component}" ]]; then
-  echo "compute-version: missing COMPONENT (frontend|backend)" >&2
+  echo "compute-version: missing COMPONENT (frontend|backend|image)" >&2
   exit 2
 fi
 
 case "${component}" in
-  frontend|backend) ;;
+  frontend|backend|image) ;;
   *)
     echo "compute-version: invalid COMPONENT=${component}" >&2
     exit 2
@@ -79,8 +79,15 @@ write_env() {
   fi
 }
 
-stable_pattern="^${component}-v[0-9]+\.[0-9]+\.[0-9]+$"
-rc_pattern="^${component}-v[0-9]+\.[0-9]+\.[0-9]+-rc\.${sha7}$"
+if [[ "${component}" == "image" ]]; then
+  tag_prefix="v"
+  stable_pattern="^v[0-9]+\.[0-9]+\.[0-9]+$"
+  rc_pattern="^v[0-9]+\.[0-9]+\.[0-9]+-rc\.${sha7}$"
+else
+  tag_prefix="${component}-v"
+  stable_pattern="^${component}-v[0-9]+\.[0-9]+\.[0-9]+$"
+  rc_pattern="^${component}-v[0-9]+\.[0-9]+\.[0-9]+-rc\.${sha7}$"
+fi
 
 head_tags="$(git tag --points-at "${commit_sha}" || true)"
 if [[ "${channel}" == "stable" ]]; then
@@ -91,7 +98,7 @@ fi
 
 if [[ -n "${existing_tag}" ]]; then
   release_tag="${existing_tag}"
-  app_version="${release_tag#${component}-v}"
+  app_version="${release_tag#${tag_prefix}}"
   release_major="$(echo "${app_version}" | cut -d. -f1)"
   is_prerelease="$([[ "${channel}" == "rc" ]] && echo true || echo false)"
   write_output "release_tag" "${release_tag}"
@@ -107,9 +114,9 @@ if [[ -n "${existing_tag}" ]]; then
 fi
 
 max_stable_tag="$({
-  git tag -l "${component}-v*" \
+  git tag -l "${tag_prefix}*" \
     | grep -E "${stable_pattern}" \
-    | sed -E "s/^${component}-v//" \
+    | sed -E "s/^${tag_prefix}//" \
     || true
 } | sort -Vu | tail -n 1)"
 
@@ -161,19 +168,19 @@ esac
 
 if [[ "${channel}" == "stable" ]]; then
   candidate_patch="${next_patch}"
-  while git rev-parse -q --verify "refs/tags/${component}-v${next_major}.${next_minor}.${candidate_patch}" >/dev/null; do
+  while git rev-parse -q --verify "refs/tags/${tag_prefix}${next_major}.${next_minor}.${candidate_patch}" >/dev/null; do
     candidate_patch="$((candidate_patch + 1))"
   done
   stable_version="${next_major}.${next_minor}.${candidate_patch}"
-  release_tag="${component}-v${stable_version}"
+  release_tag="${tag_prefix}${stable_version}"
   is_prerelease="false"
 else
   stable_version="${next_major}.${next_minor}.${next_patch}"
-  release_tag="${component}-v${stable_version}-rc.${sha7}"
+  release_tag="${tag_prefix}${stable_version}-rc.${sha7}"
   is_prerelease="true"
 fi
 
-app_version="${release_tag#${component}-v}"
+app_version="${release_tag#${tag_prefix}}"
 release_major="${next_major}"
 
 write_output "release_tag" "${release_tag}"

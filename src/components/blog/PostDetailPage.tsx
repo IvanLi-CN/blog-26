@@ -108,7 +108,7 @@ export default function PostDetailPage({
   const relativeUpdate = timing.relativeUpdate;
   const shouldShowUpdateHint =
     Boolean(isUserAdmin) && Boolean(relativeUpdate) && timing.shouldShowUpdateHint;
-  const fallbackLabel = Boolean(isUserAdmin) && timing.fallbackLabel ? timing.fallbackLabel : null;
+  const fallbackLabel = isUserAdmin && timing.fallbackLabel ? timing.fallbackLabel : null;
   const publishDateForLicense = timing.publishDate ?? new Date();
   const anomalies = detectContentAnomalies(post.body || "");
 

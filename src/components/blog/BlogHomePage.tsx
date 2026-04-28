@@ -113,7 +113,7 @@ export default function BlogHomePage() {
                   const shouldShowUpdateHint =
                     Boolean(isAdmin) && Boolean(relativeUpdate) && timing.shouldShowUpdateHint;
                   const fallbackLabel =
-                    Boolean(isAdmin) && timing.fallbackLabel ? timing.fallbackLabel : null;
+                    isAdmin && timing.fallbackLabel ? timing.fallbackLabel : null;
 
                   return (
                     <article key={post.id} className="card bg-base-100 shadow-xl">

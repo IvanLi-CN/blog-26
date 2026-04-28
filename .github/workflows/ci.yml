@@ -175,6 +175,16 @@ jobs:
           LOCAL_CONTENT_BASE_PATH: ./test-data/local
           CONTENT_SOURCES: local
 
+      - name: Prepare public snapshot for Docker build
+        run: bun run public:export
+        env:
+          DB_PATH: ./test-data/sqlite.db
+          LOCAL_CONTENT_BASE_PATH: ./test-data/local
+          CONTENT_SOURCES: local
+          PUBLIC_API_BASE_URL: https://ivanli.cc
+          PUBLIC_SITE_URL: https://ivanli.cc
+          PUBLIC_SITE_BASE_PATH: /
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -224,6 +234,10 @@ jobs:
             REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
             BRANCH_NAME=${{ steps.git-info.outputs.branch_name }}
             BRANCH_URL=${{ steps.git-info.outputs.branch_url }}
+            PUBLIC_API_BASE_URL=https://ivanli.cc
+            PUBLIC_SITE_URL=https://ivanli.cc
+            PUBLIC_SITE_BASE_PATH=/
+            PUBLIC_CONTENT_BUNDLE_URL=preloaded
             WITH_PLAYWRIGHT=false
             DRIZZLE_ORM_VERSION=${{ steps.pkg.outputs.drizzle_version }}
           cache-from: type=gha
@@ -298,12 +312,13 @@ jobs:
           with open("/tmp/docker-health.json", "r", encoding="utf-8") as f:
               health = json.load(f)
           assert health["status"] == "ok", health
-          assert health["site"]["status"] == "external", health
+          assert health["site"]["status"] == "ok", health
+          assert health["site"]["mode"] == "static", health
           assert health["legacyNext"]["status"] == "not-applicable", health
           PY
 
           wait_for_status \
-            "404" \
+            "200" \
             "http://127.0.0.1:25090/posts" \
             "/tmp/docker-posts.html"
 
