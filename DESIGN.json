@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "source": {
+    "method": "impeccable-scan",
+    "inputs": [
+      "PRODUCT.md",
+      "DESIGN.md",
+      "src/app/globals.css",
+      "apps/admin/src/styles.css",
+      "apps/admin/src/components/ui.tsx"
+    ],
+    "references": ["https://impeccable.style/docs/teach", "https://impeccable.style/docs/document"]
+  },
+  "project": {
+    "name": "Ivan's Blog",
+    "description": "个人内容系统，覆盖公开阅读、Memos、项目、标签、搜索、评论、后台内容管理、同步、向量化和 AI 配置。"
+  },
+  "register": "product",
+  "northStar": {
+    "name": "数字温室",
+    "description": "公开站像安静、柔和、可漫游的个人内容空间；后台像内容养护台，帮助作者稳定维护内容与系统状态。"
+  },
+  "extensions": {
+    "colorMeta": {
+      "public": {
+        "theme": "Nature Interface",
+        "light": {
+          "background": "#edf4ef",
+          "backgroundDeep": "#d6e4db",
+          "surface": "rgba(252, 253, 251, 0.78)",
+          "surfaceStrong": "rgba(255, 255, 255, 0.88)",
+          "surfaceMuted": "rgba(244, 248, 244, 0.7)",
+          "surfaceInset": "rgba(232, 239, 233, 0.72)",
+          "text": "#24352d",
+          "textSoft": "rgba(36, 53, 45, 0.68)",
+          "textFaint": "rgba(36, 53, 45, 0.48)",
+          "accent": "#7ca98b",
+          "accentStrong": "#4e7e60",
+          "secondary": "#84a7b5",
+          "success": "#3f8f68",
+          "warning": "#b17d45",
+          "danger": "#b35c62"
+        },
+        "dark": {
+          "background": "#0f1613",
+          "backgroundDeep": "#17221d",
+          "surface": "rgba(20, 30, 25, 0.74)",
+          "surfaceStrong": "rgba(24, 36, 29, 0.88)",
+          "surfaceMuted": "rgba(29, 41, 34, 0.68)",
+          "surfaceInset": "rgba(13, 21, 17, 0.75)",
+          "text": "#e9f1eb",
+          "textSoft": "rgba(233, 241, 235, 0.72)",
+          "textFaint": "rgba(233, 241, 235, 0.46)",
+          "accent": "#88c1a0",
+          "accentStrong": "#b3f2cd",
+          "secondary": "#83b3c6",
+          "success": "#78d4a2",
+          "warning": "#e8bc75",
+          "danger": "#f1939a"
+        },
+        "usage": [
+          "自然绿承载品牌气质和主要继续阅读路径。",
+          "蓝绿辅助色承载次级节点、时间线变化和信息分类。",
+          "成功、警告、危险色只用于真实状态。"
+        ]
+      },
+      "admin": {
+        "theme": "quiet console",
+        "dark": {
+          "background": "hsl(222 47% 11%)",
+          "foreground": "hsl(210 40% 96%)",
+          "card": "hsl(222 40% 14%)",
+          "primary": "hsl(217 91% 60%)",
+          "secondary": "hsl(262 83% 68%)",
+          "muted": "hsl(217 33% 17%)",
+          "border": "hsl(216 34% 24%)",
+          "destructive": "hsl(0 84% 60%)"
+        },
+        "light": {
+          "background": "hsl(210 33% 98%)",
+          "foreground": "hsl(222 47% 11%)",
+          "card": "hsl(0 0% 100%)",
+          "primary": "hsl(221 83% 53%)",
+          "secondary": "hsl(221 70% 97%)",
+          "muted": "hsl(210 40% 96%)",
+          "border": "hsl(214 32% 91%)",
+          "destructive": "hsl(0 72% 51%)"
+        },
+        "usage": [
+          "后台颜色服务任务和状态，不承担公共站的自然叙事。",
+          "primary 用于关键操作、焦点和链接。",
+          "muted、border、card 用于高密度信息分组。"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "public": {
+        "body": "Noto Sans SC",
+        "display": "Noto Serif SC",
+        "fallback": "PingFang SC, Hiragino Sans GB, sans-serif",
+        "usage": "正文强调长文本可读性，标题保留个人内容空间的文学感。"
+      },
+      "admin": {
+        "body": "InterVariable, Inter, system-ui, sans-serif",
+        "usage": "后台强调紧凑、直接、可重复操作。"
+      },
+      "technicalText": "代码、路径、日志、令牌和模型名称应与普通说明文字清楚区分。"
+    },
+    "elevation": {
+      "philosophy": "混合氛围",
+      "public": {
+        "shadow": "0 24px 60px rgba(95, 122, 108, 0.14)",
+        "shadowStrong": "0 24px 70px rgba(74, 98, 86, 0.2)",
+        "darkShadow": "0 24px 70px rgba(0, 0, 0, 0.36)",
+        "darkShadowStrong": "0 28px 80px rgba(0, 0, 0, 0.44)",
+        "usage": "半透明 surface、柔和阴影和轻微 hover lift 用于内容分组与继续阅读路径。"
+      },
+      "admin": {
+        "usage": "以边框、色块、间距和密度建立层级；阴影只辅助卡片、弹层和编辑器 surface。"
+      }
+    },
+    "motion": {
+      "public": {
+        "ambient": "允许低频背景氛围和柔和 hover lift。",
+        "reading": "阅读重页面应降低动效密度。",
+        "reducedMotion": "减少动态偏好下保留结构、层级和反馈，弱化或移除 ambient motion。"
+      },
+      "admin": {
+        "feedback": "动效只用于加载、保存、测试、同步和状态变更反馈。",
+        "reducedMotion": "减少动态偏好下仍显示状态文本、进度和结果。"
+      }
+    },
+    "breakpoints": {
+      "public": {
+        "contentWidth": "min(1280px, calc(100vw - 3rem))",
+        "readingWidth": "min(920px, calc(100vw - 3rem))",
+        "timeline": "桌面保留时间线轨道，移动端保留简化但可见的连续节奏。"
+      },
+      "admin": {
+        "shell": "桌面使用固定侧栏与滚动主工作区，移动端折叠为顶部上下文和单列内容。",
+        "maxWidth": "1760px"
+      }
+    },
+    "components": {
+      "public": [
+        "app shell",
+        "ambient scene",
+        "site header",
+        "site footer",
+        "surface",
+        "panel",
+        "timeline",
+        "timeline node",
+        "post card",
+        "memo card",
+        "related post card",
+        "tag badge",
+        "button",
+        "chip",
+        "input shell",
+        "alert",
+        "empty state"
+      ],
+      "admin": [
+        "app shell",
+        "sidebar navigation",
+        "page header",
+        "card",
+        "button",
+        "badge",
+        "alert",
+        "table",
+        "input",
+        "select",
+        "textarea",
+        "empty state",
+        "spinner",
+        "editor surface"
+      ]
+    },
+    "dos": [
+      "让内容和状态先被看懂。",
+      "公共站保持数字温室方向。",
+      "后台保持安静、密集、任务优先。",
+      "状态必须有文本、图标、位置或结构辅助。",
+      "减少动态偏好下仍保留可理解的结构和反馈。"
+    ],
+    "donts": [
+      "不要把个人博客做成通用 SaaS 营销页。",
+      "不要把公开站做成社交信息流。",
+      "不要把后台做成无差别企业模板。",
+      "不要使用默认 AI 产品视觉作为主要风格。",
+      "不要新增卡片套卡片、过强阴影或不可解释动效。"
+    ]
+  }
+}
