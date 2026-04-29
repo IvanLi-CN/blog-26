@@ -263,8 +263,8 @@ export function getLocalMemoRootConsistencyError(): string | null {
   return [
     "本地 memo 根目录配置不一致：",
     `LOCAL_MEMOS_PATH 解析为 ${serverMemoRoot}，`,
-    `NEXT_PUBLIC_LOCAL_MEMOS_PATH 解析为 ${clientMemoRoot}。`,
-    `请将 NEXT_PUBLIC_LOCAL_MEMOS_PATH 设置为 ${serverMemoRoot}，或移除 LOCAL_MEMOS_PATH 覆盖。`,
+    `PUBLIC_LOCAL_MEMOS_PATH 解析为 ${clientMemoRoot}。`,
+    `请将 PUBLIC_LOCAL_MEMOS_PATH 设置为 ${serverMemoRoot}，或移除 LOCAL_MEMOS_PATH 覆盖。`,
   ].join("");
 }
 

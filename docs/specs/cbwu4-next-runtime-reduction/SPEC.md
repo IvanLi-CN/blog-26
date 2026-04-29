@@ -10,6 +10,8 @@
 
 Those remaining ownership islands are now the primary blocker for shrinking the internal Next runtime without breaking stable public/admin contracts.
 
+`cbwu4` is complete as the production-runtime reduction phase. The repository-wide removal of active Next code, dependencies, scripts, Docker runtime configuration, tests, and current project documentation is owned by `znext-zero-next-cleanup`.
+
 ## 2. Goals
 
 1. Freeze a complete inventory of the remaining routes and contracts that still require the internal Next runtime.

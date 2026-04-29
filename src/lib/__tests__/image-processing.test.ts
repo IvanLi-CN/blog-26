@@ -18,13 +18,13 @@ describe("processInlineImages", () => {
   beforeEach(() => {
     mockFetch.mockClear();
     delete process.env.PUBLIC_API_BASE_URL;
-    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    delete process.env.PUBLIC_API_BASE_URL;
   });
 
   afterEach(() => {
     mockFetch.mockClear();
     delete process.env.PUBLIC_API_BASE_URL;
-    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    delete process.env.PUBLIC_API_BASE_URL;
   });
 
   const defaultOptions: ProcessInlineImagesOptions = {

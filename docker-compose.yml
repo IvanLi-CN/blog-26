@@ -11,7 +11,7 @@ services:
         BUILD_DATE: ${BUILD_DATE:-$(date +%Y%m%d)}
         COMMIT_HASH: ${COMMIT_HASH:-dev}
         COMMIT_SHORT_HASH: ${COMMIT_SHORT_HASH:-dev}
-        REPOSITORY_URL: ${REPOSITORY_URL:-https://git.ivanli.cc/Ivan/blog-nextjs}
+        REPOSITORY_URL: ${REPOSITORY_URL:-https://github.com/IvanLi-CN/blog-26}
         APP_UID: ${APP_UID:-1000}
         APP_GID: ${APP_GID:-1000}
     ports:
@@ -63,9 +63,6 @@ services:
       # 验证码配置
       - PUBLIC_LUOSIMAO_SITE_KEY=${PUBLIC_LUOSIMAO_SITE_KEY}
       - LUOSIMAO_SECRET_KEY=${LUOSIMAO_SECRET_KEY}
-      
-      # Next.js 配置
-      - NEXT_TELEMETRY_DISABLED=1
     volumes:
       # 数据持久化（固定挂载到 docker-data/）
       - ./docker-data:/app/data

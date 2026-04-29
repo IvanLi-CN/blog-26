@@ -2,11 +2,11 @@
 
 ## Project Structure & Module Organization
 
-Source lives under `src/`, with page routes and API handlers in `src/app/`. Shared UI and providers sit in `src/components/`, while core libraries and utilities live under `src/lib/` (tests colocated in `src/lib/__tests__/`). Server routers inhabit `src/server/`. Scripts for database, content, and tooling are in `scripts/`. End-to-end specs are stored in `tests/e2e/`, and static assets in `public/`. Path alias `@/*` maps to `src/*` in TypeScript.
+Source lives under `src/`, with shared UI in `src/components/`, core libraries under `src/lib/`, and Bun gateway/API routers in `src/server/`. The public Astro app lives under `site/`, the admin Vite/React SPA under `apps/admin/`, scripts under `scripts/`, E2E specs under `tests/e2e/`, and static assets in `public/`. Path alias `@/*` maps to `src/*` in TypeScript.
 
 ## Build, Test, and Development Commands
 
-Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (Next.js plus WebDAV).
+Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (WebDAV, Astro, admin SPA, and Bun gateway).
 Primary checkout uses `25090` (web) and `25091` (WebDAV). For worktrees, do not use these ports.
 Set custom ports via env vars as noted in "Worktree Development".
 Produce a production build via `bun run build`, then serve it using `bun run start`.
@@ -63,7 +63,7 @@ These conventions apply to any automation agent (Codex, CI, or human-operated sc
 - Prefer foreground execution for active development tasks: `bun run dev`.
 - If a non-blocking run is required, the caller must manage process lifecycle explicitly (start/stop ownership and log destination).
 - Validate ports before launch and avoid interrupting unrelated processes.
-- Treat `bun run dev:next`, `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, and `bun run src/scripts/start-integrated-server.ts` as long-running commands that require explicit lifecycle handling.
+- Treat `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, and `bun run gateway:dev` as long-running commands that require explicit lifecycle handling.
 - Playwright interactive helpers (`bun run test:e2e:ui`, `bun run test:e2e:debug`, `bun run test:e2e:headed`, `bun run test:e2e:report`) block until closed; automated flows must include a shutdown step.
 
 ## Coding Style & Naming Conventions
@@ -78,7 +78,7 @@ Unit and integration tests run with Bun's test runner via `bun run test`; keep s
 
 - Before invoking any runtime verification workflow, validate whether the scenario explicitly requires administrator permissions. Record the decision in your run notes so downstream agents understand the context.
 - When admin access *is* required:
-  - Set `ADMIN_EMAIL` for all relevant processes (Next.js dev server, Playwright, MCP tooling). Prefer `.env.local`; or prefix commands, e.g. `ADMIN_EMAIL=admin@example.com bun run dev`.
+  - Set `ADMIN_EMAIL` for all relevant processes (Bun gateway, Playwright, MCP tooling). Prefer `.env.local`; or prefix commands, e.g. `ADMIN_EMAIL=admin@example.com bun run dev`.
 - Playwright E2E tests emulate SSO by using a routing helper to inject `SSO_EMAIL_HEADER_NAME` (defaults to
   `Remote-Email`) only on requests targeting the app origin (`BASE_URL`), while stripping it from third-party
   domains (Iconify/Simplesvg/Unisvg) to avoid CORS issues. Do not run any reverse proxy in development.
@@ -96,7 +96,7 @@ Store secrets in `.env.local`; never commit them. SQLite paths default to `./dev
 ## Worktree Development (Concise)
 
 - Create worktree and branch:
-  - `git worktree add -b <branch> ../blog-nextjs-wt-<slug>`
+  - `git worktree add -b <branch> ../blog-wt-<slug>`
 - Initialize the new worktree with the setup script (required):
   - Default ports: `PORT=25090`, `WEBDAV_PORT=25091`.
   - If a default port is in use, supply available ports via environment variables. The script validates availability and exits on conflict. It does not create or modify any `.env*` files.
@@ -104,5 +104,5 @@ Store secrets in `.env.local`; never commit them. SQLite paths default to `./dev
     - `./scripts/setup.sh` (regenerates dev DB+data by default; does not perform content sync)
     - `./scripts/setup.sh --no-db` (skip DB reset and dev data generation)
 - Run the dev stack:
-  - `PORT=<web_port> bun run dev` (Next.js uses `PORT`; WebDAV helper will choose a free port near 25091 and print it in logs.) — **only after** exporting the environment variables above in the same shell.
+  - `PORT=<web_port> bun run dev` (gateway uses `PORT`; WebDAV helper will choose a free port near 25091 and print it in logs.) — **only after** exporting the environment variables above in the same shell.
   - Alternatively start services separately if needed. Remember to run `bun run dev-sync:trigger` once to import both local and WebDAV fixtures (after exporting the required env vars).

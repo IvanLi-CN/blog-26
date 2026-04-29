@@ -15,7 +15,7 @@ const envVars = [
   "WEBDAV_MEMOS_PATH",
   "LOCAL_CONTENT_BASE_PATH",
   "LOCAL_MEMOS_PATH",
-  "NEXT_PUBLIC_LOCAL_MEMOS_PATH",
+  "PUBLIC_LOCAL_MEMOS_PATH",
 ];
 
 envVars.forEach((varName) => {

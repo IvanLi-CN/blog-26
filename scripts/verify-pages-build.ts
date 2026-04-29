@@ -69,7 +69,7 @@ const checks = [
       `href="${toExpectedSitePath(basePath, "/memos")}"`,
       `href="${toExpectedSitePath(basePath, "/projects")}"`,
       `action="${toExpectedSitePath(basePath, "/search")}"`,
-      `href="${toExpectedSitePath(basePath, "/rss.xml")}"`,
+      `href="${toExpectedSitePath(basePath, "/feed.xml")}"`,
       `<link rel="canonical" href="${siteUrl}/"`,
     ],
     excludes: basePath

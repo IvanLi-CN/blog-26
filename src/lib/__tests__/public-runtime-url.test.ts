@@ -10,11 +10,11 @@ import {
 
 afterEach(() => {
   delete process.env.PUBLIC_API_BASE_URL;
-  delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  delete process.env.PUBLIC_API_BASE_URL;
   delete process.env.PUBLIC_SITE_URL;
-  delete process.env.NEXT_PUBLIC_SITE_URL;
+  delete process.env.PUBLIC_SITE_URL;
   delete process.env.PUBLIC_SITE_BASE_PATH;
-  delete process.env.NEXT_PUBLIC_SITE_BASE_PATH;
+  delete process.env.PUBLIC_SITE_BASE_PATH;
 });
 
 describe("public-runtime-url", () => {

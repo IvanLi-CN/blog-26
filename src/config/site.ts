@@ -47,16 +47,7 @@ export const SITE: SiteConfig = {
     name: "Ivan Li",
     email: "ivanli2048@gmail.com",
   },
-  keywords: [
-    "技术博客",
-    "编程",
-    "前端开发",
-    "后端开发",
-    "Ivan Li",
-    "TypeScript",
-    "React",
-    "Next.js",
-  ],
+  keywords: ["技术博客", "编程", "前端开发", "后端开发", "Ivan Li", "TypeScript", "React", "Astro"],
   social: {
     twitter: "@ivanli_cc",
     github: "IvanLi-CN",

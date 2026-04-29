@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const feeds = [
   { path: "/feed.xml", expectRoot: /<rss/i, expectItems: true },
   { path: "/memos/feed.xml", expectRoot: /<rss/i, expectItems: true },
-  { path: "/tags/test/feed.xml", expectRoot: /<rss/i, expectItems: false },
+  { path: "/tags/React/feed.xml", expectRoot: /<rss/i, expectItems: false },
 ];
 
 for (const f of feeds) {

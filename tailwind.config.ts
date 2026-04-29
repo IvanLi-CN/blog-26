@@ -3,9 +3,8 @@ import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config & { daisyui?: any } = {
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./apps/**/*.{js,ts,jsx,tsx}",
     "./site/**/*.{astro,js,ts,jsx,tsx}",
   ],
   theme: {

@@ -346,9 +346,7 @@ jobs:
         shell: bash
         env:
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
           PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH }}
-          NEXT_PUBLIC_SITE_BASE_PATH: ${{ vars.NEXT_PUBLIC_SITE_BASE_PATH }}
         run: |
           set -euo pipefail
           trim() {
@@ -370,8 +368,8 @@ jobs:
             default_site_url="https://${custom_domain}"
           fi
 
-          site_url="$(trim "${PUBLIC_SITE_URL:-${NEXT_PUBLIC_SITE_URL:-${default_site_url}}}")"
-          site_base_path="$(trim "${PUBLIC_SITE_BASE_PATH:-${NEXT_PUBLIC_SITE_BASE_PATH:-}}")"
+          site_url="$(trim "${PUBLIC_SITE_URL:-${default_site_url}}")"
+          site_base_path="$(trim "${PUBLIC_SITE_BASE_PATH:-}")"
 
           if [[ -n "${custom_domain}" ]]; then
             if [[ -z "${site_url}" || "${site_url}" == "${legacy_project_url}" ]]; then
@@ -390,9 +388,7 @@ jobs:
             echo "PUBLIC_SITE_BASE_PATH is required for frontend releases" >&2
             exit 1
           fi
-          echo "NEXT_PUBLIC_SITE_URL=${site_url}" >> "$GITHUB_ENV"
           echo "PUBLIC_SITE_URL=${site_url}" >> "$GITHUB_ENV"
-          echo "NEXT_PUBLIC_SITE_BASE_PATH=${site_base_path}" >> "$GITHUB_ENV"
           echo "PUBLIC_SITE_BASE_PATH=${site_base_path}" >> "$GITHUB_ENV"
 
       - name: Build frontend static site
@@ -496,9 +492,7 @@ jobs:
         env:
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
           PUBLIC_SITE_BASE_PATH: ${{ vars.PUBLIC_SITE_BASE_PATH }}
-          NEXT_PUBLIC_SITE_BASE_PATH: ${{ vars.NEXT_PUBLIC_SITE_BASE_PATH }}
         run: |
           set -euo pipefail
           trim() {
@@ -526,8 +520,8 @@ jobs:
             default_site_url="https://${custom_domain}"
           fi
 
-          site_url="$(trim "${PUBLIC_SITE_URL:-${NEXT_PUBLIC_SITE_URL:-${default_site_url}}}")"
-          site_base_path="$(trim "${PUBLIC_SITE_BASE_PATH:-${NEXT_PUBLIC_SITE_BASE_PATH:-}}")"
+          site_url="$(trim "${PUBLIC_SITE_URL:-${default_site_url}}")"
+          site_base_path="$(trim "${PUBLIC_SITE_BASE_PATH:-}")"
 
           if [[ -n "${custom_domain}" ]]; then
             if [[ -z "${site_url}" || "${site_url}" == "${legacy_project_url}" ]]; then

@@ -53,8 +53,7 @@ export type BuiltFeed = {
   lastModified: Date;
 };
 
-export const defaultBaseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || SITE.url || "http://localhost:25090";
+export const defaultBaseUrl = process.env.PUBLIC_SITE_URL || SITE.url || "http://localhost:25090";
 
 export function toAbsoluteUrl(urlOrPath?: string | null): string | undefined {
   if (!urlOrPath) return undefined;
@@ -141,7 +140,7 @@ export function buildFeed(
     updated: computeLastModified(items),
     feedLinks: meta.feedLinks,
     author: meta.author,
-    generator: "blog-nextjs (feed)",
+    generator: "ivan-blog (feed)",
     copyright: `${new Date().getFullYear()} ${SITE.owner}`,
   };
 

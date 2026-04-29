@@ -4,12 +4,10 @@ on:
   push:
     branches:
       - main
-      - nextjs
       - develop
   pull_request:
     branches:
       - main
-      - nextjs
       - develop
   release:
     types: [ published ]
@@ -120,11 +118,8 @@ jobs:
           DB_PATH: ./test-data/sqlite.db
           LOCAL_CONTENT_BASE_PATH: ./test-data/local
           CONTENT_SOURCES: local
-          NEXT_PUBLIC_API_BASE_URL: https://ivanli.cc
           PUBLIC_API_BASE_URL: https://ivanli.cc
-          NEXT_PUBLIC_SITE_URL: https://ivanli.cc
           PUBLIC_SITE_URL: https://ivanli.cc
-          NEXT_PUBLIC_SITE_BASE_PATH: /
           PUBLIC_SITE_BASE_PATH: /
 
       - name: Verify GitHub Pages custom-domain output
@@ -142,7 +137,7 @@ jobs:
     needs: [lint, unit-tests]
     if: >-
       github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/nextjs'))
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     permissions:
       contents: read
     timeout-minutes: 45
@@ -223,7 +218,7 @@ jobs:
           platforms: ${{ env.PLATFORMS }}
           push: false
           load: true
-          tags: blog-nextjs:ci-smoke
+          tags: blog:ci-smoke
           labels: |
             org.opencontainers.image.revision=${{ steps.git-info.outputs.commit_hash }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -293,10 +288,10 @@ jobs:
             return 1
           }
 
-          docker rm -f blog-nextjs-ci-smoke >/dev/null 2>&1 || true
+          docker rm -f blog-ci-smoke >/dev/null 2>&1 || true
 
           docker run -d \
-            --name blog-nextjs-ci-smoke \
+            --name blog-ci-smoke \
             -p 127.0.0.1:25090:25090 \
             -e CONTENT_SOURCES=local \
             -e LOCAL_CONTENT_BASE_PATH=/app/data/local \
@@ -304,7 +299,7 @@ jobs:
             -e SITE_URL=http://127.0.0.1:25090 \
             -e LLM_SETTINGS_MASTER_KEY=ci-smoke-llm-settings-master-key \
             -v "$PWD/test-data:/app/data" \
-            blog-nextjs:ci-smoke
+            blog:ci-smoke
 
           wait_for_status "200" "http://127.0.0.1:25090/api/health" "/tmp/docker-health.json"
           cat /tmp/docker-health.json
@@ -315,7 +310,8 @@ jobs:
           assert health["status"] == "ok", health
           assert health["site"]["status"] == "ok", health
           assert health["site"]["mode"] == "static", health
-          assert health["legacyNext"]["status"] == "not-applicable", health
+          assert health["admin"]["status"] == "ok", health
+          assert health["gatewayApis"]["status"] == "ok", health
           PY
 
           wait_for_status \
@@ -358,10 +354,10 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          docker logs blog-nextjs-ci-smoke || true
+          docker logs blog-ci-smoke || true
 
       - name: Cleanup docker smoke container
         if: always()
         shell: bash
         run: |
-          docker rm -f blog-nextjs-ci-smoke >/dev/null 2>&1 || true
+          docker rm -f blog-ci-smoke >/dev/null 2>&1 || true

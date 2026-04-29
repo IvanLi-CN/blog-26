@@ -4,15 +4,17 @@ import { extname, resolve } from "node:path";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
+import { handleDevApiRequest } from "@/server/dev-api/router";
 import { handleFilesApiRequest } from "@/server/files-api/router";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
+import { handleTestApiRequest } from "@/server/test-api/router";
+import { handleTrpcHttpRequest } from "@/server/trpc-http";
 
 type GatewayMode = "dev" | "production";
 
 const mode = (process.env.NODE_ENV === "production" ? "production" : "dev") as GatewayMode;
 const publicPort = Number(process.env.PORT || 25090);
-const nextPort = Number(process.env.INTERNAL_NEXT_PORT || publicPort + 2);
 const sitePort = Number(process.env.SITE_PORT || publicPort + 3);
 const adminPort = Number(process.env.ADMIN_PORT || publicPort + 4);
 const hostname = process.env.HOSTNAME || "0.0.0.0";
@@ -22,6 +24,7 @@ const adminDistDir = resolve(process.cwd(), process.env.ADMIN_DIST_DIR || "admin
 const servePublicSite =
   mode === "dev" ? true : (process.env.SERVE_PUBLIC_SITE || "false").trim() === "true";
 const localPreviewSsoEmail = process.env.LOCAL_PREVIEW_SSO_EMAIL?.trim();
+const devEndpointsEnabled = mode !== "production" || process.env.ENABLE_DEV_ENDPOINTS === "true";
 
 function log(message: string, extra?: Record<string, unknown>) {
   if (extra) {
@@ -60,22 +63,34 @@ function isNonProductionUiToolPath(pathname: string) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function isLegacyDevApiPath(pathname: string) {
-  if (pathname === "/api" || pathname === "/_next" || pathname.startsWith("/_next/")) {
-    return true;
-  }
+function isDevApiPath(pathname: string) {
+  return pathname === "/api/dev" || pathname.startsWith("/api/dev/");
+}
 
-  if (!pathname.startsWith("/api/")) {
-    return false;
-  }
+function isTestApiPath(pathname: string) {
+  return pathname === "/api/test" || pathname.startsWith("/api/test/");
+}
 
-  return (
-    !isPublicApiPath(pathname) &&
-    !isAdminApiPath(pathname) &&
-    !isFilesApiPath(pathname) &&
-    pathname !== "/api/health" &&
-    pathname !== "/mcp"
-  );
+function rejectDisabledDevEndpoint() {
+  return Response.json({ error: "Not Found" }, { status: 404 });
+}
+
+function isTrpcApiPath(pathname: string) {
+  return pathname === "/api/trpc" || pathname.startsWith("/api/trpc/");
+}
+
+function isTagsOrganizeCompatPath(pathname: string) {
+  return pathname === "/api/tags/organize" || pathname.startsWith("/api/tags/organize/");
+}
+
+function redirectToFeedXml() {
+  return new Response(null, {
+    status: 301,
+    headers: {
+      location: "/feed.xml",
+      "cache-control": "public, max-age=86400",
+    },
+  });
 }
 
 function buildAdminPreviewPath(pathname: string) {
@@ -115,9 +130,10 @@ function shouldInjectLocalPreviewIdentity(pathname: string, searchParams: URLSea
     isFilesApiPath(pathname) ||
     pathname === "/api/files" ||
     pathname.startsWith("/api/files/") ||
-    pathname === "/api/tags/organize" ||
-    pathname.startsWith("/api/tags/organize/") ||
-    isLegacyDevApiPath(pathname) ||
+    isTagsOrganizeCompatPath(pathname) ||
+    isDevApiPath(pathname) ||
+    isTestApiPath(pathname) ||
+    isTrpcApiPath(pathname) ||
     isNonProductionUiToolPath(pathname) ||
     isLegacyPreviewRequest(pathname, searchParams)
   );
@@ -186,6 +202,21 @@ async function resolveStaticAsset(pathname: string) {
   }
 
   return null;
+}
+
+async function servePublicStaticFile(request: Request, path: string, status = 200) {
+  const info = await stat(path);
+  const etag = `W/"${info.size}-${Math.trunc(info.mtimeMs)}"`;
+  const headers = new Headers({
+    etag,
+    "last-modified": info.mtime.toUTCString(),
+  });
+
+  if (request.headers.get("if-none-match") === etag) {
+    return new Response(null, { status: 304, headers });
+  }
+
+  return new Response(Bun.file(path), { status, headers });
 }
 
 async function resolveAdminAsset(pathname: string) {
@@ -454,19 +485,8 @@ const server = Bun.serve({
               mcp: true,
             }),
       ]);
-      const nextHealthy =
-        mode === "dev"
-          ? await fetch(`http://${internalHostname}:${nextPort}/api/health`, {
-              signal: AbortSignal.timeout(1500),
-            })
-              .then((response) => response.ok)
-              .catch(() => false)
-          : null;
       const gatewayApisHealthy = Object.values(gatewayApis).every(Boolean);
-      const status =
-        siteHealthy && adminHealthy && gatewayApisHealthy && (mode === "production" || nextHealthy)
-          ? 200
-          : 503;
+      const status = siteHealthy && adminHealthy && gatewayApisHealthy ? 200 : 503;
       return Response.json(
         {
           status: status === 200 ? "ok" : "degraded",
@@ -480,10 +500,6 @@ const server = Bun.serve({
                 ? siteDistDir
                 : `http://${internalHostname}:${sitePort}`
               : null,
-          },
-          legacyNext: {
-            status: mode === "production" ? "not-applicable" : nextHealthy ? "ok" : "down",
-            target: mode === "production" ? null : `http://${internalHostname}:${nextPort}`,
           },
           admin: {
             status: adminHealthy ? "ok" : "down",
@@ -503,6 +519,10 @@ const server = Bun.serve({
           },
         }
       );
+    }
+
+    if (pathname === "/rss.xml") {
+      return redirectToFeedXml();
     }
 
     if (isPublicApiPath(pathname)) {
@@ -525,6 +545,26 @@ const server = Bun.serve({
       const pathSegments =
         tail.length > 0 ? tail.split("/").filter(Boolean).map(decodeURIComponent) : [];
       return handleFilesApiRequest(effectiveRequest, { source, path: pathSegments });
+    }
+
+    if (isDevApiPath(pathname)) {
+      if (!devEndpointsEnabled) return rejectDisabledDevEndpoint();
+      const subPath = pathname.replace(/^\/api\/dev/, "") || "/";
+      return handleDevApiRequest(effectiveRequest, subPath);
+    }
+
+    if (isTestApiPath(pathname)) {
+      if (!devEndpointsEnabled) return rejectDisabledDevEndpoint();
+      const subPath = pathname.replace(/^\/api\/test/, "") || "/";
+      return handleTestApiRequest(effectiveRequest, subPath);
+    }
+
+    if (isTrpcApiPath(pathname)) {
+      return handleTrpcHttpRequest(effectiveRequest);
+    }
+
+    if (isTagsOrganizeCompatPath(pathname)) {
+      return handleAdminApiRequest(effectiveRequest, "/tags/organize");
     }
 
     if (pathname === "/mcp") {
@@ -614,29 +654,14 @@ const server = Bun.serve({
       });
     }
 
-    if (mode === "dev" && (isLegacyDevApiPath(pathname) || isNonProductionUiToolPath(pathname))) {
-      const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${nextPort}`);
-      return proxyRequest(effectiveRequest, target);
-    }
-
-    if (pathname.startsWith("/_next/")) {
-      if (mode === "dev") {
-        const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${nextPort}`);
-        return proxyRequest(effectiveRequest, target);
-      }
-      return new Response("Not Found", { status: 404 });
-    }
-
     if (pathname.startsWith("/api/")) {
-      if (mode === "dev") {
-        const target = new URL(`${pathname}${search}`, `http://${internalHostname}:${nextPort}`);
-        return proxyRequest(effectiveRequest, target);
-      }
+      const message = devEndpointsEnabled
+        ? "Use /api/public/*, /api/admin/*, /api/files/*, /api/dev/*, /api/test/*, /api/trpc/*, /api/health, or /mcp."
+        : "Use /api/public/*, /api/admin/*, /api/files/*, /api/trpc/*, /api/health, or /mcp.";
       return Response.json(
         {
           error: "Not Found",
-          message:
-            "This API is not available in production. Use /api/public/*, /api/admin/*, /api/files/*, /api/health, or /mcp.",
+          message,
         },
         { status: 404 }
       );
@@ -657,12 +682,12 @@ const server = Bun.serve({
 
     const staticFile = await resolveStaticAsset(pathname);
     if (staticFile) {
-      return new Response(Bun.file(staticFile));
+      return servePublicStaticFile(effectiveRequest, staticFile);
     }
 
     const notFoundPage = resolve(siteDistDir, "404.html");
     if (await fileExists(notFoundPage)) {
-      return new Response(Bun.file(notFoundPage), { status: 404 });
+      return servePublicStaticFile(effectiveRequest, notFoundPage, 404);
     }
 
     return new Response("Not Found", { status: 404 });
@@ -672,7 +697,6 @@ const server = Bun.serve({
 log("gateway ready", {
   mode,
   publicPort,
-  nextPort,
   sitePort,
   adminPort,
   hostname,

@@ -41,14 +41,14 @@ describe("memo-paths", () => {
     expect(inferContentType("/Memos/test.md")).toBe("memo");
   });
 
-  it("rejects invalid NEXT_PUBLIC_LOCAL_MEMOS_PATH values in the strict client getter", () => {
+  it("rejects invalid PUBLIC_LOCAL_MEMOS_PATH values in the strict client getter", () => {
     expect(() => getConfiguredClientLocalMemoRootPath()).not.toThrow();
 
     const result = spawnSync(
       "bun",
       [
         "-e",
-        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { const mod = await import("./src/lib/memo-paths.ts?client-strict-env-test"); console.log(mod.getConfiguredClientLocalMemoRootPath()); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+        'process.env.PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { const mod = await import("./src/lib/memo-paths.ts?client-strict-env-test"); console.log(mod.getConfiguredClientLocalMemoRootPath()); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),
@@ -72,7 +72,7 @@ describe("memo-paths", () => {
       "bun",
       [
         "-e",
-        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?client-disabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: false }));',
+        'process.env.PUBLIC_LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?client-disabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: false }));',
       ],
       {
         cwd: process.cwd(),
@@ -89,7 +89,7 @@ describe("memo-paths", () => {
       "bun",
       [
         "-e",
-        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { const mod = await import("./src/lib/memo-paths.ts?client-enabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: true })); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+        'process.env.PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { const mod = await import("./src/lib/memo-paths.ts?client-enabled-fallback-test"); console.log(mod.resolveClientMemoRootPath({ localSourceEnabled: true })); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),
@@ -106,12 +106,12 @@ describe("memo-paths", () => {
     expect(getMemoEditorContentSource(false)).toBe("webdav");
   });
 
-  it("uses NEXT_PUBLIC_LOCAL_MEMOS_PATH for client-safe overrides", () => {
+  it("uses PUBLIC_LOCAL_MEMOS_PATH for client-safe overrides", () => {
     const result = spawnSync(
       "bun",
       [
         "-e",
-        'process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?public-env-test"); console.log(JSON.stringify({ root: mod.DEFAULT_LOCAL_MEMO_ROOT_PATH }));',
+        'process.env.PUBLIC_LOCAL_MEMOS_PATH="/memos"; const mod = await import("./src/lib/memo-paths.ts?public-env-test"); console.log(JSON.stringify({ root: mod.DEFAULT_LOCAL_MEMO_ROOT_PATH }));',
       ],
       {
         cwd: process.cwd(),
@@ -196,7 +196,7 @@ describe("memo-paths", () => {
       "bun",
       [
         "-e",
-        'process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_MEMOS_PATH="../outside"; process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?invalid-memo-root-test"); console.log("unexpected-success"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+        'process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_MEMOS_PATH="../outside"; process.env.PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?invalid-memo-root-test"); console.log("unexpected-success"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),
@@ -213,7 +213,7 @@ describe("memo-paths", () => {
       "bun",
       [
         "-e",
-        'process.env.CONTENT_SOURCES="webdav"; process.env.WEBDAV_URL="http://localhost:1"; process.env.NEXT_PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?disabled-local-memo-root-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+        'process.env.CONTENT_SOURCES="webdav"; process.env.WEBDAV_URL="http://localhost:1"; process.env.PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?disabled-local-memo-root-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),
@@ -308,7 +308,7 @@ describe("memo-paths", () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("LOCAL_MEMOS_PATH");
-    expect(result.stderr).toContain("NEXT_PUBLIC_LOCAL_MEMOS_PATH");
+    expect(result.stderr).toContain("PUBLIC_LOCAL_MEMOS_PATH");
   });
 
   it("maps legacy memo routes to the configured local memo root", () => {

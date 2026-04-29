@@ -22,7 +22,6 @@ fi
 
 export DB_PATH="${DB_PATH:-/app/data/sqlite.db}"
 export PORT="${PORT:-25090}"
-export INTERNAL_NEXT_PORT="${INTERNAL_NEXT_PORT:-$((PORT + 2))}"
 export SITE_PORT="${SITE_PORT:-$((PORT + 3))}"
 export ADMIN_DIST_DIR="${ADMIN_DIST_DIR:-/app/admin-dist}"
 export SITE_DIST_DIR="${SITE_DIST_DIR:-/app/site-dist}"
@@ -45,28 +44,20 @@ echo "🌐 Runtime configuration:"
 echo "  NODE_ENV=${NODE_ENV:-unset}"
 echo "  DB_PATH=$DB_PATH"
 echo "  PORT=$PORT"
-echo "  INTERNAL_NEXT_PORT=$INTERNAL_NEXT_PORT"
 echo "  SITE_PORT=$SITE_PORT"
 echo "  SERVE_PUBLIC_SITE=$SERVE_PUBLIC_SITE"
 echo "  CONTENT_SOURCES=${CONTENT_SOURCES:-default}"
 echo "  WEBDAV_URL=$(env_status WEBDAV_URL)"
 echo "  LLM_SETTINGS_MASTER_KEY=$(env_status LLM_SETTINGS_MASTER_KEY)"
 
-if [ -z "${PUBLIC_SITE_URL:-}" ] && [ -n "${NEXT_PUBLIC_SITE_URL:-}" ]; then
-  export PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL}"
-fi
-if [ -z "${NEXT_PUBLIC_SITE_URL:-}" ] && [ -n "${PUBLIC_SITE_URL:-}" ]; then
-  export NEXT_PUBLIC_SITE_URL="${PUBLIC_SITE_URL}"
-fi
-if [ -z "${NEXT_PUBLIC_SITE_URL:-}" ] && [ -n "${SITE_URL:-}" ]; then
-  export NEXT_PUBLIC_SITE_URL="${SITE_URL}"
+if [ -z "${PUBLIC_SITE_URL:-}" ] && [ -n "${SITE_URL:-}" ]; then
   export PUBLIC_SITE_URL="${SITE_URL}"
 fi
 
 DB_DIR="$(dirname "$DB_PATH")"
 echo "📁 Database path: $DB_PATH"
 echo "🌿 Public snapshot path: $PUBLIC_SNAPSHOT_PATH"
-echo "🌐 Gateway port: $PORT | internal Next: $INTERNAL_NEXT_PORT | serve public site: $SERVE_PUBLIC_SITE | Admin build dir: $ADMIN_DIST_DIR"
+echo "🌐 Gateway port: $PORT | serve public site: $SERVE_PUBLIC_SITE | Admin build dir: $ADMIN_DIST_DIR"
 echo "🧩 Astro types dir: $ASTRO_TYPES_DIR"
 echo "🪐 Astro cache dir: $ASTRO_CACHE_DIR"
 echo "⚡ Vite cache dir: $VITE_CACHE_DIR"
@@ -176,12 +167,10 @@ echo "🔄 Running database migrations..."
 if run_as_target_user env \
   DB_PATH="$DB_PATH" \
   PORT="$PORT" \
-  INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
   SITE_PORT="$SITE_PORT" \
   PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
   ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
   VITE_CACHE_DIR="$VITE_CACHE_DIR" \
-  NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
   PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
   bun ./scripts/migrate.ts; then
   echo "✅ Database migrations completed"
@@ -195,7 +184,6 @@ if [ "$(id -u)" = "0" ] && { [ "$RUN_UID" != "$(id -u)" ] || [ "$RUN_GID" != "$(
   exec gosu "${RUN_UID}:${RUN_GID}" env \
     DB_PATH="$DB_PATH" \
     PORT="$PORT" \
-    INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
@@ -203,14 +191,12 @@ if [ "$(id -u)" = "0" ] && { [ "$RUN_UID" != "$(id -u)" ] || [ "$RUN_GID" != "$(
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
     VITE_CACHE_DIR="$VITE_CACHE_DIR" \
-    NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
     PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
     "${APP_CMD[@]}"
 else
   exec env \
     DB_PATH="$DB_PATH" \
     PORT="$PORT" \
-    INTERNAL_NEXT_PORT="$INTERNAL_NEXT_PORT" \
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
@@ -218,7 +204,6 @@ else
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
     VITE_CACHE_DIR="$VITE_CACHE_DIR" \
-    NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-}" \
     PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-}" \
     "${APP_CMD[@]}"
 fi

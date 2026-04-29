@@ -10,7 +10,7 @@
 - **tRPC 升级到 v11.5.0**：支持 WebSocket subscription 功能
 - **实时同步日志**：从轮询改为 WebSocket 流式传输  
 - **事件驱动架构**：新增 SyncEventManager 事件协调器
-- **集成服务器**：Next.js 和 WebSocket 在同一进程中运行
+- **集成服务器**：gateway 和 WebSocket 在同一进程中运行
 
 ### UI/UX 重大变更
 - **实时 UI 更新**：自动滚动和日志进场动画
