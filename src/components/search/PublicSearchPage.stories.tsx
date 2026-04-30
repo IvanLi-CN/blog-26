@@ -119,6 +119,7 @@ export const Results: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "搜索旧文章和闪念" })).toBeInTheDocument();
     await expect(canvas.getByText("找到 3 条内容")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "搜索" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
   },
 };

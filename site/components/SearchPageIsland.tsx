@@ -3,9 +3,10 @@ import PublicSearchPage from "@/components/search/PublicSearchPage";
 import type { SearchFilter, SearchResultItem } from "@/components/search/search-model";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
-async function search(query: string) {
+async function search(query: string, signal?: AbortSignal) {
   const response = await fetch(
-    toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`)
+    toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`),
+    { signal }
   );
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
@@ -18,6 +19,8 @@ async function search(query: string) {
 
 export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
   const [query, setQuery] = useState(initialQuery);
   const [searchedQuery, setSearchedQuery] = useState(initialQuery);
   const [filter, setFilter] = useState<SearchFilter>("all");
@@ -26,6 +29,9 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
   const [error, setError] = useState<string | null>(null);
 
   const syncFromLocation = useCallback(() => {
+    abortRef.current?.abort();
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     const current = new URL(window.location.href).searchParams.get("q") || "";
     setQuery(current);
     setSearchedQuery(current);
@@ -36,15 +42,23 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
       setIsLoading(false);
       return;
     }
+    const controller = new AbortController();
+    abortRef.current = controller;
     setIsLoading(true);
     setError(null);
-    void search(current.trim())
-      .then(setResults)
+    void search(current.trim(), controller.signal)
+      .then((nextResults) => {
+        if (requestIdRef.current === requestId) setResults(nextResults);
+      })
       .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        if (requestIdRef.current !== requestId) return;
         setResults([]);
         setError(err instanceof Error ? err.message : String(err));
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (requestIdRef.current === requestId) setIsLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -54,6 +68,7 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
     window.addEventListener("popstate", handlePopstate);
     return () => {
       window.clearTimeout(timer);
+      abortRef.current?.abort();
       window.removeEventListener("popstate", handlePopstate);
     };
   }, [syncFromLocation]);

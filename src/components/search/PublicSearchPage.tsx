@@ -119,7 +119,8 @@ export default function PublicSearchPage({
                   <button
                     type="submit"
                     disabled={!canSearch}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-[color:var(--nature-accent-strong)] px-4 text-sm font-medium text-[color:var(--nature-bg)] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-45"
+                    aria-label="搜索"
+                    className="nature-search-submit inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[color:var(--nature-accent-strong)] px-4 text-sm font-medium transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     <Icon name="tabler:arrow-right" className="h-4 w-4" />
                     <span className="hidden sm:inline">搜索</span>
@@ -148,7 +149,7 @@ export default function PublicSearchPage({
                     type="button"
                     onClick={() => onFilterChange(item.key)}
                     className={cn(
-                      "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition",
+                      "inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm transition",
                       filter === item.key
                         ? "border-[rgba(var(--nature-accent-rgb),0.42)] bg-[rgba(var(--nature-accent-rgb),0.14)] text-[color:var(--nature-accent-strong)]"
                         : "border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.48)] text-[color:var(--nature-text-soft)] hover:border-[color:var(--nature-line-strong)] hover:text-[color:var(--nature-text)]"

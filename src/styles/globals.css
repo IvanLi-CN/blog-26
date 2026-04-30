@@ -508,6 +508,14 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   box-shadow: 0 22px 42px rgba(var(--nature-accent-rgb), 0.28);
 }
 
+.nature-search-submit {
+  color: #f7fff8;
+}
+
+html[data-ui-theme="dark"] .nature-search-submit {
+  color: var(--nature-bg);
+}
+
 .nature-button-outline {
   border-color: var(--nature-line-strong);
   background: rgba(var(--nature-highlight-rgb), 0.34);

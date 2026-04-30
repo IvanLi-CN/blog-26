@@ -345,6 +345,14 @@
     box-shadow: 0 22px 42px rgba(var(--nature-accent-rgb), 0.28);
   }
 
+  .nature-search-submit {
+    color: #f7fff8;
+  }
+
+  html[data-ui-theme="dark"] .nature-search-submit {
+    color: var(--nature-bg);
+  }
+
   .nature-button-outline:hover:not(:disabled),
   .nature-button-ghost:hover:not(:disabled) {
     transform: translateY(-1px);
