@@ -37,10 +37,14 @@ export default function SearchResultsList({
 
         return (
           <li key={`${type}-${r.slug}`} className="list-none">
-            <a href={href} className="nature-hover-hitbox group block">
+            <a
+              href={href}
+              aria-label={`打开 ${r.title || r.slug}`}
+              className="nature-hover-hitbox group block"
+            >
               <div
                 className={cn(
-                  "nature-panel nature-panel-soft nature-hover-lift nature-hover-surface block overflow-hidden px-0 py-0 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.32)] [--nature-hover-lift-offset:-0.025rem]",
+                  "nature-panel nature-panel-soft nature-hover-lift nature-hover-surface block px-0 py-0 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.32)] [--nature-hover-lift-offset:-0.025rem]",
                   linkClassName
                 )}
               >
@@ -79,14 +83,6 @@ export default function SearchResultsList({
                       <span className="truncate">{href}</span>
                     </div>
                   </div>
-                </div>
-
-                <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.16)] px-4 py-3 text-sm text-[color:var(--nature-text-soft)] sm:px-5">
-                  打开内容
-                  <Icon
-                    name="tabler:arrow-up-right"
-                    className="ml-2 inline h-4 w-4 align-[-0.125rem] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                  />
                 </div>
               </div>
             </a>

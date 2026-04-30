@@ -4,6 +4,7 @@ import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
 import { cosineSimilarity, createEmbedding } from "./embeddings";
 import { rerank as rerankApi } from "./rerank";
+import { getCachedSearchResults } from "./search-cache";
 
 export type SemanticSearchInput = {
   q: string;
@@ -66,7 +67,7 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
   }));
 }
 
-export async function semantic(input: SemanticSearchInput): Promise<SearchResult[]> {
+async function computeSemantic(input: SemanticSearchInput): Promise<SearchResult[]> {
   const resolved = await getResolvedLlmConfig();
   const model = input.model || resolved.embedding.model || "BAAI/bge-m3";
 
@@ -141,7 +142,11 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
   return results.slice(0, input.topK ?? 50);
 }
 
-export async function enhanced(
+export async function semantic(input: SemanticSearchInput): Promise<SearchResult[]> {
+  return getCachedSearchResults("semantic", input, () => computeSemantic(input));
+}
+
+async function computeEnhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean }
 ) {
   const resolved = await getResolvedLlmConfig();
@@ -185,4 +190,10 @@ export async function enhanced(
     }
     throw err;
   }
+}
+
+export async function enhanced(
+  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean }
+) {
+  return getCachedSearchResults("enhanced", input, () => computeEnhanced(input));
 }

@@ -121,6 +121,7 @@ export const Results: Story = {
     await expect(canvas.getByText("找到 3 条内容")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "搜索" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+    await expect(canvas.queryByText("打开内容")).not.toBeInTheDocument();
   },
 };
 

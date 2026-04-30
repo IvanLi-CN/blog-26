@@ -3,6 +3,47 @@ import PublicSearchPage from "@/components/search/PublicSearchPage";
 import type { SearchFilter, SearchResultItem } from "@/components/search/search-model";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
+const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
+const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v1:";
+
+type CachedSearchResults = {
+  expiresAt: number;
+  results: SearchResultItem[];
+};
+
+function getSearchResultsCacheKey(query: string) {
+  return `${SEARCH_RESULTS_CACHE_PREFIX}${encodeURIComponent(query.trim().toLowerCase())}:50`;
+}
+
+function readCachedSearchResults(query: string) {
+  try {
+    const raw = window.sessionStorage.getItem(getSearchResultsCacheKey(query));
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as CachedSearchResults;
+    if (!Array.isArray(cached.results) || cached.expiresAt <= Date.now()) {
+      window.sessionStorage.removeItem(getSearchResultsCacheKey(query));
+      return null;
+    }
+    return cached.results;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedSearchResults(query: string, results: SearchResultItem[]) {
+  try {
+    window.sessionStorage.setItem(
+      getSearchResultsCacheKey(query),
+      JSON.stringify({
+        expiresAt: Date.now() + SEARCH_RESULTS_CACHE_TTL_MS,
+        results,
+      } satisfies CachedSearchResults)
+    );
+  } catch {
+    // Storage can be unavailable in private contexts; search still works without it.
+  }
+}
+
 async function search(query: string, signal?: AbortSignal) {
   const response = await fetch(
     toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`),
@@ -42,13 +83,23 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
       setIsLoading(false);
       return;
     }
+    const cachedResults = readCachedSearchResults(current.trim());
+    if (cachedResults) {
+      setResults(cachedResults);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
     const controller = new AbortController();
     abortRef.current = controller;
     setIsLoading(true);
     setError(null);
     void search(current.trim(), controller.signal)
       .then((nextResults) => {
-        if (requestIdRef.current === requestId) setResults(nextResults);
+        if (requestIdRef.current === requestId) {
+          setResults(nextResults);
+          writeCachedSearchResults(current.trim(), nextResults);
+        }
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;

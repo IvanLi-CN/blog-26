@@ -5,6 +5,7 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
+import { clearSearchCache } from "@/lib/ai/search-cache";
 import {
   buildMemoAssetPath,
   buildMemoRelativePath,
@@ -887,6 +888,8 @@ export const memosRouter = router({
       });
     }
 
+    clearSearchCache();
+
     // 触发增量数据同步（内部已处理错误日志）
     if (isTestEnv) {
       void triggerIncrementalSync();
@@ -1018,6 +1021,7 @@ export const memosRouter = router({
       };
 
       await db.update(posts).set(updateData).where(eq(posts.id, id));
+      clearSearchCache();
 
       // 触发增量数据同步
       if (isTestEnv) {
@@ -1129,6 +1133,7 @@ export const memosRouter = router({
 
       // 从数据库删除
       await db.delete(posts).where(eq(posts.id, id));
+      clearSearchCache();
 
       // 触发增量数据同步
       if (isTestEnv) {

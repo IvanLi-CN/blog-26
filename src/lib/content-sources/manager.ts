@@ -6,6 +6,7 @@
 
 import { desc, eq, lt, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { clearSearchCache } from "@/lib/ai/search-cache";
 import { db, initializeDB } from "../db";
 import type { ContentSyncLog } from "../schema";
 import { contentSyncLogs, contentSyncStatus, posts } from "../schema";
@@ -350,6 +351,7 @@ export class ContentSourceManager {
     try {
       // 清空 posts 表中的所有内容
       await db.delete(posts);
+      clearSearchCache();
       await this.logSync("info", "🗑️ 已清空 posts 表");
 
       await this.logSync("info", "✅ 数据库内容清空完成");
@@ -699,6 +701,10 @@ export class ContentSourceManager {
           timestamp: Date.now(),
         });
       }
+    }
+
+    if (stats.created > 0 || stats.updated > 0 || stats.deleted > 0) {
+      clearSearchCache();
     }
 
     return { stats, errors, logs };
