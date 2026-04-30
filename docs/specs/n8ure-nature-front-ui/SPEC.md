@@ -135,6 +135,20 @@ PR: include
 PR: include
 ![Hover stability - search results](./assets/hover-stability-search-results.png)
 
+### Search interface redesign
+
+- Evidence captured from Storybook mock canvas for the public search page on branch `th/search-interface-redesign`.
+- The page now renders the deep-linked query in the first paint, uses query-aware status, exposes type filters with counts, and presents result cards with readable content type, path, excerpt, and relevance metadata.
+- Chrome DevTools capture was blocked by `Network.enable timed out`, so the controlled Storybook canvas was captured with Playwright against the current local Storybook lease.
+
+PR: include
+![Search redesign light](./assets/search-redesign-results.png)
+
+PR: include
+![Search redesign dark](./assets/search-redesign-dark.png)
+
+![Search redesign mobile](./assets/search-redesign-mobile.png)
+
 ## 8. Change log
 
 - 2026-04-05: Created spec for the public Nature redesign and DaisyUI decoupling.
@@ -144,3 +158,4 @@ PR: include
 - 2026-04-11: Closed the spec after the final Astro public-route, theme shell, and hover-stability regression pass.
 - 2026-04-12: Fixed the Astro public theme bootstrap regression so dark/system-dark theme state persists across route navigation and extended the Astro guest regression suite to block the issue.
 - 2026-04-16: Restored the shared public timeline rail/node contract for the home mixed feed and memos list, refreshed light/dark/mobile evidence, removed the extra home intro cards, and extended guest regression coverage for timeline visibility.
+- 2026-04-30: Redesigned the public search page around query-aware discovery, shared result presentation, Storybook state coverage, and refreshed visual evidence.
