@@ -77,11 +77,6 @@ export default function SearchResultsList({
                         {r.excerpt}
                       </p>
                     )}
-
-                    <div className="mt-4 flex items-center gap-2 text-xs text-[color:var(--nature-text-faint)]">
-                      <Icon name="tabler:corner-down-right" className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{href}</span>
-                    </div>
                   </div>
                 </div>
               </div>
