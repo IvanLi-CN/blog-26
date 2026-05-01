@@ -602,51 +602,49 @@ function useCounter(initialValue = 0) {
       tags: ["Svelte", "Runes", "编译器"],
       author: "Ivan Li",
       image: "./assets/svelte5-features.jpg",
-      body: `# React Hooks 深度解析
+      body: `# Svelte 5 新特性全面解析
 
-React Hooks 改变了我们编写 React 组件的方式，让函数组件也能拥有状态和生命周期。
+Svelte 5 引入了 Runes，让响应式逻辑可以脱离组件文件复用，同时保留编译时优化。
 
-## 基础 Hooks
+## Runes 响应式
 
-### useState
+### $state
 
-\`\`\`jsx
-const [count, setCount] = useState(0);
+\`\`\`svelte
+let count = $state(0);
 \`\`\`
 
-### useEffect
+### $derived
 
-\`\`\`jsx
-useEffect(() => {
-  // 副作用逻辑
-  return () => {
-    // 清理逻辑
+\`\`\`svelte
+let doubled = $derived(count * 2);
+\`\`\`
+
+## 跨文件状态
+
+Runes 可以在普通 TypeScript 模块中表达响应式状态：
+
+\`\`\`ts
+export function createCounter() {
+  let count = $state(0);
+  return {
+    get count() {
+      return count;
+    },
+    increment() {
+      count += 1;
+    },
   };
-}, [dependencies]);
-\`\`\`
-
-## 自定义 Hooks
-
-自定义 Hooks 让我们可以提取和复用组件逻辑：
-
-\`\`\`jsx
-function useCounter(initialValue = 0) {
-  const [count, setCount] = useState(initialValue);
-  
-  const increment = () => setCount(c => c + 1);
-  const decrement = () => setCount(c => c - 1);
-  
-  return { count, increment, decrement };
 }
 \`\`\`
 
 ## 最佳实践
 
-1. 遵循 Hooks 规则
-2. 合理使用依赖数组
-3. 避免过度优化
+1. 用 Runes 表达共享状态
+2. 保持组件模板清晰
+3. 让编译器处理细粒度更新
 
-Hooks 让 React 开发变得更加简洁和强大。
+Svelte 5 的重点是更明确的响应式语义，以及更稳定的性能边界。
 `,
     },
     {

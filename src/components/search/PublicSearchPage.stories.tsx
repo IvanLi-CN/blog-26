@@ -10,6 +10,7 @@ const results: SearchResultItem[] = [
     slug: "arch-linux-on-m1-notes",
     title: "Arch Linux on Apple Silicon: installation notes",
     excerpt: "整理一次从分区、引导到桌面环境的安装记录，重点标出网络、驱动和日常开发环境的细节。",
+    snippet: "在 Apple Silicon 上安装 Arch 时，网络、驱动和引导配置是最容易回头查的部分。",
     type: "post",
     final: 0.92,
   },
@@ -17,6 +18,7 @@ const results: SearchResultItem[] = [
     slug: "pacman-cache-cleanup",
     title: "Pacman cache cleanup memo",
     excerpt: "保留最近两个版本，避免系统升级后回滚空间不足。",
+    snippet: "Pacman 的缓存清理和 Arch 系统升级恢复经常一起出现，适合做成短 memo。",
     type: "memo",
     final: 0.75,
   },
@@ -24,6 +26,7 @@ const results: SearchResultItem[] = [
     slug: "react-hooks-deep-dive",
     title: "React Hooks 深度解析",
     excerpt: "从依赖数组、闭包和渲染时机解释 Hook 的稳定用法。",
+    snippet: "在 Arch 桌面环境里调试 React Hooks，依赖数组和渲染时机决定了副作用是否稳定。",
     type: "post",
     final: 0.48,
   },
@@ -121,6 +124,7 @@ export const Results: Story = {
     await expect(canvas.getByText("找到 3 条内容")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "搜索" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+    await expect(canvasElement.querySelectorAll("mark").length).toBeGreaterThan(0);
     await expect(canvas.queryByText("打开内容")).not.toBeInTheDocument();
   },
 };

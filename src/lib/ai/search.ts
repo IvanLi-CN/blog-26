@@ -5,6 +5,7 @@ import { postEmbeddings, posts } from "../schema";
 import { cosineSimilarity, createEmbedding } from "./embeddings";
 import { rerank as rerankApi } from "./rerank";
 import { getCachedSearchResults } from "./search-cache";
+import { buildSearchSnippet } from "./search-snippet";
 
 export type SemanticSearchInput = {
   q: string;
@@ -18,6 +19,7 @@ export type SearchResult = {
   slug: string;
   title?: string | null;
   excerpt?: string | null;
+  snippet?: string | null;
   type?: "post" | "memo"; // 用于前端路由跳转
   cosine?: number;
   rerank?: number;
@@ -53,7 +55,13 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
   }
 
   const rows = await db
-    .select({ slug: posts.slug, title: posts.title, excerpt: posts.excerpt, type: posts.type })
+    .select({
+      slug: posts.slug,
+      title: posts.title,
+      excerpt: posts.excerpt,
+      body: posts.body,
+      type: posts.type,
+    })
     .from(posts)
     .where(condition)
     .orderBy(desc(posts.publishDate))
@@ -63,6 +71,7 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
     slug: r.slug,
     title: r.title,
     excerpt: r.excerpt,
+    snippet: buildSearchSnippet(q, r),
     type: r.type === "post" || r.type === "memo" ? r.type : undefined,
   }));
 }
@@ -120,6 +129,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SearchResult
       slug: posts.slug,
       title: posts.title,
       excerpt: posts.excerpt,
+      body: posts.body,
       draft: posts.draft,
       public: posts.public,
       type: posts.type,
@@ -134,6 +144,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SearchResult
       slug: p.slug,
       title: p.title,
       excerpt: p.excerpt,
+      snippet: buildSearchSnippet(input.q, p),
       type: p.type === "post" || p.type === "memo" ? p.type : undefined,
       cosine: scoreBySlug.get(p.slug) ?? 0,
     }));

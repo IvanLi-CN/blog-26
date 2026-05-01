@@ -6,6 +6,7 @@ export type SearchResultItem = {
   slug: string;
   title?: string | null;
   excerpt?: string | null;
+  snippet?: string | null;
   type?: SearchResultType;
   final?: number;
   cosine?: number;

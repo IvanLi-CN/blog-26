@@ -138,8 +138,8 @@ PR: include
 ### Search interface redesign
 
 - Evidence captured from Storybook mock canvas for the public search page on branch `th/search-interface-redesign`.
-- The page now renders the deep-linked query in the first paint, uses query-aware status, exposes type filters with counts, and presents result cards with readable content type, path, excerpt, and relevance metadata.
-- Chrome DevTools capture was blocked by `Network.enable timed out`, so the controlled Storybook canvas was captured with Playwright against the current local Storybook lease.
+- The page now renders the deep-linked query in the first paint, uses query-aware status, exposes type filters with counts, and presents result cards with readable content type, keyword-aware snippets, highlight marks, and relevance metadata.
+- Keyword snippet evidence was captured with Chrome DevTools from the controlled Storybook canvas served on a local preview lease.
 
 PR: include
 ![Search redesign light](./assets/search-redesign-results.png)
@@ -148,6 +148,9 @@ PR: include
 ![Search redesign dark](./assets/search-redesign-dark.png)
 
 ![Search redesign mobile](./assets/search-redesign-mobile.png)
+
+PR: include
+![Search keyword snippets](./assets/search-highlight-snippets.png)
 
 ## 8. Change log
 
