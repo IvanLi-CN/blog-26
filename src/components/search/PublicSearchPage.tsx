@@ -71,10 +71,10 @@ export default function PublicSearchPage({
                 内容检索
               </span>
               <h1 className="nature-title mt-4 text-3xl font-semibold leading-tight sm:text-4xl">
-                搜索旧文章和闪念
+                搜索文章和闪念
               </h1>
               <p className="mt-4 max-w-[68ch] text-sm leading-7 text-[color:var(--nature-text-soft)] sm:text-base">
-                输入一个技术词、项目名或片段，快速回到相关记录。
+                输入关键词、项目名或片段，定位相关记录。
               </p>
               {activeQuery && (
                 <p className="mt-4 text-sm text-[color:var(--nature-text-soft)]">
@@ -183,7 +183,7 @@ export default function PublicSearchPage({
               从一个关键词开始
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-[color:var(--nature-text-soft)]">
-              搜索会同时覆盖公开文章与 Memos。更短的关键词适合探索，更具体的短语适合找回旧记录。
+              搜索会同时覆盖公开文章与 Memos。更短的关键词适合探索，更具体的短语适合定位内容。
             </p>
           </div>
         )}
