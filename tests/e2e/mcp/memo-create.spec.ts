@@ -4,9 +4,9 @@ const INTEGRATED_PORT = Number(process.env.MCP_PORT || 25110);
 const WEBDAV_PORT = Number(process.env.MCP_WEBDAV_PORT || 25111);
 const BASE_URL = `http://localhost:${INTEGRATED_PORT}`;
 const MCP_URL = `${BASE_URL}/mcp`;
-const HEALTH_URL = `${BASE_URL}/api/health`;
 const TEST_DB = process.env.DB_PATH || "./test-data/sqlite.db";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
+const SITE_PORT = Number(process.env.MCP_SITE_PORT || INTEGRATED_PORT + 3);
 const PROTOCOL_VERSION = "2025-03-26";
 const TEST_PAT = process.env.MCP_TEST_PAT_TOKEN || "blog-test-pat-mcp-admin-seed-token-e2e";
 
@@ -41,6 +41,7 @@ async function rpc(body: any, auth?: string) {
 }
 
 let dufsProc: any;
+let siteProc: any;
 let serverProc: any;
 
 test.beforeAll(
@@ -63,20 +64,34 @@ test.beforeAll(
       p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`reset exit ${code}`))));
     });
 
-    // Start integrated server
-    serverProc = spawn("bun", ["run", "src/scripts/start-integrated-server.ts"], {
+    siteProc = spawn("bun", ["run", "site:dev"], {
+      env: {
+        ...process.env,
+        DB_PATH: TEST_DB,
+        LOCAL_CONTENT_BASE_PATH: "./test-data/local",
+        WEBDAV_URL: `http://localhost:${WEBDAV_PORT}`,
+        PUBLIC_SITE_URL: BASE_URL,
+        SITE_PORT: String(SITE_PORT),
+      },
+      stdio: "ignore",
+    });
+
+    serverProc = spawn("bun", ["run", "gateway:dev"], {
       env: {
         ...process.env,
         NODE_ENV: "test",
         ADMIN_EMAIL,
         DB_PATH: TEST_DB,
+        LOCAL_CONTENT_BASE_PATH: "./test-data/local",
         PORT: String(INTEGRATED_PORT),
+        SITE_PORT: String(SITE_PORT),
         WEBDAV_URL: `http://localhost:${WEBDAV_PORT}`,
+        PUBLIC_SITE_URL: BASE_URL,
       },
       stdio: "ignore",
     });
 
-    await waitFor(HEALTH_URL, 60000);
+    await waitFor(BASE_URL, 60000);
   },
   { timeout: 90000 }
 );
@@ -87,6 +102,11 @@ test.afterAll(async () => {
   } catch (error) {
     // Process might have already exited; ignore cleanup errors.
     console.debug("serverProc cleanup skipped", error);
+  }
+  try {
+    siteProc?.kill("SIGTERM");
+  } catch (error) {
+    console.debug("siteProc cleanup skipped", error);
   }
   try {
     dufsProc?.kill("SIGTERM");

@@ -1,8 +1,7 @@
-# Ivan's Blog - Astro Public + Admin SPA
+# Ivan's Blog - Astro Public + Admin SPA + Bun Gateway
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](package.json)
 [![Astro](https://img.shields.io/badge/Astro-6.1.4-FF5D01?logo=astro&logoColor=white)](https://astro.build/)
-[![Legacy Next](https://img.shields.io/badge/Legacy_Next-16.2.2-black?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.4-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -12,7 +11,7 @@
 [![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.0-000000?logo=bun&logoColor=white)](https://bun.sh/)
 
 This repository serves the public site through Astro, the admin through a Vite/React SPA, and
-retains a legacy internal Next runtime for remaining APIs, preview, and compatibility paths.
+all runtime HTTP surfaces through a Bun gateway.
 
 ## Development
 
@@ -125,7 +124,7 @@ export WEBDAV_URL=http://localhost:25601   # match the WebDAV port you plan to u
 # Import both local and WebDAV fixtures (requires WebDAV dev server, see notes below)
 bun run dev-sync:trigger
 
-# Start the hybrid dev stack (gateway + Astro + admin SPA + legacy Next)
+# Start the dev stack (gateway + Astro + admin SPA + WebDAV)
 bun run dev
 ```
 
@@ -259,7 +258,7 @@ bun run -i scripts/validate-config.ts
 - Default prefixes follow the environment: development `blog-pat-`, production `blog-prod-pat-`,
   and test `blog-test-pat-`. The backend validates prefixes to prevent cross-environment reuse.
 - Optional environment variables:
-  - `BLOG_PAT_ENV` / `BLOG_RUNTIME_ENV` / `PAT_ENVIRONMENT` / `APP_ENV` / `NEXT_PUBLIC_SITE_ENV` set the
+  - `BLOG_PAT_ENV` / `BLOG_RUNTIME_ENV` / `PAT_ENVIRONMENT` / `APP_ENV` / `PUBLIC_SITE_ENV` set the
     environment tag (for example `staging`) and emit tokens like `blog-<env>-pat-…`.
   - `BLOG_PAT_PREFIX` overrides the entire prefix (highest precedence).
 - Tokens are persisted as SHA-256 hashes only; revoked tokens remain recorded but become unusable
@@ -269,17 +268,16 @@ bun run -i scripts/validate-config.ts
 
 ```text
 src/
-├── app/                     # Legacy Next runtime: compatibility APIs, preview/dev/test pages
-├── components/              # Shared React components that remain in the Next-owned tree
+├── components/              # Shared React components used by Astro islands and admin SPA
 ├── lib/                     # Shared runtime libraries and API clients
-├── server/                  # Compatibility routers used by gateway/public/admin APIs
+├── server/                  # Bun gateway, compatibility, public, admin, file, and MCP routers
 apps/
 ├── admin/                   # Vite + React + TanStack Router admin SPA
 site/
 ├── pages/                   # Astro public frontend routes
 ├── components/              # Astro/shared public UI components
 scripts/
-├── start-gateway.ts         # Single-port gateway for public/admin/legacy runtime ownership
+├── start-gateway.ts         # Single-port gateway for public/admin/API/runtime ownership
 docs/specs/
 └── */SPEC.md                # Delivery specs and follow-up runtime contracts
 ```
@@ -295,7 +293,7 @@ This project uses a multi-source content management system that supports both lo
 - **SQLite Database** - Primary data storage (posts, memos, comments, users, etc.)
 - **Local File System** - Development content (`src/content/`, `dev-data/local/`)
 - **WebDAV Remote Storage** - Remote content sync (`dev-data/webdav/`, `test-data/webdav/`)
-- **Cache Layer** - Redis cache, Next build cache (`.next/`), and generated site/admin build output
+- **Cache Layer** - Redis cache and generated site/admin build output
 
 **Content Sync Mechanism**:
 
@@ -342,7 +340,7 @@ This project uses a multi-source content management system that supports both lo
 
 - **Astro 6.1.4** for the public site
 - **Vite + React 19.2.4** for the admin SPA
-- **Next.js 16.2.2** as the legacy internal runtime for compatibility paths
+- **Bun gateway** for public, admin, compatibility API, files, health, and MCP routes
 - **TypeScript 5.x**
 - **Tailwind CSS 4.x** + shadcn/ui for shipped admin UI, with DaisyUI retained only for legacy/internal surfaces
 
@@ -372,7 +370,7 @@ Your readers can follow updates via standard syndication formats. All endpoints 
 Notes:
 - Limit items via `?limit=30` (defaults to 30, max 50).
 - Short URL `/rss.xml` permanently redirects to `/feed.xml`.
-- Absolute URLs are generated using `NEXT_PUBLIC_SITE_URL` / `PUBLIC_SITE_URL`.
+- Absolute URLs are generated using `PUBLIC_SITE_URL`.
 - Set `PUBLIC_SITE_BASE_PATH=/` for the `ivanli.cc` custom-domain deploy. Use `/blog-26` only if you intentionally publish to the raw project Pages URL.
 
 ### Development Tools

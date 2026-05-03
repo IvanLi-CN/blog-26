@@ -132,13 +132,11 @@ export function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>阶段提醒</CardTitle>
-            <CardDescription>
-              这一版后台已经从 Next 页面层拆开，只走 `/api/admin/*`。
-            </CardDescription>
+            <CardDescription>这一版后台只走 `/api/admin/*`。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <Alert>编辑器附件仍阶段性保留 `/api/files/*`，后续再移交 Rust 端。</Alert>
-            <div>· `/admin/*` 页面不再依赖 Next App Router。</div>
+            <div>· `/admin/*` 页面由 admin SPA 和 gateway 统一承载。</div>
             <div>· `/admin/login` 已废弃，权限由 gateway 与会话统一处理。</div>
             <div>· `/memos` 管理操作暂时留在公开站，不在本次 IA 范围内。</div>
           </CardContent>

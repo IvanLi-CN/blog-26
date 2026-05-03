@@ -6,9 +6,8 @@ const sitePort = Number(process.env.SITE_PORT || 25093);
 const siteHost = process.env.SITE_HOST || "127.0.0.1";
 const astroCacheDir = process.env.ASTRO_CACHE_DIR || "./.astro";
 const viteCacheDir = process.env.VITE_CACHE_DIR || "./node_modules/.vite";
-const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.PUBLIC_SITE_URL ?? "";
-const configuredSiteBasePath =
-  process.env.NEXT_PUBLIC_SITE_BASE_PATH ?? process.env.PUBLIC_SITE_BASE_PATH ?? "";
+const configuredSiteUrl = process.env.PUBLIC_SITE_URL ?? "";
+const configuredSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH ?? "";
 
 function normalizeBasePath(raw) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -78,15 +77,11 @@ export default defineConfig({
       },
     },
     define: {
-      "process.env.NEXT_PUBLIC_LUOSIMAO_SITE_KEY": JSON.stringify(
-        process.env.NEXT_PUBLIC_LUOSIMAO_SITE_KEY ?? process.env.PUBLIC_LUOSIMAO_SITE_KEY ?? ""
+      "process.env.PUBLIC_LUOSIMAO_SITE_KEY": JSON.stringify(
+        process.env.PUBLIC_LUOSIMAO_SITE_KEY ?? ""
       ),
-      "process.env.NEXT_PUBLIC_SITE_URL": JSON.stringify(
-        process.env.NEXT_PUBLIC_SITE_URL ?? process.env.PUBLIC_SITE_URL ?? ""
-      ),
-      "process.env.NEXT_PUBLIC_SITE_BASE_PATH": JSON.stringify(
-        process.env.NEXT_PUBLIC_SITE_BASE_PATH ?? process.env.PUBLIC_SITE_BASE_PATH ?? ""
-      ),
+      "process.env.PUBLIC_SITE_URL": JSON.stringify(process.env.PUBLIC_SITE_URL ?? ""),
+      "process.env.PUBLIC_SITE_BASE_PATH": JSON.stringify(process.env.PUBLIC_SITE_BASE_PATH ?? ""),
     },
   },
 });

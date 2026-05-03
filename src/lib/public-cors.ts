@@ -25,7 +25,6 @@ export function resolveRequestOrigin(request: Pick<Request, "headers" | "url">) 
 function getConfiguredPublicOrigins() {
   const configured = [
     process.env.PUBLIC_SITE_URL,
-    process.env.NEXT_PUBLIC_SITE_URL,
     ...(process.env.PUBLIC_CORS_ALLOWED_ORIGINS || "")
       .split(",")
       .map((value) => value.trim())

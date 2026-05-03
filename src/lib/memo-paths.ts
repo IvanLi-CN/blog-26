@@ -41,17 +41,14 @@ function readProcessEnv(name: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(
-  readProcessEnv("NEXT_PUBLIC_LOCAL_MEMOS_PATH"),
-  {
-    strict: false,
-  }
-);
+const DEFAULT_LOCAL_MEMO_ROOT_PATH = normalizeMemoRoot(readProcessEnv("PUBLIC_LOCAL_MEMOS_PATH"), {
+  strict: false,
+});
 
 export { DEFAULT_LOCAL_MEMO_ROOT_PATH };
 
 export function getConfiguredClientLocalMemoRootPath(): string {
-  return normalizeMemoRoot(readProcessEnv("NEXT_PUBLIC_LOCAL_MEMOS_PATH"));
+  return normalizeMemoRoot(readProcessEnv("PUBLIC_LOCAL_MEMOS_PATH"));
 }
 
 type ResolveClientMemoRootOptions = {
@@ -92,7 +89,7 @@ export function parseMemoRootsFromEnv(
 export function getServerLocalMemoRootPaths(): string[] {
   return parseMemoRootsFromEnv(
     readProcessEnv("LOCAL_MEMOS_PATH"),
-    readProcessEnv("NEXT_PUBLIC_LOCAL_MEMOS_PATH") || FALLBACK_LOCAL_MEMO_ROOT_PATH
+    readProcessEnv("PUBLIC_LOCAL_MEMOS_PATH") || FALLBACK_LOCAL_MEMO_ROOT_PATH
   );
 }
 

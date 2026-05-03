@@ -1,7 +1,7 @@
 const TRAILING_SLASH = /\/+$/;
 const ABSOLUTE_OR_SCHEME_RE = /^[a-zA-Z][a-zA-Z\d+\-.]*:/;
 const PROTOCOL_RELATIVE_RE = /^\/\//;
-const SITE_PATH_BYPASS_PREFIXES = ["/api", "/admin", "/_next"];
+const SITE_PATH_BYPASS_PREFIXES = ["/api", "/admin"];
 
 function normalizeBaseUrl(raw: string | undefined | null) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -25,16 +25,13 @@ function readPublicSiteUrlValue() {
       ? (import.meta as ImportMeta & { env?: Record<string, string> }).env
       : undefined;
 
-  const fromImportMeta =
-    importMetaEnv?.PUBLIC_SITE_URL || importMetaEnv?.NEXT_PUBLIC_SITE_URL || "";
+  const fromImportMeta = importMetaEnv?.PUBLIC_SITE_URL || "";
   if (typeof fromImportMeta === "string" && fromImportMeta.trim()) {
     return fromImportMeta.trim();
   }
 
   const fromProcess =
-    typeof process !== "undefined" && process.env
-      ? process.env.PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || ""
-      : "";
+    typeof process !== "undefined" && process.env ? process.env.PUBLIC_SITE_URL || "" : "";
   return typeof fromProcess === "string" ? fromProcess.trim() : "";
 }
 
@@ -45,16 +42,13 @@ function readPublicSiteBasePathValue() {
       ? (import.meta as ImportMeta & { env?: Record<string, string> }).env
       : undefined;
 
-  const fromImportMeta =
-    importMetaEnv?.PUBLIC_SITE_BASE_PATH || importMetaEnv?.NEXT_PUBLIC_SITE_BASE_PATH || "";
+  const fromImportMeta = importMetaEnv?.PUBLIC_SITE_BASE_PATH || "";
   if (typeof fromImportMeta === "string" && fromImportMeta.trim()) {
     return fromImportMeta.trim();
   }
 
   const fromProcess =
-    typeof process !== "undefined" && process.env
-      ? process.env.PUBLIC_SITE_BASE_PATH || process.env.NEXT_PUBLIC_SITE_BASE_PATH || ""
-      : "";
+    typeof process !== "undefined" && process.env ? process.env.PUBLIC_SITE_BASE_PATH || "" : "";
   return typeof fromProcess === "string" ? fromProcess.trim() : "";
 }
 
@@ -65,16 +59,13 @@ function readPublicApiBaseUrlValue() {
       ? (import.meta as ImportMeta & { env?: Record<string, string> }).env
       : undefined;
 
-  const fromImportMeta =
-    importMetaEnv?.PUBLIC_API_BASE_URL || importMetaEnv?.NEXT_PUBLIC_API_BASE_URL || "";
+  const fromImportMeta = importMetaEnv?.PUBLIC_API_BASE_URL || "";
   if (typeof fromImportMeta === "string" && fromImportMeta.trim()) {
     return fromImportMeta.trim();
   }
 
   const fromProcess =
-    typeof process !== "undefined" && process.env
-      ? process.env.PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || ""
-      : "";
+    typeof process !== "undefined" && process.env ? process.env.PUBLIC_API_BASE_URL || "" : "";
   return typeof fromProcess === "string" ? fromProcess.trim() : "";
 }
 

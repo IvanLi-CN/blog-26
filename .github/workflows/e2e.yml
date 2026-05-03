@@ -4,12 +4,10 @@ on:
   push:
     branches:
       - main
-      - nextjs
       - develop
   pull_request:
     branches:
       - main
-      - nextjs
       - develop
   workflow_dispatch:
 

@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-IMAGE_TAG=${IMAGE_TAG:-ivan/blog-nextjs:local}
+IMAGE_TAG=${IMAGE_TAG:-ivan/blog:local}
 WITH_PLAYWRIGHT=${WITH_PLAYWRIGHT:-false}
 TARGET=${TARGET:-app-image-built}
 PUBLIC_SNAPSHOT_PATH=${PUBLIC_SNAPSHOT_PATH:-${ROOT_DIR}/site/generated/public-snapshot.json}

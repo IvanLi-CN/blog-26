@@ -212,7 +212,7 @@ export default function CommentForm({
             <div className="nature-panel-soft px-4 py-4">
               <div
                 className="l-captcha"
-                data-site-key={process.env.NEXT_PUBLIC_LUOSIMAO_SITE_KEY}
+                data-site-key={process.env.PUBLIC_LUOSIMAO_SITE_KEY}
                 data-callback="handleCaptchaSuccess"
               ></div>
               {captchaError && (

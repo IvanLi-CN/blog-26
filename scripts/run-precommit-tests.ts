@@ -9,7 +9,7 @@ import { validateDrizzleJournal } from "./validate-drizzle-journal";
 const EXCLUDE_DIRS = new Set([
   "node_modules",
   ".git",
-  ".next",
+  ".astro",
   "dist",
   "build",
   "coverage",

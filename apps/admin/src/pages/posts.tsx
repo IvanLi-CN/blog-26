@@ -91,7 +91,7 @@ export function PostsPage() {
     <div className="space-y-6">
       <PageHeader
         title="文章"
-        description="新的后台文章列表已经不再依赖 Next 页面层，直接消费 admin HTTP contract。"
+        description="新的后台文章列表直接消费 admin HTTP contract。"
         actions={
           <>
             <Button asChild>

@@ -9,7 +9,6 @@ export const GET: APIRoute = async () => {
     "Disallow: /admin/",
     "Disallow: /api/",
     "Disallow: /private/",
-    "Disallow: /_next/",
     "Disallow: /static/",
     "",
     "User-agent: GPTBot",

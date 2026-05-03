@@ -28,7 +28,6 @@ function pickPort(preferred: number, fallbacks: number[]): number {
 
 const baseWeb = Number(process.env.WEB_PORT || process.env.PORT || 25090);
 const WEB_PORT = pickPort(baseWeb, [baseWeb + 100, baseWeb + 200, baseWeb + 300]);
-const INTERNAL_NEXT_PORT = Number(process.env.INTERNAL_NEXT_PORT || WEB_PORT + 2);
 const SITE_PORT = Number(process.env.SITE_PORT || WEB_PORT + 3);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${WEB_PORT}`;
 
@@ -38,8 +37,8 @@ const ABS_TEST_DB = resolvePath(__dirname, "test-data/sqlite.db");
 const ABS_LOCAL_CONTENT = resolvePath(__dirname, "test-data/local");
 
 const resetCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local bun run test-env:reset-fs-only`;
-const buildCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=${BASE_URL} PUBLIC_SITE_URL=${BASE_URL} bun run build`;
-const startCommand = `NODE_ENV=production DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=${BASE_URL} PUBLIC_SITE_URL=${BASE_URL} SERVE_PUBLIC_SITE=true PORT=${WEB_PORT} INTERNAL_NEXT_PORT=${INTERNAL_NEXT_PORT} SITE_PORT=${SITE_PORT} bun run gateway:start`;
+const buildCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} bun run build`;
+const startCommand = `NODE_ENV=production ENABLE_DEV_ENDPOINTS=true DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} SERVE_PUBLIC_SITE=true PORT=${WEB_PORT} SITE_PORT=${SITE_PORT} bun run gateway:start`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -73,10 +72,12 @@ export default defineConfig({
       name: "guest-chromium",
       testMatch: [
         "**/guest/astro-front-phase1.spec.ts",
+        "**/guest/dev-auth.spec.ts",
         "**/guest/hover-stability.spec.ts",
         "**/guest/nature-front-coverage.spec.ts",
         "**/guest/admin-access-denied.spec.ts",
         "**/guest/posts-cover-fallback.spec.ts",
+        "**/guest/rss.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"] },
     },
@@ -91,7 +92,7 @@ export default defineConfig({
     },
     {
       name: "user-chromium",
-      testMatch: ["**/user/admin-access-denied.spec.ts"],
+      testMatch: ["**/user/admin-access-denied.spec.ts", "**/user/session-header-auth.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
   ],
@@ -106,11 +107,10 @@ export default defineConfig({
       DB_PATH: ABS_TEST_DB,
       LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,
       CONTENT_SOURCES: "local",
-      NEXT_PUBLIC_SITE_URL: BASE_URL,
+      ENABLE_DEV_ENDPOINTS: "true",
       PUBLIC_SITE_URL: BASE_URL,
       SERVE_PUBLIC_SITE: "true",
       PORT: String(WEB_PORT),
-      INTERNAL_NEXT_PORT: String(INTERNAL_NEXT_PORT),
       SITE_PORT: String(SITE_PORT),
       MEMOS_E2E_FAULTS: "1",
       SSO_EMAIL_HEADER_NAME: EMAIL_HEADER_NAME,
@@ -122,11 +122,11 @@ export default defineConfig({
 process.env.BASE_URL = BASE_URL;
 process.env.WEB_PORT = String(WEB_PORT);
 process.env.PORT = String(WEB_PORT);
-process.env.INTERNAL_NEXT_PORT = String(INTERNAL_NEXT_PORT);
 process.env.SITE_PORT = String(SITE_PORT);
 process.env.DB_PATH = ABS_TEST_DB;
 process.env.LOCAL_CONTENT_BASE_PATH = ABS_LOCAL_CONTENT;
 process.env.CONTENT_SOURCES = "local";
+process.env.ENABLE_DEV_ENDPOINTS = "true";
 process.env.SSO_EMAIL_HEADER_NAME = EMAIL_HEADER_NAME;
 process.env.ADMIN_EMAIL = ADMIN_EMAIL;
 process.env.USER_EMAIL = USER_EMAIL;

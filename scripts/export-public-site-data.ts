@@ -24,6 +24,7 @@ if (contentBundleUrl === "preloaded") {
 }
 
 const snapshot = await writePublicSnapshot(outputPath);
+
 console.log(`Exported public snapshot to ${outputPath}`);
 console.log(`Posts: ${snapshot.posts.length}`);
 console.log(`Memos: ${snapshot.memos.length}`);

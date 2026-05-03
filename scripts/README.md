@@ -249,7 +249,7 @@ bun run scripts/test-memos-data.ts
 
 ```bash
 # 确保开发服务器运行
-bun run dev:next
+bun run dev
 
 # 在另一个终端运行测试
 bun run scripts/test-api-endpoints.ts

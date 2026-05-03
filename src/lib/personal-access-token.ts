@@ -22,7 +22,7 @@ function resolveEnvironmentTag(): string | undefined {
     process.env.BLOG_RUNTIME_ENV,
     process.env.PAT_ENVIRONMENT,
     process.env.APP_ENV,
-    process.env.NEXT_PUBLIC_SITE_ENV,
+    process.env.PUBLIC_SITE_ENV,
   ];
 
   for (const candidate of candidates) {

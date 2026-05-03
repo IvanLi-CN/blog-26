@@ -5,7 +5,7 @@
     "inputs": [
       "PRODUCT.md",
       "DESIGN.md",
-      "src/app/globals.css",
+      "src/styles/globals.css",
       "apps/admin/src/styles.css",
       "apps/admin/src/components/ui.tsx"
     ],

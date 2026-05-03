@@ -60,14 +60,10 @@ ENV REPOSITORY_URL=${REPOSITORY_URL}
 ENV BRANCH_NAME=${BRANCH_NAME}
 ENV BRANCH_URL=${BRANCH_URL}
 ENV PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
-ENV NEXT_PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
 ENV PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
-ENV NEXT_PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
 ENV PUBLIC_SITE_BASE_PATH=${PUBLIC_SITE_BASE_PATH}
-ENV NEXT_PUBLIC_SITE_BASE_PATH=${PUBLIC_SITE_BASE_PATH}
 ENV PUBLIC_CONTENT_BUNDLE_URL=${PUBLIC_CONTENT_BUNDLE_URL}
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 ENV TSC_COMPILE_ON_ERROR=1
 # Build the public site, backend runtime bundle, and admin SPA in-image.
 RUN bun run frontend:build && bun run backend:build
@@ -84,10 +80,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
       gosu && \
     rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
-ENV INTERNAL_NEXT_PORT=25092
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 ENV SERVE_PUBLIC_SITE=true
 COPY --from=deps /app/node_modules ./node_modules
@@ -120,10 +114,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
       gosu && \
     rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=25090
-ENV INTERNAL_NEXT_PORT=25092
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 ENV SERVE_PUBLIC_SITE=true
 COPY --from=deps /app/node_modules ./node_modules

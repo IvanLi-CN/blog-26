@@ -245,7 +245,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                         const imageSrc = resolved ?? src;
 
                         return (
-                          // biome-ignore lint/performance/noImgElement: Admin SPA preview is framework-neutral and does not use Next runtime.
+                          // biome-ignore lint/performance/noImgElement: Admin SPA preview needs the raw image element.
                           <img
                             src={imageSrc}
                             alt={alt || ""}

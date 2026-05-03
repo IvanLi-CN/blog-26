@@ -52,7 +52,7 @@ export const footerData = {
       icon: "tabler:brand-matrix",
       href: "https://matrix.to/#/@ivanli:matrix.org",
     },
-    { ariaLabel: "RSS", icon: "tabler:rss", href: "/rss.xml" },
+    { ariaLabel: "RSS", icon: "tabler:rss", href: "/feed.xml" },
     { ariaLabel: "Github", icon: "tabler:brand-github", href: "https://github.com/IvanLi-CN" },
   ] as SocialLink[],
   footNote: "",

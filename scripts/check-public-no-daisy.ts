@@ -7,37 +7,15 @@ const ROOT = process.cwd();
 
 const includeGlobs = [
   "apps/admin/**/*.tsx",
-  "src/app/about/**/*.tsx",
-  "src/app/memos/**/*.tsx",
-  "src/app/not-found.tsx",
-  "src/app/page.tsx",
-  "src/app/posts/**/*.tsx",
-  "src/app/projects/**/*.tsx",
-  "src/app/search/**/*.tsx",
-  "src/app/tags/**/*.tsx",
-  "src/app/theme-test/**/*.tsx",
-  "src/components/blog/**/*.tsx",
   "src/components/comments/**/*.tsx",
   "src/components/common/**/*.tsx",
-  "src/components/home/**/*.tsx",
   "src/components/memos/**/*.tsx",
-  "src/components/search/**/*.tsx",
   "src/components/ui/**/*.tsx",
+  "site/components/**/*.tsx",
+  "site/pages/**/*.tsx",
 ];
 
-const excludeMatchers = [
-  "src/app/admin/",
-  "src/app/demo-",
-  "src/app/dev/",
-  "src/app/test-editor/",
-  "src/components/admin/",
-  "src/components/dev-tools/",
-  "src/components/editor/",
-  "src/components/blog/BlogHomePage.tsx",
-  "src/components/common/ProgressBarDemo.tsx",
-  "src/components/common/UniversalEditor.tsx",
-  "src/components/ui/Headline.tsx",
-];
+const excludeMatchers = ["src/components/admin/", "src/components/ui/Headline.tsx"];
 
 const bannedPatterns: Array<{ label: string; regex: RegExp }> = [
   { label: "btn", regex: /(?:^|\s)btn(?:$|\s|-[^\s}]*)/ },
