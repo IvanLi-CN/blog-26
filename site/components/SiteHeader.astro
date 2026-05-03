@@ -10,6 +10,7 @@ interface Props {
 }
 
 const { pathname = "/" } = Astro.props;
+const isSearchPage = pathname === "/search";
 
 function isActive(href: string) {
   if (href === "/") return pathname === "/";
@@ -47,15 +48,19 @@ function isActive(href: string) {
       </nav>
 
       <div class="order-2 ml-auto flex items-center gap-3 md:order-3">
-        <form action={toPublicSitePath("/search")} method="get" class="hidden xl:flex items-center w-auto">
-          <label class="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
-            <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
-            <input type="text" name="q" placeholder="搜索文章..." class="nature-input" />
-          </label>
-        </form>
-        <a href={toPublicSitePath("/search")} class="nature-icon-button inline-flex xl:hidden" aria-label="搜索">
-          <Icon name="tabler:search" className="h-5 w-5" />
-        </a>
+        {!isSearchPage && (
+          <>
+            <form action={toPublicSitePath("/search")} method="get" class="hidden xl:flex items-center w-auto">
+              <label class="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
+                <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
+                <input type="text" name="q" placeholder="搜索文章..." class="nature-input" />
+              </label>
+            </form>
+            <a href={toPublicSitePath("/search")} class="nature-icon-button inline-flex xl:hidden" aria-label="搜索">
+              <Icon name="tabler:search" className="h-5 w-5" />
+            </a>
+          </>
+        )}
         <ThemeToggle client:load transition:persist iconClass="h-4 w-4" />
         <a
           class="nature-icon-button inline-flex"

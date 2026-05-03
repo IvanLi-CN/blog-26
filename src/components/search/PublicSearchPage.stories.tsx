@@ -117,11 +117,7 @@ function PublicStoryShell({
                   </a>
                 ))}
               </nav>
-              <div className="ml-auto hidden min-w-[15rem] items-center gap-2 rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.34)] px-4 py-2 text-sm text-[color:var(--nature-text-faint)] lg:flex">
-                <Icon name="tabler:search" className="h-4 w-4" />
-                <span>搜索文章...</span>
-              </div>
-              <div className="inline-flex rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.42)] p-1 text-sm text-[color:var(--nature-text-soft)]">
+              <div className="ml-auto inline-flex rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.42)] p-1 text-sm text-[color:var(--nature-text-soft)]">
                 <span className="rounded-full px-3 py-2">Light</span>
                 <span className="rounded-full px-3 py-2">Dark</span>
                 <span className="rounded-full bg-[rgba(var(--nature-accent-rgb),0.14)] px-3 py-2 text-[color:var(--nature-accent-strong)]">
