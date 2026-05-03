@@ -5,6 +5,7 @@ import {
   type SearchFilter,
   type SearchResultItem,
 } from "@/components/search/search-model";
+import { buildSearchHref, shouldPushSearchHref } from "@/components/search/search-navigation";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
@@ -253,10 +254,15 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
     (value: string) => {
       const nextQuery = value.trim();
       setQuery(nextQuery);
-      const nextUrl = new URL(window.location.href);
-      if (nextQuery) nextUrl.searchParams.set("q", nextQuery);
-      else nextUrl.searchParams.delete("q");
-      window.history.pushState({}, "", nextUrl);
+      const currentHref = window.location.href;
+      const nextHref = buildSearchHref(currentHref, nextQuery);
+      if (!shouldPushSearchHref(currentHref, nextQuery)) {
+        window.history.replaceState({ publicSearchQuery: nextQuery }, "", nextHref);
+        syncFromLocation();
+        return;
+      }
+
+      window.history.pushState({ publicSearchQuery: nextQuery }, "", nextHref);
       syncFromLocation();
     },
     [syncFromLocation]
