@@ -10,7 +10,7 @@ import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
-const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v1:";
+const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v2:";
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v1:";
 
 type CachedSearchResults = {

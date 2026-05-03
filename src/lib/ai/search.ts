@@ -26,6 +26,131 @@ export type SearchResult = {
   final?: number;
 };
 
+type KeywordSearchCandidate = {
+  slug?: string | null;
+  title?: string | null;
+  excerpt?: string | null;
+  body?: string | null;
+  tags?: string | null;
+};
+
+function normalizeSearchText(value: string) {
+  return value.normalize("NFKC").toLowerCase();
+}
+
+function splitSearchTerms(query: string) {
+  const terms = normalizeSearchText(query)
+    .split(/[\s/._:;,"'()[\]{}<>|-]+/)
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 2);
+  return Array.from(new Set(terms));
+}
+
+function wordsForSearch(value: string) {
+  return Array.from(value.normalize("NFKC").matchAll(/[A-Za-z0-9+#.]+|[\p{Script=Han}]+/gu)).map(
+    (match) => match[0]
+  );
+}
+
+function isFalsePositivePrefix(term: string, word: string) {
+  if (term !== "arch") return false;
+  return /^(aarch64|archive|archives|archived|search|searched|searching)$/i.test(word);
+}
+
+function countTermMatches(value: string, term: string) {
+  if (!value || !term) return 0;
+  let count = 0;
+  for (const word of wordsForSearch(value)) {
+    const normalizedWord = normalizeSearchText(word);
+    if (normalizedWord === term) {
+      count += 1;
+      continue;
+    }
+    if (
+      /^[a-z0-9+#.]+$/i.test(term) &&
+      normalizedWord.startsWith(term) &&
+      normalizedWord.length <= term.length + 16 &&
+      !isFalsePositivePrefix(term, normalizedWord)
+    ) {
+      count += 0.72;
+    }
+  }
+  return count;
+}
+
+function countPhraseMatches(value: string, query: string) {
+  const normalizedValue = normalizeSearchText(value);
+  const normalizedQuery = normalizeSearchText(query.trim());
+  if (!normalizedValue || normalizedQuery.length < 2) return 0;
+  let count = 0;
+  let cursor = 0;
+  while (true) {
+    const index = normalizedValue.indexOf(normalizedQuery, cursor);
+    if (index === -1) return count;
+    count += 1;
+    cursor = index + normalizedQuery.length;
+  }
+}
+
+function scoreTextField(value: string, query: string, terms: string[], phraseWeight: number) {
+  const isSingleAsciiTerm = terms.length === 1 && /^[a-z0-9+#.]+$/i.test(terms[0] ?? "");
+  const phraseScore = isSingleAsciiTerm
+    ? 0
+    : Math.min(4, countPhraseMatches(value, query)) * phraseWeight;
+  const termScore = terms.reduce(
+    (score, term) => score + Math.min(8, countTermMatches(value, term)),
+    0
+  );
+  return { phraseScore, termScore };
+}
+
+export function scoreKeywordSearchCandidate(query: string, candidate: KeywordSearchCandidate) {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return 0;
+  const terms = splitSearchTerms(trimmedQuery);
+  if (terms.length === 0) return 0;
+
+  const title = candidate.title ?? "";
+  const slug = candidate.slug ?? "";
+  const excerpt = candidate.excerpt ?? "";
+  const body = candidate.body ?? "";
+  const tags = candidate.tags ?? "";
+
+  const titleScore = scoreTextField(title, trimmedQuery, terms, 120);
+  const excerptScore = scoreTextField(excerpt, trimmedQuery, terms, 42);
+  const bodyScore = scoreTextField(body, trimmedQuery, terms, 14);
+  const tagScore = scoreTextField(tags, trimmedQuery, terms, 36);
+  const slugScore = scoreTextField(slug.replace(/-/g, " "), trimmedQuery, terms, 24);
+
+  const normalizedTitle = normalizeSearchText(title.trim());
+  const normalizedQuery = normalizeSearchText(trimmedQuery);
+  const titleBonus =
+    normalizedTitle === normalizedQuery
+      ? 160
+      : normalizedTitle.startsWith(normalizedQuery)
+        ? 48
+        : 0;
+
+  return (
+    titleBonus +
+    titleScore.phraseScore +
+    titleScore.termScore * 34 +
+    excerptScore.phraseScore +
+    excerptScore.termScore * 14 +
+    bodyScore.phraseScore +
+    bodyScore.termScore * 3 +
+    tagScore.phraseScore +
+    tagScore.termScore * 18 +
+    slugScore.phraseScore +
+    slugScore.termScore * 8
+  );
+}
+
+function normalizeKeywordScore(score: number) {
+  if (score <= 0) return undefined;
+  return Math.max(0.12, Math.min(0.98, score / 220));
+}
+
 async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult[]> {
   const q = input.q.trim();
   if (!q) return [];
@@ -60,20 +185,37 @@ async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult
       title: posts.title,
       excerpt: posts.excerpt,
       body: posts.body,
+      tags: posts.tags,
       type: posts.type,
+      publishDate: posts.publishDate,
     })
     .from(posts)
     .where(condition)
     .orderBy(desc(posts.publishDate))
-    .limit(input.topK ?? 50);
+    .limit(Math.max(input.topK ?? 50, 200));
 
-  return rows.map((r) => ({
-    slug: r.slug,
-    title: r.title,
-    excerpt: r.excerpt,
-    snippet: buildSearchSnippet(q, r),
-    type: r.type === "post" || r.type === "memo" ? r.type : undefined,
-  }));
+  return rows
+    .map((r) => {
+      const score = scoreKeywordSearchCandidate(q, r);
+      return {
+        slug: r.slug,
+        title: r.title,
+        excerpt: r.excerpt,
+        snippet: buildSearchSnippet(q, r),
+        type: r.type === "post" || r.type === "memo" ? r.type : undefined,
+        final: normalizeKeywordScore(score),
+        lexicalScore: score,
+        publishDate: r.publishDate ? String(r.publishDate) : "",
+      };
+    })
+    .filter((r) => r.lexicalScore > 0)
+    .sort((a, b) => {
+      const scoreDiff = b.lexicalScore - a.lexicalScore;
+      if (scoreDiff !== 0) return scoreDiff;
+      return b.publishDate.localeCompare(a.publishDate);
+    })
+    .slice(0, input.topK ?? 50)
+    .map(({ lexicalScore: _lexicalScore, publishDate: _publishDate, ...result }) => result);
 }
 
 async function computeSemantic(input: SemanticSearchInput): Promise<SearchResult[]> {
