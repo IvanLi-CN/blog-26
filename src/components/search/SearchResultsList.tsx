@@ -160,6 +160,7 @@ export default function SearchResultsList({
               href={href}
               aria-label={`打开 ${r.title || r.slug}`}
               className="nature-hover-hitbox group block"
+              data-search-result-card
             >
               <div
                 className={cn(

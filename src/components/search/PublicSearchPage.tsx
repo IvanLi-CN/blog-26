@@ -134,8 +134,8 @@ function RecommendedSearchTerms({
 }) {
   if (isLoading) {
     return (
-      <div className="w-full rounded-[1.25rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] p-3">
-        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
+      <div className="w-full">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
           <Icon name="tabler:sparkles" className="h-4 w-4" />
           正在生成推荐搜索词
         </div>
@@ -151,8 +151,8 @@ function RecommendedSearchTerms({
   if (terms.length === 0) return null;
 
   return (
-    <div className="w-full rounded-[1.25rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] p-3">
-      <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
+    <div className="w-full">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
         <Icon name="tabler:sparkles" className="h-4 w-4" />
         推荐搜索词
       </div>
@@ -227,21 +227,26 @@ export default function PublicSearchPage({
                 搜索关键词
               </label>
               <div className="nature-input-shell min-h-[3.75rem] bg-[rgba(var(--nature-highlight-rgb),0.42)]">
-                <Icon
-                  name="tabler:search"
-                  className="h-5 w-5 shrink-0 text-[color:var(--nature-text-faint)]"
-                />
-                <input
-                  ref={inputRef}
-                  id="public-search-input"
-                  type="text"
-                  value={query}
-                  onChange={(event) => onQueryChange(event.target.value)}
-                  placeholder="例如 Arch、React、WebDAV"
-                  className="nature-input"
-                  autoComplete="off"
-                  aria-label="搜索关键词"
-                />
+                <label
+                  htmlFor="public-search-input"
+                  className="flex min-w-0 flex-1 cursor-text items-center gap-3 self-stretch"
+                >
+                  <Icon
+                    name="tabler:search"
+                    className="h-5 w-5 shrink-0 text-[color:var(--nature-text-faint)]"
+                  />
+                  <input
+                    ref={inputRef}
+                    id="public-search-input"
+                    type="text"
+                    value={query}
+                    onChange={(event) => onQueryChange(event.target.value)}
+                    placeholder="例如 Arch、React、WebDAV"
+                    className="nature-input self-stretch"
+                    autoComplete="off"
+                    aria-label="搜索关键词"
+                  />
+                </label>
                 {isLoading ? (
                   <span
                     className="nature-spinner ml-1 shrink-0"

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import PublicSearchPage from "@/components/search/PublicSearchPage";
 import {
   filterSearchResults,
@@ -12,6 +12,7 @@ import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v3:";
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v1:";
+const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 type CachedSearchResults = {
   expiresAt: number;
@@ -187,9 +188,12 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
       });
   }, []);
 
+  useSafeLayoutEffect(() => {
+    syncFromLocation();
+  }, [syncFromLocation]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
-    syncFromLocation();
     const handlePopstate = () => syncFromLocation();
     window.addEventListener("popstate", handlePopstate);
     return () => {
