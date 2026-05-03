@@ -117,6 +117,14 @@ function SearchStory({
 }
 
 export const Results: Story = {
+  name: "搜索结果",
+  parameters: {
+    docs: {
+      description: {
+        story: "搜索完成后的结果列表，展示文章、闪念、相关度、关键词摘录和高亮。",
+      },
+    },
+  },
   render: () => <SearchStory />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -129,7 +137,33 @@ export const Results: Story = {
   },
 };
 
+export const Initial: Story = {
+  name: "初始状态",
+  parameters: {
+    docs: {
+      description: {
+        story: "用户尚未输入关键词时的入口状态。",
+      },
+    },
+  },
+  render: () => <SearchStory initialQuery="" searchedQuery="" items={emptyResults} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "搜索文章和闪念" })).toBeInTheDocument();
+    await expect(canvas.getByText("等待输入关键词")).toBeInTheDocument();
+    await expect(canvas.getByText("从一个关键词开始")).toBeInTheDocument();
+  },
+};
+
 export const Loading: Story = {
+  name: "搜索中",
+  parameters: {
+    docs: {
+      description: {
+        story: "提交关键词后等待搜索响应时的骨架状态。",
+      },
+    },
+  },
   render: () => <SearchStory isLoading items={emptyResults} />,
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByLabelText("搜索结果加载中")).toBeInTheDocument();
@@ -137,6 +171,14 @@ export const Loading: Story = {
 };
 
 export const Empty: Story = {
+  name: "无结果",
+  parameters: {
+    docs: {
+      description: {
+        story: "搜索完成但没有任何匹配内容时的空状态。",
+      },
+    },
+  },
   render: () => <SearchStory items={emptyResults} searchedQuery="Zettelkasten" />,
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText("没有找到相关内容")).toBeInTheDocument();
@@ -144,6 +186,14 @@ export const Empty: Story = {
 };
 
 export const ErrorState: Story = {
+  name: "错误状态",
+  parameters: {
+    docs: {
+      description: {
+        story: "搜索 API 暂不可用或请求失败时的错误提示。",
+      },
+    },
+  },
   render: () => (
     <SearchStory
       items={emptyResults}
@@ -157,6 +207,14 @@ export const ErrorState: Story = {
 };
 
 export const FilteredEmpty: Story = {
+  name: "筛选无结果",
+  parameters: {
+    docs: {
+      description: {
+        story: "已有搜索结果，但当前类型筛选下没有匹配项。",
+      },
+    },
+  },
   render: () => <SearchStory items={results.filter((item) => item.type === "post")} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -166,6 +224,7 @@ export const FilteredEmpty: Story = {
 };
 
 export const MobileResults: Story = {
+  name: "移动端结果",
   parameters: {
     viewport: {
       defaultViewport: "mobile1",
@@ -175,6 +234,7 @@ export const MobileResults: Story = {
 };
 
 export const DarkResults: Story = {
+  name: "深色结果",
   parameters: {
     backgrounds: { default: "public dark" },
   },
