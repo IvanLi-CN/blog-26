@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent, RefObject } from "react";
+import type { FormEvent, ReactNode, RefObject } from "react";
 import { cn } from "@/lib/utils";
 import Icon from "../ui/Icon";
 import SearchResultsList from "./SearchResultsList";
@@ -36,6 +36,87 @@ function formatError(error: PublicSearchPageProps["error"]) {
   }
   if (typeof error !== "string") return "搜索失败，请稍后重试";
   return error;
+}
+
+function SearchPromptPanel({
+  tone = "neutral",
+  icon,
+  eyebrow,
+  title,
+  description,
+  children,
+  role,
+  ariaLabel,
+  watermark,
+}: {
+  tone?: "neutral" | "accent" | "warning" | "error";
+  icon: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  children?: ReactNode;
+  role?: "status" | "alert";
+  ariaLabel?: string;
+  watermark: string;
+}) {
+  const toneClass = {
+    neutral: "bg-[rgba(var(--nature-highlight-rgb),0.28)] text-[color:var(--nature-text-soft)]",
+    accent: "bg-[rgba(var(--nature-accent-rgb),0.14)] text-[color:var(--nature-accent-strong)]",
+    warning: "bg-[rgba(var(--nature-accent-2-rgb),0.18)] text-[color:var(--nature-accent-strong)]",
+    error: "bg-[rgba(179,92,98,0.14)] text-[color:var(--nature-danger)]",
+  }[tone];
+
+  return (
+    <article
+      role={role}
+      aria-label={ariaLabel}
+      className="nature-panel nature-panel-soft relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-6 top-5 hidden text-[7rem] font-black leading-none text-[rgba(var(--nature-accent-rgb),0.055)] sm:block"
+      >
+        {watermark}
+      </div>
+      <div className="relative grid gap-5 sm:grid-cols-[4.25rem_minmax(0,1fr)] sm:items-start">
+        <div
+          className={cn(
+            "flex h-16 w-16 items-center justify-center rounded-[1.45rem] border border-[color:var(--nature-line)] shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.25)]",
+            toneClass
+          )}
+        >
+          <Icon
+            name={icon}
+            className={cn("h-8 w-8", icon === "tabler:loader-2" && "animate-spin")}
+          />
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="nature-kicker px-3 py-1 text-xs">{eyebrow}</span>
+          </div>
+          <h2 className="mt-3 font-heading text-2xl font-semibold leading-tight text-[color:var(--nature-text)] sm:text-3xl">
+            {title}
+          </h2>
+          <p className="mt-3 max-w-[64ch] text-sm leading-7 text-[color:var(--nature-text-soft)] sm:text-base">
+            {description}
+          </p>
+          {children && <div className="mt-5 flex flex-wrap items-center gap-2">{children}</div>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function SuggestionButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-10 items-center rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.54)] px-4 text-sm font-medium text-[color:var(--nature-text-soft)] transition hover:border-[rgba(var(--nature-accent-rgb),0.38)] hover:text-[color:var(--nature-accent-strong)]"
+    >
+      {children}
+    </button>
+  );
 }
 
 export default function PublicSearchPage({
@@ -166,44 +247,61 @@ export default function PublicSearchPage({
         </div>
       </section>
 
-      <section className="nature-container pb-10 sm:pb-14">
+      <section className="nature-container pb-10 pt-3 sm:pb-14 sm:pt-4">
         {errorMessage && (
-          <div role="alert" className="nature-alert nature-alert-error mb-5">
-            <Icon name="tabler:alert-triangle" className="h-5 w-5" />
-            <span>{errorMessage}</span>
-          </div>
+          <SearchPromptPanel
+            role="alert"
+            tone="error"
+            icon="tabler:alert-triangle"
+            eyebrow="搜索中断"
+            title="搜索暂时没有完成"
+            description={errorMessage}
+            watermark="!"
+          >
+            <SuggestionButton onClick={() => onQueryChange("")}>换一个关键词</SuggestionButton>
+          </SearchPromptPanel>
         )}
 
         {!activeQuery && !isLoading && (
-          <div className="nature-empty">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(var(--nature-accent-rgb),0.12)] text-[color:var(--nature-accent-strong)]">
-              <Icon name="tabler:sparkles" className="h-6 w-6" />
-            </div>
-            <h2 className="font-heading text-xl font-semibold text-[color:var(--nature-text)]">
-              从一个关键词开始
-            </h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-[color:var(--nature-text-soft)]">
-              搜索会同时覆盖公开文章与 Memos。更短的关键词适合探索，更具体的短语适合定位内容。
-            </p>
-          </div>
+          <SearchPromptPanel
+            tone="accent"
+            icon="tabler:sparkles"
+            eyebrow="开始探索"
+            title="从一个关键词进入内容"
+            description="搜索会同时覆盖公开文章与 Memos。可以从技术名词、项目名、标签或短句开始。"
+            watermark="GO"
+          >
+            {["Arch", "React", "WebDAV"].map((term) => (
+              <SuggestionButton key={term} onClick={() => onQueryChange(term)}>
+                {term}
+              </SuggestionButton>
+            ))}
+          </SearchPromptPanel>
         )}
 
         {isLoading && activeQuery && (
-          <div className="space-y-4" role="status" aria-label="搜索结果加载中">
-            {["search-loading-1", "search-loading-2", "search-loading-3", "search-loading-4"].map(
-              (key) => (
+          <div className="space-y-4">
+            <SearchPromptPanel
+              role="status"
+              ariaLabel="搜索结果加载中"
+              tone="accent"
+              icon="tabler:loader-2"
+              eyebrow="正在搜索"
+              title={`正在检索「${activeQuery}」`}
+              description="正在从文章与 Memos 中提取匹配片段，结果会按相关程度排列。"
+              watermark="..."
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {["search-loading-1", "search-loading-2"].map((key) => (
                 <div key={key} className="nature-panel-soft px-5 py-5">
-                  <div className="flex items-start gap-4">
-                    <div className="nature-skeleton h-11 w-11 shrink-0 rounded-[1rem]" />
-                    <div className="min-w-0 flex-1 space-y-3">
-                      <div className="nature-skeleton h-4 w-2/5 rounded-full" />
-                      <div className="nature-skeleton h-3 w-full rounded-full" />
-                      <div className="nature-skeleton h-3 w-3/4 rounded-full" />
-                    </div>
+                  <div className="space-y-3">
+                    <div className="nature-skeleton h-4 w-2/5 rounded-full" />
+                    <div className="nature-skeleton h-3 w-full rounded-full" />
+                    <div className="nature-skeleton h-3 w-3/4 rounded-full" />
                   </div>
                 </div>
-              )
-            )}
+              ))}
+            </div>
           </div>
         )}
 
@@ -212,31 +310,38 @@ export default function PublicSearchPage({
           !errorMessage &&
           hasResults &&
           filteredResults.length === 0 && (
-            <div className="nature-empty">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(var(--nature-accent-2-rgb),0.16)] text-[color:var(--nature-accent-strong)]">
-                <Icon name="tabler:filter-search" className="h-6 w-6" />
-              </div>
-              <h2 className="font-heading text-xl font-semibold text-[color:var(--nature-text)]">
-                这个类型里没有结果
-              </h2>
-              <p className="mt-2 text-sm text-[color:var(--nature-text-soft)]">
-                切回“全部”可以查看其它内容类型。
-              </p>
-            </div>
+            <SearchPromptPanel
+              tone="warning"
+              icon="tabler:filter-search"
+              eyebrow="筛选后为空"
+              title="这个类型里没有匹配项"
+              description="当前关键词有结果，但不在这个内容类型里。切回全部可以继续查看其它结果。"
+              watermark="ALL"
+            >
+              <SuggestionButton onClick={() => onFilterChange("all")}>
+                查看全部结果
+              </SuggestionButton>
+            </SearchPromptPanel>
           )}
 
         {!isLoading && activeQuery && !errorMessage && !hasResults && (
-          <div className="nature-empty">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(var(--nature-highlight-rgb),0.32)] text-[color:var(--nature-text-soft)]">
-              <Icon name="tabler:leaf-off" className="h-6 w-6" />
-            </div>
-            <h2 className="font-heading text-xl font-semibold text-[color:var(--nature-text)]">
-              没有找到相关内容
-            </h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-[color:var(--nature-text-soft)]">
-              试试更短的词，或者换成文章标题、标签、工具名。
-            </p>
-          </div>
+          <SearchPromptPanel
+            tone="neutral"
+            icon="tabler:leaf-off"
+            eyebrow="没有结果"
+            title="没有找到相关内容"
+            description="试试更短的词，或者换成文章标题、标签、工具名。搜索更适合用清晰的名词进入内容。"
+            watermark="0"
+          >
+            <SuggestionButton
+              onClick={() =>
+                onQueryChange(activeQuery.slice(0, Math.max(2, Math.ceil(activeQuery.length / 2))))
+              }
+            >
+              缩短关键词
+            </SuggestionButton>
+            <SuggestionButton onClick={() => onQueryChange("")}>重新输入</SuggestionButton>
+          </SearchPromptPanel>
         )}
 
         {!isLoading && filteredResults.length > 0 && (

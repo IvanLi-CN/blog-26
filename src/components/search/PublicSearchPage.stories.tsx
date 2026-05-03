@@ -225,7 +225,7 @@ export const Initial: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "搜索文章和闪念" })).toBeInTheDocument();
     await expect(canvas.getByText("等待输入关键词")).toBeInTheDocument();
-    await expect(canvas.getByText("从一个关键词开始")).toBeInTheDocument();
+    await expect(canvas.getByText("从一个关键词进入内容")).toBeInTheDocument();
   },
 };
 
@@ -253,7 +253,9 @@ export const Empty: Story = {
       },
     },
   },
-  render: () => <SearchStory items={emptyResults} searchedQuery="Zettelkasten" />,
+  render: () => (
+    <SearchStory initialQuery="Zettelkasten" items={emptyResults} searchedQuery="Zettelkasten" />
+  ),
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText("没有找到相关内容")).toBeInTheDocument();
   },

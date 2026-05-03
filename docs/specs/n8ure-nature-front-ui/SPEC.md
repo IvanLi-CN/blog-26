@@ -141,6 +141,7 @@ PR: include
 - The page now renders the deep-linked query in the first paint, uses query-aware status, exposes type filters with counts, and presents result cards with readable content type, keyword-aware snippets, highlight marks, and relevance metadata.
 - Keyword snippet evidence was captured with Chrome DevTools from the controlled Storybook canvas served on a local preview lease.
 - Search stories render inside a public site shell so review covers the header, main content region, and footer rather than an isolated component canvas.
+- Prompt states use a shared status panel for initial, loading, empty, error, and filtered-empty stories, keeping the message aligned to the content grid with a stronger icon, title, description, and recovery action.
 
 PR: include
 ![Search redesign light](./assets/search-redesign-results.png)
@@ -155,6 +156,9 @@ PR: include
 
 PR: include
 ![Search Storybook with site layout](./assets/search-story-layout-results.png)
+
+PR: include
+![Search empty state bolder](./assets/search-empty-state-bolder.png)
 
 ## 8. Change log
 
