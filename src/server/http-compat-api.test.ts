@@ -763,6 +763,34 @@ describe("HTTP compatibility APIs", () => {
     );
   });
 
+  it("serves public search recovery suggestions from /api/public/search/suggestions", async () => {
+    await seedPost({
+      slug: "react-hooks-deep-dive",
+      type: "post",
+      title: "React Hooks 深度解析",
+      excerpt: "从依赖数组、闭包和渲染时机解释 Hook 的稳定用法。",
+      tags: JSON.stringify(["frontend/react", "programming/hooks"]),
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/search/suggestions?q=Zettelkasten&reason=empty&limit=3"),
+      "/search/suggestions"
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await readJson(response);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        source: "fallback",
+        reason: "empty",
+      })
+    );
+    expect(payload.suggestions).toEqual(expect.any(Array));
+    expect(payload.suggestions.some((term: string) => term.toLowerCase().includes("react"))).toBe(
+      true
+    );
+  });
+
   it("requires admin auth for cross-origin file uploads while preserving Pages CORS", async () => {
     const pathname = "/api/files/local/Memos/uploads/http-upload.txt";
     const params = { source: "local", path: ["Memos", "uploads", "http-upload.txt"] };

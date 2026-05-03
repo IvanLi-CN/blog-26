@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-04-12`
+- Last Updated: `2026-05-03`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -142,6 +142,7 @@ PR: include
 - Keyword snippet evidence was captured with Chrome DevTools from the controlled Storybook canvas served on a local preview lease.
 - Search stories render inside a public site shell so review covers the header, main content region, and footer rather than an isolated component canvas.
 - Prompt states use a shared status panel for initial, loading, empty, error, and filtered-empty stories, keeping the message aligned to the content grid with a stronger icon, title, description, and recovery action.
+- Empty, error, and filtered-empty recovery actions now use recommended search terms. The public API generates suggestions with the configured chat LLM when available and falls back to public content tags, titles, and excerpts when it is not configured.
 
 PR: include
 ![Search redesign light](./assets/search-redesign-results.png)
@@ -160,6 +161,9 @@ PR: include
 PR: include
 ![Search empty state bolder](./assets/search-empty-state-bolder.png)
 
+PR: include
+![Search recommended recovery terms](./assets/search-empty-recommendations.png)
+
 ## 8. Change log
 
 - 2026-04-05: Created spec for the public Nature redesign and DaisyUI decoupling.
@@ -170,3 +174,4 @@ PR: include
 - 2026-04-12: Fixed the Astro public theme bootstrap regression so dark/system-dark theme state persists across route navigation and extended the Astro guest regression suite to block the issue.
 - 2026-04-16: Restored the shared public timeline rail/node contract for the home mixed feed and memos list, refreshed light/dark/mobile evidence, removed the extra home intro cards, and extended guest regression coverage for timeline visibility.
 - 2026-04-30: Redesigned the public search page around query-aware discovery, shared result presentation, Storybook state coverage, and refreshed visual evidence.
+- 2026-05-03: Added LLM-backed recommended recovery terms for non-normal search prompt states, with public-content fallback suggestions and refreshed Storybook evidence.

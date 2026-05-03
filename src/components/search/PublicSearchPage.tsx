@@ -21,7 +21,10 @@ export type PublicSearchPageProps = {
   filter: SearchFilter;
   onFilterChange: (filter: SearchFilter) => void;
   onQueryChange: (query: string) => void;
+  onRecommendedSearch?: (query: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  recommendedSearchTerms?: string[];
+  isLoadingRecommendations?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   resolveHref?: (result: SearchResultItem) => string;
   className?: string;
@@ -107,15 +110,60 @@ function SearchPromptPanel({
   );
 }
 
-function SuggestionButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+function SearchTermButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex min-h-10 items-center rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.54)] px-4 text-sm font-medium text-[color:var(--nature-text-soft)] transition hover:border-[rgba(var(--nature-accent-rgb),0.38)] hover:text-[color:var(--nature-accent-strong)]"
+      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-surface-rgb),0.62)] px-4 text-sm font-medium text-[color:var(--nature-text-soft)] shadow-[0_10px_28px_rgba(var(--nature-shadow-rgb),0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.42)] hover:bg-[rgba(var(--nature-accent-rgb),0.12)] hover:text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(var(--nature-accent-rgb),0.42)]"
     >
+      <Icon name="tabler:search" className="h-4 w-4" />
       {children}
     </button>
+  );
+}
+
+function RecommendedSearchTerms({
+  terms,
+  isLoading,
+  onSearch,
+}: {
+  terms: string[];
+  isLoading?: boolean;
+  onSearch?: (query: string) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="w-full rounded-[1.25rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] p-3">
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
+          <Icon name="tabler:sparkles" className="h-4 w-4" />
+          正在生成推荐搜索词
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {["suggestion-loading-1", "suggestion-loading-2", "suggestion-loading-3"].map((key) => (
+            <span key={key} className="nature-skeleton h-10 w-24 rounded-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (terms.length === 0) return null;
+
+  return (
+    <div className="w-full rounded-[1.25rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] p-3">
+      <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
+        <Icon name="tabler:sparkles" className="h-4 w-4" />
+        推荐搜索词
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {terms.map((term) => (
+          <SearchTermButton key={term} onClick={() => onSearch?.(term)}>
+            {term}
+          </SearchTermButton>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -128,7 +176,10 @@ export default function PublicSearchPage({
   filter,
   onFilterChange,
   onQueryChange,
+  onRecommendedSearch,
   onSubmit,
+  recommendedSearchTerms = [],
+  isLoadingRecommendations = false,
   inputRef,
   resolveHref,
   className,
@@ -140,6 +191,7 @@ export default function PublicSearchPage({
   const counts = countSearchResultsByType(results);
   const filteredResults = filterSearchResults(results, filter);
   const hasResults = results.length > 0;
+  const runRecommendedSearch = onRecommendedSearch ?? onQueryChange;
 
   return (
     <div className={cn("w-full", className)}>
@@ -258,7 +310,11 @@ export default function PublicSearchPage({
             description={errorMessage}
             watermark="!"
           >
-            <SuggestionButton onClick={() => onQueryChange("")}>换一个关键词</SuggestionButton>
+            <RecommendedSearchTerms
+              terms={recommendedSearchTerms}
+              isLoading={isLoadingRecommendations}
+              onSearch={runRecommendedSearch}
+            />
           </SearchPromptPanel>
         )}
 
@@ -271,11 +327,14 @@ export default function PublicSearchPage({
             description="搜索会同时覆盖公开文章与 Memos。可以从技术名词、项目名、标签或短句开始。"
             watermark="GO"
           >
-            {["Arch", "React", "WebDAV"].map((term) => (
-              <SuggestionButton key={term} onClick={() => onQueryChange(term)}>
-                {term}
-              </SuggestionButton>
-            ))}
+            <RecommendedSearchTerms
+              terms={
+                recommendedSearchTerms.length > 0
+                  ? recommendedSearchTerms
+                  : ["Arch", "React", "WebDAV"]
+              }
+              onSearch={runRecommendedSearch}
+            />
           </SearchPromptPanel>
         )}
 
@@ -318,9 +377,11 @@ export default function PublicSearchPage({
               description="当前关键词有结果，但不在这个内容类型里。切回全部可以继续查看其它结果。"
               watermark="ALL"
             >
-              <SuggestionButton onClick={() => onFilterChange("all")}>
-                查看全部结果
-              </SuggestionButton>
+              <RecommendedSearchTerms
+                terms={recommendedSearchTerms}
+                isLoading={isLoadingRecommendations}
+                onSearch={runRecommendedSearch}
+              />
             </SearchPromptPanel>
           )}
 
@@ -333,14 +394,11 @@ export default function PublicSearchPage({
             description="试试更短的词，或者换成文章标题、标签、工具名。搜索更适合用清晰的名词进入内容。"
             watermark="0"
           >
-            <SuggestionButton
-              onClick={() =>
-                onQueryChange(activeQuery.slice(0, Math.max(2, Math.ceil(activeQuery.length / 2))))
-              }
-            >
-              缩短关键词
-            </SuggestionButton>
-            <SuggestionButton onClick={() => onQueryChange("")}>重新输入</SuggestionButton>
+            <RecommendedSearchTerms
+              terms={recommendedSearchTerms}
+              isLoading={isLoadingRecommendations}
+              onSearch={runRecommendedSearch}
+            />
           </SearchPromptPanel>
         )}
 

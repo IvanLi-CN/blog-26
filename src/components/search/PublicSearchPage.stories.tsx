@@ -67,6 +67,8 @@ type SearchStoryProps = {
   searchedQuery?: string;
   items?: SearchResultItem[];
   isLoading?: boolean;
+  isLoadingRecommendations?: boolean;
+  recommendedTerms?: string[];
   error?: string | null;
   theme?: "light" | "dark";
   shellClassName?: string;
@@ -152,11 +154,14 @@ function SearchStory({
   searchedQuery = initialQuery,
   items = results,
   isLoading = false,
+  isLoadingRecommendations = false,
+  recommendedTerms = [],
   error = null,
   theme = "light",
   shellClassName,
 }: SearchStoryProps) {
   const [query, setQuery] = useState(initialQuery);
+  const [activeQuery, setActiveQuery] = useState(searchedQuery);
   const [filter, setFilter] = useState<SearchFilter>("all");
 
   useEffect(() => {
@@ -177,13 +182,20 @@ function SearchStory({
     <PublicStoryShell theme={theme} shellClassName={shellClassName}>
       <PublicSearchPage
         query={query}
-        searchedQuery={searchedQuery}
+        searchedQuery={activeQuery}
         results={items}
         isLoading={isLoading}
+        isLoadingRecommendations={isLoadingRecommendations}
+        recommendedSearchTerms={recommendedTerms}
         error={error}
         filter={filter}
         onFilterChange={setFilter}
         onQueryChange={setQuery}
+        onRecommendedSearch={(term) => {
+          setQuery(term);
+          setActiveQuery(term);
+          setFilter("all");
+        }}
         onSubmit={(event) => event.preventDefault()}
       />
     </PublicStoryShell>
@@ -226,6 +238,7 @@ export const Initial: Story = {
     await expect(canvas.getByRole("heading", { name: "搜索文章和闪念" })).toBeInTheDocument();
     await expect(canvas.getByText("等待输入关键词")).toBeInTheDocument();
     await expect(canvas.getByText("从一个关键词进入内容")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /Arch/ })).toBeVisible();
   },
 };
 
@@ -254,10 +267,18 @@ export const Empty: Story = {
     },
   },
   render: () => (
-    <SearchStory initialQuery="Zettelkasten" items={emptyResults} searchedQuery="Zettelkasten" />
+    <SearchStory
+      initialQuery="Zettelkasten"
+      items={emptyResults}
+      searchedQuery="Zettelkasten"
+      recommendedTerms={["知识管理", "卡片笔记", "双链笔记"]}
+    />
   ),
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText("没有找到相关内容")).toBeInTheDocument();
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("没有找到相关内容")).toBeInTheDocument();
+    await expect(canvas.getByText("推荐搜索词")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /卡片笔记/ })).toBeVisible();
   },
 };
 
@@ -275,10 +296,13 @@ export const ErrorState: Story = {
       items={emptyResults}
       searchedQuery="Arch"
       error="搜索服务暂时不可用，请稍后重试。"
+      recommendedTerms={["Arch Linux", "Pacman", "Apple Silicon"]}
     />
   ),
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole("alert")).toHaveTextContent("搜索服务暂时不可用");
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("alert")).toHaveTextContent("搜索服务暂时不可用");
+    await expect(canvas.getByRole("button", { name: /Pacman/ })).toBeVisible();
   },
 };
 
@@ -291,11 +315,17 @@ export const FilteredEmpty: Story = {
       },
     },
   },
-  render: () => <SearchStory items={results.filter((item) => item.type === "post")} />,
+  render: () => (
+    <SearchStory
+      items={results.filter((item) => item.type === "post")}
+      recommendedTerms={["Arch Linux", "React Hooks", "Pacman"]}
+    />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: /闪念 0/ }));
-    await expect(canvas.getByText("这个类型里没有结果")).toBeInTheDocument();
+    await expect(canvas.getByText("这个类型里没有匹配项")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /React Hooks/ })).toBeVisible();
   },
 };
 
