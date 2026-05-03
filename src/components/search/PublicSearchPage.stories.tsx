@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import "@/app/nature-restored.css";
+import Icon from "../ui/Icon";
 import PublicSearchPage from "./PublicSearchPage";
 import type { SearchFilter, SearchResultItem } from "./search-model";
 
@@ -71,6 +72,81 @@ type SearchStoryProps = {
   shellClassName?: string;
 };
 
+function PublicStoryShell({
+  children,
+  theme,
+  shellClassName,
+}: {
+  children: ReactNode;
+  theme: "light" | "dark";
+  shellClassName?: string;
+}) {
+  return (
+    <div
+      className="nature-app-shell flex min-h-screen flex-col bg-[color:var(--nature-bg)] text-[color:var(--nature-text)]"
+      data-ui-theme={theme}
+      data-ui-preference="system"
+      data-theme={theme}
+    >
+      <div className="nature-content-layer flex min-h-screen flex-col">
+        <header className="relative z-10 pt-4 sm:pt-6">
+          <div className="nature-container">
+            <div className="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+              <a
+                href="/"
+                className="mr-2 text-xl font-bold text-[color:var(--nature-text)] sm:text-2xl"
+              >
+                Ivan's Blog
+              </a>
+              <nav className="flex flex-wrap items-center gap-1 text-sm font-medium">
+                {[
+                  ["tabler:note", "闪念"],
+                  ["tabler:article", "文章"],
+                  ["tabler:code", "项目"],
+                  ["tabler:hash", "标签"],
+                ].map(([icon, label]) => (
+                  <a
+                    key={label}
+                    href="/"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-[color:var(--nature-text-soft)] transition hover:bg-[rgba(var(--nature-highlight-rgb),0.28)] hover:text-[color:var(--nature-text)]"
+                  >
+                    <Icon name={icon} className="h-4 w-4" />
+                    <span>{label}</span>
+                  </a>
+                ))}
+              </nav>
+              <div className="ml-auto hidden min-w-[15rem] items-center gap-2 rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.34)] px-4 py-2 text-sm text-[color:var(--nature-text-faint)] lg:flex">
+                <Icon name="tabler:search" className="h-4 w-4" />
+                <span>搜索文章...</span>
+              </div>
+              <div className="inline-flex rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.42)] p-1 text-sm text-[color:var(--nature-text-soft)]">
+                <span className="rounded-full px-3 py-2">Light</span>
+                <span className="rounded-full px-3 py-2">Dark</span>
+                <span className="rounded-full bg-[rgba(var(--nature-accent-rgb),0.14)] px-3 py-2 text-[color:var(--nature-accent-strong)]">
+                  Auto
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="nature-main flex-1">
+          <div className={shellClassName}>{children}</div>
+        </main>
+        <footer className="relative z-10 pb-5 sm:pb-7">
+          <div className="nature-container">
+            <div className="nature-surface px-5 py-5 text-sm text-[color:var(--nature-text-soft)] sm:px-7">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="font-semibold text-[color:var(--nature-text)]">Ivan's Blog</span>
+                <span>Digital greenhouse for notes, memos, and making.</span>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 function SearchStory({
   initialQuery = "Arch",
   searchedQuery = initialQuery,
@@ -98,21 +174,19 @@ function SearchStory({
   }, [theme]);
 
   return (
-    <div className="nature-app-shell min-h-screen bg-[color:var(--nature-bg)] text-[color:var(--nature-text)]">
-      <div className={shellClassName}>
-        <PublicSearchPage
-          query={query}
-          searchedQuery={searchedQuery}
-          results={items}
-          isLoading={isLoading}
-          error={error}
-          filter={filter}
-          onFilterChange={setFilter}
-          onQueryChange={setQuery}
-          onSubmit={(event) => event.preventDefault()}
-        />
-      </div>
-    </div>
+    <PublicStoryShell theme={theme} shellClassName={shellClassName}>
+      <PublicSearchPage
+        query={query}
+        searchedQuery={searchedQuery}
+        results={items}
+        isLoading={isLoading}
+        error={error}
+        filter={filter}
+        onFilterChange={setFilter}
+        onQueryChange={setQuery}
+        onSubmit={(event) => event.preventDefault()}
+      />
+    </PublicStoryShell>
   );
 }
 
