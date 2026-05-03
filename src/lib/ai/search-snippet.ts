@@ -4,14 +4,42 @@ type SnippetSource = {
   body?: string | null;
 };
 
+function formatCodeFence(code: string) {
+  const lines = code.replace(/\n+$/g, "").split("\n");
+  return `\n${lines
+    .map((line) => (line.trim() ? `    ${line.replace(/\t/g, "  ").trimEnd()}` : ""))
+    .join("\n")}\n`;
+}
+
 function cleanSearchText(value?: string | null) {
-  return (value ?? "")
-    .replace(/```[\s\S]*?```/g, " ")
+  const formatted = (value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\\([\\`*_{}[\]()#+\-.!|<>"])/g, "$1")
+    .replace(/(^|[\s([{])\\([^\\\n]{1,80})\\(?=$|[\s)\]},.，。；;:：!?！？])/g, "$1$2")
+    .replace(/```[^\n]*\n([\s\S]*?)```/g, (_, code: string) => formatCodeFence(code))
     .replace(/`([^`]+)`/g, "$1")
     .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
     .replace(/\[([^\]]+)]\([^)]*\)/g, "$1")
-    .replace(/[#>*_~|-]+/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/<((?:https?|mailto):[^>\s]+)>/g, "$1")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?[\w:-]+(?:\s+[^<>]*?)?\/?>/g, " ")
+    .replace(/^\s*#{1,6}\s+/gm, "")
+    .replace(/^\s*([-*_])(?:\s*\1){2,}\s*$/gm, " ")
+    .replace(/\*\*|__|~~/g, "")
+    .replace(/(^|[\s([{])\*([^*\n]+)\*(?=$|[\s)\]},.，。；;:：!?！?])/g, "$1$2")
+    .replace(/(^|[\s([{])_([^_\n]+)_(?=$|[\s)\]},.，。；;:：!?！?])/g, "$1$2")
+    .replace(/^\s{0,3}>\s?/gm, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n");
+
+  return formatted
+    .split("\n")
+    .map((line) => {
+      const [, indent = "", text = ""] = line.match(/^(\s*)(.*)$/) ?? [];
+      return `${indent.slice(0, 12)}${text.replace(/[ \t]{2,}/g, " ").trimEnd()}`;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -45,11 +73,15 @@ function findFirstMatch(text: string, terms: string[]) {
 }
 
 function cropSnippet(text: string, index: number, termLength: number) {
-  const radius = 88;
-  const start = Math.max(0, index - radius);
-  const end = Math.min(text.length, index + Math.max(termLength, 1) + radius);
-  const prefix = start > 0 ? "..." : "";
-  const suffix = end < text.length ? "..." : "";
+  const radius = 140;
+  const rawStart = Math.max(0, index - radius);
+  const rawEnd = Math.min(text.length, index + Math.max(termLength, 1) + radius);
+  const lineStart = text.lastIndexOf("\n", rawStart);
+  const nextLineEnd = text.indexOf("\n", rawEnd);
+  const start = lineStart === -1 ? 0 : lineStart + 1;
+  const end = nextLineEnd === -1 ? text.length : nextLineEnd;
+  const prefix = start > 0 ? "...\n" : "";
+  const suffix = end < text.length ? "\n..." : "";
   return `${prefix}${text.slice(start, end).trim()}${suffix}`;
 }
 

@@ -143,6 +143,7 @@ PR: include
 - Search stories render inside a public site shell so review covers the header, main content region, and footer rather than an isolated component canvas.
 - Prompt states use a shared status panel for initial, loading, empty, error, and filtered-empty stories, keeping the message aligned to the content grid with a stronger icon, title, description, and recovery action.
 - Empty, error, and filtered-empty recovery actions now use recommended search terms. The public API generates suggestions with the configured chat LLM when available and falls back to public content tags, titles, and excerpts when it is not configured.
+- Markdown excerpts are cleaned before rendering: emphasis syntax, escaped inline-code markers, and HTML line-break artifacts are removed, while line breaks, indentation, and code-like command snippets remain readable across multiple lines.
 
 PR: include
 ![Search redesign light](./assets/search-redesign-results.png)
@@ -163,6 +164,9 @@ PR: include
 
 PR: include
 ![Search recommended recovery terms](./assets/search-empty-recommendations.png)
+
+PR: include
+![Search Markdown snippets](./assets/search-markdown-snippets.png)
 
 ## 8. Change log
 
