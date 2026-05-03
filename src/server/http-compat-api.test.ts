@@ -773,7 +773,7 @@ describe("HTTP compatibility APIs", () => {
     });
 
     const response = await handlePublicApiRequest(
-      buildRequest("/api/public/search/suggestions?q=Zettelkasten&reason=empty&limit=3"),
+      buildRequest("/api/public/search/suggestions?q=React%20Hookz&reason=empty&limit=3"),
       "/search/suggestions"
     );
 
@@ -786,9 +786,15 @@ describe("HTTP compatibility APIs", () => {
       })
     );
     expect(payload.suggestions).toEqual(expect.any(Array));
-    expect(payload.suggestions.some((term: string) => term.toLowerCase().includes("react"))).toBe(
-      true
-    );
+    expect(payload.items).toEqual(expect.any(Array));
+    expect(
+      payload.items.some((item: { strategy?: string }) =>
+        ["broader_by_domain", "related", "sibling", "alternative_label"].includes(
+          item.strategy ?? ""
+        )
+      )
+    ).toBe(true);
+    expect(payload.suggestions.some((term: string) => /react|hooks/i.test(term))).toBe(true);
   });
 
   it("requires admin auth for cross-origin file uploads while preserving Pages CORS", async () => {

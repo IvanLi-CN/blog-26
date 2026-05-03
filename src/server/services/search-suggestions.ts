@@ -1,10 +1,13 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import OpenAI from "openai";
+import { enhanced } from "@/lib/ai/search";
 import {
-  buildFallbackSearchSuggestions,
-  normalizeSearchSuggestions,
+  buildFallbackSearchSuggestionItems,
+  normalizeSearchSuggestionItems,
+  type SearchSuggestionItem,
   type SearchSuggestionReason,
   type SearchSuggestionSeed,
+  searchSuggestionItemRelatesToQuery,
 } from "@/lib/ai/search-suggestions";
 import { db, initializeDB } from "@/lib/db";
 import { posts } from "@/lib/schema";
@@ -12,6 +15,7 @@ import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 export type PublicSearchSuggestionsResult = {
   suggestions: string[];
+  items: SearchSuggestionItem[];
   source: "llm" | "fallback";
   reason: SearchSuggestionReason;
 };
@@ -62,10 +66,11 @@ async function loadPublicSuggestionSeeds(limit = 80): Promise<SearchSuggestionSe
 
 function buildFallbackResult(
   input: SuggestPublicSearchTermsInput,
-  seeds: SearchSuggestionSeed[]
+  items: SearchSuggestionItem[]
 ): PublicSearchSuggestionsResult {
   return {
-    suggestions: buildFallbackSearchSuggestions(input.query, seeds, input.limit ?? 5),
+    suggestions: items.map((item) => item.term),
+    items,
     source: "fallback",
     reason: input.reason,
   };
@@ -95,14 +100,84 @@ function compactSeed(seed: SearchSuggestionSeed) {
   return `- ${title}${excerpt ? ` | ${excerpt}` : ""}${tags ? ` | tags: ${tags}` : ""}`;
 }
 
+function seedLexicallyMatches(term: string, seeds: SearchSuggestionSeed[]) {
+  const normalizedTerm = term.trim().toLowerCase();
+  if (!normalizedTerm) return false;
+  return seeds.some((seed) => {
+    const text = [seed.title, seed.excerpt, ...(seed.tags ?? [])]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return text.includes(normalizedTerm);
+  });
+}
+
+async function validateSuggestionItems(
+  items: SearchSuggestionItem[],
+  seeds: SearchSuggestionSeed[],
+  limit: number,
+  query: string
+): Promise<SearchSuggestionItem[]> {
+  if (items.length === 0) return [];
+
+  const validated = await Promise.all(
+    items.map(async (item) => {
+      if (!searchSuggestionItemRelatesToQuery(item, query)) return null;
+      try {
+        const results = await enhanced({
+          q: item.term,
+          topK: 5,
+          publishedOnly: true,
+          rerank: false,
+        });
+        if (results.length === 0 && !seedLexicallyMatches(item.term, seeds)) return null;
+        const slugSignature = results
+          .slice(0, 3)
+          .map((result) => result.slug)
+          .join("|");
+        return {
+          ...item,
+          resultCount: results.length,
+          score:
+            (item.score ?? 0) +
+            results.length * 4 +
+            (slugSignature ? Math.min(slugSignature.length, 40) / 10 : 0),
+        };
+      } catch {
+        return seedLexicallyMatches(item.term, seeds) ? { ...item, resultCount: 1 } : null;
+      }
+    })
+  );
+
+  const best = new Map<string, SearchSuggestionItem>();
+  for (const item of validated) {
+    if (!item) continue;
+    const key = item.term.toLowerCase();
+    const current = best.get(key);
+    if (!current || (item.score ?? 0) > (current.score ?? 0)) {
+      best.set(key, item);
+    }
+  }
+
+  return Array.from(best.values())
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, limit);
+}
+
 export async function suggestPublicSearchTerms(
   input: SuggestPublicSearchTermsInput
 ): Promise<PublicSearchSuggestionsResult> {
   const query = input.query.trim();
-  if (!query) return { suggestions: [], source: "fallback", reason: input.reason };
+  if (!query) return { suggestions: [], items: [], source: "fallback", reason: input.reason };
 
   const seeds = await loadPublicSuggestionSeeds();
-  const fallback = buildFallbackResult({ ...input, query }, seeds);
+  const fallbackItems = await validateSuggestionItems(
+    buildFallbackSearchSuggestionItems(query, seeds, input.limit ?? 5),
+    seeds,
+    input.limit ?? 5,
+    query
+  );
+  const fallback = buildFallbackResult({ ...input, query }, fallbackItems);
   const resolved = await getResolvedLlmConfig();
   const apiKey = resolved.chat.apiKey || "";
   if (!apiKey) return fallback;
@@ -119,10 +194,15 @@ export async function suggestPublicSearchTerms(
         {
           role: "system",
           content: [
-            "You are a search assistant for a public technical blog.",
-            "Return concise search keywords that are likely to match the provided public content catalog.",
-            'Respond with ONLY JSON: {"suggestions":["term",...]}',
-            "Rules: 3-5 terms, no sentences, no URLs, no markdown, no exact copy of the failed query.",
+            "You are designing recovery search terms for a public technical blog.",
+            "Do not merely replace synonyms. First infer what concept/domain the failed query may mean.",
+            "Then propose concept directions in exactly these strategy values:",
+            "broader_by_domain, related, sibling, alternative_label.",
+            "Meanings: broader_by_domain = same thing generalized in another/larger domain; related = adjacent concept likely discussed together; sibling = peer concept in the same family; alternative_label = another name for the same concept.",
+            "Avoid task/action keywords such as install, config, debug, tutorial, setup unless they are explicit concepts in the catalog.",
+            "Every suggestion must be likely to match the provided public content catalog.",
+            'Respond with ONLY JSON: {"interpretations":[{"concept":"...","domain":"...","confidence":0.0}],"suggestions":[{"term":"...","strategy":"broader_by_domain","concept":"...","domain":"...","rationale":"..."}]}',
+            "Rules: 3-5 suggestions, concise terms, no sentences as terms, no URLs, no markdown, no exact copy of the failed query.",
           ].join("\n"),
         },
         {
@@ -140,9 +220,24 @@ export async function suggestPublicSearchTerms(
 
     const content = completion.choices[0]?.message?.content || "";
     const parsed = parseJsonObject(content);
-    const suggestions = normalizeSearchSuggestions(parsed.suggestions, query, input.limit ?? 5);
-    if (suggestions.length === 0) return fallback;
-    return { suggestions, source: "llm", reason: input.reason };
+    const suggestedItems = normalizeSearchSuggestionItems(
+      parsed.suggestions,
+      query,
+      input.limit ?? 5
+    );
+    const validatedItems = await validateSuggestionItems(
+      suggestedItems,
+      seeds,
+      input.limit ?? 5,
+      query
+    );
+    if (validatedItems.length === 0) return fallback;
+    return {
+      suggestions: validatedItems.map((item) => item.term),
+      items: validatedItems,
+      source: "llm",
+      reason: input.reason,
+    };
   } catch (error) {
     const code =
       error && typeof error === "object" && "code" in error
