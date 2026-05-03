@@ -105,7 +105,7 @@ function renderSnippet(snippet: string, query?: string) {
       return (
         <pre
           key={block.key}
-          className="my-2 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-3 py-2 font-mono text-[0.82rem] leading-6 text-[color:var(--nature-text-soft)]"
+          className="my-1.5 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-3 py-1.5 font-mono text-[0.82rem] leading-5 text-[color:var(--nature-text-soft)]"
         >
           <code>{renderHighlightedText(code, query, block.key)}</code>
         </pre>
@@ -120,7 +120,7 @@ function renderSnippet(snippet: string, query?: string) {
               {renderHighlightedText(line.value, query, line.key)}
             </span>
           ) : (
-            <span key={line.key} aria-hidden="true" className="block h-2" />
+            <span key={line.key} aria-hidden="true" className="block h-1.5" />
           )
         )}
       </span>
@@ -192,7 +192,7 @@ export default function SearchResultsList({
                     </h2>
 
                     {snippet && (
-                      <div className="nature-muted mt-2 break-words text-sm leading-7">
+                      <div className="nature-muted mt-2 break-words text-sm leading-6">
                         {renderSnippet(snippet, query)}
                       </div>
                     )}
