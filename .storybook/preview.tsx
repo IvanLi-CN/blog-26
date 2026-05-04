@@ -4,13 +4,19 @@ import "../apps/admin/src/styles.css";
 
 const preview: Preview = {
   decorators: [
-    (Story) => (
-      <div className="min-h-screen bg-background p-6 text-foreground">
-        <div className="mx-auto max-w-3xl">
-          <Story />
+    (Story, context) => {
+      if (context.parameters.publicSurface) {
+        return <Story />;
+      }
+
+      return (
+        <div className="min-h-screen bg-background p-6 text-foreground">
+          <div className="mx-auto max-w-3xl">
+            <Story />
+          </div>
         </div>
-      </div>
-    ),
+      );
+    },
   ],
   parameters: {
     docs: {

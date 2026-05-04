@@ -12,7 +12,7 @@ test.describe("Nature frontend public coverage", () => {
       { path: "/posts", heading: "文章" },
       { path: "/memos", heading: "Memos" },
       { path: "/tags", heading: "浏览所有标签" },
-      { path: "/search", heading: "搜索" },
+      { path: "/search", heading: "搜索内容" },
       { path: "/about", heading: /你好，我是 Ivan/ },
       { path: "/projects", heading: "项目总览" },
     ] as const;
@@ -100,7 +100,7 @@ test.describe("Nature frontend public coverage", () => {
     await searchInput.press("Enter");
 
     await expect(page).toHaveURL(/\/search\?q=Vue/);
-    await expect(page.getByRole("heading", { name: "搜索" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "搜索内容" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute(
       "data-public-session-id",
       shellInstanceId ?? ""

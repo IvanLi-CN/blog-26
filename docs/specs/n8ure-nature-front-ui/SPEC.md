@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-04-12`
+- Last Updated: `2026-05-03`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -135,6 +135,47 @@ PR: include
 PR: include
 ![Hover stability - search results](./assets/hover-stability-search-results.png)
 
+### Search interface redesign
+
+- Evidence captured from Storybook mock canvas for the public search page on branch `th/search-interface-redesign`.
+- The page now renders the deep-linked query in the first paint, uses query-aware status, exposes type filters with counts, and presents result cards with readable content type, keyword-aware snippets, highlight marks, and relevance metadata.
+- Keyword snippet evidence was captured with Chrome DevTools from the controlled Storybook canvas served on a local preview lease.
+- Search stories render inside a public site shell so review covers the header, main content region, and footer rather than an isolated component canvas.
+- Prompt states use a shared status panel for initial, loading, empty, error, and filtered-empty stories, keeping the message aligned to the content grid with a stronger icon, title, description, and recovery action.
+- Empty, error, and filtered-empty recovery actions now use recommended search terms. The public API generates suggestions with the configured chat LLM when available and falls back to public content tags, titles, and excerpts when it is not configured.
+- Empty-result recovery keeps concept-direction fallback terms even when strict result validation finds no current hit, so the user still gets query-related generalized, related, sibling, and alternative search routes instead of unrelated popular terms.
+- Markdown excerpts are cleaned before rendering: emphasis syntax, escaped inline-code markers, and HTML line-break artifacts are removed, while line breaks, indentation, and code-like command snippets remain readable across multiple lines.
+- The search page now prioritizes the search box as the primary tool, keeps relevance percentages as subdued metadata, presents recovery terms by generalized, related, sibling, and alternative directions, and uses compact result rows for faster scanning.
+
+PR: include
+![Search redesign light](./assets/search-redesign-results.png)
+
+PR: include
+![Search redesign dark](./assets/search-redesign-dark.png)
+
+![Search redesign mobile](./assets/search-redesign-mobile.png)
+
+PR: include
+![Search keyword snippets](./assets/search-highlight-snippets.png)
+
+PR: include
+![Search Storybook with site layout](./assets/search-story-layout-results.png)
+
+PR: include
+![Search empty state bolder](./assets/search-empty-state-bolder.png)
+
+PR: include
+![Search recommended recovery terms](./assets/search-empty-recommendations.png)
+
+PR: include
+![Search Markdown snippets](./assets/search-markdown-snippets.png)
+
+PR: include
+![Search fast tool results](./assets/search-tool-fast-results.png)
+
+PR: include
+![Search recovery directions](./assets/search-tool-recovery.png)
+
 ## 8. Change log
 
 - 2026-04-05: Created spec for the public Nature redesign and DaisyUI decoupling.
@@ -144,3 +185,7 @@ PR: include
 - 2026-04-11: Closed the spec after the final Astro public-route, theme shell, and hover-stability regression pass.
 - 2026-04-12: Fixed the Astro public theme bootstrap regression so dark/system-dark theme state persists across route navigation and extended the Astro guest regression suite to block the issue.
 - 2026-04-16: Restored the shared public timeline rail/node contract for the home mixed feed and memos list, refreshed light/dark/mobile evidence, removed the extra home intro cards, and extended guest regression coverage for timeline visibility.
+- 2026-04-30: Redesigned the public search page around query-aware discovery, shared result presentation, Storybook state coverage, and refreshed visual evidence.
+- 2026-05-03: Added LLM-backed recommended recovery terms for non-normal search prompt states, with public-content fallback suggestions and refreshed Storybook evidence.
+- 2026-05-04: Tightened the search page toward a faster tool workflow, reduced result-card weight, grouped recovery terms by concept direction, subdued relevance metadata, and refreshed visual evidence.
+- 2026-05-05: Kept query-related concept-direction recovery terms when strict validation returns no hit, and added real dev-stack evidence for the empty-result recovery state.

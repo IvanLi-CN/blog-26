@@ -32,7 +32,7 @@ import { toPublicSitePath } from "../lib/runtime-urls";
               href="https://creativecommons.org/licenses/by-nc-nd/4.0/"
               target="_blank"
               rel="noopener noreferrer"
-              class="nature-chip"
+              class="nature-chip min-h-11"
             >
               Content: CC BY-NC-ND 4.0
             </a>
@@ -46,7 +46,7 @@ import { toPublicSitePath } from "../lib/runtime-urls";
           <div class="flex flex-wrap gap-2">
             {footerData.socialLinks.map((social) => (
               <a
-                class="nature-icon-button inline-flex h-10 w-10"
+                class="nature-icon-button inline-flex h-11 w-11"
                 aria-label={social.ariaLabel}
                 href={social.href.startsWith("/") ? toPublicSitePath(social.href) : social.href}
                 target={social.href.startsWith("/") ? undefined : "_blank"}
@@ -61,7 +61,7 @@ import { toPublicSitePath } from "../lib/runtime-urls";
             target="_blank"
             rel="noopener nofollow"
             href="https://beian.miit.gov.cn"
-            class="text-sm text-[color:var(--nature-text-soft)] transition-colors hover:text-[color:var(--nature-accent-strong)]"
+            class="inline-flex min-h-11 items-center text-sm text-[color:var(--nature-text-soft)] transition-colors hover:text-[color:var(--nature-accent-strong)]"
           >
             闽ICP备2023000043号
           </a>

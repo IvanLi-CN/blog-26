@@ -1,20 +1,110 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Icon from "@/components/ui/Icon";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import PublicSearchPage from "@/components/search/PublicSearchPage";
+import {
+  filterSearchResults,
+  type SearchFilter,
+  type SearchResultItem,
+} from "@/components/search/search-model";
+import { buildSearchHref, shouldPushSearchHref } from "@/components/search/search-navigation";
+import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
-type ResultType = "post" | "memo";
+const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
+const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v3:";
+const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v2:";
+const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-type SearchResultItem = {
-  slug: string;
-  title?: string | null;
-  excerpt?: string | null;
-  type?: ResultType;
-  final?: number;
+type CachedSearchResults = {
+  expiresAt: number;
+  results: SearchResultItem[];
 };
 
-async function search(query: string) {
+type CachedSearchSuggestions = {
+  expiresAt: number;
+  suggestions: SearchSuggestionItem[];
+};
+
+function getSearchResultsCacheKey(query: string) {
+  return `${SEARCH_RESULTS_CACHE_PREFIX}${encodeURIComponent(query.trim().toLowerCase())}:50`;
+}
+
+function getSearchSuggestionsCacheKey(query: string, reason: SearchSuggestionReason) {
+  return `${SEARCH_SUGGESTIONS_CACHE_PREFIX}${reason}:${encodeURIComponent(query.trim().toLowerCase())}:5`;
+}
+
+function readCachedSearchResults(query: string) {
+  try {
+    const raw = window.sessionStorage.getItem(getSearchResultsCacheKey(query));
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as CachedSearchResults;
+    if (!Array.isArray(cached.results) || cached.expiresAt <= Date.now()) {
+      window.sessionStorage.removeItem(getSearchResultsCacheKey(query));
+      return null;
+    }
+    return cached.results;
+  } catch {
+    return null;
+  }
+}
+
+function readCachedSearchSuggestions(query: string, reason: SearchSuggestionReason) {
+  try {
+    const cacheKey = getSearchSuggestionsCacheKey(query, reason);
+    const raw = window.sessionStorage.getItem(cacheKey);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as CachedSearchSuggestions;
+    if (!Array.isArray(cached.suggestions) || cached.expiresAt <= Date.now()) {
+      window.sessionStorage.removeItem(cacheKey);
+      return null;
+    }
+    return cached.suggestions.filter(
+      (item): item is SearchSuggestionItem =>
+        item !== null &&
+        typeof item === "object" &&
+        typeof item.term === "string" &&
+        item.term.trim() !== ""
+    );
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedSearchResults(query: string, results: SearchResultItem[]) {
+  try {
+    window.sessionStorage.setItem(
+      getSearchResultsCacheKey(query),
+      JSON.stringify({
+        expiresAt: Date.now() + SEARCH_RESULTS_CACHE_TTL_MS,
+        results,
+      } satisfies CachedSearchResults)
+    );
+  } catch {
+    // Storage can be unavailable in private contexts; search still works without it.
+  }
+}
+
+function writeCachedSearchSuggestions(
+  query: string,
+  reason: SearchSuggestionReason,
+  suggestions: SearchSuggestionItem[]
+) {
+  try {
+    window.sessionStorage.setItem(
+      getSearchSuggestionsCacheKey(query, reason),
+      JSON.stringify({
+        expiresAt: Date.now() + SEARCH_RESULTS_CACHE_TTL_MS,
+        suggestions,
+      } satisfies CachedSearchSuggestions)
+    );
+  } catch {
+    // Storage can be unavailable in private contexts; suggestion chips are optional.
+  }
+}
+
+async function search(query: string, signal?: AbortSignal) {
   const response = await fetch(
-    toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`)
+    toPublicApiUrl(`/api/public/search?q=${encodeURIComponent(query)}&topK=50`),
+    { signal }
   );
   const payload = await response.json().catch(() => []);
   if (!response.ok) {
@@ -25,173 +115,221 @@ async function search(query: string) {
   return (payload ?? []) as SearchResultItem[];
 }
 
-export default function SearchPageIsland() {
+async function loadSearchSuggestions(
+  query: string,
+  reason: SearchSuggestionReason,
+  signal?: AbortSignal
+) {
+  const response = await fetch(
+    toPublicApiUrl(
+      `/api/public/search/suggestions?q=${encodeURIComponent(query)}&reason=${encodeURIComponent(
+        reason
+      )}&limit=5`
+    ),
+    { signal }
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) return [];
+  const items = (payload as { items?: unknown; suggestions?: unknown }).items;
+  if (Array.isArray(items)) {
+    return items.filter(
+      (item): item is SearchSuggestionItem =>
+        item !== null &&
+        typeof item === "object" &&
+        typeof (item as SearchSuggestionItem).term === "string" &&
+        (item as SearchSuggestionItem).term.trim() !== ""
+    );
+  }
+  const suggestions = (payload as { suggestions?: unknown }).suggestions;
+  return Array.isArray(suggestions)
+    ? suggestions
+        .filter((item): item is string => typeof item === "string" && item.trim() !== "")
+        .map((term) => ({ term, strategy: "related" }) satisfies SearchSuggestionItem)
+    : [];
+}
+
+export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
+  const suggestionsAbortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+  const suggestionsRequestIdRef = useRef(0);
+  const [query, setQuery] = useState(initialQuery);
+  const [searchedQuery, setSearchedQuery] = useState(initialQuery);
+  const [filter, setFilter] = useState<SearchFilter>("all");
   const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(initialQuery.trim().length > 0);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<SearchSuggestionItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const syncFromLocation = useCallback(() => {
+    abortRef.current?.abort();
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     const current = new URL(window.location.href).searchParams.get("q") || "";
     setQuery(current);
+    setSearchedQuery(current);
+    setFilter("all");
     if (!current.trim()) {
       setResults([]);
       setError(null);
       setIsLoading(false);
       return;
     }
+    const cachedResults = readCachedSearchResults(current.trim());
+    if (cachedResults) {
+      setResults(cachedResults);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
     setIsLoading(true);
     setError(null);
-    void search(current.trim())
-      .then(setResults)
+    void search(current.trim(), controller.signal)
+      .then((nextResults) => {
+        if (requestIdRef.current === requestId) {
+          setResults(nextResults);
+          writeCachedSearchResults(current.trim(), nextResults);
+        }
+      })
       .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        if (requestIdRef.current !== requestId) return;
         setResults([]);
         setError(err instanceof Error ? err.message : String(err));
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (requestIdRef.current === requestId) setIsLoading(false);
+      });
   }, []);
+
+  useSafeLayoutEffect(() => {
+    syncFromLocation();
+  }, [syncFromLocation]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
-    syncFromLocation();
     const handlePopstate = () => syncFromLocation();
     window.addEventListener("popstate", handlePopstate);
     return () => {
       window.clearTimeout(timer);
+      abortRef.current?.abort();
+      suggestionsAbortRef.current?.abort();
       window.removeEventListener("popstate", handlePopstate);
     };
   }, [syncFromLocation]);
 
   const canSearch = useMemo(() => query.trim().length > 0, [query]);
+  const filteredResults = useMemo(() => filterSearchResults(results, filter), [filter, results]);
+  const suggestionReason = useMemo<SearchSuggestionReason | null>(() => {
+    const current = searchedQuery.trim();
+    if (!current || isLoading) return null;
+    if (error) return "error";
+    if (results.length === 0) return "empty";
+    if (filteredResults.length === 0) return "filtered_empty";
+    return null;
+  }, [error, filteredResults.length, isLoading, results.length, searchedQuery]);
+
+  useEffect(() => {
+    suggestionsAbortRef.current?.abort();
+    const currentQuery = searchedQuery.trim();
+    if (!suggestionReason || !currentQuery) {
+      setRecommendedSearchTerms([]);
+      setIsLoadingRecommendations(false);
+      return;
+    }
+
+    const cachedSuggestions = readCachedSearchSuggestions(currentQuery, suggestionReason);
+    if (cachedSuggestions) {
+      setRecommendedSearchTerms(cachedSuggestions);
+      setIsLoadingRecommendations(false);
+      return;
+    }
+
+    const requestId = suggestionsRequestIdRef.current + 1;
+    suggestionsRequestIdRef.current = requestId;
+    const controller = new AbortController();
+    suggestionsAbortRef.current = controller;
+    setIsLoadingRecommendations(true);
+    setRecommendedSearchTerms([]);
+    void loadSearchSuggestions(currentQuery, suggestionReason, controller.signal)
+      .then((suggestions) => {
+        if (suggestionsRequestIdRef.current !== requestId) return;
+        setRecommendedSearchTerms(suggestions);
+        writeCachedSearchSuggestions(currentQuery, suggestionReason, suggestions);
+      })
+      .catch(() => {
+        if (controller.signal.aborted || suggestionsRequestIdRef.current !== requestId) return;
+        setRecommendedSearchTerms([]);
+      })
+      .finally(() => {
+        if (suggestionsRequestIdRef.current === requestId) setIsLoadingRecommendations(false);
+      });
+
+    return () => controller.abort();
+  }, [searchedQuery, suggestionReason]);
+
+  const runSearchForQuery = useCallback(
+    (value: string) => {
+      const nextQuery = value.trim();
+      setQuery(nextQuery);
+      const currentHref = window.location.href;
+      const nextHref = buildSearchHref(currentHref, nextQuery);
+      if (!shouldPushSearchHref(currentHref, nextQuery)) {
+        window.history.replaceState({ publicSearchQuery: nextQuery }, "", nextHref);
+        syncFromLocation();
+        return;
+      }
+
+      window.history.pushState({ publicSearchQuery: nextQuery }, "", nextHref);
+      syncFromLocation();
+    },
+    [syncFromLocation]
+  );
+
+  const clearSearch = useCallback(() => {
+    runSearchForQuery("");
+    inputRef.current?.focus();
+  }, [runSearchForQuery]);
+
+  const retrySearch = useCallback(() => {
+    const nextQuery = searchedQuery.trim() || query.trim();
+    if (nextQuery) runSearchForQuery(nextQuery);
+  }, [query, runSearchForQuery, searchedQuery]);
 
   const onSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      const nextQuery = query.trim();
-      const nextUrl = new URL(window.location.href);
-      if (nextQuery) nextUrl.searchParams.set("q", nextQuery);
-      else nextUrl.searchParams.delete("q");
-      window.history.pushState({}, "", nextUrl);
-      syncFromLocation();
+      runSearchForQuery(query);
     },
-    [query, syncFromLocation]
+    [query, runSearchForQuery]
   );
 
   return (
-    <div className="w-full">
-      <div className="nature-container mb-4">
-        <div className="nature-surface px-6 py-7 sm:px-8">
-          <span className="nature-kicker mb-3 inline-flex">Search Stream</span>
-          <h1 className="nature-title text-3xl font-semibold">搜索</h1>
-          <p className="nature-muted mt-3 text-sm leading-7 sm:text-base">
-            语义检索和全文检索都收拢到更柔和的表面里，减少工具感。
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={onSubmit} className="nature-container mb-6">
-        <label className="nature-input-shell w-full">
-          <Icon name="tabler:search" className="h-5 w-5 text-[color:var(--nature-text-faint)]" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="输入关键词后回车…"
-            className="nature-input"
-            autoComplete="off"
-          />
-          {isLoading && <span className="nature-spinner ml-1" />}
-        </label>
-      </form>
-
-      <section className="nature-container">
-        {error && (
-          <div role="alert" className="nature-alert nature-alert-error mb-4">
-            <Icon name="tabler:alert-triangle" className="h-5 w-5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {!canSearch && (
-          <div className="nature-empty">
-            <div className="mb-2 flex items-center justify-center gap-2">
-              <Icon name="tabler:stars" className="h-5 w-5" />
-              <span>输入关键词开始搜索</span>
-            </div>
-            <div className="text-sm">支持文章与 Memos 的统一检索。</div>
-          </div>
-        )}
-
-        {isLoading && canSearch && (
-          <div className="space-y-4">
-            {["k1", "k2", "k3", "k4"].map((key) => (
-              <div key={key} className="flex items-start gap-4">
-                <div className="nature-skeleton h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <div className="nature-skeleton h-4 w-1/3 rounded-full" />
-                  <div className="nature-skeleton h-3 w-5/6 rounded-full" />
-                  <div className="nature-skeleton h-3 w-2/3 rounded-full" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!isLoading && canSearch && results.length === 0 && !error && (
-          <div className="nature-empty">
-            <div className="mb-2 flex items-center justify-center gap-2">
-              <Icon name="tabler:mood-empty" className="h-5 w-5" />
-              <span>没有找到相关结果</span>
-            </div>
-            <div className="text-sm">试试更通用的关键词</div>
-          </div>
-        )}
-
-        {!isLoading && results.length > 0 && (
-          <ul className="flex w-full flex-col gap-3">
-            {results.map((result) => {
-              const type = result.type || "post";
-              const href = toPublicSitePath(
-                type === "memo" ? `/memos/${result.slug}` : `/posts/${result.slug}`
-              );
-              return (
-                <li key={`${type}-${result.slug}`} className="list-none">
-                  <a href={href} className="nature-hover-hitbox group block">
-                    <div className="nature-panel nature-panel-soft nature-hover-lift nature-hover-surface [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.32)] [--nature-hover-lift-offset:-0.125rem] px-4 py-4">
-                      <div className="flex items-start gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.22)] text-[color:var(--nature-text-soft)]">
-                          <span>{type === "memo" ? "M" : "P"}</span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="max-w-[75%] truncate font-medium">
-                              {result.title || result.slug}
-                            </span>
-                            <span className="nature-chip capitalize">{type}</span>
-                            {typeof result.final === "number" && (
-                              <span className="nature-chip nature-chip-accent">
-                                {(result.final * 100).toFixed(0)}%
-                              </span>
-                            )}
-                          </div>
-                          {result.excerpt && (
-                            <p className="nature-muted line-clamp-2 text-sm">{result.excerpt}</p>
-                          )}
-                          <div className="text-xs text-[color:var(--nature-text-faint)]">
-                            {href}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </div>
+    <PublicSearchPage
+      query={query}
+      searchedQuery={searchedQuery}
+      results={results}
+      isLoading={isLoading && canSearch}
+      error={error}
+      filter={filter}
+      onFilterChange={setFilter}
+      onQueryChange={setQuery}
+      onClear={clearSearch}
+      onRetry={retrySearch}
+      onRecommendedSearch={runSearchForQuery}
+      onSubmit={onSubmit}
+      recommendedSearchTerms={recommendedSearchTerms}
+      isLoadingRecommendations={isLoadingRecommendations}
+      inputRef={inputRef}
+      resolveHref={(result) =>
+        toPublicSitePath(
+          result.type === "memo" ? `/memos/${result.slug}` : `/posts/${result.slug}`
+        ) ?? "#"
+      }
+    />
   );
 }

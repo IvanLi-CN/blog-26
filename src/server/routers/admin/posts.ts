@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { EmbeddingsRepository, type VectorizationStatus } from "@/lib/ai/embeddings-repo";
+import { clearSearchCache } from "@/lib/ai/search-cache";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../../lib/db";
 import { type Post as PostRow, posts } from "../../../lib/schema";
@@ -202,6 +203,7 @@ export const adminPostsRouter = createTRPCRouter({
       };
 
       await db.insert(posts).values(newPost);
+      clearSearchCache();
 
       return {
         success: true,
@@ -239,6 +241,7 @@ export const adminPostsRouter = createTRPCRouter({
       };
 
       await db.update(posts).set(updatedData).where(eq(posts.id, id));
+      clearSearchCache();
 
       return {
         success: true,
@@ -271,6 +274,7 @@ export const adminPostsRouter = createTRPCRouter({
 
       // 删除文章
       await db.delete(posts).where(eq(posts.id, input.id));
+      clearSearchCache();
 
       return {
         success: true,
@@ -327,6 +331,7 @@ export const adminPostsRouter = createTRPCRouter({
               message: "无效的操作类型",
             });
         }
+        clearSearchCache();
 
         return {
           success: true,

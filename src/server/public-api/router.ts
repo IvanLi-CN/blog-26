@@ -1,10 +1,18 @@
 import { TRPCError } from "@trpc/server";
+import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { buildPublicSnapshot } from "@/public-site/snapshot";
 import { createContext } from "@/server/context";
 import { appRouter } from "@/server/router";
+import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
 
 const PUBLIC_API_ALLOWED_METHODS = ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"] as const;
+const SEARCH_SUGGESTION_REASONS = new Set<SearchSuggestionReason>([
+  "initial",
+  "empty",
+  "error",
+  "filtered_empty",
+]);
 
 function json(request: Request, data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   const headers = new Headers(init.headers);
@@ -63,6 +71,12 @@ async function createCallerForRequest(request: Request) {
 
 function methodNotAllowed(request: Request, method: string) {
   return json(request, { error: `Method ${method} not allowed` }, { status: 405 });
+}
+
+function normalizeSuggestionReason(value: string | null): SearchSuggestionReason {
+  return SEARCH_SUGGESTION_REASONS.has(value as SearchSuggestionReason)
+    ? (value as SearchSuggestionReason)
+    : "empty";
 }
 
 export async function handlePublicApiRequest(request: Request, subPath: string) {
@@ -203,6 +217,39 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         topK: Number(url.searchParams.get("topK") || 20),
       });
       return json(request, result, { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/search/suggestions") {
+      if (request.method !== "GET") return methodNotAllowed(request, request.method);
+      const q = (url.searchParams.get("q") || "").trim();
+      const reason = normalizeSuggestionReason(url.searchParams.get("reason"));
+      const requestedLimit = Number(url.searchParams.get("limit") || 5);
+      const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(5, requestedLimit)) : 5;
+      if (!q) {
+        return json(
+          request,
+          { suggestions: [], source: "fallback", reason },
+          {
+            status: 200,
+            headers: {
+              "cache-control": "no-store",
+            },
+          },
+          resHeaders
+        );
+      }
+      const result = await suggestPublicSearchTerms({ query: q, reason, limit });
+      return json(
+        request,
+        result,
+        {
+          status: 200,
+          headers: {
+            "cache-control": "no-store",
+          },
+        },
+        resHeaders
+      );
     }
 
     if (pathname === "/comments") {
