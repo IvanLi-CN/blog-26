@@ -171,12 +171,17 @@ export async function suggestPublicSearchTerms(
   if (!query) return { suggestions: [], items: [], source: "fallback", reason: input.reason };
 
   const seeds = await loadPublicSuggestionSeeds();
-  const fallbackItems = await validateSuggestionItems(
-    buildFallbackSearchSuggestionItems(query, seeds, input.limit ?? 5),
+  const rawFallbackItems = buildFallbackSearchSuggestionItems(query, seeds, input.limit ?? 5);
+  const validatedFallbackItems = await validateSuggestionItems(
+    rawFallbackItems,
     seeds,
     input.limit ?? 5,
     query
   );
+  const fallbackItems =
+    validatedFallbackItems.length > 0
+      ? validatedFallbackItems
+      : rawFallbackItems.slice(0, input.limit ?? 5);
   const fallback = buildFallbackResult({ ...input, query }, fallbackItems);
   const resolved = await getResolvedLlmConfig();
   const apiKey = resolved.chat.apiKey || "";

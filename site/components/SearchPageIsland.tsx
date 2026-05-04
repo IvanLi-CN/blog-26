@@ -6,12 +6,12 @@ import {
   type SearchResultItem,
 } from "@/components/search/search-model";
 import { buildSearchHref, shouldPushSearchHref } from "@/components/search/search-navigation";
-import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
+import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v3:";
-const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v1:";
+const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v2:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 type CachedSearchResults = {
@@ -21,7 +21,7 @@ type CachedSearchResults = {
 
 type CachedSearchSuggestions = {
   expiresAt: number;
-  suggestions: string[];
+  suggestions: SearchSuggestionItem[];
 };
 
 function getSearchResultsCacheKey(query: string) {
@@ -57,7 +57,13 @@ function readCachedSearchSuggestions(query: string, reason: SearchSuggestionReas
       window.sessionStorage.removeItem(cacheKey);
       return null;
     }
-    return cached.suggestions.filter((item): item is string => typeof item === "string");
+    return cached.suggestions.filter(
+      (item): item is SearchSuggestionItem =>
+        item !== null &&
+        typeof item === "object" &&
+        typeof item.term === "string" &&
+        item.term.trim() !== ""
+    );
   } catch {
     return null;
   }
@@ -80,7 +86,7 @@ function writeCachedSearchResults(query: string, results: SearchResultItem[]) {
 function writeCachedSearchSuggestions(
   query: string,
   reason: SearchSuggestionReason,
-  suggestions: string[]
+  suggestions: SearchSuggestionItem[]
 ) {
   try {
     window.sessionStorage.setItem(
@@ -124,9 +130,21 @@ async function loadSearchSuggestions(
   );
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) return [];
+  const items = (payload as { items?: unknown; suggestions?: unknown }).items;
+  if (Array.isArray(items)) {
+    return items.filter(
+      (item): item is SearchSuggestionItem =>
+        item !== null &&
+        typeof item === "object" &&
+        typeof (item as SearchSuggestionItem).term === "string" &&
+        (item as SearchSuggestionItem).term.trim() !== ""
+    );
+  }
   const suggestions = (payload as { suggestions?: unknown }).suggestions;
   return Array.isArray(suggestions)
-    ? suggestions.filter((item): item is string => typeof item === "string" && item.trim() !== "")
+    ? suggestions
+        .filter((item): item is string => typeof item === "string" && item.trim() !== "")
+        .map((term) => ({ term, strategy: "related" }) satisfies SearchSuggestionItem)
     : [];
 }
 
@@ -142,7 +160,7 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [isLoading, setIsLoading] = useState(initialQuery.trim().length > 0);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
-  const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<string[]>([]);
+  const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<SearchSuggestionItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const syncFromLocation = useCallback(() => {
@@ -272,6 +290,16 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
     [syncFromLocation]
   );
 
+  const clearSearch = useCallback(() => {
+    runSearchForQuery("");
+    inputRef.current?.focus();
+  }, [runSearchForQuery]);
+
+  const retrySearch = useCallback(() => {
+    const nextQuery = searchedQuery.trim() || query.trim();
+    if (nextQuery) runSearchForQuery(nextQuery);
+  }, [query, runSearchForQuery, searchedQuery]);
+
   const onSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -290,6 +318,8 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
       filter={filter}
       onFilterChange={setFilter}
       onQueryChange={setQuery}
+      onClear={clearSearch}
+      onRetry={retrySearch}
       onRecommendedSearch={runSearchForQuery}
       onSubmit={onSubmit}
       recommendedSearchTerms={recommendedSearchTerms}

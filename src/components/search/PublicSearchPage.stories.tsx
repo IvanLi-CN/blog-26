@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import "@/styles/nature-restored.css";
+import type { SearchSuggestionItem } from "@/lib/ai/search-suggestions";
 import Icon from "../ui/Icon";
 import PublicSearchPage from "./PublicSearchPage";
 import type { SearchFilter, SearchResultItem } from "./search-model";
@@ -68,7 +69,7 @@ type SearchStoryProps = {
   items?: SearchResultItem[];
   isLoading?: boolean;
   isLoadingRecommendations?: boolean;
-  recommendedTerms?: string[];
+  recommendedTerms?: SearchSuggestionItem[];
   error?: string | null;
   theme?: "light" | "dark";
   shellClassName?: string;
@@ -110,7 +111,7 @@ function PublicStoryShell({
                   <a
                     key={label}
                     href="/"
-                    className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-[color:var(--nature-text-soft)] transition hover:bg-[rgba(var(--nature-highlight-rgb),0.28)] hover:text-[color:var(--nature-text)]"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-[color:var(--nature-text-soft)] transition hover:bg-[rgba(var(--nature-highlight-rgb),0.28)] hover:text-[color:var(--nature-text)]"
                   >
                     <Icon name={icon} className="h-4 w-4" />
                     <span>{label}</span>
@@ -187,6 +188,14 @@ function SearchStory({
         filter={filter}
         onFilterChange={setFilter}
         onQueryChange={setQuery}
+        onClear={() => {
+          setQuery("");
+          setActiveQuery("");
+          setFilter("all");
+        }}
+        onRetry={() => {
+          setQuery(activeQuery);
+        }}
         onRecommendedSearch={(term) => {
           setQuery(term);
           setActiveQuery(term);
@@ -210,11 +219,12 @@ export const Results: Story = {
   render: () => <SearchStory />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { name: "搜索文章和闪念" })).toBeInTheDocument();
-    await expect(canvas.getByText("找到 3 条内容")).toBeInTheDocument();
+    await expect(canvas.getByRole("heading", { name: "搜索内容" })).toBeInTheDocument();
+    await expect(canvas.getByText(/找到 3 条内容/)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "搜索" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
     await expect(canvasElement.querySelectorAll("mark").length).toBeGreaterThan(0);
+    await expect(canvas.getAllByText(/相关度/)[0]).toHaveClass(/opacity-75/);
     await expect(canvas.queryByText("打开内容")).not.toBeInTheDocument();
   },
 };
@@ -231,9 +241,9 @@ export const Initial: Story = {
   render: () => <SearchStory initialQuery="" searchedQuery="" items={emptyResults} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("heading", { name: "搜索文章和闪念" })).toBeInTheDocument();
+    await expect(canvas.getByRole("heading", { name: "搜索内容" })).toBeInTheDocument();
     await expect(canvas.getByText("等待输入关键词")).toBeInTheDocument();
-    await expect(canvas.getByText("从一个关键词进入内容")).toBeInTheDocument();
+    await expect(canvas.getByText("输入关键词开始搜索")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: /Arch/ })).toBeVisible();
   },
 };
@@ -267,13 +277,20 @@ export const Empty: Story = {
       initialQuery="Zettelkasten"
       items={emptyResults}
       searchedQuery="Zettelkasten"
-      recommendedTerms={["知识管理", "卡片笔记", "双链笔记"]}
+      recommendedTerms={[
+        { term: "知识管理", strategy: "broader_by_domain" },
+        { term: "双链笔记", strategy: "related" },
+        { term: "Evergreen Notes", strategy: "sibling" },
+        { term: "卡片笔记", strategy: "alternative_label" },
+      ]}
     />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("没有找到相关内容")).toBeInTheDocument();
     await expect(canvas.getByText("推荐搜索词")).toBeInTheDocument();
+    await expect(canvas.getByText("泛化")).toBeInTheDocument();
+    await expect(canvas.getByText("兄弟")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: /卡片笔记/ })).toBeVisible();
   },
 };
@@ -292,12 +309,18 @@ export const ErrorState: Story = {
       items={emptyResults}
       searchedQuery="Arch"
       error="搜索服务暂时不可用，请稍后重试。"
-      recommendedTerms={["Arch Linux", "Pacman", "Apple Silicon"]}
+      recommendedTerms={[
+        { term: "Linux", strategy: "broader_by_domain" },
+        { term: "Pacman", strategy: "related" },
+        { term: "NixOS", strategy: "sibling" },
+        { term: "Arch Linux", strategy: "alternative_label" },
+      ]}
     />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("alert")).toHaveTextContent("搜索服务暂时不可用");
+    await expect(canvas.getByRole("button", { name: /重试当前搜索/ })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /Pacman/ })).toBeVisible();
   },
 };
@@ -314,7 +337,11 @@ export const FilteredEmpty: Story = {
   render: () => (
     <SearchStory
       items={results.filter((item) => item.type === "post")}
-      recommendedTerms={["Arch Linux", "React Hooks", "Pacman"]}
+      recommendedTerms={[
+        { term: "Linux", strategy: "broader_by_domain" },
+        { term: "React Hooks", strategy: "related" },
+        { term: "Pacman", strategy: "alternative_label" },
+      ]}
     />
   ),
   play: async ({ canvasElement }) => {

@@ -1,8 +1,6 @@
 import { cn } from "@/lib/utils";
-import Icon from "../ui/Icon";
 import {
   getSearchResultHref,
-  getSearchResultIcon,
   getSearchResultType,
   getSearchResultTypeLabel,
   type SearchResultItem,
@@ -128,6 +126,10 @@ function renderSnippet(snippet: string, query?: string) {
   });
 }
 
+function formatScore(score: number) {
+  return Math.max(0, Math.min(100, Math.round(score * 100)));
+}
+
 export default function SearchResultsList({
   results,
   containerClassName,
@@ -168,32 +170,28 @@ export default function SearchResultsList({
                   linkClassName
                 )}
               >
-                <div className="flex items-start gap-4 px-4 py-4 sm:px-5 sm:py-5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1.1rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-accent-rgb),0.11)] text-[color:var(--nature-accent-strong)]">
-                    <Icon name={getSearchResultIcon(type)} className="h-5 w-5" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                <div className="px-4 py-3.5 sm:px-5 sm:py-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                       <span className="nature-chip">{getSearchResultTypeLabel(type)}</span>
-                      {score !== null && Number.isFinite(score) && (
-                        <span className="nature-chip nature-chip-accent">
-                          相关度 {Math.max(0, Math.min(100, Math.round(score * 100)))}%
-                        </span>
-                      )}
                       {query && (
                         <span className="text-xs text-[color:var(--nature-text-faint)]">
                           匹配 {query}
                         </span>
                       )}
+                      {score !== null && Number.isFinite(score) && (
+                        <span className="text-xs text-[color:var(--nature-text-faint)] opacity-75">
+                          相关度 {formatScore(score)}%
+                        </span>
+                      )}
                     </div>
 
-                    <h2 className="mt-3 line-clamp-2 font-heading text-xl font-semibold leading-7 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)]">
+                    <h2 className="mt-2 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)] sm:text-xl">
                       {r.title || r.slug}
                     </h2>
 
                     {snippet && (
-                      <div className="nature-muted mt-2 break-words text-sm leading-6">
+                      <div className="nature-muted mt-1.5 max-h-48 overflow-hidden break-words text-sm leading-6">
                         {renderSnippet(snippet, query)}
                       </div>
                     )}
