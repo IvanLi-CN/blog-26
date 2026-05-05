@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildFallbackSearchSuggestionItems,
   buildFallbackSearchSuggestions,
   normalizeSearchSuggestionItems,
   normalizeSearchSuggestions,
@@ -68,6 +69,19 @@ describe("search suggestions", () => {
     expect(suggestions).toEqual(expect.arrayContaining(["卡片笔记", "知识管理"]));
     expect(suggestions.some((term) => term.toLowerCase().includes("react"))).toBe(false);
     expect(suggestions).not.toContain("Zettelkasten");
+  });
+
+  test("keeps concept direction strategies in fallback suggestions", () => {
+    const suggestions = buildFallbackSearchSuggestionItems("Zettelkasten", [], 5);
+    const strategies = new Set(suggestions.map((item) => item.strategy));
+
+    expect(suggestions.map((item) => item.term)).toEqual(
+      expect.arrayContaining(["知识管理", "双链笔记", "卡片笔记"])
+    );
+    expect(strategies).toContain("broader_by_domain");
+    expect(strategies).toContain("related");
+    expect(strategies).toContain("sibling");
+    expect(strategies).toContain("alternative_label");
   });
 
   test("does not mine unrelated seed terms for unknown queries", () => {

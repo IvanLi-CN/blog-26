@@ -160,7 +160,11 @@ async function validateSuggestionItems(
   }
 
   return Array.from(best.values())
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .sort((a, b) => {
+      const scoreDelta = (b.score ?? 0) - (a.score ?? 0);
+      if (scoreDelta !== 0) return scoreDelta;
+      return a.term.localeCompare(b.term);
+    })
     .slice(0, limit);
 }
 
@@ -199,15 +203,17 @@ export async function suggestPublicSearchTerms(
         {
           role: "system",
           content: [
-            "You are designing recovery search terms for a public technical blog.",
-            "Do not merely replace synonyms. First infer what concept/domain the failed query may mean.",
-            "Then propose concept directions in exactly these strategy values:",
+            "You are designing the next search attempts for a public technical blog after a query returned no results.",
+            "Think from the reader's perspective: what concept direction should they try next to find useful existing content?",
+            "Do not merely replace synonyms, correct typos, or explain the taxonomy to the reader.",
+            "First infer the likely concept/domain behind the failed query, then propose compact search terms in exactly these strategy values:",
             "broader_by_domain, related, sibling, alternative_label.",
-            "Meanings: broader_by_domain = same thing generalized in another/larger domain; related = adjacent concept likely discussed together; sibling = peer concept in the same family; alternative_label = another name for the same concept.",
+            "Meanings: broader_by_domain = a larger domain containing the concept; related = an adjacent concept likely discussed together; sibling = a peer concept in the same family; alternative_label = another common name for the same concept.",
             "Avoid task/action keywords such as install, config, debug, tutorial, setup unless they are explicit concepts in the catalog.",
-            "Every suggestion must be likely to match the provided public content catalog.",
+            "Every suggestion must be likely to match the provided public content catalog or a close concept in it.",
+            "Prefer concept-direction nouns over long phrases, questions, or instructional wording.",
             'Respond with ONLY JSON: {"interpretations":[{"concept":"...","domain":"...","confidence":0.0}],"suggestions":[{"term":"...","strategy":"broader_by_domain","concept":"...","domain":"...","rationale":"..."}]}',
-            "Rules: 3-5 suggestions, concise terms, no sentences as terms, no URLs, no markdown, no exact copy of the failed query.",
+            "Rules: 3-5 suggestions, concise terms, no sentences as terms, no URLs, no markdown, no exact copy of the failed query, include at least 3 distinct strategies when possible.",
           ].join("\n"),
         },
         {

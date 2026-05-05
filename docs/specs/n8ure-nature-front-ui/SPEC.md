@@ -144,6 +144,7 @@ PR: include
 - Prompt states use a shared status panel for initial, loading, empty, error, and filtered-empty stories, keeping the message aligned to the content grid with a stronger icon, title, description, and recovery action.
 - Empty, error, and filtered-empty recovery actions now use recommended search terms. The public API generates suggestions with the configured chat LLM when available and falls back to public content tags, titles, and excerpts when it is not configured.
 - Empty-result recovery keeps concept-direction fallback terms even when strict result validation finds no current hit, so the user still gets query-related generalized, related, sibling, and alternative search routes instead of unrelated popular terms.
+- Empty-result recommendations now render as a single compact retry strip instead of a grouped explanation panel. The strip appears only for true no-result searches, keeps generalized/related/sibling/alternative labels as subdued metadata, and lets each term immediately launch a new pushed search route.
 - Markdown excerpts are cleaned before rendering: emphasis syntax, escaped inline-code markers, and HTML line-break artifacts are removed, while line breaks, indentation, and code-like command snippets remain readable across multiple lines.
 - The search page now prioritizes the search box as the primary tool, keeps relevance percentages as subdued metadata, presents recovery terms by generalized, related, sibling, and alternative directions, and uses compact result rows for faster scanning.
 
@@ -176,6 +177,13 @@ PR: include
 PR: include
 ![Search recovery directions](./assets/search-tool-recovery.png)
 
+PR: include
+![Search recommendations single row](./assets/search-recommendations-single-row.png)
+
+![Search recommendations single row dark](./assets/search-recommendations-single-row-dark.png)
+
+![Search recommendations single row mobile](./assets/search-recommendations-single-row-mobile.png)
+
 ## 8. Change log
 
 - 2026-04-05: Created spec for the public Nature redesign and DaisyUI decoupling.
@@ -189,3 +197,4 @@ PR: include
 - 2026-05-03: Added LLM-backed recommended recovery terms for non-normal search prompt states, with public-content fallback suggestions and refreshed Storybook evidence.
 - 2026-05-04: Tightened the search page toward a faster tool workflow, reduced result-card weight, grouped recovery terms by concept direction, subdued relevance metadata, and refreshed visual evidence.
 - 2026-05-05: Kept query-related concept-direction recovery terms when strict validation returns no hit, and added real dev-stack evidence for the empty-result recovery state.
+- 2026-05-05: Reworked empty-result recovery recommendations into a single-row retry strip that appears only on true no-result searches, with refreshed light, dark, and mobile Storybook evidence.

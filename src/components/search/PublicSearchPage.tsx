@@ -118,9 +118,12 @@ function SearchTermButton({ children, onClick }: { children: ReactNode; onClick:
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-surface-rgb),0.62)] px-4 text-sm font-medium text-[color:var(--nature-text-soft)] shadow-[0_10px_28px_rgba(var(--nature-shadow-rgb),0.08)] transition hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.42)] hover:bg-[rgba(var(--nature-accent-rgb),0.12)] hover:text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(var(--nature-accent-rgb),0.42)]"
+      className="group inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(var(--nature-accent-rgb),0.2)] bg-[rgba(var(--nature-surface-rgb),0.58)] px-3.5 text-sm font-medium text-[color:var(--nature-text)] shadow-[0_10px_28px_rgba(var(--nature-shadow-rgb),0.07)] transition hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.42)] hover:bg-[rgba(var(--nature-accent-rgb),0.12)] hover:text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(var(--nature-accent-rgb),0.42)]"
     >
-      <SearchHydrationSafeIcon name="tabler:search" className="h-4 w-4" />
+      <SearchHydrationSafeIcon
+        name="tabler:search"
+        className="h-4 w-4 text-[color:var(--nature-text-faint)] transition group-hover:text-[color:var(--nature-accent-strong)]"
+      />
       {children}
     </button>
   );
@@ -128,26 +131,22 @@ function SearchTermButton({ children, onClick }: { children: ReactNode; onClick:
 
 const suggestionStrategyMeta: Record<
   SearchSuggestionStrategy,
-  { label: string; hint: string; fallbackRationale: string }
+  { label: string; fallbackRationale: string }
 > = {
   broader_by_domain: {
     label: "泛化",
-    hint: "放大到所属领域",
     fallbackRationale: "把关键词放到更大的主题里重试。",
   },
   related: {
     label: "相关",
-    hint: "搜索相邻概念",
     fallbackRationale: "换成经常一起出现的概念。",
   },
   sibling: {
     label: "兄弟",
-    hint: "找同类工具或方法",
     fallbackRationale: "试试同一类别里的相近对象。",
   },
   alternative_label: {
     label: "替代",
-    hint: "换一个常用名称",
     fallbackRationale: "使用同一概念的另一个叫法。",
   },
 };
@@ -191,15 +190,17 @@ function RecommendedSearchTerms({
 }) {
   if (isLoading) {
     return (
-      <div className="w-full">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
-          <SearchHydrationSafeIcon name="tabler:sparkles" className="h-4 w-4" />
-          正在生成推荐搜索词
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {["suggestion-loading-1", "suggestion-loading-2", "suggestion-loading-3"].map((key) => (
-            <span key={key} className="nature-skeleton h-11 w-24 rounded-full" />
-          ))}
+      <div className="w-full rounded-[1.35rem] border border-[rgba(var(--nature-accent-rgb),0.16)] bg-[rgba(var(--nature-highlight-rgb),0.24)] px-4 py-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-[color:var(--nature-text-faint)]">
+            <SearchHydrationSafeIcon name="tabler:sparkles" className="h-4 w-4" />
+            正在准备可重试的方向
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {["suggestion-loading-1", "suggestion-loading-2", "suggestion-loading-3"].map((key) => (
+              <span key={key} className="nature-skeleton h-10 w-24 rounded-full" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -207,48 +208,31 @@ function RecommendedSearchTerms({
 
   const suggestionItems = toSuggestionItems(terms);
   if (suggestionItems.length === 0) return null;
-  const groupedItems = suggestionStrategyOrder
-    .map((strategy) => ({
-      strategy,
-      items: suggestionItems.filter((item) => item.strategy === strategy),
-    }))
-    .filter((group) => group.items.length > 0);
 
   return (
-    <div className="w-full space-y-3">
-      <div>
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--nature-text-faint)]">
+    <div className="w-full rounded-[1.35rem] border border-[rgba(var(--nature-accent-rgb),0.16)] bg-[rgba(var(--nature-highlight-rgb),0.24)] px-4 py-3 shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.22)]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-[color:var(--nature-text-faint)]">
           <SearchHydrationSafeIcon name="tabler:sparkles" className="h-4 w-4" />
-          推荐搜索词
+          换个方向搜
         </div>
-        <p className="mt-1 text-xs leading-5 text-[color:var(--nature-text-faint)]">
-          按泛化、相关、兄弟、替代方向重试。
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {groupedItems.map(({ strategy, items }) => (
-          <div key={strategy} className="min-w-0">
-            <div className="mb-1.5 flex items-center gap-2 text-xs text-[color:var(--nature-text-faint)]">
-              <span className="font-semibold text-[color:var(--nature-text-soft)]">
-                {suggestionStrategyMeta[strategy].label}
-              </span>
-              <span>{suggestionStrategyMeta[strategy].hint}</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {items.map((item) => (
-                <SearchTermButton
-                  key={`${strategy}-${item.term}`}
-                  onClick={() => onSearch?.(item.term)}
-                >
-                  <span>{item.term}</span>
-                  <span className="sr-only">
-                    {item.rationale ?? suggestionStrategyMeta[strategy].fallbackRationale}
-                  </span>
-                </SearchTermButton>
-              ))}
-            </div>
-          </div>
-        ))}
+        <div className="flex flex-wrap gap-2">
+          {suggestionItems.map((item) => {
+            const meta = suggestionStrategyMeta[item.strategy];
+            return (
+              <SearchTermButton
+                key={`${item.strategy}-${item.term}`}
+                onClick={() => onSearch?.(item.term)}
+              >
+                <span className="rounded-full bg-[rgba(var(--nature-accent-rgb),0.12)] px-2 py-0.5 text-[0.72rem] font-semibold text-[color:var(--nature-accent-strong)]">
+                  {meta.label}
+                </span>
+                <span>{item.term}</span>
+                <span className="sr-only">{item.rationale ?? meta.fallbackRationale}</span>
+              </SearchTermButton>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -430,11 +414,6 @@ export default function PublicSearchPage({
                 重试当前搜索
               </SearchSecondaryButton>
             )}
-            <RecommendedSearchTerms
-              terms={recommendedSearchTerms}
-              isLoading={isLoadingRecommendations}
-              onSearch={runRecommendedSearch}
-            />
           </SearchPromptPanel>
         )}
 
@@ -446,16 +425,7 @@ export default function PublicSearchPage({
             title="输入关键词开始搜索"
             description="可搜索公开文章、Memos、标签和工具名。用清晰名词进入最快。"
             watermark="GO"
-          >
-            <RecommendedSearchTerms
-              terms={
-                recommendedSearchTerms.length > 0
-                  ? recommendedSearchTerms
-                  : ["Arch", "React", "WebDAV"]
-              }
-              onSearch={runRecommendedSearch}
-            />
-          </SearchPromptPanel>
+          />
         )}
 
         {isLoading && activeQuery && (
@@ -496,13 +466,7 @@ export default function PublicSearchPage({
               title="这个类型里没有匹配项"
               description="当前关键词有结果，但不在这个内容类型里。切回全部可以继续查看其它结果。"
               watermark="ALL"
-            >
-              <RecommendedSearchTerms
-                terms={recommendedSearchTerms}
-                isLoading={isLoadingRecommendations}
-                onSearch={runRecommendedSearch}
-              />
-            </SearchPromptPanel>
+            />
           )}
 
         {!isLoading && activeQuery && !errorMessage && !hasResults && (
@@ -511,7 +475,7 @@ export default function PublicSearchPage({
             icon="tabler:leaf-off"
             eyebrow="没有结果"
             title="没有找到相关内容"
-            description="先换一个方向重试：泛化到领域、搜索相关概念、找同类工具，或换一个常用名称。"
+            description="没有命中当前关键词。下面是更可能找到内容的搜索方向，点一下即可重试。"
             watermark="0"
           >
             <RecommendedSearchTerms

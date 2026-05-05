@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import PublicSearchPage from "@/components/search/PublicSearchPage";
-import {
-  filterSearchResults,
-  type SearchFilter,
-  type SearchResultItem,
-} from "@/components/search/search-model";
+import type { SearchFilter, SearchResultItem } from "@/components/search/search-model";
 import { buildSearchHref, shouldPushSearchHref } from "@/components/search/search-navigation";
 import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v3:";
-const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v2:";
+const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v3:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 type CachedSearchResults = {
@@ -223,15 +219,12 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
   }, [syncFromLocation]);
 
   const canSearch = useMemo(() => query.trim().length > 0, [query]);
-  const filteredResults = useMemo(() => filterSearchResults(results, filter), [filter, results]);
   const suggestionReason = useMemo<SearchSuggestionReason | null>(() => {
     const current = searchedQuery.trim();
     if (!current || isLoading) return null;
-    if (error) return "error";
     if (results.length === 0) return "empty";
-    if (filteredResults.length === 0) return "filtered_empty";
     return null;
-  }, [error, filteredResults.length, isLoading, results.length, searchedQuery]);
+  }, [isLoading, results.length, searchedQuery]);
 
   useEffect(() => {
     suggestionsAbortRef.current?.abort();
