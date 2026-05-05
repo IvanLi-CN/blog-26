@@ -69,6 +69,7 @@ The project previously let each AI-related module read environment variables dir
 - Catalog refresh must fail open so local builds remain usable without network access.
 - Bound both the build-time OpenRouter refresh and admin-side provider test calls with request timeouts so offline or half-open endpoints fail back to the UI/build flow instead of hanging indefinitely.
 - Model fetching UI must distinguish loading, upstream-empty, filtered-empty, and provider error states; an empty `/models` response is actionable provider feedback, not a silent no-op.
+- Rerank clients must parse both OpenAI-like `data[].score` and Jina/SiliconFlow-compatible `results[].relevance_score` responses; empty or non-numeric scores should stay fail-fast, with structured logs that include provider host, model, status, and sanitized upstream summaries.
 - Do not print full environment dumps from container entrypoints; secrets may arrive through `env_file`, mounted files, or inherited runtime env and must never be echoed to Docker logs.
 
 # References

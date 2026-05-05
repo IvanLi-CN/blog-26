@@ -1,5 +1,10 @@
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
+interface RerankerUnavailable extends Error {
+  code: "RERANKER_UNAVAILABLE";
+  details?: string;
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -42,6 +47,102 @@ async function fetchWithBackoff(
 
 export type RerankItem = { index: number; document: string; score: number };
 
+function createRerankerUnavailable(details?: string) {
+  const err = new Error("RERANKER_UNAVAILABLE") as RerankerUnavailable;
+  err.code = "RERANKER_UNAVAILABLE";
+  if (details) err.details = details;
+  return err;
+}
+
+function getRerankBaseHost(apiBase: string) {
+  try {
+    return new URL(apiBase).host;
+  } catch {
+    return "invalid-url";
+  }
+}
+
+function redactSensitive(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (value === null || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+      if (/authorization|api[_-]?key|token|secret|password|documents?/i.test(key)) {
+        return [key, "[redacted]"];
+      }
+      return [key, redactSensitive(item)];
+    })
+  );
+}
+
+function summarizeBody(value: string) {
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (!compact) return "";
+
+  try {
+    return JSON.stringify(redactSensitive(JSON.parse(compact))).slice(0, 500);
+  } catch {
+    return compact
+      .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+      .replace(/sk-[A-Za-z0-9._~+/=-]+/g, "sk-[redacted]")
+      .slice(0, 500);
+  }
+}
+
+function logRerankIssue(
+  message: string,
+  context: {
+    model: string;
+    apiBase: string;
+    status?: number;
+    bodySummary?: string;
+    resultCount?: number;
+    validItemCount?: number;
+    reason?: string;
+  }
+) {
+  console.warn("[rerank]", {
+    message,
+    model: context.model,
+    baseHost: getRerankBaseHost(context.apiBase),
+    status: context.status,
+    bodySummary: context.bodySummary,
+    resultCount: context.resultCount,
+    validItemCount: context.validItemCount,
+    reason: context.reason,
+  });
+}
+
+function readScore(value: Record<string, unknown>) {
+  if (typeof value.score === "number") return value.score;
+  if (typeof value.relevance_score === "number") return value.relevance_score;
+  return null;
+}
+
+export function parseRerankResponse(payload: unknown) {
+  const source = payload as { data?: unknown; results?: unknown };
+  const rawItems = Array.isArray(source.data)
+    ? source.data
+    : Array.isArray(source.results)
+      ? source.results
+      : [];
+
+  const items = rawItems
+    .map((it, index) => {
+      if (it === null || typeof it !== "object") return null;
+      const o = it as Record<string, unknown>;
+      const score = readScore(o);
+      if (score === null || !Number.isFinite(score)) return null;
+      const i = typeof o.index === "number" ? o.index : index;
+      const document = typeof o.document === "string" ? o.document : "";
+      return { index: i, document, score } satisfies RerankItem;
+    })
+    .filter((item): item is RerankItem => item !== null);
+
+  return { items, rawItemCount: rawItems.length };
+}
+
 export async function rerank(
   query: string,
   documents: string[],
@@ -50,13 +151,7 @@ export async function rerank(
   const resolved = await getResolvedLlmConfig();
   const modelName = opts?.model || resolved.rerank.model;
   if (!modelName) {
-    interface RerankerUnavailable extends Error {
-      code: "RERANKER_UNAVAILABLE";
-      details?: string;
-    }
-    const err = new Error("RERANKER_UNAVAILABLE") as RerankerUnavailable;
-    err.code = "RERANKER_UNAVAILABLE";
-    throw err;
+    throw createRerankerUnavailable();
   }
   const apiBase = resolved.rerank.baseUrl;
   const apiKey = resolved.rerank.apiKey;
@@ -84,32 +179,54 @@ export async function rerank(
   );
 
   if (!res.ok) {
-    // 标准化为不可用错误，不做降级
-    interface RerankerUnavailable extends Error {
-      code: "RERANKER_UNAVAILABLE";
-      details?: string;
-    }
-    const err = new Error("RERANKER_UNAVAILABLE") as RerankerUnavailable;
-    err.code = "RERANKER_UNAVAILABLE";
+    let details = "";
     try {
-      err.details = await res.text();
+      details = await res.text();
     } catch {
       /* ignore: response body may be empty or stream already consumed */
     }
-    throw err;
+    logRerankIssue("upstream returned non-ok response", {
+      model: modelName,
+      apiBase,
+      status: res.status,
+      bodySummary: summarizeBody(details),
+    });
+    throw createRerankerUnavailable(details);
   }
 
-  const json: unknown = await res.json();
-  const items: RerankItem[] = Array.isArray((json as { data?: unknown }).data)
-    ? ((json as { data: unknown }).data as unknown[])
-        .map((it, index) => {
-          const o = it as Record<string, unknown>;
-          const i = typeof o.index === "number" ? o.index : index;
-          const document = typeof o.document === "string" ? o.document : "";
-          const score = typeof o.score === "number" ? o.score : 0;
-          return { index: i, document, score };
-        })
-        .filter((x) => typeof x.index === "number")
-    : [];
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch (error) {
+    logRerankIssue("failed to parse upstream JSON response", {
+      model: modelName,
+      apiBase,
+      status: res.status,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    throw createRerankerUnavailable("Invalid rerank JSON response");
+  }
+
+  const { items, rawItemCount } = parseRerankResponse(json);
+  if (rawItemCount > items.length) {
+    logRerankIssue("upstream response contained unusable rerank scores", {
+      model: modelName,
+      apiBase,
+      status: res.status,
+      resultCount: rawItemCount,
+      validItemCount: items.length,
+    });
+  }
+  if (items.length === 0) {
+    logRerankIssue("upstream response did not contain usable rerank items", {
+      model: modelName,
+      apiBase,
+      status: res.status,
+      resultCount: rawItemCount,
+      validItemCount: items.length,
+    });
+    throw createRerankerUnavailable("Rerank response did not contain usable scores");
+  }
+
   return items;
 }
