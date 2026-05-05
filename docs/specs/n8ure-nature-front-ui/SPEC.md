@@ -65,21 +65,17 @@ We need a frontend-owned design system that keeps routes and content behavior st
   - `biome.jsonc` schema mismatch against the globally installed Biome CLI
   - existing admin/editor lint findings unrelated to the public Nature redesign
 
-## 7. Visual Evidence
+## Visual Evidence
 
 - Evidence captured against local branch `th/nature-front-redesign` on the refreshed Nature frontend worktree state after the width, comment-form, and code-highlighting fixes.
 - Assets stored under `docs/specs/n8ure-nature-front-ui/assets/`.
 
-PR: include
 ![Home light](./assets/home-light.png)
 
-PR: include
 ![Home dark](./assets/home-dark.png)
 
-PR: include
 ![Theme test light](./assets/theme-test-light.png)
 
-PR: include
 ![Post detail dark](./assets/post-detail-dark.png)
 
 ![Search mobile light](./assets/search-mobile-light.png)
@@ -105,16 +101,12 @@ PR: include
 - Desktop restores a shared timeline rail and node rhythm across `/` and `/memos`, verifies the memos guide line in both light and dark themes, and removes the extra intro cards that previously sat between the home hero and the first timeline item.
 - Mobile keeps a reduced-but-visible rail instead of collapsing into plain stacked cards, and the memo detail affordance is hidden there so it does not compete with tags or content.
 
-PR: include
 ![Home timeline light](./assets/home-timeline-light-final.png)
 
-PR: include
 ![Home timeline dark](./assets/home-timeline-dark-final.png)
 
-PR: include
 ![Memos timeline light](./assets/memos-timeline-light-final.png)
 
-PR: include
 ![Memos timeline dark](./assets/memos-timeline-dark-final.png)
 
 ![Home timeline mobile](./assets/home-timeline-mobile.png)
@@ -126,13 +118,10 @@ PR: include
 - Evidence captured from the local hover-stability preview on `2026-04-11` using the shared `nature-hover-hitbox` + `nature-hover-lift` contract.
 - The outer hitbox stays stationary while the inner surface carries the lifted shadow/border state, preventing hover thrash near the lower edge of related-post cards, tag cards, search results, and tag badges.
 
-PR: include
 ![Hover stability - related posts](./assets/hover-stability-related-posts.png)
 
-PR: include
 ![Hover stability - tags grid](./assets/hover-stability-tags-grid.png)
 
-PR: include
 ![Hover stability - search results](./assets/hover-stability-search-results.png)
 
 ### Search interface redesign
@@ -148,43 +137,36 @@ PR: include
 - Markdown excerpts are cleaned before rendering: emphasis syntax, escaped inline-code markers, and HTML line-break artifacts are removed, while line breaks, indentation, and code-like command snippets remain readable across multiple lines.
 - The search page now prioritizes the search box as the primary tool, keeps relevance percentages as subdued metadata, presents recovery terms by generalized, related, sibling, and alternative directions, and uses compact result rows for faster scanning.
 
-PR: include
 ![Search redesign light](./assets/search-redesign-results.png)
 
-PR: include
 ![Search redesign dark](./assets/search-redesign-dark.png)
 
 ![Search redesign mobile](./assets/search-redesign-mobile.png)
 
-PR: include
 ![Search keyword snippets](./assets/search-highlight-snippets.png)
 
-PR: include
 ![Search Storybook with site layout](./assets/search-story-layout-results.png)
 
-PR: include
 ![Search empty state bolder](./assets/search-empty-state-bolder.png)
 
-PR: include
 ![Search recommended recovery terms](./assets/search-empty-recommendations.png)
 
-PR: include
 ![Search Markdown snippets](./assets/search-markdown-snippets.png)
 
-PR: include
 ![Search fast tool results](./assets/search-tool-fast-results.png)
 
-PR: include
 ![Search recovery directions](./assets/search-tool-recovery.png)
 
 PR: include
 ![Search recommendations single row](./assets/search-recommendations-single-row.png)
 
+PR: include
 ![Search recommendations single row dark](./assets/search-recommendations-single-row-dark.png)
 
+PR: include
 ![Search recommendations single row mobile](./assets/search-recommendations-single-row-mobile.png)
 
-## 8. Change log
+## Change log
 
 - 2026-04-05: Created spec for the public Nature redesign and DaisyUI decoupling.
 - 2026-04-06: Refreshed local visual evidence after the layout, comment-form, and syntax-highlighting fixes.
