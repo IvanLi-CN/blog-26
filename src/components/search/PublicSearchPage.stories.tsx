@@ -244,7 +244,7 @@ export const Initial: Story = {
     await expect(canvas.getByRole("heading", { name: "搜索内容" })).toBeInTheDocument();
     await expect(canvas.getByText("等待输入关键词")).toBeInTheDocument();
     await expect(canvas.getByText("输入关键词开始搜索")).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: /Arch/ })).toBeVisible();
+    await expect(canvas.queryByText("换个方向搜")).not.toBeInTheDocument();
   },
 };
 
@@ -288,7 +288,7 @@ export const Empty: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("没有找到相关内容")).toBeInTheDocument();
-    await expect(canvas.getByText("推荐搜索词")).toBeInTheDocument();
+    await expect(canvas.getByText("换个方向搜")).toBeInTheDocument();
     await expect(canvas.getByText("泛化")).toBeInTheDocument();
     await expect(canvas.getByText("兄弟")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: /卡片笔记/ })).toBeVisible();
@@ -309,19 +309,13 @@ export const ErrorState: Story = {
       items={emptyResults}
       searchedQuery="Arch"
       error="搜索服务暂时不可用，请稍后重试。"
-      recommendedTerms={[
-        { term: "Linux", strategy: "broader_by_domain" },
-        { term: "Pacman", strategy: "related" },
-        { term: "NixOS", strategy: "sibling" },
-        { term: "Arch Linux", strategy: "alternative_label" },
-      ]}
     />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("alert")).toHaveTextContent("搜索服务暂时不可用");
     await expect(canvas.getByRole("button", { name: /重试当前搜索/ })).toBeVisible();
-    await expect(canvas.getByRole("button", { name: /Pacman/ })).toBeVisible();
+    await expect(canvas.queryByText("换个方向搜")).not.toBeInTheDocument();
   },
 };
 
@@ -334,22 +328,57 @@ export const FilteredEmpty: Story = {
       },
     },
   },
-  render: () => (
-    <SearchStory
-      items={results.filter((item) => item.type === "post")}
-      recommendedTerms={[
-        { term: "Linux", strategy: "broader_by_domain" },
-        { term: "React Hooks", strategy: "related" },
-        { term: "Pacman", strategy: "alternative_label" },
-      ]}
-    />
-  ),
+  render: () => <SearchStory items={results.filter((item) => item.type === "post")} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: /闪念 0/ }));
     await expect(canvas.getByText("这个类型里没有匹配项")).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: /React Hooks/ })).toBeVisible();
+    await expect(canvas.queryByText("换个方向搜")).not.toBeInTheDocument();
   },
+};
+
+export const MobileEmpty: Story = {
+  name: "移动端无结果",
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+  render: () => (
+    <SearchStory
+      shellClassName="mx-auto max-w-[390px]"
+      initialQuery="Zettelkasten"
+      items={emptyResults}
+      searchedQuery="Zettelkasten"
+      recommendedTerms={[
+        { term: "知识管理", strategy: "broader_by_domain" },
+        { term: "双链笔记", strategy: "related" },
+        { term: "Evergreen Notes", strategy: "sibling" },
+        { term: "卡片笔记", strategy: "alternative_label" },
+      ]}
+    />
+  ),
+};
+
+export const DarkEmpty: Story = {
+  name: "深色无结果",
+  parameters: {
+    backgrounds: { default: "public dark" },
+  },
+  render: () => (
+    <SearchStory
+      theme="dark"
+      initialQuery="Zettelkasten"
+      items={emptyResults}
+      searchedQuery="Zettelkasten"
+      recommendedTerms={[
+        { term: "知识管理", strategy: "broader_by_domain" },
+        { term: "双链笔记", strategy: "related" },
+        { term: "Evergreen Notes", strategy: "sibling" },
+        { term: "卡片笔记", strategy: "alternative_label" },
+      ]}
+    />
+  ),
 };
 
 export const MobileResults: Story = {

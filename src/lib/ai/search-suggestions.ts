@@ -29,6 +29,13 @@ const STRATEGY_WEIGHTS: Record<SearchSuggestionStrategy, number> = {
   sibling: 14,
 };
 
+const STRATEGY_DIVERSITY_BONUS: Record<SearchSuggestionStrategy, number> = {
+  broader_by_domain: 8,
+  related: 6,
+  sibling: 5,
+  alternative_label: 4,
+};
+
 const TECH_STOP_WORDS = new Set([
   "and",
   "with",
@@ -335,8 +342,36 @@ function scoreSuggestionItem(item: SearchSuggestionItem, query: string, index: n
   return (
     scoreCandidate(item.term, query, index) +
     STRATEGY_WEIGHTS[item.strategy] +
-    (hasQueryRelation(item.term, query) ? 24 : 0)
+    (hasQueryRelation(item.term, query) ? 12 : 0) +
+    (item.concept ? 12 : 0) +
+    (item.domain ? 10 : 0)
   );
+}
+
+function orderSuggestionItems(items: SearchSuggestionItem[], limit: number) {
+  const remaining = [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const selected: SearchSuggestionItem[] = [];
+  const usedStrategies = new Set<SearchSuggestionStrategy>();
+
+  while (remaining.length > 0 && selected.length < limit) {
+    let bestIndex = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (const [index, item] of remaining.entries()) {
+      const score =
+        (item.score ?? 0) +
+        (usedStrategies.has(item.strategy) ? 0 : STRATEGY_DIVERSITY_BONUS[item.strategy]);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    }
+    const [item] = remaining.splice(bestIndex, 1);
+    if (!item) break;
+    selected.push(item);
+    usedStrategies.add(item.strategy);
+  }
+
+  return selected;
 }
 
 export function normalizeSearchSuggestionItems(
@@ -428,17 +463,17 @@ export function buildFallbackSearchSuggestionItems(
     }
   }
 
-  return Array.from(best.values())
-    .sort((a, b) => b.score - a.score)
-    .map((item) => ({
+  return orderSuggestionItems(
+    Array.from(best.values()).map((item) => ({
       term: item.term,
       strategy: item.strategy,
       concept: item.concept,
       domain: item.domain,
       rationale: item.rationale,
       score: item.score,
-    }))
-    .slice(0, limit);
+    })),
+    limit
+  );
 }
 
 export function buildFallbackSearchSuggestions(
