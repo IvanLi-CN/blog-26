@@ -214,7 +214,7 @@ export function getWebDAVUrl(path: string = ""): string {
   return `${baseUrl.replace(/\/$/, "")}${cleanPath}`;
 }
 
-function getActiveLocalBasePath(): string | null {
+export function getActiveLocalBasePath(): string | null {
   const envBasePath = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
   if (envBasePath) return envBasePath;
   return LOCAL_PATHS.basePath;

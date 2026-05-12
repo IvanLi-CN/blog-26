@@ -5,7 +5,12 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import matter from "gray-matter";
 import limax from "limax";
 import { z } from "zod";
-import { isLocalContentEnabled, LOCAL_PATHS, WEBDAV_PATHS } from "@/config/paths";
+import {
+  getActiveLocalBasePath,
+  isLocalContentEnabled,
+  LOCAL_PATHS,
+  WEBDAV_PATHS,
+} from "@/config/paths";
 import { enhanced as enhancedSearch, semantic as semanticSearch } from "@/lib/ai/search";
 import {
   getContentSourceManager,
@@ -26,7 +31,7 @@ function iso(ts: number | string | Date): string {
 }
 
 function getLocalBasePathOrThrow(): string {
-  const base = LOCAL_PATHS.basePath;
+  const base = getActiveLocalBasePath();
   if (!base || base.length === 0) {
     throw new Error(
       "Local content source is disabled. Set LOCAL_CONTENT_BASE_PATH to enable local operations."
