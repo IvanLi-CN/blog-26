@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { inferContentType } from "../../config/paths";
-import { resolveImagePathLegacy } from "../image-utils";
 import {
   buildMemoAssetPath,
   buildMemoRelativePath,
@@ -309,11 +308,5 @@ describe("memo-paths", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("LOCAL_MEMOS_PATH");
     expect(result.stderr).toContain("PUBLIC_LOCAL_MEMOS_PATH");
-  });
-
-  it("maps legacy memo routes to the configured local memo root", () => {
-    expect(resolveImagePathLegacy("./assets/image.png", "/memos/test-note")).toBe(
-      "/api/files/local/Memos/assets/image.png"
-    );
   });
 });

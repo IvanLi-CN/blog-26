@@ -1,5 +1,3 @@
-import { getMemoRootDir } from "@/lib/memo-paths";
-
 /**
  * 图片路径解析工具
  *
@@ -223,41 +221,6 @@ export function resolveImagePaths(
   return imagePaths
     .map((path) => resolveImagePath(path, contentSource, markdownFilePath))
     .filter((path): path is string => path !== null);
-}
-
-/**
- * 向后兼容的图片路径解析函数
- * 使用旧的API签名，但内部使用新的实现
- *
- * @deprecated 请使用新的 resolveImagePath(imagePath, contentSource, markdownFilePath) 函数
- * @param imagePath 原始图片路径
- * @param contextPath 上下文路径（如 /posts/my-post）
- * @returns 处理后的图片URL，如果输入无效则返回null
- */
-export function resolveImagePathLegacy(
-  imagePath: string | undefined,
-  contextPath?: string
-): string | null {
-  // 默认使用 local 内容源（FS-only 默认）
-  const contentSource = "local";
-
-  // 尝试从contextPath推断文件路径
-  let markdownFilePath: string | undefined;
-  if (contextPath) {
-    const cleanPath = contextPath.startsWith("/") ? contextPath.substring(1) : contextPath;
-    const parts = cleanPath.split("/");
-    const rootSegment = parts[0]?.toLowerCase();
-
-    if (rootSegment === "posts") {
-      // posts类型映射到blog目录
-      markdownFilePath = parts.length > 1 ? `blog/${parts[1]}.md` : undefined;
-    } else if (rootSegment === "memos") {
-      // memos类型映射到本地 memo 根目录，保留大小写约定
-      markdownFilePath = parts.length > 1 ? `${getMemoRootDir()}/${parts[1]}.md` : undefined;
-    }
-  }
-
-  return resolveImagePath(imagePath, contentSource, markdownFilePath);
 }
 
 /**

@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { SITE } from "@/config/site";
+import { resolveImagePath } from "@/lib/image-utils";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
-import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
+import { getPublicSiteUrl, toPublicAssetUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 import type {
   PublicPostRecord,
   PublicSnapshot,
@@ -16,6 +17,68 @@ const snapshotPath = resolve(
 );
 
 let snapshotPromise: Promise<PublicSnapshot> | undefined;
+
+type SnapshotRecordWithPath = {
+  id?: string | null;
+  slug: string;
+  filePath?: string | null;
+};
+
+function getSnapshotRecordPath(record: SnapshotRecordWithPath) {
+  const filePath = record.filePath?.trim() || record.id?.trim();
+  if (!filePath) {
+    throw new Error(`Public snapshot record ${record.slug} is missing a canonical file path`);
+  }
+  return filePath;
+}
+
+function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
+  const posts = snapshot.posts.map((post) => ({
+    ...post,
+    filePath: getSnapshotRecordPath(post),
+  }));
+  const memos = snapshot.memos.map((memo) => ({
+    ...memo,
+    filePath: getSnapshotRecordPath(memo),
+  }));
+  const pathByTimelineKey = new Map<string, string>();
+
+  for (const post of posts) {
+    pathByTimelineKey.set(`post:${post.slug}`, post.filePath);
+  }
+  for (const memo of memos) {
+    pathByTimelineKey.set(`memo:${memo.slug}`, memo.filePath);
+  }
+
+  const timelines = Object.fromEntries(
+    Object.entries(snapshot.tags.timelines).map(([tagPath, items]) => [
+      tagPath,
+      items.map((item) => {
+        const filePath =
+          item.filePath?.trim() || pathByTimelineKey.get(`${item.type}:${item.slug}`);
+        if (!filePath) {
+          throw new Error(
+            `Public snapshot timeline item ${item.type}:${item.slug} is missing a canonical file path`
+          );
+        }
+        return {
+          ...item,
+          filePath,
+        };
+      }),
+    ])
+  );
+
+  return {
+    ...snapshot,
+    posts,
+    memos,
+    tags: {
+      ...snapshot.tags,
+      timelines,
+    },
+  };
+}
 
 export function getSiteUrl() {
   return getPublicSiteUrl() || SITE.url;
@@ -44,8 +107,8 @@ export function toAbsoluteSiteUrl(pathname: string) {
 
 export async function getSnapshot() {
   if (!snapshotPromise) {
-    snapshotPromise = readFile(snapshotPath, "utf8").then(
-      (raw) => JSON.parse(raw) as PublicSnapshot
+    snapshotPromise = readFile(snapshotPath, "utf8").then((raw) =>
+      normalizeSnapshotPaths(JSON.parse(raw) as PublicSnapshot)
     );
   }
   return snapshotPromise;
@@ -275,6 +338,13 @@ export function buildTagFeedItems(
 ) {
   return items.map((item) => {
     const path = item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`;
+    const image = toPublicAssetUrl(
+      resolveImagePath(
+        item.image ?? undefined,
+        (item.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
+        item.filePath
+      ) ?? item.image
+    );
     const source =
       item.type === "memo"
         ? (snapshot.memos.find((memo) => memo.slug === item.slug)?.content ?? item.content ?? "")
@@ -288,7 +358,7 @@ export function buildTagFeedItems(
       authorName: SITE.author.name,
       authorEmail: SITE.author.email,
       categories: item.tags,
-      image: item.image ?? undefined,
+      image: image ?? undefined,
       updatedAt: new Date(item.publishDate),
       publishedAt: new Date(item.publishDate),
     };

@@ -32,7 +32,7 @@ const relatedPosts = getRelatedPosts(snapshot, post.slug);
 const imageSrc = toPublicAssetUrl(resolveImagePath(
   post.image || undefined,
   (post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
-  post.filePath || `blog/${post.slug}.md`
+  post.filePath
 ));
 const absoluteImageSrc = imageSrc
   ? imageSrc.startsWith("http") || imageSrc.startsWith("data:")
@@ -126,7 +126,7 @@ const structuredData = {
           enableMermaid={true}
           enableCodeFolding={true}
           rewritePublicSitePaths={true}
-          articlePath={post.filePath || `blog/${post.slug}.md`}
+          articlePath={post.filePath}
           contentSource={(post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
         />
       </div>

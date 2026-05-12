@@ -40,25 +40,19 @@ function buildOptions(format: FeedFormat) {
 function resolveContentImageUrl(
   image: string | null | undefined,
   dataSource: string | null | undefined,
-  filePath: string | null | undefined,
-  fallbackPath: string
+  filePath: string
 ) {
   const resolved = resolveImagePath(
     image || undefined,
     (dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
-    filePath || fallbackPath
+    filePath
   );
   return toPublicAssetUrl(resolved ?? image ?? undefined) ?? undefined;
 }
 
 export function buildSiteFeed(snapshot: PublicSnapshot, format: FeedFormat): BuiltFeed {
   const items = snapshot.posts.slice(0, 30).map((post) => {
-    const imageUrl = resolveContentImageUrl(
-      post.image,
-      post.dataSource,
-      post.filePath,
-      `blog/${post.slug}.md`
-    );
+    const imageUrl = resolveContentImageUrl(post.image, post.dataSource, post.filePath);
     return {
       id: getCanonicalUrl(`/posts/${post.slug}`),
       title: post.title,
@@ -81,12 +75,7 @@ export function buildSiteFeed(snapshot: PublicSnapshot, format: FeedFormat): Bui
 
 export function buildMemosFeed(snapshot: PublicSnapshot): BuiltFeed {
   const items = snapshot.memos.slice(0, 30).map((memo) => {
-    const imageUrl = resolveContentImageUrl(
-      memo.image,
-      memo.dataSource,
-      memo.filePath,
-      `Memos/${memo.slug}.md`
-    );
+    const imageUrl = resolveContentImageUrl(memo.image, memo.dataSource, memo.filePath);
     return {
       id: getCanonicalUrl(`/memos/${memo.slug}`),
       title: memo.title,

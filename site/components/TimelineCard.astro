@@ -17,7 +17,7 @@ interface Props {
     tags: string[];
     image: string | null;
     dataSource: string | null;
-    filePath: string | null;
+    filePath: string;
   };
   isLast?: boolean;
   iconMap?: Record<string, string | null>;
@@ -31,7 +31,7 @@ const imageSrc = item.image
   ? toPublicAssetUrl(resolveImagePath(
       item.image,
       (item.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
-      item.filePath || (item.type === "memo" ? `memos/${item.slug}.md` : `blog/${item.slug}.md`)
+      item.filePath
     ))
   : null;
 ---

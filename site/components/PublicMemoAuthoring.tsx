@@ -387,7 +387,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
           method: "DELETE",
         }
       );
-      window.location.href = toPublicSitePath("/memos");
+      window.location.href = toPublicSitePath("/memos") ?? "/memos";
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -482,7 +482,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               enableCodeFolding={true}
               removeTags={true}
               rewritePublicSitePaths={true}
-              articlePath={memo.filePath || memo.slug}
+              articlePath={memo.filePath ?? ""}
               contentSource={memo.source === "local" ? "local" : "webdav"}
             />
           </div>
@@ -502,7 +502,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
         memoTitle={memo?.title || memo?.slug}
         initialContent={memo?.content}
         initialIsPublic={memo?.isPublic}
-        articlePath={memo?.filePath || memo?.slug}
+        articlePath={memo?.filePath ?? ""}
         contentSource={memo?.source === "local" ? "local" : "webdav"}
         isLoading={isFetching}
       />

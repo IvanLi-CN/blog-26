@@ -23,7 +23,7 @@ export interface PublicPostRecord {
   author: string | null;
   image: string | null;
   dataSource: string | null;
-  filePath: string | null;
+  filePath: string;
   metadata: Record<string, unknown>;
 }
 
@@ -40,7 +40,7 @@ export interface PublicMemoRecord {
   publishedAt: string | null;
   updatedAt: string | null;
   dataSource: string | null;
-  filePath: string | null;
+  filePath: string;
   image: string | null;
 }
 
@@ -61,6 +61,7 @@ export interface PublicTagTimelineItem {
   tags: string[];
   image: string | null;
   dataSource: string | null;
+  filePath: string;
 }
 
 export interface PublicSnapshot {
@@ -130,6 +131,14 @@ function resolveMemoTime(row: typeof posts.$inferSelect) {
   };
 }
 
+function getCanonicalFilePath(row: typeof posts.$inferSelect): string {
+  const filePath = row.filePath?.trim() || row.id.trim();
+  if (!filePath) {
+    throw new Error(`Public content row ${row.slug || row.id} is missing a canonical file path`);
+  }
+  return filePath;
+}
+
 function buildRelatedPosts(postList: PublicPostRecord[]): Record<string, string[]> {
   return Object.fromEntries(
     postList.map((post) => {
@@ -173,6 +182,7 @@ function buildTagTimelines(
           tags: post.tags,
           image: post.image,
           dataSource: post.dataSource,
+          filePath: post.filePath,
         })),
       ...memoList
         .filter((memo) => matchesTag(tagPath, memo.tags))
@@ -186,6 +196,7 @@ function buildTagTimelines(
           tags: memo.tags,
           image: memo.image,
           dataSource: memo.dataSource,
+          filePath: memo.filePath,
         })),
     ].sort((a, b) => b.publishDate.localeCompare(a.publishDate));
 
@@ -210,22 +221,25 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     .where(and(eq(posts.type, "memo"), eq(posts.public, true)))
     .orderBy(desc(posts.publishDate), desc(posts.id));
 
-  const postList: PublicPostRecord[] = rawPosts.map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    title: row.title,
-    excerpt: row.excerpt || extractTextSummary(row.body, 180),
-    body: row.body,
-    publishDate: toIso(row.publishDate) ?? new Date().toISOString(),
-    updateDate: toIso(row.updateDate),
-    category: row.category,
-    tags: normalizeTags(row.tags),
-    author: row.author,
-    image: row.image,
-    dataSource: row.dataSource,
-    filePath: row.filePath || null,
-    metadata: normalizeMetadata(row.metadata),
-  }));
+  const postList: PublicPostRecord[] = rawPosts.map((row) => {
+    const filePath = getCanonicalFilePath(row);
+    return {
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      excerpt: row.excerpt || extractTextSummary(row.body, 180),
+      body: row.body,
+      publishDate: toIso(row.publishDate) ?? new Date().toISOString(),
+      updateDate: toIso(row.updateDate),
+      category: row.category,
+      tags: normalizeTags(row.tags),
+      author: row.author,
+      image: row.image,
+      dataSource: row.dataSource,
+      filePath,
+      metadata: normalizeMetadata(row.metadata),
+    };
+  });
 
   const memoList: PublicMemoRecord[] = rawMemos.map((row) => {
     const parsed = parseContentTags(row.body || "");
@@ -233,6 +247,7 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     const inlineTags = parsed.tags.map((tag) => tag.name);
     const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
     const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
+    const filePath = getCanonicalFilePath(row);
     return {
       id: row.id,
       slug: row.slug,
@@ -246,7 +261,7 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
       publishedAt,
       updatedAt,
       dataSource: row.dataSource,
-      filePath: row.filePath || null,
+      filePath,
       image: row.image,
     };
   });

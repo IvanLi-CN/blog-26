@@ -71,7 +71,7 @@ async function resolveCardImageSrc(record: PublicPostRecord, contentSource: "loc
     return null;
   }
 
-  const markdownFilePath = record.filePath || `blog/${record.slug}.md`;
+  const markdownFilePath = record.filePath;
 
   if (contentSource === "local") {
     const contentBasePath = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
