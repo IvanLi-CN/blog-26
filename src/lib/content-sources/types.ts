@@ -62,6 +62,9 @@ export interface ContentItem {
   /** 内容源标识 */
   source: string;
 
+  /** Authoring channel, independent of storage source */
+  createdVia?: string;
+
   /** 原始文件路径 */
   filePath: string;
 

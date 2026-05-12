@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it, test } from "bun:test";
 import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { eq } from "drizzle-orm";
+import matter from "gray-matter";
 import { db, initializeDB } from "@/lib/db";
 import { hashPersonalAccessToken } from "@/lib/personal-access-token";
-import { personalAccessTokens, users } from "@/lib/schema";
+import { personalAccessTokens, posts, users } from "@/lib/schema";
 
 const ENABLE = process.env.RUN_MCP_TESTS === "1";
 const INTEGRATED_PORT = Number(process.env.MCP_PORT || 25110);
@@ -128,6 +130,24 @@ async function seedAdminPat() {
 
 let serverProc: Bun.Subprocess | ReturnType<typeof spawn> | undefined;
 
+async function expectCreatedViaMarker(title: string, type: "memo" | "post") {
+  const row = await db
+    .select()
+    .from(posts)
+    .where(eq(posts.title, title))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  expect(row).toBeDefined();
+  expect(row.type).toBe(type);
+  expect(row.createdVia).toBe("mcp");
+  expect(row.source).toBe("local");
+
+  const raw = await fs.readFile(path.join(LOCAL_CONTENT, row.filePath), "utf-8");
+  const parsed = matter(raw);
+  expect(parsed.data.createdVia).toBe("mcp");
+}
+
 if (!ENABLE) {
   test("mcp sdk smoke skipped", () => {
     expect(true).toBe(true);
@@ -232,6 +252,44 @@ if (!ENABLE) {
       const items = JSON.parse(listed.result?.content?.[0]?.text || "{}").items || [];
       const has = items.some((item: any) => item.title?.includes(title));
       expect(has).toBe(true);
+      await expectCreatedViaMarker(title, "memo");
+    });
+
+    it("should create post with PAT and preserve MCP origin markers", async () => {
+      const title = `sdk-post-${Date.now()}`;
+      const created = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "p1",
+          method: "tools/call",
+          params: {
+            name: "posts_create",
+            arguments: {
+              content: "hello from sdk post smoke",
+              title,
+              isPublic: true,
+              tags: ["mcp-smoke"],
+            },
+          },
+        },
+        TEST_PAT
+      );
+      expect(created.error).toBeUndefined();
+
+      const listed = await rpc({
+        jsonrpc: "2.0",
+        id: "p2",
+        method: "tools/call",
+        params: {
+          name: "posts_list",
+          arguments: { page: 1, limit: 10, search: title, published: true },
+        },
+      });
+      const items = JSON.parse(listed.result?.content?.[0]?.text || "{}").items || [];
+      expect(items.some((item: any) => item.title === title && item.createdVia === "mcp")).toBe(
+        true
+      );
+      await expectCreatedViaMarker(title, "post");
     });
 
     it("should list tags and fetch posts via MCP", async () => {

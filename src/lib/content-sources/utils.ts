@@ -86,6 +86,7 @@ export function createContentItemFromParsed(
     contentHash,
     lastModified: Date.now(), // 这里应该从文件系统获取，子类会覆盖
     source,
+    createdVia: typeof frontmatter.createdVia === "string" ? frontmatter.createdVia : undefined,
     filePath,
     draft: Boolean(frontmatter.draft),
     public: frontmatter.public !== false, // 默认为 true
@@ -109,6 +110,7 @@ export function createContentItemFromParsed(
       excerpt: undefined,
       draft: undefined,
       public: undefined,
+      createdVia: undefined,
       publishDate: undefined,
       updateDate: undefined,
       category: undefined,

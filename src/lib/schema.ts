@@ -41,6 +41,7 @@ export const posts = sqliteTable("posts", {
   image: text("image"),
   metadata: text("metadata"), // JSON 字符串存储其他元数据
   dataSource: text("data_source"), // local/webdav/database
+  createdVia: text("created_via"), // authoring channel, e.g. mcp
   contentHash: text("content_hash").notNull(),
   // 新增字段（通过迁移添加）
   lastModified: integer("last_modified").notNull().default(0),

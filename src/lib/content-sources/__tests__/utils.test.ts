@@ -1,11 +1,13 @@
 import { describe, expect, it, mock } from "bun:test";
 import { parseContentTags } from "@/lib/tag-parser";
 import {
+  createContentItemFromParsed,
   extractTitle,
   generateMemoFilename,
   generateNanoidSlug,
   generateTitleSlug,
   mergeFrontmatterAndInlineTags,
+  parseMarkdownContent,
 } from "../utils";
 
 // Mock nanoid for predictable testing in this file
@@ -24,6 +26,20 @@ mock.module("nanoid", () => ({
 }));
 
 describe("Memo Utils", () => {
+  describe("createdVia metadata", () => {
+    it("maps createdVia frontmatter without changing storage source", () => {
+      const parsed = parseMarkdownContent(
+        `---\ntitle: "MCP Memo"\ncreatedVia: "mcp"\npublic: true\n---\n\nHello`,
+        "Memos/mcp-memo.md"
+      );
+      const item = createContentItemFromParsed(parsed, "Memos/mcp-memo.md", "local");
+
+      expect(item.source).toBe("local");
+      expect(item.createdVia).toBe("mcp");
+      expect(item.metadata.createdVia).toBeUndefined();
+    });
+  });
+
   describe("generateNanoidSlug", () => {
     it("should generate slug with default length of 8", () => {
       const slug = generateNanoidSlug();
