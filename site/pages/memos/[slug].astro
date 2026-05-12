@@ -84,7 +84,7 @@ const structuredData = {
             enableCodeFolding={true}
             removeTags={true}
             rewritePublicSitePaths={true}
-            articlePath={`/memos/${memo.slug}`}
+            articlePath={memo.filePath}
             contentSource={(memo.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
           />
         </div>

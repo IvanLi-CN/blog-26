@@ -99,6 +99,18 @@ describe("resolveImagePath", () => {
       ).toBe("/api/files/local/blog/assets/react-hooks.jpg");
     });
 
+    it("should resolve images from real local content roots without slug-derived paths", () => {
+      expect(resolveImagePath("./assets/board.png", "local", "Hardware/power-board.md")).toBe(
+        "/api/files/local/Hardware/assets/board.png"
+      );
+      expect(
+        resolveImagePath("assets/dashboard.png", "local", "HomeLab/upgrade-all-in-one-pve-pbs.md")
+      ).toBe("/api/files/local/HomeLab/assets/dashboard.png");
+      expect(resolveImagePath("./images/memo.png", "local", "Memos/daily-note.md")).toBe(
+        "/api/files/local/Memos/images/memo.png"
+      );
+    });
+
     it("should resolve parent directory relative paths", () => {
       expect(
         resolveImagePath("../shared/image.jpg", "webdav", "/Hardware/category/my-post.md")

@@ -755,13 +755,16 @@ describe("HTTP compatibility APIs", () => {
     expect(typeof payload.generatedAt).toBe("string");
     expect(Array.isArray(payload.posts)).toBe(true);
     expect(Array.isArray(payload.memos)).toBe(true);
-    expect(payload.posts.some((post: { slug: string }) => post.slug === "http-snapshot-post")).toBe(
-      true
+    const snapshotPost = payload.posts.find(
+      (post: { slug: string }) => post.slug === "http-snapshot-post"
     );
-    expect(payload.memos.some((memo: { slug: string }) => memo.slug === "http-snapshot-memo")).toBe(
-      true
+    const snapshotMemo = payload.memos.find(
+      (memo: { slug: string }) => memo.slug === "http-snapshot-memo"
     );
-  });
+
+    expect(snapshotPost?.filePath).toBe("blog/http-snapshot-post.md");
+    expect(snapshotMemo?.filePath).toBe("Memos/http-snapshot-memo.md");
+  }, 15_000);
 
   it("serves public search recovery suggestions from /api/public/search/suggestions", async () => {
     await seedPost({

@@ -21,7 +21,7 @@ const contentSource = (post.dataSource?.includes("local") ? "local" : "webdav") 
   | "webdav";
 const coverCandidate = extractPostCoverCandidate(post, { allowExternal: true });
 const imageSrc = coverCandidate
-  ? toPublicAssetUrl(resolveImagePath(coverCandidate, contentSource, post.filePath || `blog/${post.slug}.md`))
+  ? toPublicAssetUrl(resolveImagePath(coverCandidate, contentSource, post.filePath))
   : null;
 ---
 <article
