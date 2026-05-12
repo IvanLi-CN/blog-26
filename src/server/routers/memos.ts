@@ -260,7 +260,7 @@ function getWebDAVMemoRootPath(): string {
 }
 
 function getLocalBasePathOrThrow(): string {
-  const base = LOCAL_PATHS.basePath;
+  const base = process.env.LOCAL_CONTENT_BASE_PATH?.trim() || LOCAL_PATHS.basePath;
   if (!base || base.length === 0) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
