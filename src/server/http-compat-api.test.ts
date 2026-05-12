@@ -18,6 +18,19 @@ let handleAdminApiRequest: typeof import("@/server/admin-api/router").handleAdmi
 let handlePublicApiRequest: typeof import("@/server/public-api/router").handlePublicApiRequest;
 let handleFilesApiRequest: typeof import("@/server/files-api/router").handleFilesApiRequest;
 
+function resetHttpCompatEnv() {
+  process.env.NODE_ENV = "development";
+  process.env.ADMIN_EMAIL = ADMIN_EMAIL;
+  process.env.DB_PATH = TEST_DB_PATH;
+  process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
+  process.env.CONTENT_SOURCES = "local";
+  process.env.PUBLIC_SITE_URL = "https://pages.example.test";
+  process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
+  delete process.env.WEBDAV_URL;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_BASE_URL;
+}
+
 function buildRequest(pathname: string, init: RequestInit = {}, email?: string) {
   const headers = new Headers(init.headers);
   if (email) {
@@ -83,16 +96,7 @@ async function seedPost(
 
 describe("HTTP compatibility APIs", () => {
   beforeAll(async () => {
-    process.env.NODE_ENV = "development";
-    process.env.ADMIN_EMAIL = ADMIN_EMAIL;
-    process.env.DB_PATH = TEST_DB_PATH;
-    process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
-    process.env.CONTENT_SOURCES = "local";
-    process.env.PUBLIC_SITE_URL = "https://pages.example.test";
-    process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
-    delete process.env.WEBDAV_URL;
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_API_BASE_URL;
+    resetHttpCompatEnv();
 
     fs.mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
     fs.mkdirSync(LOCAL_CONTENT_BASE_PATH, { recursive: true });
@@ -122,6 +126,8 @@ describe("HTTP compatibility APIs", () => {
   });
 
   beforeEach(async () => {
+    resetHttpCompatEnv();
+
     if (!db) {
       throw new Error("Database has not been initialised");
     }
@@ -915,11 +921,8 @@ describe("HTTP compatibility APIs", () => {
       } else {
         delete process.env.WEBDAV_URL;
       }
-      if (originalContentSources) {
-        process.env.CONTENT_SOURCES = originalContentSources;
-      } else {
-        delete process.env.CONTENT_SOURCES;
-      }
+      process.env.CONTENT_SOURCES = originalContentSources ?? "local";
+      process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
       globalThis.fetch = originalFetch;
     }
   });
