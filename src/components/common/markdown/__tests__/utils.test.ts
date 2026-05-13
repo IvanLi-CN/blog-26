@@ -1,10 +1,17 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { removeInlineTags } from "@/lib/tag-parser";
-import { defaultUrlTransform, generateOptimizedImageUrl, publicSiteUrlTransform } from "../utils";
+import {
+  defaultUrlTransform,
+  generateOptimizedImageUrl,
+  isSameSiteUrl,
+  publicSiteUrlTransform,
+} from "../utils";
 
 afterEach(() => {
   delete process.env.PUBLIC_API_BASE_URL;
   delete process.env.PUBLIC_API_BASE_URL;
+  delete process.env.PUBLIC_SITE_URL;
+  delete process.env.PUBLIC_SITE_URL;
   delete process.env.PUBLIC_SITE_BASE_PATH;
   delete process.env.PUBLIC_SITE_BASE_PATH;
 });
@@ -196,6 +203,27 @@ More content with`);
       expect(defaultUrlTransform("/api/files/webdav/assets/image.jpg")).toBe(
         "/api/files/webdav/assets/image.jpg"
       );
+    });
+  });
+
+  describe("isSameSiteUrl", () => {
+    it("treats root-relative Markdown links as same-site", () => {
+      expect(isSameSiteUrl("/posts/react-hooks-deep-dive")).toBe(true);
+      expect(isSameSiteUrl("#section")).toBe(true);
+    });
+
+    it("treats same-origin absolute Markdown links as same-site", () => {
+      process.env.PUBLIC_SITE_URL = "https://ivanli.cc/blog-26";
+
+      expect(isSameSiteUrl("https://ivanli.cc/blog-26/posts/react-hooks-deep-dive")).toBe(true);
+      expect(isSameSiteUrl("//ivanli.cc/posts/react-hooks-deep-dive")).toBe(true);
+    });
+
+    it("keeps different-origin absolute Markdown links external", () => {
+      process.env.PUBLIC_SITE_URL = "https://ivanli.cc/blog-26";
+
+      expect(isSameSiteUrl("https://astro.build")).toBe(false);
+      expect(isSameSiteUrl("//example.test/posts/react-hooks-deep-dive")).toBe(false);
     });
   });
 

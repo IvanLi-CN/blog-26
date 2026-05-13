@@ -20,6 +20,8 @@ import {
   defaultUrlTransform,
   extractTextContent,
   getVariantConfig,
+  isExternalUrl,
+  isSameSiteUrl,
   mergeClassNames,
   publicSiteUrlTransform,
 } from "./markdown/utils";
@@ -61,6 +63,21 @@ const markdownSanitizeSchema = {
 // 导入必要的样式
 import "katex/dist/katex.min.css";
 import "highlight.js/styles/github.css";
+
+function getMarkdownLinkBehavior(href: string | undefined) {
+  if (!href) {
+    return {};
+  }
+
+  if (!isExternalUrl(href) || isSameSiteUrl(href)) {
+    return {};
+  }
+
+  return {
+    target: "_blank",
+    rel: "noopener noreferrer",
+  };
+}
 
 /**
  * Markdown 渲染器组件
@@ -303,8 +320,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
         a: ({ href, children }) => (
           <a
             href={href}
-            target="_blank"
-            rel="noopener noreferrer"
+            {...getMarkdownLinkBehavior(href)}
             className="nature-link-inline break-words underline decoration-[rgba(var(--nature-accent-rgb),0.35)] underline-offset-4"
           >
             {children}
