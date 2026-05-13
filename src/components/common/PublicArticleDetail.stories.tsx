@@ -2,8 +2,10 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect } from "react";
 import { expect, within } from "storybook/test";
 import "@/styles/nature-restored.css";
+import Icon from "../ui/Icon";
 import { MarkdownLoadingState } from "./MarkdownLoadingState";
 import MarkdownRenderer from "./MarkdownRenderer";
+import ThemeToggle from "./ThemeToggle";
 
 const articleMarkdown = `
 这篇文章用于验证公开文档页的阅读、站内跳转和富内容交互。读者可以继续打开 [搜索页面](/search)，也可以访问 [Astro 官网](https://astro.build) 查看外部资料。
@@ -65,6 +67,13 @@ export default meta;
 
 type Story = StoryObj;
 
+const navLinks = [
+  { icon: "tabler:note", text: "闪念", href: "/memos" },
+  { icon: "tabler:article", text: "文章", href: "/posts", active: true },
+  { icon: "tabler:code", text: "项目", href: "/projects" },
+  { icon: "tabler:hash", text: "标签", href: "/tags" },
+];
+
 function PublicDocumentShell({
   children,
   theme = "light",
@@ -104,40 +113,85 @@ function PublicDocumentShell({
       data-ui-preference="system"
       data-theme={theme}
     >
-      <div
-        id="public-route-loading"
-        className="nature-route-loading"
-        role="status"
-        aria-live="polite"
-        aria-label="正在打开页面"
-        aria-hidden={pending ? "false" : "true"}
-      >
-        <span className="nature-route-loading-track" aria-hidden="true">
-          <span className="nature-route-loading-bar" />
-        </span>
-        <span className="nature-route-loading-label">正在打开页面</span>
-      </div>
       <div className="nature-content-layer flex min-h-screen flex-col">
-        <header className="sticky top-0 z-40 flex-none px-3 pt-3 sm:px-4">
-          <div className="nature-container">
-            <div className="nature-surface flex items-center gap-3 px-4 py-3 sm:px-5">
+        <header className="nature-site-header sticky top-0 z-40 flex-none w-full px-3 pt-3 sm:px-4">
+          <div className="nature-container nature-site-header-frame">
+            <div className="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
               <a
                 href="/"
-                className="font-heading text-xl font-semibold text-[color:var(--nature-text)]"
+                className="inline-flex min-h-11 min-w-fit items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
               >
                 Ivan's Blog
               </a>
-              <nav className="ml-3 hidden items-center gap-1 text-sm font-medium md:flex">
-                {["闪念", "文章", "项目", "标签"].map((item) => (
-                  <a
-                    key={item}
-                    href="/"
-                    className="rounded-full px-4 py-2 text-[color:var(--nature-text-soft)]"
-                  >
-                    {item}
-                  </a>
-                ))}
+
+              <nav
+                className="order-3 w-full md:order-2 md:ml-2 md:w-auto"
+                aria-label="Main navigation"
+              >
+                <ul className="flex flex-wrap items-center gap-1 text-sm font-medium">
+                  {navLinks.map((link) => (
+                    <li key={link.href}>
+                      <a
+                        href={link.href}
+                        className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 transition ${
+                          link.active
+                            ? "aw-link-active"
+                            : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
+                        }`}
+                      >
+                        <Icon name={link.icon} className="h-4 w-4" />
+                        {link.text}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </nav>
+
+              <div className="order-2 ml-auto flex items-center gap-3 md:order-3">
+                <form action="/search" method="get" className="hidden items-center xl:flex">
+                  <label className="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
+                    <Icon
+                      name="tabler:search"
+                      className="h-5 w-5 text-[color:var(--nature-text-faint)]"
+                    />
+                    <input
+                      type="text"
+                      name="q"
+                      placeholder="搜索文章..."
+                      className="nature-input"
+                    />
+                  </label>
+                </form>
+                <a
+                  href="/search"
+                  className="nature-icon-button inline-flex xl:hidden"
+                  aria-label="搜索"
+                >
+                  <Icon name="tabler:search" className="h-5 w-5" />
+                </a>
+                <ThemeToggle iconClass="h-4 w-4" />
+                <a
+                  className="nature-icon-button inline-flex"
+                  aria-label="RSS Feed"
+                  title="RSS Feed"
+                  href="/feed.xml"
+                >
+                  <Icon name="tabler:rss" className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+            <div
+              id="public-route-loading"
+              className="nature-route-loading"
+              role="status"
+              aria-live="polite"
+              aria-label="正在打开页面"
+              aria-hidden={pending ? "false" : "true"}
+            >
+              <span className="nature-route-loading-track" aria-hidden="true">
+                <span className="nature-route-loading-bar" />
+              </span>
+              <span className="nature-route-loading-label">正在打开页面</span>
             </div>
           </div>
         </header>
@@ -222,6 +276,37 @@ export const RoutePending: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("status", { name: /正在打开页面/ })).toBeVisible();
+    await expect(canvas.getByRole("main")).toHaveAttribute("aria-busy", "true");
+  },
+};
+
+export const PersistentRouteProgress: Story = {
+  name: "进度常驻展示",
+  parameters: {
+    docs: {
+      description: {
+        story: "把路由进度状态固定为可见，用于审视它和真实公共站 header、阅读区的空间关系。",
+      },
+    },
+  },
+  render: () => (
+    <PublicDocumentShell pending>
+      <MarkdownRenderer
+        content={articleMarkdown}
+        variant="article"
+        enableMath
+        enableMermaid
+        enableCodeFolding
+        rewritePublicSitePaths
+      />
+    </PublicDocumentShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("status", { name: /正在打开页面/ })).toBeVisible();
+    await expect(canvas.getByPlaceholderText("搜索文章...")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Light" })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "路由反馈与文档加载体验" })).toBeVisible();
     await expect(canvas.getByRole("main")).toHaveAttribute("aria-busy", "true");
   },
 };

@@ -211,19 +211,6 @@ const resolvedImage =
   </head>
   <body>
     <IconifyBoot client:load />
-    <div
-      id="public-route-loading"
-      class="nature-route-loading"
-      role="status"
-      aria-live="polite"
-      aria-label="正在打开页面"
-      aria-hidden="true"
-    >
-      <span class="nature-route-loading-track" aria-hidden="true">
-        <span class="nature-route-loading-bar"></span>
-      </span>
-      <span class="nature-route-loading-label">正在打开页面</span>
-    </div>
     <div class="nature-app-shell flex min-h-screen flex-col" data-testid="public-site-shell">
       <AmbientScene client:load transition:persist />
       <div class="nature-content-layer flex min-h-screen flex-col">
