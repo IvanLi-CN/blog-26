@@ -201,8 +201,8 @@ const updatePostContentInput = z.object({
 });
 const updatePostTimeInput = z.object({
   slug: z.string(),
-  publishDate: z.union([z.string(), z.number(), z.date()]).optional(),
-  updateDate: z.union([z.string(), z.number(), z.date()]).optional(),
+  publishDate: z.union([z.string(), z.number()]).optional(),
+  updateDate: z.union([z.string(), z.number()]).optional(),
 });
 const updatePostVisibilityInput = z.object({ slug: z.string(), isPublic: z.boolean() });
 const deletePostInput = z.object({ slug: z.string() });
