@@ -1,7 +1,9 @@
 const TRAILING_SLASH = /\/+$/;
 const ABSOLUTE_OR_SCHEME_RE = /^[a-zA-Z][a-zA-Z\d+\-.]*:/;
 const PROTOCOL_RELATIVE_RE = /^\/\//;
-const SITE_PATH_BYPASS_PREFIXES = ["/api", "/admin"];
+const SITE_PATH_BYPASS_PREFIXES = ["/api", "/admin", "/_astro"];
+const PUBLIC_FILE_PATH_RE =
+  /\.(?:avif|bmp|css|csv|gif|htm|html|ico|jpeg|jpg|js|json|map|mjs|pdf|png|svg|txt|webmanifest|webp|woff2?|xml)$/i;
 
 function normalizeBaseUrl(raw: string | undefined | null) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -92,6 +94,14 @@ function shouldBypassSitePathPrefix(pathname: string) {
   );
 }
 
+function shouldPreserveSitePath(pathname: string) {
+  return pathname === "/" || pathname.endsWith("/") || PUBLIC_FILE_PATH_RE.test(pathname);
+}
+
+function withTrailingSlash(pathname: string) {
+  return shouldPreserveSitePath(pathname) ? pathname : `${pathname}/`;
+}
+
 export function getPublicSiteUrl() {
   return normalizeBaseUrl(readPublicSiteUrlValue());
 }
@@ -139,14 +149,15 @@ export function toPublicSitePath(pathname: string | null | undefined) {
     return pathname;
   }
 
+  const normalizedPath = withTrailingSlash(path);
   const basePath = getPublicSiteBasePath();
   if (!basePath) {
-    return pathname;
+    return `${normalizedPath}${suffix}`;
   }
   if (path === basePath || path.startsWith(`${basePath}/`)) {
-    return pathname;
+    return `${normalizedPath}${suffix}`;
   }
 
-  const resolvedPath = path === "/" ? `${basePath}/` : `${basePath}${path}`;
+  const resolvedPath = path === "/" ? `${basePath}/` : `${basePath}${normalizedPath}`;
   return `${resolvedPath}${suffix}`;
 }

@@ -53,6 +53,7 @@ const astroSiteUrl = resolveAstroSite(configuredSiteUrl, astroBasePath);
 export default defineConfig({
   integrations: [react()],
   output: "static",
+  trailingSlash: "always",
   srcDir: "./site",
   outDir: "./site-dist",
   site: astroSiteUrl,
