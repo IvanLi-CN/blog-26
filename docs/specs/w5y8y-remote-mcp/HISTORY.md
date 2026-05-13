@@ -7,3 +7,7 @@ The legacy MCP implementation mixed transport concerns with content write logic 
 ## Codex Client Validation
 
 Real Codex CLI validation showed that some Streamable HTTP clients authenticate the initialized MCP session but may omit authorization on later session-bound tool calls. The `/mcp` session store now carries the PAT-derived auth context with the transport so follow-up requests using the same `Mcp-Session-Id` preserve admin write capability.
+
+## Live Delete Consistency
+
+Live Codex CLI validation showed that MCP delete tools removed Markdown files but left indexed rows visible until a later database cleanup path. Delete now removes the storage file and the matching `posts` row in the same tool call before triggering sync.

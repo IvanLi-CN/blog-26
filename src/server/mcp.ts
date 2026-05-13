@@ -12,6 +12,7 @@ import {
   WEBDAV_PATHS,
 } from "@/config/paths";
 import { enhanced as enhancedSearch, semantic as semanticSearch } from "@/lib/ai/search";
+import { clearSearchCache } from "@/lib/ai/search-cache";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -139,6 +140,11 @@ async function deleteStorageFile(source: StorageSource, filePath: string): Promi
   const fs = await import("node:fs/promises");
   const p = await import("node:path");
   await fs.rm(p.join(getLocalBasePathOrThrow(), filePath), { force: true });
+}
+
+async function deleteIndexedContentRow(id: string): Promise<void> {
+  await db.delete(postsTable).where(eq(postsTable.id, id));
+  clearSearchCache();
 }
 
 async function updateFrontmatterInStorage(
@@ -455,6 +461,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
       await deleteStorageFile(resolveStorageSource(row), row.filePath);
+      await deleteIndexedContentRow(row.id);
       await triggerIncrementalSync();
       return { content: [{ type: "text", text: "ok" }] };
     }
@@ -654,6 +661,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       .then((r) => r[0]);
     if (!row?.filePath) throw new Error("Memo not found or missing filePath");
     await deleteStorageFile(resolveStorageSource(row), row.filePath);
+    await deleteIndexedContentRow(row.id);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });

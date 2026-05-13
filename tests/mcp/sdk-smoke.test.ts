@@ -185,6 +185,21 @@ async function expectCreatedViaMarker(title: string, type: "memo" | "post") {
   expect(parsed.data.createdVia).toBe("mcp");
 }
 
+async function getContentRowByTitle(title: string) {
+  return db
+    .select()
+    .from(posts)
+    .where(eq(posts.title, title))
+    .limit(1)
+    .then((rows) => rows[0]);
+}
+
+async function expectDeletedContent(title: string, filePath: string) {
+  const row = await getContentRowByTitle(title);
+  expect(row).toBeUndefined();
+  await expect(fs.access(path.join(LOCAL_CONTENT, filePath))).rejects.toThrow();
+}
+
 if (!ENABLE) {
   test("mcp sdk smoke skipped", () => {
     expect(true).toBe(true);
@@ -327,6 +342,83 @@ if (!ENABLE) {
         true
       );
       await expectCreatedViaMarker(title, "post");
+    });
+
+    it("should delete local memo and post files plus indexed rows", async () => {
+      const stamp = Date.now();
+      const memoTitle = `sdk-delete-memo-${stamp}`;
+      const postTitle = `sdk-delete-post-${stamp}`;
+
+      const memoCreated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "dm1",
+          method: "tools/call",
+          params: {
+            name: "memos_create",
+            arguments: { content: "delete memo smoke", title: memoTitle, isPublic: true, tags: [] },
+          },
+        },
+        TEST_PAT
+      );
+      expect(memoCreated.error).toBeUndefined();
+      await expectCreatedViaMarker(memoTitle, "memo");
+      const memoRow = await getContentRowByTitle(memoTitle);
+      expect(memoRow).toBeDefined();
+      expect(memoRow.filePath).toBeTruthy();
+      if (!memoRow?.filePath) throw new Error("Created memo row missing filePath");
+
+      const postCreated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "dp1",
+          method: "tools/call",
+          params: {
+            name: "posts_create",
+            arguments: { content: "delete post smoke", title: postTitle, isPublic: true, tags: [] },
+          },
+        },
+        TEST_PAT
+      );
+      expect(postCreated.error).toBeUndefined();
+      await expectCreatedViaMarker(postTitle, "post");
+      const postRow = await getContentRowByTitle(postTitle);
+      expect(postRow).toBeDefined();
+      expect(postRow.filePath).toBeTruthy();
+      if (!postRow?.filePath) throw new Error("Created post row missing filePath");
+
+      const memoDeleted = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "dm2",
+          method: "tools/call",
+          params: {
+            name: "memos_delete",
+            arguments: { slug: memoRow.slug },
+          },
+        },
+        TEST_PAT
+      );
+      expect(memoDeleted.error).toBeUndefined();
+      expect(memoDeleted.result?.isError).toBeFalsy();
+
+      const postDeleted = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "dp2",
+          method: "tools/call",
+          params: {
+            name: "posts_delete",
+            arguments: { slug: postRow.slug },
+          },
+        },
+        TEST_PAT
+      );
+      expect(postDeleted.error).toBeUndefined();
+      expect(postDeleted.result?.isError).toBeFalsy();
+
+      await expectDeletedContent(memoTitle, memoRow.filePath);
+      await expectDeletedContent(postTitle, postRow.filePath);
     });
 
     it("should work through the official MCP SDK Streamable HTTP client", async () => {
