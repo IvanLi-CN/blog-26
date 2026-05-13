@@ -64,6 +64,13 @@
       "when": 1776941437741,
       "tag": "0008_llm_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778560000000,
+      "tag": "0009_remote_mcp_created_via",
+      "breakpoints": true
     }
   ]
 }

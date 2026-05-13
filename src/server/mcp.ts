@@ -1,12 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import matter from "gray-matter";
 import limax from "limax";
 import { z } from "zod";
-import { isLocalContentEnabled, LOCAL_PATHS, WEBDAV_PATHS } from "@/config/paths";
+import {
+  getActiveLocalBasePath,
+  isLocalContentEnabled,
+  LOCAL_PATHS,
+  WEBDAV_PATHS,
+} from "@/config/paths";
 import { enhanced as enhancedSearch, semantic as semanticSearch } from "@/lib/ai/search";
 import {
   getContentSourceManager,
@@ -20,15 +24,14 @@ import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { requireAdmin } from "./mcp-auth-context";
 
-let cachedServer: McpServer | null = null;
-let cachedTransport: StreamableHTTPServerTransport | null = null;
+const MCP_CREATED_VIA = "mcp";
 
 function iso(ts: number | string | Date): string {
   return new Date(ts).toISOString();
 }
 
 function getLocalBasePathOrThrow(): string {
-  const base = LOCAL_PATHS.basePath;
+  const base = getActiveLocalBasePath();
   if (!base || base.length === 0) {
     throw new Error(
       "Local content source is disabled. Set LOCAL_CONTENT_BASE_PATH to enable local operations."
@@ -89,10 +92,63 @@ async function triggerIncrementalSync() {
   }
 }
 
-async function updateFrontmatterOnDAV(filePath: string, mut: (fm: any) => void, newBody?: string) {
-  if (!isWebDAVEnabled()) throw new Error("WebDAV not configured");
-  const dav = new WebDAVClient();
-  const raw = await dav.getFileContent(filePath);
+type StorageSource = "local" | "webdav";
+type PostRow = typeof postsTable.$inferSelect;
+
+function resolveStorageSource(row: Pick<PostRow, "source" | "dataSource">): StorageSource {
+  const source = `${row.source || ""} ${row.dataSource || ""}`.toLowerCase();
+  return source.includes("webdav") ? "webdav" : "local";
+}
+
+async function readStorageFile(source: StorageSource, filePath: string): Promise<string> {
+  if (source === "webdav") {
+    if (!isWebDAVEnabled()) throw new Error("WebDAV not configured");
+    return new WebDAVClient().getFileContent(filePath);
+  }
+
+  const fs = await import("node:fs/promises");
+  const p = await import("node:path");
+  return fs.readFile(p.join(getLocalBasePathOrThrow(), filePath), "utf-8");
+}
+
+async function writeStorageFile(
+  source: StorageSource,
+  filePath: string,
+  content: string
+): Promise<void> {
+  if (source === "webdav") {
+    if (!isWebDAVEnabled()) throw new Error("WebDAV not configured");
+    await new WebDAVClient().putFileContent(filePath, content);
+    return;
+  }
+
+  const fs = await import("node:fs/promises");
+  const p = await import("node:path");
+  const full = p.join(getLocalBasePathOrThrow(), filePath);
+  await fs.mkdir(p.dirname(full), { recursive: true });
+  await fs.writeFile(full, content, "utf-8");
+}
+
+async function deleteStorageFile(source: StorageSource, filePath: string): Promise<void> {
+  if (source === "webdav") {
+    if (!isWebDAVEnabled()) throw new Error("WebDAV not configured");
+    await new WebDAVClient().deleteFile(filePath);
+    return;
+  }
+
+  const fs = await import("node:fs/promises");
+  const p = await import("node:path");
+  await fs.rm(p.join(getLocalBasePathOrThrow(), filePath), { force: true });
+}
+
+async function updateFrontmatterInStorage(
+  row: PostRow,
+  mut: (fm: Record<string, unknown>) => void,
+  newBody?: string
+) {
+  if (!row.filePath) throw new Error("Content not found or missing filePath");
+  const source = resolveStorageSource(row);
+  const raw = await readStorageFile(source, row.filePath);
   const { data, content } = matter(raw);
   mut(data);
   const fmPart = buildFrontmatter({
@@ -109,7 +165,14 @@ async function updateFrontmatterOnDAV(filePath: string, mut: (fm: any) => void, 
       )
     ) as Record<string, unknown>,
   });
-  await dav.putFileContent(filePath, `${fmPart}${newBody ?? content}`);
+  await writeStorageFile(source, row.filePath, `${fmPart}${newBody ?? content}`);
+}
+
+function buildDatedMarkdownPath(basePath: string, title: string): string {
+  const base = basePath.replace(/\/$/, "");
+  const d = new Date();
+  const datePrefix = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  return `${base}/${datePrefix}_${limax(title)}.md`;
 }
 
 const listPostsInput = z.object({
@@ -138,8 +201,8 @@ const updatePostContentInput = z.object({
 });
 const updatePostTimeInput = z.object({
   slug: z.string(),
-  publishDate: z.union([z.string(), z.number(), z.date()]).optional(),
-  updateDate: z.union([z.string(), z.number(), z.date()]).optional(),
+  publishDate: z.union([z.string(), z.number()]).optional(),
+  updateDate: z.union([z.string(), z.number()]).optional(),
 });
 const updatePostVisibilityInput = z.object({ slug: z.string(), isPublic: z.boolean() });
 const deletePostInput = z.object({ slug: z.string() });
@@ -231,6 +294,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
           category: postsTable.category,
           tags: postsTable.tags,
           public: postsTable.public,
+          createdVia: postsTable.createdVia,
         })
         .from(postsTable)
         .where(ands(conds))
@@ -275,24 +339,21 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         tags: input.tags,
         category: input.category,
         publishDate: input.publishDate ?? Date.now(),
+        extra: { createdVia: MCP_CREATED_VIA },
       });
       const md = `${fm}${input.content}`;
       if (isWebDAVEnabled()) {
-        const dav = new WebDAVClient();
-        const base = (WEBDAV_PATHS.posts[0] || "/blog").replace(/\/$/, "");
-        const d = new Date();
-        const datePrefix = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-        const path = `${base}/${datePrefix}_${limax(input.title)}.md`;
-        await dav.putFileContent(path, md);
+        await writeStorageFile(
+          "webdav",
+          buildDatedMarkdownPath(WEBDAV_PATHS.posts[0] || "/blog", input.title),
+          md
+        );
       } else {
-        // write via local source
-        const fs = await import("node:fs/promises");
-        const p = await import("node:path");
-        const base = getLocalBasePathOrThrow();
-        const rel = `${(LOCAL_PATHS.posts[0] || "/blog").replace(/\/$/, "")}/${limax(input.title)}.md`;
-        const full = p.join(base, rel);
-        await fs.mkdir(p.dirname(full), { recursive: true });
-        await fs.writeFile(full, md, "utf-8");
+        await writeStorageFile(
+          "local",
+          buildDatedMarkdownPath(LOCAL_PATHS.posts[0] || "/blog", input.title),
+          md
+        );
       }
       await triggerIncrementalSync();
       return { content: [{ type: "text", text: "ok" }] };
@@ -314,8 +375,8 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
-      await updateFrontmatterOnDAV(
-        row.filePath,
+      await updateFrontmatterInStorage(
+        row,
         (fm) => {
           if (input.title) fm.title = input.title;
           if (Array.isArray(input.tags)) fm.tags = input.tags;
@@ -345,7 +406,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
-      await updateFrontmatterOnDAV(row.filePath, (fm) => {
+      await updateFrontmatterInStorage(row, (fm) => {
         if (input.publishDate) fm.publishDate = iso(input.publishDate);
         if (input.updateDate) fm.updateDate = iso(input.updateDate);
       });
@@ -369,7 +430,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
-      await updateFrontmatterOnDAV(row.filePath, (fm) => {
+      await updateFrontmatterInStorage(row, (fm) => {
         fm.public = input.isPublic;
         fm.updateDate = new Date().toISOString();
       });
@@ -393,14 +454,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
-      if (isWebDAVEnabled()) {
-        const dav = new WebDAVClient();
-        await dav.deleteFile(row.filePath);
-      } else {
-        const fs = await import("node:fs/promises");
-        const p = await import("node:path");
-        await fs.rm(p.join(getLocalBasePathOrThrow(), row.filePath), { force: true });
-      }
+      await deleteStorageFile(resolveStorageSource(row), row.filePath);
       await triggerIncrementalSync();
       return { content: [{ type: "text", text: "ok" }] };
     }
@@ -538,26 +592,21 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       public: input.isPublic,
       tags: input.tags,
       publishDate: Date.now(),
+      extra: { createdVia: MCP_CREATED_VIA },
     });
     const md = `${fm}${input.content}`;
     if (isWebDAVEnabled()) {
-      const dav = new WebDAVClient();
-      const base = getMemoRootPath(WEBDAV_PATHS.memos[0]).replace(/\/$/, "");
-      const d = new Date();
-      const datePrefix = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-      const path = `${base}/${datePrefix}_${limax(input.title || "memo")}.md`;
-      await dav.putFileContent(path, md);
+      await writeStorageFile(
+        "webdav",
+        buildDatedMarkdownPath(getMemoRootPath(WEBDAV_PATHS.memos[0]), input.title || "memo"),
+        md
+      );
     } else {
-      const fs = await import("node:fs/promises");
-      const p = await import("node:path");
-      const base = getLocalBasePathOrThrow();
       const rel = buildMemoRelativePath(
         `${Date.now()}_${limax(input.title || "memo")}.md`,
         LOCAL_PATHS.memos[0]
       );
-      const full = p.join(base, rel);
-      await fs.mkdir(p.dirname(full), { recursive: true });
-      await fs.writeFile(full, md, "utf-8");
+      await writeStorageFile("local", rel, md);
     }
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
@@ -578,8 +627,8 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-      await updateFrontmatterOnDAV(
-        row.filePath,
+      await updateFrontmatterInStorage(
+        row,
         (fm) => {
           if (input.title) fm.title = input.title;
           fm.public = input.isPublic;
@@ -604,14 +653,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       .limit(1)
       .then((r) => r[0]);
     if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-    if (isWebDAVEnabled()) {
-      const dav = new WebDAVClient();
-      await dav.deleteFile(row.filePath);
-    } else {
-      const fs = await import("node:fs/promises");
-      const p = await import("node:path");
-      await fs.rm(p.join(getLocalBasePathOrThrow(), row.filePath), { force: true });
-    }
+    await deleteStorageFile(resolveStorageSource(row), row.filePath);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });
@@ -648,19 +690,6 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
   return { server, transport: nextTransport };
 }
 
-async function ensureServer() {
-  if (cachedServer && cachedTransport) {
-    return { server: cachedServer, transport: cachedTransport };
-  }
-
-  const created = await buildConnectedServer(
-    new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
-  );
-  cachedServer = created.server;
-  cachedTransport = created.transport;
-  return created;
-}
-
 export async function createMcpWebTransport(): Promise<{
   server: McpServer;
   transport: WebStandardStreamableHTTPServerTransport;
@@ -668,12 +697,4 @@ export async function createMcpWebTransport(): Promise<{
   return buildConnectedServer(
     new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() })
   );
-}
-
-export async function getMcpTransport(): Promise<StreamableHTTPServerTransport> {
-  const { transport } = await ensureServer();
-  if (!transport) {
-    throw new Error("MCP transport unavailable");
-  }
-  return transport;
 }

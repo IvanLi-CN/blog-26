@@ -28,3 +28,4 @@ Legacy plans in `docs/plan/` remain readable but are no longer the preferred pla
 | znext | Zero Next cleanup | in-progress | `znext-zero-next-cleanup/SPEC.md` | 2026-04-30 | Remove active Next runtime/code/config/dependency ownership while preserving Astro public, admin SPA, gateway API, and MCP behavior. |
 | f2zjw | Posts cover fallback | 已完成 | `f2zjw-posts-cover-fallback/SPEC.md` | 2026-04-21 | Restore `/posts` cover fallback from body images without changing snapshot schema. |
 | 2dvb9 | Admin LLM settings + model catalog | active | `2dvb9-admin-llm-settings/SPEC.md` | 2026-04-23 | Add durable admin-managed chat/embedding/rerank configuration, encrypted secret storage, and a reusable model picker with catalog fallback. |
+| w5y8y | Remote MCP reimplementation | active | `w5y8y-remote-mcp/SPEC.md` | 2026-05-12 | Rebuild `/mcp` around current Streamable HTTP sessions, preserve content tools, and mark MCP-created content with durable origin metadata. |

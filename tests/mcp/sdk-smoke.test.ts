@@ -1,10 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, test } from "bun:test";
 import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
 import path from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { eq } from "drizzle-orm";
+import matter from "gray-matter";
 import { db, initializeDB } from "@/lib/db";
 import { hashPersonalAccessToken } from "@/lib/personal-access-token";
-import { personalAccessTokens, users } from "@/lib/schema";
+import { personalAccessTokens, posts, users } from "@/lib/schema";
 
 const ENABLE = process.env.RUN_MCP_TESTS === "1";
 const INTEGRATED_PORT = Number(process.env.MCP_PORT || 25110);
@@ -128,6 +132,59 @@ async function seedAdminPat() {
 
 let serverProc: Bun.Subprocess | ReturnType<typeof spawn> | undefined;
 
+async function createOfficialMcpClient(auth?: string) {
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_URL), {
+    requestInit: auth
+      ? {
+          headers: {
+            Authorization: `Bearer ${auth}`,
+          },
+        }
+      : undefined,
+  });
+  const client = new Client({
+    name: "blog-official-sdk-smoke",
+    version: "1.0.0",
+  });
+
+  await client.connect(transport);
+  expect(transport.sessionId).toBeTruthy();
+
+  return { client, transport };
+}
+
+async function closeOfficialMcpClient(client: Client, transport: StreamableHTTPClientTransport) {
+  try {
+    await transport.terminateSession();
+  } catch (error) {
+    console.debug("MCP official SDK session termination skipped", error);
+  }
+
+  try {
+    await client.close();
+  } catch (error) {
+    console.debug("MCP official SDK client close skipped", error);
+  }
+}
+
+async function expectCreatedViaMarker(title: string, type: "memo" | "post") {
+  const row = await db
+    .select()
+    .from(posts)
+    .where(eq(posts.title, title))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  expect(row).toBeDefined();
+  expect(row.type).toBe(type);
+  expect(row.createdVia).toBe("mcp");
+  expect(row.source).toBe("local");
+
+  const raw = await fs.readFile(path.join(LOCAL_CONTENT, row.filePath), "utf-8");
+  const parsed = matter(raw);
+  expect(parsed.data.createdVia).toBe("mcp");
+}
+
 if (!ENABLE) {
   test("mcp sdk smoke skipped", () => {
     expect(true).toBe(true);
@@ -232,6 +289,80 @@ if (!ENABLE) {
       const items = JSON.parse(listed.result?.content?.[0]?.text || "{}").items || [];
       const has = items.some((item: any) => item.title?.includes(title));
       expect(has).toBe(true);
+      await expectCreatedViaMarker(title, "memo");
+    });
+
+    it("should create post with PAT and preserve MCP origin markers", async () => {
+      const title = `sdk-post-${Date.now()}`;
+      const created = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "p1",
+          method: "tools/call",
+          params: {
+            name: "posts_create",
+            arguments: {
+              content: "hello from sdk post smoke",
+              title,
+              isPublic: true,
+              tags: ["mcp-smoke"],
+            },
+          },
+        },
+        TEST_PAT
+      );
+      expect(created.error).toBeUndefined();
+
+      const listed = await rpc({
+        jsonrpc: "2.0",
+        id: "p2",
+        method: "tools/call",
+        params: {
+          name: "posts_list",
+          arguments: { page: 1, limit: 10, search: title, published: true },
+        },
+      });
+      const items = JSON.parse(listed.result?.content?.[0]?.text || "{}").items || [];
+      expect(items.some((item: any) => item.title === title && item.createdVia === "mcp")).toBe(
+        true
+      );
+      await expectCreatedViaMarker(title, "post");
+    });
+
+    it("should work through the official MCP SDK Streamable HTTP client", async () => {
+      const { client, transport } = await createOfficialMcpClient(TEST_PAT);
+      try {
+        const tools = await client.listTools();
+        const toolNames = tools.tools.map((tool) => tool.name);
+        expect(toolNames).toContain("memos_create");
+        expect(toolNames).toContain("memos_list");
+        expect(toolNames).toContain("posts_create");
+        expect(toolNames).toContain("posts_list");
+
+        const title = `official-sdk-${Date.now()}`;
+        const created = await client.callTool({
+          name: "memos_create",
+          arguments: {
+            content: "hello from official MCP SDK client",
+            title,
+            isPublic: true,
+            tags: ["official-sdk"],
+          },
+        });
+        expect(created.isError).toBeFalsy();
+
+        const listed = await client.callTool({
+          name: "memos_list",
+          arguments: { limit: 10, publicOnly: false, search: title },
+        });
+        const text = listed.content.find((item) => item.type === "text")?.text || "{}";
+        const items = JSON.parse(text).items || [];
+        expect(items.some((item: any) => item.title?.includes(title))).toBe(true);
+
+        await expectCreatedViaMarker(title, "memo");
+      } finally {
+        await closeOfficialMcpClient(client, transport);
+      }
     });
 
     it("should list tags and fetch posts via MCP", async () => {

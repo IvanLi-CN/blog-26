@@ -5,8 +5,19 @@ import { resolveMcpSessionPersistenceKey } from "@/server/mcp-session";
 import { resolveUserByPersonalAccessToken } from "@/server/services/personal-access-tokens";
 
 type McpWebTransportState = Awaited<ReturnType<typeof createMcpWebTransport>>;
+type McpSessionAuth = {
+  isAdmin: boolean;
+  userEmail?: string;
+};
 
-const mcpWebTransportSessions = new Map<string, McpWebTransportState>();
+const mcpWebTransportSessions = new Map<
+  string,
+  McpWebTransportState & {
+    auth: McpSessionAuth;
+  }
+>();
+
+const JSON_RPC_VERSION = "2.0";
 
 async function normalizeMcpRequest(request: Request): Promise<{
   parsedBody?: unknown;
@@ -65,10 +76,50 @@ function readMcpSessionId(request: Request, response?: Response) {
   );
 }
 
+function getJsonRpcId(parsedBody: unknown): string | number | null {
+  if (parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody)) {
+    const id = (parsedBody as { id?: unknown }).id;
+    if (typeof id === "string" || typeof id === "number" || id === null) return id;
+  }
+  return null;
+}
+
+export function isMcpInitializeRequest(parsedBody: unknown): boolean {
+  return (
+    !!parsedBody &&
+    typeof parsedBody === "object" &&
+    !Array.isArray(parsedBody) &&
+    (parsedBody as { method?: unknown }).method === "initialize"
+  );
+}
+
+export function createMcpJsonRpcErrorResponse(
+  parsedBody: unknown,
+  message: string,
+  status = 400,
+  code = -32000
+): Response {
+  return Response.json(
+    {
+      jsonrpc: JSON_RPC_VERSION,
+      id: getJsonRpcId(parsedBody),
+      error: { code, message },
+    },
+    { status }
+  );
+}
+
+export function getMcpSessionCountForTests(): number {
+  return mcpWebTransportSessions.size;
+}
+
+export function getMcpSessionAuthForTests(sessionId: string): McpSessionAuth | undefined {
+  return mcpWebTransportSessions.get(sessionId)?.auth;
+}
+
 export async function handleMcpHttpRequest(request: Request) {
   const authHeader = request.headers.get("authorization");
-  let userEmail: string | undefined;
-  let isAdmin = false;
+  const requestAuth: McpSessionAuth = { isAdmin: false };
 
   if (typeof authHeader === "string") {
     const match = authHeader.match(/^Bearer\s+(.+)$/i);
@@ -77,9 +128,9 @@ export async function handleMcpHttpRequest(request: Request) {
       try {
         const resolved = await resolveUserByPersonalAccessToken(rawToken);
         if (resolved) {
-          userEmail = resolved.user.email;
+          requestAuth.userEmail = resolved.user.email;
           const adminEmail = getAdminEmail();
-          isAdmin = !!adminEmail && userEmail === adminEmail;
+          requestAuth.isAdmin = !!adminEmail && requestAuth.userEmail === adminEmail;
         }
       } catch (error) {
         console.warn("[MCP] PAT resolve failed:", error);
@@ -87,18 +138,39 @@ export async function handleMcpHttpRequest(request: Request) {
     }
   }
 
-  return runWithMcpAuth({ isAdmin, userEmail }, async () => {
-    const requestedSessionId = readMcpSessionId(request);
-    const existingTransportState = requestedSessionId
-      ? mcpWebTransportSessions.get(requestedSessionId)
-      : undefined;
+  const requestedSessionId = readMcpSessionId(request);
+  const existingTransportState = requestedSessionId
+    ? mcpWebTransportSessions.get(requestedSessionId)
+    : undefined;
+  const sessionAuth =
+    requestAuth.isAdmin || requestAuth.userEmail ? requestAuth : existingTransportState?.auth;
+  const auth = sessionAuth ?? requestAuth;
+
+  return runWithMcpAuth(auth, async () => {
+    const { parsedBody, transportRequest } = await normalizeMcpRequest(request);
 
     if (request.method === "DELETE" && requestedSessionId && !existingTransportState) {
       return new Response(null, { status: 204 });
     }
 
-    const transportState = existingTransportState || (await createMcpWebTransport());
-    const { parsedBody, transportRequest } = await normalizeMcpRequest(request);
+    if (requestedSessionId && !existingTransportState) {
+      return createMcpJsonRpcErrorResponse(
+        parsedBody,
+        "Unknown MCP session. Reinitialize before sending further requests."
+      );
+    }
+
+    if (!existingTransportState && !isMcpInitializeRequest(parsedBody)) {
+      return createMcpJsonRpcErrorResponse(
+        parsedBody,
+        "Missing MCP session. Send an initialize request first."
+      );
+    }
+
+    const transportState = existingTransportState || {
+      ...(await createMcpWebTransport()),
+      auth,
+    };
     const response = await transportState.transport.handleRequest(
       transportRequest,
       parsedBody !== undefined ? { parsedBody } : undefined
@@ -114,6 +186,7 @@ export async function handleMcpHttpRequest(request: Request) {
       transportState.transport.onclose = () => {
         mcpWebTransportSessions.delete(resolvedSessionId);
       };
+      transportState.auth = auth;
       mcpWebTransportSessions.set(resolvedSessionId, transportState);
     }
 

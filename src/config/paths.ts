@@ -214,8 +214,15 @@ export function getWebDAVUrl(path: string = ""): string {
   return `${baseUrl.replace(/\/$/, "")}${cleanPath}`;
 }
 
+export function getActiveLocalBasePath(): string | null {
+  const envBasePath = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
+  if (envBasePath) return envBasePath;
+  return LOCAL_PATHS.basePath;
+}
+
 function hasLocalBasePath(): boolean {
-  return typeof LOCAL_PATHS.basePath === "string" && LOCAL_PATHS.basePath.length > 0;
+  const basePath = getActiveLocalBasePath();
+  return typeof basePath === "string" && basePath.length > 0;
 }
 
 /**
@@ -285,7 +292,7 @@ if (webdavSourceEnabled) {
  * 获取完整的本地文件路径
  */
 export function getLocalPath(relativePath: string = ""): string {
-  const basePath = LOCAL_PATHS.basePath;
+  const basePath = getActiveLocalBasePath();
   const cleanPath = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
   return `${basePath}/${cleanPath}`.replace(/\/+/g, "/");
 }

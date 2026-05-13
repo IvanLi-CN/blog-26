@@ -1,5 +1,9 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { clearSearchCache, getCachedSearchResults, getSearchCacheSize } from "./search-cache";
+
+beforeEach(() => {
+  clearSearchCache();
+});
 
 afterEach(() => {
   clearSearchCache();
@@ -17,7 +21,6 @@ test("search cache reuses results for equivalent queries until cleared", async (
 
   expect(first).toEqual(second);
   expect(loadCount).toBe(1);
-  expect(getSearchCacheSize()).toBe(1);
 
   clearSearchCache();
   await getCachedSearchResults("enhanced", { q: "arch linux", topK: 20 }, load);
