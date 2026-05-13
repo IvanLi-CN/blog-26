@@ -21,6 +21,7 @@ import {
   extractTextContent,
   getVariantConfig,
   isExternalUrl,
+  isSameSiteUrl,
   mergeClassNames,
   publicSiteUrlTransform,
 } from "./markdown/utils";
@@ -68,7 +69,7 @@ function getMarkdownLinkBehavior(href: string | undefined) {
     return {};
   }
 
-  if (!isExternalUrl(href)) {
+  if (!isExternalUrl(href) || isSameSiteUrl(href)) {
     return {};
   }
 

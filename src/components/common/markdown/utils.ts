@@ -1,5 +1,5 @@
 import { resolveImagePath as resolveImagePathCommon } from "@/lib/image-utils";
-import { toPublicAssetUrl, toPublicSitePath } from "@/lib/public-runtime-url";
+import { getPublicSiteUrl, toPublicAssetUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 import type { VariantConfig } from "./types";
 
 /**
@@ -8,6 +8,34 @@ import type { VariantConfig } from "./types";
 export function isExternalUrl(url: string): boolean {
   if (!url) return false;
   return /^https?:\/\//.test(url) || url.startsWith("//");
+}
+
+export function isSameSiteUrl(url: string): boolean {
+  if (!url || !isExternalUrl(url)) return true;
+
+  const baseUrls = new Set<string>();
+  const publicSiteUrl = getPublicSiteUrl();
+  if (publicSiteUrl) {
+    baseUrls.add(publicSiteUrl);
+  }
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    baseUrls.add(window.location.origin);
+  }
+
+  for (const baseUrl of baseUrls) {
+    try {
+      const base = new URL(baseUrl);
+      const target = new URL(url, base);
+      if (target.origin === base.origin) {
+        return true;
+      }
+    } catch {
+      // Ignore invalid configured or authored URLs and continue checking fallbacks.
+    }
+  }
+
+  return false;
 }
 
 /**

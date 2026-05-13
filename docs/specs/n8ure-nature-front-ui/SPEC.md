@@ -55,7 +55,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 4. `/theme-test` acts as a stable visual preview surface for the shared public design language.
 5. Existing public behaviors keep working: search, pagination, tag navigation, comments, memo browsing, markdown rendering, and theme persistence.
 6. Reduced-motion mode disables or significantly softens particles, gooey motion, and ripple effects without harming usability.
-7. Same-site Markdown links navigate in the current tab, while external Markdown links keep a new tab target and safe `rel` attributes.
+7. Same-site Markdown links, including same-origin absolute URLs, navigate in the current tab, while external Markdown links keep a new tab target and safe `rel` attributes.
 
 ## 6. Validation
 
@@ -186,3 +186,4 @@ PR: include
 - 2026-05-12: Added public route pending feedback, deferred visible Markdown hydration for article and memo details without dropping server-rendered content, same-site Markdown link behavior, and Storybook article-detail coverage.
 - 2026-05-13: Anchored the route pending indicator to the complete site header mock and production header frame, keeping it visually attached to navigation while floating outside the static document flow.
 - 2026-05-13: Changed the Markdown interaction note to static guidance so deferred hydration is discoverable without leaving a persistent loading live region.
+- 2026-05-13: Clarified same-site Markdown link handling so same-origin absolute URLs stay in the current tab while true external URLs still open safely.
