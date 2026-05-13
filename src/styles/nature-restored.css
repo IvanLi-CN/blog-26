@@ -561,6 +561,15 @@
     font-weight: 600;
   }
 
+  .nature-markdown-interaction-mark {
+    width: 0.48rem;
+    height: 0.48rem;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--nature-accent-strong);
+    box-shadow: 0 0 0 0.2rem rgba(var(--nature-accent-rgb), 0.14);
+  }
+
   .nature-feedback-link,
   .nature-link-inline {
     color: var(--nature-accent-strong);
@@ -663,7 +672,6 @@
     }
 
     .nature-route-loading-bar,
-    .nature-markdown-interaction-note .nature-spinner,
     .nature-skeleton,
     .nature-spinner {
       animation: none;

@@ -45,7 +45,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
-- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport.
+- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; the page may show a static interaction note, but it must not expose a persistent live loading state after content is readable.
 
 ## 5. Acceptance criteria
 
@@ -185,3 +185,4 @@ PR: include
 - 2026-05-05: Reworked empty-result recovery recommendations into a single-row retry strip that appears only on true no-result searches, with refreshed light, dark, and mobile Storybook evidence.
 - 2026-05-12: Added public route pending feedback, deferred visible Markdown hydration for article and memo details without dropping server-rendered content, same-site Markdown link behavior, and Storybook article-detail coverage.
 - 2026-05-13: Anchored the route pending indicator to the complete site header mock and production header frame, keeping it visually attached to navigation while floating outside the static document flow.
+- 2026-05-13: Changed the Markdown interaction note to static guidance so deferred hydration is discoverable without leaving a persistent loading live region.

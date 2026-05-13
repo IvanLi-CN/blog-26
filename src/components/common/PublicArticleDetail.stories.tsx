@@ -216,9 +216,9 @@ function PublicDocumentShell({
                 </p>
               </header>
               <div className="nature-panel px-6 py-7 sm:px-8">
-                <div className="nature-markdown-interaction-note" role="status" aria-live="polite">
-                  <span className="nature-spinner" aria-hidden="true" />
-                  <span>正文已可阅读，图片灯箱和代码折叠会在进入视口后启用</span>
+                <div className="nature-markdown-interaction-note">
+                  <span className="nature-markdown-interaction-mark" aria-hidden="true" />
+                  <span>正文已可阅读，图片灯箱和代码折叠会按需启用</span>
                 </div>
                 {children}
               </div>
