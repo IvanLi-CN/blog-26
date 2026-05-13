@@ -75,8 +75,12 @@ const structuredData = {
         </div>
 
         <div class="nature-panel px-6 py-7 sm:px-8">
+          <div class="nature-markdown-interaction-note" role="status" aria-live="polite">
+            <span class="nature-spinner" aria-hidden="true"></span>
+            <span>正文已可阅读，图片灯箱和代码折叠会在进入视口后启用</span>
+          </div>
           <MarkdownRenderer
-            client:load
+            client:visible={{ rootMargin: "480px" }}
             content={memo.content}
             variant="article"
             enableMath={true}

@@ -180,3 +180,4 @@ PR: include
 - 2026-05-04: Tightened the search page toward a faster tool workflow, reduced result-card weight, grouped recovery terms by concept direction, subdued relevance metadata, and refreshed visual evidence.
 - 2026-05-05: Kept query-related concept-direction recovery terms when strict validation returns no hit, and added real dev-stack evidence for the empty-result recovery state.
 - 2026-05-05: Reworked empty-result recovery recommendations into a single-row retry strip that appears only on true no-result searches, with refreshed light, dark, and mobile Storybook evidence.
+- 2026-05-12: Added public route pending feedback, deferred visible Markdown hydration for article and memo details without dropping server-rendered content, same-site Markdown link behavior, and Storybook article-detail coverage.
