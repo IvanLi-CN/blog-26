@@ -42,9 +42,9 @@ describe("public-runtime-url", () => {
     expect(getPublicSiteBasePath()).toBe("/blog-26");
     expect(toPublicSitePath("/")).toBe("/blog-26/");
     expect(toPublicSitePath("/posts/react-hooks-deep-dive")).toBe(
-      "/blog-26/posts/react-hooks-deep-dive"
+      "/blog-26/posts/react-hooks-deep-dive/"
     );
-    expect(toPublicSitePath("/search?q=React")).toBe("/blog-26/search?q=React");
+    expect(toPublicSitePath("/search?q=React")).toBe("/blog-26/search/?q=React");
   });
 
   it("keeps public site routes root-relative when PUBLIC_SITE_BASE_PATH is /", () => {
@@ -54,18 +54,30 @@ describe("public-runtime-url", () => {
     expect(getPublicSiteUrl()).toBe("https://ivanli.cc");
     expect(getPublicSiteBasePath()).toBe("");
     expect(toPublicSitePath("/")).toBe("/");
-    expect(toPublicSitePath("/posts/react-hooks-deep-dive")).toBe("/posts/react-hooks-deep-dive");
-    expect(toPublicSitePath("/search?q=React")).toBe("/search?q=React");
+    expect(toPublicSitePath("/posts")).toBe("/posts/");
+    expect(toPublicSitePath("/posts/react-hooks-deep-dive")).toBe("/posts/react-hooks-deep-dive/");
+    expect(toPublicSitePath("/search?q=React")).toBe("/search/?q=React");
+    expect(toPublicSitePath("/tags/Hardware#posts")).toBe("/tags/Hardware/#posts");
   });
 
-  it("keeps api routes and already-prefixed site routes unchanged", () => {
+  it("keeps api routes and static asset routes unchanged", () => {
     process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
 
     expect(toPublicSitePath("/api/public/search?q=React")).toBe("/api/public/search?q=React");
     expect(toPublicSitePath("/admin/preview/memos/test")).toBe("/admin/preview/memos/test");
+    expect(toPublicSitePath("/_astro/BaseLayout.css")).toBe("/_astro/BaseLayout.css");
+    expect(toPublicSitePath("/feed.xml")).toBe("/blog-26/feed.xml");
+    expect(toPublicSitePath("/favicon.ico")).toBe("/blog-26/favicon.ico");
+    expect(toPublicSitePath("/press.html")).toBe("/blog-26/press.html");
+  });
+
+  it("does not duplicate base paths while normalizing page routes", () => {
+    process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
+
     expect(toPublicSitePath("/blog-26/posts/react-hooks-deep-dive")).toBe(
-      "/blog-26/posts/react-hooks-deep-dive"
+      "/blog-26/posts/react-hooks-deep-dive/"
     );
+    expect(toPublicSitePath("/blog-26/search?q=React")).toBe("/blog-26/search/?q=React");
   });
 
   it("derives a project base path from PUBLIC_SITE_URL when no explicit base path is set", () => {
@@ -73,7 +85,7 @@ describe("public-runtime-url", () => {
 
     expect(getPublicSiteBasePath()).toBe("/blog-26");
     expect(toPublicSitePath("/posts/react-hooks-deep-dive")).toBe(
-      "/blog-26/posts/react-hooks-deep-dive"
+      "/blog-26/posts/react-hooks-deep-dive/"
     );
   });
 });

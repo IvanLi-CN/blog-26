@@ -62,7 +62,7 @@ test.describe("Astro public front (phase 1)", () => {
 
     await page.goto("/posts", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "文章" })).toBeVisible();
-    await expect(page.locator('a[href="/posts/react-hooks-deep-dive"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/posts/react-hooks-deep-dive/"]').first()).toBeVisible();
 
     await page.goto("/posts/react-hooks-deep-dive", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "React Hooks 深度解析" }).first()).toBeVisible();
@@ -89,11 +89,11 @@ test.describe("Astro public front (phase 1)", () => {
 
     await page.goto("/tags/React", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "React", exact: true })).toBeVisible();
-    await expect(page.locator('a[href="/posts/react-hooks-deep-dive"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/posts/react-hooks-deep-dive/"]').first()).toBeVisible();
 
     await page.goto("/search?q=React", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "搜索" })).toBeVisible();
-    await expect(page.locator('a[href="/posts/react-hooks-deep-dive"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/posts/react-hooks-deep-dive/"]').first()).toBeVisible();
   });
 
   test("serves feed, sitemap, and public APIs through the gateway", async ({ request }) => {

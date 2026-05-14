@@ -232,18 +232,18 @@ More content with`);
       process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
 
       expect(publicSiteUrlTransform("/posts/react-hooks-deep-dive")).toBe(
-        "/blog-26/posts/react-hooks-deep-dive"
+        "/blog-26/posts/react-hooks-deep-dive/"
       );
-      expect(publicSiteUrlTransform("/tags/React")).toBe("/blog-26/tags/React");
+      expect(publicSiteUrlTransform("/tags/React")).toBe("/blog-26/tags/React/");
     });
 
     it("keeps root-relative public site links unchanged for root-domain Pages", () => {
       process.env.PUBLIC_SITE_BASE_PATH = "/";
 
       expect(publicSiteUrlTransform("/posts/react-hooks-deep-dive")).toBe(
-        "/posts/react-hooks-deep-dive"
+        "/posts/react-hooks-deep-dive/"
       );
-      expect(publicSiteUrlTransform("/tags/React")).toBe("/tags/React");
+      expect(publicSiteUrlTransform("/tags/React")).toBe("/tags/React/");
     });
 
     it("keeps backend API links unprefixed", () => {
