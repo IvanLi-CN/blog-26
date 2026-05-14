@@ -200,6 +200,15 @@ async function expectDeletedContent(title: string, filePath: string) {
   await expect(fs.access(path.join(LOCAL_CONTENT, filePath))).rejects.toThrow();
 }
 
+async function readCreatedMarkdown(title: string, type: "memo" | "post") {
+  await expectCreatedViaMarker(title, type);
+  const row = await getContentRowByTitle(title);
+  expect(row).toBeDefined();
+  expect(row.filePath).toBeTruthy();
+  if (!row?.filePath) throw new Error(`Created ${type} row missing filePath`);
+  return fs.readFile(path.join(LOCAL_CONTENT, row.filePath), "utf-8");
+}
+
 if (!ENABLE) {
   test("mcp sdk smoke skipped", () => {
     expect(true).toBe(true);
@@ -342,6 +351,106 @@ if (!ENABLE) {
         true
       );
       await expectCreatedViaMarker(title, "post");
+    });
+
+    it("should format MCP-created and updated markdown bodies", async () => {
+      const stamp = Date.now();
+      const postTitle = `sdk-format-post-${stamp}`;
+      const memoTitle = `sdk-format-memo-${stamp}`;
+
+      const postCreated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "fp1",
+          method: "tools/call",
+          params: {
+            name: "posts_create",
+            arguments: {
+              content: "# Title\nParagraph\n- one\n- two",
+              title: postTitle,
+              isPublic: true,
+              tags: ["mcp-format"],
+            },
+          },
+        },
+        TEST_PAT
+      );
+      expect(postCreated.error).toBeUndefined();
+      const createdPostMarkdown = await readCreatedMarkdown(postTitle, "post");
+      expect(createdPostMarkdown).toContain("# Title\n\nParagraph\n\n- one\n- two\n");
+
+      const postRow = await getContentRowByTitle(postTitle);
+      expect(postRow).toBeDefined();
+      if (!postRow) throw new Error("Created post row missing");
+      const postUpdated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "fp2",
+          method: "tools/call",
+          params: {
+            name: "posts_update_content",
+            arguments: {
+              slug: postRow.slug,
+              content: "## Updated\n|A|B|\n|-|-|\n|1|2|",
+              title: postTitle,
+              isPublic: true,
+              tags: ["mcp-format", "updated"],
+            },
+          },
+        },
+        TEST_PAT
+      );
+      expect(postUpdated.error).toBeUndefined();
+      const updatedPostMarkdown = await readCreatedMarkdown(postTitle, "post");
+      expect(updatedPostMarkdown).toContain("## Updated\n\n| A | B |\n| - | - |\n| 1 | 2 |\n");
+
+      const memoCreated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "fm1",
+          method: "tools/call",
+          params: {
+            name: "memos_create",
+            arguments: {
+              content: "# Memo\nText\n- a\n- b",
+              title: memoTitle,
+              isPublic: true,
+              tags: ["mcp-format"],
+            },
+          },
+        },
+        TEST_PAT
+      );
+      expect(memoCreated.error).toBeUndefined();
+      const createdMemoMarkdown = await readCreatedMarkdown(memoTitle, "memo");
+      expect(createdMemoMarkdown).toContain("# Memo\n\nText\n\n- a\n- b\n");
+
+      const memoRow = await getContentRowByTitle(memoTitle);
+      expect(memoRow).toBeDefined();
+      if (!memoRow) throw new Error("Created memo row missing");
+      const memoUpdated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "fm2",
+          method: "tools/call",
+          params: {
+            name: "memos_update",
+            arguments: {
+              slug: memoRow.slug,
+              content: "## Memo Updated\n- [x] done\n```ts\nconst value = 1\n```",
+              title: memoTitle,
+              isPublic: true,
+              tags: ["mcp-format", "updated"],
+            },
+          },
+        },
+        TEST_PAT
+      );
+      expect(memoUpdated.error).toBeUndefined();
+      const updatedMemoMarkdown = await readCreatedMarkdown(memoTitle, "memo");
+      expect(updatedMemoMarkdown).toContain(
+        "## Memo Updated\n\n- [x] done\n\n```ts\nconst value = 1\n```\n"
+      );
     });
 
     it("should delete local memo and post files plus indexed rows", async () => {

@@ -8,11 +8,13 @@
 - Post and memo writes use storage-source-aware helpers so local filesystem and WebDAV rows update/delete through their actual backing source.
 - Post and memo delete tools remove both the backing Markdown file and the indexed database row before triggering sync, so MCP list results are immediately consistent after deletion.
 - MCP-created posts and memos persist `createdVia: "mcp"` in Markdown and `posts.created_via` after sync.
+- MCP post and memo create/update tools format Markdown bodies through the project remark pipeline before writing files, while leaving frontmatter and storage-source routing unchanged.
 
 ## Verification
 
 - `bun run check`
 - `bun test src/server/mcp-http.test.ts src/lib/content-sources/__tests__/utils.test.ts`
+- `bun test src/lib/__tests__/markdown-format.test.ts src/server/mcp-http.test.ts src/lib/content-sources/__tests__/utils.test.ts`
 - `bun run db:migrations:validate`
 - `RUN_MCP_TESTS=1 MCP_PORT=25110 bun test tests/mcp`
 - `RUN_MCP_TESTS=1 bun test tests/mcp`

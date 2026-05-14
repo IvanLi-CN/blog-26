@@ -85,6 +85,7 @@
         "remark-math": "^6.0.0",
         "remark-parse": "^11.0.0",
         "remark-rehype": "^11.1.2",
+        "remark-stringify": "^11.0.0",
         "unified": "^11.0.5",
         "unpic": "^4.2.2",
         "uuid": "^13.0.0",
