@@ -43,7 +43,7 @@ test.describe("Nature frontend public coverage", () => {
     const mainNavigation = page.getByRole("navigation", { name: "Main navigation" });
 
     await mainNavigation.getByRole("link", { name: "文章", exact: true }).click();
-    await expect(page).toHaveURL(/\/posts$/);
+    await expect(page).toHaveURL(/\/posts\/$/);
     await expect(page.getByRole("heading", { name: "文章" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute(
       "data-public-session-id",
@@ -51,7 +51,7 @@ test.describe("Nature frontend public coverage", () => {
     );
 
     await mainNavigation.getByRole("link", { name: "标签", exact: true }).click();
-    await expect(page).toHaveURL(/\/tags$/);
+    await expect(page).toHaveURL(/\/tags\/$/);
     await expect(page.getByRole("heading", { name: "浏览所有标签" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute(
       "data-public-session-id",
@@ -92,14 +92,14 @@ test.describe("Nature frontend public coverage", () => {
     const searchEntry = page.getByRole("link", { name: "搜索" });
     await expect(searchEntry).toBeVisible();
     await searchEntry.click();
-    await expect(page).toHaveURL(/\/search$/);
+    await expect(page).toHaveURL(/\/search\/$/);
 
     const searchInput = page.getByRole("textbox").first();
     await expect(searchInput).toBeVisible();
     await searchInput.fill("Vue");
     await searchInput.press("Enter");
 
-    await expect(page).toHaveURL(/\/search\?q=Vue/);
+    await expect(page).toHaveURL(/\/search\/\?q=Vue/);
     await expect(page.getByRole("heading", { name: "搜索内容" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute(
       "data-public-session-id",

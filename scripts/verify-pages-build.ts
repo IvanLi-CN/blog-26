@@ -50,6 +50,11 @@ function toExpectedSitePath(basePath: string, pathname: string) {
   return pathname === "/" ? `${basePath}/` : `${basePath}${pathname}`;
 }
 
+function toExpectedPagePath(basePath: string, pathname: string) {
+  const pagePath = pathname === "/" || pathname.endsWith("/") ? pathname : `${pathname}/`;
+  return toExpectedSitePath(basePath, pagePath);
+}
+
 const rawBasePath = (process.env.PUBLIC_SITE_BASE_PATH || "").trim();
 const siteUrl = (process.env.PUBLIC_SITE_URL || "").trim();
 const apiBaseUrl = (process.env.PUBLIC_API_BASE_URL || "").trim();
@@ -65,10 +70,10 @@ const checks = [
   {
     file: "site-dist/index.html",
     includes: [
-      `href="${toExpectedSitePath(basePath, "/posts")}"`,
-      `href="${toExpectedSitePath(basePath, "/memos")}"`,
-      `href="${toExpectedSitePath(basePath, "/projects")}"`,
-      `action="${toExpectedSitePath(basePath, "/search")}"`,
+      `href="${toExpectedPagePath(basePath, "/posts")}"`,
+      `href="${toExpectedPagePath(basePath, "/memos")}"`,
+      `href="${toExpectedPagePath(basePath, "/projects")}"`,
+      `action="${toExpectedPagePath(basePath, "/search")}"`,
       `href="${toExpectedSitePath(basePath, "/feed.xml")}"`,
       `<link rel="canonical" href="${siteUrl}/"`,
     ],
@@ -79,18 +84,18 @@ const checks = [
   {
     file: "site-dist/posts/react-hooks-deep-dive/index.html",
     includes: [
-      `href="${toExpectedSitePath(basePath, "/tags/React")}"`,
+      `href="${toExpectedPagePath(basePath, "/tags/React")}"`,
       `href="${toExpectedSitePath(basePath, "/posts/")}`,
-      `<link rel="canonical" href="${siteUrl}/posts/react-hooks-deep-dive"`,
+      `<link rel="canonical" href="${siteUrl}/posts/react-hooks-deep-dive/"`,
     ],
-    excludes: basePath ? ['href="/tags/React"', 'href="/posts/'] : ['href="//posts/'],
+    excludes: basePath ? ['href="/tags/React"', 'href="/posts"'] : ['href="//posts/'],
   },
   {
     file: "site-dist/tags/React/index.html",
     includes: [
-      `href="${toExpectedSitePath(basePath, "/tags")}"`,
-      `href="${toExpectedSitePath(basePath, "/posts/react-hooks-deep-dive")}"`,
-      `<link rel="canonical" href="${siteUrl}/tags/React"`,
+      `href="${toExpectedPagePath(basePath, "/tags")}"`,
+      `href="${toExpectedPagePath(basePath, "/posts/react-hooks-deep-dive")}"`,
+      `<link rel="canonical" href="${siteUrl}/tags/React/"`,
     ],
     excludes: basePath
       ? ['href="/tags"', 'href="/posts/react-hooks-deep-dive"']
@@ -103,17 +108,17 @@ const checks = [
   },
   {
     file: "site-dist/feed.xml",
-    includes: [`<link>${siteUrl}/posts/react-hooks-deep-dive</link>`],
+    includes: [`<link>${siteUrl}/posts/react-hooks-deep-dive/</link>`],
     excludes: ["/./assets/"],
   },
   {
     file: "site-dist/atom.xml",
-    includes: [`<link href="${siteUrl}/posts/react-hooks-deep-dive"/>`],
+    includes: [`<link href="${siteUrl}/posts/react-hooks-deep-dive/"/>`],
     excludes: ["/./assets/"],
   },
   {
     file: "site-dist/feed.json",
-    includes: [`"url": "${siteUrl}/posts/react-hooks-deep-dive"`],
+    includes: [`"url": "${siteUrl}/posts/react-hooks-deep-dive/"`],
     excludes: ["/./assets/"],
   },
   {
