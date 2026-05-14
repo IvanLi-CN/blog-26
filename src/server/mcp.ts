@@ -19,6 +19,7 @@ import {
   WebDAVContentSource,
 } from "@/lib/content-sources";
 import { db, initializeDB } from "@/lib/db";
+import { formatMarkdownBody } from "@/lib/markdown-format";
 import { buildMemoRelativePath, getMemoRootPath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
 import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
@@ -171,7 +172,11 @@ async function updateFrontmatterInStorage(
       )
     ) as Record<string, unknown>,
   });
-  await writeStorageFile(source, row.filePath, `${fmPart}${newBody ?? content}`);
+  await writeStorageFile(
+    source,
+    row.filePath,
+    `${fmPart}${newBody === undefined ? content : formatMarkdownBody(newBody)}`
+  );
 }
 
 function buildDatedMarkdownPath(basePath: string, title: string): string {
@@ -347,7 +352,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         publishDate: input.publishDate ?? Date.now(),
         extra: { createdVia: MCP_CREATED_VIA },
       });
-      const md = `${fm}${input.content}`;
+      const md = `${fm}${formatMarkdownBody(input.content)}`;
       if (isWebDAVEnabled()) {
         await writeStorageFile(
           "webdav",
@@ -601,7 +606,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       publishDate: Date.now(),
       extra: { createdVia: MCP_CREATED_VIA },
     });
-    const md = `${fm}${input.content}`;
+    const md = `${fm}${formatMarkdownBody(input.content)}`;
     if (isWebDAVEnabled()) {
       await writeStorageFile(
         "webdav",
