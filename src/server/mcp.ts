@@ -27,6 +27,7 @@ import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/servic
 import { requireAdmin } from "./mcp-auth-context";
 
 const MCP_CREATED_VIA = "mcp";
+const MCP_UPDATED_VIA = "mcp";
 
 function iso(ts: number | string | Date): string {
   return new Date(ts).toISOString();
@@ -61,9 +62,11 @@ function buildFrontmatter(input: {
   if (input.extra) Object.assign(fm, input.extra);
   const yaml = Object.entries(fm)
     .map(([k, v]) =>
-      Array.isArray(v)
-        ? `${k}:\n${v.map((x) => `  - ${JSON.stringify(x)}`).join("\n")}`
-        : `${k}: ${JSON.stringify(v)}`
+      Array.isArray(v) && v.length === 0
+        ? `${k}: []`
+        : Array.isArray(v)
+          ? `${k}:\n${v.map((x) => `  - ${JSON.stringify(x)}`).join("\n")}`
+          : `${k}: ${JSON.stringify(v)}`
     )
     .join("\n");
   return `---\n${yaml}\n---\n\n`;
@@ -96,6 +99,95 @@ async function triggerIncrementalSync() {
 
 type StorageSource = "local" | "webdav";
 type PostRow = typeof postsTable.$inferSelect;
+type ContentKind = "post" | "memo";
+
+type FrontmatterWriteResult = {
+  ok: true;
+  frontmatterAdded: boolean;
+  warnings: string[];
+  recommendedMetadata: Record<string, unknown>;
+};
+
+function hasYamlFrontmatter(raw: string): boolean {
+  return /^---[ \t]*(?:\r?\n|$)/.test(raw);
+}
+
+function parseStoredTags(tags: string | null | undefined): string[] {
+  if (!tags) return [];
+  try {
+    const parsed = JSON.parse(tags);
+    return Array.isArray(parsed) ? parsed.filter((tag) => typeof tag === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function isMissingFrontmatterValue(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value === "string") return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  return false;
+}
+
+function getMissingRecommendedMetadata(fm: Record<string, unknown>, kind: ContentKind): string[] {
+  const fields = kind === "post" ? ["publishDate", "category"] : ["publishDate"];
+  return fields.filter((field) => isMissingFrontmatterValue(fm[field]));
+}
+
+function buildRecommendedMetadata(row: PostRow, missing: string[]): Record<string, unknown> {
+  const recommended: Record<string, unknown> = {};
+  for (const field of missing) {
+    if (field === "publishDate") recommended.publishDate = iso(row.publishDate || Date.now());
+    if (field === "category" && row.category) recommended.category = row.category;
+  }
+  return recommended;
+}
+
+function ensureMcpUpdateFrontmatter(fm: Record<string, unknown>, row: PostRow, nowIso: string) {
+  if (isMissingFrontmatterValue(fm.title)) fm.title = row.title;
+  if (typeof fm.public !== "boolean") fm.public = row.public;
+  if (!Array.isArray(fm.tags)) fm.tags = parseStoredTags(row.tags);
+  if (isMissingFrontmatterValue(fm.updateDate)) {
+    fm.updateDate = row.updateDate ? iso(row.updateDate) : nowIso;
+  }
+  fm.updatedVia = MCP_UPDATED_VIA;
+}
+
+function buildToolResult(result: FrontmatterWriteResult) {
+  return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+}
+
+async function getFrontmatterDiagnostics(row: PostRow, kind: ContentKind) {
+  if (!row.filePath) {
+    return {
+      hasFrontmatter: false,
+      missingRecommendedMetadata: [],
+    };
+  }
+  try {
+    const raw = await readStorageFile(resolveStorageSource(row), row.filePath);
+    const hasFrontmatter = hasYamlFrontmatter(raw);
+    const parsed = matter(raw);
+    return {
+      hasFrontmatter,
+      missingRecommendedMetadata: getMissingRecommendedMetadata(parsed.data, kind),
+    };
+  } catch {
+    return {
+      hasFrontmatter: false,
+      missingRecommendedMetadata: [],
+    };
+  }
+}
+
+async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKind) {
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      ...(await getFrontmatterDiagnostics(row, kind)),
+    }))
+  );
+}
 
 function resolveStorageSource(row: Pick<PostRow, "source" | "dataSource">): StorageSource {
   const source = `${row.source || ""} ${row.dataSource || ""}`.toLowerCase();
@@ -151,13 +243,17 @@ async function deleteIndexedContentRow(id: string): Promise<void> {
 async function updateFrontmatterInStorage(
   row: PostRow,
   mut: (fm: Record<string, unknown>) => void,
-  newBody?: string
-) {
+  newBody?: string,
+  kind: ContentKind = row.type === "memo" ? "memo" : "post"
+): Promise<FrontmatterWriteResult> {
   if (!row.filePath) throw new Error("Content not found or missing filePath");
   const source = resolveStorageSource(row);
   const raw = await readStorageFile(source, row.filePath);
+  const frontmatterAdded = !hasYamlFrontmatter(raw);
   const { data, content } = matter(raw);
+  const nowIso = new Date().toISOString();
   mut(data);
+  ensureMcpUpdateFrontmatter(data, row, nowIso);
   const fmPart = buildFrontmatter({
     title: data.title as string | undefined,
     public: typeof data.public === "boolean" ? data.public : undefined,
@@ -172,11 +268,30 @@ async function updateFrontmatterInStorage(
       )
     ) as Record<string, unknown>,
   });
+  const missingRecommendedMetadata = getMissingRecommendedMetadata(data, kind);
+  const warnings = [
+    ...(frontmatterAdded
+      ? ["Original Markdown had no YAML frontmatter; minimal MCP update metadata was added."]
+      : []),
+    ...(missingRecommendedMetadata.length > 0
+      ? [
+          `Recommended frontmatter fields are still missing: ${missingRecommendedMetadata.join(
+            ", "
+          )}.`,
+        ]
+      : []),
+  ];
   await writeStorageFile(
     source,
     row.filePath,
     `${fmPart}${newBody === undefined ? content : formatMarkdownBody(newBody)}`
   );
+  return {
+    ok: true,
+    frontmatterAdded,
+    warnings,
+    recommendedMetadata: buildRecommendedMetadata(row, missingRecommendedMetadata),
+  };
 }
 
 function buildDatedMarkdownPath(basePath: string, title: string): string {
@@ -306,12 +421,18 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
           tags: postsTable.tags,
           public: postsTable.public,
           createdVia: postsTable.createdVia,
+          source: postsTable.source,
+          dataSource: postsTable.dataSource,
+          filePath: postsTable.filePath,
         })
         .from(postsTable)
         .where(ands(conds))
         .orderBy(desc(postsTable.publishDate))
         .limit(limit)
         .offset(offset);
+      const items = (await annotateContentRows(rows as PostRow[], "post")).map(
+        ({ filePath: _filePath, source: _source, dataSource: _dataSource, ...item }) => item
+      );
       const total =
         (await db.select({ count: sql<number>`count(*)` }).from(postsTable).where(ands(conds)))[0]
           ?.count ?? 0;
@@ -321,7 +442,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
             type: "text",
             text: JSON.stringify(
               {
-                items: rows,
+                items,
                 page,
                 limit,
                 total,
@@ -373,7 +494,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
 
   server.tool(
     "posts_update_content",
-    "Update a post's content/metadata by slug",
+    "Update a post's content/metadata by slug. Prefer preserving or supplying complete frontmatter metadata such as title, tags, category, public, and publishDate when available.",
     updatePostContentInput.shape,
     async (args) => {
       // 管理员专属
@@ -386,7 +507,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
-      await updateFrontmatterInStorage(
+      const result = await updateFrontmatterInStorage(
         row,
         (fm) => {
           if (input.title) fm.title = input.title;
@@ -395,10 +516,11 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
           if (input.category) fm.category = input.category;
           fm.updateDate = new Date().toISOString();
         },
-        input.content
+        input.content,
+        "post"
       );
       await triggerIncrementalSync();
-      return { content: [{ type: "text", text: "ok" }] };
+      return buildToolResult(result);
     }
   );
 
@@ -417,12 +539,17 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
-      await updateFrontmatterInStorage(row, (fm) => {
-        if (input.publishDate) fm.publishDate = iso(input.publishDate);
-        if (input.updateDate) fm.updateDate = iso(input.updateDate);
-      });
+      const result = await updateFrontmatterInStorage(
+        row,
+        (fm) => {
+          if (input.publishDate) fm.publishDate = iso(input.publishDate);
+          if (input.updateDate) fm.updateDate = iso(input.updateDate);
+        },
+        undefined,
+        "post"
+      );
       await triggerIncrementalSync();
-      return { content: [{ type: "text", text: "ok" }] };
+      return buildToolResult(result);
     }
   );
 
@@ -441,12 +568,17 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Post not found or missing filePath");
-      await updateFrontmatterInStorage(row, (fm) => {
-        fm.public = input.isPublic;
-        fm.updateDate = new Date().toISOString();
-      });
+      const result = await updateFrontmatterInStorage(
+        row,
+        (fm) => {
+          fm.public = input.isPublic;
+          fm.updateDate = new Date().toISOString();
+        },
+        undefined,
+        "post"
+      );
       await triggerIncrementalSync();
-      return { content: [{ type: "text", text: "ok" }] };
+      return buildToolResult(result);
     }
   );
 
@@ -585,7 +717,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .orderBy(desc(postsTable.publishDate), desc(postsTable.id))
         .limit(input.limit + 1);
       const hasMore = rows.length > input.limit;
-      const items = hasMore ? rows.slice(0, input.limit) : rows;
+      const items = await annotateContentRows(hasMore ? rows.slice(0, input.limit) : rows, "memo");
       let nextCursor: string | undefined;
       if (hasMore && items.length)
         nextCursor = `${iso(items[items.length - 1].publishDate || Date.now())}_${items[items.length - 1].id}`;
@@ -626,7 +758,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
 
   server.tool(
     "memos_update",
-    "Update memo content/metadata by slug",
+    "Update memo content/metadata by slug. Prefer preserving or supplying complete frontmatter metadata such as title, tags, public, and publishDate when available.",
     updateMemoInput.shape,
     async (args) => {
       // 管理员专属
@@ -639,7 +771,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         .limit(1)
         .then((r) => r[0]);
       if (!row?.filePath) throw new Error("Memo not found or missing filePath");
-      await updateFrontmatterInStorage(
+      const result = await updateFrontmatterInStorage(
         row,
         (fm) => {
           if (input.title) fm.title = input.title;
@@ -647,10 +779,11 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
           fm.tags = input.tags;
           fm.updateDate = new Date().toISOString();
         },
-        input.content
+        input.content,
+        "memo"
       );
       await triggerIncrementalSync();
-      return { content: [{ type: "text", text: "ok" }] };
+      return buildToolResult(result);
     }
   );
 

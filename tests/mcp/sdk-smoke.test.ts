@@ -209,6 +209,46 @@ async function readCreatedMarkdown(title: string, type: "memo" | "post") {
   return fs.readFile(path.join(LOCAL_CONTENT, row.filePath), "utf-8");
 }
 
+async function seedLegacyMarkdownContent(input: {
+  type: "memo" | "post";
+  slug: string;
+  title: string;
+  body: string;
+  tags?: string[];
+  category?: string | null;
+}) {
+  const filePath = input.type === "memo" ? `Memos/${input.slug}.md` : `blog/${input.slug}.md`;
+  await fs.mkdir(path.dirname(path.join(LOCAL_CONTENT, filePath)), { recursive: true });
+  await fs.writeFile(path.join(LOCAL_CONTENT, filePath), input.body, "utf-8");
+
+  const now = Date.now();
+  await db.insert(posts).values({
+    id: filePath,
+    slug: input.slug,
+    type: input.type,
+    title: input.title,
+    excerpt: input.body.slice(0, 80),
+    body: input.body,
+    publishDate: now,
+    updateDate: null,
+    draft: false,
+    public: true,
+    category: input.category ?? null,
+    tags: JSON.stringify(input.tags ?? []),
+    author: null,
+    image: null,
+    metadata: null,
+    dataSource: "local",
+    createdVia: null,
+    contentHash: `legacy-${now}-${input.slug}`,
+    lastModified: now,
+    source: "local",
+    filePath,
+  });
+
+  return { filePath };
+}
+
 if (!ENABLE) {
   test("mcp sdk smoke skipped", () => {
     expect(true).toBe(true);
@@ -401,6 +441,9 @@ if (!ENABLE) {
         TEST_PAT
       );
       expect(postUpdated.error).toBeUndefined();
+      const postUpdatePayload = JSON.parse(postUpdated.result?.content?.[0]?.text || "{}");
+      expect(postUpdatePayload.ok).toBe(true);
+      expect(postUpdatePayload.frontmatterAdded).toBe(false);
       const updatedPostMarkdown = await readCreatedMarkdown(postTitle, "post");
       expect(updatedPostMarkdown).toContain("## Updated\n\n| A | B |\n| - | - |\n| 1 | 2 |\n");
 
@@ -447,10 +490,111 @@ if (!ENABLE) {
         TEST_PAT
       );
       expect(memoUpdated.error).toBeUndefined();
+      const memoUpdatePayload = JSON.parse(memoUpdated.result?.content?.[0]?.text || "{}");
+      expect(memoUpdatePayload.ok).toBe(true);
+      expect(memoUpdatePayload.frontmatterAdded).toBe(false);
       const updatedMemoMarkdown = await readCreatedMarkdown(memoTitle, "memo");
+      expect(matter(updatedMemoMarkdown).data.createdVia).toBe("mcp");
+      expect(matter(updatedMemoMarkdown).data.updatedVia).toBe("mcp");
       expect(updatedMemoMarkdown).toContain(
         "## Memo Updated\n\n- [x] done\n\n```ts\nconst value = 1\n```\n"
       );
+    });
+
+    it("should add minimal MCP frontmatter guidance when updating legacy files", async () => {
+      const stamp = Date.now();
+      const postSlug = `legacy-no-frontmatter-post-${stamp}`;
+      const postTitle = `Legacy No Frontmatter Post ${stamp}`;
+      const legacyPostBody = "# Legacy Post\nText\n- a\n- b";
+      const { filePath: postFilePath } = await seedLegacyMarkdownContent({
+        type: "post",
+        slug: postSlug,
+        title: postTitle,
+        body: legacyPostBody,
+        tags: ["legacy"],
+      });
+
+      const listedBefore = await rpc({
+        jsonrpc: "2.0",
+        id: "lfm-list-before",
+        method: "tools/call",
+        params: {
+          name: "posts_list",
+          arguments: { page: 1, limit: 10, search: postTitle, published: true },
+        },
+      });
+      const beforeItems = JSON.parse(listedBefore.result?.content?.[0]?.text || "{}").items || [];
+      const beforeItem = beforeItems.find((item: any) => item.slug === postSlug);
+      expect(beforeItem?.hasFrontmatter).toBe(false);
+      expect(beforeItem?.missingRecommendedMetadata).toContain("publishDate");
+
+      const postUpdated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "lfm-update-post",
+          method: "tools/call",
+          params: {
+            name: "posts_update_content",
+            arguments: {
+              slug: postSlug,
+              content: "## Updated Legacy\nParagraph\n- one\n- two",
+            },
+          },
+        },
+        TEST_PAT
+      );
+      expect(postUpdated.error).toBeUndefined();
+      const updatePayload = JSON.parse(postUpdated.result?.content?.[0]?.text || "{}");
+      expect(updatePayload.ok).toBe(true);
+      expect(updatePayload.frontmatterAdded).toBe(true);
+      expect(updatePayload.warnings.join("\n")).toContain("no YAML frontmatter");
+      expect(updatePayload.recommendedMetadata.publishDate).toBeTruthy();
+
+      const updatedRaw = await fs.readFile(path.join(LOCAL_CONTENT, postFilePath), "utf-8");
+      const updatedParsed = matter(updatedRaw);
+      expect(updatedRaw.startsWith("---\n")).toBe(true);
+      expect(updatedParsed.data.title).toBe(postTitle);
+      expect(updatedParsed.data.public).toBe(true);
+      expect(updatedParsed.data.tags).toEqual(["legacy"]);
+      expect(updatedParsed.data.updatedVia).toBe("mcp");
+      expect(updatedParsed.data.createdVia).toBeUndefined();
+      expect(updatedParsed.content.trimStart()).toBe(
+        "## Updated Legacy\n\nParagraph\n\n- one\n- two\n"
+      );
+
+      const metadataOnlySlug = `legacy-metadata-only-${stamp}`;
+      const metadataOnlyTitle = `Legacy Metadata Only ${stamp}`;
+      const metadataOnlyBody = "Paragraph\n- cramped\n- list";
+      const { filePath: metadataOnlyFilePath } = await seedLegacyMarkdownContent({
+        type: "post",
+        slug: metadataOnlySlug,
+        title: metadataOnlyTitle,
+        body: metadataOnlyBody,
+      });
+      const visibilityUpdated = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: "lfm-visibility",
+          method: "tools/call",
+          params: {
+            name: "posts_update_visibility",
+            arguments: { slug: metadataOnlySlug, isPublic: false },
+          },
+        },
+        TEST_PAT
+      );
+      expect(visibilityUpdated.error).toBeUndefined();
+      const visibilityPayload = JSON.parse(visibilityUpdated.result?.content?.[0]?.text || "{}");
+      expect(visibilityPayload.frontmatterAdded).toBe(true);
+
+      const metadataOnlyRaw = await fs.readFile(
+        path.join(LOCAL_CONTENT, metadataOnlyFilePath),
+        "utf-8"
+      );
+      const metadataOnlyParsed = matter(metadataOnlyRaw);
+      expect(metadataOnlyParsed.data.updatedVia).toBe("mcp");
+      expect(metadataOnlyParsed.data.public).toBe(false);
+      expect(metadataOnlyParsed.content.trimStart()).toBe(metadataOnlyBody);
     });
 
     it("should delete local memo and post files plus indexed rows", async () => {

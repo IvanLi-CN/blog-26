@@ -15,3 +15,7 @@ Live Codex CLI validation showed that MCP delete tools removed Markdown files bu
 ## Markdown Write Formatting
 
 MCP-authored content can arrive from clients as raw Markdown without editor-side normalization. MCP post and memo create/update tools now format the Markdown body server-side before storage so files keep stable spacing for headings, paragraphs, lists, tables, code fences, tasks, and math while preserving frontmatter metadata.
+
+## Frontmatter Guidance
+
+MCP updates are intentionally not a strict content-governance layer. Existing files without YAML frontmatter are repaired with minimal update provenance and indexable metadata, while optional quality metadata is surfaced as warnings and list diagnostics so agents can enrich it without blocking writes.
