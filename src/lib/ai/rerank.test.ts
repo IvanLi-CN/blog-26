@@ -2,23 +2,51 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type {
   parseRerankResponse as parseRerankResponseType,
   rerank as rerankType,
+  setRerankConfigResolverForTest as setRerankConfigResolverForTestType,
 } from "./rerank";
 
 const resolvedConfig = {
+  chat: {
+    model: "openai/gpt-4o-mini",
+    baseUrl: "https://llm.example.test/v1",
+    apiKey: "test-secret-key",
+    apiKeyAvailable: true,
+    sources: {
+      model: "default",
+      baseUrl: "env",
+      apiKey: "env",
+    },
+  },
+  embedding: {
+    model: "BAAI/bge-m3",
+    baseUrl: "https://llm.example.test/v1",
+    apiKey: "test-secret-key",
+    apiKeyAvailable: true,
+    sources: {
+      model: "default",
+      baseUrl: "inherited",
+      apiKey: "inherited",
+    },
+  },
   rerank: {
     model: "BAAI/bge-reranker-v2-m3",
     baseUrl: "https://llm.example.test/v1",
     apiKey: "test-secret-key",
+    apiKeyAvailable: true,
+    sources: {
+      model: "db",
+      baseUrl: "env",
+      apiKey: "env",
+    },
   },
 };
 
-mock.module("@/server/services/llm-settings", () => ({
-  getResolvedLlmConfig: mock(async () => resolvedConfig),
-}));
-
-const { parseRerankResponse, rerank } = (await import("./rerank")) as {
+const { parseRerankResponse, rerank, setRerankConfigResolverForTest } = (await import(
+  "./rerank"
+)) as {
   parseRerankResponse: typeof parseRerankResponseType;
   rerank: typeof rerankType;
+  setRerankConfigResolverForTest: typeof setRerankConfigResolverForTestType;
 };
 
 const originalFetch = globalThis.fetch;
@@ -72,11 +100,13 @@ describe("rerank response parsing", () => {
 describe("rerank client", () => {
   beforeEach(() => {
     console.warn = mock(() => undefined) as unknown as typeof console.warn;
+    setRerankConfigResolverForTest(mock(async () => resolvedConfig));
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
     console.warn = originalWarn;
+    setRerankConfigResolverForTest();
   });
 
   test("returns parsed Jina scores from the configured upstream", async () => {
