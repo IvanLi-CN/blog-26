@@ -1,5 +1,13 @@
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
+type LlmConfigResolver = typeof getResolvedLlmConfig;
+
+let resolveLlmConfig: LlmConfigResolver = getResolvedLlmConfig;
+
+export function setRerankConfigResolverForTest(resolver?: LlmConfigResolver) {
+  resolveLlmConfig = resolver ?? getResolvedLlmConfig;
+}
+
 interface RerankerUnavailable extends Error {
   code: "RERANKER_UNAVAILABLE";
   details?: string;
@@ -148,7 +156,7 @@ export async function rerank(
   documents: string[],
   opts?: { model?: string; topN?: number }
 ): Promise<RerankItem[]> {
-  const resolved = await getResolvedLlmConfig();
+  const resolved = await resolveLlmConfig();
   const modelName = opts?.model || resolved.rerank.model;
   if (!modelName) {
     throw createRerankerUnavailable();

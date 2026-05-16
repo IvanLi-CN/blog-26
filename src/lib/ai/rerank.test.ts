@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type {
   parseRerankResponse as parseRerankResponseType,
   rerank as rerankType,
+  setRerankConfigResolverForTest as setRerankConfigResolverForTestType,
 } from "./rerank";
 
 const resolvedConfig = {
@@ -40,13 +41,12 @@ const resolvedConfig = {
   },
 };
 
-mock.module("@/server/services/llm-settings", () => ({
-  getResolvedLlmConfig: mock(async () => resolvedConfig),
-}));
-
-const { parseRerankResponse, rerank } = (await import("./rerank")) as {
+const { parseRerankResponse, rerank, setRerankConfigResolverForTest } = (await import(
+  "./rerank"
+)) as {
   parseRerankResponse: typeof parseRerankResponseType;
   rerank: typeof rerankType;
+  setRerankConfigResolverForTest: typeof setRerankConfigResolverForTestType;
 };
 
 const originalFetch = globalThis.fetch;
@@ -100,11 +100,13 @@ describe("rerank response parsing", () => {
 describe("rerank client", () => {
   beforeEach(() => {
     console.warn = mock(() => undefined) as unknown as typeof console.warn;
+    setRerankConfigResolverForTest(mock(async () => resolvedConfig));
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
     console.warn = originalWarn;
+    setRerankConfigResolverForTest();
   });
 
   test("returns parsed Jina scores from the configured upstream", async () => {
