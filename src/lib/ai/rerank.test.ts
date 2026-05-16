@@ -5,10 +5,38 @@ import type {
 } from "./rerank";
 
 const resolvedConfig = {
+  chat: {
+    model: "openai/gpt-4o-mini",
+    baseUrl: "https://llm.example.test/v1",
+    apiKey: "test-secret-key",
+    apiKeyAvailable: true,
+    sources: {
+      model: "default",
+      baseUrl: "env",
+      apiKey: "env",
+    },
+  },
+  embedding: {
+    model: "BAAI/bge-m3",
+    baseUrl: "https://llm.example.test/v1",
+    apiKey: "test-secret-key",
+    apiKeyAvailable: true,
+    sources: {
+      model: "default",
+      baseUrl: "inherited",
+      apiKey: "inherited",
+    },
+  },
   rerank: {
     model: "BAAI/bge-reranker-v2-m3",
     baseUrl: "https://llm.example.test/v1",
     apiKey: "test-secret-key",
+    apiKeyAvailable: true,
+    sources: {
+      model: "db",
+      baseUrl: "env",
+      apiKey: "env",
+    },
   },
 };
 
