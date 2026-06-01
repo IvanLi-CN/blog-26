@@ -13,12 +13,16 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-      <CardHeader className="p-0">
-        <CardTitle className="text-3xl lg:text-4xl">{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
+    <div className="flex flex-col gap-4 rounded-[2rem] bg-card/62 px-5 py-5 shadow-lg shadow-shadow-soft ring-1 ring-border/48 backdrop-blur-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+      <CardHeader className="min-w-0 p-0">
+        <CardTitle className="text-2xl lg:text-3xl">{title}</CardTitle>
+        {description ? (
+          <CardDescription className="max-w-3xl">{description}</CardDescription>
+        ) : null}
       </CardHeader>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">{actions}</div>
+      ) : null}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   CardContent,
+  ConfirmDialog,
   FieldLabel,
   Input,
   Select,
@@ -28,6 +29,7 @@ export function CommentsPage() {
   const [status, setStatus] = useState<"all" | "approved" | "pending" | "rejected">("all");
   const [page, setPage] = useState(1);
   const [notice, setNotice] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const commentsQuery = useQuery({
     queryKey: ["admin-comments", page, search, status],
@@ -68,7 +70,6 @@ export function CommentsPage() {
   }
 
   async function removeComment(id: string) {
-    if (!window.confirm("确认删除这条评论吗？")) return;
     await deleteMutation.mutateAsync(id);
   }
 
@@ -222,7 +223,7 @@ export function CommentsPage() {
                             size="sm"
                             variant="destructive"
                             disabled={deleteMutation.isPending}
-                            onClick={() => removeComment(comment.id)}
+                            onClick={() => setDeleteTarget(comment.id)}
                           >
                             删除
                           </Button>
@@ -259,6 +260,20 @@ export function CommentsPage() {
           </div>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        destructive
+        title="删除评论"
+        description="这条评论会从后台记录中删除。操作不可撤销。"
+        confirmLabel="删除评论"
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await removeComment(deleteTarget);
+        }}
+      />
     </div>
   );
 }

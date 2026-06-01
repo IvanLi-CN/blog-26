@@ -28,23 +28,23 @@ colors:
       danger: "#f1939a"
   admin:
     dark:
-      background: "hsl(222 47% 11%)"
-      foreground: "hsl(210 40% 96%)"
-      card: "hsl(222 40% 14%)"
-      primary: "hsl(217 91% 60%)"
-      secondary: "hsl(262 83% 68%)"
-      muted: "hsl(217 33% 17%)"
-      border: "hsl(216 34% 24%)"
-      destructive: "hsl(0 84% 60%)"
+      background: "oklch(25% 0.026 252)"
+      foreground: "oklch(94% 0.014 252)"
+      card: "oklch(31% 0.024 252)"
+      primary: "oklch(72% 0.11 224)"
+      secondary: "oklch(76% 0.09 154)"
+      muted: "oklch(36% 0.022 252)"
+      border: "oklch(43% 0.025 252)"
+      destructive: "oklch(70% 0.13 28)"
     light:
-      background: "hsl(210 33% 98%)"
-      foreground: "hsl(222 47% 11%)"
-      card: "hsl(0 0% 100%)"
-      primary: "hsl(221 83% 53%)"
-      secondary: "hsl(221 70% 97%)"
-      muted: "hsl(210 40% 96%)"
-      border: "hsl(214 32% 91%)"
-      destructive: "hsl(0 72% 51%)"
+      background: "oklch(97% 0.014 88)"
+      foreground: "oklch(29% 0.026 252)"
+      card: "oklch(99% 0.008 88)"
+      primary: "oklch(64% 0.12 224)"
+      secondary: "oklch(70% 0.09 154)"
+      muted: "oklch(94% 0.018 88)"
+      border: "oklch(88% 0.018 88)"
+      destructive: "oklch(59% 0.16 28)"
 typography:
   public:
     body: "Noto Sans SC"
@@ -62,19 +62,19 @@ rounded:
     small: "18px 20px 16px 22px / 18px 18px 22px 18px"
     pill: "999px"
   admin:
-    base: "1rem"
-    small: "calc(var(--radius) - 6px)"
-    medium: "calc(var(--radius) - 2px)"
-    large: "var(--radius)"
-    xlarge: "calc(var(--radius) + 4px)"
+    base: "1.25rem"
+    small: "0.9rem"
+    medium: "1.1rem"
+    large: "1.35rem"
+    xlarge: "1.75rem"
 spacing:
   public:
     contentWidth: "min(1280px, calc(100vw - 3rem))"
     readingWidth: "min(920px, calc(100vw - 3rem))"
     timelineGap: "clamp(1.5rem, 2.8vw, 2.4rem)"
   admin:
-    shellMaxWidth: "1760px"
-    sidebarWidth: "280px"
+    shellMaxWidth: "1440px"
+    sidebarWidth: "272px"
     pagePadding: "1rem to 2rem"
 components:
   public:
@@ -118,13 +118,13 @@ components:
 
 公共站采用 Nature Interface。它固定为当前公共站的长期方向：自然色、柔和半透明 surface、有机圆角、时间线节奏、轻量 ambient layer，以及 light、dark、system 三态主题。文章、Memos、标签、搜索和项目都应保持读者能继续探索的路径。
 
-后台采用安静、密集、任务优先的管理控制台。它不复用公共站的自然装饰，而使用更直接的导航、卡片、表格、徽章、状态提示和编辑器 surface。后台的美感来自清楚的信息分组、可辨状态和稳定操作反馈。
+后台采用 Soft UI 内容养护台。它不参考旧后台的样式、排版或布局，而以柔和 surface、大圆角、低饱和色、清楚状态、稳定操作反馈和宽屏工作区承载写作、审核、同步、计划任务和 AI 配置。
 
 # Colors
 
 公共站主色来自自然绿、浅雾底色和蓝绿辅助色。浅色主题以低饱和绿灰背景承载内容，深色主题以近黑绿背景承载柔和高亮。强调色用于主要操作、标签、时间线节点和可继续探索的路径；危险、警告、成功色只用于真实状态。
 
-后台主色来自深蓝灰和明确的蓝色 primary。默认深色模式更适合长时间管理；浅色模式保留同一语义结构。后台的 success、warning、danger 必须绑定状态含义，不作为装饰色使用。
+后台主色来自暖白浅色主题与柔和蓝灰暗色主题。light 与 dark 都是一等公民：浅色主题用于日常整理和写作，暗色主题用于长时间配置和运行状态观察。primary 用于主要动作、当前选择和焦点；secondary 用于辅助路径；success、warning、danger 必须绑定真实状态，不作为装饰色使用。
 
 不要把公共站与后台合并成同一套颜色气质。公共站可以更有空气感，后台必须更像工具。跨表面的共同点是对比清楚、状态稳定、语义一致。
 
@@ -132,7 +132,7 @@ components:
 
 公共站使用中文无衬线作为正文，中文衬线作为标题和内容气质的承载。标题可以有更强的文学感，但正文必须保持长时间阅读的清晰度。文章详情、Memos、标签列表和搜索结果都应优先保证可扫读。
 
-后台使用 Inter 系统栈，保持紧凑、直接、可重复操作。后台标题用于定位页面，正文用于解释状态，表格和徽章用于快速比较。不要在后台使用过度抒情的文案风格。
+后台使用 Inter 系统栈，保持清楚、直接、可重复操作。Soft UI 允许更柔和的体量和留白，但标题、表格、徽章、路径、日志和设置项仍以快速定位和比较为第一目标。
 
 代码、日志、路径、令牌和模型名称应使用等宽或明确的技术展示方式，并与普通说明文字区分。
 
@@ -140,7 +140,7 @@ components:
 
 层级哲学是混合氛围。公共站允许半透明 surface、柔和阴影、轻微 hover lift 和背景氛围层，但这些效果必须让内容更容易分组，而不是制造视觉噪声。时间线、卡片和按钮可以有轻微浮起，但命中区域必须稳定。
 
-后台以边框、色块、间距和信息密度建立层级，阴影只用于卡片、弹层或编辑器等需要从背景中抬起的区域。后台页面不应依赖强阴影来解释结构。
+后台以柔和 surface、浅阴影、清楚间距和状态层级建立结构。阴影必须柔和、低噪声，用于可操作区域、弹层和编辑器 surface；禁止硬黑边框、粗边框、硬投影和只为装饰存在的强位移动效。
 
 动效必须克制。公共站可以有低频 ambient motion；后台只在加载、保存、测试、同步和状态变更时使用必要反馈。减少动态偏好开启时，结构和反馈不能消失。
 
@@ -148,7 +148,7 @@ components:
 
 公共站核心组件包括 app shell、ambient scene、site header、site footer、surface、panel、timeline、post card、memo card、related post card、tag badge、button、chip、input shell、alert 和 empty state。公共站组件应保持有机半径、柔和分层和清晰的继续阅读入口。
 
-后台核心组件包括 app shell、sidebar navigation、page header、card、button、badge、alert、table、input、select、textarea、empty state、spinner 和 editor surface。后台组件应优先服务列表管理、内容编辑、同步进度、模型配置、计划任务、评论审核和访问令牌管理。
+后台核心组件包括 app shell、mobile navigation drawer、sidebar navigation、page header、card、button、badge、alert、table、input、select、checkbox、radio、tabs、dialog、dropdown menu、popover、tooltip、empty state、skeleton、spinner 和 editor surface。交互基础件应通过本地 Radix-backed components 暴露，页面不直接依赖 primitive 细节。
 
 组件使用原则是避免卡片套卡片。复杂页面应先用页面结构和区域标题分组，再用 card 或 panel 承载可重复或可操作的信息块。
 
@@ -164,7 +164,7 @@ Do: 保持 light、dark、system 主题一致性，并确认减少动态偏好�
 
 Don't: 把个人博客做成通用 SaaS 营销页、社交信息流或默认 AI 产品视觉。
 
-Don't: 在后台使用公共站的装饰性氛围来填充页面；后台的视觉重点是任务、状态和结果。
+Don't: 参考旧后台的样式、排版或布局；后台的新视觉重点是 Soft UI 触感、任务、状态和结果。
 
 Don't: 用颜色作为唯一状态表达；状态必须有文本、图标、位置或结构上的辅助。
 

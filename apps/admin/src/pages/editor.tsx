@@ -27,7 +27,7 @@ import { isMemoContentPath } from "@/lib/memo-paths";
 import { generateContentUrl } from "@/lib/url-utils";
 import { cn } from "@/lib/utils";
 import { useAppShellSidebar } from "~/components/app-shell";
-import { Alert, Badge, Button, EmptyState, Spinner } from "~/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/ui";
 import { UniversalEditor, type UniversalEditorRef } from "~/editor/universal-editor";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
 
@@ -352,7 +352,7 @@ function EditorSidebarContent({
             <button
               type="button"
               className={cn(
-                "flex w-full items-center justify-between rounded-xl border border-transparent px-3 py-2 text-left text-sm transition",
+                "flex w-full items-center justify-between rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
                 "hover:bg-muted/40 hover:text-foreground",
                 isActiveFile && "border-primary/35 bg-primary/10 text-primary shadow-sm",
                 !isActiveFile && isActiveBranch && "border-border/35 bg-muted/40 text-foreground",
@@ -503,6 +503,7 @@ export function EditorPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const [closeTargetTabId, setCloseTargetTabId] = useState<string | null>(null);
   const [savePending, setSavePending] = useState(false);
   const [uploadPending, setUploadPending] = useState(false);
   const [didHandleInitialUrl, setDidHandleInitialUrl] = useState(false);
@@ -924,16 +925,21 @@ export function EditorPage() {
     }
   }
 
-  function closeTab(tabId: string) {
-    const tab = tabs.find((item) => item.id === tabId);
-    if (tab?.dirty && !window.confirm("当前标签有未保存内容，仍然关闭吗？")) {
-      return;
-    }
+  function performCloseTab(tabId: string) {
     const remaining = tabs.filter((item) => item.id !== tabId);
     setTabs(remaining);
     if (activeTabId === tabId) {
       setActiveTabId(remaining[remaining.length - 1]?.id ?? null);
     }
+  }
+
+  function requestCloseTab(tabId: string) {
+    const tab = tabs.find((item) => item.id === tabId);
+    if (tab?.dirty) {
+      setCloseTargetTabId(tabId);
+      return;
+    }
+    performCloseTab(tabId);
   }
 
   async function saveActiveTab() {
@@ -1217,13 +1223,13 @@ export function EditorPage() {
         }}
       />
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+      <div className="overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/58 px-4 py-3">
           {tabs.map((tab) => (
             <div
               key={tab.id}
               data-testid="editor-tab"
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+              className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${
                 tab.id === activeTabId
                   ? "border-border bg-muted text-foreground"
                   : "border-transparent text-muted-foreground hover:bg-muted/50"
@@ -1240,7 +1246,7 @@ export function EditorPage() {
               <button
                 type="button"
                 className="inline-flex rounded p-1 hover:bg-background"
-                onClick={() => closeTab(tab.id)}
+                onClick={() => requestCloseTab(tab.id)}
                 aria-label={`关闭 ${tab.label || "未命名文章"}`}
               >
                 <X className="size-3" />
@@ -1332,6 +1338,20 @@ export function EditorPage() {
           )}
         </section>
       </div>
+      <ConfirmDialog
+        open={closeTargetTabId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCloseTargetTabId(null);
+        }}
+        destructive
+        title="关闭未保存标签"
+        description="此标签包含未保存内容，关闭后这些更改会丢失。"
+        confirmLabel="仍然关闭"
+        onConfirm={() => {
+          if (!closeTargetTabId) return;
+          performCloseTab(closeTargetTabId);
+        }}
+      />
     </div>
   );
 }

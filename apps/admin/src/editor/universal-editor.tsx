@@ -249,7 +249,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                           <img
                             src={imageSrc}
                             alt={alt || ""}
-                            className="max-w-full rounded-xl border border-border shadow-sm"
+                            className="max-w-full rounded-3xl border border-border/58 shadow-lg shadow-shadow-soft"
                             onError={(event) => {
                               console.warn("图片加载失败:", imageSrc);
                               event.currentTarget.style.display = "none";

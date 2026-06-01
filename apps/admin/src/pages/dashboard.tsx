@@ -15,19 +15,19 @@ import {
 import { formatDateTime, getErrorMessage, PageHeader } from "~/pages/helpers";
 
 const statCards = [
-  { key: "posts", title: "文章总数", icon: FileText, accent: "from-sky-500/20 to-sky-500/5" },
+  { key: "posts", title: "文章总数", icon: FileText, tone: "text-primary bg-primary/12" },
   {
     key: "comments",
     title: "评论总数",
     icon: MessageSquareMore,
-    accent: "from-fuchsia-500/20 to-fuchsia-500/5",
+    tone: "text-secondary bg-secondary/14",
   },
-  { key: "users", title: "注册用户", icon: Users, accent: "from-emerald-500/20 to-emerald-500/5" },
+  { key: "users", title: "注册用户", icon: Users, tone: "text-success bg-success/14" },
   {
     key: "activity",
     title: "验证码请求",
     icon: Activity,
-    accent: "from-amber-500/20 to-amber-500/5",
+    tone: "text-warning bg-warning/16",
   },
 ] as const;
 
@@ -78,14 +78,16 @@ export function DashboardPage() {
                   ? "当前已注册用户数量"
                   : "最近活跃度指示器";
           return (
-            <Card key={card.key} className={`bg-gradient-to-br ${card.accent}`}>
+            <Card key={card.key} className="overflow-hidden">
               <CardContent className="flex items-start justify-between gap-4 p-5">
                 <div>
                   <div className="text-sm text-muted-foreground">{card.title}</div>
                   <div className="mt-2 text-3xl font-semibold">{value}</div>
                   <div className="mt-2 text-sm text-muted-foreground">{description}</div>
                 </div>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-white/5 text-primary">
+                <div
+                  className={`flex size-12 items-center justify-center rounded-3xl ${card.tone}`}
+                >
                   <Icon className="size-6" />
                 </div>
               </CardContent>
@@ -109,7 +111,10 @@ export function DashboardPage() {
               <Alert tone="danger">{getErrorMessage(activityQuery.error)}</Alert>
             ) : activityQuery.data && activityQuery.data.length > 0 ? (
               activityQuery.data.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-border bg-muted px-4 py-3">
+                <div
+                  key={item.id}
+                  className="rounded-3xl bg-muted/56 px-4 py-3 shadow-inner shadow-shadow-inset"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="outline">{item.type}</Badge>
                     {item.status ? <Badge tone="muted">{item.status}</Badge> : null}

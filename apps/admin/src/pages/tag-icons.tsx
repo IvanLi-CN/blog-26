@@ -93,7 +93,7 @@ export function TagIconsPage() {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           {categories.map((key) => (
-            <div key={key} className="rounded-xl border border-border bg-muted/50 p-4">
+            <div key={key} className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset">
               <FieldLabel>{key}</FieldLabel>
               <div className="flex items-center gap-2">
                 <Input
@@ -144,7 +144,10 @@ export function TagIconsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {group.tags.map((tag) => (
-              <div key={tag.name} className="rounded-xl border border-border bg-muted/40 p-4">
+              <div
+                key={tag.name}
+                className="rounded-3xl bg-muted/42 p-4 shadow-inner shadow-shadow-inset"
+              >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="font-medium">{tag.name}</div>
                   <Badge tone="muted">{tag.count}</Badge>

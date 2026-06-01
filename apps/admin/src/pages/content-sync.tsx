@@ -186,28 +186,29 @@ export function ContentSyncPage() {
               <Alert tone="danger">{getErrorMessage(sourcesQuery.error)}</Alert>
             ) : (
               (sourcesQuery.data ?? []).map((source) => (
-                <Card key={source.name} className="bg-muted/40 shadow-none">
-                  <CardContent className="space-y-3 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="font-medium">{source.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {source.type} · priority {source.priority}
-                        </div>
+                <div
+                  key={source.name}
+                  className="space-y-3 rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-medium">{source.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {source.type} · priority {source.priority}
                       </div>
-                      <Badge tone={source.online ? "success" : "danger"}>
-                        {source.online ? "online" : "offline"}
-                      </Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      已同步 {formatCount(source.totalItems)} 项
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      最近同步：{formatDateTime(source.lastSync)}
-                    </div>
-                    {source.error ? <Alert tone="danger">{source.error}</Alert> : null}
-                  </CardContent>
-                </Card>
+                    <Badge tone={source.online ? "success" : "danger"}>
+                      {source.online ? "online" : "offline"}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    已同步 {formatCount(source.totalItems)} 项
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    最近同步：{formatDateTime(source.lastSync)}
+                  </div>
+                  {source.error ? <Alert tone="danger">{source.error}</Alert> : null}
+                </div>
               ))
             )}
           </CardContent>
@@ -266,7 +267,7 @@ export function ContentSyncPage() {
             {(historyQuery.data ?? []).map((entry) => (
               <div
                 key={`${entry.startTime}-${entry.success}-${entry.duration}-${entry.sources.join("|")}`}
-                className="rounded-xl border border-border bg-muted/60 p-4"
+                className="rounded-3xl bg-muted/50 p-4 shadow-inner shadow-shadow-inset"
               >
                 <div className="flex items-center justify-between gap-2">
                   <Badge tone={entry.success ? "success" : "danger"}>

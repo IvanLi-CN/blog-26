@@ -8,6 +8,8 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
+  ConfirmDialog,
   FieldLabel,
   Input,
   Select,
@@ -29,6 +31,7 @@ export function PostsPage() {
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [batchAction, setBatchAction] = useState<"publish" | "unpublish" | "delete" | null>(null);
 
   const postsQuery = useQuery({
     queryKey: ["admin-posts", page, search, status],
@@ -82,8 +85,6 @@ export function PostsPage() {
 
   async function applyBatch(action: "publish" | "unpublish" | "delete") {
     if (selectedIds.length === 0) return;
-    const confirmed = window.confirm(`确认对 ${selectedIds.length} 篇文章执行 ${action} 吗？`);
-    if (!confirmed) return;
     await batchMutation.mutateAsync({ ids: selectedIds, action });
   }
 
@@ -156,7 +157,7 @@ export function PostsPage() {
                 size="sm"
                 variant="secondary"
                 disabled={!selectedIds.length || batchMutation.isPending}
-                onClick={() => applyBatch("publish")}
+                onClick={() => setBatchAction("publish")}
               >
                 发布
               </Button>
@@ -164,7 +165,7 @@ export function PostsPage() {
                 size="sm"
                 variant="outline"
                 disabled={!selectedIds.length || batchMutation.isPending}
-                onClick={() => applyBatch("unpublish")}
+                onClick={() => setBatchAction("unpublish")}
               >
                 撤回
               </Button>
@@ -172,7 +173,7 @@ export function PostsPage() {
                 size="sm"
                 variant="destructive"
                 disabled={!selectedIds.length || batchMutation.isPending}
-                onClick={() => applyBatch("delete")}
+                onClick={() => setBatchAction("delete")}
               >
                 删除
               </Button>
@@ -192,12 +193,12 @@ export function PostsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={allSelected}
-                      onChange={() =>
+                      onCheckedChange={() =>
                         setSelectedIds(allSelected ? [] : rows.map((post) => post.id))
                       }
+                      aria-label="选择当前页全部文章"
                     />
                   </TableHead>
                   <TableHead>文章</TableHead>
@@ -229,10 +230,10 @@ export function PostsPage() {
                     return (
                       <TableRow key={post.id}>
                         <TableCell>
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={selectedIds.includes(post.id)}
-                            onChange={() => toggleRow(post.id)}
+                            onCheckedChange={() => toggleRow(post.id)}
+                            aria-label={`选择文章 ${post.title || post.slug}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -321,6 +322,22 @@ export function PostsPage() {
           </div>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={batchAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setBatchAction(null);
+        }}
+        destructive={batchAction === "delete"}
+        title="确认批量操作"
+        description={`将对 ${selectedIds.length} 篇文章执行 ${
+          batchAction === "publish" ? "发布" : batchAction === "unpublish" ? "撤回" : "删除"
+        }。此操作会立即提交到后台。`}
+        confirmLabel={batchAction === "delete" ? "删除" : "确认执行"}
+        onConfirm={async () => {
+          if (!batchAction) return;
+          await applyBatch(batchAction);
+        }}
+      />
     </div>
   );
 }

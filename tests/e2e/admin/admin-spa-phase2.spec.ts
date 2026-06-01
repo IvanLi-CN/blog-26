@@ -42,12 +42,9 @@ test.describe("Admin SPA phase 2", () => {
       .first()
       .click();
 
-    const tabBar = page.locator(
-      "div.flex.flex-wrap.items-center.gap-2.border-b.border-border.px-4.py-3"
-    );
-    await expect(tabBar.locator(":scope > div", { hasText: "Redis 缓存策略与优化" })).toHaveCount(
-      1
-    );
+    await expect(
+      page.getByTestId("editor-tab").filter({ hasText: "Redis 缓存策略与优化" })
+    ).toHaveCount(1);
   });
 
   test("legacy aliases, posts list, and editor remain usable", async ({ page }) => {

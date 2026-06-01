@@ -51,7 +51,7 @@ export function ScheduleRunDetailPage() {
             <CardDescription>{runQuery.data.jobKey}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-border bg-muted/50 p-4">
+            <div className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset">
               <div className="text-sm text-muted-foreground">状态</div>
               <div className="mt-2">
                 <Badge
@@ -67,11 +67,11 @@ export function ScheduleRunDetailPage() {
                 </Badge>
               </div>
             </div>
-            <div className="rounded-xl border border-border bg-muted/50 p-4">
+            <div className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset">
               <div className="text-sm text-muted-foreground">开始</div>
               <div className="mt-2 font-medium">{formatDateTime(runQuery.data.startedAt)}</div>
             </div>
-            <div className="rounded-xl border border-border bg-muted/50 p-4">
+            <div className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset">
               <div className="text-sm text-muted-foreground">结束</div>
               <div className="mt-2 font-medium">{formatDateTime(runQuery.data.finishedAt)}</div>
             </div>

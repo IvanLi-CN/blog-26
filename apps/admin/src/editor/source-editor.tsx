@@ -107,7 +107,7 @@ export function SourceEditor({
 
   return (
     <div
-      className={`relative flex h-full min-h-[28rem] overflow-hidden rounded-xl border border-border bg-background ${className}`}
+      className={`relative flex h-full min-h-[28rem] overflow-hidden rounded-3xl border border-border/58 bg-card/62 shadow-inner shadow-shadow-inset ${className}`}
       data-testid={dataTestId}
     >
       <div
@@ -138,7 +138,7 @@ export function SourceEditor({
         />
 
         {isDragOver ? (
-          <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
+          <div className="pointer-events-none absolute inset-3 flex items-center justify-center rounded-3xl border border-dashed border-primary/60 bg-primary/10 text-sm font-medium text-primary">
             拖拽图片到这里上传
           </div>
         ) : null}

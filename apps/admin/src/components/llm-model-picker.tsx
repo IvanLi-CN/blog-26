@@ -91,7 +91,7 @@ export function LlmModelPicker({
           <FieldLabel>模型</FieldLabel>
           <button
             type="button"
-            className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm shadow-inner shadow-shadow-inset transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55"
             onClick={() => setOpen(true)}
           >
             <span className="min-w-0">
@@ -104,7 +104,7 @@ export function LlmModelPicker({
                 </span>
               ) : null}
             </span>
-            <span className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
+            <span className="shrink-0 rounded-full bg-muted/72 px-2.5 py-1 text-xs text-muted-foreground">
               选择模型
             </span>
           </button>
@@ -124,8 +124,8 @@ export function LlmModelPicker({
             aria-label="关闭模型选择"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-10 flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
-            <div className="flex items-start justify-between gap-4 border-b border-border p-5">
+          <div className="relative z-10 flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-2xl shadow-shadow-strong">
+            <div className="flex items-start justify-between gap-4 border-b border-border/58 p-5">
               <div>
                 <h2 id="llm-model-picker-title" className="text-lg font-semibold">
                   选择模型
@@ -287,7 +287,7 @@ export function LlmModelPicker({
               ) : null}
 
               {displayedModel ? null : (
-                <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+                <div className="rounded-3xl border border-dashed border-border/70 bg-muted/36 p-3 text-sm text-muted-foreground">
                   <Sparkles className="mr-2 inline size-4 align-[-2px]" />
                   未选择模型时，服务端会使用当前默认模型。
                 </div>
@@ -313,10 +313,10 @@ function LoadingRows() {
   return (
     <div className="space-y-2" role="status" aria-label="正在加载模型列表">
       {[0, 1, 2].map((index) => (
-        <div key={index} className="rounded-md border border-border bg-background/60 p-3">
-          <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
-          <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-muted/80" />
-          <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-muted/70" />
+        <div key={index} className="rounded-3xl bg-muted/42 p-3 shadow-inner shadow-shadow-inset">
+          <div className="h-4 w-2/5 animate-pulse rounded-full bg-muted" />
+          <div className="mt-3 h-3 w-3/4 animate-pulse rounded-full bg-muted/80" />
+          <div className="mt-2 h-3 w-1/2 animate-pulse rounded-full bg-muted/70" />
         </div>
       ))}
     </div>
@@ -333,7 +333,7 @@ function ModelPickerEmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-dashed border-border bg-background/50 p-4 text-sm">
+    <div className="rounded-3xl border border-dashed border-border/70 bg-muted/36 p-4 text-sm">
       <div className="font-medium text-foreground">{title}</div>
       <div className="mt-1 text-muted-foreground">{description}</div>
       {action ? <div className="mt-3">{action}</div> : null}
@@ -428,8 +428,10 @@ function ModelRow({
     <button
       type="button"
       className={cn(
-        "flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors",
-        selected ? "border-primary bg-primary/10" : "border-border bg-background/60 hover:bg-accent"
+        "flex w-full items-start justify-between gap-3 rounded-3xl border p-3 text-left transition-colors",
+        selected
+          ? "border-primary/70 bg-primary/10"
+          : "border-border/56 bg-muted/36 hover:bg-muted/70"
       )}
       onClick={onSelect}
     >
