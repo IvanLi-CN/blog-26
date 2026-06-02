@@ -85,7 +85,7 @@ function ControlledPicker(props: ControlledPickerProps) {
       <div className="mx-auto max-w-6xl space-y-6">
         <PageHeader
           title="标签分组"
-          description="用 AI 生成建议，再把最终 JSON 保存回数据库。"
+          description="整理标签分组，保存后用于公开站归类展示。"
           actions={
             <>
               <Button variant="secondary">

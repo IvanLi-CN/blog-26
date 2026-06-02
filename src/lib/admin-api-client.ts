@@ -555,4 +555,12 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  createDirectory: (input: { source: string; path: string }) =>
+    adminRequest<{ success: boolean; source: string; path: string }>(
+      "/api/admin/files/create-directory",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      }
+    ),
 };

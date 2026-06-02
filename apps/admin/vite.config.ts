@@ -38,5 +38,10 @@ export default defineConfig({
     outDir: resolve(repoRoot, "admin-dist"),
     emptyOutDir: true,
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        app: resolve(appRoot, "index.html"),
+      },
+    },
   },
 });

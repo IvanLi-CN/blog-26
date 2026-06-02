@@ -77,7 +77,7 @@ export function CommentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="评论"
-        description="在新后台里审核、批准和删除评论，不再依赖旧 Daisy 页面。"
+        description="审核、批准、拒绝或删除读者评论。"
         actions={
           <Button
             variant="outline"

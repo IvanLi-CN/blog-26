@@ -3,7 +3,6 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   BrainCircuit,
   ClipboardList,
-  FilePenLine,
   Files,
   KeyRound,
   LayoutDashboard,
@@ -15,21 +14,31 @@ import {
   Tags,
   Waypoints,
 } from "lucide-react";
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { adminApi } from "@/lib/admin-api-client";
-import { versionInfo } from "@/lib/version-info";
 import { ThemeToggle } from "~/components/theme-toggle";
 import {
   Alert,
   Badge,
   Button,
-  Card,
-  CardContent,
-  CardDescription,
   Dialog,
   DialogContent,
   DialogTitle,
-  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "~/components/ui";
 
 type SidebarMode = "nav" | "route";
@@ -48,6 +57,22 @@ type AppShellSidebarContextValue = {
 };
 
 const AppShellSidebarContext = createContext<AppShellSidebarContextValue | null>(null);
+const SIDEBAR_WIDTH_STORAGE_KEY = "admin-sidebar-width";
+const DEFAULT_SIDEBAR_WIDTH = 272;
+const MIN_SIDEBAR_WIDTH = 232;
+const MAX_SIDEBAR_WIDTH = 460;
+
+function constrainSidebarWidth(width: number) {
+  return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, Math.round(width)));
+}
+
+function readStoredSidebarWidth() {
+  if (typeof window === "undefined") return DEFAULT_SIDEBAR_WIDTH;
+  const storedValue = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+  if (!storedValue) return DEFAULT_SIDEBAR_WIDTH;
+  const stored = Number(storedValue);
+  return Number.isFinite(stored) ? constrainSidebarWidth(stored) : DEFAULT_SIDEBAR_WIDTH;
+}
 
 const navSections = [
   {
@@ -105,25 +130,31 @@ export function useAppShellSidebar(panel: AppShellSidebarPanel | null) {
   };
 }
 
-function BrandBlock() {
+function BrandBlock({ children }: { children?: ReactNode }) {
   return (
-    <Link to="/dashboard" className="group flex items-center gap-3 rounded-3xl p-2">
-      <span className="flex size-12 items-center justify-center rounded-3xl bg-primary/14 text-primary shadow-lg shadow-primary/12 transition-transform group-hover:-translate-y-0.5">
-        <Shield className="size-5" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-base font-semibold leading-tight text-foreground">
-          管理后台
+    <div className="flex items-center justify-between gap-3">
+      <Link
+        to="/dashboard"
+        className="group flex min-w-0 items-center gap-3 rounded-3xl p-2 lg:rounded-[1rem]"
+      >
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-3xl bg-primary/14 text-primary shadow-lg shadow-primary/12 transition-transform group-hover:-translate-y-0.5 lg:size-10 lg:rounded-[1rem]">
+          <Shield className="size-5" />
         </span>
-        <span className="block text-xs text-muted-foreground">Blog Console</span>
-      </span>
-    </Link>
+        <span className="min-w-0">
+          <span className="block truncate text-base font-semibold leading-tight text-foreground">
+            管理后台
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">内容工作台</span>
+        </span>
+      </Link>
+      {children}
+    </div>
   );
 }
 
 function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="grid gap-5">
+    <nav className="grid gap-5 lg:gap-4">
       {navSections.map((section) => (
         <div key={section.label} className="space-y-2">
           <div className="px-3 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -137,14 +168,14 @@ function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
                   key={item.to}
                   to={item.to}
                   onClick={onNavigate}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/62 hover:text-foreground"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/62 hover:text-foreground lg:gap-2.5 lg:rounded-[0.75rem] lg:px-2.5 lg:py-2"
                   activeOptions={{ exact: item.to === "/dashboard" }}
                   activeProps={{
                     className:
                       "bg-card text-foreground shadow-lg shadow-shadow-soft ring-1 ring-border/48",
                   }}
                 >
-                  <span className="flex size-9 items-center justify-center rounded-2xl bg-input-surface text-primary shadow-inner shadow-shadow-inset">
+                  <span className="flex size-9 items-center justify-center rounded-2xl bg-input-surface text-primary shadow-inner shadow-shadow-inset lg:size-8 lg:rounded-[0.75rem]">
                     <Icon className="size-4" />
                   </span>
                   <span>{item.label}</span>
@@ -166,44 +197,32 @@ function SessionPanel({ sessionLoading }: { sessionLoading: boolean }) {
   });
 
   return (
-    <Card className="border-0 bg-card/68 shadow-lg shadow-shadow-soft">
-      <CardContent className="space-y-4 p-4 text-sm">
-        <div className="space-y-1">
-          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Current user
-          </div>
-          <div className="truncate font-medium">
-            {sessionQuery.data?.user?.email ?? (sessionLoading ? "加载中..." : "未识别")}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={sessionQuery.data?.isAdmin ? "success" : "outline"}>
-              {sessionQuery.data?.isAdmin ? "admin" : "viewer"}
-            </Badge>
-            <Badge tone="outline">{versionInfo.branchName}</Badge>
-          </div>
+    <section className="border-t border-border/54 pt-3 text-sm">
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <div className="min-w-0 truncate font-medium">
+          {sessionQuery.data?.user?.email ?? (sessionLoading ? "加载中..." : "未识别")}
         </div>
+        <Badge tone={sessionQuery.data?.isAdmin ? "success" : "outline"}>
+          {sessionQuery.data?.isAdmin ? "admin" : "viewer"}
+        </Badge>
+      </div>
 
-        {sessionQuery.data && !sessionQuery.data.isAdmin ? (
+      {sessionQuery.data && !sessionQuery.data.isAdmin ? (
+        <div className="mt-3">
           <Alert tone="warning">当前会话没有管理员权限，建议刷新或重新建立会话。</Alert>
-        ) : null}
-
-        <Separator />
-
-        <div className="space-y-1">
-          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Build
-          </div>
-          <CardDescription>
-            {versionInfo.version} · {versionInfo.commitShortHash}
-          </CardDescription>
         </div>
+      ) : null}
 
-        <a href="/" className="inline-flex items-center gap-2 text-sm text-primary hover:underline">
-          <FilePenLine className="size-4" />
-          返回公开站
-        </a>
-      </CardContent>
-    </Card>
+      <div className="mt-3 flex items-center gap-2">
+        <ThemeToggle />
+        <Button asChild variant="outline" size="sm" className="min-w-0 flex-1 justify-start">
+          <a href="/">
+            <Waypoints className="size-4" />
+            公开站
+          </a>
+        </Button>
+      </div>
+    </section>
   );
 }
 
@@ -219,28 +238,39 @@ function SidebarModeSwitch({
   if (!routeSidebar) return null;
 
   return (
-    <div className="rounded-3xl bg-muted/58 p-1.5 shadow-inner shadow-shadow-inset">
-      <div className="grid grid-cols-2 gap-1.5">
-        <Button
-          variant={sidebarMode === "nav" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setSidebarMode("nav")}
-        >
-          导航
-        </Button>
-        <Button
-          variant={sidebarMode === "route" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setSidebarMode("route")}
-        >
-          {routeSidebar.label}
-        </Button>
-      </div>
-      {sidebarMode === "route" && routeSidebar.description ? (
-        <div className="px-3 py-2 text-xs leading-5 text-muted-foreground">
-          {routeSidebar.description}
-        </div>
-      ) : null}
+    <div className="flex shrink-0 items-center gap-1 rounded-2xl bg-muted/54 p-1 shadow-inner shadow-shadow-inset">
+      <TooltipProvider delayDuration={240}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={sidebarMode === "nav" ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setSidebarMode("nav")}
+              aria-label="显示导航"
+            >
+              <Menu className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="center">
+            导航
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={sidebarMode === "route" ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setSidebarMode("route")}
+              aria-label={`显示${routeSidebar.label}`}
+            >
+              <Files className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="center">
+            {routeSidebar.label}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }
@@ -259,20 +289,23 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5">
-      <BrandBlock />
-      <SidebarModeSwitch
-        routeSidebar={routeSidebar}
-        sidebarMode={sidebarMode}
-        setSidebarMode={setSidebarMode}
-      />
-      <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
-        {sidebarMode === "route" && routeSidebar ? (
-          <div className="h-full">{routeSidebar.content}</div>
-        ) : (
+    <div className="flex h-full min-h-0 flex-col gap-5 lg:gap-4">
+      <BrandBlock>
+        <SidebarModeSwitch
+          routeSidebar={routeSidebar}
+          sidebarMode={sidebarMode}
+          setSidebarMode={setSidebarMode}
+        />
+      </BrandBlock>
+      {sidebarMode === "route" && routeSidebar ? (
+        <div className="min-h-0 flex-1 overflow-hidden pr-1">
+          <div className="h-full min-h-0">{routeSidebar.content}</div>
+        </div>
+      ) : (
+        <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
           <NavigationLinks onNavigate={onNavigate} />
-        )}
-      </div>
+        </div>
+      )}
       <SessionPanel sessionLoading={sessionLoading} />
     </div>
   );
@@ -280,6 +313,7 @@ function SidebarContent({
 
 export function AppShell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isEditorWorkspace = pathname === "/posts/editor";
   const sessionQuery = useQuery({
     queryKey: ["admin-session"],
     queryFn: adminApi.session,
@@ -288,6 +322,8 @@ export function AppShell() {
   const [routeSidebar, setRouteSidebar] = useState<AppShellSidebarPanel | null>(null);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(readStoredSidebarWidth);
+  const sidebarWidthRef = useRef(sidebarWidth);
   const hasRouteSidebar = Boolean(routeSidebar);
 
   useEffect(() => {
@@ -299,6 +335,77 @@ export function AppShell() {
       setSidebarMode(routeSidebar.preferredMode);
     }
   }, [hasRouteSidebar, routeSidebar?.preferredMode]);
+
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  const commitSidebarWidth = useCallback((nextWidth: number) => {
+    const width = constrainSidebarWidth(nextWidth);
+    sidebarWidthRef.current = width;
+    setSidebarWidth(width);
+    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(width));
+  }, []);
+
+  const handleSidebarResizePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLHRElement>) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+
+      const startX = event.clientX;
+      const startWidth = sidebarWidthRef.current;
+      const previousCursor = document.body.style.cursor;
+      const previousUserSelect = document.body.style.userSelect;
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        commitSidebarWidth(startWidth + moveEvent.clientX - startX);
+      };
+
+      const handlePointerUp = () => {
+        document.body.style.cursor = previousCursor;
+        document.body.style.userSelect = previousUserSelect;
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
+      };
+
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
+    },
+    [commitSidebarWidth]
+  );
+
+  const handleSidebarResizeKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLHRElement>) => {
+      const step = event.shiftKey ? 32 : 12;
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        commitSidebarWidth(sidebarWidthRef.current - step);
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        commitSidebarWidth(sidebarWidthRef.current + step);
+      }
+      if (event.key === "Home") {
+        event.preventDefault();
+        commitSidebarWidth(MIN_SIDEBAR_WIDTH);
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        commitSidebarWidth(MAX_SIDEBAR_WIDTH);
+      }
+    },
+    [commitSidebarWidth]
+  );
+
+  const handleSidebarResizeDoubleClick = useCallback(() => {
+    commitSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+  }, [commitSidebarWidth]);
 
   const sidebarContext = useMemo<AppShellSidebarContextValue>(
     () => ({
@@ -313,19 +420,45 @@ export function AppShell() {
     <AppShellSidebarContext.Provider value={sidebarContext}>
       <div className="min-h-screen bg-background text-foreground">
         <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(140deg,color-mix(in_oklch,var(--primary)_10%,transparent),transparent_34%,color-mix(in_oklch,var(--secondary)_10%,transparent))]" />
-        <div className="relative mx-auto grid min-h-screen w-full grid-cols-1 lg:grid-cols-[272px_minmax(0,1fr)]">
+        <div
+          className="admin-app-shell-grid relative mx-auto grid min-h-screen w-full grid-cols-1"
+          style={{ "--admin-sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
+        >
           <aside className="sticky top-0 hidden h-screen min-h-0 p-4 lg:block">
-            <div className="h-full rounded-[2rem] bg-card/74 p-4 shadow-xl shadow-shadow-soft ring-1 ring-border/54 backdrop-blur-md">
+            <div className="admin-sidebar-card relative h-full overflow-hidden rounded-[2rem] bg-card/74 p-4 pr-5 shadow-xl shadow-shadow-soft ring-1 ring-border/54 backdrop-blur-md">
               <SidebarContent
                 routeSidebar={routeSidebar}
                 sidebarMode={sidebarMode}
                 setSidebarMode={setSidebarMode}
                 sessionLoading={sessionQuery.isLoading}
               />
+              <TooltipProvider delayDuration={240}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <hr
+                      tabIndex={0}
+                      className="admin-sidebar-resize-handle"
+                      aria-label="调整侧边栏宽度，双击恢复默认宽度"
+                      aria-orientation="vertical"
+                      aria-valuemin={MIN_SIDEBAR_WIDTH}
+                      aria-valuemax={MAX_SIDEBAR_WIDTH}
+                      aria-valuenow={sidebarWidth}
+                      aria-valuetext={`${sidebarWidth}px`}
+                      data-testid="admin-sidebar-resize-handle"
+                      onDoubleClick={handleSidebarResizeDoubleClick}
+                      onPointerDown={handleSidebarResizePointerDown}
+                      onKeyDown={handleSidebarResizeKeyDown}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="center">
+                    拖动调整侧栏宽度，双击恢复默认
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </aside>
 
-          <div className="min-w-0">
+          <div className="min-w-0" data-testid="admin-shell-main">
             <header className="sticky top-0 z-30 border-b border-border/48 bg-background/84 px-4 py-3 backdrop-blur-md lg:hidden">
               <div className="flex items-center justify-between gap-3">
                 <Button variant="outline" size="icon" onClick={() => setMobileOpen(true)}>
@@ -336,30 +469,21 @@ export function AppShell() {
                   <div className="truncate text-sm font-semibold">管理后台</div>
                   <div className="truncate text-xs text-muted-foreground">{pathname}</div>
                 </div>
-                <ThemeToggle />
+                <span className="size-11 sm:size-10" aria-hidden />
               </div>
             </header>
 
-            <main className="px-4 py-5 sm:px-6 lg:px-7 lg:py-7 xl:px-9">
-              <div className="mx-auto max-w-[1440px] space-y-6 pb-10">
-                <div className="hidden items-center justify-between gap-4 lg:flex">
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Workspace
-                    </div>
-                    <div className="mt-1 truncate text-sm text-muted-foreground">{pathname}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ThemeToggle />
-                    <Button asChild variant="outline" size="sm">
-                      <a href="/">
-                        <Waypoints className="size-4" />
-                        公开站
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-                <div id="admin-view" className="space-y-6">
+            <main
+              className={`px-4 py-5 sm:px-6 lg:px-7 lg:py-6 xl:px-8 ${
+                isEditorWorkspace ? "lg:h-screen lg:overflow-hidden" : ""
+              }`}
+            >
+              <div
+                className={`mx-auto max-w-[1440px] ${
+                  isEditorWorkspace ? "flex h-full min-h-0 flex-col gap-5" : "space-y-5 pb-10"
+                }`}
+              >
+                <div id="admin-view" className={isEditorWorkspace ? "min-h-0 flex-1" : "space-y-6"}>
                   <Outlet />
                 </div>
               </div>

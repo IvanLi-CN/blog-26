@@ -73,7 +73,7 @@ export function TagIconsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="图标匹配" description="给标签和分类分配最终 Iconify ID。" />
+      <PageHeader title="图标匹配" description="给标签和分类分配公开站图标。" />
 
       {notice ? <Alert tone="success">{notice}</Alert> : null}
       {overviewQuery.error ? (
@@ -89,7 +89,7 @@ export function TagIconsPage() {
       <Card>
         <CardHeader>
           <CardTitle>分类图标</CardTitle>
-          <CardDescription>优先处理分组 key，对公开站视觉最稳定。</CardDescription>
+          <CardDescription>优先处理分类图标，保证公开站展示稳定。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           {categories.map((key) => (

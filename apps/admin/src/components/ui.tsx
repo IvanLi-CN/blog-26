@@ -54,7 +54,7 @@ export function Button({
   return (
     <Comp
       className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+        "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 lg:rounded-[0.75rem] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
         "active:scale-[0.98]",
         variant === "default" &&
           "bg-primary text-primary-foreground shadow-lg shadow-primary/18 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/24",
@@ -67,10 +67,10 @@ export function Button({
           "bg-muted/54 text-muted-foreground hover:bg-muted/78 hover:text-foreground",
         variant === "destructive" &&
           "bg-destructive text-destructive-foreground shadow-lg shadow-destructive/16 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-destructive/22",
-        size === "default" && "h-11 px-5 py-2.5",
-        size === "sm" && "h-9 rounded-2xl px-3.5 text-xs",
-        size === "lg" && "h-12 px-6 text-base",
-        size === "icon" && "size-10 p-0",
+        size === "default" && "h-11 px-5 py-2.5 lg:h-10 lg:px-4 lg:py-2",
+        size === "sm" && "h-11 rounded-2xl px-3.5 text-xs sm:h-9 lg:rounded-[0.75rem]",
+        size === "lg" && "h-12 px-6 text-base lg:h-11 lg:px-5",
+        size === "icon" && "size-11 p-0 sm:size-10 lg:size-9",
         className
       )}
       {...props}
@@ -82,7 +82,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <section
       className={cn(
-        "rounded-3xl border border-border/58 bg-card/88 text-card-foreground shadow-xl shadow-shadow-soft backdrop-blur-sm transition-shadow duration-300",
+        "rounded-3xl border border-border/58 bg-card/88 text-card-foreground shadow-xl shadow-shadow-soft backdrop-blur-sm transition-shadow duration-300 lg:rounded-[1.25rem]",
         className
       )}
       {...props}
@@ -91,7 +91,12 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col gap-2 px-6 pb-0 pt-6", className)} {...props} />;
+  return (
+    <div
+      className={cn("flex flex-col gap-2 px-6 pb-0 pt-6 lg:px-5 lg:pt-5", className)}
+      {...props}
+    />
+  );
 }
 
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
@@ -111,11 +116,16 @@ export function CardDescription({ className, ...props }: HTMLAttributes<HTMLPara
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-6", className)} {...props} />;
+  return <div className={cn("p-6 lg:p-5", className)} {...props} />;
 }
 
 export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex items-center gap-2 px-6 pb-6 pt-0", className)} {...props} />;
+  return (
+    <div
+      className={cn("flex items-center gap-2 px-6 pb-6 pt-0 lg:px-5 lg:pb-5", className)}
+      {...props}
+    />
+  );
 }
 
 export function Badge({
@@ -161,7 +171,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "flex h-11 w-full rounded-2xl border-0 bg-input-surface px-4 py-3 text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-11 w-full rounded-2xl border-0 bg-input-surface px-4 py-3 text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50 lg:h-10 lg:rounded-[0.75rem] lg:px-3.5 lg:py-2",
         className
       )}
       {...props}
@@ -207,7 +217,9 @@ type SelectProps = {
   children: ReactNode;
   className?: string;
   disabled?: boolean;
+  id?: string;
   "aria-label"?: string;
+  "aria-labelledby"?: string;
 };
 
 export function Select({
@@ -234,8 +246,9 @@ export function Select({
       }}
     >
       <SelectPrimitive.Trigger
+        id={props.id}
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50 lg:h-10 lg:rounded-[0.75rem] lg:px-3.5 lg:py-2",
           className
         )}
         {...props}
@@ -246,7 +259,7 @@ export function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content className="z-50 overflow-hidden rounded-3xl border border-border/64 bg-popover text-popover-foreground shadow-2xl shadow-shadow-strong">
+        <SelectPrimitive.Content className="z-50 overflow-hidden rounded-3xl border border-border/64 bg-popover text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]">
           <SelectPrimitive.ScrollUpButton className="flex h-8 items-center justify-center text-muted-foreground">
             <ChevronUp className="size-4" />
           </SelectPrimitive.ScrollUpButton>
@@ -256,7 +269,7 @@ export function Select({
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
-                className="relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2.5 pl-9 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45"
+                className="relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2.5 pl-9 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45 lg:rounded-[0.75rem] lg:py-2"
               >
                 <SelectPrimitive.ItemIndicator className="absolute left-3 inline-flex items-center">
                   <Check className="size-4 text-primary" />
@@ -281,7 +294,7 @@ export const Checkbox = forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "peer size-5 shrink-0 rounded-2xl bg-input-surface shadow-inner shadow-shadow-inset ring-1 ring-border/64 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      "peer size-11 shrink-0 rounded-2xl bg-input-surface shadow-inner shadow-shadow-inset ring-1 ring-border/64 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground sm:size-5",
       className
     )}
     {...props}
@@ -321,12 +334,12 @@ export const Switch = forwardRef<
   <SwitchPrimitive.Root
     ref={ref}
     className={cn(
-      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full bg-muted shadow-inner shadow-shadow-inset transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary",
+      "peer inline-flex h-11 w-14 shrink-0 cursor-pointer items-center rounded-full bg-muted px-1 shadow-inner shadow-shadow-inset transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary sm:h-6 sm:w-11 sm:px-0",
       className
     )}
     {...props}
   >
-    <SwitchPrimitive.Thumb className="pointer-events-none block size-5 translate-x-0.5 rounded-full bg-card shadow-md shadow-shadow-soft transition-transform data-[state=checked]:translate-x-5" />
+    <SwitchPrimitive.Thumb className="pointer-events-none block size-6 rounded-full bg-card shadow-md shadow-shadow-soft transition-transform data-[state=checked]:translate-x-6 sm:size-5 sm:translate-x-0.5 sm:data-[state=checked]:translate-x-5" />
   </SwitchPrimitive.Root>
 ));
 Switch.displayName = SwitchPrimitive.Root.displayName;
@@ -339,7 +352,7 @@ export const Textarea = forwardRef<
     <textarea
       ref={ref}
       className={cn(
-        "flex min-h-32 w-full rounded-3xl border-0 bg-input-surface px-4 py-3 text-sm leading-6 text-foreground shadow-inner shadow-shadow-inset transition-all placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex min-h-32 w-full rounded-3xl border-0 bg-input-surface px-4 py-3 text-sm leading-6 text-foreground shadow-inner shadow-shadow-inset transition-all placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50 lg:rounded-[1rem] lg:px-3.5 lg:py-2.5",
         className
       )}
       {...props}
@@ -371,7 +384,7 @@ export function Alert({
   return (
     <div
       className={cn(
-        "flex gap-3 rounded-3xl border px-4 py-3 text-sm leading-6 shadow-sm",
+        "flex gap-3 rounded-3xl border px-4 py-3 text-sm leading-6 shadow-sm lg:rounded-[1rem] lg:px-3.5 lg:py-2.5",
         tone === "default" && "border-border/60 bg-muted/62 text-foreground",
         tone === "danger" && "border-destructive/22 bg-destructive/11 text-foreground",
         tone === "success" && "border-success/22 bg-success/11 text-foreground",
@@ -424,7 +437,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/70 bg-muted/36 px-6 py-14 text-center shadow-inner shadow-shadow-inset">
+    <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/70 bg-muted/36 px-6 py-14 text-center shadow-inner shadow-shadow-inset lg:rounded-[1rem] lg:py-10">
       <div className="rounded-full bg-primary/12 p-3 text-primary">
         <Info className="size-5" />
       </div>
@@ -471,7 +484,7 @@ export function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCel
   return (
     <th
       className={cn(
-        "h-12 px-4 text-left align-middle text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground",
+        "h-12 px-4 text-left align-middle text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground lg:h-10 lg:px-3",
         className
       )}
       {...props}
@@ -480,14 +493,14 @@ export function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCel
 }
 
 export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("p-4 align-middle", className)} {...props} />;
+  return <td className={cn("p-4 align-middle lg:px-3 lg:py-3", className)} {...props} />;
 }
 
 export function CodeBlock({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <pre
       className={cn(
-        "admin-scrollbar overflow-x-auto rounded-3xl border border-border/58 bg-code-surface p-4 text-xs leading-6 shadow-inner shadow-shadow-inset",
+        "admin-scrollbar overflow-x-auto rounded-3xl border border-border/58 bg-code-surface p-4 text-xs leading-6 shadow-inner shadow-shadow-inset lg:rounded-[1rem]",
         className
       )}
     >
@@ -512,7 +525,7 @@ export function DialogContent({
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid max-h-[min(88vh,760px)] w-[min(calc(100vw-2rem),34rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-2xl shadow-shadow-strong outline-none",
+          "fixed left-1/2 top-1/2 z-50 grid max-h-[min(88vh,760px)] w-[min(calc(100vw-2rem),34rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-2xl shadow-shadow-strong outline-none lg:rounded-[1rem]",
           className
         )}
         {...props}
@@ -615,7 +628,7 @@ export const DropdownMenuContent = forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-44 overflow-hidden rounded-3xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-2xl shadow-shadow-strong",
+        "z-50 min-w-44 overflow-hidden rounded-3xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]",
         className
       )}
       {...props}
@@ -631,7 +644,7 @@ export const DropdownMenuItem = forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45",
+      "relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45 lg:rounded-[0.75rem] lg:py-1.5",
       className
     )}
     {...props}
@@ -650,7 +663,7 @@ export const PopoverContent = forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 rounded-3xl border border-border/60 bg-popover p-4 text-popover-foreground shadow-2xl shadow-shadow-strong outline-none",
+        "z-50 rounded-3xl border border-border/60 bg-popover p-4 text-popover-foreground shadow-2xl shadow-shadow-strong outline-none lg:rounded-[1rem] lg:p-3",
         className
       )}
       {...props}
@@ -667,7 +680,7 @@ export const TabsList = forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex items-center rounded-2xl bg-muted/68 p-1 shadow-inner shadow-shadow-inset",
+      "inline-flex items-center rounded-2xl bg-muted/68 p-1 shadow-inner shadow-shadow-inset lg:rounded-[0.75rem]",
       className
     )}
     {...props}
@@ -682,7 +695,7 @@ export const TabsTrigger = forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium text-muted-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-shadow-soft disabled:pointer-events-none disabled:opacity-50",
+      "inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium text-muted-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-shadow-soft disabled:pointer-events-none disabled:opacity-50 sm:min-h-9 lg:min-h-8 lg:rounded-[0.75rem] lg:px-3 lg:py-1.5",
       className
     )}
     {...props}

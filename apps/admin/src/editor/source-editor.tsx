@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type SourceEditorProps = {
   content: string;
@@ -6,6 +6,8 @@ type SourceEditorProps = {
   placeholder?: string;
   className?: string;
   onImageUpload?: (file: File) => Promise<string>;
+  textareaLabel?: string;
+  textareaName?: string;
   "data-testid"?: string;
 };
 
@@ -15,6 +17,8 @@ export function SourceEditor({
   placeholder = "开始编写...",
   className = "",
   onImageUpload,
+  textareaLabel = "Markdown source editor",
+  textareaName,
   "data-testid": dataTestId,
 }: SourceEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -92,22 +96,9 @@ export function SourceEditor({
     }
   };
 
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    if (content.length === 0) {
-      textarea.style.height = "280px";
-      return;
-    }
-
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.max(textarea.scrollHeight, 280)}px`;
-  }, [content]);
-
   return (
     <div
-      className={`relative flex h-full min-h-[28rem] overflow-hidden rounded-3xl border border-border/58 bg-card/62 shadow-inner shadow-shadow-inset ${className}`}
+      className={`relative flex h-full min-h-0 overflow-hidden bg-transparent ${className}`}
       data-testid={dataTestId}
     >
       <div
@@ -133,7 +124,9 @@ export function SourceEditor({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           placeholder={placeholder}
-          className={`admin-scrollbar h-full min-h-[28rem] w-full resize-none border-0 bg-transparent px-4 py-3 font-mono text-sm leading-6 text-foreground focus:outline-none ${isDragOver ? "bg-primary/5" : ""}`}
+          aria-label={textareaLabel}
+          name={textareaName}
+          className={`admin-scrollbar h-full min-h-0 w-full resize-none overflow-y-auto border-0 bg-transparent px-4 py-3 font-mono text-sm leading-6 text-foreground focus:outline-none ${isDragOver ? "bg-primary/5" : ""}`}
           spellCheck={false}
         />
 

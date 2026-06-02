@@ -121,7 +121,7 @@ function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
         <MarkdownRenderer
           content={post.body || ""}
           articlePath={post.filePath || post.slug}
-          contentSource={post.source === "local" ? "local" : "webdav"}
+          contentSource="local"
           enableImageLightbox
           enableMath
           enableMermaid
@@ -152,7 +152,7 @@ function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
         <MarkdownRenderer
           content={memo.content || ""}
           articlePath={memo.filePath || memo.slug}
-          contentSource={memo.source === "local" ? "local" : "webdav"}
+          contentSource="local"
           enableImageLightbox
           enableMath
           enableMermaid
@@ -172,7 +172,7 @@ export function PostPreviewPage() {
   return (
     <PreviewChrome
       title="文章预览"
-      description="使用新的 `/admin/preview/posts/:slug` 契约渲染。"
+      description="检查文章在公开站中的阅读效果。"
       publicHref={`/posts/${slug}`}
       onRefresh={() => void query.refetch()}
       refreshing={query.isFetching}
@@ -200,7 +200,7 @@ export function MemoPreviewPage() {
   return (
     <PreviewChrome
       title="Memo 预览"
-      description="使用新的 `/admin/preview/memos/:slug` 契约渲染。"
+      description="检查 Memo 在公开站中的阅读效果。"
       publicHref={`/memos/${slug}`}
       onRefresh={() => void query.refetch()}
       refreshing={query.isFetching}

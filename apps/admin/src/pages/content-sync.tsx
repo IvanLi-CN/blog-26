@@ -162,7 +162,7 @@ export function ContentSyncPage() {
         <MetricCard
           title="总内容量"
           value={formatCount(contentStats.total ?? 0)}
-          description="来自 posts 表统计"
+          description="当前已收录内容"
         />
         <MetricCard
           title="累计同步"
@@ -217,7 +217,7 @@ export function ContentSyncPage() {
         <Card>
           <CardHeader>
             <CardTitle>向量化摘要</CardTitle>
-            <CardDescription>直接透出当前兼容层返回的统计结果。</CardDescription>
+            <CardDescription>查看当前索引状态与向量统计。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge tone="outline">{managerStats.currentSyncStatus ?? "idle"}</Badge>
@@ -230,7 +230,7 @@ export function ContentSyncPage() {
         <Card>
           <CardHeader>
             <CardTitle>按类型统计</CardTitle>
-            <CardDescription>来自数据库的内容计数。</CardDescription>
+            <CardDescription>按内容类型汇总当前收录情况。</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto admin-scrollbar">
             <Table>
@@ -292,7 +292,7 @@ export function ContentSyncPage() {
       <Card>
         <CardHeader>
           <CardTitle>最近日志</CardTitle>
-          <CardDescription>从兼容层直接读取最近 20 条同步日志。</CardDescription>
+          <CardDescription>最近 20 条同步记录。</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto admin-scrollbar">
           <Table>

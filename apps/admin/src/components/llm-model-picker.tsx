@@ -91,7 +91,7 @@ export function LlmModelPicker({
           <FieldLabel>模型</FieldLabel>
           <button
             type="button"
-            className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm shadow-inner shadow-shadow-inset transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55"
+            className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm shadow-inner shadow-shadow-inset transition-all hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 lg:min-h-10 lg:rounded-[0.75rem] lg:px-3.5 lg:py-2"
             onClick={() => setOpen(true)}
           >
             <span className="min-w-0">

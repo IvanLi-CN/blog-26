@@ -601,7 +601,7 @@ export const memosRouter = router({
           author: memo.author || undefined,
           filePath: memo.filePath,
           source: memo.source,
-          dataSource: memo.dataSource || "webdav",
+          dataSource: memo.dataSource || "local",
           createdAt: displayTime,
           publishedAt,
           updatedAt,
@@ -716,7 +716,7 @@ export const memosRouter = router({
         author: memo.author || undefined,
         filePath: memo.filePath,
         source: memo.source,
-        dataSource: (memo as any).dataSource || "webdav",
+        dataSource: (memo as any).dataSource || "local",
         isVectorized: false,
       } as any;
     } catch (error) {
@@ -976,7 +976,7 @@ export const memosRouter = router({
 
       const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
 
-      const memoSource = existingMemo.source === "local" ? "local" : "webdav";
+      const memoSource = existingMemo.source === "webdav" ? "webdav" : "local";
       if (memoSource === "webdav") {
         if (!isWebDAVEnabled()) {
           throw new TRPCError({
@@ -1079,7 +1079,7 @@ export const memosRouter = router({
         });
       }
 
-      const memoSource = existingMemo.source === "local" ? "local" : "webdav";
+      const memoSource = existingMemo.source === "webdav" ? "webdav" : "local";
       if (memoSource === "webdav") {
         if (!isWebDAVEnabled()) {
           if (process.env.NODE_ENV !== "production") {

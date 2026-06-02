@@ -87,6 +87,7 @@ export default defineConfig({
         "**/admin/session-header-auth-admin.spec.ts",
         "**/admin/admin-spa-phase2.spec.ts",
         "**/admin/llm-settings.spec.ts",
+        "**/admin/post-editor-markdown-modes.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"] },
     },

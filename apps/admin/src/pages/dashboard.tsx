@@ -136,14 +136,14 @@ export function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>阶段提醒</CardTitle>
-            <CardDescription>这一版后台只走 `/api/admin/*`。</CardDescription>
+            <CardTitle>后台入口</CardTitle>
+            <CardDescription>当前后台的主要管理范围。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <Alert>编辑器附件仍阶段性保留 `/api/files/*`，后续再移交 Rust 端。</Alert>
-            <div>· `/admin/*` 页面由 admin SPA 和 gateway 统一承载。</div>
-            <div>· `/admin/login` 已废弃，权限由 gateway 与会话统一处理。</div>
-            <div>· `/memos` 管理操作暂时留在公开站，不在本次 IA 范围内。</div>
+            <Alert>编辑器支持附件上传，保存前请确认预览结果。</Alert>
+            <div>· 文章、评论、同步、计划任务和令牌都在后台统一管理。</div>
+            <div>· 访问权限由当前会话决定，异常时请重新登录或刷新会话。</div>
+            <div>· Memos 仍在公开站入口维护。</div>
           </CardContent>
         </Card>
       </div>

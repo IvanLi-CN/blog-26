@@ -26,6 +26,15 @@ const initializingEditors = new Set<string>();
 // 调试开关与轻量日志函数
 // removed development-only logging helpers
 
+function labelCrepeInternalFields(root: HTMLElement, editorId: string) {
+  const linkInput = root.querySelector<HTMLInputElement>(
+    'input.input-area[placeholder="Paste link..."]'
+  );
+  if (!linkInput) return;
+  linkInput.setAttribute("aria-label", "链接地址");
+  linkInput.setAttribute("name", `${editorId}-link-url`);
+}
+
 // 预处理内容，将 frontmatter 转换为 YAML 代码块
 function preprocessFrontmatterForEditor(content: string): string {
   // 处理 frontmatter
@@ -88,6 +97,7 @@ interface MilkdownEditorProps {
   articlePath?: string;
   // 内容源类型，用于正确的图片路径转换
   contentSource?: "webdav" | "local";
+  readOnly?: boolean;
 }
 
 // 转换图片路径用于编辑器显示
@@ -152,6 +162,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       editorId = "default",
       articlePath = "",
       contentSource = "local",
+      readOnly = false,
     },
     ref
   ) => {
@@ -161,6 +172,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const initialContentRef = useRef<string>(content);
     const onImageUploadRef = useRef(onImageUpload);
     const onChangeRef = useRef(onChange);
+    const accessibilityObserverRef = useRef<MutationObserver | null>(null);
     const isUpdatingRef = useRef<boolean>(false); // 防止循环更新的标志
 
     // 处理内联图片上传 - 与 UniversalEditor 相同的逻辑
@@ -235,9 +247,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               [CrepeFeature.ListItem]: true,
               [CrepeFeature.LinkTooltip]: true,
               [CrepeFeature.ImageBlock]: true,
-              [CrepeFeature.BlockEdit]: true,
+              [CrepeFeature.BlockEdit]: !readOnly,
               [CrepeFeature.Placeholder]: true,
-              [CrepeFeature.Toolbar]: true,
+              [CrepeFeature.Toolbar]: !readOnly,
               [CrepeFeature.CodeMirror]: true,
               [CrepeFeature.Table]: true,
               [CrepeFeature.Latex]: false, // 暂时禁用 LaTeX 以简化
@@ -341,6 +353,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
           // 创建编辑器
           await crepe.create();
+          crepe.setReadonly(readOnly);
 
           if (cancelled) {
             try {
@@ -353,6 +366,17 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
           crepeRef.current = crepe;
           lastContentRef.current = initialContentRef.current;
+          labelCrepeInternalFields(editorRef.current, editorId);
+          accessibilityObserverRef.current?.disconnect();
+          accessibilityObserverRef.current = new MutationObserver(() => {
+            if (editorRef.current) {
+              labelCrepeInternalFields(editorRef.current, editorId);
+            }
+          });
+          accessibilityObserverRef.current.observe(editorRef.current, {
+            childList: true,
+            subtree: true,
+          });
 
           // 保存到实例管理器
           editorInstances.set(editorId, crepe);
@@ -369,6 +393,8 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       return () => {
         cancelled = true;
         initializingEditors.delete(editorId);
+        accessibilityObserverRef.current?.disconnect();
+        accessibilityObserverRef.current = null;
 
         const instance = crepeRef.current ?? editorInstances.get(editorId) ?? null;
         if (instance) {
@@ -384,7 +410,11 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         // 从实例管理器中移除
         editorInstances.delete(editorId);
       };
-    }, [articlePath, editorId, contentSource, placeholder]); // 只在组件挂载时初始化一次，避免内容变化触发重建
+    }, [articlePath, editorId, contentSource, placeholder, readOnly]); // 只在组件挂载时初始化一次，避免内容变化触发重建
+
+    useEffect(() => {
+      crepeRef.current?.setReadonly(readOnly);
+    }, [readOnly]);
 
     // 处理外部内容变化 - 修复无限循环
     useEffect(() => {
@@ -459,15 +489,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     }, [content, articlePath, contentSource]);
 
     return (
-      <div
-        ref={editorRef}
-        className={`milkdown-editor ${className}`}
-        data-testid={dataTestId}
-        style={{
-          minHeight: "inherit",
-          height: "auto",
-        }}
-      />
+      <div ref={editorRef} className={`milkdown-editor ${className}`} data-testid={dataTestId} />
     );
   }
 );

@@ -13,11 +13,11 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-[2rem] bg-card/62 px-5 py-5 shadow-lg shadow-shadow-soft ring-1 ring-border/48 backdrop-blur-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-      <CardHeader className="min-w-0 p-0">
-        <CardTitle className="text-2xl lg:text-3xl">{title}</CardTitle>
+    <div className="flex flex-col gap-3 rounded-[1.5rem] bg-card/62 px-5 py-4 shadow-lg shadow-shadow-soft ring-1 ring-border/48 backdrop-blur-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:rounded-[1.1rem] lg:px-5 lg:py-3">
+      <CardHeader className="min-w-0 gap-1 p-0 lg:p-0">
+        <CardTitle className="text-xl">{title}</CardTitle>
         {description ? (
-          <CardDescription className="max-w-3xl">{description}</CardDescription>
+          <CardDescription className="max-w-3xl leading-5">{description}</CardDescription>
         ) : null}
       </CardHeader>
       {actions ? (

@@ -93,7 +93,7 @@ export function TagsPage() {
     <div className="space-y-6">
       <PageHeader
         title="标签分组"
-        description="用 AI 生成建议，再把最终 JSON 保存回数据库。"
+        description="整理标签分组，保存后用于公开站归类展示。"
         actions={
           <>
             <Button
@@ -209,7 +209,7 @@ export function TagsPage() {
         <Card>
           <CardHeader>
             <CardTitle>可编辑 JSON</CardTitle>
-            <CardDescription>你可以直接修改数组后保存。</CardDescription>
+            <CardDescription>检查分组内容，调整后保存。</CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea

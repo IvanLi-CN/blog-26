@@ -1,8 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   BrainCircuit,
+  ChevronDown,
   ClipboardList,
+  FilePlus2,
   FileText,
+  Folder,
+  FolderPlus,
+  FolderUp,
   KeyRound,
   LayoutDashboard,
   Menu,
@@ -10,7 +15,7 @@ import {
   Search,
   Shield,
 } from "lucide-react";
-import { useState } from "react";
+import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import {
   Alert,
@@ -42,6 +47,10 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "./ui";
 
 const meta = {
@@ -87,7 +96,7 @@ function SoftPageFrame({ mobile = false }: { mobile?: boolean }) {
         </span>
         <div>
           <div className="font-semibold">管理后台</div>
-          <div className="text-xs text-muted-foreground">Blog Console</div>
+          <div className="text-xs text-muted-foreground">内容工作台</div>
         </div>
       </div>
       <div className="grid gap-1.5">
@@ -138,7 +147,7 @@ function SoftPageFrame({ mobile = false }: { mobile?: boolean }) {
         {[
           ["文章总数", "128", "已发布 118 · 草稿 10", "primary"],
           ["评论总数", "342", "已批准 320 · 待审 22", "secondary"],
-          ["内容源", "3", "local · webdav · database", "success"],
+          ["内容源", "1", "local", "success"],
           ["同步任务", "idle", "最近一次 13 分钟前", "warning"],
         ].map(([title, value, description, tone]) => (
           <Card key={title}>
@@ -237,10 +246,8 @@ function PrimitiveGallery() {
     <div className="mx-auto max-w-6xl space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Controls</CardTitle>
-          <CardDescription>
-            Buttons, inputs, selects, toggles, tabs, and semantic states.
-          </CardDescription>
+          <CardTitle>内容操作</CardTitle>
+          <CardDescription>搜索、筛选、状态切换与常用操作。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-3">
@@ -270,9 +277,9 @@ function PrimitiveGallery() {
             <Alert tone="success">保存完成，后台状态已经刷新。</Alert>
             <Alert tone="warning">同步任务仍在运行，请等待当前批次结束。</Alert>
             <div className="flex items-center gap-3 rounded-3xl bg-muted/42 p-4 shadow-inner shadow-shadow-inset">
-              <Checkbox checked aria-label="选择示例" />
+              <Checkbox checked aria-label="选择同步状态" />
               <span className="text-sm">启用软 UI 状态</span>
-              <Switch className="ml-auto" checked aria-label="开关示例" />
+              <Switch className="ml-auto" checked aria-label="启用软 UI 状态" />
             </div>
             <Tabs defaultValue="overview">
               <TabsList>
@@ -293,8 +300,8 @@ function PrimitiveGallery() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Data table</CardTitle>
-            <CardDescription>Dense but soft list treatment.</CardDescription>
+            <CardTitle>内容列表</CardTitle>
+            <CardDescription>紧凑展示最近的后台记录。</CardDescription>
           </CardHeader>
           <CardContent>
             <SoftDataTable />
@@ -302,8 +309,8 @@ function PrimitiveGallery() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Empty and loading</CardTitle>
-            <CardDescription>Reusable non-blocking states.</CardDescription>
+            <CardTitle>空状态与加载</CardTitle>
+            <CardDescription>保持页面可读，不打断当前操作。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <EmptyState title="暂无活动" description="当前还没有可展示的后台活动记录。" />
@@ -329,6 +336,162 @@ function PrimitiveGallery() {
   );
 }
 
+function ResizableSidebarHandleFrame() {
+  const [width, setWidth] = useState(272);
+  const fileTreeItems = Array.from({ length: 16 }, (_, index) => ({
+    count: index === 0 ? "2 项" : index % 5 === 0 ? "3 项" : "md",
+    id: `content-posts-tree-item-${index}`,
+    isActive: index === 2,
+    isDirectory: index % 5 === 0,
+    name: index % 5 === 0 ? `series-${index}` : `react-hooks-deep-dive-${index}.md`,
+  }));
+  const commitWidth = (nextWidth: number) => {
+    setWidth(Math.min(460, Math.max(232, Math.round(nextWidth))));
+  };
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLHRElement>) => {
+    const step = event.shiftKey ? 32 : 12;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      commitWidth(width - step);
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      commitWidth(width + step);
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      commitWidth(232);
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      commitWidth(460);
+    }
+  };
+
+  return (
+    <div
+      className="admin-app-shell-grid grid min-h-[520px] w-full grid-cols-1"
+      style={{ "--admin-sidebar-width": `${width}px` } as CSSProperties}
+    >
+      <aside className="hidden min-h-0 p-4 lg:block">
+        <div className="admin-sidebar-card relative h-full overflow-hidden rounded-[2rem] bg-card/74 p-4 pr-5 shadow-xl shadow-shadow-soft ring-1 ring-border/54">
+          <div className="flex h-full min-h-0 flex-col gap-4">
+            <div>
+              <div className="text-sm font-semibold">文件浏览器</div>
+              <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                浏览内容源，打开要编辑的文件。
+              </div>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-border/54 text-sm">
+              <div className="shrink-0 border-b border-border/54 py-3">
+                <div className="font-medium">文件浏览器</div>
+                <div className="text-xs text-muted-foreground">content/posts</div>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-4">
+                <div className="grid min-w-0 shrink-0 gap-2 pb-4">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Button size="sm" variant="outline" aria-label="新建文件">
+                      <FilePlus2 className="size-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" aria-label="新建目录">
+                      <FolderPlus className="size-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" aria-label="上级目录">
+                      <FolderUp className="size-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" aria-label="刷新">
+                      <RefreshCcw className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="min-w-0 truncate rounded-2xl bg-muted/32 px-3 py-2 text-xs text-muted-foreground">
+                    content/posts
+                  </div>
+                </div>
+                <div className="admin-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden pr-1">
+                  {fileTreeItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl px-3 py-2 ${
+                        item.isActive ? "bg-primary/10 text-primary" : "text-foreground/88"
+                      }`}
+                    >
+                      <span className="flex min-w-0 flex-1 items-center gap-2">
+                        {item.isDirectory ? (
+                          <>
+                            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                            <Folder className="size-4 shrink-0 text-primary" />
+                          </>
+                        ) : (
+                          <>
+                            <span className="block size-4 shrink-0" />
+                            <span
+                              className={`relative inline-flex size-5 shrink-0 items-center justify-center ${
+                                item.isActive ? "text-primary" : "text-muted-foreground"
+                              }`}
+                            >
+                              <FileText className="size-5" />
+                              <span className="absolute bottom-[0.1rem] left-1/2 -translate-x-1/2 text-[0.34rem] font-bold uppercase leading-none">
+                                md
+                              </span>
+                            </span>
+                          </>
+                        )}
+                        <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                      </span>
+                      {item.isDirectory ? (
+                        <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                          {item.count}
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-auto border-t border-border/54 pt-4 text-sm">
+              侧栏宽度：{width}px
+            </div>
+          </div>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <hr
+                  tabIndex={0}
+                  className="admin-sidebar-resize-handle"
+                  aria-label="调整侧边栏宽度，双击恢复默认宽度"
+                  aria-orientation="vertical"
+                  aria-valuemin={232}
+                  aria-valuemax={460}
+                  aria-valuenow={width}
+                  aria-valuetext={`${width}px`}
+                  onDoubleClick={() => commitWidth(272)}
+                  onKeyDown={handleKeyDown}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="right" align="center">
+                拖动调整侧栏宽度，双击恢复默认
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </aside>
+      <div className="min-w-0 p-4">
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle>文章编辑器</CardTitle>
+            <CardDescription>侧栏宽度变化时，编辑区保持完整可用。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-3xl bg-muted/42 p-5 text-sm text-muted-foreground">
+              当前工作区会随侧栏宽度调整。
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export const Primitives: Story = {
   render: () => <PrimitiveGallery />,
   play: async ({ canvasElement }) => {
@@ -340,6 +503,20 @@ export const Primitives: Story = {
 
 export const DesktopShell: Story = {
   render: () => <SoftPageFrame />,
+};
+
+export const ResizableSidebarHandle: Story = {
+  render: () => <ResizableSidebarHandleFrame />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const separator = canvas.getByRole("separator", { name: /调整侧边栏宽度/ });
+    await expect(separator).toHaveAttribute("aria-valuenow", "272");
+    separator.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    await expect(separator).toHaveAttribute("aria-valuenow", "284");
+    await userEvent.dblClick(separator);
+    await expect(separator).toHaveAttribute("aria-valuenow", "272");
+  },
 };
 
 export const MobileShell: Story = {

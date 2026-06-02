@@ -535,7 +535,7 @@ export function LlmSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="LLM 设置"
-        description="把对话、嵌入、重排序模型配置持久化到数据库；环境变量只作为缺省值。"
+        description="配置对话、嵌入与重排序模型，保存后立即用于后台任务。"
         actions={
           <Button onClick={() => saveMutation.mutate(editor)} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? <Spinner /> : null}

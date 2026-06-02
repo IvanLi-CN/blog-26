@@ -82,7 +82,7 @@ export function ScheduleRunDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>日志内容</CardTitle>
-          <CardDescription>来自 job logger 的原始输出。</CardDescription>
+          <CardDescription>任务运行时记录的原始输出。</CardDescription>
         </CardHeader>
         <CardContent>
           <CodeBlock>
