@@ -15,7 +15,7 @@ test.describe("Admin SPA phase 2", () => {
 
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "管理员仪表盘" })).toBeVisible();
-    await expect(page.getByText("Blog Console")).toBeVisible();
+    await expect(page.getByRole("link", { name: /管理后台 内容工作台/ })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/dashboard$/);
 
     await expect

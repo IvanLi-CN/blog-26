@@ -79,7 +79,9 @@ test.describe("admin llm settings", () => {
     expect(response?.status()).toBe(200);
 
     await expect(page.getByRole("heading", { name: "LLM 设置" })).toBeVisible();
-    await expect(page.getByText("环境变量只作为缺省值")).toBeVisible();
+    await expect(
+      page.getByText("配置对话、嵌入与重排序模型，保存后立即用于后台任务。")
+    ).toBeVisible();
     await expect(page.getByLabel("嵌入模型 baseURL")).toHaveCount(0);
 
     await page.getByRole("button", { name: "测试对话模型" }).click();
