@@ -32,7 +32,7 @@ export function QuickMemoEditModal({
   initialContent,
   initialIsPublic = true,
   articlePath,
-  contentSource = "webdav",
+  contentSource = "local",
   isLoading = false,
   isSaving = false,
   errorMessage,

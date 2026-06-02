@@ -73,7 +73,7 @@ export function TagIconsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="图标匹配" description="给标签和分类分配最终 Iconify ID。" />
+      <PageHeader title="图标匹配" description="给标签和分类分配公开站图标。" />
 
       {notice ? <Alert tone="success">{notice}</Alert> : null}
       {overviewQuery.error ? (
@@ -89,11 +89,11 @@ export function TagIconsPage() {
       <Card>
         <CardHeader>
           <CardTitle>分类图标</CardTitle>
-          <CardDescription>优先处理分组 key，对公开站视觉最稳定。</CardDescription>
+          <CardDescription>优先处理分类图标，保证公开站展示稳定。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           {categories.map((key) => (
-            <div key={key} className="rounded-xl border border-border bg-muted/50 p-4">
+            <div key={key} className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset">
               <FieldLabel>{key}</FieldLabel>
               <div className="flex items-center gap-2">
                 <Input
@@ -144,7 +144,10 @@ export function TagIconsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {group.tags.map((tag) => (
-              <div key={tag.name} className="rounded-xl border border-border bg-muted/40 p-4">
+              <div
+                key={tag.name}
+                className="rounded-3xl bg-muted/42 p-4 shadow-inner shadow-shadow-inset"
+              >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="font-medium">{tag.name}</div>
                   <Badge tone="muted">{tag.count}</Badge>

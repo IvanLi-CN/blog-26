@@ -1,116 +1,140 @@
 @import "tailwindcss";
 
 :root {
-  --radius: 1rem;
+  --radius: 1.25rem;
 }
 
 :root,
 html[data-ui-theme="dark"] {
   color-scheme: dark;
-  --background: 222 47% 11%;
-  --foreground: 210 40% 96%;
-  --card: 222 40% 14%;
-  --card-foreground: 210 40% 96%;
-  --popover: 222 40% 14%;
-  --popover-foreground: 210 40% 96%;
-  --primary: 217 91% 60%;
-  --primary-foreground: 222 47% 12%;
-  --secondary: 262 83% 68%;
-  --secondary-foreground: 210 40% 96%;
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 217 33% 19%;
-  --accent-foreground: 210 40% 96%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 96%;
-  --border: 216 34% 24%;
-  --input: 216 34% 24%;
-  --ring: 217 91% 60%;
-  --editor-surface-top: 222 41% 14%;
-  --editor-surface-bottom: 223 44% 10%;
-  --editor-heading: 210 40% 98%;
-  --editor-text-soft: 214 18% 84%;
-  --editor-link: 206 100% 76%;
-  --editor-inline-code: 35 89% 74%;
-  --editor-code-bg: 222 44% 9%;
-  --editor-inline-code-bg: 222 31% 18%;
-  --editor-blockquote-bg: 222 31% 18%;
-  --editor-code-foreground: 210 40% 86%;
-  --editor-code-comment: 215 14% 60%;
-  --editor-code-keyword: 5 93% 72%;
-  --editor-code-string: 204 94% 82%;
-  --editor-code-number: 204 100% 74%;
-  --editor-code-function: 267 100% 82%;
-  --editor-code-variable: 145 63% 70%;
-  --editor-code-literal: 26 100% 70%;
-  --editor-code-meta: 215 72% 72%;
+  --background: oklch(25% 0.026 252);
+  --foreground: oklch(94% 0.014 252);
+  --card: oklch(31% 0.024 252);
+  --card-foreground: oklch(94% 0.014 252);
+  --popover: oklch(33% 0.026 252);
+  --popover-foreground: oklch(94% 0.014 252);
+  --primary: oklch(72% 0.11 224);
+  --primary-foreground: oklch(21% 0.024 252);
+  --secondary: oklch(76% 0.09 154);
+  --secondary-foreground: oklch(20% 0.024 154);
+  --muted: oklch(36% 0.022 252);
+  --muted-foreground: oklch(76% 0.025 252);
+  --accent: oklch(40% 0.034 224);
+  --accent-foreground: oklch(94% 0.014 252);
+  --destructive: oklch(70% 0.13 28);
+  --destructive-foreground: oklch(22% 0.026 28);
+  --success: oklch(74% 0.105 154);
+  --warning: oklch(80% 0.105 84);
+  --border: oklch(43% 0.025 252);
+  --input: oklch(42% 0.024 252);
+  --input-surface: oklch(35% 0.022 252);
+  --ring: oklch(72% 0.11 224);
+  --scrim: oklch(18% 0.018 252);
+  --code-surface: oklch(28% 0.022 252);
+  --shadow-soft: oklch(16% 0.02 252 / 0.24);
+  --shadow-strong: oklch(13% 0.024 252 / 0.42);
+  --shadow-inset: oklch(14% 0.02 252 / 0.18);
+  --editor-surface-top: oklch(33% 0.024 252);
+  --editor-surface-bottom: oklch(24% 0.026 252);
+  --editor-heading: oklch(97% 0.01 252);
+  --editor-text-soft: oklch(84% 0.018 252);
+  --editor-link: oklch(82% 0.11 224);
+  --editor-inline-code: oklch(83% 0.11 84);
+  --editor-code-bg: oklch(23% 0.022 252);
+  --editor-inline-code-bg: oklch(37% 0.022 252);
+  --editor-blockquote-bg: oklch(37% 0.022 252);
+  --editor-code-foreground: oklch(86% 0.014 252);
+  --editor-code-comment: oklch(70% 0.02 252);
+  --editor-code-keyword: oklch(76% 0.13 28);
+  --editor-code-string: oklch(84% 0.09 224);
+  --editor-code-number: oklch(80% 0.12 224);
+  --editor-code-function: oklch(83% 0.09 295);
+  --editor-code-variable: oklch(78% 0.1 154);
+  --editor-code-literal: oklch(80% 0.12 54);
+  --editor-code-meta: oklch(78% 0.08 244);
 }
 
 html[data-ui-theme="light"] {
   color-scheme: light;
-  --background: 210 33% 98%;
-  --foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 221 70% 97%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 40%;
-  --accent: 214 32% 91%;
-  --accent-foreground: 222 47% 11%;
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
-  --editor-surface-top: 210 60% 99%;
-  --editor-surface-bottom: 210 36% 96%;
-  --editor-heading: 222 47% 11%;
-  --editor-text-soft: 222 25% 30%;
-  --editor-link: 221 83% 53%;
-  --editor-inline-code: 24 95% 34%;
-  --editor-code-bg: 220 27% 97%;
-  --editor-inline-code-bg: 220 23% 94%;
-  --editor-blockquote-bg: 214 32% 92%;
-  --editor-code-foreground: 222 47% 16%;
-  --editor-code-comment: 215 13% 45%;
-  --editor-code-keyword: 350 65% 47%;
-  --editor-code-string: 213 85% 26%;
-  --editor-code-number: 212 100% 39%;
-  --editor-code-function: 267 48% 49%;
-  --editor-code-variable: 142 61% 32%;
-  --editor-code-literal: 27 87% 40%;
-  --editor-code-meta: 221 83% 46%;
+  --background: oklch(97% 0.014 88);
+  --foreground: oklch(29% 0.026 252);
+  --card: oklch(99% 0.008 88);
+  --card-foreground: oklch(29% 0.026 252);
+  --popover: oklch(99% 0.01 88);
+  --popover-foreground: oklch(29% 0.026 252);
+  --primary: oklch(64% 0.12 224);
+  --primary-foreground: oklch(98% 0.008 88);
+  --secondary: oklch(70% 0.09 154);
+  --secondary-foreground: oklch(26% 0.03 154);
+  --muted: oklch(94% 0.018 88);
+  --muted-foreground: oklch(49% 0.026 252);
+  --accent: oklch(91% 0.035 224);
+  --accent-foreground: oklch(31% 0.04 224);
+  --destructive: oklch(59% 0.16 28);
+  --destructive-foreground: oklch(98% 0.008 88);
+  --success: oklch(58% 0.125 154);
+  --warning: oklch(63% 0.13 84);
+  --border: oklch(88% 0.018 88);
+  --input: oklch(91% 0.018 88);
+  --input-surface: oklch(94% 0.018 88);
+  --ring: oklch(64% 0.12 224);
+  --scrim: oklch(38% 0.026 252);
+  --code-surface: oklch(93% 0.018 88);
+  --shadow-soft: oklch(57% 0.04 252 / 0.16);
+  --shadow-strong: oklch(45% 0.05 252 / 0.22);
+  --shadow-inset: oklch(58% 0.035 252 / 0.1);
+  --editor-surface-top: oklch(99% 0.008 88);
+  --editor-surface-bottom: oklch(94% 0.018 88);
+  --editor-heading: oklch(29% 0.026 252);
+  --editor-text-soft: oklch(42% 0.026 252);
+  --editor-link: oklch(55% 0.13 224);
+  --editor-inline-code: oklch(48% 0.13 54);
+  --editor-code-bg: oklch(93% 0.018 88);
+  --editor-inline-code-bg: oklch(90% 0.02 88);
+  --editor-blockquote-bg: oklch(90% 0.02 88);
+  --editor-code-foreground: oklch(32% 0.026 252);
+  --editor-code-comment: oklch(56% 0.024 252);
+  --editor-code-keyword: oklch(52% 0.14 28);
+  --editor-code-string: oklch(45% 0.12 224);
+  --editor-code-number: oklch(50% 0.12 224);
+  --editor-code-function: oklch(52% 0.11 295);
+  --editor-code-variable: oklch(45% 0.13 154);
+  --editor-code-literal: oklch(50% 0.14 54);
+  --editor-code-meta: oklch(50% 0.11 244);
 }
 
 @theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 2px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-surface: var(--input-surface);
+  --color-ring: var(--ring);
+  --color-scrim: var(--scrim);
+  --color-code-surface: var(--code-surface);
+  --color-shadow-soft: var(--shadow-soft);
+  --color-shadow-strong: var(--shadow-strong);
+  --color-shadow-inset: var(--shadow-inset);
+  --radius-sm: calc(var(--radius) - 0.35rem);
+  --radius-md: calc(var(--radius) - 0.15rem);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 0.35rem);
 }
 
 @layer base {
@@ -126,8 +150,8 @@ html[data-ui-theme="light"] {
 
   body {
     margin: 0;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--background);
+    color: var(--foreground);
     font-family:
       InterVariable, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     transition:
@@ -141,12 +165,12 @@ html[data-ui-theme="light"] {
   }
 
   ::selection {
-    background: hsl(var(--primary) / 0.22);
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
   }
 }
 
 .admin-scrollbar {
-  scrollbar-color: hsl(var(--border)) transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 .admin-scrollbar::-webkit-scrollbar {
@@ -155,12 +179,16 @@ html[data-ui-theme="light"] {
 }
 
 .admin-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: var(--border);
   border-radius: 999px;
 }
 
+.admin-sidebar-resize-handle {
+  display: none;
+}
+
 .markdown-body {
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   line-height: 1.75;
 }
 
@@ -179,16 +207,16 @@ html[data-ui-theme="light"] {
 
 .markdown-body code {
   border-radius: 0.5rem;
-  background: hsl(var(--muted));
+  background: var(--muted);
   padding: 0.15rem 0.35rem;
   font-size: 0.9em;
 }
 
 .markdown-body pre {
   overflow-x: auto;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   border-radius: 1rem;
-  background: hsl(var(--muted));
+  background: var(--muted);
   padding: 1rem;
 }
 
@@ -199,38 +227,55 @@ html[data-ui-theme="light"] {
 
 .admin-editor-surface {
   background:
-    radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 32%),
+    radial-gradient(
+      circle at top,
+      color-mix(in oklch, var(--primary) 8%, transparent),
+      transparent 32%
+    ),
     linear-gradient(
       180deg,
-      hsl(var(--editor-surface-top)),
-      hsl(var(--editor-surface-bottom))
+      var(--editor-surface-top),
+      var(--editor-surface-bottom)
     );
 }
 
 .admin-editor-surface .milkdown {
-  --crepe-color-background: hsl(var(--background));
-  --crepe-color-on-background: hsl(var(--foreground));
-  --crepe-color-surface: hsl(var(--card));
-  --crepe-color-surface-low: hsl(var(--muted));
-  --crepe-color-on-surface: hsl(var(--foreground));
-  --crepe-color-on-surface-variant: hsl(var(--muted-foreground));
-  --crepe-color-outline: hsl(var(--border));
-  --crepe-color-primary: hsl(var(--primary));
-  --crepe-color-secondary: hsl(var(--accent));
-  --crepe-color-on-secondary: hsl(var(--accent-foreground));
-  --crepe-color-inverse: hsl(var(--foreground));
-  --crepe-color-on-inverse: hsl(var(--background));
-  --crepe-color-inline-code: hsl(var(--editor-inline-code));
-  --crepe-color-error: hsl(var(--destructive));
-  --crepe-color-hover: hsl(var(--accent));
-  --crepe-color-selected: hsl(var(--accent) / 0.8);
-  --crepe-color-inline-area: hsl(var(--accent));
+  --crepe-color-background: var(--background);
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--card);
+  --crepe-color-surface-low: var(--muted);
+  --crepe-color-on-surface: var(--foreground);
+  --crepe-color-on-surface-variant: var(--muted-foreground);
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--accent);
+  --crepe-color-on-secondary: var(--accent-foreground);
+  --crepe-color-inverse: var(--foreground);
+  --crepe-color-on-inverse: var(--background);
+  --crepe-color-inline-code: var(--editor-inline-code);
+  --crepe-color-error: var(--destructive);
+  --crepe-color-hover: var(--accent);
+  --crepe-color-selected: color-mix(in oklch, var(--accent) 80%, transparent);
+  --crepe-color-inline-area: var(--accent);
   --crepe-shadow-1:
     0 10px 28px rgba(0, 0, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
   --crepe-shadow-2:
     0 18px 48px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.admin-editor-surface .milkdown-editor.admin-editor-wysiwyg {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-editor-surface .milkdown,
+.admin-editor-surface .milkdown .editor {
+  display: flex;
+  min-height: 100%;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 .admin-editor-surface .milkdown,
@@ -240,22 +285,21 @@ html[data-ui-theme="light"] {
 .admin-editor-surface .milkdown .cm-scroller,
 .admin-editor-surface .milkdown .cm-gutters {
   background: transparent;
-  color: hsl(var(--foreground));
-}
-
-.admin-editor-surface .milkdown .editor {
-  min-height: 100%;
+  color: var(--foreground);
 }
 
 .admin-editor-surface .milkdown .ProseMirror {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 100%;
   padding: 1.5rem 1.5rem 2rem;
-  caret-color: hsl(var(--primary));
+  caret-color: var(--primary);
 }
 
 .admin-editor-surface .milkdown .ProseMirror::selection,
 .admin-editor-surface .milkdown .ProseMirror *::selection,
 .admin-editor-surface .milkdown .cm-content ::selection {
-  background: hsl(var(--primary) / 0.24);
+  background: color-mix(in oklch, var(--primary) 24%, transparent);
 }
 
 .admin-editor-surface .milkdown .ProseMirror p,
@@ -264,68 +308,68 @@ html[data-ui-theme="light"] {
 .admin-editor-surface .milkdown .ProseMirror label,
 .admin-editor-surface .milkdown .ProseMirror td,
 .admin-editor-surface .milkdown .ProseMirror th {
-  color: hsl(var(--foreground));
+  color: var(--foreground);
 }
 
 .admin-editor-surface .milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
-  color: hsl(var(--editor-heading));
+  color: var(--editor-heading);
 }
 
 .admin-editor-surface .milkdown .ProseMirror a {
-  color: hsl(var(--editor-link));
+  color: var(--editor-link);
 }
 
 .admin-editor-surface .milkdown .ProseMirror code,
 .admin-editor-preview code:not(pre code) {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--editor-inline-code-bg));
-  color: hsl(var(--editor-inline-code));
+  border: 1px solid var(--border);
+  background: var(--editor-inline-code-bg);
+  color: var(--editor-inline-code);
 }
 
 .admin-editor-surface .milkdown .ProseMirror pre,
 .admin-editor-preview pre {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--editor-code-bg));
+  border: 1px solid var(--border);
+  background: var(--editor-code-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .admin-editor-surface .milkdown .ProseMirror blockquote,
 .admin-editor-preview blockquote {
-  border-left: 3px solid hsl(var(--primary) / 0.55);
-  background: hsl(var(--editor-blockquote-bg) / 0.6);
-  color: hsl(var(--editor-text-soft));
+  border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--border));
+  background: color-mix(in oklch, var(--editor-blockquote-bg) 60%, transparent);
+  color: var(--editor-text-soft);
   padding: 0.8rem 1rem;
-  border-radius: 0.75rem;
+  border-radius: 1.25rem;
 }
 
 .admin-editor-surface .milkdown .tableWrapper,
 .admin-editor-preview table {
   border-radius: 1rem;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   overflow: hidden;
-  background: hsl(var(--card));
+  background: var(--card);
 }
 
 .admin-editor-surface .milkdown th,
 .admin-editor-preview th {
-  background: hsl(var(--muted));
+  background: var(--muted);
 }
 
 .admin-editor-surface .milkdown td,
 .admin-editor-surface .milkdown th,
 .admin-editor-preview td,
 .admin-editor-preview th {
-  border-color: hsl(var(--border));
+  border-color: var(--border);
 }
 
 .admin-editor-surface .milkdown .cm-gutters {
-  border-right: 1px solid hsl(var(--border));
-  color: hsl(var(--muted-foreground));
+  border-right: 1px solid var(--border);
+  color: var(--muted-foreground);
 }
 
 .admin-editor-surface .milkdown .cm-activeLine,
 .admin-editor-surface .milkdown .cm-activeLineGutter {
-  background: hsl(var(--primary) / 0.08);
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
 }
 
 .admin-editor-surface .milkdown .cm-selectionBackground,
@@ -335,16 +379,16 @@ html[data-ui-theme="light"] {
   > .cm-scroller
   > .cm-selectionLayer
   .cm-selectionBackground {
-  background: hsl(var(--primary) / 0.2);
+  background: color-mix(in oklch, var(--primary) 20%, transparent);
 }
 
 .admin-editor-surface .milkdown .cm-cursor {
-  border-left-color: hsl(var(--primary));
+  border-left-color: var(--primary);
 }
 
 .admin-editor-surface .milkdown-toolbar {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card) / 0.96) !important;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--card) 96%, transparent) !important;
   box-shadow:
     0 12px 28px rgba(3, 7, 18, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -352,22 +396,22 @@ html[data-ui-theme="light"] {
 }
 
 .admin-editor-surface .milkdown-toolbar .toolbar-item {
-  color: hsl(var(--foreground) / 0.92) !important;
+  color: color-mix(in oklch, var(--foreground) 92%, transparent) !important;
   opacity: 1 !important;
 }
 
 .admin-editor-surface .milkdown-toolbar .toolbar-item:hover,
 .admin-editor-surface .milkdown-toolbar .toolbar-item:focus-visible {
-  background: hsl(var(--accent)) !important;
-  color: hsl(var(--accent-foreground)) !important;
+  background: var(--accent) !important;
+  color: var(--accent-foreground) !important;
   outline: none;
 }
 
 .admin-editor-surface .milkdown-toolbar .toolbar-item[aria-pressed="true"],
 .admin-editor-surface .milkdown-toolbar .toolbar-item[data-active="true"],
 .admin-editor-surface .milkdown-toolbar .toolbar-item.active {
-  background: hsl(var(--primary) / 0.16) !important;
-  color: hsl(var(--foreground)) !important;
+  background: color-mix(in oklch, var(--primary) 16%, transparent) !important;
+  color: var(--foreground) !important;
 }
 
 .admin-editor-surface .milkdown-toolbar .toolbar-item .milkdown-icon,
@@ -383,67 +427,160 @@ html[data-ui-theme="light"] {
 }
 
 .admin-editor-surface .milkdown-toolbar .divider {
-  background: hsl(var(--border)) !important;
+  background: var(--border) !important;
   opacity: 1 !important;
 }
 
+.admin-editor-compare {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--muted) 48%, transparent),
+      transparent 46%,
+      color-mix(in oklch, var(--card) 72%, transparent)
+    ),
+    var(--card);
+}
+
+.admin-editor-compare-pane {
+  background: color-mix(in oklch, var(--card) 86%, var(--background));
+}
+
+.admin-editor-compare-source {
+  background: color-mix(in oklch, var(--background) 72%, var(--card));
+}
+
+.admin-editor-compare-preview {
+  background: color-mix(in oklch, var(--card) 90%, var(--background));
+}
+
+.admin-editor-compare-header {
+  display: flex;
+  min-height: 3.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 82%, transparent);
+  padding: 0.7rem 1rem;
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+}
+
+.admin-editor-compare-source-editor {
+  min-height: 100%;
+}
+
+.admin-editor-compare-source-editor > div:first-child {
+  width: 3rem;
+  border-color: color-mix(in oklch, var(--border) 74%, transparent);
+  background: color-mix(in oklch, var(--muted) 50%, transparent);
+  padding-top: 1rem;
+  font-size: 0.72rem;
+}
+
+.admin-editor-compare-source-editor textarea {
+  height: 100%;
+  min-height: 0;
+  padding: 1rem 1.25rem 1.75rem;
+  font-size: 0.86rem;
+  line-height: 1.6rem;
+}
+
+.admin-editor-compare-preview-surface {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card) 80%, transparent),
+      color-mix(in oklch, var(--background) 54%, transparent)
+    );
+}
+
+.admin-editor-compare-preview-surface .milkdown .ProseMirror {
+  max-width: 72ch;
+  margin: 0 auto;
+  padding: 1.35rem 1.5rem 2rem;
+}
+
+.admin-editor-compare-preview-surface .milkdown .ProseMirror h1 {
+  margin: 0 0 0.9rem;
+  font-size: 1.62rem;
+  line-height: 2.05rem;
+  font-weight: 760;
+}
+
+.admin-editor-compare-preview-surface .milkdown .ProseMirror h2 {
+  margin: 1.4rem 0 0.55rem;
+  font-size: 1.12rem;
+  line-height: 1.55rem;
+  font-weight: 720;
+}
+
+.admin-editor-compare-preview-surface .milkdown .ProseMirror p,
+.admin-editor-compare-preview-surface .milkdown .ProseMirror li {
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.admin-editor-compare-preview-surface .milkdown .ProseMirror:focus {
+  outline: none;
+}
+
 .admin-editor-preview {
-  color: hsl(var(--foreground));
+  color: var(--foreground);
 }
 
 .admin-editor-preview :is(h1, h2, h3, h4, h5, h6) {
-  color: hsl(var(--editor-heading));
+  color: var(--editor-heading);
 }
 
 .admin-editor-preview p,
 .admin-editor-preview li {
-  color: hsl(var(--editor-text-soft));
+  color: var(--editor-text-soft);
 }
 
 .admin-editor-preview a {
-  color: hsl(var(--editor-link));
+  color: var(--editor-link);
 }
 
 .admin-editor-preview hr {
   border: 0;
-  border-top: 1px solid hsl(var(--border));
+  border-top: 1px solid var(--border);
   margin: 1.5rem 0;
 }
 
 .admin-editor-preview .hljs {
   background: transparent;
-  color: hsl(var(--editor-code-foreground));
+  color: var(--editor-code-foreground);
 }
 
 .admin-editor-preview .hljs-subst,
 .admin-editor-preview .hljs-punctuation {
-  color: hsl(var(--editor-code-foreground));
+  color: var(--editor-code-foreground);
 }
 
 .admin-editor-preview .hljs-comment,
 .admin-editor-preview .hljs-quote {
-  color: hsl(var(--editor-code-comment));
+  color: var(--editor-code-comment);
 }
 
 .admin-editor-preview .hljs-keyword,
 .admin-editor-preview .hljs-selector-tag,
 .admin-editor-preview .hljs-meta .hljs-keyword,
 .admin-editor-preview .hljs-doctag {
-  color: hsl(var(--editor-code-keyword));
+  color: var(--editor-code-keyword);
 }
 
 .admin-editor-preview .hljs-string,
 .admin-editor-preview .hljs-attr,
 .admin-editor-preview .hljs-regexp,
 .admin-editor-preview .hljs-template-variable {
-  color: hsl(var(--editor-code-string));
+  color: var(--editor-code-string);
 }
 
 .admin-editor-preview .hljs-number,
 .admin-editor-preview .hljs-literal,
 .admin-editor-preview .hljs-symbol,
 .admin-editor-preview .hljs-bullet {
-  color: hsl(var(--editor-code-number));
+  color: var(--editor-code-number);
 }
 
 .admin-editor-preview .hljs-title,
@@ -452,25 +589,115 @@ html[data-ui-theme="light"] {
 .admin-editor-preview .hljs-title.function_,
 .admin-editor-preview .hljs-function .hljs-title,
 .admin-editor-preview .hljs-property {
-  color: hsl(var(--editor-code-function));
+  color: var(--editor-code-function);
 }
 
 .admin-editor-preview .hljs-variable,
 .admin-editor-preview .hljs-name,
 .admin-editor-preview .hljs-params,
 .admin-editor-preview .hljs-attribute {
-  color: hsl(var(--editor-code-variable));
+  color: var(--editor-code-variable);
 }
 
 .admin-editor-preview .hljs-built_in,
 .admin-editor-preview .hljs-type,
 .admin-editor-preview .hljs-link {
-  color: hsl(var(--editor-code-literal));
+  color: var(--editor-code-literal);
 }
 
 .admin-editor-preview .hljs-meta,
 .admin-editor-preview .hljs-selector-id,
 .admin-editor-preview .hljs-selector-class,
 .admin-editor-preview .hljs-section {
-  color: hsl(var(--editor-code-meta));
+  color: var(--editor-code-meta);
+}
+
+@media (min-width: 1024px) {
+  .admin-app-shell-grid {
+    grid-template-columns: var(--admin-sidebar-width, 272px) minmax(0, 1fr);
+  }
+
+  .admin-sidebar-resize-handle {
+    position: absolute;
+    top: 1rem;
+    bottom: 1rem;
+    right: 0.15rem;
+    z-index: 20;
+    display: flex;
+    height: auto;
+    width: 0.75rem;
+    cursor: col-resize;
+    touch-action: none;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+  }
+
+  .admin-sidebar-resize-handle::before {
+    content: "";
+    position: absolute;
+    display: block;
+    height: 3.35rem;
+    width: 0.4rem;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--card) 74%, var(--border));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--foreground) 9%, transparent),
+      0 0 0 1px color-mix(in oklch, var(--background) 58%, transparent),
+      0 8px 18px color-mix(in oklch, var(--background) 34%, transparent);
+    transition:
+      background-color 160ms ease,
+      height 160ms ease,
+      box-shadow 160ms ease,
+      width 160ms ease;
+  }
+
+  .admin-sidebar-resize-handle::after {
+    content: "";
+    position: absolute;
+    height: 1.55rem;
+    width: 0.18rem;
+    border-radius: 999px;
+    background: radial-gradient(
+        circle,
+        color-mix(in oklch, var(--foreground) 58%, transparent) 0 1px,
+        transparent 1.25px
+      )
+      center / 0.18rem 0.42rem repeat-y;
+    opacity: 0.78;
+    transition:
+      background 160ms ease,
+      height 160ms ease,
+      opacity 160ms ease;
+  }
+
+  .admin-sidebar-resize-handle:hover::before,
+  .admin-sidebar-resize-handle:focus-visible::before {
+    height: 4.35rem;
+    width: 0.55rem;
+    background: color-mix(in oklch, var(--primary) 76%, var(--border));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--primary) 34%, transparent),
+      0 0 0 4px color-mix(in oklch, var(--primary) 14%, transparent),
+      0 12px 30px color-mix(in oklch, var(--primary) 20%, transparent);
+  }
+
+  .admin-sidebar-resize-handle:hover::after,
+  .admin-sidebar-resize-handle:focus-visible::after {
+    height: 2.15rem;
+    background: radial-gradient(
+        circle,
+        color-mix(in oklch, var(--primary-foreground) 82%, transparent) 0 1px,
+        transparent 1.25px
+      )
+      center / 0.18rem 0.42rem repeat-y;
+    opacity: 1;
+  }
+
+  .admin-sidebar-resize-handle:focus-visible {
+    outline: none;
+  }
 }

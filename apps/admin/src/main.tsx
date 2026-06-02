@@ -13,10 +13,33 @@ if (!rootElement) {
   throw new Error("Admin app root element #app not found");
 }
 
-ReactDOM.createRoot(rootElement).render(
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <RouterProvider router={router} />
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+function shouldUseAdminDemoMocks() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const demoParam = searchParams.get("demo");
+  if (demoParam === "true") {
+    window.localStorage.setItem("admin-demo-mode", "true");
+    return true;
+  }
+  if (demoParam === "false") {
+    window.localStorage.removeItem("admin-demo-mode");
+    return false;
+  }
+  return window.localStorage.getItem("admin-demo-mode") === "true";
+}
+
+async function bootstrapAdminApp() {
+  if (shouldUseAdminDemoMocks()) {
+    const { setupAdminDemoApiMocks } = await import("~/demo/mock-admin-api");
+    setupAdminDemoApiMocks();
+  }
+
+  ReactDOM.createRoot(rootElement).render(
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+void bootstrapAdminApp();

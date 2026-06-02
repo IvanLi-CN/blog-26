@@ -162,7 +162,7 @@ export function ContentSyncPage() {
         <MetricCard
           title="总内容量"
           value={formatCount(contentStats.total ?? 0)}
-          description="来自 posts 表统计"
+          description="当前已收录内容"
         />
         <MetricCard
           title="累计同步"
@@ -186,28 +186,29 @@ export function ContentSyncPage() {
               <Alert tone="danger">{getErrorMessage(sourcesQuery.error)}</Alert>
             ) : (
               (sourcesQuery.data ?? []).map((source) => (
-                <Card key={source.name} className="bg-muted/40 shadow-none">
-                  <CardContent className="space-y-3 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="font-medium">{source.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {source.type} · priority {source.priority}
-                        </div>
+                <div
+                  key={source.name}
+                  className="space-y-3 rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-medium">{source.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {source.type} · priority {source.priority}
                       </div>
-                      <Badge tone={source.online ? "success" : "danger"}>
-                        {source.online ? "online" : "offline"}
-                      </Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      已同步 {formatCount(source.totalItems)} 项
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      最近同步：{formatDateTime(source.lastSync)}
-                    </div>
-                    {source.error ? <Alert tone="danger">{source.error}</Alert> : null}
-                  </CardContent>
-                </Card>
+                    <Badge tone={source.online ? "success" : "danger"}>
+                      {source.online ? "online" : "offline"}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    已同步 {formatCount(source.totalItems)} 项
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    最近同步：{formatDateTime(source.lastSync)}
+                  </div>
+                  {source.error ? <Alert tone="danger">{source.error}</Alert> : null}
+                </div>
               ))
             )}
           </CardContent>
@@ -216,7 +217,7 @@ export function ContentSyncPage() {
         <Card>
           <CardHeader>
             <CardTitle>向量化摘要</CardTitle>
-            <CardDescription>直接透出当前兼容层返回的统计结果。</CardDescription>
+            <CardDescription>查看当前索引状态与向量统计。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Badge tone="outline">{managerStats.currentSyncStatus ?? "idle"}</Badge>
@@ -229,7 +230,7 @@ export function ContentSyncPage() {
         <Card>
           <CardHeader>
             <CardTitle>按类型统计</CardTitle>
-            <CardDescription>来自数据库的内容计数。</CardDescription>
+            <CardDescription>按内容类型汇总当前收录情况。</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto admin-scrollbar">
             <Table>
@@ -266,7 +267,7 @@ export function ContentSyncPage() {
             {(historyQuery.data ?? []).map((entry) => (
               <div
                 key={`${entry.startTime}-${entry.success}-${entry.duration}-${entry.sources.join("|")}`}
-                className="rounded-xl border border-border bg-muted/60 p-4"
+                className="rounded-3xl bg-muted/50 p-4 shadow-inner shadow-shadow-inset"
               >
                 <div className="flex items-center justify-between gap-2">
                   <Badge tone={entry.success ? "success" : "danger"}>
@@ -291,7 +292,7 @@ export function ContentSyncPage() {
       <Card>
         <CardHeader>
           <CardTitle>最近日志</CardTitle>
-          <CardDescription>从兼容层直接读取最近 20 条同步日志。</CardDescription>
+          <CardDescription>最近 20 条同步记录。</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto admin-scrollbar">
           <Table>

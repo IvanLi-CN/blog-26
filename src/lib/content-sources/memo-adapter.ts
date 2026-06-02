@@ -25,7 +25,7 @@ export function memoToContentItem(memo: PostRow): ContentItem {
     excerpt: memo.excerpt || generateExcerptFromContent(memo.body),
     contentHash: memo.contentHash,
     lastModified: memo.lastModified || memo.updateDate || memo.publishDate,
-    source: memo.source || memo.dataSource || "webdav",
+    source: memo.source || memo.dataSource || "local",
     filePath: memo.filePath || memo.id,
     draft: Boolean(memo.draft),
     public: Boolean(memo.public ?? true),

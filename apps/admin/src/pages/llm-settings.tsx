@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { BrainCircuit, ExternalLink, FlaskConical, WandSparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Switch } from "@/components/ui/switch";
 import { AdminApiError, adminApi } from "@/lib/admin-api-client";
 import {
   type LlmModelCapability,
@@ -28,6 +27,7 @@ import {
   FieldLabel,
   Input,
   Spinner,
+  Switch,
 } from "~/components/ui";
 import { formatDateTime, getErrorMessage, PageHeader } from "~/pages/helpers";
 
@@ -223,7 +223,7 @@ function TestResultPopover({
   if (!open) return null;
 
   return (
-    <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-border bg-card p-4 shadow-2xl">
+    <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-3xl border border-border/60 bg-card p-4 shadow-2xl shadow-shadow-strong">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-medium text-foreground">{TIER_META[tier].title}测试</div>
@@ -376,7 +376,7 @@ function TierCard({
         </div>
 
         {supportsAdvancedProvider ? (
-          <div className="flex items-center justify-between rounded-xl border border-border/70 px-3 py-3">
+          <div className="flex items-center justify-between rounded-3xl bg-muted/40 px-3 py-3 shadow-inner shadow-shadow-inset">
             <div>
               <div className="text-sm font-medium text-foreground">高级设置</div>
               <div className="text-xs text-muted-foreground">
@@ -535,7 +535,7 @@ export function LlmSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="LLM 设置"
-        description="把对话、嵌入、重排序模型配置持久化到数据库；环境变量只作为缺省值。"
+        description="配置对话、嵌入与重排序模型，保存后立即用于后台任务。"
         actions={
           <Button onClick={() => saveMutation.mutate(editor)} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? <Spinner /> : null}

@@ -672,6 +672,10 @@ export const filesRouter = createTRPCRouter({
   createDirectory: adminProcedure.input(createDirectorySchema).mutation(async ({ input }) => {
     try {
       const manager = getContentSourceManager();
+
+      // 确保内容源已注册
+      await ensureContentSourcesRegistered(manager);
+
       const source = manager.getSource(input.source);
 
       if (!source) {
@@ -681,8 +685,30 @@ export const filesRouter = createTRPCRouter({
         });
       }
 
-      // TODO: 实现具体的目录创建逻辑
-      // await source.createDirectory(input.path);
+      if (source instanceof LocalContentSource) {
+        const fs = await import("node:fs/promises");
+        const nodePath = await import("node:path");
+        const basePath = resolve(requireLocalBasePath());
+        const safePath = assertLocalPathAllowed(input.path);
+        const fullPath = nodePath.join(basePath, safePath);
+
+        try {
+          await fs.mkdir(fullPath);
+        } catch (error: any) {
+          if (error?.code === "EEXIST") {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "目标目录已存在",
+            });
+          }
+          throw error;
+        }
+      } else {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "当前内容源不支持创建目录",
+        });
+      }
 
       return {
         success: true,

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { adminApi } from "@/lib/admin-api-client";
 import {
   Alert,
@@ -9,6 +9,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmDialog,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   FieldLabel,
   Input,
   Table,
@@ -27,22 +33,12 @@ export function PatsPage() {
   const [label, setLabel] = useState("");
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
 
   const patsQuery = useQuery({
     queryKey: ["admin-pats", includeRevoked],
     queryFn: () => adminApi.listPersonalAccessTokens(includeRevoked),
   });
-
-  useEffect(() => {
-    if (!createOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setCreateOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [createOpen]);
 
   const createMutation = useMutation({
     mutationFn: () => adminApi.createPersonalAccessToken(label.trim() || undefined),
@@ -64,7 +60,6 @@ export function PatsPage() {
   });
 
   async function handleRevoke(tokenId: string) {
-    if (!window.confirm("确认删除访问令牌吗？\n此操作不可撤销。")) return;
     await revokeMutation.mutateAsync(tokenId);
   }
 
@@ -105,34 +100,32 @@ export function PatsPage() {
         </Card>
       ) : null}
 
-      {createOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-lg">
-            <CardHeader>
-              <CardTitle>创建新的访问令牌</CardTitle>
-              <CardDescription>标签只是为了区分用途，不会影响权限。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <FieldLabel>标签（可选）</FieldLabel>
-                <Input
-                  value={label}
-                  onChange={(event) => setLabel(event.target.value)}
-                  placeholder="例如：CI、脚本、调试"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                  取消
-                </Button>
-                <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-                  生成访问令牌
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="pr-8 text-xl font-semibold">创建新的访问令牌</DialogTitle>
+            <CardDescription>标签只是为了区分用途，不会影响权限。</CardDescription>
+          </DialogHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <FieldLabel>标签（可选）</FieldLabel>
+              <Input
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="例如：CI、脚本、调试"
+              />
+            </div>
+          </CardContent>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+              生成访问令牌
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -172,7 +165,7 @@ export function PatsPage() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleRevoke(row.token.id)}
+                          onClick={() => setRevokeTarget(row.token.id)}
                         >
                           删除
                         </Button>
@@ -185,6 +178,20 @@ export function PatsPage() {
           </Table>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRevokeTarget(null);
+        }}
+        destructive
+        title="删除访问令牌"
+        description="此令牌会立即撤销，依赖它的脚本或服务将无法继续访问。"
+        confirmLabel="删除令牌"
+        onConfirm={async () => {
+          if (!revokeTarget) return;
+          await handleRevoke(revokeTarget);
+        }}
+      />
     </div>
   );
 }

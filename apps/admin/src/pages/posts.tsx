@@ -8,6 +8,8 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
+  ConfirmDialog,
   FieldLabel,
   Input,
   Select,
@@ -29,6 +31,7 @@ export function PostsPage() {
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [batchAction, setBatchAction] = useState<"publish" | "unpublish" | "delete" | null>(null);
 
   const postsQuery = useQuery({
     queryKey: ["admin-posts", page, search, status],
@@ -82,8 +85,6 @@ export function PostsPage() {
 
   async function applyBatch(action: "publish" | "unpublish" | "delete") {
     if (selectedIds.length === 0) return;
-    const confirmed = window.confirm(`确认对 ${selectedIds.length} 篇文章执行 ${action} 吗？`);
-    if (!confirmed) return;
     await batchMutation.mutateAsync({ ids: selectedIds, action });
   }
 
@@ -91,7 +92,7 @@ export function PostsPage() {
     <div className="space-y-6">
       <PageHeader
         title="文章"
-        description="新的后台文章列表直接消费 admin HTTP contract。"
+        description="管理文章草稿、发布状态和向量化任务。"
         actions={
           <>
             <Button asChild>
@@ -122,60 +123,59 @@ export function PostsPage() {
       ) : null}
 
       <Card>
-        <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_220px_140px]">
-          <form className="grid gap-2" onSubmit={applySearch}>
-            <FieldLabel>搜索文章</FieldLabel>
-            <div className="flex gap-2">
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="标题、slug、正文关键字"
-              />
-              <Button type="submit">搜索</Button>
+        <CardContent className="p-5">
+          <div className="grid gap-5 xl:grid-cols-[minmax(24rem,1fr)_minmax(13rem,16rem)_max-content] xl:items-end">
+            <form className="grid min-w-0 gap-2" onSubmit={applySearch}>
+              <FieldLabel className="mb-0">搜索文章</FieldLabel>
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <Input
+                  value={searchDraft}
+                  onChange={(event) => setSearchDraft(event.target.value)}
+                  placeholder="标题、slug、正文关键字"
+                />
+                <Button type="submit">搜索</Button>
+              </div>
+            </form>
+            <div className="grid min-w-0 gap-2">
+              <FieldLabel className="mb-0">状态</FieldLabel>
+              <Select
+                value={status}
+                onChange={(event) => {
+                  setSelectedIds([]);
+                  setStatus(event.target.value as typeof status);
+                  setPage(1);
+                }}
+              >
+                <option value="all">全部</option>
+                <option value="published">已发布</option>
+                <option value="draft">草稿</option>
+              </Select>
             </div>
-          </form>
-          <div>
-            <FieldLabel>状态</FieldLabel>
-            <Select
-              value={status}
-              onChange={(event) => {
-                setSelectedIds([]);
-                setStatus(event.target.value as typeof status);
-                setPage(1);
-              }}
-            >
-              <option value="all">全部</option>
-              <option value="published">已发布</option>
-              <option value="draft">草稿</option>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <FieldLabel>批量操作</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={!selectedIds.length || batchMutation.isPending}
-                onClick={() => applyBatch("publish")}
-              >
-                发布
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!selectedIds.length || batchMutation.isPending}
-                onClick={() => applyBatch("unpublish")}
-              >
-                撤回
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={!selectedIds.length || batchMutation.isPending}
-                onClick={() => applyBatch("delete")}
-              >
-                删除
-              </Button>
+            <div className="grid gap-2 xl:justify-self-end">
+              <FieldLabel className="mb-0">批量操作</FieldLabel>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={!selectedIds.length || batchMutation.isPending}
+                  onClick={() => setBatchAction("publish")}
+                >
+                  发布
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={!selectedIds.length || batchMutation.isPending}
+                  onClick={() => setBatchAction("unpublish")}
+                >
+                  撤回
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={!selectedIds.length || batchMutation.isPending}
+                  onClick={() => setBatchAction("delete")}
+                >
+                  删除
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -192,12 +192,12 @@ export function PostsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={allSelected}
-                      onChange={() =>
+                      onCheckedChange={() =>
                         setSelectedIds(allSelected ? [] : rows.map((post) => post.id))
                       }
+                      aria-label="选择当前页全部文章"
                     />
                   </TableHead>
                   <TableHead>文章</TableHead>
@@ -229,10 +229,10 @@ export function PostsPage() {
                     return (
                       <TableRow key={post.id}>
                         <TableCell>
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={selectedIds.includes(post.id)}
-                            onChange={() => toggleRow(post.id)}
+                            onCheckedChange={() => toggleRow(post.id)}
+                            aria-label={`选择文章 ${post.title || post.slug}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -321,6 +321,22 @@ export function PostsPage() {
           </div>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={batchAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setBatchAction(null);
+        }}
+        destructive={batchAction === "delete"}
+        title="确认批量操作"
+        description={`将对 ${selectedIds.length} 篇文章执行 ${
+          batchAction === "publish" ? "发布" : batchAction === "unpublish" ? "撤回" : "删除"
+        }。此操作会立即提交到后台。`}
+        confirmLabel={batchAction === "delete" ? "删除" : "确认执行"}
+        onConfirm={async () => {
+          if (!batchAction) return;
+          await applyBatch(batchAction);
+        }}
+      />
     </div>
   );
 }

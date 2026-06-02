@@ -1,14 +1,11 @@
+import { Code2, Eye } from "lucide-react";
 import { nanoid } from "nanoid";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import remarkGfm from "remark-gfm";
 import { MilkdownEditor } from "@/components/memos/MilkdownEditor";
-import { resolveImagePath } from "@/lib/image-utils";
 import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import { SourceEditor } from "~/editor/source-editor";
 
-type EditorMode = "wysiwyg" | "source" | "preview";
+type EditorMode = "wysiwyg" | "source" | "compare";
 
 export type UniversalEditorRef = {
   processInlineImages: (content: string) => Promise<string>;
@@ -160,12 +157,6 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       return rewriteApiFilesUrlsToRelative(markdown, baseDir).content;
     };
 
-    const extractBodyContent = (markdown: string) => {
-      const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
-      const matched = markdown.match(frontmatterRegex);
-      return matched ? matched[2] : markdown;
-    };
-
     useEffect(() => {
       if (initialContent !== lastInitialContentRef.current && initialContent !== content) {
         lastInitialContentRef.current = initialContent;
@@ -180,14 +171,14 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     }, [mode, currentMode]);
 
     return (
-      <div className={`flex h-full min-h-[34rem] flex-col ${className}`} data-testid={dataTestId}>
+      <div className={`flex h-full min-h-0 flex-col ${className}`} data-testid={dataTestId}>
         {title ? (
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-xl font-semibold">{title}</h2>
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card/80">
+        <div className="min-h-0 flex-1 overflow-hidden">
           {currentMode === "wysiwyg" ? (
             <div className="admin-editor-surface admin-scrollbar h-full overflow-auto">
               <MilkdownEditor
@@ -195,7 +186,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                 content={content}
                 onChange={handleContentChange}
                 placeholder={placeholder}
-                className="h-full min-h-[34rem] w-full admin-editor-wysiwyg"
+                className="h-full min-h-0 w-full admin-editor-wysiwyg"
                 data-testid="content-input"
                 editorId={`wysiwyg-${editorId}`}
                 articlePath={articlePath}
@@ -210,61 +201,65 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
               content={convertApiUrlsToRelativePaths(content)}
               onChange={handleContentChange}
               placeholder={placeholder}
-              className="h-full"
+              className="h-full rounded-none border-0 bg-transparent shadow-none"
               data-testid="content-input"
               onImageUpload={handleImageUploadForSource}
+              textareaLabel="Markdown source editor"
+              textareaName={`${editorId}-source`}
             />
           ) : null}
 
-          {currentMode === "preview" ? (
-            <div className="admin-editor-surface admin-scrollbar h-full overflow-auto p-6">
-              {content ? (
-                <div className="admin-editor-preview markdown-body max-w-none">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeHighlight]}
-                    components={{
-                      img: ({ src, alt }) => {
-                        if (typeof src !== "string") return null;
-                        const markdownFilePath = articlePath
-                          ? articlePath.replace(/^\/+/, "")
-                          : undefined;
-                        let imagePathForResolution = src;
-                        let markdownFilePathForResolution = markdownFilePath;
-
-                        if (src.startsWith("~/assets/")) {
-                          imagePathForResolution = src.replace(/^~\//, "");
-                          markdownFilePathForResolution = undefined;
-                        }
-
-                        const resolved = resolveImagePath(
-                          imagePathForResolution,
-                          contentSource,
-                          markdownFilePathForResolution
-                        );
-                        const imageSrc = resolved ?? src;
-
-                        return (
-                          // biome-ignore lint/performance/noImgElement: Admin SPA preview needs the raw image element.
-                          <img
-                            src={imageSrc}
-                            alt={alt || ""}
-                            className="max-w-full rounded-xl border border-border shadow-sm"
-                            onError={(event) => {
-                              console.warn("图片加载失败:", imageSrc);
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-                        );
-                      },
-                    }}
-                  >
-                    {extractBodyContent(content)}
-                  </ReactMarkdown>
+          {currentMode === "compare" ? (
+            <div className="admin-editor-compare grid h-full min-h-0 overflow-hidden lg:grid-cols-[minmax(25rem,0.96fr)_minmax(0,1fr)]">
+              <section className="admin-editor-compare-pane admin-editor-compare-source flex min-h-0 min-w-0 flex-col border-b border-border/58 lg:border-r lg:border-b-0">
+                <div className="admin-editor-compare-header">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Code2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">Markdown</div>
+                      <div className="text-xs text-muted-foreground">编辑源文</div>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">预览内容...</span>
-              )}
+                <div className="min-h-0 flex-1">
+                  <SourceEditor
+                    content={convertApiUrlsToRelativePaths(content)}
+                    onChange={handleContentChange}
+                    placeholder={placeholder}
+                    className="admin-editor-compare-source-editor h-full min-h-0 rounded-none border-0 bg-transparent shadow-none"
+                    data-testid="content-input"
+                    onImageUpload={handleImageUploadForSource}
+                    textareaLabel="Markdown source editor"
+                    textareaName={`${editorId}-compare-source`}
+                  />
+                </div>
+              </section>
+              <section className="admin-editor-compare-pane admin-editor-compare-preview flex min-h-0 min-w-0 flex-col">
+                <div className="admin-editor-compare-header">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">Preview</div>
+                      <div className="text-xs text-muted-foreground">Milkdown 只读排版</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="admin-editor-surface admin-editor-compare-preview-surface admin-scrollbar min-h-0 flex-1 overflow-auto">
+                  <MilkdownEditor
+                    key={`milkdown-compare-readonly-${editorId}`}
+                    content={content}
+                    onChange={handleContentChange}
+                    placeholder={placeholder}
+                    className="h-full min-h-0 w-full admin-editor-wysiwyg"
+                    data-testid="content-preview"
+                    editorId={`compare-readonly-${editorId}`}
+                    articlePath={articlePath}
+                    contentSource={contentSource}
+                    onImageUpload={handleImageUploadForWysiwyg}
+                    readOnly
+                  />
+                </div>
+              </section>
             </div>
           ) : null}
         </div>

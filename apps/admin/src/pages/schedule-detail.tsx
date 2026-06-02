@@ -73,7 +73,7 @@ export function ScheduleDetailPage() {
           <CardDescription>当前调度配置与下一次执行时间。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-border bg-muted/50 p-4">
+          <div className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset">
             <div className="text-sm text-muted-foreground">运行状态</div>
             <div className="mt-2 flex items-center gap-2">
               <Badge tone={job?.running ? "warning" : "outline"}>
@@ -81,7 +81,7 @@ export function ScheduleDetailPage() {
               </Badge>
             </div>
           </div>
-          <div className="rounded-xl border border-border bg-muted/50 p-4">
+          <div className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset">
             <div className="text-sm text-muted-foreground">调度</div>
             <div className="mt-2 font-medium">{job?.scheduleText || "手动触发"}</div>
             <div className="mt-1 text-sm text-muted-foreground">

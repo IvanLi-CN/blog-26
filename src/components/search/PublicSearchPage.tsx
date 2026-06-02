@@ -324,7 +324,7 @@ export default function PublicSearchPage({
                     type="text"
                     value={query}
                     onChange={(event) => onQueryChange(event.target.value)}
-                    placeholder="例如 Arch、React、WebDAV"
+                    placeholder="例如 Arch、React、SQLite"
                     className="nature-input self-stretch"
                     autoComplete="off"
                     aria-label="搜索关键词"

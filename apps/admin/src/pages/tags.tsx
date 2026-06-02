@@ -93,7 +93,7 @@ export function TagsPage() {
     <div className="space-y-6">
       <PageHeader
         title="标签分组"
-        description="用 AI 生成建议，再把最终 JSON 保存回数据库。"
+        description="整理标签分组，保存后用于公开站归类展示。"
         actions={
           <>
             <Button
@@ -173,7 +173,10 @@ export function TagsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {(overviewQuery.data?.groups ?? []).map((group) => (
-              <div key={group.key} className="rounded-xl border border-border bg-muted/50 p-4">
+              <div
+                key={group.key}
+                className="rounded-3xl bg-muted/46 p-4 shadow-inner shadow-shadow-inset"
+              >
                 <div className="font-medium">{group.title}</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {group.tags.slice(0, 16).map((tag) => (
@@ -189,7 +192,7 @@ export function TagsPage() {
             ))}
 
             {ungroupedTags.length > 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-4">
+              <div className="rounded-3xl border border-dashed border-border/70 bg-muted/30 p-4">
                 <div className="font-medium">未分组标签</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {ungroupedTags.slice(0, 20).map((tag) => (
@@ -206,7 +209,7 @@ export function TagsPage() {
         <Card>
           <CardHeader>
             <CardTitle>可编辑 JSON</CardTitle>
-            <CardDescription>你可以直接修改数组后保存。</CardDescription>
+            <CardDescription>检查分组内容，调整后保存。</CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea

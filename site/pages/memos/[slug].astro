@@ -19,6 +19,7 @@ export async function getStaticPaths() {
 const { memo } = Astro.props as { memo: PublicMemoRecord };
 const snapshot = await getSnapshot();
 const displayDate = memo.publishedAt ?? memo.createdAt;
+const contentSource = "local";
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
@@ -89,7 +90,7 @@ const structuredData = {
             removeTags={true}
             rewritePublicSitePaths={true}
             articlePath={memo.filePath}
-            contentSource={(memo.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav"}
+            contentSource={contentSource}
           />
         </div>
       </div>
