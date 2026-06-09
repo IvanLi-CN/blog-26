@@ -46,6 +46,7 @@ The current blog local setup still depends on synthetic wrapper directories like
 - Local root listing must expose configured real roots, not synthetic compatibility folders.
 - Unconfigured stray directories under the local base path must not appear in the top-level local content browser.
 - Local file read/list operations should stay constrained to configured content roots.
+- Local file creation/write operations must self-initialize the selected `local` content source before the first write, so creating a file inside configured real roots such as `Hardware/` does not depend on an earlier directory scan or sync run.
 
 ## 5. Acceptance criteria
 
@@ -54,6 +55,7 @@ The current blog local setup still depends on synthetic wrapper directories like
 3. A configured real post root such as `Hardware/foo.md` syncs as `type="post"` and keeps `/posts/<slug>` routes unchanged.
 4. The admin local file tree top level shows configured real roots and does not require `posts/` or lowercase `memos/` to exist.
 5. Regression tests cover configured-root inference and local-source scanning against real root names.
+6. Creating a new local file from the admin file tree inside a configured real root such as `Hardware/` succeeds without surfacing a “内容源 local 尚未初始化” error.
 
 ## 6. Risks and rollback
 
@@ -76,3 +78,4 @@ The current blog local setup still depends on synthetic wrapper directories like
 ## 7. Change log
 
 - 2026-03-11: Initial spec for removing synthetic local wrapper directories and recognizing the real note tree directly.
+- 2026-06-09: Clarified that admin local file writes must initialize the selected local source lazily so real-root file creation works before any prior sync or scan.

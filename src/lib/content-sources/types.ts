@@ -182,6 +182,11 @@ export interface IContentSource {
   initialize(): Promise<void>;
 
   /**
+   * 返回内容源是否已经完成初始化
+   */
+  isReady?(): boolean;
+
+  /**
    * 获取所有内容项列表
    */
   listContent(): Promise<ContentItem[]>;

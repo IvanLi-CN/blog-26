@@ -410,6 +410,35 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
   }
 }
 
+async function ensureSourceReady(
+  manager: ReturnType<typeof getContentSourceManager>,
+  sourceName: string
+) {
+  await ensureContentSourcesRegistered(manager);
+
+  const source = manager.getSource(sourceName);
+  if (!source) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `数据源 "${sourceName}" 不存在`,
+    });
+  }
+
+  try {
+    if (!(source.isReady?.() ?? false)) {
+      await source.initialize();
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `数据源 "${sourceName}" 初始化失败：${message}`,
+    });
+  }
+
+  return source;
+}
+
 /**
  * 读取 WebDAV 文件内容
  */
@@ -572,14 +601,7 @@ export const filesRouter = createTRPCRouter({
       console.log(`📝 [Files API] 内容预览: ${input.content.substring(0, 200)}...`);
 
       const manager = getContentSourceManager();
-      const source = manager.getSource(input.source);
-
-      if (!source) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `数据源 "${input.source}" 不存在`,
-        });
-      }
+      const source = await ensureSourceReady(manager, input.source);
 
       // 检查内容源是否支持写入功能
       if (typeof (source as any).writeFile !== "function") {
@@ -673,17 +695,7 @@ export const filesRouter = createTRPCRouter({
     try {
       const manager = getContentSourceManager();
 
-      // 确保内容源已注册
-      await ensureContentSourcesRegistered(manager);
-
-      const source = manager.getSource(input.source);
-
-      if (!source) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `数据源 "${input.source}" 不存在`,
-        });
-      }
+      const source = await ensureSourceReady(manager, input.source);
 
       if (source instanceof LocalContentSource) {
         const fs = await import("node:fs/promises");
@@ -717,6 +729,9 @@ export const filesRouter = createTRPCRouter({
       };
     } catch (error) {
       console.error("创建目录失败:", error);
+      if (error instanceof TRPCError) {
+        throw error;
+      }
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "创建目录失败",
