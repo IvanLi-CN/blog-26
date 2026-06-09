@@ -122,6 +122,11 @@ function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
           content={post.body || ""}
           articlePath={post.filePath || post.slug}
           contentSource="local"
+          publicMediaContext={{
+            kind: "post",
+            slug: post.slug,
+            filePath: post.filePath || post.slug,
+          }}
           enableImageLightbox
           enableMath
           enableMermaid
@@ -153,6 +158,11 @@ function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
           content={memo.content || ""}
           articlePath={memo.filePath || memo.slug}
           contentSource="local"
+          publicMediaContext={{
+            kind: "memo",
+            slug: memo.slug,
+            filePath: memo.filePath || memo.slug,
+          }}
           enableImageLightbox
           enableMath
           enableMermaid

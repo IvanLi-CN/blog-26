@@ -1,6 +1,4 @@
 ---
-import { resolveImagePath } from "@/lib/image-utils";
-import { extractPostCoverCandidate } from "@/lib/post-cover";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import Icon from "@/components/ui/Icon";
 import type { PublicPostRecord } from "@/public-site/snapshot";
@@ -16,13 +14,7 @@ interface Props {
 
 const { post, iconMap = {}, iconSvgMap = {} } = Astro.props;
 const readingTime = formatReadingTime(calculateReadingTime(post.body || ""));
-const contentSource = (post.dataSource?.includes("local") ? "local" : "webdav") as
-  | "local"
-  | "webdav";
-const coverCandidate = extractPostCoverCandidate(post, { allowExternal: true });
-const imageSrc = coverCandidate
-  ? toPublicAssetUrl(resolveImagePath(coverCandidate, contentSource, post.filePath))
-  : null;
+const imageSrc = post.media.cover?.variants.card ?? post.media.primary?.variants.card ?? post.image;
 ---
 <article
   class="nature-panel relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8"

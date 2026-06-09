@@ -2,9 +2,11 @@ import { and, desc, eq } from "drizzle-orm";
 import { SITE } from "@/config/site";
 import { db, initializeDB } from "@/lib/db";
 import { extractTextSummary } from "@/lib/markdown-utils";
+import { buildLegacyPublicMediaUrl, type PublicMediaCollection } from "@/lib/public-media";
 import { posts } from "@/lib/schema";
 import { parseContentTags } from "@/lib/tag-parser";
 import { safeJsonParse, toMsTimestamp } from "@/lib/utils";
+import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 import { readTagGroupsFromDB } from "@/server/services/tag-groups";
 import { resolveTagIconSvgsForTags } from "@/server/services/tag-icon-ssr";
 import { getAllCategoryIcons } from "@/server/services/tag-icons";
@@ -22,6 +24,7 @@ export interface PublicPostRecord {
   tags: string[];
   author: string | null;
   image: string | null;
+  media: PublicMediaCollection;
   dataSource: string | null;
   filePath: string;
   metadata: Record<string, unknown>;
@@ -42,6 +45,7 @@ export interface PublicMemoRecord {
   dataSource: string | null;
   filePath: string;
   image: string | null;
+  media: PublicMediaCollection;
 }
 
 export interface PublicTagSummary {
@@ -60,6 +64,7 @@ export interface PublicTagTimelineItem {
   publishDate: string;
   tags: string[];
   image: string | null;
+  media: PublicMediaCollection;
   dataSource: string | null;
   filePath: string;
 }
@@ -181,6 +186,7 @@ function buildTagTimelines(
           publishDate: post.publishDate,
           tags: post.tags,
           image: post.image,
+          media: post.media,
           dataSource: post.dataSource,
           filePath: post.filePath,
         })),
@@ -195,6 +201,7 @@ function buildTagTimelines(
           publishDate: memo.publishedAt ?? memo.createdAt,
           tags: memo.tags,
           image: memo.image,
+          media: memo.media,
           dataSource: memo.dataSource,
           filePath: memo.filePath,
         })),
@@ -223,6 +230,7 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
 
   const postList: PublicPostRecord[] = rawPosts.map((row) => {
     const filePath = getCanonicalFilePath(row);
+    const media = buildPublicMediaCollection("post", row);
     return {
       id: row.id,
       slug: row.slug,
@@ -234,7 +242,14 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
       category: row.category,
       tags: normalizeTags(row.tags),
       author: row.author,
-      image: row.image,
+      image:
+        pickLegacyPublicImage(media, "cover") ??
+        buildLegacyPublicMediaUrl({
+          mediaPath: row.image,
+          dataSource: row.dataSource,
+          filePath,
+        }),
+      media,
       dataSource: row.dataSource,
       filePath,
       metadata: normalizeMetadata(row.metadata),
@@ -248,6 +263,7 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
     const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
     const filePath = getCanonicalFilePath(row);
+    const media = buildPublicMediaCollection("memo", row);
     return {
       id: row.id,
       slug: row.slug,
@@ -262,7 +278,14 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
       updatedAt,
       dataSource: row.dataSource,
       filePath,
-      image: row.image,
+      image:
+        pickLegacyPublicImage(media, "content") ??
+        buildLegacyPublicMediaUrl({
+          mediaPath: row.image,
+          dataSource: row.dataSource,
+          filePath,
+        }),
+      media,
     };
   });
 

@@ -18,6 +18,12 @@ import {
   normalizePersistedLink,
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
+import { buildLegacyPublicMediaUrl } from "@/lib/public-media";
+import {
+  buildPublicMediaCollection,
+  pickLegacyPublicImage,
+  rewritePublicMemoAttachments,
+} from "@/server/public-media";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import {
   isLocalContentEnabled,
@@ -582,11 +588,8 @@ export const memosRouter = router({
 
       // 转换为 API 响应格式
       const formattedMemos = memosWithVectorStatus.map((memo) => {
-        const markdownFilePath = memo.filePath || memo.id;
-        const attachments = normalizeAttachmentsToPersistedSemantics(
-          parseAttachments(memo.metadata),
-          markdownFilePath
-        );
+        const media = buildPublicMediaCollection("memo", memo as MemoRow);
+        const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
         const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
 
         return {
@@ -598,6 +601,14 @@ export const memosRouter = router({
           isPublic: memo.public,
           tags: memo.tags ? JSON.parse(memo.tags) : [],
           attachments,
+          image:
+            pickLegacyPublicImage(media, "content") ??
+            buildLegacyPublicMediaUrl({
+              mediaPath: memo.image,
+              dataSource: memo.dataSource,
+              filePath: memo.filePath,
+            }),
+          media,
           author: memo.author || undefined,
           filePath: memo.filePath,
           source: memo.source,
@@ -624,6 +635,8 @@ export const memosRouter = router({
             isPublic: m.isPublic,
             tags: m.tags,
             attachments: (m as any).attachments,
+            image: (m as any).image,
+            media: (m as any).media,
             author: (m as any).author,
             filePath: (m as any).filePath,
             source: (m as any).source,
@@ -682,11 +695,8 @@ export const memosRouter = router({
         });
       }
 
-      const markdownFilePath = memo.filePath || memo.id;
-      const attachments = normalizeAttachmentsToPersistedSemantics(
-        parseAttachments(memo.metadata),
-        markdownFilePath
-      );
+      const media = buildPublicMediaCollection("memo", memo);
+      const publicAttachments = rewritePublicMemoAttachments(memo, media);
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
 
@@ -698,6 +708,14 @@ export const memosRouter = router({
         content: memo.body,
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
+        image:
+          pickLegacyPublicImage(media, "content") ??
+          buildLegacyPublicMediaUrl({
+            mediaPath: memo.image,
+            dataSource: memo.dataSource,
+            filePath: memo.filePath,
+          }),
+        media,
         createdAt: displayTime,
         publishedAt,
         updatedAt,
@@ -712,7 +730,7 @@ export const memosRouter = router({
       // 管理员返回完整信息
       return {
         ...base,
-        attachments,
+        attachments: publicAttachments,
         author: memo.author || undefined,
         filePath: memo.filePath,
         source: memo.source,

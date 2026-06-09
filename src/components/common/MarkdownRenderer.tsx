@@ -105,6 +105,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     enableImageLightbox,
     articlePath,
     contentSource = "webdav",
+    publicMediaContext,
     removeTags = false,
     rewritePublicSitePaths = false,
   }) => {
@@ -177,6 +178,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           enableLightbox: config.enableImageLightbox,
           articlePath,
           contentSource,
+          publicMediaContext,
         },
       ]);
 
@@ -199,7 +201,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       // 因此这里不再注入 rehypeCollapsibleCode。
 
       return plugins;
-    }, [config, articlePath, contentSource]);
+    }, [config, articlePath, contentSource, publicMediaContext]);
 
     const urlTransform = useMemo(
       () => (rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform),

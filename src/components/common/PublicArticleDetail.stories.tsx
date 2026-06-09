@@ -41,6 +41,16 @@ ${Array.from(
 \`\`\`
 `;
 
+const publicMediaMarkdown = `
+下面的正文媒体应该在公开前台被统一改写为 blog 自己的 assets 门面 URL。
+
+![公开图片](./assets/story-cover.png)
+
+<video controls poster="./assets/story-poster.png">
+  <source src="./assets/story-clip.mp4" type="video/mp4" />
+</video>
+`;
+
 const meta = {
   title: "Public/Article Detail",
   tags: ["autodocs"],
@@ -263,6 +273,35 @@ export const MarkdownDeferredLoading: Story = {
   ),
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByLabelText("正文加载中")).toBeInTheDocument();
+  },
+};
+
+export const PublicMediaFacadeRewrite: Story = {
+  name: "公开媒体门面",
+  render: () => (
+    <PublicDocumentShell>
+      <MarkdownRenderer
+        content={publicMediaMarkdown}
+        variant="article"
+        rewritePublicSitePaths
+        publicMediaContext={{
+          kind: "post",
+          slug: "storybook-media",
+          filePath: "blog/storybook-media.md",
+        }}
+      />
+    </PublicDocumentShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const image = canvasElement.querySelector("img");
+    const video = canvasElement.querySelector("video");
+    const source = canvasElement.querySelector("source");
+
+    await expect(image?.getAttribute("src")).toContain("/api/public/assets/post/storybook-media/");
+    await expect(video?.getAttribute("poster")).toContain(
+      "/api/public/assets/post/storybook-media/"
+    );
+    await expect(source?.getAttribute("src")).toContain("/api/public/assets/post/storybook-media/");
   },
 };
 

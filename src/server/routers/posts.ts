@@ -2,6 +2,8 @@ import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
+import { buildLegacyPublicMediaUrl } from "@/lib/public-media";
+import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
@@ -114,6 +116,9 @@ export const postsRouter = router({
           public: posts.public,
           dataSource: posts.dataSource,
           contentHash: posts.contentHash,
+          metadata: posts.metadata,
+          filePath: posts.filePath,
+          source: posts.source,
         })
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -123,10 +128,21 @@ export const postsRouter = router({
 
       const postsList = await postsQuery;
 
-      const normalizedPosts = postsList.map((post) => ({
-        ...post,
-        tags: normalizeTags(post.tags),
-      }));
+      const normalizedPosts = postsList.map((post) => {
+        const media = buildPublicMediaCollection("post", post as typeof posts.$inferSelect);
+        return {
+          ...post,
+          tags: normalizeTags(post.tags),
+          image:
+            pickLegacyPublicImage(media, "card") ??
+            buildLegacyPublicMediaUrl({
+              mediaPath: post.image,
+              dataSource: post.dataSource,
+              filePath: post.filePath,
+            }),
+          media,
+        };
+      });
 
       // 计算每条记录是否已按当前模型完成向量化（哈希匹配且存在向量）
       const resolved = await getResolvedLlmConfig();
@@ -259,6 +275,16 @@ export const postsRouter = router({
         tagsValue: processedPost.tags,
       });
 
+      const media = buildPublicMediaCollection("post", processedPost as typeof posts.$inferSelect);
+      processedPost.image =
+        pickLegacyPublicImage(media, "cover") ??
+        buildLegacyPublicMediaUrl({
+          mediaPath: processedPost.image,
+          dataSource: processedPost.dataSource,
+          filePath: processedPost.filePath,
+        });
+      (processedPost as Record<string, unknown>).media = media;
+
       return processedPost;
     } catch (error) {
       console.error("获取文章失败:", error);
@@ -320,6 +346,9 @@ export const postsRouter = router({
             author: posts.author,
             image: posts.image,
             dataSource: posts.dataSource,
+            metadata: posts.metadata,
+            filePath: posts.filePath,
+            source: posts.source,
           })
           .from(posts)
           .where(
@@ -340,10 +369,21 @@ export const postsRouter = router({
           .orderBy(desc(posts.publishDate))
           .limit(limit);
 
-        return relatedPosts.map((post) => ({
-          ...post,
-          tags: normalizeTags(post.tags),
-        }));
+        return relatedPosts.map((post) => {
+          const media = buildPublicMediaCollection("post", post as typeof posts.$inferSelect);
+          return {
+            ...post,
+            tags: normalizeTags(post.tags),
+            image:
+              pickLegacyPublicImage(media, "card") ??
+              buildLegacyPublicMediaUrl({
+                mediaPath: post.image,
+                dataSource: post.dataSource,
+                filePath: post.filePath,
+              }),
+            media,
+          };
+        });
       } catch (error) {
         console.error("获取相关文章失败:", error);
         return [];

@@ -1,6 +1,7 @@
 import type { Element } from "hast";
 import type { ReactNode } from "react";
 import type { Plugin } from "unified";
+import type { PublicMediaContext } from "@/lib/public-media";
 
 /**
  * Markdown 渲染器组件的属性接口
@@ -28,6 +29,8 @@ export interface MarkdownRendererProps {
   articlePath?: string;
   /** 内容源类型，用于图片路径解析 */
   contentSource?: "local" | "webdav";
+  /** 公开媒体上下文，用于将正文媒体改写为 assets facade URL */
+  publicMediaContext?: PublicMediaContext;
   /** 是否移除内容中的标签 */
   removeTags?: boolean;
   /** 是否为 GitHub Pages 公开前台改写站内根路径 */
@@ -98,6 +101,8 @@ export interface ImageOptimizationOptions {
   articlePath?: string;
   /** 内容源类型，用于图片路径解析 */
   contentSource?: "local" | "webdav";
+  /** 公开媒体上下文，用于生成 facade URL */
+  publicMediaContext?: PublicMediaContext;
 }
 
 /**

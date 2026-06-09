@@ -1,9 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { SITE } from "@/config/site";
-import { resolveImagePath } from "@/lib/image-utils";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
-import { getPublicSiteUrl, toPublicAssetUrl, toPublicSitePath } from "@/lib/public-runtime-url";
+import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 import type {
   PublicPostRecord,
   PublicSnapshot,
@@ -270,6 +269,7 @@ export function buildHomeTimeline(snapshot: PublicSnapshot) {
     publishDate: post.publishDate,
     tags: post.tags,
     image: post.image,
+    media: post.media,
     dataSource: post.dataSource,
     filePath: post.filePath,
   }));
@@ -283,6 +283,7 @@ export function buildHomeTimeline(snapshot: PublicSnapshot) {
     publishDate: memo.publishedAt ?? memo.createdAt,
     tags: memo.tags,
     image: memo.image,
+    media: memo.media,
     dataSource: memo.dataSource,
     filePath: memo.filePath,
   }));
@@ -338,13 +339,8 @@ export function buildTagFeedItems(
 ) {
   return items.map((item) => {
     const path = item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`;
-    const image = toPublicAssetUrl(
-      resolveImagePath(
-        item.image ?? undefined,
-        (item.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
-        item.filePath
-      ) ?? item.image
-    );
+    const image =
+      item.media?.cover?.variants.cover ?? item.media?.primary?.variants.content ?? item.image;
     const source =
       item.type === "memo"
         ? (snapshot.memos.find((memo) => memo.slug === item.slug)?.content ?? item.content ?? "")
