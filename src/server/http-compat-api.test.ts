@@ -26,6 +26,7 @@ function resetHttpCompatEnv() {
   process.env.DB_PATH = TEST_DB_PATH;
   process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
   process.env.CONTENT_SOURCES = "local";
+  process.env.LOCAL_BLOG_PATH = "/blog,/Hardware";
   process.env.PUBLIC_SITE_URL = "https://pages.example.test";
   process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
   delete process.env.WEBDAV_URL;
@@ -1367,5 +1368,170 @@ describe("HTTP compatibility APIs", () => {
     expect(updated.title).toBe("Cleared Memo");
     expect(updated.content).toBe("");
     expect(updated.isPublic).toBe(false);
+  });
+
+  it("returns structured validation details when creating an empty post", async () => {
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/posts",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "未命名文章",
+            slug: "untitled-post",
+            body: "",
+            excerpt: "",
+            type: "post",
+            draft: true,
+            public: false,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/posts"
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await readJson(response);
+    expect(payload.error.code).toBe("BAD_REQUEST");
+    expect(Array.isArray(payload.error.details)).toBe(true);
+    expect(payload.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ["body"],
+          message: "内容不能为空",
+        }),
+      ])
+    );
+  });
+
+  it("initializes the local content source before writing files through the admin API", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+
+    manager.syncAll = (async () => ({
+      success: true,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      sources: ["local"],
+      stats: {
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+      errors: [],
+      logs: [],
+    })) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/new-admin-file.md",
+              content: "",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = await readJson(response);
+      expect(payload.success).toBe(true);
+      expect(fs.existsSync(path.join(hardwareDir, "new-admin-file.md"))).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("does not reinitialize a ready local source before repeated admin writes", async () => {
+    const { LocalContentSource, getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const filePath = "Hardware/repeated-admin-file.md";
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const manager = getContentSourceManager();
+    const originalInitialize = LocalContentSource.prototype.initialize;
+    const originalSyncAll = manager.syncAll;
+    let initializeCalls = 0;
+
+    LocalContentSource.prototype.initialize = async function (...args) {
+      initializeCalls += 1;
+      return await originalInitialize.apply(this, args);
+    };
+    manager.syncAll = (async () => ({
+      success: true,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      sources: ["local"],
+      stats: {
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+      errors: [],
+      logs: [],
+    })) as typeof manager.syncAll;
+
+    try {
+      const firstWrite = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: filePath,
+              content: "first",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+      expect(firstWrite.status).toBe(200);
+      const initializeCallsAfterFirstWrite = initializeCalls;
+
+      const secondWrite = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: filePath,
+              content: "second",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+      expect(secondWrite.status).toBe(200);
+      expect(initializeCalls).toBe(initializeCallsAfterFirstWrite);
+      expect(fs.readFileSync(path.join(LOCAL_CONTENT_BASE_PATH, filePath), "utf-8")).toBe("second");
+    } finally {
+      LocalContentSource.prototype.initialize = originalInitialize;
+      manager.syncAll = originalSyncAll;
+    }
   });
 });

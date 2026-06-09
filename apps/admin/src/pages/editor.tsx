@@ -20,6 +20,7 @@ import {
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AdminApiError,
   type AdminPost,
   adminApi,
   type DataSourceInfo,
@@ -335,6 +336,21 @@ function deriveDatabaseDraftState(draft: DatabaseDraft, content: string) {
   };
 }
 
+function isBlankEditorContent(content: string) {
+  return stripFrontmatter(content).trim().length === 0;
+}
+
+function getEditorActionErrorMessage(error: unknown, fallback?: string) {
+  if (error instanceof AdminApiError) {
+    if (error.code === "PRECONDITION_FAILED" && error.message.includes("初始化失败")) {
+      return "本地内容目录暂时不可写，请检查内容源配置后重试。";
+    }
+    return getErrorMessage(error);
+  }
+
+  return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
+}
+
 function InlineTreeNameInput({
   value,
   type,
@@ -603,7 +619,10 @@ function EditorSidebarContent({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden border-y border-border/54">
+    <div
+      className="flex h-full min-h-0 flex-col overflow-hidden border-y border-border/54"
+      data-testid="editor-file-browser"
+    >
       <div className="flex shrink-0 items-center justify-between border-b border-border/54 py-3">
         <div>
           <div className="font-medium">文件浏览器</div>
@@ -1132,6 +1151,10 @@ export function EditorPage() {
       if (activeTab.kind === "database" && activeTab.database) {
         const liveContent = syncActiveTabFromEditor() ?? activeTab.database.content;
         const derivedDraft = deriveDatabaseDraftState(activeTab.database, liveContent);
+        if (activeTab.database.isNew && isBlankEditorContent(liveContent)) {
+          setErrorBanner("内容不能为空，请先输入正文后再保存。");
+          return;
+        }
         const payload = {
           title: derivedDraft.title,
           slug: derivedDraft.slug,
@@ -1184,7 +1207,7 @@ export function EditorPage() {
         setNotice("文件保存成功。");
       }
     } catch (error) {
-      setErrorBanner(getErrorMessage(error));
+      setErrorBanner(getEditorActionErrorMessage(error));
     } finally {
       setSavePending(false);
     }
@@ -1362,7 +1385,7 @@ export function EditorPage() {
           value: defaultName,
         });
       } catch (error) {
-        setErrorBanner(getErrorMessage(error));
+        setErrorBanner(getEditorActionErrorMessage(error, "创建失败："));
       }
     },
     [browserPath, directoryItemsByPath, refetchTreePath, selectedSource, selectedTreeItem]
@@ -1505,7 +1528,7 @@ export function EditorPage() {
                 返回文章列表
               </a>
             </Button>
-            <Button variant="outline" onClick={createEmptyDraft}>
+            <Button variant="outline" onClick={createEmptyDraft} data-testid="editor-create-post">
               <FilePlus2 className="size-4" />
               新建文章
             </Button>
@@ -1522,7 +1545,11 @@ export function EditorPage() {
               {uploadPending ? <Spinner /> : <ImagePlus className="size-4" />}
               插入附件
             </Button>
-            <Button onClick={saveActiveTab} disabled={!activeTab || savePending}>
+            <Button
+              onClick={saveActiveTab}
+              disabled={!activeTab || savePending}
+              data-testid="editor-save"
+            >
               {savePending ? <Spinner /> : <Save className="size-4" />}
               保存
             </Button>

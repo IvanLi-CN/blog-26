@@ -47,6 +47,10 @@ export abstract class ContentSourceBase implements IContentSource {
    */
   abstract initialize(): Promise<void>;
 
+  isReady(): boolean {
+    return this.isInitialized;
+  }
+
   /**
    * 获取所有内容项列表
    */

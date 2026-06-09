@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleSlash, Info } from "lucide-react";
 import type { ReactNode } from "react";
+import { AdminApiError, type AdminValidationIssue } from "@/lib/admin-api-client";
 import { formatRelativeTime as baseFormatRelativeTime, cn, toMsTimestamp } from "@/lib/utils";
 import { CardDescription, CardHeader, CardTitle } from "~/components/ui";
 
@@ -48,6 +49,17 @@ export function formatCount(value: unknown) {
 }
 
 export function getErrorMessage(error: unknown) {
+  if (error instanceof AdminApiError) {
+    const details = Array.isArray(error.details) ? (error.details as AdminValidationIssue[]) : [];
+    const firstIssue = details.find((issue) => typeof issue?.message === "string");
+    if (firstIssue?.path?.join(".") === "body") {
+      return "内容不能为空，请先输入正文后再保存。";
+    }
+    if (firstIssue?.message) {
+      return firstIssue.message;
+    }
+    return error.message;
+  }
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return "请求失败";
