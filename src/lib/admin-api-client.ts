@@ -29,6 +29,15 @@ export interface AdminApiErrorShape {
   };
 }
 
+export interface AdminValidationIssue {
+  code?: string;
+  message?: string;
+  path?: Array<string | number>;
+  minimum?: number;
+  inclusive?: boolean;
+  origin?: string;
+}
+
 export class AdminApiError extends Error {
   status: number;
   code?: string;
@@ -41,6 +50,35 @@ export class AdminApiError extends Error {
     this.code = code;
     this.details = details;
   }
+}
+
+function describeValidationIssue(issue: AdminValidationIssue): string | null {
+  const message = issue.message?.trim();
+  if (message) {
+    return message;
+  }
+
+  const path = Array.isArray(issue.path) ? issue.path.join(".") : "";
+  if (path === "body") {
+    return "内容不能为空";
+  }
+
+  return null;
+}
+
+function getFriendlyErrorMessage(data: AdminApiErrorShape, fallback: string) {
+  const issues = Array.isArray(data?.error?.details)
+    ? (data.error?.details as AdminValidationIssue[])
+    : null;
+
+  if (issues?.length) {
+    const firstMessage = describeValidationIssue(issues[0]);
+    if (firstMessage) {
+      return firstMessage;
+    }
+  }
+
+  return data?.error?.message || fallback;
 }
 
 export type Pagination = {
@@ -329,7 +367,7 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    const message = data?.error?.message || response.statusText || "请求失败";
+    const message = getFriendlyErrorMessage(data, response.statusText || "请求失败");
     throw new AdminApiError(message, response.status, data?.error?.code, data?.error?.details);
   }
 

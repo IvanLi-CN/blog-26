@@ -48,6 +48,36 @@ function json(data: unknown, init: ResponseInit = {}, extraHeaders?: Headers) {
   return new Response(JSON.stringify(data), { ...init, headers });
 }
 
+function serializeValidationDetails(error: ZodError | LlmSettingsInputError) {
+  if (error instanceof ZodError) {
+    return error.issues.map((issue) => ({
+      code: issue.code,
+      message: issue.message,
+      path: issue.path,
+      minimum: "minimum" in issue ? issue.minimum : undefined,
+      inclusive: "inclusive" in issue ? issue.inclusive : undefined,
+      origin: "origin" in issue ? issue.origin : undefined,
+    }));
+  }
+
+  return undefined;
+}
+
+function trpcErrorResponse(error: TRPCError, resHeaders?: Headers) {
+  return json(
+    {
+      error: {
+        code: error.code,
+        message: error.message,
+        details:
+          error.cause instanceof ZodError ? serializeValidationDetails(error.cause) : undefined,
+      },
+    },
+    { status: statusFromTrpcError(error) },
+    resHeaders
+  );
+}
+
 function statusFromTrpcError(error: TRPCError) {
   switch (error.code) {
     case "BAD_REQUEST":
@@ -248,6 +278,7 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
                 error: {
                   code: "BAD_REQUEST",
                   message: error.message,
+                  details: serializeValidationDetails(error),
                 },
               },
               { status: 400 },
@@ -290,6 +321,7 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
               error: {
                 code: "BAD_REQUEST",
                 message: error.message,
+                details: serializeValidationDetails(error),
               },
             },
             { status: 400 },
@@ -413,7 +445,14 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
 
       if (request.method === "POST") {
         const body = await parseJsonBody(request);
-        return json(await caller.admin.posts.create(body as never), { status: 200 }, resHeaders);
+        try {
+          return json(await caller.admin.posts.create(body as never), { status: 200 }, resHeaders);
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            return trpcErrorResponse(error, resHeaders);
+          }
+          throw error;
+        }
       }
 
       return methodNotAllowed(request.method, resHeaders);
@@ -472,11 +511,18 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       }
       if (request.method === "PATCH") {
         const body = await parseJsonBody(request);
-        return json(
-          await caller.admin.posts.update({ id, ...(body as object) } as never),
-          { status: 200 },
-          resHeaders
-        );
+        try {
+          return json(
+            await caller.admin.posts.update({ id, ...(body as object) } as never),
+            { status: 200 },
+            resHeaders
+          );
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            return trpcErrorResponse(error, resHeaders);
+          }
+          throw error;
+        }
       }
       if (request.method === "DELETE") {
         return json(await caller.admin.posts.delete({ id }), { status: 200 }, resHeaders);
@@ -944,10 +990,7 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
     );
   } catch (error) {
     if (error instanceof TRPCError) {
-      return json(
-        { error: { code: error.code, message: error.message } },
-        { status: statusFromTrpcError(error) }
-      );
+      return trpcErrorResponse(error);
     }
 
     console.error("[admin-api] unexpected error", error);

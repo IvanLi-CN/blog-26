@@ -24,6 +24,7 @@ function resetHttpCompatEnv() {
   process.env.DB_PATH = TEST_DB_PATH;
   process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
   process.env.CONTENT_SOURCES = "local";
+  process.env.LOCAL_BLOG_PATH = "/blog,/Hardware";
   process.env.PUBLIC_SITE_URL = "https://pages.example.test";
   process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
   delete process.env.WEBDAV_URL;
@@ -1132,5 +1133,68 @@ describe("HTTP compatibility APIs", () => {
     expect(updated.title).toBe("Cleared Memo");
     expect(updated.content).toBe("");
     expect(updated.isPublic).toBe(false);
+  });
+
+  it("returns structured validation details when creating an empty post", async () => {
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/posts",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "未命名文章",
+            slug: "untitled-post",
+            body: "",
+            excerpt: "",
+            type: "post",
+            draft: true,
+            public: false,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/posts"
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await readJson(response);
+    expect(payload.error.code).toBe("BAD_REQUEST");
+    expect(Array.isArray(payload.error.details)).toBe(true);
+    expect(payload.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ["body"],
+          message: "内容不能为空",
+        }),
+      ])
+    );
+  });
+
+  it("initializes the local content source before writing files through the admin API", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/write",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            source: "local",
+            path: "Hardware/new-admin-file.md",
+            content: "",
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/files/write"
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await readJson(response);
+    expect(payload.success).toBe(true);
+    expect(fs.existsSync(path.join(hardwareDir, "new-admin-file.md"))).toBe(true);
   });
 });
