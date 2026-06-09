@@ -158,12 +158,18 @@ for (const check of checks) {
 if (apiBaseUrl) {
   assertIncludes(
     contents.get("site-dist/index.html") ?? "",
-    `${apiBaseUrl}/api/files/`,
+    "/api/public/assets/",
     "site-dist/index.html"
   );
+  assertExcludes(contents.get("site-dist/index.html") ?? "", "/api/files/", "site-dist/index.html");
   assertIncludes(
     contents.get("site-dist/posts/react-hooks-deep-dive/index.html") ?? "",
-    `${apiBaseUrl}/api/files/`,
+    `${apiBaseUrl}/api/public/assets/`,
+    "site-dist/posts/react-hooks-deep-dive/index.html"
+  );
+  assertExcludes(
+    contents.get("site-dist/posts/react-hooks-deep-dive/index.html") ?? "",
+    "/api/files/",
     "site-dist/posts/react-hooks-deep-dive/index.html"
   );
 
@@ -183,19 +189,22 @@ if (apiBaseUrl) {
 
   assertIncludes(
     contents.get("site-dist/feed.xml") ?? "",
-    `${apiBaseUrl}/api/files/`,
+    `${apiBaseUrl}/api/public/assets/`,
     "site-dist/feed.xml"
   );
   assertIncludes(
     contents.get("site-dist/atom.xml") ?? "",
-    `${apiBaseUrl}/api/files/`,
+    `${apiBaseUrl}/api/public/assets/`,
     "site-dist/atom.xml"
   );
   assertIncludes(
     contents.get("site-dist/feed.json") ?? "",
-    `${apiBaseUrl}/api/files/`,
+    `${apiBaseUrl}/api/public/assets/`,
     "site-dist/feed.json"
   );
+  assertExcludes(contents.get("site-dist/feed.xml") ?? "", "/api/files/", "site-dist/feed.xml");
+  assertExcludes(contents.get("site-dist/atom.xml") ?? "", "/api/files/", "site-dist/atom.xml");
+  assertExcludes(contents.get("site-dist/feed.json") ?? "", "/api/files/", "site-dist/feed.json");
 }
 
 console.log(`GitHub Pages output verified for ${siteUrl}${basePath || "/"}.`);

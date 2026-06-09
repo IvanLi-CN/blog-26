@@ -24,6 +24,9 @@ test.describe("posts cover fallback", () => {
 
     const image = cover.locator("img");
     await expect(image).toBeVisible();
-    await expect(image).toHaveAttribute("src", /hello-world\.jpg$/);
+    await expect(image).toHaveAttribute(
+      "src",
+      /\/api\/public\/assets\/post\/posts-cover-fallback\/[0-9a-f]+\/card\.webp$/
+    );
   });
 });
