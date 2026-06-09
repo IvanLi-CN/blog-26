@@ -425,7 +425,9 @@ async function ensureSourceReady(
   }
 
   try {
-    await source.initialize();
+    if (!(source.isReady?.() ?? false)) {
+      await source.initialize();
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new TRPCError({

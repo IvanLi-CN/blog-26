@@ -1172,29 +1172,131 @@ describe("HTTP compatibility APIs", () => {
   });
 
   it("initializes the local content source before writing files through the admin API", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
     fs.mkdirSync(hardwareDir, { recursive: true });
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
 
-    const response = await handleAdminApiRequest(
-      buildRequest(
-        "/api/admin/files/write",
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            source: "local",
-            path: "Hardware/new-admin-file.md",
-            content: "",
-          }),
-        },
-        ADMIN_EMAIL
-      ),
-      "/files/write"
-    );
+    manager.syncAll = (async () => ({
+      success: true,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      sources: ["local"],
+      stats: {
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+      errors: [],
+      logs: [],
+    })) as typeof manager.syncAll;
 
-    expect(response.status).toBe(200);
-    const payload = await readJson(response);
-    expect(payload.success).toBe(true);
-    expect(fs.existsSync(path.join(hardwareDir, "new-admin-file.md"))).toBe(true);
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/new-admin-file.md",
+              content: "",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = await readJson(response);
+      expect(payload.success).toBe(true);
+      expect(fs.existsSync(path.join(hardwareDir, "new-admin-file.md"))).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("does not reinitialize a ready local source before repeated admin writes", async () => {
+    const { LocalContentSource, getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const filePath = "Hardware/repeated-admin-file.md";
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const manager = getContentSourceManager();
+    const originalInitialize = LocalContentSource.prototype.initialize;
+    const originalSyncAll = manager.syncAll;
+    let initializeCalls = 0;
+
+    LocalContentSource.prototype.initialize = async function (...args) {
+      initializeCalls += 1;
+      return await originalInitialize.apply(this, args);
+    };
+    manager.syncAll = (async () => ({
+      success: true,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      sources: ["local"],
+      stats: {
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+      errors: [],
+      logs: [],
+    })) as typeof manager.syncAll;
+
+    try {
+      const firstWrite = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: filePath,
+              content: "first",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+      expect(firstWrite.status).toBe(200);
+      const initializeCallsAfterFirstWrite = initializeCalls;
+
+      const secondWrite = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: filePath,
+              content: "second",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+      expect(secondWrite.status).toBe(200);
+      expect(initializeCalls).toBe(initializeCallsAfterFirstWrite);
+      expect(fs.readFileSync(path.join(LOCAL_CONTENT_BASE_PATH, filePath), "utf-8")).toBe("second");
+    } finally {
+      LocalContentSource.prototype.initialize = originalInitialize;
+      manager.syncAll = originalSyncAll;
+    }
   });
 });
