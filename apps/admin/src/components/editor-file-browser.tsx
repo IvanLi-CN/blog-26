@@ -38,6 +38,10 @@ import {
   DialogHeader,
   DialogTitle,
   Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "~/components/ui";
 
 export type TreeItemType = FileItem["type"];
@@ -97,6 +101,11 @@ type ContextMenuItem = {
 };
 
 const EMPTY_FILE_ITEMS: FileItem[] = [];
+
+function formatDirectoryTargetLabel(path: string | null | undefined) {
+  const normalizedPath = normalizeTreePath(path);
+  return normalizedPath || "根目录";
+}
 
 export function normalizeTreePath(path: string | null | undefined) {
   return (path ?? "").replace(/^\/+/, "").replace(/\/+$/, "");
@@ -371,7 +380,8 @@ function DirectoryPickerTree({
   expandedPaths,
   loadingPaths,
   selectedPath,
-  disabledPaths,
+  disabledReasons,
+  className,
   onSelect,
   onDirectoryExpand,
 }: {
@@ -381,7 +391,8 @@ function DirectoryPickerTree({
   expandedPaths: string[];
   loadingPaths: string[];
   selectedPath: string;
-  disabledPaths: Set<string>;
+  disabledReasons: Map<string, string>;
+  className?: string;
   onSelect: (path: string) => void;
   onDirectoryExpand: (item: FileItem) => void;
 }) {
@@ -402,8 +413,30 @@ function DirectoryPickerTree({
           const normalizedPath = normalizeTreePath(item.path);
           const isExpanded = expandedPathSet.has(normalizedPath);
           const children = directoryItemsByPath[normalizedPath] ?? EMPTY_FILE_ITEMS;
-          const isDisabled = disabledPaths.has(normalizedPath);
+          const disabledReason = disabledReasons.get(normalizedPath);
+          const isDisabled = Boolean(disabledReason);
           const isLoadingBranch = loadingPathSet.has(normalizedPath);
+          const directoryButton = (
+            <button
+              type="button"
+              aria-disabled={isDisabled || undefined}
+              title={disabledReason ? `${item.name}：${disabledReason}` : undefined}
+              className={cn(
+                "flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-2 py-1.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                normalizeTreePath(selectedPath) === normalizedPath &&
+                  "bg-primary/10 text-primary ring-1 ring-primary/25",
+                !isDisabled && "hover:bg-muted/60",
+                isDisabled && "cursor-not-allowed text-muted-foreground/55"
+              )}
+              onClick={() => {
+                if (isDisabled) return;
+                onSelect(normalizedPath);
+              }}
+            >
+              <Folder className="size-4 shrink-0 text-primary" />
+              <span className="truncate">{item.name}</span>
+            </button>
+          );
 
           return (
             <div key={`picker:${selectedSource}:${normalizedPath}`} className="space-y-1">
@@ -422,21 +455,20 @@ function DirectoryPickerTree({
                     <ChevronRight className="size-4" />
                   )}
                 </button>
-                <button
-                  type="button"
-                  disabled={isDisabled}
-                  className={cn(
-                    "flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-2 py-1.5 text-left text-sm transition",
-                    normalizeTreePath(selectedPath) === normalizedPath &&
-                      "bg-primary/10 text-primary ring-1 ring-primary/25",
-                    !isDisabled && "hover:bg-muted/60",
-                    isDisabled && "cursor-not-allowed text-muted-foreground/55"
-                  )}
-                  onClick={() => onSelect(normalizedPath)}
-                >
-                  <Folder className="size-4 shrink-0 text-primary" />
-                  <span className="truncate">{item.name}</span>
-                </button>
+                {disabledReason ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>{directoryButton}</TooltipTrigger>
+                    <TooltipContent
+                      side="right"
+                      align="start"
+                      className="max-w-64 text-xs leading-5"
+                    >
+                      {disabledReason}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  directoryButton
+                )}
               </div>
               {isExpanded ? (
                 <div className="space-y-1">
@@ -456,7 +488,7 @@ function DirectoryPickerTree({
         }),
     [
       directoryItemsByPath,
-      disabledPaths,
+      disabledReasons,
       expandedPathSet,
       loadingPathSet,
       onDirectoryExpand,
@@ -467,21 +499,52 @@ function DirectoryPickerTree({
   );
 
   return (
-    <div className="admin-scrollbar max-h-[22rem] space-y-2 overflow-y-auto rounded-3xl border border-border/56 bg-muted/16 p-3">
-      <button
-        type="button"
+    <TooltipProvider delayDuration={120}>
+      <div
         className={cn(
-          "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm transition",
-          !selectedPath && "bg-primary/10 text-primary ring-1 ring-primary/25",
-          "hover:bg-muted/60"
+          "admin-scrollbar space-y-2 overflow-y-auto rounded-3xl border border-border/56 bg-muted/16 p-3",
+          className
         )}
-        onClick={() => onSelect("")}
       >
-        <Folder className="size-4 shrink-0 text-primary" />
-        <span>根目录</span>
-      </button>
-      {renderNodes(rootItems)}
-    </div>
+        {disabledReasons.get("") ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-disabled
+                title={`根目录：${disabledReasons.get("")}`}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                  !selectedPath && "bg-primary/10 text-primary ring-1 ring-primary/25",
+                  "cursor-not-allowed text-muted-foreground/55"
+                )}
+                onClick={() => undefined}
+              >
+                <Folder className="size-4 shrink-0 text-primary" />
+                <span>根目录</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="start" className="max-w-64 text-xs leading-5">
+              {disabledReasons.get("")}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <button
+            type="button"
+            className={cn(
+              "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm transition",
+              !selectedPath && "bg-primary/10 text-primary ring-1 ring-primary/25",
+              "hover:bg-muted/60"
+            )}
+            onClick={() => onSelect("")}
+          >
+            <Folder className="size-4 shrink-0 text-primary" />
+            <span>根目录</span>
+          </button>
+        )}
+        {renderNodes(rootItems)}
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -1110,22 +1173,49 @@ export function EditorFileBrowser({
   );
 
   const disabledMoveTargets = useMemo(() => {
-    const disabled = new Set<string>();
+    const disabled = new Map<string, string>();
     for (const entry of moveDialog?.entries ?? []) {
+      const parentPath = getParentTreePath(entry.path);
       if (entry.type !== "directory") {
-        disabled.add(getParentTreePath(entry.path));
+        if (!disabled.has(parentPath)) {
+          disabled.set(parentPath, "当前文件已经在这个目录中，请选择其他目标目录。");
+        }
         continue;
       }
-      disabled.add(normalizeTreePath(entry.path));
-      disabled.add(getParentTreePath(entry.path));
+      const normalizedPath = normalizeTreePath(entry.path);
+      if (!disabled.has(normalizedPath)) {
+        disabled.set(normalizedPath, "不能把目录移动到它自身。");
+      }
+      if (!disabled.has(parentPath)) {
+        disabled.set(parentPath, "原目录不能作为移动目标。");
+      }
       for (const candidate of visibleEntries) {
         if (isTreePathAncestor(entry.path, candidate.path)) {
-          disabled.add(normalizeTreePath(candidate.path));
+          const candidatePath = normalizeTreePath(candidate.path);
+          if (!disabled.has(candidatePath)) {
+            disabled.set(candidatePath, "不能把目录移动到它的后代目录中。");
+          }
         }
       }
     }
     return disabled;
   }, [moveDialog?.entries, visibleEntries]);
+
+  const moveTargetLabel = useMemo(
+    () => formatDirectoryTargetLabel(moveDialog?.destinationPath),
+    [moveDialog?.destinationPath]
+  );
+  const moveTargetDisabledReason = useMemo(
+    () => disabledMoveTargets.get(normalizeTreePath(moveDialog?.destinationPath)),
+    [disabledMoveTargets, moveDialog?.destinationPath]
+  );
+  const moveDialogRule = useMemo(() => {
+    const entries = moveDialog?.entries ?? [];
+    if (entries.some((entry) => entry.type === "directory")) {
+      return "灰色目录不可选：原目录、所选目录自身，以及它的后代目录。";
+    }
+    return "灰色目录不可选：已选文件当前所在的目录。";
+  }, [moveDialog?.entries]);
 
   const deleteSummary = useMemo(() => {
     const entries = deleteDialog?.entries ?? [];
@@ -1274,7 +1364,7 @@ export function EditorFileBrowser({
       />
 
       <Dialog open={moveDialog !== null} onOpenChange={(open) => !open && setMoveDialog(null)}>
-        <DialogContent>
+        <DialogContent className="flex max-h-[min(90vh,820px)] min-h-0 flex-col">
           <DialogHeader>
             <DialogTitle className="pr-8 text-xl font-semibold">选择目标目录</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -1282,7 +1372,34 @@ export function EditorFileBrowser({
             </DialogDescription>
           </DialogHeader>
           {moveDialog ? (
-            <div className="px-6 pb-2">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 pb-2">
+              <div className="grid gap-2">
+                <div
+                  className={cn(
+                    "rounded-2xl border px-4 py-3",
+                    moveTargetDisabledReason
+                      ? "border-warning/24 bg-warning/12 text-foreground"
+                      : "border-border/56 bg-muted/18 text-foreground"
+                  )}
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    目标目录
+                  </div>
+                  <div className="mt-1 truncate text-sm font-medium" title={moveTargetLabel}>
+                    {moveTargetLabel}
+                  </div>
+                  {moveTargetDisabledReason ? (
+                    <div className="mt-2 text-xs leading-5 text-warning">
+                      {moveTargetDisabledReason}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-xs leading-5 text-muted-foreground">
+                      选择后会立即作为本次移动的目标位置。
+                    </div>
+                  )}
+                </div>
+                <div className="px-1 text-xs leading-5 text-muted-foreground">{moveDialogRule}</div>
+              </div>
               <DirectoryPickerTree
                 selectedSource={selectedSource}
                 rootItems={rootItems}
@@ -1290,7 +1407,8 @@ export function EditorFileBrowser({
                 expandedPaths={expandedPaths}
                 loadingPaths={loadingPaths}
                 selectedPath={moveDialog.destinationPath}
-                disabledPaths={disabledMoveTargets}
+                disabledReasons={disabledMoveTargets}
+                className="h-full min-h-[min(14rem,30vh)] flex-1 max-h-none sm:min-h-[min(18rem,36vh)]"
                 onSelect={(path) =>
                   setMoveDialog((current) =>
                     current ? { ...current, destinationPath: path } : current
@@ -1305,7 +1423,7 @@ export function EditorFileBrowser({
               取消
             </Button>
             <Button
-              disabled={operationPending || !moveDialog}
+              disabled={operationPending || !moveDialog || Boolean(moveTargetDisabledReason)}
               onClick={async () => {
                 if (!moveDialog) return;
                 setOperationPending(true);

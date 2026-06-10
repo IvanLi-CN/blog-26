@@ -184,9 +184,20 @@ export const ContextMenuAndDelete: Story = {
 export const MoveDialog: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(canvas.getByRole("button", { name: "guide.md 更多操作" }));
-    await userEvent.click(canvas.getByRole("menuitem", { name: "移动" }));
-    await expect(canvas.getByRole("dialog", { name: "选择目标目录" })).toBeVisible();
+    await userEvent.click(body.getByRole("menuitem", { name: "移动" }));
+    const dialog = body.getByRole("dialog", { name: "选择目标目录" });
+    await expect(dialog).toBeVisible();
+    await expect(within(dialog).getByText("目标目录", { exact: true })).toBeVisible();
+    await expect(
+      within(dialog).getByText("当前文件已经在这个目录中，请选择其他目标目录。")
+    ).toBeVisible();
+    await expect(within(dialog).getByRole("button", { name: "确认移动" })).toBeDisabled();
+    await userEvent.hover(within(dialog).getByRole("button", { name: "content" }));
+    await expect(body.getByRole("tooltip")).toHaveTextContent(
+      "当前文件已经在这个目录中，请选择其他目标目录。"
+    );
   },
 };
 

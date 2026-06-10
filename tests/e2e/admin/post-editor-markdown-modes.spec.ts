@@ -276,4 +276,20 @@ test.describe("Post editor Markdown modes", () => {
     await expect(page.getByText("目录不为空，无法删除: content/posts")).toBeVisible();
     await expect(treeNameButton(page, "posts")).toBeVisible();
   });
+
+  test("file tree move dialog explains invalid targets before submit", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "react-hooks-deep-dive.md 更多操作" }).click();
+    await page.getByRole("menuitem", { name: "移动" }).click();
+
+    const moveDialog = page.getByRole("dialog", { name: "选择目标目录" });
+    await expect(moveDialog).toBeVisible();
+    await expect(moveDialog.getByText("目标目录", { exact: true })).toBeVisible();
+    await expect(moveDialog.getByTitle("content")).toBeVisible();
+    await expect(
+      moveDialog.getByText("当前文件已经在这个目录中，请选择其他目标目录。")
+    ).toBeVisible();
+    await expect(moveDialog.getByRole("button", { name: "确认移动" })).toBeDisabled();
+  });
 });
