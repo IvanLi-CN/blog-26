@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -148,6 +148,12 @@ describe("HTTP compatibility APIs", () => {
 
     fs.rmSync(LOCAL_CONTENT_BASE_PATH, { recursive: true, force: true });
     fs.mkdirSync(LOCAL_CONTENT_BASE_PATH, { recursive: true });
+  }, 10_000);
+
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const { resetContentSourceManager } = await import("@/lib/content-sources");
+    await resetContentSourceManager();
   }, 10_000);
 
   it("returns masked LLM settings, persists overrides, and can clear saved keys", async () => {
