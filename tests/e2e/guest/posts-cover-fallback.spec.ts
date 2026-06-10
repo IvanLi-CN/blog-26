@@ -13,7 +13,7 @@ test.describe("posts cover fallback", () => {
 
     const fallbackCard = page
       .locator('[data-testid="post-card"]', {
-        has: page.getByRole("link", { name: "首图封面回退验证" }),
+        has: page.getByRole("link", { name: "Hello World" }),
       })
       .first();
 
@@ -26,7 +26,7 @@ test.describe("posts cover fallback", () => {
     await expect(image).toBeVisible();
     await expect(image).toHaveAttribute(
       "src",
-      /\/api\/public\/assets\/post\/posts-cover-fallback\/[0-9a-f]+\/card\.webp$/
+      /\/api\/public\/assets\/post\/hello-world\/[0-9a-f]+\/card\.webp$/
     );
   });
 });
