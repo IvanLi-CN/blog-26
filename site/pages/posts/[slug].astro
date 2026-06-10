@@ -3,7 +3,6 @@ import Icon from "@/components/ui/Icon";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import PostReactions from "@/components/blog/PostReactions";
 import CommentSectionWithProvider from "@/components/comments/CommentSectionWithProvider";
-import { isLocalPublicMediaDataSource } from "@/lib/public-media";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -29,10 +28,8 @@ export async function getStaticPaths() {
 const { post } = Astro.props as { post: PublicPostRecord };
 const snapshot = await getSnapshot();
 const relatedPosts = getRelatedPosts(snapshot, post.slug);
-const contentSource = isLocalPublicMediaDataSource(post.dataSource) ? "local" : "webdav";
-const publicMediaContext = isLocalPublicMediaDataSource(post.dataSource)
-  ? { kind: "post" as const, slug: post.slug, filePath: post.filePath }
-  : undefined;
+const contentSource = "local" as const;
+const publicMediaContext = { kind: "post" as const, slug: post.slug, filePath: post.filePath };
 const imageSrc = post.media.cover?.variants.cover ?? toPublicAssetUrl(post.image);
 const absoluteImageSrc = imageSrc
   ? imageSrc.startsWith("http") || imageSrc.startsWith("data:")

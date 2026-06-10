@@ -63,7 +63,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `git diff --name-only -- '*.ts' '*.tsx' '*.css' '*.json' '*.md' | xargs bunx biome check`
 - `bun test src/lib/__tests__/theme.test.ts`
 - `DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=http://localhost:30090 PUBLIC_SITE_URL=http://localhost:30090 bun run build`
-- `BASE_URL=http://localhost:30090 WEBDAV_URL=http://localhost:30091 PLAYWRIGHT_REUSE_APP=true PLAYWRIGHT_REUSE_WEBDAV=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest-chromium`
+- `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest-chromium`
 - `bun run check` is still blocked by pre-existing repository-wide issues outside this scope:
   - `biome.jsonc` schema mismatch against the globally installed Biome CLI
   - existing admin/editor lint findings unrelated to the public Nature redesign

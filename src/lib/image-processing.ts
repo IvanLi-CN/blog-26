@@ -4,7 +4,7 @@
  * 提供 Base64 内联图片转换功能，支持：
  * - 幂等性检查：防止重复处理已转换的内容
  * - 数据完整性：确保转换过程无损
- * - 多种内容源：支持 local 和 webdav
+ * - 单一本地内容源：统一走 local
  * - 灵活的返回格式：相对路径或 API 路径
  */
 
@@ -16,7 +16,7 @@ import { toPublicAssetUrl } from "./public-runtime-url";
  */
 export interface ProcessInlineImagesOptions {
   /** 内容源类型 */
-  contentSource: "local" | "webdav";
+  contentSource: "local";
   /** 文章路径，用于生成 slug 和 assets 路径 */
   articlePath: string;
   /** 可选的自定义上传基础路径 */
@@ -172,7 +172,7 @@ function base64ToBlob(base64Data: string, mimeType: string): Blob {
 async function uploadImage(
   blob: Blob,
   uploadPath: string,
-  contentSource: "local" | "webdav",
+  contentSource: "local",
   mimeType: string
 ): Promise<void> {
   const uploadUrl = toPublicAssetUrl(`/api/files/${contentSource}/${uploadPath}`);
@@ -355,7 +355,7 @@ export async function processInlineImages(
  */
 export async function processInlineImagesCompat(
   content: string,
-  contentSource: "local" | "webdav",
+  contentSource: "local",
   articlePath: string,
   returnFormat: "relative" | "api" = "relative",
   customSlug?: string

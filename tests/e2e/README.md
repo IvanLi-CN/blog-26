@@ -175,7 +175,7 @@ bun run test:e2e:report
 
 - 测试环境会自动生成测试数据
 - 每次测试运行前会清理和重新生成数据
-- 测试数据包括本地文件和 WebDAV 内容
+- 测试数据全部来自本地内容目录
 - 使用 `bun run test-env:reset` 重置完整测试环境
 
 ### 运行时配置
@@ -184,7 +184,7 @@ bun run test:e2e:report
 - 视口大小：1280x720
 - 支持移动端和平板端测试
 - 自动启动一体化测试服务（gateway + Astro public + admin SPA）：端口 25090
-- 自动启动 WebDAV 测试服务器（dufs）：端口 25091
+- 自动启动一体化测试服务（gateway + Astro public + admin SPA）
 - 实时通道采用 tRPC + HTTP SSE（不使用 WebSocket）
 
 ## 📊 测试标识符

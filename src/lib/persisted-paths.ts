@@ -4,13 +4,13 @@
  * Goal: persisted markdown + metadata must not contain `/api/files/...` URLs.
  * We only store normalized *relative* paths (e.g. `./assets/a.png`, `../shared/a.png`).
  *
- * Runtime rendering may map persisted relative paths back to `/api/files/<source>/...`.
+ * Runtime rendering may map persisted relative paths back to `/api/files/local/...`.
  *
  * This module is intentionally environment-agnostic (no Node-only imports) so it can be
  * reused by both client and server code.
  */
 
-export type ContentSource = "local" | "webdav";
+export type ContentSource = "local";
 
 export class PersistedPathError extends Error {
   code:
@@ -283,7 +283,7 @@ export function rewriteApiFilesUrlsToRelative(
 
   // Match /api/files/<source>/<path...> (stop at whitespace, quote, paren, or angle bracket)
   const re =
-    /\/api\/files\/(local|webdav)\/[A-Za-z0-9\-._~/%:@+]+(?:\?[^\s"'<>)]*)?(?:#[^\s"'<>)]*)?/g;
+    /\/api\/files\/[A-Za-z0-9_-]+\/[A-Za-z0-9\-._~/%:@+]+(?:\?[^\s"'<>)]*)?(?:#[^\s"'<>)]*)?/g;
 
   let changed = false;
   const content = input.replace(re, (match) => {

@@ -28,7 +28,7 @@ export const parseUrlParams = (searchParams: URLSearchParams) => {
   if (!source || !path) return null;
 
   return {
-    source: source as "local" | "webdav" | "database",
+    source: source as "local" | "database",
     path: decodeURIComponent(path),
   };
 };

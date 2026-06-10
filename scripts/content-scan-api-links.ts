@@ -24,7 +24,7 @@ type Sample = {
 };
 
 const API_RE =
-  /\/api\/files\/(local|webdav)\/[A-Za-z0-9\-._~/%:@+]+(?:\?[^\s"'<>)]*)?(?:#[^\s"'<>)]*)?/g;
+  /\/api\/files\/[A-Za-z0-9_-]+\/[A-Za-z0-9\-._~/%:@+]+(?:\?[^\s"'<>)]*)?(?:#[^\s"'<>)]*)?/g;
 
 function parseArgs(argv: string[]) {
   const out = {

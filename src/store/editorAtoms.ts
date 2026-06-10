@@ -13,7 +13,7 @@ import { atomWithStorage } from "jotai/utils";
 
 // 类型定义
 export interface ContentIdentifier {
-  source: "local" | "webdav" | "database";
+  source: "local" | "database";
   path: string;
 }
 
@@ -361,7 +361,7 @@ export const updateTabsAfterRenameAtom = atom(
       // 如果提供了回调函数，通知父组件更新 selectedContentSource
       if (onContentSourceChange) {
         const newContentSource = {
-          source: source as "local" | "webdav" | "database",
+          source: source as "local" | "database",
           filePath: newPath,
           id: newTabId,
         };
@@ -397,32 +397,16 @@ export const autoExpandFoldersAtom = atom(null, (get, set, filePath: string) => 
   // 解析文件路径，确定需要展开的文件夹
   const foldersToExpand: string[] = [];
 
-  if (filePath.includes(":") && filePath.startsWith("webdav:")) {
-    // WebDAV 文件路径（二元ID格式：webdav:/blog/hello.md）
-    const actualPath = filePath.replace("webdav:", "");
-    const pathParts = actualPath.split("/").filter((part) => part);
-    let currentPath = "";
-
-    // 添加 webdav 根文件夹
-    foldersToExpand.push("webdav");
-
-    // 逐级添加子文件夹
-    for (let i = 0; i < pathParts.length - 1; i++) {
-      currentPath += (currentPath ? "/" : "") + pathParts[i];
-      foldersToExpand.push(`webdav-${currentPath}`);
-    }
-  } else if (filePath.startsWith("/")) {
-    // 普通 WebDAV 文件路径
+  if (filePath.startsWith("/")) {
+    // 兼容绝对路径，视为本地内容树路径
     const pathParts = filePath.split("/").filter((part) => part);
     let currentPath = "";
 
-    // 添加 webdav 根文件夹
-    foldersToExpand.push("webdav");
+    foldersToExpand.push("local");
 
-    // 逐级添加子文件夹
     for (let i = 0; i < pathParts.length - 1; i++) {
       currentPath += (currentPath ? "/" : "") + pathParts[i];
-      foldersToExpand.push(`webdav-${currentPath}`);
+      foldersToExpand.push(`local-${currentPath}`);
     }
   } else if (filePath.includes(":") && filePath.startsWith("local:")) {
     // 本地文件路径（二元ID格式：local:blog/hello-world.md）
@@ -488,8 +472,6 @@ export const setScrollTargetAtom = atom(null, (_get, set, filePath: string | nul
   if (filePath?.includes(":")) {
     if (filePath.startsWith("local:")) {
       actualTarget = filePath.replace("local:", "");
-    } else if (filePath.startsWith("webdav:")) {
-      actualTarget = filePath.replace("webdav:", "");
     } else if (filePath.startsWith("database:")) {
       actualTarget = filePath.replace("database:", "");
     }

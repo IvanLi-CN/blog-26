@@ -55,12 +55,8 @@ export {
   sanitizeContentItem,
   validateContentItem,
 } from "./utils";
-export {
-  WebDAVContentSource,
-  type WebDAVContentSourceConfig,
-} from "./webdav";
 
 // 版本信息
 export const VERSION = "1.0.0";
 export const SUPPORTED_CONTENT_TYPES = ["post", "project", "memo"] as const;
-export const SUPPORTED_SOURCE_TYPES = ["local", "webdav", "database"] as const;
+export const SUPPORTED_SOURCE_TYPES = ["local", "database"] as const;

@@ -82,24 +82,24 @@ const checks = [
       : ['href="//posts"', 'href="//memos"', 'action="//search"'],
   },
   {
-    file: "site-dist/posts/react-hooks-deep-dive/index.html",
+    file: "site-dist/posts/hello-world/index.html",
     includes: [
-      `href="${toExpectedPagePath(basePath, "/tags/React")}"`,
+      `href="${toExpectedPagePath(basePath, "/tags/intro")}"`,
       `href="${toExpectedSitePath(basePath, "/posts/")}`,
-      `<link rel="canonical" href="${siteUrl}/posts/react-hooks-deep-dive/"`,
+      `<link rel="canonical" href="${siteUrl}/posts/hello-world/"`,
     ],
-    excludes: basePath ? ['href="/tags/React"', 'href="/posts"'] : ['href="//posts/'],
+    excludes: basePath ? ['href="/tags/intro"', 'href="/posts"'] : ['href="//posts/'],
   },
   {
-    file: "site-dist/tags/React/index.html",
+    file: "site-dist/tags/intro/index.html",
     includes: [
       `href="${toExpectedPagePath(basePath, "/tags")}"`,
-      `href="${toExpectedPagePath(basePath, "/posts/react-hooks-deep-dive")}"`,
-      `<link rel="canonical" href="${siteUrl}/tags/React/"`,
+      `href="${toExpectedPagePath(basePath, "/posts/hello-world")}"`,
+      `<link rel="canonical" href="${siteUrl}/tags/intro/"`,
     ],
     excludes: basePath
-      ? ['href="/tags"', 'href="/posts/react-hooks-deep-dive"']
-      : ['href="//tags"', 'href="//posts/react-hooks-deep-dive"'],
+      ? ['href="/tags"', 'href="/posts/hello-world"']
+      : ['href="//tags"', 'href="//posts/hello-world"'],
   },
   {
     file: "site-dist/404.html",
@@ -108,17 +108,17 @@ const checks = [
   },
   {
     file: "site-dist/feed.xml",
-    includes: [`<link>${siteUrl}/posts/react-hooks-deep-dive/</link>`],
+    includes: [`<link>${siteUrl}/posts/hello-world/</link>`],
     excludes: ["/./assets/"],
   },
   {
     file: "site-dist/atom.xml",
-    includes: [`<link href="${siteUrl}/posts/react-hooks-deep-dive/"/>`],
+    includes: [`<link href="${siteUrl}/posts/hello-world/"/>`],
     excludes: ["/./assets/"],
   },
   {
     file: "site-dist/feed.json",
-    includes: [`"url": "${siteUrl}/posts/react-hooks-deep-dive/"`],
+    includes: [`"url": "${siteUrl}/posts/hello-world/"`],
     excludes: ["/./assets/"],
   },
   {
@@ -163,14 +163,14 @@ if (apiBaseUrl) {
   );
   assertExcludes(contents.get("site-dist/index.html") ?? "", "/api/files/", "site-dist/index.html");
   assertIncludes(
-    contents.get("site-dist/posts/react-hooks-deep-dive/index.html") ?? "",
+    contents.get("site-dist/posts/hello-world/index.html") ?? "",
     `${apiBaseUrl}/api/public/assets/`,
-    "site-dist/posts/react-hooks-deep-dive/index.html"
+    "site-dist/posts/hello-world/index.html"
   );
   assertExcludes(
-    contents.get("site-dist/posts/react-hooks-deep-dive/index.html") ?? "",
+    contents.get("site-dist/posts/hello-world/index.html") ?? "",
     "/api/files/",
-    "site-dist/posts/react-hooks-deep-dive/index.html"
+    "site-dist/posts/hello-world/index.html"
   );
 
   const astroDir = resolve(process.cwd(), "site-dist/_astro");

@@ -195,10 +195,8 @@ export function buildLegacyPublicMediaUrl(params: {
   filePath?: string | null | undefined;
 }) {
   if (!params.mediaPath) return params.mediaPath ?? null;
-  const contentSource = isLocalPublicMediaDataSource(params.dataSource) ? "local" : "webdav";
   const resolved =
-    resolveImagePath(params.mediaPath, contentSource, params.filePath ?? undefined) ??
-    params.mediaPath;
+    resolveImagePath(params.mediaPath, "local", params.filePath ?? undefined) ?? params.mediaPath;
   return toPublicAssetUrl(resolved) ?? resolved;
 }
 

@@ -18,7 +18,7 @@ export interface QuickMemoEditModalProps {
   initialContent?: string;
   initialIsPublic?: boolean;
   articlePath?: string;
-  contentSource?: "webdav" | "local";
+  contentSource?: "local";
   isLoading?: boolean;
   isSaving?: boolean;
   errorMessage?: string;

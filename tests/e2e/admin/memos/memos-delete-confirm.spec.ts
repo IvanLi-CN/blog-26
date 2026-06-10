@@ -9,9 +9,7 @@ import { openMemoDeleteDialog, triggerDevSync } from "./helpers";
  * - 确认后列表数量应减少，且删除接口返回 200
  */
 
-const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
-
-let seededTitles: { webdav?: string; local: string };
+let seededTitle: string;
 test.describe("Memos 删除确认 (admin)", () => {
   async function loadUntilFound(
     page: import("@playwright/test").Page,
@@ -40,34 +38,15 @@ test.describe("Memos 删除确认 (admin)", () => {
     await page.request.post("/api/dev/login", {
       data: { email: process.env.ADMIN_EMAIL || "admin@example.com" },
     });
-    // 在 WebDAV 与本地各插入一条带唯一标题的数据，避免互相影响
     const ts = Date.now();
-    seededTitles = {
-      local: `E2E 删除测试-LOCAL-${ts}`,
-    } as const;
-    if (!E2E_FS_ONLY) {
-      seededTitles.webdav = `E2E 删除测试-WEBDAV-${ts}`;
-    }
-
-    // 通过 dev API 写入文件到对应内容目录
-    if (!E2E_FS_ONLY && seededTitles.webdav) {
-      const respWebdav = await page.request.post("/api/dev/test-content", {
-        data: {
-          kind: "memo",
-          source: "webdav",
-          title: seededTitles.webdav,
-          body: `# ${seededTitles.webdav}\n\nseed for delete - webdav\n\nmarker: ${seededTitles.webdav}`,
-        },
-      });
-      expect(respWebdav.ok()).toBeTruthy();
-    }
+    seededTitle = `E2E 删除测试-LOCAL-${ts}`;
 
     const respLocal = await page.request.post("/api/dev/test-content", {
       data: {
         kind: "memo",
         source: "local",
-        title: seededTitles.local,
-        body: `# ${seededTitles.local}\n\nseed for delete - local\n\nmarker: ${seededTitles.local}`,
+        title: seededTitle,
+        body: `# ${seededTitle}\n\nseed for delete - local\n\nmarker: ${seededTitle}`,
       },
     });
     expect(respLocal.ok()).toBeTruthy();
@@ -85,22 +64,16 @@ test.describe("Memos 删除确认 (admin)", () => {
     // 使用每卡唯一的时间元素进行计数（如需）
     // 列表可能为空（只创建了1条），此时 beforeCount 可以为 0
 
-    // FS-only 下只会同步 local 数据；非 FS-only 下优先删除 WebDAV 种子以覆盖更多路径。
-    const targetSource = E2E_FS_ONLY ? "local" : "webdav";
-    const targetTitle = E2E_FS_ONLY
-      ? seededTitles.local
-      : (seededTitles.webdav ?? seededTitles.local);
-
     // 删除目标种子：通过唯一 marker 标记定位；若未渲染则滚动加载
     const cardByTitle = page.locator('[data-testid="memo-card"][data-slug]').filter({
-      hasText: `marker: ${targetTitle}`,
+      hasText: `marker: ${seededTitle}`,
     });
     const found = await loadUntilFound(page, cardByTitle, 8);
     // 如果没找到，就退化为选择首个目标来源的卡片
     let targetCard = cardByTitle;
     if (!found) {
       targetCard = page
-        .locator(`[data-testid="memo-card"][data-source="${targetSource}"][data-slug]`)
+        .locator('[data-testid="memo-card"][data-source="local"][data-slug]')
         .first();
       await expect(targetCard).toBeVisible();
     }
@@ -151,7 +124,7 @@ test.describe("Memos 删除确认 (admin)", () => {
 
     // 删除本地种子（失败）：通过唯一 marker 标记定位；若未渲染则滚动加载
     let localCard = page.locator('[data-testid="memo-card"][data-slug]').filter({
-      hasText: `marker: ${seededTitles.local}`,
+      hasText: `marker: ${seededTitle}`,
     });
     let localFound = await loadUntilFound(page, localCard, 8);
     if (!localFound) {

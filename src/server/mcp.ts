@@ -5,24 +5,14 @@ import { and, desc, eq, like, sql } from "drizzle-orm";
 import matter from "gray-matter";
 import limax from "limax";
 import { z } from "zod";
-import {
-  getActiveLocalBasePath,
-  isLocalContentEnabled,
-  LOCAL_PATHS,
-  WEBDAV_PATHS,
-} from "@/config/paths";
+import { getActiveLocalBasePath, isLocalContentEnabled, LOCAL_PATHS } from "@/config/paths";
 import { enhanced as enhancedSearch, semantic as semanticSearch } from "@/lib/ai/search";
 import { clearSearchCache } from "@/lib/ai/search-cache";
-import {
-  getContentSourceManager,
-  LocalContentSource,
-  WebDAVContentSource,
-} from "@/lib/content-sources";
+import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
 import { db, initializeDB } from "@/lib/db";
 import { formatMarkdownBody } from "@/lib/markdown-format";
-import { buildMemoRelativePath, getMemoRootPath } from "@/lib/memo-paths";
+import { buildMemoRelativePath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
-import { isWebDAVEnabled, WebDAVClient } from "@/lib/webdav";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { requireAdmin } from "./mcp-auth-context";
 
@@ -81,10 +71,6 @@ async function ensureContentSourcesRegistered() {
     });
     await manager.registerSource(new LocalContentSource(localCfg));
   }
-  if (isWebDAVEnabled()) {
-    const wdCfg = WebDAVContentSource.createDefaultConfig("webdav", 100);
-    await manager.registerSource(new WebDAVContentSource(wdCfg));
-  }
   return manager;
 }
 
@@ -97,7 +83,7 @@ async function triggerIncrementalSync() {
   }
 }
 
-type StorageSource = "local" | "webdav";
+type StorageSource = "local";
 type PostRow = typeof postsTable.$inferSelect;
 type ContentKind = "post" | "memo";
 
@@ -189,33 +175,21 @@ async function annotateContentRows<T extends PostRow>(rows: T[], kind: ContentKi
   );
 }
 
-function resolveStorageSource(row: Pick<PostRow, "source" | "dataSource">): StorageSource {
-  const source = `${row.source || ""} ${row.dataSource || ""}`.toLowerCase();
-  return source.includes("webdav") ? "webdav" : "local";
+function resolveStorageSource(_row: Pick<PostRow, "source" | "dataSource">): StorageSource {
+  return "local";
 }
 
-async function readStorageFile(source: StorageSource, filePath: string): Promise<string> {
-  if (source === "webdav") {
-    if (!isWebDAVEnabled()) throw new Error("WebDAV not configured");
-    return new WebDAVClient().getFileContent(filePath);
-  }
-
+async function readStorageFile(_source: StorageSource, filePath: string): Promise<string> {
   const fs = await import("node:fs/promises");
   const p = await import("node:path");
   return fs.readFile(p.join(getLocalBasePathOrThrow(), filePath), "utf-8");
 }
 
 async function writeStorageFile(
-  source: StorageSource,
+  _source: StorageSource,
   filePath: string,
   content: string
 ): Promise<void> {
-  if (source === "webdav") {
-    if (!isWebDAVEnabled()) throw new Error("WebDAV not configured");
-    await new WebDAVClient().putFileContent(filePath, content);
-    return;
-  }
-
   const fs = await import("node:fs/promises");
   const p = await import("node:path");
   const full = p.join(getLocalBasePathOrThrow(), filePath);
@@ -223,13 +197,7 @@ async function writeStorageFile(
   await fs.writeFile(full, content, "utf-8");
 }
 
-async function deleteStorageFile(source: StorageSource, filePath: string): Promise<void> {
-  if (source === "webdav") {
-    if (!isWebDAVEnabled()) throw new Error("WebDAV not configured");
-    await new WebDAVClient().deleteFile(filePath);
-    return;
-  }
-
+async function deleteStorageFile(_source: StorageSource, filePath: string): Promise<void> {
   const fs = await import("node:fs/promises");
   const p = await import("node:path");
   await fs.rm(p.join(getLocalBasePathOrThrow(), filePath), { force: true });
@@ -474,19 +442,11 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         extra: { createdVia: MCP_CREATED_VIA },
       });
       const md = `${fm}${formatMarkdownBody(input.content)}`;
-      if (isWebDAVEnabled()) {
-        await writeStorageFile(
-          "webdav",
-          buildDatedMarkdownPath(WEBDAV_PATHS.posts[0] || "/blog", input.title),
-          md
-        );
-      } else {
-        await writeStorageFile(
-          "local",
-          buildDatedMarkdownPath(LOCAL_PATHS.posts[0] || "/blog", input.title),
-          md
-        );
-      }
+      await writeStorageFile(
+        "local",
+        buildDatedMarkdownPath(LOCAL_PATHS.posts[0] || "/blog", input.title),
+        md
+      );
       await triggerIncrementalSync();
       return { content: [{ type: "text", text: "ok" }] };
     }
@@ -739,19 +699,11 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       extra: { createdVia: MCP_CREATED_VIA },
     });
     const md = `${fm}${formatMarkdownBody(input.content)}`;
-    if (isWebDAVEnabled()) {
-      await writeStorageFile(
-        "webdav",
-        buildDatedMarkdownPath(getMemoRootPath(WEBDAV_PATHS.memos[0]), input.title || "memo"),
-        md
-      );
-    } else {
-      const rel = buildMemoRelativePath(
-        `${Date.now()}_${limax(input.title || "memo")}.md`,
-        LOCAL_PATHS.memos[0]
-      );
-      await writeStorageFile("local", rel, md);
-    }
+    const rel = buildMemoRelativePath(
+      `${Date.now()}_${limax(input.title || "memo")}.md`,
+      LOCAL_PATHS.memos[0]
+    );
+    await writeStorageFile("local", rel, md);
     await triggerIncrementalSync();
     return { content: [{ type: "text", text: "ok" }] };
   });

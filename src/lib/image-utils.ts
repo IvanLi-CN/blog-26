@@ -2,7 +2,7 @@
  * 图片路径解析工具
  *
  * 提供正确的图片路径解析功能，支持：
- * - 不同内容源（local、webdav）
+ * - 本地内容源路径解析
  * - 基于实际文件路径的相对路径解析
  * - 外部URL和绝对路径处理
  */
@@ -53,7 +53,7 @@ function normalizePath(path: string): string {
 function resolveImagePathFromFile(
   imagePath: string,
   markdownFilePath: string,
-  _contentSource: "local" | "webdav" = "local"
+  _contentSource: "local" = "local"
 ): string {
   // 如果是绝对路径，直接使用（去掉开头的斜杠）
   if (imagePath.startsWith("/")) {
@@ -68,7 +68,7 @@ function resolveImagePathFromFile(
   // 不需要进行任何路径映射，直接使用实际的文件路径
   // markdownFilePath 已经是实际的文件路径，如：
   // - 本地: "blog/hello-world.md"
-  // - WebDAV: "/Hardware/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md"
+  // - 绝对内容路径: "/Hardware/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md"
 
   // 辅助函数：安全地拼接路径，避免双斜杠
   const joinPath = (dir: string, file: string): string => {
@@ -117,19 +117,19 @@ function resolveImagePathFromFile(
  * @example
  * // 相对路径解析
  * resolveImagePath('./assets/image.jpg', '/posts/my-post')
- * // returns '/api/files/webdav/posts/assets/image.jpg'
+ * // returns '/api/files/local/posts/assets/image.jpg'
  *
  * // 上级目录路径解析
  * resolveImagePath('../shared/image.jpg', '/posts/category/my-post')
- * // returns '/api/files/webdav/posts/shared/image.jpg'
+ * // returns '/api/files/local/posts/shared/image.jpg'
  *
  * // 外部URL直接返回
  * resolveImagePath('https://example.com/image.jpg')
  * // returns 'https://example.com/image.jpg'
  *
  * // 已处理的API端点直接返回
- * resolveImagePath('/api/files/webdav/assets/image.jpg')
- * // returns '/api/files/webdav/assets/image.jpg'
+ * resolveImagePath('/api/files/local/assets/image.jpg')
+ * // returns '/api/files/local/assets/image.jpg'
  */
 /**
  * 新的图片路径解析函数
@@ -142,20 +142,20 @@ function resolveImagePathFromFile(
  *
  * @example
  * // 相对路径解析
- * resolveImagePath('./assets/image.jpg', 'webdav', 'blog/my-post.md')
- * // returns '/api/files/webdav/blog/assets/image.jpg'
+ * resolveImagePath('./assets/image.jpg', 'local', 'blog/my-post.md')
+ * // returns '/api/files/local/blog/assets/image.jpg'
  *
  * // 上级目录路径解析
- * resolveImagePath('../shared/image.jpg', 'webdav', 'blog/category/my-post.md')
- * // returns '/api/files/webdav/blog/shared/image.jpg'
+ * resolveImagePath('../shared/image.jpg', 'local', 'blog/category/my-post.md')
+ * // returns '/api/files/local/blog/shared/image.jpg'
  *
  * // 外部URL直接返回
- * resolveImagePath('https://example.com/image.jpg', 'webdav', 'blog/my-post.md')
+ * resolveImagePath('https://example.com/image.jpg', 'local', 'blog/my-post.md')
  * // returns 'https://example.com/image.jpg'
  */
 export function resolveImagePath(
   imagePath: string | undefined,
-  contentSource: "local" | "webdav" = "local",
+  contentSource: "local" = "local",
   markdownFilePath?: string
 ): string | null {
   // 输入验证
@@ -215,7 +215,7 @@ export function resolveImagePath(
  */
 export function resolveImagePaths(
   imagePaths: (string | undefined)[],
-  contentSource: "local" | "webdav" = "local",
+  contentSource: "local" = "local",
   markdownFilePath?: string
 ): string[] {
   return imagePaths

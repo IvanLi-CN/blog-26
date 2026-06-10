@@ -16,7 +16,6 @@ describe("docker-entrypoint runtime config validation", () => {
   it("rejects production gateway startup without LLM_SETTINGS_MASTER_KEY", () => {
     const result = runEntrypoint({
       NODE_ENV: "production",
-      WEBDAV_URL: "http://webdav.example.test",
     });
 
     expect(result.status).toBe(1);
@@ -27,7 +26,6 @@ describe("docker-entrypoint runtime config validation", () => {
   it("does not require LLM_SETTINGS_MASTER_KEY outside production", () => {
     const result = runEntrypoint({
       NODE_ENV: "development",
-      WEBDAV_URL: "http://webdav.example.test",
     });
 
     expect(result.stdout).toContain("Runtime configuration validated");
