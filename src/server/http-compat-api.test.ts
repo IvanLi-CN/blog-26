@@ -1,11 +1,12 @@
 import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
+import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, posts, sessions, users } from "@/lib/schema";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
@@ -17,6 +18,7 @@ const USER_EMAIL = "user-test@test.local";
 let handleAdminApiRequest: typeof import("@/server/admin-api/router").handleAdminApiRequest;
 let handlePublicApiRequest: typeof import("@/server/public-api/router").handlePublicApiRequest;
 let handleFilesApiRequest: typeof import("@/server/files-api/router").handleFilesApiRequest;
+let handleInternalAssetSourceRequest: typeof import("@/server/public-media").handleInternalAssetSourceRequest;
 
 function resetHttpCompatEnv() {
   process.env.NODE_ENV = "development";
@@ -61,6 +63,7 @@ async function seedPost(
     filePath: string;
     author: string | null;
     metadata: string | null;
+    image: string | null;
   }> = {}
 ) {
   if (!db) {
@@ -83,7 +86,7 @@ async function seedPost(
     category: null,
     tags: overrides.tags ?? JSON.stringify(["preview"]),
     author: overrides.author ?? ADMIN_EMAIL,
-    image: null,
+    image: overrides.image ?? null,
     metadata: overrides.metadata ?? null,
     dataSource: overrides.source ?? "local",
     contentHash: randomUUID(),
@@ -98,6 +101,8 @@ async function seedPost(
 describe("HTTP compatibility APIs", () => {
   beforeAll(async () => {
     resetHttpCompatEnv();
+    const { resetContentSourceManager } = await import("@/lib/content-sources");
+    await resetContentSourceManager();
 
     fs.mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
     fs.mkdirSync(LOCAL_CONTENT_BASE_PATH, { recursive: true });
@@ -114,9 +119,10 @@ describe("HTTP compatibility APIs", () => {
     ({ handleAdminApiRequest } = await import("@/server/admin-api/router"));
     ({ handlePublicApiRequest } = await import("@/server/public-api/router"));
     ({ handleFilesApiRequest } = await import("@/server/files-api/router"));
+    ({ handleInternalAssetSourceRequest } = await import("@/server/public-media"));
 
     await initializeDB(true);
-  });
+  }, 20_000);
 
   afterAll(async () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -124,10 +130,12 @@ describe("HTTP compatibility APIs", () => {
       fs.rmSync(TEST_DB_PATH);
     }
     fs.rmSync(LOCAL_CONTENT_BASE_PATH, { recursive: true, force: true });
-  });
+  }, 10_000);
 
   beforeEach(async () => {
     resetHttpCompatEnv();
+    const { resetContentSourceManager } = await import("@/lib/content-sources");
+    await resetContentSourceManager();
 
     if (!db) {
       throw new Error("Database has not been initialised");
@@ -140,7 +148,13 @@ describe("HTTP compatibility APIs", () => {
 
     fs.rmSync(LOCAL_CONTENT_BASE_PATH, { recursive: true, force: true });
     fs.mkdirSync(LOCAL_CONTENT_BASE_PATH, { recursive: true });
-  });
+  }, 10_000);
+
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const { resetContentSourceManager } = await import("@/lib/content-sources");
+    await resetContentSourceManager();
+  }, 10_000);
 
   it("returns masked LLM settings, persists overrides, and can clear saved keys", async () => {
     const initial = await handleAdminApiRequest(
@@ -772,6 +786,237 @@ describe("HTTP compatibility APIs", () => {
     expect(snapshotPost?.filePath).toBe("blog/http-snapshot-post.md");
     expect(snapshotMemo?.filePath).toBe("Memos/http-snapshot-memo.md");
   }, 15_000);
+
+  it("rewrites public snapshot media fields to assets facade urls", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/public-cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/public-media-post.md",
+      filePath: "blog/public-media-post.md",
+      slug: "public-media-post",
+      type: "post",
+      title: "Public Media Post",
+      body: "![inline](./assets/public-cover.png)",
+      image: "./assets/public-cover.png",
+      public: true,
+      draft: false,
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(response.status).toBe(200);
+
+    const payload = await readJson(response);
+    const snapshotPost = payload.posts.find(
+      (post: { slug: string }) => post.slug === "public-media-post"
+    );
+    expect(snapshotPost?.image).toContain("/api/public/assets/post/public-media-post/");
+    expect(snapshotPost?.image).not.toContain("/api/files/");
+    expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
+      "/api/public/assets/post/public-media-post/"
+    );
+  });
+
+  it("preserves WebDAV media urls when a public row is not eligible for the local facade", async () => {
+    await seedPost({
+      id: "blog/webdav-media-post.md",
+      filePath: "blog/webdav-media-post.md",
+      slug: "webdav-media-post",
+      type: "post",
+      title: "WebDAV Media Post",
+      body: "![inline](./assets/webdav-cover.png)",
+      image: "./assets/webdav-cover.png",
+      public: true,
+      draft: false,
+      source: "webdav",
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(response.status).toBe(200);
+
+    const payload = await readJson(response);
+    const snapshotPost = payload.posts.find(
+      (post: { slug: string }) => post.slug === "webdav-media-post"
+    );
+    expect(snapshotPost?.image).toContain("/api/files/webdav/blog/assets/webdav-cover.png");
+    expect(snapshotPost?.image).not.toContain("/api/public/assets/");
+    expect(snapshotPost?.media?.cover).toBeNull();
+  });
+
+  it("proxies public facade image requests through imagorvideo without redirecting", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/facade-cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/facade-post.md",
+      filePath: "blog/facade-post.md",
+      slug: "facade-post",
+      type: "post",
+      title: "Facade Post",
+      image: "./assets/facade-cover.png",
+      body: "Body",
+      public: true,
+      draft: false,
+    });
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        expect(init?.method).toBe("GET");
+        expect(url).toContain("/fit-in/1600x900/");
+        expect(url).toContain("filters:");
+        expect(url).toContain("http://blog:25090/_internal/assets/source/post/facade-post/");
+        return new Response("optimized-image", {
+          status: 200,
+          headers: {
+            "content-type": "image/webp",
+            "cache-control": "public, max-age=600",
+          },
+        });
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/facade-cover.png", "cover");
+      const response = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/post/facade-post/${mediaHash}/cover.webp`),
+        `/assets/post/facade-post/${mediaHash}/cover.webp`
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/webp");
+      expect(response.headers.get("cache-control")).toBe("public, max-age=600");
+      expect(response.headers.get("location")).toBeNull();
+      expect(await response.text()).toBe("optimized-image");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("falls back to source bytes in non-production when imagor is unavailable", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/fallback-cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/fallback-post.md",
+      filePath: "blog/fallback-post.md",
+      slug: "fallback-post",
+      type: "post",
+      title: "Fallback Post",
+      image: "./assets/fallback-cover.png",
+      body: "Body",
+      public: true,
+      draft: false,
+    });
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        throw new Error("imagor offline");
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/fallback-cover.png", "cover");
+      const response = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/post/fallback-post/${mediaHash}/cover.webp`),
+        `/assets/post/fallback-post/${mediaHash}/cover.webp`
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(response.headers.get("x-public-media-fallback")).toBe("source");
+      expect(await response.text()).toBe("cover");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("serves internal source media with range support", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/range-video.mp4"),
+      "0123456789"
+    );
+
+    await seedPost({
+      id: "blog/range-video-post.md",
+      filePath: "blog/range-video-post.md",
+      slug: "range-video-post",
+      type: "post",
+      title: "Range Video Post",
+      body: '<video src="./assets/range-video.mp4" controls></video>',
+      public: true,
+      draft: false,
+    });
+
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/range-video.mp4", "playback");
+      const response = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/post/range-video-post/${mediaHash}`, {
+          headers: {
+            range: "bytes=2-5",
+          },
+        }),
+        { kind: "post", slug: "range-video-post", mediaHash }
+      );
+
+      expect(response.status).toBe(206);
+      expect(response.headers.get("accept-ranges")).toBe("bytes");
+      expect(response.headers.get("content-range")).toBe("bytes 2-5/10");
+      expect(await response.text()).toBe("2345");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+  });
+
+  it("rejects internal source requests that do not use the configured internal host", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/private-cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/private-host-check.md",
+      filePath: "blog/private-host-check.md",
+      slug: "private-host-check",
+      type: "post",
+      title: "Private Host Check",
+      image: "./assets/private-cover.png",
+      public: true,
+      draft: false,
+    });
+
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/private-cover.png", "cover");
+      const response = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/post/private-host-check/${mediaHash}`),
+        { kind: "post", slug: "private-host-check", mediaHash }
+      );
+
+      expect(response.status).toBe(404);
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+  });
 
   it("serves public search recovery suggestions from /api/public/search/suggestions", async () => {
     await seedPost({

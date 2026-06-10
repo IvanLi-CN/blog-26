@@ -2,8 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { buildLegacyPublicMediaUrl } from "@/lib/public-media";
 import { posts } from "@/lib/schema";
 import { toMsTimestamp } from "@/lib/utils";
+import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 import { resolveTagIconsForTags } from "@/server/services/tag-icon-resolver";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 
@@ -72,7 +74,9 @@ export type TagsTimelineItem = {
   publishDate: string;
   tags: string[];
   image?: string;
+  media?: ReturnType<typeof buildPublicMediaCollection>;
   dataSource?: string;
+  filePath?: string;
 };
 
 export const tagsRouter = createTRPCRouter({
@@ -124,7 +128,10 @@ export const tagsRouter = createTRPCRouter({
           publishDate: posts.publishDate,
           tags: posts.tags,
           image: posts.image,
+          metadata: posts.metadata,
           dataSource: posts.dataSource,
+          filePath: posts.filePath,
+          source: posts.source,
         })
         .from(posts)
         .where(and(...conditions))
@@ -134,18 +141,31 @@ export const tagsRouter = createTRPCRouter({
       const hasMore = rows.length > limit;
       const actual = hasMore ? rows.slice(0, limit) : rows;
 
-      const items: TagsTimelineItem[] = actual.map((row) => ({
-        type: row.type === "memo" ? "memo" : "post",
-        id: row.id,
-        slug: row.slug,
-        title: row.title,
-        excerpt: row.excerpt ?? undefined,
-        content: row.type === "memo" ? row.body : undefined,
-        publishDate: new Date(toMsTimestamp(row.publishDate)).toISOString(),
-        tags: normalizeTags(row.tags),
-        image: row.image ?? undefined,
-        dataSource: row.dataSource ?? undefined,
-      }));
+      const items: TagsTimelineItem[] = actual.map((row) => {
+        const contentKind = row.type === "memo" ? "memo" : "post";
+        const media = buildPublicMediaCollection(contentKind, row as typeof posts.$inferSelect);
+        return {
+          type: contentKind,
+          id: row.id,
+          slug: row.slug,
+          title: row.title,
+          excerpt: row.excerpt ?? undefined,
+          content: row.type === "memo" ? row.body : undefined,
+          publishDate: new Date(toMsTimestamp(row.publishDate)).toISOString(),
+          tags: normalizeTags(row.tags),
+          image:
+            pickLegacyPublicImage(media, "card") ??
+            buildLegacyPublicMediaUrl({
+              mediaPath: row.image,
+              dataSource: row.dataSource,
+              filePath: row.filePath,
+            }) ??
+            undefined,
+          media,
+          dataSource: row.dataSource ?? undefined,
+          filePath: row.filePath ?? row.id,
+        };
+      });
 
       let nextCursor: string | undefined;
       if (hasMore && actual.length > 0) {

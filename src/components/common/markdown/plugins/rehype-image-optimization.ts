@@ -1,5 +1,10 @@
 import type { Element, Root } from "hast";
 import { visit } from "unist-util-visit";
+import {
+  buildPublicMediaAssetUrl,
+  detectPublicMediaKind,
+  type PublicMediaContext,
+} from "@/lib/public-media";
 import type { ImageOptimizationOptions } from "../types";
 import {
   generateOptimizedImageUrl,
@@ -23,6 +28,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
     enableLightbox = true,
     articlePath = "",
     contentSource = "local",
+    publicMediaContext,
   } = options;
 
   return (tree: Root, file: unknown) => {
@@ -50,6 +56,25 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       articleDir = rawDir.startsWith("/") ? rawDir.substring(1) : rawDir;
     }
 
+    function buildFacadeOrOptimizedUrl(
+      mediaPath: string,
+      role: "content" | "playback",
+      variant: "content" | "play"
+    ) {
+      if (publicMediaContext) {
+        return (
+          buildPublicMediaAssetUrl({
+            context: publicMediaContext as PublicMediaContext,
+            mediaPath,
+            role,
+            variant,
+          }) ?? mediaPath
+        );
+      }
+
+      return generateOptimizedImageUrl(resolveRelativePath(mediaPath, articleDir), contentSource);
+    }
+
     visit(tree, "element", (node: Element) => {
       // 处理 img 标签
       if (node.tagName === "img" && node.properties && node.properties.src) {
@@ -66,11 +91,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
           !originalSrc.startsWith("data:") &&
           !originalSrc.startsWith("/api/files/")
         ) {
-          // 根据文章的实际路径解析相对路径
-          const resolvedPath = resolveRelativePath(originalSrc, articleDir);
-
-          // 转换为文件代理端点（使用utils中的函数，根据contentSource参数）
-          const finalPath = generateOptimizedImageUrl(resolvedPath, contentSource);
+          const finalPath = buildFacadeOrOptimizedUrl(originalSrc, "content", "content");
           node.properties.src = finalPath;
         }
 
@@ -96,15 +117,34 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       if (node.tagName === "a" && node.properties && node.properties.href) {
         const href = node.properties.href as string;
 
-        // 检查是否是图片文件链接
-        if (href && isImagePath(href)) {
+        const mediaKind = href ? detectPublicMediaKind(href) : null;
+        if (href && (isImagePath(href) || mediaKind === "video")) {
           // 如果已经是完整的 URL 或已经是文件代理端点，跳过处理
           if (!isExternalUrl(href) && !href.startsWith("/api/files/")) {
-            // 使用统一的路径解析逻辑
-            const resolvedPath = resolveRelativePath(href, articleDir);
-            const finalPath = generateOptimizedImageUrl(resolvedPath, contentSource);
+            const finalPath =
+              mediaKind === "video"
+                ? buildFacadeOrOptimizedUrl(href, "playback", "play")
+                : buildFacadeOrOptimizedUrl(href, "content", "content");
             node.properties.href = finalPath;
           }
+        }
+      }
+
+      if ((node.tagName === "video" || node.tagName === "source") && node.properties?.src) {
+        const src = String(node.properties.src);
+        if (!isExternalUrl(src) && !src.startsWith("/api/files/") && !src.startsWith("data:")) {
+          node.properties.src = buildFacadeOrOptimizedUrl(src, "playback", "play");
+        }
+      }
+
+      if (node.tagName === "video" && node.properties?.poster) {
+        const poster = String(node.properties.poster);
+        if (
+          !isExternalUrl(poster) &&
+          !poster.startsWith("/api/files/") &&
+          !poster.startsWith("data:")
+        ) {
+          node.properties.poster = buildFacadeOrOptimizedUrl(poster, "content", "content");
         }
       }
     });

@@ -1,97 +1,19 @@
 ---
-import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import Icon from "@/components/ui/Icon";
-import { resolveImagePath } from "@/lib/image-utils";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import type { PublicPostRecord } from "@/public-site/snapshot";
-import { toPublicAssetUrl, toPublicSitePath } from "../lib/runtime-urls";
+import { toPublicSitePath } from "../lib/runtime-urls";
 
 interface Props {
   post: PublicPostRecord;
 }
 
 const { post } = Astro.props as Props;
-const source = (post.dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav";
-
-function resolveRelativeAssetPath(imagePath: string, markdownFilePath: string) {
-  const clean = imagePath.trim();
-  if (!clean) return null;
-
-  if (clean.startsWith("/")) {
-    return clean.replace(/^\/+/, "");
-  }
-
-  const normalizedFilePath = markdownFilePath.replace(/\\/g, "/");
-  const markdownDir = normalizedFilePath.includes("/")
-    ? normalizedFilePath.slice(0, normalizedFilePath.lastIndexOf("/"))
-    : "";
-
-  const baseSegments = markdownDir.split("/").filter(Boolean);
-  const pathSegments = clean.replace(/\\/g, "/").split("/");
-
-  if (!clean.startsWith("./") && !clean.startsWith("../")) {
-    return [...baseSegments, ...pathSegments.filter(Boolean)].join("/");
-  }
-
-  for (const segment of pathSegments) {
-    if (!segment || segment === ".") continue;
-    if (segment === "..") {
-      baseSegments.pop();
-      continue;
-    }
-    baseSegments.push(segment);
-  }
-
-  return baseSegments.join("/");
-}
-
-function decodeAssetPath(path: string) {
-  try {
-    return decodeURIComponent(path);
-  } catch {
-    return path;
-  }
-}
-
-function getMimeType(filePath: string) {
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith(".png")) return "image/png";
-  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-  if (lower.endsWith(".gif")) return "image/gif";
-  if (lower.endsWith(".webp")) return "image/webp";
-  if (lower.endsWith(".svg")) return "image/svg+xml";
-  return "application/octet-stream";
-}
-
-async function resolveCardImageSrc(record: PublicPostRecord, contentSource: "local" | "webdav") {
-  const coverCandidate = extractPostCoverCandidate(record);
-  if (!coverCandidate || isExternalImageUrl(coverCandidate)) {
-    return null;
-  }
-
-  const markdownFilePath = record.filePath;
-
-  if (contentSource === "local") {
-    const contentBasePath = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
-    const relativeAssetPath = resolveRelativeAssetPath(coverCandidate, markdownFilePath);
-
-    if (contentBasePath && relativeAssetPath) {
-      const absoluteBasePath = resolve(contentBasePath);
-      const absoluteAssetPath = resolve(absoluteBasePath, decodeAssetPath(relativeAssetPath));
-
-      if (absoluteAssetPath.startsWith(absoluteBasePath) && existsSync(absoluteAssetPath)) {
-        const buffer = await readFile(absoluteAssetPath);
-        return `data:${getMimeType(absoluteAssetPath)};base64,${buffer.toString("base64")}`;
-      }
-    }
-  }
-
-  return toPublicAssetUrl(resolveImagePath(coverCandidate, contentSource, markdownFilePath));
-}
-
-const imageSrc = await resolveCardImageSrc(post, source);
+const coverCandidate = extractPostCoverCandidate(post);
+const imageSrc =
+  post.media.cover?.variants.card ??
+  post.media.primary?.variants.card ??
+  (coverCandidate && isExternalImageUrl(coverCandidate) ? coverCandidate : null);
 const hasCover = Boolean(imageSrc);
 const excerpt = post.excerpt?.trim() || "";
 const articleClass = "min-w-0 self-start";

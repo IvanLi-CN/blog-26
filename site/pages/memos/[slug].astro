@@ -1,6 +1,7 @@
 ---
 import Icon from "@/components/ui/Icon";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import { isLocalPublicMediaDataSource } from "@/lib/public-media";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { PublicMemoDetailControlsIsland } from "../../components/PublicMemoAuthoring";
@@ -19,7 +20,10 @@ export async function getStaticPaths() {
 const { memo } = Astro.props as { memo: PublicMemoRecord };
 const snapshot = await getSnapshot();
 const displayDate = memo.publishedAt ?? memo.createdAt;
-const contentSource = "local";
+const contentSource = isLocalPublicMediaDataSource(memo.dataSource) ? "local" : "webdav";
+const publicMediaContext = isLocalPublicMediaDataSource(memo.dataSource)
+  ? { kind: "memo" as const, slug: memo.slug, filePath: memo.filePath }
+  : undefined;
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
@@ -91,6 +95,7 @@ const structuredData = {
             rewritePublicSitePaths={true}
             articlePath={memo.filePath}
             contentSource={contentSource}
+            publicMediaContext={publicMediaContext}
           />
         </div>
       </div>

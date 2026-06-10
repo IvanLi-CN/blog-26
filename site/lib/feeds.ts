@@ -1,9 +1,7 @@
 import { SITE } from "@/config/site";
-import { resolveImagePath } from "@/lib/image-utils";
 import { type BuiltFeed, buildFeed } from "@/lib/rss";
 import type { PublicSnapshot } from "@/public-site/snapshot";
 import { buildTagFeedItems, getCanonicalUrl, getSiteUrl, toAbsoluteSiteUrl } from "./public-site";
-import { toPublicAssetUrl } from "./runtime-urls";
 
 type FeedFormat = "rss" | "atom" | "json";
 
@@ -39,20 +37,14 @@ function buildOptions(format: FeedFormat) {
 
 function resolveContentImageUrl(
   image: string | null | undefined,
-  dataSource: string | null | undefined,
-  filePath: string
+  media: PublicSnapshot["posts"][number]["media"] | PublicSnapshot["memos"][number]["media"]
 ) {
-  const resolved = resolveImagePath(
-    image || undefined,
-    (dataSource?.includes("local") ? "local" : "webdav") as "local" | "webdav",
-    filePath
-  );
-  return toPublicAssetUrl(resolved ?? image ?? undefined) ?? undefined;
+  return media.cover?.variants.cover ?? media.primary?.variants.content ?? image ?? undefined;
 }
 
 export function buildSiteFeed(snapshot: PublicSnapshot, format: FeedFormat): BuiltFeed {
   const items = snapshot.posts.slice(0, 30).map((post) => {
-    const imageUrl = resolveContentImageUrl(post.image, post.dataSource, post.filePath);
+    const imageUrl = resolveContentImageUrl(post.image, post.media);
     return {
       id: getCanonicalUrl(`/posts/${post.slug}`),
       title: post.title,
@@ -75,7 +67,7 @@ export function buildSiteFeed(snapshot: PublicSnapshot, format: FeedFormat): Bui
 
 export function buildMemosFeed(snapshot: PublicSnapshot): BuiltFeed {
   const items = snapshot.memos.slice(0, 30).map((memo) => {
-    const imageUrl = resolveContentImageUrl(memo.image, memo.dataSource, memo.filePath);
+    const imageUrl = resolveContentImageUrl(memo.image, memo.media);
     return {
       id: getCanonicalUrl(`/memos/${memo.slug}`),
       title: memo.title,
