@@ -101,6 +101,8 @@ async function seedPost(
 describe("HTTP compatibility APIs", () => {
   beforeAll(async () => {
     resetHttpCompatEnv();
+    const { resetContentSourceManager } = await import("@/lib/content-sources");
+    await resetContentSourceManager();
 
     fs.mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
     fs.mkdirSync(LOCAL_CONTENT_BASE_PATH, { recursive: true });
@@ -132,6 +134,8 @@ describe("HTTP compatibility APIs", () => {
 
   beforeEach(async () => {
     resetHttpCompatEnv();
+    const { resetContentSourceManager } = await import("@/lib/content-sources");
+    await resetContentSourceManager();
 
     if (!db) {
       throw new Error("Database has not been initialised");
