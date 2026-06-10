@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
