@@ -50,6 +50,28 @@ const renameFileSchema = z.object({
   newName: z.string().min(1),
 });
 
+const fileEntrySchema = z.object({
+  path: z.string().min(1),
+  type: z.enum(["file", "directory"]),
+});
+
+const moveEntriesSchema = z.object({
+  source: z.string().min(1),
+  paths: z.array(z.string().min(1)).min(1),
+  destinationPath: z.string().default(""),
+});
+
+const copyEntriesSchema = z.object({
+  source: z.string().min(1),
+  paths: z.array(z.string().min(1)).min(1),
+  destinationPath: z.string().default(""),
+});
+
+const deleteEntriesSchema = z.object({
+  source: z.string().min(1),
+  entries: z.array(fileEntrySchema).min(1),
+});
+
 // 文件/目录项类型
 export interface FileItem {
   name: string;
@@ -68,6 +90,12 @@ export interface DataSource {
   enabled: boolean;
   description?: string;
 }
+
+type BatchEntryResult = {
+  path: string;
+  nextPath?: string;
+  type: "file" | "directory";
+};
 
 function requireLocalBasePath(): string {
   if (!isLocalContentEnabled()) {
@@ -115,6 +143,101 @@ function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } =
   }
 
   return normalizedPath;
+}
+
+function isTreePathAncestor(path: string, targetPath: string) {
+  const normalizedPath = normalizeLocalBrowserPath(path);
+  const normalizedTargetPath = normalizeLocalBrowserPath(targetPath);
+  if (!normalizedPath || !normalizedTargetPath || normalizedPath === normalizedTargetPath) {
+    return false;
+  }
+  return normalizedTargetPath.startsWith(`${normalizedPath}/`);
+}
+
+function assertNoNestedSelection(paths: string[]) {
+  const normalizedPaths = Array.from(
+    new Set(paths.map((path) => normalizeLocalBrowserPath(path)).filter(Boolean))
+  ).sort((left, right) => left.localeCompare(right));
+
+  for (let index = 0; index < normalizedPaths.length; index += 1) {
+    for (let nestedIndex = index + 1; nestedIndex < normalizedPaths.length; nestedIndex += 1) {
+      if (isTreePathAncestor(normalizedPaths[index], normalizedPaths[nestedIndex])) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不能同时操作父目录与其子项",
+        });
+      }
+    }
+  }
+
+  return normalizedPaths;
+}
+
+function assertLocalRootOperationAllowed(path: string) {
+  const normalizedPath = assertLocalPathAllowed(path);
+  const configuredRoots = new Set(getLocalConfiguredRootDirs());
+  if (configuredRoots.has(normalizedPath)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "不能直接操作已配置的本地内容根目录",
+    });
+  }
+  return normalizedPath;
+}
+
+async function ensureLocalDirectoryTarget(
+  destinationPath: string
+): Promise<{ relativePath: string; fullPath: string }> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedRelativePath = destinationPath ? assertLocalPathAllowed(destinationPath) : "";
+  const fullPath = normalizedRelativePath
+    ? nodePath.join(basePath, normalizedRelativePath)
+    : basePath;
+
+  const stats = await fs.stat(fullPath).catch((error: NodeJS.ErrnoException) => {
+    if (error?.code === "ENOENT") {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "目标目录不存在",
+      });
+    }
+    throw error;
+  });
+
+  if (!stats.isDirectory()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "目标路径不是目录",
+    });
+  }
+
+  return {
+    relativePath: normalizedRelativePath,
+    fullPath,
+  };
+}
+
+async function triggerAdminContentSync() {
+  console.log("🔄 [Files API] 准备触发增量数据同步...");
+  try {
+    const syncManager = getContentSourceManager({
+      maxConcurrentSyncs: 2,
+      syncTimeout: 30000,
+      enableTransactions: true,
+      conflictResolution: "priority",
+    });
+    const result = await syncManager.syncAll();
+    if (result.success) {
+      console.log(`✅ [Files API] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+    } else {
+      const errorMessages = result.errors.map((entry) => entry.message).join(", ");
+      console.warn(`⚠️ [Files API] 增量同步失败: ${errorMessages}`);
+    }
+  } catch (syncError) {
+    console.error("❌ [Files API] 增量数据同步异常:", syncError);
+  }
 }
 
 /**
@@ -367,6 +490,242 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
     console.error("❌ [Files API] 本地文件重命名失败:", error);
     throw error;
   }
+}
+
+async function moveLocalEntries(
+  paths: string[],
+  destinationPath: string
+): Promise<{ moved: BatchEntryResult[] }> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedPaths = assertNoNestedSelection(paths).map(assertLocalRootOperationAllowed);
+  const { relativePath: normalizedDestinationPath } =
+    await ensureLocalDirectoryTarget(destinationPath);
+
+  const operations = await Promise.all(
+    normalizedPaths.map(async (currentPath) => {
+      const fullCurrentPath = nodePath.join(basePath, currentPath);
+      const stats = await fs.stat(fullCurrentPath).catch((error: NodeJS.ErrnoException) => {
+        if (error?.code === "ENOENT") {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `源路径不存在: ${currentPath}`,
+          });
+        }
+        throw error;
+      });
+      const itemName = nodePath.basename(currentPath);
+      const nextRelativePath = normalizeLocalBrowserPath(
+        normalizedDestinationPath ? `${normalizedDestinationPath}/${itemName}` : itemName
+      );
+
+      if (currentPath === nextRelativePath) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "目标目录与原目录相同",
+        });
+      }
+
+      if (stats.isDirectory() && isTreePathAncestor(currentPath, normalizedDestinationPath)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不能将目录移动到其自身或后代目录内",
+        });
+      }
+
+      assertLocalPathAllowed(nextRelativePath);
+
+      const fullNextPath = nodePath.join(basePath, nextRelativePath);
+      await fs.access(fullNextPath).then(
+        () => {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `目标已存在: ${nextRelativePath}`,
+          });
+        },
+        (error: NodeJS.ErrnoException) => {
+          if (error?.code !== "ENOENT") {
+            throw error;
+          }
+        }
+      );
+
+      return {
+        path: currentPath,
+        nextPath: nextRelativePath,
+        type: stats.isDirectory() ? "directory" : "file",
+        fullCurrentPath,
+        fullNextPath,
+      };
+    })
+  );
+
+  const nextPaths = new Set<string>();
+  for (const operation of operations) {
+    if (nextPaths.has(operation.nextPath)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "批量移动目标存在重名冲突",
+      });
+    }
+    nextPaths.add(operation.nextPath);
+  }
+
+  for (const operation of operations) {
+    await fs.rename(operation.fullCurrentPath, operation.fullNextPath);
+  }
+
+  return {
+    moved: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+  };
+}
+
+async function copyLocalEntries(
+  paths: string[],
+  destinationPath: string
+): Promise<{ copied: BatchEntryResult[] }> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedPaths = assertNoNestedSelection(paths).map(assertLocalRootOperationAllowed);
+  const { relativePath: normalizedDestinationPath } =
+    await ensureLocalDirectoryTarget(destinationPath);
+
+  const operations = await Promise.all(
+    normalizedPaths.map(async (currentPath) => {
+      const fullCurrentPath = nodePath.join(basePath, currentPath);
+      const stats = await fs.stat(fullCurrentPath).catch((error: NodeJS.ErrnoException) => {
+        if (error?.code === "ENOENT") {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `源路径不存在: ${currentPath}`,
+          });
+        }
+        throw error;
+      });
+      const itemName = nodePath.basename(currentPath);
+      const nextRelativePath = normalizeLocalBrowserPath(
+        normalizedDestinationPath ? `${normalizedDestinationPath}/${itemName}` : itemName
+      );
+      if (stats.isDirectory() && isTreePathAncestor(currentPath, normalizedDestinationPath)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不能将目录复制到其自身或后代目录内",
+        });
+      }
+      assertLocalPathAllowed(nextRelativePath);
+      const fullNextPath = nodePath.join(basePath, nextRelativePath);
+      await fs.access(fullNextPath).then(
+        () => {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `目标已存在: ${nextRelativePath}`,
+          });
+        },
+        (error: NodeJS.ErrnoException) => {
+          if (error?.code !== "ENOENT") {
+            throw error;
+          }
+        }
+      );
+
+      return {
+        path: currentPath,
+        nextPath: nextRelativePath,
+        type: stats.isDirectory() ? "directory" : "file",
+        fullCurrentPath,
+        fullNextPath,
+      };
+    })
+  );
+
+  const nextPaths = new Set<string>();
+  for (const operation of operations) {
+    if (nextPaths.has(operation.nextPath)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "批量复制目标存在重名冲突",
+      });
+    }
+    nextPaths.add(operation.nextPath);
+  }
+
+  for (const operation of operations) {
+    await fs.cp(operation.fullCurrentPath, operation.fullNextPath, {
+      recursive: operation.type === "directory",
+      errorOnExist: true,
+      force: false,
+    });
+  }
+
+  return {
+    copied: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+  };
+}
+
+async function deleteLocalEntries(
+  entries: Array<{ path: string; type: "file" | "directory" }>
+): Promise<{ deleted: BatchEntryResult[] }> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedPaths = assertNoNestedSelection(entries.map((entry) => entry.path));
+  const entryMap = new Map(
+    entries.map((entry) => [normalizeLocalBrowserPath(entry.path), entry.type])
+  );
+
+  const operations = await Promise.all(
+    normalizedPaths.map(async (currentPath) => {
+      const normalizedCurrentPath = assertLocalRootOperationAllowed(currentPath);
+      const fullCurrentPath = nodePath.join(basePath, normalizedCurrentPath);
+      const stats = await fs.stat(fullCurrentPath).catch((error: NodeJS.ErrnoException) => {
+        if (error?.code === "ENOENT") {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `源路径不存在: ${normalizedCurrentPath}`,
+          });
+        }
+        throw error;
+      });
+      const declaredType = entryMap.get(currentPath);
+      const actualType = stats.isDirectory() ? "directory" : "file";
+      if (declaredType && declaredType !== actualType) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "删除目标类型与实际文件系统类型不一致",
+        });
+      }
+
+      if (actualType === "directory") {
+        const childEntries = await fs.readdir(fullCurrentPath);
+        if (childEntries.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `目录不为空，无法删除: ${normalizedCurrentPath}`,
+          });
+        }
+      }
+
+      return {
+        path: normalizedCurrentPath,
+        type: actualType,
+        fullCurrentPath,
+      };
+    })
+  );
+
+  for (const operation of operations) {
+    if (operation.type === "directory") {
+      await fs.rmdir(operation.fullCurrentPath);
+    } else {
+      await fs.unlink(operation.fullCurrentPath);
+    }
+  }
+
+  return {
+    deleted: operations.map(({ path, type }) => ({ path, type })),
+  };
 }
 
 /**
@@ -634,37 +993,7 @@ export const filesRouter = createTRPCRouter({
       console.log(`✅ [Files API] 文件写入成功: ${input.source}:${input.path}`);
 
       // 触发增量数据同步
-      console.log("🔄 [Files API] 准备触发增量数据同步...");
-      try {
-        console.log("🔄 [Files API] 开始触发增量数据同步...");
-
-        console.log("🔧 [Files API] 创建同步管理器...");
-        const syncManager = getContentSourceManager({
-          maxConcurrentSyncs: 2,
-          syncTimeout: 30000, // 30秒超时
-          enableTransactions: true,
-          conflictResolution: "priority",
-        });
-        console.log("✅ [Files API] 同步管理器创建成功");
-
-        console.log("🚀 [Files API] 执行 syncAll()...");
-        const result = await syncManager.syncAll();
-        console.log("📊 [Files API] syncAll() 执行完成，结果:", result);
-
-        if (result.success) {
-          console.log(`✅ [Files API] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
-        } else {
-          const errorMessages = result.errors.map((e) => e.message).join(", ");
-          console.warn(`⚠️ [Files API] 增量同步失败: ${errorMessages}`);
-        }
-      } catch (syncError) {
-        // 同步失败不应该影响文件写入的成功响应，但需要记录错误
-        console.error("❌ [Files API] 增量数据同步异常:", syncError);
-        console.error(
-          "❌ [Files API] 异常堆栈:",
-          syncError instanceof Error ? syncError.stack : "无堆栈信息"
-        );
-      }
+      await triggerAdminContentSync();
       console.log("🏁 [Files API] 增量同步流程结束");
 
       return {
@@ -787,6 +1116,8 @@ export const filesRouter = createTRPCRouter({
         });
       }
 
+      await triggerAdminContentSync();
+
       return {
         success: true,
         source: input.source,
@@ -805,6 +1136,119 @@ export const filesRouter = createTRPCRouter({
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: error instanceof Error ? error.message : "重命名文件失败",
+      });
+    }
+  }),
+
+  moveEntries: adminProcedure.input(moveEntriesSchema).mutation(async ({ input }) => {
+    try {
+      if (input.source !== "local") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "当前仅支持本地内容源的移动操作",
+        });
+      }
+
+      const manager = getContentSourceManager();
+      const source = await ensureSourceReady(manager, input.source);
+      if (!(source instanceof LocalContentSource)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "当前内容源不支持移动操作",
+        });
+      }
+
+      const result = await moveLocalEntries(input.paths, input.destinationPath);
+      await triggerAdminContentSync();
+      return {
+        success: true,
+        source: input.source,
+        destinationPath: input.destinationPath,
+        moved: result.moved,
+      };
+    } catch (error) {
+      console.error("移动文件失败:", error);
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "移动文件失败",
+      });
+    }
+  }),
+
+  copyEntries: adminProcedure.input(copyEntriesSchema).mutation(async ({ input }) => {
+    try {
+      if (input.source !== "local") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "当前仅支持本地内容源的复制操作",
+        });
+      }
+
+      const manager = getContentSourceManager();
+      const source = await ensureSourceReady(manager, input.source);
+      if (!(source instanceof LocalContentSource)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "当前内容源不支持复制操作",
+        });
+      }
+
+      const result = await copyLocalEntries(input.paths, input.destinationPath);
+      await triggerAdminContentSync();
+      return {
+        success: true,
+        source: input.source,
+        destinationPath: input.destinationPath,
+        copied: result.copied,
+      };
+    } catch (error) {
+      console.error("复制文件失败:", error);
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "复制文件失败",
+      });
+    }
+  }),
+
+  deleteEntries: adminProcedure.input(deleteEntriesSchema).mutation(async ({ input }) => {
+    try {
+      if (input.source !== "local") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "当前仅支持本地内容源的删除操作",
+        });
+      }
+
+      const manager = getContentSourceManager();
+      const source = await ensureSourceReady(manager, input.source);
+      if (!(source instanceof LocalContentSource)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "当前内容源不支持删除操作",
+        });
+      }
+
+      const result = await deleteLocalEntries(input.entries);
+      await triggerAdminContentSync();
+      return {
+        success: true,
+        source: input.source,
+        deleted: result.deleted,
+      };
+    } catch (error) {
+      console.error("删除文件失败:", error);
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "删除文件失败",
       });
     }
   }),

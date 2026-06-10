@@ -190,6 +190,16 @@ let llmSettings: AdminLlmSettingsPayload = {
   },
 };
 
+class DemoApiError extends Error {
+  status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "DemoApiError";
+    this.status = status;
+  }
+}
+
 export function setupAdminDemoApiMocks() {
   if (window.__adminDemoApiMockInstalled) return;
   window.__adminDemoApiMockInstalled = true;
@@ -337,6 +347,9 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
   if (path === "/api/admin/files/write") return json(writeFile(body));
   if (path === "/api/admin/files/create-directory") return json(createDirectory(body));
   if (path === "/api/admin/files/rename") return json(renameFile(body));
+  if (path === "/api/admin/files/move") return handleFileMutation(() => moveEntries(body));
+  if (path === "/api/admin/files/copy") return handleFileMutation(() => copyEntries(body));
+  if (path === "/api/admin/files/delete") return handleFileMutation(() => deleteEntries(body));
 
   return json({ error: { message: `未实现的 demo API: ${path}` } }, 404);
 }
@@ -350,6 +363,25 @@ function json(data: unknown, status = 200) {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function handleFileMutation(handler: () => unknown) {
+  try {
+    return json(handler());
+  } catch (error) {
+    if (error instanceof DemoApiError) {
+      return json({ error: { message: error.message } }, error.status);
+    }
+
+    return json(
+      {
+        error: {
+          message: error instanceof Error ? error.message : "文件操作失败",
+        },
+      },
+      500
+    );
+  }
 }
 
 async function readJsonBody(init?: RequestInit) {
@@ -585,7 +617,7 @@ function writeFile(body: Record<string, unknown>) {
 
 function createDirectory(body: Record<string, unknown>) {
   const source = String(body.source ?? "local");
-  const path = String(body.path ?? "content/posts/new-folder").replace(/^\/+|\/+$/g, "");
+  const path = normalizeDemoPath(String(body.path ?? "content/posts/new-folder"));
   directoryPaths.add(`${source}:${path}`);
   addParentDirectoriesFromKey(`${source}:${path}/.keep`);
   return { success: true, source, path };
@@ -593,7 +625,7 @@ function createDirectory(body: Record<string, unknown>) {
 
 function renameFile(body: Record<string, unknown>) {
   const source = String(body.source ?? "local");
-  const oldPath = String(body.oldPath ?? "").replace(/^\/+|\/+$/g, "");
+  const oldPath = normalizeDemoPath(String(body.oldPath ?? ""));
   const newName = String(body.newName ?? "").trim();
   const parent = oldPath.includes("/") ? oldPath.slice(0, oldPath.lastIndexOf("/")) : "";
   const newPath = parent ? `${parent}/${newName}` : newName;
@@ -634,6 +666,320 @@ function renameFile(body: Record<string, unknown>) {
   }
 
   return { success: false, source, oldPath, newName };
+}
+
+function moveEntries(body: Record<string, unknown>) {
+  const source = String(body.source ?? "local");
+  const destinationPath = normalizeDemoPath(String(body.destinationPath ?? ""));
+  const paths = parseDemoPathList(body.paths);
+  const normalizedPaths = assertNoNestedDemoSelection(paths);
+  const operations = normalizedPaths.map((currentPath) =>
+    planDemoRelocation(source, currentPath, destinationPath, "move")
+  );
+  assertUniqueTargets(
+    operations.map((operation) => operation.nextPath),
+    "批量移动目标存在重名冲突"
+  );
+
+  for (const operation of operations) {
+    applyRelocation(source, operation.path, operation.nextPath, "move");
+  }
+
+  return {
+    success: true,
+    source,
+    destinationPath,
+    moved: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+  };
+}
+
+function copyEntries(body: Record<string, unknown>) {
+  const source = String(body.source ?? "local");
+  const destinationPath = normalizeDemoPath(String(body.destinationPath ?? ""));
+  const paths = parseDemoPathList(body.paths);
+  const normalizedPaths = assertNoNestedDemoSelection(paths);
+  const operations = normalizedPaths.map((currentPath) =>
+    planDemoRelocation(source, currentPath, destinationPath, "copy")
+  );
+  assertUniqueTargets(
+    operations.map((operation) => operation.nextPath),
+    "批量复制目标存在重名冲突"
+  );
+
+  for (const operation of operations) {
+    applyRelocation(source, operation.path, operation.nextPath, "copy");
+  }
+
+  return {
+    success: true,
+    source,
+    destinationPath,
+    copied: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+  };
+}
+
+function deleteEntries(body: Record<string, unknown>) {
+  const source = String(body.source ?? "local");
+  const entries = Array.isArray(body.entries)
+    ? body.entries.map((entry) => ({
+        path: normalizeDemoPath(String((entry as Record<string, unknown>).path ?? "")),
+        type:
+          (entry as Record<string, unknown>).type === "directory" ? "directory" : ("file" as const),
+      }))
+    : [];
+
+  if (entries.length === 0) {
+    throw new DemoApiError("至少选择一个删除目标");
+  }
+
+  const normalizedPaths = assertNoNestedDemoSelection(entries.map((entry) => entry.path));
+  const deleted = normalizedPaths.map((currentPath) => {
+    const declaredType =
+      entries.find((entry) => normalizeDemoPath(entry.path) === currentPath)?.type ?? "file";
+    const actualType = getDemoEntryType(source, currentPath);
+    if (!actualType) {
+      throw new DemoApiError(`源路径不存在: ${currentPath}`, 404);
+    }
+    if (declaredType !== actualType) {
+      throw new DemoApiError("删除目标类型与实际文件系统类型不一致");
+    }
+    if (actualType === "directory" && hasDemoDescendants(source, currentPath)) {
+      throw new DemoApiError(`目录不为空，无法删除: ${currentPath}`);
+    }
+
+    removeDemoEntry(source, currentPath, actualType);
+    return { path: currentPath, type: actualType };
+  });
+
+  return {
+    success: true,
+    source,
+    deleted,
+  };
+}
+
+function parseDemoPathList(value: unknown) {
+  const paths = Array.isArray(value)
+    ? value.map((item) => normalizeDemoPath(String(item ?? ""))).filter(Boolean)
+    : [];
+  if (paths.length === 0) {
+    throw new DemoApiError("至少选择一个目标");
+  }
+  return paths;
+}
+
+function normalizeDemoPath(path: string) {
+  return path.replace(/^\/+|\/+$/g, "");
+}
+
+function assertNoNestedDemoSelection(paths: string[]) {
+  const normalizedPaths = Array.from(new Set(paths.filter(Boolean))).sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+  for (let index = 0; index < normalizedPaths.length; index += 1) {
+    for (let nestedIndex = index + 1; nestedIndex < normalizedPaths.length; nestedIndex += 1) {
+      if (isDemoPathAncestor(normalizedPaths[index], normalizedPaths[nestedIndex])) {
+        throw new DemoApiError("不能同时操作父目录与其子项");
+      }
+    }
+  }
+
+  return normalizedPaths;
+}
+
+function isDemoPathAncestor(path: string, targetPath: string) {
+  return Boolean(path && targetPath && path !== targetPath && targetPath.startsWith(`${path}/`));
+}
+
+function getDemoEntryType(source: string, path: string): "file" | "directory" | null {
+  const normalizedPath = normalizeDemoPath(path);
+  if (!normalizedPath) return null;
+
+  if (fileContents.has(`${source}:${normalizedPath}`)) {
+    return "file";
+  }
+
+  if (directoryPaths.has(`${source}:${normalizedPath}`)) {
+    return "directory";
+  }
+
+  const prefix = `${source}:${normalizedPath}/`;
+  for (const key of directoryPaths) {
+    if (key.startsWith(prefix)) return "directory";
+  }
+  for (const key of fileContents.keys()) {
+    if (key.startsWith(prefix)) return "directory";
+  }
+
+  return null;
+}
+
+function hasDemoDescendants(source: string, path: string) {
+  const normalizedPath = normalizeDemoPath(path);
+  const prefix = `${source}:${normalizedPath}/`;
+  for (const key of directoryPaths) {
+    if (key.startsWith(prefix)) return true;
+  }
+  for (const key of fileContents.keys()) {
+    if (key.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
+function demoEntryExists(source: string, path: string) {
+  return getDemoEntryType(source, path) !== null;
+}
+
+function assertDemoDirectoryTargetExists(source: string, path: string) {
+  const normalizedPath = normalizeDemoPath(path);
+  if (!normalizedPath) return;
+
+  const targetType = getDemoEntryType(source, normalizedPath);
+  if (targetType === null) {
+    throw new DemoApiError("目标目录不存在", 404);
+  }
+  if (targetType !== "directory") {
+    throw new DemoApiError("目标路径不是目录");
+  }
+}
+
+function planDemoRelocation(
+  source: string,
+  currentPath: string,
+  destinationPath: string,
+  mode: "move" | "copy"
+) {
+  const normalizedPath = normalizeDemoPath(currentPath);
+  const normalizedDestinationPath = normalizeDemoPath(destinationPath);
+  const type = getDemoEntryType(source, normalizedPath);
+  if (!type) {
+    throw new DemoApiError(`源路径不存在: ${normalizedPath}`, 404);
+  }
+
+  assertDemoDirectoryTargetExists(source, normalizedDestinationPath);
+
+  if (type === "directory" && isDemoPathAncestor(normalizedPath, normalizedDestinationPath)) {
+    throw new DemoApiError(
+      mode === "move" ? "不能将目录移动到其自身或后代目录内" : "不能将目录复制到其自身或后代目录内"
+    );
+  }
+
+  const itemName = normalizedPath.split("/").pop() ?? normalizedPath;
+  const nextPath = normalizeDemoPath(
+    normalizedDestinationPath ? `${normalizedDestinationPath}/${itemName}` : itemName
+  );
+
+  if (mode === "move" && nextPath === normalizedPath) {
+    throw new DemoApiError("目标目录与原目录相同");
+  }
+
+  if (demoEntryExists(source, nextPath)) {
+    throw new DemoApiError(`目标已存在: ${nextPath}`, 409);
+  }
+
+  return {
+    path: normalizedPath,
+    nextPath,
+    type,
+  };
+}
+
+function assertUniqueTargets(paths: string[], message: string) {
+  const seen = new Set<string>();
+  for (const path of paths) {
+    if (seen.has(path)) {
+      throw new DemoApiError(message, 409);
+    }
+    seen.add(path);
+  }
+}
+
+function applyRelocation(source: string, fromPath: string, toPath: string, mode: "move" | "copy") {
+  const normalizedFromPath = normalizeDemoPath(fromPath);
+  const normalizedToPath = normalizeDemoPath(toPath);
+  const type = getDemoEntryType(source, normalizedFromPath);
+  if (!type) {
+    throw new DemoApiError(`源路径不存在: ${normalizedFromPath}`, 404);
+  }
+
+  if (type === "file") {
+    const fromKey = `${source}:${normalizedFromPath}`;
+    const toKey = `${source}:${normalizedToPath}`;
+    const content = fileContents.get(fromKey);
+    if (content === undefined) {
+      throw new DemoApiError(`源路径不存在: ${normalizedFromPath}`, 404);
+    }
+
+    fileContents.set(toKey, content);
+    addParentDirectoriesFromKey(toKey);
+    if (mode === "move") {
+      fileContents.delete(fromKey);
+    }
+    return;
+  }
+
+  const directoryMappings = collectDirectoryMappings(source, normalizedFromPath, normalizedToPath);
+  const fileMappings = collectFileMappings(source, normalizedFromPath, normalizedToPath);
+
+  for (const { toKey } of directoryMappings) {
+    directoryPaths.add(toKey);
+  }
+  for (const { fromKey, toKey } of fileMappings) {
+    const content = fileContents.get(fromKey);
+    if (content !== undefined) {
+      fileContents.set(toKey, content);
+      addParentDirectoriesFromKey(toKey);
+    }
+  }
+
+  if (mode === "move") {
+    for (const { fromKey } of directoryMappings) {
+      directoryPaths.delete(fromKey);
+    }
+    for (const { fromKey } of fileMappings) {
+      fileContents.delete(fromKey);
+    }
+  }
+}
+
+function collectDirectoryMappings(source: string, fromPath: string, toPath: string) {
+  const fromKey = `${source}:${fromPath}`;
+  const prefix = `${fromKey}/`;
+  const candidates = Array.from(directoryPaths)
+    .filter((key) => key === fromKey || key.startsWith(prefix))
+    .sort((left, right) => left.localeCompare(right));
+
+  if (candidates.length === 0) {
+    candidates.push(fromKey);
+  }
+
+  return candidates.map((currentKey) => ({
+    fromKey: currentKey,
+    toKey: `${source}:${toPath}${currentKey.slice(fromKey.length)}`,
+  }));
+}
+
+function collectFileMappings(source: string, fromPath: string, toPath: string) {
+  const fromKey = `${source}:${fromPath}`;
+  const prefix = `${fromKey}/`;
+  return Array.from(fileContents.keys())
+    .filter((key) => key.startsWith(prefix))
+    .sort((left, right) => left.localeCompare(right))
+    .map((currentKey) => ({
+      fromKey: currentKey,
+      toKey: `${source}:${toPath}${currentKey.slice(fromKey.length)}`,
+    }));
+}
+
+function removeDemoEntry(source: string, path: string, type: "file" | "directory") {
+  const normalizedPath = normalizeDemoPath(path);
+  if (type === "file") {
+    fileContents.delete(`${source}:${normalizedPath}`);
+    return;
+  }
+
+  directoryPaths.delete(`${source}:${normalizedPath}`);
 }
 
 function sourceParam(url: URL) {

@@ -983,6 +983,28 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
+    if (pathname === "/files/move") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      const body = await parseJsonBody(request);
+      return json(await caller.admin.files.moveEntries(body as never), { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/files/copy") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      const body = await parseJsonBody(request);
+      return json(await caller.admin.files.copyEntries(body as never), { status: 200 }, resHeaders);
+    }
+
+    if (pathname === "/files/delete") {
+      if (request.method !== "POST") return methodNotAllowed(request.method, resHeaders);
+      const body = await parseJsonBody(request);
+      return json(
+        await caller.admin.files.deleteEntries(body as never),
+        { status: 200 },
+        resHeaders
+      );
+    }
+
     return json(
       { error: { code: "NOT_FOUND", message: "Not found" } },
       { status: 404 },

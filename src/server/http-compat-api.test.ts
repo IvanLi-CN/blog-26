@@ -44,6 +44,25 @@ async function readJson(response: Response) {
   return (await response.json()) as Record<string, any>;
 }
 
+function createSuccessfulSyncResult() {
+  return {
+    success: true,
+    startTime: Date.now(),
+    endTime: Date.now(),
+    sources: ["local"],
+    stats: {
+      totalProcessed: 0,
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
+      errors: 0,
+    },
+    errors: [],
+    logs: [],
+  };
+}
+
 async function seedPost(
   overrides: Partial<{
     id: string;
@@ -1296,6 +1315,142 @@ describe("HTTP compatibility APIs", () => {
       expect(fs.readFileSync(path.join(LOCAL_CONTENT_BASE_PATH, filePath), "utf-8")).toBe("second");
     } finally {
       LocalContentSource.prototype.initialize = originalInitialize;
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("moves and copies local files through the admin API", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "move-me.md"), "move");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/move-me.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+      expect(moveResponse.status).toBe(200);
+      const movePayload = await readJson(moveResponse);
+      expect(movePayload.moved).toEqual([
+        {
+          path: "Hardware/docs/move-me.md",
+          nextPath: "Hardware/archive/move-me.md",
+          type: "file",
+        },
+      ]);
+      expect(fs.existsSync(path.join(archiveDir, "move-me.md"))).toBe(true);
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/archive/move-me.md"],
+              destinationPath: "Hardware/docs",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+      expect(copyResponse.status).toBe(200);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.copied).toEqual([
+        {
+          path: "Hardware/archive/move-me.md",
+          nextPath: "Hardware/docs/move-me.md",
+          type: "file",
+        },
+      ]);
+      expect(fs.readFileSync(path.join(docsDir, "move-me.md"), "utf-8")).toBe("move");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects deleting non-empty directories and allows deleting empty directories", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const fullDir = path.join(hardwareDir, "full-dir");
+    const emptyDir = path.join(hardwareDir, "empty-dir");
+    fs.mkdirSync(fullDir, { recursive: true });
+    fs.mkdirSync(emptyDir, { recursive: true });
+    fs.writeFileSync(path.join(fullDir, "nested.md"), "nested");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const failedDeleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [{ path: "Hardware/full-dir", type: "directory" }],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+      expect(failedDeleteResponse.status).toBe(400);
+      const failedPayload = await readJson(failedDeleteResponse);
+      expect(failedPayload.error.message).toContain("目录不为空");
+
+      const successDeleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [{ path: "Hardware/empty-dir", type: "directory" }],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+      expect(successDeleteResponse.status).toBe(200);
+      const successPayload = await readJson(successDeleteResponse);
+      expect(successPayload.deleted).toEqual([
+        {
+          path: "Hardware/empty-dir",
+          type: "directory",
+        },
+      ]);
+      expect(fs.existsSync(emptyDir)).toBe(false);
+    } finally {
       manager.syncAll = originalSyncAll;
     }
   });

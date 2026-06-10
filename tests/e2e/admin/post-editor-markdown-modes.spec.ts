@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, adminTest as test } from "./fixtures";
 
 const DEMO_EDITOR_URL = "/admin/posts/editor?demo=true&slug=react-hooks-deep-dive";
+const ADDITIVE_SELECTION_MODIFIER = process.platform === "darwin" ? "Meta" : "Control";
 
 async function openDemoEditor(page: Page) {
   const response = await page.goto(DEMO_EDITOR_URL, {
@@ -74,6 +75,10 @@ async function shellLayoutState(page: Page) {
       storedWidth: window.localStorage.getItem("admin-sidebar-width"),
     };
   });
+}
+
+function treeNameButton(page: Page, name: string) {
+  return page.getByRole("button", { name, exact: true });
 }
 
 function expectRichMarkdownRendering(state: Awaited<ReturnType<typeof richMarkdownState>>) {
@@ -165,26 +170,110 @@ test.describe("Post editor Markdown modes", () => {
   test("file tree creates items in the selected directory and renames inline", async ({ page }) => {
     await openDemoEditor(page);
 
-    await page.getByRole("button", { name: "posts" }).click();
+    await treeNameButton(page, "posts").click();
 
     await page.getByRole("button", { name: "新建文件" }).click();
     const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
     await expect(fileNameInput).toHaveValue("untitled.md");
     await fileNameInput.fill("notes.md");
     await fileNameInput.press("Enter");
-    const newFile = page.getByRole("button", { name: "notes.md" });
+    const newFile = treeNameButton(page, "notes.md");
     await expect(newFile).toBeVisible();
     await newFile.click();
     await expect(page.getByText("local:content/posts/notes.md")).toBeVisible();
     await page.getByRole("button", { name: "Source" }).click();
     await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue("");
 
-    await page.getByRole("button", { name: "posts" }).click();
+    await treeNameButton(page, "posts").click();
     await page.getByRole("button", { name: "新建目录" }).click();
     const directoryNameInput = page.getByRole("textbox", { name: "目录名称" });
     await expect(directoryNameInput).toHaveValue("new-folder");
     await directoryNameInput.fill("research");
     await directoryNameInput.press("Enter");
-    await expect(page.getByRole("button", { name: "research" })).toBeVisible();
+    await expect(treeNameButton(page, "research")).toBeVisible();
+  });
+
+  test("file tree context menu deletes an empty directory after confirmation", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "posts").click();
+    await page.getByRole("button", { name: "新建目录" }).click();
+    const directoryNameInput = page.getByRole("textbox", { name: "目录名称" });
+    await directoryNameInput.fill("to-delete");
+    await directoryNameInput.press("Enter");
+    await expect(treeNameButton(page, "to-delete")).toBeVisible();
+
+    await page.getByRole("button", { name: "to-delete 更多操作" }).click();
+    await page.getByRole("menuitem", { name: "删除" }).click();
+    const deleteDialog = page.getByRole("dialog", { name: "确认删除" });
+    await expect(deleteDialog).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "删除" }).click();
+    await expect(treeNameButton(page, "to-delete")).toHaveCount(0);
+  });
+
+  test("file tree supports modifier multi-select and batch delete", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "posts").click();
+
+    for (const name of ["alpha.md", "beta.md", "gamma.md"]) {
+      await page.getByRole("button", { name: "新建文件" }).click();
+      const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+      await fileNameInput.fill(name);
+      await fileNameInput.press("Enter");
+    }
+
+    await treeNameButton(page, "alpha.md").click({ modifiers: [ADDITIVE_SELECTION_MODIFIER] });
+    await treeNameButton(page, "gamma.md").click({ modifiers: ["Shift"] });
+    await expect(page.getByText("已选中 3 项")).toBeVisible();
+
+    await page.getByRole("button", { name: "删除" }).click();
+    const deleteDialog = page.getByRole("dialog", { name: "确认删除" });
+    await expect(deleteDialog).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "删除" }).click();
+
+    await expect(treeNameButton(page, "alpha.md")).toHaveCount(0);
+    await expect(treeNameButton(page, "beta.md")).toHaveCount(0);
+    await expect(treeNameButton(page, "gamma.md")).toHaveCount(0);
+  });
+
+  test("file tree checkbox mode supports copy and paste into another directory", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "posts").click();
+    await page.getByRole("button", { name: "新建目录" }).click();
+    const directoryNameInput = page.getByRole("textbox", { name: "目录名称" });
+    await directoryNameInput.fill("archive");
+    await directoryNameInput.press("Enter");
+    await expect(treeNameButton(page, "archive")).toBeVisible();
+
+    await page.getByRole("button", { name: "切换批量选择模式" }).click();
+    await page.getByRole("checkbox", { name: "选择 react-hooks-deep-dive.md" }).click();
+    await page.getByRole("button", { name: "复制" }).click();
+    await expect(page.getByText("复制 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    const archiveDirectoryButton = page.getByRole("button", { name: "archive 目录" });
+    await archiveDirectoryButton.focus();
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "粘贴" }).click();
+    await archiveDirectoryButton.press("Enter");
+    await expect(treeNameButton(page, "react-hooks-deep-dive.md")).toHaveCount(2);
+  });
+
+  test("file tree blocks deleting a non-empty directory and surfaces the reason", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "posts 更多操作" }).click();
+    await page.getByRole("menuitem", { name: "删除" }).click();
+    const deleteDialog = page.getByRole("dialog", { name: "确认删除" });
+    await expect(deleteDialog).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "删除" }).click();
+
+    await expect(page.getByText("目录不为空，无法删除: content/posts")).toBeVisible();
+    await expect(treeNameButton(page, "posts")).toBeVisible();
   });
 });
