@@ -27,7 +27,7 @@
 - 不引入完整视频转码、HLS、多码率、自适应 streaming。
 - 不把 `/projects`、评论头像、站点 icon、装饰性静态资源纳入本媒体管线。
 - 不回写 Markdown、数据库或内容源文件中的媒体 URL；持久化仍然只保存相对路径。
-- 不为 `webdav` 或其他内容源设计公开媒体分支；本规格内的 content source 固定为 `local`。
+- 不为其他内容源设计公开媒体分支；本规格内的 content source 固定为 `local`。
 
 ## 4. 范围
 
@@ -42,7 +42,7 @@
 ### Out of scope
 
 - 编辑器内嵌 preview、后台文件树、上传回显、作者态 raw 读取链路。
-- WebDAV authoring / 迁移逻辑。
+- 远程 authoring / 迁移逻辑。
 - 内容文件命名、存储目录、同步流程、上传落盘策略。
 
 ## 5. 顶层约束

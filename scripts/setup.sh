@@ -4,7 +4,7 @@ set -euo pipefail
 # Simple, self-contained one-click dev bootstrap (no script chaining).
 # - Installs dependencies (bun install)
 # - Installs git hooks via lefthook
-# - Validates dev ports (default Web: 25090, WebDAV: 25091), allow env override
+# - Validates dev port (default Web: 25090), allow env override
 # - Optionally prepares local DB and dev data
 # - Optional Playwright browsers install for E2E
 
@@ -88,20 +88,14 @@ PY
 validate_ports() {
   # Defaults; allow env override
   local web_port="${PORT:-25090}"
-  local dav_port="${WEBDAV_PORT:-25091}"
-
-  if ! [[ "$web_port" =~ ^[0-9]+$ ]] || ! [[ "$dav_port" =~ ^[0-9]+$ ]]; then
-    err "PORT and WEBDAV_PORT must be integers"; exit 1
+  if ! [[ "$web_port" =~ ^[0-9]+$ ]]; then
+    err "PORT must be an integer"; exit 1
   fi
 
   if ! is_port_free "$web_port"; then
     err "Web port ${web_port} is not available. Override with PORT=<port>."; exit 1
   fi
-  if ! is_port_free "$dav_port"; then
-    err "WebDAV port ${dav_port} is not available. Override with WEBDAV_PORT=<port>."; exit 1
-  fi
-
-  log "ports OK (web=${web_port}, webdav=${dav_port})"
+  log "port OK (web=${web_port})"
 }
 
 install_lefthook() {

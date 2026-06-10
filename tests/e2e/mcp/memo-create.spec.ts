@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
 const INTEGRATED_PORT = Number(process.env.MCP_PORT || 25110);
-const WEBDAV_PORT = Number(process.env.MCP_WEBDAV_PORT || 25111);
 const BASE_URL = `http://localhost:${INTEGRATED_PORT}`;
 const MCP_URL = `${BASE_URL}/mcp`;
 const TEST_DB = process.env.DB_PATH || "./test-data/sqlite.db";
@@ -135,20 +134,12 @@ async function findMemoByTitle(title: string) {
   return undefined;
 }
 
-let dufsProc: any;
 let siteProc: any;
 let serverProc: any;
 
 test.beforeAll(
   async () => {
     const { spawn } = await import("node:child_process");
-
-    // Start WebDAV
-    dufsProc = spawn(
-      "dufs",
-      ["test-data/webdav", "--port", String(WEBDAV_PORT), "--allow-all", "--enable-cors"],
-      { stdio: "ignore" }
-    );
 
     // Reset DB/content fixtures and seed PAT
     await new Promise<void>((resolve, reject) => {
@@ -223,11 +214,6 @@ test.afterAll(async () => {
     siteProc?.kill("SIGTERM");
   } catch (error) {
     console.debug("siteProc cleanup skipped", error);
-  }
-  try {
-    dufsProc?.kill("SIGTERM");
-  } catch (error) {
-    console.debug("dufsProc cleanup skipped", error);
   }
 });
 

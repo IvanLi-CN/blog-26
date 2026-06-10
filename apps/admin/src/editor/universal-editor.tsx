@@ -18,7 +18,7 @@ export type UniversalEditorProps = {
   placeholder?: string;
   attachmentBasePath?: string;
   articlePath?: string;
-  contentSource?: "webdav" | "local";
+  contentSource?: "local";
   title?: string;
   className?: string;
   mode?: EditorMode;

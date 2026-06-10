@@ -92,7 +92,7 @@ Detailed shape lives in [contracts/http-apis.md](./contracts/http-apis.md).
 ## 8. Validation
 
 - Phase 2 shipped on `main` via PR #66 and keeps `/admin/*` owned by the gateway + `apps/admin` SPA topology.
-- `DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local WEBDAV_URL=http://127.0.0.1:30101 bun run build` ✅
+- `DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local bun run build` ✅
 - `bun run test` ✅ (`277 pass`)
 - `bun run check` ✅
 - `bun run check:public-no-daisy` ✅

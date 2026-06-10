@@ -8,13 +8,8 @@ import { EventEmitter, on } from "node:events";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { SYSTEM_CONFIG } from "../../../config/paths";
-import {
-  getContentSourceManager,
-  LocalContentSource,
-  WebDAVContentSource,
-} from "../../../lib/content-sources";
+import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { syncEventManager } from "../../../lib/sync-events";
-import { isWebDAVEnabled } from "../../../lib/webdav";
 import { adminProcedure, createTRPCRouter, publicProcedure } from "../../trpc";
 
 // 输入验证 Schema
@@ -30,7 +25,7 @@ const _contentSourceConfigSchema = z.object({
   name: z.string().min(1),
   priority: z.number().min(0).max(1000),
   enabled: z.boolean(),
-  type: z.enum(["local", "webdav"]),
+  type: z.enum(["local"]),
   options: z.record(z.unknown()),
 });
 
@@ -131,7 +126,7 @@ export const adminContentSyncRouter = createTRPCRouter({
       const allStats = postsStats;
 
       // 获取所有已知的内容源和类型
-      const knownSources = ["local", "webdav"]; // 已知的内容源
+      const knownSources = ["local"]; // 已知的内容源
       const knownTypes = ["memo", "post", "project"]; // 已知的内容类型
 
       // 按类型分组，确保所有内容源都显示
@@ -378,12 +373,9 @@ export const adminContentSyncRouter = createTRPCRouter({
    */
   getSystemConfig: adminProcedure.query(async () => {
     return {
-      webdavEnabled: SYSTEM_CONFIG.webdav.enabled,
-      webdavUrl: SYSTEM_CONFIG.webdav.url,
       supportedSources: SYSTEM_CONFIG.supportedSources,
       defaultPaths: {
         local: SYSTEM_CONFIG.local.basePath,
-        webdav: SYSTEM_CONFIG.webdav.pathMappings,
       },
     };
   }),
@@ -501,17 +493,6 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
       });
       const localSource = new LocalContentSource(localConfig);
       await manager.registerSource(localSource);
-    }
-
-    // 如果 WebDAV 可用，注册 WebDAV 内容源
-    if (isWebDAVEnabled()) {
-      try {
-        const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav", 100);
-        const webdavSource = new WebDAVContentSource(webdavConfig);
-        await manager.registerSource(webdavSource);
-      } catch (error) {
-        console.warn("WebDAV 内容源注册失败:", error);
-      }
     }
   }
 }

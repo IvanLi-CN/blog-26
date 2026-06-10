@@ -7,7 +7,7 @@
 
 ## 1. Background
 
-Production has already switched the blog content source from WebDAV to local bind mounts.
+Production uses local bind mounts for the blog content source.
 The real upstream note tree stores memos under `Memos/`, but several local-only code paths still hard-code lowercase `memos/`.
 That mismatch splits new memo writes and attachment uploads away from the synced source tree.
 
@@ -41,7 +41,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 - Local memo creation writes to the configured memo root instead of hard-coded `memos/`.
 - Local memo attachment upload writes to `<memo-root>/assets/`.
-- Client editors use the strict client memo-root getter for draft/article paths and upload paths, while disabled local mode falls back before those editors run and routes inline uploads through WebDAV-backed file APIs.
+- Client editors use the strict client memo-root getter for draft/article paths and upload paths, while disabled local mode falls back before those editors run.
 - Generic editor type detection treats `Memos/*.md` as memo content.
 
 ### 4.3 Compatibility
@@ -59,7 +59,7 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 3. Opening `Memos/foo.md` in the generic editor keeps memo behavior instead of falling back to post behavior.
 4. Unit tests cover uppercase local memo root helpers and uppercase memo type detection.
 5. Slashless memo-root env overrides resolve to the same effective memo directory without relaxing validation for other content-path envs.
-6. Invalid path overrides for disabled local or WebDAV sources do not fail module initialization.
+6. Invalid path overrides for disabled sources do not fail module initialization.
 7. Memo-root overrides reject `.` and `..` segments before any local file writes are derived.
 
 ## 6. Risks and rollback
@@ -83,9 +83,9 @@ That mismatch splits new memo writes and attachment uploads away from the synced
 
 ## 7. Change log
 
-- 2026-03-10: WebDAV-only memo editors now keep the canonical `/Memos` draft paths while routing inline uploads through the WebDAV file API instead of the disabled local endpoint.
-- 2026-03-10: Inactive local-mode client overrides now fall back to the canonical `/Memos` root instead of reusing stale `NEXT_PUBLIC_LOCAL_MEMOS_PATH` values in webdav-only admin editors.
-- 2026-03-10: Memos admin SSR now passes the server-validated local memo root into client editors so inactive local overrides still fall back safely in webdav-only deployments.
+- 2026-03-10: Memo editors now keep the canonical `/Memos` draft paths while preserving local-only inline upload behavior.
+- 2026-03-10: Inactive local-mode client overrides now fall back to the canonical `/Memos` root instead of reusing stale `NEXT_PUBLIC_LOCAL_MEMOS_PATH` values.
+- 2026-03-10: Memos admin SSR now passes the server-validated local memo root into client editors so inactive local overrides still fall back safely.
 - 2026-03-10: Review hardening kept shared content-path env parsing strict while preserving slashless memo-root compatibility.
 - 2026-03-10: Disabled source path parsing now ignores inactive-source overrides so stale env values do not break startup.
 - 2026-03-10: Memo-root normalization now rejects dot segments before deriving local write paths.

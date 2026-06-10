@@ -38,7 +38,7 @@ type EditorMode = "wysiwyg" | "source" | "compare";
 type TreeItemType = FileItem["type"];
 
 type TreeSelection = {
-  source: "local" | "webdav";
+  source: "local";
   path: string;
   type: TreeItemType;
 };
@@ -56,13 +56,13 @@ type DatabaseDraft = {
   content: string;
   draft: boolean;
   public: boolean;
-  source: "local" | "webdav";
+  source: "local";
   filePath: string;
   isNew?: boolean;
 };
 
 type FileDraft = {
-  source: "local" | "webdav";
+  source: "local";
   path: string;
   content: string;
 };
@@ -80,7 +80,7 @@ type EditorTab = {
 const EMPTY_SOURCES: DataSourceInfo[] = [];
 const EMPTY_FILE_ITEMS: FileItem[] = [];
 
-function normalizeContentSource(_source?: string | null): "local" | "webdav" {
+function normalizeContentSource(_source?: string | null): "local" {
   return "local";
 }
 
@@ -98,7 +98,7 @@ function toEditorArticlePath(path: string) {
 }
 
 function getEditorContext(tab: EditorTab): {
-  contentSource: "local" | "webdav";
+  contentSource: "local";
   articlePath: string;
 } {
   if (tab.kind === "file" && tab.file) {
@@ -298,7 +298,7 @@ function isTreePathSelected(
   return normalizeTreePath(path) === normalizeTreePath(activePath);
 }
 
-function getArticleIdentity(source: "local" | "webdav", articlePath: string | null | undefined) {
+function getArticleIdentity(source: "local", articlePath: string | null | undefined) {
   return `${source}:${normalizeTreePath(articlePath)}`;
 }
 
@@ -441,7 +441,7 @@ function EditorSidebarContent({
   onCreateFile,
   onCreateDirectory,
 }: {
-  selectedSource: "local" | "webdav";
+  selectedSource: "local";
   browserPath: string;
   onNavigateUp: () => void;
   onRefresh: () => void;
@@ -453,7 +453,7 @@ function EditorSidebarContent({
   expandedPaths: string[];
   activeItemPath: string | null;
   activeItemType: TreeItemType | null;
-  activeItemSource: "local" | "webdav" | null;
+  activeItemSource: "local" | null;
   editingItem: TreeRenameTarget | null;
   onEditingValueChange: (value: string) => void;
   onEditingCommit: () => void;
@@ -685,14 +685,12 @@ function EditorSidebarContent({
 export function EditorPage() {
   const [tabs, setTabs] = useState<EditorTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  const [selectedSource, setSelectedSource] = useState<"local" | "webdav">("local");
-  const [currentPaths, setCurrentPaths] = useState<Record<"local" | "webdav", string>>({
+  const [selectedSource, setSelectedSource] = useState<"local">("local");
+  const [currentPaths, setCurrentPaths] = useState<Record<"local", string>>({
     local: "",
-    webdav: "",
   });
-  const [expandedPaths, setExpandedPaths] = useState<Record<"local" | "webdav", string[]>>({
+  const [expandedPaths, setExpandedPaths] = useState<Record<"local", string[]>>({
     local: [],
-    webdav: [],
   });
   const [selectedTreeItem, setSelectedTreeItem] = useState<TreeSelection | null>(null);
   const [editingTreeItem, setEditingTreeItem] = useState<TreeRenameTarget | null>(null);
@@ -856,7 +854,7 @@ export function EditorPage() {
   );
 
   const openFileTab = useCallback(
-    async (source: "local" | "webdav", path: string) => {
+    async (source: "local", path: string) => {
       const targetIdentity = getArticleIdentity(source, path);
       const existing = tabs.find((tab) => getTabArticleIdentity(tab) === targetIdentity);
       if (existing) {
@@ -956,7 +954,7 @@ export function EditorPage() {
     const availableSourceNames = new Set(
       availableSources
         .filter((item) => item.enabled && item.name === "local")
-        .map((item) => item.name as "local" | "webdav")
+        .map((item) => item.name as "local")
     );
 
     const preferredSource = availableSourceNames.has(activeEditorContext.contentSource)

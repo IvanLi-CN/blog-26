@@ -51,8 +51,5 @@ test.describe("文章编辑器 - slug 参数 (admin)", () => {
 
     await openEditor(page, "/admin/posts/editor?id=posts/test-post.md");
     expect(await page.locator("body").isVisible()).toBe(true);
-
-    await openEditor(page, "/admin/posts/editor?id=/webdav/test-post.md");
-    expect(await page.locator("body").isVisible()).toBe(true);
   });
 });

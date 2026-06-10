@@ -93,7 +93,7 @@ Unified Docker image release:
 
 - CI fetches a content bundle from `PUBLIC_CONTENT_BUNDLE_URL`
 - the bundle must contain `public-snapshot.json` (directly or inside an archive)
-- Astro SSG consumes the snapshot and must not depend on runtime DB, WebDAV, or local content directories during release publishing or Docker image startup
+- Astro SSG consumes the snapshot and must not depend on runtime DB or local content directories during release publishing or Docker image startup
 - public runtime API/file URLs inside the static site are rewritten against `PUBLIC_API_BASE_URL`, which must be configured to the live backend origin
 - Docker image builds must receive a preloaded `site/generated/public-snapshot.json` or fetch one from `PUBLIC_CONTENT_BUNDLE_URL`; they must fail fast instead of falling back to an empty local DB when the snapshot is missing
 

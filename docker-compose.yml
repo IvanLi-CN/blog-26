@@ -33,13 +33,6 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       
-      # WebDAV 配置
-      - WEBDAV_URL=${WEBDAV_URL:-http://localhost:25091}
-      - WEBDAV_USERNAME=${WEBDAV_USERNAME:-}
-      - WEBDAV_PASSWORD=${WEBDAV_PASSWORD:-}
-      - WEBDAV_MEMOS_PATH=${WEBDAV_MEMOS_PATH:-/Memos}
-      - WEBDAV_ASSETS_PATH=${WEBDAV_ASSETS_PATH:-/assets}
-      
       # 模型配置
       - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME}
       - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION}
@@ -92,22 +85,5 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # 可选：WebDAV 服务器（用于开发测试）
-  webdav:
-    image: bytemark/webdav
-    ports:
-      - "25091:80"
-    environment:
-      - AUTH_TYPE=Basic
-      - USERNAME=${WEBDAV_USERNAME:-webdav}
-      - PASSWORD=${WEBDAV_PASSWORD:-webdav}
-    volumes:
-      - webdav_data:/var/lib/dav
-    restart: unless-stopped
-    profiles:
-      - dev  # 只在开发环境启动
-
 volumes:
   redis_data:
-  webdav_data:

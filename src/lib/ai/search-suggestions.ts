@@ -201,30 +201,30 @@ const CONCEPT_RELATION_HINTS: Array<{
     ],
   },
   {
-    aliases: ["webdav", "dav"],
+    aliases: ["local-files", "sync"],
     items: [
       {
         term: "文件同步",
         strategy: "broader_by_domain",
-        concept: "WebDAV",
+        concept: "本地内容源",
         domain: "storage",
       },
       {
-        term: "WebDAV",
+        term: "本地内容源",
         strategy: "related",
-        concept: "WebDAV",
+        concept: "本地内容源",
         domain: "storage",
       },
       {
         term: "S3",
         strategy: "sibling",
-        concept: "WebDAV",
+        concept: "本地内容源",
         domain: "storage",
       },
       {
-        term: "DAV",
+        term: "同步目录",
         strategy: "alternative_label",
-        concept: "WebDAV",
+        concept: "本地内容源",
         domain: "storage",
       },
     ],

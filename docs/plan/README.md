@@ -55,7 +55,7 @@
 | ID   | Title | Status | Plan | Last | Notes |
 |-----:|-------|--------|------|------|-------|
 | 0001 | 修复 Memos Markdown 主题对比度 | 已完成 | `0001:memos-content-contrast/PLAN.md` | 2026-01-16 | 统一暗色判定 + Markdown token 化 + E2E 覆盖 |
-| 0002 | 内容持久化相对路径（去 API 化，FS-only 准备） | 已完成 | `0002:content-relative-paths/PLAN.md` | 2026-02-17 | 持久化相对路径不变量 + FS-only gate（scan/migrate + E2E） |
+| 0002 | 内容持久化相对路径（归档） | 已完成 | `0002:content-relative-paths/PLAN.md` | 2026-02-17 | 归档；现行规则见 README 与 docs 当前文档 |
 | 0003 | 文章列表标题对比度一致性 | 已完成 | `0003:posts-list-title-contrast/PLAN.md` | 2026-01-17 | 修复 `nord` 下标题过淡；E2E: `tests/e2e/guest/posts-title-contrast.spec.ts` |
 | 0004 | 全量依赖升级到 Latest（Bun） | 已完成 | `0004:deps-update-latest/PLAN.md` | 2026-02-09 | 全量升级 + 质量门槛全绿 |
-| 0005 | 对齐长驻开发服务（devctl）+ WebDAV 端口可控 | 已完成 | `0005:devctl-service-manager/PLAN.md` | 2026-02-20 | PR #55；历史方案（已弃用，2026-03-03） |
+| 0005 | 对齐长驻开发服务（归档） | 已完成 | `0005:devctl-service-manager/PLAN.md` | 2026-02-20 | 归档；现行开发启动方式见 README 与 AGENTS |

@@ -113,7 +113,7 @@ export function resolveRelativePath(relativePath: string, basePath: string = "")
  */
 export function generateOptimizedImageUrl(
   imagePath: string,
-  contentSource: "local" | "webdav" = "local"
+  contentSource: "local" = "local"
 ): string {
   // 对于演示页面，使用 base64 编码的占位图片
   if (typeof window !== "undefined" && window.location.pathname === "/demo-integration") {
