@@ -21,6 +21,7 @@ import {
 } from "@/lib/admin-api-client";
 import { isMemoContentPath } from "@/lib/memo-paths";
 import { generateContentUrl } from "@/lib/url-utils";
+import { AdminToastViewport, dismissAdminToast, showAdminToast } from "~/components/admin-toast";
 import { useAppShellSidebar } from "~/components/app-shell";
 import {
   deriveBaseDirectory,
@@ -38,7 +39,7 @@ import {
   type TreeSelection,
   toDirectoryRequestPath,
 } from "~/components/editor-file-browser";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/ui";
 import { UniversalEditor, type UniversalEditorRef } from "~/editor/universal-editor";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
 
@@ -353,6 +354,7 @@ export function EditorPage() {
   const [didHandleInitialUrl, setDidHandleInitialUrl] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const editorRef = useRef<UniversalEditorRef | null>(null);
+  const loadingToastIdRef = useRef<ReturnType<typeof showAdminToast> | null>(null);
   const queryClient = useQueryClient();
 
   const sourcesQuery = useQuery({
@@ -368,6 +370,35 @@ export function EditorPage() {
       setSelectedSource("local");
     }
   }, [sourcesQuery.data]);
+
+  useEffect(() => {
+    if (!notice) return;
+    showAdminToast("success", notice);
+    setNotice(null);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!errorBanner) return;
+    showAdminToast("danger", errorBanner, { autoClose: 5600 });
+    setErrorBanner(null);
+  }, [errorBanner]);
+
+  useEffect(() => {
+    if (loadingMessage) {
+      if (loadingToastIdRef.current) {
+        dismissAdminToast(loadingToastIdRef.current);
+      }
+      loadingToastIdRef.current = showAdminToast("loading", loadingMessage, {
+        toastId: "admin-editor-loading",
+      });
+      return;
+    }
+
+    if (loadingToastIdRef.current) {
+      dismissAdminToast(loadingToastIdRef.current);
+      loadingToastIdRef.current = null;
+    }
+  }, [loadingMessage]);
 
   const browserPath = currentPaths[selectedSource];
   const availableSources = sourcesQuery.data ?? EMPTY_SOURCES;
@@ -1308,6 +1339,7 @@ export function EditorPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-6">
+      <AdminToastViewport />
       <PageHeader
         title="文章编辑器"
         description="打开文章、切换编辑模式，并在保存前检查预览。"
@@ -1348,9 +1380,6 @@ export function EditorPage() {
         }
       />
 
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
-      {errorBanner ? <Alert tone="danger">{errorBanner}</Alert> : null}
-      {loadingMessage ? <Alert>{loadingMessage}</Alert> : null}
       <input
         ref={uploadInputRef}
         id="admin-editor-attachment-upload"

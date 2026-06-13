@@ -809,6 +809,49 @@ test.describe("Post editor Markdown modes", () => {
     );
   });
 
+  test("file tree operation feedback is shown as floating toast notifications", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "02-typescript-advanced-types.md").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+X`);
+    await expect(page.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    await treeNameButton(page, "archive").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    const toastViewport = page.locator(".Toastify__toast-container");
+    await expect(toastViewport.getByText("已移动 1 项。")).toBeVisible();
+
+    const toastState = await toastViewport.evaluate((viewport) => {
+      const rect = viewport.getBoundingClientRect();
+      const style = getComputedStyle(viewport);
+      return {
+        position: style.position,
+        top: rect.top,
+        rightGap: window.innerWidth - rect.right,
+      };
+    });
+    expect(toastState.position).toBe("fixed");
+    expect(toastState.top).toBeGreaterThanOrEqual(64);
+    expect(toastState.rightGap).toBeGreaterThanOrEqual(12);
+
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+C`);
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    await expect(
+      toastViewport.getByText("目标已存在: blog/archive/02-typescript-advanced-types.md")
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId("admin-shell-main")
+        .locator('[role="alert"], .rounded-3xl, .lg\\:rounded-\\[1rem\\]')
+        .filter({ hasText: /已移动 1 项。|目标已存在/ })
+    ).toHaveCount(0);
+  });
+
   test("batch footer degrades responsively without wrapping the count badge", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("admin-sidebar-width", "320");

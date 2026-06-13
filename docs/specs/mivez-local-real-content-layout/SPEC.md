@@ -109,3 +109,7 @@ The current blog local setup still depends on synthetic wrapper directories like
 ### Sidebar-wide adaptive footer at minimum sidebar width
 
 ![Sidebar-wide adaptive footer at minimum sidebar width](./assets/file-browser-sidebar-bottom-floating-footer-adaptive.png)
+
+### Floating editor operation feedback
+
+![Floating editor operation feedback](./assets/admin-editor-floating-toast-feedback.png)
