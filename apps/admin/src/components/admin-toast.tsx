@@ -46,12 +46,13 @@ function AdminToastContent({
   return (
     <div
       className={cn(
-        "flex min-w-0 items-start gap-3 rounded-[1rem] border bg-card/96 px-4 py-3 text-sm leading-6 text-foreground shadow-xl shadow-shadow-soft",
+        "flex w-full min-w-0 items-start gap-3 rounded-[1rem] border bg-card/96 px-4 py-3 text-sm leading-6 text-foreground shadow-xl shadow-shadow-soft",
         tone === "success" && "border-success/24 bg-success/12",
         tone === "danger" && "border-destructive/24 bg-destructive/12",
         tone === "default" && "border-border/68 bg-card/96",
         tone === "loading" && "border-primary/24 bg-primary/10"
       )}
+      data-testid="admin-toast-content"
     >
       <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center">
         <AdminToastIcon tone={tone} />
@@ -93,7 +94,7 @@ export function AdminToastViewport() {
       toastClassName={() =>
         cn(
           "Toastify__toast !mb-3 !min-h-0 !w-[min(28rem,calc(100vw-2rem))] !overflow-visible !rounded-none !border-0 !bg-transparent !p-0 !shadow-none",
-          "[&_.Toastify__toast-body]:!m-0 [&_.Toastify__toast-body]:!min-w-0 [&_.Toastify__toast-body]:!p-0"
+          "[&_.Toastify__toast-body]:!m-0 [&_.Toastify__toast-body]:!min-w-0 [&_.Toastify__toast-body]:!w-full [&_.Toastify__toast-body]:!p-0"
         )
       }
       className={cn(
