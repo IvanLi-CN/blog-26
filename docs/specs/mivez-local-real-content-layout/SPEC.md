@@ -7,7 +7,7 @@
 
 ## 1. Background
 
-Production has already switched the blog from WebDAV reads to the local content source.
+Production reads content from the local content source.
 The real upstream note tree is rooted at `Notes/` and stores content directly under directories such as `Memos/`, `Hardware/`, `HomeLab/`, `Ops/`, and `Project/`.
 The current blog local setup still depends on synthetic wrapper directories like `posts/` and a stale lowercase `memos/`, which distorts the real filesystem layout and leaks that distortion into the admin file tree.
 
@@ -22,7 +22,7 @@ The current blog local setup still depends on synthetic wrapper directories like
 
 - No change to public route structure or permalink format.
 - No rewrite of existing markdown files solely to rename directories.
-- No broad rewrite of WebDAV path semantics in the same change.
+- No broad rewrite of unrelated asset path semantics in the same change.
 - No introduction of a new public `project` route in this follow-up.
 
 ## 4. Contract

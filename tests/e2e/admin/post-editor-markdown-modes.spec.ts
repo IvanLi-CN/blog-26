@@ -294,15 +294,11 @@ async function treeRowPoint(page: Page, name: string) {
   await button.scrollIntoViewIfNeeded();
 
   return button.evaluate((node) => {
-    const row = node.parentElement?.parentElement;
-    const rowRect = row?.getBoundingClientRect();
-    if (!rowRect) {
-      throw new Error(`Tree row not found for ${node.textContent ?? "unknown"}`);
-    }
+    const rect = node.getBoundingClientRect();
 
     return {
-      x: rowRect.left + Math.min(36, rowRect.width / 2),
-      y: rowRect.top + rowRect.height / 2,
+      x: rect.left + Math.min(rect.width / 2, 24),
+      y: rect.top + rect.height / 2,
     };
   });
 }

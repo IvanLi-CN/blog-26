@@ -30,17 +30,14 @@ test.describe("Admin SPA phase 2", () => {
   test("editor de-duplicates the same article when opened from slug and file browser", async ({
     page,
   }) => {
-    await page.goto("/admin/posts/editor?slug=redis-caching-strategies", {
+    await page.goto("/admin/posts/editor?slug=hello-world", {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
     });
 
     await expect(page.locator('[data-testid="editor"]')).toBeVisible();
     const fileBrowser = page.getByTestId("editor-file-browser");
-    const targetFile = fileBrowser.getByRole("button", {
-      name: "05-redis-caching-strategies.md",
-      exact: true,
-    });
+    const targetFile = fileBrowser.getByRole("button", { name: "hello-world.md", exact: true });
     await expect(fileBrowser).toBeVisible();
     if (!(await targetFile.isVisible())) {
       await fileBrowser.getByRole("button", { name: "blog" }).click();
@@ -48,9 +45,7 @@ test.describe("Admin SPA phase 2", () => {
     await expect(targetFile).toBeVisible();
     await targetFile.click();
 
-    await expect(
-      page.getByTestId("editor-tab").filter({ hasText: "Redis 缓存策略与优化" })
-    ).toHaveCount(1);
+    await expect(page.getByTestId("editor-tab").filter({ hasText: "Hello World" })).toHaveCount(1);
   });
 
   test("legacy aliases, posts list, and editor remain usable", async ({ page }) => {
@@ -69,14 +64,14 @@ test.describe("Admin SPA phase 2", () => {
     await expect(page.getByRole("link", { name: "新建草稿" })).toBeVisible();
     await expect(page.getByRole("link", { name: "编辑" }).first()).toBeVisible();
 
-    await page.goto("/admin/posts/editor?slug=react-hooks-deep-dive", {
+    await page.goto("/admin/posts/editor?slug=hello-world", {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
     });
     await expect(page.locator('[data-testid="editor"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "文章编辑器" })).toBeVisible();
-    await expect(page.getByText("React Hooks 深度解析").first()).toBeVisible();
-    await expect(page.getByTestId("editor").getByText("react-hooks-deep-dive")).toBeVisible();
+    await expect(page.getByText("Hello World").first()).toBeVisible();
+    await expect(page.getByTestId("editor").getByText("hello-world")).toBeVisible();
   });
 
   test("new empty article shows a friendly validation message instead of raw issues", async ({

@@ -96,7 +96,7 @@ interface MilkdownEditorProps {
   // 文章路径，用于正确解析相对图片路径
   articlePath?: string;
   // 内容源类型，用于正确的图片路径转换
-  contentSource?: "webdav" | "local";
+  contentSource?: "local";
   readOnly?: boolean;
 }
 
@@ -104,7 +104,7 @@ interface MilkdownEditorProps {
 function convertImagePathForEditor(
   imagePath: string,
   articlePath: string = "",
-  contentSource: "webdav" | "local" = "local"
+  contentSource: "local" = "local"
 ): string {
   // 从文章路径推断文章目录
   const articleDir = articlePath.startsWith("/")
@@ -137,7 +137,7 @@ function convertImagePathForEditor(
 function preprocessContentForEditor(
   content: string,
   articlePath: string = "",
-  contentSource: "webdav" | "local" = "local"
+  contentSource: "local" = "local"
 ): string {
   // 处理图片路径
   const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;

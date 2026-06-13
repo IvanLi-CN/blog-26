@@ -483,7 +483,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               removeTags={true}
               rewritePublicSitePaths={true}
               articlePath={memo.filePath ?? ""}
-              contentSource={memo.source === "local" ? "local" : "webdav"}
+              contentSource="local"
             />
           </div>
         </article>
@@ -503,7 +503,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
         initialContent={memo?.content}
         initialIsPublic={memo?.isPublic}
         articlePath={memo?.filePath ?? ""}
-        contentSource={memo?.source === "local" ? "local" : "webdav"}
+        contentSource="local"
         isLoading={isFetching}
       />
     </section>

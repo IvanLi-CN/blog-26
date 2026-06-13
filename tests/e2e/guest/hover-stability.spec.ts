@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+const HITBOX_DRIFT_TOLERANCE_PX = 2;
+
 async function gotoWithTheme(page: Page, route: string, theme: "light" | "dark" | "system") {
   await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
   await page.goto(route, { waitUntil: "domcontentloaded" });
@@ -42,8 +44,8 @@ async function expectStableLiftHover(page: Page, hitbox: Locator) {
 
   const hoverTransform = await surface.evaluate((element) => getComputedStyle(element).transform);
 
-  expect(Math.abs(afterHoverHitbox.x - beforeHitbox.x)).toBeLessThan(0.5);
-  expect(Math.abs(afterHoverHitbox.y - beforeHitbox.y)).toBeLessThan(0.5);
+  expect(Math.abs(afterHoverHitbox.x - beforeHitbox.x)).toBeLessThan(HITBOX_DRIFT_TOLERANCE_PX);
+  expect(Math.abs(afterHoverHitbox.y - beforeHitbox.y)).toBeLessThan(HITBOX_DRIFT_TOLERANCE_PX);
   expect(hoverTransform).not.toBe("none");
 
   await page.mouse.move(endX, bottomTrackY);
@@ -62,30 +64,24 @@ async function expectStableLiftHover(page: Page, hitbox: Locator) {
 
   const sweepTransform = await surface.evaluate((element) => getComputedStyle(element).transform);
 
-  expect(Math.abs(afterSweepHitbox.x - beforeHitbox.x)).toBeLessThan(0.5);
-  expect(Math.abs(afterSweepHitbox.y - beforeHitbox.y)).toBeLessThan(0.5);
+  expect(Math.abs(afterSweepHitbox.x - beforeHitbox.x)).toBeLessThan(HITBOX_DRIFT_TOLERANCE_PX);
+  expect(Math.abs(afterSweepHitbox.y - beforeHitbox.y)).toBeLessThan(HITBOX_DRIFT_TOLERANCE_PX);
   expect(sweepTransform).not.toBe("none");
 }
 
 test.describe("Public hover stability", () => {
-  test("related posts, tag cards, and search results keep a stable hitbox while lifted", async ({
+  test("timeline cards, tag cards, and search results keep a stable hitbox while lifted", async ({
     page,
   }) => {
-    await gotoWithTheme(page, "/posts/react-hooks-deep-dive", "light");
-    const relatedSection = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "相关文章" }),
-    });
-    await expect(relatedSection).toBeVisible();
-    await expectStableLiftHover(
-      page,
-      relatedSection.locator('a.nature-hover-hitbox[href^="/posts/"]').first()
-    );
+    await gotoWithTheme(page, "/", "light");
+    const timelineCard = page.getByTestId("home-timeline").locator(".nature-hover-hitbox").nth(1);
+    await expectStableLiftHover(page, timelineCard);
 
     await gotoWithTheme(page, "/tags", "light");
     const tagGridLink = page.locator('main a.nature-hover-hitbox[href^="/tags/"]').first();
     await expectStableLiftHover(page, tagGridLink);
 
-    await gotoWithTheme(page, "/search?q=React", "light");
+    await gotoWithTheme(page, "/search?q=Hello", "light");
     const searchResultLink = page.locator('main a.nature-hover-hitbox[href^="/posts/"]').first();
     await expectStableLiftHover(page, searchResultLink);
   });

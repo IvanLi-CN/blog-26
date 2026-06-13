@@ -6,51 +6,30 @@ import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { clearSearchCache } from "@/lib/ai/search-cache";
-import {
-  buildMemoAssetPath,
-  buildMemoRelativePath,
-  buildMemoRootPath,
-  getMemoNewPath,
-  getMemoRootPath,
-} from "@/lib/memo-paths";
+import { buildMemoAssetPath, buildMemoRelativePath, getMemoRootPath } from "@/lib/memo-paths";
 import {
   hasApiFilesReference,
   normalizePersistedLink,
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
-import { getResolvedLlmConfig } from "@/server/services/llm-settings";
+import { buildLegacyPublicMediaUrl } from "@/lib/public-media";
 import {
-  isLocalContentEnabled,
-  LOCAL_PATHS,
-  WEBDAV_PATH_MAPPINGS,
-  WEBDAV_PATHS,
-} from "../../config/paths";
+  buildPublicMediaCollection,
+  pickLegacyPublicImage,
+  rewritePublicMemoAttachments,
+} from "@/server/public-media";
+import { getResolvedLlmConfig } from "@/server/services/llm-settings";
+import { isLocalContentEnabled, LOCAL_PATHS } from "../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../lib/content-sources";
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
-import { WebDAVContentSource } from "../../lib/content-sources/webdav";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
 import { toMsTimestamp } from "../../lib/utils";
-import { getWebDAVClient, isWebDAVEnabled } from "../../lib/webdav";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
 // ============================================================================
 // 辅助函数
 // ============================================================================
-
-/**
- * 创建 WebDAV 内容源实例
- */
-function createWebDAVSource(): WebDAVContentSource {
-  return new WebDAVContentSource({
-    name: "webdav",
-    priority: 100,
-    enabled: true,
-    options: {
-      pathMappings: WEBDAV_PATH_MAPPINGS,
-    },
-  });
-}
 
 /**
  * 从 posts.metadata 中解析附件数组
@@ -197,16 +176,6 @@ async function _ensureContentSourcesRegistered(manager: any): Promise<void> {
     } else if (process.env.DEBUG_MEMOS === "1") {
       console.debug("ℹ️ [memo-sync] 跳过注册 local 内容源：未启用");
     }
-
-    if (isWebDAVEnabled()) {
-      const webdavSource = createWebDAVSource();
-      await manager.registerSource(webdavSource);
-      if (process.env.DEBUG_MEMOS === "1") {
-        console.debug("✅ [memo-sync] WebDAV内容源注册成功");
-      }
-    } else if (process.env.DEBUG_MEMOS === "1") {
-      console.debug("ℹ️ [memo-sync] 跳过注册 WebDAV 内容源：未启用");
-    }
   } catch (error) {
     console.error("⚠️ [memo-sync] 内容源注册失败:", error);
     // 注册失败不应该阻止同步尝试，让同步函数自己处理
@@ -255,10 +224,6 @@ function getLocalMemoRootPath(): string {
   return getMemoRootPath(LOCAL_PATHS.memos[0]);
 }
 
-function getWebDAVMemoRootPath(): string {
-  return getMemoRootPath(WEBDAV_PATHS.memos[0]);
-}
-
 function getLocalBasePathOrThrow(): string {
   const base = process.env.LOCAL_CONTENT_BASE_PATH?.trim() || LOCAL_PATHS.basePath;
   if (!base || base.length === 0) {
@@ -268,15 +233,6 @@ function getLocalBasePathOrThrow(): string {
     });
   }
   return base;
-}
-
-function pickDefaultMemoSource(): "local" | "webdav" {
-  if (isLocalContentEnabled()) return "local";
-  if (isWebDAVEnabled()) return "webdav";
-  throw new TRPCError({
-    code: "INTERNAL_SERVER_ERROR",
-    message: "未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL",
-  });
 }
 
 function buildMemoMarkdownDocument(content: string, frontmatter: Record<string, unknown>): string {
@@ -582,11 +538,8 @@ export const memosRouter = router({
 
       // 转换为 API 响应格式
       const formattedMemos = memosWithVectorStatus.map((memo) => {
-        const markdownFilePath = memo.filePath || memo.id;
-        const attachments = normalizeAttachmentsToPersistedSemantics(
-          parseAttachments(memo.metadata),
-          markdownFilePath
-        );
+        const media = buildPublicMediaCollection("memo", memo as MemoRow);
+        const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
         const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
 
         return {
@@ -598,6 +551,14 @@ export const memosRouter = router({
           isPublic: memo.public,
           tags: memo.tags ? JSON.parse(memo.tags) : [],
           attachments,
+          image:
+            pickLegacyPublicImage(media, "content") ??
+            buildLegacyPublicMediaUrl({
+              mediaPath: memo.image,
+              dataSource: memo.dataSource,
+              filePath: memo.filePath,
+            }),
+          media,
           author: memo.author || undefined,
           filePath: memo.filePath,
           source: memo.source,
@@ -624,6 +585,8 @@ export const memosRouter = router({
             isPublic: m.isPublic,
             tags: m.tags,
             attachments: (m as any).attachments,
+            image: (m as any).image,
+            media: (m as any).media,
             author: (m as any).author,
             filePath: (m as any).filePath,
             source: (m as any).source,
@@ -682,11 +645,8 @@ export const memosRouter = router({
         });
       }
 
-      const markdownFilePath = memo.filePath || memo.id;
-      const attachments = normalizeAttachmentsToPersistedSemantics(
-        parseAttachments(memo.metadata),
-        markdownFilePath
-      );
+      const media = buildPublicMediaCollection("memo", memo);
+      const publicAttachments = rewritePublicMemoAttachments(memo, media);
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
 
@@ -698,6 +658,14 @@ export const memosRouter = router({
         content: memo.body,
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
+        image:
+          pickLegacyPublicImage(media, "content") ??
+          buildLegacyPublicMediaUrl({
+            mediaPath: memo.image,
+            dataSource: memo.dataSource,
+            filePath: memo.filePath,
+          }),
+        media,
         createdAt: displayTime,
         publishedAt,
         updatedAt,
@@ -712,7 +680,7 @@ export const memosRouter = router({
       // 管理员返回完整信息
       return {
         ...base,
-        attachments,
+        attachments: publicAttachments,
         author: memo.author || undefined,
         filePath: memo.filePath,
         source: memo.source,
@@ -768,18 +736,17 @@ export const memosRouter = router({
       };
     };
 
-    const candidates: Array<"local" | "webdav"> = [];
+    const candidates: Array<"local"> = [];
     if (isLocalContentEnabled()) candidates.push("local");
-    if (isWebDAVEnabled()) candidates.push("webdav");
     if (candidates.length === 0) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "未启用任何内容源：请配置 LOCAL_CONTENT_BASE_PATH 或 WEBDAV_URL",
+        message: "未启用本地内容源：请配置 LOCAL_CONTENT_BASE_PATH",
       });
     }
 
     let createdId: string | null = null;
-    let createdSource: "local" | "webdav" | null = null;
+    let createdSource: "local" | null = null;
     let createdMemo: MemoRow | undefined;
     let normalizedContent = rawContent;
     let normalizedAttachments = inputAttachments;
@@ -787,10 +754,10 @@ export const memosRouter = router({
 
     for (const source of candidates) {
       try {
-        const markdownFilePathForNormalization =
-          source === "webdav"
-            ? getMemoNewPath(getWebDAVMemoRootPath())
-            : buildMemoRelativePath("__new__.md", getLocalMemoRootPath());
+        const markdownFilePathForNormalization = buildMemoRelativePath(
+          "__new__.md",
+          getLocalMemoRootPath()
+        );
 
         const normalized = normalizePersistedMemoInput({
           content: rawContent,
@@ -804,39 +771,23 @@ export const memosRouter = router({
         const now = Date.now();
         const nowIso = new Date(now).toISOString();
 
-        if (source === "local") {
-          const fileName = generateMemoFilename(normalizedContent, title, now);
-          createdId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
+        const fileName = generateMemoFilename(normalizedContent, title, now);
+        createdId = buildMemoRelativePath(fileName, getLocalMemoRootPath()).replace(/\\+/g, "/");
 
-          const frontmatter: Record<string, unknown> = {
-            title: title || extractTitleFromContent(normalizedContent),
-            public: isPublic,
-            tags: inputTags,
-            attachments: normalizedAttachments,
-            authorEmail: ctx.user?.email || "admin@example.com",
-            publishDate: nowIso,
-          };
+        const frontmatter: Record<string, unknown> = {
+          title: title || extractTitleFromContent(normalizedContent),
+          public: isPublic,
+          tags: inputTags,
+          attachments: normalizedAttachments,
+          authorEmail: ctx.user?.email || "admin@example.com",
+          publishDate: nowIso,
+        };
 
-          const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
-          const basePath = getLocalBasePathOrThrow();
-          const fullPath = join(basePath, createdId);
-          await mkdir(dirname(fullPath), { recursive: true });
-          await writeFile(fullPath, markdownContent, "utf-8");
-        } else {
-          const webdavSource = createWebDAVSource();
-          await webdavSource.initialize();
-
-          const fileName = await webdavSource.createMemo(normalizedContent, {
-            title,
-            isPublic,
-            tags: inputTags,
-            attachments: normalizedAttachments,
-            authorEmail: ctx.user?.email || "admin@example.com",
-          });
-
-          await webdavSource.dispose();
-          createdId = buildMemoRootPath(fileName, getWebDAVMemoRootPath()).replace(/\\+/g, "/");
-        }
+        const markdownContent = buildMemoMarkdownDocument(normalizedContent, frontmatter);
+        const basePath = getLocalBasePathOrThrow();
+        const fullPath = join(basePath, createdId);
+        await mkdir(dirname(fullPath), { recursive: true });
+        await writeFile(fullPath, markdownContent, "utf-8");
 
         createdSource = source;
 
@@ -976,25 +927,11 @@ export const memosRouter = router({
 
       const markdownContent = buildMemoMarkdownDocument(normalized.content, frontmatter);
 
-      const memoSource = existingMemo.source === "webdav" ? "webdav" : "local";
-      if (memoSource === "webdav") {
-        if (!isWebDAVEnabled()) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "WebDAV 已禁用：请先将该 memo 迁移为 local（或启用 WEBDAV_URL / CONTENT_SOURCES=webdav）。",
-          });
-        }
-        const webdavClient = getWebDAVClient();
-        const webdavPath = existingMemo.filePath || existingMemo.id;
-        await webdavClient.putFileContent(webdavPath, markdownContent);
-      } else {
-        const basePath = getLocalBasePathOrThrow();
-        const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
-        const fullPath = join(basePath, localFilePath);
-        await mkdir(dirname(fullPath), { recursive: true });
-        await writeFile(fullPath, markdownContent, "utf-8");
-      }
+      const basePath = getLocalBasePathOrThrow();
+      const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+      const fullPath = join(basePath, localFilePath);
+      await mkdir(dirname(fullPath), { recursive: true });
+      await writeFile(fullPath, markdownContent, "utf-8");
 
       // 更新数据库
       const now = Date.now();
@@ -1079,54 +1016,16 @@ export const memosRouter = router({
         });
       }
 
-      const memoSource = existingMemo.source === "webdav" ? "webdav" : "local";
-      if (memoSource === "webdav") {
-        if (!isWebDAVEnabled()) {
+      if (isLocalContentEnabled()) {
+        const basePath = getLocalBasePathOrThrow();
+        const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
+        try {
+          await rm(join(basePath, localFilePath), { force: true });
+        } catch (err) {
           if (process.env.NODE_ENV !== "production") {
-            console.warn("[memos.delete] WebDAV 已禁用，跳过远端删除:", existingMemo.id);
+            console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
           } else {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "WebDAV 已禁用，无法删除远端 memo 文件。",
-            });
-          }
-        } else {
-          try {
-            // 直接使用 WebDAV 客户端删除文件，避免 initialize 失败中断
-            const webdavClient = getWebDAVClient();
-            const webdavPath = existingMemo.filePath || existingMemo.id;
-
-            try {
-              await webdavClient.deleteFile(webdavPath);
-            } catch (err) {
-              // 在开发/测试环境，如远端不存在对应文件，则记录并继续数据库删除
-              if (process.env.NODE_ENV !== "production") {
-                console.warn("[memos.delete] WebDAV 删除失败(开发环境忽略)", webdavPath, err);
-              } else {
-                throw err;
-              }
-            }
-          } catch (err) {
-            if (process.env.NODE_ENV !== "production") {
-              console.warn("[memos.delete] 跳过 WebDAV 删除(开发环境)", err);
-            } else {
-              throw err;
-            }
-          }
-        }
-      } else {
-        // local source: best-effort delete local file (non-fatal in dev/test)
-        if (isLocalContentEnabled()) {
-          const basePath = getLocalBasePathOrThrow();
-          const localFilePath = (existingMemo.filePath || existingMemo.id).replace(/^\/+/, "");
-          try {
-            await rm(join(basePath, localFilePath), { force: true });
-          } catch (err) {
-            if (process.env.NODE_ENV !== "production") {
-              console.warn("[memos.delete] local 删除失败(开发环境忽略)", localFilePath, err);
-            } else {
-              throw err;
-            }
+            throw err;
           }
         }
       }
@@ -1167,28 +1066,12 @@ export const memosRouter = router({
         bytes[i] = binaryString.charCodeAt(i);
       }
 
-      const targetSource = pickDefaultMemoSource();
-
-      let persistedPath = `./assets/${filename}`;
-      if (targetSource === "local") {
-        const basePath = getLocalBasePathOrThrow();
-        const fileRelPath = buildMemoAssetPath(filename, getLocalMemoRootPath());
-        const fullPath = join(basePath, fileRelPath);
-        await mkdir(dirname(fullPath), { recursive: true });
-        await writeFile(fullPath, bytes);
-      } else {
-        const webdavSource = createWebDAVSource();
-        await webdavSource.initialize();
-
-        const attachmentPath = await webdavSource.uploadMemoAttachment(filename, bytes.buffer);
-        await webdavSource.dispose();
-
-        // Convert WebDAV absolute path to persisted relative.
-        persistedPath = normalizePersistedLink(
-          attachmentPath,
-          getMemoNewPath(getWebDAVMemoRootPath())
-        );
-      }
+      const persistedPath = `./assets/${filename}`;
+      const basePath = getLocalBasePathOrThrow();
+      const fileRelPath = buildMemoAssetPath(filename, getLocalMemoRootPath());
+      const fullPath = join(basePath, fileRelPath);
+      await mkdir(dirname(fullPath), { recursive: true });
+      await writeFile(fullPath, bytes);
 
       return {
         filename,

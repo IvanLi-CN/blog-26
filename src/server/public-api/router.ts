@@ -3,6 +3,7 @@ import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { buildPublicSnapshot } from "@/public-site/snapshot";
 import { createContext } from "@/server/context";
+import { handlePublicAssetFacadeRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
 import { suggestPublicSearchTerms } from "@/server/services/search-suggestions";
 
@@ -87,6 +88,19 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
 
     const url = new URL(request.url);
     const pathname = subPath.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+
+    const assetMatch = pathname.match(
+      /^\/assets\/(post|memo)\/([^/]+)\/([0-9a-f]+)\/(card|cover|content|full|social|poster|play)\.([a-z0-9]+)$/iu
+    );
+    if (assetMatch) {
+      return handlePublicAssetFacadeRequest(request, {
+        kind: assetMatch[1],
+        slug: decodeURIComponent(assetMatch[2]),
+        mediaHash: assetMatch[3],
+        variant: assetMatch[4],
+        ext: assetMatch[5],
+      });
+    }
 
     if (pathname === "/snapshot") {
       if (request.method !== "GET") return methodNotAllowed(request, request.method);

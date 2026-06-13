@@ -51,7 +51,7 @@ import {
 export type TreeItemType = FileItem["type"];
 
 export type TreeSelection = {
-  source: "local" | "webdav";
+  source: "local";
   path: string;
   type: TreeItemType;
 };
@@ -403,7 +403,7 @@ function DirectoryPickerTree({
   onSelect,
   onDirectoryExpand,
 }: {
-  selectedSource: "local" | "webdav";
+  selectedSource: "local";
   rootItems: FileItem[];
   directoryItemsByPath: Record<string, FileItem[]>;
   expandedPaths: string[];
@@ -817,7 +817,7 @@ export function EditorFileBrowser({
   onCopyEntries,
   onDeleteEntries,
 }: {
-  selectedSource: "local" | "webdav";
+  selectedSource: "local";
   browserPath: string;
   onNavigateUp: () => void;
   onRefresh: () => void;
@@ -831,7 +831,7 @@ export function EditorFileBrowser({
   onSelectionOverrideApplied: () => void;
   activeItemPath: string | null;
   activeItemType: TreeItemType | null;
-  activeItemSource: "local" | "webdav" | null;
+  activeItemSource: "local" | null;
   editingItem: TreeRenameTarget | null;
   onEditingValueChange: (value: string) => void;
   onEditingCommit: () => void;

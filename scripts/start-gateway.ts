@@ -8,6 +8,7 @@ import { handleDevApiRequest } from "@/server/dev-api/router";
 import { handleFilesApiRequest } from "@/server/files-api/router";
 import { handleMcpHttpRequest } from "@/server/mcp-http";
 import { handlePublicApiRequest } from "@/server/public-api/router";
+import { handleInternalAssetSourceRequest } from "@/server/public-media";
 import { handleTestApiRequest } from "@/server/test-api/router";
 import { handleTrpcHttpRequest } from "@/server/trpc-http";
 
@@ -44,6 +45,12 @@ function isAdminApiPath(pathname: string) {
 
 function isFilesApiPath(pathname: string) {
   return pathname === "/api/files" || pathname.startsWith("/api/files/");
+}
+
+function isInternalAssetSourcePath(pathname: string) {
+  return (
+    pathname === "/_internal/assets/source" || pathname.startsWith("/_internal/assets/source/")
+  );
 }
 
 function isAdminPath(pathname: string) {
@@ -545,6 +552,20 @@ const server = Bun.serve({
       const pathSegments =
         tail.length > 0 ? tail.split("/").filter(Boolean).map(decodeURIComponent) : [];
       return handleFilesApiRequest(effectiveRequest, { source, path: pathSegments });
+    }
+
+    if (isInternalAssetSourcePath(pathname)) {
+      const match = pathname.match(
+        /^\/_internal\/assets\/source\/(post|memo)\/([^/]+)\/([0-9a-f]+)$/iu
+      );
+      if (!match) {
+        return new Response("Not Found", { status: 404 });
+      }
+      return handleInternalAssetSourceRequest(effectiveRequest, {
+        kind: match[1],
+        slug: decodeURIComponent(match[2]),
+        mediaHash: match[3],
+      });
     }
 
     if (isDevApiPath(pathname)) {

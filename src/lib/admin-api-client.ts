@@ -155,7 +155,7 @@ export interface AdminCommentsListResponse {
 
 export interface DataSourceInfo {
   name: string;
-  type: "webdav" | "local";
+  type: "local";
   enabled: boolean;
   description?: string;
 }

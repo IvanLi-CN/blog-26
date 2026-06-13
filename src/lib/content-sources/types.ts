@@ -2,7 +2,7 @@
  * 多源内容采集系统 - 类型定义
  *
  * 定义了内容源接口、内容项类型和相关数据结构
- * 支持本地文件系统、WebDAV 等多种内容源
+ * 当前仅支持本地文件系统内容源
  */
 
 // ============================================================================
@@ -18,7 +18,7 @@ export type ContentType = "post" | "project" | "memo";
 /**
  * 内容源类型枚举
  */
-export type ContentSourceType = "local" | "webdav" | "database";
+export type ContentSourceType = "local";
 
 /**
  * 同步操作类型

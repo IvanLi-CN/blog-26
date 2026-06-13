@@ -47,7 +47,7 @@ Internal-only demo/tooling pages from the old app tree are retired unless reintr
 
 1. `package.json` has no direct `next`, `@next/*`, or `nextjs-toploader` dependencies and no scripts that invoke `next dev`, `next build`, or Next lint/runtime helpers.
 2. Active source/config paths no longer include `src/app`, `src/pages`, `next.config.ts`, `src/proxy.ts`, `INTERNAL_NEXT_PORT`, `/_next` proxying, or `next/*` imports.
-3. `bun run dev` and `bun run test-server:start` start only WebDAV, Astro, admin SPA, and the Bun gateway.
+3. `bun run dev` and `bun run test-server:start` start only Astro, admin SPA, and the Bun gateway.
 4. Public/admin/API behavior remains stable for the gateway-owned surfaces listed in this spec.
 5. `bun run check`, `bun run test`, `bun run build`, targeted E2E/API smoke, codex review convergence, and PR CI are clean before fast-track closeout.
 

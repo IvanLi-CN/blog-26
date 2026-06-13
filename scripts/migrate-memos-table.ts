@@ -81,7 +81,7 @@ async function migrateMemos() {
       UPDATE memos SET 
         type = 'memo',
         slug = COALESCE(slug, REPLACE(REPLACE(id, '/', '-'), '.md', '')),
-        source = COALESCE(data_source, 'webdav'),
+        source = COALESCE(data_source, 'local'),
         file_path = COALESCE(source_path, id),
         draft = 0,
         public = COALESCE(is_public, 1),
@@ -99,7 +99,7 @@ async function migrateMemos() {
     sqlite.run(
       `UPDATE memos SET slug = REPLACE(REPLACE(id, '/', '-'), '.md', '') WHERE slug IS NULL OR slug = ''`
     );
-    sqlite.run(`UPDATE memos SET source = 'webdav' WHERE source IS NULL OR source = ''`);
+    sqlite.run(`UPDATE memos SET source = 'local' WHERE source IS NULL OR source = ''`);
     sqlite.run(`UPDATE memos SET file_path = id WHERE file_path IS NULL OR file_path = ''`);
     sqlite.run(`UPDATE memos SET publish_date = created_at WHERE publish_date IS NULL`);
     sqlite.run(

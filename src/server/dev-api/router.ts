@@ -3,11 +3,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { asc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { WEBDAV_PATHS } from "@/config/paths";
 import { getAvatarUrl } from "@/lib/avatar";
 import { getContentSourceManager } from "@/lib/content-sources";
 import { db, initializeDB } from "@/lib/db";
-import { getMemoRootDir, getServerLocalMemoRootDir } from "@/lib/memo-paths";
+import { getServerLocalMemoRootDir } from "@/lib/memo-paths";
 import { users } from "@/lib/schema";
 import {
   createSession,
@@ -226,18 +225,8 @@ function slugify(title: string) {
     .trim();
 }
 
-function getMemoDirForSource(source: "local" | "webdav") {
-  return source === "local" ? getServerLocalMemoRootDir() : getMemoRootDir(WEBDAV_PATHS.memos[0]);
-}
-
-function writeMemoFile(
-  rootDir: string,
-  source: "local" | "webdav",
-  title: string,
-  body: string,
-  isPublic: boolean
-) {
-  const dir = join(rootDir, getMemoDirForSource(source));
+function writeMemoFile(rootDir: string, title: string, body: string, isPublic: boolean) {
+  const dir = join(rootDir, getServerLocalMemoRootDir());
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
   const slug = slugify(title) || randomUUID().slice(0, 8);
@@ -263,17 +252,17 @@ async function handleTestContent(request: Request) {
 
   const payload = await readJson(request);
   const kind = payload?.kind as "memo";
-  const source = payload?.source as "local" | "webdav";
+  const source = "local";
   const title = String(payload?.title || `E2E Memo ${randomUUID().slice(0, 8)}`);
   const body = String(payload?.body || "用于 E2E 删除测试的内容");
   const isPublic = payload?.isPublic !== false;
 
-  if (kind !== "memo" || (source !== "local" && source !== "webdav")) {
+  if (kind !== "memo") {
     return json({ error: "invalid parameters" }, { status: 400 });
   }
 
-  const rootDir = source === "local" ? resolve("./test-data/local") : resolve("./test-data/webdav");
-  const result = writeMemoFile(rootDir, source, title, body, isPublic);
+  const rootDir = resolve("./test-data/local");
+  const result = writeMemoFile(rootDir, title, body, isPublic);
   return json({ ok: true, kind, source, ...result });
 }
 

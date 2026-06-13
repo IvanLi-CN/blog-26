@@ -1,17 +1,12 @@
 /**
  * 文件管理 tRPC 路由
  *
- * 提供对多数据源（WebDAV、Local）的文件操作接口
+ * 提供本地内容源的文件操作接口
  */
 
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import {
-  getActiveLocalBasePath,
-  getActiveLocalPathMappings,
-  isLocalContentEnabled,
-} from "@/config/paths";
 import {
   getConfiguredContentRootDirs,
   isPathWithinConfiguredRoots,
@@ -19,37 +14,36 @@ import {
 } from "@/lib/content-path-mappings";
 import { hasApiFilesReference, rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import {
-  getContentSourceManager,
-  LocalContentSource,
-  WebDAVContentSource,
-} from "../../../lib/content-sources";
-import { getWebDAVClient, isWebDAVEnabled } from "../../../lib/webdav";
+  getActiveLocalBasePath,
+  getActiveLocalPathMappings,
+  isLocalContentEnabled,
+} from "../../../config/paths";
+import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
-// 输入验证 Schema
 const listDirectorySchema = z.object({
-  source: z.string().min(1), // 数据源名称，如 "webdav" 或 "local"
-  path: z.string().default(""), // 目录路径，默认为根目录
+  source: z.literal("local").default("local"),
+  path: z.string().default(""),
 });
 
 const readFileSchema = z.object({
-  source: z.string().min(1),
+  source: z.literal("local").default("local"),
   path: z.string().min(1),
 });
 
 const writeFileSchema = z.object({
-  source: z.string().min(1),
+  source: z.literal("local").default("local"),
   path: z.string().min(1),
   content: z.string(),
 });
 
 const createDirectorySchema = z.object({
-  source: z.string().min(1),
+  source: z.literal("local").default("local"),
   path: z.string().min(1),
 });
 
 const renameFileSchema = z.object({
-  source: z.string().min(1),
+  source: z.literal("local").default("local"),
   oldPath: z.string().min(1),
   newName: z.string().min(1),
 });
@@ -60,23 +54,22 @@ const fileEntrySchema = z.object({
 });
 
 const moveEntriesSchema = z.object({
-  source: z.string().min(1),
+  source: z.literal("local").default("local"),
   paths: z.array(z.string().min(1)).min(1),
   destinationPath: z.string().default(""),
 });
 
 const copyEntriesSchema = z.object({
-  source: z.string().min(1),
+  source: z.literal("local").default("local"),
   paths: z.array(z.string().min(1)).min(1),
   destinationPath: z.string().default(""),
 });
 
 const deleteEntriesSchema = z.object({
-  source: z.string().min(1),
+  source: z.literal("local").default("local"),
   entries: z.array(fileEntrySchema).min(1),
 });
 
-// 文件/目录项类型
 export interface FileItem {
   name: string;
   path: string;
@@ -87,10 +80,9 @@ export interface FileItem {
   count?: number;
 }
 
-// 数据源信息类型
 export interface DataSource {
-  name: string;
-  type: "webdav" | "local";
+  name: "local";
+  type: "local";
   enabled: boolean;
   description?: string;
 }
@@ -245,60 +237,6 @@ async function triggerAdminContentSync() {
 }
 
 /**
- * 列出 WebDAV 目录内容
- */
-async function listWebDAVDirectory(path: string): Promise<FileItem[]> {
-  if (!isWebDAVEnabled()) {
-    throw new Error("WebDAV 未启用");
-  }
-
-  try {
-    const webdavClient = getWebDAVClient();
-    const webdavPath = path || "/";
-
-    const files = await webdavClient.listFiles(webdavPath, false);
-
-    const items: FileItem[] = [];
-
-    for (const file of files) {
-      // 过滤掉当前目录本身（避免重复显示）
-      if (file.filename === webdavPath) {
-        continue;
-      }
-
-      const item: FileItem = {
-        name: file.basename,
-        path: file.filename,
-        type: file.type === "directory" ? "directory" : "file",
-        size: file.size,
-        lastModified: file.lastmod ? new Date(file.lastmod) : undefined,
-        extension: file.type === "file" ? file.basename.split(".").pop() : undefined,
-      };
-
-      // 如果是目录，获取目录内的项目数量
-      if (file.type === "directory") {
-        try {
-          const subFiles = await webdavClient.listFiles(file.filename, false);
-          // 过滤掉子目录中的当前目录本身
-          const filteredSubFiles = subFiles.filter((subFile) => subFile.filename !== file.filename);
-          item.count = filteredSubFiles.length;
-        } catch (error) {
-          console.warn(`⚠️ [Files API] 无法获取目录 ${file.filename} 的项目数量:`, error);
-          item.count = 0;
-        }
-      }
-
-      items.push(item);
-    }
-
-    return items;
-  } catch (error) {
-    console.error("❌ [Files API] WebDAV 目录列表失败:", error);
-    throw error;
-  }
-}
-
-/**
  * 列出本地目录内容
  */
 async function listLocalDirectory(path: string): Promise<FileItem[]> {
@@ -407,40 +345,6 @@ async function readLocalFile(path: string): Promise<string> {
     return content;
   } catch (error) {
     console.error("❌ [Files API] 本地文件读取失败:", error);
-    throw error;
-  }
-}
-
-/**
- * 重命名WebDAV文件或目录
- */
-async function renameWebDAVFile(oldPath: string, newName: string): Promise<void> {
-  try {
-    const client = getWebDAVClient();
-    if (!client) {
-      throw new Error("WebDAV客户端未初始化");
-    }
-
-    // 构建新路径
-    const pathParts = oldPath.split("/");
-    pathParts[pathParts.length - 1] = newName;
-    const newPath = pathParts.join("/");
-
-    // 检查新路径是否已存在
-    const exists = await client.exists(newPath);
-    if (exists) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "目标文件或目录已存在",
-      });
-    }
-
-    // 执行重命名（WebDAV中使用MOVE方法）
-    await client.moveFile(oldPath, newPath);
-
-    console.log(`✅ [Files API] WebDAV文件重命名成功: ${oldPath} -> ${newPath}`);
-  } catch (error) {
-    console.error("❌ [Files API] WebDAV文件重命名失败:", error);
     throw error;
   }
 }
@@ -738,52 +642,26 @@ async function deleteLocalEntries(
 async function ensureContentSourcesRegistered(manager: ReturnType<typeof getContentSourceManager>) {
   const sources = manager.getSources();
 
-  // 确保始终存在标准名称的内容源：local、webdav（如果启用）
-  const hasLocal = sources.some((s) => s.name === "local");
-  const hasWebDAV = sources.some((s) => s.name === "webdav");
+  const hasLocal = sources.some((source) => source.name === "local");
 
-  // 注册本地内容源（缺失时补齐）
   if (!hasLocal) {
-    if (!isLocalContentEnabled()) {
-      console.log("ℹ️ [Files API] 本地内容源未启用，跳过注册");
-    } else {
-      const basePath = requireLocalBasePath();
-      console.log("🔧 [Files API] 注册缺失的本地内容源 'local' ...");
-      const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-        contentPath: resolve(basePath),
-        pathMappings: getActiveLocalPathMappings(),
-      });
-      const localSource = new LocalContentSource(localConfig);
-      await manager.registerSource(localSource);
-      console.log("✅ [Files API] 本地内容源注册成功");
-    }
-  }
-
-  // 注册 WebDAV 内容源（开启且缺失时补齐）
-  if (isWebDAVEnabled() && !hasWebDAV) {
-    try {
-      console.log("🔧 [Files API] 注册缺失的 WebDAV 内容源 'webdav' ...");
-      const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav", 100);
-      const webdavSource = new WebDAVContentSource(webdavConfig);
-      await manager.registerSource(webdavSource);
-      console.log("✅ [Files API] WebDAV 内容源注册成功");
-    } catch (error) {
-      console.warn("⚠️ [Files API] WebDAV 内容源注册失败:", error);
-    }
+    const basePath = requireLocalBasePath();
+    const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
+      contentPath: resolve(basePath),
+      pathMappings: getActiveLocalPathMappings(),
+    });
+    await manager.registerSource(new LocalContentSource(localConfig));
   }
 }
 
-async function ensureSourceReady(
-  manager: ReturnType<typeof getContentSourceManager>,
-  sourceName: string
-) {
+async function ensureSourceReady(manager: ReturnType<typeof getContentSourceManager>) {
   await ensureContentSourcesRegistered(manager);
 
-  const source = manager.getSource(sourceName);
+  const source = manager.getSource("local");
   if (!source) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: `数据源 "${sourceName}" 不存在`,
+      message: '数据源 "local" 不存在',
     });
   }
 
@@ -795,35 +673,11 @@ async function ensureSourceReady(
     const message = error instanceof Error ? error.message : String(error);
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: `数据源 "${sourceName}" 初始化失败：${message}`,
+      message: `数据源 "local" 初始化失败：${message}`,
     });
   }
 
   return source;
-}
-
-/**
- * 读取 WebDAV 文件内容
- */
-async function readWebDAVFile(path: string): Promise<string> {
-  if (!isWebDAVEnabled()) {
-    throw new Error("WebDAV 未启用");
-  }
-
-  try {
-    const webdavClient = getWebDAVClient();
-    const content = await webdavClient.getFileContent(path);
-
-    if (typeof content === "string") {
-      return content;
-    } else {
-      // 如果是 Buffer，转换为字符串
-      return (content as Buffer).toString("utf-8");
-    }
-  } catch (error) {
-    console.error("❌ [Files API] WebDAV 文件读取失败:", error);
-    throw error;
-  }
 }
 
 export const filesRouter = createTRPCRouter({
@@ -837,22 +691,14 @@ export const filesRouter = createTRPCRouter({
       // 确保内容源已注册
       await ensureContentSourcesRegistered(manager);
 
-      const sources = manager.getSources();
-
-      console.log("📋 [Files API] 获取数据源:", sources.length);
-
-      return sources.map((source): DataSource => {
-        const sourceType = source.type || "unknown";
-        return {
-          name: source.name,
-          type: sourceType as "webdav" | "local",
-          enabled: source.enabled,
-          description:
-            sourceType === "webdav"
-              ? `${process.env.WEBDAV_URL || "WebDAV服务器"} ${source.enabled ? "(已连接)" : "(未连接)"}`
-              : `本地文件系统 (本地路径)`,
-        };
-      });
+      return [
+        {
+          name: "local",
+          type: "local",
+          enabled: true,
+          description: "本地文件系统",
+        } satisfies DataSource,
+      ];
     } catch (error) {
       console.error("❌ [Files API] 获取数据源失败:", error);
       throw new TRPCError({
@@ -872,27 +718,9 @@ export const filesRouter = createTRPCRouter({
       // 确保内容源已注册
       await ensureContentSourcesRegistered(manager);
 
-      const source = manager.getSource(input.source);
+      await ensureSourceReady(manager);
 
-      if (!source) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `数据源 "${input.source}" 不存在`,
-        });
-      }
-
-      console.log(`📂 [Files API] 列出目录: ${input.source}:${input.path}`);
-
-      let items: FileItem[] = [];
-
-      // 根据数据源类型调用相应的方法
-      if (source.type === "webdav") {
-        items = await listWebDAVDirectory(input.path);
-      } else if (source.type === "local") {
-        items = await listLocalDirectory(input.path);
-      }
-
-      console.log(`📂 [Files API] 找到 ${items.length} 个项目`);
+      const items = await listLocalDirectory(input.path);
 
       return {
         source: input.source,
@@ -918,27 +746,9 @@ export const filesRouter = createTRPCRouter({
       // 确保内容源已注册
       await ensureContentSourcesRegistered(manager);
 
-      const source = manager.getSource(input.source);
+      await ensureSourceReady(manager);
 
-      if (!source) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `数据源 "${input.source}" 不存在`,
-        });
-      }
-
-      console.log(`📖 [Files API] 读取文件: ${input.source}:${input.path}`);
-
-      let content = "";
-
-      // 根据数据源类型调用相应的方法
-      if (source.type === "webdav") {
-        content = await readWebDAVFile(input.path);
-      } else if (source.type === "local") {
-        content = await readLocalFile(input.path);
-      }
-
-      console.log(`📖 [Files API] 文件读取成功，长度: ${content.length}`);
+      const content = await readLocalFile(input.path);
 
       return {
         source: input.source,
@@ -964,13 +774,13 @@ export const filesRouter = createTRPCRouter({
       console.log(`📝 [Files API] 内容预览: ${input.content.substring(0, 200)}...`);
 
       const manager = getContentSourceManager();
-      const source = await ensureSourceReady(manager, input.source);
+      const source = await ensureSourceReady(manager);
 
       // 检查内容源是否支持写入功能
       if (typeof (source as any).writeFile !== "function") {
         throw new TRPCError({
           code: "NOT_IMPLEMENTED",
-          message: `数据源 "${input.source}" 不支持文件写入功能`,
+          message: '数据源 "local" 不支持文件写入功能',
         });
       }
 
@@ -1027,32 +837,24 @@ export const filesRouter = createTRPCRouter({
   createDirectory: adminProcedure.input(createDirectorySchema).mutation(async ({ input }) => {
     try {
       const manager = getContentSourceManager();
+      await ensureSourceReady(manager);
 
-      const source = await ensureSourceReady(manager, input.source);
+      const fs = await import("node:fs/promises");
+      const nodePath = await import("node:path");
+      const basePath = resolve(requireLocalBasePath());
+      const safePath = assertLocalPathAllowed(input.path);
+      const fullPath = nodePath.join(basePath, safePath);
 
-      if (source instanceof LocalContentSource) {
-        const fs = await import("node:fs/promises");
-        const nodePath = await import("node:path");
-        const basePath = resolve(requireLocalBasePath());
-        const safePath = assertLocalPathAllowed(input.path);
-        const fullPath = nodePath.join(basePath, safePath);
-
-        try {
-          await fs.mkdir(fullPath);
-        } catch (error: any) {
-          if (error?.code === "EEXIST") {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "目标目录已存在",
-            });
-          }
-          throw error;
+      try {
+        await fs.mkdir(fullPath);
+      } catch (error: any) {
+        if (error?.code === "EEXIST") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "目标目录已存在",
+          });
         }
-      } else {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "当前内容源不支持创建目录",
-        });
+        throw error;
       }
 
       return {
@@ -1078,18 +880,7 @@ export const filesRouter = createTRPCRouter({
   renameFile: adminProcedure.input(renameFileSchema).mutation(async ({ input }) => {
     try {
       const manager = getContentSourceManager();
-
-      // 确保内容源已注册
-      await ensureContentSourcesRegistered(manager);
-
-      const source = manager.getSource(input.source);
-
-      if (!source) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `数据源 "${input.source}" 不存在`,
-        });
-      }
+      await ensureSourceReady(manager);
 
       // 验证新名称
       if (!input.newName.trim()) {
@@ -1108,18 +899,7 @@ export const filesRouter = createTRPCRouter({
         });
       }
 
-      // 根据数据源类型执行重命名
-      if (source instanceof WebDAVContentSource) {
-        await renameWebDAVFile(input.oldPath, input.newName);
-      } else if (source instanceof LocalContentSource) {
-        await renameLocalFile(input.oldPath, input.newName);
-      } else {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "不支持的数据源类型",
-        });
-      }
-
+      await renameLocalFile(input.oldPath, input.newName);
       await triggerAdminContentSync();
 
       return {
@@ -1154,7 +934,7 @@ export const filesRouter = createTRPCRouter({
       }
 
       const manager = getContentSourceManager();
-      const source = await ensureSourceReady(manager, input.source);
+      const source = await ensureSourceReady(manager);
       if (!(source instanceof LocalContentSource)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1192,7 +972,7 @@ export const filesRouter = createTRPCRouter({
       }
 
       const manager = getContentSourceManager();
-      const source = await ensureSourceReady(manager, input.source);
+      const source = await ensureSourceReady(manager);
       if (!(source instanceof LocalContentSource)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1230,7 +1010,7 @@ export const filesRouter = createTRPCRouter({
       }
 
       const manager = getContentSourceManager();
-      const source = await ensureSourceReady(manager, input.source);
+      const source = await ensureSourceReady(manager);
       if (!(source instanceof LocalContentSource)) {
         throw new TRPCError({
           code: "BAD_REQUEST",

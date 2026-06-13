@@ -100,9 +100,9 @@ describe("memo-paths", () => {
     expect(result.stderr).toContain("memo 根目录不能包含");
   });
 
-  it("switches memo editor uploads to webdav when local source is disabled", () => {
+  it("keeps memo editor uploads on local", () => {
     expect(getMemoEditorContentSource(true)).toBe("local");
-    expect(getMemoEditorContentSource(false)).toBe("webdav");
+    expect(getMemoEditorContentSource(false)).toBe("local");
   });
 
   it("uses PUBLIC_LOCAL_MEMOS_PATH for client-safe overrides", () => {
@@ -207,12 +207,12 @@ describe("memo-paths", () => {
     expect(result.stderr).toContain("memo 根目录不能包含");
   });
 
-  it("ignores invalid client memo roots when the local source is disabled", () => {
+  it("rejects invalid client memo roots during local-only config validation", () => {
     const result = spawnSync(
       "bun",
       [
         "-e",
-        'process.env.CONTENT_SOURCES="webdav"; process.env.WEBDAV_URL="http://localhost:1"; process.env.PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?disabled-local-memo-root-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+        'process.env.CONTENT_SOURCES="local"; process.env.LOCAL_CONTENT_BASE_PATH="http://localhost:1"; process.env.PUBLIC_LOCAL_MEMOS_PATH="../outside"; try { await import("./src/config/paths.ts?disabled-local-memo-root-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),
@@ -220,16 +220,16 @@ describe("memo-paths", () => {
       }
     );
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain("ok");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("memo 根目录不能包含");
   });
 
-  it("ignores invalid local path envs when the local source is disabled", () => {
+  it("rejects invalid local path envs during local-only config validation", () => {
     const result = spawnSync(
       "bun",
       [
         "-e",
-        'process.env.CONTENT_SOURCES="webdav"; process.env.WEBDAV_URL="http://localhost:1"; process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_BLOG_PATH="blog"; try { await import("./src/config/paths.ts?disabled-local-path-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+        'process.env.CONTENT_SOURCES="local"; process.env.LOCAL_CONTENT_BASE_PATH="http://localhost:1"; process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_BLOG_PATH="blog"; try { await import("./src/config/paths.ts?disabled-local-path-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),
@@ -237,16 +237,16 @@ describe("memo-paths", () => {
       }
     );
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain("ok");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("路径必须以 '/' 开头");
   });
 
-  it("ignores invalid webdav path envs when the webdav source is disabled", () => {
+  it("accepts valid local path envs when local parsing continues", () => {
     const result = spawnSync(
       "bun",
       [
         "-e",
-        'process.env.CONTENT_SOURCES="local"; process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.WEBDAV_BLOG_PATH="blog"; try { await import("./src/config/paths.ts?disabled-webdav-path-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
+        'process.env.CONTENT_SOURCES="local"; process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; process.env.LOCAL_BLOG_PATH="/blog"; try { await import("./src/config/paths.ts?local-path-test"); console.log("ok"); process.exit(0); } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exit(1); }',
       ],
       {
         cwd: process.cwd(),
