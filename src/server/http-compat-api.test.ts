@@ -1651,6 +1651,51 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rebases persisted markdown asset links for .markdown files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(docsDir, "linked.markdown"),
+      ["---", "image: ./assets/cover.png", "---", "", "![cover](./assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/linked.markdown"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+      expect(moveResponse.status).toBe(200);
+
+      const movedContent = fs.readFileSync(path.join(archiveDir, "linked.markdown"), "utf-8");
+      expect(movedContent).toContain("image: ../docs/assets/cover.png");
+      expect(movedContent).toContain("![cover](../docs/assets/cover.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rejects copying local files when the destination already has the same name", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 

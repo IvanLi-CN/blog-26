@@ -17,7 +17,12 @@ const normalizedLocalBasePath =
     ? rawLocalBasePath.trim()
     : null;
 
-function parseEnabledSourcePaths(envValue: string | undefined, fallback: string): string[] {
+function parseEnabledSourcePaths(
+  envValue: string | undefined,
+  fallback: string,
+  enabled = true
+): string[] {
+  if (!enabled) return [];
   return parsePathsFromEnv(envValue || fallback);
 }
 

@@ -97,6 +97,11 @@ type BatchEntryResult = {
   type: "file" | "directory";
 };
 
+function isMarkdownContentFile(path: string) {
+  const lowerPath = path.toLowerCase();
+  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown");
+}
+
 function requireLocalBasePath(): string {
   if (!isLocalContentEnabled()) {
     throw new TRPCError({
@@ -416,7 +421,7 @@ async function rebaseMovedMarkdownLinks(
   if (!stats) return;
 
   if (stats.isFile()) {
-    if (!fullPath.toLowerCase().endsWith(".md")) return;
+    if (!isMarkdownContentFile(fullPath)) return;
     const currentContent = await fs.readFile(fullPath, "utf-8");
     const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
     if (rebased.changed) {
@@ -840,8 +845,7 @@ export const filesRouter = createTRPCRouter({
         });
       }
 
-      const isMarkdown =
-        input.path.toLowerCase().endsWith(".md") || input.path.toLowerCase().endsWith(".markdown");
+      const isMarkdown = isMarkdownContentFile(input.path);
       let contentToWrite = input.content;
 
       // Final gate: persisted markdown must not contain `/api/files/...` links.
