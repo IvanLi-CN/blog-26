@@ -18,7 +18,19 @@ import type { TagSummary } from "@/types/tags";
 const now = Date.now();
 
 const postBodies = {
-  hooks: `# React Hooks 深度解析
+  hooks: `---
+title: React Hooks 深度解析
+slug: react-hooks-deep-dive
+draft: false
+public: true
+createdVia: demo
+tags:
+  - React
+  - Hooks
+category: frontend
+---
+
+# React Hooks 深度解析
 
 React Hooks 改变了我们编写 React 组件的方式，尤其适合把状态、外部同步和复用逻辑收束在一个清晰的组件边界里。
 
@@ -368,12 +380,13 @@ function createPost(
   body: string,
   overrides: Partial<AdminPost> = {}
 ): AdminPost {
+  const excerptSource = body.replace(/^---\n[\s\S]*?\n---\n?/, "");
   return {
     id,
     slug,
     type: "post",
     title,
-    excerpt: body.replaceAll("#", "").slice(0, 84),
+    excerpt: excerptSource.replaceAll("#", "").slice(0, 84),
     body,
     publishDate: now - 7 * 86_400_000,
     updateDate: now - 900_000,
