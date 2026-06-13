@@ -29,6 +29,7 @@ import {
 } from "react";
 import type { FileItem } from "@/lib/admin-api-client";
 import { cn } from "@/lib/utils";
+import { dismissAdminToast, showAdminToast } from "~/components/admin-toast";
 import { useAppShellSidebarFloatingFooter } from "~/components/app-shell";
 import {
   Button,
@@ -104,6 +105,7 @@ type ContextMenuItem = {
 };
 
 const EMPTY_FILE_ITEMS: FileItem[] = [];
+const CLIPBOARD_TOAST_ID = "admin-editor-file-browser-clipboard";
 
 function formatDirectoryTargetLabel(path: string | null | undefined) {
   const normalizedPath = normalizeTreePath(path);
@@ -1091,6 +1093,28 @@ export function EditorFileBrowser({
     updateSelection([], null);
   }, [updateSelection]);
 
+  const clearClipboardToast = useCallback(() => {
+    dismissAdminToast(CLIPBOARD_TOAST_ID);
+  }, []);
+
+  const showClipboardToast = useCallback((nextClipboard: TreeClipboard) => {
+    showAdminToast(
+      "default",
+      `${nextClipboard.mode === "copy" ? "复制" : "剪切"} ${nextClipboard.items.length} 项，右键目录或空白处后可粘贴。`,
+      {
+        toastId: CLIPBOARD_TOAST_ID,
+        autoClose: false,
+        closeOnClick: false,
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      dismissAdminToast(CLIPBOARD_TOAST_ID);
+    };
+  }, []);
+
   const openContextMenu = useCallback(
     (
       target: TreeSelection | null,
@@ -1126,6 +1150,7 @@ export function EditorFileBrowser({
 
       if (command === "clear-selection") {
         clearSelection();
+        clearClipboardToast();
         setContextMenu(null);
         return;
       }
@@ -1144,10 +1169,12 @@ export function EditorFileBrowser({
 
       if (command === "copy" || command === "cut") {
         if (!entries.length) return;
-        setClipboard({
+        const nextClipboard: TreeClipboard = {
           mode: command === "copy" ? "copy" : "cut",
           items: entries,
-        });
+        };
+        setClipboard(nextClipboard);
+        showClipboardToast(nextClipboard);
         setContextMenu(null);
         return;
       }
@@ -1162,6 +1189,7 @@ export function EditorFileBrowser({
           } else {
             pastedEntries = await onMoveEntries(clipboard.items, directoryTarget);
             setClipboard(null);
+            clearClipboardToast();
           }
           if (pastedEntries?.length) {
             setPendingSelection(pastedEntries);
@@ -1203,6 +1231,7 @@ export function EditorFileBrowser({
     },
     [
       clearSelection,
+      clearClipboardToast,
       clipboard,
       contextMenu,
       getDirectoryTargetForSelection,
@@ -1214,6 +1243,7 @@ export function EditorFileBrowser({
       onStartRename,
       operationPending,
       resolveSelectionForTarget,
+      showClipboardToast,
       updateSelection,
     ]
   );
@@ -1780,13 +1810,6 @@ export function EditorFileBrowser({
               <RefreshCcw className="size-4" />
             </Button>
           </div>
-
-          {clipboard?.items.length ? (
-            <div className="rounded-2xl border border-border/56 bg-card/68 px-3 py-2 text-xs text-muted-foreground">
-              {clipboard.mode === "copy" ? "复制" : "剪切"}
-              {` ${clipboard.items.length} 项，右键目录或空白处后可粘贴。`}
-            </div>
-          ) : null}
 
           <div
             className="min-w-0 truncate rounded-2xl bg-muted/32 px-3 py-2 text-xs text-muted-foreground"

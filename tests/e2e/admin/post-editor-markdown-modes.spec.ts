@@ -817,26 +817,41 @@ test.describe("Post editor Markdown modes", () => {
     await ensureBlogDirectoryExpanded(page);
     await treeNameButton(page, "02-typescript-advanced-types.md").click();
     await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+X`);
-    await expect(page.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+    const toastViewport = page.locator(".Toastify__toast-container");
+    await expect(toastViewport.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+    await expect(
+      page.getByTestId("editor-file-browser").getByText("剪切 1 项，右键目录或空白处后可粘贴。")
+    ).toHaveCount(0);
 
     await treeNameButton(page, "archive").click();
     await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
 
-    const toastViewport = page.locator(".Toastify__toast-container");
     await expect(toastViewport.getByText("已移动 1 项。")).toBeVisible();
 
     const toastState = await toastViewport.evaluate((viewport) => {
+      const toast = viewport.querySelector<HTMLElement>(".Toastify__toast");
+      const closeButton = viewport.querySelector<HTMLElement>('[data-testid="admin-toast-close"]');
+      const toastRect = toast?.getBoundingClientRect();
+      const closeRect = closeButton?.getBoundingClientRect();
       const rect = viewport.getBoundingClientRect();
       const style = getComputedStyle(viewport);
       return {
         position: style.position,
         top: rect.top,
         rightGap: window.innerWidth - rect.right,
+        closeInside:
+          Boolean(toastRect && closeRect) &&
+          closeRect.left >= toastRect.left &&
+          closeRect.right <= toastRect.right &&
+          closeRect.top >= toastRect.top &&
+          closeRect.bottom <= toastRect.bottom,
       };
     });
     expect(toastState.position).toBe("fixed");
-    expect(toastState.top).toBeGreaterThanOrEqual(64);
+    expect(toastState.top).toBeGreaterThanOrEqual(12);
+    expect(toastState.top).toBeLessThanOrEqual(32);
     expect(toastState.rightGap).toBeGreaterThanOrEqual(12);
+    expect(toastState.closeInside).toBe(true);
 
     await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+C`);
     await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
