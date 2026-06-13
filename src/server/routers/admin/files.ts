@@ -729,6 +729,9 @@ export const filesRouter = createTRPCRouter({
       };
     } catch (error) {
       console.error("❌ [Files API] 列出目录失败:", error);
+      if (error instanceof TRPCError) {
+        throw error;
+      }
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "列出目录失败",
@@ -757,6 +760,9 @@ export const filesRouter = createTRPCRouter({
       };
     } catch (error) {
       console.error("❌ [Files API] 读取文件失败:", error);
+      if (error instanceof TRPCError) {
+        throw error;
+      }
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "读取文件失败",

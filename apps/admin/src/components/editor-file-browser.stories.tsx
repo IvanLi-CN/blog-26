@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import type { FileItem } from "@/lib/admin-api-client";
+import { AdminToastViewport } from "~/components/admin-toast";
 import { Alert } from "~/components/ui";
 import {
   EditorFileBrowser,
@@ -63,6 +64,7 @@ function StoryHarness({ failDelete = false }: StoryHarnessProps) {
 
   return (
     <div className="min-h-screen bg-background p-6 text-foreground">
+      <AdminToastViewport />
       <div className="mx-auto flex max-w-[460px] flex-col gap-4">
         {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
         <div className="rounded-[2rem] bg-card/68 p-4 shadow-xl shadow-shadow-soft ring-1 ring-border/54">
@@ -77,6 +79,8 @@ function StoryHarness({ failDelete = false }: StoryHarnessProps) {
             directoryItemsByPath={DIRECTORY_ITEMS}
             loadingPaths={[]}
             expandedPaths={expandedPaths}
+            selectionOverride={null}
+            onSelectionOverrideApplied={() => undefined}
             activeItemPath="content/guide.md"
             activeItemType="file"
             activeItemSource="local"
