@@ -239,9 +239,20 @@ async function triggerAdminContentSync() {
     } else {
       const errorMessages = result.errors.map((entry) => entry.message).join(", ");
       console.warn(`⚠️ [Files API] 增量同步失败: ${errorMessages}`);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: errorMessages ? `增量同步失败：${errorMessages}` : "增量同步失败",
+      });
     }
   } catch (syncError) {
     console.error("❌ [Files API] 增量数据同步异常:", syncError);
+    if (syncError instanceof TRPCError) {
+      throw syncError;
+    }
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: syncError instanceof Error ? syncError.message : "增量同步失败",
+    });
   }
 }
 

@@ -317,6 +317,27 @@ function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath:
   return tab;
 }
 
+export function remapActiveTabIdForPathChange(
+  activeTabId: string | null,
+  source: "local",
+  oldPath: string,
+  newPath: string
+) {
+  if (!activeTabId) return activeTabId;
+  const normalizedOldPath = normalizeTreePath(oldPath);
+  const normalizedNewPath = normalizeTreePath(newPath);
+  const filePrefix = `file:${source}:`;
+  if (!activeTabId.startsWith(filePrefix)) return activeTabId;
+
+  const currentPath = normalizeTreePath(activeTabId.slice(filePrefix.length));
+  if (currentPath !== normalizedOldPath && !currentPath.startsWith(`${normalizedOldPath}/`)) {
+    return activeTabId;
+  }
+
+  const nextPath = replaceTreePathPrefix(currentPath, normalizedOldPath, normalizedNewPath);
+  return `${filePrefix}${nextPath}`;
+}
+
 function isTreeOperationTargeted(entryPath: string, targetPath: string, targetType: TreeItemType) {
   const normalizedEntryPath = normalizeTreePath(entryPath);
   const normalizedTargetPath = normalizeTreePath(targetPath);
@@ -1127,6 +1148,9 @@ export function EditorPage() {
         setTabs((current) =>
           current.map((tab) => remapTabPath(tab, target.source, target.path, newPath))
         );
+        setActiveTabId((current) =>
+          remapActiveTabIdForPathChange(current, target.source, target.path, newPath)
+        );
         await queryClient.invalidateQueries({
           queryKey: ["admin-directory-tree", target.source],
         });
@@ -1175,6 +1199,13 @@ export function EditorPage() {
               (nextTab, pair) => remapTabPath(nextTab, selectedSource, pair.oldPath, pair.newPath),
               tab
             )
+          )
+        );
+        setActiveTabId((current) =>
+          pathPairs.reduce(
+            (nextId, pair) =>
+              remapActiveTabIdForPathChange(nextId, selectedSource, pair.oldPath, pair.newPath),
+            current
           )
         );
         await queryClient.invalidateQueries({

@@ -64,6 +64,14 @@ function createSuccessfulSyncResult() {
   };
 }
 
+function createFailedSyncResult(message = "sync failed") {
+  return {
+    ...createSuccessfulSyncResult(),
+    success: false,
+    errors: [{ source: "local", message }],
+  };
+}
+
 async function seedPost(
   overrides: Partial<{
     id: string;
@@ -1572,6 +1580,43 @@ describe("HTTP compatibility APIs", () => {
         },
       ]);
       expect(fs.readFileSync(path.join(docsDir, "move-me.md"), "utf-8")).toBe("move");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("returns an error when post-mutation content sync fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () =>
+      createFailedSyncResult("index unavailable")) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/sync-failure.md",
+              content: "sync failure",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(500);
+      const payload = await readJson(response);
+      expect(payload.error.message).toContain("index unavailable");
     } finally {
       manager.syncAll = originalSyncAll;
     }

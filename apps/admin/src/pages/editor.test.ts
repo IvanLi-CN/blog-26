@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mapBatchResultsToTreeSelection } from "./editor";
+import { mapBatchResultsToTreeSelection, remapActiveTabIdForPathChange } from "./editor";
 
 describe("editor batch selection mapping", () => {
   test("maps pasted batch results to the new tree selection set", () => {
@@ -28,5 +28,27 @@ describe("editor batch selection mapping", () => {
         type: "file",
       },
     ]);
+  });
+});
+
+describe("editor tab path remapping", () => {
+  test("keeps active file tabs selected after rename or move operations", () => {
+    expect(
+      remapActiveTabIdForPathChange(
+        "file:local:blog/drafts/post.md",
+        "local",
+        "blog/drafts/post.md",
+        "blog/archive/post.md"
+      )
+    ).toBe("file:local:blog/archive/post.md");
+
+    expect(
+      remapActiveTabIdForPathChange(
+        "file:local:blog/drafts/nested/post.md",
+        "local",
+        "blog/drafts",
+        "blog/archive"
+      )
+    ).toBe("file:local:blog/archive/nested/post.md");
   });
 });
