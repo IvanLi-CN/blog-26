@@ -59,6 +59,9 @@ function Counter() {
 ## 失效策略
 
 短 TTL 适合热读数据，主动失效适合编辑后台。`,
+  typescript: `# TypeScript 高级类型实战
+
+通过条件类型、映射类型和模板字面量类型，把业务约束压进静态类型系统。`,
   graphql: `# GraphQL API Best Practices
 
 GraphQL schema should describe product concepts, not database tables.
@@ -73,23 +76,99 @@ Keep resolver cost visible and avoid hidden fan-out in list fields.`,
 ## 操作边界
 
 所有高风险操作先确认影响面，再执行。`,
+  coverFallback: `# Posts Cover Fallback
+
+记录文章封面缺失时的回退链路、裁剪约束与验收清单。`,
+  edgeCaching: `# Edge Runtime Caching Notes
+
+总结边缘缓存命中策略、回源抖动和预热窗口。`,
+  playwrightGuide: `# Playwright Admin Regression Guide
+
+梳理后台编辑器、文件树和批量交互的回归测试路径。`,
+  milkdownPerf: `# Milkdown Editor Performance Notes
+
+记录长文档输入、切换模式和代码块渲染时的性能观察。`,
+  webdavSync: `# WebDAV Sync Observability
+
+对比本地内容源与 WebDAV 同步链路的延迟、冲突和提示文案。`,
+  sidebarAudit: `# Sidebar Layout Audit
+
+检查左侧文件树、浮动工具条和弹窗在窄宽度下的适配行为。`,
+  taxonomyMigration: `# Content Taxonomy Migration Plan
+
+整理 blog、memos、projects 三类内容的目录规范与迁移步骤。`,
+  archive2024: `# 2024 内容复盘
+
+整理归档文章、调整目录结构，并补齐历史元数据。`,
+  archive2025: `# 2025 路线草案
+
+记录下半年内容排期、专题拆分和复用素材。`,
+  week01: `# Week 01 Notes
+
+第一周记录状态建模、组件拆分和命名约束。`,
+  week02: `# Week 02 Notes
+
+第二周继续压实交互闭环和编辑器体验。`,
+  effectBoundaries: `# Effect Boundaries
+
+总结副作用边界、依赖约束与回归策略。`,
+  memoLocalDev: `# Local Development Environment Setup
+
+记录本地启动、端口约束和内容源初始化步骤。`,
+  memoRefactor: `# Code Refactoring Thoughts
+
+梳理状态机收束、组件边界和测试夹具维护策略。`,
+  memoLearning: `# New Technology Learning Notes
+
+收集近期值得继续深挖的库、协议和工程实践。`,
+  memoManagement: `# Project Management Experience
+
+记录排期、风控与跨角色协作中的常见模式。`,
+  memoEfficiency: `# Programming Efficiency Tips
+
+整理高频命令、调试技巧和重复劳动消减方式。`,
+  memoE2e: `# E2E Local
+
+收集本地 E2E 服务启动、账号注入和截图验收流程。`,
+  projectComponents: `# Open Source Component Library
+
+总结组件库主题、tokens 和文档编排方式。`,
+  projectEcommerce: `# Fullstack Ecommerce Platform
+
+记录商品、订单和运营后台之间的核心模型拆分。`,
+  projectDevops: `# DevOps Automation Toolchain
+
+梳理 CI/CD、部署编排和告警回路。`,
+  projectRecommendation: `# ML Recommendation System
+
+概览召回、排序和特征存储的协作边界。`,
+  projectVoting: `# Blockchain Voting System
+
+记录身份验证、投票审计与链上写入约束。`,
+  assetPlaceholder: `demo-binary-placeholder`,
 };
 
 let posts: AdminPost[] = [
   createPost("post-1", "react-hooks-deep-dive", "React Hooks 深度解析", postBodies.hooks, {
     source: "local",
-    filePath: "content/posts/react-hooks-deep-dive.md",
+    filePath: "blog/01-react-hooks-deep-dive.md",
     tags: "React,Hooks,Frontend",
     category: "frontend",
     vectorizationStatus: "indexed",
   }),
-  createPost("post-2", "redis-caching-strategies", "Redis 缓存策略与坑位", postBodies.redis, {
-    source: "local",
-    filePath: "content/posts/redis-caching-strategies.md",
-    tags: "Redis,Backend",
-    category: "backend",
-    vectorizationStatus: "outdated",
-  }),
+  createPost(
+    "post-2",
+    "typescript-advanced-types",
+    "TypeScript 高级类型实战",
+    postBodies.typescript,
+    {
+      source: "local",
+      filePath: "blog/02-typescript-advanced-types.md",
+      tags: "TypeScript,Frontend",
+      category: "frontend",
+      vectorizationStatus: "indexed",
+    }
+  ),
   createPost(
     "post-3",
     "graphql-api-best-practices",
@@ -97,7 +176,7 @@ let posts: AdminPost[] = [
     postBodies.graphql,
     {
       source: "local",
-      filePath: "content/posts/graphql-api-best-practices.md",
+      filePath: "blog/03-graphql-api-best-practices.md",
       tags: "GraphQL,API",
       category: "backend",
       vectorizationStatus: "unindexed",
@@ -112,16 +191,68 @@ let posts: AdminPost[] = [
       draft: true,
       public: false,
       source: "local",
-      filePath: "content/drafts/kubernetes-cluster-management.md",
+      filePath: "blog/04-kubernetes-cluster-management.md",
       tags: "Kubernetes,Ops",
       category: "ops",
       vectorizationStatus: "unindexed",
     }
   ),
+  createPost("post-5", "redis-caching-strategies", "Redis 缓存策略与坑位", postBodies.redis, {
+    source: "local",
+    filePath: "blog/05-redis-caching-strategies.md",
+    tags: "Redis,Backend",
+    category: "backend",
+    vectorizationStatus: "outdated",
+  }),
+  createPost("post-6", "posts-cover-fallback", "文章封面回退策略", postBodies.coverFallback, {
+    source: "local",
+    filePath: "blog/06-posts-cover-fallback.md",
+    tags: "Design,System",
+    category: "frontend",
+    vectorizationStatus: "indexed",
+  }),
+];
+
+const extraDemoFiles: Array<[string, string]> = [
+  ["local:blog/07-edge-runtime-caching-notes.md", postBodies.edgeCaching],
+  ["local:blog/08-playwright-admin-regression-guide.md", postBodies.playwrightGuide],
+  ["local:blog/09-milkdown-editor-performance-notes.md", postBodies.milkdownPerf],
+  ["local:blog/10-webdav-sync-observability.md", postBodies.webdavSync],
+  ["local:blog/11-shadcn-sidebar-layout-audit.md", postBodies.sidebarAudit],
+  ["local:blog/12-content-taxonomy-migration-plan.md", postBodies.taxonomyMigration],
+  ["local:blog/archive/2024-retrospective.md", postBodies.archive2024],
+  ["local:blog/archive/2025-roadmap.md", postBodies.archive2025],
+  ["local:blog/series/week-01.md", postBodies.week01],
+  ["local:blog/series/week-02.md", postBodies.week02],
+  ["local:blog/series/react/effect-boundaries.md", postBodies.effectBoundaries],
+  ["local:blog/assets/graphql-api.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/hello-world.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/kubernetes-cluster.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/react-hooks.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/redis-caching.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/typescript-advanced.jpg", postBodies.assetPlaceholder],
+  ["local:Memos/01-local-development-environment-setup.md", postBodies.memoLocalDev],
+  ["local:Memos/02-code-refactoring-thoughts.md", postBodies.memoRefactor],
+  ["local:Memos/03-new-technology-learning-notes.md", postBodies.memoLearning],
+  ["local:Memos/04-project-management-experience.md", postBodies.memoManagement],
+  ["local:Memos/05-programming-efficiency-tips.md", postBodies.memoEfficiency],
+  ["local:Memos/06-e2e-local.md", postBodies.memoE2e],
+  ["local:projects/01-open-source-component-library.md", postBodies.projectComponents],
+  ["local:projects/02-fullstack-ecommerce-platform.md", postBodies.projectEcommerce],
+  ["local:projects/03-devops-automation-toolchain.md", postBodies.projectDevops],
+  ["local:projects/04-ml-recommendation-system.md", postBodies.projectRecommendation],
+  ["local:projects/05-blockchain-voting-system.md", postBodies.projectVoting],
+  ["local:projects/assets/chatbot-platform.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/component-library.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/devops-toolchain.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/ecommerce-platform.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/ml-recommendation.jpg", postBodies.assetPlaceholder],
 ];
 
 const fileContents = new Map<string, string>(
-  posts.map((post) => [`${post.source}:${post.filePath}`, post.body])
+  posts
+    .map((post) => [`${post.source}:${post.filePath}`, post.body] as [string, string])
+    .concat(extraDemoFiles)
 );
 const directoryPaths = new Set<string>();
 for (const key of fileContents.keys()) {
@@ -420,7 +551,7 @@ function createPost(
     contentHash: `${id}-hash`,
     lastModified: now - 900_000,
     source: "local",
-    filePath: `content/posts/${slug}.md`,
+    filePath: `blog/${slug}.md`,
     ...overrides,
   };
 }
@@ -608,7 +739,7 @@ function readFile(source: string, path: string) {
 
 function writeFile(body: Record<string, unknown>) {
   const source = String(body.source ?? "local");
-  const path = String(body.path ?? "content/posts/untitled.md");
+  const path = String(body.path ?? "blog/untitled.md");
   const content = String(body.content ?? "");
   fileContents.set(`${source}:${path}`, content);
   addParentDirectoriesFromKey(`${source}:${path}`);
@@ -617,7 +748,7 @@ function writeFile(body: Record<string, unknown>) {
 
 function createDirectory(body: Record<string, unknown>) {
   const source = String(body.source ?? "local");
-  const path = normalizeDemoPath(String(body.path ?? "content/posts/new-folder"));
+  const path = normalizeDemoPath(String(body.path ?? "blog/new-folder"));
   directoryPaths.add(`${source}:${path}`);
   addParentDirectoriesFromKey(`${source}:${path}/.keep`);
   return { success: true, source, path };

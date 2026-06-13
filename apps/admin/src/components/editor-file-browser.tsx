@@ -14,6 +14,7 @@ import {
   RefreshCcw,
   Scissors,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -21,12 +22,14 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import type { FileItem } from "@/lib/admin-api-client";
 import { cn } from "@/lib/utils";
+import { useAppShellSidebarFloatingFooter } from "~/components/app-shell";
 import {
   Button,
   Checkbox,
@@ -105,6 +108,11 @@ const EMPTY_FILE_ITEMS: FileItem[] = [];
 function formatDirectoryTargetLabel(path: string | null | undefined) {
   const normalizedPath = normalizeTreePath(path);
   return normalizedPath || "根目录";
+}
+
+function isRowOverflowing(container: HTMLElement | null) {
+  if (!container) return false;
+  return container.scrollWidth - container.clientWidth > 1;
 }
 
 export function normalizeTreePath(path: string | null | undefined) {
@@ -209,6 +217,14 @@ function isSelectionModifierEvent(
     | Pick<ReactMouseEvent<HTMLElement>, "shiftKey" | "metaKey" | "ctrlKey">
 ) {
   return Boolean(event.shiftKey || event.metaKey || event.ctrlKey);
+}
+
+function isEditableKeyboardTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable='true'], [role='textbox']")
+  );
 }
 
 function dedupeSelection(entries: TreeSelection[]) {
@@ -548,6 +564,228 @@ function DirectoryPickerTree({
   );
 }
 
+function SidebarSelectionFloatingFooter({
+  selectedCount,
+  clipboardReady,
+  onCommand,
+}: {
+  selectedCount: number;
+  clipboardReady: boolean;
+  onCommand: (command: FileBrowserCommand) => void;
+}) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const fullProbeTopRowRef = useRef<HTMLDivElement | null>(null);
+  const fullProbeBottomRowRef = useRef<HTMLDivElement | null>(null);
+  const [footerMode, setFooterMode] = useState<"full" | "icons">("full");
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    let frame = 0;
+    const updateMode = () => {
+      frame = 0;
+      const fullOverflow =
+        isRowOverflowing(fullProbeTopRowRef.current) ||
+        isRowOverflowing(fullProbeBottomRowRef.current);
+      setFooterMode(fullOverflow ? "icons" : "full");
+    };
+    const queueUpdate = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updateMode);
+    };
+
+    queueUpdate();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(queueUpdate);
+      observer.observe(host);
+      if (fullProbeTopRowRef.current) observer.observe(fullProbeTopRowRef.current);
+      if (fullProbeBottomRowRef.current) observer.observe(fullProbeBottomRowRef.current);
+      return () => {
+        if (frame) cancelAnimationFrame(frame);
+        observer.disconnect();
+      };
+    }
+
+    window.addEventListener("resize", queueUpdate);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("resize", queueUpdate);
+    };
+  }, []);
+
+  const actions = useMemo(
+    () => [
+      {
+        command: "move" as const,
+        label: "移动",
+        icon: FolderInput,
+        variant: "outline" as const,
+        disabled: false,
+      },
+      {
+        command: "copy" as const,
+        label: "复制",
+        icon: Copy,
+        variant: "outline" as const,
+        disabled: false,
+      },
+      {
+        command: "cut" as const,
+        label: "剪切",
+        icon: Scissors,
+        variant: "outline" as const,
+        disabled: false,
+      },
+      {
+        command: "paste" as const,
+        label: "粘贴",
+        icon: ClipboardPaste,
+        variant: "outline" as const,
+        disabled: !clipboardReady,
+      },
+      {
+        command: "delete" as const,
+        label: "删除",
+        icon: Trash2,
+        variant: "destructive" as const,
+        disabled: false,
+      },
+      {
+        command: "clear-selection" as const,
+        label: "清空选择",
+        icon: X,
+        variant: "ghost" as const,
+        disabled: false,
+      },
+    ],
+    [clipboardReady]
+  );
+
+  const topActions = actions.slice(0, 3);
+  const bottomActions = actions.slice(3);
+
+  const renderCountPill = useCallback(
+    (testId?: string, compact = false) => (
+      <span
+        data-testid={testId}
+        title={`已选中 ${selectedCount} 项`}
+        className={cn(
+          "inline-flex shrink-0 whitespace-nowrap items-center justify-center border border-secondary/18 bg-secondary/12 font-semibold text-foreground/88 shadow-inner shadow-secondary/8",
+          compact
+            ? "h-8 min-w-[2.5rem] rounded-xl px-2 text-[10px] leading-none"
+            : "h-10 min-w-[3rem] rounded-2xl px-2.5 text-[11px]"
+        )}
+      >
+        {selectedCount}项
+      </span>
+    ),
+    [selectedCount]
+  );
+
+  const renderActionButton = useCallback(
+    (action: (typeof actions)[number], iconOnly: boolean, stretch = false) => {
+      const Icon = action.icon;
+
+      if (iconOnly) {
+        return (
+          <Tooltip key={action.command}>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant={action.variant}
+                className={cn("size-9 rounded-[1.1rem]", stretch ? "h-9 w-full" : "")}
+                aria-label={action.label}
+                disabled={action.disabled}
+                onClick={() => onCommand(action.command)}
+              >
+                <Icon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{action.label}</TooltipContent>
+          </Tooltip>
+        );
+      }
+
+      return (
+        <Button
+          key={action.command}
+          size="sm"
+          variant={action.variant}
+          className="w-full justify-center whitespace-nowrap px-3"
+          disabled={action.disabled}
+          onClick={() => onCommand(action.command)}
+        >
+          <Icon className="size-4" />
+          {action.label}
+        </Button>
+      );
+    },
+    [onCommand]
+  );
+
+  const renderActionRow = useCallback(
+    (
+      rowActions: typeof actions,
+      showCount = false,
+      rowRef?: React.RefObject<HTMLDivElement | null>,
+      countTestId?: string
+    ) => (
+      <div
+        ref={rowRef}
+        className={cn(
+          "grid min-w-0 gap-2 text-xs text-muted-foreground",
+          showCount ? "grid-cols-[auto_repeat(3,minmax(0,1fr))]" : "grid-cols-3"
+        )}
+      >
+        {showCount ? renderCountPill(countTestId) : null}
+        {rowActions.map((action) => renderActionButton(action, false))}
+      </div>
+    ),
+    [renderActionButton, renderCountPill]
+  );
+
+  const renderCompactGrid = useCallback(
+    () => (
+      <div className="grid grid-cols-[auto_repeat(3,minmax(0,1fr))] items-center gap-2">
+        {renderCountPill("sidebar-selection-count", true)}
+        {topActions.map((action) => renderActionButton(action, true, true))}
+        <span aria-hidden />
+        {bottomActions.map((action) => renderActionButton(action, true, true))}
+      </div>
+    ),
+    [bottomActions, renderActionButton, renderCountPill, topActions]
+  );
+
+  return (
+    <TooltipProvider delayDuration={120}>
+      <div
+        ref={hostRef}
+        data-testid="sidebar-selection-footer"
+        data-footer-mode={footerMode}
+        className="relative w-full overflow-hidden rounded-[1.7rem] border border-border/68 bg-card/94 px-4 pb-3 pt-4 shadow-[0_18px_44px_rgba(3,8,16,0.26)] backdrop-blur-sm"
+      >
+        <div
+          className="pointer-events-none absolute inset-x-4 top-3 invisible overflow-hidden space-y-2"
+          aria-hidden
+        >
+          {renderActionRow(topActions, true, fullProbeTopRowRef)}
+          {renderActionRow(bottomActions, false, fullProbeBottomRowRef)}
+        </div>
+        {footerMode === "icons" ? (
+          renderCompactGrid()
+        ) : (
+          <div className="space-y-2">
+            {renderActionRow(topActions, true, undefined, "sidebar-selection-count")}
+            {renderActionRow(bottomActions)}
+          </div>
+        )}
+      </div>
+    </TooltipProvider>
+  );
+}
+
 export function EditorFileBrowser({
   selectedSource,
   browserPath,
@@ -559,6 +797,8 @@ export function EditorFileBrowser({
   directoryItemsByPath,
   loadingPaths,
   expandedPaths,
+  selectionOverride,
+  onSelectionOverrideApplied,
   activeItemPath,
   activeItemType,
   activeItemSource,
@@ -585,6 +825,8 @@ export function EditorFileBrowser({
   directoryItemsByPath: Record<string, FileItem[]>;
   loadingPaths: string[];
   expandedPaths: string[];
+  selectionOverride: TreeSelection[] | null;
+  onSelectionOverrideApplied: () => void;
   activeItemPath: string | null;
   activeItemType: TreeItemType | null;
   activeItemSource: "local" | "webdav" | null;
@@ -597,13 +839,22 @@ export function EditorFileBrowser({
   onCreateFile: (parentPath?: string) => void;
   onCreateDirectory: (parentPath?: string) => void;
   onStartRename: (target: TreeSelection) => void;
-  onMoveEntries: (entries: TreeSelection[], destinationPath: string) => Promise<void>;
-  onCopyEntries: (entries: TreeSelection[], destinationPath: string) => Promise<void>;
+  onMoveEntries: (
+    entries: TreeSelection[],
+    destinationPath: string
+  ) => Promise<TreeSelection[] | undefined>;
+  onCopyEntries: (
+    entries: TreeSelection[],
+    destinationPath: string
+  ) => Promise<TreeSelection[] | undefined>;
   onDeleteEntries: (entries: TreeSelection[]) => Promise<void>;
 }) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState<TreeSelection[]>([]);
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null);
+  const [pendingSelection, setPendingSelection] = useState<TreeSelection[] | null>(null);
+  const shiftRangeAnchorPathRef = useRef<string | null>(null);
+  const shiftPressedRef = useRef(false);
   const [clipboard, setClipboard] = useState<TreeClipboard | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
@@ -623,6 +874,10 @@ export function EditorFileBrowser({
     () => new Set(selectedEntries.map((entry) => normalizeTreePath(entry.path))),
     [selectedEntries]
   );
+  const cutPathSet = useMemo(() => {
+    if (clipboard?.mode !== "cut") return new Set<string>();
+    return new Set(clipboard.items.map((entry) => normalizeTreePath(entry.path)));
+  }, [clipboard]);
   const selectedCount = selectedEntries.length;
 
   const visibleEntries = useMemo(() => {
@@ -649,11 +904,103 @@ export function EditorFileBrowser({
     [visibleEntries]
   );
 
+  const updateSelection = useCallback(
+    (nextEntries: TreeSelection[], anchorPath?: string | null) => {
+      const normalized = sortSelection(dedupeSelection(nextEntries));
+      setSelectedEntries(normalized);
+      setSelectionAnchorPath(
+        normalizeTreePath(anchorPath ?? normalized[normalized.length - 1]?.path ?? null)
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     setSelectedEntries((current) =>
       current.filter((entry) => entry.source === selectedSource && knownPaths.has(entry.path))
     );
   }, [knownPaths, selectedSource]);
+
+  useEffect(() => {
+    if (selectionAnchorPath && !knownPaths.has(selectionAnchorPath)) {
+      setSelectionAnchorPath(null);
+    }
+    if (shiftRangeAnchorPathRef.current && !knownPaths.has(shiftRangeAnchorPathRef.current)) {
+      shiftRangeAnchorPathRef.current = null;
+    }
+  }, [knownPaths, selectionAnchorPath]);
+
+  useEffect(() => {
+    const requestedSelection = selectionOverride?.length ? selectionOverride : pendingSelection;
+    if (!requestedSelection?.length) return;
+
+    const normalizedPending = sortSelection(
+      dedupeSelection(
+        requestedSelection
+          .filter((entry) => entry.source === selectedSource)
+          .map((entry) => ({ ...entry, path: normalizeTreePath(entry.path) }))
+      )
+    );
+
+    if (!normalizedPending.length) {
+      if (selectionOverride?.length) {
+        onSelectionOverrideApplied();
+      } else {
+        setPendingSelection(null);
+      }
+      return;
+    }
+
+    if (!normalizedPending.every((entry) => knownPaths.has(entry.path))) {
+      return;
+    }
+
+    updateSelection(
+      normalizedPending,
+      normalizedPending[normalizedPending.length - 1]?.path ?? null
+    );
+    if (selectionOverride?.length) {
+      onSelectionOverrideApplied();
+    } else {
+      setPendingSelection(null);
+    }
+  }, [
+    knownPaths,
+    onSelectionOverrideApplied,
+    pendingSelection,
+    selectedSource,
+    selectionOverride,
+    updateSelection,
+  ]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        shiftPressedRef.current = true;
+      }
+    };
+
+    const clearShiftAnchor = () => {
+      shiftPressedRef.current = false;
+      shiftRangeAnchorPathRef.current = null;
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        clearShiftAnchor();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", clearShiftAnchor);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", clearShiftAnchor);
+    };
+  }, []);
 
   const resolveSelectionForTarget = useCallback(
     (target: TreeSelection | null) => {
@@ -676,14 +1023,14 @@ export function EditorFileBrowser({
     [browserPath]
   );
 
-  const updateSelection = useCallback(
-    (nextEntries: TreeSelection[], anchorPath?: string | null) => {
-      const normalized = sortSelection(dedupeSelection(nextEntries));
-      setSelectedEntries(normalized);
-      setSelectionAnchorPath(anchorPath ?? normalized[normalized.length - 1]?.path ?? null);
-    },
-    []
-  );
+  const updateFocusedAnchor = useCallback((path: string | null | undefined) => {
+    if (shiftPressedRef.current) {
+      return;
+    }
+    shiftRangeAnchorPathRef.current = null;
+    const normalizedPath = normalizeTreePath(path);
+    setSelectionAnchorPath(normalizedPath || null);
+  }, []);
 
   const handleToggleSelection = useCallback(
     (
@@ -692,10 +1039,19 @@ export function EditorFileBrowser({
     ) => {
       const normalizedEntry = { ...entry, path: normalizeTreePath(entry.path) };
 
-      if (event?.shiftKey && selectionAnchorPath) {
-        const anchorIndex = visibleEntries.findIndex((item) => item.path === selectionAnchorPath);
+      if (!event?.shiftKey) {
+        shiftRangeAnchorPathRef.current = null;
+      }
+
+      if (event?.shiftKey) {
+        const rangeAnchorPath =
+          shiftRangeAnchorPathRef.current ?? selectionAnchorPath ?? normalizedEntry.path;
+        const anchorIndex = visibleEntries.findIndex((item) => item.path === rangeAnchorPath);
         const targetIndex = visibleEntries.findIndex((item) => item.path === normalizedEntry.path);
         if (anchorIndex >= 0 && targetIndex >= 0) {
+          if (!shiftRangeAnchorPathRef.current) {
+            shiftRangeAnchorPathRef.current = rangeAnchorPath;
+          }
           const [start, end] =
             anchorIndex < targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
           const ranged = visibleEntries.slice(start, end + 1);
@@ -731,6 +1087,7 @@ export function EditorFileBrowser({
   );
 
   const clearSelection = useCallback(() => {
+    setPendingSelection(null);
     updateSelection([], null);
   }, [updateSelection]);
 
@@ -799,11 +1156,17 @@ export function EditorFileBrowser({
         if (!clipboard || operationPending) return;
         setOperationPending(true);
         try {
+          let pastedEntries: TreeSelection[] | undefined;
           if (clipboard.mode === "copy") {
-            await onCopyEntries(clipboard.items, directoryTarget);
+            pastedEntries = await onCopyEntries(clipboard.items, directoryTarget);
           } else {
-            await onMoveEntries(clipboard.items, directoryTarget);
+            pastedEntries = await onMoveEntries(clipboard.items, directoryTarget);
             setClipboard(null);
+          }
+          if (pastedEntries?.length) {
+            setPendingSelection(pastedEntries);
+            updateSelection(pastedEntries, pastedEntries[pastedEntries.length - 1]?.path ?? null);
+          } else {
             clearSelection();
           }
           setContextMenu(null);
@@ -854,6 +1217,61 @@ export function EditorFileBrowser({
       updateSelection,
     ]
   );
+
+  const keyboardCommandTarget = useMemo(() => {
+    const normalizedAnchor = normalizeTreePath(selectionAnchorPath);
+    if (normalizedAnchor) {
+      const anchoredEntry = selectedEntries.find((entry) => entry.path === normalizedAnchor);
+      if (anchoredEntry) {
+        return anchoredEntry;
+      }
+    }
+    return selectedEntries[selectedEntries.length - 1] ?? null;
+  }, [selectedEntries, selectionAnchorPath]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      if (isEditableKeyboardTarget(event.target)) return;
+      if (moveDialog || deleteDialog || editingItem) return;
+
+      const key = event.key.toLowerCase();
+
+      if (key === "c") {
+        if (!selectedEntries.length) return;
+        event.preventDefault();
+        void executeCommand("copy", keyboardCommandTarget);
+        return;
+      }
+
+      if (key === "x") {
+        if (!selectedEntries.length) return;
+        event.preventDefault();
+        void executeCommand("cut", keyboardCommandTarget);
+        return;
+      }
+
+      if (key === "v") {
+        if (!clipboard?.items.length) return;
+        event.preventDefault();
+        void executeCommand("paste", keyboardCommandTarget);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    clipboard?.items.length,
+    deleteDialog,
+    editingItem,
+    executeCommand,
+    keyboardCommandTarget,
+    moveDialog,
+    selectedEntries.length,
+  ]);
 
   const clipboardDisabledTargets = useMemo(() => {
     const disabled = new Set<string>();
@@ -924,8 +1342,28 @@ export function EditorFileBrowser({
     return items;
   }, [clipboard?.items.length, clipboardDisabledTargets, contextMenu, resolveSelectionForTarget]);
 
+  const performPrimaryAction = useCallback(
+    (item: FileItem) => {
+      const entry: TreeSelection = {
+        source: selectedSource,
+        path: normalizeTreePath(item.path),
+        type: item.type,
+      };
+
+      updateFocusedAnchor(entry.path);
+
+      if (item.type === "directory") {
+        onDirectoryExpand(item);
+        return;
+      }
+
+      onFileOpen(item);
+    },
+    [onDirectoryExpand, onFileOpen, selectedSource, updateFocusedAnchor]
+  );
+
   const handlePrimaryAction = useCallback(
-    (item: FileItem, event: ReactMouseEvent<HTMLButtonElement>) => {
+    (item: FileItem, event: ReactMouseEvent<HTMLElement>) => {
       const entry: TreeSelection = {
         source: selectedSource,
         path: normalizeTreePath(item.path),
@@ -938,14 +1376,10 @@ export function EditorFileBrowser({
         return;
       }
 
-      if (item.type === "directory") {
-        onDirectoryExpand(item);
-        return;
-      }
-
-      onFileOpen(item);
+      updateSelection([entry], entry.path);
+      performPrimaryAction(item);
     },
-    [handleToggleSelection, onDirectoryExpand, onFileOpen, selectedSource]
+    [handleToggleSelection, performPrimaryAction, selectedSource, updateSelection]
   );
 
   const renderTreeNodes = useCallback(
@@ -979,6 +1413,8 @@ export function EditorFileBrowser({
           editingItem.type === item.type &&
           isTreePathSelected(editingItem.path, item.path);
         const isSelected = selectedPathSet.has(normalizedPath);
+        const isCutPending = cutPathSet.has(normalizedPath);
+        const showActiveHighlight = selectedCount === 0;
         const entry: TreeSelection = {
           source: selectedSource,
           path: normalizedPath,
@@ -988,14 +1424,19 @@ export function EditorFileBrowser({
         return (
           <div key={`${item.type}:${item.path}`} className="min-w-0 space-y-1">
             <div
+              data-cut-pending={isCutPending || undefined}
+              data-tree-row="true"
               className={cn(
-                "flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
+                "relative flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
                 !isEditing && "hover:bg-muted/40 hover:text-foreground",
                 isSelected && "border-primary/35 bg-primary/10 text-primary shadow-sm",
+                isCutPending && "saturate-75",
                 !isSelected &&
+                  showActiveHighlight &&
                   (isActiveFile || isActiveDirectory) &&
                   "border-primary/25 bg-primary/6 text-primary shadow-sm",
                 !isSelected &&
+                  showActiveHighlight &&
                   !isActiveFile &&
                   !isActiveDirectory &&
                   isActiveBranch &&
@@ -1006,14 +1447,41 @@ export function EditorFileBrowser({
                   !isSelected &&
                   "text-foreground/88"
               )}
-              style={{ paddingLeft: `${0.65 + depth * 0.45}rem` }}
+              style={{
+                opacity: isCutPending ? 0.6 : undefined,
+                paddingLeft: `${0.65 + depth * 0.45}rem`,
+              }}
             >
-              <span className="flex min-w-0 flex-1 items-center gap-2">
+              {!isEditing ? (
                 <button
                   type="button"
-                  className="flex shrink-0 items-center gap-2"
+                  tabIndex={-1}
+                  aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
+                  className="absolute inset-0 z-0 rounded-2xl"
+                  onClick={(event) => handlePrimaryAction(item, event)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openContextMenu(
+                      entry,
+                      { x: event.clientX, y: event.clientY },
+                      getDirectoryTargetForSelection(entry)
+                    );
+                  }}
+                />
+              ) : null}
+              <span
+                className={cn(
+                  "relative z-10 flex min-w-0 flex-1 items-center gap-2",
+                  !isEditing && "pointer-events-none"
+                )}
+              >
+                <button
+                  type="button"
+                  className="pointer-events-auto flex shrink-0 items-center gap-2"
                   tabIndex={isEditing ? -1 : 0}
                   aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
+                  onFocus={() => updateFocusedAnchor(entry.path)}
                   onClick={(event) => handlePrimaryAction(item, event)}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -1064,7 +1532,7 @@ export function EditorFileBrowser({
                   ) : (
                     <TreeFileTypeIcon
                       extension={item.extension}
-                      active={isActiveFile || isSelected}
+                      active={isSelected || (showActiveHighlight && isActiveFile)}
                     />
                   )}
                 </button>
@@ -1079,7 +1547,8 @@ export function EditorFileBrowser({
                 ) : (
                   <button
                     type="button"
-                    className="min-w-0 flex-1 truncate text-left"
+                    className="pointer-events-auto min-w-0 flex-1 truncate text-left"
+                    onFocus={() => updateFocusedAnchor(entry.path)}
                     onClick={(event) => handlePrimaryAction(item, event)}
                     onContextMenu={(event) => {
                       event.preventDefault();
@@ -1095,7 +1564,7 @@ export function EditorFileBrowser({
                   </button>
                 )}
               </span>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="relative z-10 pointer-events-none flex shrink-0 items-center gap-2">
                 {!isEditing && isDirectory ? (
                   <span
                     className={cn(
@@ -1110,7 +1579,7 @@ export function EditorFileBrowser({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="size-8 rounded-full"
+                    className="pointer-events-auto size-8 rounded-full"
                     aria-label={`${item.name} 更多操作`}
                     onClick={(event) => {
                       const rect = event.currentTarget.getBoundingClientRect();
@@ -1154,6 +1623,7 @@ export function EditorFileBrowser({
     [
       activeItemPath,
       activeItemType,
+      cutPathSet,
       directoryItemsByPath,
       editingItem,
       expandedPathSet,
@@ -1168,7 +1638,9 @@ export function EditorFileBrowser({
       selectedPathSet,
       selectedSource,
       selectionMode,
+      selectedCount,
       shouldHighlightActiveSource,
+      updateFocusedAnchor,
     ]
   );
 
@@ -1227,10 +1699,31 @@ export function EditorFileBrowser({
     return segments.join("、");
   }, [deleteDialog?.entries]);
 
+  const selectionFloatingFooter = useMemo(
+    () =>
+      selectedCount > 0 && !contextMenu && !moveDialog && !deleteDialog ? (
+        <SidebarSelectionFloatingFooter
+          selectedCount={selectedCount}
+          clipboardReady={Boolean(clipboard?.items.length)}
+          onCommand={(command) => {
+            void executeCommand(command);
+          }}
+        />
+      ) : null,
+    [clipboard?.items.length, contextMenu, deleteDialog, executeCommand, moveDialog, selectedCount]
+  );
+
+  const floatingFooterVisible = Boolean(selectionFloatingFooter);
+
+  useAppShellSidebarFloatingFooter(selectionFloatingFooter);
+
   return (
     <div
       role="tree"
-      className="flex h-full min-h-0 flex-col overflow-hidden border-y border-border/54"
+      className={cn(
+        "flex h-full min-h-0 flex-col overflow-hidden border-t border-border/54",
+        floatingFooterVisible ? "border-b-0" : "border-b border-border/54"
+      )}
       data-testid="editor-file-browser"
       onContextMenu={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -1287,44 +1780,6 @@ export function EditorFileBrowser({
               <RefreshCcw className="size-4" />
             </Button>
           </div>
-
-          {selectedCount > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-border/60 bg-muted/26 px-3 py-2 text-xs text-muted-foreground">
-              <span>{`已选中 ${selectedCount} 项`}</span>
-              <Button size="sm" variant="outline" onClick={() => void executeCommand("move")}>
-                <FolderInput className="size-4" />
-                移动
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => void executeCommand("copy")}>
-                <Copy className="size-4" />
-                复制
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => void executeCommand("cut")}>
-                <Scissors className="size-4" />
-                剪切
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!clipboard?.items.length}
-                onClick={() => void executeCommand("paste")}
-              >
-                <ClipboardPaste className="size-4" />
-                粘贴
-              </Button>
-              <Button size="sm" variant="destructive" onClick={() => void executeCommand("delete")}>
-                <Trash2 className="size-4" />
-                删除
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => void executeCommand("clear-selection")}
-              >
-                清空选择
-              </Button>
-            </div>
-          ) : null}
 
           {clipboard?.items.length ? (
             <div className="rounded-2xl border border-border/56 bg-card/68 px-3 py-2 text-xs text-muted-foreground">

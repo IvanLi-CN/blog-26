@@ -1392,6 +1392,154 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rejects copying local files when the destination already has the same name", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "duplicate.md"), "from-docs");
+    fs.writeFileSync(path.join(archiveDir, "duplicate.md"), "from-archive");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/archive/duplicate.md"],
+              destinationPath: "Hardware/docs",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(409);
+      const payload = await readJson(copyResponse);
+      expect(payload.error.message).toContain("目标已存在");
+      expect(fs.readFileSync(path.join(docsDir, "duplicate.md"), "utf-8")).toBe("from-docs");
+      expect(fs.readFileSync(path.join(archiveDir, "duplicate.md"), "utf-8")).toBe("from-archive");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects nested selection payloads for local move operations", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const seriesDir = path.join(hardwareDir, "series");
+    const nestedDir = path.join(seriesDir, "react");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(nestedDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(nestedDir, "notes.md"), "nested");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/series", "Hardware/series/react/notes.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      const payload = await readJson(moveResponse);
+      expect(payload.error.message).toContain("不能同时操作父目录与其子项");
+      expect(fs.existsSync(seriesDir)).toBe(true);
+      expect(fs.existsSync(path.join(nestedDir, "notes.md"))).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects moving or copying a directory into its descendant directory", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const seriesDir = path.join(hardwareDir, "series");
+    const reactDir = path.join(seriesDir, "react");
+    fs.mkdirSync(reactDir, { recursive: true });
+    fs.writeFileSync(path.join(seriesDir, "overview.md"), "series");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/series"],
+              destinationPath: "Hardware/series/react",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      const movePayload = await readJson(moveResponse);
+      expect(movePayload.error.message).toContain("不能将目录移动到其自身或后代目录内");
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/series"],
+              destinationPath: "Hardware/series/react",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("不能将目录复制到其自身或后代目录内");
+      expect(fs.existsSync(seriesDir)).toBe(true);
+      expect(fs.existsSync(reactDir)).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rejects deleting non-empty directories and allows deleting empty directories", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 

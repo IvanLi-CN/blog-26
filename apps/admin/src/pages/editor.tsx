@@ -257,6 +257,19 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
 }
 
+export function mapBatchResultsToTreeSelection(
+  source: "local" | "webdav",
+  entries: Array<{ nextPath?: string; type: TreeItemType }>
+) {
+  return entries
+    .filter((entry): entry is { nextPath: string; type: TreeItemType } => Boolean(entry.nextPath))
+    .map((entry) => ({
+      source,
+      path: entry.nextPath,
+      type: entry.type,
+    }));
+}
+
 function remapTabPath(
   tab: EditorTab,
   source: "local" | "webdav",
@@ -329,6 +342,7 @@ export function EditorPage() {
     webdav: [],
   });
   const [selectedTreeItem, setSelectedTreeItem] = useState<TreeSelection | null>(null);
+  const [treeSelectionOverride, setTreeSelectionOverride] = useState<TreeSelection[] | null>(null);
   const [editingTreeItem, setEditingTreeItem] = useState<TreeRenameTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -1143,6 +1157,9 @@ export function EditorPage() {
           queryKey: ["admin-directory-tree", selectedSource],
         });
         setNotice(`已移动 ${response.moved.length} 项。`);
+        const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.moved);
+        setTreeSelectionOverride(nextSelection);
+        return nextSelection;
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "移动失败："));
         throw error;
@@ -1164,6 +1181,9 @@ export function EditorPage() {
           queryKey: ["admin-directory-tree", selectedSource],
         });
         setNotice(`已复制 ${response.copied.length} 项。`);
+        const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.copied);
+        setTreeSelectionOverride(nextSelection);
+        return nextSelection;
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "复制失败："));
         throw error;
@@ -1234,6 +1254,8 @@ export function EditorPage() {
           directoryItemsByPath={directoryItemsByPath}
           loadingPaths={loadingPaths}
           expandedPaths={expandedPaths[selectedSource] ?? []}
+          selectionOverride={treeSelectionOverride}
+          onSelectionOverrideApplied={() => setTreeSelectionOverride(null)}
           activeItemPath={activeTreePath}
           activeItemType={activeTreeType}
           activeItemSource={activeBrowserSource}
@@ -1277,6 +1299,7 @@ export function EditorPage() {
       treeLoading,
       moveTreeEntries,
       rootItems,
+      treeSelectionOverride,
       updateEditingTreeItemValue,
     ]
   );
