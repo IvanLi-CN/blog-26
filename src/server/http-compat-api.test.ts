@@ -1577,6 +1577,80 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rebases persisted markdown asset links when moving and copying local files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(docsDir, "linked.md"),
+      [
+        "---",
+        "image: ./assets/cover.png",
+        "---",
+        "",
+        "![cover](./assets/cover.png)",
+        "![[./assets/wiki.png|1200]]",
+      ].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/linked.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+      expect(moveResponse.status).toBe(200);
+      const movedContent = fs.readFileSync(path.join(archiveDir, "linked.md"), "utf-8");
+      expect(movedContent).toContain("image: ../docs/assets/cover.png");
+      expect(movedContent).toContain("![cover](../docs/assets/cover.png)");
+      expect(movedContent).toContain("![[../docs/assets/wiki.png|1200]]");
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/archive/linked.md"],
+              destinationPath: "Hardware/docs",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+      expect(copyResponse.status).toBe(200);
+      const copiedContent = fs.readFileSync(path.join(docsDir, "linked.md"), "utf-8");
+      expect(copiedContent).toContain("image: ./assets/cover.png");
+      expect(copiedContent).toContain("![cover](./assets/cover.png)");
+      expect(copiedContent).toContain("![[./assets/wiki.png|1200]]");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rejects copying local files when the destination already has the same name", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 

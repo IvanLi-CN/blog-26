@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   hasApiFilesReference,
   normalizePersistedLink,
+  rebasePersistedLocalLinks,
   rewriteApiFilesUrlsToRelative,
   toRuntimeFileApiUrl,
 } from "../persisted-paths";
@@ -65,6 +66,34 @@ describe("persisted-paths", () => {
       const { content, changed } = rewriteApiFilesUrlsToRelative(input, "blog/hello-world.md");
       expect(changed).toBeTruthy();
       expect(content).toBe("![a](./assets/a.png)");
+    });
+  });
+
+  describe("rebasePersistedLocalLinks", () => {
+    it("keeps markdown-relative assets pointing to the same runtime file after moving", () => {
+      const input = [
+        "---",
+        "image: ./assets/cover.png",
+        "---",
+        "",
+        "![cover](./assets/cover.png)",
+        "![shared](../shared/logo.png)",
+        "![[./assets/wiki.png|1200]]",
+        "![remote](https://example.com/a.png)",
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalLinks(
+        input,
+        "blog/docs/post.md",
+        "blog/archive/post.md"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("image: ../docs/assets/cover.png");
+      expect(content).toContain("![cover](../docs/assets/cover.png)");
+      expect(content).toContain("![shared](../shared/logo.png)");
+      expect(content).toContain("![[../docs/assets/wiki.png|1200]]");
+      expect(content).toContain("![remote](https://example.com/a.png)");
     });
   });
 

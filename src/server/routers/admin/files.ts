@@ -12,7 +12,11 @@ import {
   isPathWithinConfiguredRoots,
   normalizeRelativeContentPath,
 } from "@/lib/content-path-mappings";
-import { hasApiFilesReference, rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
+import {
+  hasApiFilesReference,
+  rebasePersistedLocalLinks,
+  rewriteApiFilesUrlsToRelative,
+} from "@/lib/persisted-paths";
 import {
   getActiveLocalBasePath,
   getActiveLocalPathMappings,
@@ -392,12 +396,46 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
 
     // 执行重命名
     await fs.rename(fullOldPath, fullNewPath);
+    await rebaseMovedMarkdownLinks(fullNewPath, safeOldPath, newPath, nodePath);
 
     console.log(`✅ [Files API] 本地文件重命名成功: ${fullOldPath} -> ${fullNewPath}`);
   } catch (error) {
     console.error("❌ [Files API] 本地文件重命名失败:", error);
     throw error;
   }
+}
+
+async function rebaseMovedMarkdownLinks(
+  fullPath: string,
+  oldRelativePath: string,
+  newRelativePath: string,
+  nodePath: typeof import("node:path")
+) {
+  const fs = await import("node:fs/promises");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return;
+
+  if (stats.isFile()) {
+    if (!fullPath.toLowerCase().endsWith(".md")) return;
+    const currentContent = await fs.readFile(fullPath, "utf-8");
+    const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
+    if (rebased.changed) {
+      await fs.writeFile(fullPath, rebased.content, "utf-8");
+    }
+    return;
+  }
+
+  if (!stats.isDirectory()) return;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (entry) => {
+      const childFullPath = nodePath.join(fullPath, entry.name);
+      const oldChildPath = normalizeLocalBrowserPath(`${oldRelativePath}/${entry.name}`);
+      const newChildPath = normalizeLocalBrowserPath(`${newRelativePath}/${entry.name}`);
+      await rebaseMovedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath);
+    })
+  );
 }
 
 async function moveLocalEntries(
@@ -482,6 +520,12 @@ async function moveLocalEntries(
 
   for (const operation of operations) {
     await fs.rename(operation.fullCurrentPath, operation.fullNextPath);
+    await rebaseMovedMarkdownLinks(
+      operation.fullNextPath,
+      operation.path,
+      operation.nextPath,
+      nodePath
+    );
   }
 
   return {
@@ -565,6 +609,12 @@ async function copyLocalEntries(
       errorOnExist: true,
       force: false,
     });
+    await rebaseMovedMarkdownLinks(
+      operation.fullNextPath,
+      operation.path,
+      operation.nextPath,
+      nodePath
+    );
   }
 
   return {

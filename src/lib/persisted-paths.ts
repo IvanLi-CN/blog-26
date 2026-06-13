@@ -299,3 +299,123 @@ export function rewriteApiFilesUrlsToRelative(
 
   return { content, changed };
 }
+
+function hasScheme(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(value);
+}
+
+function shouldRebaseLocalTarget(value: string): boolean {
+  const trimmed = value.trim();
+  if (
+    !trimmed ||
+    trimmed.startsWith("#") ||
+    isExternalUrl(trimmed) ||
+    isDataUrl(trimmed) ||
+    hasScheme(trimmed)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function rebaseLocalTarget(
+  value: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  if (!shouldRebaseLocalTarget(value)) return value;
+
+  const runtimeUrl = toRuntimeFileApiUrl(value, "local", oldMarkdownFilePath);
+  if (!runtimeUrl || !isFileApiUrl(runtimeUrl)) return value;
+
+  try {
+    return normalizePersistedLink(runtimeUrl, newMarkdownFilePath);
+  } catch {
+    return value;
+  }
+}
+
+function rebaseInlineMarkdownLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  return input.replace(
+    /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|[^\s)]+)([^)]*)(\))/g,
+    (
+      match,
+      prefix: string,
+      spacing: string,
+      rawTarget: string,
+      suffix: string,
+      closing: string
+    ) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath);
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${spacing}${nextTarget}${suffix}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
+function rebaseWikiEmbedLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  return input.replace(/(!\[\[)([^\]\n|]+)([^\]\n]*\]\])/g, (match, prefix, target, suffix) => {
+    const rebased = rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath);
+    const next = `${prefix}${rebased}${suffix}`;
+    return next === match ? match : next;
+  });
+}
+
+function rebaseFrontmatterAssetFields(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  if (!input.startsWith("---\n")) return input;
+  const closingIndex = input.indexOf("\n---", 4);
+  if (closingIndex === -1) return input;
+
+  const frontmatter = input.slice(0, closingIndex);
+  const rest = input.slice(closingIndex);
+  const rebasedFrontmatter = frontmatter.replace(
+    /^(\s*(?:image|cover|thumbnail|banner)\s*:\s*)(["']?)([^"'\n]+)(\2\s*)$/gim,
+    (match, prefix: string, quote: string, value: string, suffix: string) => {
+      const rebased = rebaseLocalTarget(value.trim(), oldMarkdownFilePath, newMarkdownFilePath);
+      const next = `${prefix}${quote}${rebased}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+
+  return `${rebasedFrontmatter}${rest}`;
+}
+
+export function rebasePersistedLocalLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+): { content: string; changed: boolean } {
+  if (
+    typeof input !== "string" ||
+    input.length === 0 ||
+    oldMarkdownFilePath === newMarkdownFilePath
+  ) {
+    return { content: input, changed: false };
+  }
+
+  let content = input;
+  content = rebaseFrontmatterAssetFields(content, oldMarkdownFilePath, newMarkdownFilePath);
+  content = rebaseInlineMarkdownLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
+  content = rebaseWikiEmbedLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
+
+  return {
+    content,
+    changed: content !== input,
+  };
+}
