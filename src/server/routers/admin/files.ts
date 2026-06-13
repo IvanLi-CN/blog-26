@@ -224,7 +224,7 @@ async function ensureLocalDirectoryTarget(
   };
 }
 
-async function triggerAdminContentSync() {
+async function triggerAdminContentSync(): Promise<string | undefined> {
   console.log("🔄 [Files API] 准备触发增量数据同步...");
   try {
     const syncManager = getContentSourceManager({
@@ -236,23 +236,15 @@ async function triggerAdminContentSync() {
     const result = await syncManager.syncAll();
     if (result.success) {
       console.log(`✅ [Files API] 增量同步完成，处理了 ${result.stats.totalProcessed} 个项目`);
+      return undefined;
     } else {
       const errorMessages = result.errors.map((entry) => entry.message).join(", ");
       console.warn(`⚠️ [Files API] 增量同步失败: ${errorMessages}`);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: errorMessages ? `增量同步失败：${errorMessages}` : "增量同步失败",
-      });
+      return errorMessages ? `增量同步失败：${errorMessages}` : "增量同步失败";
     }
   } catch (syncError) {
     console.error("❌ [Files API] 增量数据同步异常:", syncError);
-    if (syncError instanceof TRPCError) {
-      throw syncError;
-    }
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: syncError instanceof Error ? syncError.message : "增量同步失败",
-    });
+    return syncError instanceof Error ? syncError.message : "增量同步失败";
   }
 }
 
@@ -625,12 +617,6 @@ async function copyLocalEntries(
       errorOnExist: true,
       force: false,
     });
-    await rebaseMovedMarkdownLinks(
-      operation.fullNextPath,
-      operation.path,
-      operation.nextPath,
-      nodePath
-    );
   }
 
   return {
@@ -878,13 +864,14 @@ export const filesRouter = createTRPCRouter({
       console.log(`✅ [Files API] 文件写入成功: ${input.source}:${input.path}`);
 
       // 触发增量数据同步
-      await triggerAdminContentSync();
+      const syncWarning = await triggerAdminContentSync();
       console.log("🏁 [Files API] 增量同步流程结束");
 
       return {
         success: true,
         message: "文件写入成功",
         path: input.path,
+        syncWarning,
       };
     } catch (error) {
       console.error("❌ [Files API] 写入文件失败:", error);
@@ -928,10 +915,13 @@ export const filesRouter = createTRPCRouter({
         throw error;
       }
 
+      const syncWarning = await triggerAdminContentSync();
+
       return {
         success: true,
         source: input.source,
         path: input.path,
+        syncWarning,
       };
     } catch (error) {
       console.error("创建目录失败:", error);
@@ -971,13 +961,14 @@ export const filesRouter = createTRPCRouter({
       }
 
       await renameLocalFile(input.oldPath, input.newName);
-      await triggerAdminContentSync();
+      const syncWarning = await triggerAdminContentSync();
 
       return {
         success: true,
         source: input.source,
         oldPath: input.oldPath,
         newName: input.newName,
+        syncWarning,
       };
     } catch (error) {
       console.error("❌ [Files API] 重命名文件失败:", error);
@@ -1014,12 +1005,13 @@ export const filesRouter = createTRPCRouter({
       }
 
       const result = await moveLocalEntries(input.paths, input.destinationPath);
-      await triggerAdminContentSync();
+      const syncWarning = await triggerAdminContentSync();
       return {
         success: true,
         source: input.source,
         destinationPath: input.destinationPath,
         moved: result.moved,
+        syncWarning,
       };
     } catch (error) {
       console.error("移动文件失败:", error);
@@ -1052,12 +1044,13 @@ export const filesRouter = createTRPCRouter({
       }
 
       const result = await copyLocalEntries(input.paths, input.destinationPath);
-      await triggerAdminContentSync();
+      const syncWarning = await triggerAdminContentSync();
       return {
         success: true,
         source: input.source,
         destinationPath: input.destinationPath,
         copied: result.copied,
+        syncWarning,
       };
     } catch (error) {
       console.error("复制文件失败:", error);
@@ -1090,11 +1083,12 @@ export const filesRouter = createTRPCRouter({
       }
 
       const result = await deleteLocalEntries(input.entries);
-      await triggerAdminContentSync();
+      const syncWarning = await triggerAdminContentSync();
       return {
         success: true,
         source: input.source,
         deleted: result.deleted,
+        syncWarning,
       };
     } catch (error) {
       console.error("删除文件失败:", error);

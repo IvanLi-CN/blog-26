@@ -258,6 +258,10 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
 }
 
+function getFileOperationNotice(message: string, syncWarning?: string) {
+  return syncWarning ? `${message} ${syncWarning}` : message;
+}
+
 export function mapBatchResultsToTreeSelection(
   source: "local",
   entries: Array<{ nextPath?: string; type: TreeItemType }>
@@ -890,7 +894,7 @@ export function EditorPage() {
 
       if (activeTab.kind === "file" && activeTab.file) {
         const liveContent = syncActiveTabFromEditor() ?? activeTab.file.content;
-        await adminApi.writeFile({
+        const response = await adminApi.writeFile({
           source: activeTab.file.source,
           path: activeTab.file.path,
           content: liveContent,
@@ -898,7 +902,7 @@ export function EditorPage() {
         setTabs((current) =>
           current.map((tab) => (tab.id === activeTab.id ? { ...tab, dirty: false } : tab))
         );
-        setNotice("文件保存成功。");
+        setNotice(getFileOperationNotice("文件保存成功。", response.syncWarning));
       }
     } catch (error) {
       setErrorBanner(getEditorActionErrorMessage(error));
@@ -1060,9 +1064,11 @@ export function EditorPage() {
       setErrorBanner(null);
       try {
         if (type === "directory") {
-          await adminApi.createDirectory({ source: selectedSource, path });
+          const response = await adminApi.createDirectory({ source: selectedSource, path });
+          setNotice(getFileOperationNotice("目录创建成功。", response.syncWarning));
         } else {
-          await adminApi.writeFile({ source: selectedSource, path, content: "" });
+          const response = await adminApi.writeFile({ source: selectedSource, path, content: "" });
+          setNotice(getFileOperationNotice("文件创建成功。", response.syncWarning));
         }
 
         setCurrentPaths((current) => ({ ...current, [selectedSource]: baseDirectory }));
@@ -1133,7 +1139,7 @@ export function EditorPage() {
       const newPath = joinTreePath(target.parentPath, newName);
       setErrorBanner(null);
       try {
-        await adminApi.renameFile({
+        const response = await adminApi.renameFile({
           source: target.source,
           oldPath: target.path,
           newName,
@@ -1154,6 +1160,7 @@ export function EditorPage() {
         await queryClient.invalidateQueries({
           queryKey: ["admin-directory-tree", target.source],
         });
+        setNotice(getFileOperationNotice("已重命名。", response.syncWarning));
       } catch (error) {
         setErrorBanner(getErrorMessage(error));
       }
@@ -1211,7 +1218,9 @@ export function EditorPage() {
         await queryClient.invalidateQueries({
           queryKey: ["admin-directory-tree", selectedSource],
         });
-        setNotice(`已移动 ${response.moved.length} 项。`);
+        setNotice(
+          getFileOperationNotice(`已移动 ${response.moved.length} 项。`, response.syncWarning)
+        );
         const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.moved);
         setTreeSelectionOverride(nextSelection);
         return nextSelection;
@@ -1235,7 +1244,9 @@ export function EditorPage() {
         await queryClient.invalidateQueries({
           queryKey: ["admin-directory-tree", selectedSource],
         });
-        setNotice(`已复制 ${response.copied.length} 项。`);
+        setNotice(
+          getFileOperationNotice(`已复制 ${response.copied.length} 项。`, response.syncWarning)
+        );
         const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.copied);
         setTreeSelectionOverride(nextSelection);
         return nextSelection;
@@ -1284,7 +1295,9 @@ export function EditorPage() {
         await queryClient.invalidateQueries({
           queryKey: ["admin-directory-tree", selectedSource],
         });
-        setNotice(`已删除 ${response.deleted.length} 项。`);
+        setNotice(
+          getFileOperationNotice(`已删除 ${response.deleted.length} 项。`, response.syncWarning)
+        );
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "删除失败："));
         throw error;

@@ -1585,7 +1585,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("returns an error when post-mutation content sync fails", async () => {
+  it("returns sync warnings after successful file mutations when content sync fails", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -1614,15 +1614,17 @@ describe("HTTP compatibility APIs", () => {
         "/files/write"
       );
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(200);
       const payload = await readJson(response);
-      expect(payload.error.message).toContain("index unavailable");
+      expect(payload.success).toBe(true);
+      expect(payload.syncWarning).toContain("index unavailable");
+      expect(fs.existsSync(path.join(hardwareDir, "sync-failure.md"))).toBe(true);
     } finally {
       manager.syncAll = originalSyncAll;
     }
   });
 
-  it("rebases persisted markdown asset links when moving and copying local files", async () => {
+  it("rebases moved markdown links while copied markdown keeps source content", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -1688,9 +1690,9 @@ describe("HTTP compatibility APIs", () => {
       );
       expect(copyResponse.status).toBe(200);
       const copiedContent = fs.readFileSync(path.join(docsDir, "linked.md"), "utf-8");
-      expect(copiedContent).toContain("image: ./assets/cover.png");
-      expect(copiedContent).toContain("![cover](./assets/cover.png)");
-      expect(copiedContent).toContain("![[./assets/wiki.png|1200]]");
+      expect(copiedContent).toContain("image: ../docs/assets/cover.png");
+      expect(copiedContent).toContain("![cover](../docs/assets/cover.png)");
+      expect(copiedContent).toContain("![[../docs/assets/wiki.png|1200]]");
     } finally {
       manager.syncAll = originalSyncAll;
     }
