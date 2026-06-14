@@ -46,12 +46,6 @@ function isFileApiUrl(value: string): boolean {
   return value.startsWith("/api/files/");
 }
 
-function isLikelyLocalAssetPath(value: string): boolean {
-  const { path } = splitSuffix(value);
-  const lastSegment = path.split("/").filter(Boolean).at(-1) ?? "";
-  return /\.[A-Za-z0-9][A-Za-z0-9_-]{0,15}$/.test(lastSegment);
-}
-
 function splitSuffix(input: string): { path: string; suffix: string } {
   const q = input.indexOf("?");
   const h = input.indexOf("#");
@@ -274,14 +268,8 @@ export function toRuntimeFileApiUrl(
   const { path: rawPath, suffix } = splitSuffix(trimmed);
   const normalized = normalizeSlashes(rawPath.trim());
 
-  // Runtime rebasing should not reinterpret normal site-absolute links as files.
   if (normalized.startsWith("/")) {
-    if (!isLikelyLocalAssetPath(normalized)) {
-      return trimmed;
-    }
-    const resolved = stripLeadingSlashes(normalized);
-    if (resolved.includes("..") || resolved.includes("~")) return null;
-    return `/api/files/${source}/${resolved}${suffix}`;
+    return trimmed;
   }
 
   const baseDir = getMarkdownDir(markdownFilePath);
@@ -379,30 +367,58 @@ function rebaseMovedReferenceTarget(
 ) {
   if (!shouldRebaseLocalTarget(value)) return value;
 
+  const trimmed = value.trim();
+  const normalizedOldTarget = stripLeadingSlashes(normalizeSlashes(oldTargetPath));
+  const normalizedNewTarget = stripLeadingSlashes(normalizeSlashes(newTargetPath));
+
+  if (trimmed.startsWith("/") && !isFileApiUrl(trimmed)) {
+    const { path: rawPath, suffix } = splitSuffix(trimmed);
+    const currentPath = stripLeadingSlashes(normalizeSlashes(rawPath.trim()));
+    const rebased = rebaseMovedContentPath(currentPath, normalizedOldTarget, normalizedNewTarget);
+
+    if (!rebased) {
+      return value;
+    }
+
+    try {
+      return normalizePersistedLink(`/api/files/local/${rebased}${suffix}`, markdownFilePath);
+    } catch {
+      return value;
+    }
+  }
+
   const runtimeUrl = toRuntimeFileApiUrl(value, "local", markdownFilePath);
   if (!runtimeUrl || !isFileApiUrl(runtimeUrl)) return value;
 
   const parsed = parseFileApiUrl(runtimeUrl);
   if (!parsed || parsed.source !== "local") return value;
 
-  const normalizedOldTarget = stripLeadingSlashes(normalizeSlashes(oldTargetPath));
-  const normalizedNewTarget = stripLeadingSlashes(normalizeSlashes(newTargetPath));
   const currentPath = stripLeadingSlashes(normalizeSlashes(parsed.path));
+  const rebased = rebaseMovedContentPath(currentPath, normalizedOldTarget, normalizedNewTarget);
 
-  if (currentPath !== normalizedOldTarget && !currentPath.startsWith(`${normalizedOldTarget}/`)) {
+  if (!rebased) {
     return value;
   }
 
-  const nextPath =
-    currentPath === normalizedOldTarget
-      ? normalizedNewTarget
-      : `${normalizedNewTarget}${currentPath.slice(normalizedOldTarget.length)}`;
-
   try {
-    return normalizePersistedLink(`/api/files/local/${nextPath}`, markdownFilePath);
+    return normalizePersistedLink(`/api/files/local/${rebased}`, markdownFilePath);
   } catch {
     return value;
   }
+}
+
+function rebaseMovedContentPath(
+  currentPath: string,
+  normalizedOldTarget: string,
+  normalizedNewTarget: string
+) {
+  if (currentPath !== normalizedOldTarget && !currentPath.startsWith(`${normalizedOldTarget}/`)) {
+    return null;
+  }
+
+  return currentPath === normalizedOldTarget
+    ? normalizedNewTarget
+    : `${normalizedNewTarget}${currentPath.slice(normalizedOldTarget.length)}`;
 }
 
 function rebaseInlineMarkdownLinks(

@@ -56,17 +56,15 @@ describe("persisted-paths", () => {
       );
     });
 
-    it("maps persisted content-root absolute asset paths to /api/files/<source>/... urls", () => {
+    it("keeps site-absolute links unchanged", () => {
       expect(toRuntimeFileApiUrl("/blog/assets/a.png", "local", "blog/hello-world.md")).toBe(
-        "/api/files/local/blog/assets/a.png"
+        "/blog/assets/a.png"
       );
-    });
-
-    it("keeps site-absolute page links unchanged", () => {
       expect(toRuntimeFileApiUrl("/search", "local", "blog/hello-world.md")).toBe("/search");
       expect(toRuntimeFileApiUrl("/posts/hello-world/", "local", "blog/hello-world.md")).toBe(
         "/posts/hello-world/"
       );
+      expect(toRuntimeFileApiUrl("/feed.xml", "local", "blog/hello-world.md")).toBe("/feed.xml");
     });
 
     it("rejects paths that escape content root", () => {
@@ -179,6 +177,8 @@ describe("persisted-paths", () => {
         "![[/blog/assets/wiki.png|1200]]",
         "[search](/search)",
         '<a href="/posts/hello-world/">Post</a>',
+        '<a href="/feed.xml">Feed</a>',
+        '<a href="/downloads/manual.pdf">Manual</a>',
       ].join("\n");
 
       const { content, changed } = rebasePersistedLocalReferences(
@@ -197,6 +197,8 @@ describe("persisted-paths", () => {
       expect(content).toContain("![[./archive/assets/wiki.png|1200]]");
       expect(content).toContain("[search](/search)");
       expect(content).toContain('<a href="/posts/hello-world/">Post</a>');
+      expect(content).toContain('<a href="/feed.xml">Feed</a>');
+      expect(content).toContain('<a href="/downloads/manual.pdf">Manual</a>');
     });
   });
 
