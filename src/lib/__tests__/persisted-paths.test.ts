@@ -220,6 +220,30 @@ describe("persisted-paths", () => {
       expect(content).toContain('<a href="/feed.xml">Feed</a>');
       expect(content).toContain('<a href="/downloads/manual.pdf">Manual</a>');
     });
+
+    it("updates content-root absolute file links that point at a moved local file", () => {
+      const input = [
+        "[manual](/Hardware/docs/manual.pdf)",
+        '<a href="/Hardware/docs/manual.pdf#intro">Manual</a>',
+        "[docs route](/Hardware/docs)",
+        '<a href="/Hardware/docs/page">Docs page</a>',
+        "[unrelated](/blog/docs/manual.pdf)",
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalReferences(
+        input,
+        "Hardware/post.md",
+        "Hardware/docs/manual.pdf",
+        "Hardware/archive/manual.pdf"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("[manual](./archive/manual.pdf)");
+      expect(content).toContain('<a href="./archive/manual.pdf#intro">Manual</a>');
+      expect(content).toContain("[docs route](/Hardware/docs)");
+      expect(content).toContain('<a href="/Hardware/docs/page">Docs page</a>');
+      expect(content).toContain("[unrelated](/blog/docs/manual.pdf)");
+    });
   });
 
   describe("hasApiFilesReference", () => {

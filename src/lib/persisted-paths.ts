@@ -351,6 +351,10 @@ function isContentAssetPath(path: string): boolean {
   return path.split("/").some((segment) => segment.toLowerCase() === "assets");
 }
 
+function isRebasableContentAbsolutePath(path: string): boolean {
+  return isContentAssetPath(path) || hasFileExtension(path);
+}
+
 function rebaseLocalTarget(
   value: string,
   oldMarkdownFilePath: string,
@@ -412,13 +416,13 @@ function rebaseMovedReferenceTarget(
   if (trimmed.startsWith("/") && !isFileApiUrl(trimmed)) {
     const { path: rawPath, suffix } = splitSuffix(trimmed);
     const currentPath = stripLeadingSlashes(normalizeSlashes(rawPath.trim()));
-    if (!isContentAssetPath(currentPath)) {
-      return value;
-    }
 
     const rebased = rebaseMovedContentPath(currentPath, normalizedOldTarget, normalizedNewTarget);
 
     if (!rebased) {
+      return value;
+    }
+    if (!isRebasableContentAbsolutePath(currentPath)) {
       return value;
     }
 
