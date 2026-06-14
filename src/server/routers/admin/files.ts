@@ -267,6 +267,10 @@ function getConfiguredRootForPath(path: string): string | null {
   );
 }
 
+function getConfiguredRootsForReferenceRebasing(): string[] {
+  return getLocalConfiguredRootDirs();
+}
+
 function assertSameConfiguredRoot(sourcePath: string, targetPath: string) {
   const sourceRoot = getConfiguredRootForPath(sourcePath);
   const targetRoot = getConfiguredRootForPath(targetPath);
@@ -455,10 +459,7 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
 
   await fs.rename(fullOldPath, fullNewPath);
   await rebaseMovedMarkdownLinks(fullNewPath, safeOldPath, newPath, nodePath);
-  const root = getConfiguredRootForPath(newPath);
-  if (root) {
-    await rebaseInboundMovedReferences(root, [{ oldPath: safeOldPath, newPath }], nodePath);
-  }
+  await rebaseInboundMovedReferencesForAllRoots([{ oldPath: safeOldPath, newPath }], nodePath);
 }
 
 async function rebaseMovedMarkdownLinks(
@@ -576,6 +577,17 @@ async function rebaseInboundMovedReferences(
   await visit(fullRootPath, rootPath);
 }
 
+async function rebaseInboundMovedReferencesForAllRoots(
+  movedPairs: Array<{ oldPath: string; newPath: string }>,
+  nodePath: typeof import("node:path")
+) {
+  await Promise.all(
+    getConfiguredRootsForReferenceRebasing().map((rootPath) =>
+      rebaseInboundMovedReferences(rootPath, movedPairs, nodePath)
+    )
+  );
+}
+
 async function moveLocalEntries(
   paths: string[],
   destinationPath: string
@@ -666,18 +678,9 @@ async function moveLocalEntries(
       nodePath
     );
   }
-  const rootsToMovedPairs = new Map<string, Array<{ oldPath: string; newPath: string }>>();
-  for (const operation of operations) {
-    const root = getConfiguredRootForPath(operation.nextPath);
-    if (!root) continue;
-    const pairs = rootsToMovedPairs.get(root) ?? [];
-    pairs.push({ oldPath: operation.path, newPath: operation.nextPath });
-    rootsToMovedPairs.set(root, pairs);
-  }
-  await Promise.all(
-    Array.from(rootsToMovedPairs.entries()).map(([root, movedPairs]) =>
-      rebaseInboundMovedReferences(root, movedPairs, nodePath)
-    )
+  await rebaseInboundMovedReferencesForAllRoots(
+    operations.map(({ path, nextPath }) => ({ oldPath: path, newPath: nextPath })),
+    nodePath
   );
 
   return {
@@ -904,6 +907,17 @@ async function ensureSourceReady(manager: ReturnType<typeof getContentSourceMana
 
 export const filesRouter = createTRPCRouter({
   getSources: adminProcedure.query(async () => {
+    if (!isLocalContentEnabled()) {
+      return [
+        {
+          name: "local",
+          type: "local",
+          enabled: false,
+          description: "本地文件系统未启用",
+        } satisfies DataSource,
+      ];
+    }
+
     const manager = getContentSourceManager();
     await ensureContentSourcesRegistered(manager);
 

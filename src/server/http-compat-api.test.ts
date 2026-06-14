@@ -1585,6 +1585,30 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("reports the local file source as disabled instead of failing when local is excluded", async () => {
+    process.env.CONTENT_SOURCES = "webdav";
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest("/api/admin/files/sources", {}, ADMIN_EMAIL),
+        "/files/sources"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = await readJson(response);
+      expect(payload).toEqual([
+        {
+          name: "local",
+          type: "local",
+          enabled: false,
+          description: "本地文件系统未启用",
+        },
+      ]);
+    } finally {
+      resetHttpCompatEnv();
+    }
+  });
+
   it("returns sync warnings after successful file mutations when content sync fails", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
@@ -1848,6 +1872,51 @@ describe("HTTP compatibility APIs", () => {
       expect(content).toContain("![cover](./assets/hero.png)");
       expect(fs.existsSync(path.join(assetsDir, "hero.png"))).toBe(true);
       expect(fs.existsSync(path.join(assetsDir, "cover.png"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases inbound markdown references across configured roots after renaming local assets", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const blogAssetsDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog", "assets");
+    const memoDir = path.join(LOCAL_CONTENT_BASE_PATH, "Memos");
+    fs.mkdirSync(blogAssetsDir, { recursive: true });
+    fs.mkdirSync(memoDir, { recursive: true });
+    fs.writeFileSync(path.join(blogAssetsDir, "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(memoDir, "note.md"),
+      ["# Note", "", "![cover](../blog/assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "blog/assets/cover.png",
+              newName: "hero.png",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(200);
+      const memoContent = fs.readFileSync(path.join(memoDir, "note.md"), "utf-8");
+      expect(memoContent).toContain("![cover](../blog/assets/hero.png)");
+      expect(fs.existsSync(path.join(blogAssetsDir, "hero.png"))).toBe(true);
+      expect(fs.existsSync(path.join(blogAssetsDir, "cover.png"))).toBe(false);
     } finally {
       manager.syncAll = originalSyncAll;
     }
