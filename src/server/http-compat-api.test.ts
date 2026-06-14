@@ -1585,7 +1585,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("reports the local file source as disabled instead of failing when local is excluded", async () => {
+  it("keeps local file source enabled when CONTENT_SOURCES contains only legacy values", async () => {
     process.env.CONTENT_SOURCES = "webdav";
 
     try {
@@ -1596,14 +1596,11 @@ describe("HTTP compatibility APIs", () => {
 
       expect(response.status).toBe(200);
       const payload = await readJson(response);
-      expect(payload).toEqual([
-        {
-          name: "local",
-          type: "local",
-          enabled: false,
-          description: "本地文件系统未启用",
-        },
-      ]);
+      expect(payload[0]).toMatchObject({
+        name: "local",
+        type: "local",
+        enabled: true,
+      });
     } finally {
       resetHttpCompatEnv();
     }

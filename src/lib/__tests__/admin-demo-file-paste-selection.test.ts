@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { FileCopyResponse } from "@/lib/admin-api-client";
+import type { FileCopyResponse, FileMoveResponse } from "@/lib/admin-api-client";
 import { setupAdminDemoApiMocks } from "../../../apps/admin/src/demo/mock-admin-api";
 
 type DemoWindow = {
@@ -49,5 +49,46 @@ describe("admin demo file paste selection", () => {
       "blog/archive/01-react-hooks-deep-dive.md",
       "blog/archive/02-typescript-advanced-types.md",
     ]);
+  });
+
+  test("moving a demo asset rebases inbound markdown references", async () => {
+    const demoWindow = installDemoWindow();
+    setupAdminDemoApiMocks();
+
+    const writeResponse = await demoWindow.fetch("http://localhost/api/admin/files/write", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        source: "local",
+        path: "blog/01-react-hooks-deep-dive.md",
+        content: "# React Hooks\n\n![cover](./assets/react-hooks.jpg)",
+      }),
+    });
+    expect(writeResponse.ok).toBe(true);
+
+    const moveResponse = await demoWindow.fetch("http://localhost/api/admin/files/move", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        source: "local",
+        paths: ["blog/assets/react-hooks.jpg"],
+        destinationPath: "blog/archive",
+      }),
+    });
+    expect(moveResponse.ok).toBe(true);
+    const movePayload = (await moveResponse.json()) as FileMoveResponse;
+    expect(movePayload.moved[0]?.nextPath).toBe("blog/archive/react-hooks.jpg");
+
+    const readResponse = await demoWindow.fetch(
+      "http://localhost/api/admin/files/read?source=local&path=blog/01-react-hooks-deep-dive.md"
+    );
+    expect(readResponse.ok).toBe(true);
+    const payload = (await readResponse.json()) as { content: string };
+    expect(payload.content).toContain("./archive/react-hooks.jpg");
+    expect(payload.content).not.toContain("./assets/react-hooks.jpg");
   });
 });

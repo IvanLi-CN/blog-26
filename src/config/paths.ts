@@ -133,7 +133,7 @@ export function parseContentSourcesFromEnv(envValue: string | undefined): Set<"l
       set.add("local");
     }
   }
-  return set;
+  return set.size > 0 ? set : null;
 }
 
 export function isContentSourceAllowed(source: "local"): boolean {

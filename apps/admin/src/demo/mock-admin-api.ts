@@ -12,6 +12,7 @@ import type {
   SyncProgress,
 } from "@/lib/admin-api-client";
 import type { AdminLlmSettingsPayload } from "@/lib/llm-settings";
+import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
@@ -744,6 +745,72 @@ function addParentDirectoriesFromKey(key: string) {
   }
 }
 
+function isDemoMarkdownPath(path: string) {
+  const lowerPath = path.toLowerCase();
+  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown");
+}
+
+function isDemoPathInside(path: string, rootPath: string) {
+  const normalizedPath = normalizeDemoPath(path);
+  const normalizedRoot = normalizeDemoPath(rootPath);
+  return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}/`);
+}
+
+function rebaseDemoRelocatedMarkdownLinks(source: string, oldPath: string, newPath: string) {
+  const normalizedNewPath = normalizeDemoPath(newPath);
+  const prefix = `${source}:${normalizedNewPath}`;
+
+  for (const [key, content] of Array.from(fileContents.entries())) {
+    if (key !== prefix && !key.startsWith(`${prefix}/`)) continue;
+
+    const markdownPath = key.slice(`${source}:`.length);
+    if (!isDemoMarkdownPath(markdownPath)) continue;
+
+    const oldMarkdownPath =
+      markdownPath === normalizedNewPath
+        ? normalizeDemoPath(oldPath)
+        : normalizeDemoPath(`${oldPath}${markdownPath.slice(normalizedNewPath.length)}`);
+    const rebased = rebasePersistedLocalLinks(content, oldMarkdownPath, markdownPath);
+    if (rebased.changed) {
+      fileContents.set(key, rebased.content);
+    }
+  }
+}
+
+function rebaseDemoInboundReferences(
+  source: string,
+  movedPairs: Array<{ oldPath: string; newPath: string }>,
+  rootPaths?: string[]
+) {
+  for (const [key, originalContent] of Array.from(fileContents.entries())) {
+    const markdownPath = key.slice(`${source}:`.length);
+    if (!isDemoMarkdownPath(markdownPath)) continue;
+    if (
+      rootPaths?.length &&
+      !rootPaths.some((rootPath) => isDemoPathInside(markdownPath, rootPath))
+    ) {
+      continue;
+    }
+
+    let content = originalContent;
+    let changed = false;
+    for (const pair of movedPairs) {
+      const rebased = rebasePersistedLocalReferences(
+        content,
+        markdownPath,
+        pair.oldPath,
+        pair.newPath
+      );
+      content = rebased.content;
+      changed ||= rebased.changed;
+    }
+
+    if (changed) {
+      fileContents.set(key, content);
+    }
+  }
+}
+
 function readFile(source: string, path: string) {
   const content = fileContents.get(`${source}:${path}`);
   if (content === undefined) return { error: { message: "文件不存在" } };
@@ -781,6 +848,8 @@ function renameFile(body: Record<string, unknown>) {
     fileContents.delete(oldKey);
     fileContents.set(newKey, content);
     addParentDirectoriesFromKey(newKey);
+    rebaseDemoRelocatedMarkdownLinks(source, oldPath, newPath);
+    rebaseDemoInboundReferences(source, [{ oldPath, newPath }]);
     return { success: true, source, oldPath, newName };
   }
 
@@ -806,6 +875,8 @@ function renameFile(body: Record<string, unknown>) {
       fileContents.set(to, content);
     }
     addParentDirectoriesFromKey(`${newKey}/.keep`);
+    rebaseDemoRelocatedMarkdownLinks(source, oldPath, newPath);
+    rebaseDemoInboundReferences(source, [{ oldPath, newPath }]);
     return { success: true, source, oldPath, newName };
   }
 
@@ -827,7 +898,12 @@ function moveEntries(body: Record<string, unknown>) {
 
   for (const operation of operations) {
     applyRelocation(source, operation.path, operation.nextPath, "move");
+    rebaseDemoRelocatedMarkdownLinks(source, operation.path, operation.nextPath);
   }
+  rebaseDemoInboundReferences(
+    source,
+    operations.map(({ path, nextPath }) => ({ oldPath: path, newPath: nextPath }))
+  );
 
   return {
     success: true,
@@ -852,7 +928,17 @@ function copyEntries(body: Record<string, unknown>) {
 
   for (const operation of operations) {
     applyRelocation(source, operation.path, operation.nextPath, "copy");
+    rebaseDemoRelocatedMarkdownLinks(source, operation.path, operation.nextPath);
   }
+  const copiedPairs = operations.map(({ path, nextPath }) => ({
+    oldPath: path,
+    newPath: nextPath,
+  }));
+  rebaseDemoInboundReferences(
+    source,
+    copiedPairs,
+    operations.map((operation) => operation.nextPath)
+  );
 
   return {
     success: true,
