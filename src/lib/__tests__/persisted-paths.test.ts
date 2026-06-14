@@ -170,6 +170,26 @@ describe("persisted-paths", () => {
       expect(content).toContain('<img src="./assets/fenced-html.png">');
       expect(content).toContain('<img src="./assets/fenced-tilde.png">');
     });
+
+    it("rebases assets in nested list content without touching list code examples", () => {
+      const input = [
+        "- Item",
+        "  ![nested](./assets/nested.png)",
+        '  <img src="./assets/nested-html.png">',
+        "    ![code](./assets/code.png)",
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalLinks(
+        input,
+        "blog/docs/post.md",
+        "blog/archive/post.md"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("  ![nested](../docs/assets/nested.png)");
+      expect(content).toContain('  <img src="../docs/assets/nested-html.png">');
+      expect(content).toContain("    ![code](./assets/code.png)");
+    });
   });
 
   describe("rebasePersistedLocalReferences", () => {
@@ -294,6 +314,27 @@ describe("persisted-paths", () => {
       expect(content).toContain("`![example](./assets/cover.png)`");
       expect(content).toContain("![fenced](./assets/cover.png)");
       expect(content).toContain('<img src="./assets/cover.png">');
+    });
+
+    it("updates moved asset references in nested list content", () => {
+      const input = [
+        "1. Item",
+        "   ![nested](./assets/cover.png)",
+        '   <img src="./assets/html.png">',
+        "       ![code](./assets/cover.png)",
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalReferences(
+        input,
+        "blog/post.md",
+        "blog/assets",
+        "blog/archive/assets"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("   ![nested](./archive/assets/cover.png)");
+      expect(content).toContain('   <img src="./archive/assets/html.png">');
+      expect(content).toContain("       ![code](./assets/cover.png)");
     });
   });
 

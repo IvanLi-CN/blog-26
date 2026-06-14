@@ -7,6 +7,7 @@ import {
   remapTabPath,
   resolveActiveTabIdAfterTreeDelete,
   resolveBrowserPathAfterTreeDelete,
+  shouldMarkLiveEditorContentDirty,
 } from "./editor";
 
 describe("editor batch selection mapping", () => {
@@ -57,6 +58,11 @@ describe("editor batch selection mapping", () => {
 });
 
 describe("editor tab path remapping", () => {
+  test("marks live editor content dirty when it diverges from persisted tab state", () => {
+    expect(shouldMarkLiveEditorContentDirty("changed", "original")).toBeTrue();
+    expect(shouldMarkLiveEditorContentDirty("same", "same")).toBeFalse();
+  });
+
   test("rebases open markdown tab content when moving or renaming the file", () => {
     const tab = remapTabPath(
       {

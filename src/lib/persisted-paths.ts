@@ -34,6 +34,22 @@ export class PersistedPathError extends Error {
 const INLINE_MARKDOWN_LINK_RE =
   /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
 
+function getLeadingIndentWidth(line: string) {
+  let width = 0;
+  for (const char of line) {
+    if (char === " ") {
+      width++;
+      continue;
+    }
+    if (char === "\t") {
+      width += 4;
+      continue;
+    }
+    break;
+  }
+  return width;
+}
+
 function isExternalUrl(value: string): boolean {
   return /^https?:\/\//i.test(value) || value.startsWith("//");
 }
@@ -473,6 +489,7 @@ function transformMarkdownOutsideCode(input: string, transform: (segment: string
   let output = "";
   let index = 0;
   let inFence: string | null = null;
+  let listContinuationIndent: number | null = null;
 
   while (index < input.length) {
     const lineEnd = input.indexOf("\n", index);
@@ -481,6 +498,13 @@ function transformMarkdownOutsideCode(input: string, transform: (segment: string
     const line = rawLine.endsWith("\n") ? rawLine.slice(0, -1) : rawLine;
     const newline = rawLine.endsWith("\n") ? "\n" : "";
     const fenceMatch = /^([ \t]{0,3})(`{3,}|~{3,})/.exec(line);
+    const listMatch = /^([ \t]*)(?:[-+*]|\d+[.)])(?:[ \t]+|$)/.exec(line);
+
+    if (listMatch) {
+      listContinuationIndent = getLeadingIndentWidth(listMatch[0]);
+    } else if (line.trim() === "") {
+      listContinuationIndent = null;
+    }
 
     if (fenceMatch) {
       const fenceMarker = fenceMatch[2];
@@ -495,7 +519,14 @@ function transformMarkdownOutsideCode(input: string, transform: (segment: string
       continue;
     }
 
-    if (inFence || /^(?: {4}|\t)/.test(line)) {
+    const indentWidth = getLeadingIndentWidth(line);
+    const indentedCode = /^(?: {4}|\t)/.test(line);
+    const listContinuation =
+      listContinuationIndent !== null &&
+      indentWidth >= listContinuationIndent &&
+      indentWidth < listContinuationIndent + 4;
+
+    if (inFence || (indentedCode && !listContinuation)) {
       output += rawLine;
       index = nextIndex;
       continue;

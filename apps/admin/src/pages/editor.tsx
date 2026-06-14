@@ -82,6 +82,10 @@ function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
   return [tab, ...current.filter((item) => item.id !== tab.id)];
 }
 
+export function shouldMarkLiveEditorContentDirty(liveContent: string, persistedContent: string) {
+  return liveContent !== persistedContent;
+}
+
 const EMPTY_SOURCES: DataSourceInfo[] = [];
 const EMPTY_FILE_ITEMS: FileItem[] = [];
 
@@ -942,8 +946,8 @@ export function EditorPage() {
         ? (activeTab.database?.content ?? "")
         : (activeTab.file?.content ?? "");
 
-    if (liveContent !== persistedContent) {
-      updateActiveTabContent(liveContent, { markDirty: activeTab.dirty });
+    if (shouldMarkLiveEditorContentDirty(liveContent, persistedContent)) {
+      updateActiveTabContent(liveContent, { markDirty: true });
     }
 
     return liveContent;
