@@ -34,6 +34,7 @@ import {
   type TextareaHTMLAttributes,
   type ThHTMLAttributes,
 } from "react";
+import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -556,6 +557,49 @@ export const DialogFooter = ({ className, ...props }: HTMLAttributes<HTMLDivElem
 );
 export const DialogTitle = DialogPrimitive.Title;
 export const DialogDescription = DialogPrimitive.Description;
+
+export const Drawer = DrawerPrimitive.Root;
+export const DrawerTrigger = DrawerPrimitive.Trigger;
+export const DrawerClose = DrawerPrimitive.Close;
+export const DrawerPortal = DrawerPrimitive.Portal;
+export const DrawerHandle = DrawerPrimitive.Handle;
+export const DrawerTitle = DrawerPrimitive.Title;
+export const DrawerDescription = DrawerPrimitive.Description;
+
+export const DrawerOverlay = forwardRef<
+  ElementRef<typeof DrawerPrimitive.Overlay>,
+  ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DrawerPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-scrim/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out",
+      className
+    )}
+    {...props}
+  />
+));
+DrawerOverlay.displayName = "DrawerOverlay";
+
+export const DrawerContent = forwardRef<
+  ElementRef<typeof DrawerPrimitive.Content>,
+  ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DrawerPrimitive.Portal>
+    <DrawerOverlay />
+    <DrawerPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-50 max-h-[82vh] overflow-hidden rounded-t-3xl border-x-0 border-b-0 border-t border-border/60 bg-card pb-[max(env(safe-area-inset-bottom),0.75rem)] text-card-foreground shadow-2xl shadow-shadow-strong outline-none",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </DrawerPrimitive.Content>
+  </DrawerPrimitive.Portal>
+));
+DrawerContent.displayName = "DrawerContent";
 
 export function ConfirmDialog({
   open,

@@ -11,6 +11,8 @@ import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import { Slice } from "@milkdown/prose/model";
 import { TextSelection } from "@milkdown/prose/state";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import type { EditorChangeMeta } from "@/editor/editor-change";
+import { PROGRAMMATIC_EDITOR_CHANGE, USER_EDITOR_CHANGE } from "@/editor/editor-change";
 import { processInlineImagesCompat } from "@/lib/image-processing";
 import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import { toPublicAssetUrl } from "@/lib/public-runtime-url";
@@ -87,7 +89,7 @@ export interface MilkdownEditorRef {
 
 interface MilkdownEditorProps {
   content: string;
-  onChange: (content: string) => void;
+  onChange: (content: string, meta?: EditorChangeMeta) => void;
   placeholder?: string;
   className?: string;
   "data-testid"?: string;
@@ -178,6 +180,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const onChangeRef = useRef(onChange);
     const accessibilityObserverRef = useRef<MutationObserver | null>(null);
     const isUpdatingRef = useRef<boolean>(false); // 防止循环更新的标志
+    const isEditorReadyRef = useRef(false);
 
     // 处理内联图片上传 - 与 UniversalEditor 相同的逻辑
     const processInlineImages = async (content: string): Promise<string> => {
@@ -350,12 +353,16 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 更新最后内容引用，防止后续循环
               lastContentRef.current = persistedMarkdown;
+              const changeMeta =
+                isEditorReadyRef.current && !readOnly
+                  ? USER_EDITOR_CHANGE
+                  : PROGRAMMATIC_EDITOR_CHANGE;
 
               // removed log
 
               // 异步调用 onChange，然后重置标志
               setTimeout(() => {
-                onChangeRef.current(persistedMarkdown);
+                onChangeRef.current(persistedMarkdown, changeMeta);
                 isUpdatingRef.current = false;
               }, 0);
             });
@@ -376,6 +383,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
           crepeRef.current = crepe;
           lastContentRef.current = initialContentRef.current;
+          isEditorReadyRef.current = true;
           labelCrepeInternalFields(editorRef.current, editorId);
           accessibilityObserverRef.current?.disconnect();
           accessibilityObserverRef.current = new MutationObserver(() => {
@@ -417,6 +425,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         }
 
         crepeRef.current = null;
+        isEditorReadyRef.current = false;
         // 从实例管理器中移除
         editorInstances.delete(editorId);
       };

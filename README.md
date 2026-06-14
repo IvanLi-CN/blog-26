@@ -26,6 +26,20 @@ bun run dev
 
 `bun run dev` starts Astro, the admin SPA, and the Bun gateway. The default web port is `25090`.
 
+## Web Demo
+
+A Web Demo is a real browser route served by the shipped web application with deterministic demo data enabled. It is not a Storybook story, component iframe, static screenshot, or isolated visual fixture.
+
+The admin Web Demo uses the normal Vite admin SPA routes with `?demo=true`. Demo mode installs frontend API mocks in `apps/admin/src/main.tsx`, remembers the setting in `localStorage["admin-demo-mode"]`, and keeps the real router, shell, pages, editor, navigation, and components in use. It does not require auth, seeded data, or a backend service.
+
+For the editor demo, start the admin SPA and open:
+
+```text
+http://127.0.0.1:${ADMIN_PORT}/admin/posts/editor?demo=true&slug=react-hooks-deep-dive
+```
+
+Storybook remains useful for component state galleries and visual evidence, but it is not the Web Demo surface.
+
 ## Environment
 
 Required for normal local development:

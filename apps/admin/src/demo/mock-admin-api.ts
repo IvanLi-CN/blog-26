@@ -85,6 +85,28 @@ Keep resolver cost visible and avoid hidden fan-out in list fields.`,
 ## 操作边界
 
 所有高风险操作先确认影响面，再执行。`,
+  hardware: `---
+title: 电子负载开发笔记
+slug: electronic-load-notes
+draft: false
+public: true
+tags:
+  - Hardware
+  - Circuit
+---
+
+# 电子负载开发笔记
+
+![控制板](./assets/load-board.png)
+
+## 选型
+
+| 参数 | OPA2277 | SGM8552 | AD8666 |
+| --- | --- | --- | --- |
+| 单电源供电 | -- | 2.5 V 到 5.5 V | 5 V 到 16 V |
+| 输入失调电压 | ±10 µV | 4 µV | 最大 2.5 mV |
+
+正文用于覆盖 frontmatter、图片与表格首轮序列化。`,
 };
 
 let posts: AdminPost[] = [
@@ -134,6 +156,25 @@ let posts: AdminPost[] = [
 
 const fileContents = new Map<string, string>(
   posts.map((post) => [`${post.source}:${post.filePath}`, post.body])
+);
+fileContents.set("local:content/posts/电子负载开发笔记.md", postBodies.hardware);
+fileContents.set(
+  "local:content/posts/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
+  postBodies.hardware.replaceAll(
+    "电子负载开发笔记",
+    "使用 CH335F 构建一个支持独立供电的 2A2C USB HUB"
+  )
+);
+fileContents.set(
+  "local:content/posts/通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新.md",
+  postBodies.hardware.replaceAll(
+    "电子负载开发笔记",
+    "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
+  )
+);
+fileContents.set(
+  "local:content/posts/学习笔记：电子负载实现原理.md",
+  postBodies.hardware.replaceAll("电子负载开发笔记", "学习笔记：电子负载实现原理")
 );
 const directoryPaths = new Set<string>();
 for (const key of fileContents.keys()) {
