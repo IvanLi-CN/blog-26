@@ -100,6 +100,8 @@ type BatchEntryResult = {
   type: "file" | "directory";
 };
 
+type MarkdownWriteJournal = Map<string, string>;
+
 function isMarkdownContentFile(path: string) {
   const lowerPath = path.toLowerCase();
   return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown");
@@ -460,15 +462,48 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
   }
 
   await fs.rename(fullOldPath, fullNewPath);
-  await rebaseMovedMarkdownLinks(fullNewPath, safeOldPath, newPath, nodePath);
-  await rebaseInboundMovedReferencesForAllRoots([{ oldPath: safeOldPath, newPath }], nodePath);
+  const journal: MarkdownWriteJournal = new Map();
+  try {
+    await rebaseMovedMarkdownLinks(fullNewPath, safeOldPath, newPath, nodePath, journal);
+    await rebaseInboundMovedReferencesForAllRoots(
+      [{ oldPath: safeOldPath, newPath }],
+      nodePath,
+      journal
+    );
+  } catch (error) {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      await fs.rename(fullNewPath, fullOldPath).catch(() => undefined);
+    }
+    throw error;
+  }
+}
+
+async function writeMarkdownWithJournal(
+  fullPath: string,
+  content: string,
+  journal: MarkdownWriteJournal
+) {
+  const fs = await import("node:fs/promises");
+  if (!journal.has(fullPath)) {
+    journal.set(fullPath, await fs.readFile(fullPath, "utf-8"));
+  }
+  await fs.writeFile(fullPath, content, "utf-8");
+}
+
+async function rollbackMarkdownWrites(journal: MarkdownWriteJournal) {
+  const fs = await import("node:fs/promises");
+  const entries = Array.from(journal.entries()).reverse();
+  await Promise.all(entries.map(([fullPath, content]) => fs.writeFile(fullPath, content, "utf-8")));
 }
 
 async function rebaseMovedMarkdownLinks(
   fullPath: string,
   oldRelativePath: string,
   newRelativePath: string,
-  nodePath: typeof import("node:path")
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
 ) {
   const fs = await import("node:fs/promises");
   const stats = await fs.stat(fullPath).catch(() => null);
@@ -479,7 +514,7 @@ async function rebaseMovedMarkdownLinks(
     const currentContent = await fs.readFile(fullPath, "utf-8");
     const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
     if (rebased.changed) {
-      await fs.writeFile(fullPath, rebased.content, "utf-8");
+      await writeMarkdownWithJournal(fullPath, rebased.content, journal);
     }
     return;
   }
@@ -492,7 +527,7 @@ async function rebaseMovedMarkdownLinks(
       const childFullPath = nodePath.join(fullPath, entry.name);
       const oldChildPath = normalizeLocalBrowserPath(`${oldRelativePath}/${entry.name}`);
       const newChildPath = normalizeLocalBrowserPath(`${newRelativePath}/${entry.name}`);
-      await rebaseMovedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath);
+      await rebaseMovedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath, journal);
     })
   );
 }
@@ -501,7 +536,8 @@ async function rebaseCopiedMarkdownLinks(
   fullPath: string,
   oldRelativePath: string,
   newRelativePath: string,
-  nodePath: typeof import("node:path")
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
 ) {
   const fs = await import("node:fs/promises");
   const stats = await fs.stat(fullPath).catch(() => null);
@@ -512,7 +548,7 @@ async function rebaseCopiedMarkdownLinks(
     const currentContent = await fs.readFile(fullPath, "utf-8");
     const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
     if (rebased.changed) {
-      await fs.writeFile(fullPath, rebased.content, "utf-8");
+      await writeMarkdownWithJournal(fullPath, rebased.content, journal);
     }
     return;
   }
@@ -525,7 +561,7 @@ async function rebaseCopiedMarkdownLinks(
       const childFullPath = nodePath.join(fullPath, entry.name);
       const oldChildPath = normalizeLocalBrowserPath(`${oldRelativePath}/${entry.name}`);
       const newChildPath = normalizeLocalBrowserPath(`${newRelativePath}/${entry.name}`);
-      await rebaseCopiedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath);
+      await rebaseCopiedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath, journal);
     })
   );
 }
@@ -533,7 +569,8 @@ async function rebaseCopiedMarkdownLinks(
 async function rebaseInboundMovedReferences(
   rootPath: string,
   movedPairs: Array<{ oldPath: string; newPath: string }>,
-  nodePath: typeof import("node:path")
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
 ) {
   const fs = await import("node:fs/promises");
   const basePath = resolve(requireLocalBasePath());
@@ -572,7 +609,7 @@ async function rebaseInboundMovedReferences(
     }
 
     if (changed) {
-      await fs.writeFile(fullPath, content, "utf-8");
+      await writeMarkdownWithJournal(fullPath, content, journal);
     }
   }
 
@@ -581,11 +618,12 @@ async function rebaseInboundMovedReferences(
 
 async function rebaseInboundMovedReferencesForAllRoots(
   movedPairs: Array<{ oldPath: string; newPath: string }>,
-  nodePath: typeof import("node:path")
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
 ) {
   await Promise.all(
     getConfiguredRootsForReferenceRebasing().map((rootPath) =>
-      rebaseInboundMovedReferences(rootPath, movedPairs, nodePath)
+      rebaseInboundMovedReferences(rootPath, movedPairs, nodePath, journal)
     )
   );
 }
@@ -671,19 +709,35 @@ async function moveLocalEntries(
     nextPaths.add(operation.nextPath);
   }
 
-  for (const operation of operations) {
-    await fs.rename(operation.fullCurrentPath, operation.fullNextPath);
-    await rebaseMovedMarkdownLinks(
-      operation.fullNextPath,
-      operation.path,
-      operation.nextPath,
-      nodePath
+  const journal: MarkdownWriteJournal = new Map();
+  const committedOperations: typeof operations = [];
+  try {
+    for (const operation of operations) {
+      await fs.rename(operation.fullCurrentPath, operation.fullNextPath);
+      committedOperations.push(operation);
+      await rebaseMovedMarkdownLinks(
+        operation.fullNextPath,
+        operation.path,
+        operation.nextPath,
+        nodePath,
+        journal
+      );
+    }
+    await rebaseInboundMovedReferencesForAllRoots(
+      operations.map(({ path, nextPath }) => ({ oldPath: path, newPath: nextPath })),
+      nodePath,
+      journal
     );
+  } catch (error) {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      for (const operation of [...committedOperations].reverse()) {
+        await fs.rename(operation.fullNextPath, operation.fullCurrentPath).catch(() => undefined);
+      }
+    }
+    throw error;
   }
-  await rebaseInboundMovedReferencesForAllRoots(
-    operations.map(({ path, nextPath }) => ({ oldPath: path, newPath: nextPath })),
-    nodePath
-  );
 
   return {
     moved: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
@@ -761,32 +815,49 @@ async function copyLocalEntries(
     nextPaths.add(operation.nextPath);
   }
 
-  for (const operation of operations) {
-    await fs.cp(operation.fullCurrentPath, operation.fullNextPath, {
-      recursive: operation.type === "directory",
-      errorOnExist: true,
-      force: false,
-    });
-  }
+  const journal: MarkdownWriteJournal = new Map();
+  const committedOperations: typeof operations = [];
+  try {
+    for (const operation of operations) {
+      await fs.cp(operation.fullCurrentPath, operation.fullNextPath, {
+        recursive: operation.type === "directory",
+        errorOnExist: true,
+        force: false,
+      });
+      committedOperations.push(operation);
+    }
 
-  for (const operation of operations) {
-    await rebaseCopiedMarkdownLinks(
-      operation.fullNextPath,
-      operation.path,
-      operation.nextPath,
-      nodePath
+    for (const operation of operations) {
+      await rebaseCopiedMarkdownLinks(
+        operation.fullNextPath,
+        operation.path,
+        operation.nextPath,
+        nodePath,
+        journal
+      );
+    }
+
+    const copiedPairs = operations.map(({ path, nextPath }) => ({
+      oldPath: path,
+      newPath: nextPath,
+    }));
+    await Promise.all(
+      operations.map((operation) =>
+        rebaseInboundMovedReferences(operation.nextPath, copiedPairs, nodePath, journal)
+      )
     );
+  } catch (error) {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      await Promise.all(
+        committedOperations.map((operation) =>
+          fs.rm(operation.fullNextPath, { recursive: true, force: true })
+        )
+      );
+    }
+    throw error;
   }
-
-  const copiedPairs = operations.map(({ path, nextPath }) => ({
-    oldPath: path,
-    newPath: nextPath,
-  }));
-  await Promise.all(
-    operations.map((operation) =>
-      rebaseInboundMovedReferences(operation.nextPath, copiedPairs, nodePath)
-    )
-  );
 
   return {
     copied: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
