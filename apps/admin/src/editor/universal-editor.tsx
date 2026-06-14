@@ -2,6 +2,8 @@ import { Code2, Eye } from "lucide-react";
 import { nanoid } from "nanoid";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { MilkdownEditor } from "@/components/memos/MilkdownEditor";
+import type { EditorChangeMeta } from "@/editor/editor-change";
+import { USER_EDITOR_CHANGE } from "@/editor/editor-change";
 import {
   parseFrontmatterDocument,
   updateDocumentBody,
@@ -20,7 +22,7 @@ export type UniversalEditorRef = {
 
 export type UniversalEditorProps = {
   initialContent: string;
-  onContentChange?: (content: string) => void;
+  onContentChange?: (content: string, meta?: EditorChangeMeta) => void;
   placeholder?: string;
   attachmentBasePath?: string;
   articlePath?: string;
@@ -111,17 +113,23 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       [content, processInlineImages]
     );
 
-    const handleContentChange = (nextContent: string) => {
+    const handleContentChange = (
+      nextContent: string,
+      meta: EditorChangeMeta = USER_EDITOR_CHANGE
+    ) => {
       setContent(nextContent);
-      onContentChange?.(nextContent);
+      onContentChange?.(nextContent, meta);
     };
 
     const handleFrontmatterChange = (nextFrontmatterText: string) => {
-      handleContentChange(updateFrontmatterDocument(content, nextFrontmatterText));
+      handleContentChange(
+        updateFrontmatterDocument(content, nextFrontmatterText),
+        USER_EDITOR_CHANGE
+      );
     };
 
-    const handleBodyChange = (nextBody: string) => {
-      handleContentChange(updateDocumentBody(content, nextBody));
+    const handleBodyChange = (nextBody: string, meta?: EditorChangeMeta) => {
+      handleContentChange(updateDocumentBody(content, nextBody), meta ?? USER_EDITOR_CHANGE);
     };
 
     const uploadImage = async (
@@ -219,7 +227,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
           {currentMode === "source" ? (
             <SourceEditor
               content={convertApiUrlsToRelativePaths(content)}
-              onChange={handleContentChange}
+              onChange={(nextContent) => handleContentChange(nextContent, USER_EDITOR_CHANGE)}
               placeholder={placeholder}
               className="h-full rounded-none border-0 bg-transparent shadow-none"
               data-testid="content-input"
@@ -244,7 +252,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                 <div className="min-h-0 flex-1">
                   <SourceEditor
                     content={convertApiUrlsToRelativePaths(content)}
-                    onChange={handleContentChange}
+                    onChange={(nextContent) => handleContentChange(nextContent, USER_EDITOR_CHANGE)}
                     placeholder={placeholder}
                     className="admin-editor-compare-source-editor h-full min-h-0 rounded-none border-0 bg-transparent shadow-none"
                     data-testid="content-input"

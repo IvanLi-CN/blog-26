@@ -128,6 +128,7 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 - Empty-file and viewport behavior: a newly created empty file opens immediately, editor surfaces keep full-height layout, and scrolling stays inside the editing panes
 - Card hierarchy: only the outer sidebar/editor shells keep the framed card treatment; inner editor regions stay flat
 - Frontmatter editing rhythm: WYSIWYG keeps frontmatter as a single inline YAML block, shows the complete metadata without an internal scrollbar, preserves visible keyboard focus, aligns YAML and body text columns, and keeps the body heading within the same vertical writing rhythm instead of dropping it into a large gap
+- Tab overflow and preview-open behavior: editor tabs stay on one text-line height with truncated long titles, new tabs appear from the left, dirty tabs show a dot rather than status text, hover tooltips expose the full title and saved/unsaved status, close and overflow actions are pure icon buttons, overflow opens a vertical list of all open files on desktop, the same control becomes a third-party bottom drawer on mobile, and file-tree single click uses one replaceable italic temporary tab until double click or real editing makes it permanent
 
 ![Admin demo editor WYSIWYG Markdown rendering](./assets/demo/editor-focused-dark-wysiwyg-markdown-code.trimmed.png)
 
@@ -164,6 +165,10 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 ![Admin editor workspace with nested cards removed](./assets/demo/admin-editor-de-nested-workspace.trimmed.png)
 
 ![Admin editor frontmatter block and tightened body rhythm](./assets/demo/frontmatter-body-gap-tightened.png)
+
+![Admin editor tab overflow desktop floating list](./assets/demo/admin-editor-tab-overflow-storybook-desktop.trimmed.png)
+
+![Admin editor tab overflow mobile bottom drawer](./assets/demo/admin-editor-tab-overflow-web-demo-mobile-bottom-drawer.trimmed.png)
 
 ### Posts Workspace And Shell Chrome
 

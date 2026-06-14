@@ -30,6 +30,12 @@ Implementation state is tracked here while the `sftui` spec is active.
 - The editor frontmatter pass renders YAML as one inline block inside WYSIWYG and compare mode, auto-sizes the textarea so the full metadata stays visible without an inner scrollbar, exposes a visible focus ring on keyboard focus, aligns the frontmatter text column with the body text column, and removes the extra top margin on the first rendered heading so the body starts in the same vertical rhythm as the metadata block.
 - The desktop AppShell sidebar width is controlled by `--admin-sidebar-width` in the shell grid, can be resized through a grip-style separator embedded in the sidebar card's right edge, exposes width values to assistive technology, shows a tooltip for discoverability, supports arrow-key/Home/End adjustment plus double-click reset to the default width, persists to `localStorage`, and reflows the main workspace instead of overlaying it.
 - The desktop sidebar intentionally keeps its outer Soft UI card effect. Route-specific panels and session state render as lightweight internal sections, not nested cards, to avoid card nesting while preserving the left panel's visual container.
+- Editor content changes now carry `programmatic` versus `user` metadata from Milkdown through `UniversalEditor` into the editor page. Initial Milkdown serialization, image URL normalization, and readonly preview synchronization can update the controlled editor state without marking a tab dirty; frontmatter edits, Source edits, WYSIWYG input, attachment insertion, and other real user changes still mark the tab dirty immediately.
+- File-tree single click opens or reuses one replaceable temporary file tab. Double click promotes that file tab to permanent, and the first real edit also pins a temporary tab. Existing permanent or dirty tabs are activated rather than duplicated or replaced. Temporary tabs render their title in italic so preview state is visible without extra labels.
+- The editor tab strip is a single-line measured component with bounded tab widths and truncated labels. New tabs are inserted at the left edge so the most recent file appears first. Dirty state is represented by a dot inside tabs and overflow rows; the visible tab text never includes saved/unsaved status, while hover tooltips expose the full title and saved/unsaved status. Close and overflow controls are icon-only buttons, with background and outline appearing on hover/focus.
+- Tabs that do not fit move behind a right-aligned overflow trigger. Desktop renders a floating vertical list of all open files. Mobile uses the third-party `vaul` drawer primitive through the local UI wrapper, with `data-vaul-drawer-direction="bottom"`, fixed positioning, full viewport width, bottom edge pinned to the viewport, a drawer handle, and internal list scrolling when needed.
+- Storybook includes an `EditorTabOverflow` state gallery for the new tab strip behavior, including the desktop overflow list and mobile drawer surface.
+- E2E coverage asserts opening frontmatter/image/table files stays saved until user edits, real edits show only the dirty dot in tabs, hover exposes status text, temporary tabs are italic, double-clicked tabs become permanent, tab rows do not wrap, and the mobile overflow surface is a bottom `vaul` drawer pinned to the viewport edges.
 
 ## Validation
 
@@ -43,5 +49,9 @@ Implementation state is tracked here while the `sftui` spec is active.
 - `BASE_URL=http://127.0.0.1:17500 ADMIN_EMAIL=admin@example.com bunx playwright test tests/e2e/admin/post-editor-markdown-modes.spec.ts --project=admin-chromium`
 - `WEB_PORT=50590 SITE_PORT=50591 bunx playwright test tests/e2e/admin/post-editor-markdown-modes.spec.ts --project=admin-chromium`
 - `bunx biome check apps/admin/src/styles.css tests/e2e/admin/post-editor-markdown-modes.spec.ts`
+- `bun run check`
+- `bun run admin:build`
+- `bun run build-storybook`
+- `WEB_PORT=63900 PORT=63900 bun run test:e2e -- --project=admin-chromium tests/e2e/admin/post-editor-markdown-modes.spec.ts`
 
 The production build requires explicit database and content-source environment variables in this worktree. Without them it falls back to `./sqlite.db`, which is not the seeded development database.

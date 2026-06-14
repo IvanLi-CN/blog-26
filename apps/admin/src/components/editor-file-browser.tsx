@@ -882,6 +882,7 @@ export function EditorFileBrowser({
   onEditingCancel,
   onDirectoryExpand,
   onFileOpen,
+  onFilePermanentOpen,
   onCreateFile,
   onCreateDirectory,
   onStartRename,
@@ -910,6 +911,7 @@ export function EditorFileBrowser({
   onEditingCancel: () => void;
   onDirectoryExpand: (item: FileItem) => void;
   onFileOpen: (item: FileItem) => void;
+  onFilePermanentOpen: (item: FileItem) => void;
   onCreateFile: (parentPath?: string) => void;
   onCreateDirectory: (parentPath?: string) => void;
   onStartRename: (target: TreeSelection) => void;
@@ -1652,6 +1654,9 @@ export function EditorFileBrowser({
                   aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
                   className="absolute inset-0 z-0 rounded-2xl"
                   onClick={(event) => handlePrimaryAction(item, event)}
+                  onDoubleClick={() => {
+                    if (!isDirectory) onFilePermanentOpen(item);
+                  }}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -1676,6 +1681,9 @@ export function EditorFileBrowser({
                   aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
                   onFocus={() => updateFocusedAnchor(entry.path)}
                   onClick={(event) => handlePrimaryAction(item, event)}
+                  onDoubleClick={() => {
+                    if (!isDirectory) onFilePermanentOpen(item);
+                  }}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -1743,6 +1751,9 @@ export function EditorFileBrowser({
                     className="pointer-events-auto min-w-0 flex-1 truncate text-left"
                     onFocus={() => updateFocusedAnchor(entry.path)}
                     onClick={(event) => handlePrimaryAction(item, event)}
+                    onDoubleClick={() => {
+                      if (!isDirectory) onFilePermanentOpen(item);
+                    }}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -1827,6 +1838,7 @@ export function EditorFileBrowser({
       onEditingCancel,
       onEditingCommit,
       onEditingValueChange,
+      onFilePermanentOpen,
       openContextMenu,
       selectedPathSet,
       selectedSource,

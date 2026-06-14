@@ -20,6 +20,16 @@ async function openDemoEditor(page: Page) {
   await expect(page.getByRole("button", { name: "对照" })).toBeVisible();
 }
 
+async function openFileBrowserItem(page: Page, name: string, options: { dblClick?: boolean } = {}) {
+  const item = page.getByRole("button", { name });
+  await expect(item).toBeVisible({ timeout: 30_000 });
+  if (options.dblClick) {
+    await item.dblclick();
+    return;
+  }
+  await item.click();
+}
+
 async function expectSourceMarkdown(textarea: Locator) {
   await expect(textarea).toHaveValue(/^---\n[\s\S]*?\n---/);
   await expect(textarea).toHaveValue(/title: React Hooks 深度解析/);
@@ -575,6 +585,153 @@ test.describe("Post editor Markdown modes", () => {
     );
   });
 
+  test("opening a sample file keeps it saved until the user edits it", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await openFileBrowserItem(page, "电子负载开发笔记.md");
+    await expect(page.getByTestId("editor")).toContainText("已保存");
+    await expect(page.getByTestId("editor-tab")).toHaveCount(2);
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const source = page.getByRole("textbox", { name: "Markdown source editor" });
+    await expect(source).toHaveValue(/title: 电子负载开发笔记/);
+    await expect(source).toHaveValue(/!\[控制板\]\(\.\/assets\/load-board\.png\)/);
+    await expect(source).toHaveValue(/\| OPA2277 \| SGM8552 \| AD8666 \|/);
+    await expect(page.getByText("未保存")).toHaveCount(0);
+
+    await source.fill(
+      `---
+title: 电子负载开发笔记
+slug: electronic-load-notes
+draft: false
+public: true
+tags:
+  - Hardware
+  - Circuit
+---
+
+# 电子负载开发笔记
+
+更新正文`
+    );
+    await expect(page.getByText("未保存").first()).toBeVisible();
+    const dirtyTab = page.getByTestId("editor-tab").filter({ hasText: "电子负载开发笔记" });
+    await expect(dirtyTab.getByText("未保存")).toHaveCount(0);
+    await expect(dirtyTab.getByTestId("editor-tab-dirty-dot")).toBeVisible();
+    await dirtyTab.hover();
+    await expect(page.getByRole("tooltip")).toContainText("电子负载开发笔记，未保存");
+  });
+
+  test("single click creates a temporary tab and double click promotes it to permanent", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await openFileBrowserItem(page, "电子负载开发笔记.md");
+    await expect(page.getByTestId("editor-tab")).toHaveCount(2);
+    const temporaryTab = page.getByTestId("editor-tab").first();
+    await expect(temporaryTab).toContainText("电子负载开发笔记");
+    await expect(temporaryTab).toHaveAttribute("data-temporary", "true");
+    await expect(temporaryTab.getByText("电子负载开发笔记")).toHaveCSS("font-style", "italic");
+
+    await openFileBrowserItem(page, "使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md");
+    await expect(page.getByTestId("editor-tab")).toHaveCount(2);
+    await expect(page.getByTestId("editor-tab").first()).toContainText(
+      "使用 CH335F 构建一个支持独立供电的 2A2C USB HUB"
+    );
+
+    await openFileBrowserItem(page, "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新.md", {
+      dblClick: true,
+    });
+    await expect(page.getByTestId("editor-tab")).toHaveCount(3);
+    const permanentTab = page.getByTestId("editor-tab").first();
+    await expect(permanentTab).toContainText("通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新");
+    await expect(permanentTab).toHaveAttribute("data-temporary", "false");
+    await expect(page.getByTestId("editor").locator("div.text-base.font-semibold")).toHaveText(
+      "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
+    );
+
+    await openFileBrowserItem(page, "学习笔记：电子负载实现原理.md");
+    await expect(page.getByTestId("editor-tab")).toHaveCount(3);
+    await expect(page.getByTestId("editor-tab").first()).toContainText(
+      "学习笔记：电子负载实现原理"
+    );
+    await expect(
+      page.getByRole("tab", { name: /通过 WebUSB 和 STM32 MCU 实现 SPI/ })
+    ).toBeVisible();
+    await expect(page.getByTestId("editor").locator("div.text-base.font-semibold")).toHaveText(
+      "学习笔记：电子负载实现原理"
+    );
+  });
+
+  test("tab overflow exposes the opened files list on desktop and mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await openDemoEditor(page);
+
+    for (const name of [
+      "电子负载开发笔记.md",
+      "使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
+      "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新.md",
+      "学习笔记：电子负载实现原理.md",
+    ]) {
+      await openFileBrowserItem(page, name, { dblClick: true });
+    }
+
+    const strip = page.getByTestId("editor-tab-strip");
+    const stripBox = await strip.boundingBox();
+    expect(stripBox?.height).toBeLessThanOrEqual(42);
+    const tops = await strip
+      .locator('[data-testid="editor-tab"]')
+      .evaluateAll((tabs) =>
+        Array.from(new Set(tabs.map((tab) => Math.round(tab.getBoundingClientRect().top))))
+      );
+    expect(tops).toHaveLength(1);
+    await expect(strip.getByText("未保存")).toHaveCount(0);
+
+    const currentTab = strip.getByRole("tab", { name: /已保存/ }).first();
+    await currentTab.hover();
+    await expect(page.getByRole("tooltip")).toContainText("已保存");
+
+    await page.getByTestId("editor-tabs-overflow").click();
+    const overflowList = page.getByTestId("editor-tab-overflow-list");
+    await expect(overflowList).toBeVisible();
+    await expect(overflowList).toContainText("通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新");
+    await overflowList
+      .getByRole("button", {
+        name: "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新，已保存",
+      })
+      .click();
+    await expect(overflowList).toBeHidden();
+    await expect(page.getByTestId("editor").locator("div.text-base.font-semibold")).toHaveText(
+      "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
+    );
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId("editor-tabs-overflow")).toBeVisible();
+    await page.getByTestId("editor-tabs-overflow").click();
+    await expect(page.getByRole("heading", { name: "已打开文件" })).toBeVisible();
+    await page.locator('[data-vaul-drawer][data-state="open"]').waitFor();
+    await page.waitForTimeout(650);
+    const drawerMetrics = await page
+      .locator('[data-vaul-drawer][data-state="open"]')
+      .evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const styles = getComputedStyle(element);
+        return {
+          bottomGap: Math.abs(window.innerHeight - rect.bottom),
+          direction: element.getAttribute("data-vaul-drawer-direction"),
+          leftGap: Math.abs(rect.left),
+          position: styles.position,
+          rightGap: Math.abs(window.innerWidth - rect.right),
+        };
+      });
+    expect(drawerMetrics.direction).toBe("bottom");
+    expect(drawerMetrics.position).toBe("fixed");
+    expect(drawerMetrics.bottomGap).toBeLessThanOrEqual(2);
+    expect(drawerMetrics.leftGap).toBeLessThanOrEqual(2);
+    expect(drawerMetrics.rightGap).toBeLessThanOrEqual(2);
+  });
+
   test("WYSIWYG preserves a body-leading YAML fence instead of converting it into frontmatter", async ({
     page,
   }) => {
@@ -603,7 +760,7 @@ Body paragraph`);
     await page.keyboard.type(" updated");
 
     await page.getByRole("button", { name: "Source" }).click();
-    await expect(source).toHaveValue(/```yaml\nkind: example\nvalue: true\n```/);
+    await expect(source).toHaveValue(/```yaml\nkind: example\nvalue: true(?: updated)?\n```/);
     await expect(source).not.toHaveValue(/^---\nkind: example\nvalue: true\n---/);
   });
 

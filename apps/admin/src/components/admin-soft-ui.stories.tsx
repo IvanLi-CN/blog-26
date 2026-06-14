@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
+import { EditorTabStrip } from "~/editor/editor-tab-strip";
 import {
   Alert,
   Badge,
@@ -492,6 +493,36 @@ function ResizableSidebarHandleFrame() {
   );
 }
 
+function EditorTabOverflowFrame() {
+  const [activeTabId, setActiveTabId] = useState("tab-2");
+  const [tabs, setTabs] = useState([
+    { id: "tab-1", label: "React Hooks 深度解析", dirty: false },
+    { id: "tab-2", label: "电子负载开发笔记", dirty: true, temporary: true },
+    { id: "tab-3", label: "使用 CH335F 构建一个支持独立供电的 2A2C USB HUB", dirty: false },
+    { id: "tab-4", label: "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新", dirty: false },
+    { id: "tab-5", label: "学习笔记：电子负载实现原理", dirty: false },
+  ]);
+
+  return (
+    <div className="mx-auto max-w-[880px] overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft">
+      <EditorTabStrip
+        tabs={tabs}
+        activeTabId={activeTabId}
+        onActivate={setActiveTabId}
+        onClose={(tabId) => {
+          setTabs((current) => current.filter((tab) => tab.id !== tabId));
+          if (activeTabId === tabId) {
+            setActiveTabId(tabs.find((tab) => tab.id !== tabId)?.id ?? null);
+          }
+        }}
+      />
+      <div className="p-5 text-sm text-muted-foreground">
+        {tabs.find((tab) => tab.id === activeTabId)?.label ?? "未选择文件"}
+      </div>
+    </div>
+  );
+}
+
 export const Primitives: Story = {
   render: () => <PrimitiveGallery />,
   play: async ({ canvasElement }) => {
@@ -516,6 +547,22 @@ export const ResizableSidebarHandle: Story = {
     await expect(separator).toHaveAttribute("aria-valuenow", "284");
     await userEvent.dblClick(separator);
     await expect(separator).toHaveAttribute("aria-valuenow", "272");
+  },
+};
+
+export const EditorTabOverflow: Story = {
+  render: () => <EditorTabOverflowFrame />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const strip = canvas.getByTestId("editor-tab-strip");
+    await expect(strip).toBeInTheDocument();
+    await expect(strip).toHaveClass(/h-10/);
+    await userEvent.hover(canvas.getByRole("tab", { name: /电子负载开发笔记/ }));
+    await expect(await canvas.findByRole("tooltip")).toHaveTextContent("电子负载开发笔记，未保存");
+    await userEvent.click(canvas.getByRole("button", { name: "展开已打开文件列表" }));
+    await expect(await canvas.findByTestId("editor-tab-overflow-list")).toHaveTextContent(
+      "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
+    );
   },
 };
 
