@@ -500,7 +500,7 @@ export function validateContentItem(item: ContentItem): boolean {
     return false;
   }
 
-  if (!item.contentHash || item.contentHash.length !== 64) {
+  if (item.contentHash?.length !== 64) {
     return false;
   }
 

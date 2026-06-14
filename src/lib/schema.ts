@@ -40,7 +40,7 @@ export const posts = sqliteTable("posts", {
   author: text("author"),
   image: text("image"),
   metadata: text("metadata"), // JSON 字符串存储其他元数据
-  dataSource: text("data_source"), // local/webdav/database
+  dataSource: text("data_source"), // local/database
   createdVia: text("created_via"), // authoring channel, e.g. mcp
   contentHash: text("content_hash").notNull(),
   // 新增字段（通过迁移添加）
@@ -215,7 +215,7 @@ export const reactionsRelations = relations(reactions, ({ one }) => ({
 // 内容同步日志表
 export const contentSyncLogs = sqliteTable("content_sync_logs", {
   id: text("id").primaryKey(),
-  sourceType: text("source_type").notNull(), // local/webdav
+  sourceType: text("source_type").notNull(), // local
   sourceName: text("source_name").notNull(),
   operation: text("operation").notNull(), // sync/create/update/delete
   status: text("status", { enum: ["success", "error", "warning"] }).notNull(),
@@ -227,7 +227,7 @@ export const contentSyncLogs = sqliteTable("content_sync_logs", {
 
 // 内容同步状态表
 export const contentSyncStatus = sqliteTable("content_sync_status", {
-  sourceType: text("source_type").primaryKey(), // local/webdav
+  sourceType: text("source_type").primaryKey(), // local
   sourceName: text("source_name").notNull(),
   lastSyncAt: integer("last_sync_at"),
   status: text("status", { enum: ["idle", "running", "success", "error", "cancelled"] })

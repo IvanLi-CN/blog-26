@@ -122,7 +122,7 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 
 - Markdown mode parity: WYSIWYG renders formatted content, Source keeps raw Markdown syntax, and 对照 pairs the editable source pane with a read-only Milkdown preview
 - Sidebar reflow: width persists and the shell grid reallocates space from main content instead of overlapping it; measured `272px => 1168px` and `404px => 1036px`
-- File workflow: file actions share one toolbar, inline rename stays in place, the tree fills the available sidebar height, and the sidebar remains free of WebDAV-specific UI
+- File workflow: file actions share one toolbar, inline rename stays in place, the tree fills the available sidebar height, and the sidebar remains free of removed remote-source UI
 - Validation clarity: saving a brand-new blank article stops in-place with a natural-language banner instead of exposing raw validation issue arrays
 - Real-root file creation: creating a file inside a configured root such as `Hardware/` succeeds immediately and enters inline rename without surfacing an uninitialized local-source error
 - Empty-file and viewport behavior: a newly created empty file opens immediately, editor surfaces keep full-height layout, and scrolling stays inside the editing panes

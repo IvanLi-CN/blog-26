@@ -104,7 +104,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     previewCodeLines,
     enableImageLightbox,
     articlePath,
-    contentSource = "webdav",
+    contentSource = "local",
     publicMediaContext,
     removeTags = false,
     rewritePublicSitePaths = false,

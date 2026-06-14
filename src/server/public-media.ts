@@ -16,7 +16,6 @@ import {
   detectPublicMediaKind,
   inferPublicMediaMimeType,
   isExternalMediaUrl,
-  isLocalPublicMediaDataSource,
   isPublicContentKind,
   isPublicMediaVariant,
   normalizePublicMediaExt,
@@ -69,8 +68,8 @@ const VARIANT_RECIPES = {
 const IMAGE_DISPLAY_VARIANTS = ["card", "cover", "content", "full", "social"] as const;
 const VIDEO_DISPLAY_VARIANTS = ["card", "cover", "content", "full", "social", "poster"] as const;
 
-function shouldUsePublicMediaFacadeForRow(row: Pick<ContentRow, "dataSource">) {
-  return isLocalPublicMediaDataSource(row.dataSource);
+function shouldUsePublicMediaFacadeForRow(_row: Pick<ContentRow, "dataSource">) {
+  return true;
 }
 
 function getCanonicalFilePath(row: ContentRow) {
@@ -439,13 +438,11 @@ export function buildPublicMediaCollection(
 
 export function rewritePublicMemoAttachments(row: ContentRow, media: PublicMediaCollection) {
   if (!shouldUsePublicMediaFacadeForRow(row)) {
-    const contentSource = isLocalPublicMediaDataSource(row.dataSource) ? "local" : "webdav";
     return parseAttachments(row).map((attachment) => ({
       ...attachment,
       path:
         toPublicAssetUrl(
-          resolveImagePath(attachment.path, contentSource, getCanonicalFilePath(row)) ??
-            attachment.path
+          resolveImagePath(attachment.path, "local", getCanonicalFilePath(row)) ?? attachment.path
         ) ?? attachment.path,
     }));
   }

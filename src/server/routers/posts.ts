@@ -88,8 +88,7 @@ export const postsRouter = router({
       }
 
       // 可选：仅允许特定内容源（通过环境变量控制）
-      const sourcesEnv =
-        process.env.CONTENT_SOURCES || (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
+      const sourcesEnv = process.env.CONTENT_SOURCES || "";
       const allowedSources = sourcesEnv
         .split(",")
         .map((s) => s.trim())
@@ -212,9 +211,7 @@ export const postsRouter = router({
 
       conditions.push(
         (() => {
-          const sourcesEnv =
-            process.env.CONTENT_SOURCES ||
-            (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
+          const sourcesEnv = process.env.CONTENT_SOURCES || "";
           const allowedSources = sourcesEnv
             .split(",")
             .map((s) => s.trim())
@@ -355,9 +352,7 @@ export const postsRouter = router({
             and(
               ...conditions,
               (() => {
-                const sourcesEnv =
-                  process.env.CONTENT_SOURCES ||
-                  (process.env.FORCE_WEBDAV_ONLY === "true" ? "webdav" : "");
+                const sourcesEnv = process.env.CONTENT_SOURCES || "";
                 const allowedSources = sourcesEnv
                   .split(",")
                   .map((s) => s.trim())

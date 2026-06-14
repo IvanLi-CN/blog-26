@@ -1,108 +1,37 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Project Structure
 
-Source lives under `src/`, with shared UI in `src/components/`, core libraries under `src/lib/`, and Bun gateway/API routers in `src/server/`. The public Astro app lives under `site/`, the admin Vite/React SPA under `apps/admin/`, scripts under `scripts/`, E2E specs under `tests/e2e/`, and static assets in `public/`. Path alias `@/*` maps to `src/*` in TypeScript.
+Source lives under `src/`, shared UI under `src/components/`, libraries under `src/lib/`, server code under `src/server/`, the public Astro app under `site/`, the admin SPA under `apps/admin/`, scripts under `scripts/`, and E2E tests under `tests/e2e/`.
 
-## Build, Test, and Development Commands
+## Build, Test, and Development
 
-Install dependencies with `bun install`. Run the full dev stack using `bun run dev` (WebDAV, Astro, admin SPA, and Bun gateway).
-Primary checkout uses `25090` (web) and `25091` (WebDAV). For worktrees, do not use these ports.
-Set custom ports via env vars as noted in "Worktree Development".
-Produce a production build via `bun run build`, then serve it using `bun run start`.
-Lint and format with `bun run check`; auto-fix via `bun run fix`.
-For database workflows use `bun run migrate`, `bun run seed`, or `bun run dev-db:reset`.
+- Install dependencies with `bun install`.
+- Start the dev stack with `bun run dev`.
+- Build with `bun run build` and serve with `bun run start`.
+- Lint and format with `bun run check` / `bun run fix`.
+- Use `bun run migrate`, `bun run seed`, `bun run dev-db:reset`, and `bun run test-env:reset` for database workflows.
 
-### Dev Services & Ports (Agents)
+### Ports and Env
 
-- Defaults: `25090` (web), `25091` (WebDAV). These are used by the default Playwright config as well.
-- When you are working inside a non-primary worktree, you **must** pick alternate ports *before* starting any service. A simple convention is to choose a free pair in the `25600` range (for example `PORT=25600 WEBDAV_PORT=25601`), but always confirm availability with `lsof -iTCP:<port> -sTCP:LISTEN -n`.
-- Override via env when needed (no new config required):
-  - `WEB_PORT` or `PORT`: overrides the web server port used by tests and dev.
-  - `WEBDAV_PORT` or `DAV_PORT`: overrides the WebDAV port used by tests.
-  - `BASE_URL`: overrides the Playwright base URL (otherwise derived from `WEB_PORT`).
-  - `WEBDAV_URL`: overrides the WebDAV base URL (otherwise derived from `WEBDAV_PORT`).
-- Always point the dev server at the seeded data by exporting the expected environment variables **before** launching any services:
+- Default gateway port: `25090`.
+- In worktrees, choose a free alternate `PORT` before starting services.
+- Export `DB_PATH` and `LOCAL_CONTENT_BASE_PATH` before running sync, dev, or test flows.
+- The project now uses only the local filesystem content root; no remote content-source service should be started or documented.
 
-  ```bash
-  export DB_PATH=./dev-data/sqlite.db
-  export LOCAL_CONTENT_BASE_PATH=./dev-data/local
-  export WEBDAV_URL=http://localhost:25601   # adjust to the port you choose
-  ```
+## Testing
 
-  Never rely on implicit defaults—when these variables are missing, the app will connect to `./sqlite.db`, which is intentionally empty and will make the UI appear blank.
-- When running outside the primary checkout, prefer launching the dev stack with explicit environment variables so you can control ports and data paths deterministically, for example:
+- Unit and integration tests: `bun run test`
+- E2E tests: `bun run test:e2e`
+- Reset test data first with `bun run test-env:reset` when needed.
 
-  ```bash
-  export DB_PATH=./dev-data/sqlite.db
-  export LOCAL_CONTENT_BASE_PATH=./dev-data/local
-  export PORT=25600
-  export WEBDAV_PORT=25601
-  export WEBDAV_URL=http://localhost:25601
+## Verification
 
-  PORT=$PORT WEBDAV_PORT=$WEBDAV_PORT WEBDAV_URL=$WEBDAV_URL \
-    DB_PATH=$DB_PATH LOCAL_CONTENT_BASE_PATH=$LOCAL_CONTENT_BASE_PATH \
-    bun run dev
+- Set `ADMIN_EMAIL` when a flow requires admin access.
+- Prefer the dev login API for manual local verification: `POST /api/dev/login`.
+- Avoid introducing proxy-based auth shortcuts that mask authorization regressions.
 
-  bun run dev-sync:trigger
-  ```
+## Commits
 
-  This ensures both the local markdown source and WebDAV source register correctly and prevents `bun run dev` from silently launching on the default ports.
-- Reuse vs. new ports:
-  - If a compatible dev stack is already running on the default ports and matches the current codebase/data, prefer reusing it (Playwright `reuseExistingServer: true`).
-  - If defaults are busy or incompatible—or you are in a secondary worktree—pick unused ports and pass overrides, e.g.
-    - `WEB_PORT=25190 WEBDAV_PORT=25191 bun run dev` (manual) and/or
-    - `WEB_PORT=25190 WEBDAV_PORT=25191 bun run test:e2e` (Playwright will start/stop servers for tests).
-    - To keep different worktrees consistent, prefer starting at `PORT=25600 WEBDAV_PORT=25601` and increment only if needed.
-  - Do not hijack unrelated processes on 25090/25091. Validate availability first: `lsof -iTCP:25090,25091 -sTCP:LISTEN -n`.
-
-### Long-running commands & process lifecycle
-
-These conventions apply to any automation agent (Codex, CI, or human-operated scripts).
-
-- Prefer foreground execution for active development tasks: `bun run dev`.
-- If a non-blocking run is required, the caller must manage process lifecycle explicitly (start/stop ownership and log destination).
-- Validate ports before launch and avoid interrupting unrelated processes.
-- Treat `bun run start`, `bun run webdav:dev`, `bun run test-server:start`, and `bun run gateway:dev` as long-running commands that require explicit lifecycle handling.
-- Playwright interactive helpers (`bun run test:e2e:ui`, `bun run test:e2e:debug`, `bun run test:e2e:headed`, `bun run test:e2e:report`) block until closed; automated flows must include a shutdown step.
-
-## Coding Style & Naming Conventions
-
-The project relies on Biome for formatting (2-space indent, max width 100, double quotes, trailing commas). Follow existing file naming patterns; prefer descriptive, kebab-case filenames within features. Leverage `@/*` imports instead of relative traversals to keep modules readable.
-
-## Testing Guidelines
-
-Unit and integration tests run with Bun's test runner via `bun run test`; keep specs close to the code they cover or under `src/lib/__tests__/`. E2E scenarios use Playwright in `tests/e2e/`; execute with `bun run test:e2e` (install browsers using `bunx playwright install`). Reset or seed test data with `bun run test-env:reset` and `bun run test-data:generate` before long runs.
-
-## Runtime Verification Access
-
-- Before invoking any runtime verification workflow, validate whether the scenario explicitly requires administrator permissions. Record the decision in your run notes so downstream agents understand the context.
-- When admin access *is* required:
-  - Set `ADMIN_EMAIL` for all relevant processes (Bun gateway, Playwright, MCP tooling). Prefer `.env.local`; or prefix commands, e.g. `ADMIN_EMAIL=admin@example.com bun run dev`.
-- Playwright E2E tests emulate SSO by using a routing helper to inject `SSO_EMAIL_HEADER_NAME` (defaults to
-  `Remote-Email`) only on requests targeting the app origin (`BASE_URL`), while stripping it from third-party
-  domains (Iconify/Simplesvg/Unisvg) to avoid CORS issues. Do not run any reverse proxy in development.
-  - For manual local verification in development, use the dev login API to establish a session: `POST /api/dev/login { email: ADMIN_EMAIL }` (only available in dev/test). Avoid proxy-based header injection during manual checks.
-- When admin access is *not* required, state that explicitly and omit any header/session helpers to avoid masking authorization regressions during verification.
-
-## Commit & Pull Request Guidelines
-
-Commit messages must follow Conventional Commits (English subject ≤72 chars, body required). Example: `feat(memos): add lightbox for images` followed by rationale and test notes. Pull requests should summarize behavior changes, link related issues, document any new migrations, and attach screenshots or logs for UI or UX updates. Run `bun run check` and relevant tests before requesting review.
-
-## Security & Configuration Tips
-
-Store secrets in `.env.local`; never commit them. SQLite paths default to `./dev-data/sqlite.db` for development and `./test-data/sqlite.db` for automated tests. For production deployments, ensure the `DB_PATH` environment variable points at the desired volume (Docker default: `/app/data/sqlite.db`).
-
-## Worktree Development (Concise)
-
-- Create worktree and branch:
-  - `git worktree add -b <branch> ../blog-wt-<slug>`
-- Initialize the new worktree with the setup script (required):
-  - Default ports: `PORT=25090`, `WEBDAV_PORT=25091`.
-  - If a default port is in use, supply available ports via environment variables. The script validates availability and exits on conflict. It does not create or modify any `.env*` files.
-  - Examples:
-    - `./scripts/setup.sh` (regenerates dev DB+data by default; does not perform content sync)
-    - `./scripts/setup.sh --no-db` (skip DB reset and dev data generation)
-- Run the dev stack:
-  - `PORT=<web_port> bun run dev` (gateway uses `PORT`; WebDAV helper will choose a free port near 25091 and print it in logs.) — **only after** exporting the environment variables above in the same shell.
-  - Alternatively start services separately if needed. Remember to run `bun run dev-sync:trigger` once to import both local and WebDAV fixtures (after exporting the required env vars).
+- Use Conventional Commits in English.
+- Run `bun run check` and relevant tests before asking for review.

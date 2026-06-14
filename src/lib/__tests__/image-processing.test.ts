@@ -28,7 +28,7 @@ describe("processInlineImages", () => {
   });
 
   const defaultOptions: ProcessInlineImagesOptions = {
-    contentSource: "webdav",
+    contentSource: "local",
     articlePath: "blog/test-article.md",
     returnFormat: "relative",
     enableLogging: false,
@@ -75,7 +75,7 @@ describe("processInlineImages", () => {
       });
 
       expect(apiResult.content).toContain(
-        "![test](/api/files/webdav/blog/assets/test-article-test1234.png)"
+        "![test](/api/files/local/blog/assets/test-article-test1234.png)"
       );
 
       // 测试相对路径格式
@@ -96,7 +96,7 @@ describe("processInlineImages", () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch.mock.calls[0]?.[0]).toBe(
-        "https://api.example.test/api/files/webdav/blog/assets/test-article-test1234.png"
+        "https://api.example.test/api/files/local/blog/assets/test-article-test1234.png"
       );
       expect(mockFetch.mock.calls[0]?.[1]).toMatchObject({
         credentials: "include",
@@ -117,7 +117,7 @@ describe("processInlineImages", () => {
     });
 
     it("应该跳过已处理的 API 路径图片", async () => {
-      const content = "已处理的图片：![test](/api/files/webdav/blog/assets/existing-image.png)";
+      const content = "已处理的图片：![test](/api/files/local/blog/assets/existing-image.png)";
 
       const result = await processInlineImages(content, defaultOptions);
 
@@ -275,19 +275,19 @@ describe("processInlineImages", () => {
       );
     });
 
-    it("应该正确处理 webdav 内容源", async () => {
+    it("应该正确处理 local 内容源", async () => {
       const content =
         "![test](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==)";
 
       const result = await processInlineImages(content, {
         ...defaultOptions,
-        contentSource: "webdav",
+        contentSource: "local",
         returnFormat: "api",
       });
 
-      expect(result.content).toContain("/api/files/webdav/");
+      expect(result.content).toContain("/api/files/local/");
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/files/webdav/"),
+        expect.stringContaining("/api/files/local/"),
         expect.any(Object)
       );
     });
@@ -331,7 +331,7 @@ describe("processInlineImages", () => {
       });
 
       expect(result.content).toContain(
-        "/api/files/webdav/custom/upload/path/test-article-test1234.png"
+        "/api/files/local/custom/upload/path/test-article-test1234.png"
       );
     });
   });
@@ -346,7 +346,7 @@ describe("processInlineImagesCompat", () => {
     const content =
       "![test](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==)";
 
-    const result = await processInlineImagesCompat(content, "webdav", "blog/test.md", "relative");
+    const result = await processInlineImagesCompat(content, "local", "blog/test.md", "relative");
 
     expect(result).toContain("![test](./assets/test-test1234.png)");
     expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -356,7 +356,7 @@ describe("processInlineImagesCompat", () => {
     const content =
       "![test](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==)";
 
-    const result = await processInlineImagesCompat(content, "webdav", "blog/test.md");
+    const result = await processInlineImagesCompat(content, "local", "blog/test.md");
 
     expect(result).toContain("./assets/");
   });
@@ -367,7 +367,7 @@ describe("processInlineImagesCompat", () => {
 
     const result = await processInlineImagesCompat(
       content,
-      "webdav",
+      "local",
       "blog/我想看看.md", // 中文文件名
       "relative",
       "i-wan-to-see-see" // 自定义 slug
@@ -392,7 +392,7 @@ describe("processInlineImagesCompat", () => {
 
     const result = await processInlineImagesCompat(
       content,
-      "webdav",
+      "local",
       "blog/1.00.md",
       "relative",
       generatedSlug // 传递生成的 slug
@@ -412,7 +412,7 @@ describe("processInlineImagesCompat", () => {
 
     const result = await processInlineImagesCompat(
       content,
-      "webdav",
+      "local",
       "blog/1.00.md",
       "relative",
       "" // 空 slug
@@ -432,7 +432,7 @@ describe("processInlineImagesCompat", () => {
     // 这是修复后的正确行为：传递从 frontmatter 解析出的正确 slug
     const result = await processInlineImagesCompat(
       content,
-      "webdav",
+      "local",
       "blog/我想看看.md",
       "relative",
       "i-wan-to-see-see" // 从 frontmatter 中正确解析的 slug

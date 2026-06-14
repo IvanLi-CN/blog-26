@@ -15,7 +15,7 @@ export function resolveRelativePath(src: string, articleDir: string): string {
   let resolvedPath: string;
 
   if (src.startsWith("~/assets/")) {
-    // 处理 ~/assets/ 路径，这些是WebDAV上的全局资源
+    // 处理 ~/assets/ 路径，这些是全局资源
     // 直接使用 assets/ 路径，不需要添加文章目录
     const assetPath = src.substring(9); // 移除 '~/assets/'
     resolvedPath = `assets/${assetPath}`;
@@ -39,7 +39,7 @@ export function resolveRelativePath(src: string, articleDir: string): string {
     const newDirParts = parts.slice(0, Math.max(0, parts.length - upCount));
     resolvedPath = `${newDirParts.join("/")}/${srcParts.join("/")}`;
   } else if (src.startsWith("/")) {
-    // 绝对路径（相对于WebDAV根目录）
+    // 绝对路径（相对于内容根目录）
     resolvedPath = src.substring(1);
   } else {
     // 没有前缀的相对路径
@@ -72,7 +72,7 @@ export function generateOptimizedImageUrl(
     quality?: number;
     size?: number;
     dpr?: number;
-    contentSource?: "webdav" | "local";
+    contentSource?: "local";
   } = {}
 ): string {
   const { contentSource = "local" } = options;

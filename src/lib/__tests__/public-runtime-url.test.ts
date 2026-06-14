@@ -23,8 +23,8 @@ describe("public-runtime-url", () => {
 
     expect(getPublicApiBaseUrl()).toBe("https://api.example.test");
     expect(toPublicApiUrl("/api/public/posts")).toBe("https://api.example.test/api/public/posts");
-    expect(toPublicAssetUrl("/api/files/webdav/foo.png")).toBe(
-      "https://api.example.test/api/files/webdav/foo.png"
+    expect(toPublicAssetUrl("/api/files/local/foo.png")).toBe(
+      "https://api.example.test/api/files/local/foo.png"
     );
   });
 

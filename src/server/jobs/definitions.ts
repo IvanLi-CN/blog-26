@@ -1,11 +1,6 @@
 import { isLocalContentEnabled, SYSTEM_CONFIG } from "@/config/paths";
 import { vectorizeAll } from "@/lib/ai/vectorization";
-import {
-  getContentSourceManager,
-  LocalContentSource,
-  WebDAVContentSource,
-} from "@/lib/content-sources";
-import { isWebDAVEnabled } from "@/lib/webdav";
+import { getContentSourceManager, LocalContentSource } from "@/lib/content-sources";
 
 export type Logger = {
   info: (message: string, data?: Record<string, unknown>) => void;
@@ -70,15 +65,6 @@ async function ensureContentSourcesRegistered() {
     });
     const localSource = new LocalContentSource(localConfig);
     await manager.registerSource(localSource);
-  }
-  if (isWebDAVEnabled()) {
-    try {
-      const webdavConfig = WebDAVContentSource.createDefaultConfig("webdav", 100);
-      const webdavSource = new WebDAVContentSource(webdavConfig);
-      await manager.registerSource(webdavSource);
-    } catch (_error) {
-      // ignore if registration fails
-    }
   }
   return manager;
 }

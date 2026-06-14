@@ -25,10 +25,10 @@ async function main() {
     author: "demo@local",
     image: "./assets/vue3-composition-api.jpg",
     metadata: JSON.stringify({}),
-    dataSource: "webdav",
+    dataSource: "local",
     contentHash: `hash-${now}`,
     lastModified: toSec(now),
-    source: "webdav",
+    source: "local",
     filePath: `blog/post-a-${now}.md`,
   };
   const B = {
@@ -47,10 +47,10 @@ async function main() {
     author: "demo@local",
     image: "./assets/docker-best-practices.jpg",
     metadata: JSON.stringify({}),
-    dataSource: "webdav",
+    dataSource: "local",
     contentHash: `hash-${now + 1}`,
     lastModified: toSec(now),
-    source: "webdav",
+    source: "local",
     filePath: `blog/post-b-${now}.md`,
   };
   for (const p of [A, B]) {

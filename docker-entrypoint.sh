@@ -47,7 +47,6 @@ echo "  PORT=$PORT"
 echo "  SITE_PORT=$SITE_PORT"
 echo "  SERVE_PUBLIC_SITE=$SERVE_PUBLIC_SITE"
 echo "  CONTENT_SOURCES=${CONTENT_SOURCES:-default}"
-echo "  WEBDAV_URL=$(env_status WEBDAV_URL)"
 echo "  LLM_SETTINGS_MASTER_KEY=$(env_status LLM_SETTINGS_MASTER_KEY)"
 
 if [ -z "${PUBLIC_SITE_URL:-}" ] && [ -n "${SITE_URL:-}" ]; then
@@ -61,21 +60,6 @@ echo "🌐 Gateway port: $PORT | serve public site: $SERVE_PUBLIC_SITE | Admin b
 echo "🧩 Astro types dir: $ASTRO_TYPES_DIR"
 echo "🪐 Astro cache dir: $ASTRO_CACHE_DIR"
 echo "⚡ Vite cache dir: $VITE_CACHE_DIR"
-
-requires_webdav() {
-  local sources="${CONTENT_SOURCES:-}"
-  if [ -z "$sources" ]; then
-    return 0
-  fi
-  case ",$sources," in
-    *,webdav,*)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
 
 requires_llm_settings_master_key() {
   if [ "${NODE_ENV:-}" != "production" ]; then
@@ -94,10 +78,6 @@ requires_llm_settings_master_key() {
 }
 
 validate_runtime_config() {
-  if requires_webdav && [ -z "${WEBDAV_URL:-}" ]; then
-    echo "❌ Config validation failed: WEBDAV_URL is required when WebDAV source is enabled"
-    exit 1
-  fi
   if requires_llm_settings_master_key && [ -z "${LLM_SETTINGS_MASTER_KEY:-}" ]; then
     echo "❌ Config validation failed: LLM_SETTINGS_MASTER_KEY is required in production to store admin LLM API keys"
     exit 1

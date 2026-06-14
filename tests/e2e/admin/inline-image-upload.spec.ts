@@ -10,7 +10,6 @@ import {
 const ONE_BY_ONE_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
-const E2E_FS_ONLY = process.env.E2E_FS_ONLY === "1" || process.env.E2E_FS_ONLY === "true";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
 function findMemoPayload(value: unknown): Record<string, unknown> | null {
@@ -37,22 +36,6 @@ function findMemoPayload(value: unknown): Record<string, unknown> | null {
 }
 
 test.describe("Inline image upload (Milkdown/Memos)", () => {
-  test.beforeAll(async ({ request }) => {
-    if (E2E_FS_ONLY) return;
-
-    // Ensure WebDAV directories exist: /Memos and /Memos/assets
-    // Playwright webServer uses dufs on :25091 as configured in playwright.config.ts
-    const base = "http://localhost:25091";
-
-    await request.fetch(`${base}/Memos`, { method: "MKCOL" }).catch(() => {
-      /* ignore if already exists */
-    });
-    // Create /Memos/assets (ignore errors if exists)
-    await request.fetch(`${base}/Memos/assets`, { method: "MKCOL" }).catch(() => {
-      /* ignore if already exists */
-    });
-  });
-
   test("uploads base64 inline image and avoids '.md/' in path", async ({ page, baseURL }) => {
     const TOKEN = `__INLINE_${Date.now()}__`;
     await page.request.post("/api/dev/login", {
@@ -163,9 +146,7 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     // Ensure runtime image URLs don't contain ".md/" in path (regression guard).
     for (const src of renderedImageSrcs) {
       expect(src).not.toMatch(/\.md\//);
-      if (E2E_FS_ONLY) {
-        expect(src).not.toMatch(/^\/api\/files\/webdav\//);
-      }
+      expect(src).toMatch(/^\/api\/files\/local\//);
     }
   });
 });

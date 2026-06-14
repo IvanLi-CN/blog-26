@@ -19,10 +19,10 @@ const baseMemo: MemoRow = {
   metadata: JSON.stringify({
     attachments: [{ filename: "old.png", path: "/old.png", isImage: true }],
   }),
-  dataSource: "webdav",
+  dataSource: "local",
   contentHash: "hash",
   lastModified: Date.now(),
-  source: "webdav",
+  source: "local",
   filePath: "/memos/memo-1.md",
 };
 
@@ -34,7 +34,7 @@ describe("buildSafeMemoResponse", () => {
       tags: "{bad json",
     };
     const now = new Date("2025-01-02T03:04:05.000Z");
-    const attachments = [{ filename: "new.png", path: "/api/files/webdav/new.png", isImage: true }];
+    const attachments = [{ filename: "new.png", path: "/api/files/local/new.png", isImage: true }];
 
     const res = buildSafeMemoResponse(memo, {
       inputAttachments: attachments,

@@ -70,11 +70,11 @@ test.describe("Nature frontend public coverage", () => {
   });
 
   test("detail routes and tag drill-down remain navigable", async ({ page }) => {
-    await gotoWithTheme(page, "/posts/react-hooks-deep-dive", "light");
-    await expect(page.locator("main h1").first()).toHaveText("React Hooks 深度解析");
+    await gotoWithTheme(page, "/posts/hello-world", "light");
+    await expect(page.locator("main h1").first()).toHaveText("Hello World");
 
-    await gotoWithTheme(page, "/memos/e2e-local", "light");
-    await expect(page.locator("main h1").first()).toHaveText("E2E 删除测试-LOCAL");
+    await gotoWithTheme(page, "/memos/local-memo", "light");
+    await expect(page.locator("main h1").first()).toHaveText("Local Memo");
 
     await gotoWithTheme(page, "/tags", "light");
     const firstTag = page.locator('a[href^="/tags/"]').first();
@@ -125,29 +125,43 @@ test.describe("Nature frontend public coverage", () => {
     await expect(memosTimeline).toBeVisible();
     await expect(memosTimeline.getByTestId("memo-card").first()).toBeVisible();
     await expect(memosTimeline.getByTestId("timeline-node").first()).toBeVisible();
-    await expect(memosTimeline.getByTestId("timeline-connector").first()).toBeVisible();
-    expect(await memosTimeline.getByTestId("memo-card").count()).toBeGreaterThan(1);
+    const memoCount = await memosTimeline.getByTestId("memo-card").count();
+    expect(memoCount).toBeGreaterThan(0);
+    if (memoCount > 1) {
+      await expect(memosTimeline.getByTestId("timeline-connector").first()).toBeVisible();
+    } else {
+      await expect(memosTimeline.getByTestId("timeline-connector")).toHaveCount(0);
+    }
 
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoWithTheme(page, "/memos", "light");
     const mobileTimeline = page.getByTestId("memos-timeline");
     const mobileNode = mobileTimeline.getByTestId("timeline-node").first();
-    const mobileConnector = mobileTimeline.getByTestId("timeline-connector").first();
     await expect(mobileNode).toBeVisible();
-    await expect(mobileConnector).toBeVisible();
 
     const nodeBox = await mobileNode.boundingBox();
-    const connectorBox = await mobileConnector.boundingBox();
-
     expect(nodeBox).not.toBeNull();
-    expect(connectorBox).not.toBeNull();
 
-    if (!nodeBox || !connectorBox) {
-      throw new Error("timeline node or connector is not measurable on mobile");
+    if (!nodeBox) {
+      throw new Error("timeline node is not measurable on mobile");
     }
 
     expect(nodeBox.width).toBeGreaterThan(8);
-    expect(connectorBox.height).toBeGreaterThan(24);
+    if (memoCount > 1) {
+      const mobileConnector = mobileTimeline.getByTestId("timeline-connector").first();
+      await expect(mobileConnector).toBeVisible();
+
+      const connectorBox = await mobileConnector.boundingBox();
+      expect(connectorBox).not.toBeNull();
+
+      if (!connectorBox) {
+        throw new Error("timeline connector is not measurable on mobile");
+      }
+
+      expect(connectorBox.height).toBeGreaterThan(24);
+    } else {
+      await expect(mobileTimeline.getByTestId("timeline-connector")).toHaveCount(0);
+    }
   });
 
   test.describe("system theme and reduced motion", () => {

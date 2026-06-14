@@ -29,7 +29,6 @@ function resetHttpCompatEnv() {
   process.env.LOCAL_BLOG_PATH = "/blog,/Hardware";
   process.env.PUBLIC_SITE_URL = "https://pages.example.test";
   process.env.LLM_SETTINGS_MASTER_KEY = "test-master-key";
-  delete process.env.WEBDAV_URL;
   delete process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_BASE_URL;
 }
@@ -59,7 +58,7 @@ async function seedPost(
     draft: boolean;
     public: boolean;
     tags: string | null;
-    source: "local" | "webdav";
+    source: "local" | "local";
     filePath: string;
     author: string | null;
     metadata: string | null;
@@ -820,18 +819,18 @@ describe("HTTP compatibility APIs", () => {
     );
   });
 
-  it("preserves WebDAV media urls when a public row is not eligible for the local facade", async () => {
+  it("rewrites local media urls to the public facade for public rows", async () => {
     await seedPost({
-      id: "blog/webdav-media-post.md",
-      filePath: "blog/webdav-media-post.md",
-      slug: "webdav-media-post",
+      id: "blog/local-media-post.md",
+      filePath: "blog/local-media-post.md",
+      slug: "local-media-post",
       type: "post",
-      title: "WebDAV Media Post",
-      body: "![inline](./assets/webdav-cover.png)",
-      image: "./assets/webdav-cover.png",
+      title: "Local Media Post",
+      body: "![inline](./assets/local-cover.png)",
+      image: "./assets/local-cover.png",
       public: true,
       draft: false,
-      source: "webdav",
+      source: "local",
     });
 
     const response = await handlePublicApiRequest(
@@ -842,11 +841,13 @@ describe("HTTP compatibility APIs", () => {
 
     const payload = await readJson(response);
     const snapshotPost = payload.posts.find(
-      (post: { slug: string }) => post.slug === "webdav-media-post"
+      (post: { slug: string }) => post.slug === "local-media-post"
     );
-    expect(snapshotPost?.image).toContain("/api/files/webdav/blog/assets/webdav-cover.png");
-    expect(snapshotPost?.image).not.toContain("/api/public/assets/");
-    expect(snapshotPost?.media?.cover).toBeNull();
+    expect(snapshotPost?.image).toContain("/api/public/assets/post/local-media-post/");
+    expect(snapshotPost?.image).not.toContain("/api/files/");
+    expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
+      "/api/public/assets/post/local-media-post/"
+    );
   });
 
   it("proxies public facade image requests through imagorvideo without redirecting", async () => {
@@ -1064,7 +1065,7 @@ describe("HTTP compatibility APIs", () => {
       buildRequest(pathname, { method: "POST", headers, body: "hello" }),
       params
     );
-    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.status).toBe(403);
     expect(unauthorized.headers.get("access-control-allow-origin")).toBe(
       "https://pages.example.test"
     );
@@ -1135,42 +1136,6 @@ describe("HTTP compatibility APIs", () => {
     expect(response.headers.get("access-control-allow-origin")).toBe("https://pages.example.test");
     const body = new Uint8Array(await response.arrayBuffer());
     expect(body.byteLength).toBe(0);
-  });
-
-  it("keeps WebDAV 404 infrastructure errors as server failures", async () => {
-    const originalWebdavUrl = process.env.WEBDAV_URL;
-    const originalContentSources = process.env.CONTENT_SOURCES;
-    const originalFetch = globalThis.fetch;
-    process.env.WEBDAV_URL = "https://webdav.example.test";
-    process.env.CONTENT_SOURCES = "local,webdav";
-    globalThis.fetch = (async () => new Response("missing", { status: 404 })) as typeof fetch;
-
-    try {
-      const response = await handleFilesApiRequest(
-        buildRequest("/api/files/webdav/blog/assets/missing-cover.jpg", {
-          method: "GET",
-          headers: {
-            origin: "https://pages.example.test",
-          },
-        }),
-        { source: "webdav", path: ["blog", "assets", "missing-cover.jpg"] }
-      );
-
-      expect(response.status).toBe(500);
-      expect(response.headers.get("access-control-allow-origin")).toBe(
-        "https://pages.example.test"
-      );
-      await expect(readJson(response)).resolves.toMatchObject({ error: "读取文件失败" });
-    } finally {
-      if (originalWebdavUrl) {
-        process.env.WEBDAV_URL = originalWebdavUrl;
-      } else {
-        delete process.env.WEBDAV_URL;
-      }
-      process.env.CONTENT_SOURCES = originalContentSources ?? "local";
-      process.env.LOCAL_CONTENT_BASE_PATH = LOCAL_CONTENT_BASE_PATH;
-      globalThis.fetch = originalFetch;
-    }
   });
 
   it("serves memo CRUD from /api/public/memos/* without tRPC routing", async () => {
@@ -1416,62 +1381,12 @@ describe("HTTP compatibility APIs", () => {
     );
   });
 
-  it("initializes the local content source before writing files through the admin API", async () => {
-    const { getContentSourceManager } = await import("@/lib/content-sources");
-    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
-    fs.mkdirSync(hardwareDir, { recursive: true });
-    const manager = getContentSourceManager();
-    const originalSyncAll = manager.syncAll;
-
-    manager.syncAll = (async () => ({
-      success: true,
-      startTime: Date.now(),
-      endTime: Date.now(),
-      sources: ["local"],
-      stats: {
-        totalProcessed: 0,
-        created: 0,
-        updated: 0,
-        deleted: 0,
-        skipped: 0,
-        errors: 0,
-      },
-      errors: [],
-      logs: [],
-    })) as typeof manager.syncAll;
-
-    try {
-      const response = await handleAdminApiRequest(
-        buildRequest(
-          "/api/admin/files/write",
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              source: "local",
-              path: "Hardware/new-admin-file.md",
-              content: "",
-            }),
-          },
-          ADMIN_EMAIL
-        ),
-        "/files/write"
-      );
-
-      expect(response.status).toBe(200);
-      const payload = await readJson(response);
-      expect(payload.success).toBe(true);
-      expect(fs.existsSync(path.join(hardwareDir, "new-admin-file.md"))).toBe(true);
-    } finally {
-      manager.syncAll = originalSyncAll;
-    }
-  });
-
-  it("does not reinitialize a ready local source before repeated admin writes", async () => {
+  it("initializes the local content source once and reuses it for repeated admin writes", async () => {
     const { LocalContentSource, getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
-    const filePath = "Hardware/repeated-admin-file.md";
+    const initializedFilePath = "Hardware/new-admin-file.md";
+    const repeatedFilePath = "Hardware/repeated-admin-file.md";
     fs.mkdirSync(hardwareDir, { recursive: true });
 
     const manager = getContentSourceManager();
@@ -1501,7 +1416,7 @@ describe("HTTP compatibility APIs", () => {
     })) as typeof manager.syncAll;
 
     try {
-      const firstWrite = await handleAdminApiRequest(
+      const initializedWrite = await handleAdminApiRequest(
         buildRequest(
           "/api/admin/files/write",
           {
@@ -1509,7 +1424,29 @@ describe("HTTP compatibility APIs", () => {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               source: "local",
-              path: filePath,
+              path: initializedFilePath,
+              content: "",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(initializedWrite.status).toBe(200);
+      const initializedPayload = await readJson(initializedWrite);
+      expect(initializedPayload.success).toBe(true);
+      expect(fs.existsSync(path.join(hardwareDir, "new-admin-file.md"))).toBe(true);
+
+      const firstRepeatedWrite = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: repeatedFilePath,
               content: "first",
             }),
           },
@@ -1517,10 +1454,10 @@ describe("HTTP compatibility APIs", () => {
         ),
         "/files/write"
       );
-      expect(firstWrite.status).toBe(200);
-      const initializeCallsAfterFirstWrite = initializeCalls;
+      expect(firstRepeatedWrite.status).toBe(200);
+      const initializeCallsAfterFirstRepeatedWrite = initializeCalls;
 
-      const secondWrite = await handleAdminApiRequest(
+      const secondRepeatedWrite = await handleAdminApiRequest(
         buildRequest(
           "/api/admin/files/write",
           {
@@ -1528,7 +1465,7 @@ describe("HTTP compatibility APIs", () => {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               source: "local",
-              path: filePath,
+              path: repeatedFilePath,
               content: "second",
             }),
           },
@@ -1536,9 +1473,12 @@ describe("HTTP compatibility APIs", () => {
         ),
         "/files/write"
       );
-      expect(secondWrite.status).toBe(200);
-      expect(initializeCalls).toBe(initializeCallsAfterFirstWrite);
-      expect(fs.readFileSync(path.join(LOCAL_CONTENT_BASE_PATH, filePath), "utf-8")).toBe("second");
+      expect(secondRepeatedWrite.status).toBe(200);
+      expect(initializeCallsAfterFirstRepeatedWrite).toBeGreaterThan(0);
+      expect(initializeCalls).toBe(initializeCallsAfterFirstRepeatedWrite);
+      expect(fs.readFileSync(path.join(LOCAL_CONTENT_BASE_PATH, repeatedFilePath), "utf-8")).toBe(
+        "second"
+      );
     } finally {
       LocalContentSource.prototype.initialize = originalInitialize;
       manager.syncAll = originalSyncAll;

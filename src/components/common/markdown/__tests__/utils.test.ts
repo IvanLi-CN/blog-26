@@ -21,8 +21,8 @@ describe("Markdown Utils", () => {
     it("rewrites file-api assets to the configured public api origin", () => {
       process.env.PUBLIC_API_BASE_URL = "https://api.example.test";
 
-      expect(generateOptimizedImageUrl("./assets/image.jpg", "webdav")).toBe(
-        "https://api.example.test/api/files/webdav/assets/image.jpg"
+      expect(generateOptimizedImageUrl("./assets/image.jpg", "local")).toBe(
+        "https://api.example.test/api/files/local/assets/image.jpg"
       );
     });
   });
@@ -200,8 +200,8 @@ More content with`);
     it("keeps backend API links unprefixed", () => {
       process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
 
-      expect(defaultUrlTransform("/api/files/webdav/assets/image.jpg")).toBe(
-        "/api/files/webdav/assets/image.jpg"
+      expect(defaultUrlTransform("/api/files/local/assets/image.jpg")).toBe(
+        "/api/files/local/assets/image.jpg"
       );
     });
   });
@@ -249,8 +249,8 @@ More content with`);
     it("keeps backend API links unprefixed", () => {
       process.env.PUBLIC_SITE_BASE_PATH = "/blog-26";
 
-      expect(publicSiteUrlTransform("/api/files/webdav/assets/image.jpg")).toBe(
-        "/api/files/webdav/assets/image.jpg"
+      expect(publicSiteUrlTransform("/api/files/local/assets/image.jpg")).toBe(
+        "/api/files/local/assets/image.jpg"
       );
     });
   });

@@ -30,7 +30,7 @@ describe("persisted-paths", () => {
 
     it("converts Files API urls to markdown-relative", () => {
       expect(
-        normalizePersistedLink("/api/files/webdav/blog/assets/a.png", "blog/hello-world.md")
+        normalizePersistedLink("/api/files/local/blog/assets/a.png", "blog/hello-world.md")
       ).toBe("./assets/a.png");
       expect(
         normalizePersistedLink("/api/files/local/assets/shared/logo.png", "blog/hello-world.md")
@@ -39,10 +39,7 @@ describe("persisted-paths", () => {
 
     it("preserves query/hash suffixes", () => {
       expect(
-        normalizePersistedLink(
-          "/api/files/webdav/blog/assets/a.png?x=1#frag",
-          "blog/hello-world.md"
-        )
+        normalizePersistedLink("/api/files/local/blog/assets/a.png?x=1#frag", "blog/hello-world.md")
       ).toBe("./assets/a.png?x=1#frag");
     });
   });
@@ -64,7 +61,7 @@ describe("persisted-paths", () => {
 
   describe("rewriteApiFilesUrlsToRelative", () => {
     it("rewrites /api/files urls inside markdown content", () => {
-      const input = "![a](/api/files/webdav/blog/assets/a.png)";
+      const input = "![a](/api/files/local/blog/assets/a.png)";
       const { content, changed } = rewriteApiFilesUrlsToRelative(input, "blog/hello-world.md");
       expect(changed).toBeTruthy();
       expect(content).toBe("![a](./assets/a.png)");
@@ -74,7 +71,7 @@ describe("persisted-paths", () => {
   describe("hasApiFilesReference", () => {
     it("detects /api/files usage", () => {
       expect(hasApiFilesReference("ok")).toBeFalse();
-      expect(hasApiFilesReference("/api/files/webdav/x")).toBeTrue();
+      expect(hasApiFilesReference("/api/files/local/x")).toBeTrue();
     });
   });
 });
