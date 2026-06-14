@@ -189,6 +189,9 @@ describe("persisted-paths", () => {
         "![cover](/blog/assets/cover.png)",
         '<img src="/blog/assets/html.png" srcset="/blog/assets/html-small.png 1x, /blog/assets/html-large.png 2x">',
         "![[/blog/assets/wiki.png|1200]]",
+        "[docs](/blog/docs)",
+        '<a href="/blog/docs/page">Docs page</a>',
+        "[manual](/blog/docs/manual.pdf)",
         "[search](/search)",
         '<a href="/posts/hello-world/">Post</a>',
         '<a href="/feed.xml">Feed</a>',
@@ -209,6 +212,9 @@ describe("persisted-paths", () => {
         '<img src="./archive/assets/html.png" srcset="./archive/assets/html-small.png 1x, ./archive/assets/html-large.png 2x">'
       );
       expect(content).toContain("![[./archive/assets/wiki.png|1200]]");
+      expect(content).toContain("[docs](/blog/docs)");
+      expect(content).toContain('<a href="/blog/docs/page">Docs page</a>');
+      expect(content).toContain("[manual](/blog/docs/manual.pdf)");
       expect(content).toContain("[search](/search)");
       expect(content).toContain('<a href="/posts/hello-world/">Post</a>');
       expect(content).toContain('<a href="/feed.xml">Feed</a>');

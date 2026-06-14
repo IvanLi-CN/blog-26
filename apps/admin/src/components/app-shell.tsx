@@ -351,7 +351,9 @@ export function AppShell() {
   });
   const [routeSidebar, setRouteSidebar] = useState<AppShellSidebarPanel | null>(null);
   const [sidebarFloatingFooter, setSidebarFloatingFooter] = useState<ReactNode | null>(null);
-  const [sidebarFloatingFooterElement, setSidebarFloatingFooterElement] =
+  const [desktopSidebarFloatingFooterElement, setDesktopSidebarFloatingFooterElement] =
+    useState<HTMLDivElement | null>(null);
+  const [mobileSidebarFloatingFooterElement, setMobileSidebarFloatingFooterElement] =
     useState<HTMLDivElement | null>(null);
   const [sidebarFloatingFooterHeight, setSidebarFloatingFooterHeight] = useState(0);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("nav");
@@ -375,15 +377,17 @@ export function AppShell() {
   }, [sidebarWidth]);
 
   useEffect(() => {
-    if (!sidebarFloatingFooterElement) {
+    const measuredElement = mobileOpen
+      ? mobileSidebarFloatingFooterElement
+      : desktopSidebarFloatingFooterElement;
+
+    if (!measuredElement) {
       setSidebarFloatingFooterHeight(0);
       return;
     }
 
     const updateHeight = () => {
-      setSidebarFloatingFooterHeight(
-        Math.ceil(sidebarFloatingFooterElement.getBoundingClientRect().height)
-      );
+      setSidebarFloatingFooterHeight(Math.ceil(measuredElement.getBoundingClientRect().height));
     };
 
     updateHeight();
@@ -394,10 +398,10 @@ export function AppShell() {
     }
 
     const resizeObserver = new ResizeObserver(updateHeight);
-    resizeObserver.observe(sidebarFloatingFooterElement);
+    resizeObserver.observe(measuredElement);
 
     return () => resizeObserver.disconnect();
-  }, [sidebarFloatingFooterElement]);
+  }, [desktopSidebarFloatingFooterElement, mobileOpen, mobileSidebarFloatingFooterElement]);
 
   useEffect(() => {
     if (!sidebarFloatingFooter) {
@@ -541,7 +545,10 @@ export function AppShell() {
                 className="pointer-events-none absolute inset-x-4 bottom-4 z-20"
                 data-testid="admin-sidebar-floating-footer-host"
               >
-                <div ref={setSidebarFloatingFooterElement} className="pointer-events-auto w-full">
+                <div
+                  ref={setDesktopSidebarFloatingFooterElement}
+                  className="pointer-events-auto w-full"
+                >
                   {sidebarFloatingFooter}
                 </div>
               </div>
@@ -598,7 +605,7 @@ export function AppShell() {
               />
               {sidebarFloatingFooter ? (
                 <div className="pointer-events-none absolute inset-x-4 bottom-4 z-20">
-                  <div ref={setSidebarFloatingFooterElement} className="pointer-events-auto">
+                  <div ref={setMobileSidebarFloatingFooterElement} className="pointer-events-auto">
                     {sidebarFloatingFooter}
                   </div>
                 </div>

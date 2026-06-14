@@ -412,6 +412,10 @@ function rebaseMovedReferenceTarget(
   if (trimmed.startsWith("/") && !isFileApiUrl(trimmed)) {
     const { path: rawPath, suffix } = splitSuffix(trimmed);
     const currentPath = stripLeadingSlashes(normalizeSlashes(rawPath.trim()));
+    if (!isContentAssetPath(currentPath)) {
+      return value;
+    }
+
     const rebased = rebaseMovedContentPath(currentPath, normalizedOldTarget, normalizedNewTarget);
 
     if (!rebased) {
