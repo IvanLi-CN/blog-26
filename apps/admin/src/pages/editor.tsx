@@ -352,10 +352,12 @@ export function remapTabPath(tab: EditorTab, source: "local", oldPath: string, n
       const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
       return {
         ...tab,
+        id: `post:${nextFilePath}`,
         label: derivedDraft.title || tab.label,
         database: {
           ...tab.database,
           ...derivedDraft,
+          postId: nextFilePath,
           filePath: nextFilePath,
           content: nextContent,
         },
@@ -395,15 +397,21 @@ export function remapActiveTabIdForPathChange(
   const normalizedOldPath = normalizeTreePath(oldPath);
   const normalizedNewPath = normalizeTreePath(newPath);
   const filePrefix = `file:${source}:`;
-  if (!activeTabId.startsWith(filePrefix)) return activeTabId;
+  const databasePrefix = "post:";
+  const prefix = activeTabId.startsWith(filePrefix)
+    ? filePrefix
+    : activeTabId.startsWith(databasePrefix)
+      ? databasePrefix
+      : null;
+  if (!prefix) return activeTabId;
 
-  const currentPath = normalizeTreePath(activeTabId.slice(filePrefix.length));
+  const currentPath = normalizeTreePath(activeTabId.slice(prefix.length));
   if (currentPath !== normalizedOldPath && !currentPath.startsWith(`${normalizedOldPath}/`)) {
     return activeTabId;
   }
 
   const nextPath = replaceTreePathPrefix(currentPath, normalizedOldPath, normalizedNewPath);
-  return `${filePrefix}${nextPath}`;
+  return `${prefix}${nextPath}`;
 }
 
 export function remapBrowserPathForPathChange(

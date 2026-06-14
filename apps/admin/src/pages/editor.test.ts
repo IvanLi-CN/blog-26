@@ -174,6 +174,42 @@ describe("editor tab path remapping", () => {
     });
   });
 
+  test("updates database-backed tab identity when moving or renaming its local file", () => {
+    const tab = remapTabPath(
+      {
+        id: "post:blog/drafts/post.md",
+        label: "Draft Post",
+        kind: "database",
+        mode: "wysiwyg",
+        dirty: false,
+        database: {
+          postId: "blog/drafts/post.md",
+          slug: "draft-post",
+          title: "Draft Post",
+          excerpt: "",
+          content: "---\nslug: draft-post\n---\n\n# Draft Post\n\n![cover](./assets/cover.png)",
+          draft: false,
+          public: true,
+          source: "local",
+          filePath: "blog/drafts/post.md",
+        },
+      },
+      "local",
+      "blog/drafts/post.md",
+      "blog/archive/post.md"
+    );
+
+    expect(tab).toMatchObject({
+      id: "post:blog/archive/post.md",
+      database: {
+        postId: "blog/archive/post.md",
+        filePath: "blog/archive/post.md",
+        content:
+          "---\nslug: draft-post\n---\n\n# Draft Post\n\n![cover](../drafts/assets/cover.png)",
+      },
+    });
+  });
+
   test("keeps active file tabs selected after rename or move operations", () => {
     expect(
       remapActiveTabIdForPathChange(
@@ -192,6 +228,26 @@ describe("editor tab path remapping", () => {
         "blog/archive"
       )
     ).toBe("file:local:blog/archive/nested/post.md");
+  });
+
+  test("keeps active database tabs selected after rename or move operations", () => {
+    expect(
+      remapActiveTabIdForPathChange(
+        "post:blog/drafts/post.md",
+        "local",
+        "blog/drafts/post.md",
+        "blog/archive/post.md"
+      )
+    ).toBe("post:blog/archive/post.md");
+
+    expect(
+      remapActiveTabIdForPathChange(
+        "post:blog/drafts/nested/post.md",
+        "local",
+        "blog/drafts",
+        "blog/archive"
+      )
+    ).toBe("post:blog/archive/nested/post.md");
   });
 
   test("selects a fallback tab after deleting the active file", () => {
