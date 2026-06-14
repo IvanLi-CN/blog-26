@@ -747,7 +747,7 @@ function addParentDirectoriesFromKey(key: string) {
 
 function isDemoMarkdownPath(path: string) {
   const lowerPath = path.toLowerCase();
-  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown");
+  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown") || lowerPath.endsWith(".mdx");
 }
 
 function isDemoPathInside(path: string, rootPath: string) {

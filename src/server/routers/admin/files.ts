@@ -1039,8 +1039,7 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    const isMarkdown =
-      input.path.toLowerCase().endsWith(".md") || input.path.toLowerCase().endsWith(".markdown");
+    const isMarkdown = isMarkdownContentFile(input.path);
     let contentToWrite = input.content;
 
     if (isMarkdown && hasApiFilesReference(contentToWrite)) {

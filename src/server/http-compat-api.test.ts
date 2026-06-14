@@ -1688,6 +1688,46 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rewrites runtime file URLs when writing MDX files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(path.join(hardwareDir, "assets"), { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "assets", "cover.png"), "cover");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/article.mdx",
+              content:
+                "---\nimage: /api/files/local/Hardware/assets/cover.png\n---\n\n![cover](/api/files/local/Hardware/assets/cover.png)",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(200);
+      const savedContent = fs.readFileSync(path.join(hardwareDir, "article.mdx"), "utf-8");
+      expect(savedContent).not.toContain("/api/files/");
+      expect(savedContent).toContain("image: ./assets/cover.png");
+      expect(savedContent).toContain("![cover](./assets/cover.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rebases moved markdown links and copied markdown file links", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
