@@ -198,6 +198,10 @@ export const MoveDialog: Story = {
       within(dialog).getByText("当前文件已经在这个目录中，请选择其他目标目录。")
     ).toBeVisible();
     await expect(within(dialog).getByRole("button", { name: "确认移动" })).toBeDisabled();
+    await userEvent.hover(within(dialog).getByRole("button", { name: "根目录" }));
+    await expect(body.getByRole("tooltip")).toHaveTextContent(
+      "不能把项目放到内容根目录，请选择一个已配置的目录。"
+    );
     await userEvent.hover(within(dialog).getByRole("button", { name: "content" }));
     await expect(body.getByRole("tooltip")).toHaveTextContent(
       "当前文件已经在这个目录中，请选择其他目标目录。"

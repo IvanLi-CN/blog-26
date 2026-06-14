@@ -342,6 +342,25 @@ export function remapActiveTabIdForPathChange(
   return `${filePrefix}${nextPath}`;
 }
 
+export function resolveActiveTabIdAfterTreeDelete(
+  tabs: EditorTab[],
+  activeTabId: string | null,
+  source: "local",
+  deletedEntries: Array<{ path: string; type: TreeItemType }>
+) {
+  if (!activeTabId) return activeTabId;
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  if (!activeTab) return tabs[tabs.length - 1]?.id ?? null;
+
+  const activeContext = getEditorContext(activeTab);
+  if (activeContext.contentSource !== source) return activeTabId;
+
+  const activeDeleted = deletedEntries.some((entry) =>
+    isTreeOperationTargeted(activeContext.articlePath, entry.path, entry.type)
+  );
+  return activeDeleted ? (tabs[tabs.length - 1]?.id ?? null) : activeTabId;
+}
+
 function isTreeOperationTargeted(entryPath: string, targetPath: string, targetType: TreeItemType) {
   const normalizedEntryPath = normalizeTreePath(entryPath);
   const normalizedTargetPath = normalizeTreePath(targetPath);
@@ -1275,15 +1294,24 @@ export function EditorPage() {
           type: entry.type as TreeItemType,
         }));
 
-        setTabs((current) =>
-          current.filter((tab) => {
+        setTabs((current) => {
+          const nextTabs = current.filter((tab) => {
             const context = getEditorContext(tab);
             if (context.contentSource !== selectedSource) return true;
             return !deletedEntries.some((entry) =>
               isTreeOperationTargeted(context.articlePath, entry.path, entry.type)
             );
-          })
-        );
+          });
+          setActiveTabId((currentActiveId) =>
+            resolveActiveTabIdAfterTreeDelete(
+              nextTabs,
+              currentActiveId,
+              selectedSource,
+              deletedEntries
+            )
+          );
+          return nextTabs;
+        });
         setSelectedTreeItem((current) => {
           if (!current || current.source !== selectedSource) return current;
           return deletedEntries.some((entry) =>

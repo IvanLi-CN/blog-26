@@ -446,6 +446,20 @@ async function rebaseMovedMarkdownLinks(
   );
 }
 
+async function rebaseCopiedMarkdownFileLinks(
+  fullPath: string,
+  oldRelativePath: string,
+  newRelativePath: string
+) {
+  if (!isMarkdownContentFile(fullPath)) return;
+  const fs = await import("node:fs/promises");
+  const currentContent = await fs.readFile(fullPath, "utf-8");
+  const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
+  if (rebased.changed) {
+    await fs.writeFile(fullPath, rebased.content, "utf-8");
+  }
+}
+
 async function moveLocalEntries(
   paths: string[],
   destinationPath: string
@@ -617,6 +631,13 @@ async function copyLocalEntries(
       errorOnExist: true,
       force: false,
     });
+    if (operation.type === "file") {
+      await rebaseCopiedMarkdownFileLinks(
+        operation.fullNextPath,
+        operation.path,
+        operation.nextPath
+      );
+    }
   }
 
   return {

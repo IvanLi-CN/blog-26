@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { mapBatchResultsToTreeSelection, remapActiveTabIdForPathChange } from "./editor";
+import {
+  mapBatchResultsToTreeSelection,
+  remapActiveTabIdForPathChange,
+  resolveActiveTabIdAfterTreeDelete,
+} from "./editor";
 
 describe("editor batch selection mapping", () => {
   test("maps pasted batch results to the new tree selection set", () => {
@@ -50,5 +54,33 @@ describe("editor tab path remapping", () => {
         "blog/archive"
       )
     ).toBe("file:local:blog/archive/nested/post.md");
+  });
+
+  test("selects a fallback tab after deleting the active file", () => {
+    expect(
+      resolveActiveTabIdAfterTreeDelete(
+        [
+          {
+            id: "file:local:blog/first.md",
+            label: "first.md",
+            kind: "file",
+            mode: "wysiwyg",
+            dirty: false,
+            file: { source: "local", path: "blog/first.md", content: "" },
+          },
+          {
+            id: "file:local:blog/second.md",
+            label: "second.md",
+            kind: "file",
+            mode: "wysiwyg",
+            dirty: false,
+            file: { source: "local", path: "blog/second.md", content: "" },
+          },
+        ],
+        "file:local:blog/deleted.md",
+        "local",
+        [{ path: "blog/deleted.md", type: "file" }]
+      )
+    ).toBe("file:local:blog/second.md");
   });
 });

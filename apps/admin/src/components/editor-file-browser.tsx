@@ -112,6 +112,10 @@ function formatDirectoryTargetLabel(path: string | null | undefined) {
   return normalizedPath || "根目录";
 }
 
+function getRootDestinationDisabledReason() {
+  return "不能把项目放到内容根目录，请选择一个已配置的目录。";
+}
+
 function isRowOverflowing(container: HTMLElement | null) {
   if (!container) return false;
   return container.scrollWidth - container.clientWidth > 1;
@@ -524,42 +528,27 @@ function DirectoryPickerTree({
           className
         )}
       >
-        {disabledReasons.get("") ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-disabled
-                title={`根目录：${disabledReasons.get("")}`}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                  !selectedPath && "bg-primary/10 text-primary ring-1 ring-primary/25",
-                  "cursor-not-allowed text-muted-foreground/55"
-                )}
-                onClick={() => undefined}
-              >
-                <Folder className="size-4 shrink-0 text-primary" />
-                <span>根目录</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" align="start" className="max-w-64 text-xs leading-5">
-              {disabledReasons.get("")}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <button
-            type="button"
-            className={cn(
-              "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm transition",
-              !selectedPath && "bg-primary/10 text-primary ring-1 ring-primary/25",
-              "hover:bg-muted/60"
-            )}
-            onClick={() => onSelect("")}
-          >
-            <Folder className="size-4 shrink-0 text-primary" />
-            <span>根目录</span>
-          </button>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-disabled
+              title={`根目录：${disabledReasons.get("") ?? getRootDestinationDisabledReason()}`}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                !selectedPath && "bg-primary/10 text-primary ring-1 ring-primary/25",
+                "cursor-not-allowed text-muted-foreground/55"
+              )}
+              onClick={() => undefined}
+            >
+              <Folder className="size-4 shrink-0 text-primary" />
+              <span>根目录</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" align="start" className="max-w-64 text-xs leading-5">
+            {disabledReasons.get("") ?? getRootDestinationDisabledReason()}
+          </TooltipContent>
+        </Tooltip>
         {renderNodes(rootItems)}
       </div>
     </TooltipProvider>
@@ -1304,7 +1293,7 @@ export function EditorFileBrowser({
   ]);
 
   const clipboardDisabledTargets = useMemo(() => {
-    const disabled = new Set<string>();
+    const disabled = new Set<string>([""]);
     for (const item of clipboard?.items ?? []) {
       if (item.type !== "directory") continue;
       disabled.add(normalizeTreePath(item.path));
@@ -1675,7 +1664,7 @@ export function EditorFileBrowser({
   );
 
   const disabledMoveTargets = useMemo(() => {
-    const disabled = new Map<string, string>();
+    const disabled = new Map<string, string>([["", getRootDestinationDisabledReason()]]);
     for (const entry of moveDialog?.entries ?? []) {
       const parentPath = getParentTreePath(entry.path);
       if (entry.type !== "directory") {

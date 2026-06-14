@@ -1624,7 +1624,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("rebases moved markdown links while copied markdown keeps source content", async () => {
+  it("rebases moved markdown links and copied markdown file links", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -1690,9 +1690,9 @@ describe("HTTP compatibility APIs", () => {
       );
       expect(copyResponse.status).toBe(200);
       const copiedContent = fs.readFileSync(path.join(docsDir, "linked.md"), "utf-8");
-      expect(copiedContent).toContain("image: ../docs/assets/cover.png");
-      expect(copiedContent).toContain("![cover](../docs/assets/cover.png)");
-      expect(copiedContent).toContain("![[../docs/assets/wiki.png|1200]]");
+      expect(copiedContent).toContain("image: ./assets/cover.png");
+      expect(copiedContent).toContain("![cover](./assets/cover.png)");
+      expect(copiedContent).toContain("![[./assets/wiki.png|1200]]");
     } finally {
       manager.syncAll = originalSyncAll;
     }
