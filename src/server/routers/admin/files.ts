@@ -100,6 +100,11 @@ type BatchEntryResult = {
   type: "file" | "directory";
 };
 
+type RollbackableResult<T> = T & {
+  rollback: () => Promise<void>;
+  commit?: () => Promise<void>;
+};
+
 type MarkdownWriteJournal = Map<string, string>;
 
 function isMarkdownContentFile(path: string) {
@@ -347,6 +352,20 @@ async function triggerAdminContentSync(): Promise<void> {
   }
 }
 
+async function syncAndCommitFileMutation<
+  T extends { rollback: () => Promise<void>; commit?: () => Promise<void> },
+>(result: T): Promise<Omit<T, "rollback" | "commit">> {
+  try {
+    await triggerAdminContentSync();
+  } catch (error) {
+    await result.rollback();
+    throw error;
+  }
+  await result.commit?.();
+  const { rollback: _rollback, commit: _commit, ...payload } = result;
+  return payload;
+}
+
 async function listLocalDirectory(path: string): Promise<FileItem[]> {
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
@@ -433,7 +452,34 @@ async function readLocalFile(path: string): Promise<string> {
   return fs.readFile(fullPath, "utf-8");
 }
 
-async function renameLocalFile(oldPath: string, newName: string): Promise<void> {
+async function snapshotWritableLocalFile(path: string) {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const safePath = assertLocalPathAllowed(path);
+  const fullPath = nodePath.join(basePath, safePath);
+  const previousContent = await fs
+    .readFile(fullPath, "utf-8")
+    .catch((error: NodeJS.ErrnoException) => {
+      if (error?.code === "ENOENT") return null;
+      throw error;
+    });
+
+  return {
+    rollback: async () => {
+      if (previousContent === null) {
+        await fs.rm(fullPath, { force: true });
+        return;
+      }
+      await fs.writeFile(fullPath, previousContent, "utf-8");
+    },
+  };
+}
+
+async function renameLocalFile(
+  oldPath: string,
+  newName: string
+): Promise<RollbackableResult<{ newPath: string }>> {
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
 
@@ -467,8 +513,20 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
     }
   }
 
+  let renamed = false;
   await fs.rename(fullOldPath, fullNewPath);
+  renamed = true;
   const journal: MarkdownWriteJournal = new Map();
+  const rollback = async () => {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      if (renamed) {
+        await fs.rename(fullNewPath, fullOldPath).catch(() => undefined);
+      }
+    }
+  };
+
   try {
     await rebaseMovedMarkdownLinks(fullNewPath, safeOldPath, newPath, nodePath, journal);
     await rebaseInboundMovedReferencesForAllRoots(
@@ -477,13 +535,11 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
       journal
     );
   } catch (error) {
-    try {
-      await rollbackMarkdownWrites(journal);
-    } finally {
-      await fs.rename(fullNewPath, fullOldPath).catch(() => undefined);
-    }
+    await rollback();
     throw error;
   }
+
+  return { newPath, rollback };
 }
 
 async function writeMarkdownWithJournal(
@@ -637,7 +693,7 @@ async function rebaseInboundMovedReferencesForAllRoots(
 async function moveLocalEntries(
   paths: string[],
   destinationPath: string
-): Promise<{ moved: BatchEntryResult[] }> {
+): Promise<RollbackableResult<{ moved: BatchEntryResult[] }>> {
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
   const basePath = resolve(requireLocalBasePath());
@@ -717,6 +773,16 @@ async function moveLocalEntries(
 
   const journal: MarkdownWriteJournal = new Map();
   const committedOperations: typeof operations = [];
+  const rollback = async () => {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      for (const operation of [...committedOperations].reverse()) {
+        await fs.rename(operation.fullNextPath, operation.fullCurrentPath).catch(() => undefined);
+      }
+    }
+  };
+
   try {
     for (const operation of operations) {
       await fs.rename(operation.fullCurrentPath, operation.fullNextPath);
@@ -735,25 +801,20 @@ async function moveLocalEntries(
       journal
     );
   } catch (error) {
-    try {
-      await rollbackMarkdownWrites(journal);
-    } finally {
-      for (const operation of [...committedOperations].reverse()) {
-        await fs.rename(operation.fullNextPath, operation.fullCurrentPath).catch(() => undefined);
-      }
-    }
+    await rollback();
     throw error;
   }
 
   return {
     moved: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+    rollback,
   };
 }
 
 async function copyLocalEntries(
   paths: string[],
   destinationPath: string
-): Promise<{ copied: BatchEntryResult[] }> {
+): Promise<RollbackableResult<{ copied: BatchEntryResult[] }>> {
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
   const basePath = resolve(requireLocalBasePath());
@@ -823,6 +884,18 @@ async function copyLocalEntries(
 
   const journal: MarkdownWriteJournal = new Map();
   const committedOperations: typeof operations = [];
+  const rollback = async () => {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      await Promise.all(
+        committedOperations.map((operation) =>
+          fs.rm(operation.fullNextPath, { recursive: true, force: true })
+        )
+      );
+    }
+  };
+
   try {
     for (const operation of operations) {
       await fs.cp(operation.fullCurrentPath, operation.fullNextPath, {
@@ -853,26 +926,19 @@ async function copyLocalEntries(
       )
     );
   } catch (error) {
-    try {
-      await rollbackMarkdownWrites(journal);
-    } finally {
-      await Promise.all(
-        committedOperations.map((operation) =>
-          fs.rm(operation.fullNextPath, { recursive: true, force: true })
-        )
-      );
-    }
+    await rollback();
     throw error;
   }
 
   return {
     copied: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+    rollback,
   };
 }
 
 async function deleteLocalEntries(
   entries: Array<{ path: string; type: "file" | "directory" }>
-): Promise<{ deleted: BatchEntryResult[] }> {
+): Promise<RollbackableResult<{ deleted: BatchEntryResult[] }>> {
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
   const basePath = resolve(requireLocalBasePath());
@@ -913,24 +979,50 @@ async function deleteLocalEntries(
         }
       }
 
+      const backupRoot = nodePath.join(
+        basePath,
+        `.admin-delete-rollback-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
       return {
         path: normalizedCurrentPath,
         type: actualType,
         fullCurrentPath,
+        backupRoot,
+        backupFullPath: nodePath.join(backupRoot, normalizedCurrentPath),
       };
     })
   );
 
-  for (const operation of operations) {
-    if (operation.type === "directory") {
-      await fs.rmdir(operation.fullCurrentPath);
-    } else {
-      await fs.unlink(operation.fullCurrentPath);
+  const committedOperations: typeof operations = [];
+  const rollback = async () => {
+    for (const operation of [...committedOperations].reverse()) {
+      await fs.mkdir(nodePath.dirname(operation.fullCurrentPath), { recursive: true });
+      await fs.rename(operation.backupFullPath, operation.fullCurrentPath).catch(() => undefined);
     }
+    await Promise.all(
+      committedOperations.map((operation) =>
+        fs.rm(operation.backupRoot, { recursive: true, force: true })
+      )
+    );
+  };
+  const commit = async () => {
+    await Promise.all(
+      committedOperations.map((operation) =>
+        fs.rm(operation.backupRoot, { recursive: true, force: true })
+      )
+    );
+  };
+
+  for (const operation of operations) {
+    await fs.mkdir(nodePath.dirname(operation.backupFullPath), { recursive: true });
+    await fs.rename(operation.fullCurrentPath, operation.backupFullPath);
+    committedOperations.push(operation);
   }
 
   return {
     deleted: operations.map(({ path, type }) => ({ path, type })),
+    rollback,
+    commit,
   };
 }
 
@@ -1060,10 +1152,11 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
+    const writeSnapshot = await snapshotWritableLocalFile(input.path);
     await (
       source as LocalContentSource & { writeFile: (path: string, content: string) => Promise<void> }
     ).writeFile(input.path, contentToWrite);
-    await triggerAdminContentSync();
+    await syncAndCommitFileMutation(writeSnapshot);
 
     return {
       success: true,
@@ -1094,7 +1187,11 @@ export const filesRouter = createTRPCRouter({
       throw error;
     }
 
-    await triggerAdminContentSync();
+    await syncAndCommitFileMutation({
+      rollback: async () => {
+        await fs.rm(fullPath, { recursive: true, force: true });
+      },
+    });
 
     return {
       success: true,
@@ -1122,8 +1219,7 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    await renameLocalFile(input.oldPath, input.newName);
-    await triggerAdminContentSync();
+    await syncAndCommitFileMutation(await renameLocalFile(input.oldPath, input.newName));
 
     return {
       success: true,
@@ -1137,8 +1233,9 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const result = await moveLocalEntries(input.paths, input.destinationPath);
-    await triggerAdminContentSync();
+    const result = await syncAndCommitFileMutation(
+      await moveLocalEntries(input.paths, input.destinationPath)
+    );
 
     return {
       success: true,
@@ -1151,8 +1248,9 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const result = await copyLocalEntries(input.paths, input.destinationPath);
-    await triggerAdminContentSync();
+    const result = await syncAndCommitFileMutation(
+      await copyLocalEntries(input.paths, input.destinationPath)
+    );
 
     return {
       success: true,
@@ -1165,8 +1263,7 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const result = await deleteLocalEntries(input.entries);
-    await triggerAdminContentSync();
+    const result = await syncAndCommitFileMutation(await deleteLocalEntries(input.entries));
 
     return {
       success: true,

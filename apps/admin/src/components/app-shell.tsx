@@ -594,7 +594,7 @@ export function AppShell() {
             showClose
           >
             <DialogTitle className="sr-only">后台导航</DialogTitle>
-            <div className="h-full min-h-0 p-4" style={sidebarFloatingFooterOffsetStyle}>
+            <div className="relative h-full min-h-0 p-4" style={sidebarFloatingFooterOffsetStyle}>
               <SidebarContent
                 routeSidebar={routeSidebar}
                 sidebarMode={sidebarMode}

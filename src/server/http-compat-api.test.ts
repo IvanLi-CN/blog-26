@@ -1649,7 +1649,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("fails file mutations when content sync fails", async () => {
+  it("rolls back file writes when content sync fails", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -1681,7 +1681,118 @@ describe("HTTP compatibility APIs", () => {
       expect(response.status).toBe(500);
       const payload = await readJson(response);
       expect(payload.error.message).toContain("内容同步失败：index unavailable");
-      expect(fs.existsSync(path.join(hardwareDir, "sync-failure.md"))).toBe(true);
+      expect(fs.existsSync(path.join(hardwareDir, "sync-failure.md"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rolls back file-tree mutations when content sync fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "rename.md"), "rename");
+    fs.writeFileSync(path.join(docsDir, "move.md"), "move");
+    fs.writeFileSync(path.join(docsDir, "copy.md"), "copy");
+    fs.writeFileSync(path.join(docsDir, "delete.md"), "delete");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () =>
+      createFailedSyncResult("index unavailable")) as typeof manager.syncAll;
+
+    try {
+      const renameResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/docs/rename.md",
+              newName: "renamed.md",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(renameResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "rename.md"))).toBe(true);
+      expect(fs.existsSync(path.join(docsDir, "renamed.md"))).toBe(false);
+
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/move.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "move.md"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "move.md"))).toBe(false);
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/copy.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "copy.md"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "copy.md"))).toBe(false);
+
+      const deleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [{ path: "Hardware/docs/delete.md", type: "file" }],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+
+      expect(deleteResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "delete.md"))).toBe(true);
+      expect(fs.readFileSync(path.join(docsDir, "delete.md"), "utf-8")).toBe("delete");
+      expect(
+        fs
+          .readdirSync(LOCAL_CONTENT_BASE_PATH)
+          .some((entry) => entry.startsWith(".admin-delete-rollback-"))
+      ).toBe(false);
     } finally {
       manager.syncAll = originalSyncAll;
     }
