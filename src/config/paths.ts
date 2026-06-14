@@ -220,6 +220,30 @@ export function getActiveLocalBasePath(): string | null {
   return LOCAL_PATHS.basePath;
 }
 
+export function getActiveLocalPaths() {
+  const basePath = getActiveLocalBasePath();
+  const localEnabled =
+    typeof basePath === "string" && basePath.length > 0 && isContentSourceAllowed("local");
+
+  return {
+    basePath,
+    posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog", localEnabled),
+    projects: parseEnabledSourcePaths(process.env.LOCAL_PROJECTS_PATH, "/projects", localEnabled),
+    memos: localEnabled
+      ? getServerLocalMemoRootPaths()
+      : parseMemoRootsFromEnv(undefined, DEFAULT_LOCAL_MEMO_ROOT_PATH),
+  } as const;
+}
+
+export function getActiveLocalPathMappings() {
+  const paths = getActiveLocalPaths();
+  return {
+    posts: paths.posts,
+    projects: paths.projects,
+    memos: paths.memos,
+  } as const;
+}
+
 function hasLocalBasePath(): boolean {
   const basePath = getActiveLocalBasePath();
   return typeof basePath === "string" && basePath.length > 0;

@@ -13,7 +13,11 @@ import {
   normalizeRelativeContentPath,
 } from "@/lib/content-path-mappings";
 import { hasApiFilesReference, rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
-import { isLocalContentEnabled, LOCAL_PATH_MAPPINGS, LOCAL_PATHS } from "../../../config/paths";
+import {
+  getActiveLocalBasePath,
+  getActiveLocalPathMappings,
+  isLocalContentEnabled,
+} from "../../../config/paths";
 import {
   getContentSourceManager,
   LocalContentSource,
@@ -76,7 +80,7 @@ function requireLocalBasePath(): string {
       message: "本地内容源未启用",
     });
   }
-  const basePath = LOCAL_PATHS.basePath;
+  const basePath = getActiveLocalBasePath();
   if (!basePath) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -87,7 +91,7 @@ function requireLocalBasePath(): string {
 }
 
 function getLocalConfiguredRootDirs(): string[] {
-  return getConfiguredContentRootDirs(LOCAL_PATH_MAPPINGS);
+  return getConfiguredContentRootDirs(getActiveLocalPathMappings());
 }
 
 function normalizeLocalBrowserPath(path: string): string {
@@ -107,7 +111,8 @@ function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } =
     });
   }
 
-  if (!isPathWithinConfiguredRoots(normalizedPath, LOCAL_PATH_MAPPINGS)) {
+  const localPathMappings = getActiveLocalPathMappings();
+  if (!isPathWithinConfiguredRoots(normalizedPath, localPathMappings)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `路径不在已配置的本地内容根目录内: ${normalizedPath}`,
@@ -388,7 +393,7 @@ async function ensureContentSourcesRegistered(manager: ReturnType<typeof getCont
       console.log("🔧 [Files API] 注册缺失的本地内容源 'local' ...");
       const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
         contentPath: resolve(basePath),
-        pathMappings: LOCAL_PATH_MAPPINGS,
+        pathMappings: getActiveLocalPathMappings(),
       });
       const localSource = new LocalContentSource(localConfig);
       await manager.registerSource(localSource);

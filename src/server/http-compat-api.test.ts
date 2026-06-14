@@ -1544,4 +1544,65 @@ describe("HTTP compatibility APIs", () => {
       manager.syncAll = originalSyncAll;
     }
   });
+
+  it("uses the current local content env after config modules were imported earlier", async () => {
+    process.env.LOCAL_CONTENT_BASE_PATH = "";
+    process.env.CONTENT_SOURCES = "webdav";
+
+    await import("@/config/paths?http-compat-stale-config-preload");
+
+    resetHttpCompatEnv();
+    const { resetContentSourceManager } = await import("@/lib/content-sources");
+    await resetContentSourceManager();
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const manager = (await import("@/lib/content-sources")).getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => ({
+      success: true,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      sources: ["local"],
+      stats: {
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+      errors: [],
+      logs: [],
+    })) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/stale-config-admin-file.md",
+              content: "from-current-env",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(200);
+      expect(fs.readFileSync(path.join(hardwareDir, "stale-config-admin-file.md"), "utf-8")).toBe(
+        "from-current-env"
+      );
+    } finally {
+      manager.syncAll = originalSyncAll;
+      resetHttpCompatEnv();
+      await resetContentSourceManager();
+    }
+  });
 });
