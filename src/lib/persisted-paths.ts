@@ -342,6 +342,11 @@ function shouldRebaseLocalTarget(value: string): boolean {
   return true;
 }
 
+function hasFileExtension(path: string): boolean {
+  const lastSegment = path.split("/").filter(Boolean).pop() ?? "";
+  return /\.[A-Za-z0-9]{1,16}$/.test(lastSegment);
+}
+
 function rebaseLocalTarget(
   value: string,
   oldMarkdownFilePath: string,
@@ -359,6 +364,9 @@ function rebaseLocalTarget(
       !oldMarkdownDir ||
       (currentPath !== oldMarkdownDir && !currentPath.startsWith(`${oldMarkdownDir}/`))
     ) {
+      return value;
+    }
+    if (!hasFileExtension(currentPath)) {
       return value;
     }
 

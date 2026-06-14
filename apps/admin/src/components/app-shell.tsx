@@ -388,6 +388,11 @@ export function AppShell() {
 
     updateHeight();
 
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateHeight);
+      return () => window.removeEventListener("resize", updateHeight);
+    }
+
     const resizeObserver = new ResizeObserver(updateHeight);
     resizeObserver.observe(sidebarFloatingFooterElement);
 
