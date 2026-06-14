@@ -77,6 +77,8 @@ function postprocessContentFromEditor(content: string): string {
   return content;
 }
 
+type FrontmatterHandlingMode = "document" | "body-only";
+
 // 编辑器实例接口
 export interface MilkdownEditorRef {
   processInlineImages: (content: string) => Promise<string>;
@@ -98,6 +100,7 @@ interface MilkdownEditorProps {
   // 内容源类型，用于正确的图片路径转换
   contentSource?: "local";
   readOnly?: boolean;
+  frontmatterHandling?: FrontmatterHandlingMode;
 }
 
 // 转换图片路径用于编辑器显示
@@ -163,6 +166,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       articlePath = "",
       contentSource = "local",
       readOnly = false,
+      frontmatterHandling = "body-only",
     },
     ref
   ) => {
@@ -229,7 +233,10 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           // removed log
 
           // 预处理内容，转换 frontmatter 和图片路径
-          const frontmatterProcessed = preprocessFrontmatterForEditor(initialContentRef.current);
+          const frontmatterProcessed =
+            frontmatterHandling === "document"
+              ? preprocessFrontmatterForEditor(initialContentRef.current)
+              : initialContentRef.current;
           const processedContent = preprocessContentForEditor(
             frontmatterProcessed,
             articlePath,
@@ -300,7 +307,10 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
               }
 
               // 后处理内容，将 YAML 代码块转换回 frontmatter
-              const processedMarkdown = postprocessContentFromEditor(markdown);
+              const processedMarkdown =
+                frontmatterHandling === "document"
+                  ? postprocessContentFromEditor(markdown)
+                  : markdown;
               const persistedMarkdownFilePath =
                 typeof articlePath === "string" && articlePath.length > 0
                   ? articlePath.replace(/^\/+/, "")
@@ -410,7 +420,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         // 从实例管理器中移除
         editorInstances.delete(editorId);
       };
-    }, [articlePath, editorId, contentSource, placeholder, readOnly]); // 只在组件挂载时初始化一次，避免内容变化触发重建
+    }, [articlePath, editorId, contentSource, placeholder, readOnly, frontmatterHandling]);
 
     useEffect(() => {
       crepeRef.current?.setReadonly(readOnly);
@@ -436,7 +446,8 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           isUpdatingRef.current = true;
 
           // 预处理内容，转换 frontmatter 和图片路径
-          const frontmatterProcessed = preprocessFrontmatterForEditor(content);
+          const frontmatterProcessed =
+            frontmatterHandling === "document" ? preprocessFrontmatterForEditor(content) : content;
           const processedContent = preprocessContentForEditor(
             frontmatterProcessed,
             articlePath,
@@ -486,7 +497,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
           isUpdatingRef.current = false;
         }
       }
-    }, [content, articlePath, contentSource]);
+    }, [content, articlePath, contentSource, frontmatterHandling]);
 
     return (
       <div ref={editorRef} className={`milkdown-editor ${className}`} data-testid={dataTestId} />

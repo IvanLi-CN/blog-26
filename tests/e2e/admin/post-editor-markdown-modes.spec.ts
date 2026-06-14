@@ -302,6 +302,38 @@ test.describe("Post editor Markdown modes", () => {
     );
   });
 
+  test("WYSIWYG preserves a body-leading YAML fence instead of converting it into frontmatter", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    const source = page.getByRole("textbox", { name: "Markdown source editor" });
+    await page.getByRole("button", { name: "Source" }).click();
+    await source.fill(`---
+title: React Hooks 深度解析
+slug: react-hooks-deep-dive
+draft: false
+---
+\`\`\`yaml
+kind: example
+value: true
+\`\`\`
+
+# React Hooks 深度解析
+
+Body paragraph`);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const prose = page.locator('[data-testid="content-input"] .ProseMirror');
+    await prose.click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" updated");
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await expect(source).toHaveValue(/```yaml\nkind: example\nvalue: true\n```/);
+    await expect(source).not.toHaveValue(/^---\nkind: example\nvalue: true\n---/);
+  });
+
   test("desktop sidebar drag handle resizes the shell and persists width", async ({ page }) => {
     await openDemoEditor(page);
 
