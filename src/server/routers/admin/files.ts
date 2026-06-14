@@ -6,6 +6,7 @@
 
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   getConfiguredContentRootDirs,
@@ -356,11 +357,36 @@ async function triggerAdminContentSync(fullSync = false): Promise<void> {
   }
 }
 
+async function deleteStalePostRows(stalePaths: string[]) {
+  const normalizedStalePaths = Array.from(
+    new Set(stalePaths.map(normalizeLocalBrowserPath).filter(Boolean))
+  );
+  if (normalizedStalePaths.length === 0) {
+    return;
+  }
+
+  const staleIds = (await db.select({ id: posts.id }).from(posts))
+    .map((post) => post.id)
+    .filter((id) => normalizedStalePaths.some((path) => id === path || id.startsWith(`${path}/`)));
+  if (staleIds.length === 0) {
+    return;
+  }
+
+  await Promise.all(staleIds.map((id) => db.delete(posts).where(eq(posts.id, id))));
+  clearSearchCache();
+}
+
 async function syncAndCommitFileMutation<
   T extends { rollback: () => Promise<void>; commit?: () => Promise<void> },
->(result: T, options: { fullSync?: boolean } = {}): Promise<Omit<T, "rollback" | "commit">> {
+>(
+  result: T,
+  options: { fullSync?: boolean; stalePaths?: string[] } = {}
+): Promise<Omit<T, "rollback" | "commit">> {
   const postsSnapshot = await db.select().from(posts);
   try {
+    if (!options.fullSync) {
+      await deleteStalePostRows(options.stalePaths ?? []);
+    }
     await triggerAdminContentSync(options.fullSync ?? false);
   } catch (error) {
     try {
@@ -547,6 +573,7 @@ async function renameLocalFile(
       nodePath,
       journal
     );
+    await touchMarkdownContentTree(fullNewPath);
   } catch (error) {
     await rollback();
     throw error;
@@ -571,6 +598,27 @@ async function rollbackMarkdownWrites(journal: MarkdownWriteJournal) {
   const fs = await import("node:fs/promises");
   const entries = Array.from(journal.entries()).reverse();
   await Promise.all(entries.map(([fullPath, content]) => fs.writeFile(fullPath, content, "utf-8")));
+}
+
+async function touchMarkdownContentTree(fullPath: string) {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return;
+
+  if (stats.isFile()) {
+    if (!isMarkdownContentFile(fullPath)) return;
+    const now = new Date();
+    await fs.utimes(fullPath, now, now);
+    return;
+  }
+
+  if (!stats.isDirectory()) return;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map((entry) => touchMarkdownContentTree(nodePath.join(fullPath, entry.name)))
+  );
 }
 
 async function rebaseMovedMarkdownLinks(
@@ -812,6 +860,9 @@ async function moveLocalEntries(
       operations.map(({ path, nextPath }) => ({ oldPath: path, newPath: nextPath })),
       nodePath,
       journal
+    );
+    await Promise.all(
+      committedOperations.map((operation) => touchMarkdownContentTree(operation.fullNextPath))
     );
   } catch (error) {
     await rollback();
@@ -1236,7 +1287,7 @@ export const filesRouter = createTRPCRouter({
     }
 
     await syncAndCommitFileMutation(await renameLocalFile(input.oldPath, input.newName), {
-      fullSync: true,
+      stalePaths: [input.oldPath],
     });
 
     return {
@@ -1253,7 +1304,7 @@ export const filesRouter = createTRPCRouter({
 
     const result = await syncAndCommitFileMutation(
       await moveLocalEntries(input.paths, input.destinationPath),
-      { fullSync: true }
+      { stalePaths: input.paths }
     );
 
     return {
@@ -1285,7 +1336,7 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await syncAndCommitFileMutation(await deleteLocalEntries(input.entries), {
-      fullSync: true,
+      stalePaths: input.entries.map((entry) => entry.path),
     });
 
     return {

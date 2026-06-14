@@ -1519,14 +1519,21 @@ describe("HTTP compatibility APIs", () => {
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
     fs.mkdirSync(hardwareDir, { recursive: true });
     fs.writeFileSync(path.join(hardwareDir, "rename-me.md"), "rename");
+    const databaseOnlyPostId = await seedPost({
+      id: "post-database-only",
+      slug: "database-only",
+      title: "Database Only",
+      body: "Database only",
+      filePath: "",
+    });
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
     let syncedSources: string[] | null = null;
-    let fullSyncArgument: boolean | undefined;
+    let syncArgument: boolean | undefined;
 
     manager.syncAll = async function (isFullSync?: boolean) {
-      fullSyncArgument = isFullSync;
+      syncArgument = isFullSync;
       const result = await originalSyncAll.call(this, isFullSync);
       syncedSources = result.sources;
       return result;
@@ -1553,7 +1560,16 @@ describe("HTTP compatibility APIs", () => {
       expect(response.status).toBe(200);
       expect(fs.existsSync(path.join(hardwareDir, "renamed.md"))).toBe(true);
       expect(syncedSources).toContain("local");
-      expect(fullSyncArgument).toBe(true);
+      expect(syncArgument).toBe(false);
+      const databaseOnlyPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, databaseOnlyPostId))
+        .get();
+      expect(databaseOnlyPost).toMatchObject({
+        id: databaseOnlyPostId,
+        slug: "database-only",
+      });
     } finally {
       manager.syncAll = originalSyncAll;
     }
@@ -1568,13 +1584,20 @@ describe("HTTP compatibility APIs", () => {
     fs.mkdirSync(docsDir, { recursive: true });
     fs.mkdirSync(archiveDir, { recursive: true });
     fs.writeFileSync(path.join(docsDir, "move-me.md"), "move");
+    const databaseOnlyPostId = await seedPost({
+      id: "post-move-database-only",
+      slug: "move-database-only",
+      title: "Move Database Only",
+      body: "Move database only",
+      filePath: "",
+    });
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
-    const fullSyncArguments: Array<boolean | undefined> = [];
+    const syncArguments: Array<boolean | undefined> = [];
     manager.syncAll = (async (isFullSync?: boolean) => {
-      fullSyncArguments.push(isFullSync);
-      return createSuccessfulSyncResult();
+      syncArguments.push(isFullSync);
+      return originalSyncAll.call(manager, isFullSync);
     }) as typeof manager.syncAll;
 
     try {
@@ -1605,6 +1628,18 @@ describe("HTTP compatibility APIs", () => {
         },
       ]);
       expect(fs.existsSync(path.join(archiveDir, "move-me.md"))).toBe(true);
+      const oldMovedPostAfterMove = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/docs/move-me.md"))
+        .get();
+      const movedPostAfterMove = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/archive/move-me.md"))
+        .get();
+      expect(oldMovedPostAfterMove).toBeUndefined();
+      expect(movedPostAfterMove).toMatchObject({ id: "Hardware/archive/move-me.md" });
 
       const copyResponse = await handleAdminApiRequest(
         buildRequest(
@@ -1633,10 +1668,79 @@ describe("HTTP compatibility APIs", () => {
         },
       ]);
       expect(fs.readFileSync(path.join(docsDir, "move-me.md"), "utf-8")).toBe("move");
-      expect(fullSyncArguments).toEqual([true, false]);
+      expect(syncArguments).toEqual([false, false]);
+      const copiedBackPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/docs/move-me.md"))
+        .get();
+      const movedPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/archive/move-me.md"))
+        .get();
+      const databaseOnlyPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, databaseOnlyPostId))
+        .get();
+      expect(copiedBackPost).toMatchObject({ id: "Hardware/docs/move-me.md" });
+      expect(movedPost).toMatchObject({ id: "Hardware/archive/move-me.md" });
+      expect(databaseOnlyPost).toMatchObject({
+        id: databaseOnlyPostId,
+        slug: "move-database-only",
+      });
     } finally {
       manager.syncAll = originalSyncAll;
     }
+  });
+
+  it("keeps database-only posts when deleting local file entries", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "delete-safe");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "delete-me.md"), "# Delete Me\n");
+    const databaseOnlyPostId = await seedPost({
+      id: "post-delete-database-only",
+      slug: "delete-database-only",
+      title: "Delete Database Only",
+      body: "Delete database only",
+      filePath: "",
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/delete",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            source: "local",
+            entries: [{ path: "Hardware/delete-safe/delete-me.md", type: "file" }],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/files/delete"
+    );
+
+    expect(response.status).toBe(200);
+    expect(fs.existsSync(path.join(docsDir, "delete-me.md"))).toBe(false);
+    const deletedLocalPost = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, "Hardware/delete-safe/delete-me.md"))
+      .get();
+    const databaseOnlyPost = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, databaseOnlyPostId))
+      .get();
+    expect(deletedLocalPost).toBeUndefined();
+    expect(databaseOnlyPost).toMatchObject({
+      id: databaseOnlyPostId,
+      slug: "delete-database-only",
+    });
   });
 
   it("keeps local file source enabled when CONTENT_SOURCES contains only legacy values", async () => {
