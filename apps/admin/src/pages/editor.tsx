@@ -235,11 +235,6 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
 }
 
-function showFileSyncWarning(syncWarning?: string) {
-  if (!syncWarning) return;
-  showAdminToast("default", syncWarning, { autoClose: 6400 });
-}
-
 export function mapBatchResultsToTreeSelection(
   source: "local",
   entries: Array<{ nextPath?: string; type: TreeItemType }>
@@ -1010,7 +1005,7 @@ export function EditorPage() {
 
       if (activeTab.kind === "file" && activeTab.file) {
         const liveContent = syncActiveTabFromEditor() ?? activeTab.file.content;
-        const response = await adminApi.writeFile({
+        await adminApi.writeFile({
           source: activeTab.file.source,
           path: activeTab.file.path,
           content: liveContent,
@@ -1019,7 +1014,6 @@ export function EditorPage() {
           current.map((tab) => (tab.id === activeTab.id ? { ...tab, dirty: false } : tab))
         );
         setNotice("文件保存成功。");
-        showFileSyncWarning(response.syncWarning);
       }
     } catch (error) {
       setErrorBanner(getEditorActionErrorMessage(error));
@@ -1181,13 +1175,11 @@ export function EditorPage() {
       setErrorBanner(null);
       try {
         if (type === "directory") {
-          const response = await adminApi.createDirectory({ source: selectedSource, path });
+          await adminApi.createDirectory({ source: selectedSource, path });
           setNotice("目录创建成功。");
-          showFileSyncWarning(response.syncWarning);
         } else {
-          const response = await adminApi.writeFile({ source: selectedSource, path, content: "" });
+          await adminApi.writeFile({ source: selectedSource, path, content: "" });
           setNotice("文件创建成功。");
-          showFileSyncWarning(response.syncWarning);
         }
 
         setCurrentPaths((current) => ({ ...current, [selectedSource]: baseDirectory }));
@@ -1258,7 +1250,7 @@ export function EditorPage() {
       const newPath = joinTreePath(target.parentPath, newName);
       setErrorBanner(null);
       try {
-        const response = await adminApi.renameFile({
+        await adminApi.renameFile({
           source: target.source,
           oldPath: target.path,
           newName,
@@ -1289,7 +1281,6 @@ export function EditorPage() {
           queryKey: ["admin-directory-tree", target.source],
         });
         setNotice("已重命名。");
-        showFileSyncWarning(response.syncWarning);
       } catch (error) {
         setErrorBanner(getErrorMessage(error));
       }
@@ -1356,7 +1347,6 @@ export function EditorPage() {
           queryKey: ["admin-directory-tree", selectedSource],
         });
         setNotice(`已移动 ${response.moved.length} 项。`);
-        showFileSyncWarning(response.syncWarning);
         const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.moved);
         setExpandedPaths((current) => ({
           ...current,
@@ -1387,7 +1377,6 @@ export function EditorPage() {
           queryKey: ["admin-directory-tree", selectedSource],
         });
         setNotice(`已复制 ${response.copied.length} 项。`);
-        showFileSyncWarning(response.syncWarning);
         const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.copied);
         setExpandedPaths((current) => ({
           ...current,
@@ -1459,7 +1448,6 @@ export function EditorPage() {
           queryKey: ["admin-directory-tree", selectedSource],
         });
         setNotice(`已删除 ${response.deleted.length} 项。`);
-        showFileSyncWarning(response.syncWarning);
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "删除失败："));
         throw error;

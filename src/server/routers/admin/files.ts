@@ -317,7 +317,14 @@ async function ensureLocalDirectoryTarget(
   };
 }
 
-async function triggerAdminContentSync(): Promise<string | undefined> {
+function buildAdminContentSyncError(message?: string) {
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: message ? `内容同步失败：${message}` : "内容同步失败。",
+  });
+}
+
+async function triggerAdminContentSync(): Promise<void> {
   try {
     const syncManager = getContentSourceManager({
       maxConcurrentSyncs: 2,
@@ -327,17 +334,16 @@ async function triggerAdminContentSync(): Promise<string | undefined> {
     });
     const result = await syncManager.syncAll();
     if (result.success) {
-      return undefined;
+      return;
     }
 
     const errorMessages = result.errors.map((entry) => entry.message).join(", ");
-    return errorMessages
-      ? `文件已写入，但内容同步失败：${errorMessages}`
-      : "文件已写入，但内容同步失败。";
+    throw buildAdminContentSyncError(errorMessages);
   } catch (syncError) {
-    return syncError instanceof Error
-      ? `文件已写入，但内容同步失败：${syncError.message}`
-      : "文件已写入，但内容同步失败。";
+    if (syncError instanceof TRPCError) {
+      throw syncError;
+    }
+    throw buildAdminContentSyncError(syncError instanceof Error ? syncError.message : undefined);
   }
 }
 
@@ -1057,13 +1063,12 @@ export const filesRouter = createTRPCRouter({
     await (
       source as LocalContentSource & { writeFile: (path: string, content: string) => Promise<void> }
     ).writeFile(input.path, contentToWrite);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       message: "文件写入成功",
       path: input.path,
-      syncWarning,
     };
   }),
 
@@ -1089,13 +1094,12 @@ export const filesRouter = createTRPCRouter({
       throw error;
     }
 
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       path: input.path,
-      syncWarning,
     };
   }),
 
@@ -1119,14 +1123,13 @@ export const filesRouter = createTRPCRouter({
     }
 
     await renameLocalFile(input.oldPath, input.newName);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       oldPath: input.oldPath,
       newName: input.newName,
-      syncWarning,
     };
   }),
 
@@ -1135,13 +1138,12 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await moveLocalEntries(input.paths, input.destinationPath);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       ...result,
-      syncWarning,
     };
   }),
 
@@ -1150,13 +1152,12 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await copyLocalEntries(input.paths, input.destinationPath);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       ...result,
-      syncWarning,
     };
   }),
 
@@ -1165,13 +1166,12 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await deleteLocalEntries(input.entries);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       ...result,
-      syncWarning,
     };
   }),
 });
