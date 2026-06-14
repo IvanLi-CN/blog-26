@@ -1784,6 +1784,51 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rebases inbound markdown references after renaming local asset files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const assetsDir = path.join(hardwareDir, "assets");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(hardwareDir, "post.md"),
+      ["---", "image: ./assets/cover.png", "---", "", "![cover](./assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/assets/cover.png",
+              newName: "hero.png",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(200);
+      const content = fs.readFileSync(path.join(hardwareDir, "post.md"), "utf-8");
+      expect(content).toContain("image: ./assets/hero.png");
+      expect(content).toContain("![cover](./assets/hero.png)");
+      expect(fs.existsSync(path.join(assetsDir, "hero.png"))).toBe(true);
+      expect(fs.existsSync(path.join(assetsDir, "cover.png"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rebases copied markdown links inside directory subtrees", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 

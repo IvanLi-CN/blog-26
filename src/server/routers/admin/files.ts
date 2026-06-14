@@ -407,6 +407,8 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
     const pathParts = safeOldPath.split("/");
     pathParts[pathParts.length - 1] = newName;
     const newPath = pathParts.join("/");
+    assertLocalPathAllowed(newPath);
+    assertSameConfiguredRoot(safeOldPath, newPath);
     const fullNewPath = nodePath.join(basePath, newPath);
 
     // 检查新路径是否已存在
@@ -426,6 +428,10 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
     // 执行重命名
     await fs.rename(fullOldPath, fullNewPath);
     await rebaseMovedMarkdownLinks(fullNewPath, safeOldPath, newPath, nodePath);
+    const root = getConfiguredRootForPath(newPath);
+    if (root) {
+      await rebaseInboundMovedReferences(root, [{ oldPath: safeOldPath, newPath }], nodePath);
+    }
 
     console.log(`✅ [Files API] 本地文件重命名成功: ${fullOldPath} -> ${fullNewPath}`);
   } catch (error) {
