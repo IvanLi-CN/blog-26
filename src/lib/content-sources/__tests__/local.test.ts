@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalContentSource } from "../local";
@@ -58,5 +58,31 @@ describe("LocalContentSource real path mappings", () => {
     expect(indexedItems.get("Hardware/usb-pd.md")?.type).toBe("post");
     expect(indexedItems.get("Memos/daily.md")?.type).toBe("memo");
     expect(indexedItems.has("Journals/private.md")).toBe(false);
+  });
+
+  it("refreshes the cache after external filesystem mutations", async () => {
+    const basePath = await createTempContentDir();
+
+    await mkdir(join(basePath, "Hardware"), { recursive: true });
+    await writeFile(join(basePath, "Hardware", "before.md"), "# Before\n\nPost body\n", "utf-8");
+
+    const source = new LocalContentSource(
+      LocalContentSource.createDefaultConfig("local-test", 1, {
+        contentPath: basePath,
+        pathMappings: REAL_LAYOUT_MAPPINGS,
+      })
+    );
+
+    await source.initialize();
+    expect((await source.listContent()).map((item) => item.filePath)).toEqual([
+      "Hardware/before.md",
+    ]);
+
+    await rename(join(basePath, "Hardware", "before.md"), join(basePath, "Hardware", "after.md"));
+    await source.refresh();
+
+    expect((await source.listContent()).map((item) => item.filePath)).toEqual([
+      "Hardware/after.md",
+    ]);
   });
 });

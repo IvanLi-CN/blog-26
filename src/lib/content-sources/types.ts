@@ -192,6 +192,11 @@ export interface IContentSource {
   listContent(): Promise<ContentItem[]>;
 
   /**
+   * Refresh source-local caches before an externally-mutated sync.
+   */
+  refresh?(): Promise<void>;
+
+  /**
    * 获取指定路径的原始内容
    * @param filePath 文件路径
    */

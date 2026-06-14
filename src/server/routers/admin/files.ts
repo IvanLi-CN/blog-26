@@ -337,6 +337,7 @@ async function triggerAdminContentSync(fullSync = false): Promise<void> {
       enableTransactions: true,
       conflictResolution: "priority",
     });
+    await syncManager.getSource("local")?.refresh?.();
     const result = await syncManager.syncAll(fullSync);
     if (result.success) {
       return;

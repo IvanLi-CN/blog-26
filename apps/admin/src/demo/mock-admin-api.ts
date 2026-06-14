@@ -289,23 +289,23 @@ const fileContents = new Map<string, string>(
     .map((post) => [`${post.source}:${post.filePath}`, post.body] as [string, string])
     .concat(extraDemoFiles)
 );
-fileContents.set("local:content/posts/电子负载开发笔记.md", postBodies.hardware);
+fileContents.set("local:blog/电子负载开发笔记.md", postBodies.hardware);
 fileContents.set(
-  "local:content/posts/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
+  "local:blog/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
   postBodies.hardware.replaceAll(
     "电子负载开发笔记",
     "使用 CH335F 构建一个支持独立供电的 2A2C USB HUB"
   )
 );
 fileContents.set(
-  "local:content/posts/通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新.md",
+  "local:blog/通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新.md",
   postBodies.hardware.replaceAll(
     "电子负载开发笔记",
     "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
   )
 );
 fileContents.set(
-  "local:content/posts/学习笔记：电子负载实现原理.md",
+  "local:blog/学习笔记：电子负载实现原理.md",
   postBodies.hardware.replaceAll("电子负载开发笔记", "学习笔记：电子负载实现原理")
 );
 const directoryPaths = new Set<string>();
