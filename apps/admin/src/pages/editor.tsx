@@ -20,7 +20,7 @@ import {
   type FileItem,
 } from "@/lib/admin-api-client";
 import { isMemoContentPath } from "@/lib/memo-paths";
-import { rebasePersistedLocalLinks } from "@/lib/persisted-paths";
+import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import { generateContentUrl } from "@/lib/url-utils";
 import { AdminToastViewport, dismissAdminToast, showAdminToast } from "~/components/admin-toast";
 import { useAppShellSidebar } from "~/components/app-shell";
@@ -283,6 +283,18 @@ function rebaseOpenMarkdownContent(content: string, oldPath: string, newPath: st
   return rebasePersistedLocalLinks(content, oldPath, newPath).content;
 }
 
+function rebaseOpenMarkdownReferences(
+  content: string,
+  markdownPath: string,
+  oldPath: string,
+  newPath: string
+) {
+  if (!/\.(?:md|markdown)$/i.test(markdownPath)) {
+    return content;
+  }
+  return rebasePersistedLocalReferences(content, markdownPath, oldPath, newPath).content;
+}
+
 export function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath: string) {
   const normalizedOldPath = normalizeTreePath(oldPath);
   const normalizedNewPath = normalizeTreePath(newPath);
@@ -314,6 +326,22 @@ export function remapTabPath(tab: EditorTab, source: "local", oldPath: string, n
         },
       };
     }
+
+    const nextContent = rebaseOpenMarkdownReferences(
+      tab.file.content,
+      currentFilePath,
+      normalizedOldPath,
+      normalizedNewPath
+    );
+    if (nextContent !== tab.file.content) {
+      return {
+        ...tab,
+        file: {
+          ...tab.file,
+          content: nextContent,
+        },
+      };
+    }
   }
 
   if (tab.kind === "database" && tab.database?.source === source) {
@@ -340,6 +368,25 @@ export function remapTabPath(tab: EditorTab, source: "local", oldPath: string, n
           ...tab.database,
           ...derivedDraft,
           filePath: nextFilePath,
+          content: nextContent,
+        },
+      };
+    }
+
+    const nextContent = rebaseOpenMarkdownReferences(
+      tab.database.content,
+      currentFilePath,
+      normalizedOldPath,
+      normalizedNewPath
+    );
+    if (nextContent !== tab.database.content) {
+      const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
+      return {
+        ...tab,
+        label: derivedDraft.title || tab.label,
+        database: {
+          ...tab.database,
+          ...derivedDraft,
           content: nextContent,
         },
       };

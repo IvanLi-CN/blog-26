@@ -68,6 +68,35 @@ describe("editor tab path remapping", () => {
     });
   });
 
+  test("rebases open markdown tab references when moving or renaming linked assets", () => {
+    const tab = remapTabPath(
+      {
+        id: "file:local:blog/post.md",
+        label: "post.md",
+        kind: "file",
+        mode: "wysiwyg",
+        dirty: true,
+        file: {
+          source: "local",
+          path: "blog/post.md",
+          content: "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)",
+        },
+      },
+      "local",
+      "blog/assets/cover.png",
+      "blog/archive/cover.png"
+    );
+
+    expect(tab).toMatchObject({
+      id: "file:local:blog/post.md",
+      dirty: true,
+      file: {
+        path: "blog/post.md",
+        content: "---\nimage: ./archive/cover.png\n---\n\n![cover](./archive/cover.png)",
+      },
+    });
+  });
+
   test("keeps active file tabs selected after rename or move operations", () => {
     expect(
       remapActiveTabIdForPathChange(

@@ -1698,7 +1698,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("rejects moving local files across configured content roots", async () => {
+  it("rejects moving and copying local files across configured content roots", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -1706,6 +1706,7 @@ describe("HTTP compatibility APIs", () => {
     fs.mkdirSync(hardwareDir, { recursive: true });
     fs.mkdirSync(blogDir, { recursive: true });
     fs.writeFileSync(path.join(hardwareDir, "move-me.md"), "move");
+    fs.writeFileSync(path.join(hardwareDir, "copy-me.md"), "copy");
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
@@ -1731,9 +1732,32 @@ describe("HTTP compatibility APIs", () => {
 
       expect(response.status).toBe(400);
       const payload = await readJson(response);
-      expect(payload.error.message).toContain("不能跨内容根目录移动项目");
+      expect(payload.error.message).toContain("不能跨内容根目录操作项目");
       expect(fs.existsSync(path.join(hardwareDir, "move-me.md"))).toBe(true);
       expect(fs.existsSync(path.join(blogDir, "move-me.md"))).toBe(false);
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/copy-me.md"],
+              destinationPath: "blog",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("不能跨内容根目录操作项目");
+      expect(fs.existsSync(path.join(hardwareDir, "copy-me.md"))).toBe(true);
+      expect(fs.existsSync(path.join(blogDir, "copy-me.md"))).toBe(false);
     } finally {
       manager.syncAll = originalSyncAll;
     }

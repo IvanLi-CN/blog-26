@@ -213,7 +213,7 @@ function assertSameConfiguredRoot(sourcePath: string, targetPath: string) {
   if (!sourceRoot || !targetRoot || sourceRoot !== targetRoot) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "不能跨内容根目录移动项目",
+      message: "不能跨内容根目录操作项目",
     });
   }
 }
@@ -705,6 +705,7 @@ async function copyLocalEntries(
         });
       }
       assertLocalPathAllowed(nextRelativePath);
+      assertSameConfiguredRoot(currentPath, nextRelativePath);
       const fullNextPath = nodePath.join(basePath, nextRelativePath);
       await fs.access(fullNextPath).then(
         () => {
