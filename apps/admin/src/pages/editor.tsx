@@ -15,10 +15,10 @@ import {
   PenSquare,
   RefreshCcw,
   Save,
-  X,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { EditorChangeMeta } from "@/editor/editor-change";
 import {
   AdminApiError,
   type AdminPost,
@@ -32,6 +32,7 @@ import { generateContentUrl } from "@/lib/url-utils";
 import { cn } from "@/lib/utils";
 import { useAppShellSidebar } from "~/components/app-shell";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/ui";
+import { EditorTabStrip } from "~/editor/editor-tab-strip";
 import { UniversalEditor, type UniversalEditorRef } from "~/editor/universal-editor";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
 
@@ -74,9 +75,14 @@ type EditorTab = {
   kind: "database" | "file";
   mode: EditorMode;
   dirty: boolean;
+  temporary?: boolean;
   database?: DatabaseDraft;
   file?: FileDraft;
 };
+
+function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
+  return [tab, ...current.filter((item) => item.id !== tab.id)];
+}
 
 const EMPTY_SOURCES: DataSourceInfo[] = [];
 const EMPTY_FILE_ITEMS: FileItem[] = [];
@@ -414,6 +420,7 @@ function EditorSidebarContent({
   onEditingCancel,
   onDirectoryExpand,
   onFileOpen,
+  onFilePermanentOpen,
   onCreateFile,
   onCreateDirectory,
 }: {
@@ -436,6 +443,7 @@ function EditorSidebarContent({
   onEditingCancel: () => void;
   onDirectoryExpand: (item: FileItem) => void;
   onFileOpen: (item: FileItem) => void;
+  onFilePermanentOpen: (item: FileItem) => void;
   onCreateFile: () => void;
   onCreateDirectory: () => void;
 }) {
@@ -502,6 +510,9 @@ function EditorSidebarContent({
                   className="flex shrink-0 items-center gap-2"
                   tabIndex={isEditing ? -1 : 0}
                   onClick={() => (isDirectory ? onDirectoryExpand(item) : onFileOpen(item))}
+                  onDoubleClick={() => {
+                    if (!isDirectory) onFilePermanentOpen(item);
+                  }}
                 >
                   {isDirectory ? (
                     isExpanded ? (
@@ -536,6 +547,9 @@ function EditorSidebarContent({
                     type="button"
                     className="min-w-0 flex-1 truncate text-left"
                     onClick={() => (isDirectory ? onDirectoryExpand(item) : onFileOpen(item))}
+                    onDoubleClick={() => {
+                      if (!isDirectory) onFilePermanentOpen(item);
+                    }}
                   >
                     {item.name}
                   </button>
@@ -589,6 +603,7 @@ function EditorSidebarContent({
       onEditingValueChange,
       onDirectoryExpand,
       onFileOpen,
+      onFilePermanentOpen,
       selectedSource,
       shouldHighlightActiveSource,
     ]
@@ -679,6 +694,14 @@ export function EditorPage() {
   const [didHandleInitialUrl, setDidHandleInitialUrl] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const editorRef = useRef<UniversalEditorRef | null>(null);
+  const pendingFileTabsRef = useRef<Map<string, { promise: Promise<void>; temporary: boolean }>>(
+    new Map()
+  );
+  const tabsRef = useRef<EditorTab[]>(tabs);
+
+  useEffect(() => {
+    tabsRef.current = tabs;
+  }, [tabs]);
 
   const sourcesQuery = useQuery({
     queryKey: ["admin-file-sources"],
@@ -779,20 +802,17 @@ export function EditorPage() {
 
       nextActiveTabId = existingByIdentity?.id ?? tabId;
 
-      return [
-        ...preservedTabs,
-        {
-          id: nextActiveTabId,
-          label: derivedDraft.title || post.slug || post.id,
-          kind: "database",
-          mode,
-          dirty: false,
-          database: {
-            ...databaseDraft,
-            ...derivedDraft,
-          },
+      return insertEditorTabAtStart(preservedTabs, {
+        id: nextActiveTabId,
+        label: derivedDraft.title || post.slug || post.id,
+        kind: "database",
+        mode,
+        dirty: false,
+        database: {
+          ...databaseDraft,
+          ...derivedDraft,
         },
-      ];
+      });
     });
     setActiveTabId(nextActiveTabId);
   }, []);
@@ -830,38 +850,84 @@ export function EditorPage() {
   );
 
   const openFileTab = useCallback(
-    async (source: "local", path: string) => {
+    async (source: "local", path: string, options: { temporary?: boolean } = {}) => {
       const targetIdentity = getArticleIdentity(source, path);
+      const requestedTemporary = options.temporary ?? false;
       const existing = tabs.find((tab) => getTabArticleIdentity(tab) === targetIdentity);
       if (existing) {
+        if (!requestedTemporary && existing.temporary) {
+          setTabs((current) =>
+            current.map((tab) => (tab.id === existing.id ? { ...tab, temporary: false } : tab))
+          );
+        }
         setActiveTabId(existing.id);
+        return;
+      }
+
+      const pending = pendingFileTabsRef.current.get(targetIdentity);
+      if (pending) {
+        if (!requestedTemporary && pending.temporary) {
+          pending.temporary = false;
+        }
+        await pending.promise;
         return;
       }
 
       setLoadingMessage("正在加载文章...");
       setErrorBanner(null);
-      try {
+      const request = (async () => {
         const file = await adminApi.readFile(source, path);
         const filePath = normalizeTreePath(file.path || path);
         const fileContent = typeof file.content === "string" ? file.content : "";
         const label = deriveFileLabel(filePath, fileContent);
+        const fileIdentity = getArticleIdentity(source, filePath);
         const tab: EditorTab = {
           id: `file:${source}:${filePath}`,
           label,
           kind: "file",
           mode: "wysiwyg",
           dirty: false,
+          temporary:
+            pendingFileTabsRef.current.get(targetIdentity)?.temporary ?? requestedTemporary,
           file: {
             source,
             path: filePath,
             content: fileContent,
           },
         };
-        setTabs((current) => [...current, tab]);
+        const latestExistingTab = tabsRef.current.find(
+          (item) => getTabArticleIdentity(item) === fileIdentity
+        );
+        if (latestExistingTab) {
+          if (!tab.temporary && latestExistingTab.temporary) {
+            setTabs((current) =>
+              current.map((item) =>
+                item.id === latestExistingTab.id ? { ...item, temporary: false } : item
+              )
+            );
+          }
+          setActiveTabId(latestExistingTab.id);
+          return;
+        }
+        setTabs((current) => {
+          const preservedTabs = tab.temporary
+            ? current.filter((item) => !item.temporary || item.dirty)
+            : current;
+          return insertEditorTabAtStart(preservedTabs, tab);
+        });
         setActiveTabId(tab.id);
+      })();
+      pendingFileTabsRef.current.set(targetIdentity, {
+        promise: request,
+        temporary: requestedTemporary,
+      });
+
+      try {
+        await request;
       } catch (error) {
         setErrorBanner(`未找到文件：${getErrorMessage(error)}`);
       } finally {
+        pendingFileTabsRef.current.delete(targetIdentity);
         setLoadingMessage(null);
       }
     },
@@ -871,11 +937,11 @@ export function EditorPage() {
   const openFromCompatId = useCallback(
     async (id: string) => {
       if (id.startsWith("/")) {
-        await openFileTab("local", id);
+        await openFileTab("local", id, { temporary: false });
         return;
       }
       if (id.includes("/") || id.endsWith(".md")) {
-        await openFileTab("local", id);
+        await openFileTab("local", id, { temporary: false });
         return;
       }
       await openPostById(id);
@@ -985,7 +1051,7 @@ export function EditorPage() {
         isNew: true,
       },
     };
-    setTabs((current) => [...current, tab]);
+    setTabs((current) => insertEditorTabAtStart(current, tab));
     setActiveTabId(tabId);
   }, []);
 
@@ -998,21 +1064,26 @@ export function EditorPage() {
   );
 
   const updateActiveTabContent = useCallback(
-    (nextContent: string) => {
+    (nextContent: string, options: { markDirty?: boolean } = { markDirty: true }) => {
+      const markDirty = options.markDirty ?? true;
       updateActiveTab((tab) => {
         if (tab.kind === "database" && tab.database) {
           const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
           return {
             ...tab,
             label: derivedDraft.title || "未命名文章",
-            dirty: true,
+            dirty: markDirty ? true : tab.dirty,
+            temporary: markDirty ? false : tab.temporary,
             database: { ...tab.database, ...derivedDraft, content: nextContent },
           };
         }
         if (tab.kind === "file" && tab.file) {
+          const nextLabel = markDirty ? deriveFileLabel(tab.file.path, nextContent) : tab.label;
           return {
             ...tab,
-            dirty: true,
+            label: nextLabel,
+            dirty: markDirty ? true : tab.dirty,
+            temporary: markDirty ? false : tab.temporary,
             file: { ...tab.file, content: nextContent },
           };
         }
@@ -1022,27 +1093,30 @@ export function EditorPage() {
     [updateActiveTab]
   );
 
-  const syncActiveTabFromEditor = useCallback(() => {
-    if (!activeTab) {
-      return null;
-    }
+  const syncActiveTabFromEditor = useCallback(
+    (options: { markDirty?: boolean } = {}) => {
+      if (!activeTab) {
+        return null;
+      }
 
-    const liveContent = editorRef.current?.getContent();
-    if (typeof liveContent !== "string") {
-      return null;
-    }
+      const liveContent = editorRef.current?.getContent();
+      if (typeof liveContent !== "string") {
+        return null;
+      }
 
-    const persistedContent =
-      activeTab.kind === "database"
-        ? (activeTab.database?.content ?? "")
-        : (activeTab.file?.content ?? "");
+      const persistedContent =
+        activeTab.kind === "database"
+          ? (activeTab.database?.content ?? "")
+          : (activeTab.file?.content ?? "");
 
-    if (liveContent !== persistedContent) {
-      updateActiveTabContent(liveContent);
-    }
+      if (liveContent !== persistedContent) {
+        updateActiveTabContent(liveContent, { markDirty: options.markDirty ?? activeTab.dirty });
+      }
 
-    return liveContent;
-  }, [activeTab, updateActiveTabContent]);
+      return liveContent;
+    },
+    [activeTab, updateActiveTabContent]
+  );
 
   useEffect(() => {
     if (!activeTab) {
@@ -1088,7 +1162,7 @@ export function EditorPage() {
 
       const markdown = buildInsertedAttachmentMarkdown(file, filename);
       const prefix = activeContent && !activeContent.endsWith("\n") ? "\n\n" : "";
-      updateActiveTabContent(`${activeContent}${prefix}${markdown}`);
+      updateActiveTabContent(`${activeContent}${prefix}${markdown}`, { markDirty: true });
       setNotice(`已插入附件：${file.name}`);
     } catch (error) {
       setErrorBanner(getErrorMessage(error));
@@ -1104,7 +1178,7 @@ export function EditorPage() {
     const remaining = tabs.filter((item) => item.id !== tabId);
     setTabs(remaining);
     if (activeTabId === tabId) {
-      setActiveTabId(remaining[remaining.length - 1]?.id ?? null);
+      setActiveTabId(remaining[0]?.id ?? null);
     }
   }
 
@@ -1269,7 +1343,20 @@ export function EditorPage() {
         path: normalizeTreePath(item.path),
         type: "file",
       });
-      void openFileTab(selectedSource, item.path);
+      void openFileTab(selectedSource, item.path, { temporary: true });
+    },
+    [openFileTab, selectedSource]
+  );
+
+  const handleFilePermanentOpen = useCallback(
+    (item: FileItem) => {
+      if (item.type !== "file") return;
+      setSelectedTreeItem({
+        source: selectedSource,
+        path: normalizeTreePath(item.path),
+        type: "file",
+      });
+      void openFileTab(selectedSource, item.path, { temporary: false });
     },
     [openFileTab, selectedSource]
   );
@@ -1457,6 +1544,7 @@ export function EditorPage() {
           onEditingCancel={cancelTreeRename}
           onDirectoryExpand={handleDirectoryExpand}
           onFileOpen={handleFileOpen}
+          onFilePermanentOpen={handleFilePermanentOpen}
           onCreateFile={createFileInTree}
           onCreateDirectory={createDirectoryInTree}
         />
@@ -1476,6 +1564,7 @@ export function EditorPage() {
       expandedPaths,
       handleDirectoryExpand,
       handleFileOpen,
+      handleFilePermanentOpen,
       loadingPaths,
       refetchDirectory,
       navigateUp,
@@ -1550,36 +1639,12 @@ export function EditorPage() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft">
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/58 px-4 py-3">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              data-testid="editor-tab"
-              className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${
-                tab.id === activeTabId
-                  ? "border-border bg-muted text-foreground"
-                  : "border-transparent text-muted-foreground hover:bg-muted/50"
-              }`}
-            >
-              <button
-                type="button"
-                className="inline-flex items-center gap-2"
-                onClick={() => setActiveTabId(tab.id)}
-              >
-                <span>{tab.label || "未命名文章"}</span>
-                {tab.dirty ? <Badge tone="warning">未保存</Badge> : null}
-              </button>
-              <button
-                type="button"
-                className="inline-flex rounded p-1 hover:bg-background"
-                onClick={() => requestCloseTab(tab.id)}
-                aria-label={`关闭 ${tab.label || "未命名文章"}`}
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          ))}
-        </div>
+        <EditorTabStrip
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onActivate={setActiveTabId}
+          onClose={requestCloseTab}
+        />
 
         <section className="min-h-0 flex-1 p-0" data-testid="editor">
           {!activeTab ? (
@@ -1611,7 +1676,7 @@ export function EditorPage() {
                     size="sm"
                     variant={activeTab.mode === "wysiwyg" ? "default" : "outline"}
                     onClick={() => {
-                      syncActiveTabFromEditor();
+                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
                       updateActiveTab((tab) => ({ ...tab, mode: "wysiwyg" }));
                     }}
                   >
@@ -1622,7 +1687,7 @@ export function EditorPage() {
                     size="sm"
                     variant={activeTab.mode === "source" ? "default" : "outline"}
                     onClick={() => {
-                      syncActiveTabFromEditor();
+                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
                       updateActiveTab((tab) => ({ ...tab, mode: "source" }));
                     }}
                   >
@@ -1633,7 +1698,7 @@ export function EditorPage() {
                     size="sm"
                     variant={activeTab.mode === "compare" ? "default" : "outline"}
                     onClick={() => {
-                      syncActiveTabFromEditor();
+                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
                       updateActiveTab((tab) => ({ ...tab, mode: "compare" }));
                     }}
                   >
@@ -1651,7 +1716,11 @@ export function EditorPage() {
                 key={activeTab.id}
                 editorId={activeTab.id}
                 initialContent={activeContent}
-                onContentChange={updateActiveTabContent}
+                onContentChange={(nextContent: string, meta?: EditorChangeMeta) =>
+                  updateActiveTabContent(nextContent, {
+                    markDirty: meta?.source !== "programmatic",
+                  })
+                }
                 placeholder="开始写作您的文章..."
                 attachmentBasePath={buildAttachmentUploadPath(
                   activeEditorContext?.articlePath ?? "/__unknown__.md",
