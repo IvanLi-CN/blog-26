@@ -426,6 +426,48 @@ function rebaseInlineMarkdownReferences(
   );
 }
 
+function rebaseReferenceDefinitionLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  return input.replace(
+    /^(\s{0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]+>|[^\s<>\n]+)([^\n]*)$/gm,
+    (match, prefix: string, rawTarget: string, suffix: string) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath);
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${nextTarget}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
+function rebaseReferenceDefinitionReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  return input.replace(
+    /^(\s{0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]+>|[^\s<>\n]+)([^\n]*)$/gm,
+    (match, prefix: string, rawTarget: string, suffix: string) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseMovedReferenceTarget(
+        target,
+        markdownFilePath,
+        oldTargetPath,
+        newTargetPath
+      );
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${nextTarget}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
 function rebaseWikiEmbedLinks(
   input: string,
   oldMarkdownFilePath: string,
@@ -524,6 +566,7 @@ export function rebasePersistedLocalLinks(
   let content = input;
   content = rebaseFrontmatterAssetFields(content, oldMarkdownFilePath, newMarkdownFilePath);
   content = rebaseInlineMarkdownLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
+  content = rebaseReferenceDefinitionLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
   content = rebaseWikiEmbedLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
 
   return {
@@ -550,6 +593,12 @@ export function rebasePersistedLocalReferences(
     newTargetPath
   );
   content = rebaseInlineMarkdownReferences(content, markdownFilePath, oldTargetPath, newTargetPath);
+  content = rebaseReferenceDefinitionReferences(
+    content,
+    markdownFilePath,
+    oldTargetPath,
+    newTargetPath
+  );
   content = rebaseWikiEmbedReferences(content, markdownFilePath, oldTargetPath, newTargetPath);
 
   return {

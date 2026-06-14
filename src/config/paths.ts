@@ -88,14 +88,17 @@ export function getActiveLocalBasePath(): string | null {
 
 export function getActiveLocalPaths() {
   const basePath = getActiveLocalBasePath();
-  const localEnabled =
-    typeof basePath === "string" && basePath.length > 0 && isContentSourceAllowed("local");
+  const localConfigured = typeof basePath === "string" && basePath.length > 0;
 
   return {
     basePath,
-    posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog", localEnabled),
-    projects: parseEnabledSourcePaths(process.env.LOCAL_PROJECTS_PATH, "/projects", localEnabled),
-    memos: localEnabled
+    posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog", localConfigured),
+    projects: parseEnabledSourcePaths(
+      process.env.LOCAL_PROJECTS_PATH,
+      "/projects",
+      localConfigured
+    ),
+    memos: localConfigured
       ? getServerLocalMemoRootPaths()
       : parseMemoRootsFromEnv(undefined, DEFAULT_LOCAL_MEMO_ROOT_PATH),
   } as const;
@@ -116,7 +119,7 @@ function hasLocalBasePath(): boolean {
 }
 
 export function isLocalContentEnabled(): boolean {
-  return hasLocalBasePath();
+  return hasLocalBasePath() && isContentSourceAllowed("local");
 }
 
 export function parseContentSourcesFromEnv(envValue: string | undefined): Set<"local"> | null {
