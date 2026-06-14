@@ -46,6 +46,12 @@ function isFileApiUrl(value: string): boolean {
   return value.startsWith("/api/files/");
 }
 
+function isLikelyLocalAssetPath(value: string): boolean {
+  const { path } = splitSuffix(value);
+  const lastSegment = path.split("/").filter(Boolean).at(-1) ?? "";
+  return /\.[A-Za-z0-9][A-Za-z0-9_-]{0,15}$/.test(lastSegment);
+}
+
 function splitSuffix(input: string): { path: string; suffix: string } {
   const q = input.indexOf("?");
   const h = input.indexOf("#");
@@ -270,7 +276,7 @@ export function toRuntimeFileApiUrl(
 
   // Runtime rebasing should not reinterpret normal site-absolute links as files.
   if (normalized.startsWith("/")) {
-    if (!isFileApiUrl(normalized)) {
+    if (!isLikelyLocalAssetPath(normalized)) {
       return trimmed;
     }
     const resolved = stripLeadingSlashes(normalized);

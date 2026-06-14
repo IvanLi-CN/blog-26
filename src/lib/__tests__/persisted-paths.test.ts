@@ -56,6 +56,19 @@ describe("persisted-paths", () => {
       );
     });
 
+    it("maps persisted content-root absolute asset paths to /api/files/<source>/... urls", () => {
+      expect(toRuntimeFileApiUrl("/blog/assets/a.png", "local", "blog/hello-world.md")).toBe(
+        "/api/files/local/blog/assets/a.png"
+      );
+    });
+
+    it("keeps site-absolute page links unchanged", () => {
+      expect(toRuntimeFileApiUrl("/search", "local", "blog/hello-world.md")).toBe("/search");
+      expect(toRuntimeFileApiUrl("/posts/hello-world/", "local", "blog/hello-world.md")).toBe(
+        "/posts/hello-world/"
+      );
+    });
+
     it("rejects paths that escape content root", () => {
       expect(toRuntimeFileApiUrl("../../x.png", "local", "blog/hello-world.md")).toBeNull();
     });
@@ -153,6 +166,37 @@ describe("persisted-paths", () => {
       );
       expect(content).toContain('<a href="https://example.com/file.pdf">External</a>');
       expect(content).toContain("![[./archive/assets/wiki.png|1200]]");
+    });
+
+    it("updates supported content-root absolute asset links", () => {
+      const input = [
+        "---",
+        "image: /blog/assets/cover.png",
+        "---",
+        "",
+        "![cover](/blog/assets/cover.png)",
+        '<img src="/blog/assets/html.png" srcset="/blog/assets/html-small.png 1x, /blog/assets/html-large.png 2x">',
+        "![[/blog/assets/wiki.png|1200]]",
+        "[search](/search)",
+        '<a href="/posts/hello-world/">Post</a>',
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalReferences(
+        input,
+        "blog/post.md",
+        "blog/assets",
+        "blog/archive/assets"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("image: ./archive/assets/cover.png");
+      expect(content).toContain("![cover](./archive/assets/cover.png)");
+      expect(content).toContain(
+        '<img src="./archive/assets/html.png" srcset="./archive/assets/html-small.png 1x, ./archive/assets/html-large.png 2x">'
+      );
+      expect(content).toContain("![[./archive/assets/wiki.png|1200]]");
+      expect(content).toContain("[search](/search)");
+      expect(content).toContain('<a href="/posts/hello-world/">Post</a>');
     });
   });
 
