@@ -152,6 +152,28 @@ function parseFileApiUrl(apiUrl: string): { source: string; path: string } | nul
   return { source, path: pathParts.join("/") };
 }
 
+function splitMarkdownUrlClosingParens(input: string): { url: string; closing: string } {
+  let balance = 0;
+  let cut = input.length;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (char === "(") {
+      balance += 1;
+      continue;
+    }
+    if (char !== ")") continue;
+    if (balance > 0) {
+      balance -= 1;
+      continue;
+    }
+    cut = index;
+    break;
+  }
+
+  return { url: input.slice(0, cut), closing: input.slice(cut) };
+}
+
 function assertSafePathInput(path: string) {
   if (!path || typeof path !== "string") {
     throw new PersistedPathError("ERR_INVALID_INPUT", "Path must be a non-empty string.");
@@ -243,8 +265,11 @@ export function toRuntimeFileApiUrl(
   const { path: rawPath, suffix } = splitSuffix(trimmed);
   const normalized = normalizeSlashes(rawPath.trim());
 
-  // Absolute persisted paths are treated as content-root-relative.
+  // Runtime rebasing should not reinterpret normal site-absolute links as files.
   if (normalized.startsWith("/")) {
+    if (!isFileApiUrl(normalized)) {
+      return trimmed;
+    }
     const resolved = stripLeadingSlashes(normalized);
     if (resolved.includes("..") || resolved.includes("~")) return null;
     return `/api/files/${source}/${resolved}${suffix}`;
@@ -281,16 +306,17 @@ export function rewriteApiFilesUrlsToRelative(
     return { content: input, changed: false };
   }
 
-  // Match /api/files/<source>/<path...> (stop at whitespace, quote, paren, or angle bracket)
-  const re =
-    /\/api\/files\/[A-Za-z0-9_-]+\/[A-Za-z0-9\-._~/%:@+]+(?:\?[^\s"'<>)]*)?(?:#[^\s"'<>)]*)?/g;
+  // Match /api/files/<source>/<path...> until markdown/html delimiters.
+  const re = /\/api\/files\/[A-Za-z0-9_-]+\/[^\s"'<>]+/g;
 
   let changed = false;
   const content = input.replace(re, (match) => {
     try {
-      const normalized = normalizePersistedLink(match, markdownFilePath);
-      changed = changed || normalized !== match;
-      return normalized;
+      const { url, closing } = splitMarkdownUrlClosingParens(match);
+      const normalized = normalizePersistedLink(url, markdownFilePath);
+      const next = `${normalized}${closing}`;
+      changed = changed || next !== match;
+      return next;
     } catch {
       // Keep the original when normalization fails to avoid destructive rewrites.
       return match;

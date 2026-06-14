@@ -68,6 +68,13 @@ describe("persisted-paths", () => {
       expect(changed).toBeTruthy();
       expect(content).toBe("![a](./assets/a.png)");
     });
+
+    it("rewrites /api/files urls with parentheses in filenames", () => {
+      const input = "![a](/api/files/local/blog/assets/photo%20(1).png)";
+      const { content, changed } = rewriteApiFilesUrlsToRelative(input, "blog/hello-world.md");
+      expect(changed).toBeTruthy();
+      expect(content).toBe("![a](./assets/photo%20(1).png)");
+    });
   });
 
   describe("rebasePersistedLocalLinks", () => {
@@ -82,6 +89,8 @@ describe("persisted-paths", () => {
         '[cover-ref]: ./assets/reference.png "Reference title"',
         '<img src="./assets/html.png" srcset="./assets/html-small.png 1x, ./assets/html-large.png 2x">',
         '<a href="../shared/spec.pdf">Spec</a>',
+        "[search](/search)",
+        '<a href="/posts/hello-world/">Post</a>',
         "![shared](../shared/logo.png)",
         "![[./assets/wiki.png|1200]]",
         "![remote](https://example.com/a.png)",
@@ -101,6 +110,8 @@ describe("persisted-paths", () => {
         '<img src="../docs/assets/html.png" srcset="../docs/assets/html-small.png 1x, ../docs/assets/html-large.png 2x">'
       );
       expect(content).toContain('<a href="../shared/spec.pdf">Spec</a>');
+      expect(content).toContain("[search](/search)");
+      expect(content).toContain('<a href="/posts/hello-world/">Post</a>');
       expect(content).toContain("![shared](../shared/logo.png)");
       expect(content).toContain("![[../docs/assets/wiki.png|1200]]");
       expect(content).toContain("![remote](https://example.com/a.png)");
