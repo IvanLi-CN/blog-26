@@ -1837,12 +1837,14 @@ describe("HTTP compatibility APIs", () => {
     const archiveDir = path.join(hardwareDir, "archive");
     const sharedDir = path.join(docsDir, "shared");
     fs.mkdirSync(path.join(docsDir, "series"), { recursive: true });
+    fs.mkdirSync(path.join(docsDir, "series", "assets"), { recursive: true });
     fs.mkdirSync(archiveDir, { recursive: true });
     fs.mkdirSync(sharedDir, { recursive: true });
     fs.writeFileSync(path.join(sharedDir, "logo.png"), "logo");
+    fs.writeFileSync(path.join(docsDir, "series", "assets", "cover.png"), "cover");
     fs.writeFileSync(
       path.join(docsDir, "series", "overview.md"),
-      ["# Series", "", "![logo](../shared/logo.png)"].join("\n")
+      ["# Series", "", "![cover](./assets/cover.png)", "![logo](../shared/logo.png)"].join("\n")
     );
 
     const manager = getContentSourceManager();
@@ -1873,6 +1875,7 @@ describe("HTTP compatibility APIs", () => {
         "utf-8"
       );
       expect(copiedContent).toContain("![logo](../../docs/shared/logo.png)");
+      expect(copiedContent).toContain("![cover](./assets/cover.png)");
     } finally {
       manager.syncAll = originalSyncAll;
     }
@@ -2066,6 +2069,66 @@ describe("HTTP compatibility APIs", () => {
       expect(copyPayload.error.message).toContain("不能将目录复制到其自身或后代目录内");
       expect(fs.existsSync(seriesDir)).toBe(true);
       expect(fs.existsSync(reactDir)).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects dot-segment destinations for local move and copy operations", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const blogDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog");
+    fs.mkdirSync(blogDir, { recursive: true });
+    fs.writeFileSync(path.join(blogDir, "post.md"), "post");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/post.md"],
+              destinationPath: "blog/..",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      const movePayload = await readJson(moveResponse);
+      expect(movePayload.error.message).toContain("本地路径不能包含 . 或 .. 路径段");
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/post.md"],
+              destinationPath: "blog/..",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("本地路径不能包含 . 或 .. 路径段");
+      expect(fs.existsSync(path.join(blogDir, "post.md"))).toBe(true);
+      expect(fs.existsSync(path.join(LOCAL_CONTENT_BASE_PATH, "post.md"))).toBe(false);
     } finally {
       manager.syncAll = originalSyncAll;
     }

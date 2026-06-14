@@ -125,7 +125,14 @@ function getLocalConfiguredRootDirs(): string[] {
 }
 
 function normalizeLocalBrowserPath(path: string): string {
-  return normalizeRelativeContentPath(path || "");
+  const normalizedPath = normalizeRelativeContentPath(path || "");
+  if (normalizedPath.split("/").some((segment) => segment === "." || segment === "..")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "本地路径不能包含 . 或 .. 路径段",
+    });
+  }
+  return normalizedPath;
 }
 
 function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } = {}): string {
@@ -744,6 +751,11 @@ async function copyLocalEntries(
       operation.fullNextPath,
       operation.path,
       operation.nextPath,
+      nodePath
+    );
+    await rebaseInboundMovedReferences(
+      operation.nextPath,
+      [{ oldPath: operation.path, newPath: operation.nextPath }],
       nodePath
     );
   }
