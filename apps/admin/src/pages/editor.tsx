@@ -342,6 +342,26 @@ export function remapActiveTabIdForPathChange(
   return `${filePrefix}${nextPath}`;
 }
 
+export function remapBrowserPathForPathChange(
+  browserPath: string,
+  oldPath: string,
+  newPath: string,
+  type: TreeItemType
+) {
+  const normalizedBrowserPath = normalizeTreePath(browserPath);
+  const normalizedOldPath = normalizeTreePath(oldPath);
+
+  if (type !== "directory" || !normalizedOldPath) return normalizedBrowserPath;
+  if (
+    normalizedBrowserPath !== normalizedOldPath &&
+    !normalizedBrowserPath.startsWith(`${normalizedOldPath}/`)
+  ) {
+    return normalizedBrowserPath;
+  }
+
+  return replaceTreePathPrefix(normalizedBrowserPath, normalizedOldPath, newPath);
+}
+
 export function resolveActiveTabIdAfterTreeDelete(
   tabs: EditorTab[],
   activeTabId: string | null,
@@ -359,6 +379,20 @@ export function resolveActiveTabIdAfterTreeDelete(
     isTreeOperationTargeted(activeContext.articlePath, entry.path, entry.type)
   );
   return activeDeleted ? (tabs[tabs.length - 1]?.id ?? null) : activeTabId;
+}
+
+export function resolveBrowserPathAfterTreeDelete(
+  browserPath: string,
+  deletedEntries: Array<{ path: string; type: TreeItemType }>
+) {
+  const normalizedBrowserPath = normalizeTreePath(browserPath);
+  const deletedDirectory = deletedEntries.find(
+    (entry) =>
+      entry.type === "directory" &&
+      isTreeOperationTargeted(normalizedBrowserPath, entry.path, entry.type)
+  );
+
+  return deletedDirectory ? getParentTreePath(deletedDirectory.path) : normalizedBrowserPath;
 }
 
 function isTreeOperationTargeted(entryPath: string, targetPath: string, targetType: TreeItemType) {
@@ -1170,6 +1204,15 @@ export function EditorPage() {
           const next = previous.map((path) => replaceTreePathPrefix(path, target.path, newPath));
           return { ...current, [target.source]: Array.from(new Set(next)) };
         });
+        setCurrentPaths((current) => ({
+          ...current,
+          [target.source]: remapBrowserPathForPathChange(
+            current[target.source],
+            target.path,
+            newPath,
+            target.type
+          ),
+        }));
         setTabs((current) =>
           current.map((tab) => remapTabPath(tab, target.source, target.path, newPath))
         );
@@ -1219,6 +1262,14 @@ export function EditorPage() {
           );
           return { ...current, [selectedSource]: Array.from(new Set(next)) };
         });
+        setCurrentPaths((current) => ({
+          ...current,
+          [selectedSource]: pathPairs.reduce(
+            (path, pair) =>
+              remapBrowserPathForPathChange(path, pair.oldPath, pair.newPath, pair.type),
+            current[selectedSource]
+          ),
+        }));
         setTabs((current) =>
           current.map((tab) =>
             pathPairs.reduce(
@@ -1320,6 +1371,13 @@ export function EditorPage() {
             ? null
             : current;
         });
+        setCurrentPaths((current) => ({
+          ...current,
+          [selectedSource]: resolveBrowserPathAfterTreeDelete(
+            current[selectedSource],
+            deletedEntries
+          ),
+        }));
         await queryClient.invalidateQueries({
           queryKey: ["admin-directory-tree", selectedSource],
         });

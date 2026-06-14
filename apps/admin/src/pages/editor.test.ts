@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import {
   mapBatchResultsToTreeSelection,
   remapActiveTabIdForPathChange,
+  remapBrowserPathForPathChange,
   resolveActiveTabIdAfterTreeDelete,
+  resolveBrowserPathAfterTreeDelete,
 } from "./editor";
 
 describe("editor batch selection mapping", () => {
@@ -82,5 +84,45 @@ describe("editor tab path remapping", () => {
         [{ path: "blog/deleted.md", type: "file" }]
       )
     ).toBe("file:local:blog/second.md");
+  });
+});
+
+describe("editor browser path remapping", () => {
+  test("keeps the current directory selected after directory rename or move operations", () => {
+    expect(
+      remapBrowserPathForPathChange(
+        "blog/drafts/nested",
+        "blog/drafts",
+        "blog/archive",
+        "directory"
+      )
+    ).toBe("blog/archive/nested");
+
+    expect(
+      remapBrowserPathForPathChange("blog/drafts", "blog/drafts", "blog/archive", "directory")
+    ).toBe("blog/archive");
+
+    expect(
+      remapBrowserPathForPathChange(
+        "blog/drafts",
+        "blog/drafts/post.md",
+        "blog/archive/post.md",
+        "file"
+      )
+    ).toBe("blog/drafts");
+  });
+
+  test("falls back to the nearest parent after deleting the current directory", () => {
+    expect(
+      resolveBrowserPathAfterTreeDelete("blog/archive/nested", [
+        { path: "blog/archive", type: "directory" },
+      ])
+    ).toBe("blog");
+
+    expect(
+      resolveBrowserPathAfterTreeDelete("blog/archive", [
+        { path: "blog/archive/post.md", type: "file" },
+      ])
+    ).toBe("blog/archive");
   });
 });
