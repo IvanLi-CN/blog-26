@@ -363,7 +363,7 @@ async function triggerAdminContentSync(fullSync = false): Promise<void> {
   }
 }
 
-async function deleteStalePostRows(stalePaths: string[]) {
+async function deleteStaleContentRows(stalePaths: string[]) {
   const normalizedStalePaths = Array.from(
     new Set(stalePaths.map(normalizeLocalBrowserPath).filter(Boolean))
   );
@@ -375,10 +375,30 @@ async function deleteStalePostRows(stalePaths: string[]) {
     .map((post) => post.id)
     .filter((id) => normalizedStalePaths.some((path) => id === path || id.startsWith(`${path}/`)));
   if (staleIds.length === 0) {
-    return;
+    // Continue below so stale vector rows are removed even when the post row was already gone.
+  } else {
+    await Promise.all(staleIds.map((id) => db.delete(posts).where(eq(posts.id, id))));
   }
 
-  await Promise.all(staleIds.map((id) => db.delete(posts).where(eq(posts.id, id))));
+  const staleEmbeddingIds = (
+    await db.select({ id: postEmbeddings.id, postId: postEmbeddings.postId }).from(postEmbeddings)
+  )
+    .filter((row) => isPathInScope(row.postId, normalizedStalePaths))
+    .map((row) => row.id);
+  await Promise.all(
+    staleEmbeddingIds.map((id) => db.delete(postEmbeddings).where(eq(postEmbeddings.id, id)))
+  );
+
+  const staleVectorizedFilepaths = (
+    await db.select({ filepath: vectorizedFiles.filepath }).from(vectorizedFiles)
+  )
+    .filter((row) => isPathInScope(row.filepath, normalizedStalePaths))
+    .map((row) => row.filepath);
+  await Promise.all(
+    staleVectorizedFilepaths.map((filepath) =>
+      db.delete(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath))
+    )
+  );
   clearSearchCache();
 }
 
@@ -484,7 +504,7 @@ async function syncAndCommitFileMutation<
   ]);
   try {
     if (!options.fullSync) {
-      await deleteStalePostRows(options.stalePaths ?? []);
+      await deleteStaleContentRows(options.stalePaths ?? []);
     }
     await triggerAdminContentSync(options.fullSync ?? false);
   } catch (error) {

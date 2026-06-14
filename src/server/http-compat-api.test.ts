@@ -1617,6 +1617,15 @@ describe("HTTP compatibility APIs", () => {
     fs.mkdirSync(docsDir, { recursive: true });
     fs.mkdirSync(archiveDir, { recursive: true });
     fs.writeFileSync(path.join(docsDir, "move-me.md"), "move");
+    await seedPost({
+      id: "Hardware/docs/move-me.md",
+      slug: "move-me",
+      title: "Move Me",
+      body: "Move",
+      filePath: "Hardware/docs/move-me.md",
+    });
+    await seedPostEmbedding("Hardware/docs/move-me.md", "move-me", "stale");
+    await seedVectorizedFile("Hardware/docs/move-me.md", "move-me");
     const databaseOnlyPostId = await seedPost({
       id: "post-move-database-only",
       slug: "move-database-only",
@@ -1671,7 +1680,18 @@ describe("HTTP compatibility APIs", () => {
         .from(posts)
         .where(eq(posts.id, "Hardware/archive/move-me.md"))
         .get();
+      const oldMoveEmbeddingsAfterMove = await db
+        .select()
+        .from(postEmbeddings)
+        .where(eq(postEmbeddings.postId, "Hardware/docs/move-me.md"));
+      const oldMoveVectorizedAfterMove = await db
+        .select()
+        .from(vectorizedFiles)
+        .where(eq(vectorizedFiles.filepath, "Hardware/docs/move-me.md"))
+        .get();
       expect(oldMovedPostAfterMove).toBeUndefined();
+      expect(oldMoveEmbeddingsAfterMove).toHaveLength(0);
+      expect(oldMoveVectorizedAfterMove).toBeUndefined();
       expect(movedPostAfterMove).toMatchObject({ id: "Hardware/archive/move-me.md" });
 
       const copyResponse = await handleAdminApiRequest(
