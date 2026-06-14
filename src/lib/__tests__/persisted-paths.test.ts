@@ -101,8 +101,11 @@ describe("persisted-paths", () => {
         '[cover-ref]: ./assets/reference.png "Reference title"',
         '<img src="./assets/html.png" srcset="./assets/html-small.png 1x, ./assets/html-large.png 2x">',
         '<a href="../shared/spec.pdf">Spec</a>',
+        "![absolute](/blog/docs/assets/absolute.png)",
         "[search](/search)",
         '<a href="/posts/hello-world/">Post</a>',
+        '<a href="/feed.xml">Feed</a>',
+        '<a href="/downloads/manual.pdf">Manual</a>',
         "![shared](../shared/logo.png)",
         "![[./assets/wiki.png|1200]]",
         "![remote](https://example.com/a.png)",
@@ -123,8 +126,11 @@ describe("persisted-paths", () => {
         '<img src="../docs/assets/html.png" srcset="../docs/assets/html-small.png 1x, ../docs/assets/html-large.png 2x">'
       );
       expect(content).toContain('<a href="../shared/spec.pdf">Spec</a>');
+      expect(content).toContain("![absolute](../docs/assets/absolute.png)");
       expect(content).toContain("[search](/search)");
       expect(content).toContain('<a href="/posts/hello-world/">Post</a>');
+      expect(content).toContain('<a href="/feed.xml">Feed</a>');
+      expect(content).toContain('<a href="/downloads/manual.pdf">Manual</a>');
       expect(content).toContain("![shared](../shared/logo.png)");
       expect(content).toContain("![[../docs/assets/wiki.png|1200]]");
       expect(content).toContain("![remote](https://example.com/a.png)");

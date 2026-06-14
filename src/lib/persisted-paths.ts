@@ -349,6 +349,29 @@ function rebaseLocalTarget(
 ) {
   if (!shouldRebaseLocalTarget(value)) return value;
 
+  const trimmed = value.trim();
+  if (trimmed.startsWith("/") && !isFileApiUrl(trimmed)) {
+    const { path: rawPath, suffix } = splitSuffix(trimmed);
+    const currentPath = stripLeadingSlashes(normalizeSlashes(rawPath.trim()));
+    const oldMarkdownDir = getMarkdownDir(oldMarkdownFilePath);
+
+    if (
+      !oldMarkdownDir ||
+      (currentPath !== oldMarkdownDir && !currentPath.startsWith(`${oldMarkdownDir}/`))
+    ) {
+      return value;
+    }
+
+    try {
+      return normalizePersistedLink(
+        `/api/files/local/${currentPath}${suffix}`,
+        newMarkdownFilePath
+      );
+    } catch {
+      return value;
+    }
+  }
+
   const runtimeUrl = toRuntimeFileApiUrl(value, "local", oldMarkdownFilePath);
   if (!runtimeUrl || !isFileApiUrl(runtimeUrl)) return value;
 

@@ -252,6 +252,17 @@ export function mapBatchResultsToTreeSelection(
     }));
 }
 
+export function getSelectionRevealPaths(entries: TreeSelection[]) {
+  return Array.from(
+    new Set(
+      entries
+        .map((entry) => getParentTreePath(entry.path))
+        .filter((path): path is string => Boolean(path))
+        .flatMap((path) => getAncestorTreePaths(`${path}/__selection__.md`))
+    )
+  );
+}
+
 function rebaseOpenMarkdownContent(content: string, oldPath: string, newPath: string) {
   if (!/\.(?:md|markdown)$/i.test(oldPath) && !/\.(?:md|markdown)$/i.test(newPath)) {
     return content;
@@ -1343,6 +1354,12 @@ export function EditorPage() {
           getFileOperationNotice(`已移动 ${response.moved.length} 项。`, response.syncWarning)
         );
         const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.moved);
+        setExpandedPaths((current) => ({
+          ...current,
+          [selectedSource]: Array.from(
+            new Set([...(current[selectedSource] ?? []), ...getSelectionRevealPaths(nextSelection)])
+          ),
+        }));
         setTreeSelectionOverride(nextSelection);
         return nextSelection;
       } catch (error) {
@@ -1369,6 +1386,12 @@ export function EditorPage() {
           getFileOperationNotice(`已复制 ${response.copied.length} 项。`, response.syncWarning)
         );
         const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.copied);
+        setExpandedPaths((current) => ({
+          ...current,
+          [selectedSource]: Array.from(
+            new Set([...(current[selectedSource] ?? []), ...getSelectionRevealPaths(nextSelection)])
+          ),
+        }));
         setTreeSelectionOverride(nextSelection);
         return nextSelection;
       } catch (error) {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  getSelectionRevealPaths,
   mapBatchResultsToTreeSelection,
   remapActiveTabIdForPathChange,
   remapBrowserPathForPathChange,
@@ -36,6 +37,23 @@ describe("editor batch selection mapping", () => {
       },
     ]);
   });
+
+  test("expands destination ancestors before applying moved or copied selection", () => {
+    expect(
+      getSelectionRevealPaths([
+        {
+          source: "local",
+          path: "blog/archive/2024/post.md",
+          type: "file",
+        },
+        {
+          source: "local",
+          path: "blog/archive/2024/assets",
+          type: "directory",
+        },
+      ])
+    ).toEqual(["blog", "blog/archive", "blog/archive/2024"]);
+  });
 });
 
 describe("editor tab path remapping", () => {
@@ -50,7 +68,8 @@ describe("editor tab path remapping", () => {
         file: {
           source: "local",
           path: "blog/drafts/post.md",
-          content: "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)",
+          content:
+            "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)\n![absolute](/blog/drafts/assets/absolute.png)\n[feed](/feed.xml)",
         },
       },
       "local",
@@ -63,7 +82,7 @@ describe("editor tab path remapping", () => {
       file: {
         path: "blog/archive/post.md",
         content:
-          "---\nimage: ../drafts/assets/cover.png\n---\n\n![cover](../drafts/assets/cover.png)",
+          "---\nimage: ../drafts/assets/cover.png\n---\n\n![cover](../drafts/assets/cover.png)\n![absolute](../drafts/assets/absolute.png)\n[feed](/feed.xml)",
       },
     });
   });
