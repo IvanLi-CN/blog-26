@@ -833,7 +833,6 @@ Body paragraph`);
     await archiveDirectoryButton.focus();
     await page.keyboard.press("Shift+F10");
     await page.getByRole("menuitem", { name: "粘贴" }).click();
-    await archiveDirectoryButton.press("Enter");
     await expect(
       page
         .getByTestId("editor-file-browser")
@@ -903,8 +902,11 @@ Body paragraph`);
     await expect(moveDialog.getByText("blog/archive", { exact: true })).toBeVisible();
     await moveDialog.getByRole("button", { name: "确认移动" }).click();
 
-    await expect(treeNameButton(page, "12-content-taxonomy-migration-plan.md")).toHaveCount(0);
-    await treeDirectoryButton(page, "archive").click();
+    await expect(
+      page
+        .getByTestId("editor-file-browser")
+        .getByRole("button", { name: "12-content-taxonomy-migration-plan.md", exact: true })
+    ).toHaveCount(1);
     await expect(treeNameButton(page, "12-content-taxonomy-migration-plan.md")).toBeVisible();
   });
 
@@ -929,7 +931,6 @@ Body paragraph`);
 
     await expect(page.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toHaveCount(0);
 
-    await archiveDirectoryButton.press("Enter");
     await expect(treeNameButton(page, "02-typescript-advanced-types.md")).toHaveCount(1);
     await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
     await expectTreeSelectionState(page, ["02-typescript-advanced-types.md"], []);
