@@ -63,6 +63,14 @@ describe("editor tab path remapping", () => {
     expect(shouldMarkLiveEditorContentDirty("same", "same")).toBeFalse();
   });
 
+  test("can preserve clean-tab state while syncing serialized editor content", () => {
+    expect(
+      shouldMarkLiveEditorContentDirty("normalized content", "persisted content", {
+        preserveCurrentDirtyState: true,
+      })
+    ).toBeFalse();
+  });
+
   test("rebases open markdown tab content when moving or renaming the file", () => {
     const tab = remapTabPath(
       {

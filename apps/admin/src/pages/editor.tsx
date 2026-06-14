@@ -82,8 +82,16 @@ function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
   return [tab, ...current.filter((item) => item.id !== tab.id)];
 }
 
-export function shouldMarkLiveEditorContentDirty(liveContent: string, persistedContent: string) {
-  return liveContent !== persistedContent;
+export function shouldMarkLiveEditorContentDirty(
+  liveContent: string,
+  persistedContent: string,
+  options: { preserveCurrentDirtyState?: boolean } = {}
+) {
+  if (liveContent === persistedContent) {
+    return false;
+  }
+
+  return !options.preserveCurrentDirtyState;
 }
 
 const EMPTY_SOURCES: DataSourceInfo[] = [];
@@ -931,27 +939,33 @@ export function EditorPage() {
     [updateActiveTab]
   );
 
-  const syncActiveTabFromEditor = useCallback(() => {
-    if (!activeTab) {
-      return null;
-    }
+  const syncActiveTabFromEditor = useCallback(
+    (options: { markDirty?: boolean } = {}) => {
+      if (!activeTab) {
+        return null;
+      }
 
-    const liveContent = editorRef.current?.getContent();
-    if (typeof liveContent !== "string") {
-      return null;
-    }
+      const liveContent = editorRef.current?.getContent();
+      if (typeof liveContent !== "string") {
+        return null;
+      }
 
-    const persistedContent =
-      activeTab.kind === "database"
-        ? (activeTab.database?.content ?? "")
-        : (activeTab.file?.content ?? "");
+      const persistedContent =
+        activeTab.kind === "database"
+          ? (activeTab.database?.content ?? "")
+          : (activeTab.file?.content ?? "");
 
-    if (shouldMarkLiveEditorContentDirty(liveContent, persistedContent)) {
-      updateActiveTabContent(liveContent, { markDirty: true });
-    }
+      if (liveContent !== persistedContent) {
+        updateActiveTabContent(liveContent, {
+          markDirty:
+            options.markDirty ?? shouldMarkLiveEditorContentDirty(liveContent, persistedContent),
+        });
+      }
 
-    return liveContent;
-  }, [activeTab, updateActiveTabContent]);
+      return liveContent;
+    },
+    [activeTab, updateActiveTabContent]
+  );
 
   useEffect(() => {
     if (!activeTab) {
@@ -1709,7 +1723,7 @@ export function EditorPage() {
                     size="sm"
                     variant={activeTab.mode === "wysiwyg" ? "default" : "outline"}
                     onClick={() => {
-                      syncActiveTabFromEditor();
+                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
                       updateActiveTab((tab) => ({ ...tab, mode: "wysiwyg" }));
                     }}
                   >
@@ -1720,7 +1734,7 @@ export function EditorPage() {
                     size="sm"
                     variant={activeTab.mode === "source" ? "default" : "outline"}
                     onClick={() => {
-                      syncActiveTabFromEditor();
+                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
                       updateActiveTab((tab) => ({ ...tab, mode: "source" }));
                     }}
                   >
@@ -1731,7 +1745,7 @@ export function EditorPage() {
                     size="sm"
                     variant={activeTab.mode === "compare" ? "default" : "outline"}
                     onClick={() => {
-                      syncActiveTabFromEditor();
+                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
                       updateActiveTab((tab) => ({ ...tab, mode: "compare" }));
                     }}
                   >
