@@ -1784,6 +1784,65 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rejects empty destinations for local move and copy operations", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const blogDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog");
+    fs.mkdirSync(blogDir, { recursive: true });
+    fs.writeFileSync(path.join(blogDir, "move-me.md"), "move");
+    fs.writeFileSync(path.join(blogDir, "copy-me.md"), "copy");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/move-me.md"],
+              destinationPath: "",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      expect(fs.existsSync(path.join(blogDir, "move-me.md"))).toBe(true);
+      expect(fs.existsSync(path.join(LOCAL_CONTENT_BASE_PATH, "move-me.md"))).toBe(false);
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/copy-me.md"],
+              destinationPath: "",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      expect(fs.existsSync(path.join(blogDir, "copy-me.md"))).toBe(true);
+      expect(fs.existsSync(path.join(LOCAL_CONTENT_BASE_PATH, "copy-me.md"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rebases inbound markdown references after moving local asset files", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 

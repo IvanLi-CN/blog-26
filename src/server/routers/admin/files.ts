@@ -61,13 +61,13 @@ const fileEntrySchema = z.object({
 const moveEntriesSchema = z.object({
   source: z.literal("local").default("local"),
   paths: z.array(z.string().min(1)).min(1),
-  destinationPath: z.string().default(""),
+  destinationPath: z.string().min(1),
 });
 
 const copyEntriesSchema = z.object({
   source: z.literal("local").default("local"),
   paths: z.array(z.string().min(1)).min(1),
-  destinationPath: z.string().default(""),
+  destinationPath: z.string().min(1),
 });
 
 const deleteEntriesSchema = z.object({
@@ -289,10 +289,8 @@ async function ensureLocalDirectoryTarget(
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
   const basePath = resolve(requireLocalBasePath());
-  const normalizedRelativePath = destinationPath ? assertLocalPathAllowed(destinationPath) : "";
-  const fullPath = normalizedRelativePath
-    ? nodePath.join(basePath, normalizedRelativePath)
-    : basePath;
+  const normalizedRelativePath = assertLocalPathAllowed(destinationPath);
+  const fullPath = nodePath.join(basePath, normalizedRelativePath);
 
   const stats = await fs.stat(fullPath).catch((error: NodeJS.ErrnoException) => {
     if (error?.code === "ENOENT") {

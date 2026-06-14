@@ -102,6 +102,8 @@ describe("persisted-paths", () => {
         '<img src="./assets/html.png" srcset="./assets/html-small.png 1x, ./assets/html-large.png 2x">',
         '<a href="../shared/spec.pdf">Spec</a>',
         "![absolute](/blog/docs/assets/absolute.png)",
+        "[manual](/blog/docs/manual.pdf)",
+        '<a href="/blog/docs/manual.pdf">Manual</a>',
         "[docs route](/blog/docs)",
         '<a href="/blog/docs/page">Docs page</a>',
         "[search](/search)",
@@ -129,6 +131,8 @@ describe("persisted-paths", () => {
       );
       expect(content).toContain('<a href="../shared/spec.pdf">Spec</a>');
       expect(content).toContain("![absolute](../docs/assets/absolute.png)");
+      expect(content).toContain("[manual](/blog/docs/manual.pdf)");
+      expect(content).toContain('<a href="/blog/docs/manual.pdf">Manual</a>');
       expect(content).toContain("[docs route](/blog/docs)");
       expect(content).toContain('<a href="/blog/docs/page">Docs page</a>');
       expect(content).toContain("[search](/search)");

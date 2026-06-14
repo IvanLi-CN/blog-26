@@ -347,6 +347,10 @@ function hasFileExtension(path: string): boolean {
   return /\.[A-Za-z0-9]{1,16}$/.test(lastSegment);
 }
 
+function isContentAssetPath(path: string): boolean {
+  return path.split("/").some((segment) => segment.toLowerCase() === "assets");
+}
+
 function rebaseLocalTarget(
   value: string,
   oldMarkdownFilePath: string,
@@ -367,6 +371,9 @@ function rebaseLocalTarget(
       return value;
     }
     if (!hasFileExtension(currentPath)) {
+      return value;
+    }
+    if (!isContentAssetPath(currentPath)) {
       return value;
     }
 
