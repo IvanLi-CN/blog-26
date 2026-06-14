@@ -27,7 +27,7 @@ type Story = StoryObj<typeof meta>;
 export const Editable: Story = {
   render: () => {
     const [value, setValue] = useState(
-      "title: React Hooks 深度解析\nslug: react-hooks-deep-dive\ndraft: false\npublic: true"
+      "title: React Hooks 深度解析\nslug: react-hooks-deep-dive\ndraft: false\npublic: true\ncreatedVia: demo\ntags:\n  - React\n  - Hooks\ncategory: frontend"
     );
 
     return <FrontmatterBlock value={value} onChange={setValue} />;

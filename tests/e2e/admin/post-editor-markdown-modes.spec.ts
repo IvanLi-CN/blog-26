@@ -38,6 +38,83 @@ async function expectFrontmatterBlock(page: Page) {
   await expect(page.getByRole("textbox", { name: "Frontmatter YAML editor" })).toHaveValue(
     /slug: react-hooks-deep-dive/
   );
+  const frontmatterMetrics = await page
+    .getByRole("textbox", { name: "Frontmatter YAML editor" })
+    .evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      overflowY: getComputedStyle(element).overflowY,
+    }));
+  expect(frontmatterMetrics.overflowY).toBe("hidden");
+  expect(frontmatterMetrics.scrollHeight).toBeLessThanOrEqual(frontmatterMetrics.clientHeight + 1);
+}
+
+async function expectFrontmatterFocusState(page: Page) {
+  const focusState = await page.getByTestId("frontmatter-block").evaluate((element) => {
+    const styles = getComputedStyle(element);
+    return {
+      borderColor: styles.borderColor,
+      boxShadow: styles.boxShadow,
+    };
+  });
+
+  expect(focusState.boxShadow).not.toBe("none");
+  expect(focusState.boxShadow).toContain("rgb");
+  expect(focusState.borderColor).not.toBe("rgba(0, 0, 0, 0)");
+}
+
+async function expectWysiwygTextColumnAlignment(page: Page) {
+  const titleLeft = await page
+    .locator("div.text-base.font-semibold")
+    .filter({ hasText: "React Hooks 深度解析" })
+    .first()
+    .evaluate((element) => element.getBoundingClientRect().left);
+  const frontmatterTextLeft = await page
+    .getByRole("textbox", { name: "Frontmatter YAML editor" })
+    .evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return element.getBoundingClientRect().left + parseFloat(styles.paddingLeft || "0");
+    });
+  const bodyTextLeft = await page
+    .locator('[data-testid="content-input"] .ProseMirror')
+    .evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return element.getBoundingClientRect().left + parseFloat(styles.paddingLeft || "0");
+    });
+
+  expect(Math.abs(frontmatterTextLeft - bodyTextLeft)).toBeLessThanOrEqual(2);
+  expect(titleLeft).toBeLessThan(bodyTextLeft);
+}
+
+async function expectFrontmatterBodyRhythm(page: Page) {
+  const spacing = await page.evaluate(() => {
+    const frontmatter = document.querySelector('[data-testid="frontmatter-block"]');
+    const prose = document.querySelector('[data-testid="content-input"] .ProseMirror');
+    const firstHeading = document.querySelector('[data-testid="content-input"] .ProseMirror h1');
+
+    if (
+      !(frontmatter instanceof Element) ||
+      !(prose instanceof Element) ||
+      !(firstHeading instanceof Element)
+    ) {
+      return null;
+    }
+
+    const frontRect = frontmatter.getBoundingClientRect();
+    const proseRect = prose.getBoundingClientRect();
+    const headingRect = firstHeading.getBoundingClientRect();
+
+    return {
+      gapFrontToProse: Math.round(proseRect.top - frontRect.bottom),
+      gapFrontToHeading: Math.round(headingRect.top - frontRect.bottom),
+      gapProseToHeading: Math.round(headingRect.top - proseRect.top),
+    };
+  });
+
+  expect(spacing).not.toBeNull();
+  expect(spacing?.gapFrontToProse).toBe(16);
+  expect(spacing?.gapProseToHeading).toBeLessThanOrEqual(28);
+  expect(spacing?.gapFrontToHeading).toBeLessThanOrEqual(44);
 }
 
 async function richMarkdownState(page: Page, rootSelector: string) {
@@ -121,6 +198,32 @@ test.describe("Post editor Markdown modes", () => {
     await expect(page.locator('[data-testid="content-input"] .ProseMirror')).toBeVisible();
 
     expectRichMarkdownRendering(await richMarkdownState(page, '[data-testid="content-input"]'));
+  });
+
+  test("frontmatter block exposes a visible keyboard focus state", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+    await frontmatter.focus();
+
+    await expectFrontmatterFocusState(page);
+  });
+
+  test("WYSIWYG body text aligns with the frontmatter text column", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await expectFrontmatterBlock(page);
+    await expectWysiwygTextColumnAlignment(page);
+  });
+
+  test("WYSIWYG keeps frontmatter and body in one vertical writing rhythm", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await expectFrontmatterBlock(page);
+    await expectFrontmatterBodyRhythm(page);
   });
 
   test("compare preview renders Markdown with Milkdown read-only highlighting", async ({

@@ -1599,7 +1599,7 @@ export function EditorPage() {
             </div>
           ) : (
             <div className="flex h-full min-h-0 flex-col">
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/58 px-5 py-4">
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/58 px-4 py-4">
                 <div>
                   <div className="text-base font-semibold">{activeTab.label || "未命名文章"}</div>
                   <div className="mt-0.5 text-sm text-muted-foreground">
