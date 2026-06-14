@@ -141,10 +141,10 @@ describe("persisted-paths", () => {
     it("updates links that point at a moved local file", () => {
       const input = [
         "---",
-        "image: ./assets/cover.png",
+        "image: ./assets/cover.png?v=2",
         "---",
         "",
-        "![cover](./assets/cover.png)",
+        "![cover](./assets/cover.png#hero)",
         "![photo](./assets/photo%20(1).png)",
         "![ref][cover-ref]",
         '[cover-ref]: ./assets/reference.png "Reference title"',
@@ -161,8 +161,8 @@ describe("persisted-paths", () => {
       );
 
       expect(changed).toBeTrue();
-      expect(content).toContain("image: ./archive/assets/cover.png");
-      expect(content).toContain("![cover](./archive/assets/cover.png)");
+      expect(content).toContain("image: ./archive/assets/cover.png?v=2");
+      expect(content).toContain("![cover](./archive/assets/cover.png#hero)");
       expect(content).toContain("![photo](./archive/assets/photo%20(1).png)");
       expect(content).toContain('[cover-ref]: ./archive/assets/reference.png "Reference title"');
       expect(content).toContain(

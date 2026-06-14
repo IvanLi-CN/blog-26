@@ -410,10 +410,12 @@ function rebaseMovedReferenceTarget(
     }
   }
 
+  const { suffix } = splitSuffix(trimmed);
   const runtimeUrl = toRuntimeFileApiUrl(value, "local", markdownFilePath);
   if (!runtimeUrl || !isFileApiUrl(runtimeUrl)) return value;
 
-  const parsed = parseFileApiUrl(runtimeUrl);
+  const { path: runtimePath } = splitSuffix(runtimeUrl);
+  const parsed = parseFileApiUrl(runtimePath);
   if (!parsed || parsed.source !== "local") return value;
 
   const currentPath = stripLeadingSlashes(normalizeSlashes(parsed.path));
@@ -424,7 +426,7 @@ function rebaseMovedReferenceTarget(
   }
 
   try {
-    return normalizePersistedLink(`/api/files/local/${rebased}`, markdownFilePath);
+    return normalizePersistedLink(`/api/files/local/${rebased}${suffix}`, markdownFilePath);
   } catch {
     return value;
   }
