@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FileItem } from "@/lib/admin-api-client";
 import {
+  canCreateInTreePath,
   getConfiguredRootForPath,
   getConfiguredRootPathSet,
   isConfiguredRootPath,
@@ -59,5 +60,18 @@ describe("editor file browser configured roots", () => {
       false
     );
     expect(isSameConfiguredRootDestination([selection("blog/post.md")], "", roots)).toBe(false);
+  });
+
+  test("disallows creating entries at the configured-roots landing view", () => {
+    const roots = getConfiguredRootPathSet(ROOT_ITEMS);
+
+    expect(canCreateInTreePath("", roots)).toBe(false);
+  });
+
+  test("allows creating entries inside a configured root", () => {
+    const roots = getConfiguredRootPathSet(ROOT_ITEMS);
+
+    expect(canCreateInTreePath("blog", roots)).toBe(true);
+    expect(canCreateInTreePath("blog/archive", roots)).toBe(true);
   });
 });

@@ -258,6 +258,13 @@ export function getConfiguredRootForPath(
   return matchedRoot;
 }
 
+export function canCreateInTreePath(
+  path: string | null | undefined,
+  configuredRootPaths: ReadonlySet<string>
+) {
+  return getConfiguredRootForPath(path, configuredRootPaths) !== null;
+}
+
 export function selectionContainsConfiguredRoot(
   entries: TreeSelection[],
   configuredRootPaths: ReadonlySet<string>
@@ -1230,12 +1237,14 @@ export function EditorFileBrowser({
       }
 
       if (command === "new-file") {
+        if (!canCreateInTreePath(directoryTarget, configuredRootPaths)) return;
         onCreateFile(directoryTarget);
         setContextMenu(null);
         return;
       }
 
       if (command === "new-directory") {
+        if (!canCreateInTreePath(directoryTarget, configuredRootPaths)) return;
         onCreateDirectory(directoryTarget);
         setContextMenu(null);
         return;
@@ -1414,6 +1423,10 @@ export function EditorFileBrowser({
     const canPaste =
       Boolean(clipboard?.items.length) &&
       !clipboardDisabledTargets.has(normalizeTreePath(contextMenu?.currentDirectoryPath ?? ""));
+    const canCreateInCurrentDirectory = canCreateInTreePath(
+      contextMenu?.currentDirectoryPath,
+      configuredRootPaths
+    );
     const items: ContextMenuItem[] = [];
 
     if (isMulti) {
@@ -1453,9 +1466,15 @@ export function EditorFileBrowser({
           id: "new-file",
           label: "新建文件",
           command: "new-file",
+          disabled: !canCreateInCurrentDirectory,
           separatorBefore: true,
         }),
-        contextMenuItem({ id: "new-directory", label: "新建目录", command: "new-directory" }),
+        contextMenuItem({
+          id: "new-directory",
+          label: "新建目录",
+          command: "new-directory",
+          disabled: !canCreateInCurrentDirectory,
+        }),
         contextMenuItem({
           id: "refresh",
           label: "刷新",
@@ -1491,9 +1510,15 @@ export function EditorFileBrowser({
           id: "new-file",
           label: "新建文件",
           command: "new-file",
+          disabled: !canCreateInTreePath(target.path, configuredRootPaths),
           separatorBefore: true,
         }),
-        contextMenuItem({ id: "new-directory", label: "新建目录", command: "new-directory" })
+        contextMenuItem({
+          id: "new-directory",
+          label: "新建目录",
+          command: "new-directory",
+          disabled: !canCreateInTreePath(target.path, configuredRootPaths),
+        })
       );
     } else {
       items.push(
@@ -1866,6 +1891,8 @@ export function EditorFileBrowser({
     return "灰色目录不可选：其他内容根，以及已选文件当前所在的目录。";
   }, [configuredRootPaths, moveDialog?.entries]);
 
+  const canCreateInBrowserPath = canCreateInTreePath(browserPath, configuredRootPaths);
+
   const deleteSummary = useMemo(() => {
     const entries = deleteDialog?.entries ?? [];
     const directories = entries.filter((entry) => entry.type === "directory").length;
@@ -1951,6 +1978,7 @@ export function EditorFileBrowser({
               size="sm"
               variant="outline"
               onClick={() => onCreateFile(normalizeTreePath(browserPath))}
+              disabled={!canCreateInBrowserPath}
               title="新建文件"
               aria-label="新建文件"
             >
@@ -1960,6 +1988,7 @@ export function EditorFileBrowser({
               size="sm"
               variant="outline"
               onClick={() => onCreateDirectory(normalizeTreePath(browserPath))}
+              disabled={!canCreateInBrowserPath}
               title="新建目录"
               aria-label="新建目录"
             >
