@@ -265,7 +265,7 @@ export function getSelectionRevealPaths(entries: TreeSelection[]) {
 }
 
 function rebaseOpenMarkdownContent(content: string, oldPath: string, newPath: string) {
-  if (!/\.(?:md|markdown)$/i.test(oldPath) && !/\.(?:md|markdown)$/i.test(newPath)) {
+  if (!/\.(?:md|markdown|mdx)$/i.test(oldPath) && !/\.(?:md|markdown|mdx)$/i.test(newPath)) {
     return content;
   }
   return rebasePersistedLocalLinks(content, oldPath, newPath).content;
@@ -277,7 +277,7 @@ function rebaseOpenMarkdownReferences(
   oldPath: string,
   newPath: string
 ) {
-  if (!/\.(?:md|markdown)$/i.test(markdownPath)) {
+  if (!/\.(?:md|markdown|mdx)$/i.test(markdownPath)) {
     return content;
   }
   return rebasePersistedLocalReferences(content, markdownPath, oldPath, newPath).content;

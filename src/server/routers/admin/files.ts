@@ -104,7 +104,7 @@ type MarkdownWriteJournal = Map<string, string>;
 
 function isMarkdownContentFile(path: string) {
   const lowerPath = path.toLowerCase();
-  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown");
+  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown") || lowerPath.endsWith(".mdx");
 }
 
 function requireLocalBasePath(): string {
