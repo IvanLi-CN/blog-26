@@ -3,6 +3,7 @@ import {
   mapBatchResultsToTreeSelection,
   remapActiveTabIdForPathChange,
   remapBrowserPathForPathChange,
+  remapTabPath,
   resolveActiveTabIdAfterTreeDelete,
   resolveBrowserPathAfterTreeDelete,
 } from "./editor";
@@ -38,6 +39,35 @@ describe("editor batch selection mapping", () => {
 });
 
 describe("editor tab path remapping", () => {
+  test("rebases open markdown tab content when moving or renaming the file", () => {
+    const tab = remapTabPath(
+      {
+        id: "file:local:blog/drafts/post.md",
+        label: "post.md",
+        kind: "file",
+        mode: "wysiwyg",
+        dirty: false,
+        file: {
+          source: "local",
+          path: "blog/drafts/post.md",
+          content: "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)",
+        },
+      },
+      "local",
+      "blog/drafts/post.md",
+      "blog/archive/post.md"
+    );
+
+    expect(tab).toMatchObject({
+      id: "file:local:blog/archive/post.md",
+      file: {
+        path: "blog/archive/post.md",
+        content:
+          "---\nimage: ../drafts/assets/cover.png\n---\n\n![cover](../drafts/assets/cover.png)",
+      },
+    });
+  });
+
   test("keeps active file tabs selected after rename or move operations", () => {
     expect(
       remapActiveTabIdForPathChange(

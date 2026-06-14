@@ -20,6 +20,7 @@ import {
   type FileItem,
 } from "@/lib/admin-api-client";
 import { isMemoContentPath } from "@/lib/memo-paths";
+import { rebasePersistedLocalLinks } from "@/lib/persisted-paths";
 import { generateContentUrl } from "@/lib/url-utils";
 import { AdminToastViewport, dismissAdminToast, showAdminToast } from "~/components/admin-toast";
 import { useAppShellSidebar } from "~/components/app-shell";
@@ -275,7 +276,14 @@ export function mapBatchResultsToTreeSelection(
     }));
 }
 
-function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath: string) {
+function rebaseOpenMarkdownContent(content: string, oldPath: string, newPath: string) {
+  if (!/\.(?:md|markdown)$/i.test(oldPath) && !/\.(?:md|markdown)$/i.test(newPath)) {
+    return content;
+  }
+  return rebasePersistedLocalLinks(content, oldPath, newPath).content;
+}
+
+export function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath: string) {
   const normalizedOldPath = normalizeTreePath(oldPath);
   const normalizedNewPath = normalizeTreePath(newPath);
 
@@ -290,13 +298,19 @@ function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath:
         normalizedOldPath,
         normalizedNewPath
       );
+      const nextContent = rebaseOpenMarkdownContent(
+        tab.file.content,
+        currentFilePath,
+        nextFilePath
+      );
       return {
         ...tab,
         id: `file:${source}:${nextFilePath}`,
-        label: deriveFileLabel(nextFilePath, tab.file.content),
+        label: deriveFileLabel(nextFilePath, nextContent),
         file: {
           ...tab.file,
           path: nextFilePath,
+          content: nextContent,
         },
       };
     }
@@ -308,11 +322,25 @@ function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath:
       currentFilePath === normalizedOldPath ||
       currentFilePath.startsWith(`${normalizedOldPath}/`)
     ) {
+      const nextFilePath = replaceTreePathPrefix(
+        currentFilePath,
+        normalizedOldPath,
+        normalizedNewPath
+      );
+      const nextContent = rebaseOpenMarkdownContent(
+        tab.database.content,
+        currentFilePath,
+        nextFilePath
+      );
+      const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
       return {
         ...tab,
+        label: derivedDraft.title || tab.label,
         database: {
           ...tab.database,
-          filePath: replaceTreePathPrefix(currentFilePath, normalizedOldPath, normalizedNewPath),
+          ...derivedDraft,
+          filePath: nextFilePath,
+          content: nextContent,
         },
       };
     }
