@@ -116,6 +116,18 @@ function getRootDestinationDisabledReason() {
   return "不能把项目放到内容根目录，请选择一个已配置的目录。";
 }
 
+function getRootOperationDisabledReason() {
+  return "内容根目录由系统配置管理，不能直接重命名、移动、剪切或删除。";
+}
+
+function getCrossRootDestinationDisabledReason() {
+  return "不能跨内容根目录移动项目，请选择同一内容根内的目录。";
+}
+
+function contextMenuItem(item: ContextMenuItem): ContextMenuItem {
+  return item;
+}
+
 function isRowOverflowing(container: HTMLElement | null) {
   if (!container) return false;
   return container.scrollWidth - container.clientWidth > 1;
@@ -209,6 +221,62 @@ export function isTreePathAncestor(
   }
 
   return normalizedActivePath.startsWith(`${normalizedPath}/`);
+}
+
+export function getConfiguredRootPathSet(rootItems: FileItem[]) {
+  return new Set(
+    rootItems
+      .filter((item) => item.type === "directory")
+      .map((item) => normalizeTreePath(item.path))
+      .filter(Boolean)
+  );
+}
+
+export function isConfiguredRootPath(
+  path: string | null | undefined,
+  configuredRootPaths: ReadonlySet<string>
+) {
+  return configuredRootPaths.has(normalizeTreePath(path));
+}
+
+export function getConfiguredRootForPath(
+  path: string | null | undefined,
+  configuredRootPaths: ReadonlySet<string>
+) {
+  const normalizedPath = normalizeTreePath(path);
+  if (!normalizedPath) return null;
+  let matchedRoot: string | null = null;
+
+  for (const rootPath of configuredRootPaths) {
+    if (normalizedPath === rootPath || (rootPath && normalizedPath.startsWith(`${rootPath}/`))) {
+      if (!matchedRoot || rootPath.length > matchedRoot.length) {
+        matchedRoot = rootPath;
+      }
+    }
+  }
+
+  return matchedRoot;
+}
+
+export function selectionContainsConfiguredRoot(
+  entries: TreeSelection[],
+  configuredRootPaths: ReadonlySet<string>
+) {
+  return entries.some((entry) => isConfiguredRootPath(entry.path, configuredRootPaths));
+}
+
+export function isSameConfiguredRootDestination(
+  entries: TreeSelection[],
+  destinationPath: string,
+  configuredRootPaths: ReadonlySet<string>
+) {
+  const destinationRoot = getConfiguredRootForPath(destinationPath, configuredRootPaths);
+  if (!destinationRoot) return false;
+
+  return entries.every((entry) => {
+    const entryRoot = getConfiguredRootForPath(entry.path, configuredRootPaths);
+    return entryRoot === destinationRoot;
+  });
 }
 
 function getFileTypeLabel(extension?: string) {
@@ -558,10 +626,18 @@ function DirectoryPickerTree({
 function SidebarSelectionFloatingFooter({
   selectedCount,
   clipboardReady,
+  canMoveSelection,
+  canCopySelection,
+  canCutSelection,
+  canDeleteSelection,
   onCommand,
 }: {
   selectedCount: number;
   clipboardReady: boolean;
+  canMoveSelection: boolean;
+  canCopySelection: boolean;
+  canCutSelection: boolean;
+  canDeleteSelection: boolean;
   onCommand: (command: FileBrowserCommand) => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -613,21 +689,21 @@ function SidebarSelectionFloatingFooter({
         label: "移动",
         icon: FolderInput,
         variant: "outline" as const,
-        disabled: false,
+        disabled: !canMoveSelection,
       },
       {
         command: "copy" as const,
         label: "复制",
         icon: Copy,
         variant: "outline" as const,
-        disabled: false,
+        disabled: !canCopySelection,
       },
       {
         command: "cut" as const,
         label: "剪切",
         icon: Scissors,
         variant: "outline" as const,
-        disabled: false,
+        disabled: !canCutSelection,
       },
       {
         command: "paste" as const,
@@ -641,7 +717,7 @@ function SidebarSelectionFloatingFooter({
         label: "删除",
         icon: Trash2,
         variant: "destructive" as const,
-        disabled: false,
+        disabled: !canDeleteSelection,
       },
       {
         command: "clear-selection" as const,
@@ -651,7 +727,7 @@ function SidebarSelectionFloatingFooter({
         disabled: false,
       },
     ],
-    [clipboardReady]
+    [canCopySelection, canCutSelection, canDeleteSelection, canMoveSelection, clipboardReady]
   );
 
   const topActions = actions.slice(0, 3);
@@ -889,6 +965,7 @@ export function EditorFileBrowser({
     walk(rootItems);
     return entries;
   }, [directoryItemsByPath, expandedPathSet, rootItems, selectedSource]);
+  const configuredRootPaths = useMemo(() => getConfiguredRootPathSet(rootItems), [rootItems]);
 
   const knownPaths = useMemo(
     () => new Set(visibleEntries.map((entry) => entry.path)),
@@ -1131,6 +1208,14 @@ export function EditorFileBrowser({
       const directoryTarget =
         contextMenu?.currentDirectoryPath ?? getDirectoryTargetForSelection(target);
 
+      if (
+        (command === "copy" || command === "cut" || command === "move" || command === "delete") &&
+        selectionContainsConfiguredRoot(entries, configuredRootPaths)
+      ) {
+        setContextMenu(null);
+        return;
+      }
+
       if (command === "refresh") {
         onRefresh();
         setContextMenu(null);
@@ -1170,6 +1255,12 @@ export function EditorFileBrowser({
 
       if (command === "paste") {
         if (!clipboard || operationPending) return;
+        if (
+          !isSameConfiguredRootDestination(clipboard.items, directoryTarget, configuredRootPaths)
+        ) {
+          setContextMenu(null);
+          return;
+        }
         setOperationPending(true);
         try {
           let pastedEntries: TreeSelection[] | undefined;
@@ -1223,6 +1314,7 @@ export function EditorFileBrowser({
       clearClipboardToast,
       clipboard,
       contextMenu,
+      configuredRootPaths,
       getDirectoryTargetForSelection,
       onCopyEntries,
       onCreateDirectory,
@@ -1303,25 +1395,47 @@ export function EditorFileBrowser({
         }
       }
     }
+    if (clipboard?.items.length) {
+      for (const entry of visibleEntries) {
+        if (entry.type !== "directory") continue;
+        if (!isSameConfiguredRootDestination(clipboard.items, entry.path, configuredRootPaths)) {
+          disabled.add(normalizeTreePath(entry.path));
+        }
+      }
+    }
     return disabled;
-  }, [clipboard?.items, visibleEntries]);
+  }, [clipboard?.items, configuredRootPaths, visibleEntries]);
 
   const contextMenuItems = useMemo(() => {
     const target = contextMenu?.target ?? null;
     const entries = resolveSelectionForTarget(target);
     const isMulti = entries.length > 1;
+    const containsConfiguredRoot = selectionContainsConfiguredRoot(entries, configuredRootPaths);
     const canPaste =
       Boolean(clipboard?.items.length) &&
       !clipboardDisabledTargets.has(normalizeTreePath(contextMenu?.currentDirectoryPath ?? ""));
     const items: ContextMenuItem[] = [];
 
     if (isMulti) {
+      if (!containsConfiguredRoot) {
+        items.push(
+          contextMenuItem({ id: "move", label: "移动", command: "move" }),
+          contextMenuItem({ id: "copy", label: "复制", command: "copy" }),
+          contextMenuItem({ id: "cut", label: "剪切", command: "cut" })
+        );
+      }
       items.push(
-        { id: "move", label: "移动", command: "move" },
-        { id: "copy", label: "复制", command: "copy" },
-        { id: "cut", label: "剪切", command: "cut" },
-        { id: "paste", label: "粘贴", command: "paste", disabled: !canPaste },
-        { id: "delete", label: "删除", command: "delete", destructive: true },
+        contextMenuItem({ id: "paste", label: "粘贴", command: "paste", disabled: !canPaste }),
+        ...(containsConfiguredRoot
+          ? []
+          : [
+              contextMenuItem({
+                id: "delete",
+                label: "删除",
+                command: "delete",
+                destructive: true,
+              }),
+            ]),
         {
           id: "clear-selection",
           label: "清空选择",
@@ -1334,32 +1448,67 @@ export function EditorFileBrowser({
 
     if (!target) {
       return [
-        { id: "paste", label: "粘贴", command: "paste", disabled: !canPaste },
-        { id: "new-file", label: "新建文件", command: "new-file", separatorBefore: true },
-        { id: "new-directory", label: "新建目录", command: "new-directory" },
-        { id: "refresh", label: "刷新", command: "refresh", separatorBefore: true },
+        contextMenuItem({ id: "paste", label: "粘贴", command: "paste", disabled: !canPaste }),
+        contextMenuItem({
+          id: "new-file",
+          label: "新建文件",
+          command: "new-file",
+          separatorBefore: true,
+        }),
+        contextMenuItem({ id: "new-directory", label: "新建目录", command: "new-directory" }),
+        contextMenuItem({
+          id: "refresh",
+          label: "刷新",
+          command: "refresh",
+          separatorBefore: true,
+        }),
       ];
     }
 
-    items.push(
-      { id: "rename", label: "重命名", command: "rename" },
-      { id: "move", label: "移动", command: "move" },
-      { id: "copy", label: "复制", command: "copy" }
-    );
+    const targetIsConfiguredRoot = isConfiguredRootPath(target.path, configuredRootPaths);
+    if (!targetIsConfiguredRoot) {
+      items.push(
+        contextMenuItem({ id: "rename", label: "重命名", command: "rename" }),
+        contextMenuItem({ id: "move", label: "移动", command: "move" }),
+        contextMenuItem({ id: "copy", label: "复制", command: "copy" })
+      );
+    }
 
     if (target.type === "directory") {
       items.push(
-        { id: "paste", label: "粘贴", command: "paste", disabled: !canPaste },
-        { id: "delete", label: "删除", command: "delete", destructive: true },
-        { id: "new-file", label: "新建文件", command: "new-file", separatorBefore: true },
-        { id: "new-directory", label: "新建目录", command: "new-directory" }
+        contextMenuItem({ id: "paste", label: "粘贴", command: "paste", disabled: !canPaste }),
+        ...(targetIsConfiguredRoot
+          ? []
+          : [
+              contextMenuItem({
+                id: "delete",
+                label: "删除",
+                command: "delete",
+                destructive: true,
+              }),
+            ]),
+        contextMenuItem({
+          id: "new-file",
+          label: "新建文件",
+          command: "new-file",
+          separatorBefore: true,
+        }),
+        contextMenuItem({ id: "new-directory", label: "新建目录", command: "new-directory" })
       );
     } else {
-      items.push({ id: "delete", label: "删除", command: "delete", destructive: true });
+      items.push(
+        contextMenuItem({ id: "delete", label: "删除", command: "delete", destructive: true })
+      );
     }
 
     return items;
-  }, [clipboard?.items.length, clipboardDisabledTargets, contextMenu, resolveSelectionForTarget]);
+  }, [
+    clipboard?.items.length,
+    clipboardDisabledTargets,
+    configuredRootPaths,
+    contextMenu,
+    resolveSelectionForTarget,
+  ]);
 
   const performPrimaryAction = useCallback(
     (item: FileItem) => {
@@ -1665,7 +1814,13 @@ export function EditorFileBrowser({
 
   const disabledMoveTargets = useMemo(() => {
     const disabled = new Map<string, string>([["", getRootDestinationDisabledReason()]]);
-    for (const entry of moveDialog?.entries ?? []) {
+    const entries = moveDialog?.entries ?? [];
+    for (const rootPath of configuredRootPaths) {
+      if (!isSameConfiguredRootDestination(entries, rootPath, configuredRootPaths)) {
+        disabled.set(rootPath, getCrossRootDestinationDisabledReason());
+      }
+    }
+    for (const entry of entries) {
       const parentPath = getParentTreePath(entry.path);
       if (entry.type !== "directory") {
         if (!disabled.has(parentPath)) {
@@ -1690,7 +1845,7 @@ export function EditorFileBrowser({
       }
     }
     return disabled;
-  }, [moveDialog?.entries, visibleEntries]);
+  }, [configuredRootPaths, moveDialog?.entries, visibleEntries]);
 
   const moveTargetLabel = useMemo(
     () => formatDirectoryTargetLabel(moveDialog?.destinationPath),
@@ -1702,11 +1857,14 @@ export function EditorFileBrowser({
   );
   const moveDialogRule = useMemo(() => {
     const entries = moveDialog?.entries ?? [];
-    if (entries.some((entry) => entry.type === "directory")) {
-      return "灰色目录不可选：原目录、所选目录自身，以及它的后代目录。";
+    if (selectionContainsConfiguredRoot(entries, configuredRootPaths)) {
+      return getRootOperationDisabledReason();
     }
-    return "灰色目录不可选：已选文件当前所在的目录。";
-  }, [moveDialog?.entries]);
+    if (entries.some((entry) => entry.type === "directory")) {
+      return "灰色目录不可选：其他内容根、原目录、所选目录自身，以及它的后代目录。";
+    }
+    return "灰色目录不可选：其他内容根，以及已选文件当前所在的目录。";
+  }, [configuredRootPaths, moveDialog?.entries]);
 
   const deleteSummary = useMemo(() => {
     const entries = deleteDialog?.entries ?? [];
@@ -1724,12 +1882,27 @@ export function EditorFileBrowser({
         <SidebarSelectionFloatingFooter
           selectedCount={selectedCount}
           clipboardReady={Boolean(clipboard?.items.length)}
+          canMoveSelection={!selectionContainsConfiguredRoot(selectedEntries, configuredRootPaths)}
+          canCopySelection={!selectionContainsConfiguredRoot(selectedEntries, configuredRootPaths)}
+          canCutSelection={!selectionContainsConfiguredRoot(selectedEntries, configuredRootPaths)}
+          canDeleteSelection={
+            !selectionContainsConfiguredRoot(selectedEntries, configuredRootPaths)
+          }
           onCommand={(command) => {
             void executeCommand(command);
           }}
         />
       ) : null,
-    [clipboard?.items.length, contextMenu, deleteDialog, executeCommand, moveDialog, selectedCount]
+    [
+      clipboard?.items.length,
+      configuredRootPaths,
+      contextMenu,
+      deleteDialog,
+      executeCommand,
+      moveDialog,
+      selectedCount,
+      selectedEntries,
+    ]
   );
 
   const floatingFooterVisible = Boolean(selectionFloatingFooter);

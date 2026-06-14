@@ -1360,19 +1360,19 @@ Body paragraph`);
     expect(currentRow.selectedLike).toBe(true);
   });
 
-  test("file tree blocks deleting a non-empty directory and surfaces the reason", async ({
+  test("file tree does not offer unsupported commands on configured root directories", async ({
     page,
   }) => {
     await openDemoEditor(page);
 
     await page.getByRole("button", { name: "blog 更多操作" }).click();
-    await page.getByRole("menuitem", { name: "删除" }).click();
-    const deleteDialog = page.getByRole("dialog", { name: "确认删除" });
-    await expect(deleteDialog).toBeVisible();
-    await deleteDialog.getByRole("button", { name: "删除" }).click();
-
-    await expect(page.getByText("目录不为空，无法删除: blog")).toBeVisible();
-    await expect(treeNameButton(page, "blog")).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "重命名" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "移动" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "复制" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "剪切" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "删除" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "新建文件" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "新建目录" })).toBeVisible();
   });
 
   test("file tree move dialog explains invalid targets before submit", async ({ page }) => {

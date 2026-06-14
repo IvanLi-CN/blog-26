@@ -185,6 +185,22 @@ export const ContextMenuAndDelete: Story = {
   },
 };
 
+export const ConfiguredRootContextMenu: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(canvas.getByRole("button", { name: "content 更多操作" }));
+    await expect(body.queryByRole("menuitem", { name: "重命名" })).not.toBeInTheDocument();
+    await expect(body.queryByRole("menuitem", { name: "移动" })).not.toBeInTheDocument();
+    await expect(body.queryByRole("menuitem", { name: "复制" })).not.toBeInTheDocument();
+    await expect(body.queryByRole("menuitem", { name: "剪切" })).not.toBeInTheDocument();
+    await expect(body.queryByRole("menuitem", { name: "删除" })).not.toBeInTheDocument();
+    await expect(body.getByRole("menuitem", { name: "新建文件" })).toBeVisible();
+    await expect(body.getByRole("menuitem", { name: "新建目录" })).toBeVisible();
+    await expect(body.getByRole("menuitem", { name: "粘贴" })).toBeDisabled();
+  },
+};
+
 export const MoveDialog: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -205,6 +221,20 @@ export const MoveDialog: Story = {
     await userEvent.hover(within(dialog).getByRole("button", { name: "content" }));
     await expect(body.getByRole("tooltip")).toHaveTextContent(
       "当前文件已经在这个目录中，请选择其他目标目录。"
+    );
+  },
+};
+
+export const CrossRootMoveTargetBlocked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(canvas.getByRole("button", { name: "guide.md 更多操作" }));
+    await userEvent.click(body.getByRole("menuitem", { name: "移动" }));
+    const dialog = body.getByRole("dialog", { name: "选择目标目录" });
+    await userEvent.hover(within(dialog).getByRole("button", { name: "drafts" }));
+    await expect(body.getByRole("tooltip")).toHaveTextContent(
+      "不能跨内容根目录移动项目，请选择同一内容根内的目录。"
     );
   },
 };
