@@ -1905,6 +1905,60 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rebases markdown links across related entries copied in one batch", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(docsDir, "post.md"),
+      [
+        "---",
+        "image: ./assets/cover.png",
+        "---",
+        "",
+        "![cover](./assets/cover.png)",
+        "[Asset ref]: ./assets/cover.png",
+      ].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/post.md", "Hardware/docs/assets"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(200);
+      const copiedContent = fs.readFileSync(path.join(archiveDir, "post.md"), "utf-8");
+      expect(copiedContent).toContain("image: ./assets/cover.png");
+      expect(copiedContent).toContain("![cover](./assets/cover.png)");
+      expect(copiedContent).toContain("[Asset ref]: ./assets/cover.png");
+      expect(fs.existsSync(path.join(archiveDir, "assets", "cover.png"))).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rebases persisted markdown asset links for .markdown files", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 

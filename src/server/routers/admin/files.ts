@@ -762,18 +762,26 @@ async function copyLocalEntries(
       errorOnExist: true,
       force: false,
     });
+  }
+
+  for (const operation of operations) {
     await rebaseCopiedMarkdownLinks(
       operation.fullNextPath,
       operation.path,
       operation.nextPath,
       nodePath
     );
-    await rebaseInboundMovedReferences(
-      operation.nextPath,
-      [{ oldPath: operation.path, newPath: operation.nextPath }],
-      nodePath
-    );
   }
+
+  const copiedPairs = operations.map(({ path, nextPath }) => ({
+    oldPath: path,
+    newPath: nextPath,
+  }));
+  await Promise.all(
+    operations.map((operation) =>
+      rebaseInboundMovedReferences(operation.nextPath, copiedPairs, nodePath)
+    )
+  );
 
   return {
     copied: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
