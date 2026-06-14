@@ -80,6 +80,8 @@ describe("persisted-paths", () => {
         "![cover](./assets/cover.png)",
         "![ref][cover-ref]",
         '[cover-ref]: ./assets/reference.png "Reference title"',
+        '<img src="./assets/html.png" srcset="./assets/html-small.png 1x, ./assets/html-large.png 2x">',
+        '<a href="../shared/spec.pdf">Spec</a>',
         "![shared](../shared/logo.png)",
         "![[./assets/wiki.png|1200]]",
         "![remote](https://example.com/a.png)",
@@ -95,6 +97,10 @@ describe("persisted-paths", () => {
       expect(content).toContain("image: ../docs/assets/cover.png");
       expect(content).toContain("![cover](../docs/assets/cover.png)");
       expect(content).toContain('[cover-ref]: ../docs/assets/reference.png "Reference title"');
+      expect(content).toContain(
+        '<img src="../docs/assets/html.png" srcset="../docs/assets/html-small.png 1x, ../docs/assets/html-large.png 2x">'
+      );
+      expect(content).toContain('<a href="../shared/spec.pdf">Spec</a>');
       expect(content).toContain("![shared](../shared/logo.png)");
       expect(content).toContain("![[../docs/assets/wiki.png|1200]]");
       expect(content).toContain("![remote](https://example.com/a.png)");
@@ -111,6 +117,8 @@ describe("persisted-paths", () => {
         "![cover](./assets/cover.png)",
         "![ref][cover-ref]",
         '[cover-ref]: ./assets/reference.png "Reference title"',
+        '<img src="./assets/html.png" srcset="./assets/html-small.png 1x, ./assets/html-large.png 2x">',
+        '<a href="https://example.com/file.pdf">External</a>',
         "![[./assets/wiki.png|1200]]",
       ].join("\n");
 
@@ -125,6 +133,10 @@ describe("persisted-paths", () => {
       expect(content).toContain("image: ./archive/assets/cover.png");
       expect(content).toContain("![cover](./archive/assets/cover.png)");
       expect(content).toContain('[cover-ref]: ./archive/assets/reference.png "Reference title"');
+      expect(content).toContain(
+        '<img src="./archive/assets/html.png" srcset="./archive/assets/html-small.png 1x, ./archive/assets/html-large.png 2x">'
+      );
+      expect(content).toContain('<a href="https://example.com/file.pdf">External</a>');
       expect(content).toContain("![[./archive/assets/wiki.png|1200]]");
     });
   });

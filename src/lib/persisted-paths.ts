@@ -468,6 +468,44 @@ function rebaseReferenceDefinitionReferences(
   );
 }
 
+function rebaseSrcsetValue(value: string, rebaseTarget: (target: string) => string) {
+  return value
+    .split(",")
+    .map((candidate) => {
+      const leading = candidate.match(/^\s*/)?.[0] ?? "";
+      const trailing = candidate.match(/\s*$/)?.[0] ?? "";
+      const trimmed = candidate.trim();
+      if (!trimmed) return candidate;
+
+      const [target, ...descriptor] = trimmed.split(/\s+/);
+      const rebased = rebaseTarget(target);
+      return `${leading}${[rebased, ...descriptor].join(" ")}${trailing}`;
+    })
+    .join(",");
+}
+
+function rebaseHtmlAssetAttributes(input: string, rebaseTarget: (target: string) => string) {
+  let content = input.replace(
+    /(\b(?:src|href|poster)\s*=\s*)(["'])([^"'\n]*)(\2)/gi,
+    (match, prefix: string, quote: string, value: string, closing: string) => {
+      const rebased = rebaseTarget(value);
+      const next = `${prefix}${quote}${rebased}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+
+  content = content.replace(
+    /(\bsrcset\s*=\s*)(["'])([^"'\n]*)(\2)/gi,
+    (match, prefix: string, quote: string, value: string, closing: string) => {
+      const rebased = rebaseSrcsetValue(value, rebaseTarget);
+      const next = `${prefix}${quote}${rebased}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+
+  return content;
+}
+
 function rebaseWikiEmbedLinks(
   input: string,
   oldMarkdownFilePath: string,
@@ -567,6 +605,9 @@ export function rebasePersistedLocalLinks(
   content = rebaseFrontmatterAssetFields(content, oldMarkdownFilePath, newMarkdownFilePath);
   content = rebaseInlineMarkdownLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
   content = rebaseReferenceDefinitionLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
+  content = rebaseHtmlAssetAttributes(content, (target) =>
+    rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath)
+  );
   content = rebaseWikiEmbedLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
 
   return {
@@ -598,6 +639,9 @@ export function rebasePersistedLocalReferences(
     markdownFilePath,
     oldTargetPath,
     newTargetPath
+  );
+  content = rebaseHtmlAssetAttributes(content, (target) =>
+    rebaseMovedReferenceTarget(target, markdownFilePath, oldTargetPath, newTargetPath)
   );
   content = rebaseWikiEmbedReferences(content, markdownFilePath, oldTargetPath, newTargetPath);
 
