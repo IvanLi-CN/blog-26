@@ -1710,25 +1710,11 @@ describe("HTTP compatibility APIs", () => {
         ),
         "/files/copy"
       );
-      expect(copyResponse.status).toBe(200);
+      expect(copyResponse.status).toBe(400);
       const copyPayload = await readJson(copyResponse);
-      expect(copyPayload.destinationPath).toBe("Hardware/docs");
-      expect(copyPayload.copied).toEqual([
-        {
-          path: "Hardware/archive/move-me.md",
-          nextPath: "Hardware/docs/move-me.md",
-          type: "file",
-        },
-      ]);
-      const copiedBackContent = fs.readFileSync(path.join(docsDir, "move-me.md"), "utf-8");
-      expect(copiedBackContent).toContain("slug: hardware-docs-move-me");
-      expect(copiedBackContent).toContain("move");
-      expect(syncArguments).toEqual([false, false]);
-      const copiedBackPost = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, "Hardware/docs/move-me.md"))
-        .get();
+      expect(copyPayload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
+      expect(fs.existsSync(path.join(docsDir, "move-me.md"))).toBe(false);
+      expect(syncArguments).toEqual([false]);
       const movedPost = await db
         .select()
         .from(posts)
@@ -1739,7 +1725,6 @@ describe("HTTP compatibility APIs", () => {
         .from(posts)
         .where(eq(posts.id, databaseOnlyPostId))
         .get();
-      expect(copiedBackPost).toMatchObject({ id: "Hardware/docs/move-me.md" });
       expect(movedPost).toMatchObject({ id: "Hardware/archive/move-me.md" });
       expect(databaseOnlyPost).toMatchObject({
         id: databaseOnlyPostId,
@@ -1874,7 +1859,7 @@ describe("HTTP compatibility APIs", () => {
     fs.mkdirSync(archiveDir, { recursive: true });
     fs.writeFileSync(path.join(docsDir, "rename.md"), "rename");
     fs.writeFileSync(path.join(docsDir, "move.md"), "move");
-    fs.writeFileSync(path.join(docsDir, "copy.md"), "copy");
+    fs.writeFileSync(path.join(docsDir, "copy.txt"), "copy");
     fs.writeFileSync(path.join(docsDir, "delete.md"), "delete");
 
     const manager = getContentSourceManager();
@@ -1933,7 +1918,7 @@ describe("HTTP compatibility APIs", () => {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               source: "local",
-              paths: ["Hardware/docs/copy.md"],
+              paths: ["Hardware/docs/copy.txt"],
               destinationPath: "Hardware/archive",
             }),
           },
@@ -1943,8 +1928,8 @@ describe("HTTP compatibility APIs", () => {
       );
 
       expect(copyResponse.status).toBe(500);
-      expect(fs.existsSync(path.join(docsDir, "copy.md"))).toBe(true);
-      expect(fs.existsSync(path.join(archiveDir, "copy.md"))).toBe(false);
+      expect(fs.existsSync(path.join(docsDir, "copy.txt"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "copy.txt"))).toBe(false);
 
       const deleteResponse = await handleAdminApiRequest(
         buildRequest(
@@ -2194,7 +2179,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("rebases moved markdown links and copied markdown file links", async () => {
+  it("rebases moved markdown links and rejects copied markdown file links", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -2258,11 +2243,10 @@ describe("HTTP compatibility APIs", () => {
         ),
         "/files/copy"
       );
-      expect(copyResponse.status).toBe(200);
-      const copiedContent = fs.readFileSync(path.join(docsDir, "linked.md"), "utf-8");
-      expect(copiedContent).toContain("image: ./assets/cover.png");
-      expect(copiedContent).toContain("![cover](./assets/cover.png)");
-      expect(copiedContent).toContain("![[./assets/wiki.png|1200]]");
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
+      expect(fs.existsSync(path.join(docsDir, "linked.md"))).toBe(false);
     } finally {
       manager.syncAll = originalSyncAll;
     }
@@ -2276,7 +2260,7 @@ describe("HTTP compatibility APIs", () => {
     fs.mkdirSync(hardwareDir, { recursive: true });
     fs.mkdirSync(blogDir, { recursive: true });
     fs.writeFileSync(path.join(hardwareDir, "move-me.md"), "move");
-    fs.writeFileSync(path.join(hardwareDir, "copy-me.md"), "copy");
+    fs.writeFileSync(path.join(hardwareDir, "copy-me.txt"), "copy");
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
@@ -2314,7 +2298,7 @@ describe("HTTP compatibility APIs", () => {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               source: "local",
-              paths: ["Hardware/copy-me.md"],
+              paths: ["Hardware/copy-me.txt"],
               destinationPath: "blog",
             }),
           },
@@ -2326,8 +2310,8 @@ describe("HTTP compatibility APIs", () => {
       expect(copyResponse.status).toBe(400);
       const copyPayload = await readJson(copyResponse);
       expect(copyPayload.error.message).toContain("不能跨内容根目录操作项目");
-      expect(fs.existsSync(path.join(hardwareDir, "copy-me.md"))).toBe(true);
-      expect(fs.existsSync(path.join(blogDir, "copy-me.md"))).toBe(false);
+      expect(fs.existsSync(path.join(hardwareDir, "copy-me.txt"))).toBe(true);
+      expect(fs.existsSync(path.join(blogDir, "copy-me.txt"))).toBe(false);
     } finally {
       manager.syncAll = originalSyncAll;
     }
@@ -2527,7 +2511,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("removes copied targets when copied markdown rebasing fails", async () => {
+  it("rejects copying markdown content files before creating targets", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -2544,7 +2528,6 @@ describe("HTTP compatibility APIs", () => {
     manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
 
     try {
-      fs.chmodSync(sourcePath, 0o444);
       const response = await handleAdminApiRequest(
         buildRequest(
           "/api/admin/files/copy",
@@ -2562,11 +2545,12 @@ describe("HTTP compatibility APIs", () => {
         "/files/copy"
       );
 
-      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(response.status).toBe(400);
+      const payload = await readJson(response);
+      expect(payload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
       expect(fs.existsSync(path.join(archiveDir, "linked.md"))).toBe(false);
       expect(fs.existsSync(sourcePath)).toBe(true);
     } finally {
-      fs.chmodSync(sourcePath, 0o644);
       manager.syncAll = originalSyncAll;
     }
   });
@@ -2661,7 +2645,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("rebases copied markdown links inside directory subtrees", async () => {
+  it("rejects copying directory subtrees that contain markdown content files", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -2711,14 +2695,10 @@ describe("HTTP compatibility APIs", () => {
         "/files/copy"
       );
 
-      expect(copyResponse.status).toBe(200);
-      const copiedContent = fs.readFileSync(
-        path.join(archiveDir, "series", "overview.md"),
-        "utf-8"
-      );
-      expect(copiedContent).toContain("![logo](../../docs/shared/logo.png)");
-      expect(copiedContent).toContain("![cover](./assets/cover.png)");
-      expect(copiedContent).toContain("slug: hardware-archive-series-overview");
+      expect(copyResponse.status).toBe(400);
+      const payload = await readJson(copyResponse);
+      expect(payload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
+      expect(fs.existsSync(path.join(archiveDir, "series"))).toBe(false);
       const originalContent = fs.readFileSync(path.join(docsDir, "series", "overview.md"), "utf-8");
       expect(originalContent).toContain("slug: series");
     } finally {
@@ -2726,7 +2706,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("rebases markdown links across related entries copied in one batch", async () => {
+  it("copies non-markdown asset entries in one batch", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -2735,17 +2715,7 @@ describe("HTTP compatibility APIs", () => {
     fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
     fs.mkdirSync(archiveDir, { recursive: true });
     fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
-    fs.writeFileSync(
-      path.join(docsDir, "post.md"),
-      [
-        "---",
-        "image: ./assets/cover.png",
-        "---",
-        "",
-        "![cover](./assets/cover.png)",
-        "[Asset ref]: ./assets/cover.png",
-      ].join("\n")
-    );
+    fs.writeFileSync(path.join(docsDir, "assets", "hero.png"), "hero");
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
@@ -2760,7 +2730,7 @@ describe("HTTP compatibility APIs", () => {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               source: "local",
-              paths: ["Hardware/docs/post.md", "Hardware/docs/assets"],
+              paths: ["Hardware/docs/assets"],
               destinationPath: "Hardware/archive",
             }),
           },
@@ -2770,11 +2740,8 @@ describe("HTTP compatibility APIs", () => {
       );
 
       expect(copyResponse.status).toBe(200);
-      const copiedContent = fs.readFileSync(path.join(archiveDir, "post.md"), "utf-8");
-      expect(copiedContent).toContain("image: ./assets/cover.png");
-      expect(copiedContent).toContain("![cover](./assets/cover.png)");
-      expect(copiedContent).toContain("[Asset ref]: ./assets/cover.png");
       expect(fs.existsSync(path.join(archiveDir, "assets", "cover.png"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "assets", "hero.png"))).toBe(true);
     } finally {
       manager.syncAll = originalSyncAll;
     }
@@ -2878,8 +2845,8 @@ describe("HTTP compatibility APIs", () => {
     const archiveDir = path.join(hardwareDir, "archive");
     fs.mkdirSync(docsDir, { recursive: true });
     fs.mkdirSync(archiveDir, { recursive: true });
-    fs.writeFileSync(path.join(docsDir, "duplicate.md"), "from-docs");
-    fs.writeFileSync(path.join(archiveDir, "duplicate.md"), "from-archive");
+    fs.writeFileSync(path.join(docsDir, "duplicate.txt"), "from-docs");
+    fs.writeFileSync(path.join(archiveDir, "duplicate.txt"), "from-archive");
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
@@ -2894,7 +2861,7 @@ describe("HTTP compatibility APIs", () => {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               source: "local",
-              paths: ["Hardware/archive/duplicate.md"],
+              paths: ["Hardware/archive/duplicate.txt"],
               destinationPath: "Hardware/docs",
             }),
           },
@@ -2906,8 +2873,8 @@ describe("HTTP compatibility APIs", () => {
       expect(copyResponse.status).toBe(409);
       const payload = await readJson(copyResponse);
       expect(payload.error.message).toContain("目标已存在");
-      expect(fs.readFileSync(path.join(docsDir, "duplicate.md"), "utf-8")).toBe("from-docs");
-      expect(fs.readFileSync(path.join(archiveDir, "duplicate.md"), "utf-8")).toBe("from-archive");
+      expect(fs.readFileSync(path.join(docsDir, "duplicate.txt"), "utf-8")).toBe("from-docs");
+      expect(fs.readFileSync(path.join(archiveDir, "duplicate.txt"), "utf-8")).toBe("from-archive");
     } finally {
       manager.syncAll = originalSyncAll;
     }
@@ -2963,7 +2930,7 @@ describe("HTTP compatibility APIs", () => {
     const seriesDir = path.join(hardwareDir, "series");
     const reactDir = path.join(seriesDir, "react");
     fs.mkdirSync(reactDir, { recursive: true });
-    fs.writeFileSync(path.join(seriesDir, "overview.md"), "series");
+    fs.writeFileSync(path.join(seriesDir, "overview.txt"), "series");
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;

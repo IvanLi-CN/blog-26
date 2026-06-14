@@ -13,8 +13,6 @@ import {
   isPathWithinConfiguredRoots,
   normalizeRelativeContentPath,
 } from "@/lib/content-path-mappings";
-import { generateTitleSlug } from "@/lib/content-sources/utils";
-import { parseFrontmatterDocument, stringifyFrontmatterDocument } from "@/lib/frontmatter-document";
 import {
   hasApiFilesReference,
   rebasePersistedLocalLinks,
@@ -738,56 +736,27 @@ async function touchMarkdownContentTree(fullPath: string) {
   );
 }
 
-function deriveCopiedContentSlug(relativePath: string) {
-  const withoutExtension = normalizeLocalBrowserPath(relativePath).replace(/\.(md|mdx)$/i, "");
-  return generateTitleSlug(withoutExtension) || generateTitleSlug(`copy-${Date.now()}`);
-}
-
-async function rewriteCopiedMarkdownSlug(fullPath: string, relativePath: string) {
-  const fs = await import("node:fs/promises");
-  const content = await fs.readFile(fullPath, "utf-8");
-  const document = parseFrontmatterDocument(content);
-  const nextSlug = deriveCopiedContentSlug(relativePath);
-  const lines = document.frontmatterText ? document.frontmatterText.split("\n") : [];
-  const slugLineIndex = lines.findIndex((line) => /^\s*slug\s*:/.test(line));
-
-  if (slugLineIndex >= 0) {
-    lines[slugLineIndex] = `slug: ${nextSlug}`;
-  } else {
-    lines.push(`slug: ${nextSlug}`);
-  }
-
-  await fs.writeFile(fullPath, stringifyFrontmatterDocument(document.body, lines.join("\n")));
-}
-
-async function rewriteCopiedMarkdownSlugs(
+async function containsMarkdownContentFile(
   fullPath: string,
-  relativePath: string,
   nodePath: typeof import("node:path")
-) {
+): Promise<boolean> {
   const fs = await import("node:fs/promises");
   const stats = await fs.stat(fullPath).catch(() => null);
-  if (!stats) return;
+  if (!stats) return false;
 
   if (stats.isFile()) {
-    if (isMarkdownContentFile(fullPath)) {
-      await rewriteCopiedMarkdownSlug(fullPath, relativePath);
-    }
-    return;
+    return isMarkdownContentFile(fullPath);
   }
 
-  if (!stats.isDirectory()) return;
+  if (!stats.isDirectory()) return false;
 
   const entries = await fs.readdir(fullPath, { withFileTypes: true });
-  await Promise.all(
-    entries.map((entry) =>
-      rewriteCopiedMarkdownSlugs(
-        nodePath.join(fullPath, entry.name),
-        normalizeLocalBrowserPath(`${relativePath}/${entry.name}`),
-        nodePath
-      )
-    )
-  );
+  for (const entry of entries) {
+    if (await containsMarkdownContentFile(nodePath.join(fullPath, entry.name), nodePath)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 async function rebaseMovedMarkdownLinks(
@@ -1071,6 +1040,12 @@ async function copyLocalEntries(
       const nextRelativePath = normalizeLocalBrowserPath(
         normalizedDestinationPath ? `${normalizedDestinationPath}/${itemName}` : itemName
       );
+      if (await containsMarkdownContentFile(fullCurrentPath, nodePath)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "复制 Markdown 内容文件可能产生重复 slug，请改用移动或新建文章。",
+        });
+      }
       if (stats.isDirectory() && isTreePathAncestor(currentPath, normalizedDestinationPath)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1147,7 +1122,6 @@ async function copyLocalEntries(
         nodePath,
         journal
       );
-      await rewriteCopiedMarkdownSlugs(operation.fullNextPath, operation.nextPath, nodePath);
     }
 
     const copiedPairs = operations.map(({ path, nextPath }) => ({
