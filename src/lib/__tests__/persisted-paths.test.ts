@@ -85,6 +85,7 @@ describe("persisted-paths", () => {
         "---",
         "",
         "![cover](./assets/cover.png)",
+        "![photo](./assets/photo%20(1).png)",
         "![ref][cover-ref]",
         '[cover-ref]: ./assets/reference.png "Reference title"',
         '<img src="./assets/html.png" srcset="./assets/html-small.png 1x, ./assets/html-large.png 2x">',
@@ -105,6 +106,7 @@ describe("persisted-paths", () => {
       expect(changed).toBeTrue();
       expect(content).toContain("image: ../docs/assets/cover.png");
       expect(content).toContain("![cover](../docs/assets/cover.png)");
+      expect(content).toContain("![photo](../docs/assets/photo%20(1).png)");
       expect(content).toContain('[cover-ref]: ../docs/assets/reference.png "Reference title"');
       expect(content).toContain(
         '<img src="../docs/assets/html.png" srcset="../docs/assets/html-small.png 1x, ../docs/assets/html-large.png 2x">'
@@ -126,6 +128,7 @@ describe("persisted-paths", () => {
         "---",
         "",
         "![cover](./assets/cover.png)",
+        "![photo](./assets/photo%20(1).png)",
         "![ref][cover-ref]",
         '[cover-ref]: ./assets/reference.png "Reference title"',
         '<img src="./assets/html.png" srcset="./assets/html-small.png 1x, ./assets/html-large.png 2x">',
@@ -143,6 +146,7 @@ describe("persisted-paths", () => {
       expect(changed).toBeTrue();
       expect(content).toContain("image: ./archive/assets/cover.png");
       expect(content).toContain("![cover](./archive/assets/cover.png)");
+      expect(content).toContain("![photo](./archive/assets/photo%20(1).png)");
       expect(content).toContain('[cover-ref]: ./archive/assets/reference.png "Reference title"');
       expect(content).toContain(
         '<img src="./archive/assets/html.png" srcset="./archive/assets/html-small.png 1x, ./archive/assets/html-large.png 2x">'

@@ -31,6 +31,9 @@ export class PersistedPathError extends Error {
   }
 }
 
+const INLINE_MARKDOWN_LINK_RE =
+  /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
+
 function isExternalUrl(value: string): boolean {
   return /^https?:\/\//i.test(value) || value.startsWith("//");
 }
@@ -402,7 +405,7 @@ function rebaseInlineMarkdownLinks(
   newMarkdownFilePath: string
 ) {
   return input.replace(
-    /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|[^\s)]+)([^)]*)(\))/g,
+    INLINE_MARKDOWN_LINK_RE,
     (
       match,
       prefix: string,
@@ -428,7 +431,7 @@ function rebaseInlineMarkdownReferences(
   newTargetPath: string
 ) {
   return input.replace(
-    /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|[^\s)]+)([^)]*)(\))/g,
+    INLINE_MARKDOWN_LINK_RE,
     (
       match,
       prefix: string,
