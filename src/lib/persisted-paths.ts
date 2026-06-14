@@ -469,6 +469,75 @@ function rebaseMovedContentPath(
     : `${normalizedNewTarget}${currentPath.slice(normalizedOldTarget.length)}`;
 }
 
+function transformMarkdownOutsideCode(input: string, transform: (segment: string) => string) {
+  let output = "";
+  let index = 0;
+  let inFence: string | null = null;
+
+  while (index < input.length) {
+    const lineEnd = input.indexOf("\n", index);
+    const nextIndex = lineEnd === -1 ? input.length : lineEnd + 1;
+    const rawLine = input.slice(index, nextIndex);
+    const line = rawLine.endsWith("\n") ? rawLine.slice(0, -1) : rawLine;
+    const newline = rawLine.endsWith("\n") ? "\n" : "";
+    const fenceMatch = /^([ \t]{0,3})(`{3,}|~{3,})/.exec(line);
+
+    if (fenceMatch) {
+      const fenceMarker = fenceMatch[2];
+      const fenceChar = fenceMarker[0];
+      if (!inFence) {
+        inFence = fenceChar;
+      } else if (inFence === fenceChar) {
+        inFence = null;
+      }
+      output += rawLine;
+      index = nextIndex;
+      continue;
+    }
+
+    if (inFence || /^(?: {4}|\t)/.test(line)) {
+      output += rawLine;
+      index = nextIndex;
+      continue;
+    }
+
+    output += transformLineOutsideCodeSpans(line, transform) + newline;
+    index = nextIndex;
+  }
+
+  return output;
+}
+
+function transformLineOutsideCodeSpans(line: string, transform: (segment: string) => string) {
+  let output = "";
+  let index = 0;
+
+  while (index < line.length) {
+    const codeStart = line.indexOf("`", index);
+    if (codeStart === -1) {
+      output += transform(line.slice(index));
+      return output;
+    }
+
+    output += transform(line.slice(index, codeStart));
+    const tickMatch = /^`+/.exec(line.slice(codeStart));
+    if (tickMatch) {
+      const ticks = tickMatch?.[0] ?? "`";
+      const closeIndex = line.indexOf(ticks, codeStart + ticks.length);
+      if (closeIndex !== -1) {
+        output += line.slice(codeStart, closeIndex + ticks.length);
+        index = closeIndex + ticks.length;
+        continue;
+      }
+    }
+
+    output += line.slice(codeStart);
+    return output;
+  }
+
+  return output;
+}
+
 function rebaseInlineMarkdownLinks(
   input: string,
   oldMarkdownFilePath: string,
@@ -702,12 +771,20 @@ export function rebasePersistedLocalLinks(
 
   let content = input;
   content = rebaseFrontmatterAssetFields(content, oldMarkdownFilePath, newMarkdownFilePath);
-  content = rebaseInlineMarkdownLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
-  content = rebaseReferenceDefinitionLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
-  content = rebaseHtmlAssetAttributes(content, (target) =>
-    rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath)
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseInlineMarkdownLinks(segment, oldMarkdownFilePath, newMarkdownFilePath)
   );
-  content = rebaseWikiEmbedLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseReferenceDefinitionLinks(segment, oldMarkdownFilePath, newMarkdownFilePath)
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseHtmlAssetAttributes(segment, (target) =>
+      rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath)
+    )
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseWikiEmbedLinks(segment, oldMarkdownFilePath, newMarkdownFilePath)
+  );
 
   return {
     content,
@@ -732,17 +809,20 @@ export function rebasePersistedLocalReferences(
     oldTargetPath,
     newTargetPath
   );
-  content = rebaseInlineMarkdownReferences(content, markdownFilePath, oldTargetPath, newTargetPath);
-  content = rebaseReferenceDefinitionReferences(
-    content,
-    markdownFilePath,
-    oldTargetPath,
-    newTargetPath
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseInlineMarkdownReferences(segment, markdownFilePath, oldTargetPath, newTargetPath)
   );
-  content = rebaseHtmlAssetAttributes(content, (target) =>
-    rebaseMovedReferenceTarget(target, markdownFilePath, oldTargetPath, newTargetPath)
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseReferenceDefinitionReferences(segment, markdownFilePath, oldTargetPath, newTargetPath)
   );
-  content = rebaseWikiEmbedReferences(content, markdownFilePath, oldTargetPath, newTargetPath);
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseHtmlAssetAttributes(segment, (target) =>
+      rebaseMovedReferenceTarget(target, markdownFilePath, oldTargetPath, newTargetPath)
+    )
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseWikiEmbedReferences(segment, markdownFilePath, oldTargetPath, newTargetPath)
+  );
 
   return {
     content,

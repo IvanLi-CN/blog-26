@@ -143,6 +143,33 @@ describe("persisted-paths", () => {
       expect(content).toContain("![[../docs/assets/wiki.png|1200]]");
       expect(content).toContain("![remote](https://example.com/a.png)");
     });
+
+    it("does not rewrite literal examples inside code spans or fenced blocks", () => {
+      const input = [
+        "![real](./assets/real.png)",
+        "`![example](./assets/example.png)`",
+        "```md",
+        "![fenced](./assets/fenced.png)",
+        '<img src="./assets/fenced-html.png">',
+        "```",
+        "~~~html",
+        '<img src="./assets/fenced-tilde.png">',
+        "~~~",
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalLinks(
+        input,
+        "blog/docs/post.md",
+        "blog/archive/post.md"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("![real](../docs/assets/real.png)");
+      expect(content).toContain("`![example](./assets/example.png)`");
+      expect(content).toContain("![fenced](./assets/fenced.png)");
+      expect(content).toContain('<img src="./assets/fenced-html.png">');
+      expect(content).toContain('<img src="./assets/fenced-tilde.png">');
+    });
   });
 
   describe("rebasePersistedLocalReferences", () => {
@@ -243,6 +270,30 @@ describe("persisted-paths", () => {
       expect(content).toContain("[docs route](/Hardware/docs)");
       expect(content).toContain('<a href="/Hardware/docs/page">Docs page</a>');
       expect(content).toContain("[unrelated](/blog/docs/manual.pdf)");
+    });
+
+    it("does not rewrite moved-asset examples inside code spans or fenced blocks", () => {
+      const input = [
+        "![real](./assets/cover.png)",
+        "`![example](./assets/cover.png)`",
+        "```md",
+        "![fenced](./assets/cover.png)",
+        '<img src="./assets/cover.png">',
+        "```",
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalReferences(
+        input,
+        "blog/post.md",
+        "blog/assets",
+        "blog/archive/assets"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("![real](./archive/assets/cover.png)");
+      expect(content).toContain("`![example](./assets/cover.png)`");
+      expect(content).toContain("![fenced](./assets/cover.png)");
+      expect(content).toContain('<img src="./assets/cover.png">');
     });
   });
 
