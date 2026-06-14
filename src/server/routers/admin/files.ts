@@ -13,6 +13,8 @@ import {
   isPathWithinConfiguredRoots,
   normalizeRelativeContentPath,
 } from "@/lib/content-path-mappings";
+import { generateTitleSlug } from "@/lib/content-sources/utils";
+import { parseFrontmatterDocument, stringifyFrontmatterDocument } from "@/lib/frontmatter-document";
 import {
   hasApiFilesReference,
   rebasePersistedLocalLinks,
@@ -736,6 +738,58 @@ async function touchMarkdownContentTree(fullPath: string) {
   );
 }
 
+function deriveCopiedContentSlug(relativePath: string) {
+  const withoutExtension = normalizeLocalBrowserPath(relativePath).replace(/\.(md|mdx)$/i, "");
+  return generateTitleSlug(withoutExtension) || generateTitleSlug(`copy-${Date.now()}`);
+}
+
+async function rewriteCopiedMarkdownSlug(fullPath: string, relativePath: string) {
+  const fs = await import("node:fs/promises");
+  const content = await fs.readFile(fullPath, "utf-8");
+  const document = parseFrontmatterDocument(content);
+  const nextSlug = deriveCopiedContentSlug(relativePath);
+  const lines = document.frontmatterText ? document.frontmatterText.split("\n") : [];
+  const slugLineIndex = lines.findIndex((line) => /^\s*slug\s*:/.test(line));
+
+  if (slugLineIndex >= 0) {
+    lines[slugLineIndex] = `slug: ${nextSlug}`;
+  } else {
+    lines.push(`slug: ${nextSlug}`);
+  }
+
+  await fs.writeFile(fullPath, stringifyFrontmatterDocument(document.body, lines.join("\n")));
+}
+
+async function rewriteCopiedMarkdownSlugs(
+  fullPath: string,
+  relativePath: string,
+  nodePath: typeof import("node:path")
+) {
+  const fs = await import("node:fs/promises");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return;
+
+  if (stats.isFile()) {
+    if (isMarkdownContentFile(fullPath)) {
+      await rewriteCopiedMarkdownSlug(fullPath, relativePath);
+    }
+    return;
+  }
+
+  if (!stats.isDirectory()) return;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map((entry) =>
+      rewriteCopiedMarkdownSlugs(
+        nodePath.join(fullPath, entry.name),
+        normalizeLocalBrowserPath(`${relativePath}/${entry.name}`),
+        nodePath
+      )
+    )
+  );
+}
+
 async function rebaseMovedMarkdownLinks(
   fullPath: string,
   oldRelativePath: string,
@@ -1093,6 +1147,7 @@ async function copyLocalEntries(
         nodePath,
         journal
       );
+      await rewriteCopiedMarkdownSlugs(operation.fullNextPath, operation.nextPath, nodePath);
     }
 
     const copiedPairs = operations.map(({ path, nextPath }) => ({

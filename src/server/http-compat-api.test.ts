@@ -1720,7 +1720,9 @@ describe("HTTP compatibility APIs", () => {
           type: "file",
         },
       ]);
-      expect(fs.readFileSync(path.join(docsDir, "move-me.md"), "utf-8")).toBe("move");
+      const copiedBackContent = fs.readFileSync(path.join(docsDir, "move-me.md"), "utf-8");
+      expect(copiedBackContent).toContain("slug: hardware-docs-move-me");
+      expect(copiedBackContent).toContain("move");
       expect(syncArguments).toEqual([false, false]);
       const copiedBackPost = await db
         .select()
@@ -2674,7 +2676,17 @@ describe("HTTP compatibility APIs", () => {
     fs.writeFileSync(path.join(docsDir, "series", "assets", "cover.png"), "cover");
     fs.writeFileSync(
       path.join(docsDir, "series", "overview.md"),
-      ["# Series", "", "![cover](./assets/cover.png)", "![logo](../shared/logo.png)"].join("\n")
+      [
+        "---",
+        "title: Series",
+        "slug: series",
+        "---",
+        "",
+        "# Series",
+        "",
+        "![cover](./assets/cover.png)",
+        "![logo](../shared/logo.png)",
+      ].join("\n")
     );
 
     const manager = getContentSourceManager();
@@ -2706,6 +2718,9 @@ describe("HTTP compatibility APIs", () => {
       );
       expect(copiedContent).toContain("![logo](../../docs/shared/logo.png)");
       expect(copiedContent).toContain("![cover](./assets/cover.png)");
+      expect(copiedContent).toContain("slug: hardware-archive-series-overview");
+      const originalContent = fs.readFileSync(path.join(docsDir, "series", "overview.md"), "utf-8");
+      expect(originalContent).toContain("slug: series");
     } finally {
       manager.syncAll = originalSyncAll;
     }
