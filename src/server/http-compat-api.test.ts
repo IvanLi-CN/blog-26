@@ -1606,7 +1606,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("returns sync warnings after successful file mutations when content sync fails", async () => {
+  it("returns a hard error after file mutations when content sync fails", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -1635,10 +1635,9 @@ describe("HTTP compatibility APIs", () => {
         "/files/write"
       );
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(503);
       const payload = await readJson(response);
-      expect(payload.success).toBe(true);
-      expect(payload.syncWarning).toContain("index unavailable");
+      expect(payload.error.message).toContain("index unavailable");
       expect(fs.existsSync(path.join(hardwareDir, "sync-failure.md"))).toBe(true);
     } finally {
       manager.syncAll = originalSyncAll;

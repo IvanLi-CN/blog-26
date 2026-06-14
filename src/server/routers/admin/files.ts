@@ -315,7 +315,7 @@ async function ensureLocalDirectoryTarget(
   };
 }
 
-async function triggerAdminContentSync(): Promise<string | undefined> {
+async function triggerAdminContentSync(): Promise<void> {
   try {
     const syncManager = getContentSourceManager({
       maxConcurrentSyncs: 2,
@@ -325,13 +325,22 @@ async function triggerAdminContentSync(): Promise<string | undefined> {
     });
     const result = await syncManager.syncAll();
     if (result.success) {
-      return undefined;
+      return;
     }
 
     const errorMessages = result.errors.map((entry) => entry.message).join(", ");
-    return errorMessages ? `增量同步失败：${errorMessages}` : "增量同步失败";
+    throw new TRPCError({
+      code: "SERVICE_UNAVAILABLE",
+      message: errorMessages ? `增量同步失败：${errorMessages}` : "增量同步失败",
+    });
   } catch (syncError) {
-    return syncError instanceof Error ? syncError.message : "增量同步失败";
+    if (syncError instanceof TRPCError) {
+      throw syncError;
+    }
+    throw new TRPCError({
+      code: "SERVICE_UNAVAILABLE",
+      message: syncError instanceof Error ? syncError.message : "增量同步失败",
+    });
   }
 }
 
@@ -983,13 +992,12 @@ export const filesRouter = createTRPCRouter({
     await (
       source as LocalContentSource & { writeFile: (path: string, content: string) => Promise<void> }
     ).writeFile(input.path, contentToWrite);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       message: "文件写入成功",
       path: input.path,
-      syncWarning,
     };
   }),
 
@@ -1015,11 +1023,12 @@ export const filesRouter = createTRPCRouter({
       throw error;
     }
 
+    await triggerAdminContentSync();
+
     return {
       success: true,
       source: input.source,
       path: input.path,
-      syncWarning: await triggerAdminContentSync(),
     };
   }),
 
@@ -1040,13 +1049,13 @@ export const filesRouter = createTRPCRouter({
     }
 
     await renameLocalFile(input.oldPath, input.newName);
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       oldPath: input.oldPath,
       newName: input.newName,
-      syncWarning: await triggerAdminContentSync(),
     };
   }),
 
@@ -1055,13 +1064,12 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await moveLocalEntries(input.paths, input.destinationPath);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       ...result,
-      syncWarning,
     };
   }),
 
@@ -1070,13 +1078,12 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await copyLocalEntries(input.paths, input.destinationPath);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       ...result,
-      syncWarning,
     };
   }),
 
@@ -1085,13 +1092,12 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await deleteLocalEntries(input.entries);
-    const syncWarning = await triggerAdminContentSync();
+    await triggerAdminContentSync();
 
     return {
       success: true,
       source: input.source,
       ...result,
-      syncWarning,
     };
   }),
 });
