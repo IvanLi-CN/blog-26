@@ -133,6 +133,8 @@ export function parseContentSourcesFromEnv(envValue: string | undefined): Set<"l
       set.add("local");
     }
   }
+  // Legacy deployments may still set unsupported values such as "webdav".
+  // Treat those as unset so local content remains enabled when a base path exists.
   return set.size > 0 ? set : null;
 }
 
