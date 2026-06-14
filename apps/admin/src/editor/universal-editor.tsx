@@ -2,7 +2,13 @@ import { Code2, Eye } from "lucide-react";
 import { nanoid } from "nanoid";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { MilkdownEditor } from "@/components/memos/MilkdownEditor";
+import {
+  parseFrontmatterDocument,
+  updateDocumentBody,
+  updateFrontmatterDocument,
+} from "@/lib/frontmatter-document";
 import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
+import { FrontmatterBlock } from "~/editor/frontmatter-block";
 import { SourceEditor } from "~/editor/source-editor";
 
 type EditorMode = "wysiwyg" | "source" | "compare";
@@ -59,6 +65,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     const [content, setContent] = useState(initialContent);
     const [currentMode, setCurrentMode] = useState<EditorMode>(mode);
     const lastInitialContentRef = useRef(initialContent);
+    const parsedDocument = parseFrontmatterDocument(content);
 
     const processInlineImages = useCallback(
       async (markdown: string) => {
@@ -107,6 +114,14 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     const handleContentChange = (nextContent: string) => {
       setContent(nextContent);
       onContentChange?.(nextContent);
+    };
+
+    const handleFrontmatterChange = (nextFrontmatterText: string) => {
+      handleContentChange(updateFrontmatterDocument(content, nextFrontmatterText));
+    };
+
+    const handleBodyChange = (nextBody: string) => {
+      handleContentChange(updateDocumentBody(content, nextBody));
     };
 
     const uploadImage = async (
@@ -180,13 +195,18 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
 
         <div className="min-h-0 flex-1 overflow-hidden">
           {currentMode === "wysiwyg" ? (
-            <div className="admin-editor-surface admin-scrollbar h-full overflow-auto">
+            <div className="admin-editor-surface admin-scrollbar flex h-full flex-col gap-4 overflow-auto p-4">
+              <FrontmatterBlock
+                value={parsedDocument.frontmatterText}
+                onChange={handleFrontmatterChange}
+              />
               <MilkdownEditor
                 key={`milkdown-editor-${editorId}`}
-                content={content}
-                onChange={handleContentChange}
+                content={parsedDocument.body}
+                onChange={handleBodyChange}
+                frontmatterHandling="body-only"
                 placeholder={placeholder}
-                className="h-full min-h-0 w-full admin-editor-wysiwyg"
+                className="min-h-0 w-full flex-1 admin-editor-wysiwyg"
                 data-testid="content-input"
                 editorId={`wysiwyg-${editorId}`}
                 articlePath={articlePath}
@@ -244,11 +264,17 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                     </div>
                   </div>
                 </div>
-                <div className="admin-editor-surface admin-editor-compare-preview-surface admin-scrollbar min-h-0 flex-1 overflow-auto">
+                <div className="admin-editor-surface admin-editor-compare-preview-surface admin-scrollbar min-h-0 flex-1 overflow-auto p-4">
+                  <FrontmatterBlock
+                    value={parsedDocument.frontmatterText}
+                    readOnly
+                    className="mb-4"
+                  />
                   <MilkdownEditor
                     key={`milkdown-compare-readonly-${editorId}`}
-                    content={content}
-                    onChange={handleContentChange}
+                    content={parsedDocument.body}
+                    onChange={handleBodyChange}
+                    frontmatterHandling="body-only"
                     placeholder={placeholder}
                     className="h-full min-h-0 w-full admin-editor-wysiwyg"
                     data-testid="content-preview"
