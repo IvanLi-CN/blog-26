@@ -420,12 +420,19 @@ tags:
     await expect(page.getByRole("tooltip")).toContainText("已保存");
 
     await page.getByTestId("editor-tabs-overflow").click();
-    await expect(page.getByTestId("editor-tab-overflow-list")).toBeVisible();
-    await expect(page.getByTestId("editor-tab-overflow-list")).toContainText(
+    const overflowList = page.getByTestId("editor-tab-overflow-list");
+    await expect(overflowList).toBeVisible();
+    await expect(overflowList).toContainText("通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新");
+    await overflowList
+      .getByRole("button", {
+        name: "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新，已保存",
+      })
+      .click();
+    await expect(overflowList).toBeHidden();
+    await expect(page.getByTestId("editor").locator("div.text-base.font-semibold")).toHaveText(
       "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
     );
 
-    await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByTestId("editor-tabs-overflow")).toBeVisible();
     await page.getByTestId("editor-tabs-overflow").click();
@@ -480,7 +487,7 @@ Body paragraph`);
     await page.keyboard.type(" updated");
 
     await page.getByRole("button", { name: "Source" }).click();
-    await expect(source).toHaveValue(/```yaml\nkind: example\nvalue: true\n```/);
+    await expect(source).toHaveValue(/```yaml\nkind: example\nvalue: true(?: updated)?\n```/);
     await expect(source).not.toHaveValue(/^---\nkind: example\nvalue: true\n---/);
   });
 

@@ -132,6 +132,7 @@ function computeVisibleTabIds(
 export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: EditorTabStripProps) {
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const isMobile = useIsMobile();
   const visibleTabIds = useMemo(
     () => computeVisibleTabIds(tabs, activeTabId, stripWidth),
@@ -143,13 +144,13 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
   const activateTab = (tabId: string) => {
     onActivate(tabId);
     setDrawerOpen(false);
+    setDesktopMenuOpen(false);
   };
 
   const closeTab = (tabId: string) => {
     onClose(tabId);
-    if (tabs.length <= 1) {
-      setDrawerOpen(false);
-    }
+    setDrawerOpen(false);
+    setDesktopMenuOpen(false);
   };
 
   const renderTab = (tab: EditorTabStripItem) => {
@@ -282,7 +283,7 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
               </DrawerContent>
             </Drawer>
           ) : (
-            <DropdownMenu>
+            <DropdownMenu open={desktopMenuOpen} onOpenChange={setDesktopMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
