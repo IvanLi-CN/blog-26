@@ -1698,6 +1698,92 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rejects moving local files across configured content roots", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const blogDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.mkdirSync(blogDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "move-me.md"), "move");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/move-me.md"],
+              destinationPath: "blog",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(response.status).toBe(400);
+      const payload = await readJson(response);
+      expect(payload.error.message).toContain("不能跨内容根目录移动项目");
+      expect(fs.existsSync(path.join(hardwareDir, "move-me.md"))).toBe(true);
+      expect(fs.existsSync(path.join(blogDir, "move-me.md"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases inbound markdown references after moving local asset files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const assetsDir = path.join(hardwareDir, "assets");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(hardwareDir, "post.md"),
+      ["---", "image: ./assets/cover.png", "---", "", "![cover](./assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/assets/cover.png"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(response.status).toBe(200);
+      const content = fs.readFileSync(path.join(hardwareDir, "post.md"), "utf-8");
+      expect(content).toContain("image: ./archive/cover.png");
+      expect(content).toContain("![cover](./archive/cover.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rebases copied markdown links inside directory subtrees", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 

@@ -15,6 +15,7 @@ import {
 import {
   hasApiFilesReference,
   rebasePersistedLocalLinks,
+  rebasePersistedLocalReferences,
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
 import {
@@ -188,6 +189,26 @@ function assertLocalRootOperationAllowed(path: string) {
     });
   }
   return normalizedPath;
+}
+
+function getConfiguredRootForPath(path: string): string | null {
+  const normalizedPath = normalizeLocalBrowserPath(path);
+  const roots = getLocalConfiguredRootDirs().sort((left, right) => right.length - left.length);
+  return (
+    roots.find((root) => normalizedPath === root || normalizedPath.startsWith(`${root}/`)) ?? null
+  );
+}
+
+function assertSameConfiguredRoot(sourcePath: string, targetPath: string) {
+  const sourceRoot = getConfiguredRootForPath(sourcePath);
+  const targetRoot = getConfiguredRootForPath(targetPath);
+
+  if (!sourceRoot || !targetRoot || sourceRoot !== targetRoot) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "不能跨内容根目录移动项目",
+    });
+  }
 }
 
 async function ensureLocalDirectoryTarget(
@@ -479,6 +500,55 @@ async function rebaseCopiedMarkdownLinks(
   );
 }
 
+async function rebaseInboundMovedReferences(
+  rootPath: string,
+  movedPairs: Array<{ oldPath: string; newPath: string }>,
+  nodePath: typeof import("node:path")
+) {
+  const fs = await import("node:fs/promises");
+  const basePath = resolve(requireLocalBasePath());
+  const fullRootPath = nodePath.join(basePath, rootPath);
+
+  async function visit(fullPath: string, relativePath: string) {
+    const stats = await fs.stat(fullPath).catch(() => null);
+    if (!stats) return;
+
+    if (stats.isDirectory()) {
+      const entries = await fs.readdir(fullPath, { withFileTypes: true });
+      await Promise.all(
+        entries.map((entry) =>
+          visit(
+            nodePath.join(fullPath, entry.name),
+            normalizeLocalBrowserPath(`${relativePath}/${entry.name}`)
+          )
+        )
+      );
+      return;
+    }
+
+    if (!stats.isFile() || !isMarkdownContentFile(fullPath)) return;
+
+    let content = await fs.readFile(fullPath, "utf-8");
+    let changed = false;
+    for (const pair of movedPairs) {
+      const rebased = rebasePersistedLocalReferences(
+        content,
+        relativePath,
+        pair.oldPath,
+        pair.newPath
+      );
+      content = rebased.content;
+      changed ||= rebased.changed;
+    }
+
+    if (changed) {
+      await fs.writeFile(fullPath, content, "utf-8");
+    }
+  }
+
+  await visit(fullRootPath, rootPath);
+}
+
 async function moveLocalEntries(
   paths: string[],
   destinationPath: string
@@ -522,6 +592,7 @@ async function moveLocalEntries(
       }
 
       assertLocalPathAllowed(nextRelativePath);
+      assertSameConfiguredRoot(currentPath, nextRelativePath);
 
       const fullNextPath = nodePath.join(basePath, nextRelativePath);
       await fs.access(fullNextPath).then(
@@ -568,6 +639,19 @@ async function moveLocalEntries(
       nodePath
     );
   }
+  const rootsToMovedPairs = new Map<string, Array<{ oldPath: string; newPath: string }>>();
+  for (const operation of operations) {
+    const root = getConfiguredRootForPath(operation.nextPath);
+    if (!root) continue;
+    const pairs = rootsToMovedPairs.get(root) ?? [];
+    pairs.push({ oldPath: operation.path, newPath: operation.nextPath });
+    rootsToMovedPairs.set(root, pairs);
+  }
+  await Promise.all(
+    Array.from(rootsToMovedPairs.entries()).map(([root, movedPairs]) =>
+      rebaseInboundMovedReferences(root, movedPairs, nodePath)
+    )
+  );
 
   return {
     moved: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),

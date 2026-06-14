@@ -3,6 +3,7 @@ import {
   hasApiFilesReference,
   normalizePersistedLink,
   rebasePersistedLocalLinks,
+  rebasePersistedLocalReferences,
   rewriteApiFilesUrlsToRelative,
   toRuntimeFileApiUrl,
 } from "../persisted-paths";
@@ -94,6 +95,31 @@ describe("persisted-paths", () => {
       expect(content).toContain("![shared](../shared/logo.png)");
       expect(content).toContain("![[../docs/assets/wiki.png|1200]]");
       expect(content).toContain("![remote](https://example.com/a.png)");
+    });
+  });
+
+  describe("rebasePersistedLocalReferences", () => {
+    it("updates links that point at a moved local file", () => {
+      const input = [
+        "---",
+        "image: ./assets/cover.png",
+        "---",
+        "",
+        "![cover](./assets/cover.png)",
+        "![[./assets/wiki.png|1200]]",
+      ].join("\n");
+
+      const { content, changed } = rebasePersistedLocalReferences(
+        input,
+        "blog/post.md",
+        "blog/assets",
+        "blog/archive/assets"
+      );
+
+      expect(changed).toBeTrue();
+      expect(content).toContain("image: ./archive/assets/cover.png");
+      expect(content).toContain("![cover](./archive/assets/cover.png)");
+      expect(content).toContain("![[./archive/assets/wiki.png|1200]]");
     });
   });
 

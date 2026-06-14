@@ -336,6 +336,40 @@ function rebaseLocalTarget(
   }
 }
 
+function rebaseMovedReferenceTarget(
+  value: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  if (!shouldRebaseLocalTarget(value)) return value;
+
+  const runtimeUrl = toRuntimeFileApiUrl(value, "local", markdownFilePath);
+  if (!runtimeUrl || !isFileApiUrl(runtimeUrl)) return value;
+
+  const parsed = parseFileApiUrl(runtimeUrl);
+  if (!parsed || parsed.source !== "local") return value;
+
+  const normalizedOldTarget = stripLeadingSlashes(normalizeSlashes(oldTargetPath));
+  const normalizedNewTarget = stripLeadingSlashes(normalizeSlashes(newTargetPath));
+  const currentPath = stripLeadingSlashes(normalizeSlashes(parsed.path));
+
+  if (currentPath !== normalizedOldTarget && !currentPath.startsWith(`${normalizedOldTarget}/`)) {
+    return value;
+  }
+
+  const nextPath =
+    currentPath === normalizedOldTarget
+      ? normalizedNewTarget
+      : `${normalizedNewTarget}${currentPath.slice(normalizedOldTarget.length)}`;
+
+  try {
+    return normalizePersistedLink(`/api/files/local/${nextPath}`, markdownFilePath);
+  } catch {
+    return value;
+  }
+}
+
 function rebaseInlineMarkdownLinks(
   input: string,
   oldMarkdownFilePath: string,
@@ -361,6 +395,37 @@ function rebaseInlineMarkdownLinks(
   );
 }
 
+function rebaseInlineMarkdownReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  return input.replace(
+    /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|[^\s)]+)([^)]*)(\))/g,
+    (
+      match,
+      prefix: string,
+      spacing: string,
+      rawTarget: string,
+      suffix: string,
+      closing: string
+    ) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseMovedReferenceTarget(
+        target,
+        markdownFilePath,
+        oldTargetPath,
+        newTargetPath
+      );
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${spacing}${nextTarget}${suffix}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
 function rebaseWikiEmbedLinks(
   input: string,
   oldMarkdownFilePath: string,
@@ -368,6 +433,24 @@ function rebaseWikiEmbedLinks(
 ) {
   return input.replace(/(!\[\[)([^\]\n|]+)([^\]\n]*\]\])/g, (match, prefix, target, suffix) => {
     const rebased = rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath);
+    const next = `${prefix}${rebased}${suffix}`;
+    return next === match ? match : next;
+  });
+}
+
+function rebaseWikiEmbedReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  return input.replace(/(!\[\[)([^\]\n|]+)([^\]\n]*\]\])/g, (match, prefix, target, suffix) => {
+    const rebased = rebaseMovedReferenceTarget(
+      target,
+      markdownFilePath,
+      oldTargetPath,
+      newTargetPath
+    );
     const next = `${prefix}${rebased}${suffix}`;
     return next === match ? match : next;
   });
@@ -396,6 +479,35 @@ function rebaseFrontmatterAssetFields(
   return `${rebasedFrontmatter}${rest}`;
 }
 
+function rebaseFrontmatterAssetReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  if (!input.startsWith("---\n")) return input;
+  const closingIndex = input.indexOf("\n---", 4);
+  if (closingIndex === -1) return input;
+
+  const frontmatter = input.slice(0, closingIndex);
+  const rest = input.slice(closingIndex);
+  const rebasedFrontmatter = frontmatter.replace(
+    /^(\s*(?:image|cover|thumbnail|banner)\s*:\s*)(["']?)([^"'\n]+)(\2\s*)$/gim,
+    (match, prefix: string, quote: string, value: string, suffix: string) => {
+      const rebased = rebaseMovedReferenceTarget(
+        value.trim(),
+        markdownFilePath,
+        oldTargetPath,
+        newTargetPath
+      );
+      const next = `${prefix}${quote}${rebased}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+
+  return `${rebasedFrontmatter}${rest}`;
+}
+
 export function rebasePersistedLocalLinks(
   input: string,
   oldMarkdownFilePath: string,
@@ -413,6 +525,32 @@ export function rebasePersistedLocalLinks(
   content = rebaseFrontmatterAssetFields(content, oldMarkdownFilePath, newMarkdownFilePath);
   content = rebaseInlineMarkdownLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
   content = rebaseWikiEmbedLinks(content, oldMarkdownFilePath, newMarkdownFilePath);
+
+  return {
+    content,
+    changed: content !== input,
+  };
+}
+
+export function rebasePersistedLocalReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+): { content: string; changed: boolean } {
+  if (typeof input !== "string" || input.length === 0 || oldTargetPath === newTargetPath) {
+    return { content: input, changed: false };
+  }
+
+  let content = input;
+  content = rebaseFrontmatterAssetReferences(
+    content,
+    markdownFilePath,
+    oldTargetPath,
+    newTargetPath
+  );
+  content = rebaseInlineMarkdownReferences(content, markdownFilePath, oldTargetPath, newTargetPath);
+  content = rebaseWikiEmbedReferences(content, markdownFilePath, oldTargetPath, newTargetPath);
 
   return {
     content,
