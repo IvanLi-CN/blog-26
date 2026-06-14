@@ -1588,6 +1588,7 @@ describe("HTTP compatibility APIs", () => {
       );
       expect(moveResponse.status).toBe(200);
       const movePayload = await readJson(moveResponse);
+      expect(movePayload.destinationPath).toBe("Hardware/archive");
       expect(movePayload.moved).toEqual([
         {
           path: "Hardware/docs/move-me.md",
@@ -1615,6 +1616,7 @@ describe("HTTP compatibility APIs", () => {
       );
       expect(copyResponse.status).toBe(200);
       const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.destinationPath).toBe("Hardware/docs");
       expect(copyPayload.copied).toEqual([
         {
           path: "Hardware/archive/move-me.md",

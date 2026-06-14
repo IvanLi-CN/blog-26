@@ -1240,6 +1240,7 @@ export const filesRouter = createTRPCRouter({
     return {
       success: true,
       source: input.source,
+      destinationPath: normalizeLocalBrowserPath(input.destinationPath),
       ...result,
     };
   }),
@@ -1255,6 +1256,7 @@ export const filesRouter = createTRPCRouter({
     return {
       success: true,
       source: input.source,
+      destinationPath: normalizeLocalBrowserPath(input.destinationPath),
       ...result,
     };
   }),
