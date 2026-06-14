@@ -1512,6 +1512,49 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("initializes the local content source before renaming files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "rename-me.md"), "rename");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    let syncedSources: string[] | null = null;
+
+    manager.syncAll = async function (...args) {
+      const result = await originalSyncAll.apply(this, args);
+      syncedSources = result.sources;
+      return result;
+    } as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/rename-me.md",
+              newName: "renamed.md",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(200);
+      expect(fs.existsSync(path.join(hardwareDir, "renamed.md"))).toBe(true);
+      expect(syncedSources).toContain("local");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("moves and copies local files through the admin API", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
@@ -1606,7 +1649,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("returns a hard error after file mutations when content sync fails", async () => {
+  it("returns sync warnings after successful file mutations when content sync fails", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
@@ -1635,9 +1678,10 @@ describe("HTTP compatibility APIs", () => {
         "/files/write"
       );
 
-      expect(response.status).toBe(503);
+      expect(response.status).toBe(200);
       const payload = await readJson(response);
-      expect(payload.error.message).toContain("index unavailable");
+      expect(payload.success).toBe(true);
+      expect(payload.syncWarning).toContain("index unavailable");
       expect(fs.existsSync(path.join(hardwareDir, "sync-failure.md"))).toBe(true);
     } finally {
       manager.syncAll = originalSyncAll;

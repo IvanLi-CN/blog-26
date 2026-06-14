@@ -188,11 +188,16 @@ export interface FileBatchResult {
   type: "file" | "directory";
 }
 
+export interface FileMutationSyncWarning {
+  syncWarning?: string;
+}
+
 export interface FileMoveResponse {
   success: boolean;
   source: string;
   destinationPath: string;
   moved: FileBatchResult[];
+  syncWarning?: string;
 }
 
 export interface FileCopyResponse {
@@ -200,12 +205,14 @@ export interface FileCopyResponse {
   source: string;
   destinationPath: string;
   copied: FileBatchResult[];
+  syncWarning?: string;
 }
 
 export interface FileDeleteResponse {
   success: boolean;
   source: string;
   deleted: FileBatchResult[];
+  syncWarning?: string;
 }
 
 export interface ContentSyncSourceStatus {
@@ -610,22 +617,27 @@ export const adminApi = {
   readFile: (source: string, path: string) =>
     adminRequest<FileReadResponse>(`/api/admin/files/read${buildSearch({ source, path })}`),
   writeFile: (input: { source: string; path: string; content: string }) =>
-    adminRequest<{ success: boolean; message: string; path: string }>("/api/admin/files/write", {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
+    adminRequest<{ success: boolean; message: string; path: string; syncWarning?: string }>(
+      "/api/admin/files/write",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      }
+    ),
   renameFile: (input: { source: string; oldPath: string; newName: string }) =>
-    adminRequest<{
-      success: boolean;
-      source: string;
-      oldPath: string;
-      newName: string;
-    }>("/api/admin/files/rename", {
+    adminRequest<
+      {
+        success: boolean;
+        source: string;
+        oldPath: string;
+        newName: string;
+      } & FileMutationSyncWarning
+    >("/api/admin/files/rename", {
       method: "POST",
       body: JSON.stringify(input),
     }),
   createDirectory: (input: { source: string; path: string }) =>
-    adminRequest<{ success: boolean; source: string; path: string }>(
+    adminRequest<{ success: boolean; source: string; path: string; syncWarning?: string }>(
       "/api/admin/files/create-directory",
       {
         method: "POST",
