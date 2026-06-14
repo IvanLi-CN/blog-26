@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
@@ -1700,6 +1701,13 @@ describe("HTTP compatibility APIs", () => {
   it("rolls back file-tree mutations when content sync fails", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
+    const preservedPostId = await seedPost({
+      id: "Hardware/existing-post.md",
+      slug: "existing-post",
+      title: "Existing Post",
+      body: "Existing body",
+      filePath: "Hardware/existing-post.md",
+    });
     const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
     const docsDir = path.join(hardwareDir, "docs");
     const archiveDir = path.join(hardwareDir, "archive");
@@ -1712,8 +1720,10 @@ describe("HTTP compatibility APIs", () => {
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
-    manager.syncAll = (async () =>
-      createFailedSyncResult("index unavailable")) as typeof manager.syncAll;
+    manager.syncAll = (async () => {
+      await db.delete(posts);
+      return createFailedSyncResult("index unavailable");
+    }) as typeof manager.syncAll;
 
     try {
       const renameResponse = await handleAdminApiRequest(
@@ -1803,6 +1813,16 @@ describe("HTTP compatibility APIs", () => {
           .readdirSync(LOCAL_CONTENT_BASE_PATH)
           .some((entry) => entry.startsWith(".admin-delete-rollback-"))
       ).toBe(false);
+      const preservedPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, preservedPostId))
+        .get();
+      expect(preservedPost).toMatchObject({
+        id: preservedPostId,
+        slug: "existing-post",
+        title: "Existing Post",
+      });
     } finally {
       manager.syncAll = originalSyncAll;
     }

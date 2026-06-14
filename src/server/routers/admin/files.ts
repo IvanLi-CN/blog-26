@@ -23,7 +23,10 @@ import {
   getActiveLocalPathMappings,
   isLocalContentEnabled,
 } from "../../../config/paths";
+import { clearSearchCache } from "../../../lib/ai/search-cache";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
+import { db } from "../../../lib/db";
+import { posts } from "../../../lib/schema";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 const listDirectorySchema = z.object({
@@ -356,10 +359,19 @@ async function triggerAdminContentSync(fullSync = false): Promise<void> {
 async function syncAndCommitFileMutation<
   T extends { rollback: () => Promise<void>; commit?: () => Promise<void> },
 >(result: T, options: { fullSync?: boolean } = {}): Promise<Omit<T, "rollback" | "commit">> {
+  const postsSnapshot = await db.select().from(posts);
   try {
     await triggerAdminContentSync(options.fullSync ?? false);
   } catch (error) {
-    await result.rollback();
+    try {
+      await result.rollback();
+    } finally {
+      await db.delete(posts);
+      if (postsSnapshot.length > 0) {
+        await db.insert(posts).values(postsSnapshot);
+      }
+      clearSearchCache();
+    }
     throw error;
   }
   await result.commit?.();
