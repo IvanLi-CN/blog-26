@@ -1,7 +1,10 @@
+import { mkdirSync } from "node:fs";
+import { resolve } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { expect, adminTest as test } from "./fixtures";
 
 const DEMO_EDITOR_URL = "/admin/posts/editor?demo=true&slug=react-hooks-deep-dive";
+const ADDITIVE_SELECTION_MODIFIER = process.platform === "darwin" ? "Meta" : "Control";
 
 async function openDemoEditor(page: Page) {
   const response = await page.goto(DEMO_EDITOR_URL, {
@@ -18,7 +21,7 @@ async function openDemoEditor(page: Page) {
 }
 
 async function openFileBrowserItem(page: Page, name: string, options: { dblClick?: boolean } = {}) {
-  const item = page.getByRole("button", { name });
+  const item = page.getByRole("button", { name, exact: true });
   await expect(item).toBeVisible({ timeout: 30_000 });
   if (options.dblClick) {
     await item.dblclick();
@@ -172,6 +175,276 @@ async function shellLayoutState(page: Page) {
       mainX: mainRect?.x ?? 0,
       mainWidth: mainRect?.width ?? 0,
       storedWidth: window.localStorage.getItem("admin-sidebar-width"),
+    };
+  });
+}
+
+async function sidebarSelectionFooterState(page: Page) {
+  return page.getByTestId("sidebar-selection-footer").evaluate((footer) => {
+    const footerRect = footer.getBoundingClientRect();
+    const aside = footer.closest("aside");
+    const host = footer.parentElement;
+    const card = aside?.querySelector<HTMLElement>('[data-testid="admin-sidebar-card"]');
+    const asideRect = aside?.getBoundingClientRect();
+    const hostRect = host?.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect();
+    const count = footer.querySelector<HTMLElement>('[data-testid="sidebar-selection-count"]');
+    const countRect = count?.getBoundingClientRect();
+    const countStyle = count ? getComputedStyle(count) : null;
+    const items = Array.from(
+      footer.querySelectorAll<HTMLElement>('button,[data-testid="sidebar-selection-count"]')
+    ).filter((item) => getComputedStyle(item).visibility !== "hidden");
+    const buttons = Array.from(footer.querySelectorAll<HTMLButtonElement>("button")).filter(
+      (button) => getComputedStyle(button).visibility !== "hidden"
+    );
+    const firstButtonRect = buttons[0]?.getBoundingClientRect();
+    const rowTops: number[] = [];
+    for (const item of items) {
+      const top = Math.round(item.getBoundingClientRect().top - footerRect.top);
+      if (!rowTops.some((value) => Math.abs(value - top) <= 4)) {
+        rowTops.push(top);
+      }
+    }
+
+    return {
+      footerMode: footer.getAttribute("data-footer-mode"),
+      hasHorizontalOverflow: footer.scrollWidth - footer.clientWidth > 1,
+      rowCount: rowTops.length,
+      countText: count?.textContent?.trim() ?? "",
+      countTop: countRect ? countRect.top - footerRect.top : 0,
+      countLeft: countRect ? countRect.left - footerRect.left : 0,
+      countWidth: countRect?.width ?? 0,
+      countHeight: countRect?.height ?? 0,
+      countWhiteSpace: countStyle?.whiteSpace ?? "",
+      countFlexShrink: countStyle?.flexShrink ?? "",
+      countRight: countRect ? countRect.right - footerRect.left : 0,
+      firstButtonLeft: firstButtonRect ? firstButtonRect.left - footerRect.left : 0,
+      firstButtonWidth: firstButtonRect?.width ?? 0,
+      firstButtonHeight: firstButtonRect?.height ?? 0,
+      footerWidth: footerRect.width,
+      hostWidth: hostRect?.width ?? 0,
+      asideWidth: asideRect?.width ?? 0,
+      cardWidth: cardRect?.width ?? 0,
+      iconOnlyButtonCount: buttons.filter((button) => button.textContent?.trim().length === 0)
+        .length,
+      textButtonCount: buttons.filter((button) => button.textContent?.trim().length !== 0).length,
+    };
+  });
+}
+
+async function sidebarSelectionFooterRows(page: Page) {
+  return page.getByTestId("sidebar-selection-footer").evaluate((footer) => {
+    const footerRect = footer.getBoundingClientRect();
+    const items = Array.from(
+      footer.querySelectorAll<HTMLElement>('button,[data-testid="sidebar-selection-count"]')
+    ).filter((item) => getComputedStyle(item).visibility !== "hidden");
+
+    const rows = new Map<number, Array<{ left: number; label: string }>>();
+
+    for (const item of items) {
+      const rect = item.getBoundingClientRect();
+      const top = Math.round(rect.top - footerRect.top);
+      const left = Math.round(rect.left - footerRect.left);
+      const label =
+        item.getAttribute("aria-label")?.trim() ||
+        item.textContent?.trim() ||
+        item.getAttribute("title")?.trim() ||
+        "";
+      const bucket = Array.from(rows.keys()).find((value) => Math.abs(value - top) <= 4) ?? top;
+      const row = rows.get(bucket) ?? [];
+      row.push({ left, label });
+      rows.set(bucket, row);
+    }
+
+    return Array.from(rows.entries())
+      .sort((left, right) => left[0] - right[0])
+      .map(([, row]) =>
+        row.sort((left, right) => left.left - right.left).map((item) => item.label)
+      );
+  });
+}
+
+async function sidebarFloatingFooterHostState(page: Page) {
+  return page.getByTestId("admin-sidebar-floating-footer-host").evaluate((host) => {
+    const aside = host.closest("aside");
+    const card = aside?.querySelector<HTMLElement>('[data-testid="admin-sidebar-card"]');
+    const footer = host.querySelector<HTMLElement>('[data-testid="sidebar-selection-footer"]');
+    const hostRect = host.getBoundingClientRect();
+    const asideRect = aside?.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect();
+    const footerRect = footer?.getBoundingClientRect();
+
+    return {
+      hostParentTestId:
+        host.parentElement?.getAttribute("data-testid") ??
+        host.parentElement?.closest("[data-testid]")?.getAttribute("data-testid") ??
+        "",
+      hostPosition: getComputedStyle(host).position,
+      hostWidth: hostRect.width,
+      asideWidth: asideRect?.width ?? 0,
+      cardWidth: cardRect?.width ?? 0,
+      footerWidth: footerRect?.width ?? 0,
+      hostLeftInset: asideRect ? hostRect.left - asideRect.left : 0,
+      hostRightInset: asideRect ? asideRect.right - hostRect.right : 0,
+      hostBottomInset: asideRect ? asideRect.bottom - hostRect.bottom : 0,
+      footerLeftInset: footerRect ? footerRect.left - hostRect.left : 0,
+      footerRightInset: footerRect ? hostRect.right - footerRect.right : 0,
+    };
+  });
+}
+
+async function sidebarTreeBottomState(page: Page, lastVisibleName: string) {
+  const treeScroll = page.locator('[data-testid="editor-file-browser"] .admin-scrollbar').first();
+  await treeScroll.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await expect(treeNameButton(page, lastVisibleName)).toBeVisible();
+
+  const scrollBox = await treeScroll.boundingBox();
+  const rowBox = await treeNameButton(page, lastVisibleName).boundingBox();
+  const footerHostBox = await page.getByTestId("admin-sidebar-floating-footer-host").boundingBox();
+
+  expect(scrollBox).not.toBeNull();
+  expect(rowBox).not.toBeNull();
+  expect(footerHostBox).not.toBeNull();
+
+  return {
+    bottomGap:
+      scrollBox && rowBox
+        ? scrollBox.y + scrollBox.height - (rowBox.y + rowBox.height)
+        : Number.POSITIVE_INFINITY,
+    footerGap:
+      rowBox && footerHostBox
+        ? footerHostBox.y - (rowBox.y + rowBox.height)
+        : Number.POSITIVE_INFINITY,
+  };
+}
+
+async function ensureBlogDirectoryExpanded(page: Page) {
+  if (
+    (await treeNameButton(page, "alpha.md").count()) > 0 ||
+    (await treeNameButton(page, "01-react-hooks-deep-dive.md").count()) > 0
+  ) {
+    return;
+  }
+
+  const blogDirectory = treeDirectoryButton(page, "blog");
+  if (await blogDirectory.count()) {
+    await blogDirectory.click();
+    if ((await treeNameButton(page, "alpha.md").count()) > 0) {
+      await expect(treeNameButton(page, "alpha.md")).toBeVisible();
+    } else {
+      await expect(treeNameButton(page, "01-react-hooks-deep-dive.md")).toBeVisible();
+    }
+    return;
+  }
+
+  await expect(blogDirectory).toBeVisible();
+  await blogDirectory.click();
+  if ((await treeNameButton(page, "alpha.md").count()) > 0) {
+    await expect(treeNameButton(page, "alpha.md")).toBeVisible();
+  } else {
+    await expect(treeNameButton(page, "01-react-hooks-deep-dive.md")).toBeVisible();
+  }
+}
+
+async function maybeCaptureSidebarProof(page: Page, filename: string) {
+  if (process.env.PLAYWRIGHT_CAPTURE_PROOF !== "1") {
+    return;
+  }
+
+  const outputDir = resolve(process.cwd(), "test-results/proofs");
+  mkdirSync(outputDir, { recursive: true });
+  const screenshotPath = resolve(outputDir, filename);
+  await page.getByTestId("admin-sidebar-card").screenshot({ path: screenshotPath });
+  console.log(`proof-screenshot=${screenshotPath}`);
+}
+
+function treeNameButton(page: Page, name: string) {
+  return page.getByTestId("editor-file-browser").getByRole("button", { name, exact: true }).first();
+}
+
+function treeDirectoryButton(page: Page, name: string) {
+  return page.locator(`button.pointer-events-auto[aria-label="${name} 目录"]`).first();
+}
+
+async function clickTreeRowBackground(page: Page, name: string) {
+  const button = treeNameButton(page, name);
+  await button.scrollIntoViewIfNeeded();
+
+  const point = await button.evaluate((node) => {
+    const row = node.parentElement?.parentElement;
+    const rowRect = row?.getBoundingClientRect();
+    const nameRect = node.getBoundingClientRect();
+    if (!rowRect) {
+      throw new Error(`Tree row not found for ${node.textContent ?? "unknown"}`);
+    }
+
+    return {
+      x: Math.min(rowRect.right - 52, nameRect.left + 12),
+      y: rowRect.top + 6,
+    };
+  });
+
+  await page.mouse.click(point.x, point.y);
+}
+
+async function treeRowPoint(page: Page, name: string) {
+  const button = treeNameButton(page, name);
+  await button.scrollIntoViewIfNeeded();
+
+  return button.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+
+    return {
+      x: rect.left + Math.min(rect.width / 2, 24),
+      y: rect.top + rect.height / 2,
+    };
+  });
+}
+
+async function treeRowVisualState(page: Page, name: string) {
+  const button = treeNameButton(page, name);
+  return button.evaluate((node) => {
+    const row = node.closest<HTMLElement>('[data-tree-row="true"]');
+    const className = row?.className ?? "";
+    const style = row ? getComputedStyle(row) : null;
+
+    return {
+      className,
+      cutPending: row?.dataset.cutPending ?? "",
+      selectedLike: className.includes("bg-primary/10"),
+      activeLike: className.includes("bg-primary/6"),
+      opacity: style?.opacity ?? "",
+    };
+  });
+}
+
+async function expectTreeSelectionState(
+  page: Page,
+  selectedNames: string[],
+  unselectedNames: string[]
+) {
+  for (const name of selectedNames) {
+    const state = await treeRowVisualState(page, name);
+    expect(state.selectedLike).toBe(true);
+  }
+  for (const name of unselectedNames) {
+    const state = await treeRowVisualState(page, name);
+    expect(state.selectedLike || state.activeLike).toBe(false);
+  }
+}
+
+async function treeRowIconState(page: Page, name: string) {
+  const button = treeNameButton(page, name);
+  return button.evaluate((node) => {
+    const row = node.parentElement?.parentElement as HTMLElement | null;
+    const icon = row?.querySelector('span[title$="文件"]') as HTMLElement | null;
+    const className = icon?.className ?? "";
+
+    return {
+      className,
+      activeLike: className.includes("text-primary"),
     };
   });
 }
@@ -533,26 +806,778 @@ Body paragraph`);
   test("file tree creates items in the selected directory and renames inline", async ({ page }) => {
     await openDemoEditor(page);
 
-    await page.getByRole("button", { name: "posts" }).click();
+    await treeNameButton(page, "blog").click();
 
     await page.getByRole("button", { name: "新建文件" }).click();
     const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
     await expect(fileNameInput).toHaveValue("untitled.md");
     await fileNameInput.fill("notes.md");
     await fileNameInput.press("Enter");
-    const newFile = page.getByRole("button", { name: "notes.md" });
+    const newFile = treeNameButton(page, "notes.md");
     await expect(newFile).toBeVisible();
     await newFile.click();
-    await expect(page.getByText("local:content/posts/notes.md")).toBeVisible();
+    await expect(page.getByText("local:blog/notes.md")).toBeVisible();
     await page.getByRole("button", { name: "Source" }).click();
     await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue("");
 
-    await page.getByRole("button", { name: "posts" }).click();
+    await treeNameButton(page, "blog").click();
     await page.getByRole("button", { name: "新建目录" }).click();
     const directoryNameInput = page.getByRole("textbox", { name: "目录名称" });
     await expect(directoryNameInput).toHaveValue("new-folder");
     await directoryNameInput.fill("research");
     await directoryNameInput.press("Enter");
-    await expect(page.getByRole("button", { name: "research" })).toBeVisible();
+    await expect(treeNameButton(page, "research")).toBeVisible();
+  });
+
+  test("file tree row background opens the file even outside the text hit area", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await clickTreeRowBackground(page, "05-redis-caching-strategies.md");
+
+    await expect(page.getByRole("heading", { name: "Redis 缓存策略与坑位" })).toBeVisible();
+    await expect(page.getByText("local:blog/05-redis-caching-strategies.md")).toBeVisible();
+  });
+
+  test("file tree context menu deletes an empty directory after confirmation", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "blog").click();
+    await page.getByRole("button", { name: "新建目录" }).click();
+    const directoryNameInput = page.getByRole("textbox", { name: "目录名称" });
+    await directoryNameInput.fill("to-delete");
+    await directoryNameInput.press("Enter");
+    await expect(treeNameButton(page, "to-delete")).toBeVisible();
+
+    await page.getByRole("button", { name: "to-delete 更多操作" }).click();
+    await page.getByRole("menuitem", { name: "删除" }).click();
+    const deleteDialog = page.getByRole("dialog", { name: "确认删除" });
+    await expect(deleteDialog).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "删除" }).click();
+    await expect(treeNameButton(page, "to-delete")).toHaveCount(0);
+  });
+
+  test("file tree supports modifier multi-select and batch delete", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "blog").click();
+
+    for (const name of ["alpha.md", "beta.md", "gamma.md"]) {
+      await page.getByRole("button", { name: "新建文件" }).click();
+      const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+      await fileNameInput.fill(name);
+      await fileNameInput.press("Enter");
+    }
+
+    await treeNameButton(page, "alpha.md").click({ modifiers: [ADDITIVE_SELECTION_MODIFIER] });
+    await treeNameButton(page, "gamma.md").click({ modifiers: ["Shift"] });
+    await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("3项");
+
+    await page.getByRole("button", { name: "删除" }).click();
+    const deleteDialog = page.getByRole("dialog", { name: "确认删除" });
+    await expect(deleteDialog).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "删除" }).click();
+
+    await expect(treeNameButton(page, "alpha.md")).toHaveCount(0);
+    await expect(treeNameButton(page, "beta.md")).toHaveCount(0);
+    await expect(treeNameButton(page, "gamma.md")).toHaveCount(0);
+  });
+
+  test("plain click collapses an existing multi-selection to the clicked record", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "blog").click();
+
+    for (const name of ["alpha.md", "beta.md", "gamma.md"]) {
+      await page.getByRole("button", { name: "新建文件" }).click();
+      const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+      await fileNameInput.fill(name);
+      await fileNameInput.press("Enter");
+    }
+
+    await treeNameButton(page, "alpha.md").click({ modifiers: [ADDITIVE_SELECTION_MODIFIER] });
+    await treeNameButton(page, "gamma.md").click({ modifiers: ["Shift"] });
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("3项");
+
+    await treeNameButton(page, "beta.md").click();
+
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
+    await expect(page.getByText("local:blog/beta.md")).toBeVisible();
+  });
+
+  test("file tree keeps the original shift anchor until Shift is released", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "blog").click();
+
+    for (const name of ["alpha.md", "bravo.md", "charlie.md", "delta.md"]) {
+      await page.getByRole("button", { name: "新建文件" }).click();
+      const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+      await fileNameInput.fill(name);
+      await fileNameInput.press("Enter");
+    }
+
+    await treeNameButton(page, "alpha.md").click();
+
+    await page.keyboard.down("Shift");
+    await treeNameButton(page, "charlie.md").click();
+    await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("3项");
+    await expectTreeSelectionState(page, ["alpha.md", "bravo.md", "charlie.md"], ["delta.md"]);
+
+    await treeNameButton(page, "delta.md").click();
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("4项");
+    await expectTreeSelectionState(page, ["alpha.md", "bravo.md", "charlie.md", "delta.md"], []);
+
+    await treeNameButton(page, "bravo.md").click();
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("2项");
+    await expectTreeSelectionState(page, ["alpha.md", "bravo.md"], ["charlie.md", "delta.md"]);
+    await page.keyboard.up("Shift");
+  });
+
+  test("demo file tree exposes nested directories that can be selected", async ({ page }) => {
+    await openDemoEditor(page);
+
+    if ((await treeDirectoryButton(page, "archive").count()) === 0) {
+      await ensureBlogDirectoryExpanded(page);
+    }
+    await expect(treeDirectoryButton(page, "archive")).toBeVisible();
+    await expect(treeDirectoryButton(page, "series")).toBeVisible();
+
+    await treeNameButton(page, "archive").click({ modifiers: [ADDITIVE_SELECTION_MODIFIER] });
+    await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
+
+    await treeNameButton(page, "01-react-hooks-deep-dive.md").click({
+      modifiers: [ADDITIVE_SELECTION_MODIFIER],
+    });
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("2项");
+  });
+
+  test("demo file tree includes a realistic blog directory with at least twelve immediate files", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+
+    await expect(treeNameButton(page, "01-react-hooks-deep-dive.md")).toBeVisible();
+    await expect(treeNameButton(page, "12-content-taxonomy-migration-plan.md")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^\d{2}-.*\.md$/, exact: false })).toHaveCount(
+      12
+    );
+  });
+
+  test("file tree checkbox mode supports copy and paste into another directory", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await page.getByRole("button", { name: "切换批量选择模式" }).click();
+    await expect(
+      page.getByRole("checkbox", { name: "选择 01-react-hooks-deep-dive.md" })
+    ).toBeVisible();
+    await page.getByRole("checkbox", { name: "选择 01-react-hooks-deep-dive.md" }).click();
+    await page.getByRole("button", { name: "复制" }).click();
+    await expect(page.getByText("复制 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    const archiveDirectoryButton = treeDirectoryButton(page, "archive");
+    await archiveDirectoryButton.focus();
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "粘贴" }).click();
+    await expect(
+      page
+        .getByTestId("editor-file-browser")
+        .getByRole("button", { name: "01-react-hooks-deep-dive.md", exact: true })
+    ).toHaveCount(2);
+  });
+
+  test("file tree supports keyboard copy and paste into another directory", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "01-react-hooks-deep-dive.md").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+C`);
+    await expect(page.getByText("复制 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    await treeNameButton(page, "archive").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    await expect(
+      page
+        .getByTestId("editor-file-browser")
+        .getByRole("button", { name: "01-react-hooks-deep-dive.md", exact: true })
+    ).toHaveCount(2);
+  });
+
+  test("file tree supports keyboard copy and paste for multiple selected files", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "01-react-hooks-deep-dive.md").click();
+    await treeNameButton(page, "02-typescript-advanced-types.md").click({
+      modifiers: [ADDITIVE_SELECTION_MODIFIER],
+    });
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("2项");
+
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+C`);
+    await expect(page.getByText("复制 2 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    await treeNameButton(page, "archive").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    await expect(
+      page
+        .getByTestId("editor-file-browser")
+        .getByRole("button", { name: "01-react-hooks-deep-dive.md", exact: true })
+    ).toHaveCount(2);
+    await expect(
+      page
+        .getByTestId("editor-file-browser")
+        .getByRole("button", { name: "02-typescript-advanced-types.md", exact: true })
+    ).toHaveCount(2);
+  });
+
+  test("file tree move dialog moves a file into another directory", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page
+      .getByRole("button", { name: "12-content-taxonomy-migration-plan.md 更多操作" })
+      .click();
+    await page.getByRole("menuitem", { name: "移动" }).click();
+
+    const moveDialog = page.getByRole("dialog", { name: "选择目标目录" });
+    await expect(moveDialog).toBeVisible();
+    await moveDialog.getByRole("button", { name: "archive" }).click();
+    await expect(moveDialog.getByText("blog/archive", { exact: true })).toBeVisible();
+    await moveDialog.getByRole("button", { name: "确认移动" }).click();
+
+    await expect(
+      page
+        .getByTestId("editor-file-browser")
+        .getByRole("button", { name: "12-content-taxonomy-migration-plan.md", exact: true })
+    ).toHaveCount(1);
+    await expect(treeNameButton(page, "12-content-taxonomy-migration-plan.md")).toBeVisible();
+  });
+
+  test("file tree checkbox mode supports cut and paste into another directory", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await page.getByRole("button", { name: "切换批量选择模式" }).click();
+    await expect(
+      page.getByRole("checkbox", { name: "选择 02-typescript-advanced-types.md" })
+    ).toBeVisible();
+    await page.getByRole("checkbox", { name: "选择 02-typescript-advanced-types.md" }).click();
+    await page.getByRole("button", { name: "剪切" }).click();
+    await expect(page.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    const archiveDirectoryButton = treeDirectoryButton(page, "archive");
+    await archiveDirectoryButton.focus();
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "粘贴" }).click();
+
+    await expect(page.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toHaveCount(0);
+
+    await expect(treeNameButton(page, "02-typescript-advanced-types.md")).toHaveCount(1);
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
+    await expectTreeSelectionState(page, ["02-typescript-advanced-types.md"], []);
+    await expect(treeNameButton(page, "blog")).toBeVisible();
+  });
+
+  test("file tree supports keyboard cut and paste into another directory", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "02-typescript-advanced-types.md").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+X`);
+    await expect(page.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    await treeNameButton(page, "archive").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
+    await expect(page.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toHaveCount(0);
+    await expect(treeNameButton(page, "02-typescript-advanced-types.md")).toHaveCount(1);
+    await expectTreeSelectionState(page, ["02-typescript-advanced-types.md"], []);
+    await expect(treeNameButton(page, "blog")).toBeVisible();
+  });
+
+  test("file tree shows cut selections in a ghosted state until they are pasted", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "01-react-hooks-deep-dive.md").click();
+    await treeNameButton(page, "02-typescript-advanced-types.md").click({
+      modifiers: [ADDITIVE_SELECTION_MODIFIER],
+    });
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("2项");
+
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+X`);
+    await expect(page.getByText("剪切 2 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    const firstCutRow = await treeRowVisualState(page, "01-react-hooks-deep-dive.md");
+    const secondCutRow = await treeRowVisualState(page, "02-typescript-advanced-types.md");
+
+    expect(firstCutRow.selectedLike).toBe(true);
+    expect(secondCutRow.selectedLike).toBe(true);
+    expect(firstCutRow.cutPending).toBe("true");
+    expect(secondCutRow.cutPending).toBe("true");
+    await expect
+      .poll(async () =>
+        Number((await treeRowVisualState(page, "01-react-hooks-deep-dive.md")).opacity)
+      )
+      .toBeLessThan(1);
+    await expect
+      .poll(async () =>
+        Number((await treeRowVisualState(page, "02-typescript-advanced-types.md")).opacity)
+      )
+      .toBeLessThan(1);
+  });
+
+  test("file tree selects all pasted items after keyboard paste", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "01-react-hooks-deep-dive.md").click();
+    await treeNameButton(page, "02-typescript-advanced-types.md").click({
+      modifiers: [ADDITIVE_SELECTION_MODIFIER],
+    });
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("2项");
+
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+C`);
+    await expect(page.getByText("复制 2 项，右键目录或空白处后可粘贴。")).toBeVisible();
+
+    await treeNameButton(page, "archive").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("2项");
+    await expectTreeSelectionState(
+      page,
+      ["01-react-hooks-deep-dive.md", "02-typescript-advanced-types.md"],
+      [
+        "03-graphql-api-best-practices.md",
+        "04-kubernetes-cluster-management.md",
+        "05-redis-caching-strategies.md",
+      ]
+    );
+  });
+
+  test("file tree operation feedback is shown as floating toast notifications", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "02-typescript-advanced-types.md").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+X`);
+    const toastViewport = page.locator(".Toastify__toast-container");
+    await expect(toastViewport.getByText("剪切 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
+    await expect(
+      page.getByTestId("editor-file-browser").getByText("剪切 1 项，右键目录或空白处后可粘贴。")
+    ).toHaveCount(0);
+
+    await treeNameButton(page, "archive").click();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    await expect(toastViewport.getByText("已移动 1 项。")).toBeVisible();
+
+    await expect
+      .poll(async () =>
+        toastViewport.evaluate((viewport) => {
+          const toast = viewport.querySelector<HTMLElement>(".Toastify__toast");
+          return toast ? getComputedStyle(toast).transform : "";
+        })
+      )
+      .toBe("none");
+
+    const settledToastState = await toastViewport.evaluate((viewport) => {
+      const content = viewport.querySelector<HTMLElement>('[data-testid="admin-toast-content"]');
+      const closeButton = viewport.querySelector<HTMLElement>('[data-testid="admin-toast-close"]');
+      const contentRect = content?.getBoundingClientRect();
+      const closeRect = closeButton?.getBoundingClientRect();
+      const rect = viewport.getBoundingClientRect();
+      const style = getComputedStyle(viewport);
+      return {
+        position: style.position,
+        top: rect.top,
+        rightGap: window.innerWidth - rect.right,
+        contentRightGap: contentRect ? window.innerWidth - contentRect.right : 0,
+        closeInside:
+          Boolean(contentRect && closeRect) &&
+          closeRect.left >= contentRect.left &&
+          closeRect.right <= contentRect.right &&
+          closeRect.top >= contentRect.top &&
+          closeRect.bottom <= contentRect.bottom,
+      };
+    });
+    expect(settledToastState.position).toBe("fixed");
+    expect(settledToastState.top).toBeGreaterThanOrEqual(12);
+    expect(settledToastState.top).toBeLessThanOrEqual(32);
+    expect(settledToastState.rightGap).toBeGreaterThanOrEqual(12);
+    expect(settledToastState.contentRightGap).toBeGreaterThanOrEqual(12);
+    expect(settledToastState.contentRightGap).toBeLessThanOrEqual(32);
+    expect(settledToastState.closeInside).toBe(true);
+
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+C`);
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+V`);
+
+    await expect(
+      toastViewport.getByText("目标已存在: blog/archive/02-typescript-advanced-types.md")
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId("admin-shell-main")
+        .locator('[role="alert"], .rounded-3xl, .lg\\:rounded-\\[1rem\\]')
+        .filter({ hasText: /已移动 1 项。|目标已存在/ })
+    ).toHaveCount(0);
+  });
+
+  test("batch footer degrades responsively without wrapping the count badge", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("admin-sidebar-width", "320");
+    });
+    await openDemoEditor(page);
+
+    await treeNameButton(page, "blog").click();
+
+    for (const name of ["alpha.md", "beta.md"]) {
+      await page.getByRole("button", { name: "新建文件" }).click();
+      const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+      await fileNameInput.fill(name);
+      await fileNameInput.press("Enter");
+    }
+
+    async function selectBatchFooterScenario() {
+      await ensureBlogDirectoryExpanded(page);
+      await page.getByRole("button", { name: "切换批量选择模式" }).click();
+      await expect(page.getByRole("checkbox", { name: "选择 alpha.md" })).toBeVisible();
+      if (await page.getByTestId("sidebar-selection-footer").count()) {
+        await page.getByRole("button", { name: "清空选择" }).click();
+        await expect(page.getByTestId("sidebar-selection-footer")).toHaveCount(0);
+      }
+      await page.getByRole("checkbox", { name: "选择 alpha.md" }).click();
+      await page.getByRole("checkbox", { name: "选择 beta.md" }).click();
+      await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+    }
+
+    await selectBatchFooterScenario();
+
+    const medium = await sidebarSelectionFooterState(page);
+    const mediumRows = await sidebarSelectionFooterRows(page);
+    expect(medium.countText).toBe("2项");
+    expect(medium.countWhiteSpace).toBe("nowrap");
+    expect(medium.countFlexShrink).toBe("0");
+    expect(medium.countWidth).toBeGreaterThan(medium.countHeight);
+    expect(medium.countWidth).toBeLessThanOrEqual(64);
+    expect(medium.rowCount).toBeLessThanOrEqual(2);
+    expect(medium.hasHorizontalOverflow).toBe(false);
+    expect(medium.footerMode).toBe("full");
+    expect(Math.abs(medium.footerWidth - medium.hostWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(medium.hostWidth - medium.cardWidth)).toBeLessThanOrEqual(2);
+    expect(medium.hostWidth).toBeLessThan(medium.asideWidth);
+    expect(medium.textButtonCount).toBe(6);
+    expect(mediumRows).toEqual([
+      ["2项", "移动", "复制", "剪切"],
+      ["粘贴", "删除", "清空选择"],
+    ]);
+
+    const resizeHandle = page.getByRole("separator", { name: /调整侧边栏宽度/ });
+    await resizeHandle.dblclick();
+    await expect(resizeHandle).toHaveAttribute("aria-valuenow", "272");
+
+    const defaultWidth = await sidebarSelectionFooterState(page);
+    expect(defaultWidth.countText).toBe("2项");
+    expect(defaultWidth.countWhiteSpace).toBe("nowrap");
+    expect(defaultWidth.countFlexShrink).toBe("0");
+    expect(defaultWidth.rowCount).toBeLessThanOrEqual(2);
+    expect(defaultWidth.hasHorizontalOverflow).toBe(false);
+    expect(defaultWidth.countRight).toBeLessThanOrEqual(defaultWidth.firstButtonLeft - 4);
+    expect(Math.abs(defaultWidth.footerWidth - defaultWidth.hostWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(defaultWidth.hostWidth - defaultWidth.cardWidth)).toBeLessThanOrEqual(2);
+    expect(defaultWidth.hostWidth).toBeLessThan(defaultWidth.asideWidth);
+    expect(defaultWidth.footerMode === "full" || defaultWidth.footerMode === "icons").toBe(true);
+    if (defaultWidth.footerMode === "full") {
+      expect(defaultWidth.textButtonCount).toBe(6);
+    } else {
+      expect(defaultWidth.textButtonCount).toBe(0);
+      expect(defaultWidth.iconOnlyButtonCount).toBe(6);
+    }
+
+    await resizeHandle.focus();
+    await resizeHandle.press("End");
+    await expect(resizeHandle).toHaveAttribute("aria-valuenow", "460");
+    await expect(page.getByTestId("sidebar-selection-footer")).toHaveAttribute(
+      "data-footer-mode",
+      "full"
+    );
+
+    const wide = await sidebarSelectionFooterState(page);
+    const wideRows = await sidebarSelectionFooterRows(page);
+    expect(wide.countText).toBe("2项");
+    expect(wide.countWhiteSpace).toBe("nowrap");
+    expect(wide.countFlexShrink).toBe("0");
+    expect(wide.rowCount).toBeLessThanOrEqual(2);
+    expect(wide.hasHorizontalOverflow).toBe(false);
+    expect(wide.countRight).toBeLessThanOrEqual(wide.firstButtonLeft - 4);
+    expect(Math.abs(wide.footerWidth - wide.hostWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(wide.hostWidth - wide.cardWidth)).toBeLessThanOrEqual(2);
+    expect(wide.hostWidth).toBeLessThan(wide.asideWidth);
+    expect(wide.textButtonCount).toBe(6);
+    expect(wideRows).toEqual([
+      ["2项", "移动", "复制", "剪切"],
+      ["粘贴", "删除", "清空选择"],
+    ]);
+
+    await resizeHandle.focus();
+    await resizeHandle.press("Home");
+    await expect(resizeHandle).toHaveAttribute("aria-valuenow", "232");
+    await expect(page.getByTestId("sidebar-selection-footer")).toHaveAttribute(
+      "data-footer-mode",
+      "icons"
+    );
+
+    const narrow = await sidebarSelectionFooterState(page);
+    expect(narrow.footerMode).toBe("icons");
+    expect(narrow.countText).toBe("2项");
+    expect(narrow.countWhiteSpace).toBe("nowrap");
+    expect(narrow.countFlexShrink).toBe("0");
+    expect(narrow.countTop).toBeGreaterThanOrEqual(17);
+    expect(narrow.countLeft).toBeGreaterThanOrEqual(16);
+    expect(narrow.countRight).toBeLessThanOrEqual(narrow.firstButtonLeft - 4);
+    expect(narrow.countHeight).toBeLessThan(narrow.firstButtonHeight);
+    expect(narrow.countWidth).toBeLessThanOrEqual(narrow.firstButtonWidth + 4);
+    expect(narrow.countWidth).toBeGreaterThan(narrow.countHeight);
+    expect(narrow.countWidth).toBeLessThanOrEqual(64);
+    expect(narrow.rowCount).toBeLessThanOrEqual(2);
+    expect(narrow.hasHorizontalOverflow).toBe(false);
+    expect(Math.abs(narrow.footerWidth - narrow.hostWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(narrow.hostWidth - narrow.cardWidth)).toBeLessThanOrEqual(2);
+    expect(narrow.hostWidth).toBeLessThan(narrow.asideWidth);
+    expect(narrow.textButtonCount).toBe(0);
+    expect(narrow.iconOnlyButtonCount).toBe(6);
+
+    await maybeCaptureSidebarProof(page, "sidebar-selection-footer-proof.png");
+  });
+
+  test("floating batch footer is mounted in the sidebar host and matches the sidebar width", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("admin-sidebar-width", "272");
+    });
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await page.getByRole("button", { name: "切换批量选择模式" }).click();
+    await page.getByRole("checkbox", { name: "选择 01-react-hooks-deep-dive.md" }).click();
+    await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+
+    const state = await sidebarFloatingFooterHostState(page);
+    expect(state.hostParentTestId).not.toBe("editor-file-browser");
+    expect(state.hostPosition).toBe("absolute");
+    expect(Math.abs(state.hostWidth - state.cardWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(state.footerWidth - state.hostWidth)).toBeLessThanOrEqual(2);
+    expect(state.hostLeftInset).toBeGreaterThanOrEqual(14);
+    expect(state.hostRightInset).toBeGreaterThanOrEqual(14);
+    expect(state.hostBottomInset).toBeGreaterThanOrEqual(14);
+    expect(state.hostBottomInset).toBeLessThanOrEqual(18);
+    expect(state.footerLeftInset).toBeLessThanOrEqual(1);
+    expect(state.footerRightInset).toBeLessThanOrEqual(1);
+  });
+
+  test("file tree floating footer does not leave a large blank gap at the bottom", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await page.getByRole("button", { name: "切换批量选择模式" }).click();
+    await page.getByRole("checkbox", { name: "选择 01-react-hooks-deep-dive.md" }).click();
+    await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+
+    const state = await sidebarTreeBottomState(page, "projects");
+    expect(state.bottomGap).toBeLessThan(48);
+    expect(state.bottomGap).toBeGreaterThanOrEqual(-8);
+    expect(state.footerGap).toBeGreaterThanOrEqual(0);
+  });
+
+  test("right-clicking a file and dismissing the menu does not add extra blank space above the floating footer", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "05-redis-caching-strategies.md").click();
+    await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+
+    const baseline = await sidebarTreeBottomState(page, "projects");
+
+    await treeNameButton(page, "06-posts-cover-fallback.md").click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await expect(page.getByTestId("sidebar-selection-footer")).toBeVisible();
+
+    const after = await sidebarTreeBottomState(page, "projects");
+    expect(after.bottomGap).toBeLessThanOrEqual(baseline.bottomGap + 8);
+    expect(after.footerGap).toBeLessThanOrEqual(baseline.footerGap + 8);
+  });
+
+  test("right-clicking a different file then left-clicking the same spot keeps a single current selection", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "05-redis-caching-strategies.md").click();
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
+    await expect(page.getByText("local:blog/05-redis-caching-strategies.md")).toBeVisible();
+
+    const point = await treeRowPoint(page, "06-posts-cover-fallback.md");
+    await page.mouse.click(point.x, point.y, { button: "right" });
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+
+    await page.mouse.click(point.x, point.y);
+
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
+
+    const previousRow = await treeRowVisualState(page, "05-redis-caching-strategies.md");
+    const currentRow = await treeRowVisualState(page, "06-posts-cover-fallback.md");
+
+    expect(previousRow.selectedLike || previousRow.activeLike).toBe(false);
+    expect(currentRow.selectedLike).toBe(true);
+  });
+
+  test("right-clicking another file clears the previous file icon highlight", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "05-redis-caching-strategies.md").click();
+    await expect(page.getByText("local:blog/05-redis-caching-strategies.md")).toBeVisible();
+
+    await treeNameButton(page, "03-graphql-api-best-practices.md").click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+
+    const previousIcon = await treeRowIconState(page, "05-redis-caching-strategies.md");
+    const currentIcon = await treeRowIconState(page, "03-graphql-api-best-practices.md");
+
+    expect(previousIcon.activeLike).toBe(false);
+    expect(currentIcon.activeLike).toBe(true);
+  });
+
+  test("right-clicking a directory switches the current selection to that directory only", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "05-redis-caching-strategies.md").click();
+    await expect(page.getByText("local:blog/05-redis-caching-strategies.md")).toBeVisible();
+
+    await treeNameButton(page, "archive").click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+
+    const previousRow = await treeRowVisualState(page, "05-redis-caching-strategies.md");
+    const currentRow = await treeRowVisualState(page, "archive");
+
+    expect(previousRow.selectedLike || previousRow.activeLike).toBe(false);
+    expect(currentRow.selectedLike).toBe(true);
+  });
+
+  test("right-clicking a directory then left-clicking the same spot keeps a single current selection", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeNameButton(page, "05-redis-caching-strategies.md").click();
+    await expect(page.getByText("local:blog/05-redis-caching-strategies.md")).toBeVisible();
+
+    const point = await treeRowPoint(page, "archive");
+    await page.mouse.click(point.x, point.y, { button: "right" });
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+
+    await page.mouse.click(point.x, point.y);
+
+    const previousRow = await treeRowVisualState(page, "05-redis-caching-strategies.md");
+    const currentRow = await treeRowVisualState(page, "archive");
+
+    expect(previousRow.selectedLike || previousRow.activeLike).toBe(false);
+    expect(currentRow.selectedLike).toBe(true);
+  });
+
+  test("file tree does not offer unsupported commands on configured root directories", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "blog 更多操作" }).click();
+    await expect(page.getByRole("menuitem", { name: "重命名" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "移动" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "复制" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "剪切" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "删除" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "新建文件" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "新建目录" })).toBeVisible();
+  });
+
+  test("file tree move dialog explains invalid targets before submit", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "01-react-hooks-deep-dive.md 更多操作" }).click();
+    await page.getByRole("menuitem", { name: "移动" }).click();
+
+    const moveDialog = page.getByRole("dialog", { name: "选择目标目录" });
+    await expect(moveDialog).toBeVisible();
+    await expect(moveDialog.getByText("目标目录", { exact: true })).toBeVisible();
+    await expect(moveDialog.locator('div[title="blog"]').first()).toBeVisible();
+    await expect(
+      moveDialog.getByText("当前文件已经在这个目录中，请选择其他目标目录。")
+    ).toBeVisible();
+    await expect(moveDialog.getByRole("button", { name: "确认移动" })).toBeDisabled();
+  });
+
+  test("file tree move dialog adapts to viewport height without using a rigid short max height", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "01-react-hooks-deep-dive.md 更多操作" }).click();
+    await page.getByRole("menuitem", { name: "移动" }).click();
+
+    const moveDialog = page.getByRole("dialog", { name: "选择目标目录" });
+    await expect(moveDialog).toBeVisible();
+
+    const state = await moveDialog.evaluate((dialog) => {
+      const rect = dialog.getBoundingClientRect();
+      const picker = dialog.querySelector<HTMLElement>(".admin-scrollbar");
+      const pickerRect = picker?.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      return {
+        dialogHeight: rect.height,
+        dialogBottomGap: viewportHeight - rect.bottom,
+        pickerHeight: pickerRect?.height ?? 0,
+        viewportHeight,
+      };
+    });
+
+    expect(state.dialogHeight).toBeLessThanOrEqual(Math.ceil(state.viewportHeight * 0.9) + 2);
+    expect(state.dialogHeight).toBeGreaterThan(352);
+    expect(state.pickerHeight).toBeGreaterThan(220);
+    expect(state.dialogBottomGap).toBeGreaterThanOrEqual(0);
   });
 });

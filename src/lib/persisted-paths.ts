@@ -31,6 +31,25 @@ export class PersistedPathError extends Error {
   }
 }
 
+const INLINE_MARKDOWN_LINK_RE =
+  /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
+
+function getLeadingIndentWidth(line: string) {
+  let width = 0;
+  for (const char of line) {
+    if (char === " ") {
+      width++;
+      continue;
+    }
+    if (char === "\t") {
+      width += 4;
+      continue;
+    }
+    break;
+  }
+  return width;
+}
+
 function isExternalUrl(value: string): boolean {
   return /^https?:\/\//i.test(value) || value.startsWith("//");
 }
@@ -152,6 +171,28 @@ function parseFileApiUrl(apiUrl: string): { source: string; path: string } | nul
   return { source, path: pathParts.join("/") };
 }
 
+function splitMarkdownUrlClosingParens(input: string): { url: string; closing: string } {
+  let balance = 0;
+  let cut = input.length;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (char === "(") {
+      balance += 1;
+      continue;
+    }
+    if (char !== ")") continue;
+    if (balance > 0) {
+      balance -= 1;
+      continue;
+    }
+    cut = index;
+    break;
+  }
+
+  return { url: input.slice(0, cut), closing: input.slice(cut) };
+}
+
 function assertSafePathInput(path: string) {
   if (!path || typeof path !== "string") {
     throw new PersistedPathError("ERR_INVALID_INPUT", "Path must be a non-empty string.");
@@ -243,11 +284,8 @@ export function toRuntimeFileApiUrl(
   const { path: rawPath, suffix } = splitSuffix(trimmed);
   const normalized = normalizeSlashes(rawPath.trim());
 
-  // Absolute persisted paths are treated as content-root-relative.
   if (normalized.startsWith("/")) {
-    const resolved = stripLeadingSlashes(normalized);
-    if (resolved.includes("..") || resolved.includes("~")) return null;
-    return `/api/files/${source}/${resolved}${suffix}`;
+    return trimmed;
   }
 
   const baseDir = getMarkdownDir(markdownFilePath);
@@ -281,16 +319,17 @@ export function rewriteApiFilesUrlsToRelative(
     return { content: input, changed: false };
   }
 
-  // Match /api/files/<source>/<path...> (stop at whitespace, quote, paren, or angle bracket)
-  const re =
-    /\/api\/files\/[A-Za-z0-9_-]+\/[A-Za-z0-9\-._~/%:@+]+(?:\?[^\s"'<>)]*)?(?:#[^\s"'<>)]*)?/g;
+  // Match /api/files/<source>/<path...> until markdown/html delimiters.
+  const re = /\/api\/files\/[A-Za-z0-9_-]+\/[^\s"'<>]+/g;
 
   let changed = false;
   const content = input.replace(re, (match) => {
     try {
-      const normalized = normalizePersistedLink(match, markdownFilePath);
-      changed = changed || normalized !== match;
-      return normalized;
+      const { url, closing } = splitMarkdownUrlClosingParens(match);
+      const normalized = normalizePersistedLink(url, markdownFilePath);
+      const next = `${normalized}${closing}`;
+      changed = changed || next !== match;
+      return next;
     } catch {
       // Keep the original when normalization fails to avoid destructive rewrites.
       return match;
@@ -298,4 +337,526 @@ export function rewriteApiFilesUrlsToRelative(
   });
 
   return { content, changed };
+}
+
+function hasScheme(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(value);
+}
+
+function shouldRebaseLocalTarget(value: string): boolean {
+  const trimmed = value.trim();
+  if (
+    !trimmed ||
+    trimmed.startsWith("#") ||
+    isExternalUrl(trimmed) ||
+    isDataUrl(trimmed) ||
+    hasScheme(trimmed)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function hasFileExtension(path: string): boolean {
+  const lastSegment = path.split("/").filter(Boolean).pop() ?? "";
+  return /\.[A-Za-z0-9]{1,16}$/.test(lastSegment);
+}
+
+function isContentAssetPath(path: string): boolean {
+  return path.split("/").some((segment) => segment.toLowerCase() === "assets");
+}
+
+function isRebasableContentAbsolutePath(path: string): boolean {
+  return isContentAssetPath(path) || hasFileExtension(path);
+}
+
+function rebaseLocalTarget(
+  value: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  if (!shouldRebaseLocalTarget(value)) return value;
+
+  const trimmed = value.trim();
+  if (trimmed.startsWith("/") && !isFileApiUrl(trimmed)) {
+    const { path: rawPath, suffix } = splitSuffix(trimmed);
+    const currentPath = stripLeadingSlashes(normalizeSlashes(rawPath.trim()));
+    const oldMarkdownDir = getMarkdownDir(oldMarkdownFilePath);
+
+    if (
+      !oldMarkdownDir ||
+      (currentPath !== oldMarkdownDir && !currentPath.startsWith(`${oldMarkdownDir}/`))
+    ) {
+      return value;
+    }
+    if (!hasFileExtension(currentPath)) {
+      return value;
+    }
+    if (!isContentAssetPath(currentPath)) {
+      return value;
+    }
+
+    try {
+      return normalizePersistedLink(
+        `/api/files/local/${currentPath}${suffix}`,
+        newMarkdownFilePath
+      );
+    } catch {
+      return value;
+    }
+  }
+
+  const runtimeUrl = toRuntimeFileApiUrl(value, "local", oldMarkdownFilePath);
+  if (!runtimeUrl || !isFileApiUrl(runtimeUrl)) return value;
+
+  try {
+    return normalizePersistedLink(runtimeUrl, newMarkdownFilePath);
+  } catch {
+    return value;
+  }
+}
+
+function rebaseMovedReferenceTarget(
+  value: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  if (!shouldRebaseLocalTarget(value)) return value;
+
+  const trimmed = value.trim();
+  const normalizedOldTarget = stripLeadingSlashes(normalizeSlashes(oldTargetPath));
+  const normalizedNewTarget = stripLeadingSlashes(normalizeSlashes(newTargetPath));
+
+  if (trimmed.startsWith("/") && !isFileApiUrl(trimmed)) {
+    const { path: rawPath, suffix } = splitSuffix(trimmed);
+    const currentPath = stripLeadingSlashes(normalizeSlashes(rawPath.trim()));
+
+    const rebased = rebaseMovedContentPath(currentPath, normalizedOldTarget, normalizedNewTarget);
+
+    if (!rebased) {
+      return value;
+    }
+    if (!isRebasableContentAbsolutePath(currentPath)) {
+      return value;
+    }
+
+    try {
+      return normalizePersistedLink(`/api/files/local/${rebased}${suffix}`, markdownFilePath);
+    } catch {
+      return value;
+    }
+  }
+
+  const { suffix } = splitSuffix(trimmed);
+  const runtimeUrl = toRuntimeFileApiUrl(value, "local", markdownFilePath);
+  if (!runtimeUrl || !isFileApiUrl(runtimeUrl)) return value;
+
+  const { path: runtimePath } = splitSuffix(runtimeUrl);
+  const parsed = parseFileApiUrl(runtimePath);
+  if (!parsed || parsed.source !== "local") return value;
+
+  const currentPath = stripLeadingSlashes(normalizeSlashes(parsed.path));
+  const rebased = rebaseMovedContentPath(currentPath, normalizedOldTarget, normalizedNewTarget);
+
+  if (!rebased) {
+    return value;
+  }
+
+  try {
+    return normalizePersistedLink(`/api/files/local/${rebased}${suffix}`, markdownFilePath);
+  } catch {
+    return value;
+  }
+}
+
+function rebaseMovedContentPath(
+  currentPath: string,
+  normalizedOldTarget: string,
+  normalizedNewTarget: string
+) {
+  if (currentPath !== normalizedOldTarget && !currentPath.startsWith(`${normalizedOldTarget}/`)) {
+    return null;
+  }
+
+  return currentPath === normalizedOldTarget
+    ? normalizedNewTarget
+    : `${normalizedNewTarget}${currentPath.slice(normalizedOldTarget.length)}`;
+}
+
+function transformMarkdownOutsideCode(input: string, transform: (segment: string) => string) {
+  let output = "";
+  let index = 0;
+  let inFence: string | null = null;
+  let listContinuationIndent: number | null = null;
+
+  while (index < input.length) {
+    const lineEnd = input.indexOf("\n", index);
+    const nextIndex = lineEnd === -1 ? input.length : lineEnd + 1;
+    const rawLine = input.slice(index, nextIndex);
+    const line = rawLine.endsWith("\n") ? rawLine.slice(0, -1) : rawLine;
+    const newline = rawLine.endsWith("\n") ? "\n" : "";
+    const fenceMatch = /^([ \t]{0,3})(`{3,}|~{3,})/.exec(line);
+    const listMatch = /^([ \t]*)(?:[-+*]|\d+[.)])(?:[ \t]+|$)/.exec(line);
+
+    if (listMatch) {
+      listContinuationIndent = getLeadingIndentWidth(listMatch[0]);
+    } else if (line.trim() === "") {
+      listContinuationIndent = null;
+    }
+
+    if (fenceMatch) {
+      const fenceMarker = fenceMatch[2];
+      const fenceChar = fenceMarker[0];
+      if (!inFence) {
+        inFence = fenceChar;
+      } else if (inFence === fenceChar) {
+        inFence = null;
+      }
+      output += rawLine;
+      index = nextIndex;
+      continue;
+    }
+
+    const indentWidth = getLeadingIndentWidth(line);
+    const indentedCode = /^(?: {4}|\t)/.test(line);
+    const listContinuation =
+      listContinuationIndent !== null &&
+      indentWidth >= listContinuationIndent &&
+      indentWidth < listContinuationIndent + 4;
+
+    if (inFence || (indentedCode && !listContinuation)) {
+      output += rawLine;
+      index = nextIndex;
+      continue;
+    }
+
+    output += transformLineOutsideCodeSpans(line, transform) + newline;
+    index = nextIndex;
+  }
+
+  return output;
+}
+
+function transformLineOutsideCodeSpans(line: string, transform: (segment: string) => string) {
+  let output = "";
+  let index = 0;
+
+  while (index < line.length) {
+    const codeStart = line.indexOf("`", index);
+    if (codeStart === -1) {
+      output += transform(line.slice(index));
+      return output;
+    }
+
+    output += transform(line.slice(index, codeStart));
+    const tickMatch = /^`+/.exec(line.slice(codeStart));
+    if (tickMatch) {
+      const ticks = tickMatch?.[0] ?? "`";
+      const closeIndex = line.indexOf(ticks, codeStart + ticks.length);
+      if (closeIndex !== -1) {
+        output += line.slice(codeStart, closeIndex + ticks.length);
+        index = closeIndex + ticks.length;
+        continue;
+      }
+    }
+
+    output += line.slice(codeStart);
+    return output;
+  }
+
+  return output;
+}
+
+function rebaseInlineMarkdownLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  return input.replace(
+    INLINE_MARKDOWN_LINK_RE,
+    (
+      match,
+      prefix: string,
+      spacing: string,
+      rawTarget: string,
+      suffix: string,
+      closing: string
+    ) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath);
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${spacing}${nextTarget}${suffix}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
+function rebaseInlineMarkdownReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  return input.replace(
+    INLINE_MARKDOWN_LINK_RE,
+    (
+      match,
+      prefix: string,
+      spacing: string,
+      rawTarget: string,
+      suffix: string,
+      closing: string
+    ) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseMovedReferenceTarget(
+        target,
+        markdownFilePath,
+        oldTargetPath,
+        newTargetPath
+      );
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${spacing}${nextTarget}${suffix}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
+function rebaseReferenceDefinitionLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  return input.replace(
+    /^(\s{0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]+>|[^\s<>\n]+)([^\n]*)$/gm,
+    (match, prefix: string, rawTarget: string, suffix: string) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath);
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${nextTarget}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
+function rebaseReferenceDefinitionReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  return input.replace(
+    /^(\s{0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]+>|[^\s<>\n]+)([^\n]*)$/gm,
+    (match, prefix: string, rawTarget: string, suffix: string) => {
+      const angled = rawTarget.startsWith("<") && rawTarget.endsWith(">");
+      const target = angled ? rawTarget.slice(1, -1) : rawTarget;
+      const rebased = rebaseMovedReferenceTarget(
+        target,
+        markdownFilePath,
+        oldTargetPath,
+        newTargetPath
+      );
+      const nextTarget = angled ? `<${rebased}>` : rebased;
+      const next = `${prefix}${nextTarget}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+}
+
+function rebaseSrcsetValue(value: string, rebaseTarget: (target: string) => string) {
+  return value
+    .split(",")
+    .map((candidate) => {
+      const leading = candidate.match(/^\s*/)?.[0] ?? "";
+      const trailing = candidate.match(/\s*$/)?.[0] ?? "";
+      const trimmed = candidate.trim();
+      if (!trimmed) return candidate;
+
+      const [target, ...descriptor] = trimmed.split(/\s+/);
+      const rebased = rebaseTarget(target);
+      return `${leading}${[rebased, ...descriptor].join(" ")}${trailing}`;
+    })
+    .join(",");
+}
+
+function rebaseHtmlAssetAttributes(input: string, rebaseTarget: (target: string) => string) {
+  let content = input.replace(
+    /(\b(?:src|href|poster)\s*=\s*)(["'])([^"'\n]*)(\2)/gi,
+    (match, prefix: string, quote: string, value: string, closing: string) => {
+      const rebased = rebaseTarget(value);
+      const next = `${prefix}${quote}${rebased}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+
+  content = content.replace(
+    /(\bsrcset\s*=\s*)(["'])([^"'\n]*)(\2)/gi,
+    (match, prefix: string, quote: string, value: string, closing: string) => {
+      const rebased = rebaseSrcsetValue(value, rebaseTarget);
+      const next = `${prefix}${quote}${rebased}${closing}`;
+      return next === match ? match : next;
+    }
+  );
+
+  return content;
+}
+
+function rebaseWikiEmbedLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  return input.replace(/(!\[\[)([^\]\n|]+)([^\]\n]*\]\])/g, (match, prefix, target, suffix) => {
+    const rebased = rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath);
+    const next = `${prefix}${rebased}${suffix}`;
+    return next === match ? match : next;
+  });
+}
+
+function rebaseWikiEmbedReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  return input.replace(/(!\[\[)([^\]\n|]+)([^\]\n]*\]\])/g, (match, prefix, target, suffix) => {
+    const rebased = rebaseMovedReferenceTarget(
+      target,
+      markdownFilePath,
+      oldTargetPath,
+      newTargetPath
+    );
+    const next = `${prefix}${rebased}${suffix}`;
+    return next === match ? match : next;
+  });
+}
+
+function rebaseFrontmatterAssetFields(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+) {
+  if (!input.startsWith("---\n")) return input;
+  const closingIndex = input.indexOf("\n---", 4);
+  if (closingIndex === -1) return input;
+
+  const frontmatter = input.slice(0, closingIndex);
+  const rest = input.slice(closingIndex);
+  const rebasedFrontmatter = frontmatter.replace(
+    /^(\s*(?:image|cover|thumbnail|banner)\s*:\s*)(["']?)([^"'\n]+)(\2\s*)$/gim,
+    (match, prefix: string, quote: string, value: string, suffix: string) => {
+      const rebased = rebaseLocalTarget(value.trim(), oldMarkdownFilePath, newMarkdownFilePath);
+      const next = `${prefix}${quote}${rebased}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+
+  return `${rebasedFrontmatter}${rest}`;
+}
+
+function rebaseFrontmatterAssetReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+) {
+  if (!input.startsWith("---\n")) return input;
+  const closingIndex = input.indexOf("\n---", 4);
+  if (closingIndex === -1) return input;
+
+  const frontmatter = input.slice(0, closingIndex);
+  const rest = input.slice(closingIndex);
+  const rebasedFrontmatter = frontmatter.replace(
+    /^(\s*(?:image|cover|thumbnail|banner)\s*:\s*)(["']?)([^"'\n]+)(\2\s*)$/gim,
+    (match, prefix: string, quote: string, value: string, suffix: string) => {
+      const rebased = rebaseMovedReferenceTarget(
+        value.trim(),
+        markdownFilePath,
+        oldTargetPath,
+        newTargetPath
+      );
+      const next = `${prefix}${quote}${rebased}${suffix}`;
+      return next === match ? match : next;
+    }
+  );
+
+  return `${rebasedFrontmatter}${rest}`;
+}
+
+export function rebasePersistedLocalLinks(
+  input: string,
+  oldMarkdownFilePath: string,
+  newMarkdownFilePath: string
+): { content: string; changed: boolean } {
+  if (
+    typeof input !== "string" ||
+    input.length === 0 ||
+    oldMarkdownFilePath === newMarkdownFilePath
+  ) {
+    return { content: input, changed: false };
+  }
+
+  let content = input;
+  content = rebaseFrontmatterAssetFields(content, oldMarkdownFilePath, newMarkdownFilePath);
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseInlineMarkdownLinks(segment, oldMarkdownFilePath, newMarkdownFilePath)
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseReferenceDefinitionLinks(segment, oldMarkdownFilePath, newMarkdownFilePath)
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseHtmlAssetAttributes(segment, (target) =>
+      rebaseLocalTarget(target, oldMarkdownFilePath, newMarkdownFilePath)
+    )
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseWikiEmbedLinks(segment, oldMarkdownFilePath, newMarkdownFilePath)
+  );
+
+  return {
+    content,
+    changed: content !== input,
+  };
+}
+
+export function rebasePersistedLocalReferences(
+  input: string,
+  markdownFilePath: string,
+  oldTargetPath: string,
+  newTargetPath: string
+): { content: string; changed: boolean } {
+  if (typeof input !== "string" || input.length === 0 || oldTargetPath === newTargetPath) {
+    return { content: input, changed: false };
+  }
+
+  let content = input;
+  content = rebaseFrontmatterAssetReferences(
+    content,
+    markdownFilePath,
+    oldTargetPath,
+    newTargetPath
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseInlineMarkdownReferences(segment, markdownFilePath, oldTargetPath, newTargetPath)
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseReferenceDefinitionReferences(segment, markdownFilePath, oldTargetPath, newTargetPath)
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseHtmlAssetAttributes(segment, (target) =>
+      rebaseMovedReferenceTarget(target, markdownFilePath, oldTargetPath, newTargetPath)
+    )
+  );
+  content = transformMarkdownOutsideCode(content, (segment) =>
+    rebaseWikiEmbedReferences(segment, markdownFilePath, oldTargetPath, newTargetPath)
+  );
+
+  return {
+    content,
+    changed: content !== input,
+  };
 }

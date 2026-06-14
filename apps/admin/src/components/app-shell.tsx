@@ -54,6 +54,7 @@ type AppShellSidebarContextValue = {
   sidebarMode: SidebarMode;
   setSidebarMode: (mode: SidebarMode) => void;
   setRouteSidebar: (panel: AppShellSidebarPanel | null) => void;
+  setFloatingFooter: (footer: ReactNode | null) => void;
 };
 
 const AppShellSidebarContext = createContext<AppShellSidebarContextValue | null>(null);
@@ -130,6 +131,17 @@ export function useAppShellSidebar(panel: AppShellSidebarPanel | null) {
   };
 }
 
+export function useAppShellSidebarFloatingFooter(footer: ReactNode | null) {
+  const context = useContext(AppShellSidebarContext);
+  const setFloatingFooter = context?.setFloatingFooter;
+
+  useEffect(() => {
+    if (!setFloatingFooter) return;
+    setFloatingFooter(footer);
+    return () => setFloatingFooter(null);
+  }, [footer, setFloatingFooter]);
+}
+
 function BrandBlock({ children }: { children?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -189,7 +201,13 @@ function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function SessionPanel({ sessionLoading }: { sessionLoading: boolean }) {
+function SessionPanel({
+  sessionLoading,
+  coveredByFloatingFooter,
+}: {
+  sessionLoading: boolean;
+  coveredByFloatingFooter: boolean;
+}) {
   const sessionQuery = useQuery({
     queryKey: ["admin-session"],
     queryFn: adminApi.session,
@@ -197,7 +215,10 @@ function SessionPanel({ sessionLoading }: { sessionLoading: boolean }) {
   });
 
   return (
-    <section className="border-t border-border/54 pt-3 text-sm">
+    <section
+      aria-hidden={coveredByFloatingFooter || undefined}
+      className={`border-t border-border/54 pt-3 text-sm${coveredByFloatingFooter ? " hidden" : ""}`}
+    >
       <div className="flex min-w-0 items-center justify-between gap-2">
         <div className="min-w-0 truncate font-medium">
           {sessionQuery.data?.user?.email ?? (sessionLoading ? "加载中..." : "未识别")}
@@ -280,16 +301,22 @@ function SidebarContent({
   sidebarMode,
   setSidebarMode,
   sessionLoading,
+  floatingFooterActive,
   onNavigate,
 }: {
   routeSidebar: AppShellSidebarPanel | null;
   sidebarMode: SidebarMode;
   setSidebarMode: (mode: SidebarMode) => void;
   sessionLoading: boolean;
+  floatingFooterActive: boolean;
   onNavigate?: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 lg:gap-4">
+    <div
+      className={`relative flex h-full min-h-0 flex-col gap-5 lg:gap-4${
+        floatingFooterActive ? " pb-[var(--admin-sidebar-floating-footer-offset,0px)]" : ""
+      }`}
+    >
       <BrandBlock>
         <SidebarModeSwitch
           routeSidebar={routeSidebar}
@@ -306,7 +333,10 @@ function SidebarContent({
           <NavigationLinks onNavigate={onNavigate} />
         </div>
       )}
-      <SessionPanel sessionLoading={sessionLoading} />
+      <SessionPanel
+        sessionLoading={sessionLoading}
+        coveredByFloatingFooter={floatingFooterActive}
+      />
     </div>
   );
 }
@@ -320,6 +350,12 @@ export function AppShell() {
     staleTime: 30_000,
   });
   const [routeSidebar, setRouteSidebar] = useState<AppShellSidebarPanel | null>(null);
+  const [sidebarFloatingFooter, setSidebarFloatingFooter] = useState<ReactNode | null>(null);
+  const [desktopSidebarFloatingFooterElement, setDesktopSidebarFloatingFooterElement] =
+    useState<HTMLDivElement | null>(null);
+  const [mobileSidebarFloatingFooterElement, setMobileSidebarFloatingFooterElement] =
+    useState<HTMLDivElement | null>(null);
+  const [sidebarFloatingFooterHeight, setSidebarFloatingFooterHeight] = useState(0);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(readStoredSidebarWidth);
@@ -339,6 +375,39 @@ export function AppShell() {
   useEffect(() => {
     sidebarWidthRef.current = sidebarWidth;
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    const measuredElement = mobileOpen
+      ? mobileSidebarFloatingFooterElement
+      : desktopSidebarFloatingFooterElement;
+
+    if (!measuredElement) {
+      setSidebarFloatingFooterHeight(0);
+      return;
+    }
+
+    const updateHeight = () => {
+      setSidebarFloatingFooterHeight(Math.ceil(measuredElement.getBoundingClientRect().height));
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateHeight);
+      return () => window.removeEventListener("resize", updateHeight);
+    }
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(measuredElement);
+
+    return () => resizeObserver.disconnect();
+  }, [desktopSidebarFloatingFooterElement, mobileOpen, mobileSidebarFloatingFooterElement]);
+
+  useEffect(() => {
+    if (!sidebarFloatingFooter) {
+      setSidebarFloatingFooterHeight(0);
+    }
+  }, [sidebarFloatingFooter]);
 
   const commitSidebarWidth = useCallback((nextWidth: number) => {
     const width = constrainSidebarWidth(nextWidth);
@@ -412,8 +481,18 @@ export function AppShell() {
       sidebarMode,
       setSidebarMode,
       setRouteSidebar,
+      setFloatingFooter: setSidebarFloatingFooter,
     }),
     [sidebarMode]
+  );
+  const sidebarFloatingFooterOffsetStyle = useMemo(
+    () =>
+      sidebarFloatingFooterHeight > 0
+        ? ({
+            "--admin-sidebar-floating-footer-offset": `${sidebarFloatingFooterHeight + 8}px`,
+          } as React.CSSProperties)
+        : undefined,
+    [sidebarFloatingFooterHeight]
   );
 
   return (
@@ -424,13 +503,18 @@ export function AppShell() {
           className="admin-app-shell-grid relative mx-auto grid min-h-screen w-full grid-cols-1"
           style={{ "--admin-sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
         >
-          <aside className="sticky top-0 hidden h-screen min-h-0 p-4 lg:block">
-            <div className="admin-sidebar-card relative h-full overflow-hidden rounded-[2rem] bg-card/74 p-4 pr-5 shadow-xl shadow-shadow-soft ring-1 ring-border/54 backdrop-blur-md">
+          <aside className="relative sticky top-0 hidden h-screen min-h-0 p-4 lg:block">
+            <div
+              className="admin-sidebar-card relative h-full overflow-hidden rounded-[2rem] bg-card/74 p-4 pr-5 shadow-xl shadow-shadow-soft ring-1 ring-border/54 backdrop-blur-md"
+              data-testid="admin-sidebar-card"
+              style={sidebarFloatingFooterOffsetStyle}
+            >
               <SidebarContent
                 routeSidebar={routeSidebar}
                 sidebarMode={sidebarMode}
                 setSidebarMode={setSidebarMode}
                 sessionLoading={sessionQuery.isLoading}
+                floatingFooterActive={Boolean(sidebarFloatingFooter)}
               />
               <TooltipProvider delayDuration={240}>
                 <Tooltip>
@@ -456,6 +540,19 @@ export function AppShell() {
                 </Tooltip>
               </TooltipProvider>
             </div>
+            {sidebarFloatingFooter ? (
+              <div
+                className="pointer-events-none absolute inset-x-4 bottom-4 z-20"
+                data-testid="admin-sidebar-floating-footer-host"
+              >
+                <div
+                  ref={setDesktopSidebarFloatingFooterElement}
+                  className="pointer-events-auto w-full"
+                >
+                  {sidebarFloatingFooter}
+                </div>
+              </div>
+            ) : null}
           </aside>
 
           <div className="min-w-0" data-testid="admin-shell-main">
@@ -497,14 +594,22 @@ export function AppShell() {
             showClose
           >
             <DialogTitle className="sr-only">后台导航</DialogTitle>
-            <div className="h-full min-h-0 p-4">
+            <div className="relative h-full min-h-0 p-4" style={sidebarFloatingFooterOffsetStyle}>
               <SidebarContent
                 routeSidebar={routeSidebar}
                 sidebarMode={sidebarMode}
                 setSidebarMode={setSidebarMode}
                 sessionLoading={sessionQuery.isLoading}
+                floatingFooterActive={Boolean(sidebarFloatingFooter)}
                 onNavigate={() => setMobileOpen(false)}
               />
+              {sidebarFloatingFooter ? (
+                <div className="pointer-events-none absolute inset-x-4 bottom-4 z-20">
+                  <div ref={setMobileSidebarFloatingFooterElement} className="pointer-events-auto">
+                    {sidebarFloatingFooter}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </DialogContent>
         </Dialog>

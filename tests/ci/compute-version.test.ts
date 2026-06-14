@@ -6,6 +6,7 @@ import path from "node:path";
 
 const SCRIPT_PATH = path.resolve(process.cwd(), ".github/scripts/compute-version.sh");
 const tempDirs: string[] = [];
+const GIT_FIXTURE_TIMEOUT_MS = 20_000;
 
 async function createTempRepo() {
   const dir = await mkdtemp(path.join(tmpdir(), "blog25-compute-version-"));
@@ -103,118 +104,142 @@ afterEach(async () => {
 });
 
 describe("compute-version.sh", () => {
-  test("bumps only the requested component tag lineage", async () => {
-    const { dir } = await createTempRepo();
-    run("git", ["tag", "frontend-v1.2.3"], dir);
-    run("git", ["tag", "backend-v9.9.9"], dir);
-    await writeFile(path.join(dir, "CHANGELOG.md"), "release fixture\n");
-    run("git", ["add", "CHANGELOG.md"], dir);
-    run("git", ["commit", "-m", "second"], dir);
-    const headSha = run("git", ["rev-parse", "HEAD"], dir).stdout.trim();
+  test(
+    "bumps only the requested component tag lineage",
+    async () => {
+      const { dir } = await createTempRepo();
+      run("git", ["tag", "frontend-v1.2.3"], dir);
+      run("git", ["tag", "backend-v9.9.9"], dir);
+      await writeFile(path.join(dir, "CHANGELOG.md"), "release fixture\n");
+      run("git", ["add", "CHANGELOG.md"], dir);
+      run("git", ["commit", "-m", "second"], dir);
+      const headSha = run("git", ["rev-parse", "HEAD"], dir).stdout.trim();
 
-    const outputs = await runComputeVersion(dir, {
-      COMPONENT: "frontend",
-      BUMP_LEVEL: "patch",
-      CHANNEL: "stable",
-      COMMIT_SHA: headSha,
-    });
+      const outputs = await runComputeVersion(dir, {
+        COMPONENT: "frontend",
+        BUMP_LEVEL: "patch",
+        CHANNEL: "stable",
+        COMMIT_SHA: headSha,
+      });
 
-    expect(outputs.release_tag).toBe("frontend-v1.2.4");
-    expect(outputs.app_version).toBe("1.2.4");
-    expect(outputs.is_prerelease).toBe("false");
-    expect(outputs.release_major).toBe("1");
-  });
+      expect(outputs.release_tag).toBe("frontend-v1.2.4");
+      expect(outputs.app_version).toBe("1.2.4");
+      expect(outputs.is_prerelease).toBe("false");
+      expect(outputs.release_major).toBe("1");
+    },
+    GIT_FIXTURE_TIMEOUT_MS
+  );
 
-  test("creates rc tags with the component prefix and commit sha", async () => {
-    const { dir, headSha } = await createTempRepo();
-    run("git", ["tag", "backend-v2.4.8"], dir);
+  test(
+    "creates rc tags with the component prefix and commit sha",
+    async () => {
+      const { dir, headSha } = await createTempRepo();
+      run("git", ["tag", "backend-v2.4.8"], dir);
 
-    const outputs = await runComputeVersion(dir, {
-      COMPONENT: "backend",
-      BUMP_LEVEL: "minor",
-      CHANNEL: "rc",
-      COMMIT_SHA: headSha,
-    });
+      const outputs = await runComputeVersion(dir, {
+        COMPONENT: "backend",
+        BUMP_LEVEL: "minor",
+        CHANNEL: "rc",
+        COMMIT_SHA: headSha,
+      });
 
-    expect(outputs.release_tag).toBe(`backend-v2.5.0-rc.${headSha.slice(0, 7)}`);
-    expect(outputs.app_version).toBe(`2.5.0-rc.${headSha.slice(0, 7)}`);
-    expect(outputs.is_prerelease).toBe("true");
-    expect(outputs.release_major).toBe("2");
-  });
+      expect(outputs.release_tag).toBe(`backend-v2.5.0-rc.${headSha.slice(0, 7)}`);
+      expect(outputs.app_version).toBe(`2.5.0-rc.${headSha.slice(0, 7)}`);
+      expect(outputs.is_prerelease).toBe("true");
+      expect(outputs.release_major).toBe("2");
+    },
+    GIT_FIXTURE_TIMEOUT_MS
+  );
 
-  test("reuses an existing matching head tag instead of bumping again", async () => {
-    const { dir, headSha } = await createTempRepo();
-    run("git", ["tag", `frontend-v3.1.0-rc.${headSha.slice(0, 7)}`], dir);
+  test(
+    "reuses an existing matching head tag instead of bumping again",
+    async () => {
+      const { dir, headSha } = await createTempRepo();
+      run("git", ["tag", `frontend-v3.1.0-rc.${headSha.slice(0, 7)}`], dir);
 
-    const outputs = await runComputeVersion(dir, {
-      COMPONENT: "frontend",
-      BUMP_LEVEL: "major",
-      CHANNEL: "rc",
-      COMMIT_SHA: headSha,
-    });
+      const outputs = await runComputeVersion(dir, {
+        COMPONENT: "frontend",
+        BUMP_LEVEL: "major",
+        CHANNEL: "rc",
+        COMMIT_SHA: headSha,
+      });
 
-    expect(outputs.release_tag).toBe(`frontend-v3.1.0-rc.${headSha.slice(0, 7)}`);
-    expect(outputs.app_version).toBe(`3.1.0-rc.${headSha.slice(0, 7)}`);
-    expect(outputs.is_prerelease).toBe("true");
-    expect(outputs.release_major).toBe("3");
-  });
+      expect(outputs.release_tag).toBe(`frontend-v3.1.0-rc.${headSha.slice(0, 7)}`);
+      expect(outputs.app_version).toBe(`3.1.0-rc.${headSha.slice(0, 7)}`);
+      expect(outputs.is_prerelease).toBe("true");
+      expect(outputs.release_major).toBe("3");
+    },
+    GIT_FIXTURE_TIMEOUT_MS
+  );
 
-  test("seeds the first component release from legacy unprefixed tags", async () => {
-    const { dir } = await createTempRepo();
-    run("git", ["tag", "v1.3.0"], dir);
-    await writeFile(path.join(dir, "CHANGELOG.md"), "legacy lineage\n");
-    run("git", ["add", "CHANGELOG.md"], dir);
-    run("git", ["commit", "-m", "legacy-follow-up"], dir);
-    const headSha = run("git", ["rev-parse", "HEAD"], dir).stdout.trim();
+  test(
+    "seeds the first component release from legacy unprefixed tags",
+    async () => {
+      const { dir } = await createTempRepo();
+      run("git", ["tag", "v1.3.0"], dir);
+      await writeFile(path.join(dir, "CHANGELOG.md"), "legacy lineage\n");
+      run("git", ["add", "CHANGELOG.md"], dir);
+      run("git", ["commit", "-m", "legacy-follow-up"], dir);
+      const headSha = run("git", ["rev-parse", "HEAD"], dir).stdout.trim();
 
-    const outputs = await runComputeVersion(dir, {
-      COMPONENT: "frontend",
-      BUMP_LEVEL: "patch",
-      CHANNEL: "stable",
-      COMMIT_SHA: headSha,
-    });
+      const outputs = await runComputeVersion(dir, {
+        COMPONENT: "frontend",
+        BUMP_LEVEL: "patch",
+        CHANNEL: "stable",
+        COMMIT_SHA: headSha,
+      });
 
-    expect(outputs.release_tag).toBe("frontend-v1.3.1");
-    expect(outputs.app_version).toBe("1.3.1");
-    expect(outputs.release_major).toBe("1");
-  });
+      expect(outputs.release_tag).toBe("frontend-v1.3.1");
+      expect(outputs.app_version).toBe("1.3.1");
+      expect(outputs.release_major).toBe("1");
+    },
+    GIT_FIXTURE_TIMEOUT_MS
+  );
 
-  test("computes plain stable Docker image tags from the image lineage", async () => {
-    const { dir } = await createTempRepo();
-    run("git", ["tag", "v1.4.2"], dir);
-    run("git", ["tag", "backend-v8.8.8"], dir);
-    await writeFile(path.join(dir, "CHANGELOG.md"), "image lineage\n");
-    run("git", ["add", "CHANGELOG.md"], dir);
-    run("git", ["commit", "-m", "image-follow-up"], dir);
-    const headSha = run("git", ["rev-parse", "HEAD"], dir).stdout.trim();
+  test(
+    "computes plain stable Docker image tags from the image lineage",
+    async () => {
+      const { dir } = await createTempRepo();
+      run("git", ["tag", "v1.4.2"], dir);
+      run("git", ["tag", "backend-v8.8.8"], dir);
+      await writeFile(path.join(dir, "CHANGELOG.md"), "image lineage\n");
+      run("git", ["add", "CHANGELOG.md"], dir);
+      run("git", ["commit", "-m", "image-follow-up"], dir);
+      const headSha = run("git", ["rev-parse", "HEAD"], dir).stdout.trim();
 
-    const outputs = await runComputeVersion(dir, {
-      COMPONENT: "image",
-      BUMP_LEVEL: "minor",
-      CHANNEL: "stable",
-      COMMIT_SHA: headSha,
-    });
+      const outputs = await runComputeVersion(dir, {
+        COMPONENT: "image",
+        BUMP_LEVEL: "minor",
+        CHANNEL: "stable",
+        COMMIT_SHA: headSha,
+      });
 
-    expect(outputs.release_tag).toBe("v1.5.0");
-    expect(outputs.app_version).toBe("1.5.0");
-    expect(outputs.is_prerelease).toBe("false");
-    expect(outputs.release_major).toBe("1");
-  });
+      expect(outputs.release_tag).toBe("v1.5.0");
+      expect(outputs.app_version).toBe("1.5.0");
+      expect(outputs.is_prerelease).toBe("false");
+      expect(outputs.release_major).toBe("1");
+    },
+    GIT_FIXTURE_TIMEOUT_MS
+  );
 
-  test("computes plain rc Docker image tags with the commit sha", async () => {
-    const { dir, headSha } = await createTempRepo();
-    run("git", ["tag", "v2.0.1"], dir);
+  test(
+    "computes plain rc Docker image tags with the commit sha",
+    async () => {
+      const { dir, headSha } = await createTempRepo();
+      run("git", ["tag", "v2.0.1"], dir);
 
-    const outputs = await runComputeVersion(dir, {
-      COMPONENT: "image",
-      BUMP_LEVEL: "patch",
-      CHANNEL: "rc",
-      COMMIT_SHA: headSha,
-    });
+      const outputs = await runComputeVersion(dir, {
+        COMPONENT: "image",
+        BUMP_LEVEL: "patch",
+        CHANNEL: "rc",
+        COMMIT_SHA: headSha,
+      });
 
-    expect(outputs.release_tag).toBe(`v2.0.2-rc.${headSha.slice(0, 7)}`);
-    expect(outputs.app_version).toBe(`2.0.2-rc.${headSha.slice(0, 7)}`);
-    expect(outputs.is_prerelease).toBe("true");
-    expect(outputs.release_major).toBe("2");
-  });
+      expect(outputs.release_tag).toBe(`v2.0.2-rc.${headSha.slice(0, 7)}`);
+      expect(outputs.app_version).toBe(`2.0.2-rc.${headSha.slice(0, 7)}`);
+      expect(outputs.is_prerelease).toBe("true");
+      expect(outputs.release_major).toBe("2");
+    },
+    GIT_FIXTURE_TIMEOUT_MS
+  );
 });

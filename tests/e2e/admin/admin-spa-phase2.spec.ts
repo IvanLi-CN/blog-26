@@ -37,7 +37,7 @@ test.describe("Admin SPA phase 2", () => {
 
     await expect(page.locator('[data-testid="editor"]')).toBeVisible();
     const fileBrowser = page.getByTestId("editor-file-browser");
-    const targetFile = fileBrowser.getByRole("button", { name: "hello-world" });
+    const targetFile = fileBrowser.getByRole("button", { name: "hello-world.md", exact: true });
     await expect(fileBrowser).toBeVisible();
     if (!(await targetFile.isVisible())) {
       await fileBrowser.getByRole("button", { name: "blog" }).click();

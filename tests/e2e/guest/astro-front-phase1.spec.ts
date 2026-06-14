@@ -88,7 +88,7 @@ test.describe("Astro public front (phase 1)", () => {
     await expect(page.locator('a[href="/posts/hello-world/"]').first()).toBeVisible();
 
     await page.goto("/search?q=Hello", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "搜索" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "搜索内容" })).toBeVisible();
     await expect(page.locator('a[href="/posts/hello-world/"]').first()).toBeVisible();
   });
 

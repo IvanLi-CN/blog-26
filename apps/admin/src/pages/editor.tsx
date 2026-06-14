@@ -1,19 +1,12 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
-  ChevronDown,
-  ChevronRight,
   Code2,
   Columns2,
   Eye,
   FilePlus2,
-  FileText,
-  Folder,
-  FolderPlus,
-  FolderUp,
   ImagePlus,
   PenSquare,
-  RefreshCcw,
   Save,
 } from "lucide-react";
 import { nanoid } from "nanoid";
@@ -28,27 +21,32 @@ import {
 } from "@/lib/admin-api-client";
 import { parseFrontmatterMap, stripFrontmatter } from "@/lib/frontmatter-document";
 import { isMemoContentPath } from "@/lib/memo-paths";
+import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import { generateContentUrl } from "@/lib/url-utils";
-import { cn } from "@/lib/utils";
+import { AdminToastViewport, dismissAdminToast, showAdminToast } from "~/components/admin-toast";
 import { useAppShellSidebar } from "~/components/app-shell";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/ui";
+import {
+  deriveBaseDirectory,
+  deriveUniqueTreeName,
+  EditorFileBrowser,
+  getAncestorTreePaths,
+  getParentTreePath,
+  isTreePathAncestor,
+  isTreePathSelected,
+  joinTreePath,
+  normalizeTreePath,
+  replaceTreePathPrefix,
+  type TreeItemType,
+  type TreeRenameTarget,
+  type TreeSelection,
+  toDirectoryRequestPath,
+} from "~/components/editor-file-browser";
+import { Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/ui";
 import { EditorTabStrip } from "~/editor/editor-tab-strip";
 import { UniversalEditor, type UniversalEditorRef } from "~/editor/universal-editor";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
 
 type EditorMode = "wysiwyg" | "source" | "compare";
-type TreeItemType = FileItem["type"];
-
-type TreeSelection = {
-  source: "local";
-  path: string;
-  type: TreeItemType;
-};
-
-type TreeRenameTarget = TreeSelection & {
-  parentPath: string;
-  value: string;
-};
 
 type DatabaseDraft = {
   postId: string;
@@ -82,6 +80,18 @@ type EditorTab = {
 
 function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
   return [tab, ...current.filter((item) => item.id !== tab.id)];
+}
+
+export function shouldMarkLiveEditorContentDirty(
+  liveContent: string,
+  persistedContent: string,
+  options: { preserveCurrentDirtyState?: boolean } = {}
+) {
+  if (liveContent === persistedContent) {
+    return false;
+  }
+
+  return !options.preserveCurrentDirtyState;
 }
 
 const EMPTY_SOURCES: DataSourceInfo[] = [];
@@ -203,83 +213,6 @@ function buildAdminPreviewUrl(path: string) {
   return `/admin/preview/posts/${pathname.replace(/^\/+/, "")}`;
 }
 
-function normalizeTreePath(path: string | null | undefined) {
-  return (path ?? "").replace(/^\/+/, "").replace(/\/+$/, "");
-}
-
-function getParentTreePath(path: string | null | undefined) {
-  const normalized = normalizeTreePath(path);
-  if (!normalized) return "";
-  const index = normalized.lastIndexOf("/");
-  return index === -1 ? "" : normalized.slice(0, index);
-}
-
-function joinTreePath(parentPath: string, name: string) {
-  const parent = normalizeTreePath(parentPath);
-  const child = name.replace(/^\/+|\/+$/g, "");
-  return parent ? `${parent}/${child}` : child;
-}
-
-function replaceTreePathPrefix(path: string, oldPrefix: string, newPrefix: string) {
-  const normalizedPath = normalizeTreePath(path);
-  const normalizedOld = normalizeTreePath(oldPrefix);
-  const normalizedNew = normalizeTreePath(newPrefix);
-  if (normalizedPath === normalizedOld) return normalizedNew;
-  if (normalizedOld && normalizedPath.startsWith(`${normalizedOld}/`)) {
-    return `${normalizedNew}${normalizedPath.slice(normalizedOld.length)}`;
-  }
-  return normalizedPath;
-}
-
-function deriveBaseDirectory(selection: TreeSelection | null, fallbackPath: string) {
-  if (!selection) return normalizeTreePath(fallbackPath);
-  return selection.type === "directory"
-    ? normalizeTreePath(selection.path)
-    : getParentTreePath(selection.path);
-}
-
-function deriveUniqueTreeName(items: FileItem[], preferredName: string) {
-  const existingNames = new Set(items.map((item) => item.name));
-  if (!existingNames.has(preferredName)) return preferredName;
-
-  const dotIndex = preferredName.lastIndexOf(".");
-  const stem = dotIndex > 0 ? preferredName.slice(0, dotIndex) : preferredName;
-  const extension = dotIndex > 0 ? preferredName.slice(dotIndex) : "";
-  for (let index = 2; index < 1000; index += 1) {
-    const candidate = `${stem}-${index}${extension}`;
-    if (!existingNames.has(candidate)) return candidate;
-  }
-  return `${stem}-${Date.now()}${extension}`;
-}
-
-function getAncestorTreePaths(path: string | null | undefined) {
-  const parentPath = getParentTreePath(path);
-  if (!parentPath) return [];
-
-  const segments = parentPath.split("/").filter(Boolean);
-  const ancestors: string[] = [];
-  let currentPath = "";
-
-  for (const segment of segments) {
-    currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-    ancestors.push(currentPath);
-  }
-
-  return ancestors;
-}
-
-function toDirectoryRequestPath(path: string | null | undefined) {
-  const normalized = normalizeTreePath(path);
-  return normalized ? `/${normalized}/` : "";
-}
-
-function isTreePathSelected(
-  path: string | null | undefined,
-  activePath: string | null | undefined
-) {
-  return normalizeTreePath(path) === normalizeTreePath(activePath);
-}
-
 function getArticleIdentity(source: "local", articlePath: string | null | undefined) {
   return `${source}:${normalizeTreePath(articlePath)}`;
 }
@@ -287,19 +220,6 @@ function getArticleIdentity(source: "local", articlePath: string | null | undefi
 function getTabArticleIdentity(tab: EditorTab) {
   const context = getEditorContext(tab);
   return getArticleIdentity(context.contentSource, context.articlePath);
-}
-
-function isTreePathAncestor(
-  path: string | null | undefined,
-  activePath: string | null | undefined
-) {
-  const normalizedPath = normalizeTreePath(path);
-  const normalizedActivePath = normalizeTreePath(activePath);
-  if (!normalizedPath || !normalizedActivePath || normalizedPath === normalizedActivePath) {
-    return false;
-  }
-
-  return normalizedActivePath.startsWith(`${normalizedPath}/`);
 }
 
 function deriveDatabaseDraftState(draft: DatabaseDraft, content: string) {
@@ -333,344 +253,238 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
 }
 
-function InlineTreeNameInput({
-  value,
-  type,
-  onChange,
-  onCommit,
-  onCancel,
-}: {
-  value: string;
-  type: TreeItemType;
-  onChange: (value: string) => void;
-  onCommit: () => void;
-  onCancel: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
+export function mapBatchResultsToTreeSelection(
+  source: "local",
+  entries: Array<{ nextPath?: string; type: TreeItemType }>
+) {
+  return entries
+    .filter((entry): entry is { nextPath: string; type: TreeItemType } => Boolean(entry.nextPath))
+    .map((entry) => ({
+      source,
+      path: entry.nextPath,
+      type: entry.type,
+    }));
+}
 
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
-
-  return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={value}
-      aria-label={type === "directory" ? "目录名称" : "文件名称"}
-      className="min-w-0 flex-1 rounded-xl border border-primary/35 bg-background px-2 py-1 text-sm text-foreground outline-none ring-2 ring-primary/18"
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onCommit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          onCommit();
-        }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          onCancel();
-        }
-      }}
-    />
+export function getSelectionRevealPaths(entries: TreeSelection[]) {
+  return Array.from(
+    new Set(
+      entries
+        .map((entry) => getParentTreePath(entry.path))
+        .filter((path): path is string => Boolean(path))
+        .flatMap((path) => getAncestorTreePaths(`${path}/__selection__.md`))
+    )
   );
 }
 
-function getFileTypeLabel(extension?: string) {
-  const normalizedExtension = (extension || "file").replace(/^\./, "").trim();
-  return (normalizedExtension || "file").slice(0, 3).toUpperCase();
+function rebaseOpenMarkdownContent(content: string, oldPath: string, newPath: string) {
+  if (!/\.(?:md|markdown|mdx)$/i.test(oldPath) && !/\.(?:md|markdown|mdx)$/i.test(newPath)) {
+    return content;
+  }
+  return rebasePersistedLocalLinks(content, oldPath, newPath).content;
 }
 
-function TreeFileTypeIcon({ extension, active }: { extension?: string; active: boolean }) {
-  const label = getFileTypeLabel(extension);
-
-  return (
-    <span
-      className={cn(
-        "relative inline-flex size-5 shrink-0 items-center justify-center text-muted-foreground",
-        active && "text-primary"
-      )}
-      title={`${label} 文件`}
-    >
-      <FileText className="size-5" />
-      <span className="absolute bottom-[0.1rem] left-1/2 -translate-x-1/2 text-[0.34rem] font-bold uppercase leading-none">
-        {label}
-      </span>
-    </span>
-  );
+function rebaseOpenMarkdownReferences(
+  content: string,
+  markdownPath: string,
+  oldPath: string,
+  newPath: string
+) {
+  if (!/\.(?:md|markdown|mdx)$/i.test(markdownPath)) {
+    return content;
+  }
+  return rebasePersistedLocalReferences(content, markdownPath, oldPath, newPath).content;
 }
 
-function EditorSidebarContent({
-  selectedSource,
-  browserPath,
-  onNavigateUp,
-  onRefresh,
-  sourcesLoading,
-  treeLoading,
-  rootItems,
-  directoryItemsByPath,
-  loadingPaths,
-  expandedPaths,
-  activeItemPath,
-  activeItemType,
-  activeItemSource,
-  editingItem,
-  onEditingValueChange,
-  onEditingCommit,
-  onEditingCancel,
-  onDirectoryExpand,
-  onFileOpen,
-  onFilePermanentOpen,
-  onCreateFile,
-  onCreateDirectory,
-}: {
-  selectedSource: "local";
-  browserPath: string;
-  onNavigateUp: () => void;
-  onRefresh: () => void;
-  sourcesLoading: boolean;
-  treeLoading: boolean;
-  rootItems: FileItem[];
-  directoryItemsByPath: Record<string, FileItem[]>;
-  loadingPaths: string[];
-  expandedPaths: string[];
-  activeItemPath: string | null;
-  activeItemType: TreeItemType | null;
-  activeItemSource: "local" | null;
-  editingItem: TreeRenameTarget | null;
-  onEditingValueChange: (value: string) => void;
-  onEditingCommit: () => void;
-  onEditingCancel: () => void;
-  onDirectoryExpand: (item: FileItem) => void;
-  onFileOpen: (item: FileItem) => void;
-  onFilePermanentOpen: (item: FileItem) => void;
-  onCreateFile: () => void;
-  onCreateDirectory: () => void;
-}) {
-  const expandedPathSet = useMemo(
-    () => new Set(expandedPaths.map((path) => normalizeTreePath(path))),
-    [expandedPaths]
+export function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath: string) {
+  const normalizedOldPath = normalizeTreePath(oldPath);
+  const normalizedNewPath = normalizeTreePath(newPath);
+
+  if (tab.kind === "file" && tab.file?.source === source) {
+    const currentFilePath = normalizeTreePath(tab.file.path);
+    if (
+      currentFilePath === normalizedOldPath ||
+      currentFilePath.startsWith(`${normalizedOldPath}/`)
+    ) {
+      const nextFilePath = replaceTreePathPrefix(
+        currentFilePath,
+        normalizedOldPath,
+        normalizedNewPath
+      );
+      const nextContent = rebaseOpenMarkdownContent(
+        tab.file.content,
+        currentFilePath,
+        nextFilePath
+      );
+      return {
+        ...tab,
+        id: `file:${source}:${nextFilePath}`,
+        label: deriveFileLabel(nextFilePath, nextContent),
+        file: {
+          ...tab.file,
+          path: nextFilePath,
+          content: nextContent,
+        },
+      };
+    }
+
+    const nextContent = rebaseOpenMarkdownReferences(
+      tab.file.content,
+      currentFilePath,
+      normalizedOldPath,
+      normalizedNewPath
+    );
+    if (nextContent !== tab.file.content) {
+      return {
+        ...tab,
+        file: {
+          ...tab.file,
+          content: nextContent,
+        },
+      };
+    }
+  }
+
+  if (tab.kind === "database" && tab.database?.source === source) {
+    const currentFilePath = normalizeTreePath(tab.database.filePath);
+    if (
+      currentFilePath === normalizedOldPath ||
+      currentFilePath.startsWith(`${normalizedOldPath}/`)
+    ) {
+      const nextFilePath = replaceTreePathPrefix(
+        currentFilePath,
+        normalizedOldPath,
+        normalizedNewPath
+      );
+      const nextContent = rebaseOpenMarkdownContent(
+        tab.database.content,
+        currentFilePath,
+        nextFilePath
+      );
+      const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
+      return {
+        ...tab,
+        id: `post:${nextFilePath}`,
+        label: derivedDraft.title || tab.label,
+        database: {
+          ...tab.database,
+          ...derivedDraft,
+          postId: nextFilePath,
+          filePath: nextFilePath,
+          content: nextContent,
+        },
+      };
+    }
+
+    const nextContent = rebaseOpenMarkdownReferences(
+      tab.database.content,
+      currentFilePath,
+      normalizedOldPath,
+      normalizedNewPath
+    );
+    if (nextContent !== tab.database.content) {
+      const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
+      return {
+        ...tab,
+        label: derivedDraft.title || tab.label,
+        database: {
+          ...tab.database,
+          ...derivedDraft,
+          content: nextContent,
+        },
+      };
+    }
+  }
+
+  return tab;
+}
+
+export function remapActiveTabIdForPathChange(
+  activeTabId: string | null,
+  source: "local",
+  oldPath: string,
+  newPath: string
+) {
+  if (!activeTabId) return activeTabId;
+  const normalizedOldPath = normalizeTreePath(oldPath);
+  const normalizedNewPath = normalizeTreePath(newPath);
+  const filePrefix = `file:${source}:`;
+  const databasePrefix = "post:";
+  const prefix = activeTabId.startsWith(filePrefix)
+    ? filePrefix
+    : activeTabId.startsWith(databasePrefix)
+      ? databasePrefix
+      : null;
+  if (!prefix) return activeTabId;
+
+  const currentPath = normalizeTreePath(activeTabId.slice(prefix.length));
+  if (currentPath !== normalizedOldPath && !currentPath.startsWith(`${normalizedOldPath}/`)) {
+    return activeTabId;
+  }
+
+  const nextPath = replaceTreePathPrefix(currentPath, normalizedOldPath, normalizedNewPath);
+  return `${prefix}${nextPath}`;
+}
+
+export function remapBrowserPathForPathChange(
+  browserPath: string,
+  oldPath: string,
+  newPath: string,
+  type: TreeItemType
+) {
+  const normalizedBrowserPath = normalizeTreePath(browserPath);
+  const normalizedOldPath = normalizeTreePath(oldPath);
+
+  if (type !== "directory" || !normalizedOldPath) return normalizedBrowserPath;
+  if (
+    normalizedBrowserPath !== normalizedOldPath &&
+    !normalizedBrowserPath.startsWith(`${normalizedOldPath}/`)
+  ) {
+    return normalizedBrowserPath;
+  }
+
+  return replaceTreePathPrefix(normalizedBrowserPath, normalizedOldPath, newPath);
+}
+
+export function resolveActiveTabIdAfterTreeDelete(
+  tabs: EditorTab[],
+  activeTabId: string | null,
+  source: "local",
+  deletedEntries: Array<{ path: string; type: TreeItemType }>
+) {
+  if (!activeTabId) return activeTabId;
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  if (!activeTab) return tabs[tabs.length - 1]?.id ?? null;
+
+  const activeContext = getEditorContext(activeTab);
+  if (activeContext.contentSource !== source) return activeTabId;
+
+  const activeDeleted = deletedEntries.some((entry) =>
+    isTreeOperationTargeted(activeContext.articlePath, entry.path, entry.type)
   );
-  const loadingPathSet = useMemo(
-    () => new Set(loadingPaths.map((path) => normalizeTreePath(path))),
-    [loadingPaths]
-  );
-  const shouldHighlightActiveSource = activeItemSource === selectedSource;
+  return activeDeleted ? (tabs[tabs.length - 1]?.id ?? null) : activeTabId;
+}
 
-  const renderTreeNodes = useCallback(
-    (items: FileItem[], depth = 0) =>
-      items.map((item) => {
-        const normalizedPath = normalizeTreePath(item.path);
-        const isDirectory = item.type === "directory";
-        const isExpanded = isDirectory && expandedPathSet.has(normalizedPath);
-        const children = isDirectory
-          ? (directoryItemsByPath[normalizedPath] ?? EMPTY_FILE_ITEMS)
-          : [];
-        const hasLoadedChildren =
-          isDirectory && Object.hasOwn(directoryItemsByPath, normalizedPath);
-        const directoryCount = hasLoadedChildren ? children.length : (item.count ?? 0);
-        const isLoadingBranch = isDirectory && loadingPathSet.has(normalizedPath);
-        const isActiveDirectory =
-          shouldHighlightActiveSource &&
-          activeItemType === "directory" &&
-          isDirectory &&
-          isTreePathSelected(item.path, activeItemPath);
-        const isActiveFile =
-          shouldHighlightActiveSource &&
-          activeItemType !== "directory" &&
-          isTreePathSelected(item.path, activeItemPath);
-        const isActiveBranch =
-          shouldHighlightActiveSource &&
-          isDirectory &&
-          isTreePathAncestor(item.path, activeItemPath);
-        const isEditing =
-          editingItem?.source === selectedSource &&
-          editingItem.type === item.type &&
-          isTreePathSelected(editingItem.path, item.path);
-
-        return (
-          <div key={`${item.type}:${item.path}`} className="min-w-0 space-y-1">
-            <div
-              className={cn(
-                "flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
-                !isEditing && "hover:bg-muted/40 hover:text-foreground",
-                (isActiveFile || isActiveDirectory) &&
-                  "border-primary/35 bg-primary/10 text-primary shadow-sm",
-                !isActiveFile &&
-                  !isActiveDirectory &&
-                  isActiveBranch &&
-                  "border-border/35 bg-muted/40 text-foreground",
-                !isActiveFile && !isActiveDirectory && !isActiveBranch && "text-foreground/88"
-              )}
-              style={{ paddingLeft: `${0.65 + depth * 0.45}rem` }}
-            >
-              <span className="flex min-w-0 flex-1 items-center gap-2">
-                <button
-                  type="button"
-                  className="flex shrink-0 items-center gap-2"
-                  tabIndex={isEditing ? -1 : 0}
-                  onClick={() => (isDirectory ? onDirectoryExpand(item) : onFileOpen(item))}
-                  onDoubleClick={() => {
-                    if (!isDirectory) onFilePermanentOpen(item);
-                  }}
-                >
-                  {isDirectory ? (
-                    isExpanded ? (
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                    )
-                  ) : (
-                    <span className="block size-4 shrink-0" />
-                  )}
-                  {isDirectory ? (
-                    <Folder
-                      className={cn(
-                        "size-4 shrink-0",
-                        isActiveDirectory || isActiveBranch ? "text-primary" : "text-primary"
-                      )}
-                    />
-                  ) : (
-                    <TreeFileTypeIcon extension={item.extension} active={isActiveFile} />
-                  )}
-                </button>
-                {isEditing && editingItem ? (
-                  <InlineTreeNameInput
-                    value={editingItem.value}
-                    type={editingItem.type}
-                    onChange={onEditingValueChange}
-                    onCommit={onEditingCommit}
-                    onCancel={onEditingCancel}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 truncate text-left"
-                    onClick={() => (isDirectory ? onDirectoryExpand(item) : onFileOpen(item))}
-                    onDoubleClick={() => {
-                      if (!isDirectory) onFilePermanentOpen(item);
-                    }}
-                  >
-                    {item.name}
-                  </button>
-                )}
-              </span>
-              {!isEditing && isDirectory ? (
-                <span
-                  className={cn(
-                    "shrink-0 whitespace-nowrap text-xs text-muted-foreground",
-                    (isActiveFile || isActiveDirectory) && "text-primary/80"
-                  )}
-                >
-                  {`${directoryCount} 项`}
-                </span>
-              ) : null}
-            </div>
-
-            {isDirectory && isExpanded ? (
-              <div className="min-w-0 space-y-1">
-                {isLoadingBranch && children.length === 0 ? (
-                  <div
-                    className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground"
-                    style={{ paddingLeft: `${1.35 + depth * 0.45}rem` }}
-                  >
-                    <Spinner /> 读取目录…
-                  </div>
-                ) : null}
-                {children.length > 0 ? renderTreeNodes(children, depth + 1) : null}
-                {!isLoadingBranch && children.length === 0 ? (
-                  <div
-                    className="px-3 py-1 text-xs text-muted-foreground"
-                    style={{ paddingLeft: `${1.35 + depth * 0.45}rem` }}
-                  >
-                    当前目录为空。
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        );
-      }),
-    [
-      activeItemPath,
-      activeItemType,
-      directoryItemsByPath,
-      editingItem,
-      expandedPathSet,
-      loadingPathSet,
-      onEditingCancel,
-      onEditingCommit,
-      onEditingValueChange,
-      onDirectoryExpand,
-      onFileOpen,
-      onFilePermanentOpen,
-      selectedSource,
-      shouldHighlightActiveSource,
-    ]
+export function resolveBrowserPathAfterTreeDelete(
+  browserPath: string,
+  deletedEntries: Array<{ path: string; type: TreeItemType }>
+) {
+  const normalizedBrowserPath = normalizeTreePath(browserPath);
+  const deletedDirectory = deletedEntries.find(
+    (entry) =>
+      entry.type === "directory" &&
+      isTreeOperationTargeted(normalizedBrowserPath, entry.path, entry.type)
   );
 
-  return (
-    <div
-      className="flex h-full min-h-0 flex-col overflow-hidden border-y border-border/54"
-      data-testid="editor-file-browser"
-    >
-      <div className="flex shrink-0 items-center justify-between border-b border-border/54 py-3">
-        <div>
-          <div className="font-medium">文件浏览器</div>
-          <div className="text-xs text-muted-foreground">浏览内容源，打开要编辑的文件。</div>
-        </div>
-      </div>
+  return deletedDirectory ? getParentTreePath(deletedDirectory.path) : normalizedBrowserPath;
+}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-4">
-        <div className="grid min-w-0 shrink-0 gap-2 pb-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onCreateFile}
-              title="新建文件"
-              aria-label="新建文件"
-            >
-              <FilePlus2 className="size-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onCreateDirectory}
-              title="新建目录"
-              aria-label="新建目录"
-            >
-              <FolderPlus className="size-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={onNavigateUp} disabled={!browserPath}>
-              <FolderUp className="size-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={onRefresh}>
-              <RefreshCcw className="size-4" />
-            </Button>
-          </div>
-          <div
-            className="min-w-0 truncate rounded-2xl bg-muted/32 px-3 py-2 text-xs text-muted-foreground"
-            title={browserPath || "根目录"}
-          >
-            {browserPath || "根目录"}
-          </div>
-        </div>
-
-        <div className="admin-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden pr-1">
-          {sourcesLoading || (treeLoading && rootItems.length === 0) ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner /> 读取文件树…
-            </div>
-          ) : rootItems.length > 0 ? (
-            renderTreeNodes(rootItems)
-          ) : (
-            <div className="text-sm text-muted-foreground">当前目录为空。</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+function isTreeOperationTargeted(entryPath: string, targetPath: string, targetType: TreeItemType) {
+  const normalizedEntryPath = normalizeTreePath(entryPath);
+  const normalizedTargetPath = normalizeTreePath(targetPath);
+  if (!normalizedTargetPath) return false;
+  if (normalizedEntryPath === normalizedTargetPath) return true;
+  return targetType === "directory" && normalizedEntryPath.startsWith(`${normalizedTargetPath}/`);
 }
 
 export function EditorPage() {
@@ -684,6 +498,7 @@ export function EditorPage() {
     local: [],
   });
   const [selectedTreeItem, setSelectedTreeItem] = useState<TreeSelection | null>(null);
+  const [treeSelectionOverride, setTreeSelectionOverride] = useState<TreeSelection[] | null>(null);
   const [editingTreeItem, setEditingTreeItem] = useState<TreeRenameTarget | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -694,10 +509,12 @@ export function EditorPage() {
   const [didHandleInitialUrl, setDidHandleInitialUrl] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const editorRef = useRef<UniversalEditorRef | null>(null);
+  const loadingToastIdRef = useRef<ReturnType<typeof showAdminToast> | null>(null);
   const pendingFileTabsRef = useRef<Map<string, { promise: Promise<void>; temporary: boolean }>>(
     new Map()
   );
   const tabsRef = useRef<EditorTab[]>(tabs);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     tabsRef.current = tabs;
@@ -716,6 +533,35 @@ export function EditorPage() {
       setSelectedSource("local");
     }
   }, [sourcesQuery.data]);
+
+  useEffect(() => {
+    if (!notice) return;
+    showAdminToast("success", notice);
+    setNotice(null);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!errorBanner) return;
+    showAdminToast("danger", errorBanner, { autoClose: 5600 });
+    setErrorBanner(null);
+  }, [errorBanner]);
+
+  useEffect(() => {
+    if (loadingMessage) {
+      if (loadingToastIdRef.current) {
+        dismissAdminToast(loadingToastIdRef.current);
+      }
+      loadingToastIdRef.current = showAdminToast("loading", loadingMessage, {
+        toastId: "admin-editor-loading",
+      });
+      return;
+    }
+
+    if (loadingToastIdRef.current) {
+      dismissAdminToast(loadingToastIdRef.current);
+      loadingToastIdRef.current = null;
+    }
+  }, [loadingMessage]);
 
   const browserPath = currentPaths[selectedSource];
   const availableSources = sourcesQuery.data ?? EMPTY_SOURCES;
@@ -1110,7 +956,10 @@ export function EditorPage() {
           : (activeTab.file?.content ?? "");
 
       if (liveContent !== persistedContent) {
-        updateActiveTabContent(liveContent, { markDirty: options.markDirty ?? activeTab.dirty });
+        updateActiveTabContent(liveContent, {
+          markDirty:
+            options.markDirty ?? shouldMarkLiveEditorContentDirty(liveContent, persistedContent),
+        });
       }
 
       return liveContent;
@@ -1178,7 +1027,7 @@ export function EditorPage() {
     const remaining = tabs.filter((item) => item.id !== tabId);
     setTabs(remaining);
     if (activeTabId === tabId) {
-      setActiveTabId(remaining[0]?.id ?? null);
+      setActiveTabId(remaining[remaining.length - 1]?.id ?? null);
     }
   }
 
@@ -1409,11 +1258,14 @@ export function EditorPage() {
   );
 
   const createTreeItem = useCallback(
-    async (type: TreeItemType) => {
-      const baseDirectory = deriveBaseDirectory(
-        selectedTreeItem?.source === selectedSource ? selectedTreeItem : null,
-        browserPath
-      );
+    async (type: TreeItemType, parentPath?: string) => {
+      const baseDirectory =
+        typeof parentPath === "string"
+          ? normalizeTreePath(parentPath)
+          : deriveBaseDirectory(
+              selectedTreeItem?.source === selectedSource ? selectedTreeItem : null,
+              browserPath
+            );
       const siblings = directoryItemsByPath[baseDirectory] ?? EMPTY_FILE_ITEMS;
       const defaultName = deriveUniqueTreeName(
         siblings,
@@ -1425,8 +1277,10 @@ export function EditorPage() {
       try {
         if (type === "directory") {
           await adminApi.createDirectory({ source: selectedSource, path });
+          setNotice("目录创建成功。");
         } else {
           await adminApi.writeFile({ source: selectedSource, path, content: "" });
+          setNotice("文件创建成功。");
         }
 
         setCurrentPaths((current) => ({ ...current, [selectedSource]: baseDirectory }));
@@ -1452,13 +1306,27 @@ export function EditorPage() {
     [browserPath, directoryItemsByPath, refetchTreePath, selectedSource, selectedTreeItem]
   );
 
-  const createFileInTree = useCallback(() => {
-    void createTreeItem("file");
-  }, [createTreeItem]);
+  const createFileInTree = useCallback(
+    (parentPath?: string) => {
+      void createTreeItem("file", parentPath);
+    },
+    [createTreeItem]
+  );
 
-  const createDirectoryInTree = useCallback(() => {
-    void createTreeItem("directory");
-  }, [createTreeItem]);
+  const createDirectoryInTree = useCallback(
+    (parentPath?: string) => {
+      void createTreeItem("directory", parentPath);
+    },
+    [createTreeItem]
+  );
+
+  const startTreeRename = useCallback((target: TreeSelection) => {
+    setEditingTreeItem({
+      ...target,
+      parentPath: getParentTreePath(target.path),
+      value: target.path.split("/").pop() ?? "",
+    });
+  }, []);
 
   const updateEditingTreeItemValue = useCallback((value: string) => {
     setEditingTreeItem((current) => (current ? { ...current, value } : current));
@@ -1495,36 +1363,206 @@ export function EditorPage() {
           const next = previous.map((path) => replaceTreePathPrefix(path, target.path, newPath));
           return { ...current, [target.source]: Array.from(new Set(next)) };
         });
+        setCurrentPaths((current) => ({
+          ...current,
+          [target.source]: remapBrowserPathForPathChange(
+            current[target.source],
+            target.path,
+            newPath,
+            target.type
+          ),
+        }));
         setTabs((current) =>
-          current.map((tab) => {
-            if (target.type !== "file" || tab.kind !== "file" || !tab.file) return tab;
-            if (
-              tab.file.source !== target.source ||
-              normalizeTreePath(tab.file.path) !== target.path
-            ) {
-              return tab;
-            }
-            return {
-              ...tab,
-              id: `file:${target.source}:${newPath}`,
-              label: newName,
-              file: { ...tab.file, path: newPath },
-            };
-          })
+          current.map((tab) => remapTabPath(tab, target.source, target.path, newPath))
         );
-        await refetchTreePath(target.parentPath);
+        setActiveTabId((current) =>
+          remapActiveTabIdForPathChange(current, target.source, target.path, newPath)
+        );
+        await queryClient.invalidateQueries({
+          queryKey: ["admin-directory-tree", target.source],
+        });
+        setNotice("已重命名。");
       } catch (error) {
         setErrorBanner(getErrorMessage(error));
       }
     })();
-  }, [editingTreeItem, refetchTreePath]);
+  }, [editingTreeItem, queryClient]);
+
+  const moveTreeEntries = useCallback(
+    async (entries: TreeSelection[], destinationPath: string) => {
+      setErrorBanner(null);
+      try {
+        const response = await adminApi.moveEntries({
+          source: selectedSource,
+          paths: entries.map((entry) => entry.path),
+          destinationPath,
+        });
+
+        const pathPairs = response.moved
+          .filter((entry): entry is { path: string; nextPath: string; type: TreeItemType } =>
+            Boolean(entry.nextPath)
+          )
+          .map((entry) => ({ oldPath: entry.path, newPath: entry.nextPath, type: entry.type }));
+
+        if (pathPairs[0]) {
+          setSelectedTreeItem({
+            source: selectedSource,
+            path: pathPairs[0].newPath,
+            type: pathPairs[0].type,
+          });
+        }
+
+        setExpandedPaths((current) => {
+          const previous = current[selectedSource] ?? [];
+          const next = pathPairs.reduce(
+            (paths, pair) =>
+              paths.map((path) => replaceTreePathPrefix(path, pair.oldPath, pair.newPath)),
+            previous
+          );
+          return { ...current, [selectedSource]: Array.from(new Set(next)) };
+        });
+        setCurrentPaths((current) => ({
+          ...current,
+          [selectedSource]: pathPairs.reduce(
+            (path, pair) =>
+              remapBrowserPathForPathChange(path, pair.oldPath, pair.newPath, pair.type),
+            current[selectedSource]
+          ),
+        }));
+        setTabs((current) =>
+          current.map((tab) =>
+            pathPairs.reduce(
+              (nextTab, pair) => remapTabPath(nextTab, selectedSource, pair.oldPath, pair.newPath),
+              tab
+            )
+          )
+        );
+        setActiveTabId((current) =>
+          pathPairs.reduce(
+            (nextId, pair) =>
+              remapActiveTabIdForPathChange(nextId, selectedSource, pair.oldPath, pair.newPath),
+            current
+          )
+        );
+        await queryClient.invalidateQueries({
+          queryKey: ["admin-directory-tree", selectedSource],
+        });
+        setNotice(`已移动 ${response.moved.length} 项。`);
+        const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.moved);
+        setExpandedPaths((current) => ({
+          ...current,
+          [selectedSource]: Array.from(
+            new Set([...(current[selectedSource] ?? []), ...getSelectionRevealPaths(nextSelection)])
+          ),
+        }));
+        setTreeSelectionOverride(nextSelection);
+        return nextSelection;
+      } catch (error) {
+        setErrorBanner(getEditorActionErrorMessage(error, "移动失败："));
+        throw error;
+      }
+    },
+    [queryClient, selectedSource]
+  );
+
+  const copyTreeEntries = useCallback(
+    async (entries: TreeSelection[], destinationPath: string) => {
+      setErrorBanner(null);
+      try {
+        const response = await adminApi.copyEntries({
+          source: selectedSource,
+          paths: entries.map((entry) => entry.path),
+          destinationPath,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["admin-directory-tree", selectedSource],
+        });
+        setNotice(`已复制 ${response.copied.length} 项。`);
+        const nextSelection = mapBatchResultsToTreeSelection(selectedSource, response.copied);
+        setExpandedPaths((current) => ({
+          ...current,
+          [selectedSource]: Array.from(
+            new Set([...(current[selectedSource] ?? []), ...getSelectionRevealPaths(nextSelection)])
+          ),
+        }));
+        setTreeSelectionOverride(nextSelection);
+        return nextSelection;
+      } catch (error) {
+        setErrorBanner(getEditorActionErrorMessage(error, "复制失败："));
+        throw error;
+      }
+    },
+    [queryClient, selectedSource]
+  );
+
+  const deleteTreeEntries = useCallback(
+    async (entries: TreeSelection[]) => {
+      setErrorBanner(null);
+      try {
+        const response = await adminApi.deleteEntries({
+          source: selectedSource,
+          entries: entries.map((entry) => ({
+            path: entry.path,
+            type: entry.type,
+          })),
+        });
+
+        const deletedEntries = response.deleted.map((entry) => ({
+          path: entry.path,
+          type: entry.type as TreeItemType,
+        }));
+
+        setTabs((current) => {
+          const nextTabs = current.filter((tab) => {
+            const context = getEditorContext(tab);
+            if (context.contentSource !== selectedSource) return true;
+            return !deletedEntries.some((entry) =>
+              isTreeOperationTargeted(context.articlePath, entry.path, entry.type)
+            );
+          });
+          setActiveTabId((currentActiveId) =>
+            resolveActiveTabIdAfterTreeDelete(
+              nextTabs,
+              currentActiveId,
+              selectedSource,
+              deletedEntries
+            )
+          );
+          return nextTabs;
+        });
+        setSelectedTreeItem((current) => {
+          if (!current || current.source !== selectedSource) return current;
+          return deletedEntries.some((entry) =>
+            isTreeOperationTargeted(current.path, entry.path, entry.type)
+          )
+            ? null
+            : current;
+        });
+        setCurrentPaths((current) => ({
+          ...current,
+          [selectedSource]: resolveBrowserPathAfterTreeDelete(
+            current[selectedSource],
+            deletedEntries
+          ),
+        }));
+        await queryClient.invalidateQueries({
+          queryKey: ["admin-directory-tree", selectedSource],
+        });
+        setNotice(`已删除 ${response.deleted.length} 项。`);
+      } catch (error) {
+        setErrorBanner(getEditorActionErrorMessage(error, "删除失败："));
+        throw error;
+      }
+    },
+    [queryClient, selectedSource]
+  );
 
   const editorSidebarPanel = useMemo(
     () => ({
       label: "文件浏览器",
       preferredMode: "route" as const,
       content: (
-        <EditorSidebarContent
+        <EditorFileBrowser
           selectedSource={selectedSource}
           browserPath={browserPath}
           onNavigateUp={navigateUp}
@@ -1535,6 +1573,8 @@ export function EditorPage() {
           directoryItemsByPath={directoryItemsByPath}
           loadingPaths={loadingPaths}
           expandedPaths={expandedPaths[selectedSource] ?? []}
+          selectionOverride={treeSelectionOverride}
+          onSelectionOverrideApplied={() => setTreeSelectionOverride(null)}
           activeItemPath={activeTreePath}
           activeItemType={activeTreeType}
           activeItemSource={activeBrowserSource}
@@ -1547,6 +1587,10 @@ export function EditorPage() {
           onFilePermanentOpen={handleFilePermanentOpen}
           onCreateFile={createFileInTree}
           onCreateDirectory={createDirectoryInTree}
+          onStartRename={startTreeRename}
+          onMoveEntries={moveTreeEntries}
+          onCopyEntries={copyTreeEntries}
+          onDeleteEntries={deleteTreeEntries}
         />
       ),
     }),
@@ -1557,8 +1601,10 @@ export function EditorPage() {
       browserPath,
       cancelTreeRename,
       commitTreeRename,
+      copyTreeEntries,
       createDirectoryInTree,
       createFileInTree,
+      deleteTreeEntries,
       directoryItemsByPath,
       editingTreeItem,
       expandedPaths,
@@ -1570,8 +1616,11 @@ export function EditorPage() {
       navigateUp,
       selectedSource,
       sourcesQuery.isLoading,
+      startTreeRename,
       treeLoading,
+      moveTreeEntries,
       rootItems,
+      treeSelectionOverride,
       updateEditingTreeItemValue,
     ]
   );
@@ -1580,6 +1629,7 @@ export function EditorPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-6">
+      <AdminToastViewport />
       <PageHeader
         title="文章编辑器"
         description="打开文章、切换编辑模式，并在保存前检查预览。"
@@ -1620,9 +1670,6 @@ export function EditorPage() {
         }
       />
 
-      {notice ? <Alert tone="success">{notice}</Alert> : null}
-      {errorBanner ? <Alert tone="danger">{errorBanner}</Alert> : null}
-      {loadingMessage ? <Alert>{loadingMessage}</Alert> : null}
       <input
         ref={uploadInputRef}
         id="admin-editor-attachment-upload"

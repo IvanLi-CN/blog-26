@@ -153,6 +153,11 @@ export class LocalContentSource extends ContentSourceBase {
     return contentItems;
   }
 
+  async refresh(): Promise<void> {
+    this.ensureInitialized();
+    await this.refreshFileCache();
+  }
+
   async getContent(filePath: string): Promise<string> {
     this.ensureInitialized();
 

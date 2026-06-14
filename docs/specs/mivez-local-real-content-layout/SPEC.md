@@ -79,3 +79,37 @@ The current blog local setup still depends on synthetic wrapper directories like
 
 - 2026-03-11: Initial spec for removing synthetic local wrapper directories and recognizing the real note tree directly.
 - 2026-06-09: Clarified that admin local file writes must initialize the selected local source lazily so real-root file creation works before any prior sync or scan.
+
+## 8. Visual Evidence
+
+### Checkbox mode and batch toolbar
+
+![Checkbox mode and batch toolbar](./assets/file-browser-selection-mode.png)
+
+### Context menu with clipboard-ready paste
+
+![Context menu with clipboard-ready paste](./assets/file-browser-clipboard-ready.png)
+
+### Delete confirmation dialog
+
+![Delete confirmation dialog](./assets/file-browser-context-menu-delete.png)
+
+### Move dialog invalid-target guidance
+
+![Move dialog invalid-target guidance](./assets/file-browser-move-dialog.png)
+
+### Sidebar-bottom batch action footer
+
+![Sidebar-bottom batch action footer](./assets/file-browser-sidebar-bottom-floating-footer.trimmed.png)
+
+### Compact icon-only footer at constrained width
+
+![Compact icon-only footer at constrained width](./assets/file-browser-sidebar-bottom-floating-footer-compact.trimmed.png)
+
+### Sidebar-wide adaptive footer at minimum sidebar width
+
+![Sidebar-wide adaptive footer at minimum sidebar width](./assets/file-browser-sidebar-bottom-floating-footer-adaptive.png)
+
+### Floating editor operation feedback
+
+![Floating editor operation feedback](./assets/admin-editor-floating-toast-feedback.png)

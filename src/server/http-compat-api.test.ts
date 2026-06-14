@@ -1,13 +1,14 @@
 import { Database } from "bun:sqlite";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
 import { buildPublicMediaHash } from "@/lib/public-media";
-import { llmSettings, posts, sessions, users } from "@/lib/schema";
+import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -43,6 +44,33 @@ function buildRequest(pathname: string, init: RequestInit = {}, email?: string) 
 
 async function readJson(response: Response) {
   return (await response.json()) as Record<string, any>;
+}
+
+function createSuccessfulSyncResult() {
+  return {
+    success: true,
+    startTime: Date.now(),
+    endTime: Date.now(),
+    sources: ["local"],
+    stats: {
+      totalProcessed: 0,
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      skipped: 0,
+      errors: 0,
+    },
+    errors: [],
+    logs: [],
+  };
+}
+
+function createFailedSyncResult(message: string) {
+  return {
+    ...createSuccessfulSyncResult(),
+    success: false,
+    errors: [{ source: "local", operation: "sync", message, timestamp: Date.now() }],
+  };
 }
 
 async function seedPost(
@@ -95,6 +123,39 @@ async function seedPost(
   });
 
   return id;
+}
+
+async function seedPostEmbedding(postId: string, slug: string, suffix = "main") {
+  const now = Date.now();
+  await db.insert(postEmbeddings).values({
+    id: `${postId}:embedding:${suffix}`,
+    postId,
+    slug,
+    type: "post",
+    modelName: "test-embedding",
+    dim: 2,
+    contentHash: `hash-${suffix}`,
+    chunkIndex: -1,
+    vector: Buffer.from(new Float32Array([0.1, 0.2]).buffer),
+    errorMessage: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+async function seedVectorizedFile(filepath: string, slug: string) {
+  const now = Date.now();
+  await db.insert(vectorizedFiles).values({
+    filepath,
+    slug,
+    contentHash: `hash-${slug}`,
+    lastModifiedTime: now,
+    contentUpdatedAt: now,
+    indexedAt: now,
+    modelName: "test-embedding",
+    vector: Buffer.from(new Float32Array([0.3, 0.4]).buffer),
+    errorMessage: null,
+  });
 }
 
 describe("HTTP compatibility APIs", () => {
@@ -1481,6 +1542,1568 @@ describe("HTTP compatibility APIs", () => {
       );
     } finally {
       LocalContentSource.prototype.initialize = originalInitialize;
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("initializes the local content source before renaming files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "rename-me.md"), "rename");
+    const databaseOnlyPostId = await seedPost({
+      id: "post-database-only",
+      slug: "database-only",
+      title: "Database Only",
+      body: "Database only",
+      filePath: "",
+    });
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    let syncedSources: string[] | null = null;
+    let syncArgument: boolean | undefined;
+
+    manager.syncAll = async function (isFullSync?: boolean) {
+      syncArgument = isFullSync;
+      const result = await originalSyncAll.call(this, isFullSync);
+      syncedSources = result.sources;
+      return result;
+    } as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/rename-me.md",
+              newName: "renamed.md",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(200);
+      expect(fs.existsSync(path.join(hardwareDir, "renamed.md"))).toBe(true);
+      expect(syncedSources).toContain("local");
+      expect(syncArgument).toBe(false);
+      const databaseOnlyPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, databaseOnlyPostId))
+        .get();
+      expect(databaseOnlyPost).toMatchObject({
+        id: databaseOnlyPostId,
+        slug: "database-only",
+      });
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("moves and copies local files through the admin API", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "move-me.md"), "move");
+    await seedPost({
+      id: "Hardware/docs/move-me.md",
+      slug: "move-me",
+      title: "Move Me",
+      body: "Move",
+      filePath: "Hardware/docs/move-me.md",
+    });
+    await seedPostEmbedding("Hardware/docs/move-me.md", "move-me", "stale");
+    await seedVectorizedFile("Hardware/docs/move-me.md", "move-me");
+    const databaseOnlyPostId = await seedPost({
+      id: "post-move-database-only",
+      slug: "move-database-only",
+      title: "Move Database Only",
+      body: "Move database only",
+      filePath: "",
+    });
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    const syncArguments: Array<boolean | undefined> = [];
+    manager.syncAll = (async (isFullSync?: boolean) => {
+      syncArguments.push(isFullSync);
+      return originalSyncAll.call(manager, isFullSync);
+    }) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/move-me.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+      expect(moveResponse.status).toBe(200);
+      const movePayload = await readJson(moveResponse);
+      expect(movePayload.destinationPath).toBe("Hardware/archive");
+      expect(movePayload.moved).toEqual([
+        {
+          path: "Hardware/docs/move-me.md",
+          nextPath: "Hardware/archive/move-me.md",
+          type: "file",
+        },
+      ]);
+      expect(fs.existsSync(path.join(archiveDir, "move-me.md"))).toBe(true);
+      const oldMovedPostAfterMove = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/docs/move-me.md"))
+        .get();
+      const movedPostAfterMove = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/archive/move-me.md"))
+        .get();
+      const oldMoveEmbeddingsAfterMove = await db
+        .select()
+        .from(postEmbeddings)
+        .where(eq(postEmbeddings.postId, "Hardware/docs/move-me.md"));
+      const oldMoveVectorizedAfterMove = await db
+        .select()
+        .from(vectorizedFiles)
+        .where(eq(vectorizedFiles.filepath, "Hardware/docs/move-me.md"))
+        .get();
+      expect(oldMovedPostAfterMove).toBeUndefined();
+      expect(oldMoveEmbeddingsAfterMove).toHaveLength(0);
+      expect(oldMoveVectorizedAfterMove).toBeUndefined();
+      expect(movedPostAfterMove).toMatchObject({ id: "Hardware/archive/move-me.md" });
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/archive/move-me.md"],
+              destinationPath: "Hardware/docs",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
+      expect(fs.existsSync(path.join(docsDir, "move-me.md"))).toBe(false);
+      expect(syncArguments).toEqual([false]);
+      const movedPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/archive/move-me.md"))
+        .get();
+      const databaseOnlyPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, databaseOnlyPostId))
+        .get();
+      expect(movedPost).toMatchObject({ id: "Hardware/archive/move-me.md" });
+      expect(databaseOnlyPost).toMatchObject({
+        id: databaseOnlyPostId,
+        slug: "move-database-only",
+      });
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("keeps database-only posts when deleting local file entries", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "delete-safe");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "delete-me.md"), "# Delete Me\n");
+    const databaseOnlyPostId = await seedPost({
+      id: "post-delete-database-only",
+      slug: "delete-database-only",
+      title: "Delete Database Only",
+      body: "Delete database only",
+      filePath: "",
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/delete",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            source: "local",
+            entries: [{ path: "Hardware/delete-safe/delete-me.md", type: "file" }],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/files/delete"
+    );
+
+    expect(response.status).toBe(200);
+    expect(fs.existsSync(path.join(docsDir, "delete-me.md"))).toBe(false);
+    const deletedLocalPost = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, "Hardware/delete-safe/delete-me.md"))
+      .get();
+    const databaseOnlyPost = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, databaseOnlyPostId))
+      .get();
+    expect(deletedLocalPost).toBeUndefined();
+    expect(databaseOnlyPost).toMatchObject({
+      id: databaseOnlyPostId,
+      slug: "delete-database-only",
+    });
+  });
+
+  it("keeps local file source enabled when CONTENT_SOURCES contains only legacy values", async () => {
+    process.env.CONTENT_SOURCES = "webdav";
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest("/api/admin/files/sources", {}, ADMIN_EMAIL),
+        "/files/sources"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = await readJson(response);
+      expect(payload[0]).toMatchObject({
+        name: "local",
+        type: "local",
+        enabled: true,
+      });
+    } finally {
+      resetHttpCompatEnv();
+    }
+  });
+
+  it("rolls back file writes when content sync fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () =>
+      createFailedSyncResult("index unavailable")) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/sync-failure.md",
+              content: "sync failure",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(500);
+      const payload = await readJson(response);
+      expect(payload.error.message).toContain("内容同步失败：index unavailable");
+      expect(fs.existsSync(path.join(hardwareDir, "sync-failure.md"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rolls back file-tree mutations when content sync fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const preservedPostId = await seedPost({
+      id: "Hardware/existing-post.md",
+      slug: "existing-post",
+      title: "Existing Post",
+      body: "Existing body",
+      filePath: "Hardware/existing-post.md",
+    });
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "rename.md"), "rename");
+    fs.writeFileSync(path.join(docsDir, "move.md"), "move");
+    fs.writeFileSync(path.join(docsDir, "copy.txt"), "copy");
+    fs.writeFileSync(path.join(docsDir, "delete.md"), "delete");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () =>
+      createFailedSyncResult("index unavailable")) as typeof manager.syncAll;
+
+    try {
+      const renameResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/docs/rename.md",
+              newName: "renamed.md",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(renameResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "rename.md"))).toBe(true);
+      expect(fs.existsSync(path.join(docsDir, "renamed.md"))).toBe(false);
+
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/move.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "move.md"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "move.md"))).toBe(false);
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/copy.txt"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "copy.txt"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "copy.txt"))).toBe(false);
+
+      const deleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [{ path: "Hardware/docs/delete.md", type: "file" }],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+
+      expect(deleteResponse.status).toBe(500);
+      expect(fs.existsSync(path.join(docsDir, "delete.md"))).toBe(true);
+      expect(fs.readFileSync(path.join(docsDir, "delete.md"), "utf-8")).toBe("delete");
+      expect(
+        fs
+          .readdirSync(LOCAL_CONTENT_BASE_PATH)
+          .some((entry) => entry.startsWith(".admin-delete-rollback-"))
+      ).toBe(false);
+      const preservedPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, preservedPostId))
+        .get();
+      expect(preservedPost).toMatchObject({
+        id: preservedPostId,
+        slug: "existing-post",
+        title: "Existing Post",
+      });
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("scopes file mutation sync rollback to mutated post and vector rows", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const stablePostId = await seedPost({
+      id: "Hardware/stable.md",
+      slug: "stable",
+      title: "Stable",
+      body: "Stable body",
+      filePath: "Hardware/stable.md",
+    });
+    await seedPostEmbedding(stablePostId, "stable", "before");
+    await seedVectorizedFile(stablePostId, "stable");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "rename-scoped.md"), "rename scoped");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => {
+      await seedPost({
+        id: "blog/concurrent.md",
+        slug: "concurrent",
+        title: "Concurrent",
+        body: "Concurrent body",
+        filePath: "blog/concurrent.md",
+      });
+      await seedPost({
+        id: "Hardware/renamed-scoped.md",
+        slug: "renamed-scoped",
+        title: "Renamed Scoped",
+        body: "Renamed body",
+        filePath: "Hardware/renamed-scoped.md",
+      });
+      await seedPostEmbedding("Hardware/renamed-scoped.md", "renamed-scoped", "ghost");
+      await seedVectorizedFile("Hardware/renamed-scoped.md", "renamed-scoped");
+      return createFailedSyncResult("index unavailable");
+    }) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/rename-scoped.md",
+              newName: "renamed-scoped.md",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(500);
+      expect(fs.existsSync(path.join(hardwareDir, "rename-scoped.md"))).toBe(true);
+      expect(fs.existsSync(path.join(hardwareDir, "renamed-scoped.md"))).toBe(false);
+
+      const concurrentPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "blog/concurrent.md"))
+        .get();
+      const stablePost = await db.select().from(posts).where(eq(posts.id, stablePostId)).get();
+      const ghostPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/renamed-scoped.md"))
+        .get();
+      const stableEmbeddings = await db
+        .select()
+        .from(postEmbeddings)
+        .where(eq(postEmbeddings.postId, stablePostId));
+      const ghostEmbeddings = await db
+        .select()
+        .from(postEmbeddings)
+        .where(eq(postEmbeddings.postId, "Hardware/renamed-scoped.md"));
+      const stableVectorized = await db
+        .select()
+        .from(vectorizedFiles)
+        .where(eq(vectorizedFiles.filepath, stablePostId))
+        .get();
+      const ghostVectorized = await db
+        .select()
+        .from(vectorizedFiles)
+        .where(eq(vectorizedFiles.filepath, "Hardware/renamed-scoped.md"))
+        .get();
+
+      expect(concurrentPost).toMatchObject({
+        id: "blog/concurrent.md",
+        slug: "concurrent",
+      });
+      expect(stablePost).toMatchObject({ id: stablePostId, slug: "stable" });
+      expect(ghostPost).toBeUndefined();
+      expect(stableEmbeddings).toHaveLength(1);
+      expect(ghostEmbeddings).toHaveLength(0);
+      expect(stableVectorized).toMatchObject({ filepath: stablePostId, slug: "stable" });
+      expect(ghostVectorized).toBeUndefined();
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rolls back partial delete backups when batched delete setup fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+    const fsPromises = await import("node:fs/promises");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "first.md"), "first");
+    fs.writeFileSync(path.join(docsDir, "second.md"), "second");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    const originalRename = fsPromises.rename;
+    let backupRenameCount = 0;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+    mock.module("node:fs/promises", () => ({
+      ...fsPromises,
+      rename: async (...args: Parameters<typeof originalRename>) => {
+        const nextPath = String(args[1]);
+        if (nextPath.includes(".admin-delete-rollback-")) {
+          backupRenameCount++;
+          if (backupRenameCount === 2) {
+            throw new Error("injected backup failure");
+          }
+        }
+        return originalRename(...args);
+      },
+    }));
+
+    try {
+      const deleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [
+                { path: "Hardware/docs/first.md", type: "file" },
+                { path: "Hardware/docs/second.md", type: "file" },
+              ],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+
+      expect(deleteResponse.status).toBe(500);
+      expect(fs.readFileSync(path.join(docsDir, "first.md"), "utf-8")).toBe("first");
+      expect(fs.readFileSync(path.join(docsDir, "second.md"), "utf-8")).toBe("second");
+      expect(
+        fs
+          .readdirSync(LOCAL_CONTENT_BASE_PATH)
+          .some((entry) => entry.startsWith(".admin-delete-rollback-"))
+      ).toBe(false);
+    } finally {
+      mock.restore();
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rewrites runtime file URLs when writing MDX files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(path.join(hardwareDir, "assets"), { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "assets", "cover.png"), "cover");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/article.mdx",
+              content:
+                "---\nimage: /api/files/local/Hardware/assets/cover.png\n---\n\n![cover](/api/files/local/Hardware/assets/cover.png)",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(200);
+      const savedContent = fs.readFileSync(path.join(hardwareDir, "article.mdx"), "utf-8");
+      expect(savedContent).not.toContain("/api/files/");
+      expect(savedContent).toContain("image: ./assets/cover.png");
+      expect(savedContent).toContain("![cover](./assets/cover.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases moved markdown links and rejects copied markdown file links", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(docsDir, "linked.md"),
+      [
+        "---",
+        "image: ./assets/cover.png",
+        "---",
+        "",
+        "![cover](./assets/cover.png)",
+        "![[./assets/wiki.png|1200]]",
+      ].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/linked.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+      expect(moveResponse.status).toBe(200);
+      const movedContent = fs.readFileSync(path.join(archiveDir, "linked.md"), "utf-8");
+      expect(movedContent).toContain("image: ../docs/assets/cover.png");
+      expect(movedContent).toContain("![cover](../docs/assets/cover.png)");
+      expect(movedContent).toContain("![[../docs/assets/wiki.png|1200]]");
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/archive/linked.md"],
+              destinationPath: "Hardware/docs",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
+      expect(fs.existsSync(path.join(docsDir, "linked.md"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects moving and copying local files across configured content roots", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const blogDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.mkdirSync(blogDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "move-me.md"), "move");
+    fs.writeFileSync(path.join(hardwareDir, "copy-me.txt"), "copy");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/move-me.md"],
+              destinationPath: "blog",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(response.status).toBe(400);
+      const payload = await readJson(response);
+      expect(payload.error.message).toContain("不能跨内容根目录操作项目");
+      expect(fs.existsSync(path.join(hardwareDir, "move-me.md"))).toBe(true);
+      expect(fs.existsSync(path.join(blogDir, "move-me.md"))).toBe(false);
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/copy-me.txt"],
+              destinationPath: "blog",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("不能跨内容根目录操作项目");
+      expect(fs.existsSync(path.join(hardwareDir, "copy-me.txt"))).toBe(true);
+      expect(fs.existsSync(path.join(blogDir, "copy-me.txt"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects empty destinations for local move and copy operations", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const blogDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog");
+    fs.mkdirSync(blogDir, { recursive: true });
+    fs.writeFileSync(path.join(blogDir, "move-me.md"), "move");
+    fs.writeFileSync(path.join(blogDir, "copy-me.md"), "copy");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/move-me.md"],
+              destinationPath: "",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      expect(fs.existsSync(path.join(blogDir, "move-me.md"))).toBe(true);
+      expect(fs.existsSync(path.join(LOCAL_CONTENT_BASE_PATH, "move-me.md"))).toBe(false);
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/copy-me.md"],
+              destinationPath: "",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      expect(fs.existsSync(path.join(blogDir, "copy-me.md"))).toBe(true);
+      expect(fs.existsSync(path.join(LOCAL_CONTENT_BASE_PATH, "copy-me.md"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases inbound markdown references after moving local asset files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const assetsDir = path.join(hardwareDir, "assets");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(hardwareDir, "post.md"),
+      ["---", "image: ./assets/cover.png", "---", "", "![cover](./assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/assets/cover.png"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(response.status).toBe(200);
+      const content = fs.readFileSync(path.join(hardwareDir, "post.md"), "utf-8");
+      expect(content).toContain("image: ./archive/cover.png");
+      expect(content).toContain("![cover](./archive/cover.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rolls back local file moves when inbound markdown reference rebasing fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const assetsDir = path.join(hardwareDir, "assets");
+    const archiveDir = path.join(hardwareDir, "archive");
+    const postPath = path.join(hardwareDir, "post.md");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "cover.png"), "cover");
+    fs.writeFileSync(postPath, "![cover](./assets/cover.png)");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      fs.chmodSync(postPath, 0o444);
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/assets/cover.png"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(fs.existsSync(path.join(assetsDir, "cover.png"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "cover.png"))).toBe(false);
+      fs.chmodSync(postPath, 0o644);
+      expect(fs.readFileSync(postPath, "utf-8")).toBe("![cover](./assets/cover.png)");
+    } finally {
+      fs.chmodSync(postPath, 0o644);
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rolls back local file renames when inbound markdown reference rebasing fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const assetsDir = path.join(hardwareDir, "assets");
+    const postPath = path.join(hardwareDir, "post.md");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "cover.png"), "cover");
+    fs.writeFileSync(postPath, "![cover](./assets/cover.png)");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      fs.chmodSync(postPath, 0o444);
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/assets/cover.png",
+              newName: "hero.png",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(fs.existsSync(path.join(assetsDir, "cover.png"))).toBe(true);
+      expect(fs.existsSync(path.join(assetsDir, "hero.png"))).toBe(false);
+      fs.chmodSync(postPath, 0o644);
+      expect(fs.readFileSync(postPath, "utf-8")).toBe("![cover](./assets/cover.png)");
+    } finally {
+      fs.chmodSync(postPath, 0o644);
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects copying markdown content files before creating targets", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    const sourcePath = path.join(docsDir, "linked.md");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(sourcePath, "![cover](./assets/cover.png)");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/linked.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(response.status).toBe(400);
+      const payload = await readJson(response);
+      expect(payload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
+      expect(fs.existsSync(path.join(archiveDir, "linked.md"))).toBe(false);
+      expect(fs.existsSync(sourcePath)).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases inbound markdown references after renaming local asset files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const assetsDir = path.join(hardwareDir, "assets");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(hardwareDir, "post.md"),
+      ["---", "image: ./assets/cover.png", "---", "", "![cover](./assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/assets/cover.png",
+              newName: "hero.png",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(200);
+      const content = fs.readFileSync(path.join(hardwareDir, "post.md"), "utf-8");
+      expect(content).toContain("image: ./assets/hero.png");
+      expect(content).toContain("![cover](./assets/hero.png)");
+      expect(fs.existsSync(path.join(assetsDir, "hero.png"))).toBe(true);
+      expect(fs.existsSync(path.join(assetsDir, "cover.png"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases inbound markdown references across configured roots after renaming local assets", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const blogAssetsDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog", "assets");
+    const memoDir = path.join(LOCAL_CONTENT_BASE_PATH, "Memos");
+    fs.mkdirSync(blogAssetsDir, { recursive: true });
+    fs.mkdirSync(memoDir, { recursive: true });
+    fs.writeFileSync(path.join(blogAssetsDir, "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(memoDir, "note.md"),
+      ["# Note", "", "![cover](../blog/assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "blog/assets/cover.png",
+              newName: "hero.png",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(200);
+      const memoContent = fs.readFileSync(path.join(memoDir, "note.md"), "utf-8");
+      expect(memoContent).toContain("![cover](../blog/assets/hero.png)");
+      expect(fs.existsSync(path.join(blogAssetsDir, "hero.png"))).toBe(true);
+      expect(fs.existsSync(path.join(blogAssetsDir, "cover.png"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects copying directory subtrees that contain markdown content files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    const sharedDir = path.join(docsDir, "shared");
+    fs.mkdirSync(path.join(docsDir, "series"), { recursive: true });
+    fs.mkdirSync(path.join(docsDir, "series", "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.mkdirSync(sharedDir, { recursive: true });
+    fs.writeFileSync(path.join(sharedDir, "logo.png"), "logo");
+    fs.writeFileSync(path.join(docsDir, "series", "assets", "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(docsDir, "series", "overview.md"),
+      [
+        "---",
+        "title: Series",
+        "slug: series",
+        "---",
+        "",
+        "# Series",
+        "",
+        "![cover](./assets/cover.png)",
+        "![logo](../shared/logo.png)",
+      ].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/series"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      const payload = await readJson(copyResponse);
+      expect(payload.error.message).toContain("复制 Markdown 内容文件可能产生重复 slug");
+      expect(fs.existsSync(path.join(archiveDir, "series"))).toBe(false);
+      const originalContent = fs.readFileSync(path.join(docsDir, "series", "overview.md"), "utf-8");
+      expect(originalContent).toContain("slug: series");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("copies non-markdown asset entries in one batch", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(path.join(docsDir, "assets", "hero.png"), "hero");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/assets"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(200);
+      expect(fs.existsSync(path.join(archiveDir, "assets", "cover.png"))).toBe(true);
+      expect(fs.existsSync(path.join(archiveDir, "assets", "hero.png"))).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases persisted markdown asset links for .markdown files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(docsDir, "linked.markdown"),
+      ["---", "image: ./assets/cover.png", "---", "", "![cover](./assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/linked.markdown"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+      expect(moveResponse.status).toBe(200);
+
+      const movedContent = fs.readFileSync(path.join(archiveDir, "linked.markdown"), "utf-8");
+      expect(movedContent).toContain("image: ../docs/assets/cover.png");
+      expect(movedContent).toContain("![cover](../docs/assets/cover.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rebases persisted markdown asset links for .mdx files", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(path.join(docsDir, "assets"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "assets", "cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(docsDir, "linked.mdx"),
+      ["---", "image: ./assets/cover.png", "---", "", "![cover](./assets/cover.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/linked.mdx"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+      expect(moveResponse.status).toBe(200);
+
+      const movedContent = fs.readFileSync(path.join(archiveDir, "linked.mdx"), "utf-8");
+      expect(movedContent).toContain("image: ../docs/assets/cover.png");
+      expect(movedContent).toContain("![cover](../docs/assets/cover.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects copying local files when the destination already has the same name", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "duplicate.txt"), "from-docs");
+    fs.writeFileSync(path.join(archiveDir, "duplicate.txt"), "from-archive");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/archive/duplicate.txt"],
+              destinationPath: "Hardware/docs",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(409);
+      const payload = await readJson(copyResponse);
+      expect(payload.error.message).toContain("目标已存在");
+      expect(fs.readFileSync(path.join(docsDir, "duplicate.txt"), "utf-8")).toBe("from-docs");
+      expect(fs.readFileSync(path.join(archiveDir, "duplicate.txt"), "utf-8")).toBe("from-archive");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects nested selection payloads for local move operations", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const seriesDir = path.join(hardwareDir, "series");
+    const nestedDir = path.join(seriesDir, "react");
+    const archiveDir = path.join(hardwareDir, "archive");
+    fs.mkdirSync(nestedDir, { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.writeFileSync(path.join(nestedDir, "notes.md"), "nested");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/series", "Hardware/series/react/notes.md"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      const payload = await readJson(moveResponse);
+      expect(payload.error.message).toContain("不能同时操作父目录与其子项");
+      expect(fs.existsSync(seriesDir)).toBe(true);
+      expect(fs.existsSync(path.join(nestedDir, "notes.md"))).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects moving or copying a directory into its descendant directory", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const seriesDir = path.join(hardwareDir, "series");
+    const reactDir = path.join(seriesDir, "react");
+    fs.mkdirSync(reactDir, { recursive: true });
+    fs.writeFileSync(path.join(seriesDir, "overview.txt"), "series");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/series"],
+              destinationPath: "Hardware/series/react",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      const movePayload = await readJson(moveResponse);
+      expect(movePayload.error.message).toContain("不能将目录移动到其自身或后代目录内");
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/series"],
+              destinationPath: "Hardware/series/react",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("不能将目录复制到其自身或后代目录内");
+      expect(fs.existsSync(seriesDir)).toBe(true);
+      expect(fs.existsSync(reactDir)).toBe(true);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects dot-segment destinations for local move and copy operations", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const blogDir = path.join(LOCAL_CONTENT_BASE_PATH, "blog");
+    fs.mkdirSync(blogDir, { recursive: true });
+    fs.writeFileSync(path.join(blogDir, "post.md"), "post");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const moveResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/move",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/post.md"],
+              destinationPath: "blog/..",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/move"
+      );
+
+      expect(moveResponse.status).toBe(400);
+      const movePayload = await readJson(moveResponse);
+      expect(movePayload.error.message).toContain("本地路径不能包含 . 或 .. 路径段");
+
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["blog/post.md"],
+              destinationPath: "blog/..",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(400);
+      const copyPayload = await readJson(copyResponse);
+      expect(copyPayload.error.message).toContain("本地路径不能包含 . 或 .. 路径段");
+      expect(fs.existsSync(path.join(blogDir, "post.md"))).toBe(true);
+      expect(fs.existsSync(path.join(LOCAL_CONTENT_BASE_PATH, "post.md"))).toBe(false);
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rejects deleting non-empty directories and allows deleting empty directories", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const fullDir = path.join(hardwareDir, "full-dir");
+    const emptyDir = path.join(hardwareDir, "empty-dir");
+    fs.mkdirSync(fullDir, { recursive: true });
+    fs.mkdirSync(emptyDir, { recursive: true });
+    fs.writeFileSync(path.join(fullDir, "nested.md"), "nested");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const failedDeleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [{ path: "Hardware/full-dir", type: "directory" }],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+      expect(failedDeleteResponse.status).toBe(400);
+      const failedPayload = await readJson(failedDeleteResponse);
+      expect(failedPayload.error.message).toContain("目录不为空");
+
+      const successDeleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [{ path: "Hardware/empty-dir", type: "directory" }],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+      expect(successDeleteResponse.status).toBe(200);
+      const successPayload = await readJson(successDeleteResponse);
+      expect(successPayload.deleted).toEqual([
+        {
+          path: "Hardware/empty-dir",
+          type: "directory",
+        },
+      ]);
+      expect(fs.existsSync(emptyDir)).toBe(false);
+    } finally {
       manager.syncAll = originalSyncAll;
     }
   });

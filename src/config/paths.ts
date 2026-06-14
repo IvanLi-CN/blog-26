@@ -17,7 +17,12 @@ const normalizedLocalBasePath =
     ? rawLocalBasePath.trim()
     : null;
 
-function parseEnabledSourcePaths(envValue: string | undefined, fallback: string): string[] {
+function parseEnabledSourcePaths(
+  envValue: string | undefined,
+  fallback: string,
+  enabled = true
+): string[] {
+  if (!enabled) return [];
   return parsePathsFromEnv(envValue || fallback);
 }
 
@@ -83,13 +88,17 @@ export function getActiveLocalBasePath(): string | null {
 
 export function getActiveLocalPaths() {
   const basePath = getActiveLocalBasePath();
-  const localEnabled = typeof basePath === "string" && basePath.length > 0;
+  const localConfigured = typeof basePath === "string" && basePath.length > 0;
 
   return {
     basePath,
-    posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog"),
-    projects: parseEnabledSourcePaths(process.env.LOCAL_PROJECTS_PATH, "/projects"),
-    memos: localEnabled
+    posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog", localConfigured),
+    projects: parseEnabledSourcePaths(
+      process.env.LOCAL_PROJECTS_PATH,
+      "/projects",
+      localConfigured
+    ),
+    memos: localConfigured
       ? getServerLocalMemoRootPaths()
       : parseMemoRootsFromEnv(undefined, DEFAULT_LOCAL_MEMO_ROOT_PATH),
   } as const;
@@ -110,7 +119,7 @@ function hasLocalBasePath(): boolean {
 }
 
 export function isLocalContentEnabled(): boolean {
-  return hasLocalBasePath();
+  return hasLocalBasePath() && isContentSourceAllowed("local");
 }
 
 export function parseContentSourcesFromEnv(envValue: string | undefined): Set<"local"> | null {
@@ -124,6 +133,8 @@ export function parseContentSourcesFromEnv(envValue: string | undefined): Set<"l
       set.add("local");
     }
   }
+  // Legacy deployments may still set unsupported values such as "webdav".
+  // Treat those as unset so local content remains enabled when a base path exists.
   return set.size > 0 ? set : null;
 }
 

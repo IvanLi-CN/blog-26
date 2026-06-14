@@ -182,6 +182,32 @@ export interface FileReadResponse {
   content: string;
 }
 
+export interface FileBatchResult {
+  path: string;
+  nextPath?: string;
+  type: "file" | "directory";
+}
+
+export interface FileMoveResponse {
+  success: boolean;
+  source: string;
+  destinationPath: string;
+  moved: FileBatchResult[];
+}
+
+export interface FileCopyResponse {
+  success: boolean;
+  source: string;
+  destinationPath: string;
+  copied: FileBatchResult[];
+}
+
+export interface FileDeleteResponse {
+  success: boolean;
+  source: string;
+  deleted: FileBatchResult[];
+}
+
 export interface ContentSyncSourceStatus {
   name: string;
   type: string;
@@ -589,7 +615,12 @@ export const adminApi = {
       body: JSON.stringify(input),
     }),
   renameFile: (input: { source: string; oldPath: string; newName: string }) =>
-    adminRequest<Record<string, unknown>>("/api/admin/files/rename", {
+    adminRequest<{
+      success: boolean;
+      source: string;
+      oldPath: string;
+      newName: string;
+    }>("/api/admin/files/rename", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -601,4 +632,22 @@ export const adminApi = {
         body: JSON.stringify(input),
       }
     ),
+  moveEntries: (input: { source: string; paths: string[]; destinationPath: string }) =>
+    adminRequest<FileMoveResponse>("/api/admin/files/move", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  copyEntries: (input: { source: string; paths: string[]; destinationPath: string }) =>
+    adminRequest<FileCopyResponse>("/api/admin/files/copy", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  deleteEntries: (input: {
+    source: string;
+    entries: Array<{ path: string; type: "file" | "directory" }>;
+  }) =>
+    adminRequest<FileDeleteResponse>("/api/admin/files/delete", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };

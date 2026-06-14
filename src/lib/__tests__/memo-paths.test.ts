@@ -258,6 +258,24 @@ describe("memo-paths", () => {
     expect(result.stdout).toContain("ok");
   });
 
+  it("falls back to local content when CONTENT_SOURCES has no supported values", () => {
+    const result = spawnSync(
+      "bun",
+      [
+        "-e",
+        'process.env.CONTENT_SOURCES="webdav"; process.env.LOCAL_CONTENT_BASE_PATH="./tmp/local"; const mod = await import("./src/config/paths.ts?unsupported-source-fallback-test"); console.log(JSON.stringify({ enabled: mod.isLocalContentEnabled(), sources: mod.SYSTEM_CONFIG.supportedSources }));',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('"enabled":true');
+    expect(result.stdout).toContain('"local"');
+  });
+
   it("uses the first LOCAL_MEMOS_PATH entry for server-side helpers", () => {
     const result = spawnSync(
       "bun",

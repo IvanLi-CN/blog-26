@@ -6,19 +6,28 @@
 
 import { resolve } from "node:path";
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   getConfiguredContentRootDirs,
   isPathWithinConfiguredRoots,
   normalizeRelativeContentPath,
 } from "@/lib/content-path-mappings";
-import { hasApiFilesReference, rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
+import {
+  hasApiFilesReference,
+  rebasePersistedLocalLinks,
+  rebasePersistedLocalReferences,
+  rewriteApiFilesUrlsToRelative,
+} from "@/lib/persisted-paths";
 import {
   getActiveLocalBasePath,
   getActiveLocalPathMappings,
   isLocalContentEnabled,
 } from "../../../config/paths";
+import { clearSearchCache } from "../../../lib/ai/search-cache";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
+import { db } from "../../../lib/db";
+import { postEmbeddings, posts, vectorizedFiles } from "../../../lib/schema";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 const listDirectorySchema = z.object({
@@ -48,6 +57,28 @@ const renameFileSchema = z.object({
   newName: z.string().min(1),
 });
 
+const fileEntrySchema = z.object({
+  path: z.string().min(1),
+  type: z.enum(["file", "directory"]),
+});
+
+const moveEntriesSchema = z.object({
+  source: z.literal("local").default("local"),
+  paths: z.array(z.string().min(1)).min(1),
+  destinationPath: z.string().min(1),
+});
+
+const copyEntriesSchema = z.object({
+  source: z.literal("local").default("local"),
+  paths: z.array(z.string().min(1)).min(1),
+  destinationPath: z.string().min(1),
+});
+
+const deleteEntriesSchema = z.object({
+  source: z.literal("local").default("local"),
+  entries: z.array(fileEntrySchema).min(1),
+});
+
 export interface FileItem {
   name: string;
   path: string;
@@ -66,6 +97,30 @@ export interface DataSource {
 }
 
 type LocalPathMappingsSnapshot = ReturnType<typeof getActiveLocalPathMappings>;
+
+type BatchEntryResult = {
+  path: string;
+  nextPath?: string;
+  type: "file" | "directory";
+};
+
+type RollbackableResult<T> = T & {
+  rollback: () => Promise<void>;
+  commit?: () => Promise<void>;
+};
+
+type MarkdownWriteJournal = Map<string, string>;
+type ScopedMutationSnapshot = {
+  paths: string[];
+  posts: Array<typeof posts.$inferSelect>;
+  postEmbeddings: Array<typeof postEmbeddings.$inferSelect>;
+  vectorizedFiles: Array<typeof vectorizedFiles.$inferSelect>;
+};
+
+function isMarkdownContentFile(path: string) {
+  const lowerPath = path.toLowerCase();
+  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown") || lowerPath.endsWith(".mdx");
+}
 
 function requireLocalBasePath(): string {
   if (!isLocalContentEnabled()) {
@@ -89,7 +144,14 @@ function getLocalConfiguredRootDirs(): string[] {
 }
 
 function normalizeLocalBrowserPath(path: string): string {
-  return normalizeRelativeContentPath(path || "");
+  const normalizedPath = normalizeRelativeContentPath(path || "");
+  if (normalizedPath.split("/").some((segment) => segment === "." || segment === "..")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "本地路径不能包含 . 或 .. 路径段",
+    });
+  }
+  return normalizedPath;
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -172,6 +234,290 @@ function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } =
   }
 
   return normalizedPath;
+}
+
+function isTreePathAncestor(path: string, targetPath: string) {
+  const normalizedPath = normalizeLocalBrowserPath(path);
+  const normalizedTargetPath = normalizeLocalBrowserPath(targetPath);
+  if (!normalizedPath || !normalizedTargetPath || normalizedPath === normalizedTargetPath) {
+    return false;
+  }
+  return normalizedTargetPath.startsWith(`${normalizedPath}/`);
+}
+
+function assertNoNestedSelection(paths: string[]) {
+  const normalizedPaths = Array.from(
+    new Set(paths.map((path) => normalizeLocalBrowserPath(path)).filter(Boolean))
+  ).sort((left, right) => left.localeCompare(right));
+
+  for (let index = 0; index < normalizedPaths.length; index += 1) {
+    for (let nestedIndex = index + 1; nestedIndex < normalizedPaths.length; nestedIndex += 1) {
+      if (isTreePathAncestor(normalizedPaths[index], normalizedPaths[nestedIndex])) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不能同时操作父目录与其子项",
+        });
+      }
+    }
+  }
+
+  return normalizedPaths;
+}
+
+function assertLocalRootOperationAllowed(path: string) {
+  const normalizedPath = assertLocalPathAllowed(path);
+  const configuredRoots = new Set(getLocalConfiguredRootDirs());
+  if (configuredRoots.has(normalizedPath)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "不能直接操作已配置的本地内容根目录",
+    });
+  }
+  return normalizedPath;
+}
+
+function getConfiguredRootForPath(path: string): string | null {
+  const normalizedPath = normalizeLocalBrowserPath(path);
+  const roots = getLocalConfiguredRootDirs().sort((left, right) => right.length - left.length);
+  return (
+    roots.find((root) => normalizedPath === root || normalizedPath.startsWith(`${root}/`)) ?? null
+  );
+}
+
+function getConfiguredRootsForReferenceRebasing(): string[] {
+  return getLocalConfiguredRootDirs();
+}
+
+function assertSameConfiguredRoot(sourcePath: string, targetPath: string) {
+  const sourceRoot = getConfiguredRootForPath(sourcePath);
+  const targetRoot = getConfiguredRootForPath(targetPath);
+
+  if (!sourceRoot || !targetRoot || sourceRoot !== targetRoot) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "不能跨内容根目录操作项目",
+    });
+  }
+}
+
+async function ensureLocalDirectoryTarget(
+  destinationPath: string
+): Promise<{ relativePath: string; fullPath: string }> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedRelativePath = assertLocalPathAllowed(destinationPath);
+  const fullPath = nodePath.join(basePath, normalizedRelativePath);
+
+  const stats = await fs.stat(fullPath).catch((error: NodeJS.ErrnoException) => {
+    if (error?.code === "ENOENT") {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "目标目录不存在",
+      });
+    }
+    throw error;
+  });
+
+  if (!stats.isDirectory()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "目标路径不是目录",
+    });
+  }
+
+  return {
+    relativePath: normalizedRelativePath,
+    fullPath,
+  };
+}
+
+function buildAdminContentSyncError(message?: string) {
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: message ? `内容同步失败：${message}` : "内容同步失败。",
+  });
+}
+
+async function triggerAdminContentSync(fullSync = false): Promise<void> {
+  try {
+    const syncManager = getContentSourceManager({
+      maxConcurrentSyncs: 2,
+      syncTimeout: 30000,
+      enableTransactions: true,
+      conflictResolution: "priority",
+    });
+    await syncManager.getSource("local")?.refresh?.();
+    const result = await syncManager.syncAll(fullSync);
+    if (result.success) {
+      return;
+    }
+
+    const errorMessages = result.errors.map((entry) => entry.message).join(", ");
+    throw buildAdminContentSyncError(errorMessages);
+  } catch (syncError) {
+    if (syncError instanceof TRPCError) {
+      throw syncError;
+    }
+    throw buildAdminContentSyncError(syncError instanceof Error ? syncError.message : undefined);
+  }
+}
+
+async function deleteStaleContentRows(stalePaths: string[]) {
+  const normalizedStalePaths = Array.from(
+    new Set(stalePaths.map(normalizeLocalBrowserPath).filter(Boolean))
+  );
+  if (normalizedStalePaths.length === 0) {
+    return;
+  }
+
+  const staleIds = (await db.select({ id: posts.id }).from(posts))
+    .map((post) => post.id)
+    .filter((id) => normalizedStalePaths.some((path) => id === path || id.startsWith(`${path}/`)));
+  if (staleIds.length === 0) {
+    // Continue below so stale vector rows are removed even when the post row was already gone.
+  } else {
+    await Promise.all(staleIds.map((id) => db.delete(posts).where(eq(posts.id, id))));
+  }
+
+  const staleEmbeddingIds = (
+    await db.select({ id: postEmbeddings.id, postId: postEmbeddings.postId }).from(postEmbeddings)
+  )
+    .filter((row) => isPathInScope(row.postId, normalizedStalePaths))
+    .map((row) => row.id);
+  await Promise.all(
+    staleEmbeddingIds.map((id) => db.delete(postEmbeddings).where(eq(postEmbeddings.id, id)))
+  );
+
+  const staleVectorizedFilepaths = (
+    await db.select({ filepath: vectorizedFiles.filepath }).from(vectorizedFiles)
+  )
+    .filter((row) => isPathInScope(row.filepath, normalizedStalePaths))
+    .map((row) => row.filepath);
+  await Promise.all(
+    staleVectorizedFilepaths.map((filepath) =>
+      db.delete(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath))
+    )
+  );
+  clearSearchCache();
+}
+
+function normalizeScopedMutationPaths(paths: string[]) {
+  return Array.from(new Set(paths.map(normalizeLocalBrowserPath).filter(Boolean)));
+}
+
+function isPathInScope(path: string | null | undefined, scopedPaths: string[]) {
+  const normalizedPath = normalizeLocalBrowserPath(path ?? "");
+  if (!normalizedPath) return false;
+  return scopedPaths.some((scopedPath) => {
+    return normalizedPath === scopedPath || normalizedPath.startsWith(`${scopedPath}/`);
+  });
+}
+
+async function snapshotScopedFileMutation(paths: string[]): Promise<ScopedMutationSnapshot> {
+  const scopedPaths = normalizeScopedMutationPaths(paths);
+  if (scopedPaths.length === 0) {
+    return { paths: [], posts: [], postEmbeddings: [], vectorizedFiles: [] };
+  }
+
+  const postRows = (await db.select().from(posts)).filter(
+    (post) => isPathInScope(post.id, scopedPaths) || isPathInScope(post.filePath, scopedPaths)
+  );
+  const embeddingRows = (await db.select().from(postEmbeddings)).filter((row) =>
+    isPathInScope(row.postId, scopedPaths)
+  );
+  const vectorizedRows = (await db.select().from(vectorizedFiles)).filter((row) =>
+    isPathInScope(row.filepath, scopedPaths)
+  );
+
+  return {
+    paths: scopedPaths,
+    posts: postRows,
+    postEmbeddings: embeddingRows,
+    vectorizedFiles: vectorizedRows,
+  };
+}
+
+async function restoreScopedFileMutationSnapshot(snapshot: ScopedMutationSnapshot) {
+  if (snapshot.paths.length === 0) {
+    return;
+  }
+
+  const currentPostIds = (await db.select({ id: posts.id, filePath: posts.filePath }).from(posts))
+    .filter(
+      (post) =>
+        isPathInScope(post.id, snapshot.paths) || isPathInScope(post.filePath, snapshot.paths)
+    )
+    .map((post) => post.id);
+  const postIds = new Set([...currentPostIds, ...snapshot.posts.map((post) => post.id)]);
+  for (const id of postIds) {
+    await db.delete(posts).where(eq(posts.id, id));
+  }
+  if (snapshot.posts.length > 0) {
+    await db.insert(posts).values(snapshot.posts);
+  }
+
+  const currentEmbeddingIds = (
+    await db.select({ id: postEmbeddings.id, postId: postEmbeddings.postId }).from(postEmbeddings)
+  )
+    .filter((row) => isPathInScope(row.postId, snapshot.paths))
+    .map((row) => row.id);
+  const embeddingIds = new Set([
+    ...currentEmbeddingIds,
+    ...snapshot.postEmbeddings.map((row) => row.id),
+  ]);
+  for (const id of embeddingIds) {
+    await db.delete(postEmbeddings).where(eq(postEmbeddings.id, id));
+  }
+  if (snapshot.postEmbeddings.length > 0) {
+    await db.insert(postEmbeddings).values(snapshot.postEmbeddings);
+  }
+
+  const currentVectorizedFilepaths = (
+    await db.select({ filepath: vectorizedFiles.filepath }).from(vectorizedFiles)
+  )
+    .filter((row) => isPathInScope(row.filepath, snapshot.paths))
+    .map((row) => row.filepath);
+  const vectorizedFilepaths = new Set([
+    ...currentVectorizedFilepaths,
+    ...snapshot.vectorizedFiles.map((row) => row.filepath),
+  ]);
+  for (const filepath of vectorizedFilepaths) {
+    await db.delete(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath));
+  }
+  if (snapshot.vectorizedFiles.length > 0) {
+    await db.insert(vectorizedFiles).values(snapshot.vectorizedFiles);
+  }
+
+  clearSearchCache();
+}
+
+async function syncAndCommitFileMutation<
+  T extends { rollback: () => Promise<void>; commit?: () => Promise<void> },
+>(
+  result: T,
+  options: { fullSync?: boolean; stalePaths?: string[]; rollbackPaths?: string[] } = {}
+): Promise<Omit<T, "rollback" | "commit">> {
+  const rollbackSnapshot = await snapshotScopedFileMutation([
+    ...(options.stalePaths ?? []),
+    ...(options.rollbackPaths ?? []),
+  ]);
+  try {
+    if (!options.fullSync) {
+      await deleteStaleContentRows(options.stalePaths ?? []);
+    }
+    await triggerAdminContentSync(options.fullSync ?? false);
+  } catch (error) {
+    try {
+      await result.rollback();
+    } finally {
+      await restoreScopedFileMutationSnapshot(rollbackSnapshot);
+    }
+    throw error;
+  }
+  await result.commit?.();
+  const { rollback: _rollback, commit: _commit, ...payload } = result;
+  return payload;
 }
 
 async function listLocalDirectory(path: string): Promise<FileItem[]> {
@@ -260,7 +606,34 @@ async function readLocalFile(path: string): Promise<string> {
   return fs.readFile(fullPath, "utf-8");
 }
 
-async function renameLocalFile(oldPath: string, newName: string): Promise<void> {
+async function snapshotWritableLocalFile(path: string) {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const safePath = assertLocalPathAllowed(path);
+  const fullPath = nodePath.join(basePath, safePath);
+  const previousContent = await fs
+    .readFile(fullPath, "utf-8")
+    .catch((error: NodeJS.ErrnoException) => {
+      if (error?.code === "ENOENT") return null;
+      throw error;
+    });
+
+  return {
+    rollback: async () => {
+      if (previousContent === null) {
+        await fs.rm(fullPath, { force: true });
+        return;
+      }
+      await fs.writeFile(fullPath, previousContent, "utf-8");
+    },
+  };
+}
+
+async function renameLocalFile(
+  oldPath: string,
+  newName: string
+): Promise<RollbackableResult<{ newPath: string }>> {
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
 
@@ -278,6 +651,8 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
   const pathParts = safeOldPath.split("/");
   pathParts[pathParts.length - 1] = newName;
   const newPath = pathParts.join("/");
+  assertLocalPathAllowed(newPath);
+  assertSameConfiguredRoot(safeOldPath, newPath);
   const fullNewPath = nodePath.join(basePath, newPath);
 
   try {
@@ -292,7 +667,574 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
     }
   }
 
+  let renamed = false;
   await fs.rename(fullOldPath, fullNewPath);
+  renamed = true;
+  const journal: MarkdownWriteJournal = new Map();
+  const rollback = async () => {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      if (renamed) {
+        await fs.rename(fullNewPath, fullOldPath).catch(() => undefined);
+      }
+    }
+  };
+
+  try {
+    await rebaseMovedMarkdownLinks(fullNewPath, safeOldPath, newPath, nodePath, journal);
+    await rebaseInboundMovedReferencesForAllRoots(
+      [{ oldPath: safeOldPath, newPath }],
+      nodePath,
+      journal
+    );
+    await touchMarkdownContentTree(fullNewPath);
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+
+  return { newPath, rollback };
+}
+
+async function writeMarkdownWithJournal(
+  fullPath: string,
+  content: string,
+  journal: MarkdownWriteJournal
+) {
+  const fs = await import("node:fs/promises");
+  if (!journal.has(fullPath)) {
+    journal.set(fullPath, await fs.readFile(fullPath, "utf-8"));
+  }
+  await fs.writeFile(fullPath, content, "utf-8");
+}
+
+async function rollbackMarkdownWrites(journal: MarkdownWriteJournal) {
+  const fs = await import("node:fs/promises");
+  const entries = Array.from(journal.entries()).reverse();
+  await Promise.all(entries.map(([fullPath, content]) => fs.writeFile(fullPath, content, "utf-8")));
+}
+
+async function touchMarkdownContentTree(fullPath: string) {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return;
+
+  if (stats.isFile()) {
+    if (!isMarkdownContentFile(fullPath)) return;
+    const now = new Date();
+    await fs.utimes(fullPath, now, now);
+    return;
+  }
+
+  if (!stats.isDirectory()) return;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map((entry) => touchMarkdownContentTree(nodePath.join(fullPath, entry.name)))
+  );
+}
+
+async function containsMarkdownContentFile(
+  fullPath: string,
+  nodePath: typeof import("node:path")
+): Promise<boolean> {
+  const fs = await import("node:fs/promises");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return false;
+
+  if (stats.isFile()) {
+    return isMarkdownContentFile(fullPath);
+  }
+
+  if (!stats.isDirectory()) return false;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (await containsMarkdownContentFile(nodePath.join(fullPath, entry.name), nodePath)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function rebaseMovedMarkdownLinks(
+  fullPath: string,
+  oldRelativePath: string,
+  newRelativePath: string,
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
+) {
+  const fs = await import("node:fs/promises");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return;
+
+  if (stats.isFile()) {
+    if (!isMarkdownContentFile(fullPath)) return;
+    const currentContent = await fs.readFile(fullPath, "utf-8");
+    const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
+    if (rebased.changed) {
+      await writeMarkdownWithJournal(fullPath, rebased.content, journal);
+    }
+    return;
+  }
+
+  if (!stats.isDirectory()) return;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (entry) => {
+      const childFullPath = nodePath.join(fullPath, entry.name);
+      const oldChildPath = normalizeLocalBrowserPath(`${oldRelativePath}/${entry.name}`);
+      const newChildPath = normalizeLocalBrowserPath(`${newRelativePath}/${entry.name}`);
+      await rebaseMovedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath, journal);
+    })
+  );
+}
+
+async function rebaseCopiedMarkdownLinks(
+  fullPath: string,
+  oldRelativePath: string,
+  newRelativePath: string,
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
+) {
+  const fs = await import("node:fs/promises");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return;
+
+  if (stats.isFile()) {
+    if (!isMarkdownContentFile(fullPath)) return;
+    const currentContent = await fs.readFile(fullPath, "utf-8");
+    const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
+    if (rebased.changed) {
+      await writeMarkdownWithJournal(fullPath, rebased.content, journal);
+    }
+    return;
+  }
+
+  if (!stats.isDirectory()) return;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (entry) => {
+      const childFullPath = nodePath.join(fullPath, entry.name);
+      const oldChildPath = normalizeLocalBrowserPath(`${oldRelativePath}/${entry.name}`);
+      const newChildPath = normalizeLocalBrowserPath(`${newRelativePath}/${entry.name}`);
+      await rebaseCopiedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath, journal);
+    })
+  );
+}
+
+async function rebaseInboundMovedReferences(
+  rootPath: string,
+  movedPairs: Array<{ oldPath: string; newPath: string }>,
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
+) {
+  const fs = await import("node:fs/promises");
+  const basePath = resolve(requireLocalBasePath());
+  const fullRootPath = nodePath.join(basePath, rootPath);
+
+  async function visit(fullPath: string, relativePath: string) {
+    const stats = await fs.stat(fullPath).catch(() => null);
+    if (!stats) return;
+
+    if (stats.isDirectory()) {
+      const entries = await fs.readdir(fullPath, { withFileTypes: true });
+      await Promise.all(
+        entries.map((entry) =>
+          visit(
+            nodePath.join(fullPath, entry.name),
+            normalizeLocalBrowserPath(`${relativePath}/${entry.name}`)
+          )
+        )
+      );
+      return;
+    }
+
+    if (!stats.isFile() || !isMarkdownContentFile(fullPath)) return;
+
+    let content = await fs.readFile(fullPath, "utf-8");
+    let changed = false;
+    for (const pair of movedPairs) {
+      const rebased = rebasePersistedLocalReferences(
+        content,
+        relativePath,
+        pair.oldPath,
+        pair.newPath
+      );
+      content = rebased.content;
+      changed ||= rebased.changed;
+    }
+
+    if (changed) {
+      await writeMarkdownWithJournal(fullPath, content, journal);
+    }
+  }
+
+  await visit(fullRootPath, rootPath);
+}
+
+async function rebaseInboundMovedReferencesForAllRoots(
+  movedPairs: Array<{ oldPath: string; newPath: string }>,
+  nodePath: typeof import("node:path"),
+  journal: MarkdownWriteJournal
+) {
+  await Promise.all(
+    getConfiguredRootsForReferenceRebasing().map((rootPath) =>
+      rebaseInboundMovedReferences(rootPath, movedPairs, nodePath, journal)
+    )
+  );
+}
+
+async function moveLocalEntries(
+  paths: string[],
+  destinationPath: string
+): Promise<RollbackableResult<{ moved: BatchEntryResult[] }>> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedPaths = assertNoNestedSelection(paths).map(assertLocalRootOperationAllowed);
+  const { relativePath: normalizedDestinationPath } =
+    await ensureLocalDirectoryTarget(destinationPath);
+
+  const operations = await Promise.all(
+    normalizedPaths.map(async (currentPath) => {
+      const fullCurrentPath = nodePath.join(basePath, currentPath);
+      const stats = await fs.stat(fullCurrentPath).catch((error: NodeJS.ErrnoException) => {
+        if (error?.code === "ENOENT") {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `源路径不存在: ${currentPath}`,
+          });
+        }
+        throw error;
+      });
+      const itemName = nodePath.basename(currentPath);
+      const nextRelativePath = normalizeLocalBrowserPath(
+        normalizedDestinationPath ? `${normalizedDestinationPath}/${itemName}` : itemName
+      );
+
+      if (currentPath === nextRelativePath) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "目标目录与原目录相同",
+        });
+      }
+
+      if (stats.isDirectory() && isTreePathAncestor(currentPath, normalizedDestinationPath)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不能将目录移动到其自身或后代目录内",
+        });
+      }
+
+      assertLocalPathAllowed(nextRelativePath);
+      assertSameConfiguredRoot(currentPath, nextRelativePath);
+
+      const fullNextPath = nodePath.join(basePath, nextRelativePath);
+      await fs.access(fullNextPath).then(
+        () => {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `目标已存在: ${nextRelativePath}`,
+          });
+        },
+        (error: NodeJS.ErrnoException) => {
+          if (error?.code !== "ENOENT") {
+            throw error;
+          }
+        }
+      );
+
+      return {
+        path: currentPath,
+        nextPath: nextRelativePath,
+        type: stats.isDirectory() ? "directory" : "file",
+        fullCurrentPath,
+        fullNextPath,
+      };
+    })
+  );
+
+  const nextPaths = new Set<string>();
+  for (const operation of operations) {
+    if (nextPaths.has(operation.nextPath)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "批量移动目标存在重名冲突",
+      });
+    }
+    nextPaths.add(operation.nextPath);
+  }
+
+  const journal: MarkdownWriteJournal = new Map();
+  const committedOperations: typeof operations = [];
+  const rollback = async () => {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      for (const operation of [...committedOperations].reverse()) {
+        await fs.rename(operation.fullNextPath, operation.fullCurrentPath).catch(() => undefined);
+      }
+    }
+  };
+
+  try {
+    for (const operation of operations) {
+      await fs.rename(operation.fullCurrentPath, operation.fullNextPath);
+      committedOperations.push(operation);
+      await rebaseMovedMarkdownLinks(
+        operation.fullNextPath,
+        operation.path,
+        operation.nextPath,
+        nodePath,
+        journal
+      );
+    }
+    await rebaseInboundMovedReferencesForAllRoots(
+      operations.map(({ path, nextPath }) => ({ oldPath: path, newPath: nextPath })),
+      nodePath,
+      journal
+    );
+    await Promise.all(
+      committedOperations.map((operation) => touchMarkdownContentTree(operation.fullNextPath))
+    );
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+
+  return {
+    moved: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+    rollback,
+  };
+}
+
+async function copyLocalEntries(
+  paths: string[],
+  destinationPath: string
+): Promise<RollbackableResult<{ copied: BatchEntryResult[] }>> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedPaths = assertNoNestedSelection(paths).map(assertLocalRootOperationAllowed);
+  const { relativePath: normalizedDestinationPath } =
+    await ensureLocalDirectoryTarget(destinationPath);
+
+  const operations = await Promise.all(
+    normalizedPaths.map(async (currentPath) => {
+      const fullCurrentPath = nodePath.join(basePath, currentPath);
+      const stats = await fs.stat(fullCurrentPath).catch((error: NodeJS.ErrnoException) => {
+        if (error?.code === "ENOENT") {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `源路径不存在: ${currentPath}`,
+          });
+        }
+        throw error;
+      });
+      const itemName = nodePath.basename(currentPath);
+      const nextRelativePath = normalizeLocalBrowserPath(
+        normalizedDestinationPath ? `${normalizedDestinationPath}/${itemName}` : itemName
+      );
+      if (await containsMarkdownContentFile(fullCurrentPath, nodePath)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "复制 Markdown 内容文件可能产生重复 slug，请改用移动或新建文章。",
+        });
+      }
+      if (stats.isDirectory() && isTreePathAncestor(currentPath, normalizedDestinationPath)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "不能将目录复制到其自身或后代目录内",
+        });
+      }
+      assertLocalPathAllowed(nextRelativePath);
+      assertSameConfiguredRoot(currentPath, nextRelativePath);
+      const fullNextPath = nodePath.join(basePath, nextRelativePath);
+      await fs.access(fullNextPath).then(
+        () => {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `目标已存在: ${nextRelativePath}`,
+          });
+        },
+        (error: NodeJS.ErrnoException) => {
+          if (error?.code !== "ENOENT") {
+            throw error;
+          }
+        }
+      );
+
+      return {
+        path: currentPath,
+        nextPath: nextRelativePath,
+        type: stats.isDirectory() ? "directory" : "file",
+        fullCurrentPath,
+        fullNextPath,
+      };
+    })
+  );
+
+  const nextPaths = new Set<string>();
+  for (const operation of operations) {
+    if (nextPaths.has(operation.nextPath)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "批量复制目标存在重名冲突",
+      });
+    }
+    nextPaths.add(operation.nextPath);
+  }
+
+  const journal: MarkdownWriteJournal = new Map();
+  const committedOperations: typeof operations = [];
+  const rollback = async () => {
+    try {
+      await rollbackMarkdownWrites(journal);
+    } finally {
+      await Promise.all(
+        committedOperations.map((operation) =>
+          fs.rm(operation.fullNextPath, { recursive: true, force: true })
+        )
+      );
+    }
+  };
+
+  try {
+    for (const operation of operations) {
+      await fs.cp(operation.fullCurrentPath, operation.fullNextPath, {
+        recursive: operation.type === "directory",
+        errorOnExist: true,
+        force: false,
+      });
+      committedOperations.push(operation);
+    }
+
+    for (const operation of operations) {
+      await rebaseCopiedMarkdownLinks(
+        operation.fullNextPath,
+        operation.path,
+        operation.nextPath,
+        nodePath,
+        journal
+      );
+    }
+
+    const copiedPairs = operations.map(({ path, nextPath }) => ({
+      oldPath: path,
+      newPath: nextPath,
+    }));
+    await Promise.all(
+      operations.map((operation) =>
+        rebaseInboundMovedReferences(operation.nextPath, copiedPairs, nodePath, journal)
+      )
+    );
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+
+  return {
+    copied: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+    rollback,
+  };
+}
+
+async function deleteLocalEntries(
+  entries: Array<{ path: string; type: "file" | "directory" }>
+): Promise<RollbackableResult<{ deleted: BatchEntryResult[] }>> {
+  const fs = await import("node:fs/promises");
+  const nodePath = await import("node:path");
+  const basePath = resolve(requireLocalBasePath());
+  const normalizedPaths = assertNoNestedSelection(entries.map((entry) => entry.path));
+  const entryMap = new Map(
+    entries.map((entry) => [normalizeLocalBrowserPath(entry.path), entry.type])
+  );
+
+  const operations = await Promise.all(
+    normalizedPaths.map(async (currentPath) => {
+      const normalizedCurrentPath = assertLocalRootOperationAllowed(currentPath);
+      const fullCurrentPath = nodePath.join(basePath, normalizedCurrentPath);
+      const stats = await fs.stat(fullCurrentPath).catch((error: NodeJS.ErrnoException) => {
+        if (error?.code === "ENOENT") {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `源路径不存在: ${normalizedCurrentPath}`,
+          });
+        }
+        throw error;
+      });
+      const declaredType = entryMap.get(currentPath);
+      const actualType = stats.isDirectory() ? "directory" : "file";
+      if (declaredType && declaredType !== actualType) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "删除目标类型与实际文件系统类型不一致",
+        });
+      }
+
+      if (actualType === "directory") {
+        const childEntries = await fs.readdir(fullCurrentPath);
+        if (childEntries.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `目录不为空，无法删除: ${normalizedCurrentPath}`,
+          });
+        }
+      }
+
+      const backupRoot = nodePath.join(
+        basePath,
+        `.admin-delete-rollback-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
+      return {
+        path: normalizedCurrentPath,
+        type: actualType,
+        fullCurrentPath,
+        backupRoot,
+        backupFullPath: nodePath.join(backupRoot, normalizedCurrentPath),
+      };
+    })
+  );
+
+  const committedOperations: typeof operations = [];
+  const rollback = async () => {
+    for (const operation of [...committedOperations].reverse()) {
+      await fs.mkdir(nodePath.dirname(operation.fullCurrentPath), { recursive: true });
+      await fs.rename(operation.backupFullPath, operation.fullCurrentPath).catch(() => undefined);
+    }
+    await Promise.all(
+      operations.map((operation) => fs.rm(operation.backupRoot, { recursive: true, force: true }))
+    );
+  };
+  const commit = async () => {
+    await Promise.all(
+      committedOperations.map((operation) =>
+        fs.rm(operation.backupRoot, { recursive: true, force: true })
+      )
+    );
+  };
+
+  try {
+    for (const operation of operations) {
+      await fs.mkdir(nodePath.dirname(operation.backupFullPath), { recursive: true });
+      await fs.rename(operation.fullCurrentPath, operation.backupFullPath);
+      committedOperations.push(operation);
+    }
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+
+  return {
+    deleted: operations.map(({ path, type }) => ({ path, type })),
+    rollback,
+    commit,
+  };
 }
 
 async function ensureContentSourcesRegistered(manager: ReturnType<typeof getContentSourceManager>) {
@@ -347,6 +1289,17 @@ async function ensureSourceReady(manager: ReturnType<typeof getContentSourceMana
 
 export const filesRouter = createTRPCRouter({
   getSources: adminProcedure.query(async () => {
+    if (!isLocalContentEnabled()) {
+      return [
+        {
+          name: "local",
+          type: "local",
+          enabled: false,
+          description: "本地文件系统未启用",
+        } satisfies DataSource,
+      ];
+    }
+
     const manager = getContentSourceManager();
     await ensureContentSourcesRegistered(manager);
 
@@ -395,8 +1348,7 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    const isMarkdown =
-      input.path.toLowerCase().endsWith(".md") || input.path.toLowerCase().endsWith(".markdown");
+    const isMarkdown = isMarkdownContentFile(input.path);
     let contentToWrite = input.content;
 
     if (isMarkdown && hasApiFilesReference(contentToWrite)) {
@@ -411,17 +1363,13 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
+    const writeSnapshot = await snapshotWritableLocalFile(input.path);
     await (
       source as LocalContentSource & { writeFile: (path: string, content: string) => Promise<void> }
     ).writeFile(input.path, contentToWrite);
-
-    const syncManager = getContentSourceManager({
-      maxConcurrentSyncs: 2,
-      syncTimeout: 30000,
-      enableTransactions: true,
-      conflictResolution: "priority",
+    await syncAndCommitFileMutation(writeSnapshot, {
+      rollbackPaths: [input.path],
     });
-    await syncManager.syncAll();
 
     return {
       success: true,
@@ -452,6 +1400,15 @@ export const filesRouter = createTRPCRouter({
       throw error;
     }
 
+    await syncAndCommitFileMutation(
+      {
+        rollback: async () => {
+          await fs.rm(fullPath, { recursive: true, force: true });
+        },
+      },
+      { rollbackPaths: [safePath] }
+    );
+
     return {
       success: true,
       source: input.source,
@@ -460,6 +1417,9 @@ export const filesRouter = createTRPCRouter({
   }),
 
   renameFile: adminProcedure.input(renameFileSchema).mutation(async ({ input }) => {
+    const manager = getContentSourceManager();
+    await ensureSourceReady(manager);
+
     if (!input.newName.trim()) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -475,13 +1435,73 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    await renameLocalFile(input.oldPath, input.newName);
+    const result = await renameLocalFile(input.oldPath, input.newName);
+    await syncAndCommitFileMutation(result, {
+      stalePaths: [input.oldPath],
+      rollbackPaths: [input.oldPath, result.newPath],
+    });
 
     return {
       success: true,
       source: input.source,
       oldPath: input.oldPath,
       newName: input.newName,
+    };
+  }),
+
+  moveEntries: adminProcedure.input(moveEntriesSchema).mutation(async ({ input }) => {
+    const manager = getContentSourceManager();
+    await ensureSourceReady(manager);
+
+    const mutation = await moveLocalEntries(input.paths, input.destinationPath);
+    const result = await syncAndCommitFileMutation(mutation, {
+      stalePaths: input.paths,
+      rollbackPaths: [
+        ...input.paths,
+        ...mutation.moved.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
+      ],
+    });
+
+    return {
+      success: true,
+      source: input.source,
+      destinationPath: normalizeLocalBrowserPath(input.destinationPath),
+      ...result,
+    };
+  }),
+
+  copyEntries: adminProcedure.input(copyEntriesSchema).mutation(async ({ input }) => {
+    const manager = getContentSourceManager();
+    await ensureSourceReady(manager);
+
+    const mutation = await copyLocalEntries(input.paths, input.destinationPath);
+    const result = await syncAndCommitFileMutation(mutation, {
+      rollbackPaths: [
+        ...input.paths,
+        ...mutation.copied.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
+      ],
+    });
+
+    return {
+      success: true,
+      source: input.source,
+      destinationPath: normalizeLocalBrowserPath(input.destinationPath),
+      ...result,
+    };
+  }),
+
+  deleteEntries: adminProcedure.input(deleteEntriesSchema).mutation(async ({ input }) => {
+    const manager = getContentSourceManager();
+    await ensureSourceReady(manager);
+
+    const result = await syncAndCommitFileMutation(await deleteLocalEntries(input.entries), {
+      stalePaths: input.entries.map((entry) => entry.path),
+    });
+
+    return {
+      success: true,
+      source: input.source,
+      ...result,
     };
   }),
 });

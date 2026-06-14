@@ -12,6 +12,7 @@ import type {
   SyncProgress,
 } from "@/lib/admin-api-client";
 import type { AdminLlmSettingsPayload } from "@/lib/llm-settings";
+import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 
@@ -71,6 +72,9 @@ function Counter() {
 ## 失效策略
 
 短 TTL 适合热读数据，主动失效适合编辑后台。`,
+  typescript: `# TypeScript 高级类型实战
+
+通过条件类型、映射类型和模板字面量类型，把业务约束压进静态类型系统。`,
   graphql: `# GraphQL API Best Practices
 
 GraphQL schema should describe product concepts, not database tables.
@@ -85,6 +89,76 @@ Keep resolver cost visible and avoid hidden fan-out in list fields.`,
 ## 操作边界
 
 所有高风险操作先确认影响面，再执行。`,
+  coverFallback: `# Posts Cover Fallback
+
+记录文章封面缺失时的回退链路、裁剪约束与验收清单。`,
+  edgeCaching: `# Edge Runtime Caching Notes
+
+总结边缘缓存命中策略、回源抖动和预热窗口。`,
+  playwrightGuide: `# Playwright Admin Regression Guide
+
+梳理后台编辑器、文件树和批量交互的回归测试路径。`,
+  milkdownPerf: `# Milkdown Editor Performance Notes
+
+记录长文档输入、切换模式和代码块渲染时的性能观察。`,
+  webdavSync: `# WebDAV Sync Observability
+
+对比本地内容源与 WebDAV 同步链路的延迟、冲突和提示文案。`,
+  sidebarAudit: `# Sidebar Layout Audit
+
+检查左侧文件树、浮动工具条和弹窗在窄宽度下的适配行为。`,
+  taxonomyMigration: `# Content Taxonomy Migration Plan
+
+整理 blog、memos、projects 三类内容的目录规范与迁移步骤。`,
+  archive2024: `# 2024 内容复盘
+
+整理归档文章、调整目录结构，并补齐历史元数据。`,
+  archive2025: `# 2025 路线草案
+
+记录下半年内容排期、专题拆分和复用素材。`,
+  week01: `# Week 01 Notes
+
+第一周记录状态建模、组件拆分和命名约束。`,
+  week02: `# Week 02 Notes
+
+第二周继续压实交互闭环和编辑器体验。`,
+  effectBoundaries: `# Effect Boundaries
+
+总结副作用边界、依赖约束与回归策略。`,
+  memoLocalDev: `# Local Development Environment Setup
+
+记录本地启动、端口约束和内容源初始化步骤。`,
+  memoRefactor: `# Code Refactoring Thoughts
+
+梳理状态机收束、组件边界和测试夹具维护策略。`,
+  memoLearning: `# New Technology Learning Notes
+
+收集近期值得继续深挖的库、协议和工程实践。`,
+  memoManagement: `# Project Management Experience
+
+记录排期、风控与跨角色协作中的常见模式。`,
+  memoEfficiency: `# Programming Efficiency Tips
+
+整理高频命令、调试技巧和重复劳动消减方式。`,
+  memoE2e: `# E2E Local
+
+收集本地 E2E 服务启动、账号注入和截图验收流程。`,
+  projectComponents: `# Open Source Component Library
+
+总结组件库主题、tokens 和文档编排方式。`,
+  projectEcommerce: `# Fullstack Ecommerce Platform
+
+记录商品、订单和运营后台之间的核心模型拆分。`,
+  projectDevops: `# DevOps Automation Toolchain
+
+梳理 CI/CD、部署编排和告警回路。`,
+  projectRecommendation: `# ML Recommendation System
+
+概览召回、排序和特征存储的协作边界。`,
+  projectVoting: `# Blockchain Voting System
+
+记录身份验证、投票审计与链上写入约束。`,
+  assetPlaceholder: `demo-binary-placeholder`,
   hardware: `---
 title: 电子负载开发笔记
 slug: electronic-load-notes
@@ -112,18 +186,24 @@ tags:
 let posts: AdminPost[] = [
   createPost("post-1", "react-hooks-deep-dive", "React Hooks 深度解析", postBodies.hooks, {
     source: "local",
-    filePath: "content/posts/react-hooks-deep-dive.md",
+    filePath: "blog/01-react-hooks-deep-dive.md",
     tags: "React,Hooks,Frontend",
     category: "frontend",
     vectorizationStatus: "indexed",
   }),
-  createPost("post-2", "redis-caching-strategies", "Redis 缓存策略与坑位", postBodies.redis, {
-    source: "local",
-    filePath: "content/posts/redis-caching-strategies.md",
-    tags: "Redis,Backend",
-    category: "backend",
-    vectorizationStatus: "outdated",
-  }),
+  createPost(
+    "post-2",
+    "typescript-advanced-types",
+    "TypeScript 高级类型实战",
+    postBodies.typescript,
+    {
+      source: "local",
+      filePath: "blog/02-typescript-advanced-types.md",
+      tags: "TypeScript,Frontend",
+      category: "frontend",
+      vectorizationStatus: "indexed",
+    }
+  ),
   createPost(
     "post-3",
     "graphql-api-best-practices",
@@ -131,7 +211,7 @@ let posts: AdminPost[] = [
     postBodies.graphql,
     {
       source: "local",
-      filePath: "content/posts/graphql-api-best-practices.md",
+      filePath: "blog/03-graphql-api-best-practices.md",
       tags: "GraphQL,API",
       category: "backend",
       vectorizationStatus: "unindexed",
@@ -146,34 +226,86 @@ let posts: AdminPost[] = [
       draft: true,
       public: false,
       source: "local",
-      filePath: "content/drafts/kubernetes-cluster-management.md",
+      filePath: "blog/04-kubernetes-cluster-management.md",
       tags: "Kubernetes,Ops",
       category: "ops",
       vectorizationStatus: "unindexed",
     }
   ),
+  createPost("post-5", "redis-caching-strategies", "Redis 缓存策略与坑位", postBodies.redis, {
+    source: "local",
+    filePath: "blog/05-redis-caching-strategies.md",
+    tags: "Redis,Backend",
+    category: "backend",
+    vectorizationStatus: "outdated",
+  }),
+  createPost("post-6", "posts-cover-fallback", "文章封面回退策略", postBodies.coverFallback, {
+    source: "local",
+    filePath: "blog/06-posts-cover-fallback.md",
+    tags: "Design,System",
+    category: "frontend",
+    vectorizationStatus: "indexed",
+  }),
+];
+
+const extraDemoFiles: Array<[string, string]> = [
+  ["local:blog/07-edge-runtime-caching-notes.md", postBodies.edgeCaching],
+  ["local:blog/08-playwright-admin-regression-guide.md", postBodies.playwrightGuide],
+  ["local:blog/09-milkdown-editor-performance-notes.md", postBodies.milkdownPerf],
+  ["local:blog/10-webdav-sync-observability.md", postBodies.webdavSync],
+  ["local:blog/11-shadcn-sidebar-layout-audit.md", postBodies.sidebarAudit],
+  ["local:blog/12-content-taxonomy-migration-plan.md", postBodies.taxonomyMigration],
+  ["local:blog/archive/2024-retrospective.md", postBodies.archive2024],
+  ["local:blog/archive/2025-roadmap.md", postBodies.archive2025],
+  ["local:blog/series/week-01.md", postBodies.week01],
+  ["local:blog/series/week-02.md", postBodies.week02],
+  ["local:blog/series/react/effect-boundaries.md", postBodies.effectBoundaries],
+  ["local:blog/assets/graphql-api.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/hello-world.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/kubernetes-cluster.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/react-hooks.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/redis-caching.jpg", postBodies.assetPlaceholder],
+  ["local:blog/assets/typescript-advanced.jpg", postBodies.assetPlaceholder],
+  ["local:Memos/01-local-development-environment-setup.md", postBodies.memoLocalDev],
+  ["local:Memos/02-code-refactoring-thoughts.md", postBodies.memoRefactor],
+  ["local:Memos/03-new-technology-learning-notes.md", postBodies.memoLearning],
+  ["local:Memos/04-project-management-experience.md", postBodies.memoManagement],
+  ["local:Memos/05-programming-efficiency-tips.md", postBodies.memoEfficiency],
+  ["local:Memos/06-e2e-local.md", postBodies.memoE2e],
+  ["local:projects/01-open-source-component-library.md", postBodies.projectComponents],
+  ["local:projects/02-fullstack-ecommerce-platform.md", postBodies.projectEcommerce],
+  ["local:projects/03-devops-automation-toolchain.md", postBodies.projectDevops],
+  ["local:projects/04-ml-recommendation-system.md", postBodies.projectRecommendation],
+  ["local:projects/05-blockchain-voting-system.md", postBodies.projectVoting],
+  ["local:projects/assets/chatbot-platform.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/component-library.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/devops-toolchain.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/ecommerce-platform.jpg", postBodies.assetPlaceholder],
+  ["local:projects/assets/ml-recommendation.jpg", postBodies.assetPlaceholder],
 ];
 
 const fileContents = new Map<string, string>(
-  posts.map((post) => [`${post.source}:${post.filePath}`, post.body])
+  posts
+    .map((post) => [`${post.source}:${post.filePath}`, post.body] as [string, string])
+    .concat(extraDemoFiles)
 );
-fileContents.set("local:content/posts/电子负载开发笔记.md", postBodies.hardware);
+fileContents.set("local:blog/电子负载开发笔记.md", postBodies.hardware);
 fileContents.set(
-  "local:content/posts/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
+  "local:blog/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
   postBodies.hardware.replaceAll(
     "电子负载开发笔记",
     "使用 CH335F 构建一个支持独立供电的 2A2C USB HUB"
   )
 );
 fileContents.set(
-  "local:content/posts/通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新.md",
+  "local:blog/通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新.md",
   postBodies.hardware.replaceAll(
     "电子负载开发笔记",
     "通过 WebUSB 和 STM32 MCU 实现 SPI Flash 资源更新"
   )
 );
 fileContents.set(
-  "local:content/posts/学习笔记：电子负载实现原理.md",
+  "local:blog/学习笔记：电子负载实现原理.md",
   postBodies.hardware.replaceAll("电子负载开发笔记", "学习笔记：电子负载实现原理")
 );
 const directoryPaths = new Set<string>();
@@ -242,6 +374,16 @@ let llmSettings: AdminLlmSettingsPayload = {
     apiKey: { source: "db", masked: "sk-live-••••••••••••" },
   },
 };
+
+class DemoApiError extends Error {
+  status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "DemoApiError";
+    this.status = status;
+  }
+}
 
 export function setupAdminDemoApiMocks() {
   if (window.__adminDemoApiMockInstalled) return;
@@ -390,6 +532,9 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
   if (path === "/api/admin/files/write") return json(writeFile(body));
   if (path === "/api/admin/files/create-directory") return json(createDirectory(body));
   if (path === "/api/admin/files/rename") return json(renameFile(body));
+  if (path === "/api/admin/files/move") return handleFileMutation(() => moveEntries(body));
+  if (path === "/api/admin/files/copy") return handleFileMutation(() => copyEntries(body));
+  if (path === "/api/admin/files/delete") return handleFileMutation(() => deleteEntries(body));
 
   return json({ error: { message: `未实现的 demo API: ${path}` } }, 404);
 }
@@ -403,6 +548,25 @@ function json(data: unknown, status = 200) {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function handleFileMutation(handler: () => unknown) {
+  try {
+    return json(handler());
+  } catch (error) {
+    if (error instanceof DemoApiError) {
+      return json({ error: { message: error.message } }, error.status);
+    }
+
+    return json(
+      {
+        error: {
+          message: error instanceof Error ? error.message : "文件操作失败",
+        },
+      },
+      500
+    );
+  }
 }
 
 async function readJsonBody(init?: RequestInit) {
@@ -442,7 +606,7 @@ function createPost(
     contentHash: `${id}-hash`,
     lastModified: now - 900_000,
     source: "local",
-    filePath: `content/posts/${slug}.md`,
+    filePath: `blog/${slug}.md`,
     ...overrides,
   };
 }
@@ -622,6 +786,72 @@ function addParentDirectoriesFromKey(key: string) {
   }
 }
 
+function isDemoMarkdownPath(path: string) {
+  const lowerPath = path.toLowerCase();
+  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown") || lowerPath.endsWith(".mdx");
+}
+
+function isDemoPathInside(path: string, rootPath: string) {
+  const normalizedPath = normalizeDemoPath(path);
+  const normalizedRoot = normalizeDemoPath(rootPath);
+  return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}/`);
+}
+
+function rebaseDemoRelocatedMarkdownLinks(source: string, oldPath: string, newPath: string) {
+  const normalizedNewPath = normalizeDemoPath(newPath);
+  const prefix = `${source}:${normalizedNewPath}`;
+
+  for (const [key, content] of Array.from(fileContents.entries())) {
+    if (key !== prefix && !key.startsWith(`${prefix}/`)) continue;
+
+    const markdownPath = key.slice(`${source}:`.length);
+    if (!isDemoMarkdownPath(markdownPath)) continue;
+
+    const oldMarkdownPath =
+      markdownPath === normalizedNewPath
+        ? normalizeDemoPath(oldPath)
+        : normalizeDemoPath(`${oldPath}${markdownPath.slice(normalizedNewPath.length)}`);
+    const rebased = rebasePersistedLocalLinks(content, oldMarkdownPath, markdownPath);
+    if (rebased.changed) {
+      fileContents.set(key, rebased.content);
+    }
+  }
+}
+
+function rebaseDemoInboundReferences(
+  source: string,
+  movedPairs: Array<{ oldPath: string; newPath: string }>,
+  rootPaths?: string[]
+) {
+  for (const [key, originalContent] of Array.from(fileContents.entries())) {
+    const markdownPath = key.slice(`${source}:`.length);
+    if (!isDemoMarkdownPath(markdownPath)) continue;
+    if (
+      rootPaths?.length &&
+      !rootPaths.some((rootPath) => isDemoPathInside(markdownPath, rootPath))
+    ) {
+      continue;
+    }
+
+    let content = originalContent;
+    let changed = false;
+    for (const pair of movedPairs) {
+      const rebased = rebasePersistedLocalReferences(
+        content,
+        markdownPath,
+        pair.oldPath,
+        pair.newPath
+      );
+      content = rebased.content;
+      changed ||= rebased.changed;
+    }
+
+    if (changed) {
+      fileContents.set(key, content);
+    }
+  }
+}
+
 function readFile(source: string, path: string) {
   const content = fileContents.get(`${source}:${path}`);
   if (content === undefined) return { error: { message: "文件不存在" } };
@@ -630,7 +860,7 @@ function readFile(source: string, path: string) {
 
 function writeFile(body: Record<string, unknown>) {
   const source = String(body.source ?? "local");
-  const path = String(body.path ?? "content/posts/untitled.md");
+  const path = String(body.path ?? "blog/untitled.md");
   const content = String(body.content ?? "");
   fileContents.set(`${source}:${path}`, content);
   addParentDirectoriesFromKey(`${source}:${path}`);
@@ -639,7 +869,7 @@ function writeFile(body: Record<string, unknown>) {
 
 function createDirectory(body: Record<string, unknown>) {
   const source = String(body.source ?? "local");
-  const path = String(body.path ?? "content/posts/new-folder").replace(/^\/+|\/+$/g, "");
+  const path = normalizeDemoPath(String(body.path ?? "blog/new-folder"));
   directoryPaths.add(`${source}:${path}`);
   addParentDirectoriesFromKey(`${source}:${path}/.keep`);
   return { success: true, source, path };
@@ -647,7 +877,7 @@ function createDirectory(body: Record<string, unknown>) {
 
 function renameFile(body: Record<string, unknown>) {
   const source = String(body.source ?? "local");
-  const oldPath = String(body.oldPath ?? "").replace(/^\/+|\/+$/g, "");
+  const oldPath = normalizeDemoPath(String(body.oldPath ?? ""));
   const newName = String(body.newName ?? "").trim();
   const parent = oldPath.includes("/") ? oldPath.slice(0, oldPath.lastIndexOf("/")) : "";
   const newPath = parent ? `${parent}/${newName}` : newName;
@@ -659,6 +889,8 @@ function renameFile(body: Record<string, unknown>) {
     fileContents.delete(oldKey);
     fileContents.set(newKey, content);
     addParentDirectoriesFromKey(newKey);
+    rebaseDemoRelocatedMarkdownLinks(source, oldPath, newPath);
+    rebaseDemoInboundReferences(source, [{ oldPath, newPath }]);
     return { success: true, source, oldPath, newName };
   }
 
@@ -684,10 +916,341 @@ function renameFile(body: Record<string, unknown>) {
       fileContents.set(to, content);
     }
     addParentDirectoriesFromKey(`${newKey}/.keep`);
+    rebaseDemoRelocatedMarkdownLinks(source, oldPath, newPath);
+    rebaseDemoInboundReferences(source, [{ oldPath, newPath }]);
     return { success: true, source, oldPath, newName };
   }
 
   return { success: false, source, oldPath, newName };
+}
+
+function moveEntries(body: Record<string, unknown>) {
+  const source = String(body.source ?? "local");
+  const destinationPath = normalizeDemoPath(String(body.destinationPath ?? ""));
+  const paths = parseDemoPathList(body.paths);
+  const normalizedPaths = assertNoNestedDemoSelection(paths);
+  const operations = normalizedPaths.map((currentPath) =>
+    planDemoRelocation(source, currentPath, destinationPath, "move")
+  );
+  assertUniqueTargets(
+    operations.map((operation) => operation.nextPath),
+    "批量移动目标存在重名冲突"
+  );
+
+  for (const operation of operations) {
+    applyRelocation(source, operation.path, operation.nextPath, "move");
+    rebaseDemoRelocatedMarkdownLinks(source, operation.path, operation.nextPath);
+  }
+  rebaseDemoInboundReferences(
+    source,
+    operations.map(({ path, nextPath }) => ({ oldPath: path, newPath: nextPath }))
+  );
+
+  return {
+    success: true,
+    source,
+    destinationPath,
+    moved: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+  };
+}
+
+function copyEntries(body: Record<string, unknown>) {
+  const source = String(body.source ?? "local");
+  const destinationPath = normalizeDemoPath(String(body.destinationPath ?? ""));
+  const paths = parseDemoPathList(body.paths);
+  const normalizedPaths = assertNoNestedDemoSelection(paths);
+  const operations = normalizedPaths.map((currentPath) =>
+    planDemoRelocation(source, currentPath, destinationPath, "copy")
+  );
+  assertUniqueTargets(
+    operations.map((operation) => operation.nextPath),
+    "批量复制目标存在重名冲突"
+  );
+
+  for (const operation of operations) {
+    applyRelocation(source, operation.path, operation.nextPath, "copy");
+    rebaseDemoRelocatedMarkdownLinks(source, operation.path, operation.nextPath);
+  }
+  const copiedPairs = operations.map(({ path, nextPath }) => ({
+    oldPath: path,
+    newPath: nextPath,
+  }));
+  rebaseDemoInboundReferences(
+    source,
+    copiedPairs,
+    operations.map((operation) => operation.nextPath)
+  );
+
+  return {
+    success: true,
+    source,
+    destinationPath,
+    copied: operations.map(({ path, nextPath, type }) => ({ path, nextPath, type })),
+  };
+}
+
+function deleteEntries(body: Record<string, unknown>) {
+  const source = String(body.source ?? "local");
+  const entries = Array.isArray(body.entries)
+    ? body.entries.map((entry) => ({
+        path: normalizeDemoPath(String((entry as Record<string, unknown>).path ?? "")),
+        type:
+          (entry as Record<string, unknown>).type === "directory" ? "directory" : ("file" as const),
+      }))
+    : [];
+
+  if (entries.length === 0) {
+    throw new DemoApiError("至少选择一个删除目标");
+  }
+
+  const normalizedPaths = assertNoNestedDemoSelection(entries.map((entry) => entry.path));
+  const deleted = normalizedPaths.map((currentPath) => {
+    const declaredType =
+      entries.find((entry) => normalizeDemoPath(entry.path) === currentPath)?.type ?? "file";
+    const actualType = getDemoEntryType(source, currentPath);
+    if (!actualType) {
+      throw new DemoApiError(`源路径不存在: ${currentPath}`, 404);
+    }
+    if (declaredType !== actualType) {
+      throw new DemoApiError("删除目标类型与实际文件系统类型不一致");
+    }
+    if (actualType === "directory" && hasDemoDescendants(source, currentPath)) {
+      throw new DemoApiError(`目录不为空，无法删除: ${currentPath}`);
+    }
+
+    removeDemoEntry(source, currentPath, actualType);
+    return { path: currentPath, type: actualType };
+  });
+
+  return {
+    success: true,
+    source,
+    deleted,
+  };
+}
+
+function parseDemoPathList(value: unknown) {
+  const paths = Array.isArray(value)
+    ? value.map((item) => normalizeDemoPath(String(item ?? ""))).filter(Boolean)
+    : [];
+  if (paths.length === 0) {
+    throw new DemoApiError("至少选择一个目标");
+  }
+  return paths;
+}
+
+function normalizeDemoPath(path: string) {
+  return path.replace(/^\/+|\/+$/g, "");
+}
+
+function assertNoNestedDemoSelection(paths: string[]) {
+  const normalizedPaths = Array.from(new Set(paths.filter(Boolean))).sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+  for (let index = 0; index < normalizedPaths.length; index += 1) {
+    for (let nestedIndex = index + 1; nestedIndex < normalizedPaths.length; nestedIndex += 1) {
+      if (isDemoPathAncestor(normalizedPaths[index], normalizedPaths[nestedIndex])) {
+        throw new DemoApiError("不能同时操作父目录与其子项");
+      }
+    }
+  }
+
+  return normalizedPaths;
+}
+
+function isDemoPathAncestor(path: string, targetPath: string) {
+  return Boolean(path && targetPath && path !== targetPath && targetPath.startsWith(`${path}/`));
+}
+
+function getDemoEntryType(source: string, path: string): "file" | "directory" | null {
+  const normalizedPath = normalizeDemoPath(path);
+  if (!normalizedPath) return null;
+
+  if (fileContents.has(`${source}:${normalizedPath}`)) {
+    return "file";
+  }
+
+  if (directoryPaths.has(`${source}:${normalizedPath}`)) {
+    return "directory";
+  }
+
+  const prefix = `${source}:${normalizedPath}/`;
+  for (const key of directoryPaths) {
+    if (key.startsWith(prefix)) return "directory";
+  }
+  for (const key of fileContents.keys()) {
+    if (key.startsWith(prefix)) return "directory";
+  }
+
+  return null;
+}
+
+function hasDemoDescendants(source: string, path: string) {
+  const normalizedPath = normalizeDemoPath(path);
+  const prefix = `${source}:${normalizedPath}/`;
+  for (const key of directoryPaths) {
+    if (key.startsWith(prefix)) return true;
+  }
+  for (const key of fileContents.keys()) {
+    if (key.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
+function demoEntryExists(source: string, path: string) {
+  return getDemoEntryType(source, path) !== null;
+}
+
+function assertDemoDirectoryTargetExists(source: string, path: string) {
+  const normalizedPath = normalizeDemoPath(path);
+  if (!normalizedPath) return;
+
+  const targetType = getDemoEntryType(source, normalizedPath);
+  if (targetType === null) {
+    throw new DemoApiError("目标目录不存在", 404);
+  }
+  if (targetType !== "directory") {
+    throw new DemoApiError("目标路径不是目录");
+  }
+}
+
+function planDemoRelocation(
+  source: string,
+  currentPath: string,
+  destinationPath: string,
+  mode: "move" | "copy"
+) {
+  const normalizedPath = normalizeDemoPath(currentPath);
+  const normalizedDestinationPath = normalizeDemoPath(destinationPath);
+  const type = getDemoEntryType(source, normalizedPath);
+  if (!type) {
+    throw new DemoApiError(`源路径不存在: ${normalizedPath}`, 404);
+  }
+
+  assertDemoDirectoryTargetExists(source, normalizedDestinationPath);
+
+  if (type === "directory" && isDemoPathAncestor(normalizedPath, normalizedDestinationPath)) {
+    throw new DemoApiError(
+      mode === "move" ? "不能将目录移动到其自身或后代目录内" : "不能将目录复制到其自身或后代目录内"
+    );
+  }
+
+  const itemName = normalizedPath.split("/").pop() ?? normalizedPath;
+  const nextPath = normalizeDemoPath(
+    normalizedDestinationPath ? `${normalizedDestinationPath}/${itemName}` : itemName
+  );
+
+  if (mode === "move" && nextPath === normalizedPath) {
+    throw new DemoApiError("目标目录与原目录相同");
+  }
+
+  if (demoEntryExists(source, nextPath)) {
+    throw new DemoApiError(`目标已存在: ${nextPath}`, 409);
+  }
+
+  return {
+    path: normalizedPath,
+    nextPath,
+    type,
+  };
+}
+
+function assertUniqueTargets(paths: string[], message: string) {
+  const seen = new Set<string>();
+  for (const path of paths) {
+    if (seen.has(path)) {
+      throw new DemoApiError(message, 409);
+    }
+    seen.add(path);
+  }
+}
+
+function applyRelocation(source: string, fromPath: string, toPath: string, mode: "move" | "copy") {
+  const normalizedFromPath = normalizeDemoPath(fromPath);
+  const normalizedToPath = normalizeDemoPath(toPath);
+  const type = getDemoEntryType(source, normalizedFromPath);
+  if (!type) {
+    throw new DemoApiError(`源路径不存在: ${normalizedFromPath}`, 404);
+  }
+
+  if (type === "file") {
+    const fromKey = `${source}:${normalizedFromPath}`;
+    const toKey = `${source}:${normalizedToPath}`;
+    const content = fileContents.get(fromKey);
+    if (content === undefined) {
+      throw new DemoApiError(`源路径不存在: ${normalizedFromPath}`, 404);
+    }
+
+    fileContents.set(toKey, content);
+    addParentDirectoriesFromKey(toKey);
+    if (mode === "move") {
+      fileContents.delete(fromKey);
+    }
+    return;
+  }
+
+  const directoryMappings = collectDirectoryMappings(source, normalizedFromPath, normalizedToPath);
+  const fileMappings = collectFileMappings(source, normalizedFromPath, normalizedToPath);
+
+  for (const { toKey } of directoryMappings) {
+    directoryPaths.add(toKey);
+  }
+  for (const { fromKey, toKey } of fileMappings) {
+    const content = fileContents.get(fromKey);
+    if (content !== undefined) {
+      fileContents.set(toKey, content);
+      addParentDirectoriesFromKey(toKey);
+    }
+  }
+
+  if (mode === "move") {
+    for (const { fromKey } of directoryMappings) {
+      directoryPaths.delete(fromKey);
+    }
+    for (const { fromKey } of fileMappings) {
+      fileContents.delete(fromKey);
+    }
+  }
+}
+
+function collectDirectoryMappings(source: string, fromPath: string, toPath: string) {
+  const fromKey = `${source}:${fromPath}`;
+  const prefix = `${fromKey}/`;
+  const candidates = Array.from(directoryPaths)
+    .filter((key) => key === fromKey || key.startsWith(prefix))
+    .sort((left, right) => left.localeCompare(right));
+
+  if (candidates.length === 0) {
+    candidates.push(fromKey);
+  }
+
+  return candidates.map((currentKey) => ({
+    fromKey: currentKey,
+    toKey: `${source}:${toPath}${currentKey.slice(fromKey.length)}`,
+  }));
+}
+
+function collectFileMappings(source: string, fromPath: string, toPath: string) {
+  const fromKey = `${source}:${fromPath}`;
+  const prefix = `${fromKey}/`;
+  return Array.from(fileContents.keys())
+    .filter((key) => key.startsWith(prefix))
+    .sort((left, right) => left.localeCompare(right))
+    .map((currentKey) => ({
+      fromKey: currentKey,
+      toKey: `${source}:${toPath}${currentKey.slice(fromKey.length)}`,
+    }));
+}
+
+function removeDemoEntry(source: string, path: string, type: "file" | "directory") {
+  const normalizedPath = normalizeDemoPath(path);
+  if (type === "file") {
+    fileContents.delete(`${source}:${normalizedPath}`);
+    return;
+  }
+
+  directoryPaths.delete(`${source}:${normalizedPath}`);
 }
 
 function sourceParam(url: URL) {
