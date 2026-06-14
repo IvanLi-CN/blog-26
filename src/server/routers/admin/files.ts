@@ -27,7 +27,7 @@ import {
 import { clearSearchCache } from "../../../lib/ai/search-cache";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { db } from "../../../lib/db";
-import { posts } from "../../../lib/schema";
+import { postEmbeddings, posts, vectorizedFiles } from "../../../lib/schema";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
 const listDirectorySchema = z.object({
@@ -110,6 +110,12 @@ type RollbackableResult<T> = T & {
 };
 
 type MarkdownWriteJournal = Map<string, string>;
+type ScopedMutationSnapshot = {
+  paths: string[];
+  posts: Array<typeof posts.$inferSelect>;
+  postEmbeddings: Array<typeof postEmbeddings.$inferSelect>;
+  vectorizedFiles: Array<typeof vectorizedFiles.$inferSelect>;
+};
 
 function isMarkdownContentFile(path: string) {
   const lowerPath = path.toLowerCase();
@@ -376,13 +382,106 @@ async function deleteStalePostRows(stalePaths: string[]) {
   clearSearchCache();
 }
 
+function normalizeScopedMutationPaths(paths: string[]) {
+  return Array.from(new Set(paths.map(normalizeLocalBrowserPath).filter(Boolean)));
+}
+
+function isPathInScope(path: string | null | undefined, scopedPaths: string[]) {
+  const normalizedPath = normalizeLocalBrowserPath(path ?? "");
+  if (!normalizedPath) return false;
+  return scopedPaths.some((scopedPath) => {
+    return normalizedPath === scopedPath || normalizedPath.startsWith(`${scopedPath}/`);
+  });
+}
+
+async function snapshotScopedFileMutation(paths: string[]): Promise<ScopedMutationSnapshot> {
+  const scopedPaths = normalizeScopedMutationPaths(paths);
+  if (scopedPaths.length === 0) {
+    return { paths: [], posts: [], postEmbeddings: [], vectorizedFiles: [] };
+  }
+
+  const postRows = (await db.select().from(posts)).filter(
+    (post) => isPathInScope(post.id, scopedPaths) || isPathInScope(post.filePath, scopedPaths)
+  );
+  const embeddingRows = (await db.select().from(postEmbeddings)).filter((row) =>
+    isPathInScope(row.postId, scopedPaths)
+  );
+  const vectorizedRows = (await db.select().from(vectorizedFiles)).filter((row) =>
+    isPathInScope(row.filepath, scopedPaths)
+  );
+
+  return {
+    paths: scopedPaths,
+    posts: postRows,
+    postEmbeddings: embeddingRows,
+    vectorizedFiles: vectorizedRows,
+  };
+}
+
+async function restoreScopedFileMutationSnapshot(snapshot: ScopedMutationSnapshot) {
+  if (snapshot.paths.length === 0) {
+    return;
+  }
+
+  const currentPostIds = (await db.select({ id: posts.id, filePath: posts.filePath }).from(posts))
+    .filter(
+      (post) =>
+        isPathInScope(post.id, snapshot.paths) || isPathInScope(post.filePath, snapshot.paths)
+    )
+    .map((post) => post.id);
+  const postIds = new Set([...currentPostIds, ...snapshot.posts.map((post) => post.id)]);
+  for (const id of postIds) {
+    await db.delete(posts).where(eq(posts.id, id));
+  }
+  if (snapshot.posts.length > 0) {
+    await db.insert(posts).values(snapshot.posts);
+  }
+
+  const currentEmbeddingIds = (
+    await db.select({ id: postEmbeddings.id, postId: postEmbeddings.postId }).from(postEmbeddings)
+  )
+    .filter((row) => isPathInScope(row.postId, snapshot.paths))
+    .map((row) => row.id);
+  const embeddingIds = new Set([
+    ...currentEmbeddingIds,
+    ...snapshot.postEmbeddings.map((row) => row.id),
+  ]);
+  for (const id of embeddingIds) {
+    await db.delete(postEmbeddings).where(eq(postEmbeddings.id, id));
+  }
+  if (snapshot.postEmbeddings.length > 0) {
+    await db.insert(postEmbeddings).values(snapshot.postEmbeddings);
+  }
+
+  const currentVectorizedFilepaths = (
+    await db.select({ filepath: vectorizedFiles.filepath }).from(vectorizedFiles)
+  )
+    .filter((row) => isPathInScope(row.filepath, snapshot.paths))
+    .map((row) => row.filepath);
+  const vectorizedFilepaths = new Set([
+    ...currentVectorizedFilepaths,
+    ...snapshot.vectorizedFiles.map((row) => row.filepath),
+  ]);
+  for (const filepath of vectorizedFilepaths) {
+    await db.delete(vectorizedFiles).where(eq(vectorizedFiles.filepath, filepath));
+  }
+  if (snapshot.vectorizedFiles.length > 0) {
+    await db.insert(vectorizedFiles).values(snapshot.vectorizedFiles);
+  }
+
+  clearSearchCache();
+}
+
 async function syncAndCommitFileMutation<
   T extends { rollback: () => Promise<void>; commit?: () => Promise<void> },
 >(
   result: T,
-  options: { fullSync?: boolean; stalePaths?: string[] } = {}
+  options: { fullSync?: boolean; stalePaths?: string[]; rollbackPaths?: string[] } = {}
 ): Promise<Omit<T, "rollback" | "commit">> {
-  const postsSnapshot = await db.select().from(posts);
+  const rollbackSnapshot = await snapshotScopedFileMutation([
+    ...(options.stalePaths ?? []),
+    ...(options.rollbackPaths ?? []),
+  ]);
   try {
     if (!options.fullSync) {
       await deleteStalePostRows(options.stalePaths ?? []);
@@ -392,11 +491,7 @@ async function syncAndCommitFileMutation<
     try {
       await result.rollback();
     } finally {
-      await db.delete(posts);
-      if (postsSnapshot.length > 0) {
-        await db.insert(posts).values(postsSnapshot);
-      }
-      clearSearchCache();
+      await restoreScopedFileMutationSnapshot(rollbackSnapshot);
     }
     throw error;
   }
@@ -1223,7 +1318,9 @@ export const filesRouter = createTRPCRouter({
     await (
       source as LocalContentSource & { writeFile: (path: string, content: string) => Promise<void> }
     ).writeFile(input.path, contentToWrite);
-    await syncAndCommitFileMutation(writeSnapshot);
+    await syncAndCommitFileMutation(writeSnapshot, {
+      rollbackPaths: [input.path],
+    });
 
     return {
       success: true,
@@ -1254,11 +1351,14 @@ export const filesRouter = createTRPCRouter({
       throw error;
     }
 
-    await syncAndCommitFileMutation({
-      rollback: async () => {
-        await fs.rm(fullPath, { recursive: true, force: true });
+    await syncAndCommitFileMutation(
+      {
+        rollback: async () => {
+          await fs.rm(fullPath, { recursive: true, force: true });
+        },
       },
-    });
+      { rollbackPaths: [safePath] }
+    );
 
     return {
       success: true,
@@ -1286,8 +1386,10 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    await syncAndCommitFileMutation(await renameLocalFile(input.oldPath, input.newName), {
+    const result = await renameLocalFile(input.oldPath, input.newName);
+    await syncAndCommitFileMutation(result, {
       stalePaths: [input.oldPath],
+      rollbackPaths: [input.oldPath, result.newPath],
     });
 
     return {
@@ -1302,10 +1404,14 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const result = await syncAndCommitFileMutation(
-      await moveLocalEntries(input.paths, input.destinationPath),
-      { stalePaths: input.paths }
-    );
+    const mutation = await moveLocalEntries(input.paths, input.destinationPath);
+    const result = await syncAndCommitFileMutation(mutation, {
+      stalePaths: input.paths,
+      rollbackPaths: [
+        ...input.paths,
+        ...mutation.moved.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
+      ],
+    });
 
     return {
       success: true,
@@ -1319,9 +1425,13 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const result = await syncAndCommitFileMutation(
-      await copyLocalEntries(input.paths, input.destinationPath)
-    );
+    const mutation = await copyLocalEntries(input.paths, input.destinationPath);
+    const result = await syncAndCommitFileMutation(mutation, {
+      rollbackPaths: [
+        ...input.paths,
+        ...mutation.copied.flatMap((entry) => (entry.nextPath ? [entry.nextPath] : [])),
+      ],
+    });
 
     return {
       success: true,

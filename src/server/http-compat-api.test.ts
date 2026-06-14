@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
 import { buildPublicMediaHash } from "@/lib/public-media";
-import { llmSettings, posts, sessions, users } from "@/lib/schema";
+import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -123,6 +123,39 @@ async function seedPost(
   });
 
   return id;
+}
+
+async function seedPostEmbedding(postId: string, slug: string, suffix = "main") {
+  const now = Date.now();
+  await db.insert(postEmbeddings).values({
+    id: `${postId}:embedding:${suffix}`,
+    postId,
+    slug,
+    type: "post",
+    modelName: "test-embedding",
+    dim: 2,
+    contentHash: `hash-${suffix}`,
+    chunkIndex: -1,
+    vector: Buffer.from(new Float32Array([0.1, 0.2]).buffer),
+    errorMessage: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+async function seedVectorizedFile(filepath: string, slug: string) {
+  const now = Date.now();
+  await db.insert(vectorizedFiles).values({
+    filepath,
+    slug,
+    contentHash: `hash-${slug}`,
+    lastModifiedTime: now,
+    contentUpdatedAt: now,
+    indexedAt: now,
+    modelName: "test-embedding",
+    vector: Buffer.from(new Float32Array([0.3, 0.4]).buffer),
+    errorMessage: null,
+  });
 }
 
 describe("HTTP compatibility APIs", () => {
@@ -1824,10 +1857,8 @@ describe("HTTP compatibility APIs", () => {
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
-    manager.syncAll = (async () => {
-      await db.delete(posts);
-      return createFailedSyncResult("index unavailable");
-    }) as typeof manager.syncAll;
+    manager.syncAll = (async () =>
+      createFailedSyncResult("index unavailable")) as typeof manager.syncAll;
 
     try {
       const renameResponse = await handleAdminApiRequest(
@@ -1927,6 +1958,112 @@ describe("HTTP compatibility APIs", () => {
         slug: "existing-post",
         title: "Existing Post",
       });
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("scopes file mutation sync rollback to mutated post and vector rows", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const stablePostId = await seedPost({
+      id: "Hardware/stable.md",
+      slug: "stable",
+      title: "Stable",
+      body: "Stable body",
+      filePath: "Hardware/stable.md",
+    });
+    await seedPostEmbedding(stablePostId, "stable", "before");
+    await seedVectorizedFile(stablePostId, "stable");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "rename-scoped.md"), "rename scoped");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => {
+      await seedPost({
+        id: "blog/concurrent.md",
+        slug: "concurrent",
+        title: "Concurrent",
+        body: "Concurrent body",
+        filePath: "blog/concurrent.md",
+      });
+      await seedPost({
+        id: "Hardware/renamed-scoped.md",
+        slug: "renamed-scoped",
+        title: "Renamed Scoped",
+        body: "Renamed body",
+        filePath: "Hardware/renamed-scoped.md",
+      });
+      await seedPostEmbedding("Hardware/renamed-scoped.md", "renamed-scoped", "ghost");
+      await seedVectorizedFile("Hardware/renamed-scoped.md", "renamed-scoped");
+      return createFailedSyncResult("index unavailable");
+    }) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/rename",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              oldPath: "Hardware/rename-scoped.md",
+              newName: "renamed-scoped.md",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/rename"
+      );
+
+      expect(response.status).toBe(500);
+      expect(fs.existsSync(path.join(hardwareDir, "rename-scoped.md"))).toBe(true);
+      expect(fs.existsSync(path.join(hardwareDir, "renamed-scoped.md"))).toBe(false);
+
+      const concurrentPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "blog/concurrent.md"))
+        .get();
+      const stablePost = await db.select().from(posts).where(eq(posts.id, stablePostId)).get();
+      const ghostPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, "Hardware/renamed-scoped.md"))
+        .get();
+      const stableEmbeddings = await db
+        .select()
+        .from(postEmbeddings)
+        .where(eq(postEmbeddings.postId, stablePostId));
+      const ghostEmbeddings = await db
+        .select()
+        .from(postEmbeddings)
+        .where(eq(postEmbeddings.postId, "Hardware/renamed-scoped.md"));
+      const stableVectorized = await db
+        .select()
+        .from(vectorizedFiles)
+        .where(eq(vectorizedFiles.filepath, stablePostId))
+        .get();
+      const ghostVectorized = await db
+        .select()
+        .from(vectorizedFiles)
+        .where(eq(vectorizedFiles.filepath, "Hardware/renamed-scoped.md"))
+        .get();
+
+      expect(concurrentPost).toMatchObject({
+        id: "blog/concurrent.md",
+        slug: "concurrent",
+      });
+      expect(stablePost).toMatchObject({ id: stablePostId, slug: "stable" });
+      expect(ghostPost).toBeUndefined();
+      expect(stableEmbeddings).toHaveLength(1);
+      expect(ghostEmbeddings).toHaveLength(0);
+      expect(stableVectorized).toMatchObject({ filepath: stablePostId, slug: "stable" });
+      expect(ghostVectorized).toBeUndefined();
     } finally {
       manager.syncAll = originalSyncAll;
     }
