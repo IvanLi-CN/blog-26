@@ -65,6 +65,8 @@ export interface DataSource {
   description?: string;
 }
 
+type LocalPathMappingsSnapshot = ReturnType<typeof getActiveLocalPathMappings>;
+
 function requireLocalBasePath(): string {
   if (!isLocalContentEnabled()) {
     throw new TRPCError({
@@ -88,6 +90,64 @@ function getLocalConfiguredRootDirs(): string[] {
 
 function normalizeLocalBrowserPath(path: string): string {
   return normalizeRelativeContentPath(path || "");
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function readLocalPathMappingsMetadata(value: unknown): LocalPathMappingsSnapshot | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (
+    !isStringArray(record.posts) ||
+    !isStringArray(record.projects) ||
+    !isStringArray(record.memos)
+  ) {
+    return null;
+  }
+
+  return {
+    posts: [...record.posts],
+    projects: [...record.projects],
+    memos: [...record.memos],
+  };
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function areLocalPathMappingsEqual(
+  left: LocalPathMappingsSnapshot,
+  right: LocalPathMappingsSnapshot
+): boolean {
+  return (
+    areStringArraysEqual(left.posts, right.posts) &&
+    areStringArraysEqual(left.projects, right.projects) &&
+    areStringArraysEqual(left.memos, right.memos)
+  );
+}
+
+async function localSourceNeedsRefresh(
+  source: LocalContentSource,
+  desiredBasePath: string,
+  desiredPathMappings: LocalPathMappingsSnapshot
+): Promise<boolean> {
+  const status = await source.getStatus();
+  const metadata = status.metadata as Record<string, unknown>;
+  const configuredBasePath =
+    typeof metadata.contentPath === "string" ? resolve(metadata.contentPath) : null;
+  const configuredPathMappings = readLocalPathMappingsMetadata(metadata.pathMappings);
+
+  return (
+    configuredBasePath !== desiredBasePath ||
+    !configuredPathMappings ||
+    !areLocalPathMappingsEqual(configuredPathMappings, desiredPathMappings)
+  );
 }
 
 function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } = {}): string {
@@ -236,15 +296,25 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
 }
 
 async function ensureContentSourcesRegistered(manager: ReturnType<typeof getContentSourceManager>) {
-  const hasLocal = manager.getSources().some((source) => source.name === "local");
-  if (hasLocal) {
-    return;
+  const desiredBasePath = resolve(requireLocalBasePath());
+  const desiredPathMappings = getActiveLocalPathMappings();
+  const existingLocalSource = manager.getSource("local");
+
+  if (existingLocalSource instanceof LocalContentSource) {
+    if (
+      !(await localSourceNeedsRefresh(existingLocalSource, desiredBasePath, desiredPathMappings))
+    ) {
+      return;
+    }
+
+    await manager.unregisterSource("local");
+  } else if (existingLocalSource) {
+    await manager.unregisterSource("local");
   }
 
-  const basePath = requireLocalBasePath();
   const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-    contentPath: resolve(basePath),
-    pathMappings: getActiveLocalPathMappings(),
+    contentPath: desiredBasePath,
+    pathMappings: desiredPathMappings,
   });
   await manager.registerSource(new LocalContentSource(localConfig));
 }

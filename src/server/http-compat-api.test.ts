@@ -1545,4 +1545,90 @@ describe("HTTP compatibility APIs", () => {
       await resetContentSourceManager();
     }
   });
+
+  it("re-registers the local content source when env-derived roots change", async () => {
+    const { getContentSourceManager, resetContentSourceManager } = await import(
+      "@/lib/content-sources"
+    );
+    await resetContentSourceManager();
+
+    const firstBasePath = path.join(LOCAL_CONTENT_BASE_PATH, "first-root");
+    const secondBasePath = path.join(LOCAL_CONTENT_BASE_PATH, "second-root");
+    fs.mkdirSync(path.join(firstBasePath, "Hardware"), { recursive: true });
+    fs.mkdirSync(path.join(secondBasePath, "Projects"), { recursive: true });
+
+    process.env.LOCAL_CONTENT_BASE_PATH = firstBasePath;
+    process.env.LOCAL_BLOG_PATH = "/Hardware";
+    process.env.LOCAL_PROJECTS_PATH = "/projects";
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => ({
+      success: true,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      sources: ["local"],
+      stats: {
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        skipped: 0,
+        errors: 0,
+      },
+      errors: [],
+      logs: [],
+    })) as typeof manager.syncAll;
+
+    try {
+      const firstWrite = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Hardware/first-root-file.md",
+              content: "first-root",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+      expect(firstWrite.status).toBe(200);
+      expect(
+        fs.readFileSync(path.join(firstBasePath, "Hardware/first-root-file.md"), "utf-8")
+      ).toBe("first-root");
+
+      process.env.LOCAL_CONTENT_BASE_PATH = secondBasePath;
+      process.env.LOCAL_BLOG_PATH = "/blog";
+      process.env.LOCAL_PROJECTS_PATH = "/Projects";
+
+      const secondWrite = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: "Projects/second-root-file.md",
+              content: "second-root",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+      expect(secondWrite.status).toBe(200);
+      expect(fs.existsSync(path.join(firstBasePath, "Projects/second-root-file.md"))).toBe(false);
+      expect(
+        fs.readFileSync(path.join(secondBasePath, "Projects/second-root-file.md"), "utf-8")
+      ).toBe("second-root");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
 });

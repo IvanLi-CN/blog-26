@@ -83,13 +83,12 @@ export function getActiveLocalBasePath(): string | null {
 
 export function getActiveLocalPaths() {
   const basePath = getActiveLocalBasePath();
-  const localEnabled =
-    typeof basePath === "string" && basePath.length > 0 && isContentSourceAllowed("local");
+  const localEnabled = typeof basePath === "string" && basePath.length > 0;
 
   return {
     basePath,
-    posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog", localEnabled),
-    projects: parseEnabledSourcePaths(process.env.LOCAL_PROJECTS_PATH, "/projects", localEnabled),
+    posts: parseEnabledSourcePaths(process.env.LOCAL_BLOG_PATH, "/blog"),
+    projects: parseEnabledSourcePaths(process.env.LOCAL_PROJECTS_PATH, "/projects"),
     memos: localEnabled
       ? getServerLocalMemoRootPaths()
       : parseMemoRootsFromEnv(undefined, DEFAULT_LOCAL_MEMO_ROOT_PATH),
