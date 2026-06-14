@@ -329,7 +329,7 @@ function buildAdminContentSyncError(message?: string) {
   });
 }
 
-async function triggerAdminContentSync(): Promise<void> {
+async function triggerAdminContentSync(fullSync = false): Promise<void> {
   try {
     const syncManager = getContentSourceManager({
       maxConcurrentSyncs: 2,
@@ -337,7 +337,7 @@ async function triggerAdminContentSync(): Promise<void> {
       enableTransactions: true,
       conflictResolution: "priority",
     });
-    const result = await syncManager.syncAll();
+    const result = await syncManager.syncAll(fullSync);
     if (result.success) {
       return;
     }
@@ -354,9 +354,9 @@ async function triggerAdminContentSync(): Promise<void> {
 
 async function syncAndCommitFileMutation<
   T extends { rollback: () => Promise<void>; commit?: () => Promise<void> },
->(result: T): Promise<Omit<T, "rollback" | "commit">> {
+>(result: T, options: { fullSync?: boolean } = {}): Promise<Omit<T, "rollback" | "commit">> {
   try {
-    await triggerAdminContentSync();
+    await triggerAdminContentSync(options.fullSync ?? false);
   } catch (error) {
     await result.rollback();
     throw error;
@@ -1219,7 +1219,9 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    await syncAndCommitFileMutation(await renameLocalFile(input.oldPath, input.newName));
+    await syncAndCommitFileMutation(await renameLocalFile(input.oldPath, input.newName), {
+      fullSync: true,
+    });
 
     return {
       success: true,
@@ -1234,7 +1236,8 @@ export const filesRouter = createTRPCRouter({
     await ensureSourceReady(manager);
 
     const result = await syncAndCommitFileMutation(
-      await moveLocalEntries(input.paths, input.destinationPath)
+      await moveLocalEntries(input.paths, input.destinationPath),
+      { fullSync: true }
     );
 
     return {
@@ -1265,7 +1268,9 @@ export const filesRouter = createTRPCRouter({
     const manager = getContentSourceManager();
     await ensureSourceReady(manager);
 
-    const result = await syncAndCommitFileMutation(await deleteLocalEntries(input.entries));
+    const result = await syncAndCommitFileMutation(await deleteLocalEntries(input.entries), {
+      fullSync: true,
+    });
 
     return {
       success: true,

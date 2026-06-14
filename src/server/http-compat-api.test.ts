@@ -1522,9 +1522,11 @@ describe("HTTP compatibility APIs", () => {
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
     let syncedSources: string[] | null = null;
+    let fullSyncArgument: boolean | undefined;
 
-    manager.syncAll = async function (...args) {
-      const result = await originalSyncAll.apply(this, args);
+    manager.syncAll = async function (isFullSync?: boolean) {
+      fullSyncArgument = isFullSync;
+      const result = await originalSyncAll.call(this, isFullSync);
       syncedSources = result.sources;
       return result;
     } as typeof manager.syncAll;
@@ -1550,6 +1552,7 @@ describe("HTTP compatibility APIs", () => {
       expect(response.status).toBe(200);
       expect(fs.existsSync(path.join(hardwareDir, "renamed.md"))).toBe(true);
       expect(syncedSources).toContain("local");
+      expect(fullSyncArgument).toBe(true);
     } finally {
       manager.syncAll = originalSyncAll;
     }
@@ -1567,7 +1570,11 @@ describe("HTTP compatibility APIs", () => {
 
     const manager = getContentSourceManager();
     const originalSyncAll = manager.syncAll;
-    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+    const fullSyncArguments: Array<boolean | undefined> = [];
+    manager.syncAll = (async (isFullSync?: boolean) => {
+      fullSyncArguments.push(isFullSync);
+      return createSuccessfulSyncResult();
+    }) as typeof manager.syncAll;
 
     try {
       const moveResponse = await handleAdminApiRequest(
@@ -1625,6 +1632,7 @@ describe("HTTP compatibility APIs", () => {
         },
       ]);
       expect(fs.readFileSync(path.join(docsDir, "move-me.md"), "utf-8")).toBe("move");
+      expect(fullSyncArguments).toEqual([true, false]);
     } finally {
       manager.syncAll = originalSyncAll;
     }
