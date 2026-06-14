@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -1824,6 +1824,69 @@ describe("HTTP compatibility APIs", () => {
         title: "Existing Post",
       });
     } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("rolls back partial delete backups when batched delete setup fails", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+    const fsPromises = await import("node:fs/promises");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    fs.mkdirSync(docsDir, { recursive: true });
+    fs.writeFileSync(path.join(docsDir, "first.md"), "first");
+    fs.writeFileSync(path.join(docsDir, "second.md"), "second");
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    const originalRename = fsPromises.rename;
+    let backupRenameCount = 0;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+    mock.module("node:fs/promises", () => ({
+      ...fsPromises,
+      rename: async (...args: Parameters<typeof originalRename>) => {
+        const nextPath = String(args[1]);
+        if (nextPath.includes(".admin-delete-rollback-")) {
+          backupRenameCount++;
+          if (backupRenameCount === 2) {
+            throw new Error("injected backup failure");
+          }
+        }
+        return originalRename(...args);
+      },
+    }));
+
+    try {
+      const deleteResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/delete",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              entries: [
+                { path: "Hardware/docs/first.md", type: "file" },
+                { path: "Hardware/docs/second.md", type: "file" },
+              ],
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/delete"
+      );
+
+      expect(deleteResponse.status).toBe(500);
+      expect(fs.readFileSync(path.join(docsDir, "first.md"), "utf-8")).toBe("first");
+      expect(fs.readFileSync(path.join(docsDir, "second.md"), "utf-8")).toBe("second");
+      expect(
+        fs
+          .readdirSync(LOCAL_CONTENT_BASE_PATH)
+          .some((entry) => entry.startsWith(".admin-delete-rollback-"))
+      ).toBe(false);
+    } finally {
+      mock.restore();
       manager.syncAll = originalSyncAll;
     }
   });

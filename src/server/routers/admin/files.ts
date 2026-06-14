@@ -1013,9 +1013,7 @@ async function deleteLocalEntries(
       await fs.rename(operation.backupFullPath, operation.fullCurrentPath).catch(() => undefined);
     }
     await Promise.all(
-      committedOperations.map((operation) =>
-        fs.rm(operation.backupRoot, { recursive: true, force: true })
-      )
+      operations.map((operation) => fs.rm(operation.backupRoot, { recursive: true, force: true }))
     );
   };
   const commit = async () => {
@@ -1026,10 +1024,15 @@ async function deleteLocalEntries(
     );
   };
 
-  for (const operation of operations) {
-    await fs.mkdir(nodePath.dirname(operation.backupFullPath), { recursive: true });
-    await fs.rename(operation.fullCurrentPath, operation.backupFullPath);
-    committedOperations.push(operation);
+  try {
+    for (const operation of operations) {
+      await fs.mkdir(nodePath.dirname(operation.backupFullPath), { recursive: true });
+      await fs.rename(operation.fullCurrentPath, operation.backupFullPath);
+      committedOperations.push(operation);
+    }
+  } catch (error) {
+    await rollback();
+    throw error;
   }
 
   return {
