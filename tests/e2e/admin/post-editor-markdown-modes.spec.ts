@@ -18,6 +18,9 @@ async function openDemoEditor(page: Page) {
 }
 
 async function expectSourceMarkdown(textarea: Locator) {
+  await expect(textarea).toHaveValue(/^---\n[\s\S]*?\n---/);
+  await expect(textarea).toHaveValue(/title: React Hooks 深度解析/);
+  await expect(textarea).toHaveValue(/slug: react-hooks-deep-dive/);
   await expect(textarea).toHaveValue(/# React Hooks 深度解析/);
   await expect(textarea).toHaveValue(/`useState`/);
   await expect(textarea).toHaveValue(/- 状态更新必须围绕用户动作组织。/);
@@ -25,6 +28,93 @@ async function expectSourceMarkdown(textarea: Locator) {
   await expect(textarea).toHaveValue(/```tsx/);
   await expect(textarea).toHaveValue(/function Counter\(\)/);
   await expect(textarea).toHaveValue(/useEffect\(\(\) =>/);
+}
+
+async function expectFrontmatterBlock(page: Page) {
+  await expect(page.getByTestId("frontmatter-block")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Frontmatter YAML editor" })).toHaveValue(
+    /title: React Hooks 深度解析/
+  );
+  await expect(page.getByRole("textbox", { name: "Frontmatter YAML editor" })).toHaveValue(
+    /slug: react-hooks-deep-dive/
+  );
+  const frontmatterMetrics = await page
+    .getByRole("textbox", { name: "Frontmatter YAML editor" })
+    .evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      overflowY: getComputedStyle(element).overflowY,
+    }));
+  expect(frontmatterMetrics.overflowY).toBe("hidden");
+  expect(frontmatterMetrics.scrollHeight).toBeLessThanOrEqual(frontmatterMetrics.clientHeight + 1);
+}
+
+async function expectFrontmatterFocusState(page: Page) {
+  const focusState = await page.getByTestId("frontmatter-block").evaluate((element) => {
+    const styles = getComputedStyle(element);
+    return {
+      borderColor: styles.borderColor,
+      boxShadow: styles.boxShadow,
+    };
+  });
+
+  expect(focusState.boxShadow).not.toBe("none");
+  expect(focusState.boxShadow).toContain("rgb");
+  expect(focusState.borderColor).not.toBe("rgba(0, 0, 0, 0)");
+}
+
+async function expectWysiwygTextColumnAlignment(page: Page) {
+  const titleLeft = await page
+    .locator("div.text-base.font-semibold")
+    .filter({ hasText: "React Hooks 深度解析" })
+    .first()
+    .evaluate((element) => element.getBoundingClientRect().left);
+  const frontmatterTextLeft = await page
+    .getByRole("textbox", { name: "Frontmatter YAML editor" })
+    .evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return element.getBoundingClientRect().left + parseFloat(styles.paddingLeft || "0");
+    });
+  const bodyTextLeft = await page
+    .locator('[data-testid="content-input"] .ProseMirror')
+    .evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return element.getBoundingClientRect().left + parseFloat(styles.paddingLeft || "0");
+    });
+
+  expect(Math.abs(frontmatterTextLeft - bodyTextLeft)).toBeLessThanOrEqual(2);
+  expect(titleLeft).toBeLessThan(bodyTextLeft);
+}
+
+async function expectFrontmatterBodyRhythm(page: Page) {
+  const spacing = await page.evaluate(() => {
+    const frontmatter = document.querySelector('[data-testid="frontmatter-block"]');
+    const prose = document.querySelector('[data-testid="content-input"] .ProseMirror');
+    const firstHeading = document.querySelector('[data-testid="content-input"] .ProseMirror h1');
+
+    if (
+      !(frontmatter instanceof Element) ||
+      !(prose instanceof Element) ||
+      !(firstHeading instanceof Element)
+    ) {
+      return null;
+    }
+
+    const frontRect = frontmatter.getBoundingClientRect();
+    const proseRect = prose.getBoundingClientRect();
+    const headingRect = firstHeading.getBoundingClientRect();
+
+    return {
+      gapFrontToProse: Math.round(proseRect.top - frontRect.bottom),
+      gapFrontToHeading: Math.round(headingRect.top - frontRect.bottom),
+      gapProseToHeading: Math.round(headingRect.top - proseRect.top),
+    };
+  });
+
+  expect(spacing).not.toBeNull();
+  expect(spacing?.gapFrontToProse).toBe(16);
+  expect(spacing?.gapProseToHeading).toBeLessThanOrEqual(28);
+  expect(spacing?.gapFrontToHeading).toBeLessThanOrEqual(44);
 }
 
 async function richMarkdownState(page: Page, rootSelector: string) {
@@ -104,9 +194,36 @@ test.describe("Post editor Markdown modes", () => {
     await openDemoEditor(page);
 
     await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await expectFrontmatterBlock(page);
     await expect(page.locator('[data-testid="content-input"] .ProseMirror')).toBeVisible();
 
     expectRichMarkdownRendering(await richMarkdownState(page, '[data-testid="content-input"]'));
+  });
+
+  test("frontmatter block exposes a visible keyboard focus state", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+    await frontmatter.focus();
+
+    await expectFrontmatterFocusState(page);
+  });
+
+  test("WYSIWYG body text aligns with the frontmatter text column", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await expectFrontmatterBlock(page);
+    await expectWysiwygTextColumnAlignment(page);
+  });
+
+  test("WYSIWYG keeps frontmatter and body in one vertical writing rhythm", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await expectFrontmatterBlock(page);
+    await expectFrontmatterBodyRhythm(page);
   });
 
   test("compare preview renders Markdown with Milkdown read-only highlighting", async ({
@@ -115,12 +232,106 @@ test.describe("Post editor Markdown modes", () => {
     await openDemoEditor(page);
 
     await page.getByRole("button", { name: "对照" }).click();
+    await expectFrontmatterBlock(page);
     await expectSourceMarkdown(page.getByRole("textbox", { name: "Markdown source editor" }));
     await expect(page.locator('[data-testid="content-preview"] .ProseMirror')).toBeVisible();
 
     const previewState = await richMarkdownState(page, '[data-testid="content-preview"]');
     expectRichMarkdownRendering(previewState);
     expect(previewState.contentEditable).toBe("false");
+  });
+
+  test("WYSIWYG frontmatter block writes back to source frontmatter", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+    await frontmatter.fill(
+      "title: React Hooks 深度解析\nslug: react-hooks-deep-dive\ndraft: false\ncreatedVia: demo"
+    );
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue(
+      /^---\n[\s\S]*?\n---/
+    );
+    await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue(
+      /title: React Hooks 深度解析/
+    );
+    await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue(
+      /slug: react-hooks-deep-dive/
+    );
+    await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue(
+      /draft: false/
+    );
+    await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue(
+      /createdVia: demo/
+    );
+  });
+
+  test("frontmatter title change updates the tab label and preserves unknown keys", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+    await frontmatter.fill(
+      "title: Hooks Title From Frontmatter\nslug: react-hooks-deep-dive\ndraft: false\ncreatedVia: demo"
+    );
+
+    await expect(page.getByText("Hooks Title From Frontmatter")).toBeVisible();
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const source = page.getByRole("textbox", { name: "Markdown source editor" });
+    await expect(source).toHaveValue(/title: Hooks Title From Frontmatter/);
+    await expect(source).toHaveValue(/createdVia: demo/);
+  });
+
+  test("frontmatter block respects explicit YAML deletion of unknown keys", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+    await frontmatter.fill(
+      "title: React Hooks 深度解析\nslug: react-hooks-deep-dive\ndraft: false"
+    );
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await expect(page.getByRole("textbox", { name: "Markdown source editor" })).not.toHaveValue(
+      /createdVia: demo/
+    );
+  });
+
+  test("WYSIWYG preserves a body-leading YAML fence instead of converting it into frontmatter", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    const source = page.getByRole("textbox", { name: "Markdown source editor" });
+    await page.getByRole("button", { name: "Source" }).click();
+    await source.fill(`---
+title: React Hooks 深度解析
+slug: react-hooks-deep-dive
+draft: false
+---
+\`\`\`yaml
+kind: example
+value: true
+\`\`\`
+
+# React Hooks 深度解析
+
+Body paragraph`);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const prose = page.locator('[data-testid="content-input"] .ProseMirror');
+    await prose.click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" updated");
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await expect(source).toHaveValue(/```yaml\nkind: example\nvalue: true\n```/);
+    await expect(source).not.toHaveValue(/^---\nkind: example\nvalue: true\n---/);
   });
 
   test("desktop sidebar drag handle resizes the shell and persists width", async ({ page }) => {

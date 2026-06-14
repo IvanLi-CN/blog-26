@@ -13,7 +13,11 @@ import {
   normalizeRelativeContentPath,
 } from "@/lib/content-path-mappings";
 import { hasApiFilesReference, rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
-import { isLocalContentEnabled, LOCAL_PATH_MAPPINGS, LOCAL_PATHS } from "../../../config/paths";
+import {
+  getActiveLocalBasePath,
+  getActiveLocalPathMappings,
+  isLocalContentEnabled,
+} from "../../../config/paths";
 import { getContentSourceManager, LocalContentSource } from "../../../lib/content-sources";
 import { adminProcedure, createTRPCRouter } from "../../trpc";
 
@@ -61,6 +65,8 @@ export interface DataSource {
   description?: string;
 }
 
+type LocalPathMappingsSnapshot = ReturnType<typeof getActiveLocalPathMappings>;
+
 function requireLocalBasePath(): string {
   if (!isLocalContentEnabled()) {
     throw new TRPCError({
@@ -68,7 +74,7 @@ function requireLocalBasePath(): string {
       message: "本地内容源未启用",
     });
   }
-  const basePath = LOCAL_PATHS.basePath;
+  const basePath = getActiveLocalBasePath();
   if (!basePath) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -79,11 +85,69 @@ function requireLocalBasePath(): string {
 }
 
 function getLocalConfiguredRootDirs(): string[] {
-  return getConfiguredContentRootDirs(LOCAL_PATH_MAPPINGS);
+  return getConfiguredContentRootDirs(getActiveLocalPathMappings());
 }
 
 function normalizeLocalBrowserPath(path: string): string {
   return normalizeRelativeContentPath(path || "");
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function readLocalPathMappingsMetadata(value: unknown): LocalPathMappingsSnapshot | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (
+    !isStringArray(record.posts) ||
+    !isStringArray(record.projects) ||
+    !isStringArray(record.memos)
+  ) {
+    return null;
+  }
+
+  return {
+    posts: [...record.posts],
+    projects: [...record.projects],
+    memos: [...record.memos],
+  };
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function areLocalPathMappingsEqual(
+  left: LocalPathMappingsSnapshot,
+  right: LocalPathMappingsSnapshot
+): boolean {
+  return (
+    areStringArraysEqual(left.posts, right.posts) &&
+    areStringArraysEqual(left.projects, right.projects) &&
+    areStringArraysEqual(left.memos, right.memos)
+  );
+}
+
+async function localSourceNeedsRefresh(
+  source: LocalContentSource,
+  desiredBasePath: string,
+  desiredPathMappings: LocalPathMappingsSnapshot
+): Promise<boolean> {
+  const status = await source.getStatus();
+  const metadata = status.metadata as Record<string, unknown>;
+  const configuredBasePath =
+    typeof metadata.contentPath === "string" ? resolve(metadata.contentPath) : null;
+  const configuredPathMappings = readLocalPathMappingsMetadata(metadata.pathMappings);
+
+  return (
+    configuredBasePath !== desiredBasePath ||
+    !configuredPathMappings ||
+    !areLocalPathMappingsEqual(configuredPathMappings, desiredPathMappings)
+  );
 }
 
 function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } = {}): string {
@@ -99,7 +163,8 @@ function assertLocalPathAllowed(path: string, options: { allowRoot?: boolean } =
     });
   }
 
-  if (!isPathWithinConfiguredRoots(normalizedPath, LOCAL_PATH_MAPPINGS)) {
+  const localPathMappings = getActiveLocalPathMappings();
+  if (!isPathWithinConfiguredRoots(normalizedPath, localPathMappings)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `路径不在已配置的本地内容根目录内: ${normalizedPath}`,
@@ -231,15 +296,25 @@ async function renameLocalFile(oldPath: string, newName: string): Promise<void> 
 }
 
 async function ensureContentSourcesRegistered(manager: ReturnType<typeof getContentSourceManager>) {
-  const hasLocal = manager.getSources().some((source) => source.name === "local");
-  if (hasLocal) {
-    return;
+  const desiredBasePath = resolve(requireLocalBasePath());
+  const desiredPathMappings = getActiveLocalPathMappings();
+  const existingLocalSource = manager.getSource("local");
+
+  if (existingLocalSource instanceof LocalContentSource) {
+    if (
+      !(await localSourceNeedsRefresh(existingLocalSource, desiredBasePath, desiredPathMappings))
+    ) {
+      return;
+    }
+
+    await manager.unregisterSource("local");
+  } else if (existingLocalSource) {
+    await manager.unregisterSource("local");
   }
 
-  const basePath = requireLocalBasePath();
   const localConfig = LocalContentSource.createDefaultConfig("local", 50, {
-    contentPath: resolve(basePath),
-    pathMappings: LOCAL_PATH_MAPPINGS,
+    contentPath: desiredBasePath,
+    pathMappings: desiredPathMappings,
   });
   await manager.registerSource(new LocalContentSource(localConfig));
 }

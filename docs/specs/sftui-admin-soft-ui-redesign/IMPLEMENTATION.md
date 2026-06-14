@@ -27,6 +27,7 @@ Implementation state is tracked here while the `sftui` spec is active.
 - New empty post saves are blocked client-side when the editor body is still blank, and the banner now shows a natural-language validation message instead of raw serialized Zod issue arrays.
 - Admin API error mapping now preserves structured validation details for editor/post flows so the SPA can present stable friendly messages while keeping server-side validation authoritative.
 - The editor accessibility pass names the hidden attachment upload field, SourceEditor textarea, and Crepe link input to avoid unlabeled form controls.
+- The editor frontmatter pass renders YAML as one inline block inside WYSIWYG and compare mode, auto-sizes the textarea so the full metadata stays visible without an inner scrollbar, exposes a visible focus ring on keyboard focus, aligns the frontmatter text column with the body text column, and removes the extra top margin on the first rendered heading so the body starts in the same vertical rhythm as the metadata block.
 - The desktop AppShell sidebar width is controlled by `--admin-sidebar-width` in the shell grid, can be resized through a grip-style separator embedded in the sidebar card's right edge, exposes width values to assistive technology, shows a tooltip for discoverability, supports arrow-key/Home/End adjustment plus double-click reset to the default width, persists to `localStorage`, and reflows the main workspace instead of overlaying it.
 - The desktop sidebar intentionally keeps its outer Soft UI card effect. Route-specific panels and session state render as lightweight internal sections, not nested cards, to avoid card nesting while preserving the left panel's visual container.
 
@@ -41,5 +42,6 @@ Implementation state is tracked here while the `sftui` spec is active.
 - `WEB_PORT=61130 PORT=61130 SITE_PORT=61131 bun run test:e2e -- --project=admin-chromium`
 - `BASE_URL=http://127.0.0.1:17500 ADMIN_EMAIL=admin@example.com bunx playwright test tests/e2e/admin/post-editor-markdown-modes.spec.ts --project=admin-chromium`
 - `WEB_PORT=50590 SITE_PORT=50591 bunx playwright test tests/e2e/admin/post-editor-markdown-modes.spec.ts --project=admin-chromium`
+- `bunx biome check apps/admin/src/styles.css tests/e2e/admin/post-editor-markdown-modes.spec.ts`
 
 The production build requires explicit database and content-source environment variables in this worktree. Without them it falls back to `./sqlite.db`, which is not the seeded development database.

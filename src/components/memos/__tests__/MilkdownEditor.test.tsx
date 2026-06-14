@@ -76,6 +76,17 @@ function postprocessContentFromEditor(content: string): string {
   return content;
 }
 
+function roundTripEditorContent(
+  content: string,
+  frontmatterHandling: "document" | "body-only" = "body-only"
+) {
+  const editorInput =
+    frontmatterHandling === "document" ? preprocessFrontmatterForEditor(content) : content;
+  return frontmatterHandling === "document"
+    ? postprocessContentFromEditor(editorInput)
+    : editorInput;
+}
+
 describe("MilkdownEditor 无限循环修复测试", () => {
   let consoleLogSpy: any;
   let _onChangeMock: any;
@@ -155,6 +166,32 @@ author: ""
       const restored = postprocessContentFromEditor(processed);
 
       expect(restored).toBe(original);
+    });
+
+    it("body-only 模式不应把正文开头的 YAML 代码块转换成 frontmatter", () => {
+      const original = `\`\`\`yaml
+title: body-yaml-block
+draft: false
+\`\`\`
+
+# Actual body`;
+
+      expect(roundTripEditorContent(original, "body-only")).toBe(original);
+    });
+
+    it("document 模式仍应保留 frontmatter 双向转换", () => {
+      const original = `---
+title: "Document Mode"
+slug: "document-mode"
+---
+
+\`\`\`yaml
+kind: body-block
+\`\`\`
+
+正文`;
+
+      expect(roundTripEditorContent(original, "document")).toBe(original);
     });
   });
 

@@ -26,6 +26,7 @@ import {
   type DataSourceInfo,
   type FileItem,
 } from "@/lib/admin-api-client";
+import { parseFrontmatterMap, stripFrontmatter } from "@/lib/frontmatter-document";
 import { isMemoContentPath } from "@/lib/memo-paths";
 import { generateContentUrl } from "@/lib/url-utils";
 import { cn } from "@/lib/utils";
@@ -133,27 +134,6 @@ function buildInsertedAttachmentMarkdown(file: File, filename: string) {
     : `[${safeLabel}](${relativePath})`;
 }
 
-function parseFrontmatterMap(content: string): Record<string, string> {
-  const match = content.match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
-  if (!match) return {};
-
-  return match[1]
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .reduce<Record<string, string>>((acc, line) => {
-      const separatorIndex = line.indexOf(":");
-      if (separatorIndex <= 0) return acc;
-      const key = line.slice(0, separatorIndex).trim();
-      const value = line
-        .slice(separatorIndex + 1)
-        .trim()
-        .replace(/^['"]|['"]$/g, "");
-      if (key) acc[key] = value;
-      return acc;
-    }, {});
-}
-
 function deriveFileLabel(path: string, content: string) {
   const frontmatterTitle = parseFrontmatterMap(content).title?.trim() ?? "";
   if (frontmatterTitle) {
@@ -161,10 +141,6 @@ function deriveFileLabel(path: string, content: string) {
   }
 
   return path.split("/").filter(Boolean).pop() || path || "untitled.md";
-}
-
-function stripFrontmatter(content: string) {
-  return content.replace(/^---\n[\s\S]*?\n---(?:\n|$)/, "");
 }
 
 function deriveTitleFromContent(content: string) {
@@ -1621,7 +1597,7 @@ export function EditorPage() {
             </div>
           ) : (
             <div className="flex h-full min-h-0 flex-col">
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/58 px-5 py-4">
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/58 px-4 py-4">
                 <div>
                   <div className="text-base font-semibold">{activeTab.label || "未命名文章"}</div>
                   <div className="mt-0.5 text-sm text-muted-foreground">

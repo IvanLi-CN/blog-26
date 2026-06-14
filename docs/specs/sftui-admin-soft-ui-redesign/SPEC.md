@@ -127,6 +127,7 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 - Real-root file creation: creating a file inside a configured root such as `Hardware/` succeeds immediately and enters inline rename without surfacing an uninitialized local-source error
 - Empty-file and viewport behavior: a newly created empty file opens immediately, editor surfaces keep full-height layout, and scrolling stays inside the editing panes
 - Card hierarchy: only the outer sidebar/editor shells keep the framed card treatment; inner editor regions stay flat
+- Frontmatter editing rhythm: WYSIWYG keeps frontmatter as a single inline YAML block, shows the complete metadata without an internal scrollbar, preserves visible keyboard focus, aligns YAML and body text columns, and keeps the body heading within the same vertical writing rhythm instead of dropping it into a large gap
 
 ![Admin demo editor WYSIWYG Markdown rendering](./assets/demo/editor-focused-dark-wysiwyg-markdown-code.trimmed.png)
 
@@ -161,6 +162,8 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 ![Admin editor compare mode fits viewport height with internal pane scrolling](./assets/demo/admin-editor-viewport-height-compare.trimmed.png)
 
 ![Admin editor workspace with nested cards removed](./assets/demo/admin-editor-de-nested-workspace.trimmed.png)
+
+![Admin editor frontmatter block and tightened body rhythm](./assets/demo/frontmatter-body-gap-tightened.png)
 
 ### Posts Workspace And Shell Chrome
 
