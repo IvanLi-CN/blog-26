@@ -446,18 +446,37 @@ async function rebaseMovedMarkdownLinks(
   );
 }
 
-async function rebaseCopiedMarkdownFileLinks(
+async function rebaseCopiedMarkdownLinks(
   fullPath: string,
   oldRelativePath: string,
-  newRelativePath: string
+  newRelativePath: string,
+  nodePath: typeof import("node:path")
 ) {
-  if (!isMarkdownContentFile(fullPath)) return;
   const fs = await import("node:fs/promises");
-  const currentContent = await fs.readFile(fullPath, "utf-8");
-  const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
-  if (rebased.changed) {
-    await fs.writeFile(fullPath, rebased.content, "utf-8");
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats) return;
+
+  if (stats.isFile()) {
+    if (!isMarkdownContentFile(fullPath)) return;
+    const currentContent = await fs.readFile(fullPath, "utf-8");
+    const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
+    if (rebased.changed) {
+      await fs.writeFile(fullPath, rebased.content, "utf-8");
+    }
+    return;
   }
+
+  if (!stats.isDirectory()) return;
+
+  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (entry) => {
+      const childFullPath = nodePath.join(fullPath, entry.name);
+      const oldChildPath = normalizeLocalBrowserPath(`${oldRelativePath}/${entry.name}`);
+      const newChildPath = normalizeLocalBrowserPath(`${newRelativePath}/${entry.name}`);
+      await rebaseCopiedMarkdownLinks(childFullPath, oldChildPath, newChildPath, nodePath);
+    })
+  );
 }
 
 async function moveLocalEntries(
@@ -631,13 +650,12 @@ async function copyLocalEntries(
       errorOnExist: true,
       force: false,
     });
-    if (operation.type === "file") {
-      await rebaseCopiedMarkdownFileLinks(
-        operation.fullNextPath,
-        operation.path,
-        operation.nextPath
-      );
-    }
+    await rebaseCopiedMarkdownLinks(
+      operation.fullNextPath,
+      operation.path,
+      operation.nextPath,
+      nodePath
+    );
   }
 
   return {

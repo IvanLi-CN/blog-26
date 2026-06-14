@@ -1698,6 +1698,55 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("rebases copied markdown links inside directory subtrees", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const docsDir = path.join(hardwareDir, "docs");
+    const archiveDir = path.join(hardwareDir, "archive");
+    const sharedDir = path.join(docsDir, "shared");
+    fs.mkdirSync(path.join(docsDir, "series"), { recursive: true });
+    fs.mkdirSync(archiveDir, { recursive: true });
+    fs.mkdirSync(sharedDir, { recursive: true });
+    fs.writeFileSync(path.join(sharedDir, "logo.png"), "logo");
+    fs.writeFileSync(
+      path.join(docsDir, "series", "overview.md"),
+      ["# Series", "", "![logo](../shared/logo.png)"].join("\n")
+    );
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    manager.syncAll = (async () => createSuccessfulSyncResult()) as typeof manager.syncAll;
+
+    try {
+      const copyResponse = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/copy",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              paths: ["Hardware/docs/series"],
+              destinationPath: "Hardware/archive",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/copy"
+      );
+
+      expect(copyResponse.status).toBe(200);
+      const copiedContent = fs.readFileSync(
+        path.join(archiveDir, "series", "overview.md"),
+        "utf-8"
+      );
+      expect(copiedContent).toContain("![logo](../../docs/shared/logo.png)");
+    } finally {
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
   it("rebases persisted markdown asset links for .markdown files", async () => {
     const { getContentSourceManager } = await import("@/lib/content-sources");
 
