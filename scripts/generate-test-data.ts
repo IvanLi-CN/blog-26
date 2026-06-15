@@ -19,11 +19,12 @@ function parseEnvironment(): { environment: Environment; cleanOnly: boolean } {
 }
 
 function getBaseDir(environment: Environment) {
+  const configuredRoot = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
+  if (configuredRoot) {
+    return resolve(configuredRoot);
+  }
+
   if (environment === "dev") {
-    const configuredRoot = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
-    if (configuredRoot) {
-      return resolve(configuredRoot);
-    }
     return resolve("./dev-data/local");
   }
   return resolve("./test-data/local");

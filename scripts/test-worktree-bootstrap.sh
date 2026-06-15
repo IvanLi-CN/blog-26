@@ -12,6 +12,7 @@ RECOVERY_WORKTREE="$TMP_DIR/recovery"
 LEGACY_WORKTREE="$TMP_DIR/legacy"
 DRY_RUN_WORKTREE="$TMP_DIR/dry-run"
 EXPORT_WORKTREE="$TMP_DIR/export"
+STALE_SCOPE_WORKTREE="$TMP_DIR/stale-scope"
 ROOT_ENV_BACKUP="$TMP_DIR/root-env.local.bak"
 PORT_HOLDER_PID=""
 PORT_HOLDER_PID_2=""
@@ -30,6 +31,7 @@ cleanup() {
   git -C "$SNAPSHOT_REPO" worktree remove --force "$LEGACY_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$DRY_RUN_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$EXPORT_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$STALE_SCOPE_WORKTREE" >/dev/null 2>&1 || true
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -462,6 +464,66 @@ if not payload.get("posts"):
 PY
 }
 
+check_test_env_reset_respects_custom_local_root() {
+  log "check test-env:reset respects custom LOCAL_CONTENT_BASE_PATH"
+  local custom_test_root="$SNAPSHOT_REPO/test-data/custom-local"
+
+  (
+    cd "$SNAPSHOT_REPO"
+    DB_PATH=./test-data/custom-reset.sqlite.db \
+      LOCAL_CONTENT_BASE_PATH="$custom_test_root" \
+      CONTENT_SOURCES=local \
+      bun run test-env:reset >/tmp/worktree-bootstrap-test-env-reset.log 2>&1
+  )
+
+  [[ -f "$custom_test_root/blog/hello-world.md" ]] || {
+    echo "test-env:reset did not generate fixtures in the custom LOCAL_CONTENT_BASE_PATH" >&2
+    exit 1
+  }
+}
+
+check_stale_scope_port_block_is_revalidated() {
+  log "check stale scope leases are revalidated before reuse"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$STALE_SCOPE_WORKTREE" >/dev/null 2>&1
+  )
+
+  (
+    cd "$STALE_SCOPE_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-stale-initial.log 2>&1
+  )
+
+  local env_file="$STALE_SCOPE_WORKTREE/.env.local"
+  local marker_file
+  marker_file="$(git -C "$STALE_SCOPE_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  local stale_port stale_site_port stale_admin_port
+  stale_port="$(grep '^PORT=' "$env_file" | cut -d= -f2)"
+  stale_site_port="$(grep '^SITE_PORT=' "$env_file" | cut -d= -f2)"
+  stale_admin_port="$(grep '^ADMIN_PORT=' "$env_file" | cut -d= -f2)"
+
+  rm -f "$env_file" "$marker_file"
+  start_port_holder "$stale_port" PORT_HOLDER_PID
+  start_port_holder "$stale_site_port" PORT_HOLDER_PID_2
+
+  (
+    cd "$STALE_SCOPE_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-stale-reuse.log 2>&1
+  )
+
+  stop_port_holder PORT_HOLDER_PID
+  stop_port_holder PORT_HOLDER_PID_2
+
+  [[ -f "$env_file" ]] || { echo ".env.local missing after stale scope rebootstrap" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-stale-reuse.log 'worktree bootstrap complete'
+  assert_file_not_contains "$env_file" "^PORT=${stale_port}$"
+  assert_file_not_contains "$env_file" "^SITE_PORT=${stale_site_port}$"
+  assert_file_not_contains "$env_file" "^ADMIN_PORT=${stale_admin_port}$"
+}
+
 check_dev_fixture_guardrail_for_real_root() {
   log "check dev fixture generation refuses real content roots"
   local real_root="$TMP_DIR/real-content-root"
@@ -535,6 +597,8 @@ check_existing_env_rejects_occupied_port
 check_atomic_block_allocation_skips_derived_port_conflict
 check_managed_custom_content_root_is_used
 check_public_export_uses_env_local
+check_test_env_reset_respects_custom_local_root
+check_stale_scope_port_block_is_revalidated
 check_dev_fixture_guardrail_for_real_root
 check_test_fixture_clean_removes_root_artifacts
 check_failure_is_non_blocking

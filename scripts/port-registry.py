@@ -407,6 +407,10 @@ def service_field_name(service: str) -> str:
     return service.strip().lower().replace("-", "_")
 
 
+def ports_are_available_for_reuse(ports: dict[str, int]) -> bool:
+    return all(not port_listening(port) for port in ports.values())
+
+
 def select_port_block(
     rows: list[dict[str, str]],
     scope_id: str,
@@ -427,7 +431,9 @@ def select_port_block(
             existing_ports = {
                 row["service"]: parse_int(row["port"], "port") for row in existing_scope_rows
             }
-            if all(service in existing_ports for service in normalized_services):
+            if all(service in existing_ports for service in normalized_services) and ports_are_available_for_reuse(
+                existing_ports
+            ):
                 return existing_base, {service: existing_ports[service] for service in normalized_services}
 
     scope_rows_to_replace = [
