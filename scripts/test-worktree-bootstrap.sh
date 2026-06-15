@@ -8,18 +8,24 @@ REGISTRY_DIR="$TMP_DIR/port-registry"
 AUTO_WORKTREE="$TMP_DIR/auto"
 MANUAL_WORKTREE="$TMP_DIR/manual"
 FAIL_WORKTREE="$TMP_DIR/fail"
+RECOVERY_WORKTREE="$TMP_DIR/recovery"
 LEGACY_WORKTREE="$TMP_DIR/legacy"
 DRY_RUN_WORKTREE="$TMP_DIR/dry-run"
 ROOT_ENV_BACKUP="$TMP_DIR/root-env.local.bak"
 PORT_HOLDER_PID=""
+PORT_HOLDER_PID_2=""
 
 cleanup() {
   if [[ -n "$PORT_HOLDER_PID" ]]; then
     kill "$PORT_HOLDER_PID" >/dev/null 2>&1 || true
   fi
+  if [[ -n "$PORT_HOLDER_PID_2" ]]; then
+    kill "$PORT_HOLDER_PID_2" >/dev/null 2>&1 || true
+  fi
   git -C "$SNAPSHOT_REPO" worktree remove --force "$AUTO_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$MANUAL_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$FAIL_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$RECOVERY_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$LEGACY_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$DRY_RUN_WORKTREE" >/dev/null 2>&1 || true
   rm -rf "$TMP_DIR"
@@ -32,6 +38,7 @@ log() {
 
 start_port_holder() {
   local port="$1"
+  local pid_var="${2:-PORT_HOLDER_PID}"
   python3 - <<'PY' "$port" >/dev/null 2>&1 &
 import socket
 import sys
@@ -47,16 +54,26 @@ try:
 finally:
     sock.close()
 PY
-  PORT_HOLDER_PID="$!"
+  printf -v "$pid_var" '%s' "$!"
   sleep 0.3
 }
 
 stop_port_holder() {
-  if [[ -n "$PORT_HOLDER_PID" ]]; then
-    kill "$PORT_HOLDER_PID" >/dev/null 2>&1 || true
-    wait "$PORT_HOLDER_PID" 2>/dev/null || true
-    PORT_HOLDER_PID=""
+  local pid_var="${1:-PORT_HOLDER_PID}"
+  local pid_value="${!pid_var:-}"
+  if [[ -n "$pid_value" ]]; then
+    kill "$pid_value" >/dev/null 2>&1 || true
+    wait "$pid_value" 2>/dev/null || true
+    printf -v "$pid_var" '%s' ""
   fi
+}
+
+worktree_scope_id() {
+  local worktree_path="$1"
+  (
+    cd "$worktree_path"
+    bash -c 'source ./scripts/lib/worktree-bootstrap-common.sh; wtb_scope_id'
+  )
 }
 
 assert_file_contains() {
@@ -259,6 +276,76 @@ EOF
   assert_file_contains /tmp/worktree-bootstrap-occupied.log 'bootstrap failed at phase=env'
 }
 
+check_atomic_block_allocation_skips_derived_port_conflict() {
+  log "check atomic block allocation skips derived port conflict"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$RECOVERY_WORKTREE" >/dev/null 2>&1
+  )
+
+  rm -f "$RECOVERY_WORKTREE/.env.local"
+  rm -f "$(git -C "$RECOVERY_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  local scope_id
+  scope_id="$(worktree_scope_id "$RECOVERY_WORKTREE")"
+  python3 "$SNAPSHOT_REPO/scripts/port-registry.py" \
+    --registry-dir "$REGISTRY_DIR" \
+    --json release-scope \
+    --scope-id "$scope_id" >/dev/null
+
+  local suggested_json blocked_site_port blocked_admin_port
+  suggested_json="$(cd "$RECOVERY_WORKTREE" && CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR" python3 ./scripts/port-registry.py --json suggest --scope-id "$scope_id" --service web)"
+  blocked_site_port="$(( $(python3 - <<'PY' "$suggested_json"
+import json
+import sys
+print(json.loads(sys.argv[1])["port"])
+PY
+) + 3 ))"
+  blocked_admin_port="$(( blocked_site_port + 1 ))"
+
+  start_port_holder "$blocked_site_port" PORT_HOLDER_PID
+  start_port_holder "$blocked_admin_port" PORT_HOLDER_PID_2
+
+  (
+    cd "$RECOVERY_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-partial-block.log 2>&1
+  )
+
+  stop_port_holder PORT_HOLDER_PID
+  stop_port_holder PORT_HOLDER_PID_2
+
+  local env_file="$RECOVERY_WORKTREE/.env.local"
+  [[ -f "$env_file" ]] || { echo ".env.local missing after atomic block allocation" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-partial-block.log 'worktree bootstrap complete'
+  assert_file_not_contains "$env_file" "^SITE_PORT=${blocked_site_port}$"
+  assert_file_not_contains "$env_file" "^ADMIN_PORT=${blocked_admin_port}$"
+
+  local leased_ports_before
+  leased_ports_before="$(grep -E '^(PORT|SITE_PORT|ADMIN_PORT)=' "$env_file" | tr '\n' ';')"
+  local inspect_json inspect_count
+  inspect_json="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect --scope-id "$scope_id")"
+  inspect_count="$(python3 - <<'PY' "$inspect_json"
+import json
+import sys
+payload = json.loads(sys.argv[1])
+print(payload["count"])
+PY
+)"
+  [[ "$inspect_count" == "3" ]] || { echo "expected exactly 3 leased ports for scope, got $inspect_count" >&2; exit 1; }
+
+  (
+    cd "$RECOVERY_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-recovery.log 2>&1
+  )
+
+  local leased_ports_after
+  leased_ports_after="$(grep -E '^(PORT|SITE_PORT|ADMIN_PORT)=' "$env_file" | tr '\n' ';')"
+  assert_file_contains /tmp/worktree-bootstrap-recovery.log 'worktree bootstrap complete'
+  [[ "$leased_ports_before" == "$leased_ports_after" ]] || { echo "force rerun changed leased ports unexpectedly" >&2; exit 1; }
+}
+
 check_managed_custom_content_root_is_used() {
   log "check dev data generation respects managed custom LOCAL_CONTENT_BASE_PATH"
   local custom_root="$MANUAL_WORKTREE/dev-data/local-fixtures"
@@ -288,6 +375,22 @@ check_dev_fixture_guardrail_for_real_root() {
   [[ -f "$real_root/Hardware/existing.md" ]] || { echo "real content root was mutated" >&2; exit 1; }
   assert_file_contains /tmp/worktree-bootstrap-real-root.log 'Refusing to manage dev fixtures outside'
   assert_file_contains /tmp/worktree-bootstrap-real-root.log 'Use bun run dev-sync:trigger for existing local content roots'
+}
+
+check_test_fixture_clean_removes_root_artifacts() {
+  log "check test fixture clean removes root artifacts"
+  mkdir -p "$SNAPSHOT_REPO/test-data/local"
+  printf 'db\n' >"$SNAPSHOT_REPO/test-data/sqlite.db"
+  printf 'post\n' >"$SNAPSHOT_REPO/test-data/local/post.md"
+
+  (
+    cd "$SNAPSHOT_REPO"
+    bun ./scripts/generate-test-data.ts --clean >/tmp/worktree-bootstrap-test-clean.log 2>&1
+  )
+
+  [[ ! -e "$SNAPSHOT_REPO/test-data/sqlite.db" ]] || { echo "test sqlite artifact should be removed by clean" >&2; exit 1; }
+  [[ ! -e "$SNAPSHOT_REPO/test-data/local/post.md" ]] || { echo "test local fixture should be removed by clean" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-test-clean.log '已清理 test 数据目录'
 }
 
 check_failure_is_non_blocking() {
@@ -325,7 +428,9 @@ check_existing_env_is_preserved
 check_legacy_env_is_accepted
 check_dry_run_is_read_only
 check_existing_env_rejects_occupied_port
+check_atomic_block_allocation_skips_derived_port_conflict
 check_managed_custom_content_root_is_used
 check_dev_fixture_guardrail_for_real_root
+check_test_fixture_clean_removes_root_artifacts
 check_failure_is_non_blocking
 log "all worktree bootstrap checks passed"

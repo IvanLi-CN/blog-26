@@ -106,8 +106,10 @@ def service_offset(service: str) -> int | None:
         "db": 2,
         "postgres": 2,
         "mysql": 2,
+        "site": 3,
         "redis": 3,
         "cache": 3,
+        "admin": 4,
     }
     return mapping.get(service.lower().strip())
 
@@ -387,6 +389,101 @@ def select_port(
     raise RegistryError("no available port candidates in configured range")
 
 
+def normalize_service_names(services: list[str]) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw in services:
+        service = raw.strip().lower()
+        if not service or service in seen:
+            continue
+        normalized.append(service)
+        seen.add(service)
+    if not normalized:
+        raise RegistryError("at least one service is required")
+    return normalized
+
+
+def service_field_name(service: str) -> str:
+    return service.strip().lower().replace("-", "_")
+
+
+def select_port_block(
+    rows: list[dict[str, str]],
+    scope_id: str,
+    services: list[str],
+    start_base: int,
+    step: int,
+    block_size: int,
+) -> tuple[int, dict[str, int]]:
+    normalized_services = normalize_service_names(services)
+    requested_services = set(normalized_services)
+    existing_scope_rows = [
+        row for row in rows if row["scope_id"] == scope_id and row["service"] in requested_services
+    ]
+    if len(existing_scope_rows) == len(requested_services):
+        bases = {row.get("port_base", "") for row in existing_scope_rows}
+        if len(bases) == 1 and "" not in bases:
+            existing_base = parse_int(next(iter(bases)), "port_base")
+            existing_ports = {
+                row["service"]: parse_int(row["port"], "port") for row in existing_scope_rows
+            }
+            if all(service in existing_ports for service in normalized_services):
+                return existing_base, {service: existing_ports[service] for service in normalized_services}
+
+    scope_rows_to_replace = [
+        row for row in rows if row["scope_id"] == scope_id and row["service"] in requested_services
+    ]
+
+    used_ports = {
+        parse_int(row["port"], "port")
+        for row in rows
+        if row not in scope_rows_to_replace
+    }
+    used_bases: set[int] = set()
+    for row in rows:
+        if row in scope_rows_to_replace:
+            continue
+        base_text = row.get("port_base", "")
+        if base_text:
+            used_bases.add(parse_int(base_text, "port_base"))
+
+    candidate_bases = stable_scope_candidate_bases(
+        scope_id=scope_id,
+        start_base=start_base,
+        step=step,
+        used_bases=used_bases,
+    )
+
+    for base in candidate_bases:
+        ports: dict[str, int] = {}
+        valid = True
+        for service in normalized_services:
+            offset = service_offset(service)
+            if offset is None:
+                raise RegistryError(
+                    f"service {service!r} has no fixed block offset for allocate-block"
+                )
+            if offset >= block_size:
+                raise RegistryError(
+                    f"service {service!r} offset {offset} exceeds block size {block_size}"
+                )
+            port = base + offset
+            if port < 1 or port > 65535:
+                valid = False
+                break
+            if port in used_ports or port in ports.values():
+                valid = False
+                break
+            if port_listening(port):
+                valid = False
+                break
+            ports[service] = port
+        if valid:
+            return base, ports
+
+    raise RegistryError("no available port block candidates in configured range")
+
+
 def upsert_row(
     rows: list[dict[str, str]],
     payload: dict[str, str],
@@ -487,6 +584,60 @@ def allocate_cmd(registry: Registry, args: argparse.Namespace) -> dict:
             "gc_removed": len(gc_removed),
             "created": created,
         }
+
+    return registry.with_locked_rows(args.lock_timeout_sec, mutate)
+
+
+def allocate_block_cmd(registry: Registry, args: argparse.Namespace) -> dict:
+    services = normalize_service_names(args.services)
+    payload_common = {
+        "scope_id": args.scope_id,
+        "project": args.project,
+        "repo_root": args.repo_root,
+        "branch": args.branch,
+        "worktree_path": args.worktree_path,
+        "block_size": str(args.block_size),
+        "agent_session": args.agent_session or "",
+        "pid": str(args.pid) if args.pid is not None else "",
+    }
+
+    def mutate(rows: list[dict[str, str]]):
+        gc_removed = run_gc(rows, args.ttl_hours)
+        base, ports = select_port_block(
+            rows,
+            scope_id=args.scope_id,
+            services=services,
+            start_base=args.start_base,
+            step=args.step,
+            block_size=args.block_size,
+        )
+
+        created_services: list[str] = []
+        for service in services:
+            payload = {
+                **payload_common,
+                "service": service,
+                "port": str(ports[service]),
+                "port_base": str(base),
+            }
+            _, created = upsert_row(rows, payload, refresh_claimed_at=False)
+            if created:
+                created_services.append(service)
+
+        result = {
+            "action": "allocated-block",
+            "scope_id": args.scope_id,
+            "services": services,
+            "ports": ports,
+            "port_base": base,
+            "block_size": args.block_size,
+            "claimed_at": utc_now_iso(),
+            "gc_removed": len(gc_removed),
+            "created_services": created_services,
+        }
+        for service, port in ports.items():
+            result[f"{service_field_name(service)}_port"] = port
+        return True, result
 
     return registry.with_locked_rows(args.lock_timeout_sec, mutate)
 
@@ -706,6 +857,19 @@ def parser_build() -> argparse.ArgumentParser:
     alloc.add_argument("--agent-session")
     alloc.add_argument("--pid", type=int)
 
+    alloc_block = sub.add_parser("allocate-block")
+    alloc_block.add_argument("--scope-id", "--workspace-id", dest="scope_id", required=True)
+    alloc_block.add_argument("--services", required=True, nargs="+")
+    alloc_block.add_argument("--project", required=True)
+    alloc_block.add_argument("--repo-root", required=True)
+    alloc_block.add_argument("--branch", required=True)
+    alloc_block.add_argument("--worktree-path", required=True)
+    alloc_block.add_argument("--start-base", type=int, default=DEFAULT_START_BASE)
+    alloc_block.add_argument("--step", type=int, default=DEFAULT_STEP)
+    alloc_block.add_argument("--block-size", type=int, default=DEFAULT_BLOCK_SIZE)
+    alloc_block.add_argument("--agent-session")
+    alloc_block.add_argument("--pid", type=int)
+
     suggest = sub.add_parser("suggest", parents=[common])
     suggest.add_argument("--start-base", type=int, default=DEFAULT_START_BASE)
     suggest.add_argument("--step", type=int, default=DEFAULT_STEP)
@@ -747,7 +911,7 @@ def parser_build() -> argparse.ArgumentParser:
 
 
 def validate_runtime_args(args: argparse.Namespace) -> None:
-    if args.command in ("allocate", "suggest"):
+    if args.command in ("allocate", "allocate-block", "suggest"):
         if args.step <= 0:
             raise RegistryError(f"invalid step: {args.step} (must be > 0)")
         if args.block_size <= 0:
@@ -773,6 +937,8 @@ def main() -> int:
         registry = Registry(args.registry_dir)
         if args.command == "allocate":
             result = allocate_cmd(registry, args)
+        elif args.command == "allocate-block":
+            result = allocate_block_cmd(registry, args)
         elif args.command == "suggest":
             result = suggest_cmd(registry, args)
         elif args.command == "register":

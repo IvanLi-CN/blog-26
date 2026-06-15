@@ -148,8 +148,8 @@ async function createFixtureData(baseDir: string) {
   );
 }
 
-async function cleanData(baseDir: string) {
-  await rm(baseDir, { recursive: true, force: true });
+async function cleanData(environment: Environment) {
+  await rm(getManagedRoot(environment), { recursive: true, force: true });
 }
 
 async function cleanFixtureData(baseDir: string) {
@@ -162,8 +162,8 @@ async function main() {
   assertManagedFixtureRoot(environment, baseDir);
 
   if (cleanOnly) {
-    await cleanData(baseDir);
-    console.log(`🧹 已清理 ${environment} 数据目录: ${baseDir}`);
+    await cleanData(environment);
+    console.log(`🧹 已清理 ${environment} 数据目录: ${getManagedRoot(environment)}`);
     return;
   }
 

@@ -101,6 +101,16 @@ wtb_service_port_json() {
     --service "$service"
 }
 
+wtb_service_port_block_json() {
+  python3 "$WORKTREE_BOOTSTRAP_PORT_REGISTRY" --json allocate-block \
+    --scope-id "$(wtb_scope_id)" \
+    --project "$(wtb_project_name)" \
+    --repo-root "$(wtb_repo_root)" \
+    --branch "$(wtb_current_branch)" \
+    --worktree-path "$(wtb_repo_root)" \
+    --services web site admin
+}
+
 wtb_service_port_register_json() {
   local service="$1"
   local port="$2"
@@ -136,15 +146,11 @@ PY
 }
 
 wtb_allocate_ports() {
-  local web_json port_base
-  web_json="$(wtb_service_port_json web)"
-  WTB_PORT="$(wtb_extract_json_field port "$web_json")"
-  port_base="$(wtb_extract_json_field port_base "$web_json")"
-  WTB_SITE_PORT="$((WTB_PORT + 3))"
-  WTB_ADMIN_PORT="$((WTB_PORT + 4))"
-
-  wtb_service_port_register_json site "$WTB_SITE_PORT" "$port_base" >/dev/null
-  wtb_service_port_register_json admin "$WTB_ADMIN_PORT" "$port_base" >/dev/null
+  local block_json
+  block_json="$(wtb_service_port_block_json)"
+  WTB_PORT="$(wtb_extract_json_field web_port "$block_json")"
+  WTB_SITE_PORT="$(wtb_extract_json_field site_port "$block_json")"
+  WTB_ADMIN_PORT="$(wtb_extract_json_field admin_port "$block_json")"
   export WTB_PORT WTB_SITE_PORT WTB_ADMIN_PORT
 }
 
