@@ -66,7 +66,7 @@ ENV PUBLIC_CONTENT_BUNDLE_URL=${PUBLIC_CONTENT_BUNDLE_URL}
 ENV NODE_ENV=production
 ENV TSC_COMPILE_ON_ERROR=1
 # Build the public site, backend runtime bundle, and admin SPA in-image.
-RUN bun run frontend:build && bun run backend:build
+RUN bun run prebuild && bun run build:compiled
 FROM oven/bun:1-slim AS app-image-built
 WORKDIR /app
 ARG DRIZZLE_ORM_VERSION=0.44.2

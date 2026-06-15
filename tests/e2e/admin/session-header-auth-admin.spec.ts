@@ -1,27 +1,30 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
 
-// admin-chromium 项目通过 sso-header-routing 在 BASE_URL 上注入 Remote-Email（E2E 模拟，仅测试环境使用）
-
-const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME ?? "Remote-Email";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";
+// admin 项目通过 sso-header-routing 在 BASE_URL 上注入 Remote-Email（E2E 模拟，仅测试环境使用）
 
 test.describe("Session & Header Auth (admin)", () => {
   test("header-only admin should be recognized as admin without dev login", async ({ page }) => {
     await page.context().clearCookies();
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: 60_000 });
 
-    const authRes = await page.request.get("/api/admin/session", {
-      headers: {
-        [EMAIL_HEADER_NAME]: ADMIN_EMAIL,
-      },
+    const data = await page.evaluate(async () => {
+      const response = await fetch("/api/test/auth", {
+        headers: {
+          accept: "application/json",
+        },
+      });
+      return {
+        ok: response.ok,
+        status: response.status,
+        payload: await response.json(),
+      };
     });
-    expect(authRes.ok()).toBeTruthy();
 
-    const data = await authRes.json();
-    const email = data.user?.email as string;
+    expect(data.ok).toBe(true);
+    const email = data.payload.user?.email as string;
     expect(typeof email).toBe("string");
-    expect(data.isAdmin).toBe(true);
+    expect(data.payload.isAdmin).toBe(true);
   });
 
   test("header-only admin can access admin dashboard without 401/403 page", async ({ page }) => {

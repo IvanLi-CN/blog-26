@@ -35,6 +35,7 @@ async function main() {
     { name: "重置测试环境", cmd: ["bun", "run", "test-env:reset"], env },
     { name: "静态检查", cmd: ["bun", "run", "check"], env },
     { name: "单元测试", cmd: ["bun", "run", "test"], env },
+    { name: "Canonical full E2E", cmd: ["bun", "run", "test:e2e"], env },
   ];
 
   for (const step of steps) {

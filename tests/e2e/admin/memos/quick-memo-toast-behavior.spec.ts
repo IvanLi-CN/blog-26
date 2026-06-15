@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { waitForQuickMemoEditor } from "./helpers";
+import { waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -13,7 +13,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
     });
   });
 
-  test("success toast, clears editor and renders memo", async ({ page }) => {
+  test("success state clears editor and renders memo", async ({ page }) => {
     let dialogOpened = false;
     page.on("dialog", async (dialog) => {
       dialogOpened = true;
@@ -32,17 +32,10 @@ test.describe("Quick memo publish feedback (admin)", () => {
     const publish = container.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
 
-    const [createResp] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.create") && res.request().method() === "POST",
-        { timeout: 30000 }
-      ),
-      publish.click(),
-    ]);
-    expect(createResp.status()).toBe(200);
+    await publish.click();
 
-    const toast = page.locator(".Toastify__toast .nature-alert-success");
-    await expect(toast).toContainText("Memo 已发布", { timeout: 10000 });
+    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".nature-alert-success strong")).toContainText(marker);
 
     await expect
       .poll(async () => ((await editor.textContent()) || "").trim().length, {
@@ -51,13 +44,12 @@ test.describe("Quick memo publish feedback (admin)", () => {
       })
       .toBe(0);
 
-    const memoCard = page.locator('[data-testid="memo-card"]').filter({ hasText: marker }).first();
-    await expect(memoCard).toBeVisible({ timeout: 30000 });
+    await waitForAdminLiveMemoCard(page, marker, 30_000);
 
     expect(dialogOpened).toBe(false);
   });
 
-  test("core creation failure shows error toast and no new memo", async ({ page }) => {
+  test("core creation failure keeps editor content and shows inline error", async ({ page }) => {
     await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
     const { container, editor } = await waitForQuickMemoEditor(page);
     const marker = `E2E 强制失败 ${Date.now()} [[force-fail]]`;
@@ -69,17 +61,10 @@ test.describe("Quick memo publish feedback (admin)", () => {
     const publish = container.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
 
-    const [createResp] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.create") && res.request().method() === "POST",
-        { timeout: 30000 }
-      ),
-      publish.click(),
-    ]);
-    expect(createResp.status()).toBeGreaterThanOrEqual(500);
+    await publish.click();
 
-    const errorToast = page.locator(".Toastify__toast .nature-alert-error");
-    await expect(errorToast).toContainText("发布 Memo 失败", { timeout: 10000 });
+    const inlineError = page.locator(".nature-alert-error").filter({ hasText: "创建 memo 失败" });
+    await expect(inlineError).toBeVisible({ timeout: 10_000 });
 
     await expect
       .poll(async () => ((await editor.textContent()) || "").trim().length, {
@@ -88,11 +73,13 @@ test.describe("Quick memo publish feedback (admin)", () => {
       })
       .toBeGreaterThan(0);
 
-    const memoCard = page.locator('[data-testid="memo-card"]').filter({ hasText: marker });
+    const memoCard = page
+      .locator('[data-testid="admin-live-memo-card"]')
+      .filter({ hasText: marker });
     await expect(memoCard).toHaveCount(0);
   });
 
-  test("degraded response still treated as success", async ({ page }) => {
+  test("degraded response still surfaces success state", async ({ page }) => {
     await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
     const { container, editor } = await waitForQuickMemoEditor(page);
 
@@ -105,19 +92,11 @@ test.describe("Quick memo publish feedback (admin)", () => {
     const publish = container.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
 
-    const [createResp] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.create") && res.request().method() === "POST",
-        { timeout: 30000 }
-      ),
-      publish.click(),
-    ]);
-    expect(createResp.status()).toBe(200);
+    await publish.click();
 
-    const toast = page.locator(".Toastify__toast .nature-alert-success");
-    await expect(toast).toContainText("Memo 已发布", { timeout: 10000 });
+    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".nature-alert-success strong")).toContainText("E2E 降级返回");
 
-    const memoCard = page.locator('[data-testid="memo-card"]').filter({ hasText: "E2E 降级返回" });
-    await expect(memoCard.first()).toBeVisible({ timeout: 30000 });
+    await waitForAdminLiveMemoCard(page, "E2E 降级返回", 30_000);
   });
 });

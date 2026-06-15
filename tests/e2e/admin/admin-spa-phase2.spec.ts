@@ -1,5 +1,10 @@
+import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
+
+function treeDirectoryButton(page: Page, name: string) {
+  return page.locator(`button.pointer-events-auto[aria-label="${name} 目录"]`).first();
+}
 
 test.describe("Admin SPA phase 2", () => {
   test("dashboard is served from the SPA shell and only calls /api/admin", async ({ page }) => {
@@ -40,7 +45,7 @@ test.describe("Admin SPA phase 2", () => {
     const targetFile = fileBrowser.getByRole("button", { name: "hello-world.md", exact: true });
     await expect(fileBrowser).toBeVisible();
     if (!(await targetFile.isVisible())) {
-      await fileBrowser.getByRole("button", { name: "blog" }).click();
+      await treeDirectoryButton(page, "blog").click();
     }
     await expect(targetFile).toBeVisible();
     await targetFile.click();

@@ -1,10 +1,11 @@
 import { test as base, expect } from "@playwright/test";
+import { E2E_ADMIN_EMAIL, E2E_EMAIL_HEADER_NAME, E2E_USER_EMAIL, readE2EBaseUrl } from "../runtime";
 import { attachSsoHeaderRouting } from "../utils/sso-header-routing";
 
-const BASE_URL = process.env.BASE_URL ?? "http://localhost:25090";
-const EMAIL_HEADER_NAME = process.env.SSO_EMAIL_HEADER_NAME ?? "Remote-Email";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";
-const USER_EMAIL = process.env.USER_EMAIL ?? "user@test.local";
+const BASE_URL = readE2EBaseUrl();
+const EMAIL_HEADER_NAME = E2E_EMAIL_HEADER_NAME;
+const ADMIN_EMAIL = E2E_ADMIN_EMAIL;
+const USER_EMAIL = E2E_USER_EMAIL;
 
 export const userTest = base.extend({
   context: async ({ context }, use) => {

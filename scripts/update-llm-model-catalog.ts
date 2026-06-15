@@ -147,6 +147,32 @@ function getRefreshTimeoutMs() {
   return Math.floor(parsed);
 }
 
+function shouldSkipRefresh() {
+  const raw = process.env.LLM_MODEL_CATALOG_SKIP_REFRESH?.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
+async function writeFallbackCatalogSnapshot() {
+  const fallbackRaw = await readFile(FALLBACK_PATH, "utf8");
+  const fallbackItems = JSON.parse(fallbackRaw) as CatalogEntry[];
+  await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
+  await writeFile(
+    OUTPUT_PATH,
+    `${JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        items: fallbackItems.map((entry) => ({
+          ...entry,
+          availableOnProvider: null,
+        })),
+      },
+      null,
+      2
+    )}\n`
+  );
+  console.log(`[llm-catalog] reused checked-in fallback catalog at ${OUTPUT_PATH}`);
+}
+
 async function fetchOpenRouterModels() {
   const timeoutMs = getRefreshTimeoutMs();
   const response = await fetch(OPENROUTER_MODELS_URL, {
@@ -166,6 +192,11 @@ async function fetchOpenRouterModels() {
 }
 
 async function main() {
+  if (shouldSkipRefresh()) {
+    await writeFallbackCatalogSnapshot();
+    return;
+  }
+
   try {
     const models = await fetchOpenRouterModels();
     const entries = models

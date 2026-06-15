@@ -26,8 +26,10 @@ jobs:
       fail-fast: false
       matrix:
         project:
-          - guest-chromium
-          - admin-chromium
+          - guest
+          - admin
+          - user
+          - mcp
     timeout-minutes: 60
     continue-on-error: true
     steps:
@@ -64,7 +66,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: bun run test:e2e -- --project=${{ matrix.project }}
+        run: bun run test:e2e:project -- ${{ matrix.project }}
         env:
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           USER_EMAIL: user-${{ github.run_id }}-${{ github.run_attempt }}@test.local

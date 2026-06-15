@@ -1,10 +1,11 @@
 import { execSync } from "node:child_process";
 import { expect } from "@playwright/test";
+import { E2E_ADMIN_EMAIL, readE2EBaseUrl, readE2EDbPath } from "../runtime";
 import { adminTest as test } from "./fixtures";
 
-const MIGRATE_COMMAND = "DB_PATH=./test-data/sqlite.db bun run migrate";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@example.com";
-const BASE_URL = process.env.BASE_URL ?? "http://localhost:25090";
+const DB_PATH = readE2EDbPath();
+const ADMIN_EMAIL = E2E_ADMIN_EMAIL;
+const BASE_URL = readE2EBaseUrl();
 
 let sessionCookie: { name: string; value: string } | null = null;
 
@@ -15,9 +16,8 @@ function assertTokenPrefix(value: string) {
 
 test.describe("Admin PAT management", () => {
   test.beforeAll(() => {
-    execSync(MIGRATE_COMMAND, { stdio: "ignore" });
     const sessionOutput = execSync(
-      `ADMIN_EMAIL=${ADMIN_EMAIL} DB_PATH=./test-data/sqlite.db bun scripts/dev-create-admin-session.ts`,
+      `ADMIN_EMAIL=${ADMIN_EMAIL} DB_PATH=${JSON.stringify(DB_PATH)} bun scripts/dev-create-admin-session.ts`,
       { encoding: "utf-8" }
     );
     const jsonStart = sessionOutput.indexOf("{");
@@ -77,11 +77,8 @@ test.describe("Admin PAT management", () => {
     await expect(page.getByRole("heading", { name: "创建新的访问令牌" })).toBeVisible();
 
     const label = `E2E 自动化 ${Date.now()}`;
-    await page.getByLabel("标签（可选）").fill(label);
+    await page.getByPlaceholder("例如：CI、脚本、调试").fill(label);
     await page.getByRole("button", { name: "生成访问令牌" }).click();
-    await page.waitForResponse((response) =>
-      response.url().includes("admin.personalAccessTokens.create")
-    );
 
     const issuedModal = page.getByRole("heading", { name: "访问令牌已生成" });
     await expect(issuedModal).toBeVisible();
@@ -113,14 +110,11 @@ test.describe("Admin PAT management", () => {
 
     await createdRow.getByRole("button", { name: "删除" }).click();
 
-    const deleteModal = page.locator(".modal-box", {
-      has: page.getByRole("heading", { name: "确认删除访问令牌" }),
-    });
+    const deleteModal = page.getByRole("dialog", { name: "删除访问令牌" });
     await expect(deleteModal).toBeVisible();
-    await expect(deleteModal.getByText(label)).toBeVisible();
-    await expect(deleteModal.getByText(/从未使用|Never used/)).toBeVisible();
+    await expect(deleteModal.getByText("此令牌会立即撤销")).toBeVisible();
 
-    await deleteModal.getByRole("button", { name: "确认删除" }).click();
+    await deleteModal.getByRole("button", { name: "删除令牌" }).click();
 
     await expect(page.getByText("访问令牌已删除。")).toBeVisible();
     await expect(page.locator("table tbody tr", { hasText: label })).toHaveCount(0);

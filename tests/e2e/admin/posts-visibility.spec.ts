@@ -9,7 +9,7 @@ test.describe("Posts visibility badge (admin)", () => {
   });
 
   test("admin should see visibility badge on list", async ({ page }) => {
-    await page.goto("/posts", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto("/admin/posts", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "文章" })).toBeVisible();
 
     const badges = page.locator('[data-testid="post-status-badge"]');

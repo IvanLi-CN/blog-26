@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { waitForQuickMemoEditor } from "./helpers";
+import { waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -23,26 +23,18 @@ test.describe("Quick Memo publish no duplicate (admin)", () => {
     const publish = container.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
 
-    // 等待 create 接口成功返回，确保后端写入完成
-    await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200,
-        { timeout: 30000 }
-      ),
-      publish.click(),
-    ]);
+    await publish.click();
 
-    // 等待列表刷新并实际渲染新 Memo
-    // 仅统计最外层 memo 卡片容器，避免内部嵌套的 data-testid 重复计数
-    const cards = page.locator('[data-testid="memo-card"][data-id]');
+    const cards = page.locator('[data-testid="admin-live-memo-card"]');
     const cardsWithTitle = cards.filter({ hasText: TITLE });
-    await expect(cardsWithTitle).toHaveCount(1, { timeout: 30000 });
+    await expect(cardsWithTitle).toHaveCount(1, { timeout: 30_000 });
 
-    // 刷新页面后再次验证，防止同步过程产生重复记录
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await waitForQuickMemoEditor(page);
+    await waitForAdminLiveMemoCard(page, TITLE);
     const cardsAfterReload = page
-      .locator('[data-testid="memo-card"][data-id]')
+      .locator('[data-testid="admin-live-memo-card"]')
       .filter({ hasText: TITLE });
-    await expect(cardsAfterReload).toHaveCount(1, { timeout: 30000 });
+    await expect(cardsAfterReload).toHaveCount(1, { timeout: 30_000 });
   });
 });

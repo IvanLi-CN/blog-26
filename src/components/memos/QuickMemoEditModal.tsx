@@ -244,12 +244,14 @@ export function QuickMemoEditModal({
                 <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
                   <input
                     type="checkbox"
+                    data-testid="quick-memo-visibility-input"
                     className="nature-switch-input peer absolute inset-0 m-0 cursor-inherit opacity-0"
                     checked={isPublic}
                     onChange={(event) => setIsPublic(event.target.checked)}
                     disabled={disableActions}
                   />
                   <span
+                    data-testid="quick-memo-visibility-switch"
                     className="nature-switch pointer-events-none"
                     data-state={isPublic ? "checked" : "unchecked"}
                     aria-disabled={disableActions ? "true" : "false"}

@@ -20,33 +20,12 @@ test.describe("Memos 管理员权限", () => {
     await expect(quickEditor).toBeVisible();
     await expect(page.getByText("快速发布 Memo")).toBeVisible();
 
-    await page.waitForSelector(".memos-list", { timeout: 10000 });
-    const memoCards = page.locator(".memo-card");
+    const memoCards = page.locator('[data-testid="admin-live-memo-card"]');
     const cardCount = await memoCards.count();
     if (cardCount > 0) {
       const firstCard = memoCards.first();
-      const editButton = firstCard
-        .locator("button")
-        .filter({ hasText: /编辑|edit/i })
-        .or(firstCard.locator('button[title*="编辑"]'))
-        .or(
-          firstCard
-            .locator("button")
-            .filter({ has: page.locator("svg") })
-            .first()
-        );
-      const deleteButton = firstCard
-        .locator("button")
-        .filter({ hasText: /删除|delete/i })
-        .or(firstCard.locator('button[title*="删除"]'))
-        .or(
-          firstCard
-            .locator("button")
-            .filter({ has: page.locator("svg") })
-            .last()
-        );
-      const hasManageButtons = (await editButton.count()) > 0 || (await deleteButton.count()) > 0;
-      expect(hasManageButtons).toBeTruthy();
+      await expect(firstCard.getByTestId("admin-live-memo-edit")).toBeVisible();
+      await expect(firstCard.getByRole("link", { name: "预览" })).toBeVisible();
     }
   });
 

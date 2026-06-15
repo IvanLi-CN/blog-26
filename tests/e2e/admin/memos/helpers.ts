@@ -1,5 +1,20 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+export async function openAdminMemoPreview(page: Page, slug: string) {
+  await page.goto(`/admin/preview/memos/${encodeURIComponent(slug)}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60_000,
+  });
+  await page.waitForURL(/\/admin\/preview\/memos\/.+/, { timeout: 60_000 }).catch(() => {
+    // `goto()` may already have completed before the explicit URL wait starts.
+  });
+  await expect(page.getByRole("heading", { name: "Memo 预览" })).toBeVisible({ timeout: 60_000 });
+}
+
+export async function openAdminMemoDetail(page: Page, slug: string) {
+  await openAdminMemoPreview(page, slug);
+}
+
 export async function waitForQuickMemoEditor(page: Page) {
   const container = page.locator('[data-testid="quick-memo-editor"]').first();
 
@@ -49,7 +64,16 @@ export async function waitForTrpcSuccess(page: Page, procedureName: string, time
 
 export async function waitForMemoCardByText(page: Page, text: string, timeout = 60_000) {
   const memoCard = page
-    .locator('[data-testid="memo-card"][data-id]')
+    .locator('[data-testid="admin-live-memo-card"], [data-testid="memo-card"][data-id]')
+    .filter({ hasText: text })
+    .first();
+  await expect(memoCard).toBeVisible({ timeout });
+  return memoCard;
+}
+
+export async function waitForAdminLiveMemoCard(page: Page, text: string, timeout = 60_000) {
+  const memoCard = page
+    .locator('[data-testid="admin-live-memo-card"]')
     .filter({ hasText: text })
     .first();
   await expect(memoCard).toBeVisible({ timeout });
@@ -107,25 +131,14 @@ export async function openMemoEditDialog(page: Page, trigger: Locator) {
 }
 
 export async function openMemoDetailFromCard(page: Page, card: Locator) {
-  const detailLink = card.locator('a[href^="/memos/"]').first();
+  const detailLink = card.getByRole("link", { name: "预览" }).first();
   await expect(detailLink).toBeVisible({ timeout: 60_000 });
   await detailLink.scrollIntoViewIfNeeded();
 
   const href = await detailLink.getAttribute("href");
-  if (href) {
-    await page.goto(href, {
-      waitUntil: "domcontentloaded",
-      timeout: 60_000,
-    });
-  } else {
-    await Promise.all([page.waitForURL(/\/memos\/.+/, { timeout: 60_000 }), detailLink.click()]);
-    await page.waitForLoadState("domcontentloaded", { timeout: 60_000 }).catch(() => {
-      // The route may already be hydrated and settled before Playwright starts waiting.
-    });
+  const slug = href?.split("/").filter(Boolean).at(-1);
+  if (!slug) {
+    throw new Error("Expected memo card detail link to include a slug");
   }
-
-  await page.waitForURL(/\/memos\/.+/, { timeout: 60_000 }).catch(() => {
-    // `goto()` may already have completed before the explicit URL wait starts.
-  });
-  await page.waitForSelector(".memo-detail-page", { timeout: 60_000 });
+  await openAdminMemoDetail(page, slug);
 }

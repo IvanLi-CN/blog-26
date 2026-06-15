@@ -139,6 +139,10 @@ function PublicMemoList({
         <article
           key={memo.id || memo.slug}
           className="nature-panel flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-start sm:justify-between"
+          data-testid="admin-live-memo-card"
+          data-id={memo.id}
+          data-slug={memo.slug}
+          data-source={memo.source ?? "local"}
         >
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
@@ -148,6 +152,7 @@ function PublicMemoList({
               </span>
               <span
                 className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}
+                data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
               >
                 {memo.isPublic ? "Public" : "Draft / Private"}
               </span>
@@ -177,6 +182,16 @@ function PublicMemoList({
             <a className="nature-button nature-button-outline" href={buildPreviewHref(memo.slug)}>
               预览
             </a>
+            <button
+              type="button"
+              className="nature-button nature-button-outline"
+              data-testid="admin-live-memo-edit"
+              onClick={() => {
+                window.location.href = buildPreviewHref(memo.slug);
+              }}
+            >
+              编辑 Memo
+            </button>
           </div>
         </article>
       ))}
@@ -437,6 +452,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
           <button
             type="button"
             className="nature-button nature-button-danger"
+            data-testid="admin-live-memo-delete"
             onClick={() => void handleDelete()}
             disabled={!memo || isDeleting}
           >
@@ -473,7 +489,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
             ) : null}
           </div>
 
-          <div className="nature-panel px-6 py-7 sm:px-8">
+          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-body">
             <MarkdownRenderer
               content={memo.content}
               variant="article"
