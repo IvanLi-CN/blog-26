@@ -13,18 +13,19 @@ Astro public site, Vite/React admin SPA, and Bun gateway for a local-file-backed
 ## Quick Start
 
 ```bash
-bun install
-./scripts/setup.sh
-
-export DB_PATH=./dev-data/sqlite.db
-export LOCAL_CONTENT_BASE_PATH=./dev-data/local
-export PORT=25090
+bun run setup
 
 bun run dev-sync:trigger
 bun run dev
 ```
 
-`bun run dev` starts Astro, the admin SPA, and the Bun gateway. The default web port is `25090`.
+`bun run setup` installs dependencies, installs hooks, creates `.env.local` when missing, leases worktree-local ports, and prepares dev data. `bun run dev` starts Astro, the admin SPA, and the Bun gateway.
+
+For linked worktrees, the first checkout triggers the same bootstrap automatically through `lefthook post-checkout`. If automatic bootstrap fails, checkout still succeeds and the recovery command is:
+
+```bash
+bun run worktree:bootstrap -- --force
+```
 
 ## Web Demo
 
@@ -44,16 +45,21 @@ Storybook remains useful for component state galleries and visual evidence, but 
 
 Required for normal local development:
 
+The recommended local development contract is `.env.local`, created on first bootstrap when missing. By default it contains:
+
 ```bash
 DB_PATH=./dev-data/sqlite.db
 LOCAL_CONTENT_BASE_PATH=./dev-data/local
-PORT=25090
+CONTENT_SOURCES=local
+PORT=<leased gateway port>
+SITE_PORT=<leased site port>
+ADMIN_PORT=<leased admin port>
 ```
 
 Useful optional variables:
 
-- `SITE_PORT`: Astro dev port, defaults to `PORT + 3`
-- `ADMIN_PORT`: admin SPA dev port, defaults to `25094`
+- `SITE_PORT`: Astro dev port; bootstrap leases a worktree-local value on first setup
+- `ADMIN_PORT`: admin SPA dev port; bootstrap leases a worktree-local value on first setup
 - `BASE_URL`: Playwright override
 - `ADMIN_EMAIL`: admin identity for dev/test verification
 
@@ -75,6 +81,7 @@ bun run migrate
 bun run seed
 bun run dev-db:reset
 bun run test-env:reset
+bun run test:worktree-bootstrap
 ```
 
 ## Data Layout
@@ -91,6 +98,7 @@ Content sync imports Markdown from the configured local content root into SQLite
 
 ```bash
 bun run test
+bun run test-env:reset
 bun run test:e2e
 bun run test:e2e:project -- admin
 bun run test:e2e:targeted
@@ -103,6 +111,18 @@ except specs explicitly tagged `@targeted` or `@experimental`, and includes `gue
 
 Playwright uses the integrated local-only stack defined in `playwright.config.ts`. The full local
 runner resets fixtures once, builds once, then executes isolated per-project runs in parallel.
+
+## Worktree Bootstrap
+
+- Auto bootstrap runs only on the first branch checkout of a new linked worktree.
+- Existing `.env.local` files are never overwritten by bootstrap.
+- Older `.env.local` files without `SITE_PORT` / `ADMIN_PORT` stay valid; bootstrap derives those ports from `PORT` at runtime.
+- Later branch switches do not rerun full bootstrap automatically.
+- If `LOCAL_CONTENT_BASE_PATH` points outside `./dev-data`, bootstrap syncs that real content root but refuses to generate destructive dev fixtures into it.
+- Manual rerun path: `bun run worktree:bootstrap -- --force`
+- Preview-only path: `bun run worktree:bootstrap -- --force --dry-run`
+- Bootstrap failures print the failed phase plus one recovery command directly in the checkout terminal.
+- Smoke test: `bun run test:worktree-bootstrap`
 
 ## Build and Run
 
