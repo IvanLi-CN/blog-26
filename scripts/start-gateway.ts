@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
+import { loadWorktreeEnvFileIfPresent, resolveWorktreePort } from "@/lib/worktree-env";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
 import { handleDevApiRequest } from "@/server/dev-api/router";
 import { handleFilesApiRequest } from "@/server/files-api/router";
@@ -12,12 +13,14 @@ import { handleInternalAssetSourceRequest } from "@/server/public-media";
 import { handleTestApiRequest } from "@/server/test-api/router";
 import { handleTrpcHttpRequest } from "@/server/trpc-http";
 
+loadWorktreeEnvFileIfPresent();
+
 type GatewayMode = "dev" | "production";
 
 const mode = (process.env.NODE_ENV === "production" ? "production" : "dev") as GatewayMode;
-const publicPort = Number(process.env.PORT || 25090);
-const sitePort = Number(process.env.SITE_PORT || publicPort + 3);
-const adminPort = Number(process.env.ADMIN_PORT || publicPort + 4);
+const publicPort = resolveWorktreePort("web");
+const sitePort = resolveWorktreePort("site");
+const adminPort = resolveWorktreePort("admin");
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const internalHostname = process.env.INTERNAL_HOSTNAME || "127.0.0.1";
 const siteDistDir = resolve(process.cwd(), process.env.SITE_DIST_DIR || "site-dist");

@@ -1,3 +1,8 @@
+post-checkout:
+  commands:
+    worktree-bootstrap:
+      run: ./scripts/post-checkout-worktree-bootstrap.sh {1} {2} {3}
+
 pre-commit:
   commands:
     check:
