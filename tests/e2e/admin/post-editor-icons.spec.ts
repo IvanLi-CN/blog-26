@@ -55,11 +55,11 @@ test.describe("Post editor icons & Iconify CORS (admin)", () => {
   });
 
   test("lucide icons are rendered in post editor UI", async ({ page }) => {
-    await openEditor(page, "/admin/posts/editor?id=blog/01-react-hooks-deep-dive.md");
+    await openEditor(page, "/admin/posts/editor?slug=react-hooks-deep-dive");
     await expect(page.getByText("正在加载文章...")).toHaveCount(0, { timeout: 60_000 });
     await expect(page.getByText("文章不存在")).toHaveCount(0);
 
-    const previewButton = page.locator('button[title="在新窗口预览"]');
+    const previewButton = page.getByRole("button", { name: "前台预览" });
     await expect(previewButton).toBeVisible({ timeout: 60_000 });
     await expect(previewButton.locator("svg")).toBeVisible({ timeout: 60_000 });
   });

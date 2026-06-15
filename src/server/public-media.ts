@@ -749,7 +749,18 @@ function shouldUseDevSourceFallback() {
   if (raw === "0" || raw === "false" || raw === "no") {
     return false;
   }
+  if (raw === "1" || raw === "true" || raw === "yes" || raw === "on") {
+    return true;
+  }
   return process.env.NODE_ENV !== "production";
+}
+
+function shouldPreferDevSourceFallback() {
+  const raw = process.env.PUBLIC_MEDIA_PREFER_DEV_SOURCE_FALLBACK?.trim().toLowerCase();
+  if (raw === "1" || raw === "true" || raw === "yes" || raw === "on") {
+    return true;
+  }
+  return false;
 }
 
 function createMediaProcessorUnavailableResponse(request: Request) {
@@ -857,6 +868,14 @@ export async function handlePublicAssetFacadeRequest(
       return new Response("Not Found", { status: 404 });
     }
     return streamLocalMediaFile(request, resolved.ref);
+  }
+
+  if (
+    shouldPreferDevSourceFallback() &&
+    shouldUseDevSourceFallback() &&
+    resolved.ref.kind !== "video"
+  ) {
+    return streamDevSourceFallback(request, resolved.ref);
   }
 
   const imagorPath = await buildImagorPath({

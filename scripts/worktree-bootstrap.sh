@@ -107,14 +107,28 @@ validate_ports() {
 }
 
 install_lefthook() {
-  if command -v bunx >/dev/null 2>&1; then
+  local hooks_dir
+  hooks_dir="$(git rev-parse --git-path hooks 2>/dev/null || echo ".git/hooks")"
+  if [[ -f "$hooks_dir/post-checkout" && -f "$hooks_dir/pre-commit" && -f "$hooks_dir/commit-msg" ]]; then
+    wtb_log "lefthook already installed ✓ ($hooks_dir)"
+    return 0
+  fi
+
+  local os_arch cpu_arch native_lefthook local_lefthook
+  os_arch="$(uname | tr '[:upper:]' '[:lower:]')"
+  cpu_arch="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
+  native_lefthook="$ROOT_DIR/node_modules/lefthook-${os_arch}-${cpu_arch}/bin/lefthook"
+  local_lefthook="$ROOT_DIR/node_modules/.bin/lefthook"
+
+  if [[ -x "$native_lefthook" ]]; then
+    run "\"$native_lefthook\" install -f" || return 1
+  elif [[ -x "$local_lefthook" ]]; then
+    run "\"$local_lefthook\" install -f" || return 1
+  elif command -v bunx >/dev/null 2>&1; then
     run bunx lefthook install -f || return 1
   else
     run npx lefthook install -f || return 1
   fi
-
-  local hooks_dir
-  hooks_dir="$(git rev-parse --git-path hooks 2>/dev/null || echo ".git/hooks")"
   if [[ -f "$hooks_dir/post-checkout" ]]; then
     wtb_log "lefthook installed ✓ ($hooks_dir)"
   else

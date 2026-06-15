@@ -8,6 +8,7 @@ import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { type AdminPreviewMemo, type AdminPreviewPost, adminApi } from "@/lib/admin-api-client";
 import { Button, EmptyState, Spinner } from "~/components/ui";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
+import { PublicMemoDetailControlsIsland } from "../../../../site/components/PublicMemoAuthoring";
 
 function PreviewTags({ tags }: { tags: string[] }) {
   if (tags.length === 0) return null;
@@ -117,7 +118,10 @@ function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
         {post.tags && post.tags.length > 0 ? <PreviewTags tags={post.tags} /> : null}
       </header>
 
-      <div className="rounded-2xl border border-border bg-background px-5 py-6">
+      <div
+        className="rounded-2xl border border-border bg-background px-5 py-6"
+        data-testid="admin-preview-post-body"
+      >
         <MarkdownRenderer
           content={post.body || ""}
           articlePath={post.filePath || post.slug}
@@ -139,6 +143,7 @@ function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
 function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
   return (
     <article className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <PublicMemoDetailControlsIsland slug={memo.slug} />
       <header className="space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
           <Eye className="size-3.5" />
@@ -153,7 +158,10 @@ function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
         {memo.tags && memo.tags.length > 0 ? <PreviewTags tags={memo.tags} /> : null}
       </header>
 
-      <div className="rounded-2xl border border-border bg-background px-5 py-6">
+      <div
+        className="rounded-2xl border border-border bg-background px-5 py-6"
+        data-testid="admin-preview-memo-body"
+      >
         <MarkdownRenderer
           content={memo.content || ""}
           articlePath={memo.filePath || memo.slug}

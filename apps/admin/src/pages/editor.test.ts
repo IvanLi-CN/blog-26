@@ -8,7 +8,7 @@ import {
   resolveActiveTabIdAfterTreeDelete,
   resolveBrowserPathAfterTreeDelete,
   shouldMarkLiveEditorContentDirty,
-} from "./editor";
+} from "./editor-logic";
 
 describe("editor batch selection mapping", () => {
   test("maps pasted batch results to the new tree selection set", () => {

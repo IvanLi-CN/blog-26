@@ -5,6 +5,13 @@ const SITE_PATH_BYPASS_PREFIXES = ["/api", "/admin", "/_astro"];
 const PUBLIC_FILE_PATH_RE =
   /\.(?:avif|bmp|css|csv|gif|htm|html|ico|jpeg|jpg|js|json|map|mjs|pdf|png|svg|txt|webmanifest|webp|woff2?|xml)$/i;
 
+function readWindowOrigin() {
+  if (typeof window === "undefined" || !window.location?.origin) {
+    return "";
+  }
+  return normalizeBaseUrl(window.location.origin);
+}
+
 function normalizeBaseUrl(raw: string | undefined | null) {
   const value = typeof raw === "string" ? raw.trim() : "";
   if (!value) return "";
@@ -113,6 +120,10 @@ export function getPublicSiteBasePath() {
 }
 
 export function getPublicApiBaseUrl() {
+  const windowOrigin = readWindowOrigin();
+  if (windowOrigin) {
+    return windowOrigin;
+  }
   return normalizeBaseUrl(readPublicApiBaseUrlValue());
 }
 

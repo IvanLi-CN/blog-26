@@ -69,7 +69,7 @@ async function expectStableLiftHover(page: Page, hitbox: Locator) {
   expect(sweepTransform).not.toBe("none");
 }
 
-test.describe("Public hover stability", () => {
+test.describe("Public hover stability @targeted", () => {
   test("timeline cards, tag cards, and search results keep a stable hitbox while lifted", async ({
     page,
   }) => {

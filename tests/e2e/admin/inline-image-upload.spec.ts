@@ -1,39 +1,17 @@
 import { expect } from "@playwright/test";
+import { E2E_ADMIN_EMAIL } from "../runtime";
 import { adminTest as test } from "./fixtures";
 import {
-  openMemoDetailFromCard,
+  openAdminMemoDetail,
+  waitForAdminPreviewMemoBody,
   waitForQuickMemoEditor,
-  waitForTrpcSuccess,
 } from "./memos/helpers";
 
 // Small 1x1 PNG (transparent)
 const ONE_BY_ONE_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
-
-function findMemoPayload(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object") return null;
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findMemoPayload(item);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const candidate = value as Record<string, unknown>;
-  if (typeof candidate.slug === "string" && candidate.slug.length > 0) {
-    return candidate;
-  }
-
-  for (const nested of Object.values(candidate)) {
-    const found = findMemoPayload(nested);
-    if (found) return found;
-  }
-
-  return null;
-}
+const ADMIN_EMAIL = E2E_ADMIN_EMAIL;
 
 test.describe("Inline image upload (Milkdown/Memos)", () => {
   test("uploads base64 inline image and avoids '.md/' in path", async ({ page, baseURL }) => {
@@ -72,7 +50,7 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     // Give the editor a brief moment to emit markdownUpdated and propagate onChange
     await page.waitForTimeout(300);
     // Wait until publish button is enabled, then submit quick memo
-    const memoCards = page.locator('[data-testid="memo-card"][data-id]');
+    const memoCards = page.locator('[data-testid="admin-live-memo-card"][data-id]');
     const initialCardIds = await memoCards.evaluateAll((cards) =>
       cards
         .map((card) => card.getAttribute("data-id"))
@@ -80,73 +58,92 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     );
     const publishButton = page.getByRole("button", { name: /发布 Memo/ });
     await expect(publishButton).toBeEnabled();
-    const createRespPromise = waitForTrpcSuccess(page, "memos.create", 60_000)
-      .then(async (response) => {
-        const payload = await response.json();
-        return findMemoPayload(payload);
-      })
-      .catch(() => null);
     await publishButton.click();
 
-    const successToast = page.locator(".Toastify__toast .nature-alert-success");
-    await expect(successToast).toContainText("Memo 已发布", { timeout: 30_000 });
+    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 30_000 });
 
-    const createdMemo = await Promise.race([
-      createRespPromise,
-      page.waitForTimeout(2_000).then(() => null),
-    ]);
-    const slug = typeof createdMemo?.slug === "string" ? createdMemo.slug : "";
+    let createdCardId = "";
+    await expect
+      .poll(
+        async () => {
+          const ids = await memoCards.evaluateAll((cards) =>
+            cards
+              .map((card) => card.getAttribute("data-id"))
+              .filter((value): value is string => Boolean(value))
+          );
+          createdCardId = ids.find((id) => !initialCardIds.includes(id)) ?? "";
+          return createdCardId;
+        },
+        {
+          timeout: 60_000,
+          message: "等待新发布的 memo 出现在列表中",
+        }
+      )
+      .not.toBe("");
 
-    if (slug) {
-      await page.goto(`${baseURL}/memos/${slug}`, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000,
-      });
-      await page.waitForSelector(".memo-detail-page", { timeout: 60_000 });
-    } else {
-      let createdCardId = "";
-      await expect
-        .poll(
-          async () => {
-            const ids = await memoCards.evaluateAll((cards) =>
-              cards
-                .map((card) => card.getAttribute("data-id"))
-                .filter((value): value is string => Boolean(value))
-            );
-            createdCardId = ids.find((id) => !initialCardIds.includes(id)) ?? "";
-            return createdCardId;
-          },
-          {
-            timeout: 60_000,
-            message: "等待新发布的 memo 出现在列表中",
-          }
-        )
-        .not.toBe("");
+    const createdCard = page.locator(
+      `[data-testid="admin-live-memo-card"][data-id="${createdCardId}"]`
+    );
+    await expect(createdCard).toBeVisible({ timeout: 30_000 });
 
-      const createdCard = page.locator(`[data-testid="memo-card"][data-id="${createdCardId}"]`);
-      await expect(createdCard).toBeVisible({ timeout: 30_000 });
-      await openMemoDetailFromCard(page, createdCard);
+    const createdSlug = await createdCard.getAttribute("data-slug");
+    expect(createdSlug).toBeTruthy();
+    if (!createdSlug) {
+      throw new Error("Expected created memo card to expose a canonical slug");
     }
 
+    await openAdminMemoDetail(page, createdSlug);
+
+    const previewBody = await waitForAdminPreviewMemoBody(page, 30_000);
+    await expect(previewBody.getByRole("button", { name: "Alt" })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    let detail:
+      | {
+          image?: string | null;
+          attachments?: Array<{ path?: string }>;
+          media?: { content?: Array<{ variants?: Record<string, string> }> };
+        }
+      | undefined;
     await expect
-      .poll(async () => await page.locator('.memo-detail-page img[src^="/api/files/"]').count(), {
-        timeout: 30_000,
-        message: "等待详情页渲染上传后的图片",
-      })
+      .poll(
+        async () => {
+          const response = await page.request
+            .get(`/api/public/memos/${encodeURIComponent(createdSlug)}`)
+            .catch(() => null);
+          if (!response?.ok()) {
+            return 0;
+          }
+
+          detail = (await response.json().catch(() => null)) as typeof detail;
+          const renderedImageSrcs = [
+            detail?.image,
+            ...(detail?.attachments?.map((attachment) => attachment.path) ?? []),
+            ...(detail?.media?.content?.flatMap((item) => Object.values(item.variants ?? {})) ??
+              []),
+          ].filter((src): src is string => Boolean(src));
+          return renderedImageSrcs.length;
+        },
+        {
+          timeout: 60_000,
+          intervals: [500, 1_000, 2_000, 3_000],
+          message: "等待内联图片资源在公开 memo 详情中可见",
+        }
+      )
       .toBeGreaterThan(0);
 
-    const renderedImageSrcs = await page
-      .locator('.memo-detail-page img[src^="/api/files/"]')
-      .evaluateAll((images) =>
-        images
-          .map((image) => image.getAttribute("src"))
-          .filter((src): src is string => Boolean(src))
-      );
+    const renderedImageSrcs = [
+      detail.image,
+      ...(detail.attachments?.map((attachment) => attachment.path) ?? []),
+      ...(detail.media?.content?.flatMap((item) => Object.values(item.variants ?? {})) ?? []),
+    ].filter((src): src is string => Boolean(src));
+    expect(renderedImageSrcs.length).toBeGreaterThan(0);
 
     // Ensure runtime image URLs don't contain ".md/" in path (regression guard).
     for (const src of renderedImageSrcs) {
       expect(src).not.toMatch(/\.md\//);
-      expect(src).toMatch(/^\/api\/files\/local\//);
+      expect(src).toMatch(/^(\.\/|\/api\/public\/assets\/memo\/)/);
     }
   });
 });

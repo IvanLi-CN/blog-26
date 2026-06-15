@@ -95,6 +95,8 @@ function markdown(frontmatter: Record<string, unknown>, body: string) {
 }
 
 async function createFixtureData(baseDir: string) {
+  const codeFixtureReturnLine = `  return \`hello ${"name"}\`;`;
+
   await ensureDir(join(baseDir, "blog", "assets"));
   await ensureDir(join(baseDir, "projects", "assets"));
   await ensureDir(join(baseDir, "Memos", "assets"));
@@ -110,6 +112,34 @@ async function createFixtureData(baseDir: string) {
         category: "notes",
       },
       "# Hello World\n\n![tiny](./assets/hello.png)\n\nThis is the primary local fixture post."
+    )
+  );
+
+  await writeTextFile(
+    join(baseDir, "blog", "code-block-fixture.md"),
+    markdown(
+      {
+        title: "Code Block Fixture",
+        publishDate: "2026-01-01T12:00:00.000Z",
+        public: true,
+        tags: ["code", "fixture", "local"],
+        category: "notes",
+      },
+      [
+        "# Code Block Fixture",
+        "",
+        "This fixture exists for canonical full E2E coverage of markdown code rendering.",
+        "",
+        "```js",
+        'const tiny = "fixture";',
+        "function greet(name) {",
+        codeFixtureReturnLine,
+        "}",
+        "console.log(greet(tiny));",
+        "```",
+        "",
+        "Inline code should also render: `tiny`.",
+      ].join("\n")
     )
   );
 

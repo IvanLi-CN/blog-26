@@ -1,5 +1,76 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+async function waitForAdminMemoPreviewResponse(page: Page, slug: string, timeout = 60_000) {
+  const previewPath = `/api/admin/preview/memos/${encodeURIComponent(slug)}`;
+
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get(previewPath).catch(() => null);
+        if (!response?.ok()) {
+          return `status:${response?.status() ?? "network"}`;
+        }
+
+        const payload = (await response.json().catch(() => null)) as { slug?: string } | null;
+        return payload?.slug === slug ? "ready" : "invalid-payload";
+      },
+      {
+        timeout,
+        intervals: [500, 1_000, 2_000, 3_000],
+        message: `等待管理员 Memo 预览接口就绪: ${slug}`,
+      }
+    )
+    .toBe("ready");
+}
+
+export async function openAdminMemoPreview(page: Page, slug: string) {
+  await waitForAdminMemoPreviewResponse(page, slug);
+  await page.goto(`/admin/preview/memos/${encodeURIComponent(slug)}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 60_000,
+  });
+  await page.waitForURL(/\/admin\/preview\/memos\/.+/, { timeout: 60_000 }).catch(() => {
+    // `goto()` may already have completed before the explicit URL wait starts.
+  });
+  await expect(page.getByRole("heading", { name: "Memo 预览" })).toBeVisible({ timeout: 60_000 });
+}
+
+export async function openAdminMemoDetail(page: Page, slug: string) {
+  await openAdminMemoPreview(page, slug);
+}
+
+export async function waitForAdminPreviewMemoBody(page: Page, timeout = 60_000) {
+  const previewBody = page.getByTestId("admin-preview-memo-body");
+  const previewError = page.getByText("预览加载失败");
+  const refreshButton = page.getByRole("button", { name: "刷新" });
+
+  await expect
+    .poll(
+      async () => {
+        if (await previewBody.isVisible().catch(() => false)) {
+          return "body";
+        }
+
+        if (await previewError.isVisible().catch(() => false)) {
+          await refreshButton.click().catch(() => {
+            // Ignore transient click failures while the preview shell is still hydrating.
+          });
+          return "retrying";
+        }
+
+        return "pending";
+      },
+      {
+        timeout,
+        intervals: [500, 1_000, 2_000, 3_000],
+        message: "等待 Memo 预览正文渲染完成",
+      }
+    )
+    .toBe("body");
+
+  return previewBody;
+}
+
 export async function waitForQuickMemoEditor(page: Page) {
   const container = page.locator('[data-testid="quick-memo-editor"]').first();
 
@@ -49,7 +120,16 @@ export async function waitForTrpcSuccess(page: Page, procedureName: string, time
 
 export async function waitForMemoCardByText(page: Page, text: string, timeout = 60_000) {
   const memoCard = page
-    .locator('[data-testid="memo-card"][data-id]')
+    .locator('[data-testid="admin-live-memo-card"], [data-testid="memo-card"][data-id]')
+    .filter({ hasText: text })
+    .first();
+  await expect(memoCard).toBeVisible({ timeout });
+  return memoCard;
+}
+
+export async function waitForAdminLiveMemoCard(page: Page, text: string, timeout = 60_000) {
+  const memoCard = page
+    .locator('[data-testid="admin-live-memo-card"]')
     .filter({ hasText: text })
     .first();
   await expect(memoCard).toBeVisible({ timeout });
@@ -107,25 +187,14 @@ export async function openMemoEditDialog(page: Page, trigger: Locator) {
 }
 
 export async function openMemoDetailFromCard(page: Page, card: Locator) {
-  const detailLink = card.locator('a[href^="/memos/"]').first();
+  const detailLink = card.getByRole("link", { name: "预览" }).first();
   await expect(detailLink).toBeVisible({ timeout: 60_000 });
   await detailLink.scrollIntoViewIfNeeded();
 
   const href = await detailLink.getAttribute("href");
-  if (href) {
-    await page.goto(href, {
-      waitUntil: "domcontentloaded",
-      timeout: 60_000,
-    });
-  } else {
-    await Promise.all([page.waitForURL(/\/memos\/.+/, { timeout: 60_000 }), detailLink.click()]);
-    await page.waitForLoadState("domcontentloaded", { timeout: 60_000 }).catch(() => {
-      // The route may already be hydrated and settled before Playwright starts waiting.
-    });
+  const slug = href?.split("/").filter(Boolean).at(-1);
+  if (!slug) {
+    throw new Error("Expected memo card detail link to include a slug");
   }
-
-  await page.waitForURL(/\/memos\/.+/, { timeout: 60_000 }).catch(() => {
-    // `goto()` may already have completed before the explicit URL wait starts.
-  });
-  await page.waitForSelector(".memo-detail-page", { timeout: 60_000 });
+  await openAdminMemoDetail(page, slug);
 }

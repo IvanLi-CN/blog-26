@@ -1,6 +1,11 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { waitForMemoCardByText, waitForQuickMemoEditor } from "./helpers";
+import {
+  openAdminMemoDetail,
+  waitForAdminLiveMemoCard,
+  waitForAdminPreviewMemoBody,
+  waitForQuickMemoEditor,
+} from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -32,37 +37,28 @@ test.describe("Quick publish renders heading + list and persists multiline body"
 
     const publish = container.getByRole("button", { name: "发布 Memo" });
     await expect(publish).toBeEnabled();
-    await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes("/api/trpc/memos.create") && res.status() === 200,
-        { timeout: 30_000 }
-      ),
-      publish.click(),
-    ]);
+    await publish.click();
+    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 30_000 });
 
-    await waitForMemoCardByText(page, TITLE);
+    const createdCard = await waitForAdminLiveMemoCard(page, TITLE);
+    const slug = await createdCard.getAttribute("data-slug");
+    expect(slug).toBeTruthy();
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator("body")).toBeVisible();
     await page.waitForSelector(".memos-list", { timeout: 15_000 });
     const memoCardAfterReload = page
-      .locator('[data-testid="memo-card"]')
+      .locator('[data-testid="admin-live-memo-card"]')
       .filter({ hasText: TITLE })
       .first();
     await expect(memoCardAfterReload).toBeVisible({ timeout: 30_000 });
-
-    const detailLink = memoCardAfterReload.locator('a[href^="/memos/"]').first();
-    await expect(detailLink).toBeVisible();
-    const href = await detailLink.getAttribute("href");
-    if (href) {
-      await page.goto(href, { waitUntil: "domcontentloaded" });
-    } else {
-      await detailLink.click();
-      await page.waitForURL(/\/memos\/.+/);
+    if (!slug) {
+      throw new Error("Expected published memo to expose a slug");
     }
+    await openAdminMemoDetail(page, slug);
 
     await expect(page.locator("body")).toBeVisible();
-    const article = page.locator(".memo-detail-page .nature-prose").first();
+    const article = await waitForAdminPreviewMemoBody(page);
     await expect(article).toBeVisible({ timeout: 60_000 });
     await expect(article).toContainText(TITLE, { timeout: 60_000 });
     await expect

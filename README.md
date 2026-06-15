@@ -100,9 +100,17 @@ Content sync imports Markdown from the configured local content root into SQLite
 bun run test
 bun run test-env:reset
 bun run test:e2e
+bun run test:e2e:project -- admin
+bun run test:e2e:targeted
+bun run test:e2e:experimental
 ```
 
-Playwright uses the integrated local-only stack defined in `playwright.config.ts`.
+`bun run test:e2e` is the canonical full Playwright suite. It runs every `tests/e2e/**/*.spec.ts`
+except specs explicitly tagged `@targeted` or `@experimental`, and includes `guest`, `admin`,
+`user`, and `mcp` projects under the same taxonomy used by CI.
+
+Playwright uses the integrated local-only stack defined in `playwright.config.ts`. The full local
+runner resets fixtures once, builds once, then executes isolated per-project runs in parallel.
 
 ## Worktree Bootstrap
 

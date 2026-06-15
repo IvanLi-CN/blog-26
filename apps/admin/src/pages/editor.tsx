@@ -19,9 +19,8 @@ import {
   type DataSourceInfo,
   type FileItem,
 } from "@/lib/admin-api-client";
-import { parseFrontmatterMap, stripFrontmatter } from "@/lib/frontmatter-document";
+import { parseFrontmatterMap } from "@/lib/frontmatter-document";
 import { isMemoContentPath } from "@/lib/memo-paths";
-import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import { generateContentUrl } from "@/lib/url-utils";
 import { AdminToastViewport, dismissAdminToast, showAdminToast } from "~/components/admin-toast";
 import { useAppShellSidebar } from "~/components/app-shell";
@@ -36,7 +35,6 @@ import {
   joinTreePath,
   normalizeTreePath,
   replaceTreePathPrefix,
-  type TreeItemType,
   type TreeRenameTarget,
   type TreeSelection,
   toDirectoryRequestPath,
@@ -45,53 +43,28 @@ import { Badge, Button, ConfirmDialog, EmptyState, Spinner } from "~/components/
 import { EditorTabStrip } from "~/editor/editor-tab-strip";
 import { UniversalEditor, type UniversalEditorRef } from "~/editor/universal-editor";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
-
-type EditorMode = "wysiwyg" | "source" | "compare";
-
-type DatabaseDraft = {
-  postId: string;
-  slug: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  draft: boolean;
-  public: boolean;
-  source: "local";
-  filePath: string;
-  isNew?: boolean;
-};
-
-type FileDraft = {
-  source: "local";
-  path: string;
-  content: string;
-};
-
-type EditorTab = {
-  id: string;
-  label: string;
-  kind: "database" | "file";
-  mode: EditorMode;
-  dirty: boolean;
-  temporary?: boolean;
-  database?: DatabaseDraft;
-  file?: FileDraft;
-};
+import {
+  type DatabaseDraft,
+  deriveDatabaseDraftState,
+  deriveFileLabel,
+  type EditorTab,
+  getArticleIdentity,
+  getSelectionRevealPaths,
+  getTabArticleIdentity,
+  isBlankEditorContent,
+  isTreeOperationTargeted,
+  mapBatchResultsToTreeSelection,
+  normalizeArticlePath,
+  remapActiveTabIdForPathChange,
+  remapBrowserPathForPathChange,
+  remapTabPath,
+  resolveActiveTabIdAfterTreeDelete,
+  resolveBrowserPathAfterTreeDelete,
+  shouldMarkLiveEditorContentDirty,
+} from "./editor-logic";
 
 function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
   return [tab, ...current.filter((item) => item.id !== tab.id)];
-}
-
-export function shouldMarkLiveEditorContentDirty(
-  liveContent: string,
-  persistedContent: string,
-  options: { preserveCurrentDirtyState?: boolean } = {}
-) {
-  if (liveContent === persistedContent) {
-    return false;
-  }
-
-  return !options.preserveCurrentDirtyState;
 }
 
 const EMPTY_SOURCES: DataSourceInfo[] = [];
@@ -99,14 +72,6 @@ const EMPTY_FILE_ITEMS: FileItem[] = [];
 
 function normalizeContentSource(_source?: string | null): "local" {
   return "local";
-}
-
-function normalizeArticlePath(path: string | null | undefined, fallbackSlug: string): string {
-  const candidate = path?.trim();
-  if (candidate) {
-    return candidate.replace(/^\/+/, "");
-  }
-  return `blog/${fallbackSlug || "untitled"}.md`;
 }
 
 function toEditorArticlePath(path: string) {
@@ -150,55 +115,6 @@ function buildInsertedAttachmentMarkdown(file: File, filename: string) {
     : `[${safeLabel}](${relativePath})`;
 }
 
-function deriveFileLabel(path: string, content: string) {
-  const frontmatterTitle = parseFrontmatterMap(content).title?.trim() ?? "";
-  if (frontmatterTitle) {
-    return frontmatterTitle;
-  }
-
-  return path.split("/").filter(Boolean).pop() || path || "untitled.md";
-}
-
-function deriveTitleFromContent(content: string) {
-  const body = stripFrontmatter(content);
-  const heading = body.match(/^\s*#\s+(.+?)\s*$/m)?.[1]?.trim();
-  if (heading) return heading;
-
-  const firstLine = body
-    .split("\n")
-    .map((line) => line.trim())
-    .find(Boolean);
-  if (firstLine) {
-    return firstLine.replace(/^#+\s*/, "").slice(0, 80);
-  }
-
-  return "Untitled Post";
-}
-
-function deriveSlugValue(input: string) {
-  return (
-    input
-      .toLowerCase()
-      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 80) || `untitled-${Date.now()}`
-  );
-}
-
-function parseBooleanFrontmatter(value: string | undefined, fallback: boolean) {
-  if (!value) return fallback;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  return fallback;
-}
-
-function deriveExcerptFromContent(content: string) {
-  return stripFrontmatter(content)
-    .replace(/[#*`_~[\]()!-]/g, "")
-    .trim()
-    .slice(0, 150);
-}
-
 function buildAdminPreviewUrl(path: string) {
   const previewUrl = new URL(path, window.location.origin);
   const pathname = previewUrl.pathname.replace(/\/+$/, "");
@@ -213,35 +129,6 @@ function buildAdminPreviewUrl(path: string) {
   return `/admin/preview/posts/${pathname.replace(/^\/+/, "")}`;
 }
 
-function getArticleIdentity(source: "local", articlePath: string | null | undefined) {
-  return `${source}:${normalizeTreePath(articlePath)}`;
-}
-
-function getTabArticleIdentity(tab: EditorTab) {
-  const context = getEditorContext(tab);
-  return getArticleIdentity(context.contentSource, context.articlePath);
-}
-
-function deriveDatabaseDraftState(draft: DatabaseDraft, content: string) {
-  const frontmatter = parseFrontmatterMap(content);
-  const headingTitle = deriveTitleFromContent(content);
-  const title = headingTitle || frontmatter.title?.trim() || draft.title.trim() || "未命名文章";
-  const slug = frontmatter.slug?.trim() || draft.slug.trim() || deriveSlugValue(title);
-  const excerpt = frontmatter.excerpt?.trim() || draft.excerpt || deriveExcerptFromContent(content);
-
-  return {
-    title,
-    slug,
-    excerpt,
-    draft: parseBooleanFrontmatter(frontmatter.draft, draft.draft),
-    public: parseBooleanFrontmatter(frontmatter.public, draft.public),
-  };
-}
-
-function isBlankEditorContent(content: string) {
-  return stripFrontmatter(content).trim().length === 0;
-}
-
 function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   if (error instanceof AdminApiError) {
     if (error.code === "PRECONDITION_FAILED" && error.message.includes("初始化失败")) {
@@ -251,240 +138,6 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   }
 
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
-}
-
-export function mapBatchResultsToTreeSelection(
-  source: "local",
-  entries: Array<{ nextPath?: string; type: TreeItemType }>
-) {
-  return entries
-    .filter((entry): entry is { nextPath: string; type: TreeItemType } => Boolean(entry.nextPath))
-    .map((entry) => ({
-      source,
-      path: entry.nextPath,
-      type: entry.type,
-    }));
-}
-
-export function getSelectionRevealPaths(entries: TreeSelection[]) {
-  return Array.from(
-    new Set(
-      entries
-        .map((entry) => getParentTreePath(entry.path))
-        .filter((path): path is string => Boolean(path))
-        .flatMap((path) => getAncestorTreePaths(`${path}/__selection__.md`))
-    )
-  );
-}
-
-function rebaseOpenMarkdownContent(content: string, oldPath: string, newPath: string) {
-  if (!/\.(?:md|markdown|mdx)$/i.test(oldPath) && !/\.(?:md|markdown|mdx)$/i.test(newPath)) {
-    return content;
-  }
-  return rebasePersistedLocalLinks(content, oldPath, newPath).content;
-}
-
-function rebaseOpenMarkdownReferences(
-  content: string,
-  markdownPath: string,
-  oldPath: string,
-  newPath: string
-) {
-  if (!/\.(?:md|markdown|mdx)$/i.test(markdownPath)) {
-    return content;
-  }
-  return rebasePersistedLocalReferences(content, markdownPath, oldPath, newPath).content;
-}
-
-export function remapTabPath(tab: EditorTab, source: "local", oldPath: string, newPath: string) {
-  const normalizedOldPath = normalizeTreePath(oldPath);
-  const normalizedNewPath = normalizeTreePath(newPath);
-
-  if (tab.kind === "file" && tab.file?.source === source) {
-    const currentFilePath = normalizeTreePath(tab.file.path);
-    if (
-      currentFilePath === normalizedOldPath ||
-      currentFilePath.startsWith(`${normalizedOldPath}/`)
-    ) {
-      const nextFilePath = replaceTreePathPrefix(
-        currentFilePath,
-        normalizedOldPath,
-        normalizedNewPath
-      );
-      const nextContent = rebaseOpenMarkdownContent(
-        tab.file.content,
-        currentFilePath,
-        nextFilePath
-      );
-      return {
-        ...tab,
-        id: `file:${source}:${nextFilePath}`,
-        label: deriveFileLabel(nextFilePath, nextContent),
-        file: {
-          ...tab.file,
-          path: nextFilePath,
-          content: nextContent,
-        },
-      };
-    }
-
-    const nextContent = rebaseOpenMarkdownReferences(
-      tab.file.content,
-      currentFilePath,
-      normalizedOldPath,
-      normalizedNewPath
-    );
-    if (nextContent !== tab.file.content) {
-      return {
-        ...tab,
-        file: {
-          ...tab.file,
-          content: nextContent,
-        },
-      };
-    }
-  }
-
-  if (tab.kind === "database" && tab.database?.source === source) {
-    const currentFilePath = normalizeTreePath(tab.database.filePath);
-    if (
-      currentFilePath === normalizedOldPath ||
-      currentFilePath.startsWith(`${normalizedOldPath}/`)
-    ) {
-      const nextFilePath = replaceTreePathPrefix(
-        currentFilePath,
-        normalizedOldPath,
-        normalizedNewPath
-      );
-      const nextContent = rebaseOpenMarkdownContent(
-        tab.database.content,
-        currentFilePath,
-        nextFilePath
-      );
-      const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
-      return {
-        ...tab,
-        id: `post:${nextFilePath}`,
-        label: derivedDraft.title || tab.label,
-        database: {
-          ...tab.database,
-          ...derivedDraft,
-          postId: nextFilePath,
-          filePath: nextFilePath,
-          content: nextContent,
-        },
-      };
-    }
-
-    const nextContent = rebaseOpenMarkdownReferences(
-      tab.database.content,
-      currentFilePath,
-      normalizedOldPath,
-      normalizedNewPath
-    );
-    if (nextContent !== tab.database.content) {
-      const derivedDraft = deriveDatabaseDraftState(tab.database, nextContent);
-      return {
-        ...tab,
-        label: derivedDraft.title || tab.label,
-        database: {
-          ...tab.database,
-          ...derivedDraft,
-          content: nextContent,
-        },
-      };
-    }
-  }
-
-  return tab;
-}
-
-export function remapActiveTabIdForPathChange(
-  activeTabId: string | null,
-  source: "local",
-  oldPath: string,
-  newPath: string
-) {
-  if (!activeTabId) return activeTabId;
-  const normalizedOldPath = normalizeTreePath(oldPath);
-  const normalizedNewPath = normalizeTreePath(newPath);
-  const filePrefix = `file:${source}:`;
-  const databasePrefix = "post:";
-  const prefix = activeTabId.startsWith(filePrefix)
-    ? filePrefix
-    : activeTabId.startsWith(databasePrefix)
-      ? databasePrefix
-      : null;
-  if (!prefix) return activeTabId;
-
-  const currentPath = normalizeTreePath(activeTabId.slice(prefix.length));
-  if (currentPath !== normalizedOldPath && !currentPath.startsWith(`${normalizedOldPath}/`)) {
-    return activeTabId;
-  }
-
-  const nextPath = replaceTreePathPrefix(currentPath, normalizedOldPath, normalizedNewPath);
-  return `${prefix}${nextPath}`;
-}
-
-export function remapBrowserPathForPathChange(
-  browserPath: string,
-  oldPath: string,
-  newPath: string,
-  type: TreeItemType
-) {
-  const normalizedBrowserPath = normalizeTreePath(browserPath);
-  const normalizedOldPath = normalizeTreePath(oldPath);
-
-  if (type !== "directory" || !normalizedOldPath) return normalizedBrowserPath;
-  if (
-    normalizedBrowserPath !== normalizedOldPath &&
-    !normalizedBrowserPath.startsWith(`${normalizedOldPath}/`)
-  ) {
-    return normalizedBrowserPath;
-  }
-
-  return replaceTreePathPrefix(normalizedBrowserPath, normalizedOldPath, newPath);
-}
-
-export function resolveActiveTabIdAfterTreeDelete(
-  tabs: EditorTab[],
-  activeTabId: string | null,
-  source: "local",
-  deletedEntries: Array<{ path: string; type: TreeItemType }>
-) {
-  if (!activeTabId) return activeTabId;
-  const activeTab = tabs.find((tab) => tab.id === activeTabId);
-  if (!activeTab) return tabs[tabs.length - 1]?.id ?? null;
-
-  const activeContext = getEditorContext(activeTab);
-  if (activeContext.contentSource !== source) return activeTabId;
-
-  const activeDeleted = deletedEntries.some((entry) =>
-    isTreeOperationTargeted(activeContext.articlePath, entry.path, entry.type)
-  );
-  return activeDeleted ? (tabs[tabs.length - 1]?.id ?? null) : activeTabId;
-}
-
-export function resolveBrowserPathAfterTreeDelete(
-  browserPath: string,
-  deletedEntries: Array<{ path: string; type: TreeItemType }>
-) {
-  const normalizedBrowserPath = normalizeTreePath(browserPath);
-  const deletedDirectory = deletedEntries.find(
-    (entry) =>
-      entry.type === "directory" &&
-      isTreeOperationTargeted(normalizedBrowserPath, entry.path, entry.type)
-  );
-
-  return deletedDirectory ? getParentTreePath(deletedDirectory.path) : normalizedBrowserPath;
-}
-
-function isTreeOperationTargeted(entryPath: string, targetPath: string, targetType: TreeItemType) {
-  const normalizedEntryPath = normalizeTreePath(entryPath);
-  const normalizedTargetPath = normalizeTreePath(targetPath);
-  if (!normalizedTargetPath) return false;
-  if (normalizedEntryPath === normalizedTargetPath) return true;
-  return targetType === "directory" && normalizedEntryPath.startsWith(`${normalizedTargetPath}/`);
 }
 
 export function EditorPage() {
