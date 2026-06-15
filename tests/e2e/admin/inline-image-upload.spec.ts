@@ -1,7 +1,11 @@
 import { expect } from "@playwright/test";
 import { E2E_ADMIN_EMAIL } from "../runtime";
 import { adminTest as test } from "./fixtures";
-import { openMemoDetailFromCard, waitForQuickMemoEditor } from "./memos/helpers";
+import {
+  openMemoDetailFromCard,
+  waitForAdminPreviewMemoBody,
+  waitForQuickMemoEditor,
+} from "./memos/helpers";
 
 // Small 1x1 PNG (transparent)
 const ONE_BY_ONE_PNG_BASE64 =
@@ -86,10 +90,10 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     expect(createdSlug).toBeTruthy();
     await openMemoDetailFromCard(page, createdCard);
 
-    await expect(page.getByTestId("public-memo-detail-body")).toBeVisible({ timeout: 30_000 });
-    await expect(
-      page.getByTestId("public-memo-detail-body").getByRole("button", { name: "Alt" })
-    ).toBeVisible({ timeout: 30_000 });
+    const previewBody = await waitForAdminPreviewMemoBody(page, 30_000);
+    await expect(previewBody.getByRole("button", { name: "Alt" })).toBeVisible({
+      timeout: 30_000,
+    });
 
     const detail = (await page.request
       .get(`/api/public/memos/${encodeURIComponent(createdSlug)}`)

@@ -15,6 +15,12 @@ export async function openAdminMemoDetail(page: Page, slug: string) {
   await openAdminMemoPreview(page, slug);
 }
 
+export async function waitForAdminPreviewMemoBody(page: Page, timeout = 60_000) {
+  const previewBody = page.getByTestId("admin-preview-memo-body");
+  await expect(previewBody).toBeVisible({ timeout });
+  return previewBody;
+}
+
 export async function waitForQuickMemoEditor(page: Page) {
   const container = page.locator('[data-testid="quick-memo-editor"]').first();
 

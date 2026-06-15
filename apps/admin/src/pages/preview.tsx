@@ -118,7 +118,10 @@ function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
         {post.tags && post.tags.length > 0 ? <PreviewTags tags={post.tags} /> : null}
       </header>
 
-      <div className="rounded-2xl border border-border bg-background px-5 py-6">
+      <div
+        className="rounded-2xl border border-border bg-background px-5 py-6"
+        data-testid="admin-preview-post-body"
+      >
         <MarkdownRenderer
           content={post.body || ""}
           articlePath={post.filePath || post.slug}
@@ -155,7 +158,10 @@ function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
         {memo.tags && memo.tags.length > 0 ? <PreviewTags tags={memo.tags} /> : null}
       </header>
 
-      <div className="rounded-2xl border border-border bg-background px-5 py-6">
+      <div
+        className="rounded-2xl border border-border bg-background px-5 py-6"
+        data-testid="admin-preview-memo-body"
+      >
         <MarkdownRenderer
           content={memo.content || ""}
           articlePath={memo.filePath || memo.slug}

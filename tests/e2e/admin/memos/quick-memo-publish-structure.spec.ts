@@ -1,6 +1,11 @@
 import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
-import { openAdminMemoDetail, waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
+import {
+  openAdminMemoDetail,
+  waitForAdminLiveMemoCard,
+  waitForAdminPreviewMemoBody,
+  waitForQuickMemoEditor,
+} from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
@@ -53,7 +58,7 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     await openAdminMemoDetail(page, slug);
 
     await expect(page.locator("body")).toBeVisible();
-    const article = page.getByTestId("public-memo-detail-body");
+    const article = await waitForAdminPreviewMemoBody(page);
     await expect(article).toBeVisible({ timeout: 60_000 });
     await expect(article).toContainText(TITLE, { timeout: 60_000 });
     await expect
