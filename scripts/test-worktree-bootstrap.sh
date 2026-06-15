@@ -68,6 +68,42 @@ stop_port_holder() {
   fi
 }
 
+wait_for_gateway_health() {
+  local url="$1"
+  local expected_port="$2"
+  local attempts="${3:-50}"
+
+  for _ in $(seq 1 "$attempts"); do
+    if python3 - <<'PY' "$url" "$expected_port"
+import json
+import sys
+import urllib.error
+import urllib.request
+
+url = sys.argv[1]
+expected_port = int(sys.argv[2])
+
+try:
+    with urllib.request.urlopen(url, timeout=0.5) as response:
+        payload = json.load(response)
+except urllib.error.HTTPError as error:
+    payload = json.load(error)
+except urllib.error.URLError:
+    raise SystemExit(1)
+
+gateway = payload.get("gateway") or {}
+if gateway.get("port") != expected_port:
+    raise SystemExit(1)
+PY
+    then
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  return 1
+}
+
 worktree_scope_id() {
   local worktree_path="$1"
   (
@@ -223,6 +259,28 @@ EOF
   assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^ADMIN_PORT='
   [[ "$derived_site_port" == "33114" ]] || { echo "legacy site port did not derive from PORT" >&2; exit 1; }
   [[ "$derived_admin_port" == "33115" ]] || { echo "legacy admin port did not derive from PORT" >&2; exit 1; }
+
+  local gateway_pid=""
+  (
+    cd "$LEGACY_WORKTREE"
+    env -u PORT -u SITE_PORT -u ADMIN_PORT bun run gateway:dev >/tmp/worktree-bootstrap-legacy-gateway.log 2>&1 &
+    gateway_pid="$!"
+    echo "$gateway_pid" > /tmp/worktree-bootstrap-legacy-gateway.pid
+  )
+  gateway_pid="$(cat /tmp/worktree-bootstrap-legacy-gateway.pid)"
+  rm -f /tmp/worktree-bootstrap-legacy-gateway.pid
+
+  if ! wait_for_gateway_health "http://127.0.0.1:33111/api/health" 33111; then
+    kill "$gateway_pid" >/dev/null 2>&1 || true
+    wait "$gateway_pid" 2>/dev/null || true
+    cat /tmp/worktree-bootstrap-legacy-gateway.log >&2 || true
+    echo "gateway dev did not bind the legacy PORT from .env.local" >&2
+    exit 1
+  fi
+
+  kill "$gateway_pid" >/dev/null 2>&1 || true
+  wait "$gateway_pid" 2>/dev/null || true
+  assert_file_contains /tmp/worktree-bootstrap-legacy-gateway.log 'publicPort: 33111'
 }
 
 check_dry_run_is_read_only() {
