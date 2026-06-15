@@ -11,6 +11,7 @@ FAIL_WORKTREE="$TMP_DIR/fail"
 RECOVERY_WORKTREE="$TMP_DIR/recovery"
 LEGACY_WORKTREE="$TMP_DIR/legacy"
 DRY_RUN_WORKTREE="$TMP_DIR/dry-run"
+EXPORT_WORKTREE="$TMP_DIR/export"
 ROOT_ENV_BACKUP="$TMP_DIR/root-env.local.bak"
 PORT_HOLDER_PID=""
 PORT_HOLDER_PID_2=""
@@ -28,6 +29,7 @@ cleanup() {
   git -C "$SNAPSHOT_REPO" worktree remove --force "$RECOVERY_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$LEGACY_WORKTREE" >/dev/null 2>&1 || true
   git -C "$SNAPSHOT_REPO" worktree remove --force "$DRY_RUN_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$EXPORT_WORKTREE" >/dev/null 2>&1 || true
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -422,6 +424,44 @@ check_managed_custom_content_root_is_used() {
   [[ -f "$custom_root/blog/hello-world.md" ]] || { echo "custom content root missing generated fixture" >&2; exit 1; }
 }
 
+check_public_export_uses_env_local() {
+  log "check public export loads env.local DB settings"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$EXPORT_WORKTREE" >/dev/null 2>&1
+  )
+
+  cat >"$EXPORT_WORKTREE/.env.local" <<'EOF'
+DB_PATH=./dev-data/export.sqlite.db
+LOCAL_CONTENT_BASE_PATH=./dev-data/export-local
+CONTENT_SOURCES=local
+EOF
+
+  (
+    cd "$EXPORT_WORKTREE"
+    DB_PATH=./dev-data/export.sqlite.db bun run migrate >/tmp/worktree-bootstrap-export-migrate.log 2>&1
+    DB_PATH=./dev-data/export.sqlite.db bun run seed >/tmp/worktree-bootstrap-export-seed.log 2>&1
+    CONTENT_SOURCES=local LOCAL_CONTENT_BASE_PATH=./dev-data/export-local bun run dev-data:generate >/tmp/worktree-bootstrap-export-data.log 2>&1
+    DB_PATH=./dev-data/export.sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/export-local CONTENT_SOURCES=local bun run dev-sync:trigger >/tmp/worktree-bootstrap-export-sync.log 2>&1
+    env -u DB_PATH -u LOCAL_CONTENT_BASE_PATH -u CONTENT_SOURCES bun run public:export >/tmp/worktree-bootstrap-export-public.log 2>&1
+  )
+
+  local snapshot_file="$EXPORT_WORKTREE/site/generated/public-snapshot.json"
+  [[ -f "$snapshot_file" ]] || { echo "public snapshot missing after env-local export" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-export-public.log 'Exported public snapshot to'
+  python3 - <<'PY' "$snapshot_file"
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+if not payload.get("posts"):
+    raise SystemExit("expected exported snapshot to include posts from env-local database")
+PY
+}
+
 check_dev_fixture_guardrail_for_real_root() {
   log "check dev fixture generation refuses real content roots"
   local real_root="$TMP_DIR/real-content-root"
@@ -494,6 +534,7 @@ check_dry_run_is_read_only
 check_existing_env_rejects_occupied_port
 check_atomic_block_allocation_skips_derived_port_conflict
 check_managed_custom_content_root_is_used
+check_public_export_uses_env_local
 check_dev_fixture_guardrail_for_real_root
 check_test_fixture_clean_removes_root_artifacts
 check_failure_is_non_blocking

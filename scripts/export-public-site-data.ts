@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { loadWorktreeEnvFileIfPresent } from "@/lib/worktree-env";
 import { writePublicSnapshot } from "@/public-site/snapshot";
+
+loadWorktreeEnvFileIfPresent();
 
 const outputPath = resolve(
   process.cwd(),
