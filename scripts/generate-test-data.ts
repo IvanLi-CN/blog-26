@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 type Environment = "dev" | "test";
 
@@ -18,7 +19,52 @@ function parseEnvironment(): { environment: Environment; cleanOnly: boolean } {
 }
 
 function getBaseDir(environment: Environment) {
-  return resolve(environment === "dev" ? "./dev-data" : "./test-data");
+  if (environment === "dev") {
+    const configuredRoot = process.env.LOCAL_CONTENT_BASE_PATH?.trim();
+    if (configuredRoot) {
+      return resolve(configuredRoot);
+    }
+    return resolve("./dev-data/local");
+  }
+  return resolve("./test-data/local");
+}
+
+function getManagedRoot(environment: Environment) {
+  return environment === "dev" ? resolve("./dev-data") : resolve("./test-data");
+}
+
+function canonicalizePath(path: string): string {
+  const resolved = resolve(path);
+  if (existsSync(resolved)) {
+    return realpathSync(resolved);
+  }
+
+  const parent = dirname(resolved);
+  if (existsSync(parent)) {
+    return join(realpathSync(parent), resolved.slice(parent.length + 1));
+  }
+
+  return resolved;
+}
+
+function isStrictChildPath(parent: string, candidate: string) {
+  const rel = relative(parent, candidate);
+  return rel.length > 0 && !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+function assertManagedFixtureRoot(environment: Environment, baseDir: string) {
+  const managedRoot = canonicalizePath(getManagedRoot(environment));
+  const candidateRoot = canonicalizePath(baseDir);
+  if (isStrictChildPath(managedRoot, candidateRoot)) {
+    return;
+  }
+
+  const syncCommand =
+    environment === "dev" ? "bun run dev-sync:trigger" : "bun run test-sync:trigger";
+  throw new Error(
+    `Refusing to manage ${environment} fixtures outside ${managedRoot}/*: ${candidateRoot}. ` +
+      `Use ${syncCommand} for existing local content roots.`
+  );
 }
 
 async function ensureDir(path: string) {
@@ -48,14 +94,12 @@ function markdown(frontmatter: Record<string, unknown>, body: string) {
 }
 
 async function createFixtureData(baseDir: string) {
-  const localDir = join(baseDir, "local");
-
-  await ensureDir(join(localDir, "blog", "assets"));
-  await ensureDir(join(localDir, "projects", "assets"));
-  await ensureDir(join(localDir, "Memos", "assets"));
+  await ensureDir(join(baseDir, "blog", "assets"));
+  await ensureDir(join(baseDir, "projects", "assets"));
+  await ensureDir(join(baseDir, "Memos", "assets"));
 
   await writeTextFile(
-    join(localDir, "blog", "hello-world.md"),
+    join(baseDir, "blog", "hello-world.md"),
     markdown(
       {
         title: "Hello World",
@@ -69,7 +113,7 @@ async function createFixtureData(baseDir: string) {
   );
 
   await writeTextFile(
-    join(localDir, "projects", "sample-project.md"),
+    join(baseDir, "projects", "sample-project.md"),
     markdown(
       {
         title: "Sample Project",
@@ -83,7 +127,7 @@ async function createFixtureData(baseDir: string) {
   );
 
   await writeTextFile(
-    join(localDir, "Memos", "20260103_local-memo.md"),
+    join(baseDir, "Memos", "20260103_local-memo.md"),
     markdown(
       {
         title: "Local Memo",
@@ -95,11 +139,11 @@ async function createFixtureData(baseDir: string) {
     )
   );
 
-  await writeBinaryFile(join(localDir, "blog", "assets", "hello.png"), TINY_PNG);
-  await writeBinaryFile(join(localDir, "projects", "assets", "project.png"), TINY_PNG);
-  await writeBinaryFile(join(localDir, "Memos", "assets", "memo.png"), TINY_PNG);
+  await writeBinaryFile(join(baseDir, "blog", "assets", "hello.png"), TINY_PNG);
+  await writeBinaryFile(join(baseDir, "projects", "assets", "project.png"), TINY_PNG);
+  await writeBinaryFile(join(baseDir, "Memos", "assets", "memo.png"), TINY_PNG);
   await writeTextFile(
-    join(localDir, "blog", "assets", "diagram.svg"),
+    join(baseDir, "blog", "assets", "diagram.svg"),
     '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#6b8f71"/></svg>\n'
   );
 }
@@ -109,12 +153,13 @@ async function cleanData(baseDir: string) {
 }
 
 async function cleanFixtureData(baseDir: string) {
-  await rm(join(baseDir, "local"), { recursive: true, force: true });
+  await rm(baseDir, { recursive: true, force: true });
 }
 
 async function main() {
   const { environment, cleanOnly } = parseEnvironment();
   const baseDir = getBaseDir(environment);
+  assertManagedFixtureRoot(environment, baseDir);
 
   if (cleanOnly) {
     await cleanData(baseDir);
@@ -126,7 +171,7 @@ async function main() {
   await createFixtureData(baseDir);
 
   console.log(`✅ 已生成 ${environment} 本地测试数据`);
-  console.log(`  - local: ${join(baseDir, "local")}`);
+  console.log(`  - local: ${baseDir}`);
 }
 
 if (import.meta.main) {

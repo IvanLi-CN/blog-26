@@ -1,0 +1,331 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/worktree-bootstrap.XXXXXX")"
+SNAPSHOT_REPO="$TMP_DIR/repo"
+REGISTRY_DIR="$TMP_DIR/port-registry"
+AUTO_WORKTREE="$TMP_DIR/auto"
+MANUAL_WORKTREE="$TMP_DIR/manual"
+FAIL_WORKTREE="$TMP_DIR/fail"
+LEGACY_WORKTREE="$TMP_DIR/legacy"
+DRY_RUN_WORKTREE="$TMP_DIR/dry-run"
+ROOT_ENV_BACKUP="$TMP_DIR/root-env.local.bak"
+PORT_HOLDER_PID=""
+
+cleanup() {
+  if [[ -n "$PORT_HOLDER_PID" ]]; then
+    kill "$PORT_HOLDER_PID" >/dev/null 2>&1 || true
+  fi
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$AUTO_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$MANUAL_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$FAIL_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$LEGACY_WORKTREE" >/dev/null 2>&1 || true
+  git -C "$SNAPSHOT_REPO" worktree remove --force "$DRY_RUN_WORKTREE" >/dev/null 2>&1 || true
+  rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
+
+log() {
+  printf '[test-worktree-bootstrap] %s\n' "$*"
+}
+
+start_port_holder() {
+  local port="$1"
+  python3 - <<'PY' "$port" >/dev/null 2>&1 &
+import socket
+import sys
+import time
+
+sock = socket.socket()
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(("127.0.0.1", int(sys.argv[1])))
+sock.listen(1)
+try:
+    while True:
+        time.sleep(1)
+finally:
+    sock.close()
+PY
+  PORT_HOLDER_PID="$!"
+  sleep 0.3
+}
+
+stop_port_holder() {
+  if [[ -n "$PORT_HOLDER_PID" ]]; then
+    kill "$PORT_HOLDER_PID" >/dev/null 2>&1 || true
+    wait "$PORT_HOLDER_PID" 2>/dev/null || true
+    PORT_HOLDER_PID=""
+  fi
+}
+
+assert_file_contains() {
+  local file="$1"
+  local pattern="$2"
+  if ! grep -qE "$pattern" "$file"; then
+    printf 'Assertion failed: %s does not contain /%s/\n' "$file" "$pattern" >&2
+    exit 1
+  fi
+}
+
+assert_file_not_contains() {
+  local file="$1"
+  local pattern="$2"
+  if grep -qE "$pattern" "$file"; then
+    printf 'Assertion failed: %s unexpectedly contains /%s/\n' "$file" "$pattern" >&2
+    exit 1
+  fi
+}
+
+copy_root_contents() {
+  local destination="$1"
+  while IFS= read -r relative_path; do
+    local source_path="$ROOT_DIR/$relative_path"
+    local target_path="$destination/$relative_path"
+    mkdir -p "$(dirname "$target_path")"
+    cp "$source_path" "$target_path"
+  done < <(git -C "$ROOT_DIR" ls-files --cached --others --exclude-standard)
+}
+
+create_snapshot_repo() {
+  log "create isolated snapshot repo"
+  mkdir -p "$SNAPSHOT_REPO"
+  git init "$SNAPSHOT_REPO" >/dev/null
+  copy_root_contents "$SNAPSHOT_REPO"
+  (
+    cd "$SNAPSHOT_REPO"
+    git config user.name "Codex"
+    git config user.email "codex@example.com"
+    git add .
+    git commit -m "test snapshot" >/dev/null
+  )
+}
+
+prepare_root_hooks() {
+  log "install root hooks and bootstrap baseline"
+  if [[ -f "$SNAPSHOT_REPO/.env.local" ]]; then
+    mv "$SNAPSHOT_REPO/.env.local" "$ROOT_ENV_BACKUP"
+  fi
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-root.log 2>&1
+  )
+  rm -f "$SNAPSHOT_REPO/.env.local"
+  if [[ -f "$ROOT_ENV_BACKUP" ]]; then
+    mv "$ROOT_ENV_BACKUP" "$SNAPSHOT_REPO/.env.local"
+  fi
+}
+
+check_auto_bootstrap() {
+  log "check first-checkout auto bootstrap"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add "$AUTO_WORKTREE" >/tmp/worktree-bootstrap-auto.log 2>&1
+  )
+
+  local env_file="$AUTO_WORKTREE/.env.local"
+  local marker_file
+  marker_file="$(git -C "$AUTO_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+
+  [[ -f "$env_file" ]] || { echo ".env.local missing after auto bootstrap" >&2; exit 1; }
+  [[ -f "$marker_file" ]] || { echo "marker missing after auto bootstrap" >&2; exit 1; }
+
+  assert_file_contains /tmp/worktree-bootstrap-auto.log 'worktree bootstrap complete'
+  assert_file_contains "$env_file" '^PORT=[1-9][0-9]{4,}$'
+  assert_file_contains "$env_file" '^SITE_PORT=[1-9][0-9]{4,}$'
+  assert_file_contains "$env_file" '^ADMIN_PORT=[1-9][0-9]{4,}$'
+  assert_file_contains "$env_file" '^DB_PATH=\./dev-data/sqlite\.db$'
+  assert_file_contains "$env_file" '^LOCAL_CONTENT_BASE_PATH=\./dev-data/local$'
+  assert_file_contains "$env_file" '^CONTENT_SOURCES=local$'
+  assert_file_not_contains "$env_file" '^PORT=25090$'
+  assert_file_not_contains "$env_file" '^SITE_PORT=25093$'
+  assert_file_not_contains "$env_file" '^ADMIN_PORT=25094$'
+}
+
+check_existing_env_is_preserved() {
+  log "check existing .env.local is preserved"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$MANUAL_WORKTREE" >/dev/null 2>&1
+  )
+
+  cat >"$MANUAL_WORKTREE/.env.local" <<'EOF'
+PORT=32111
+SITE_PORT=32114
+ADMIN_PORT=32115
+DB_PATH=./dev-data/custom.sqlite.db
+LOCAL_CONTENT_BASE_PATH=./dev-data/custom-local
+CONTENT_SOURCES=local
+EOF
+
+  (
+    cd "$MANUAL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db --dry-run >/tmp/worktree-bootstrap-manual.log 2>&1
+    git checkout -B bootstrap-rerun-check >/tmp/worktree-bootstrap-rerun.log 2>&1
+  )
+
+  assert_file_contains "$MANUAL_WORKTREE/.env.local" '^PORT=32111$'
+  assert_file_contains "$MANUAL_WORKTREE/.env.local" '^SITE_PORT=32114$'
+  assert_file_contains "$MANUAL_WORKTREE/.env.local" '^ADMIN_PORT=32115$'
+  assert_file_contains /tmp/worktree-bootstrap-manual.log 'dry-run: would validate port leases for existing \.env\.local'
+  assert_file_contains /tmp/worktree-bootstrap-rerun.log 'skip auto bootstrap for this checkout'
+}
+
+check_legacy_env_is_accepted() {
+  log "check legacy .env.local remains bootstrap-compatible"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$LEGACY_WORKTREE" >/dev/null 2>&1
+  )
+
+  cat >"$LEGACY_WORKTREE/.env.local" <<'EOF'
+PORT=33111
+DB_PATH=./dev-data/legacy.sqlite.db
+LOCAL_CONTENT_BASE_PATH=./dev-data/legacy-local
+CONTENT_SOURCES=local
+EOF
+
+  (
+    cd "$LEGACY_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-legacy.log 2>&1
+  )
+
+  assert_file_contains /tmp/worktree-bootstrap-legacy.log 'worktree ports loaded \(PORT=33111, SITE_PORT=33114, ADMIN_PORT=33115\)'
+  assert_file_contains "$LEGACY_WORKTREE/.env.local" '^PORT=33111$'
+  assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^SITE_PORT='
+  assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^ADMIN_PORT='
+}
+
+check_dry_run_is_read_only() {
+  log "check dry-run does not mutate env or registry"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$DRY_RUN_WORKTREE" >/dev/null 2>&1
+  )
+
+  local env_file="$DRY_RUN_WORKTREE/.env.local"
+  rm -f "$env_file"
+  local marker_file
+  marker_file="$(git -C "$DRY_RUN_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  rm -f "$marker_file"
+  local before_count
+  before_count="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')"
+
+  (
+    cd "$DRY_RUN_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    bash ./scripts/worktree-bootstrap.sh --force --no-db --dry-run >/tmp/worktree-bootstrap-dry-run.log 2>&1
+  )
+
+  local after_count
+  after_count="$(python3 "$SNAPSHOT_REPO/scripts/port-registry.py" --registry-dir "$REGISTRY_DIR" --json inspect | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')"
+
+  [[ ! -f "$env_file" ]] || { echo ".env.local should not be created during dry-run" >&2; exit 1; }
+  [[ ! -f "$marker_file" ]] || { echo "initialized marker should not be written during dry-run" >&2; exit 1; }
+  [[ "$before_count" == "$after_count" ]] || { echo "registry count changed during dry-run" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-dry-run.log 'dry-run: would create \.env\.local with leased worktree ports'
+}
+
+check_existing_env_rejects_occupied_port() {
+  log "check existing .env.local still rejects occupied ports"
+  start_port_holder 34111
+  cat >"$MANUAL_WORKTREE/.env.local" <<'EOF'
+PORT=34111
+SITE_PORT=34114
+ADMIN_PORT=34115
+DB_PATH=./dev-data/custom.sqlite.db
+LOCAL_CONTENT_BASE_PATH=./dev-data/custom-local
+CONTENT_SOURCES=local
+EOF
+
+  (
+    cd "$MANUAL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    if bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-occupied.log 2>&1; then
+      echo "bootstrap unexpectedly accepted occupied port" >&2
+      exit 1
+    fi
+  )
+
+  stop_port_holder
+  assert_file_contains /tmp/worktree-bootstrap-occupied.log 'port 34111 is currently LISTENing; refuse to register blindly'
+  assert_file_contains /tmp/worktree-bootstrap-occupied.log 'bootstrap failed at phase=env'
+}
+
+check_managed_custom_content_root_is_used() {
+  log "check dev data generation respects managed custom LOCAL_CONTENT_BASE_PATH"
+  local custom_root="$MANUAL_WORKTREE/dev-data/local-fixtures"
+  (
+    cd "$MANUAL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    CONTENT_SOURCES=local LOCAL_CONTENT_BASE_PATH="$custom_root" bun run dev-data:generate >/tmp/worktree-bootstrap-custom-content.log 2>&1
+  )
+
+  [[ -f "$custom_root/blog/hello-world.md" ]] || { echo "custom content root missing generated fixture" >&2; exit 1; }
+}
+
+check_dev_fixture_guardrail_for_real_root() {
+  log "check dev fixture generation refuses real content roots"
+  local real_root="$TMP_DIR/real-content-root"
+  mkdir -p "$real_root/Hardware"
+  printf 'keep\n' >"$real_root/Hardware/existing.md"
+
+  (
+    cd "$SNAPSHOT_REPO"
+    if LOCAL_CONTENT_BASE_PATH="$real_root" bun ./scripts/generate-test-data.ts --dev >/tmp/worktree-bootstrap-real-root.log 2>&1; then
+      echo "dev fixture generation unexpectedly accepted real content root" >&2
+      exit 1
+    fi
+  )
+
+  [[ -f "$real_root/Hardware/existing.md" ]] || { echo "real content root was mutated" >&2; exit 1; }
+  assert_file_contains /tmp/worktree-bootstrap-real-root.log 'Refusing to manage dev fixtures outside'
+  assert_file_contains /tmp/worktree-bootstrap-real-root.log 'Use bun run dev-sync:trigger for existing local content roots'
+}
+
+check_failure_is_non_blocking() {
+  log "check post-checkout failure degrades to warning"
+  (
+    cd "$SNAPSHOT_REPO"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    git worktree add --detach "$FAIL_WORKTREE" >/dev/null 2>&1
+  )
+
+  rm -f "$FAIL_WORKTREE/.env.local"
+  rm -f "$(git -C "$FAIL_WORKTREE" rev-parse --git-dir)/.codex-worktree-bootstrap-initialized"
+  (
+    cd "$FAIL_WORKTREE"
+    export CODEX_PORT_REGISTRY_DIR="$REGISTRY_DIR"
+    export WORKTREE_BOOTSTRAP_SIMULATE_FAILURE_STEP=env
+    if ! ./scripts/post-checkout-worktree-bootstrap.sh \
+      0000000000000000000000000000000000000000 \
+      "$(git rev-parse HEAD)" \
+      1 >/tmp/worktree-bootstrap-fail.log 2>&1; then
+      echo "post-checkout helper unexpectedly failed" >&2
+      exit 1
+    fi
+  )
+
+  assert_file_contains /tmp/worktree-bootstrap-fail.log 'bootstrap failed at phase=env'
+  assert_file_contains /tmp/worktree-bootstrap-fail.log 'automatic worktree bootstrap failed'
+  assert_file_contains /tmp/worktree-bootstrap-fail.log 'Recovery: bun run worktree:bootstrap -- --force'
+}
+
+create_snapshot_repo
+prepare_root_hooks
+check_auto_bootstrap
+check_existing_env_is_preserved
+check_legacy_env_is_accepted
+check_dry_run_is_read_only
+check_existing_env_rejects_occupied_port
+check_managed_custom_content_root_is_used
+check_dev_fixture_guardrail_for_real_root
+check_failure_is_non_blocking
+log "all worktree bootstrap checks passed"
