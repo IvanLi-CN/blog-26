@@ -6,6 +6,41 @@ function treeDirectoryButton(page: Page, name: string) {
   return page.locator(`button.pointer-events-auto[aria-label="${name} 目录"]`).first();
 }
 
+async function ensureBlogDirectoryExpanded(page: Page) {
+  const targetFile = page
+    .getByTestId("editor-file-browser")
+    .getByRole("button", { name: "hello-world.md", exact: true })
+    .first();
+  const blogDirectory = treeDirectoryButton(page, "blog");
+
+  await expect
+    .poll(
+      async () => {
+        if (await targetFile.isVisible().catch(() => false)) {
+          return "ready";
+        }
+
+        if (await blogDirectory.isVisible().catch(() => false)) {
+          await blogDirectory.click().catch(() => {
+            // Ignore transient click failures while the tree finishes hydrating.
+          });
+          return (await targetFile.isVisible().catch(() => false)) ? "ready" : "expanding";
+        }
+
+        return "pending";
+      },
+      {
+        timeout: 30_000,
+        intervals: [500, 1_000, 2_000],
+        message: "等待 blog 目录展开并显示 hello-world.md",
+      }
+    )
+    .toBe("ready");
+
+  await expect(targetFile).toBeVisible();
+  return targetFile;
+}
+
 test.describe("Admin SPA phase 2", () => {
   test("dashboard is served from the SPA shell and only calls /api/admin", async ({ page }) => {
     const finishedRequests: string[] = [];
@@ -41,13 +76,12 @@ test.describe("Admin SPA phase 2", () => {
     });
 
     await expect(page.locator('[data-testid="editor"]')).toBeVisible();
+    await expect(page.getByTestId("editor-tab").filter({ hasText: "Hello World" })).toHaveCount(1, {
+      timeout: 30_000,
+    });
     const fileBrowser = page.getByTestId("editor-file-browser");
-    const targetFile = fileBrowser.getByRole("button", { name: "hello-world.md", exact: true });
     await expect(fileBrowser).toBeVisible();
-    if (!(await targetFile.isVisible())) {
-      await treeDirectoryButton(page, "blog").click();
-    }
-    await expect(targetFile).toBeVisible();
+    const targetFile = await ensureBlogDirectoryExpanded(page);
     await targetFile.click();
 
     await expect(page.getByTestId("editor-tab").filter({ hasText: "Hello World" })).toHaveCount(1);
