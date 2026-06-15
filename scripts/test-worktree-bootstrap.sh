@@ -213,10 +213,16 @@ EOF
     bash ./scripts/worktree-bootstrap.sh --force --no-db >/tmp/worktree-bootstrap-legacy.log 2>&1
   )
 
+  local derived_site_port derived_admin_port
+  derived_site_port="$(cd "$LEGACY_WORKTREE" && bun ./scripts/resolve-worktree-port.ts site)"
+  derived_admin_port="$(cd "$LEGACY_WORKTREE" && bun ./scripts/resolve-worktree-port.ts admin)"
+
   assert_file_contains /tmp/worktree-bootstrap-legacy.log 'worktree ports loaded \(PORT=33111, SITE_PORT=33114, ADMIN_PORT=33115\)'
   assert_file_contains "$LEGACY_WORKTREE/.env.local" '^PORT=33111$'
   assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^SITE_PORT='
   assert_file_not_contains "$LEGACY_WORKTREE/.env.local" '^ADMIN_PORT='
+  [[ "$derived_site_port" == "33114" ]] || { echo "legacy site port did not derive from PORT" >&2; exit 1; }
+  [[ "$derived_admin_port" == "33115" ]] || { echo "legacy admin port did not derive from PORT" >&2; exit 1; }
 }
 
 check_dry_run_is_read_only() {
