@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { SITE } from "@/config/site";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
+import { createEmptyPublicMediaCollection, type PublicMediaCollection } from "@/lib/public-media";
 import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 import type {
   PublicPostRecord,
@@ -9,11 +10,6 @@ import type {
   PublicTagSummary,
   PublicTagTimelineItem,
 } from "@/public-site/snapshot";
-
-const snapshotPath = resolve(
-  process.cwd(),
-  process.env.PUBLIC_SNAPSHOT_PATH || "site/generated/public-snapshot.json"
-);
 
 let snapshotPromise: Promise<PublicSnapshot> | undefined;
 
@@ -31,13 +27,34 @@ function getSnapshotRecordPath(record: SnapshotRecordWithPath) {
   return filePath;
 }
 
+function normalizeSnapshotMedia(
+  media: PublicMediaCollection | null | undefined
+): PublicMediaCollection {
+  if (!media || typeof media !== "object") {
+    return createEmptyPublicMediaCollection();
+  }
+
+  return {
+    primary: media.primary ?? null,
+    cover: media.cover ?? null,
+    content: Array.isArray(media.content) ? media.content : [],
+    attachments: Array.isArray(media.attachments) ? media.attachments : [],
+  };
+}
+
+type SnapshotTimelineRecord = PublicTagTimelineItem & {
+  media?: PublicMediaCollection | null;
+};
+
 function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
   const posts = snapshot.posts.map((post) => ({
     ...post,
+    media: normalizeSnapshotMedia(post.media),
     filePath: getSnapshotRecordPath(post),
   }));
   const memos = snapshot.memos.map((memo) => ({
     ...memo,
+    media: normalizeSnapshotMedia(memo.media),
     filePath: getSnapshotRecordPath(memo),
   }));
   const pathByTimelineKey = new Map<string, string>();
@@ -53,15 +70,18 @@ function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
     Object.entries(snapshot.tags.timelines).map(([tagPath, items]) => [
       tagPath,
       items.map((item) => {
+        const timelineItem = item as SnapshotTimelineRecord;
         const filePath =
-          item.filePath?.trim() || pathByTimelineKey.get(`${item.type}:${item.slug}`);
+          timelineItem.filePath?.trim() ||
+          pathByTimelineKey.get(`${timelineItem.type}:${timelineItem.slug}`);
         if (!filePath) {
           throw new Error(
-            `Public snapshot timeline item ${item.type}:${item.slug} is missing a canonical file path`
+            `Public snapshot timeline item ${timelineItem.type}:${timelineItem.slug} is missing a canonical file path`
           );
         }
         return {
-          ...item,
+          ...timelineItem,
+          media: normalizeSnapshotMedia(timelineItem.media),
           filePath,
         };
       }),
@@ -104,13 +124,24 @@ export function toAbsoluteSiteUrl(pathname: string) {
   return getCanonicalUrl(pathname);
 }
 
+function getSnapshotPath() {
+  return resolve(
+    process.cwd(),
+    process.env.PUBLIC_SNAPSHOT_PATH || "site/generated/public-snapshot.json"
+  );
+}
+
 export async function getSnapshot() {
   if (!snapshotPromise) {
-    snapshotPromise = readFile(snapshotPath, "utf8").then((raw) =>
+    snapshotPromise = readFile(getSnapshotPath(), "utf8").then((raw) =>
       normalizeSnapshotPaths(JSON.parse(raw) as PublicSnapshot)
     );
   }
   return snapshotPromise;
+}
+
+export function __resetSnapshotForTests() {
+  snapshotPromise = undefined;
 }
 
 export function getPostBySlug(snapshot: PublicSnapshot, slug: string) {
