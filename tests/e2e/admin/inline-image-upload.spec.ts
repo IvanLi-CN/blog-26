@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import { E2E_ADMIN_EMAIL } from "../runtime";
 import { adminTest as test } from "./fixtures";
 import {
-  openMemoDetailFromCard,
+  openAdminMemoDetail,
   waitForAdminPreviewMemoBody,
   waitForQuickMemoEditor,
 } from "./memos/helpers";
@@ -85,23 +85,53 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
       `[data-testid="admin-live-memo-card"][data-id="${createdCardId}"]`
     );
     await expect(createdCard).toBeVisible({ timeout: 30_000 });
-    const detailHref = await createdCard.getByRole("link", { name: "预览" }).getAttribute("href");
-    const createdSlug = detailHref?.split("/").filter(Boolean).at(-1) ?? "";
+
+    const createdSlug = await createdCard.getAttribute("data-slug");
     expect(createdSlug).toBeTruthy();
-    await openMemoDetailFromCard(page, createdCard);
+    if (!createdSlug) {
+      throw new Error("Expected created memo card to expose a canonical slug");
+    }
+
+    await openAdminMemoDetail(page, createdSlug);
 
     const previewBody = await waitForAdminPreviewMemoBody(page, 30_000);
     await expect(previewBody.getByRole("button", { name: "Alt" })).toBeVisible({
       timeout: 30_000,
     });
 
-    const detail = (await page.request
-      .get(`/api/public/memos/${encodeURIComponent(createdSlug)}`)
-      .then((response) => response.json())) as {
-      image?: string | null;
-      attachments?: Array<{ path?: string }>;
-      media?: { content?: Array<{ variants?: Record<string, string> }> };
-    };
+    let detail:
+      | {
+          image?: string | null;
+          attachments?: Array<{ path?: string }>;
+          media?: { content?: Array<{ variants?: Record<string, string> }> };
+        }
+      | undefined;
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request
+            .get(`/api/public/memos/${encodeURIComponent(createdSlug)}`)
+            .catch(() => null);
+          if (!response?.ok()) {
+            return 0;
+          }
+
+          detail = (await response.json().catch(() => null)) as typeof detail;
+          const renderedImageSrcs = [
+            detail?.image,
+            ...(detail?.attachments?.map((attachment) => attachment.path) ?? []),
+            ...(detail?.media?.content?.flatMap((item) => Object.values(item.variants ?? {})) ??
+              []),
+          ].filter((src): src is string => Boolean(src));
+          return renderedImageSrcs.length;
+        },
+        {
+          timeout: 60_000,
+          intervals: [500, 1_000, 2_000, 3_000],
+          message: "等待内联图片资源在公开 memo 详情中可见",
+        }
+      )
+      .toBeGreaterThan(0);
 
     const renderedImageSrcs = [
       detail.image,

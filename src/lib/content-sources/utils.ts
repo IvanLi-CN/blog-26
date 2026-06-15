@@ -271,9 +271,9 @@ export function generateSlugFromPath(filePath: string, frontmatterSlug?: string)
   const newFormatMatch = fileName.match(/^(\d{8})_(.+)$/);
   if (newFormatMatch) {
     const titleSlug = newFormatMatch[2];
-    // 如果titleSlug看起来像nanoid（8位字母数字），为同步生成一个新的nanoid
+    // Memo 文件名已经包含稳定 slug 时，重解析必须返回同一 canonical slug。
     if (/^[a-zA-Z0-9_-]{8}$/.test(titleSlug)) {
-      return generateNanoidSlug(8);
+      return limax(titleSlug);
     }
     // 否则使用titleSlug作为基础生成slug
     return limax(titleSlug);

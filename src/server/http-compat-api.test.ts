@@ -1298,6 +1298,53 @@ describe("HTTP compatibility APIs", () => {
     expect(afterDelete.status).toBe(404);
   });
 
+  it("keeps create response slug aligned with synced memo preview lookups for untitled memos", async () => {
+    process.env.NODE_ENV = "test";
+
+    const createResponse = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/memos",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            content: "Untitled memo body with inline image marker",
+            isPublic: true,
+            tags: [],
+            attachments: [],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+
+    expect(createResponse.status).toBe(200);
+    const created = await readJson(createResponse);
+    expect(created.slug).toMatch(/^[a-zA-Z0-9_-]{8}$/);
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const detailResponse = await handlePublicApiRequest(
+      buildRequest(`/api/public/memos/${created.slug}`, {}, ADMIN_EMAIL),
+      `/memos/${created.slug}`
+    );
+    expect(detailResponse.status).toBe(200);
+    const detail = await readJson(detailResponse);
+    expect(detail.slug).toBe(created.slug);
+
+    const previewResponse = await handleAdminApiRequest(
+      buildRequest(`/api/admin/preview/memos/${created.slug}`, {}, ADMIN_EMAIL),
+      `/preview/memos/${created.slug}`
+    );
+    expect(previewResponse.status).toBe(200);
+    const preview = await readJson(previewResponse);
+    expect(preview.slug).toBe(created.slug);
+    expect(preview.content).toContain("inline image marker");
+  });
+
   it("keeps the path slug authoritative when patching /api/public/memos/:slug", async () => {
     const primaryId = await seedPost({
       id: "memos/path-authoritative.md",

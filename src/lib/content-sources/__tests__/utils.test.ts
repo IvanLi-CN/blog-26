@@ -5,6 +5,7 @@ import {
   extractTitle,
   generateMemoFilename,
   generateNanoidSlug,
+  generateSlugFromPath,
   generateTitleSlug,
   mergeFrontmatterAndInlineTags,
   parseMarkdownContent,
@@ -252,6 +253,18 @@ describe("Memo Utils", () => {
       const content = "# !!!"; // Title that becomes empty slug
       const filename = generateMemoFilename(content);
       expect(filename).toMatch(/^\d{8}_[a-zA-Z0-9_-]{8}\.md$/);
+    });
+  });
+
+  describe("generateSlugFromPath", () => {
+    it("keeps memo nanoid-style filename slugs stable in canonical form across reparses", () => {
+      const slug = generateSlugFromPath("Memos/20260615_AbCd123_.md");
+      expect(slug).toBe("abcd123_");
+    });
+
+    it("normalizes title-derived memo filename slugs", () => {
+      const slug = generateSlugFromPath("Memos/20260615_React Learning.md");
+      expect(slug).toBe("react-learning");
     });
   });
 });
