@@ -48,6 +48,13 @@ describe("frontmatter-document", () => {
     expect(updated).not.toContain("category: frontend");
   });
 
+  it("preserves frontmatter whitespace while updating the document", () => {
+    const updated = updateFrontmatterDocument(sampleDocument, "title: \nsubtitle: draft\n");
+
+    expect(updated).toStartWith("---\ntitle: \nsubtitle: draft\n\n---\n");
+    expect(parseFrontmatterDocument(updated).frontmatterText).toBe("title: \nsubtitle: draft\n");
+  });
+
   it("updates only body while preserving frontmatter", () => {
     const updated = updateDocumentBody(sampleDocument, "# 新正文\n\n新的内容。");
 

@@ -50,14 +50,14 @@ export function parseFrontmatterDocument(content: string): ParsedFrontmatterDocu
 
 export function stringifyFrontmatterDocument(body: string, frontmatterText: string): string {
   const normalizedBody = normalizeContent(body);
-  const trimmedFrontmatter = frontmatterText.trim();
+  const normalizedFrontmatter = normalizeContent(frontmatterText);
 
-  if (!trimmedFrontmatter) {
+  if (normalizedFrontmatter.length === 0) {
     return normalizedBody;
   }
 
   const separator = normalizedBody.startsWith("\n") || normalizedBody.length === 0 ? "" : "\n";
-  return `---\n${trimmedFrontmatter}\n---\n${separator}${normalizedBody}`;
+  return `---\n${normalizedFrontmatter}\n---\n${separator}${normalizedBody}`;
 }
 
 export function updateFrontmatterDocument(
