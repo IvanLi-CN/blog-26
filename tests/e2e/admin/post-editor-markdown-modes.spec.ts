@@ -551,6 +551,28 @@ test.describe("Post editor Markdown modes", () => {
     );
   });
 
+  test("WYSIWYG frontmatter block accepts keyboard spaces and new lines", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+    await frontmatter.fill("title:");
+    await frontmatter.press("End");
+    await frontmatter.press("Space");
+    await frontmatter.pressSequentially("Draft Title");
+    await frontmatter.press("Enter");
+    await frontmatter.pressSequentially("subtitle:");
+    await frontmatter.press("Space");
+    await frontmatter.pressSequentially("First line");
+
+    await expect(frontmatter).toHaveValue("title: Draft Title\nsubtitle: First line");
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue(
+      /^---\ntitle: Draft Title\nsubtitle: First line\n---\n/
+    );
+  });
+
   test("frontmatter title change updates the tab label and preserves unknown keys", async ({
     page,
   }) => {

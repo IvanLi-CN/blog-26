@@ -4,3 +4,4 @@
 - 2026-06-09: Refined the editor failure path so empty new-post saves show a friendly banner instead of raw validation JSON, while preserving the server-side non-empty body contract.
 - 2026-06-14: Reworked the WYSIWYG frontmatter presentation into a single inline YAML block, removed the internal frontmatter scrollbar, restored visible focus treatment, aligned YAML and body text columns, and tightened the frontmatter-to-body spacing so the first heading stays in the same writing rhythm.
 - 2026-06-14: Split editor synchronization into programmatic and user-originated changes so opening frontmatter-heavy files does not create false unsaved tabs, then added single-line measured tab overflow and temporary file-tree preview tabs.
+- 2026-06-16: Preserved WYSIWYG frontmatter whitespace during controlled editor updates so keyboard-entered spaces and new lines remain editable before the Markdown document is saved.
