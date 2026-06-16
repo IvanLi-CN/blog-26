@@ -113,3 +113,5 @@ The current blog local setup still depends on synthetic wrapper directories like
 ### Floating editor operation feedback
 
 ![Floating editor operation feedback](./assets/admin-editor-floating-toast-feedback.png)
+
+![Readable floating editor operation feedback](./assets/admin-editor-readable-toast-feedback.png)

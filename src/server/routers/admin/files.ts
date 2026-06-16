@@ -603,7 +603,30 @@ async function readLocalFile(path: string): Promise<string> {
   const basePath = resolve(requireLocalBasePath());
   const safePath = assertLocalPathAllowed(path);
   const fullPath = nodePath.join(basePath, safePath);
-  return fs.readFile(fullPath, "utf-8");
+  try {
+    const stats = await fs.stat(fullPath);
+    if (!stats.isFile()) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `路径不是文件：${safePath}`,
+      });
+    }
+
+    return await fs.readFile(fullPath, "utf-8");
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: `文件不存在：${safePath}`,
+      });
+    }
+
+    throw error;
+  }
 }
 
 async function snapshotWritableLocalFile(path: string) {

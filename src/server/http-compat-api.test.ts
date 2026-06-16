@@ -1489,6 +1489,67 @@ describe("HTTP compatibility APIs", () => {
     );
   });
 
+  it("returns a friendly not found error when reading a missing local file", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/read?source=local&path=Hardware%2Fmissing.md",
+        {},
+        ADMIN_EMAIL
+      ),
+      "/files/read"
+    );
+
+    expect(response.status).toBe(404);
+    const payload = await readJson(response);
+    expect(payload.error).toMatchObject({
+      code: "NOT_FOUND",
+      message: "文件不存在：Hardware/missing.md",
+    });
+  });
+
+  it("reads markdown files from a configured real local content root", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(hardwareDir, "usb-pd.md"),
+      "---\ntitle: USB PD\n---\n\n# USB PD\n",
+      "utf-8"
+    );
+
+    const response = await handleAdminApiRequest(
+      buildRequest("/api/admin/files/read?source=local&path=Hardware%2Fusb-pd.md", {}, ADMIN_EMAIL),
+      "/files/read"
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await readJson(response);
+    expect(payload).toMatchObject({
+      source: "local",
+      path: "Hardware/usb-pd.md",
+      content: "---\ntitle: USB PD\n---\n\n# USB PD\n",
+    });
+  });
+
+  it("returns a friendly bad request error when reading a local directory as a file", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(path.join(hardwareDir, "assets"), { recursive: true });
+
+    const response = await handleAdminApiRequest(
+      buildRequest("/api/admin/files/read?source=local&path=Hardware%2Fassets", {}, ADMIN_EMAIL),
+      "/files/read"
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await readJson(response);
+    expect(payload.error).toMatchObject({
+      code: "BAD_REQUEST",
+      message: "路径不是文件：Hardware/assets",
+    });
+  });
+
   it("initializes the local content source once and reuses it for repeated admin writes", async () => {
     const { LocalContentSource, getContentSourceManager } = await import("@/lib/content-sources");
 

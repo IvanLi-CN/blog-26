@@ -46,11 +46,11 @@ function AdminToastContent({
   return (
     <div
       className={cn(
-        "flex w-full min-w-0 items-start gap-3 rounded-[1rem] border bg-card/96 px-4 py-3 text-sm leading-6 text-foreground shadow-xl shadow-shadow-soft",
-        tone === "success" && "border-success/24 bg-success/12",
-        tone === "danger" && "border-destructive/24 bg-destructive/12",
-        tone === "default" && "border-border/68 bg-card/96",
-        tone === "loading" && "border-primary/24 bg-primary/10"
+        "flex w-full min-w-0 items-start gap-3 rounded-[1rem] border bg-card px-4 py-3 text-sm leading-6 text-foreground shadow-xl shadow-shadow-soft",
+        tone === "success" && "border-success/30 bg-card",
+        tone === "danger" && "border-destructive/30 bg-card",
+        tone === "default" && "border-border/68 bg-card",
+        tone === "loading" && "border-primary/30 bg-card"
       )}
       data-testid="admin-toast-content"
     >

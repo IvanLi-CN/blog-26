@@ -290,6 +290,7 @@ const fileContents = new Map<string, string>(
     .concat(extraDemoFiles)
 );
 fileContents.set("local:blog/电子负载开发笔记.md", postBodies.hardware);
+fileContents.set("local:Hardware/电子负载开发笔记.md", postBodies.hardware);
 fileContents.set(
   "local:blog/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
   postBodies.hardware.replaceAll(
