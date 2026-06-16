@@ -172,6 +172,10 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 
 ![Admin editor tab overflow mobile bottom drawer](./assets/demo/admin-editor-tab-overflow-web-demo-mobile-bottom-drawer.trimmed.png)
 
+PR: include
+source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
+![Admin editor readable floating toast feedback](./assets/demo/admin-editor-readable-toast-feedback.png)
+
 ### Posts Workspace And Shell Chrome
 
 Verified on `/admin/posts?demo=true`.

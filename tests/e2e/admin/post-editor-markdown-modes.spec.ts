@@ -348,6 +348,17 @@ async function ensureBlogDirectoryExpanded(page: Page) {
   }
 }
 
+async function ensureHardwareDirectoryExpanded(page: Page) {
+  if ((await treeNameButton(page, "电子负载开发笔记.md").count()) > 0) {
+    return;
+  }
+
+  const hardwareDirectory = treeDirectoryButton(page, "Hardware");
+  await expect(hardwareDirectory).toBeVisible();
+  await hardwareDirectory.click();
+  await expect(treeNameButton(page, "电子负载开发笔记.md")).toBeVisible();
+}
+
 async function maybeCaptureSidebarProof(page: Page, filename: string) {
   if (process.env.PLAYWRIGHT_CAPTURE_PROOF !== "1") {
     return;
@@ -684,6 +695,20 @@ tags:
     await expect(page.getByTestId("editor").locator("div.text-base.font-semibold")).toHaveText(
       "学习笔记：电子负载实现原理"
     );
+  });
+
+  test("file tree opens markdown files from the configured Hardware root", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await ensureHardwareDirectoryExpanded(page);
+    await openFileBrowserItem(page, "电子负载开发笔记.md");
+
+    await expect(page.getByTestId("editor-tab").first()).toContainText("电子负载开发笔记");
+    await expect(page.getByTestId("editor-tab").first()).toHaveAttribute("data-temporary", "true");
+    await expect(page.getByRole("textbox", { name: "Frontmatter YAML editor" })).toHaveValue(
+      /title: 电子负载开发笔记/
+    );
+    await expect(page.getByText(/未找到文件/)).toHaveCount(0);
   });
 
   test("tab overflow exposes the opened files list on desktop and mobile", async ({ page }) => {
@@ -1231,11 +1256,34 @@ Body paragraph`);
       const closeRect = closeButton?.getBoundingClientRect();
       const rect = viewport.getBoundingClientRect();
       const style = getComputedStyle(viewport);
+      const contentBackground = content
+        ? getComputedStyle(content).backgroundColor
+        : "rgba(0, 0, 0, 0)";
+      const context = document.createElement("canvas").getContext("2d");
+      let alpha = 1;
+      const colorFunctionAlphaMatch = contentBackground.match(/\/\s*([0-9.]+%?)\s*\)?$/);
+      if (colorFunctionAlphaMatch?.[1]) {
+        alpha = colorFunctionAlphaMatch[1].endsWith("%")
+          ? Number(colorFunctionAlphaMatch[1].slice(0, -1)) / 100
+          : Number(colorFunctionAlphaMatch[1]);
+      }
+      if (context) {
+        context.fillStyle = "rgba(0, 0, 0, 0)";
+        context.fillStyle = contentBackground;
+        const normalizedColor = context.fillStyle;
+        const alphaMatch = normalizedColor.match(/rgba?\(([^)]+)\)/);
+        if (alphaMatch?.[1]) {
+          alpha =
+            alphaMatch[1].split(",").map((part) => Number(part.trim()))[3] ??
+            (normalizedColor.startsWith("rgb(") ? 1 : alpha);
+        }
+      }
       return {
         position: style.position,
         top: rect.top,
         rightGap: window.innerWidth - rect.right,
         contentRightGap: contentRect ? window.innerWidth - contentRect.right : 0,
+        contentBackgroundAlpha: alpha,
         closeInside:
           Boolean(contentRect && closeRect) &&
           closeRect.left >= contentRect.left &&
@@ -1250,6 +1298,7 @@ Body paragraph`);
     expect(settledToastState.rightGap).toBeGreaterThanOrEqual(12);
     expect(settledToastState.contentRightGap).toBeGreaterThanOrEqual(12);
     expect(settledToastState.contentRightGap).toBeLessThanOrEqual(32);
+    expect(settledToastState.contentBackgroundAlpha).toBeGreaterThanOrEqual(0.92);
     expect(settledToastState.closeInside).toBe(true);
 
     await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+C`);
