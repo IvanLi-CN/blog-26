@@ -431,14 +431,13 @@ function InlineTreeNameInput({
   }, [errorMessage]);
 
   return (
-    <div className="min-w-0 flex-1">
+    <div className="min-w-0 flex-1 self-center">
       <input
         ref={inputRef}
         type="text"
         value={value}
         aria-label={type === "directory" ? "目录名称" : "文件名称"}
         aria-invalid={errorMessage ? "true" : undefined}
-        aria-describedby={errorMessage ? "tree-inline-rename-error" : undefined}
         data-testid={errorMessage ? "tree-inline-rename-error-input" : "tree-inline-rename-input"}
         className={cn(
           "min-w-0 w-full rounded-xl border bg-background px-2 py-1 text-sm text-foreground outline-none ring-2 transition-colors duration-150",
@@ -465,15 +464,6 @@ function InlineTreeNameInput({
           }
         }}
       />
-      {errorMessage ? (
-        <p
-          id="tree-inline-rename-error"
-          className="mt-1 truncate text-[0.7rem] font-medium text-destructive"
-          title={errorMessage}
-        >
-          {errorMessage}
-        </p>
-      ) : null}
     </div>
   );
 }

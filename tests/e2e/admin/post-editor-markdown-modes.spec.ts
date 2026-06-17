@@ -971,6 +971,7 @@ Body paragraph`);
       "true"
     );
     await expect(page.getByTestId("tree-inline-rename-error-input")).toBeVisible();
+    await expect(page.getByTestId("editor-file-browser").getByText("重命名失败：")).toHaveCount(0);
 
     const toastViewport = page.locator(".Toastify__toast-container");
     const errorToast = toastViewport

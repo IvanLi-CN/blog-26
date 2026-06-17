@@ -269,7 +269,9 @@ export const RenameErrorRetry: Story = {
     await userEvent.type(input, "alpha.md");
     await userEvent.keyboard("{Enter}");
     await expect(canvas.getByRole("textbox", { name: "文件名称" })).toHaveValue("alpha.md");
-    await expect(canvas.getByText("重命名失败：目标已存在: content/alpha.md")).toBeVisible();
+    await expect(
+      canvas.queryByText("重命名失败：目标已存在: content/alpha.md")
+    ).not.toBeInTheDocument();
     await expect(body.getByText("重命名失败：目标已存在: content/alpha.md")).toBeVisible();
   },
 };
