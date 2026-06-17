@@ -128,6 +128,9 @@ Unified Docker image release:
   - any release target => `publish_image=success`
   - `deploy_frontend_pages` may be `success` or contractually `skipped`
 - No receipt is written for `should_release=false`, ambiguous/missing merged PR resolution, missing PR number, or any failed expected publish job.
+- The receipt comment path is best-effort and must not flip an otherwise successful release run to failed:
+  - permission or API failures are surfaced in the workflow summary as `permission_blocked` / `failed_soft`
+  - release tags, releases, Pages deploy, and Docker publish remain the release workflow's source-of-truth outcome
 
 ## 5. Implementation decisions
 
@@ -173,6 +176,7 @@ Unified Docker image release:
    - the comment shows only the actual outputs from the current run
    - the comment is omitted when any expected publish job fails or when release intent is skipped
    - `Pages` is reported as `deployed` or explicit `skipped`, not guessed from release intent alone
+   - receipt permission/API failures are reported as non-blocking summary states and do not mark the release run itself failed
 
 ## 7. Risks and rollback
 
@@ -182,6 +186,7 @@ Unified Docker image release:
 - Frontend releases depend on availability and correctness of `PUBLIC_CONTENT_BUNDLE_URL`.
 - GitHub Pages, backend artifact releases, and unified Docker image releases now have partially independent failure modes.
 - Managed receipt comments can drift if repository permissions stop allowing issue-comment updates or if multiple historical managed comments already exist.
+- GitHub may still deny PR comment writes in some `workflow_run` contexts even when the workflow requests comment permissions.
 
 ### Mitigations
 
@@ -190,6 +195,7 @@ Unified Docker image release:
 - Keep release jobs idempotent by reusing existing matching tags on rerun.
 - Preserve explicit workflow summaries for skip/failure reasons.
 - Deduplicate managed receipt comments during update and scope write permission to the dedicated receipt job.
+- Treat the receipt upsert as best-effort so a comment-permission regression cannot block actual artifact publication.
 - Repository admins still need GitHub-side proof that `PR Label Gate` is configured as a required check; the workflow/spec cannot prove that from within this private repo context.
 
 ### Rollback
