@@ -420,6 +420,7 @@ async function treeRowVisualState(page: Page, name: string) {
     const row = node.closest<HTMLElement>('[data-tree-row="true"]');
     const className = row?.className ?? "";
     const style = row ? getComputedStyle(row) : null;
+    const pendingBadge = row?.querySelector<HTMLElement>('[data-testid^="tree-pending-badge:"]');
 
     return {
       className,
@@ -427,6 +428,8 @@ async function treeRowVisualState(page: Page, name: string) {
       selectedLike: className.includes("bg-primary/10"),
       activeLike: className.includes("bg-primary/6"),
       opacity: style?.opacity ?? "",
+      busy: node.getAttribute("aria-busy") ?? "",
+      pendingText: pendingBadge?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     };
   });
 }
@@ -874,6 +877,112 @@ Body paragraph`);
     await directoryNameInput.fill("research");
     await directoryNameInput.press("Enter");
     await expect(treeNameButton(page, "research")).toBeVisible();
+  });
+
+  test("file tree Enter enters inline rename for files and directories", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    const fileButton = treeNameButton(page, "05-redis-caching-strategies.md");
+    await fileButton.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("textbox", { name: "文件名称" })).toHaveValue(
+      "05-redis-caching-strategies.md"
+    );
+    await page.keyboard.press("Escape");
+
+    const archiveButton = treeNameButton(page, "archive");
+    await archiveButton.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("textbox", { name: "目录名称" })).toHaveValue("archive");
+    await page.keyboard.press("Escape");
+  });
+
+  test("file tree Space and arrow keys keep primary keyboard actions after Enter is reassigned", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    const archiveButton = treeNameButton(page, "archive");
+    await archiveButton.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(treeNameButton(page, "2024-retrospective.md")).toHaveCount(0);
+    await page.keyboard.press("ArrowRight");
+    await expect(treeNameButton(page, "2024-retrospective.md")).toBeVisible();
+
+    await page.keyboard.press(" ");
+    await expect(treeNameButton(page, "2024-retrospective.md")).toHaveCount(0);
+
+    const fileButton = treeNameButton(page, "05-redis-caching-strategies.md");
+    await fileButton.focus();
+    await page.keyboard.press(" ");
+    await expect(page.getByRole("heading", { name: "Redis 缓存策略与坑位" })).toBeVisible();
+  });
+
+  test("file tree shows row-level pending feedback while inline rename is submitting", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    const fileButton = treeNameButton(page, "05-redis-caching-strategies.md");
+    await fileButton.focus();
+    await page.keyboard.press("Enter");
+    const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+    await fileNameInput.fill("05-redis-caching-strategies-renamed.md");
+    await fileNameInput.press("Enter");
+
+    await expect(page.getByRole("textbox", { name: "文件名称" })).toHaveCount(0);
+    await expect
+      .poll(async () => (await treeRowVisualState(page, "05-redis-caching-strategies.md")).busy)
+      .toBe("true");
+    await expect
+      .poll(
+        async () => (await treeRowVisualState(page, "05-redis-caching-strategies.md")).pendingText
+      )
+      .toContain("重命名中");
+    await expect(
+      page.getByRole("button", { name: "05-redis-caching-strategies.md 更多操作" })
+    ).toBeDisabled();
+
+    await expect(treeNameButton(page, "05-redis-caching-strategies-renamed.md")).toBeVisible();
+    await expect(treeNameButton(page, "05-redis-caching-strategies.md")).toHaveCount(0);
+  });
+
+  test("file tree rename failure keeps inline editing active with persistent error feedback", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    const fileButton = treeNameButton(page, "05-redis-caching-strategies.md");
+    await fileButton.focus();
+    await page.keyboard.press("Enter");
+    const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+    await fileNameInput.fill("02-typescript-advanced-types.md");
+    await fileNameInput.press("Enter");
+
+    await expect(page.getByRole("textbox", { name: "文件名称" })).toHaveValue(
+      "02-typescript-advanced-types.md"
+    );
+    await expect(page.getByRole("textbox", { name: "文件名称" })).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(page.getByTestId("tree-inline-rename-error-input")).toBeVisible();
+    await expect(page.getByTestId("editor-file-browser").getByText("重命名失败：")).toHaveCount(0);
+
+    const toastViewport = page.locator(".Toastify__toast-container");
+    const errorToast = toastViewport
+      .getByTestId("admin-toast-content")
+      .filter({ has: page.locator(".text-destructive") });
+    await expect(errorToast).toBeVisible();
+    await expect(errorToast).toContainText("失败");
+    await page.waitForTimeout(4200);
+    await expect(errorToast).toBeVisible();
+    await expect(page.getByTestId("tree-inline-rename-error-input")).toBeVisible();
+    await expect(treeNameButton(page, "02-typescript-advanced-types.md")).toBeVisible();
   });
 
   test("file tree row background opens the file even outside the text hit area", async ({

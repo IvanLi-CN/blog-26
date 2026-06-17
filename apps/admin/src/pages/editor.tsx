@@ -35,6 +35,8 @@ import {
   joinTreePath,
   normalizeTreePath,
   replaceTreePathPrefix,
+  type TreeItemType,
+  type TreePendingState,
   type TreeRenameTarget,
   type TreeSelection,
   toDirectoryRequestPath,
@@ -140,6 +142,60 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
 }
 
+function uniqueTreePendingStates(states: TreePendingState[]) {
+  const deduped = new Map<string, TreePendingState>();
+  for (const state of states) {
+    const path = normalizeTreePath(state.path);
+    if (!path) continue;
+    deduped.set(`${state.operation}:${path}`, { ...state, path });
+  }
+  return [...deduped.values()];
+}
+
+function getTreePendingStatesForPaste(
+  entries: TreeSelection[],
+  destinationPath: string,
+  operation: "copy" | "move"
+) {
+  const normalizedDestinationPath = normalizeTreePath(destinationPath);
+  return uniqueTreePendingStates([
+    ...entries.map((entry) => ({
+      path: entry.path,
+      operation,
+    })),
+    ...(normalizedDestinationPath
+      ? [
+          {
+            path: normalizedDestinationPath,
+            operation,
+          } satisfies TreePendingState,
+        ]
+      : []),
+  ]);
+}
+
+function buildTreeRenameTarget(
+  source: "local",
+  path: string,
+  type: TreeItemType,
+  value: string,
+  errorMessage?: string | null
+): TreeRenameTarget {
+  return {
+    source,
+    path,
+    type,
+    parentPath: getParentTreePath(path),
+    value,
+    errorMessage: errorMessage ?? null,
+  };
+}
+
+type EditorErrorToast = {
+  message: string;
+  persistent?: boolean;
+};
+
 export function EditorPage() {
   const [tabs, setTabs] = useState<EditorTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -153,8 +209,9 @@ export function EditorPage() {
   const [selectedTreeItem, setSelectedTreeItem] = useState<TreeSelection | null>(null);
   const [treeSelectionOverride, setTreeSelectionOverride] = useState<TreeSelection[] | null>(null);
   const [editingTreeItem, setEditingTreeItem] = useState<TreeRenameTarget | null>(null);
+  const [treePendingStates, setTreePendingStates] = useState<TreePendingState[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
-  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<EditorErrorToast | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [closeTargetTabId, setCloseTargetTabId] = useState<string | null>(null);
   const [savePending, setSavePending] = useState(false);
@@ -195,7 +252,9 @@ export function EditorPage() {
 
   useEffect(() => {
     if (!errorBanner) return;
-    showAdminToast("danger", errorBanner, { autoClose: 5600 });
+    showAdminToast("danger", errorBanner.message, {
+      autoClose: errorBanner.persistent ? false : 5600,
+    });
     setErrorBanner(null);
   }, [errorBanner]);
 
@@ -324,7 +383,7 @@ export function EditorPage() {
         const post = await adminApi.getPost(id);
         upsertPostTab(post);
       } catch (error) {
-        setErrorBanner(`未找到文章：${getErrorMessage(error)}`);
+        setErrorBanner({ message: `未找到文章：${getErrorMessage(error)}` });
       } finally {
         setLoadingMessage(null);
       }
@@ -340,7 +399,7 @@ export function EditorPage() {
         const post = await adminApi.getPostBySlug(slug);
         upsertPostTab(post);
       } catch (error) {
-        setErrorBanner(`未找到 slug 为 “${slug}” 的文章：${getErrorMessage(error)}`);
+        setErrorBanner({ message: `未找到 slug 为 “${slug}” 的文章：${getErrorMessage(error)}` });
       } finally {
         setLoadingMessage(null);
       }
@@ -424,7 +483,7 @@ export function EditorPage() {
       try {
         await request;
       } catch (error) {
-        setErrorBanner(`未找到文件：${getErrorMessage(error)}`);
+        setErrorBanner({ message: `未找到文件：${getErrorMessage(error)}` });
       } finally {
         pendingFileTabsRef.current.delete(targetIdentity);
         setLoadingMessage(null);
@@ -667,7 +726,7 @@ export function EditorPage() {
       updateActiveTabContent(`${activeContent}${prefix}${markdown}`, { markDirty: true });
       setNotice(`已插入附件：${file.name}`);
     } catch (error) {
-      setErrorBanner(getErrorMessage(error));
+      setErrorBanner({ message: getErrorMessage(error) });
     } finally {
       setUploadPending(false);
       if (uploadInputRef.current) {
@@ -702,7 +761,7 @@ export function EditorPage() {
         const liveContent = syncActiveTabFromEditor() ?? activeTab.database.content;
         const derivedDraft = deriveDatabaseDraftState(activeTab.database, liveContent);
         if (activeTab.database.isNew && isBlankEditorContent(liveContent)) {
-          setErrorBanner("内容不能为空，请先输入正文后再保存。");
+          setErrorBanner({ message: "内容不能为空，请先输入正文后再保存。" });
           return;
         }
         const payload = {
@@ -757,7 +816,7 @@ export function EditorPage() {
         setNotice("文件保存成功。");
       }
     } catch (error) {
-      setErrorBanner(getEditorActionErrorMessage(error));
+      setErrorBanner({ message: getEditorActionErrorMessage(error) });
     } finally {
       setSavePending(false);
     }
@@ -806,7 +865,7 @@ export function EditorPage() {
       }
     } catch (error) {
       console.error("预览失败:", error);
-      setErrorBanner(getErrorMessage(error));
+      setErrorBanner({ message: getErrorMessage(error) });
     }
   }
 
@@ -927,6 +986,7 @@ export function EditorPage() {
       const path = joinTreePath(baseDirectory, defaultName);
 
       setErrorBanner(null);
+      setTreePendingStates([{ path, operation: "create" }]);
       try {
         if (type === "directory") {
           await adminApi.createDirectory({ source: selectedSource, path });
@@ -953,7 +1013,9 @@ export function EditorPage() {
           value: defaultName,
         });
       } catch (error) {
-        setErrorBanner(getEditorActionErrorMessage(error, "创建失败："));
+        setErrorBanner({ message: getEditorActionErrorMessage(error, "创建失败：") });
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [browserPath, directoryItemsByPath, refetchTreePath, selectedSource, selectedTreeItem]
@@ -974,15 +1036,26 @@ export function EditorPage() {
   );
 
   const startTreeRename = useCallback((target: TreeSelection) => {
-    setEditingTreeItem({
-      ...target,
-      parentPath: getParentTreePath(target.path),
-      value: target.path.split("/").pop() ?? "",
-    });
+    setEditingTreeItem(
+      buildTreeRenameTarget(
+        target.source,
+        target.path,
+        target.type,
+        target.path.split("/").pop() ?? ""
+      )
+    );
   }, []);
 
   const updateEditingTreeItemValue = useCallback((value: string) => {
-    setEditingTreeItem((current) => (current ? { ...current, value } : current));
+    setEditingTreeItem((current) =>
+      current
+        ? {
+            ...current,
+            value,
+            errorMessage: current.errorMessage ? null : current.errorMessage,
+          }
+        : current
+    );
   }, []);
 
   const cancelTreeRename = useCallback(() => {
@@ -994,21 +1067,26 @@ export function EditorPage() {
     if (!target) return;
 
     const newName = target.value.trim();
-    setEditingTreeItem(null);
 
     if (!newName || newName === target.path.split("/").pop()) {
+      setEditingTreeItem(null);
       return;
     }
 
     void (async () => {
       const newPath = joinTreePath(target.parentPath, newName);
       setErrorBanner(null);
+      setEditingTreeItem(null);
+      setTreePendingStates([{ path: target.path, operation: "rename" }]);
       try {
-        await adminApi.renameFile({
+        const response = await adminApi.renameFile({
           source: target.source,
           oldPath: target.path,
           newName,
         });
+        if (!response.success) {
+          throw new Error(`目标已存在: ${newPath}`);
+        }
 
         setSelectedTreeItem({ source: target.source, path: newPath, type: target.type });
         setExpandedPaths((current) => {
@@ -1034,9 +1112,16 @@ export function EditorPage() {
         await queryClient.invalidateQueries({
           queryKey: ["admin-directory-tree", target.source],
         });
+        setEditingTreeItem(null);
         setNotice("已重命名。");
       } catch (error) {
-        setErrorBanner(getErrorMessage(error));
+        const message = getEditorActionErrorMessage(error, "重命名失败：");
+        setEditingTreeItem(
+          buildTreeRenameTarget(target.source, target.path, target.type, newName, message)
+        );
+        setErrorBanner({ message, persistent: true });
+      } finally {
+        setTreePendingStates([]);
       }
     })();
   }, [editingTreeItem, queryClient]);
@@ -1044,6 +1129,7 @@ export function EditorPage() {
   const moveTreeEntries = useCallback(
     async (entries: TreeSelection[], destinationPath: string) => {
       setErrorBanner(null);
+      setTreePendingStates(getTreePendingStatesForPaste(entries, destinationPath, "move"));
       try {
         const response = await adminApi.moveEntries({
           source: selectedSource,
@@ -1111,8 +1197,10 @@ export function EditorPage() {
         setTreeSelectionOverride(nextSelection);
         return nextSelection;
       } catch (error) {
-        setErrorBanner(getEditorActionErrorMessage(error, "移动失败："));
+        setErrorBanner({ message: getEditorActionErrorMessage(error, "移动失败：") });
         throw error;
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [queryClient, selectedSource]
@@ -1121,6 +1209,7 @@ export function EditorPage() {
   const copyTreeEntries = useCallback(
     async (entries: TreeSelection[], destinationPath: string) => {
       setErrorBanner(null);
+      setTreePendingStates(getTreePendingStatesForPaste(entries, destinationPath, "copy"));
       try {
         const response = await adminApi.copyEntries({
           source: selectedSource,
@@ -1141,8 +1230,10 @@ export function EditorPage() {
         setTreeSelectionOverride(nextSelection);
         return nextSelection;
       } catch (error) {
-        setErrorBanner(getEditorActionErrorMessage(error, "复制失败："));
+        setErrorBanner({ message: getEditorActionErrorMessage(error, "复制失败：") });
         throw error;
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [queryClient, selectedSource]
@@ -1151,6 +1242,9 @@ export function EditorPage() {
   const deleteTreeEntries = useCallback(
     async (entries: TreeSelection[]) => {
       setErrorBanner(null);
+      setTreePendingStates(
+        uniqueTreePendingStates(entries.map((entry) => ({ path: entry.path, operation: "delete" })))
+      );
       try {
         const response = await adminApi.deleteEntries({
           source: selectedSource,
@@ -1203,8 +1297,10 @@ export function EditorPage() {
         });
         setNotice(`已删除 ${response.deleted.length} 项。`);
       } catch (error) {
-        setErrorBanner(getEditorActionErrorMessage(error, "删除失败："));
+        setErrorBanner({ message: getEditorActionErrorMessage(error, "删除失败：") });
         throw error;
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [queryClient, selectedSource]
@@ -1232,6 +1328,7 @@ export function EditorPage() {
           activeItemType={activeTreeType}
           activeItemSource={activeBrowserSource}
           editingItem={editingTreeItem}
+          pendingStates={treePendingStates}
           onEditingValueChange={updateEditingTreeItemValue}
           onEditingCommit={commitTreeRename}
           onEditingCancel={cancelTreeRename}
@@ -1260,6 +1357,7 @@ export function EditorPage() {
       deleteTreeEntries,
       directoryItemsByPath,
       editingTreeItem,
+      treePendingStates,
       expandedPaths,
       handleDirectoryExpand,
       handleFileOpen,
