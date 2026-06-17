@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import type { FileItem } from "@/lib/admin-api-client";
-import { AdminToastViewport } from "~/components/admin-toast";
+import { AdminToastViewport, showAdminToast } from "~/components/admin-toast";
 import { Alert } from "~/components/ui";
 import {
   EditorFileBrowser,
@@ -39,6 +39,7 @@ const DIRECTORY_ITEMS: Record<string, FileItem[]> = {
 
 type StoryHarnessProps = {
   failDelete?: boolean;
+  failRename?: boolean;
   pendingScenario?: "none" | "rename" | "create" | "copy" | "move" | "delete";
 };
 
@@ -46,7 +47,11 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function StoryHarness({ failDelete = false, pendingScenario = "none" }: StoryHarnessProps) {
+function StoryHarness({
+  failDelete = false,
+  failRename = false,
+  pendingScenario = "none",
+}: StoryHarnessProps) {
   const [expandedPaths, setExpandedPaths] = useState<string[]>(["content", "content/posts"]);
   const [editingItem, setEditingItem] = useState<TreeRenameTarget | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -117,10 +122,20 @@ function StoryHarness({ failDelete = false, pendingScenario = "none" }: StoryHar
             }
             onEditingCommit={async () => {
               if (!editingItem) return;
+              const committedItem = editingItem;
+              setEditingItem(null);
               setPendingStates([{ path: editingItem.path, operation: "rename" }]);
               await wait(450);
               setPendingStates([]);
-              setEditingItem(null);
+              if (failRename) {
+                const message = `重命名失败：目标已存在: ${joinTreePath(
+                  committedItem.parentPath,
+                  committedItem.value.trim()
+                )}`;
+                setEditingItem({ ...committedItem, errorMessage: message });
+                showAdminToast("danger", message, { autoClose: false });
+                return;
+              }
             }}
             onEditingCancel={() => setEditingItem(null)}
             onDirectoryExpand={handleDirectoryExpand}
@@ -201,6 +216,7 @@ const meta = {
   tags: ["autodocs"],
   args: {
     failDelete: false,
+    failRename: false,
     pendingScenario: "none",
   },
   parameters: {
@@ -234,6 +250,27 @@ export const KeyboardRename: Story = {
 export const PendingRename: Story = {
   args: {
     pendingScenario: "rename",
+  },
+};
+
+export const RenameErrorRetry: Story = {
+  args: {
+    failRename: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const guide = canvas.getByRole("button", { name: "guide.md", exact: true });
+    await userEvent.click(guide);
+    guide.focus();
+    await userEvent.keyboard("{Enter}");
+    const input = canvas.getByRole("textbox", { name: "文件名称" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "alpha.md");
+    await userEvent.keyboard("{Enter}");
+    await expect(canvas.getByRole("textbox", { name: "文件名称" })).toHaveValue("alpha.md");
+    await expect(canvas.getByText("重命名失败：目标已存在: content/alpha.md")).toBeVisible();
+    await expect(body.getByText("重命名失败：目标已存在: content/alpha.md")).toBeVisible();
   },
 };
 

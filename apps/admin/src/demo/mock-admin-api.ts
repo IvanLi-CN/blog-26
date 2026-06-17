@@ -891,6 +891,10 @@ function renameFile(body: Record<string, unknown>) {
   const oldKey = `${source}:${oldPath}`;
   const newKey = `${source}:${newPath}`;
 
+  if (oldKey !== newKey && (fileContents.has(newKey) || directoryPaths.has(newKey))) {
+    throw new DemoApiError(`目标已存在: ${newPath}`, 409);
+  }
+
   if (fileContents.has(oldKey)) {
     const content = fileContents.get(oldKey) ?? "";
     fileContents.delete(oldKey);

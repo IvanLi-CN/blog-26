@@ -59,6 +59,7 @@ export type TreeSelection = {
 export type TreeRenameTarget = TreeSelection & {
   parentPath: string;
   value: string;
+  errorMessage?: string | null;
 };
 
 export type TreePendingOperation = "create" | "rename" | "move" | "copy" | "delete";
@@ -396,43 +397,84 @@ function TreeFileTypeIcon({ extension, active }: { extension?: string; active: b
 function InlineTreeNameInput({
   value,
   type,
+  errorMessage,
   onChange,
   onCommit,
   onCancel,
 }: {
   value: string;
   type: TreeItemType;
+  errorMessage?: string | null;
   onChange: (value: string) => void;
   onCommit: () => void;
   onCancel: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const skipNextBlurCommitRef = useRef(false);
 
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
   }, []);
 
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (!inputRef.current) return;
+      if (inputRef.current.contains(event.target as Node)) return;
+      skipNextBlurCommitRef.current = Boolean(errorMessage);
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, [errorMessage]);
+
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={value}
-      aria-label={type === "directory" ? "目录名称" : "文件名称"}
-      className="min-w-0 flex-1 rounded-xl border border-primary/35 bg-background px-2 py-1 text-sm text-foreground outline-none ring-2 ring-primary/18"
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onCommit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
+    <div className="min-w-0 flex-1">
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        aria-label={type === "directory" ? "目录名称" : "文件名称"}
+        aria-invalid={errorMessage ? "true" : undefined}
+        aria-describedby={errorMessage ? "tree-inline-rename-error" : undefined}
+        data-testid={errorMessage ? "tree-inline-rename-error-input" : "tree-inline-rename-input"}
+        className={cn(
+          "min-w-0 w-full rounded-xl border bg-background px-2 py-1 text-sm text-foreground outline-none ring-2 transition-colors duration-150",
+          errorMessage
+            ? "border-destructive/42 bg-destructive/10 text-foreground ring-destructive/18"
+            : "border-primary/35 ring-primary/18"
+        )}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => {
+          if (skipNextBlurCommitRef.current) {
+            skipNextBlurCommitRef.current = false;
+            return;
+          }
           onCommit();
-        }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          onCancel();
-        }
-      }}
-    />
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            onCommit();
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+          }
+        }}
+      />
+      {errorMessage ? (
+        <p
+          id="tree-inline-rename-error"
+          className="mt-1 truncate text-[0.7rem] font-medium text-destructive"
+          title={errorMessage}
+        >
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -1867,6 +1909,7 @@ export function EditorFileBrowser({
                   <InlineTreeNameInput
                     value={editingItem.value}
                     type={editingItem.type}
+                    errorMessage={editingItem.errorMessage}
                     onChange={onEditingValueChange}
                     onCommit={onEditingCommit}
                     onCancel={onEditingCancel}

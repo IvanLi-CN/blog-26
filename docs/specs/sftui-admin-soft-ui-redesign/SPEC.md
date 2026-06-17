@@ -124,7 +124,7 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 - Sidebar reflow: width persists and the shell grid reallocates space from main content instead of overlapping it; measured `272px => 1168px` and `404px => 1036px`
 - File workflow: file actions share one toolbar, inline rename stays in place, the tree fills the available sidebar height, and the sidebar remains free of removed remote-source UI
 - File-tree keyboard contract: `Enter` on the focused file or directory enters inline rename, `Space` keeps the primary open/expand action, and directories also support `ArrowRight` / `ArrowLeft` for explicit expand and collapse
-- File-tree write clarity: create / rename / move / copy / delete show row-level pending feedback on the affected items so the operator can see which entry is submitting without relying on toast timing alone
+- File-tree write clarity: create / rename / move / copy / delete show row-level pending feedback on the affected items so the operator can see which entry is submitting without relying on toast timing alone; rename failures keep inline editing active, tint the input into an error state, and keep the error toast visible until dismissed
 - Validation clarity: saving a brand-new blank article stops in-place with a natural-language banner instead of exposing raw validation issue arrays
 - Real-root file creation: creating a file inside a configured root such as `Hardware/` succeeds immediately and enters inline rename without surfacing an uninitialized local-source error
 - Empty-file and viewport behavior: a newly created empty file opens immediately, editor surfaces keep full-height layout, and scrolling stays inside the editing panes
@@ -155,6 +155,8 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 ![Admin editor file tree keyboard Enter enters inline rename](./assets/demo/admin-editor-file-tree-enter-rename.trimmed.png)
 
 ![Admin editor file tree row-level rename pending state](./assets/demo/admin-editor-file-tree-rename-pending.trimmed.png)
+
+![Admin editor file tree keeps rename editing active with persistent error feedback](./assets/demo/admin-editor-file-tree-rename-error-retry.trimmed.png)
 
 ![Admin editor file tree fills available sidebar height](./assets/demo/admin-editor-sidebar-plain-file-icon-counts.png)
 

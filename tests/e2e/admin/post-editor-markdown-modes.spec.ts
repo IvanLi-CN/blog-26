@@ -933,6 +933,7 @@ Body paragraph`);
     await fileNameInput.fill("05-redis-caching-strategies-renamed.md");
     await fileNameInput.press("Enter");
 
+    await expect(page.getByRole("textbox", { name: "文件名称" })).toHaveCount(0);
     await expect
       .poll(async () => (await treeRowVisualState(page, "05-redis-caching-strategies.md")).busy)
       .toBe("true");
@@ -947,6 +948,40 @@ Body paragraph`);
 
     await expect(treeNameButton(page, "05-redis-caching-strategies-renamed.md")).toBeVisible();
     await expect(treeNameButton(page, "05-redis-caching-strategies.md")).toHaveCount(0);
+  });
+
+  test("file tree rename failure keeps inline editing active with persistent error feedback", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    const fileButton = treeNameButton(page, "05-redis-caching-strategies.md");
+    await fileButton.focus();
+    await page.keyboard.press("Enter");
+    const fileNameInput = page.getByRole("textbox", { name: "文件名称" });
+    await fileNameInput.fill("02-typescript-advanced-types.md");
+    await fileNameInput.press("Enter");
+
+    await expect(page.getByRole("textbox", { name: "文件名称" })).toHaveValue(
+      "02-typescript-advanced-types.md"
+    );
+    await expect(page.getByRole("textbox", { name: "文件名称" })).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(page.getByTestId("tree-inline-rename-error-input")).toBeVisible();
+
+    const toastViewport = page.locator(".Toastify__toast-container");
+    const errorToast = toastViewport
+      .getByTestId("admin-toast-content")
+      .filter({ has: page.locator(".text-destructive") });
+    await expect(errorToast).toBeVisible();
+    await expect(errorToast).toContainText("失败");
+    await page.waitForTimeout(4200);
+    await expect(errorToast).toBeVisible();
+    await expect(page.getByTestId("tree-inline-rename-error-input")).toBeVisible();
+    await expect(treeNameButton(page, "02-typescript-advanced-types.md")).toBeVisible();
   });
 
   test("file tree row background opens the file even outside the text hit area", async ({

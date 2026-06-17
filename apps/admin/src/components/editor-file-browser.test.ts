@@ -102,9 +102,14 @@ describe("editor file browser pending helpers", () => {
       parentPath: "blog",
       value: "post.md",
     };
+    const editingTargetWithError: TreeRenameTarget = {
+      ...editingTarget,
+      errorMessage: "目标已存在",
+    };
 
     expect(canTriggerInlineRename(target, null)).toBe(true);
     expect(canTriggerInlineRename(target, editingTarget)).toBe(false);
+    expect(canTriggerInlineRename(target, editingTargetWithError)).toBe(false);
     expect(canTriggerInlineRename(null, null)).toBe(false);
   });
 });
