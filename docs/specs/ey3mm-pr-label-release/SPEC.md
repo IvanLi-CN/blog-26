@@ -104,6 +104,31 @@ Unified Docker image release:
 - Production health reports public-site status as `ok` with `site.mode=static`
 - Public-page routes such as `/` and `/posts` are served by the Docker image from `site-dist`
 
+### 4.6 PR release receipt comment contract
+
+- Every successful release run for a merged PR upserts exactly one managed PR issue comment as the release receipt.
+- The managed comment is keyed by repository + PR number through an HTML marker and must be updated in place on rerun or `workflow_dispatch` backfill instead of appending a new history comment.
+- The receipt body must include:
+  - PR number + URL
+  - release `head_sha`
+  - trigger kind (`workflow_run` or `workflow_dispatch`)
+  - `intent_type`
+  - `channel`
+  - actual `release:*` targets
+  - actual `frontend-*` / `backend-*` release tags with GitHub Release links when those targets were published
+  - plain `ghcr.io/<repo>:v*` image ref when any release target was published
+  - GitHub Actions run URL
+  - last-updated timestamp
+- `Pages` status is reported only for `frontend` releases:
+  - `deployed` with the deployed Pages URL when the deploy step actually ran
+  - `skipped` with an explicit reason when the workflow intentionally skipped deploy because the release commit was no longer the latest `main` head
+- The receipt is written only when the current run's expected release outputs all succeeded:
+  - `frontend` release => `publish_frontend=success`
+  - `backend` release => `publish_backend=success`
+  - any release target => `publish_image=success`
+  - `deploy_frontend_pages` may be `success` or contractually `skipped`
+- No receipt is written for `should_release=false`, ambiguous/missing merged PR resolution, missing PR number, or any failed expected publish job.
+
 ## 5. Implementation decisions
 
 1. Extend `label-gate.yml` and `release-intent.sh` to understand `release:frontend` / `release:backend`.
@@ -118,6 +143,7 @@ Unified Docker image release:
    - `/api/health` reports `site.status=ok` and `site.mode=static`
    - `/api/public/*` stays available
    - `/posts` is served by the unified Docker image
+7. Add a dedicated release-receipt comment step that consumes `prepare` outputs as the only source of receipt truth and upserts the managed PR comment through the issue-comments API.
 
 ## 6. Acceptance criteria
 
@@ -141,6 +167,12 @@ Unified Docker image release:
    - Docker image starts without runtime public-site build
    - `/api/health` stays healthy and reports `site.status=ok`
    - `/posts` is served from bundled static assets
+6. Release receipt comment:
+   - a successful release run creates or updates exactly one managed PR receipt comment
+   - rerun and `workflow_dispatch` backfill update the same managed comment instead of creating a second one
+   - the comment shows only the actual outputs from the current run
+   - the comment is omitted when any expected publish job fails or when release intent is skipped
+   - `Pages` is reported as `deployed` or explicit `skipped`, not guessed from release intent alone
 
 ## 7. Risks and rollback
 
@@ -149,6 +181,7 @@ Unified Docker image release:
 - Component tag history can drift if tags are edited manually.
 - Frontend releases depend on availability and correctness of `PUBLIC_CONTENT_BUNDLE_URL`.
 - GitHub Pages, backend artifact releases, and unified Docker image releases now have partially independent failure modes.
+- Managed receipt comments can drift if repository permissions stop allowing issue-comment updates or if multiple historical managed comments already exist.
 
 ### Mitigations
 
@@ -156,6 +189,8 @@ Unified Docker image release:
 - Fail fast when the content bundle cannot be downloaded or does not contain `public-snapshot.json`.
 - Keep release jobs idempotent by reusing existing matching tags on rerun.
 - Preserve explicit workflow summaries for skip/failure reasons.
+- Deduplicate managed receipt comments during update and scope write permission to the dedicated receipt job.
+- Repository admins still need GitHub-side proof that `PR Label Gate` is configured as a required check; the workflow/spec cannot prove that from within this private repo context.
 
 ### Rollback
 
