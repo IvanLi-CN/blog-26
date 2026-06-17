@@ -68,6 +68,36 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
    - downloads `PUBLIC_CONTENT_BUNDLE_URL`
    - builds a unified Docker image containing `site-dist`, `backend-dist`, and `admin-dist`
    - pushes the image to GHCR with the plain `v*` tag, and `latest` for current-head stable releases
+9. After all expected publish jobs succeed, the workflow upserts one managed PR `Release Receipt` comment through the issue-comments API.
+
+## PR release receipt comment
+
+- A successful release run keeps exactly one managed PR comment as the release receipt.
+- Reruns and manual `workflow_dispatch` backfills update the same comment instead of creating a new one.
+- The receipt includes:
+  - PR link
+  - release `head_sha`
+  - trigger kind (`workflow_run` or `workflow_dispatch`)
+  - `intent_type`
+  - `channel`
+  - actual `release:*` targets
+  - actual component release tags with GitHub Release links
+  - plain `ghcr.io/<repo>:v*` image ref
+  - workflow run URL
+  - last-updated timestamp
+- `Pages` is reported only for `frontend` releases:
+  - `deployed` with the Pages URL when the deploy step actually ran
+  - `skipped` with an explicit reason when the deploy contract intentionally skipped because the commit was no longer the latest `main` head
+- The receipt is not written when:
+  - `should_release=false`
+  - the merged PR cannot be resolved uniquely
+  - `pr_number` is missing
+  - any expected publish job failed
+
+## Permissions and required-check note
+
+- The receipt job uses `issues: write` only for the dedicated comment-upsert step; the rest of the workflow keeps its existing release permissions.
+- This repository context cannot prove GitHub-side branch protection or ruleset state because the private-repo API is restricted here. Repository admins still need to verify that `PR Label Gate` is configured as a required check if label-driven release intent is meant to stay protected.
 
 ## Frontend content bundle
 
@@ -102,6 +132,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - `ambiguous_or_missing_pr`
   - `pr_not_merged_or_missing_merged_at`
   - `intent_skip`
+  - receipt summary `action=skipped` when publish success conditions were not met
 
 ### Release failed in `prepare`
 
@@ -124,3 +155,12 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Verify the Docker build generated `site-dist/`, `admin-dist/`, and `backend-dist/`.
 - Verify Docker runtime health at `/api/health`; site status should be `ok` with `site.mode=static`.
 - Verify the image was pushed as `vX.Y.Z` / `vX.Y.Z-rc.<sha7>` and not as any `backend-*` tag.
+
+### Release receipt comment missing or stale
+
+- Check the `Release receipt comment` section in the workflow summary:
+  - `action=skipped` means the workflow intentionally did not write a success receipt
+  - `action=failed` means the comment upsert path itself failed
+- Confirm the workflow had a resolved merged PR number and all expected publish jobs succeeded.
+- Confirm the dedicated receipt step still has `issues: write`.
+- If multiple historical managed receipt comments exist, rerun the release once; the managed update step should keep the newest one and delete duplicates.
