@@ -68,7 +68,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
    - downloads `PUBLIC_CONTENT_BUNDLE_URL`
    - builds a unified Docker image containing `site-dist`, `backend-dist`, and `admin-dist`
    - pushes the image to GHCR with the plain `v*` tag, and `latest` for current-head stable releases
-9. After all expected publish jobs succeed, the workflow upserts one managed PR `Release Receipt` comment through the issue-comments API.
+9. After all expected publish jobs succeed, the workflow best-effort upserts one managed PR `Release Receipt` comment through the PR conversation comment path.
 
 ## PR release receipt comment
 
@@ -93,10 +93,12 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - the merged PR cannot be resolved uniquely
   - `pr_number` is missing
   - any expected publish job failed
+- If GitHub rejects the comment write itself, the workflow summary records `permission_blocked` or `failed_soft`, but the release run stays green when all publish jobs succeeded.
 
 ## Permissions and required-check note
 
-- The receipt job uses `issues: write` only for the dedicated comment-upsert step; the rest of the workflow keeps its existing release permissions.
+- The release workflow now requests PR comment write permissions because GitHub can reject PR conversation writes from `workflow_run` jobs unless the token carries explicit comment scopes.
+- The receipt step is still best-effort: a PR comment write failure must not turn a successful artifact release into a failed release run.
 - This repository context cannot prove GitHub-side branch protection or ruleset state because the private-repo API is restricted here. Repository admins still need to verify that `PR Label Gate` is configured as a required check if label-driven release intent is meant to stay protected.
 
 ## Frontend content bundle
@@ -160,7 +162,8 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 - Check the `Release receipt comment` section in the workflow summary:
   - `action=skipped` means the workflow intentionally did not write a success receipt
-  - `action=failed` means the comment upsert path itself failed
+  - `action=permission_blocked` means GitHub rejected PR comment writes for this run context
+  - `action=failed_soft` means the comment upsert path itself failed, but release artifacts were still published
 - Confirm the workflow had a resolved merged PR number and all expected publish jobs succeeded.
-- Confirm the dedicated receipt step still has `issues: write`.
+- Confirm the release workflow still carries comment-write permissions for the dedicated receipt step.
 - If multiple historical managed receipt comments exist, rerun the release once; the managed update step should keep the newest one and delete duplicates.

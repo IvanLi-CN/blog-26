@@ -49,6 +49,14 @@ def parse_json_env(name: str, default: Any) -> Any:
     return json.loads(raw)
 
 
+class ReceiptCommentError(RuntimeError):
+    """Base error for managed release receipt comment operations."""
+
+
+class ReceiptPermissionError(ReceiptCommentError):
+    """GitHub token cannot manage the PR receipt comment in this run context."""
+
+
 @dataclass
 class Config:
     api_root: str
@@ -142,20 +150,23 @@ class GitHubApi:
                     time.sleep(attempt * 2)
                     continue
                 detail = exc.read().decode("utf-8", errors="replace")
-                raise RuntimeError(f"GitHub API {method} {path} failed: {exc.code} {detail}") from exc
+                message = f"GitHub API {method} {path} failed: {exc.code} {detail}"
+                if exc.code == 403:
+                    raise ReceiptPermissionError(message) from exc
+                raise ReceiptCommentError(message) from exc
             except urllib.error.URLError as exc:
                 last_error = exc
                 if attempt < 3:
                     time.sleep(attempt * 2)
                     continue
-                raise RuntimeError(f"GitHub API {method} {path} failed: {exc}") from exc
-        raise RuntimeError(f"GitHub API {method} {path} failed after retries: {last_error}")
+                raise ReceiptCommentError(f"GitHub API {method} {path} failed: {exc}") from exc
+        raise ReceiptCommentError(f"GitHub API {method} {path} failed after retries: {last_error}")
 
     def list_issue_comments(self) -> list[dict[str, Any]]:
         if self.config.issue_comments_json is not None:
             payload = self.config.issue_comments_json
             if not isinstance(payload, list):
-                raise RuntimeError("ISSUE_COMMENTS_JSON must be a JSON array")
+                raise ReceiptCommentError("ISSUE_COMMENTS_JSON must be a JSON array")
             return [item for item in payload if isinstance(item, dict)]
 
         comments: list[dict[str, Any]] = []
@@ -164,14 +175,14 @@ class GitHubApi:
             path = f"/repos/{self.config.repo}/issues/{self.config.pr_number}/comments?per_page=100&page={page}"
             payload = self.request("GET", path)
             if not isinstance(payload, list):
-                raise RuntimeError("GitHub issue comments response is not a list")
+                raise ReceiptCommentError("GitHub issue comments response is not a list")
             page_items = [item for item in payload if isinstance(item, dict)]
             comments.extend(page_items)
             if len(page_items) < 100:
                 break
             page += 1
             if page > 30:
-                raise RuntimeError("Issue comments pagination exceeded 30 pages")
+                raise ReceiptCommentError("Issue comments pagination exceeded 30 pages")
         return comments
 
 
@@ -345,9 +356,9 @@ def main() -> int:
     )
 
     if not config.repo:
-        raise RuntimeError("missing GITHUB_REPOSITORY")
+        raise ReceiptCommentError("missing GITHUB_REPOSITORY")
     if not config.dry_run and not config.token:
-        raise RuntimeError("missing GITHUB_TOKEN")
+        raise ReceiptCommentError("missing GITHUB_TOKEN")
 
     ready, reason = ensure_successful_release(config)
     if not ready:
@@ -356,48 +367,67 @@ def main() -> int:
         write_output("receipt_reason", reason)
         return 0
 
-    api = GitHubApi(config)
-    comments = api.list_issue_comments()
-    canonical, duplicates = select_managed_comments(config, comments)
-    body = build_comment_body(config)
+    try:
+        api = GitHubApi(config)
+        comments = api.list_issue_comments()
+        canonical, duplicates = select_managed_comments(config, comments)
+        body = build_comment_body(config)
 
-    if config.dry_run:
-        print("--- release receipt body ---")
-        print(body)
-        print("--- end release receipt body ---")
+        if config.dry_run:
+            print("--- release receipt body ---")
+            print(body)
+            print("--- end release receipt body ---")
 
-    if canonical is None:
-        created = api.request(
-            "POST",
-            f"/repos/{config.repo}/issues/{config.pr_number}/comments",
-            {"body": body},
-        )
-        action = "created"
-        comment_id = str(created.get("id", "")) if isinstance(created, dict) else ""
-        comment_url = str(created.get("html_url", "")) if isinstance(created, dict) else ""
-    else:
-        comment_id = str(canonical.get("id", ""))
-        updated = api.request(
-            "PATCH",
-            f"/repos/{config.repo}/issues/comments/{comment_id}",
-            {"body": body},
-        )
-        action = "updated"
-        comment_url = str(updated.get("html_url", "")) if isinstance(updated, dict) else str(canonical.get("html_url", ""))
+        if canonical is None:
+            created = api.request(
+                "POST",
+                f"/repos/{config.repo}/issues/{config.pr_number}/comments",
+                {"body": body},
+            )
+            action = "created"
+            comment_id = str(created.get("id", "")) if isinstance(created, dict) else ""
+            comment_url = str(created.get("html_url", "")) if isinstance(created, dict) else ""
+        else:
+            comment_id = str(canonical.get("id", ""))
+            updated = api.request(
+                "PATCH",
+                f"/repos/{config.repo}/issues/comments/{comment_id}",
+                {"body": body},
+            )
+            action = "updated"
+            comment_url = str(updated.get("html_url", "")) if isinstance(updated, dict) else str(canonical.get("html_url", ""))
 
-    for duplicate in duplicates:
-        duplicate_id = str(duplicate.get("id", ""))
-        if not duplicate_id:
-            continue
-        api.request("DELETE", f"/repos/{config.repo}/issues/comments/{duplicate_id}")
-        log(f"deleted duplicate managed comment id={duplicate_id}")
+        for duplicate in duplicates:
+            duplicate_id = str(duplicate.get("id", ""))
+            if not duplicate_id:
+                continue
+            api.request("DELETE", f"/repos/{config.repo}/issues/comments/{duplicate_id}")
+            log(f"deleted duplicate managed comment id={duplicate_id}")
 
-    write_output("receipt_action", action)
-    write_output("receipt_reason", "comment_upserted")
-    write_output("receipt_comment_id", comment_id)
-    write_output("receipt_comment_url", comment_url)
-    write_output("duplicate_cleanup_count", str(len(duplicates)))
-    log(f"{action} managed comment id={comment_id or 'n/a'} duplicates_removed={len(duplicates)}")
+        write_output("receipt_action", action)
+        write_output("receipt_reason", "comment_upserted")
+        write_output("receipt_comment_id", comment_id)
+        write_output("receipt_comment_url", comment_url)
+        write_output("duplicate_cleanup_count", str(len(duplicates)))
+        log(f"{action} managed comment id={comment_id or 'n/a'} duplicates_removed={len(duplicates)}")
+    except ReceiptPermissionError as exc:
+        reason = str(exc)
+        write_output("receipt_action", "permission_blocked")
+        write_output("receipt_reason", reason)
+        write_output("receipt_comment_id", "")
+        write_output("receipt_comment_url", "")
+        write_output("duplicate_cleanup_count", "0")
+        log(f"receipt comment permission blocked: {reason}")
+        return 0
+    except ReceiptCommentError as exc:
+        reason = str(exc)
+        write_output("receipt_action", "failed_soft")
+        write_output("receipt_reason", reason)
+        write_output("receipt_comment_id", "")
+        write_output("receipt_comment_url", "")
+        write_output("duplicate_cleanup_count", "0")
+        log(f"receipt comment soft-failed: {reason}")
+        return 0
     return 0
 
 
@@ -405,8 +435,11 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        write_output("receipt_action", "failed")
+        write_output("receipt_action", "failed_soft")
         write_output("receipt_reason", str(exc))
+        write_output("receipt_comment_id", "")
+        write_output("receipt_comment_url", "")
+        write_output("duplicate_cleanup_count", "0")
         print(f"release-receipt: error: {exc}", file=sys.stderr)
-        raise
+        raise SystemExit(0)
 PY
