@@ -2,11 +2,14 @@ import { describe, expect, test } from "bun:test";
 import type { FileItem } from "@/lib/admin-api-client";
 import {
   canCreateInTreePath,
+  canTriggerInlineRename,
   getConfiguredRootForPath,
   getConfiguredRootPathSet,
   isConfiguredRootPath,
   isSameConfiguredRootDestination,
+  normalizePendingStates,
   selectionContainsConfiguredRoot,
+  type TreeRenameTarget,
   type TreeSelection,
 } from "./editor-file-browser";
 
@@ -73,5 +76,35 @@ describe("editor file browser configured roots", () => {
 
     expect(canCreateInTreePath("blog", roots)).toBe(true);
     expect(canCreateInTreePath("blog/archive", roots)).toBe(true);
+  });
+});
+
+describe("editor file browser pending helpers", () => {
+  test("normalizes pending states by path and keeps the latest operation", () => {
+    const normalized = normalizePendingStates([
+      { path: "/blog/post.md/", operation: "copy" },
+      { path: "blog/post.md", operation: "rename" },
+      { path: "", operation: "delete" },
+    ]);
+
+    expect([...normalized.values()]).toEqual([
+      {
+        path: "blog/post.md",
+        operation: "rename",
+      },
+    ]);
+  });
+
+  test("only allows keyboard inline rename when a target exists and nothing is already editing", () => {
+    const target = selection("blog/post.md");
+    const editingTarget: TreeRenameTarget = {
+      ...target,
+      parentPath: "blog",
+      value: "post.md",
+    };
+
+    expect(canTriggerInlineRename(target, null)).toBe(true);
+    expect(canTriggerInlineRename(target, editingTarget)).toBe(false);
+    expect(canTriggerInlineRename(null, null)).toBe(false);
   });
 });

@@ -61,6 +61,13 @@ export type TreeRenameTarget = TreeSelection & {
   value: string;
 };
 
+export type TreePendingOperation = "create" | "rename" | "move" | "copy" | "delete";
+
+export type TreePendingState = {
+  path: string;
+  operation: TreePendingOperation;
+};
+
 type TreeClipboard = {
   mode: "copy" | "cut";
   items: TreeSelection[];
@@ -331,6 +338,40 @@ function dedupeSelection(entries: TreeSelection[]) {
 
 function sortSelection(entries: TreeSelection[]) {
   return [...entries].sort((left, right) => left.path.localeCompare(right.path));
+}
+
+export function normalizePendingStates(states: TreePendingState[]) {
+  const normalized = new Map<string, TreePendingState>();
+  for (const state of states) {
+    const path = normalizeTreePath(state.path);
+    if (!path) continue;
+    normalized.set(path, { ...state, path });
+  }
+  return normalized;
+}
+
+export function canTriggerInlineRename(
+  target: TreeSelection | null,
+  editingItem: TreeRenameTarget | null
+) {
+  return Boolean(target && !editingItem);
+}
+
+function getPendingOperationLabel(operation: TreePendingOperation) {
+  switch (operation) {
+    case "create":
+      return "创建中";
+    case "rename":
+      return "重命名中";
+    case "move":
+      return "移动中";
+    case "copy":
+      return "复制中";
+    case "delete":
+      return "删除中";
+    default:
+      return "处理中";
+  }
 }
 
 function TreeFileTypeIcon({ extension, active }: { extension?: string; active: boolean }) {
@@ -877,6 +918,7 @@ export function EditorFileBrowser({
   activeItemType,
   activeItemSource,
   editingItem,
+  pendingStates,
   onEditingValueChange,
   onEditingCommit,
   onEditingCancel,
@@ -906,6 +948,7 @@ export function EditorFileBrowser({
   activeItemType: TreeItemType | null;
   activeItemSource: "local" | null;
   editingItem: TreeRenameTarget | null;
+  pendingStates?: TreePendingState[];
   onEditingValueChange: (value: string) => void;
   onEditingCommit: () => void;
   onEditingCancel: () => void;
@@ -936,6 +979,10 @@ export function EditorFileBrowser({
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
   const [operationPending, setOperationPending] = useState(false);
+  const pendingStateMap = useMemo(
+    () => normalizePendingStates(pendingStates ?? []),
+    [pendingStates]
+  );
 
   const expandedPathSet = useMemo(
     () => new Set(expandedPaths.map((path) => normalizeTreePath(path))),
@@ -1196,6 +1243,9 @@ export function EditorFileBrowser({
       position: { x: number; y: number },
       currentDirectoryPath: string
     ) => {
+      if (target && pendingStateMap.has(normalizeTreePath(target.path))) {
+        return;
+      }
       if (target && !selectedPathSet.has(normalizeTreePath(target.path))) {
         updateSelection([target], target.path);
       }
@@ -1207,7 +1257,7 @@ export function EditorFileBrowser({
         currentDirectoryPath,
       });
     },
-    [selectedPathSet, updateSelection]
+    [pendingStateMap, selectedPathSet, updateSelection]
   );
 
   const executeCommand = useCallback(
@@ -1557,6 +1607,81 @@ export function EditorFileBrowser({
     [onDirectoryExpand, onFileOpen, selectedSource, updateFocusedAnchor]
   );
 
+  const performKeyboardPrimaryAction = useCallback(
+    (item: FileItem) => {
+      const entry: TreeSelection = {
+        source: selectedSource,
+        path: normalizeTreePath(item.path),
+        type: item.type,
+      };
+
+      updateSelection([entry], entry.path);
+      performPrimaryAction(item);
+    },
+    [performPrimaryAction, selectedSource, updateSelection]
+  );
+
+  const handleTreeItemKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLElement>, item: FileItem, entry: TreeSelection) => {
+      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+        event.preventDefault();
+        const rect = event.currentTarget.getBoundingClientRect();
+        openContextMenu(
+          entry,
+          { x: rect.left + 12, y: rect.bottom + 8 },
+          getDirectoryTargetForSelection(entry)
+        );
+        return;
+      }
+
+      if (editingItem || pendingStateMap.has(entry.path)) {
+        return;
+      }
+
+      if (event.key === "Enter") {
+        if (!canTriggerInlineRename(entry, editingItem)) return;
+        event.preventDefault();
+        updateSelection([entry], entry.path);
+        onStartRename(entry);
+        return;
+      }
+
+      if (event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        performKeyboardPrimaryAction(item);
+        return;
+      }
+
+      if (item.type === "directory" && event.key === "ArrowRight") {
+        event.preventDefault();
+        if (!expandedPathSet.has(entry.path)) {
+          updateSelection([entry], entry.path);
+          onDirectoryExpand(item);
+        }
+        return;
+      }
+
+      if (item.type === "directory" && event.key === "ArrowLeft") {
+        event.preventDefault();
+        if (expandedPathSet.has(entry.path)) {
+          updateSelection([entry], entry.path);
+          onDirectoryExpand(item);
+        }
+      }
+    },
+    [
+      editingItem,
+      expandedPathSet,
+      getDirectoryTargetForSelection,
+      onDirectoryExpand,
+      onStartRename,
+      openContextMenu,
+      pendingStateMap,
+      performKeyboardPrimaryAction,
+      updateSelection,
+    ]
+  );
+
   const handlePrimaryAction = useCallback(
     (item: FileItem, event: ReactMouseEvent<HTMLElement>) => {
       const entry: TreeSelection = {
@@ -1564,6 +1689,11 @@ export function EditorFileBrowser({
         path: normalizeTreePath(item.path),
         type: item.type,
       };
+
+      if (pendingStateMap.has(entry.path)) {
+        event.preventDefault();
+        return;
+      }
 
       if (isSelectionModifierEvent(event)) {
         event.preventDefault();
@@ -1574,7 +1704,7 @@ export function EditorFileBrowser({
       updateSelection([entry], entry.path);
       performPrimaryAction(item);
     },
-    [handleToggleSelection, performPrimaryAction, selectedSource, updateSelection]
+    [handleToggleSelection, pendingStateMap, performPrimaryAction, selectedSource, updateSelection]
   );
 
   const renderTreeNodes = useCallback(
@@ -1607,6 +1737,8 @@ export function EditorFileBrowser({
           editingItem?.source === selectedSource &&
           editingItem.type === item.type &&
           isTreePathSelected(editingItem.path, item.path);
+        const pendingState = pendingStateMap.get(normalizedPath) ?? null;
+        const isPending = Boolean(pendingState);
         const isSelected = selectedPathSet.has(normalizedPath);
         const isCutPending = cutPathSet.has(normalizedPath);
         const showActiveHighlight = selectedCount === 0;
@@ -1623,9 +1755,10 @@ export function EditorFileBrowser({
               data-tree-row="true"
               className={cn(
                 "relative flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
-                !isEditing && "hover:bg-muted/40 hover:text-foreground",
+                !isEditing && !isPending && "hover:bg-muted/40 hover:text-foreground",
                 isSelected && "border-primary/35 bg-primary/10 text-primary shadow-sm",
                 isCutPending && "saturate-75",
+                isPending && "border-border/56 bg-muted/48 text-foreground/72",
                 !isSelected &&
                   showActiveHighlight &&
                   (isActiveFile || isActiveDirectory) &&
@@ -1643,7 +1776,7 @@ export function EditorFileBrowser({
                   "text-foreground/88"
               )}
               style={{
-                opacity: isCutPending ? 0.6 : undefined,
+                opacity: isPending ? 0.74 : isCutPending ? 0.6 : undefined,
                 paddingLeft: `${0.65 + depth * 0.45}rem`,
               }}
             >
@@ -1653,6 +1786,7 @@ export function EditorFileBrowser({
                   tabIndex={-1}
                   aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
                   className="absolute inset-0 z-0 rounded-2xl"
+                  disabled={isPending}
                   onClick={(event) => handlePrimaryAction(item, event)}
                   onDoubleClick={() => {
                     if (!isDirectory) onFilePermanentOpen(item);
@@ -1679,6 +1813,7 @@ export function EditorFileBrowser({
                   className="pointer-events-auto flex shrink-0 items-center gap-2"
                   tabIndex={isEditing ? -1 : 0}
                   aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
+                  aria-busy={isPending ? "true" : undefined}
                   onFocus={() => updateFocusedAnchor(entry.path)}
                   onClick={(event) => handlePrimaryAction(item, event)}
                   onDoubleClick={() => {
@@ -1693,17 +1828,8 @@ export function EditorFileBrowser({
                       getDirectoryTargetForSelection(entry)
                     );
                   }}
-                  onKeyDown={(event) => {
-                    if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
-                      event.preventDefault();
-                      const rect = event.currentTarget.getBoundingClientRect();
-                      openContextMenu(
-                        entry,
-                        { x: rect.left + 12, y: rect.bottom + 8 },
-                        getDirectoryTargetForSelection(entry)
-                      );
-                    }
-                  }}
+                  onKeyDown={(event) => handleTreeItemKeyDown(event, item, entry)}
+                  disabled={isPending}
                 >
                   {isDirectory ? (
                     isExpanded ? (
@@ -1749,6 +1875,7 @@ export function EditorFileBrowser({
                   <button
                     type="button"
                     className="pointer-events-auto min-w-0 flex-1 truncate text-left"
+                    aria-busy={isPending ? "true" : undefined}
                     onFocus={() => updateFocusedAnchor(entry.path)}
                     onClick={(event) => handlePrimaryAction(item, event)}
                     onDoubleClick={() => {
@@ -1763,13 +1890,24 @@ export function EditorFileBrowser({
                         getDirectoryTargetForSelection(entry)
                       );
                     }}
+                    onKeyDown={(event) => handleTreeItemKeyDown(event, item, entry)}
+                    disabled={isPending}
                   >
                     {item.name}
                   </button>
                 )}
               </span>
               <div className="relative z-10 pointer-events-none flex shrink-0 items-center gap-2">
-                {!isEditing && isDirectory ? (
+                {!isEditing && isPending ? (
+                  <span
+                    className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"
+                    data-testid={`tree-pending-badge:${normalizedPath}`}
+                  >
+                    <Spinner />
+                    {getPendingOperationLabel(pendingState?.operation ?? "move")}
+                  </span>
+                ) : null}
+                {!isEditing && !isPending && isDirectory ? (
                   <span
                     className={cn(
                       "shrink-0 whitespace-nowrap text-xs text-muted-foreground",
@@ -1785,6 +1923,7 @@ export function EditorFileBrowser({
                     variant="ghost"
                     className="pointer-events-auto size-8 rounded-full"
                     aria-label={`${item.name} 更多操作`}
+                    disabled={isPending}
                     onClick={(event) => {
                       const rect = event.currentTarget.getBoundingClientRect();
                       openContextMenu(
@@ -1832,6 +1971,7 @@ export function EditorFileBrowser({
       editingItem,
       expandedPathSet,
       getDirectoryTargetForSelection,
+      handleTreeItemKeyDown,
       handlePrimaryAction,
       handleToggleSelection,
       loadingPathSet,
@@ -1840,6 +1980,7 @@ export function EditorFileBrowser({
       onEditingValueChange,
       onFilePermanentOpen,
       openContextMenu,
+      pendingStateMap,
       selectedPathSet,
       selectedSource,
       selectionMode,
@@ -1904,6 +2045,7 @@ export function EditorFileBrowser({
   }, [configuredRootPaths, moveDialog?.entries]);
 
   const canCreateInBrowserPath = canCreateInTreePath(browserPath, configuredRootPaths);
+  const hasTreePendingState = pendingStateMap.size > 0;
 
   const deleteSummary = useMemo(() => {
     const entries = deleteDialog?.entries ?? [];
@@ -1982,6 +2124,7 @@ export function EditorFileBrowser({
               onClick={() => setSelectionMode((current) => !current)}
               title="切换批量选择模式"
               aria-label="切换批量选择模式"
+              disabled={hasTreePendingState}
             >
               <CheckSquare className="size-4" />
               {selectionMode ? "复选框已开" : "批量选择"}
@@ -1990,7 +2133,7 @@ export function EditorFileBrowser({
               size="sm"
               variant="outline"
               onClick={() => onCreateFile(normalizeTreePath(browserPath))}
-              disabled={!canCreateInBrowserPath}
+              disabled={!canCreateInBrowserPath || hasTreePendingState}
               title="新建文件"
               aria-label="新建文件"
             >
@@ -2000,16 +2143,21 @@ export function EditorFileBrowser({
               size="sm"
               variant="outline"
               onClick={() => onCreateDirectory(normalizeTreePath(browserPath))}
-              disabled={!canCreateInBrowserPath}
+              disabled={!canCreateInBrowserPath || hasTreePendingState}
               title="新建目录"
               aria-label="新建目录"
             >
               <FolderPlus className="size-4" />
             </Button>
-            <Button size="sm" variant="outline" onClick={onNavigateUp} disabled={!browserPath}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onNavigateUp}
+              disabled={!browserPath || hasTreePendingState}
+            >
               <FolderUp className="size-4" />
             </Button>
-            <Button size="sm" variant="outline" onClick={onRefresh}>
+            <Button size="sm" variant="outline" onClick={onRefresh} disabled={hasTreePendingState}>
               <RefreshCcw className="size-4" />
             </Button>
           </div>
@@ -2134,6 +2282,8 @@ export function EditorFileBrowser({
         title="确认删除"
         description={`将删除 ${deleteSummary || "选中项目"}。仅支持删除文件和空目录，此操作不可撤销。`}
         confirmLabel="删除"
+        confirmPending={operationPending}
+        confirmPendingLabel="删除中..."
         onConfirm={async () => {
           if (!deleteDialog) return;
           setOperationPending(true);

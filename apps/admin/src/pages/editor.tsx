@@ -35,6 +35,7 @@ import {
   joinTreePath,
   normalizeTreePath,
   replaceTreePathPrefix,
+  type TreePendingState,
   type TreeRenameTarget,
   type TreeSelection,
   toDirectoryRequestPath,
@@ -140,6 +141,38 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
 }
 
+function uniqueTreePendingStates(states: TreePendingState[]) {
+  const deduped = new Map<string, TreePendingState>();
+  for (const state of states) {
+    const path = normalizeTreePath(state.path);
+    if (!path) continue;
+    deduped.set(`${state.operation}:${path}`, { ...state, path });
+  }
+  return [...deduped.values()];
+}
+
+function getTreePendingStatesForPaste(
+  entries: TreeSelection[],
+  destinationPath: string,
+  operation: "copy" | "move"
+) {
+  const normalizedDestinationPath = normalizeTreePath(destinationPath);
+  return uniqueTreePendingStates([
+    ...entries.map((entry) => ({
+      path: entry.path,
+      operation,
+    })),
+    ...(normalizedDestinationPath
+      ? [
+          {
+            path: normalizedDestinationPath,
+            operation,
+          } satisfies TreePendingState,
+        ]
+      : []),
+  ]);
+}
+
 export function EditorPage() {
   const [tabs, setTabs] = useState<EditorTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -153,6 +186,7 @@ export function EditorPage() {
   const [selectedTreeItem, setSelectedTreeItem] = useState<TreeSelection | null>(null);
   const [treeSelectionOverride, setTreeSelectionOverride] = useState<TreeSelection[] | null>(null);
   const [editingTreeItem, setEditingTreeItem] = useState<TreeRenameTarget | null>(null);
+  const [treePendingStates, setTreePendingStates] = useState<TreePendingState[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
@@ -927,6 +961,7 @@ export function EditorPage() {
       const path = joinTreePath(baseDirectory, defaultName);
 
       setErrorBanner(null);
+      setTreePendingStates([{ path, operation: "create" }]);
       try {
         if (type === "directory") {
           await adminApi.createDirectory({ source: selectedSource, path });
@@ -954,6 +989,8 @@ export function EditorPage() {
         });
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "创建失败："));
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [browserPath, directoryItemsByPath, refetchTreePath, selectedSource, selectedTreeItem]
@@ -1003,6 +1040,7 @@ export function EditorPage() {
     void (async () => {
       const newPath = joinTreePath(target.parentPath, newName);
       setErrorBanner(null);
+      setTreePendingStates([{ path: target.path, operation: "rename" }]);
       try {
         await adminApi.renameFile({
           source: target.source,
@@ -1037,6 +1075,8 @@ export function EditorPage() {
         setNotice("已重命名。");
       } catch (error) {
         setErrorBanner(getErrorMessage(error));
+      } finally {
+        setTreePendingStates([]);
       }
     })();
   }, [editingTreeItem, queryClient]);
@@ -1044,6 +1084,7 @@ export function EditorPage() {
   const moveTreeEntries = useCallback(
     async (entries: TreeSelection[], destinationPath: string) => {
       setErrorBanner(null);
+      setTreePendingStates(getTreePendingStatesForPaste(entries, destinationPath, "move"));
       try {
         const response = await adminApi.moveEntries({
           source: selectedSource,
@@ -1113,6 +1154,8 @@ export function EditorPage() {
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "移动失败："));
         throw error;
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [queryClient, selectedSource]
@@ -1121,6 +1164,7 @@ export function EditorPage() {
   const copyTreeEntries = useCallback(
     async (entries: TreeSelection[], destinationPath: string) => {
       setErrorBanner(null);
+      setTreePendingStates(getTreePendingStatesForPaste(entries, destinationPath, "copy"));
       try {
         const response = await adminApi.copyEntries({
           source: selectedSource,
@@ -1143,6 +1187,8 @@ export function EditorPage() {
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "复制失败："));
         throw error;
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [queryClient, selectedSource]
@@ -1151,6 +1197,9 @@ export function EditorPage() {
   const deleteTreeEntries = useCallback(
     async (entries: TreeSelection[]) => {
       setErrorBanner(null);
+      setTreePendingStates(
+        uniqueTreePendingStates(entries.map((entry) => ({ path: entry.path, operation: "delete" })))
+      );
       try {
         const response = await adminApi.deleteEntries({
           source: selectedSource,
@@ -1205,6 +1254,8 @@ export function EditorPage() {
       } catch (error) {
         setErrorBanner(getEditorActionErrorMessage(error, "删除失败："));
         throw error;
+      } finally {
+        setTreePendingStates([]);
       }
     },
     [queryClient, selectedSource]
@@ -1232,6 +1283,7 @@ export function EditorPage() {
           activeItemType={activeTreeType}
           activeItemSource={activeBrowserSource}
           editingItem={editingTreeItem}
+          pendingStates={treePendingStates}
           onEditingValueChange={updateEditingTreeItemValue}
           onEditingCommit={commitTreeRename}
           onEditingCancel={cancelTreeRename}
@@ -1260,6 +1312,7 @@ export function EditorPage() {
       deleteTreeEntries,
       directoryItemsByPath,
       editingTreeItem,
+      treePendingStates,
       expandedPaths,
       handleDirectoryExpand,
       handleFileOpen,

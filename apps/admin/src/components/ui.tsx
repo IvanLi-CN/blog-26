@@ -609,6 +609,8 @@ export function ConfirmDialog({
   confirmLabel = "确认",
   cancelLabel = "取消",
   destructive,
+  confirmPending = false,
+  confirmPendingLabel,
   onConfirm,
 }: {
   open: boolean;
@@ -618,6 +620,8 @@ export function ConfirmDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  confirmPending?: boolean;
+  confirmPendingLabel?: string;
   onConfirm: () => void | Promise<void>;
 }) {
   return (
@@ -632,17 +636,19 @@ export function ConfirmDialog({
           ) : null}
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirmPending}>
             {cancelLabel}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
+            disabled={confirmPending}
             onClick={async () => {
               await onConfirm();
               onOpenChange(false);
             }}
           >
-            {confirmLabel}
+            {confirmPending ? <Spinner /> : null}
+            {confirmPending ? (confirmPendingLabel ?? confirmLabel) : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

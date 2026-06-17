@@ -530,12 +530,12 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
       items: listDirectory(sourceParam(url), pathParam(url)),
     });
   if (path === "/api/admin/files/read") return json(readFile(sourceParam(url), pathParam(url)));
-  if (path === "/api/admin/files/write") return json(writeFile(body));
-  if (path === "/api/admin/files/create-directory") return json(createDirectory(body));
-  if (path === "/api/admin/files/rename") return json(renameFile(body));
-  if (path === "/api/admin/files/move") return handleFileMutation(() => moveEntries(body));
-  if (path === "/api/admin/files/copy") return handleFileMutation(() => copyEntries(body));
-  if (path === "/api/admin/files/delete") return handleFileMutation(() => deleteEntries(body));
+  if (path === "/api/admin/files/write") return delayedJson(writeFile(body), 180);
+  if (path === "/api/admin/files/create-directory") return delayedJson(createDirectory(body), 180);
+  if (path === "/api/admin/files/rename") return delayedJson(renameFile(body), 320);
+  if (path === "/api/admin/files/move") return handleFileMutation(() => moveEntries(body), 220);
+  if (path === "/api/admin/files/copy") return handleFileMutation(() => copyEntries(body), 220);
+  if (path === "/api/admin/files/delete") return handleFileMutation(() => deleteEntries(body), 220);
 
   return json({ error: { message: `未实现的 demo API: ${path}` } }, 404);
 }
@@ -551,9 +551,15 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function handleFileMutation(handler: () => unknown) {
+function delayedJson(data: unknown, delayMs: number, status = 200) {
+  return new Promise<Response>((resolve) => {
+    globalThis.setTimeout(() => resolve(json(data, status)), delayMs);
+  });
+}
+
+function handleFileMutation(handler: () => unknown, delayMs = 0) {
   try {
-    return json(handler());
+    return delayedJson(handler(), delayMs);
   } catch (error) {
     if (error instanceof DemoApiError) {
       return json({ error: { message: error.message } }, error.status);
