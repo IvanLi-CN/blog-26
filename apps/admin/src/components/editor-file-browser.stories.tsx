@@ -2,12 +2,13 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import type { FileItem } from "@/lib/admin-api-client";
-import { AdminToastViewport } from "~/components/admin-toast";
+import { AdminToastViewport, showAdminToast } from "~/components/admin-toast";
 import { Alert } from "~/components/ui";
 import {
   EditorFileBrowser,
   joinTreePath,
   normalizeTreePath,
+  type TreePendingState,
   type TreeRenameTarget,
   type TreeSelection,
 } from "./editor-file-browser";
@@ -38,12 +39,42 @@ const DIRECTORY_ITEMS: Record<string, FileItem[]> = {
 
 type StoryHarnessProps = {
   failDelete?: boolean;
+  failRename?: boolean;
+  pendingScenario?: "none" | "rename" | "create" | "copy" | "move" | "delete";
 };
 
-function StoryHarness({ failDelete = false }: StoryHarnessProps) {
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function StoryHarness({
+  failDelete = false,
+  failRename = false,
+  pendingScenario = "none",
+}: StoryHarnessProps) {
   const [expandedPaths, setExpandedPaths] = useState<string[]>(["content", "content/posts"]);
   const [editingItem, setEditingItem] = useState<TreeRenameTarget | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingStates, setPendingStates] = useState<TreePendingState[]>(
+    pendingScenario === "none"
+      ? []
+      : [
+          {
+            path:
+              pendingScenario === "rename"
+                ? "content/guide.md"
+                : pendingScenario === "create"
+                  ? "content/posts/untitled.md"
+                  : pendingScenario === "delete"
+                    ? "content/posts/alpha.md"
+                    : "content/archive",
+            operation: pendingScenario,
+          },
+          ...(pendingScenario === "copy" || pendingScenario === "move"
+            ? [{ path: "content/posts/alpha.md", operation: pendingScenario as "copy" | "move" }]
+            : []),
+        ]
+  );
 
   function handleDirectoryExpand(item: FileItem) {
     const normalizedPath = normalizeTreePath(item.path);
@@ -85,10 +116,27 @@ function StoryHarness({ failDelete = false }: StoryHarnessProps) {
             activeItemType="file"
             activeItemSource="local"
             editingItem={editingItem}
+            pendingStates={pendingStates}
             onEditingValueChange={(value) =>
               setEditingItem((current) => (current ? { ...current, value } : current))
             }
-            onEditingCommit={() => setEditingItem(null)}
+            onEditingCommit={async () => {
+              if (!editingItem) return;
+              const committedItem = editingItem;
+              setEditingItem(null);
+              setPendingStates([{ path: editingItem.path, operation: "rename" }]);
+              await wait(450);
+              setPendingStates([]);
+              if (failRename) {
+                const message = `重命名失败：目标已存在: ${joinTreePath(
+                  committedItem.parentPath,
+                  committedItem.value.trim()
+                )}`;
+                setEditingItem({ ...committedItem, errorMessage: message });
+                showAdminToast("danger", message, { autoClose: false });
+                return;
+              }
+            }}
             onEditingCancel={() => setEditingItem(null)}
             onDirectoryExpand={handleDirectoryExpand}
             onFileOpen={() => undefined}
@@ -101,6 +149,9 @@ function StoryHarness({ failDelete = false }: StoryHarnessProps) {
                 type: "file",
                 value: "untitled.md",
               });
+              setPendingStates([
+                { path: joinTreePath(basePath, "untitled.md"), operation: "create" },
+              ]);
             }}
             onCreateDirectory={(parentPath) => {
               const basePath = normalizeTreePath(parentPath || "content");
@@ -111,17 +162,46 @@ function StoryHarness({ failDelete = false }: StoryHarnessProps) {
                 type: "directory",
                 value: "new-folder",
               });
+              setPendingStates([
+                { path: joinTreePath(basePath, "new-folder"), operation: "create" },
+              ]);
             }}
             onStartRename={handleStartRename}
-            onMoveEntries={async () => undefined}
-            onCopyEntries={async () => undefined}
+            onMoveEntries={async (entries, destinationPath) => {
+              setPendingStates([
+                { path: destinationPath, operation: "move" },
+                ...entries.map((entry) => ({ path: entry.path, operation: "move" as const })),
+              ]);
+              await wait(450);
+              setPendingStates([]);
+              return entries.map((entry) => ({
+                ...entry,
+                path: joinTreePath(destinationPath, entry.path.split("/").pop() ?? entry.path),
+              }));
+            }}
+            onCopyEntries={async (entries, destinationPath) => {
+              setPendingStates([
+                { path: destinationPath, operation: "copy" },
+                ...entries.map((entry) => ({ path: entry.path, operation: "copy" as const })),
+              ]);
+              await wait(450);
+              setPendingStates([]);
+              return entries.map((entry) => ({
+                ...entry,
+                path: joinTreePath(destinationPath, entry.path.split("/").pop() ?? entry.path),
+              }));
+            }}
             onDeleteEntries={async (entries) => {
               setErrorMessage(null);
+              setPendingStates(entries.map((entry) => ({ path: entry.path, operation: "delete" })));
+              await wait(450);
               if (failDelete && entries.some((entry) => entry.path === "content/posts")) {
                 const message = "删除失败：目录不为空，无法删除: content/posts";
                 setErrorMessage(message);
+                setPendingStates([]);
                 throw new Error(message);
               }
+              setPendingStates([]);
             }}
           />
         </div>
@@ -136,6 +216,8 @@ const meta = {
   tags: ["autodocs"],
   args: {
     failDelete: false,
+    failRename: false,
+    pendingScenario: "none",
   },
   parameters: {
     layout: "fullscreen",
@@ -153,6 +235,64 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const KeyboardRename: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const guide = canvas.getByRole("button", { name: "guide.md", exact: true });
+    await userEvent.click(guide);
+    guide.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect(canvas.getByRole("textbox", { name: "文件名称" })).toHaveValue("guide.md");
+  },
+};
+
+export const PendingRename: Story = {
+  args: {
+    pendingScenario: "rename",
+  },
+};
+
+export const RenameErrorRetry: Story = {
+  args: {
+    failRename: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const guide = canvas.getByRole("button", { name: "guide.md", exact: true });
+    await userEvent.click(guide);
+    guide.focus();
+    await userEvent.keyboard("{Enter}");
+    const input = canvas.getByRole("textbox", { name: "文件名称" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "alpha.md");
+    await userEvent.keyboard("{Enter}");
+    await expect(canvas.getByRole("textbox", { name: "文件名称" })).toHaveValue("alpha.md");
+    await expect(
+      canvas.queryByText("重命名失败：目标已存在: content/alpha.md")
+    ).not.toBeInTheDocument();
+    await expect(body.getByText("重命名失败：目标已存在: content/alpha.md")).toBeVisible();
+  },
+};
+
+export const PendingCopy: Story = {
+  args: {
+    pendingScenario: "copy",
+  },
+};
+
+export const PendingMove: Story = {
+  args: {
+    pendingScenario: "move",
+  },
+};
+
+export const PendingDelete: Story = {
+  args: {
+    pendingScenario: "delete",
+  },
+};
 
 export const SelectionMode: Story = {
   play: async ({ canvasElement }) => {
