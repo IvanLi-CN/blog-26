@@ -167,6 +167,7 @@ export interface FileItem {
   size?: number;
   lastModified?: string | number;
   extension?: string;
+  contentKind?: "markdown" | "text" | "unsupported";
   count?: number;
 }
 
@@ -180,6 +181,8 @@ export interface FileReadResponse {
   source: string;
   path: string;
   content: string;
+  size?: number;
+  contentKind?: "markdown" | "text";
 }
 
 export interface FileBatchResult {

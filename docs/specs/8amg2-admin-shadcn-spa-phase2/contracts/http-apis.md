@@ -52,3 +52,31 @@
 - Errors return `{ error: { code, message } }`.
 - Cursor/filter params remain query-string based for list endpoints.
 - The SPA may keep using `/api/files/*` for asset upload/read URLs produced by markdown editor content in this phase.
+
+## Files contract
+
+### `GET /api/admin/files/tree`
+
+- Each file item includes stable text-edit classification metadata:
+  - `contentKind=markdown` for `.md`, `.markdown`, `.mdx`
+  - `contentKind=text` for extensionless files and `.txt`, `.json`, `.yml`, `.yaml`, `.toml`, `.ini`, `.cfg`, `.csv`, `.log`, `.xml`, `.js`, `.ts`, `.css`, `.html`
+  - `contentKind=unsupported` for other visible file types
+- `extension` for extensionless files is the empty string `""`; it must not echo the full filename.
+- `size` is returned for file rows so the SPA can preflight openability before issuing `read`.
+
+### `GET /api/admin/files/read`
+
+- Success payload extends the existing file body contract with:
+  - `contentKind: "markdown" | "text"`
+  - `size: number`
+- `markdown` files keep the managed-article editor contract.
+- `text` files are raw text only; no frontmatter or Markdown semantics are implied by path shape.
+- Read rejects the following cases with structured JSON errors:
+  - `BAD_REQUEST` + `文件类型不受支持：<path>` for `contentKind=unsupported`
+  - `BAD_REQUEST` + `文件过大，禁止直接打开：<path>（最大支持 2 MiB）` when a text-editable file exceeds `2 MiB`
+
+### `POST /api/admin/files/write`
+
+- Request shape stays `{ source, path, content }`.
+- `markdown` writes preserve the current content-sync pipeline.
+- `text` writes persist only to the local filesystem and return success without triggering posts/vector/content sync side effects.

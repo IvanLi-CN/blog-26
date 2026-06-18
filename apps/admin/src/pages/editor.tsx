@@ -51,9 +51,13 @@ import {
   deriveFileLabel,
   type EditorTab,
   getArticleIdentity,
+  getAvailableEditorModes,
+  getDefaultFileEditorMode,
   getSelectionRevealPaths,
   getTabArticleIdentity,
   isBlankEditorContent,
+  isPreviewableEditorTab,
+  isTextFileDraft,
   isTreeOperationTargeted,
   mapBatchResultsToTreeSelection,
   normalizeArticlePath,
@@ -63,6 +67,7 @@ import {
   resolveActiveTabIdAfterTreeDelete,
   resolveBrowserPathAfterTreeDelete,
   shouldMarkLiveEditorContentDirty,
+  supportsEditorAttachments,
 } from "./editor-logic";
 
 function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
@@ -71,6 +76,7 @@ function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
 
 const EMPTY_SOURCES: DataSourceInfo[] = [];
 const EMPTY_FILE_ITEMS: FileItem[] = [];
+const ADMIN_TEXT_FILE_SIZE_LIMIT_BYTES = 2 * 1024 * 1024;
 
 function normalizeContentSource(_source?: string | null): "local" {
   return "local";
@@ -140,6 +146,28 @@ function getEditorActionErrorMessage(error: unknown, fallback?: string) {
   }
 
   return fallback ? `${fallback}${getErrorMessage(error)}` : getErrorMessage(error);
+}
+
+function getFileOpenErrorMessage(error: unknown) {
+  return getEditorActionErrorMessage(error, "打开文件失败：");
+}
+
+function getFileTreeOpenBlockReason(item: FileItem) {
+  if (item.type !== "file") {
+    return null;
+  }
+  if (item.contentKind === "unsupported") {
+    return `文件类型不受支持：${item.path}`;
+  }
+  if (
+    typeof item.size === "number" &&
+    item.size > ADMIN_TEXT_FILE_SIZE_LIMIT_BYTES &&
+    item.contentKind &&
+    item.contentKind !== "unsupported"
+  ) {
+    return `文件过大，禁止直接打开：${item.path}（最大支持 2 MiB）`;
+  }
+  return null;
 }
 
 function uniqueTreePendingStates(states: TreePendingState[]) {
@@ -321,6 +349,9 @@ export function EditorPage() {
     activeTab?.kind === "database"
       ? (activeTab.database?.content ?? "")
       : (activeTab?.file?.content ?? "");
+  const activeEditorModes = getAvailableEditorModes(activeTab);
+  const previewEnabled = isPreviewableEditorTab(activeTab);
+  const attachmentEnabled = supportsEditorAttachments(activeTab);
 
   const upsertPostTab = useCallback((post: AdminPost) => {
     const tabId = `post:${post.id}`;
@@ -437,13 +468,14 @@ export function EditorPage() {
         const file = await adminApi.readFile(source, path);
         const filePath = normalizeTreePath(file.path || path);
         const fileContent = typeof file.content === "string" ? file.content : "";
+        const contentKind = file.contentKind === "text" ? "text" : "markdown";
         const label = deriveFileLabel(filePath, fileContent);
         const fileIdentity = getArticleIdentity(source, filePath);
         const tab: EditorTab = {
           id: `file:${source}:${filePath}`,
           label,
           kind: "file",
-          mode: "wysiwyg",
+          mode: getDefaultFileEditorMode(contentKind),
           dirty: false,
           temporary:
             pendingFileTabsRef.current.get(targetIdentity)?.temporary ?? requestedTemporary,
@@ -451,6 +483,8 @@ export function EditorPage() {
             source,
             path: filePath,
             content: fileContent,
+            contentKind,
+            size: file.size,
           },
         };
         const latestExistingTab = tabsRef.current.find(
@@ -483,7 +517,7 @@ export function EditorPage() {
       try {
         await request;
       } catch (error) {
-        setErrorBanner({ message: `未找到文件：${getErrorMessage(error)}` });
+        setErrorBanner({ message: getFileOpenErrorMessage(error) });
       } finally {
         pendingFileTabsRef.current.delete(targetIdentity);
         setLoadingMessage(null);
@@ -693,6 +727,13 @@ export function EditorPage() {
 
   async function handleAttachmentUpload(file: File) {
     if (!activeTab || !activeEditorContext) return;
+    if (!supportsEditorAttachments(activeTab)) {
+      setErrorBanner({ message: "纯文本文件不支持插入附件，请切换到 Markdown 文件后再试。" });
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = "";
+      }
+      return;
+    }
 
     const { articlePath, contentSource } = activeEditorContext;
     const extension = file.name.split(".").pop() || "bin";
@@ -824,6 +865,10 @@ export function EditorPage() {
 
   function openPreviewWindow() {
     if (!activeTab || !activeEditorContext) return;
+    if (!isPreviewableEditorTab(activeTab)) {
+      setErrorBanner({ message: "纯文本文件不支持前台预览。" });
+      return;
+    }
 
     try {
       if (activeTab.kind === "database" && activeTab.database) {
@@ -899,6 +944,11 @@ export function EditorPage() {
   const handleFileOpen = useCallback(
     (item: FileItem) => {
       if (item.type !== "file") return;
+      const blockedReason = getFileTreeOpenBlockReason(item);
+      if (blockedReason) {
+        setErrorBanner({ message: blockedReason });
+        return;
+      }
       setSelectedTreeItem({
         source: selectedSource,
         path: normalizeTreePath(item.path),
@@ -912,6 +962,11 @@ export function EditorPage() {
   const handleFilePermanentOpen = useCallback(
     (item: FileItem) => {
       if (item.type !== "file") return;
+      const blockedReason = getFileTreeOpenBlockReason(item);
+      if (blockedReason) {
+        setErrorBanner({ message: blockedReason });
+        return;
+      }
       setSelectedTreeItem({
         source: selectedSource,
         path: normalizeTreePath(item.path),
@@ -1396,14 +1451,14 @@ export function EditorPage() {
               <FilePlus2 className="size-4" />
               新建文章
             </Button>
-            <Button variant="outline" onClick={openPreviewWindow} disabled={!activeTab}>
+            <Button variant="outline" onClick={openPreviewWindow} disabled={!previewEnabled}>
               <Eye className="size-4" />
               前台预览
             </Button>
             <Button
               variant="outline"
               onClick={() => uploadInputRef.current?.click()}
-              disabled={!activeTab || uploadPending}
+              disabled={!attachmentEnabled || uploadPending}
               title="上传图片或附件并插入到当前内容"
             >
               {uploadPending ? <Spinner /> : <ImagePlus className="size-4" />}
@@ -1470,17 +1525,19 @@ export function EditorPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-muted/36 p-1 shadow-inner shadow-shadow-inset">
-                  <Button
-                    size="sm"
-                    variant={activeTab.mode === "wysiwyg" ? "default" : "outline"}
-                    onClick={() => {
-                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
-                      updateActiveTab((tab) => ({ ...tab, mode: "wysiwyg" }));
-                    }}
-                  >
-                    <PenSquare className="size-4" />
-                    WYSIWYG
-                  </Button>
+                  {activeEditorModes.includes("wysiwyg") ? (
+                    <Button
+                      size="sm"
+                      variant={activeTab.mode === "wysiwyg" ? "default" : "outline"}
+                      onClick={() => {
+                        syncActiveTabFromEditor({ markDirty: activeTab.dirty });
+                        updateActiveTab((tab) => ({ ...tab, mode: "wysiwyg" }));
+                      }}
+                    >
+                      <PenSquare className="size-4" />
+                      WYSIWYG
+                    </Button>
+                  ) : null}
                   <Button
                     size="sm"
                     variant={activeTab.mode === "source" ? "default" : "outline"}
@@ -1492,17 +1549,22 @@ export function EditorPage() {
                     <Code2 className="size-4" />
                     Source
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={activeTab.mode === "compare" ? "default" : "outline"}
-                    onClick={() => {
-                      syncActiveTabFromEditor({ markDirty: activeTab.dirty });
-                      updateActiveTab((tab) => ({ ...tab, mode: "compare" }));
-                    }}
-                  >
-                    <Columns2 className="size-4" />
-                    对照
-                  </Button>
+                  {activeEditorModes.includes("compare") ? (
+                    <Button
+                      size="sm"
+                      variant={activeTab.mode === "compare" ? "default" : "outline"}
+                      onClick={() => {
+                        syncActiveTabFromEditor({ markDirty: activeTab.dirty });
+                        updateActiveTab((tab) => ({ ...tab, mode: "compare" }));
+                      }}
+                    >
+                      <Columns2 className="size-4" />
+                      对照
+                    </Button>
+                  ) : null}
+                  {activeTab.kind === "file" && isTextFileDraft(activeTab.file) ? (
+                    <Badge tone="outline">纯文本</Badge>
+                  ) : null}
                   <Badge tone={activeTab.dirty ? "warning" : "muted"}>
                     {activeTab.dirty ? "未保存" : "已保存"}
                   </Badge>
@@ -1519,13 +1581,20 @@ export function EditorPage() {
                     markDirty: meta?.source !== "programmatic",
                   })
                 }
-                placeholder="开始写作您的文章..."
+                placeholder={
+                  activeTab.kind === "file" && isTextFileDraft(activeTab.file)
+                    ? "开始编辑纯文本文件..."
+                    : "开始写作您的文章..."
+                }
                 attachmentBasePath={buildAttachmentUploadPath(
                   activeEditorContext?.articlePath ?? "/__unknown__.md",
                   "placeholder.bin"
                 ).replace(/\/placeholder\.bin$/, "")}
                 articlePath={activeEditorContext?.articlePath ?? "/__unknown__.md"}
                 contentSource={activeEditorContext?.contentSource ?? "local"}
+                contentKind={
+                  activeTab.kind === "file" && isTextFileDraft(activeTab.file) ? "text" : "markdown"
+                }
                 mode={activeTab.mode}
                 className="min-h-0 flex-1"
               />

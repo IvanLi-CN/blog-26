@@ -11,6 +11,11 @@ import type {
   SyncLog,
   SyncProgress,
 } from "@/lib/admin-api-client";
+import {
+  ADMIN_TEXT_FILE_SIZE_LIMIT_BYTES,
+  getAdminFileContentKind,
+  getAdminFileExtension,
+} from "@/lib/admin-file-content";
 import type { AdminLlmSettingsPayload } from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import type { TagGroup } from "@/types/tag-groups";
@@ -181,6 +186,11 @@ tags:
 | 输入失调电压 | ±10 µV | 4 µV | 最大 2.5 mV |
 
 正文用于覆盖 frontmatter、图片与表格首轮序列化。`,
+  hardwarePlainText: `title=USB-C Safe5V 诱骗器
+mode=5v
+cc_pull_down=5.1k
+notes=外挂补丁，避免无 CC 设备空载不出电
+`,
 };
 
 let posts: AdminPost[] = [
@@ -291,6 +301,8 @@ const fileContents = new Map<string, string>(
 );
 fileContents.set("local:blog/电子负载开发笔记.md", postBodies.hardware);
 fileContents.set("local:Hardware/电子负载开发笔记.md", postBodies.hardware);
+fileContents.set("local:Hardware/USB-C Safe5V 诱骗器", postBodies.hardwarePlainText);
+fileContents.set("local:Hardware/oversized-log.txt", `${"0123456789abcdef".repeat(131072)}\n`);
 fileContents.set(
   "local:blog/使用 CH335F 构建一个支持独立供电的 2A2C USB HUB.md",
   postBodies.hardware.replaceAll(
@@ -752,7 +764,11 @@ function listDirectory(source: string, path: string): FileItem[] {
       path: childPath,
       type: isDirectory ? "directory" : "file",
       count: isDirectory ? countImmediateChildren(source, childPath) : undefined,
-      extension: isDirectory ? undefined : name.split(".").pop(),
+      size: isDirectory
+        ? undefined
+        : new TextEncoder().encode(fileContents.get(key) ?? "").byteLength,
+      extension: isDirectory ? undefined : getAdminFileExtension(name),
+      contentKind: isDirectory ? undefined : getAdminFileContentKind(name),
       lastModified: now - 900_000,
     });
   }
@@ -862,7 +878,15 @@ function rebaseDemoInboundReferences(
 function readFile(source: string, path: string) {
   const content = fileContents.get(`${source}:${path}`);
   if (content === undefined) return { error: { message: "文件不存在" } };
-  return { source, path, content };
+  const contentKind = getAdminFileContentKind(path);
+  if (contentKind === "unsupported") {
+    return { error: { message: `文件类型不受支持：${path}` } };
+  }
+  const size = new TextEncoder().encode(content).byteLength;
+  if (size > ADMIN_TEXT_FILE_SIZE_LIMIT_BYTES) {
+    return { error: { message: `文件过大，禁止直接打开：${path}（最大支持 2 MiB）` } };
+  }
+  return { source, path, content, contentKind, size };
 }
 
 function writeFile(body: Record<string, unknown>) {

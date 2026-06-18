@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
+  getAvailableEditorModes,
+  getDefaultFileEditorMode,
   getSelectionRevealPaths,
+  isPreviewableEditorTab,
   mapBatchResultsToTreeSelection,
   remapActiveTabIdForPathChange,
   remapBrowserPathForPathChange,
@@ -8,6 +11,7 @@ import {
   resolveActiveTabIdAfterTreeDelete,
   resolveBrowserPathAfterTreeDelete,
   shouldMarkLiveEditorContentDirty,
+  supportsEditorAttachments,
 } from "./editor-logic";
 
 describe("editor batch selection mapping", () => {
@@ -71,6 +75,48 @@ describe("editor tab path remapping", () => {
     ).toBeFalse();
   });
 
+  test("defaults extensionless text files to source-only mode", () => {
+    const textTab = {
+      id: "file:local:Hardware/plain-config",
+      label: "plain-config",
+      kind: "file" as const,
+      mode: getDefaultFileEditorMode("text"),
+      dirty: false,
+      file: {
+        source: "local" as const,
+        path: "Hardware/plain-config",
+        content: "mode=5v\n",
+        contentKind: "text" as const,
+      },
+    };
+
+    expect(getDefaultFileEditorMode("text")).toBe("source");
+    expect(getAvailableEditorModes(textTab)).toEqual(["source"]);
+    expect(isPreviewableEditorTab(textTab)).toBeFalse();
+    expect(supportsEditorAttachments(textTab)).toBeFalse();
+  });
+
+  test("keeps markdown file tabs fully editable with preview and attachments", () => {
+    const markdownTab = {
+      id: "file:local:Hardware/post.md",
+      label: "post.md",
+      kind: "file" as const,
+      mode: getDefaultFileEditorMode("markdown"),
+      dirty: false,
+      file: {
+        source: "local" as const,
+        path: "Hardware/post.md",
+        content: "# Post\n",
+        contentKind: "markdown" as const,
+      },
+    };
+
+    expect(getDefaultFileEditorMode("markdown")).toBe("wysiwyg");
+    expect(getAvailableEditorModes(markdownTab)).toEqual(["wysiwyg", "source", "compare"]);
+    expect(isPreviewableEditorTab(markdownTab)).toBeTrue();
+    expect(supportsEditorAttachments(markdownTab)).toBeTrue();
+  });
+
   test("rebases open markdown tab content when moving or renaming the file", () => {
     const tab = remapTabPath(
       {
@@ -84,6 +130,7 @@ describe("editor tab path remapping", () => {
           path: "blog/drafts/post.md",
           content:
             "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)\n![absolute](/blog/drafts/assets/absolute.png)\n[feed](/feed.xml)",
+          contentKind: "markdown",
         },
       },
       "local",
@@ -113,6 +160,7 @@ describe("editor tab path remapping", () => {
           source: "local",
           path: "blog/drafts/post.mdx",
           content: "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)",
+          contentKind: "markdown",
         },
       },
       "local",
@@ -142,6 +190,7 @@ describe("editor tab path remapping", () => {
           source: "local",
           path: "blog/post.md",
           content: "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)",
+          contentKind: "markdown",
         },
       },
       "local",
@@ -171,6 +220,7 @@ describe("editor tab path remapping", () => {
           source: "local",
           path: "blog/post.mdx",
           content: "---\nimage: ./assets/cover.png\n---\n\n![cover](./assets/cover.png)",
+          contentKind: "markdown",
         },
       },
       "local",
@@ -274,7 +324,12 @@ describe("editor tab path remapping", () => {
             kind: "file",
             mode: "wysiwyg",
             dirty: false,
-            file: { source: "local", path: "blog/first.md", content: "" },
+            file: {
+              source: "local",
+              path: "blog/first.md",
+              content: "",
+              contentKind: "markdown",
+            },
           },
           {
             id: "file:local:blog/second.md",
@@ -282,7 +337,12 @@ describe("editor tab path remapping", () => {
             kind: "file",
             mode: "wysiwyg",
             dirty: false,
-            file: { source: "local", path: "blog/second.md", content: "" },
+            file: {
+              source: "local",
+              path: "blog/second.md",
+              content: "",
+              contentKind: "markdown",
+            },
           },
         ],
         "file:local:blog/deleted.md",

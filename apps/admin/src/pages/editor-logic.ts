@@ -10,6 +10,7 @@ import {
 } from "~/components/editor-file-browser";
 
 export type EditorMode = "wysiwyg" | "source" | "compare";
+export type FileEditorContentKind = "markdown" | "text";
 
 export type DatabaseDraft = {
   postId: string;
@@ -28,6 +29,8 @@ export type FileDraft = {
   source: "local";
   path: string;
   content: string;
+  contentKind: FileEditorContentKind;
+  size?: number;
 };
 
 export type EditorTab = {
@@ -40,6 +43,37 @@ export type EditorTab = {
   database?: DatabaseDraft;
   file?: FileDraft;
 };
+
+export function isMarkdownFileDraft(file: FileDraft | null | undefined) {
+  return file?.contentKind === "markdown";
+}
+
+export function isTextFileDraft(file: FileDraft | null | undefined) {
+  return file?.contentKind === "text";
+}
+
+export function getDefaultFileEditorMode(contentKind: FileEditorContentKind): EditorMode {
+  return contentKind === "markdown" ? "wysiwyg" : "source";
+}
+
+export function getAvailableEditorModes(tab: EditorTab | null | undefined): EditorMode[] {
+  if (tab?.kind === "file" && isTextFileDraft(tab.file)) {
+    return ["source"];
+  }
+  return ["wysiwyg", "source", "compare"];
+}
+
+export function isPreviewableEditorTab(tab: EditorTab | null | undefined) {
+  if (!tab) return false;
+  if (tab.kind === "database") return true;
+  return isMarkdownFileDraft(tab.file);
+}
+
+export function supportsEditorAttachments(tab: EditorTab | null | undefined) {
+  if (!tab) return false;
+  if (tab.kind === "database") return true;
+  return isMarkdownFileDraft(tab.file);
+}
 
 export function shouldMarkLiveEditorContentDirty(
   liveContent: string,

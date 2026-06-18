@@ -349,7 +349,11 @@ async function ensureBlogDirectoryExpanded(page: Page) {
 }
 
 async function ensureHardwareDirectoryExpanded(page: Page) {
-  if ((await treeNameButton(page, "电子负载开发笔记.md").count()) > 0) {
+  if (
+    (await treeNameButton(page, "电子负载开发笔记.md").count()) > 0 &&
+    (await treeNameButton(page, "USB-C Safe5V 诱骗器").count()) > 0 &&
+    (await treeNameButton(page, "oversized-log.txt").count()) > 0
+  ) {
     return;
   }
 
@@ -357,6 +361,8 @@ async function ensureHardwareDirectoryExpanded(page: Page) {
   await expect(hardwareDirectory).toBeVisible();
   await hardwareDirectory.click();
   await expect(treeNameButton(page, "电子负载开发笔记.md")).toBeVisible();
+  await expect(treeNameButton(page, "USB-C Safe5V 诱骗器")).toBeVisible();
+  await expect(treeNameButton(page, "oversized-log.txt")).toBeVisible();
 }
 
 async function maybeCaptureSidebarProof(page: Page, filename: string) {
@@ -712,6 +718,43 @@ tags:
       /title: 电子负载开发笔记/
     );
     await expect(page.getByText(/未找到文件/)).toHaveCount(0);
+  });
+
+  test("extensionless text files open in source-only mode without markdown-only controls", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureHardwareDirectoryExpanded(page);
+    await openFileBrowserItem(page, "USB-C Safe5V 诱骗器", { dblClick: true });
+
+    await expect(page.getByRole("button", { name: "Source" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "WYSIWYG" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "对照" })).toHaveCount(0);
+    await expect(page.getByTestId("frontmatter-block")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "前台预览" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "插入附件" })).toBeDisabled();
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
+      /title=USB-C Safe5V 诱骗器/
+    );
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
+      /cc_pull_down=5.1k/
+    );
+  });
+
+  test("oversized text files are blocked with a clear error before opening", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await ensureHardwareDirectoryExpanded(page);
+    await openFileBrowserItem(page, "oversized-log.txt", { dblClick: true });
+
+    await expect(
+      page
+        .locator(".Toastify__toast-container")
+        .getByText("文件过大，禁止直接打开：Hardware/oversized-log.txt（最大支持 2 MiB）")
+        .first()
+    ).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveCount(0);
   });
 
   test("tab overflow exposes the opened files list on desktop and mobile", async ({ page }) => {
