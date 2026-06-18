@@ -56,6 +56,8 @@
    - `site-dist` 中真实包含 `/api/public/assets/*` facade 引用
    - unified Docker smoke 至少命中 1 个真实 facade 媒体 URL，而不是只看 `/api/health`
 8. imagor watermark 已改为 blog 静态 SVG 资源 `/watermark-ivanli.svg`；在 `imagorvideo v1.9.1` 同版实测下，静态 SVG watermark 可用，失败的是内联 `data:` watermark 写法。
+9. imagor watermark filter 现在按官方合同将 watermark URL 编成 `b64:` base64url，避免 `http://...` 里的冒号破坏 `filters:` 链。
+10. CI sidecar readiness 不再假设 `200 /healthz`；当前镜像只要端口开始返回任意 HTTP 响应，即视为服务已启动，再交给后续 facade / E2E 断言验证实际功能。
 
 ## 本地开发与故障语义
 
@@ -88,7 +90,7 @@
 
 1. `curl -I http://blog:25090/_internal/assets/source/post/<slug>/<mediaHash>`
 2. `curl -I http://blog:25090/api/public/assets/post/<slug>/<mediaHash>/cover.webp`
-3. `curl -I http://imagorvideo:8000/healthz`
+3. `curl -I http://imagorvideo:8000/`
 4. `rg -n '/api/files/|/home/|LOCAL_CONTENT_BASE_PATH' site-dist admin-dist site/generated/public-snapshot.json`
 5. `curl -I https://ivanli.cc/api/public/assets/post/<slug>/<mediaHash>/cover.webp`
 

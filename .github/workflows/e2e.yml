@@ -68,6 +68,24 @@ jobs:
       - name: Start public media processor sidecar
         if: ${{ matrix.project == 'admin' }}
         run: |
+          wait_for_http() {
+            local url="$1"
+            local attempts="${2:-30}"
+            local delay="${3:-1}"
+            local status=""
+
+            for _ in $(seq 1 "$attempts"); do
+              status="$(curl -sS -o /dev/null -w '%{http_code}' "$url" || true)"
+              if [ "$status" != "000" ]; then
+                return 0
+              fi
+              sleep "$delay"
+            done
+
+            echo "Timed out waiting for HTTP readiness at ${url}; last status=${status}" >&2
+            return 1
+          }
+
           docker rm -f imagorvideo-e2e >/dev/null 2>&1 || true
           docker run -d \
             --name imagorvideo-e2e \
@@ -79,15 +97,7 @@ jobs:
             -e HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0 \
             ghcr.io/cshum/imagorvideo:latest
 
-          for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:18000/healthz >/dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-
-          docker logs imagorvideo-e2e || true
-          exit 1
+          wait_for_http "http://127.0.0.1:18000/"
 
       - name: Run E2E tests
         run: bun run test:e2e:project -- ${{ matrix.project }}
@@ -100,7 +110,9 @@ jobs:
 
       - name: Dump public media processor logs on failure
         if: ${{ failure() && matrix.project == 'admin' }}
-        run: docker logs imagorvideo-e2e || true
+        run: |
+          curl -sS -D - -o /dev/null http://127.0.0.1:18000/ || true
+          docker logs imagorvideo-e2e || true
 
       - name: Cleanup public media processor sidecar
         if: ${{ always() && matrix.project == 'admin' }}

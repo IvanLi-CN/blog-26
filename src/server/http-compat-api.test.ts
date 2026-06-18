@@ -938,8 +938,9 @@ describe("HTTP compatibility APIs", () => {
         expect(url).toContain("/fit-in/1600x900/");
         expect(url).toContain("filters:");
         expect(url).toContain("http://blog:25090/_internal/assets/source/post/facade-post/");
-        expect(url).toContain("watermark(http://blog:25090/watermark-ivanli.svg,-24,-24,18,22,22)");
-        expect(url).not.toContain("watermark(b64:");
+        expect(url).toContain(
+          `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli.svg").toString("base64url")},-24,-24,18,22,22)`
+        );
         return new Response("optimized-image", {
           status: 200,
           headers: {

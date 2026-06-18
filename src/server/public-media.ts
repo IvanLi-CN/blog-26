@@ -589,8 +589,13 @@ function signImagorPath(path: string) {
   return `${digest}/${path}`;
 }
 
+function encodeImagorFilterString(value: string) {
+  return `b64:${Buffer.from(value).toString("base64url")}`;
+}
+
 function getWatermarkFilter(request: Request) {
-  return `watermark(${getInternalSourceBaseUrl(request)}/watermark-ivanli.svg,-24,-24,18,22,22)`;
+  const watermarkUrl = `${getInternalSourceBaseUrl(request)}/watermark-ivanli.svg`;
+  return `watermark(${encodeImagorFilterString(watermarkUrl)},-24,-24,18,22,22)`;
 }
 
 async function buildImagorPath(params: {

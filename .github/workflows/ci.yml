@@ -313,6 +313,26 @@ jobs:
             return 1
           }
 
+          wait_for_http() {
+            local url="$1"
+            local output_file="$2"
+            local attempts="${3:-30}"
+            local sleep_seconds="${4:-2}"
+            local status=""
+
+            for _ in $(seq 1 "$attempts"); do
+              status="$(curl -sS -o "$output_file" -w '%{http_code}' "$url" || true)"
+              if [ "$status" != "000" ]; then
+                return 0
+              fi
+              sleep "$sleep_seconds"
+            done
+
+            echo "Timed out waiting for ${url} to accept HTTP; last status=${status}" >&2
+            cat "$output_file" >&2 || true
+            return 1
+          }
+
           docker network create blog-ci-smoke-net >/dev/null 2>&1 || true
           docker rm -f imagorvideo-ci-smoke >/dev/null 2>&1 || true
           docker rm -f blog-ci-smoke >/dev/null 2>&1 || true
@@ -327,7 +347,7 @@ jobs:
             -e HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0 \
             ghcr.io/cshum/imagorvideo:latest
 
-          wait_for_status "200" "http://127.0.0.1:18000/healthz" "/tmp/imagor-health.txt"
+          wait_for_http "http://127.0.0.1:18000/" "/tmp/imagor-health.txt"
 
           docker run -d \
             --name blog-ci-smoke \
@@ -471,6 +491,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          curl -sS -D - -o /dev/null http://127.0.0.1:18000/ || true
           docker logs imagorvideo-ci-smoke || true
           docker logs blog-ci-smoke || true
 
