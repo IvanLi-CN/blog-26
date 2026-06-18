@@ -262,6 +262,11 @@ describe("Memo Utils", () => {
       expect(slug).toBe("abcd123_");
     });
 
+    it("preserves trailing dash for memo nanoid-style filename slugs", () => {
+      const slug = generateSlugFromPath("Memos/20260615_uEjDtK1-.md");
+      expect(slug).toBe("uejdtk1-");
+    });
+
     it("normalizes title-derived memo filename slugs", () => {
       const slug = generateSlugFromPath("Memos/20260615_React Learning.md");
       expect(slug).toBe("react-learning");

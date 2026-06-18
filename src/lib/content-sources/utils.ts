@@ -273,7 +273,7 @@ export function generateSlugFromPath(filePath: string, frontmatterSlug?: string)
     const titleSlug = newFormatMatch[2];
     // Memo 文件名已经包含稳定 slug 时，重解析必须返回同一 canonical slug。
     if (/^[a-zA-Z0-9_-]{8}$/.test(titleSlug)) {
-      return limax(titleSlug);
+      return titleSlug.toLowerCase();
     }
     // 否则使用titleSlug作为基础生成slug
     return limax(titleSlug);
