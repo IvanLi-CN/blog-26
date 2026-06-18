@@ -1058,6 +1058,42 @@ tags:
     await expect(page.getByRole("tooltip")).toContainText("电子负载开发笔记，未保存");
   });
 
+  test("saving a file tab stays saved after the autosync loop runs", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await openFileBrowserItem(page, "电子负载开发笔记.md");
+    await page.getByRole("button", { name: "Source" }).click();
+
+    const source = page.getByRole("textbox", { name: "Markdown source editor" });
+    await source.fill(`---
+title: 电子负载开发笔记
+slug: electronic-load-notes
+draft: false
+public: true
+tags:
+  - Hardware
+  - Circuit
+---
+
+# 电子负载开发笔记
+
+保存后不应该重新变回未保存`);
+
+    await expect(page.getByTestId("editor-status-badge")).toContainText("未保存");
+
+    await page.getByTestId("editor-save").click();
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "文件保存成功。" })
+    ).toContainText("文件保存成功。");
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+
+    await page.waitForTimeout(600);
+
+    const fileTab = page.getByTestId("editor-tab").filter({ hasText: "电子负载开发笔记" }).first();
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+    await expect(fileTab.getByTestId("editor-tab-dirty-dot")).toHaveCount(0);
+  });
+
   test("single click creates a temporary tab and double click promotes it to permanent", async ({
     page,
   }) => {

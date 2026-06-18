@@ -955,7 +955,20 @@ export function EditorPage() {
           content: liveContent,
         });
         setTabs((current) =>
-          current.map((tab) => (tab.id === activeTab.id ? { ...tab, dirty: false } : tab))
+          current.map((tab) =>
+            tab.id === activeTab.id
+              ? {
+                  ...tab,
+                  dirty: false,
+                  file: tab.file
+                    ? {
+                        ...tab.file,
+                        content: liveContent,
+                      }
+                    : tab.file,
+                }
+              : tab
+          )
         );
         syncEditorWithSavedContent();
         setNotice("文件保存成功。");
