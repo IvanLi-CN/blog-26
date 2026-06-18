@@ -62,6 +62,10 @@ export function createEmptyPublicMediaCollection(): PublicMediaCollection {
 const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "m4v", "webm", "ogv"]);
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "avif", "bmp", "svg", "ico"]);
 const GIF_EXTENSIONS = new Set(["gif"]);
+const FILES_API_PREFIX = "/api/files/";
+const PUBLIC_ASSETS_PREFIX = "/api/public/assets/";
+const INLINE_MARKDOWN_LINK_RE =
+  /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
 
 function normalizePathSeparators(value: string) {
   return value.replace(/\\/g, "/").replace(/\/+/g, "/");
@@ -73,6 +77,14 @@ function trimAngleBrackets(value: string) {
 
 function stripQueryAndHash(value: string) {
   return value.replace(/[?#].*$/u, "");
+}
+
+function unwrapFilesApiPath(value: string) {
+  if (!value.startsWith(FILES_API_PREFIX)) return value;
+  const rest = value.slice(FILES_API_PREFIX.length);
+  const slashIndex = rest.indexOf("/");
+  if (slashIndex === -1) return null;
+  return `/${rest.slice(slashIndex + 1)}`;
 }
 
 function decodePathSegments(value: string) {
@@ -129,6 +141,10 @@ export function isExternalMediaUrl(value: string) {
 
 export function isDataMediaUrl(value: string) {
   return value.trim().startsWith("data:");
+}
+
+export function isPublicAssetFacadeUrl(value: string) {
+  return value.trim().startsWith(PUBLIC_ASSETS_PREFIX);
 }
 
 export function isPublicContentKind(value: string): value is PublicContentKind {
@@ -195,11 +211,14 @@ export function resolveContentMediaPath(
   markdownFilePath: string
 ): string | null {
   const raw = trimAngleBrackets(mediaPath);
-  if (!raw || isExternalMediaUrl(raw) || isDataMediaUrl(raw)) {
+  if (!raw || isExternalMediaUrl(raw) || isDataMediaUrl(raw) || isPublicAssetFacadeUrl(raw)) {
     return null;
   }
 
-  const decoded = decodePathSegments(stripQueryAndHash(raw));
+  const fileApiNormalized = unwrapFilesApiPath(raw);
+  if (fileApiNormalized == null) return null;
+
+  const decoded = decodePathSegments(stripQueryAndHash(fileApiNormalized));
   if (decoded == null) return null;
 
   const clean = normalizePathSeparators(decoded);
@@ -302,6 +321,106 @@ export function buildPublicMediaAssetUrl(params: {
     variant: params.variant,
     ext,
   });
+}
+
+function restoreAngleBrackets(original: string, rewritten: string) {
+  const trimmed = original.trim();
+  return trimmed.startsWith("<") && trimmed.endsWith(">") ? `<${rewritten}>` : rewritten;
+}
+
+function rewritePublicContentTarget(
+  target: string,
+  context: PublicMediaContext,
+  role: PublicMediaRole,
+  variant: PublicMediaVariant
+) {
+  if (isPublicAssetFacadeUrl(target)) {
+    return target;
+  }
+  const rewritten = buildPublicMediaAssetUrl({
+    context,
+    mediaPath: target,
+    role,
+    variant,
+  });
+  if (!rewritten) return null;
+  return restoreAngleBrackets(target, rewritten);
+}
+
+function rewriteHtmlAttribute(
+  tag: string,
+  attribute: "href" | "poster" | "src",
+  context: PublicMediaContext,
+  role: PublicMediaRole,
+  variant: PublicMediaVariant,
+  shouldRewrite?: (value: string) => boolean
+) {
+  const pattern = new RegExp(`(\\b${attribute}=)(["'])([^"']+)(\\2)`, "iu");
+  return tag.replace(
+    pattern,
+    (match, prefix: string, quote: string, value: string, suffix: string) => {
+      if (shouldRewrite && !shouldRewrite(value)) {
+        return match;
+      }
+      const rewritten = rewritePublicContentTarget(value, context, role, variant);
+      if (!rewritten) return match;
+      return `${prefix}${quote}${rewritten}${suffix}`;
+    }
+  );
+}
+
+export function rewritePublicContentMediaUrls(content: string, context: PublicMediaContext) {
+  if (typeof content !== "string" || content.length === 0) {
+    return content;
+  }
+
+  let rewritten = content.replace(
+    INLINE_MARKDOWN_LINK_RE,
+    (
+      match: string,
+      prefix: string,
+      spacing: string,
+      target: string,
+      suffix: string,
+      closing: string
+    ) => {
+      const mediaKind = detectPublicMediaKind(target);
+      const isImage = prefix.startsWith("![");
+      const role: PublicMediaRole = isImage || mediaKind !== "video" ? "content" : "playback";
+      const variant: PublicMediaVariant = mediaKind === "video" && !isImage ? "play" : "content";
+      const nextTarget = rewritePublicContentTarget(target, context, role, variant);
+      if (!nextTarget) return match;
+      return `${prefix}${spacing}${nextTarget}${suffix}${closing}`;
+    }
+  );
+
+  rewritten = rewritten.replace(/<img\b[^>]*>/giu, (tag) =>
+    rewriteHtmlAttribute(tag, "src", context, "content", "content")
+  );
+
+  rewritten = rewritten.replace(/<a\b[^>]*>/giu, (tag) =>
+    rewriteHtmlAttribute(tag, "href", context, "content", "content", (value) => {
+      const mediaKind = detectPublicMediaKind(value);
+      return mediaKind === "image" || mediaKind === "gif";
+    })
+  );
+
+  rewritten = rewritten.replace(/<a\b[^>]*>/giu, (tag) =>
+    rewriteHtmlAttribute(tag, "href", context, "playback", "play", (value) => {
+      return detectPublicMediaKind(value) === "video";
+    })
+  );
+
+  rewritten = rewritten.replace(/<video\b[^>]*>/giu, (tag) => {
+    const withSrc = rewriteHtmlAttribute(tag, "src", context, "playback", "play");
+    return rewriteHtmlAttribute(withSrc, "poster", context, "content", "content");
+  });
+
+  rewritten = rewritten.replace(/<source\b[^>]*>/giu, (tag) =>
+    rewriteHtmlAttribute(tag, "src", context, "playback", "play")
+  );
+
+  return rewritten;
 }
 
 export function pickPrimaryPublicMediaUrl(

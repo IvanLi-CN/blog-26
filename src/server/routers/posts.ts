@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
-import { buildLegacyPublicMediaUrl } from "@/lib/public-media";
+import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../lib/db";
@@ -280,6 +280,11 @@ export const postsRouter = router({
           dataSource: processedPost.dataSource,
           filePath: processedPost.filePath,
         });
+      processedPost.body = rewritePublicContentMediaUrls(processedPost.body, {
+        kind: "post",
+        slug: processedPost.slug,
+        filePath: processedPost.filePath || processedPost.id,
+      });
       (processedPost as Record<string, unknown>).media = media;
 
       return processedPost;

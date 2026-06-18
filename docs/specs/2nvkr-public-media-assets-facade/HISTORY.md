@@ -28,3 +28,4 @@
 - 固定门面故障语义：不提供运行时 fallback；imagor/internal source 异常时，公开门面必须直接失败并返回错误。
 - 固定浏览器端公开 API base 语义：浏览器运行时优先使用当前页面 `window.location.origin`，以支持同一份预构建前端在多端口隔离 E2E 与同源发布入口下复用；`PUBLIC_API_BASE_URL` 继续作为 SSR / 构建期基线，不引入 runtime fallback。
 - 收紧内容媒体路径解码边界：允许 `%20` 等安全 segment 转义继续解码，但显式拒绝 `%2F` / `%5C` 这类编码分隔符、以及会解码成 `.` / `..` 的编码 dot-segment；同时把明文 dot-segment 统一 canonicalize，并拒绝任何越过内容根的 traversal。
+- 修正历史内容兼容口径：公开快照、公开 API 和 public-mode Markdown 渲染都会把 legacy `/api/files/<source>/...` 媒体链接重写为同源 `/api/public/assets/...`，并把这类 files-api path 当作内容根相对路径解析；release 使用预下载 `public-snapshot.json` 时不再把旧 `webdav` 路径泄漏进静态 HTML。
