@@ -131,6 +131,7 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 - Openability guardrails: unsupported file types stay visible in the tree but surface a friendly open error, and text-editable files above `2 MiB` are blocked both from tree open and direct `id=<path>` deep links with the same Chinese error copy
 - File-tree keyboard contract: `Enter` on the focused file or directory enters inline rename, `Space` keeps the primary open/expand action, and directories also support `ArrowRight` / `ArrowLeft` for explicit expand and collapse
 - File-tree write clarity: create / rename / move / copy / delete show row-level pending feedback on the affected items so the operator can see which entry is submitting without relying on toast timing alone; rename failures keep inline editing active, tint the input into an error state without adding inline error copy or shifting row layout, and keep the error toast visible until dismissed
+- File-tree menu consistency: row right-click, blank-area right-click, keyboard context-menu open, and the row kebab menu now share one command derivation, while the rendered menu itself is allowed to escape the sidebar card and collide against the browser viewport instead of being clipped to the sidebar width
 
 ![Frontmatter diagnostics with compact hover summary and line-level markers](./assets/frontmatter-errors.trimmed.png)
 - Validation clarity: saving a brand-new blank article stops in-place with a natural-language banner instead of exposing raw validation issue arrays
@@ -176,6 +177,10 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 ![Admin editor file tree keeps rename editing active with persistent error feedback](./assets/demo/admin-editor-file-tree-rename-error-retry.trimmed.png)
 
 ![Admin editor file tree fills available sidebar height](./assets/demo/admin-editor-sidebar-plain-file-icon-counts.png)
+
+PR: include
+source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
+![Admin editor file tree menu escapes the sidebar card while staying inside the viewport](./assets/admin-editor-file-tree-context-menu-viewport.png)
 
 ![Admin editor blocks blank new-post saves with a friendly banner](./assets/demo/admin-editor-empty-post-friendly-error.png)
 

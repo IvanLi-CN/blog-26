@@ -35,12 +35,22 @@ import {
   Button,
   Checkbox,
   ConfirmDialog,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuDivider,
+  ContextMenuItem,
+  ContextMenuTrigger,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuDivider,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Spinner,
   Tooltip,
   TooltipContent,
@@ -74,13 +84,10 @@ type TreeClipboard = {
   items: TreeSelection[];
 };
 
-type ContextMenuState = {
-  open: true;
-  x: number;
-  y: number;
+type FileBrowserMenuContext = {
   target: TreeSelection | null;
   currentDirectoryPath: string;
-} | null;
+};
 
 type MoveDialogState = {
   entries: TreeSelection[];
@@ -103,7 +110,7 @@ type FileBrowserCommand =
   | "refresh"
   | "clear-selection";
 
-type ContextMenuItem = {
+type FileBrowserMenuItem = {
   id: string;
   label: string;
   command: FileBrowserCommand;
@@ -132,8 +139,12 @@ function getCrossRootDestinationDisabledReason() {
   return "不能跨内容根目录移动项目，请选择同一内容根内的目录。";
 }
 
-function contextMenuItem(item: ContextMenuItem): ContextMenuItem {
+function fileBrowserMenuItem(item: FileBrowserMenuItem): FileBrowserMenuItem {
   return item;
+}
+
+function getTreeSelectionKey(target: TreeSelection | null) {
+  return target ? `${target.type}:${normalizeTreePath(target.path)}` : "__blank__";
 }
 
 function isRowOverflowing(container: HTMLElement | null) {
@@ -464,81 +475,6 @@ function InlineTreeNameInput({
           }
         }}
       />
-    </div>
-  );
-}
-
-function FileBrowserContextMenu({
-  state,
-  items,
-  onClose,
-  onSelect,
-}: {
-  state: ContextMenuState;
-  items: ContextMenuItem[];
-  onClose: () => void;
-  onSelect: (command: FileBrowserCommand) => void;
-}) {
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!state?.open) return undefined;
-
-    function handlePointerDown(event: MouseEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose, state]);
-
-  if (!state?.open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50" role="presentation">
-      <div
-        ref={menuRef}
-        role="menu"
-        aria-label="文件浏览器上下文菜单"
-        className="fixed z-50 min-w-52 overflow-hidden rounded-3xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]"
-        style={{ left: state.x, top: state.y }}
-      >
-        {items.map((item) => (
-          <div key={item.id}>
-            {item.separatorBefore ? <div className="my-1 h-px bg-border/60" /> : null}
-            <button
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              className={cn(
-                "flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm transition-colors outline-none",
-                item.disabled
-                  ? "cursor-not-allowed text-muted-foreground/55"
-                  : "hover:bg-muted hover:text-foreground focus-visible:bg-muted",
-                item.destructive && !item.disabled && "text-destructive"
-              )}
-              onClick={() => {
-                if (item.disabled) return;
-                onSelect(item.command);
-              }}
-            >
-              <span>{item.label}</span>
-            </button>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -1007,7 +943,9 @@ export function EditorFileBrowser({
   const shiftRangeAnchorPathRef = useRef<string | null>(null);
   const shiftPressedRef = useRef(false);
   const [clipboard, setClipboard] = useState<TreeClipboard | null>(null);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [contextMenuContext, setContextMenuContext] = useState<FileBrowserMenuContext | null>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [openMoreActionsKey, setOpenMoreActionsKey] = useState<string | null>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
   const [operationPending, setOperationPending] = useState(false);
@@ -1179,6 +1117,24 @@ export function EditorFileBrowser({
     [browserPath]
   );
 
+  const getMenuContextForTarget = useCallback(
+    (target: TreeSelection | null): FileBrowserMenuContext => ({
+      target,
+      currentDirectoryPath: getDirectoryTargetForSelection(target),
+    }),
+    [getDirectoryTargetForSelection]
+  );
+
+  const getMenuContextForItem = useCallback(
+    (item: FileItem) =>
+      getMenuContextForTarget({
+        source: selectedSource,
+        path: normalizeTreePath(item.path),
+        type: item.type,
+      }),
+    [getMenuContextForTarget, selectedSource]
+  );
+
   const updateFocusedAnchor = useCallback((path: string | null | undefined) => {
     if (shiftPressedRef.current) {
       return;
@@ -1269,68 +1225,122 @@ export function EditorFileBrowser({
     };
   }, []);
 
-  const openContextMenu = useCallback(
-    (
-      target: TreeSelection | null,
-      position: { x: number; y: number },
-      currentDirectoryPath: string
-    ) => {
+  const closeMenus = useCallback(() => {
+    setContextMenuOpen(false);
+    setContextMenuContext(null);
+    setOpenMoreActionsKey(null);
+  }, []);
+
+  const handleContextMenuOpen = useCallback(
+    (target: TreeSelection | null) => {
       if (target && pendingStateMap.has(normalizeTreePath(target.path))) {
         return;
       }
       if (target && !selectedPathSet.has(normalizeTreePath(target.path))) {
         updateSelection([target], target.path);
       }
-      setContextMenu({
-        open: true,
-        x: position.x,
-        y: position.y,
-        target,
-        currentDirectoryPath,
-      });
+      const targetKey = getTreeSelectionKey(target);
+      setContextMenuOpen(true);
+      setContextMenuContext(getMenuContextForTarget(target));
+      setOpenMoreActionsKey((current) => (current === targetKey ? current : null));
     },
-    [pendingStateMap, selectedPathSet, updateSelection]
+    [getMenuContextForTarget, pendingStateMap, selectedPathSet, updateSelection]
+  );
+
+  const handleMoreActionsOpen = useCallback(
+    (target: TreeSelection, open: boolean) => {
+      const targetKey = getTreeSelectionKey(target);
+      if (open) {
+        if (pendingStateMap.has(normalizeTreePath(target.path))) {
+          return;
+        }
+        if (!selectedPathSet.has(normalizeTreePath(target.path))) {
+          updateSelection([target], target.path);
+        }
+        setContextMenuOpen(false);
+        setContextMenuContext(getMenuContextForTarget(target));
+        setOpenMoreActionsKey(targetKey);
+        return;
+      }
+
+      setOpenMoreActionsKey((current) => (current === targetKey ? null : current));
+      setContextMenuContext((current) =>
+        current && getTreeSelectionKey(current.target) === targetKey ? null : current
+      );
+    },
+    [getMenuContextForTarget, pendingStateMap, selectedPathSet, updateSelection]
+  );
+
+  const handleKeyboardMenuOpen = useCallback(
+    (target: TreeSelection) => {
+      if (pendingStateMap.has(normalizeTreePath(target.path))) {
+        return;
+      }
+      if (!selectedPathSet.has(normalizeTreePath(target.path))) {
+        updateSelection([target], target.path);
+      }
+      setContextMenuOpen(false);
+      setContextMenuContext(getMenuContextForTarget(target));
+      setOpenMoreActionsKey(getTreeSelectionKey(target));
+    },
+    [getMenuContextForTarget, pendingStateMap, selectedPathSet, updateSelection]
+  );
+
+  const keyboardCommandTarget = useMemo(() => {
+    const normalizedAnchor = normalizeTreePath(selectionAnchorPath);
+    if (normalizedAnchor) {
+      const anchoredEntry = selectedEntries.find((entry) => entry.path === normalizedAnchor);
+      if (anchoredEntry) {
+        return anchoredEntry;
+      }
+    }
+    return selectedEntries[selectedEntries.length - 1] ?? null;
+  }, [selectedEntries, selectionAnchorPath]);
+
+  const defaultCommandContext = useMemo(
+    () => getMenuContextForTarget(keyboardCommandTarget),
+    [getMenuContextForTarget, keyboardCommandTarget]
   );
 
   const executeCommand = useCallback(
-    async (command: FileBrowserCommand, targetOverride?: TreeSelection | null) => {
-      const target = targetOverride ?? contextMenu?.target ?? null;
+    async (command: FileBrowserCommand, contextOverride?: FileBrowserMenuContext) => {
+      const context = contextOverride ?? defaultCommandContext;
+      const target = context.target;
       const entries = resolveSelectionForTarget(target);
-      const directoryTarget =
-        contextMenu?.currentDirectoryPath ?? getDirectoryTargetForSelection(target);
+      const directoryTarget = context.currentDirectoryPath;
 
       if (
         (command === "copy" || command === "cut" || command === "move" || command === "delete") &&
         selectionContainsConfiguredRoot(entries, configuredRootPaths)
       ) {
-        setContextMenu(null);
+        closeMenus();
         return;
       }
 
       if (command === "refresh") {
         onRefresh();
-        setContextMenu(null);
+        closeMenus();
         return;
       }
 
       if (command === "clear-selection") {
         clearSelection();
         clearClipboardToast();
-        setContextMenu(null);
+        closeMenus();
         return;
       }
 
       if (command === "new-file") {
         if (!canCreateInTreePath(directoryTarget, configuredRootPaths)) return;
         onCreateFile(directoryTarget);
-        setContextMenu(null);
+        closeMenus();
         return;
       }
 
       if (command === "new-directory") {
         if (!canCreateInTreePath(directoryTarget, configuredRootPaths)) return;
         onCreateDirectory(directoryTarget);
-        setContextMenu(null);
+        closeMenus();
         return;
       }
 
@@ -1342,7 +1352,7 @@ export function EditorFileBrowser({
         };
         setClipboard(nextClipboard);
         showClipboardToast(nextClipboard);
-        setContextMenu(null);
+        closeMenus();
         return;
       }
 
@@ -1351,7 +1361,7 @@ export function EditorFileBrowser({
         if (
           !isSameConfiguredRootDestination(clipboard.items, directoryTarget, configuredRootPaths)
         ) {
-          setContextMenu(null);
+          closeMenus();
           return;
         }
         setOperationPending(true);
@@ -1370,7 +1380,7 @@ export function EditorFileBrowser({
           } else {
             clearSelection();
           }
-          setContextMenu(null);
+          closeMenus();
         } catch {
           // Parent handlers surface owner-facing errors.
         }
@@ -1381,7 +1391,7 @@ export function EditorFileBrowser({
       if (command === "rename") {
         if (entries.length !== 1) return;
         onStartRename(entries[0]);
-        setContextMenu(null);
+        closeMenus();
         updateSelection(entries, entries[0].path);
         return;
       }
@@ -1392,22 +1402,23 @@ export function EditorFileBrowser({
           entries,
           destinationPath: getDirectoryTargetForSelection(target),
         });
-        setContextMenu(null);
+        closeMenus();
         return;
       }
 
       if (command === "delete") {
         if (!entries.length) return;
         setDeleteDialog({ entries });
-        setContextMenu(null);
+        closeMenus();
       }
     },
     [
       clearSelection,
       clearClipboardToast,
       clipboard,
-      contextMenu,
+      closeMenus,
       configuredRootPaths,
+      defaultCommandContext,
       getDirectoryTargetForSelection,
       onCopyEntries,
       onCreateDirectory,
@@ -1422,17 +1433,6 @@ export function EditorFileBrowser({
     ]
   );
 
-  const keyboardCommandTarget = useMemo(() => {
-    const normalizedAnchor = normalizeTreePath(selectionAnchorPath);
-    if (normalizedAnchor) {
-      const anchoredEntry = selectedEntries.find((entry) => entry.path === normalizedAnchor);
-      if (anchoredEntry) {
-        return anchoredEntry;
-      }
-    }
-    return selectedEntries[selectedEntries.length - 1] ?? null;
-  }, [selectedEntries, selectionAnchorPath]);
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -1445,21 +1445,21 @@ export function EditorFileBrowser({
       if (key === "c") {
         if (!selectedEntries.length) return;
         event.preventDefault();
-        void executeCommand("copy", keyboardCommandTarget);
+        void executeCommand("copy");
         return;
       }
 
       if (key === "x") {
         if (!selectedEntries.length) return;
         event.preventDefault();
-        void executeCommand("cut", keyboardCommandTarget);
+        void executeCommand("cut");
         return;
       }
 
       if (key === "v") {
         if (!clipboard?.items.length) return;
         event.preventDefault();
-        void executeCommand("paste", keyboardCommandTarget);
+        void executeCommand("paste");
       }
     };
 
@@ -1472,7 +1472,6 @@ export function EditorFileBrowser({
     deleteDialog,
     editingItem,
     executeCommand,
-    keyboardCommandTarget,
     moveDialog,
     selectedEntries.length,
   ]);
@@ -1499,125 +1498,152 @@ export function EditorFileBrowser({
     return disabled;
   }, [clipboard?.items, configuredRootPaths, visibleEntries]);
 
-  const contextMenuItems = useMemo(() => {
-    const target = contextMenu?.target ?? null;
-    const entries = resolveSelectionForTarget(target);
-    const isMulti = entries.length > 1;
-    const containsConfiguredRoot = selectionContainsConfiguredRoot(entries, configuredRootPaths);
-    const canPaste =
-      Boolean(clipboard?.items.length) &&
-      !clipboardDisabledTargets.has(normalizeTreePath(contextMenu?.currentDirectoryPath ?? ""));
-    const canCreateInCurrentDirectory = canCreateInTreePath(
-      contextMenu?.currentDirectoryPath,
-      configuredRootPaths
-    );
-    const items: ContextMenuItem[] = [];
+  const getMenuItemsForContext = useCallback(
+    (context: FileBrowserMenuContext) => {
+      const target = context.target;
+      const entries = resolveSelectionForTarget(target);
+      const isMulti = entries.length > 1;
+      const containsConfiguredRoot = selectionContainsConfiguredRoot(entries, configuredRootPaths);
+      const canPaste =
+        Boolean(clipboard?.items.length) &&
+        !clipboardDisabledTargets.has(normalizeTreePath(context.currentDirectoryPath));
+      const canCreateInCurrentDirectory = canCreateInTreePath(
+        context.currentDirectoryPath,
+        configuredRootPaths
+      );
+      const items: FileBrowserMenuItem[] = [];
 
-    if (isMulti) {
-      if (!containsConfiguredRoot) {
+      if (isMulti) {
+        if (!containsConfiguredRoot) {
+          items.push(
+            fileBrowserMenuItem({ id: "move", label: "移动", command: "move" }),
+            fileBrowserMenuItem({ id: "copy", label: "复制", command: "copy" }),
+            fileBrowserMenuItem({ id: "cut", label: "剪切", command: "cut" })
+          );
+        }
         items.push(
-          contextMenuItem({ id: "move", label: "移动", command: "move" }),
-          contextMenuItem({ id: "copy", label: "复制", command: "copy" }),
-          contextMenuItem({ id: "cut", label: "剪切", command: "cut" })
+          fileBrowserMenuItem({
+            id: "paste",
+            label: "粘贴",
+            command: "paste",
+            disabled: !canPaste,
+          }),
+          ...(containsConfiguredRoot
+            ? []
+            : [
+                fileBrowserMenuItem({
+                  id: "delete",
+                  label: "删除",
+                  command: "delete",
+                  destructive: true,
+                }),
+              ]),
+          {
+            id: "clear-selection",
+            label: "清空选择",
+            command: "clear-selection",
+            separatorBefore: true,
+          }
+        );
+        return items;
+      }
+
+      if (!target) {
+        return [
+          fileBrowserMenuItem({
+            id: "paste",
+            label: "粘贴",
+            command: "paste",
+            disabled: !canPaste,
+          }),
+          fileBrowserMenuItem({
+            id: "new-file",
+            label: "新建文件",
+            command: "new-file",
+            disabled: !canCreateInCurrentDirectory,
+            separatorBefore: true,
+          }),
+          fileBrowserMenuItem({
+            id: "new-directory",
+            label: "新建目录",
+            command: "new-directory",
+            disabled: !canCreateInCurrentDirectory,
+          }),
+          fileBrowserMenuItem({
+            id: "refresh",
+            label: "刷新",
+            command: "refresh",
+            separatorBefore: true,
+          }),
+        ];
+      }
+
+      const targetIsConfiguredRoot = isConfiguredRootPath(target.path, configuredRootPaths);
+      if (!targetIsConfiguredRoot) {
+        items.push(
+          fileBrowserMenuItem({ id: "rename", label: "重命名", command: "rename" }),
+          fileBrowserMenuItem({ id: "move", label: "移动", command: "move" }),
+          fileBrowserMenuItem({ id: "copy", label: "复制", command: "copy" })
         );
       }
-      items.push(
-        contextMenuItem({ id: "paste", label: "粘贴", command: "paste", disabled: !canPaste }),
-        ...(containsConfiguredRoot
-          ? []
-          : [
-              contextMenuItem({
-                id: "delete",
-                label: "删除",
-                command: "delete",
-                destructive: true,
-              }),
-            ]),
-        {
-          id: "clear-selection",
-          label: "清空选择",
-          command: "clear-selection",
-          separatorBefore: true,
-        }
-      );
+
+      if (target.type === "directory") {
+        items.push(
+          fileBrowserMenuItem({
+            id: "paste",
+            label: "粘贴",
+            command: "paste",
+            disabled: !canPaste,
+          }),
+          ...(targetIsConfiguredRoot
+            ? []
+            : [
+                fileBrowserMenuItem({
+                  id: "delete",
+                  label: "删除",
+                  command: "delete",
+                  destructive: true,
+                }),
+              ]),
+          fileBrowserMenuItem({
+            id: "new-file",
+            label: "新建文件",
+            command: "new-file",
+            disabled: !canCreateInTreePath(target.path, configuredRootPaths),
+            separatorBefore: true,
+          }),
+          fileBrowserMenuItem({
+            id: "new-directory",
+            label: "新建目录",
+            command: "new-directory",
+            disabled: !canCreateInTreePath(target.path, configuredRootPaths),
+          })
+        );
+      } else {
+        items.push(
+          fileBrowserMenuItem({
+            id: "delete",
+            label: "删除",
+            command: "delete",
+            destructive: true,
+          })
+        );
+      }
+
       return items;
-    }
+    },
+    [
+      clipboard?.items.length,
+      clipboardDisabledTargets,
+      configuredRootPaths,
+      resolveSelectionForTarget,
+    ]
+  );
 
-    if (!target) {
-      return [
-        contextMenuItem({ id: "paste", label: "粘贴", command: "paste", disabled: !canPaste }),
-        contextMenuItem({
-          id: "new-file",
-          label: "新建文件",
-          command: "new-file",
-          disabled: !canCreateInCurrentDirectory,
-          separatorBefore: true,
-        }),
-        contextMenuItem({
-          id: "new-directory",
-          label: "新建目录",
-          command: "new-directory",
-          disabled: !canCreateInCurrentDirectory,
-        }),
-        contextMenuItem({
-          id: "refresh",
-          label: "刷新",
-          command: "refresh",
-          separatorBefore: true,
-        }),
-      ];
-    }
-
-    const targetIsConfiguredRoot = isConfiguredRootPath(target.path, configuredRootPaths);
-    if (!targetIsConfiguredRoot) {
-      items.push(
-        contextMenuItem({ id: "rename", label: "重命名", command: "rename" }),
-        contextMenuItem({ id: "move", label: "移动", command: "move" }),
-        contextMenuItem({ id: "copy", label: "复制", command: "copy" })
-      );
-    }
-
-    if (target.type === "directory") {
-      items.push(
-        contextMenuItem({ id: "paste", label: "粘贴", command: "paste", disabled: !canPaste }),
-        ...(targetIsConfiguredRoot
-          ? []
-          : [
-              contextMenuItem({
-                id: "delete",
-                label: "删除",
-                command: "delete",
-                destructive: true,
-              }),
-            ]),
-        contextMenuItem({
-          id: "new-file",
-          label: "新建文件",
-          command: "new-file",
-          disabled: !canCreateInTreePath(target.path, configuredRootPaths),
-          separatorBefore: true,
-        }),
-        contextMenuItem({
-          id: "new-directory",
-          label: "新建目录",
-          command: "new-directory",
-          disabled: !canCreateInTreePath(target.path, configuredRootPaths),
-        })
-      );
-    } else {
-      items.push(
-        contextMenuItem({ id: "delete", label: "删除", command: "delete", destructive: true })
-      );
-    }
-
-    return items;
-  }, [
-    clipboard?.items.length,
-    clipboardDisabledTargets,
-    configuredRootPaths,
-    contextMenu,
-    resolveSelectionForTarget,
-  ]);
+  const contextMenuItems = useMemo(() => {
+    if (!contextMenuContext) return [];
+    return getMenuItemsForContext(contextMenuContext);
+  }, [contextMenuContext, getMenuItemsForContext]);
 
   const performPrimaryAction = useCallback(
     (item: FileItem) => {
@@ -1657,12 +1683,7 @@ export function EditorFileBrowser({
     (event: ReactKeyboardEvent<HTMLElement>, item: FileItem, entry: TreeSelection) => {
       if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
         event.preventDefault();
-        const rect = event.currentTarget.getBoundingClientRect();
-        openContextMenu(
-          entry,
-          { x: rect.left + 12, y: rect.bottom + 8 },
-          getDirectoryTargetForSelection(entry)
-        );
+        handleKeyboardMenuOpen(entry);
         return;
       }
 
@@ -1704,10 +1725,9 @@ export function EditorFileBrowser({
     [
       editingItem,
       expandedPathSet,
-      getDirectoryTargetForSelection,
+      handleKeyboardMenuOpen,
       onDirectoryExpand,
       onStartRename,
-      openContextMenu,
       pendingStateMap,
       performKeyboardPrimaryAction,
       updateSelection,
@@ -1779,198 +1799,243 @@ export function EditorFileBrowser({
           path: normalizedPath,
           type: item.type,
         };
+        const menuContext = getMenuContextForItem(item);
+        const moreActionsOpen = openMoreActionsKey === getTreeSelectionKey(entry);
+        const menuItems = getMenuItemsForContext(menuContext);
 
         return (
-          <div key={`${item.type}:${item.path}`} className="min-w-0 space-y-1">
-            <div
-              data-cut-pending={isCutPending || undefined}
-              data-tree-row="true"
-              className={cn(
-                "relative flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
-                !isEditing && !isPending && "hover:bg-muted/40 hover:text-foreground",
-                isSelected && "border-primary/35 bg-primary/10 text-primary shadow-sm",
-                isCutPending && "saturate-75",
-                isPending && "border-border/56 bg-muted/48 text-foreground/72",
-                !isSelected &&
-                  showActiveHighlight &&
-                  (isActiveFile || isActiveDirectory) &&
-                  "border-primary/25 bg-primary/6 text-primary shadow-sm",
-                !isSelected &&
-                  showActiveHighlight &&
-                  !isActiveFile &&
-                  !isActiveDirectory &&
-                  isActiveBranch &&
-                  "border-border/35 bg-muted/40 text-foreground",
-                !isActiveFile &&
-                  !isActiveDirectory &&
-                  !isActiveBranch &&
-                  !isSelected &&
-                  "text-foreground/88"
-              )}
-              style={{
-                opacity: isPending ? 0.74 : isCutPending ? 0.6 : undefined,
-                paddingLeft: `${0.65 + depth * 0.45}rem`,
-              }}
-            >
-              {!isEditing ? (
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
-                  className="absolute inset-0 z-0 rounded-2xl"
-                  disabled={isPending}
-                  onClick={(event) => handlePrimaryAction(item, event)}
-                  onDoubleClick={() => {
-                    if (!isDirectory) onFilePermanentOpen(item);
-                  }}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openContextMenu(
-                      entry,
-                      { x: event.clientX, y: event.clientY },
-                      getDirectoryTargetForSelection(entry)
-                    );
-                  }}
-                />
-              ) : null}
-              <span
+          <ContextMenu
+            key={`${item.type}:${item.path}`}
+            modal={false}
+            onOpenChange={(open) => {
+              if (open) {
+                handleContextMenuOpen(entry);
+                return;
+              }
+              if (
+                contextMenuOpen &&
+                getTreeSelectionKey(contextMenuContext?.target ?? null) ===
+                  getTreeSelectionKey(entry)
+              ) {
+                closeMenus();
+              }
+            }}
+          >
+            <ContextMenuTrigger asChild>
+              <div
+                data-cut-pending={isCutPending || undefined}
+                data-tree-row="true"
                 className={cn(
-                  "relative z-10 flex min-w-0 flex-1 items-center gap-2",
-                  !isEditing && "pointer-events-none"
+                  "relative flex w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-2xl border border-transparent px-3 py-2 text-left text-sm transition",
+                  !isEditing && !isPending && "hover:bg-muted/40 hover:text-foreground",
+                  isSelected && "border-primary/35 bg-primary/10 text-primary shadow-sm",
+                  isCutPending && "saturate-75",
+                  isPending && "border-border/56 bg-muted/48 text-foreground/72",
+                  !isSelected &&
+                    showActiveHighlight &&
+                    (isActiveFile || isActiveDirectory) &&
+                    "border-primary/25 bg-primary/6 text-primary shadow-sm",
+                  !isSelected &&
+                    showActiveHighlight &&
+                    !isActiveFile &&
+                    !isActiveDirectory &&
+                    isActiveBranch &&
+                    "border-border/35 bg-muted/40 text-foreground",
+                  !isActiveFile &&
+                    !isActiveDirectory &&
+                    !isActiveBranch &&
+                    !isSelected &&
+                    "text-foreground/88"
                 )}
+                style={{
+                  opacity: isPending ? 0.74 : isCutPending ? 0.6 : undefined,
+                  paddingLeft: `${0.65 + depth * 0.45}rem`,
+                }}
               >
-                <button
-                  type="button"
-                  className="pointer-events-auto flex shrink-0 items-center gap-2"
-                  tabIndex={isEditing ? -1 : 0}
-                  aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
-                  aria-busy={isPending ? "true" : undefined}
-                  onFocus={() => updateFocusedAnchor(entry.path)}
-                  onClick={(event) => handlePrimaryAction(item, event)}
-                  onDoubleClick={() => {
-                    if (!isDirectory) onFilePermanentOpen(item);
-                  }}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openContextMenu(
-                      entry,
-                      { x: event.clientX, y: event.clientY },
-                      getDirectoryTargetForSelection(entry)
-                    );
-                  }}
-                  onKeyDown={(event) => handleTreeItemKeyDown(event, item, entry)}
-                  disabled={isPending}
-                >
-                  {isDirectory ? (
-                    isExpanded ? (
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                    )
-                  ) : (
-                    <span className="block size-4 shrink-0" />
-                  )}
-                  {selectionMode ? (
-                    <Checkbox
-                      checked={isSelected}
-                      aria-label={`选择 ${item.name}`}
-                      onClick={(event) => event.stopPropagation()}
-                      onCheckedChange={() => handleToggleSelection(entry)}
-                    />
-                  ) : isDirectory ? (
-                    <Folder
-                      className={cn(
-                        "size-4 shrink-0",
-                        isActiveDirectory || isActiveBranch || isSelected
-                          ? "text-primary"
-                          : "text-primary"
-                      )}
-                    />
-                  ) : (
-                    <TreeFileTypeIcon
-                      extension={item.extension}
-                      active={isSelected || (showActiveHighlight && isActiveFile)}
-                    />
-                  )}
-                </button>
-                {isEditing && editingItem ? (
-                  <InlineTreeNameInput
-                    value={editingItem.value}
-                    type={editingItem.type}
-                    errorMessage={editingItem.errorMessage}
-                    onChange={onEditingValueChange}
-                    onCommit={onEditingCommit}
-                    onCancel={onEditingCancel}
-                  />
-                ) : (
+                {!isEditing ? (
                   <button
                     type="button"
-                    className="pointer-events-auto min-w-0 flex-1 truncate text-left"
+                    tabIndex={-1}
+                    aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
+                    className="absolute inset-0 z-0 rounded-2xl"
+                    disabled={isPending}
+                    onClick={(event) => handlePrimaryAction(item, event)}
+                    onDoubleClick={() => {
+                      if (!isDirectory) onFilePermanentOpen(item);
+                    }}
+                  />
+                ) : null}
+                <span
+                  className={cn(
+                    "relative z-10 flex min-w-0 flex-1 items-center gap-2",
+                    !isEditing && "pointer-events-none"
+                  )}
+                >
+                  <button
+                    type="button"
+                    className="pointer-events-auto flex shrink-0 items-center gap-2"
+                    tabIndex={isEditing ? -1 : 0}
+                    aria-label={isDirectory ? `${item.name} 目录` : `${item.name} 文件`}
                     aria-busy={isPending ? "true" : undefined}
                     onFocus={() => updateFocusedAnchor(entry.path)}
                     onClick={(event) => handlePrimaryAction(item, event)}
                     onDoubleClick={() => {
                       if (!isDirectory) onFilePermanentOpen(item);
                     }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        entry,
-                        { x: event.clientX, y: event.clientY },
-                        getDirectoryTargetForSelection(entry)
-                      );
-                    }}
                     onKeyDown={(event) => handleTreeItemKeyDown(event, item, entry)}
                     disabled={isPending}
                   >
-                    {item.name}
-                  </button>
-                )}
-              </span>
-              <div className="relative z-10 pointer-events-none flex shrink-0 items-center gap-2">
-                {!isEditing && isPending ? (
-                  <span
-                    className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"
-                    data-testid={`tree-pending-badge:${normalizedPath}`}
-                  >
-                    <Spinner />
-                    {getPendingOperationLabel(pendingState?.operation ?? "move")}
-                  </span>
-                ) : null}
-                {!isEditing && !isPending && isDirectory ? (
-                  <span
-                    className={cn(
-                      "shrink-0 whitespace-nowrap text-xs text-muted-foreground",
-                      (isActiveFile || isActiveDirectory || isSelected) && "text-primary/80"
+                    {isDirectory ? (
+                      isExpanded ? (
+                        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      )
+                    ) : (
+                      <span className="block size-4 shrink-0" />
                     )}
-                  >
-                    {`${directoryCount} 项`}
-                  </span>
-                ) : null}
-                {!isEditing ? (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="pointer-events-auto size-8 rounded-full"
-                    aria-label={`${item.name} 更多操作`}
-                    disabled={isPending}
-                    onClick={(event) => {
-                      const rect = event.currentTarget.getBoundingClientRect();
-                      openContextMenu(
-                        entry,
-                        { x: rect.left, y: rect.bottom + 6 },
-                        getDirectoryTargetForSelection(entry)
-                      );
+                    {selectionMode ? (
+                      <Checkbox
+                        checked={isSelected}
+                        aria-label={`选择 ${item.name}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onCheckedChange={() => handleToggleSelection(entry)}
+                      />
+                    ) : isDirectory ? (
+                      <Folder
+                        className={cn(
+                          "size-4 shrink-0",
+                          isActiveDirectory || isActiveBranch || isSelected
+                            ? "text-primary"
+                            : "text-primary"
+                        )}
+                      />
+                    ) : (
+                      <TreeFileTypeIcon
+                        extension={item.extension}
+                        active={isSelected || (showActiveHighlight && isActiveFile)}
+                      />
+                    )}
+                  </button>
+                  {isEditing && editingItem ? (
+                    <InlineTreeNameInput
+                      value={editingItem.value}
+                      type={editingItem.type}
+                      errorMessage={editingItem.errorMessage}
+                      onChange={onEditingValueChange}
+                      onCommit={onEditingCommit}
+                      onCancel={onEditingCancel}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="pointer-events-auto min-w-0 flex-1 truncate text-left"
+                      aria-busy={isPending ? "true" : undefined}
+                      onFocus={() => updateFocusedAnchor(entry.path)}
+                      onClick={(event) => handlePrimaryAction(item, event)}
+                      onDoubleClick={() => {
+                        if (!isDirectory) onFilePermanentOpen(item);
+                      }}
+                      onKeyDown={(event) => handleTreeItemKeyDown(event, item, entry)}
+                      disabled={isPending}
+                    >
+                      {item.name}
+                    </button>
+                  )}
+                </span>
+                <div className="relative z-10 pointer-events-none flex shrink-0 items-center gap-2">
+                  {!isEditing && isPending ? (
+                    <span
+                      className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"
+                      data-testid={`tree-pending-badge:${normalizedPath}`}
+                    >
+                      <Spinner />
+                      {getPendingOperationLabel(pendingState?.operation ?? "move")}
+                    </span>
+                  ) : null}
+                  {!isEditing && !isPending && isDirectory ? (
+                    <span
+                      className={cn(
+                        "shrink-0 whitespace-nowrap text-xs text-muted-foreground",
+                        (isActiveFile || isActiveDirectory || isSelected) && "text-primary/80"
+                      )}
+                    >
+                      {`${directoryCount} 项`}
+                    </span>
+                  ) : null}
+                  {!isEditing ? (
+                    <DropdownMenu
+                      modal={false}
+                      open={moreActionsOpen}
+                      onOpenChange={(open) => handleMoreActionsOpen(entry, open)}
+                    >
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="pointer-events-auto size-8 rounded-full"
+                          aria-label={`${item.name} 更多操作`}
+                          disabled={isPending}
+                        >
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="right"
+                        align="start"
+                        collisionPadding={12}
+                        onCloseAutoFocus={(event) => event.preventDefault()}
+                      >
+                        {menuItems.map((menuItem) => (
+                          <div key={menuItem.id}>
+                            {menuItem.separatorBefore ? <DropdownMenuDivider /> : null}
+                            <DropdownMenuItem
+                              disabled={menuItem.disabled}
+                              className={cn(
+                                menuItem.destructive &&
+                                  !menuItem.disabled &&
+                                  "text-destructive data-[highlighted]:text-destructive"
+                              )}
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                void executeCommand(menuItem.command, menuContext);
+                              }}
+                            >
+                              {menuItem.label}
+                            </DropdownMenuItem>
+                          </div>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
+                </div>
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent
+              aria-label="文件浏览器上下文菜单"
+              collisionPadding={12}
+              onCloseAutoFocus={(event) => event.preventDefault()}
+            >
+              {menuItems.map((menuItem) => (
+                <div key={menuItem.id}>
+                  {menuItem.separatorBefore ? <ContextMenuDivider /> : null}
+                  <ContextMenuItem
+                    disabled={menuItem.disabled}
+                    className={cn(
+                      menuItem.destructive &&
+                        !menuItem.disabled &&
+                        "text-destructive data-[highlighted]:text-destructive"
+                    )}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      void executeCommand(menuItem.command, menuContext);
                     }}
                   >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </div>
+                    {menuItem.label}
+                  </ContextMenuItem>
+                </div>
+              ))}
+            </ContextMenuContent>
 
             {isDirectory && isExpanded ? (
               <div className="min-w-0 space-y-1">
@@ -1993,18 +2058,25 @@ export function EditorFileBrowser({
                 ) : null}
               </div>
             ) : null}
-          </div>
+          </ContextMenu>
         );
       }),
     [
       activeItemPath,
       activeItemType,
       cutPathSet,
+      closeMenus,
+      contextMenuContext,
+      contextMenuOpen,
       directoryItemsByPath,
       editingItem,
       expandedPathSet,
-      getDirectoryTargetForSelection,
+      executeCommand,
+      getMenuContextForItem,
+      getMenuItemsForContext,
       handleTreeItemKeyDown,
+      handleContextMenuOpen,
+      handleMoreActionsOpen,
       handlePrimaryAction,
       handleToggleSelection,
       loadingPathSet,
@@ -2012,7 +2084,7 @@ export function EditorFileBrowser({
       onEditingCommit,
       onEditingValueChange,
       onFilePermanentOpen,
-      openContextMenu,
+      openMoreActionsKey,
       pendingStateMap,
       selectedPathSet,
       selectedSource,
@@ -2092,7 +2164,11 @@ export function EditorFileBrowser({
 
   const selectionFloatingFooter = useMemo(
     () =>
-      selectedCount > 0 && !contextMenu && !moveDialog && !deleteDialog ? (
+      selectedCount > 0 &&
+      !contextMenuOpen &&
+      !openMoreActionsKey &&
+      !moveDialog &&
+      !deleteDialog ? (
         <SidebarSelectionFloatingFooter
           selectedCount={selectedCount}
           clipboardReady={Boolean(clipboard?.items.length)}
@@ -2110,226 +2186,262 @@ export function EditorFileBrowser({
     [
       clipboard?.items.length,
       configuredRootPaths,
-      contextMenu,
+      contextMenuOpen,
       deleteDialog,
       executeCommand,
       moveDialog,
+      openMoreActionsKey,
       selectedCount,
       selectedEntries,
     ]
   );
 
   const floatingFooterVisible = Boolean(selectionFloatingFooter);
+  const blankAreaMenuOpen = contextMenuOpen && contextMenuContext?.target === null;
 
   useAppShellSidebarFloatingFooter(selectionFloatingFooter);
 
   return (
-    <div
-      role="tree"
-      className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden border-t border-border/54",
-        floatingFooterVisible ? "border-b-0" : "border-b border-border/54"
-      )}
-      data-testid="editor-file-browser"
-      onContextMenu={(event) => {
-        if (event.target !== event.currentTarget) return;
-        event.preventDefault();
-        openContextMenu(
-          null,
-          { x: event.clientX, y: event.clientY },
-          normalizeTreePath(browserPath)
-        );
+    <ContextMenu
+      modal={false}
+      open={blankAreaMenuOpen}
+      onOpenChange={(open) => {
+        if (open) {
+          setContextMenuContext(getMenuContextForTarget(null));
+          setContextMenuOpen(true);
+          setOpenMoreActionsKey(null);
+          return;
+        }
+        if (blankAreaMenuOpen) {
+          closeMenus();
+        }
       }}
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border/54 py-3">
-        <div>
-          <div className="font-medium">文件浏览器</div>
-          <div className="text-xs text-muted-foreground">浏览内容源，打开要编辑的文件。</div>
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-4">
-        <div className="grid min-w-0 shrink-0 gap-2 pb-4">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant={selectionMode ? "secondary" : "outline"}
-              onClick={() => setSelectionMode((current) => !current)}
-              title="切换批量选择模式"
-              aria-label="切换批量选择模式"
-              disabled={hasTreePendingState}
-            >
-              <CheckSquare className="size-4" />
-              {selectionMode ? "复选框已开" : "批量选择"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onCreateFile(normalizeTreePath(browserPath))}
-              disabled={!canCreateInBrowserPath || hasTreePendingState}
-              title="新建文件"
-              aria-label="新建文件"
-            >
-              <FilePlus2 className="size-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onCreateDirectory(normalizeTreePath(browserPath))}
-              disabled={!canCreateInBrowserPath || hasTreePendingState}
-              title="新建目录"
-              aria-label="新建目录"
-            >
-              <FolderPlus className="size-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onNavigateUp}
-              disabled={!browserPath || hasTreePendingState}
-            >
-              <FolderUp className="size-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={onRefresh} disabled={hasTreePendingState}>
-              <RefreshCcw className="size-4" />
-            </Button>
-          </div>
-
-          <div
-            className="min-w-0 truncate rounded-2xl bg-muted/32 px-3 py-2 text-xs text-muted-foreground"
-            title={browserPath || "根目录"}
-          >
-            {browserPath || "根目录"}
-          </div>
-        </div>
-
-        <div className="admin-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden pr-1">
-          {sourcesLoading || (treeLoading && rootItems.length === 0) ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner /> 读取文件树…
-            </div>
-          ) : rootItems.length > 0 ? (
-            renderTreeNodes(rootItems)
-          ) : (
-            <div className="text-sm text-muted-foreground">当前目录为空。</div>
+      <ContextMenuTrigger asChild>
+        <div
+          role="tree"
+          className={cn(
+            "flex h-full min-h-0 flex-col overflow-hidden border-t border-border/54",
+            floatingFooterVisible ? "border-b-0" : "border-b border-border/54"
           )}
-        </div>
-      </div>
-
-      <FileBrowserContextMenu
-        state={contextMenu}
-        items={contextMenuItems}
-        onClose={() => setContextMenu(null)}
-        onSelect={(command) => {
-          void executeCommand(command);
-        }}
-      />
-
-      <Dialog open={moveDialog !== null} onOpenChange={(open) => !open && setMoveDialog(null)}>
-        <DialogContent className="flex max-h-[min(90vh,820px)] min-h-0 flex-col">
-          <DialogHeader>
-            <DialogTitle className="pr-8 text-xl font-semibold">选择目标目录</DialogTitle>
-            <DialogDescription className="text-sm leading-6 text-muted-foreground">
-              目标将应用于 {moveDialog?.entries.length ?? 0} 项。不能移动到自身、后代目录或原目录。
-            </DialogDescription>
-          </DialogHeader>
-          {moveDialog ? (
-            <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 pb-2">
-              <div className="grid gap-2">
-                <div
-                  className={cn(
-                    "rounded-2xl border px-4 py-3",
-                    moveTargetDisabledReason
-                      ? "border-warning/24 bg-warning/12 text-foreground"
-                      : "border-border/56 bg-muted/18 text-foreground"
-                  )}
-                >
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    目标目录
-                  </div>
-                  <div className="mt-1 truncate text-sm font-medium" title={moveTargetLabel}>
-                    {moveTargetLabel}
-                  </div>
-                  {moveTargetDisabledReason ? (
-                    <div className="mt-2 text-xs leading-5 text-warning">
-                      {moveTargetDisabledReason}
-                    </div>
-                  ) : (
-                    <div className="mt-2 text-xs leading-5 text-muted-foreground">
-                      选择后会立即作为本次移动的目标位置。
-                    </div>
-                  )}
-                </div>
-                <div className="px-1 text-xs leading-5 text-muted-foreground">{moveDialogRule}</div>
-              </div>
-              <DirectoryPickerTree
-                selectedSource={selectedSource}
-                rootItems={rootItems}
-                directoryItemsByPath={directoryItemsByPath}
-                expandedPaths={expandedPaths}
-                loadingPaths={loadingPaths}
-                selectedPath={moveDialog.destinationPath}
-                disabledReasons={disabledMoveTargets}
-                className="h-full min-h-[min(14rem,30vh)] flex-1 max-h-none sm:min-h-[min(18rem,36vh)]"
-                onSelect={(path) =>
-                  setMoveDialog((current) =>
-                    current ? { ...current, destinationPath: path } : current
-                  )
-                }
-                onDirectoryExpand={onDirectoryExpand}
-              />
+          data-testid="editor-file-browser"
+        >
+          <div className="flex shrink-0 items-center justify-between border-b border-border/54 py-3">
+            <div>
+              <div className="font-medium">文件浏览器</div>
+              <div className="text-xs text-muted-foreground">浏览内容源，打开要编辑的文件。</div>
             </div>
-          ) : null}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMoveDialog(null)}>
-              取消
-            </Button>
-            <Button
-              disabled={operationPending || !moveDialog || Boolean(moveTargetDisabledReason)}
-              onClick={async () => {
-                if (!moveDialog) return;
-                setOperationPending(true);
-                try {
-                  await onMoveEntries(moveDialog.entries, moveDialog.destinationPath);
-                  setMoveDialog(null);
-                  clearSelection();
-                } catch {
-                  // Parent handlers surface owner-facing errors.
-                }
-                setOperationPending(false);
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-4">
+            <div className="grid min-w-0 shrink-0 gap-2 pb-4">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={selectionMode ? "secondary" : "outline"}
+                  onClick={() => setSelectionMode((current) => !current)}
+                  title="切换批量选择模式"
+                  aria-label="切换批量选择模式"
+                  disabled={hasTreePendingState}
+                >
+                  <CheckSquare className="size-4" />
+                  {selectionMode ? "复选框已开" : "批量选择"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onCreateFile(normalizeTreePath(browserPath))}
+                  disabled={!canCreateInBrowserPath || hasTreePendingState}
+                  title="新建文件"
+                  aria-label="新建文件"
+                >
+                  <FilePlus2 className="size-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onCreateDirectory(normalizeTreePath(browserPath))}
+                  disabled={!canCreateInBrowserPath || hasTreePendingState}
+                  title="新建目录"
+                  aria-label="新建目录"
+                >
+                  <FolderPlus className="size-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onNavigateUp}
+                  disabled={!browserPath || hasTreePendingState}
+                >
+                  <FolderUp className="size-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onRefresh}
+                  disabled={hasTreePendingState}
+                >
+                  <RefreshCcw className="size-4" />
+                </Button>
+              </div>
+
+              <div
+                className="min-w-0 truncate rounded-2xl bg-muted/32 px-3 py-2 text-xs text-muted-foreground"
+                title={browserPath || "根目录"}
+              >
+                {browserPath || "根目录"}
+              </div>
+            </div>
+
+            <div className="admin-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden pr-1">
+              {sourcesLoading || (treeLoading && rootItems.length === 0) ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Spinner /> 读取文件树…
+                </div>
+              ) : rootItems.length > 0 ? (
+                renderTreeNodes(rootItems)
+              ) : (
+                <div className="text-sm text-muted-foreground">当前目录为空。</div>
+              )}
+            </div>
+          </div>
+
+          <Dialog open={moveDialog !== null} onOpenChange={(open) => !open && setMoveDialog(null)}>
+            <DialogContent className="flex max-h-[min(90vh,820px)] min-h-0 flex-col">
+              <DialogHeader>
+                <DialogTitle className="pr-8 text-xl font-semibold">选择目标目录</DialogTitle>
+                <DialogDescription className="text-sm leading-6 text-muted-foreground">
+                  目标将应用于 {moveDialog?.entries.length ?? 0}{" "}
+                  项。不能移动到自身、后代目录或原目录。
+                </DialogDescription>
+              </DialogHeader>
+              {moveDialog ? (
+                <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 pb-2">
+                  <div className="grid gap-2">
+                    <div
+                      className={cn(
+                        "rounded-2xl border px-4 py-3",
+                        moveTargetDisabledReason
+                          ? "border-warning/24 bg-warning/12 text-foreground"
+                          : "border-border/56 bg-muted/18 text-foreground"
+                      )}
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        目标目录
+                      </div>
+                      <div className="mt-1 truncate text-sm font-medium" title={moveTargetLabel}>
+                        {moveTargetLabel}
+                      </div>
+                      {moveTargetDisabledReason ? (
+                        <div className="mt-2 text-xs leading-5 text-warning">
+                          {moveTargetDisabledReason}
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-xs leading-5 text-muted-foreground">
+                          选择后会立即作为本次移动的目标位置。
+                        </div>
+                      )}
+                    </div>
+                    <div className="px-1 text-xs leading-5 text-muted-foreground">
+                      {moveDialogRule}
+                    </div>
+                  </div>
+                  <DirectoryPickerTree
+                    selectedSource={selectedSource}
+                    rootItems={rootItems}
+                    directoryItemsByPath={directoryItemsByPath}
+                    expandedPaths={expandedPaths}
+                    loadingPaths={loadingPaths}
+                    selectedPath={moveDialog.destinationPath}
+                    disabledReasons={disabledMoveTargets}
+                    className="h-full min-h-[min(14rem,30vh)] flex-1 max-h-none sm:min-h-[min(18rem,36vh)]"
+                    onSelect={(path) =>
+                      setMoveDialog((current) =>
+                        current ? { ...current, destinationPath: path } : current
+                      )
+                    }
+                    onDirectoryExpand={onDirectoryExpand}
+                  />
+                </div>
+              ) : null}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setMoveDialog(null)}>
+                  取消
+                </Button>
+                <Button
+                  disabled={operationPending || !moveDialog || Boolean(moveTargetDisabledReason)}
+                  onClick={async () => {
+                    if (!moveDialog) return;
+                    setOperationPending(true);
+                    try {
+                      await onMoveEntries(moveDialog.entries, moveDialog.destinationPath);
+                      setMoveDialog(null);
+                      clearSelection();
+                    } catch {
+                      // Parent handlers surface owner-facing errors.
+                    }
+                    setOperationPending(false);
+                  }}
+                >
+                  {operationPending ? <Spinner /> : <FolderInput className="size-4" />}
+                  确认移动
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <ConfirmDialog
+            open={deleteDialog !== null}
+            onOpenChange={(open) => {
+              if (!open) setDeleteDialog(null);
+            }}
+            destructive
+            title="确认删除"
+            description={`将删除 ${deleteSummary || "选中项目"}。仅支持删除文件和空目录，此操作不可撤销。`}
+            confirmLabel="删除"
+            confirmPending={operationPending}
+            confirmPendingLabel="删除中..."
+            onConfirm={async () => {
+              if (!deleteDialog) return;
+              setOperationPending(true);
+              try {
+                await onDeleteEntries(deleteDialog.entries);
+                setDeleteDialog(null);
+                clearSelection();
+              } catch {
+                // Parent handlers surface owner-facing errors.
+              }
+              setOperationPending(false);
+            }}
+          />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent
+        aria-label="文件浏览器上下文菜单"
+        collisionPadding={12}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        {contextMenuItems.map((menuItem) => (
+          <div key={menuItem.id}>
+            {menuItem.separatorBefore ? <ContextMenuDivider /> : null}
+            <ContextMenuItem
+              disabled={menuItem.disabled}
+              className={cn(
+                menuItem.destructive &&
+                  !menuItem.disabled &&
+                  "text-destructive data-[highlighted]:text-destructive"
+              )}
+              onSelect={(event) => {
+                event.preventDefault();
+                if (!contextMenuContext) return;
+                void executeCommand(menuItem.command, contextMenuContext);
               }}
             >
-              {operationPending ? <Spinner /> : <FolderInput className="size-4" />}
-              确认移动
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={deleteDialog !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteDialog(null);
-        }}
-        destructive
-        title="确认删除"
-        description={`将删除 ${deleteSummary || "选中项目"}。仅支持删除文件和空目录，此操作不可撤销。`}
-        confirmLabel="删除"
-        confirmPending={operationPending}
-        confirmPendingLabel="删除中..."
-        onConfirm={async () => {
-          if (!deleteDialog) return;
-          setOperationPending(true);
-          try {
-            await onDeleteEntries(deleteDialog.entries);
-            setDeleteDialog(null);
-            clearSelection();
-          } catch {
-            // Parent handlers surface owner-facing errors.
-          }
-          setOperationPending(false);
-        }}
-      />
-    </div>
+              {menuItem.label}
+            </ContextMenuItem>
+          </div>
+        ))}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
