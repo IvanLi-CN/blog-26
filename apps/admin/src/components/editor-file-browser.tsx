@@ -1800,6 +1800,9 @@ export function EditorFileBrowser({
           type: item.type,
         };
         const menuContext = getMenuContextForItem(item);
+        const rowContextMenuOpen =
+          contextMenuOpen &&
+          getTreeSelectionKey(contextMenuContext?.target ?? null) === getTreeSelectionKey(entry);
         const moreActionsOpen = openMoreActionsKey === getTreeSelectionKey(entry);
         const menuItems = getMenuItemsForContext(menuContext);
 
@@ -1807,6 +1810,7 @@ export function EditorFileBrowser({
           <ContextMenu
             key={`${item.type}:${item.path}`}
             modal={false}
+            open={rowContextMenuOpen}
             onOpenChange={(open) => {
               if (open) {
                 handleContextMenuOpen(entry);
