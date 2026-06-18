@@ -930,6 +930,75 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("indexes rewritten markdown and html media links for public snapshot internal source", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/link-photo.png"),
+      "link-photo"
+    );
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/link-clip.mp4"), "link-clip");
+
+    await seedPost({
+      id: "blog/link-media-post.md",
+      filePath: "blog/link-media-post.md",
+      slug: "link-media-post",
+      type: "post",
+      title: "Link Media Post",
+      body: [
+        "[photo](./assets/link-photo.png)",
+        "",
+        '<a href="./assets/link-clip.mp4#watch">clip</a>',
+      ].join("\n"),
+      public: true,
+      draft: false,
+    });
+
+    const snapshotResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(snapshotResponse.status).toBe(200);
+
+    const snapshotPayload = await readJson(snapshotResponse);
+    const snapshotPost = snapshotPayload.posts.find(
+      (post: { slug: string }) => post.slug === "link-media-post"
+    );
+    expect(snapshotPost?.body).toContain("/api/public/assets/post/link-media-post/");
+    expect(snapshotPost?.body).toContain("/content.webp");
+    expect(snapshotPost?.body).toContain("/play.mp4");
+    expect(snapshotPost?.body).not.toContain("./assets/link-photo.png");
+    expect(snapshotPost?.body).not.toContain("./assets/link-clip.mp4");
+
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
+    try {
+      const imageHash = buildPublicMediaHash("blog/assets/link-photo.png", "content");
+      const imageResponse = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/post/link-media-post/${imageHash}`),
+        {
+          kind: "post",
+          slug: "link-media-post",
+          mediaHash: imageHash,
+        }
+      );
+      expect(imageResponse.status).toBe(200);
+      expect(await imageResponse.text()).toBe("link-photo");
+
+      const videoHash = buildPublicMediaHash("blog/assets/link-clip.mp4", "playback");
+      const videoResponse = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/post/link-media-post/${videoHash}`),
+        {
+          kind: "post",
+          slug: "link-media-post",
+          mediaHash: videoHash,
+        }
+      );
+      expect(videoResponse.status).toBe(200);
+      expect(await videoResponse.text()).toBe("link-clip");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+  });
+
   it("rewrites local media urls to the public facade for public rows", async () => {
     await seedPost({
       id: "blog/local-media-post.md",
@@ -1588,6 +1657,65 @@ describe("HTTP compatibility APIs", () => {
     expect(updated.title).toBe("Cleared Memo");
     expect(updated.content).toBe("");
     expect(updated.isPublic).toBe(false);
+  });
+
+  it("keeps stored memo body raw when patching metadata without content", async () => {
+    await seedPost({
+      id: "memos/legacy-facade-source.md",
+      filePath: "Memos/legacy-facade-source.md",
+      slug: "legacy-facade-source",
+      type: "memo",
+      title: "Legacy Facade Source",
+      body: "![legacy](/api/files/webdav/Memos/assets/inline-legacy.png)",
+      public: true,
+      tags: JSON.stringify(["legacy"]),
+    });
+
+    const patchResponse = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/memos/legacy-facade-source",
+        {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            title: "Legacy Facade Source Updated",
+            isPublic: false,
+            tags: ["legacy", "updated"],
+            attachments: [],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/memos/legacy-facade-source"
+    );
+
+    expect(patchResponse.status).toBe(200);
+    const updated = await readJson(patchResponse);
+    expect(updated.content).toBe("![legacy](./assets/inline-legacy.png)");
+    expect(updated.content).not.toContain("/api/public/assets/");
+
+    const detailResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/legacy-facade-source", {}, ADMIN_EMAIL),
+      "/memos/legacy-facade-source"
+    );
+    expect(detailResponse.status).toBe(200);
+    const detail = await readJson(detailResponse);
+    expect(detail.content).toContain("/api/public/assets/memo/legacy-facade-source/");
+    expect(detail.content).not.toContain("/api/files/");
+
+    const stored = await db
+      .select({ body: posts.body, title: posts.title, public: posts.public, tags: posts.tags })
+      .from(posts)
+      .where(eq(posts.slug, "legacy-facade-source"))
+      .limit(1)
+      .then((rows) => rows[0]);
+    expect(stored?.title).toBe("Legacy Facade Source Updated");
+    expect(stored?.public).toBe(false);
+    expect(stored?.body).toBe("![legacy](./assets/inline-legacy.png)");
+    expect(stored?.body).not.toContain("/api/public/assets/");
+    expect(stored?.tags).toBe(JSON.stringify(["legacy", "updated"]));
   });
 
   it("returns structured validation details when creating an empty post", async () => {

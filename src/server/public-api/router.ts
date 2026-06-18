@@ -1,6 +1,9 @@
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
+import { db } from "@/lib/db";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
+import { posts } from "@/lib/schema";
 import { buildPublicSnapshot } from "@/public-site/snapshot";
 import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
@@ -189,9 +192,18 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
           attachments?: Array<{ path: string }>;
         };
         const existing = await caller.memos.bySlug({ slug });
+        const rawExisting = await db
+          .select()
+          .from(posts)
+          .where(eq(posts.id, existing.id))
+          .limit(1)
+          .then((rows) => rows[0]);
+        if (!rawExisting || rawExisting.type !== "memo") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Memo 不存在" });
+        }
         const result = await caller.memos.update({
           id: existing.id,
-          content: typeof body.content === "string" ? body.content : existing.content,
+          content: typeof body.content === "string" ? body.content : rawExisting.body,
           title: body.title ?? existing.title,
           isPublic: body.isPublic ?? existing.isPublic,
           tags: Array.isArray(body.tags) ? body.tags : (existing.tags ?? []),

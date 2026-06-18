@@ -75,5 +75,40 @@ describe("public-media", () => {
       expect(rewritten).toContain("/play.mp4");
       expect(rewritten).toContain("/content.webp");
     });
+
+    it("rewrites markdown media links to indexed facade urls", () => {
+      const content = ["[photo](./assets/photo.png)", '[clip](./assets/clip.mp4 "Demo clip")'].join(
+        "\n"
+      );
+      const rewritten = rewritePublicContentMediaUrls(content, {
+        kind: "post",
+        slug: "demo-post",
+        filePath: "blog/demo-post.md",
+      });
+
+      expect(rewritten).toContain("/api/public/assets/post/demo-post/");
+      expect(rewritten).toContain("/content.webp");
+      expect(rewritten).toContain("/play.mp4");
+      expect(rewritten).not.toContain("./assets/photo.png");
+      expect(rewritten).not.toContain("./assets/clip.mp4");
+    });
+
+    it("rewrites html anchor media links to indexed facade urls", () => {
+      const content = [
+        '<a href="./assets/photo.png">Photo</a>',
+        '<a href="./assets/clip.mp4#watch">Clip</a>',
+      ].join("\n");
+      const rewritten = rewritePublicContentMediaUrls(content, {
+        kind: "memo",
+        slug: "demo-memo",
+        filePath: "Memos/demo.md",
+      });
+
+      expect(rewritten).toContain("/api/public/assets/memo/demo-memo/");
+      expect(rewritten).toContain("/content.webp");
+      expect(rewritten).toContain("/play.mp4");
+      expect(rewritten).not.toContain("./assets/photo.png");
+      expect(rewritten).not.toContain("./assets/clip.mp4#watch");
+    });
   });
 });
