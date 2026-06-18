@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils";
 
 const ADMIN_TOAST_CONTAINER_ID = "admin-toast-viewport";
 
-type AdminToastTone = "success" | "danger" | "default" | "loading";
+type AdminToastTone = "success" | "danger" | "default" | "progress";
 
 function AdminToastIcon({ tone }: { tone: AdminToastTone }) {
-  if (tone === "loading") {
+  if (tone === "progress") {
     return <LoaderCircle className="size-4 animate-spin text-primary" aria-hidden />;
   }
 
@@ -46,11 +46,11 @@ function AdminToastContent({
   return (
     <div
       className={cn(
-        "flex w-full min-w-0 items-start gap-3 rounded-[1rem] border bg-card px-4 py-3 text-sm leading-6 text-foreground shadow-xl shadow-shadow-soft",
+        "pointer-events-none flex w-full min-w-0 items-start gap-3 rounded-[1rem] border bg-card px-4 py-3 text-sm leading-6 text-foreground shadow-xl shadow-shadow-soft",
         tone === "success" && "border-success/30 bg-card",
         tone === "danger" && "border-destructive/30 bg-card",
         tone === "default" && "border-border/68 bg-card",
-        tone === "loading" && "border-primary/30 bg-card"
+        tone === "progress" && "border-primary/30 bg-card"
       )}
       data-testid="admin-toast-content"
     >
@@ -66,7 +66,7 @@ function AdminToastContent({
             event.stopPropagation();
             closeToast(event);
           }}
-          className="-mr-1 -mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          className="-mr-1 -mt-1 pointer-events-auto inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/78 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           data-testid="admin-toast-close"
         >
           <X className="size-4" aria-hidden />
@@ -93,14 +93,14 @@ export function AdminToastViewport() {
       limit={4}
       toastClassName={() =>
         cn(
-          "Toastify__toast !mb-3 !min-h-0 !w-[min(28rem,calc(100vw-2rem))] !overflow-visible !rounded-none !border-0 !bg-transparent !p-0 !shadow-none",
-          "[&_.Toastify__toast-body]:!m-0 [&_.Toastify__toast-body]:!min-w-0 [&_.Toastify__toast-body]:!w-full [&_.Toastify__toast-body]:!p-0"
+          "Toastify__toast !mb-3 !min-h-0 !w-[min(28rem,calc(100vw-2rem))] !overflow-visible !rounded-none !border-0 !bg-transparent !p-0 !shadow-none !pointer-events-none",
+          "[&_.Toastify__toast-body]:!m-0 [&_.Toastify__toast-body]:!min-w-0 [&_.Toastify__toast-body]:!w-full [&_.Toastify__toast-body]:!p-0 [&_.Toastify__toast-body]:!pointer-events-none"
         )
       }
       className={cn(
         "Toastify__toast-container !fixed !right-6 !top-4 !z-[90] !w-auto !p-0 pointer-events-none max-lg:!right-4"
       )}
-      toastStyle={{ pointerEvents: "auto" }}
+      toastStyle={{ pointerEvents: "none" }}
       theme="auto"
     />
   );
@@ -109,14 +109,14 @@ export function AdminToastViewport() {
 export function showAdminToast(tone: AdminToastTone, message: ReactNode, options?: ToastOptions) {
   return toast(
     ({ closeToast }) => (
-      <AdminToastContent tone={tone} closeToast={tone === "loading" ? undefined : closeToast}>
+      <AdminToastContent tone={tone} closeToast={tone === "progress" ? undefined : closeToast}>
         {message}
       </AdminToastContent>
     ),
     {
       containerId: ADMIN_TOAST_CONTAINER_ID,
-      autoClose: tone === "loading" ? false : 3600,
-      closeOnClick: tone !== "loading",
+      autoClose: tone === "progress" ? false : 3600,
+      closeOnClick: tone !== "progress",
       ...options,
     }
   );

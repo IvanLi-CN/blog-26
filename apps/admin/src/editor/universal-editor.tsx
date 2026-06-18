@@ -1,13 +1,23 @@
 import { Code2, Eye } from "lucide-react";
 import { nanoid } from "nanoid";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MilkdownEditor } from "@/components/memos/MilkdownEditor";
 import type { EditorChangeMeta } from "@/editor/editor-change";
 import { USER_EDITOR_CHANGE } from "@/editor/editor-change";
 import {
+  type FrontmatterDiagnostic,
   parseFrontmatterDocument,
   updateDocumentBody,
   updateFrontmatterDocument,
+  validateFrontmatterText,
 } from "@/lib/frontmatter-document";
 import { rewriteApiFilesUrlsToRelative } from "@/lib/persisted-paths";
 import { FrontmatterBlock } from "~/editor/frontmatter-block";
@@ -18,11 +28,13 @@ type EditorMode = "wysiwyg" | "source" | "compare";
 export type UniversalEditorRef = {
   processInlineImages: (content: string) => Promise<string>;
   getContent: () => string;
+  setContent: (content: string) => void;
 };
 
 export type UniversalEditorProps = {
   initialContent: string;
   onContentChange?: (content: string, meta?: EditorChangeMeta) => void;
+  onFrontmatterDiagnosticsChange?: (diagnostics: FrontmatterDiagnostic[]) => void;
   placeholder?: string;
   attachmentBasePath?: string;
   articlePath?: string;
@@ -31,6 +43,10 @@ export type UniversalEditorProps = {
   className?: string;
   mode?: EditorMode;
   editorId?: string;
+  frontmatterSuggestions?: {
+    tags?: string[];
+    categories?: string[];
+  };
   "data-testid"?: string;
 };
 
@@ -52,6 +68,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     {
       initialContent,
       onContentChange,
+      onFrontmatterDiagnosticsChange,
       placeholder = "开始编写...",
       attachmentBasePath = "assets",
       articlePath = "",
@@ -60,6 +77,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       className = "",
       mode = "wysiwyg",
       editorId = "default",
+      frontmatterSuggestions,
       "data-testid": dataTestId,
     },
     ref
@@ -67,7 +85,12 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     const [content, setContent] = useState(initialContent);
     const [currentMode, setCurrentMode] = useState<EditorMode>(mode);
     const lastInitialContentRef = useRef(initialContent);
-    const parsedDocument = parseFrontmatterDocument(content);
+    const latestContentRef = useRef(initialContent);
+    const parsedDocument = useMemo(() => parseFrontmatterDocument(content), [content]);
+    const frontmatterDiagnostics = useMemo(
+      () => validateFrontmatterText(parsedDocument.frontmatterText).diagnostics,
+      [parsedDocument.frontmatterText]
+    );
 
     const processInlineImages = useCallback(
       async (markdown: string) => {
@@ -108,28 +131,36 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       ref,
       () => ({
         processInlineImages,
-        getContent: () => content,
+        getContent: () => latestContentRef.current,
+        setContent: (nextContent: string) => {
+          latestContentRef.current = nextContent;
+          setContent(nextContent);
+        },
       }),
-      [content, processInlineImages]
+      [processInlineImages]
     );
 
     const handleContentChange = (
       nextContent: string,
       meta: EditorChangeMeta = USER_EDITOR_CHANGE
     ) => {
+      latestContentRef.current = nextContent;
       setContent(nextContent);
       onContentChange?.(nextContent, meta);
     };
 
     const handleFrontmatterChange = (nextFrontmatterText: string) => {
       handleContentChange(
-        updateFrontmatterDocument(content, nextFrontmatterText),
+        updateFrontmatterDocument(latestContentRef.current, nextFrontmatterText),
         USER_EDITOR_CHANGE
       );
     };
 
     const handleBodyChange = (nextBody: string, meta?: EditorChangeMeta) => {
-      handleContentChange(updateDocumentBody(content, nextBody), meta ?? USER_EDITOR_CHANGE);
+      handleContentChange(
+        updateDocumentBody(latestContentRef.current, nextBody),
+        meta ?? USER_EDITOR_CHANGE
+      );
     };
 
     const uploadImage = async (
@@ -183,6 +214,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
     useEffect(() => {
       if (initialContent !== lastInitialContentRef.current && initialContent !== content) {
         lastInitialContentRef.current = initialContent;
+        latestContentRef.current = initialContent;
         setContent(initialContent);
       }
     }, [initialContent, content]);
@@ -192,6 +224,10 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
         setCurrentMode(mode);
       }
     }, [mode, currentMode]);
+
+    useEffect(() => {
+      onFrontmatterDiagnosticsChange?.(frontmatterDiagnostics);
+    }, [frontmatterDiagnostics, onFrontmatterDiagnosticsChange]);
 
     return (
       <div className={`flex h-full min-h-0 flex-col ${className}`} data-testid={dataTestId}>
@@ -207,6 +243,8 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
               <FrontmatterBlock
                 value={parsedDocument.frontmatterText}
                 onChange={handleFrontmatterChange}
+                diagnostics={frontmatterDiagnostics}
+                suggestions={frontmatterSuggestions}
               />
               <MilkdownEditor
                 key={`milkdown-editor-${editorId}`}
@@ -277,6 +315,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
                     value={parsedDocument.frontmatterText}
                     readOnly
                     className="mb-4"
+                    diagnostics={frontmatterDiagnostics}
                   />
                   <MilkdownEditor
                     key={`milkdown-compare-readonly-${editorId}`}

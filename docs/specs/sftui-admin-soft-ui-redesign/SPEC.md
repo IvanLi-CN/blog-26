@@ -79,6 +79,8 @@ Out of scope:
 12. The demo editor preserves the shipped editor interaction model: real file-tree and navigation modes share the left sidebar, opening content creates or activates editor tabs, tab state is independent per file, and WYSIWYG / Source / 对照 are the available editor modes. 对照 mode uses a read-only Milkdown rendered pane beside the editable Markdown source pane.
 13. The editor renders Markdown syntax consistently across modes: Source mode keeps raw Markdown syntax visible, while WYSIWYG and the read-only compare preview render headings, lists, blockquotes, inline code, fenced code blocks, and syntax highlighting.
 14. The desktop admin left sidebar is resizable with a visible drag handle embedded inside the right edge of the sidebar card, persists its width in `localStorage`, supports keyboard adjustment, exposes an accessible vertical separator with current width values, provides a discoverability tooltip, supports double-click reset to the default width, and uses the shell grid so widening the sidebar reduces the main workspace width instead of overlapping content. The sidebar keeps its outer card effect, while route-specific panels and user/build details render as lightweight sections instead of nested cards.
+15. The WYSIWYG frontmatter block upgrades from a plain textarea to a local YAML editor that keeps the same visual shell, preserves unknown keys, offers field-name completion, boolean/date/category/tag value completion, shows real-time diagnostics directly inside the block, and auto-grows with its YAML content instead of trapping metadata behind an inner scrollbar.
+16. Frontmatter validation treats `publishDate` as the preferred publish date field, recognizes `date` only as a compatibility field, keeps unknown keys as warnings, blocks save actions only when diagnostics contain errors, and auto-fixes `tags` list indentation style during save without changing the author's data.
 
 ## 7. Validation
 
@@ -87,6 +89,7 @@ Out of scope:
 - `bun run build`
 - `bun run build-storybook`
 - Existing admin Playwright coverage for auth, SPA routing, PATs, memos/admin where relevant, and LLM settings
+- Targeted admin editor coverage for frontmatter autocomplete, diagnostics, and save blocking
 - Browser visual verification from deterministic local preview or Storybook surfaces
 
 ## 8. Visual Evidence
@@ -121,15 +124,21 @@ These screenshots show the shipped Soft UI direction across major routes, themes
 Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 
 - Markdown mode parity: WYSIWYG renders formatted content, Source keeps raw Markdown syntax, and 对照 pairs the editable source pane with a read-only Milkdown preview
+- Frontmatter diagnostics: header keeps a compact error badge with hover-only detail, while invalid lines carry inline line-end markers plus wavy underline for direct location
 - Sidebar reflow: width persists and the shell grid reallocates space from main content instead of overlapping it; measured `272px => 1168px` and `404px => 1036px`
 - File workflow: file actions share one toolbar, inline rename stays in place, the tree fills the available sidebar height, and the sidebar remains free of removed remote-source UI
 - File-tree keyboard contract: `Enter` on the focused file or directory enters inline rename, `Space` keeps the primary open/expand action, and directories also support `ArrowRight` / `ArrowLeft` for explicit expand and collapse
 - File-tree write clarity: create / rename / move / copy / delete show row-level pending feedback on the affected items so the operator can see which entry is submitting without relying on toast timing alone; rename failures keep inline editing active, tint the input into an error state without adding inline error copy or shifting row layout, and keep the error toast visible until dismissed
+
+![Frontmatter diagnostics with compact hover summary and line-level markers](./assets/frontmatter-errors.trimmed.png)
 - Validation clarity: saving a brand-new blank article stops in-place with a natural-language banner instead of exposing raw validation issue arrays
 - Real-root file creation: creating a file inside a configured root such as `Hardware/` succeeds immediately and enters inline rename without surfacing an uninitialized local-source error
 - Empty-file and viewport behavior: a newly created empty file opens immediately, editor surfaces keep full-height layout, and scrolling stays inside the editing panes
 - Card hierarchy: only the outer sidebar/editor shells keep the framed card treatment; inner editor regions stay flat
 - Frontmatter editing rhythm: WYSIWYG keeps frontmatter as a single inline YAML block, shows the complete metadata without an internal scrollbar, preserves visible keyboard focus, aligns YAML and body text columns, preserves keyboard-entered spaces and new lines, and keeps the body heading within the same vertical writing rhythm instead of dropping it into a large gap
+- Frontmatter assist: the WYSIWYG metadata block now provides YAML completion for known fields and common values, tag list suggestions from the existing tag overview data, category suggestions from historical article categories, a compact header summary for warnings and errors, and line-level diagnostics with visible underline or line-end markers so invalid fields stay easy to locate without stealing editor height
+- Frontmatter save polish: save-time style cleanup rewrites inconsistent `tags` list indentation into standard YAML array form, then resynchronizes the live editor state so the status badge returns to `已保存` instead of lingering in a false dirty state
+- Storybook frontmatter proof: a dedicated canvas state shows `publishDate` completion from a partial `pub` draft, and a separate error state uses a realistic article-sized frontmatter block to show compact diagnostics plus exact line-level targeting for invalid `tags` and invalid date text
 - Tab overflow and preview-open behavior: editor tabs stay on one text-line height with truncated long titles, new tabs appear from the left, dirty tabs show a dot rather than status text, hover tooltips expose the full title and saved/unsaved status, close and overflow actions are pure icon buttons, overflow opens a vertical list of all open files on desktop, the same control becomes a third-party bottom drawer on mobile, and file-tree single click uses one replaceable italic temporary tab until double click or real editing makes it permanent
 
 ![Admin demo editor WYSIWYG Markdown rendering](./assets/demo/editor-focused-dark-wysiwyg-markdown-code.trimmed.png)
@@ -181,6 +190,14 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 ![Admin editor frontmatter block and tightened body rhythm](./assets/demo/frontmatter-body-gap-tightened.png)
 
 ![Admin editor frontmatter keyboard spaces and new lines](./assets/demo/frontmatter-whitespace-input.trimmed.png)
+
+![Admin editor frontmatter autocomplete suggests publishDate from a partial draft](./assets/frontmatter-autocomplete.trimmed.png)
+
+![Admin editor frontmatter inline diagnostics block invalid tags and invalid publishDate values](./assets/frontmatter-errors.trimmed.png)
+
+PR: include
+source_type=mock_ui; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
+![Admin editor save auto-fixes frontmatter tags indentation and returns to 已保存](./assets/frontmatter-save-autofix.trimmed.png)
 
 ![Admin editor tab overflow desktop floating list](./assets/demo/admin-editor-tab-overflow-storybook-desktop.trimmed.png)
 

@@ -43,14 +43,133 @@ async function expectSourceMarkdown(textarea: Locator) {
   await expect(textarea).toHaveValue(/useEffect\(\(\) =>/);
 }
 
+function frontmatterEditor(page: Page) {
+  return page.locator('[data-testid="frontmatter-block"] .cm-content');
+}
+
+async function expectFrontmatterText(page: Page, pattern: RegExp) {
+  await expect(frontmatterEditor(page)).toContainText(pattern);
+}
+
+async function setFrontmatterText(page: Page, text: string) {
+  const editor = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+  await editor.click();
+  await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+A`);
+  await page.keyboard.press("Backspace");
+  await page.keyboard.insertText(text);
+}
+
+async function getDiagnosticLineEndCenters(page: Page, severity: "error" | "warning") {
+  return page
+    .locator(`[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line="${severity}"]`)
+    .evaluateAll(
+      (elements, currentSeverity) =>
+        elements.map((element) => {
+          const marker = element.querySelector<HTMLElement>(
+            `[data-frontmatter-diagnostic-line-end="${currentSeverity}"]`
+          );
+          const markerRect = marker?.getBoundingClientRect();
+          return {
+            text: element.textContent || "",
+            afterWidth: markerRect?.width ?? 0,
+            centerX: markerRect ? markerRect.left + markerRect.width / 2 : 0,
+          };
+        }),
+      severity
+    );
+}
+
+async function getFrontmatterFirstGlyphX(page: Page, lineText: string) {
+  return page
+    .locator('[data-testid="frontmatter-block"] .cm-line')
+    .filter({ hasText: lineText })
+    .first()
+    .evaluate((line) => {
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const text = walker.currentNode;
+        const value = text.textContent ?? "";
+        const firstNonWhitespace = value.search(/\S/);
+        if (firstNonWhitespace < 0) continue;
+        const range = document.createRange();
+        range.setStart(text, firstNonWhitespace);
+        range.setEnd(text, firstNonWhitespace + 1);
+        return range.getBoundingClientRect().left;
+      }
+      return null;
+    });
+}
+
+async function dragSelectFrontmatterText(page: Page, selector: string) {
+  const target = page.locator(selector).first();
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+
+  await page.mouse.move(box.x + 120, box.y + 18);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 360, box.y + 18, { steps: 12 });
+  await page.mouse.up();
+}
+
+async function getSelectedFrontmatterText(page: Page) {
+  return page.evaluate(() => window.getSelection()?.toString() ?? "");
+}
+
+async function getFrontmatterSelectionVisualState(page: Page, selector: string) {
+  return page
+    .locator(selector)
+    .first()
+    .evaluate((element) => {
+      const root = element.closest('[data-testid="frontmatter-block"]');
+      const selection = window.getSelection();
+      const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      const rect = range?.getBoundingClientRect() ?? null;
+      const highlight = root?.querySelector(".cm-selectionBackground");
+      const highlightBackgroundColor =
+        highlight instanceof HTMLElement ? getComputedStyle(highlight).backgroundColor : null;
+
+      return {
+        selectionText: selection?.toString() ?? "",
+        rangeWidth: rect?.width ?? 0,
+        rangeHeight: rect?.height ?? 0,
+        highlightCount: root?.querySelectorAll(".cm-selectionBackground").length ?? 0,
+        highlightBackgroundColor,
+      };
+    });
+}
+
+async function getFrontmatterAutosizeMetrics(page: Page) {
+  return page.getByTestId("frontmatter-block").evaluate((block) => {
+    const content = block.querySelector(".frontmatter-codemirror .cm-content");
+    const scroller = block.querySelector(".frontmatter-codemirror .cm-scroller");
+    const lines = content ? Array.from(content.querySelectorAll(".cm-line")) : [];
+    const contentRect = content?.getBoundingClientRect();
+    const lastLineBottom = lines.length
+      ? Math.max(
+          ...lines.map((line) => {
+            const lineRect = line.getBoundingClientRect();
+            return lineRect.bottom - (contentRect?.top ?? 0);
+          })
+        )
+      : 0;
+
+    return {
+      rootHeight: block.getBoundingClientRect().height,
+      contentHeight: contentRect?.height ?? 0,
+      scrollerHeight: scroller?.getBoundingClientRect().height ?? 0,
+      scrollerScrollHeight: scroller instanceof HTMLElement ? scroller.scrollHeight : 0,
+      scrollerScrollTop: scroller instanceof HTMLElement ? scroller.scrollTop : 0,
+      lineCount: lines.length,
+      bottomGap: (contentRect?.height ?? 0) - lastLineBottom,
+    };
+  });
+}
+
 async function expectFrontmatterBlock(page: Page) {
   await expect(page.getByTestId("frontmatter-block")).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Frontmatter YAML editor" })).toHaveValue(
-    /title: React Hooks 深度解析/
-  );
-  await expect(page.getByRole("textbox", { name: "Frontmatter YAML editor" })).toHaveValue(
-    /slug: react-hooks-deep-dive/
-  );
+  await expectFrontmatterText(page, /title: React Hooks 深度解析/);
+  await expectFrontmatterText(page, /slug: react-hooks-deep-dive/);
   const frontmatterMetrics = await page
     .getByRole("textbox", { name: "Frontmatter YAML editor" })
     .evaluate((element) => ({
@@ -58,7 +177,7 @@ async function expectFrontmatterBlock(page: Page) {
       scrollHeight: element.scrollHeight,
       overflowY: getComputedStyle(element).overflowY,
     }));
-  expect(frontmatterMetrics.overflowY).toBe("hidden");
+  expect(["hidden", "visible"]).toContain(frontmatterMetrics.overflowY);
   expect(frontmatterMetrics.scrollHeight).toBeLessThanOrEqual(frontmatterMetrics.clientHeight + 1);
 }
 
@@ -83,7 +202,7 @@ async function expectWysiwygTextColumnAlignment(page: Page) {
     .first()
     .evaluate((element) => element.getBoundingClientRect().left);
   const frontmatterTextLeft = await page
-    .getByRole("textbox", { name: "Frontmatter YAML editor" })
+    .locator('[data-testid="frontmatter-block"] .cm-content')
     .evaluate((element) => {
       const styles = getComputedStyle(element);
       return element.getBoundingClientRect().left + parseFloat(styles.paddingLeft || "0");
@@ -542,8 +661,8 @@ test.describe("Post editor Markdown modes", () => {
     await openDemoEditor(page);
 
     await page.getByRole("button", { name: "WYSIWYG" }).click();
-    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
-    await frontmatter.fill(
+    await setFrontmatterText(
+      page,
       "title: React Hooks 深度解析\nslug: react-hooks-deep-dive\ndraft: false\ncreatedVia: demo"
     );
 
@@ -569,22 +688,116 @@ test.describe("Post editor Markdown modes", () => {
     await openDemoEditor(page);
 
     await page.getByRole("button", { name: "WYSIWYG" }).click();
-    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
-    await frontmatter.fill("title:");
-    await frontmatter.press("End");
-    await frontmatter.press("Space");
-    await frontmatter.pressSequentially("Draft Title");
-    await frontmatter.press("Enter");
-    await frontmatter.pressSequentially("subtitle:");
-    await frontmatter.press("Space");
-    await frontmatter.pressSequentially("First line");
-
-    await expect(frontmatter).toHaveValue("title: Draft Title\nsubtitle: First line");
+    await setFrontmatterText(page, "title: Draft Title\nsubtitle: First line");
 
     await page.getByRole("button", { name: "Source" }).click();
     await expect(page.getByRole("textbox", { name: "Markdown source editor" })).toHaveValue(
       /^---\ntitle: Draft Title\nsubtitle: First line\n---\n/
     );
+  });
+
+  test("WYSIWYG frontmatter block supports Tab and Shift-Tab indentation", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await setFrontmatterText(page, "title: React Hooks 深度解析\ntags:\n  - React\n  - Hooks");
+
+    const editor = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
+    await editor.focus();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+A`);
+    await page.keyboard.press("Tab");
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const source = page.getByRole("textbox", { name: "Markdown source editor" });
+    await expect(source).toHaveValue(
+      /^---\n {2}title: React Hooks 深度解析\n {2}tags:\n {4}- React\n {4}- Hooks\n---\n/
+    );
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await editor.focus();
+    await page.keyboard.press(`${ADDITIVE_SELECTION_MODIFIER}+A`);
+    await page.keyboard.press("Shift+Tab");
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await expect(source).toHaveValue(
+      /^---\ntitle: React Hooks 深度解析\ntags:\n {2}- React\n {2}- Hooks\n---\n/
+    );
+  });
+
+  test("WYSIWYG frontmatter block auto-sizes to short content", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const initialMetrics = await getFrontmatterAutosizeMetrics(page);
+
+    await setFrontmatterText(page, "title: Compact Note\nslug: compact-note");
+
+    await expect.poll(async () => (await getFrontmatterAutosizeMetrics(page)).lineCount).toBe(2);
+
+    const compactMetrics = await getFrontmatterAutosizeMetrics(page);
+    expect(compactMetrics.rootHeight).toBeLessThan(initialMetrics.rootHeight - 48);
+    expect(compactMetrics.bottomGap).toBeLessThan(28);
+    expect(compactMetrics.scrollerScrollHeight).toBeLessThanOrEqual(
+      compactMetrics.scrollerHeight + 1
+    );
+    expect(compactMetrics.scrollerScrollTop).toBe(0);
+  });
+
+  test("frontmatter block remains text-selectable in WYSIWYG and compare preview", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await dragSelectFrontmatterText(page, '[data-testid="frontmatter-block"] .cm-content');
+    await expect.poll(async () => getSelectedFrontmatterText(page)).toContain("Hooks 深度解析");
+    await expect
+      .poll(async () =>
+        getFrontmatterSelectionVisualState(page, '[data-testid="frontmatter-block"] .cm-content')
+      )
+      .toMatchObject(
+        expect.objectContaining({
+          selectionText: expect.stringContaining("Hooks 深度解析"),
+          highlightCount: expect.any(Number),
+        })
+      );
+    await expect
+      .poll(async () =>
+        getFrontmatterSelectionVisualState(page, '[data-testid="frontmatter-block"] .cm-content')
+      )
+      .not.toMatchObject({
+        highlightBackgroundColor: "rgba(0, 0, 0, 0)",
+      });
+
+    await page.getByRole("button", { name: "对照" }).click();
+    await dragSelectFrontmatterText(
+      page,
+      '[data-testid="frontmatter-block"][data-frontmatter-readonly="true"] .cm-content'
+    );
+    await expect.poll(async () => getSelectedFrontmatterText(page)).toContain("Hooks 深度解析");
+    await expect
+      .poll(async () =>
+        getFrontmatterSelectionVisualState(
+          page,
+          '[data-testid="frontmatter-block"][data-frontmatter-readonly="true"] .cm-content'
+        )
+      )
+      .toMatchObject(
+        expect.objectContaining({
+          selectionText: expect.stringContaining("Hooks 深度解析"),
+          highlightCount: expect.any(Number),
+        })
+      );
+    await expect
+      .poll(async () =>
+        getFrontmatterSelectionVisualState(
+          page,
+          '[data-testid="frontmatter-block"][data-frontmatter-readonly="true"] .cm-content'
+        )
+      )
+      .not.toMatchObject({
+        highlightBackgroundColor: "rgba(0, 0, 0, 0)",
+      });
   });
 
   test("frontmatter title change updates the tab label and preserves unknown keys", async ({
@@ -593,8 +806,8 @@ test.describe("Post editor Markdown modes", () => {
     await openDemoEditor(page);
 
     await page.getByRole("button", { name: "WYSIWYG" }).click();
-    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
-    await frontmatter.fill(
+    await setFrontmatterText(
+      page,
       "title: Hooks Title From Frontmatter\nslug: react-hooks-deep-dive\ndraft: false\ncreatedVia: demo"
     );
 
@@ -610,8 +823,8 @@ test.describe("Post editor Markdown modes", () => {
     await openDemoEditor(page);
 
     await page.getByRole("button", { name: "WYSIWYG" }).click();
-    const frontmatter = page.getByRole("textbox", { name: "Frontmatter YAML editor" });
-    await frontmatter.fill(
+    await setFrontmatterText(
+      page,
       "title: React Hooks 深度解析\nslug: react-hooks-deep-dive\ndraft: false"
     );
 
@@ -619,6 +832,236 @@ test.describe("Post editor Markdown modes", () => {
     await expect(page.getByRole("textbox", { name: "Markdown source editor" })).not.toHaveValue(
       /createdVia: demo/
     );
+  });
+
+  test("frontmatter editor shows field completion and tag suggestions", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await setFrontmatterText(page, "pub");
+    await expect(page.locator(".cm-tooltip-autocomplete")).toContainText("publishDate");
+
+    await setFrontmatterText(page, "tags:\n  - Re");
+    await expect(page.locator(".cm-tooltip-autocomplete")).toContainText("React");
+  });
+
+  test("frontmatter errors block saving until fixed", async ({ page }) => {
+    await openDemoEditor(page);
+    const frontmatterHeader = page.getByTestId("frontmatter-block-header");
+    const initialHeaderHeight = await frontmatterHeader.evaluate(
+      (element) => element.getBoundingClientRect().height
+    );
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const sourceEditor = page.getByRole("textbox", { name: "Markdown source editor" });
+    await sourceEditor.fill(`---
+title: Broken Draft
+slug: broken-draft
+tags: true
+publishDate: not-a-date
+---
+
+# Broken Draft`);
+    await expect(sourceEditor).toHaveValue(/title: Broken Draft/);
+    await expect(page.getByTestId("editor-status-badge")).toContainText("未保存");
+    await expect(
+      page.locator("div.text-base.font-semibold").filter({ hasText: "Broken Draft" }).first()
+    ).toBeVisible();
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    const errorMarker = page.getByTestId("frontmatter-diagnostics-error");
+    await expect(errorMarker).toBeVisible();
+    await expect(page.getByText("tags 必须写成数组：")).toHaveCount(0);
+    await expect(page.getByText("publishDate 必须是可解析的日期文本。")).toHaveCount(0);
+    await expect(
+      page.locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line]')
+    ).toHaveCount(2);
+    await expect(
+      page.locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-mark="error"]')
+    ).toHaveCount(2);
+    await expect(
+      page.locator(
+        '[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line-end="error"]'
+      )
+    ).toHaveCount(2);
+    const lineEndCenters = await getDiagnosticLineEndCenters(page, "error");
+    expect(lineEndCenters).toHaveLength(2);
+    expect(lineEndCenters[0]?.afterWidth ?? 0).toBeGreaterThan(0);
+    expect(
+      Math.abs((lineEndCenters[0]?.centerX ?? 0) - (lineEndCenters[1]?.centerX ?? 0))
+    ).toBeLessThanOrEqual(1);
+    await expect(
+      page
+        .locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line-end="error"]')
+        .first()
+    ).toHaveCSS("cursor", "help");
+    await expect(
+      page
+        .locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line-end="error"]')
+        .first()
+    ).not.toHaveAttribute("title", /.+/);
+    await expect(
+      page
+        .locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-mark="error"]')
+        .first()
+    ).not.toHaveAttribute("title", /.+/);
+    const erroredHeaderHeight = await frontmatterHeader.evaluate(
+      (element) => element.getBoundingClientRect().height
+    );
+    expect(Math.abs(erroredHeaderHeight - initialHeaderHeight)).toBeLessThanOrEqual(1);
+    const titleFirstGlyphX = await getFrontmatterFirstGlyphX(page, "title: Broken Draft");
+    const tagsFirstGlyphX = await getFrontmatterFirstGlyphX(page, "tags: true");
+    const publishDateFirstGlyphX = await getFrontmatterFirstGlyphX(page, "publishDate: not-a-date");
+    expect(titleFirstGlyphX).not.toBeNull();
+    expect(tagsFirstGlyphX).not.toBeNull();
+    expect(publishDateFirstGlyphX).not.toBeNull();
+    expect(Math.abs((titleFirstGlyphX ?? 0) - (tagsFirstGlyphX ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((titleFirstGlyphX ?? 0) - (publishDateFirstGlyphX ?? 0))).toBeLessThanOrEqual(
+      1
+    );
+
+    await errorMarker.hover();
+    const tooltip = page.getByRole("tooltip");
+    await expect(tooltip).toContainText("tags 必须写成数组：");
+    await expect(tooltip).toContainText("- React");
+    await expect(tooltip).toContainText("- Hooks");
+    await expect(tooltip).toContainText("publishDate 必须是可解析的日期文本。");
+    await page
+      .locator('[data-testid="frontmatter-block"] [data-frontmatter-diagnostic-line-end="error"]')
+      .first()
+      .hover();
+    await expect(page.getByTestId("frontmatter-diagnostic-tooltip")).toContainText(
+      "tags 必须写成数组："
+    );
+
+    await page.getByTestId("editor-save").click();
+    await expect(
+      page
+        .getByTestId("admin-toast-content")
+        .filter({ hasText: "Frontmatter 里还有错误，修复后才能保存。" })
+    ).toContainText("Frontmatter 里还有错误，修复后才能保存。");
+    await expect(
+      page.getByTestId("admin-toast-content").filter({
+        hasText: "tags 必须写成数组：",
+      })
+    ).toContainText("tags 必须写成数组：");
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "- React" })
+    ).toContainText("- React");
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "- Hooks" })
+    ).toContainText("- Hooks");
+    await expect(
+      page
+        .getByTestId("admin-toast-content")
+        .filter({ hasText: "publishDate 必须是可解析的日期文本。" })
+    ).toContainText("publishDate 必须是可解析的日期文本。");
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "文章保存成功。" })
+    ).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await sourceEditor.fill(`---
+title: Fixed Draft
+publishDate: 2026-06-17
+tags:
+  - React
+  - Hooks
+category: frontend
+---
+
+# Fixed Draft`);
+    await expect(sourceEditor).toHaveValue(/title: Fixed Draft/);
+    await expect(page.getByTestId("editor-status-badge")).toContainText("未保存");
+    await expect(
+      page.locator("div.text-base.font-semibold").filter({ hasText: "Fixed Draft" }).first()
+    ).toBeVisible();
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+
+    await expect(page.getByTestId("frontmatter-diagnostics-error")).toHaveCount(0);
+
+    await page.getByTestId("editor-save").click();
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "文章保存成功。" })
+    ).toContainText("文章保存成功。");
+  });
+
+  test("saving auto-fixes frontmatter tags indentation style", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const sourceEditor = page.getByRole("textbox", { name: "Markdown source editor" });
+    await sourceEditor.fill(`---
+title: Style Draft
+slug: style-draft
+tags:
+    - React
+    - Hooks
+category: frontend
+---
+
+# Style Draft`);
+
+    await page.getByRole("button", { name: "WYSIWYG" }).click();
+    await expect(page.getByTestId("frontmatter-diagnostics-error")).toHaveCount(0);
+    await expect(page.getByTestId("frontmatter-diagnostics-warning")).toHaveCount(0);
+
+    await page.getByTestId("editor-save").click();
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "文章保存成功。" })
+    ).toContainText("文章保存成功。");
+    await expect(
+      page
+        .getByTestId("admin-toast-content")
+        .filter({ hasText: "保存时已自动修复 Frontmatter 样式。" })
+    ).toContainText("tags 列表缩进已整理为标准 YAML 数组样式。");
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+    await expectFrontmatterText(page, /tags:\s+- React\s+- Hooks/);
+
+    await page.getByRole("button", { name: "Source" }).click();
+    await expect(sourceEditor).toHaveValue(/tags:\n {2}- React\n {2}- Hooks/);
+  });
+
+  test("creating a new post keeps auto-fixed frontmatter on the saved tab", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByTestId("editor-create-post").click();
+    await expect(page.getByTestId("editor-status-badge")).toContainText("未保存");
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const sourceEditor = page.getByRole("textbox", { name: "Markdown source editor" });
+    await sourceEditor.fill(`---
+title: Style Draft
+slug: style-draft
+tags:
+    - React
+    - Hooks
+category: frontend
+---
+
+# Style Draft`);
+
+    await page.getByTestId("editor-save").click();
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "已创建新草稿。" })
+    ).toContainText("已创建新草稿。");
+    await expect(
+      page
+        .getByTestId("admin-toast-content")
+        .filter({ hasText: "保存时已自动修复 Frontmatter 样式。" })
+    ).toContainText("tags 列表缩进已整理为标准 YAML 数组样式。");
+
+    const savedTab = page.getByTestId("editor-tab").filter({ hasText: "Style Draft" }).first();
+    await expect(savedTab).toBeVisible();
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+    await expect(savedTab.getByTestId("editor-tab-dirty-dot")).toHaveCount(0);
+    await expect(page.getByTestId("editor-tab").filter({ hasText: "未命名文章" })).toHaveCount(0);
+    await expect(sourceEditor).toHaveValue(/tags:\n {2}- React\n {2}- Hooks/);
+
+    await page.waitForTimeout(600);
+
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+    await expect(savedTab.getByTestId("editor-tab-dirty-dot")).toHaveCount(0);
+    await expect(sourceEditor).toHaveValue(/tags:\n {2}- React\n {2}- Hooks/);
   });
 
   test("opening a sample file keeps it saved until the user edits it", async ({ page }) => {
@@ -656,6 +1099,42 @@ tags:
     await expect(dirtyTab.getByTestId("editor-tab-dirty-dot")).toBeVisible();
     await dirtyTab.hover();
     await expect(page.getByRole("tooltip")).toContainText("电子负载开发笔记，未保存");
+  });
+
+  test("saving a file tab stays saved after the autosync loop runs", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await openFileBrowserItem(page, "电子负载开发笔记.md");
+    await page.getByRole("button", { name: "Source" }).click();
+
+    const source = page.getByRole("textbox", { name: "Markdown source editor" });
+    await source.fill(`---
+title: 电子负载开发笔记
+slug: electronic-load-notes
+draft: false
+public: true
+tags:
+  - Hardware
+  - Circuit
+---
+
+# 电子负载开发笔记
+
+保存后不应该重新变回未保存`);
+
+    await expect(page.getByTestId("editor-status-badge")).toContainText("未保存");
+
+    await page.getByTestId("editor-save").click();
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "文件保存成功。" })
+    ).toContainText("文件保存成功。");
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+
+    await page.waitForTimeout(600);
+
+    const fileTab = page.getByTestId("editor-tab").filter({ hasText: "电子负载开发笔记" }).first();
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+    await expect(fileTab.getByTestId("editor-tab-dirty-dot")).toHaveCount(0);
   });
 
   test("single click creates a temporary tab and double click promotes it to permanent", async ({
@@ -708,9 +1187,7 @@ tags:
 
     await expect(page.getByTestId("editor-tab").first()).toContainText("电子负载开发笔记");
     await expect(page.getByTestId("editor-tab").first()).toHaveAttribute("data-temporary", "true");
-    await expect(page.getByRole("textbox", { name: "Frontmatter YAML editor" })).toHaveValue(
-      /title: 电子负载开发笔记/
-    );
+    await expectFrontmatterText(page, /title: 电子负载开发笔记/);
     await expect(page.getByText(/未找到文件/)).toHaveCount(0);
   });
 
