@@ -157,8 +157,6 @@ function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
       PUBLIC_SITE_URL: `http://localhost:${projectRuntime.port}`,
       PUBLIC_API_BASE_URL: `http://localhost:${projectRuntime.port}`,
       ENABLE_DEV_ENDPOINTS: "true",
-      PUBLIC_MEDIA_DEV_SOURCE_FALLBACK: "1",
-      PUBLIC_MEDIA_PREFER_DEV_SOURCE_FALLBACK: "1",
       LLM_MODEL_CATALOG_SKIP_REFRESH: "1",
       PLAYWRIGHT_DISABLE_WEBSERVER: "0",
       PLAYWRIGHT_SKIP_RESET: "1",

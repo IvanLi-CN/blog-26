@@ -50,13 +50,18 @@
 3. `PublicPostRecord`、`PublicMemoRecord`、`PublicTagTimelineItem` 均升级为带 `media` 结构的公开合同；`local` 内容的旧 `image` / 附件兼容字段已重写为 facade URL，非 `local` 内容继续保留既有公开 URL 语义。
 4. 公开 Markdown 渲染链路在 public mode 下改写相对媒体路径，只输出 `/api/public/assets/...`。
 5. 公开前台详情页、列表页、feeds、snapshot、JSON-LD、OG/Twitter、tag timeline、`/admin/preview/*` 均已切到 facade 语义。
+6. 生产容器启动现在会在 `SERVE_PUBLIC_SITE=true` 时强校验 `PUBLIC_API_BASE_URL`、`PUBLIC_MEDIA_IMAGOR_BASE_URL`、`PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL`，避免把“静态页面正常、公开媒体全挂”的配置发布上线。
+7. CI / release frontend build 校验现在显式要求：
+   - `PUBLIC_SITE_URL` 与 `PUBLIC_API_BASE_URL` 同源
+   - `site-dist` 中真实包含 `/api/public/assets/*` facade 引用
+   - unified Docker smoke 至少命中 1 个真实 facade 媒体 URL，而不是只看 `/api/health`
+8. imagor watermark 已改为 blog 静态 SVG 资源 `/watermark-ivanli.svg`；在 `imagorvideo v1.9.1` 同版实测下，静态 SVG watermark 可用，失败的是内联 `data:` watermark 写法。
 
-## 本地开发回退
+## 本地开发与故障语义
 
 - 生产模型仍是 `blog -> imagorvideo -> /_internal/assets/source/...`。
 - `/_internal/assets/source/...` 只有在 `PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL` 明确指向 blog 内部地址时才会接受请求；未配置时默认返回 `404`，避免误把公开入口当作 internal source。
-- 本地未部署 imagorvideo 时，`handlePublicAssetFacadeRequest` 在非 production 环境允许对图片走 dev-only source fallback，便于本地视觉验证不被外部服务阻断。
-- 该 fallback 只用于开发期 proof，不改变生产期 metadata strip / watermark / modern formats 的真实交付路径。
+- 不再提供 dev/prod 运行时 fallback。imagor 链路失败时统一返回 `502 Public media processor unavailable`，由测试、CI 与发布验证显式暴露问题。
 
 ## 101 部署卡片
 
@@ -72,6 +77,7 @@
 ### imagorvideo 环境变量
 
 - `HTTP_LOADER_ALLOWED_SOURCES=blog:25090`
+- `HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0`
 - `HTTP_LOADER_HTTPS_ONLY=0`
 - `IMAGOR_AUTO_WEBP=1`
 - `IMAGOR_AUTO_AVIF=1`
@@ -84,8 +90,9 @@
 2. `curl -I http://blog:25090/api/public/assets/post/<slug>/<mediaHash>/cover.webp`
 3. `curl -I http://imagorvideo:8000/healthz`
 4. `rg -n '/api/files/|/home/|LOCAL_CONTENT_BASE_PATH' site-dist admin-dist site/generated/public-snapshot.json`
+5. `curl -I https://ivanli.cc/api/public/assets/post/<slug>/<mediaHash>/cover.webp`
 
 ### 回退口径
 
-- 若 imagorvideo 回源异常，先恢复 `HTTP_LOADER_ALLOWED_SOURCES` 与 `HTTP_LOADER_HTTPS_ONLY` 到现网值，再把 blog 的 `PUBLIC_MEDIA_IMAGOR_BASE_URL` 指回旧 imagor 配置。
+ - 若 imagorvideo 回源异常，先恢复 `HTTP_LOADER_ALLOWED_SOURCES`、`HTTP_LOADER_BLOCK_PRIVATE_NETWORKS` 与 `HTTP_LOADER_HTTPS_ONLY` 到现网值，再把 blog 的 `PUBLIC_MEDIA_IMAGOR_BASE_URL` 指回旧 imagor 配置。
 - 若 blog 内部 source 路由出现异常，保留 facade 代码不回退，优先修正 `LOCAL_CONTENT_BASE_PATH`、容器互通与路由匹配，再重启 `blog` 网关。

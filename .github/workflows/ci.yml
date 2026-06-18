@@ -313,15 +313,30 @@ jobs:
             return 1
           }
 
+          docker network create blog-ci-smoke-net >/dev/null 2>&1 || true
+          docker rm -f imagorvideo-ci-smoke >/dev/null 2>&1 || true
           docker rm -f blog-ci-smoke >/dev/null 2>&1 || true
 
           docker run -d \
+            --name imagorvideo-ci-smoke \
+            --network blog-ci-smoke-net \
+            -e IMAGOR_UNSAFE=1 \
+            -e HTTP_LOADER_ALLOWED_SOURCES=blog-ci-smoke:25090 \
+            -e HTTP_LOADER_HTTPS_ONLY=0 \
+            -e HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0 \
+            ghcr.io/cshum/imagorvideo:latest
+
+          docker run -d \
             --name blog-ci-smoke \
+            --network blog-ci-smoke-net \
             -p 127.0.0.1:25090:25090 \
             -e CONTENT_SOURCES=local \
             -e LOCAL_CONTENT_BASE_PATH=/app/data/local \
             -e DB_PATH=/app/data/sqlite.db \
             -e SITE_URL=http://127.0.0.1:25090 \
+            -e PUBLIC_API_BASE_URL=http://127.0.0.1:25090 \
+            -e PUBLIC_MEDIA_IMAGOR_BASE_URL=http://imagorvideo-ci-smoke:8000 \
+            -e PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL=http://blog-ci-smoke:25090 \
             -e LLM_SETTINGS_MASTER_KEY=ci-smoke-llm-settings-master-key \
             -v "$PWD/test-data:/app/data" \
             blog:ci-smoke
@@ -359,6 +374,28 @@ jobs:
           assert payload["pagination"]["totalPages"] >= 1, payload
           PY
 
+          first_media_path="$(python3 - <<'PY'
+          import json
+          with open("/tmp/docker-posts.json", "r", encoding="utf-8") as f:
+              payload = json.load(f)
+          image = next((post.get("image") for post in payload["posts"] if post.get("image")), "")
+          if not image.startswith("/api/public/assets/"):
+              raise SystemExit(f"expected facade image path, got: {image!r}")
+          print(image, end="")
+          PY
+          )"
+
+          wait_for_status \
+            "200" \
+            "http://127.0.0.1:25090${first_media_path}" \
+            "/tmp/docker-first-media.bin"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          data = Path("/tmp/docker-first-media.bin").read_bytes()
+          assert data, "expected non-empty public media response"
+          PY
+
           wait_for_status \
             "200" \
             "http://127.0.0.1:25090/api/public/comments?slug=graphql-api-best-practices" \
@@ -379,10 +416,13 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          docker logs imagorvideo-ci-smoke || true
           docker logs blog-ci-smoke || true
 
       - name: Cleanup docker smoke container
         if: always()
         shell: bash
         run: |
+          docker rm -f imagorvideo-ci-smoke >/dev/null 2>&1 || true
           docker rm -f blog-ci-smoke >/dev/null 2>&1 || true
+          docker network rm blog-ci-smoke-net >/dev/null 2>&1 || true

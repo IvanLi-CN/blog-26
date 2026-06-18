@@ -28,6 +28,19 @@ function assertIncludesSome(
   }
 }
 
+function assertSameOriginPublicApiBaseUrl(siteUrl: string, apiBaseUrl: string) {
+  const siteOrigin = new URL(siteUrl).origin;
+  const apiOrigin = new URL(apiBaseUrl).origin;
+  if (siteOrigin !== apiOrigin) {
+    throw new Error(
+      [
+        `Expected PUBLIC_API_BASE_URL (${apiBaseUrl}) to share the same origin as PUBLIC_SITE_URL (${siteUrl}).`,
+        "This static build emits /api/public/assets/* facade URLs and therefore requires a same-origin live backend/gateway on the public domain.",
+      ].join(" ")
+    );
+  }
+}
+
 function normalizeBasePath(raw: string) {
   const value = raw.trim();
   if (!value || value === "/") return "";
@@ -64,6 +77,10 @@ const siteHost = new URL(siteUrl).hostname;
 
 if (!siteUrl) {
   throw new Error("PUBLIC_SITE_URL is required");
+}
+
+if (apiBaseUrl) {
+  assertSameOriginPublicApiBaseUrl(siteUrl, apiBaseUrl);
 }
 
 const checks = [

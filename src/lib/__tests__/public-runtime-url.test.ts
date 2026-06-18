@@ -10,10 +10,7 @@ import {
 
 afterEach(() => {
   delete process.env.PUBLIC_API_BASE_URL;
-  delete process.env.PUBLIC_API_BASE_URL;
   delete process.env.PUBLIC_SITE_URL;
-  delete process.env.PUBLIC_SITE_URL;
-  delete process.env.PUBLIC_SITE_BASE_PATH;
   delete process.env.PUBLIC_SITE_BASE_PATH;
   delete (globalThis as typeof globalThis & { window?: Window }).window;
 });
@@ -29,13 +26,27 @@ describe("public-runtime-url", () => {
     );
   });
 
-  it("prefers current browser origin for api and asset URLs", () => {
+  it("keeps using PUBLIC_API_BASE_URL when the browser is already running", () => {
     (globalThis as typeof globalThis & { window?: Window }).window = {
       location: {
         origin: "http://127.0.0.1:25110",
       },
     } as Window;
     process.env.PUBLIC_API_BASE_URL = "https://api.example.test/";
+
+    expect(getPublicApiBaseUrl()).toBe("https://api.example.test");
+    expect(toPublicApiUrl("/api/public/posts")).toBe("https://api.example.test/api/public/posts");
+    expect(toPublicAssetUrl("/api/files/local/foo.png")).toBe(
+      "https://api.example.test/api/files/local/foo.png"
+    );
+  });
+
+  it("falls back to the current browser origin when no public api base is configured", () => {
+    (globalThis as typeof globalThis & { window?: Window }).window = {
+      location: {
+        origin: "http://127.0.0.1:25110",
+      },
+    } as Window;
 
     expect(getPublicApiBaseUrl()).toBe("http://127.0.0.1:25110");
     expect(toPublicApiUrl("/api/public/posts")).toBe("http://127.0.0.1:25110/api/public/posts");
@@ -44,7 +55,7 @@ describe("public-runtime-url", () => {
     );
   });
 
-  it("keeps relative paths untouched when no public api base is configured", () => {
+  it("keeps relative paths untouched when neither public api base nor browser origin is configured", () => {
     expect(getPublicApiBaseUrl()).toBe("");
     expect(toPublicApiUrl("/api/public/posts")).toBe("/api/public/posts");
     expect(toPublicAssetUrl("/images/foo.png")).toBe("/images/foo.png");

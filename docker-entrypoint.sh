@@ -40,6 +40,57 @@ env_status() {
   fi
 }
 
+is_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+requires_public_media_runtime() {
+  if ! is_truthy "${SERVE_PUBLIC_SITE:-false}"; then
+    return 1
+  fi
+
+  if [ "${NODE_ENV:-}" != "production" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+validate_public_media_runtime() {
+  if ! requires_public_media_runtime; then
+    return 0
+  fi
+
+  local missing=()
+  local required_vars=(
+    PUBLIC_API_BASE_URL
+    PUBLIC_MEDIA_IMAGOR_BASE_URL
+    PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL
+  )
+
+  local name=""
+  for name in "${required_vars[@]}"; do
+    if [ -z "${!name:-}" ]; then
+      missing+=("${name}")
+    fi
+  done
+
+  if [ "${#missing[@]}" -gt 0 ]; then
+    echo "❌ Config validation failed: same-origin public media facade requires ${missing[*]} when SERVE_PUBLIC_SITE=true in production"
+    echo "❌ Public pages are static, but /api/public/assets/* must still be served by the live backend/gateway."
+    exit 1
+  fi
+
+  echo "✅ Public media runtime configuration validated"
+}
+
 echo "🌐 Runtime configuration:"
 echo "  NODE_ENV=${NODE_ENV:-unset}"
 echo "  DB_PATH=$DB_PATH"
@@ -82,6 +133,7 @@ validate_runtime_config() {
     echo "❌ Config validation failed: LLM_SETTINGS_MASTER_KEY is required in production to store admin LLM API keys"
     exit 1
   fi
+  validate_public_media_runtime
   echo "✅ Runtime configuration validated"
 }
 

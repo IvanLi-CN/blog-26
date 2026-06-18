@@ -159,11 +159,13 @@
   - `HTTP_LOADER_ALLOWED_SOURCES`
   - `HTTP_LOADER_ALLOWED_SOURCE_REGEXP`（如需要）
   - `HTTP_LOADER_HTTPS_ONLY=0`（内部 HTTP 回源模型）
+  - `HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0`（允许 imagorvideo 回源 `blog:25090` 这类容器内网地址）
   - `IMAGOR_AUTO_WEBP=1`
   - `IMAGOR_AUTO_AVIF=1`（官方文档标注 experimental）
   - `IMAGOR_AUTO_JPEG=1`
   - `VIPS_STRIP_METADATA=1`
-- 水印使用 imagor `watermark(...)` filter；视频 poster 使用 `frame(...)` filter。
+- 水印使用 imagor `watermark(...)` filter，且 watermark image 固定回源 blog 自己提供的静态 SVG 文件（例如 `/watermark-ivanli.svg`）；禁止使用内联 `data:` URL watermark。视频 poster 使用 `frame(...)` filter。
+- 公开媒体链路不允许运行时 fallback；`imagorvideo` 不可用、配置错误、或 internal source 回源失败时，门面必须直接返回错误，由部署/监控暴露故障。
 - blog 服务需要知道 imagor 的访问基址与签名配置，才能生成代理请求 URL；前台不可见 imagor 真实地址。
 
 ## 9. 验收标准

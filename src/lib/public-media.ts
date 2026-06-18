@@ -75,6 +75,19 @@ function stripQueryAndHash(value: string) {
   return value.replace(/[?#].*$/u, "");
 }
 
+function decodePathSegments(value: string) {
+  return value
+    .split("/")
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join("/");
+}
+
 function splitExtension(value: string) {
   const normalized = stripQueryAndHash(value).toLowerCase();
   const lastSegment = normalized.split("/").pop() || "";
@@ -159,7 +172,7 @@ export function resolveContentMediaPath(
     return null;
   }
 
-  const clean = normalizePathSeparators(stripQueryAndHash(raw));
+  const clean = normalizePathSeparators(decodePathSegments(stripQueryAndHash(raw)));
   if (!clean) return null;
 
   if (clean.startsWith("/")) {

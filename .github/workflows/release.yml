@@ -397,6 +397,13 @@ jobs:
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bun run frontend:build
 
+      - name: Verify frontend static output
+        env:
+          PUBLIC_API_BASE_URL: ${{ env.PUBLIC_API_BASE_URL }}
+          PUBLIC_SITE_URL: ${{ env.PUBLIC_SITE_URL }}
+          PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
+        run: bun ./scripts/verify-pages-build.ts
+
       - name: Package frontend release assets
         shell: bash
         run: |

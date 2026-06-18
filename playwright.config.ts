@@ -123,8 +123,6 @@ export default defineConfig({
           ALLOW_ADMIN_SESSION_IN_PRODUCTION: "true",
           PUBLIC_SITE_URL: BASE_URL,
           PUBLIC_API_BASE_URL: BASE_URL,
-          PUBLIC_MEDIA_DEV_SOURCE_FALLBACK: "1",
-          PUBLIC_MEDIA_PREFER_DEV_SOURCE_FALLBACK: "1",
           SERVE_PUBLIC_SITE: "true",
           PORT: String(WEB_PORT),
           SITE_PORT: String(SITE_PORT),
@@ -150,9 +148,6 @@ process.env.CONTENT_SOURCES = "local";
 process.env.ENABLE_DEV_ENDPOINTS = "true";
 process.env.ALLOW_ADMIN_SESSION_IN_PRODUCTION = "true";
 process.env.PUBLIC_API_BASE_URL = BASE_URL;
-process.env.PUBLIC_MEDIA_DEV_SOURCE_FALLBACK = process.env.PUBLIC_MEDIA_DEV_SOURCE_FALLBACK || "1";
-process.env.PUBLIC_MEDIA_PREFER_DEV_SOURCE_FALLBACK =
-  process.env.PUBLIC_MEDIA_PREFER_DEV_SOURCE_FALLBACK || "1";
 process.env.BLOG_PAT_ENV = process.env.BLOG_PAT_ENV || "test";
 process.env.SSO_EMAIL_HEADER_NAME = EMAIL_HEADER_NAME;
 process.env.ADMIN_EMAIL = ADMIN_EMAIL;

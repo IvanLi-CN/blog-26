@@ -589,22 +589,8 @@ function signImagorPath(path: string) {
   return `${digest}/${path}`;
 }
 
-function toBase64Url(input: string) {
-  return Buffer.from(input)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/u, "");
-}
-
-function getWatermarkFilter() {
-  const svg = [
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48">',
-    '<text x="120" y="33" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="28" fill="rgba(255,255,255,0.82)">ivanli.cc</text>',
-    "</svg>",
-  ].join("");
-  const dataUri = `data:image/svg+xml;utf8,${svg}`;
-  return `watermark(b64:${toBase64Url(dataUri)},-24,-24,18,22,22)`;
+function getWatermarkFilter(request: Request) {
+  return `watermark(${getInternalSourceBaseUrl(request)}/watermark-ivanli.svg,-24,-24,18,22,22)`;
 }
 
 async function buildImagorPath(params: {
@@ -636,7 +622,7 @@ async function buildImagorPath(params: {
   }
   filters.push(`format(${format})`);
   if (await shouldApplyWatermark(params.ref, params.variant)) {
-    filters.push(getWatermarkFilter());
+    filters.push(getWatermarkFilter(params.request));
   }
 
   const resizeSegment = `fit-in/${recipe.width}x${recipe.height}`;
@@ -744,25 +730,6 @@ async function streamLocalMediaFile(request: Request, ref: MediaReference) {
   });
 }
 
-function shouldUseDevSourceFallback() {
-  const raw = process.env.PUBLIC_MEDIA_DEV_SOURCE_FALLBACK?.trim().toLowerCase();
-  if (raw === "0" || raw === "false" || raw === "no") {
-    return false;
-  }
-  if (raw === "1" || raw === "true" || raw === "yes" || raw === "on") {
-    return true;
-  }
-  return process.env.NODE_ENV !== "production";
-}
-
-function shouldPreferDevSourceFallback() {
-  const raw = process.env.PUBLIC_MEDIA_PREFER_DEV_SOURCE_FALLBACK?.trim().toLowerCase();
-  if (raw === "1" || raw === "true" || raw === "yes" || raw === "on") {
-    return true;
-  }
-  return false;
-}
-
 function createMediaProcessorUnavailableResponse(request: Request) {
   const headers = new Headers({
     "cache-control": "no-store",
@@ -781,18 +748,6 @@ function createMediaProcessorUnavailableResponse(request: Request) {
       headers,
     }
   );
-}
-
-async function streamDevSourceFallback(request: Request, ref: MediaReference) {
-  const upstream = await streamLocalMediaFile(request, ref);
-  const headers = new Headers(upstream.headers);
-  headers.set("cache-control", "no-store");
-  headers.set("x-public-media-fallback", "source");
-  return new Response(request.method === "HEAD" ? null : upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers,
-  });
 }
 
 async function loadContentRow(
@@ -870,14 +825,6 @@ export async function handlePublicAssetFacadeRequest(
     return streamLocalMediaFile(request, resolved.ref);
   }
 
-  if (
-    shouldPreferDevSourceFallback() &&
-    shouldUseDevSourceFallback() &&
-    resolved.ref.kind !== "video"
-  ) {
-    return streamDevSourceFallback(request, resolved.ref);
-  }
-
   const imagorPath = await buildImagorPath({
     request,
     context: resolved.context,
@@ -906,9 +853,6 @@ export async function handlePublicAssetFacadeRequest(
       imagorUrl,
       error,
     });
-    if (shouldUseDevSourceFallback() && resolved.ref.kind !== "video") {
-      return streamDevSourceFallback(request, resolved.ref);
-    }
     return createMediaProcessorUnavailableResponse(request);
   }
 

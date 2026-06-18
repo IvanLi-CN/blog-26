@@ -1,0 +1,23 @@
+import { describe, expect, it } from "bun:test";
+import { resolveContentMediaPath } from "@/lib/public-media";
+
+describe("public-media", () => {
+  describe("resolveContentMediaPath", () => {
+    it("decodes encoded path segments before resolving local media paths", () => {
+      expect(
+        resolveContentMediaPath(
+          "assets/SW2303+INA138%20实现高侧检流的原理图_9fee4a4e-8bd7-4eab-811d-45a1f83d8f86.png",
+          "Hardware/造一个支持隔离、PD 供电的全速 USB-C HUB Rev.2.md"
+        )
+      ).toBe(
+        "Hardware/assets/SW2303+INA138 实现高侧检流的原理图_9fee4a4e-8bd7-4eab-811d-45a1f83d8f86.png"
+      );
+    });
+
+    it("preserves undecodable segments instead of throwing", () => {
+      expect(resolveContentMediaPath("./assets/100%bad.png", "blog/post.md")).toBe(
+        "blog/assets/100%bad.png"
+      );
+    });
+  });
+});
