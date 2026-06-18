@@ -104,6 +104,7 @@ jobs:
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           USER_EMAIL: user-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           SSO_EMAIL_HEADER_NAME: Remote-Email
+          PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR: "0"
           PUBLIC_MEDIA_IMAGOR_BASE_URL: http://127.0.0.1:18000
           PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL: http://host.docker.internal:25090
 
