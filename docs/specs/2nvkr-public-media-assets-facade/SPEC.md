@@ -88,6 +88,14 @@
 - 公开图片、GIF 派生帧、视频 poster 必须 strip metadata / EXIF。
 - 图片宽 `<240`、高 `<160`、或面积 `<80000px` 时跳过水印；其他公开派生图默认加右下角 `ivanli.cc` 透明文本水印。
 
+### 5.5 内容媒体路径规范化
+
+- 内容文件里的本地媒体路径只允许解码安全的 segment 内转义（例如 `%20`）。
+- 编码后的路径分隔符 `%2F` / `%5C` 一律视为非法输入。
+- 任何会在解码后变成 `.` 或 `..` 的编码 dot-segment（例如 `%2E`、`%2E%2E`、`.%2E`）一律视为非法输入。
+- 解析器必须对明文 `.` / `..` segment 做 canonicalize，但只允许结果停留在 `LOCAL_CONTENT_BASE_PATH` 内容根内；任何会越过内容根的 traversal 都必须直接拒绝。
+- 这组规则属于公开媒体合同本身，不允许通过运行时 fallback 容忍或绕过。
+
 ## 6. 公开数据合同
 
 ### 6.1 统一 `media` 视图
@@ -179,6 +187,7 @@
 6. 小图不加水印；公开派生结果不带敏感 metadata。
 7. 101 上 `imagorvideo` / `blog` 所需 compose 与部署卡片改动、验证命令与回退说明具备可执行口径。
 8. 公开入口可直接返回 `/watermark-ivanli.svg`，且 E2E / smoke 覆盖至少有一条真实请求命中该文件与一个 `/api/public/assets/*` 媒体 URL。
+9. 公开媒体路径解析会拒绝编码 separator、编码 dot-segment 与越过内容根的 traversal；这类输入不得被解析成可访问文件路径。
 
 ## Visual Evidence
 

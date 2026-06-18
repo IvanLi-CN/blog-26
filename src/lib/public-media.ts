@@ -81,13 +81,38 @@ function decodePathSegments(value: string) {
     if (/%2f|%5c/i.test(segment)) {
       return null;
     }
+    let decodedSegment = segment;
     try {
-      decodedSegments.push(decodeURIComponent(segment));
+      decodedSegment = decodeURIComponent(segment);
     } catch {
-      decodedSegments.push(segment);
+      decodedSegment = segment;
     }
+    if (
+      (decodedSegment === "." || decodedSegment === "..") &&
+      segment !== "." &&
+      segment !== ".."
+    ) {
+      return null;
+    }
+    decodedSegments.push(decodedSegment);
   }
   return decodedSegments.join("/");
+}
+
+function resolvePathSegments(baseSegments: string[], pathSegments: string[]) {
+  const resolved = [...baseSegments];
+  for (const segment of pathSegments) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      if (resolved.length === 0) {
+        return null;
+      }
+      resolved.pop();
+      continue;
+    }
+    resolved.push(segment);
+  }
+  return resolved.join("/");
 }
 
 function splitExtension(value: string) {
@@ -180,31 +205,15 @@ export function resolveContentMediaPath(
   const clean = normalizePathSeparators(decoded);
   if (!clean) return null;
 
-  if (clean.startsWith("/")) {
-    return clean.replace(/^\/+/u, "");
-  }
-
   const normalizedFilePath = normalizePathSeparators(markdownFilePath).replace(/^\/+/u, "");
-  const baseSegments = normalizedFilePath
+  const markdownDirSegments = normalizedFilePath
     .split("/")
     .filter(Boolean)
     .slice(0, normalizedFilePath.includes("/") ? -1 : 0);
-
   const pathSegments = clean.split("/").filter(Boolean);
-  if (!clean.startsWith("./") && !clean.startsWith("../")) {
-    return [...baseSegments, ...pathSegments].join("/");
-  }
-
-  for (const segment of pathSegments) {
-    if (segment === ".") continue;
-    if (segment === "..") {
-      if (baseSegments.length > 0) baseSegments.pop();
-      continue;
-    }
-    baseSegments.push(segment);
-  }
-
-  return baseSegments.join("/");
+  const baseSegments = clean.startsWith("/") ? [] : markdownDirSegments;
+  const resolved = resolvePathSegments(baseSegments, pathSegments);
+  return resolved || null;
 }
 
 export function buildLegacyPublicMediaUrl(params: {

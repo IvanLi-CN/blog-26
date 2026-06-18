@@ -27,5 +27,18 @@ describe("public-media", () => {
     it("rejects encoded backslashes before they can become traversal separators", () => {
       expect(resolveContentMediaPath("assets%5C..%5Csecret.png", "blog/post.md")).toBeNull();
     });
+
+    it("rejects encoded dot segments before they can become traversal operators", () => {
+      expect(resolveContentMediaPath("assets/%2e%2e/%2e%2e/secret.png", "blog/post.md")).toBeNull();
+      expect(resolveContentMediaPath("assets/.%2E/secret.png", "blog/post.md")).toBeNull();
+    });
+
+    it("collapses plain dot segments while rejecting traversal above the content root", () => {
+      expect(resolveContentMediaPath("assets/../secret.png", "blog/post.md")).toBe(
+        "blog/secret.png"
+      );
+      expect(resolveContentMediaPath("../../secret.png", "blog/post.md")).toBeNull();
+      expect(resolveContentMediaPath("/../secret.png", "blog/post.md")).toBeNull();
+    });
   });
 });
