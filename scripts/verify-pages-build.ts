@@ -298,8 +298,6 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
 
     assertIncludesSome(htmlFiles, contents, "/api/public/assets/");
     assertIncludesSome(publicDocumentFiles, contents, `${apiBaseUrl}/api/public/assets/`);
-    assertIncludesSome(feedFiles, contents, `${siteUrl}/posts/`);
-    assertIncludesSome(feedFiles, contents, `${apiBaseUrl}/api/public/assets/`);
     assertExcludes(
       contents.get("site-dist/index.html") ?? "",
       "/api/files/",
@@ -312,6 +310,12 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
 
     for (const file of publicDocumentFiles) {
       assertExcludes(contents.get(file) ?? "", "/api/files/", file);
+    }
+
+    for (const file of feedFiles) {
+      const content = contents.get(file) ?? "";
+      assertIncludes(content, `${siteUrl}/posts/`, file);
+      assertIncludes(content, `${apiBaseUrl}/api/public/assets/`, file);
     }
   }
 
