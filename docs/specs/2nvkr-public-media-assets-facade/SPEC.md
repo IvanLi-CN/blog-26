@@ -134,6 +134,18 @@
 
 `mediaHash` 必须把“规范化相对媒体路径 + 内容角色”都纳入稳定键输入，避免同一路径在不同公开语义下冲突。
 
+### 6.3 正文媒体语法面
+
+- 公开正文里凡是会被改写成 `/api/public/assets/...` 的本地媒体引用，都必须先进入服务端 `mediaHash` 索引集合。
+- 当前受支持并且必须建立索引的正文媒体语法固定为：
+  - Markdown 图片：`![alt](./assets/x.png)`、`![alt](./assets/x.mp4)`
+  - Markdown 普通链接指向本地媒体：`[photo](./assets/x.png)`、`[clip](./assets/x.mp4)`
+  - Wiki 图片：`![[./assets/x.png]]`
+  - HTML 媒体标签：`<img src>`, `<video src poster>`, `<source src>`
+  - HTML anchor 指向本地媒体：`<a href="./assets/x.png">`, `<a href="./assets/x.mp4">`
+- 不属于上述集合的本地链接语法，不得偷偷改写成 facade URL。
+- 本合同不允许运行时 fallback：若某种语法会 rewrite 成 facade URL，却没有对应索引与 internal source 命中能力，视为实现错误。
+
 ## 7. 派生规则
 
 ### 7.1 图片 / GIF

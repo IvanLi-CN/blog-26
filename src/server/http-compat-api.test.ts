@@ -930,6 +930,75 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
+  it("indexes rewritten markdown and html media links for public snapshot internal source", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/link-photo.png"),
+      "link-photo"
+    );
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/link-clip.mp4"), "link-clip");
+
+    await seedPost({
+      id: "blog/link-media-post.md",
+      filePath: "blog/link-media-post.md",
+      slug: "link-media-post",
+      type: "post",
+      title: "Link Media Post",
+      body: [
+        "[photo](./assets/link-photo.png)",
+        "",
+        '<a href="./assets/link-clip.mp4#watch">clip</a>',
+      ].join("\n"),
+      public: true,
+      draft: false,
+    });
+
+    const snapshotResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(snapshotResponse.status).toBe(200);
+
+    const snapshotPayload = await readJson(snapshotResponse);
+    const snapshotPost = snapshotPayload.posts.find(
+      (post: { slug: string }) => post.slug === "link-media-post"
+    );
+    expect(snapshotPost?.body).toContain("/api/public/assets/post/link-media-post/");
+    expect(snapshotPost?.body).toContain("/content.webp");
+    expect(snapshotPost?.body).toContain("/play.mp4");
+    expect(snapshotPost?.body).not.toContain("./assets/link-photo.png");
+    expect(snapshotPost?.body).not.toContain("./assets/link-clip.mp4");
+
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
+    try {
+      const imageHash = buildPublicMediaHash("blog/assets/link-photo.png", "content");
+      const imageResponse = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/post/link-media-post/${imageHash}`),
+        {
+          kind: "post",
+          slug: "link-media-post",
+          mediaHash: imageHash,
+        }
+      );
+      expect(imageResponse.status).toBe(200);
+      expect(await imageResponse.text()).toBe("link-photo");
+
+      const videoHash = buildPublicMediaHash("blog/assets/link-clip.mp4", "playback");
+      const videoResponse = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/post/link-media-post/${videoHash}`),
+        {
+          kind: "post",
+          slug: "link-media-post",
+          mediaHash: videoHash,
+        }
+      );
+      expect(videoResponse.status).toBe(200);
+      expect(await videoResponse.text()).toBe("link-clip");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+  });
+
   it("rewrites local media urls to the public facade for public rows", async () => {
     await seedPost({
       id: "blog/local-media-post.md",

@@ -64,6 +64,7 @@
 12. Playwright E2E 的 guest/admin/user/mcp 全矩阵现在都通过 `playwright.config.ts` 统一管理 imagor sidecar，让 sidecar 回源地址始终跟随实际 `WEB_PORT`；仓库默认本地 Playwright 入口与 GitHub Actions 保持同一合同。公开媒体覆盖不再只停留在 `img src` 字符串断言，而会实际请求至少一个 facade 媒体 URL。
 13. 公开媒体路径解析只解码安全的 segment 内转义（例如 `%20`），并显式拒绝 `%2F` / `%5C` 这类编码后的路径分隔符，以及任何会在解码后变成 `.` / `..` 的编码 dot-segment；明文 dot-segment 会先 canonicalize，再拒绝任何越过 `LOCAL_CONTENT_BASE_PATH` 内容根的 traversal。
 14. 公开内容正文现在会在 snapshot 读取、public API 序列化与 Markdown public-mode 渲染三个入口统一把历史 `/api/files/<source>/...` 链接改写为 `/api/public/assets/...`，并把这类 legacy files-api path 当作内容根相对路径解析。这样 release 使用预下载 `public-snapshot.json` 时也不会再把旧 `webdav` 路径泄漏进 `site-dist`。
+15. 正文媒体 rewrite 与服务端索引现在保持同构：除了 Markdown 图片、wiki 图片、`<img>/<video>/<source>`，还显式覆盖指向本地媒体的 Markdown 普通链接与 HTML `<a href>`；任何会被 rewrite 成 facade URL 的正文语法，都必须能通过相同 `mediaHash` 命中 `/_internal/assets/source/...`，不依赖运行时 fallback。
 
 ## 本地开发与故障语义
 

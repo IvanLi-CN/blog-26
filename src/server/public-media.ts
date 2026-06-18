@@ -67,6 +67,8 @@ const VARIANT_RECIPES = {
 
 const IMAGE_DISPLAY_VARIANTS = ["card", "cover", "content", "full", "social"] as const;
 const VIDEO_DISPLAY_VARIANTS = ["card", "cover", "content", "full", "social", "poster"] as const;
+const INLINE_MARKDOWN_LINK_RE =
+  /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/gu;
 
 function shouldUsePublicMediaFacadeForRow(_row: Pick<ContentRow, "dataSource">) {
   return true;
@@ -129,20 +131,27 @@ function normalizeMarkdownTarget(raw: string) {
     .trim();
 }
 
-function collectMarkdownImageRefs(content: string) {
-  const refs: Array<{ path: string; alt: string | null }> = [];
-  const markdownImage = /!\[([^\]]*)\]\(([^)]+)\)/gu;
-  for (const match of content.matchAll(markdownImage)) {
-    const path = normalizeMarkdownTarget(match[2] || "");
-    if (!path) continue;
-    refs.push({ path, alt: match[1]?.trim() || null });
+function collectMarkdownMediaRefs(content: string) {
+  const refs: Array<{ path: string; alt: string | null; role: PublicMediaRole }> = [];
+
+  for (const match of content.matchAll(INLINE_MARKDOWN_LINK_RE)) {
+    const prefix = match[1] || "";
+    const path = normalizeMarkdownTarget(`${match[2] || ""}${match[3] || ""}${match[4] || ""}`);
+    const kind = detectPublicMediaKind(path);
+    if (!path || !kind) continue;
+    const labelMatch = /^!?\[([^\]]*)\]\($/u.exec(prefix);
+    refs.push({
+      path,
+      alt: labelMatch?.[1]?.trim() || null,
+      role: prefix.startsWith("![") || kind !== "video" ? "content" : "playback",
+    });
   }
 
   const wikiImage = /!\[\[([^\]]+)\]\]/gu;
   for (const match of content.matchAll(wikiImage)) {
     const path = normalizeWikiImageTarget(match[1] || "");
     if (!path) continue;
-    refs.push({ path, alt: null });
+    refs.push({ path, alt: null, role: "content" });
   }
 
   return refs;
@@ -176,6 +185,18 @@ function collectHtmlMediaRefs(content: string) {
     const path = match[2]?.trim();
     if (!path) continue;
     refs.push({ path, alt: null, role: "playback" });
+  }
+
+  const anchorTag = /<a\b[^>]*\bhref=(["'])([^"']+)\1[^>]*>/giu;
+  for (const match of content.matchAll(anchorTag)) {
+    const path = match[2]?.trim();
+    const kind = path ? detectPublicMediaKind(path) : null;
+    if (!path || !kind) continue;
+    refs.push({
+      path,
+      alt: null,
+      role: kind === "video" ? "playback" : "content",
+    });
   }
 
   return refs;
@@ -244,13 +265,12 @@ function buildContentMediaReferences(kind: PublicContentKind, row: ContentRow) {
     if (coverRef) refs.push(coverRef);
   }
 
-  for (const item of collectMarkdownImageRefs(row.body || "")) {
+  for (const item of collectMarkdownMediaRefs(row.body || "")) {
     if (isExternalMediaUrl(item.path)) continue;
-    const role = detectPublicMediaKind(item.path) === "video" ? "playback" : "content";
     const ref = buildMediaReference({
       mediaPath: item.path,
       markdownFilePath,
-      role,
+      role: item.role,
       alt: item.alt,
     });
     if (ref) refs.push(ref);
