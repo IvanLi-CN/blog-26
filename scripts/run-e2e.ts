@@ -89,6 +89,17 @@ function usage() {
 `);
 }
 
+function assignIfPresent(
+  env: NodeJS.ProcessEnv,
+  key: keyof NodeJS.ProcessEnv,
+  value: string | undefined
+) {
+  const trimmed = value?.trim();
+  if (trimmed) {
+    env[key] = trimmed;
+  }
+}
+
 function splitArgs(argv: string[]) {
   const separator = argv.indexOf("--");
   if (separator === -1) {
@@ -114,6 +125,23 @@ function parseMode(argv: string[]) {
     return { mode, project: project as E2EProjectName } as const;
   }
   return { mode, project: null } as const;
+}
+
+export function buildSingleProjectEnv(
+  project: E2EProjectName,
+  baseEnv: NodeJS.ProcessEnv = process.env
+) {
+  const env: NodeJS.ProcessEnv = {
+    ...baseEnv,
+    PLAYWRIGHT_TEST_PROJECT: project,
+  };
+  assignIfPresent(env, "PUBLIC_MEDIA_IMAGOR_BASE_URL", baseEnv.PUBLIC_MEDIA_IMAGOR_BASE_URL);
+  assignIfPresent(
+    env,
+    "PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL",
+    baseEnv.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL
+  );
+  return env;
 }
 
 function runStep(name: string, cmd: string[], env: NodeJS.ProcessEnv) {
@@ -256,14 +284,7 @@ async function runFull(extraArgs: string[]) {
 }
 
 async function runSingleProject(project: E2EProjectName, extraArgs: string[]) {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    PLAYWRIGHT_TEST_PROJECT: project,
-    PUBLIC_MEDIA_IMAGOR_BASE_URL:
-      process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL || "http://127.0.0.1:18000",
-    PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL:
-      process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL || "http://host.docker.internal:25090",
-  };
+  const env = buildSingleProjectEnv(project);
   await runStep(
     `Playwright project ${project}`,
     ["bun", "x", "playwright", "test", "--project", project, ...extraArgs],
@@ -283,7 +304,9 @@ async function main() {
   await runSingleProject(parsed.project, passthrough);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}
