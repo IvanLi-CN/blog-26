@@ -19,5 +19,13 @@ describe("public-media", () => {
         "blog/assets/100%bad.png"
       );
     });
+
+    it("rejects encoded forward slashes before they can become traversal separators", () => {
+      expect(resolveContentMediaPath("assets%2f..%2f..%2fsecret.png", "blog/post.md")).toBeNull();
+    });
+
+    it("rejects encoded backslashes before they can become traversal separators", () => {
+      expect(resolveContentMediaPath("assets%5C..%5Csecret.png", "blog/post.md")).toBeNull();
+    });
   });
 });

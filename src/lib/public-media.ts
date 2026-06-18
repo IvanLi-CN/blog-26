@@ -76,16 +76,18 @@ function stripQueryAndHash(value: string) {
 }
 
 function decodePathSegments(value: string) {
-  return value
-    .split("/")
-    .map((segment) => {
-      try {
-        return decodeURIComponent(segment);
-      } catch {
-        return segment;
-      }
-    })
-    .join("/");
+  const decodedSegments: string[] = [];
+  for (const segment of value.split("/")) {
+    if (/%2f|%5c/i.test(segment)) {
+      return null;
+    }
+    try {
+      decodedSegments.push(decodeURIComponent(segment));
+    } catch {
+      decodedSegments.push(segment);
+    }
+  }
+  return decodedSegments.join("/");
 }
 
 function splitExtension(value: string) {
@@ -172,7 +174,10 @@ export function resolveContentMediaPath(
     return null;
   }
 
-  const clean = normalizePathSeparators(decodePathSegments(stripQueryAndHash(raw)));
+  const decoded = decodePathSegments(stripQueryAndHash(raw));
+  if (decoded == null) return null;
+
+  const clean = normalizePathSeparators(decoded);
   if (!clean) return null;
 
   if (clean.startsWith("/")) {
