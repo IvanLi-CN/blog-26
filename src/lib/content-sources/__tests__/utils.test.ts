@@ -268,6 +268,11 @@ describe("Memo Utils", () => {
       expect(slug).toBe("uejdtk1-");
     });
 
+    it("preserves memo nanoid-style slugs for configured non-default memo roots", () => {
+      const slug = generateSlugFromPath("Notes/20260615_uEjDtK1-.md", undefined, "memo");
+      expect(slug).toBe("uejdtk1-");
+    });
+
     it("normalizes title-derived memo filename slugs", () => {
       const slug = generateSlugFromPath("Memos/20260615_React Learning.md");
       expect(slug).toBe("react-learning");

@@ -110,4 +110,34 @@ describe("LocalContentSource real path mappings", () => {
     expect(items[0]?.type).toBe("memo");
     expect(items[0]?.slug).toBe("uejdtk1-");
   });
+
+  it("preserves memo nanoid-style slugs for configured custom memo roots", async () => {
+    const basePath = await createTempContentDir();
+
+    await mkdir(join(basePath, "Notes"), { recursive: true });
+    await writeFile(
+      join(basePath, "Notes", "20260615_uEjDtK1-.md"),
+      "# Untitled memo\n\nBody\n",
+      "utf-8"
+    );
+
+    const source = new LocalContentSource(
+      LocalContentSource.createDefaultConfig("local-test", 1, {
+        contentPath: basePath,
+        pathMappings: {
+          posts: ["/Hardware"],
+          projects: ["/Projects"],
+          memos: ["/Notes"],
+        },
+      })
+    );
+
+    await source.initialize();
+    const items = await source.listContent();
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.type).toBe("memo");
+    expect(items[0]?.filePath).toBe("Notes/20260615_uEjDtK1-.md");
+    expect(items[0]?.slug).toBe("uejdtk1-");
+  });
 });
