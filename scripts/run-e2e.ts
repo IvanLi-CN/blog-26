@@ -17,6 +17,7 @@ type ProjectRuntime = {
   port: number;
   sitePort: number;
   adminPort: number;
+  publicMediaPort: number;
 };
 
 function isPortBusy(port: number): boolean {
@@ -53,11 +54,50 @@ function pickPortTriplet(basePort: number, usedPorts: Set<number>) {
   throw new Error(`Unable to allocate an isolated E2E port triplet from ${basePort}`);
 }
 
+function pickSinglePort(basePort: number, usedPorts: Set<number>) {
+  let candidate = basePort;
+  while (candidate < basePort + 2_000) {
+    if (!usedPorts.has(candidate) && !isPortBusy(candidate)) {
+      usedPorts.add(candidate);
+      return candidate;
+    }
+    candidate += 1;
+  }
+  throw new Error(`Unable to allocate an isolated port from ${basePort}`);
+}
+
+function readPublicMediaPort(rawBaseUrl: string | undefined, fallbackPort: number) {
+  if (!rawBaseUrl?.trim()) {
+    return fallbackPort;
+  }
+
+  try {
+    const parsed = new URL(rawBaseUrl);
+    if (parsed.port) {
+      return Number(parsed.port);
+    }
+    return parsed.protocol === "https:" ? 443 : 80;
+  } catch {
+    return fallbackPort;
+  }
+}
+
 function usage() {
   console.log(`Usage:
   bun ./scripts/run-e2e.ts full [-- <extra playwright args>]
   bun ./scripts/run-e2e.ts project <guest|admin|user|mcp> [-- <extra playwright args>]
 `);
+}
+
+function assignIfPresent(
+  env: NodeJS.ProcessEnv,
+  key: keyof NodeJS.ProcessEnv,
+  value: string | undefined
+) {
+  const trimmed = value?.trim();
+  if (trimmed) {
+    env[key] = trimmed;
+  }
 }
 
 function splitArgs(argv: string[]) {
@@ -87,6 +127,23 @@ function parseMode(argv: string[]) {
   return { mode, project: null } as const;
 }
 
+export function buildSingleProjectEnv(
+  project: E2EProjectName,
+  baseEnv: NodeJS.ProcessEnv = process.env
+) {
+  const env: NodeJS.ProcessEnv = {
+    ...baseEnv,
+    PLAYWRIGHT_TEST_PROJECT: project,
+  };
+  assignIfPresent(env, "PUBLIC_MEDIA_IMAGOR_BASE_URL", baseEnv.PUBLIC_MEDIA_IMAGOR_BASE_URL);
+  assignIfPresent(
+    env,
+    "PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL",
+    baseEnv.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL
+  );
+  return env;
+}
+
 function runStep(name: string, cmd: string[], env: NodeJS.ProcessEnv) {
   return new Promise<void>((resolve, reject) => {
     console.log(`\n== ${name} ==`);
@@ -110,10 +167,15 @@ async function ensurePathExists(target: string) {
 
 async function prepareProjectRuntime(rootDir: string, project: E2EProjectName, index: number) {
   const basePort = Number(process.env.E2E_BASE_PORT || E2E_DEFAULT_WEB_PORT + 100);
+  const basePublicMediaPort = readPublicMediaPort(
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL,
+    E2E_DEFAULT_WEB_PORT + 900
+  );
   const projectDir = path.join(rootDir, project);
   const dbPath = path.join(projectDir, "sqlite.db");
   const localContentPath = path.join(projectDir, "local");
   const { port, sitePort, adminPort } = pickPortTriplet(basePort + index * 10, allocatedPorts);
+  const publicMediaPort = pickSinglePort(basePublicMediaPort + index * 10, allocatedPorts);
 
   await rm(projectDir, { recursive: true, force: true });
   await mkdir(projectDir, { recursive: true });
@@ -127,6 +189,7 @@ async function prepareProjectRuntime(rootDir: string, project: E2EProjectName, i
     port,
     sitePort,
     adminPort,
+    publicMediaPort,
   } satisfies ProjectRuntime;
 }
 
@@ -156,15 +219,16 @@ function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
       BASE_URL: `http://localhost:${projectRuntime.port}`,
       PUBLIC_SITE_URL: `http://localhost:${projectRuntime.port}`,
       PUBLIC_API_BASE_URL: `http://localhost:${projectRuntime.port}`,
+      PUBLIC_MEDIA_IMAGOR_BASE_URL: `http://127.0.0.1:${projectRuntime.publicMediaPort}`,
+      PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL: `http://host.docker.internal:${projectRuntime.port}`,
       ENABLE_DEV_ENDPOINTS: "true",
-      PUBLIC_MEDIA_DEV_SOURCE_FALLBACK: "1",
-      PUBLIC_MEDIA_PREFER_DEV_SOURCE_FALLBACK: "1",
       LLM_MODEL_CATALOG_SKIP_REFRESH: "1",
       PLAYWRIGHT_DISABLE_WEBSERVER: "0",
       PLAYWRIGHT_SKIP_RESET: "1",
       PLAYWRIGHT_SKIP_BUILD: "1",
       PLAYWRIGHT_TEST_PROJECT: projectRuntime.project,
       PLAYWRIGHT_REPORT_ROOT: reportDir,
+      PLAYWRIGHT_PUBLIC_MEDIA_CONTAINER_NAME: `imagorvideo-playwright-${projectRuntime.project}-${projectRuntime.publicMediaPort}`,
     };
 
     console.log(
@@ -220,10 +284,7 @@ async function runFull(extraArgs: string[]) {
 }
 
 async function runSingleProject(project: E2EProjectName, extraArgs: string[]) {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    PLAYWRIGHT_TEST_PROJECT: project,
-  };
+  const env = buildSingleProjectEnv(project);
   await runStep(
     `Playwright project ${project}`,
     ["bun", "x", "playwright", "test", "--project", project, ...extraArgs],
@@ -243,7 +304,9 @@ async function main() {
   await runSingleProject(parsed.project, passthrough);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}

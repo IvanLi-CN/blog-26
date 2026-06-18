@@ -313,15 +313,53 @@ jobs:
             return 1
           }
 
+          wait_for_http() {
+            local url="$1"
+            local output_file="$2"
+            local attempts="${3:-30}"
+            local sleep_seconds="${4:-2}"
+            local status=""
+
+            for _ in $(seq 1 "$attempts"); do
+              status="$(curl -sS -o "$output_file" -w '%{http_code}' "$url" || true)"
+              if [ "$status" != "000" ]; then
+                return 0
+              fi
+              sleep "$sleep_seconds"
+            done
+
+            echo "Timed out waiting for ${url} to accept HTTP; last status=${status}" >&2
+            cat "$output_file" >&2 || true
+            return 1
+          }
+
+          docker network create blog-ci-smoke-net >/dev/null 2>&1 || true
+          docker rm -f imagorvideo-ci-smoke >/dev/null 2>&1 || true
           docker rm -f blog-ci-smoke >/dev/null 2>&1 || true
 
           docker run -d \
+            --name imagorvideo-ci-smoke \
+            --network blog-ci-smoke-net \
+            -p 127.0.0.1:18000:8000 \
+            -e IMAGOR_UNSAFE=1 \
+            -e HTTP_LOADER_ALLOWED_SOURCES=blog-ci-smoke:25090 \
+            -e HTTP_LOADER_HTTPS_ONLY=0 \
+            -e HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0 \
+            ghcr.io/cshum/imagorvideo:latest
+
+          wait_for_http "http://127.0.0.1:18000/" "/tmp/imagor-health.txt"
+
+          docker run -d \
             --name blog-ci-smoke \
+            --network blog-ci-smoke-net \
             -p 127.0.0.1:25090:25090 \
             -e CONTENT_SOURCES=local \
             -e LOCAL_CONTENT_BASE_PATH=/app/data/local \
             -e DB_PATH=/app/data/sqlite.db \
             -e SITE_URL=http://127.0.0.1:25090 \
+            -e PUBLIC_API_BASE_URL=http://127.0.0.1:25090 \
+            -e PUBLIC_MEDIA_IMAGOR_BASE_URL=http://imagorvideo-ci-smoke:8000 \
+            -e PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL=http://blog-ci-smoke:25090 \
             -e LLM_SETTINGS_MASTER_KEY=ci-smoke-llm-settings-master-key \
             -v "$PWD/test-data:/app/data" \
             blog:ci-smoke
@@ -346,7 +384,7 @@ jobs:
 
           wait_for_status \
             "200" \
-            "http://127.0.0.1:25090/api/public/posts?limit=1" \
+            "http://127.0.0.1:25090/api/public/posts?limit=20" \
             "/tmp/docker-posts.json"
 
           python3 - <<'PY'
@@ -357,6 +395,92 @@ jobs:
           assert "posts" in payload, payload
           assert payload["posts"], payload
           assert payload["pagination"]["totalPages"] >= 1, payload
+          PY
+
+          first_media_path="$(python3 - <<'PY'
+          import json
+
+          def iter_media_urls(item):
+              if not isinstance(item, dict):
+                  return
+
+              variants = item.get("variants")
+              if isinstance(variants, dict):
+                  for key in ("cover", "card", "content", "full", "poster", "social", "play"):
+                      url = variants.get(key)
+                      if isinstance(url, str):
+                          yield url
+                  for url in variants.values():
+                      if isinstance(url, str):
+                          yield url
+
+              for key in ("poster", "playback"):
+                  url = item.get(key)
+                  if isinstance(url, str):
+                      yield url
+
+              sources = item.get("sources")
+              if isinstance(sources, list):
+                  for source in sources:
+                      if not isinstance(source, dict):
+                          continue
+                      url = source.get("url")
+                      if isinstance(url, str):
+                          yield url
+
+          def iter_post_urls(post):
+              image = post.get("image")
+              if isinstance(image, str):
+                  yield image
+
+              media = post.get("media")
+              if not isinstance(media, dict):
+                  return
+
+              for key in ("cover", "primary"):
+                  yield from iter_media_urls(media.get(key))
+
+              for bucket in ("content", "attachments"):
+                  items = media.get(bucket)
+                  if not isinstance(items, list):
+                      continue
+                  for item in items:
+                      yield from iter_media_urls(item)
+
+          with open("/tmp/docker-posts.json", "r", encoding="utf-8") as f:
+              payload = json.load(f)
+
+          for post in payload["posts"]:
+              for candidate in iter_post_urls(post):
+                  if candidate.startswith("/api/public/assets/"):
+                      print(candidate, end="")
+                      raise SystemExit(0)
+
+          raise SystemExit("expected at least one facade media path in posts payload")
+          PY
+          )"
+
+          wait_for_status \
+            "200" \
+            "http://127.0.0.1:25090${first_media_path}" \
+            "/tmp/docker-first-media.bin"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          data = Path("/tmp/docker-first-media.bin").read_bytes()
+          assert data, "expected non-empty public media response"
+          PY
+
+          wait_for_status \
+            "200" \
+            "http://127.0.0.1:25090/watermark-ivanli.svg" \
+            "/tmp/docker-watermark.svg"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("/tmp/docker-watermark.svg").read_text(encoding="utf-8")
+          assert "<svg" in text, text
+          assert "ivanli.cc" in text, text
           PY
 
           wait_for_status \
@@ -379,10 +503,14 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          curl -sS -D - -o /dev/null http://127.0.0.1:18000/ || true
+          docker logs imagorvideo-ci-smoke || true
           docker logs blog-ci-smoke || true
 
       - name: Cleanup docker smoke container
         if: always()
         shell: bash
         run: |
+          docker rm -f imagorvideo-ci-smoke >/dev/null 2>&1 || true
           docker rm -f blog-ci-smoke >/dev/null 2>&1 || true
+          docker network rm blog-ci-smoke-net >/dev/null 2>&1 || true

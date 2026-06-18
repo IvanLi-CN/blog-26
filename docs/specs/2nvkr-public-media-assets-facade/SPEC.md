@@ -88,6 +88,14 @@
 - 公开图片、GIF 派生帧、视频 poster 必须 strip metadata / EXIF。
 - 图片宽 `<240`、高 `<160`、或面积 `<80000px` 时跳过水印；其他公开派生图默认加右下角 `ivanli.cc` 透明文本水印。
 
+### 5.5 内容媒体路径规范化
+
+- 内容文件里的本地媒体路径只允许解码安全的 segment 内转义（例如 `%20`）。
+- 编码后的路径分隔符 `%2F` / `%5C` 一律视为非法输入。
+- 任何会在解码后变成 `.` 或 `..` 的编码 dot-segment（例如 `%2E`、`%2E%2E`、`.%2E`）一律视为非法输入。
+- 解析器必须对明文 `.` / `..` segment 做 canonicalize，但只允许结果停留在 `LOCAL_CONTENT_BASE_PATH` 内容根内；任何会越过内容根的 traversal 都必须直接拒绝。
+- 这组规则属于公开媒体合同本身，不允许通过运行时 fallback 容忍或绕过。
+
 ## 6. 公开数据合同
 
 ### 6.1 统一 `media` 视图
@@ -159,11 +167,14 @@
   - `HTTP_LOADER_ALLOWED_SOURCES`
   - `HTTP_LOADER_ALLOWED_SOURCE_REGEXP`（如需要）
   - `HTTP_LOADER_HTTPS_ONLY=0`（内部 HTTP 回源模型）
+  - `HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0`（允许 imagorvideo 回源 `blog:25090` 这类容器内网地址）
   - `IMAGOR_AUTO_WEBP=1`
   - `IMAGOR_AUTO_AVIF=1`（官方文档标注 experimental）
   - `IMAGOR_AUTO_JPEG=1`
   - `VIPS_STRIP_METADATA=1`
-- 水印使用 imagor `watermark(...)` filter；视频 poster 使用 `frame(...)` filter。
+- 水印使用 imagor `watermark(...)` filter，且 watermark image 固定回源 blog 自己提供的静态 SVG 文件（例如 `/watermark-ivanli.svg`）；禁止使用内联 `data:` URL watermark。视频 poster 使用 `frame(...)` filter。
+- `/watermark-ivanli.svg` 必须作为公开静态产物随 `site-dist` 一起落盘，并由 blog 同源公开入口直接提供；不得依赖独立对象存储、运行时生成、或 internal source 路由来承接 watermark 文件。
+- 公开媒体链路不允许运行时 fallback；`imagorvideo` 不可用、配置错误、或 internal source 回源失败时，门面必须直接返回错误，由部署/监控暴露故障。
 - blog 服务需要知道 imagor 的访问基址与签名配置，才能生成代理请求 URL；前台不可见 imagor 真实地址。
 
 ## 9. 验收标准
@@ -175,6 +186,8 @@
 5. `/admin/preview/*` 与真实公开页使用同一套公开媒体语义；编辑器内嵌 preview/raw authoring 语义保持不变。
 6. 小图不加水印；公开派生结果不带敏感 metadata。
 7. 101 上 `imagorvideo` / `blog` 所需 compose 与部署卡片改动、验证命令与回退说明具备可执行口径。
+8. 公开入口可直接返回 `/watermark-ivanli.svg`，且 E2E / smoke 覆盖至少有一条真实请求命中该文件与一个 `/api/public/assets/*` 媒体 URL。
+9. 公开媒体路径解析会拒绝编码 separator、编码 dot-segment 与越过内容根的 traversal；这类输入不得被解析成可访问文件路径。
 
 ## Visual Evidence
 

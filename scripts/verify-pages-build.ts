@@ -28,6 +28,19 @@ function assertIncludesSome(
   }
 }
 
+function assertSameOriginPublicApiBaseUrl(siteUrl: string, apiBaseUrl: string) {
+  const siteOrigin = new URL(siteUrl).origin;
+  const apiOrigin = new URL(apiBaseUrl).origin;
+  if (siteOrigin !== apiOrigin) {
+    throw new Error(
+      [
+        `Expected PUBLIC_API_BASE_URL (${apiBaseUrl}) to share the same origin as PUBLIC_SITE_URL (${siteUrl}).`,
+        "This static build emits /api/public/assets/* facade URLs and therefore requires a same-origin live backend/gateway on the public domain.",
+      ].join(" ")
+    );
+  }
+}
+
 function normalizeBasePath(raw: string) {
   const value = raw.trim();
   if (!value || value === "/") return "";
@@ -58,12 +71,18 @@ function toExpectedPagePath(basePath: string, pathname: string) {
 const rawBasePath = (process.env.PUBLIC_SITE_BASE_PATH || "").trim();
 const siteUrl = (process.env.PUBLIC_SITE_URL || "").trim();
 const apiBaseUrl = (process.env.PUBLIC_API_BASE_URL || "").trim();
-const basePath = normalizeBasePath(rawBasePath) || deriveBasePathFromSiteUrl(siteUrl);
-const siteOrigin = new URL(siteUrl).origin;
-const siteHost = new URL(siteUrl).hostname;
 
 if (!siteUrl) {
   throw new Error("PUBLIC_SITE_URL is required");
+}
+
+const basePath = normalizeBasePath(rawBasePath) || deriveBasePathFromSiteUrl(siteUrl);
+const parsedSiteUrl = new URL(siteUrl);
+const siteOrigin = parsedSiteUrl.origin;
+const siteHost = parsedSiteUrl.hostname;
+
+if (apiBaseUrl) {
+  assertSameOriginPublicApiBaseUrl(siteUrl, apiBaseUrl);
 }
 
 const checks = [
@@ -124,6 +143,11 @@ const checks = [
   {
     file: "site-dist/default-avatar.svg",
     includes: ["<svg"],
+    excludes: [],
+  },
+  {
+    file: "site-dist/watermark-ivanli.svg",
+    includes: ["<svg", "ivanli.cc"],
     excludes: [],
   },
   {

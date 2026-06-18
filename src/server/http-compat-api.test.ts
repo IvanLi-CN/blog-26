@@ -938,6 +938,9 @@ describe("HTTP compatibility APIs", () => {
         expect(url).toContain("/fit-in/1600x900/");
         expect(url).toContain("filters:");
         expect(url).toContain("http://blog:25090/_internal/assets/source/post/facade-post/");
+        expect(url).toContain(
+          `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli.svg").toString("base64url")},-24,-24,18,22,22)`
+        );
         return new Response("optimized-image", {
           status: 200,
           headers: {
@@ -968,7 +971,7 @@ describe("HTTP compatibility APIs", () => {
     }
   });
 
-  it("falls back to source bytes in non-production when imagor is unavailable", async () => {
+  it("returns 502 in non-production when imagor is unavailable", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/fallback-cover.png"), "cover");
 
@@ -1002,11 +1005,62 @@ describe("HTTP compatibility APIs", () => {
         `/assets/post/fallback-post/${mediaHash}/cover.webp`
       );
 
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("image/png");
-      expect(response.headers.get("x-public-media-fallback")).toBe("source");
-      expect(await response.text()).toBe("cover");
+      expect(response.status).toBe(502);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("x-public-media-fallback")).toBeNull();
+      expect(await response.json()).toEqual({
+        error: "Public media processor unavailable",
+      });
     } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("returns 502 in production when imagor is unavailable", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/prod-cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/prod-facade-post.md",
+      filePath: "blog/prod-facade-post.md",
+      slug: "prod-facade-post",
+      type: "post",
+      title: "Prod Facade Post",
+      image: "./assets/prod-cover.png",
+      body: "Body",
+      public: true,
+      draft: false,
+    });
+
+    const originalFetch = globalThis.fetch;
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        throw new Error("imagor offline");
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/prod-cover.png", "cover");
+      const response = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/post/prod-facade-post/${mediaHash}/cover.webp`),
+        `/assets/post/prod-facade-post/${mediaHash}/cover.webp`
+      );
+
+      expect(response.status).toBe(502);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("x-public-media-fallback")).toBeNull();
+      expect(await response.json()).toEqual({
+        error: "Public media processor unavailable",
+      });
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
       globalThis.fetch = originalFetch;
     }
@@ -1075,6 +1129,39 @@ describe("HTTP compatibility APIs", () => {
       );
 
       expect(response.status).toBe(404);
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+  });
+
+  it("serves facade media whose persisted source path contains encoded spaces", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Hardware/assets"), { recursive: true });
+    const assetName = "SW2303+INA138 实现高侧检流的原理图_test.png";
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, `Hardware/assets/${assetName}`), "cover");
+
+    await seedPost({
+      id: "Hardware/encoded-media-post.md",
+      filePath: "Hardware/encoded-media-post.md",
+      slug: "encoded-media-post",
+      type: "post",
+      title: "Encoded Media Post",
+      image: `./assets/${encodeURIComponent(assetName)}`,
+      body: "Body",
+      public: true,
+      draft: false,
+    });
+
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
+    try {
+      const mediaHash = buildPublicMediaHash(`Hardware/assets/${assetName}`, "cover");
+      const response = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/post/encoded-media-post/${mediaHash}`),
+        { kind: "post", slug: "encoded-media-post", mediaHash }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(await response.text()).toBe("cover");
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
     }

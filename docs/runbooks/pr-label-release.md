@@ -111,11 +111,14 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - `PUBLIC_SITE_URL=https://ivanli.cc`
   - `PUBLIC_SITE_BASE_PATH=/`
   - `PUBLIC_API_BASE_URL=https://ivanli.cc`
+- `PUBLIC_API_BASE_URL=https://ivanli.cc` is only valid when the public domain already routes same-origin anonymous backend traffic, including `/api/public/assets/*`, to the live gateway.
+- The frontend release remains a static `site-dist` build. Public images, GIF derivatives, video posters, and playback URLs are not bundled into static assets; they continue to depend on the live same-origin `/api/public/assets/*` facade.
 - If old project-Pages variables are still present, the workflow auto-normalizes them to the `public/CNAME` custom domain during release.
 - The workflow can consume either:
   - a raw `public-snapshot.json`, or
   - an archive containing `public-snapshot.json`
 - Pages runtime requests use `PUBLIC_API_BASE_URL`, and it must point at the live backend origin.
+- A release is incomplete if `site-dist` points at `/api/public/assets/*` but the public entrypoint does not actually forward those requests to the live backend/gateway.
 - The primary deployment target is the `ivanli.cc` custom domain. The raw `ivanli-cn.github.io/blog-26` URL is only a fallback/debug path.
 - Local unified Docker builds also require the public snapshot. `bun run docker:build` fetches it when `PUBLIC_CONTENT_BUNDLE_URL` is set, reuses `site/generated/public-snapshot.json` when present, and otherwise fails before Docker starts so the build cannot silently read an empty local DB.
 
@@ -148,7 +151,9 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
 - Confirm the bundle contains `public-snapshot.json`.
-- Confirm `PUBLIC_API_BASE_URL` points to the backend origin if the Pages site must call backend APIs cross-origin.
+- Confirm `PUBLIC_API_BASE_URL` points at the live backend/gateway origin that really serves anonymous `/api/public/*` and `/api/public/assets/*` traffic.
+- Confirm the live imagor deployment also allows internal HTTP source fetches from the blog service, including `HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0` for the `blog:25090` internal-source model.
+- Confirm the published `site-dist` also contains `watermark-ivanli.svg`, and the public entrypoint serves `https://ivanli.cc/watermark-ivanli.svg` directly from the same-origin static surface.
 - Confirm `PUBLIC_SITE_URL` and `PUBLIC_SITE_BASE_PATH` match the custom-domain target (`https://ivanli.cc` + `/`).
 
 ### Unified Docker image missing expected assets
@@ -156,6 +161,8 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is set or `site/generated/public-snapshot.json` exists before running a local Docker build.
 - Verify the Docker build generated `site-dist/`, `admin-dist/`, and `backend-dist/`.
 - Verify Docker runtime health at `/api/health`; site status should be `ok` with `site.mode=static`.
+- Verify the container also serves at least one real `/api/public/assets/*` URL from the generated public content set; `/api/health` alone is not sufficient.
+- Verify the container serves `/watermark-ivanli.svg` from `site-dist`; imagor watermark fetches depend on that same-origin static file.
 - Verify the image was pushed as `vX.Y.Z` / `vX.Y.Z-rc.<sha7>` and not as any `backend-*` tag.
 
 ### Release receipt comment missing or stale
