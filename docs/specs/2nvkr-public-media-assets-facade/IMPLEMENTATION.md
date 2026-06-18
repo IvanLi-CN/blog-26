@@ -55,6 +55,7 @@
    - `PUBLIC_SITE_URL` 与 `PUBLIC_API_BASE_URL` 同源
    - `site-dist` 中真实包含 `/api/public/assets/*` facade 引用
    - release 校验从真实 `site-dist` 自动发现可用的 post/tag/detail/feed 样本，不再把 fixture slug 当成生产 bundle 前提
+   - 每个已生成的 feed 文件都必须继续包含公开 post URL 与同源 facade 资源 URL，不允许只校验“任意一个 feed 仍然正确”
    - unified Docker smoke 至少命中 1 个真实 facade 媒体 URL，而不是只看 `/api/health`
 8. imagor watermark 已改为 blog 静态 SVG 资源 `/watermark-ivanli.svg`；在 `imagorvideo v1.9.1` 同版实测下，静态 SVG watermark 可用，失败的是内联 `data:` watermark 写法。
 9. imagor watermark filter 现在按官方合同将 watermark URL 编成 `b64:` base64url，避免 `http://...` 里的冒号破坏 `filters:` 链。
