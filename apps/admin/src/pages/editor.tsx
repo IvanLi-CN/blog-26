@@ -53,6 +53,8 @@ import {
   getArticleIdentity,
   getAvailableEditorModes,
   getDefaultFileEditorMode,
+  getEditorHeaderCopy,
+  getEditorSurfaceKind,
   getSelectionRevealPaths,
   getTabArticleIdentity,
   isBlankEditorContent,
@@ -335,6 +337,8 @@ export function EditorPage() {
     () => (activeTab ? getEditorContext(activeTab) : null),
     [activeTab]
   );
+  const activeEditorSurface = getEditorSurfaceKind(activeTab);
+  const editorHeaderCopy = getEditorHeaderCopy(activeTab);
   const activeBrowserPath = useMemo(
     () => (activeEditorContext ? normalizeTreePath(activeEditorContext.articlePath) : null),
     [activeEditorContext]
@@ -1437,33 +1441,39 @@ export function EditorPage() {
     <div className="flex h-full min-h-0 flex-col gap-6">
       <AdminToastViewport />
       <PageHeader
-        title="文章编辑器"
-        description="打开文章、切换编辑模式，并在保存前检查预览。"
+        title={editorHeaderCopy.title}
+        description={editorHeaderCopy.description}
         actions={
           <>
             <Button asChild variant="outline">
-              <a href="/admin/posts">
+              <a href={activeEditorSurface === "text" ? "/admin/posts/editor" : "/admin/posts"}>
                 <ArrowLeft className="size-4" />
-                返回文章列表
+                {editorHeaderCopy.backLabel}
               </a>
             </Button>
-            <Button variant="outline" onClick={createEmptyDraft} data-testid="editor-create-post">
-              <FilePlus2 className="size-4" />
-              新建文章
-            </Button>
-            <Button variant="outline" onClick={openPreviewWindow} disabled={!previewEnabled}>
-              <Eye className="size-4" />
-              前台预览
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => uploadInputRef.current?.click()}
-              disabled={!attachmentEnabled || uploadPending}
-              title="上传图片或附件并插入到当前内容"
-            >
-              {uploadPending ? <Spinner /> : <ImagePlus className="size-4" />}
-              插入附件
-            </Button>
+            {activeEditorSurface === "article" ? (
+              <Button variant="outline" onClick={createEmptyDraft} data-testid="editor-create-post">
+                <FilePlus2 className="size-4" />
+                {editorHeaderCopy.newLabel}
+              </Button>
+            ) : null}
+            {activeEditorSurface === "article" ? (
+              <Button variant="outline" onClick={openPreviewWindow} disabled={!previewEnabled}>
+                <Eye className="size-4" />
+                前台预览
+              </Button>
+            ) : null}
+            {activeEditorSurface === "article" ? (
+              <Button
+                variant="outline"
+                onClick={() => uploadInputRef.current?.click()}
+                disabled={!attachmentEnabled || uploadPending}
+                title="上传图片或附件并插入到当前内容"
+              >
+                {uploadPending ? <Spinner /> : <ImagePlus className="size-4" />}
+                插入附件
+              </Button>
+            ) : null}
             <Button
               onClick={saveActiveTab}
               disabled={!activeTab || savePending}
@@ -1503,13 +1513,15 @@ export function EditorPage() {
           {!activeTab ? (
             <div className="p-4 lg:p-6">
               <EmptyState
-                title="选择一个文件开始编辑"
-                description="从左侧选择已有内容，或新建一篇文章。"
+                title={editorHeaderCopy.emptyTitle}
+                description={editorHeaderCopy.emptyDescription}
                 action={
-                  <Button onClick={createEmptyDraft}>
-                    <FilePlus2 className="size-4" />
-                    新建文章
-                  </Button>
+                  editorHeaderCopy.emptyActionLabel ? (
+                    <Button onClick={createEmptyDraft}>
+                      <FilePlus2 className="size-4" />
+                      {editorHeaderCopy.emptyActionLabel}
+                    </Button>
+                  ) : undefined
                 }
               />
             </div>
@@ -1517,10 +1529,12 @@ export function EditorPage() {
             <div className="flex h-full min-h-0 flex-col">
               <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/58 px-4 py-4">
                 <div>
-                  <div className="text-base font-semibold">{activeTab.label || "未命名文章"}</div>
+                  <div className="text-base font-semibold">
+                    {activeTab.label || editorHeaderCopy.untitledLabel}
+                  </div>
                   <div className="mt-0.5 text-sm text-muted-foreground">
                     {activeTab.kind === "database"
-                      ? activeTab.database?.slug || "新建文章"
+                      ? activeTab.database?.slug || editorHeaderCopy.inlineDraftLabel
                       : `${activeTab.file?.source}:${activeTab.file?.path}`}
                   </div>
                 </div>
@@ -1583,8 +1597,8 @@ export function EditorPage() {
                 }
                 placeholder={
                   activeTab.kind === "file" && isTextFileDraft(activeTab.file)
-                    ? "开始编辑纯文本文件..."
-                    : "开始写作您的文章..."
+                    ? editorHeaderCopy.placeholder
+                    : editorHeaderCopy.placeholder
                 }
                 attachmentBasePath={buildAttachmentUploadPath(
                   activeEditorContext?.articlePath ?? "/__unknown__.md",

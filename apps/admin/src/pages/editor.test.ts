@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   getAvailableEditorModes,
   getDefaultFileEditorMode,
+  getEditorHeaderCopy,
+  getEditorSurfaceKind,
   getSelectionRevealPaths,
   isPreviewableEditorTab,
   mapBatchResultsToTreeSelection,
@@ -91,9 +93,16 @@ describe("editor tab path remapping", () => {
     };
 
     expect(getDefaultFileEditorMode("text")).toBe("source");
+    expect(getEditorSurfaceKind(textTab)).toBe("text");
     expect(getAvailableEditorModes(textTab)).toEqual(["source"]);
     expect(isPreviewableEditorTab(textTab)).toBeFalse();
     expect(supportsEditorAttachments(textTab)).toBeFalse();
+    expect(getEditorHeaderCopy(textTab)).toMatchObject({
+      title: "纯文本编辑器",
+      backLabel: "返回文件浏览器",
+      emptyActionLabel: null,
+      placeholder: "开始编辑纯文本文件...",
+    });
   });
 
   test("keeps markdown file tabs fully editable with preview and attachments", () => {
@@ -112,9 +121,16 @@ describe("editor tab path remapping", () => {
     };
 
     expect(getDefaultFileEditorMode("markdown")).toBe("wysiwyg");
+    expect(getEditorSurfaceKind(markdownTab)).toBe("article");
     expect(getAvailableEditorModes(markdownTab)).toEqual(["wysiwyg", "source", "compare"]);
     expect(isPreviewableEditorTab(markdownTab)).toBeTrue();
     expect(supportsEditorAttachments(markdownTab)).toBeTrue();
+    expect(getEditorHeaderCopy(markdownTab)).toMatchObject({
+      title: "文章编辑器",
+      backLabel: "返回文章列表",
+      emptyActionLabel: "新建文章",
+      placeholder: "开始写作您的文章...",
+    });
   });
 
   test("rebases open markdown tab content when moving or renaming the file", () => {

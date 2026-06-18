@@ -728,17 +728,35 @@ tags:
     await ensureHardwareDirectoryExpanded(page);
     await openFileBrowserItem(page, "USB-C Safe5V 诱骗器", { dblClick: true });
 
+    await expect(page.getByRole("heading", { name: "纯文本编辑器" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "返回文件浏览器" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "新建文章" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Source" })).toBeVisible();
     await expect(page.getByRole("button", { name: "WYSIWYG" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "对照" })).toHaveCount(0);
     await expect(page.getByTestId("frontmatter-block")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "前台预览" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "插入附件" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "前台预览" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "插入附件" })).toHaveCount(0);
     await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
       /title=USB-C Safe5V 诱骗器/
     );
     await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
       /cc_pull_down=5.1k/
+    );
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
+      /image_sample=\.\/assets\/plain-preview-sample\.png/
+    );
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
+      /video_sample=\.\/assets\/plain-preview-sample\.mp4/
+    );
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
+      /markdown_image=!\[sample image\]\(\.\/assets\/plain-preview-sample\.png\)/
+    );
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
+      /html_video=<video controls src="\.\/assets\/plain-preview-sample\.mp4"><\/video>/
+    );
+    await expect(page.getByRole("textbox", { name: "Plain text editor" })).toHaveValue(
+      /markdown_link=\[sample video\]\(\.\/assets\/plain-preview-sample\.mp4\)/
     );
   });
 

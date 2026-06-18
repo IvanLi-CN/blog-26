@@ -190,6 +190,11 @@ tags:
 mode=5v
 cc_pull_down=5.1k
 notes=外挂补丁，避免无 CC 设备空载不出电
+image_sample=./assets/plain-preview-sample.png
+video_sample=./assets/plain-preview-sample.mp4
+markdown_image=![sample image](./assets/plain-preview-sample.png)
+html_video=<video controls src="./assets/plain-preview-sample.mp4"></video>
+markdown_link=[sample video](./assets/plain-preview-sample.mp4)
 `,
 };
 
