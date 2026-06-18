@@ -5,6 +5,11 @@
     "": {
       "name": "@ivanli-cn/blog",
       "dependencies": {
+        "@codemirror/autocomplete": "^6.18.6",
+        "@codemirror/commands": "^6.8.1",
+        "@codemirror/lang-yaml": "^6.1.2",
+        "@codemirror/state": "^6.5.2",
+        "@codemirror/view": "^6.38.1",
         "@fingerprintjs/fingerprintjs": "^5.2.0",
         "@fontsource-variable/inter": "^5.2.8",
         "@iconify-json/bxl": "^1.2.4",
