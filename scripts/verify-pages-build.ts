@@ -71,13 +71,15 @@ function toExpectedPagePath(basePath: string, pathname: string) {
 const rawBasePath = (process.env.PUBLIC_SITE_BASE_PATH || "").trim();
 const siteUrl = (process.env.PUBLIC_SITE_URL || "").trim();
 const apiBaseUrl = (process.env.PUBLIC_API_BASE_URL || "").trim();
-const basePath = normalizeBasePath(rawBasePath) || deriveBasePathFromSiteUrl(siteUrl);
-const siteOrigin = new URL(siteUrl).origin;
-const siteHost = new URL(siteUrl).hostname;
 
 if (!siteUrl) {
   throw new Error("PUBLIC_SITE_URL is required");
 }
+
+const basePath = normalizeBasePath(rawBasePath) || deriveBasePathFromSiteUrl(siteUrl);
+const parsedSiteUrl = new URL(siteUrl);
+const siteOrigin = parsedSiteUrl.origin;
+const siteHost = parsedSiteUrl.hostname;
 
 if (apiBaseUrl) {
   assertSameOriginPublicApiBaseUrl(siteUrl, apiBaseUrl);
@@ -141,6 +143,11 @@ const checks = [
   {
     file: "site-dist/default-avatar.svg",
     includes: ["<svg"],
+    excludes: [],
+  },
+  {
+    file: "site-dist/watermark-ivanli.svg",
+    includes: ["<svg", "ivanli.cc"],
     excludes: [],
   },
   {

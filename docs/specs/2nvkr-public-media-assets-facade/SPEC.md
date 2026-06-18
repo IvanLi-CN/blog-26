@@ -165,6 +165,7 @@
   - `IMAGOR_AUTO_JPEG=1`
   - `VIPS_STRIP_METADATA=1`
 - 水印使用 imagor `watermark(...)` filter，且 watermark image 固定回源 blog 自己提供的静态 SVG 文件（例如 `/watermark-ivanli.svg`）；禁止使用内联 `data:` URL watermark。视频 poster 使用 `frame(...)` filter。
+- `/watermark-ivanli.svg` 必须作为公开静态产物随 `site-dist` 一起落盘，并由 blog 同源公开入口直接提供；不得依赖独立对象存储、运行时生成、或 internal source 路由来承接 watermark 文件。
 - 公开媒体链路不允许运行时 fallback；`imagorvideo` 不可用、配置错误、或 internal source 回源失败时，门面必须直接返回错误，由部署/监控暴露故障。
 - blog 服务需要知道 imagor 的访问基址与签名配置，才能生成代理请求 URL；前台不可见 imagor 真实地址。
 
@@ -177,6 +178,7 @@
 5. `/admin/preview/*` 与真实公开页使用同一套公开媒体语义；编辑器内嵌 preview/raw authoring 语义保持不变。
 6. 小图不加水印；公开派生结果不带敏感 metadata。
 7. 101 上 `imagorvideo` / `blog` 所需 compose 与部署卡片改动、验证命令与回退说明具备可执行口径。
+8. 公开入口可直接返回 `/watermark-ivanli.svg`，且 E2E / smoke 覆盖至少有一条真实请求命中该文件与一个 `/api/public/assets/*` 媒体 URL。
 
 ## Visual Evidence
 

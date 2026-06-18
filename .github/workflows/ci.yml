@@ -473,6 +473,18 @@ jobs:
 
           wait_for_status \
             "200" \
+            "http://127.0.0.1:25090/watermark-ivanli.svg" \
+            "/tmp/docker-watermark.svg"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("/tmp/docker-watermark.svg").read_text(encoding="utf-8")
+          assert "<svg" in text, text
+          assert "ivanli.cc" in text, text
+          PY
+
+          wait_for_status \
+            "200" \
             "http://127.0.0.1:25090/api/public/comments?slug=graphql-api-best-practices" \
             "/tmp/docker-comments.json"
           python3 - <<'PY'

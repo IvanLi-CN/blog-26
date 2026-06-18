@@ -118,6 +118,11 @@ test.describe("Astro public front (phase 1)", () => {
     expect(robots.ok()).toBeTruthy();
     expect(await robots.text()).toContain("Sitemap:");
 
+    const watermark = await request.get("/watermark-ivanli.svg");
+    expect(watermark.ok()).toBeTruthy();
+    expect(watermark.headers()["content-type"]).toContain("image/svg+xml");
+    expect(await watermark.text()).toContain("ivanli.cc");
+
     const auth = await request.get("/api/public/auth/me");
     expect(auth.ok()).toBeTruthy();
     expect(await auth.json()).toBeNull();
