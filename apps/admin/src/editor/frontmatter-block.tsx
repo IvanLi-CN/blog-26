@@ -270,8 +270,15 @@ function getCompletionContextInfo(state: EditorState, pos: number) {
   };
 }
 
+type FieldCompletionOption = {
+  label: string;
+  type: "property";
+  detail: string;
+  apply: string;
+};
+
 function buildFieldOptions() {
-  const fieldOptions = FIELD_DEFINITIONS.map((field) => ({
+  const fieldOptions: FieldCompletionOption[] = FIELD_DEFINITIONS.map((field) => ({
     label: field.key,
     type: "property" as const,
     detail: field.description,
