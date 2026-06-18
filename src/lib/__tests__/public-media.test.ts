@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { resolveContentMediaPath } from "@/lib/public-media";
+import { resolveContentMediaPath, rewritePublicContentMediaUrls } from "@/lib/public-media";
 
 describe("public-media", () => {
   describe("resolveContentMediaPath", () => {
@@ -39,6 +39,41 @@ describe("public-media", () => {
       );
       expect(resolveContentMediaPath("../../secret.png", "blog/post.md")).toBeNull();
       expect(resolveContentMediaPath("/../secret.png", "blog/post.md")).toBeNull();
+    });
+
+    it("treats legacy /api/files paths as content-root-relative media paths", () => {
+      expect(
+        resolveContentMediaPath("/api/files/webdav/Memos/assets/inline-123.png", "Memos/demo.md")
+      ).toBe("Memos/assets/inline-123.png");
+    });
+  });
+
+  describe("rewritePublicContentMediaUrls", () => {
+    it("rewrites legacy files-api markdown images to facade urls", () => {
+      const content = "![inline](/api/files/webdav/Memos/assets/inline-123.png)";
+      const rewritten = rewritePublicContentMediaUrls(content, {
+        kind: "memo",
+        slug: "demo-memo",
+        filePath: "Memos/demo.md",
+      });
+
+      expect(rewritten).toContain("/api/public/assets/memo/demo-memo/");
+      expect(rewritten).not.toContain("/api/files/");
+    });
+
+    it("rewrites legacy files-api html video and poster urls to facade urls", () => {
+      const content =
+        '<video controls src="/api/files/webdav/Memos/assets/clip.mp4" poster="/api/files/webdav/Memos/assets/poster.png"></video>';
+      const rewritten = rewritePublicContentMediaUrls(content, {
+        kind: "memo",
+        slug: "demo-memo",
+        filePath: "Memos/demo.md",
+      });
+
+      expect(rewritten).toContain("/api/public/assets/memo/demo-memo/");
+      expect(rewritten).not.toContain("/api/files/");
+      expect(rewritten).toContain("/play.mp4");
+      expect(rewritten).toContain("/content.webp");
     });
   });
 });

@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { buildLegacyPublicMediaUrl } from "@/lib/public-media";
+import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import { posts } from "@/lib/schema";
 import { toMsTimestamp } from "@/lib/utils";
 import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
@@ -144,13 +144,21 @@ export const tagsRouter = createTRPCRouter({
       const items: TagsTimelineItem[] = actual.map((row) => {
         const contentKind = row.type === "memo" ? "memo" : "post";
         const media = buildPublicMediaCollection(contentKind, row as typeof posts.$inferSelect);
+        const publicMediaContext = {
+          kind: contentKind,
+          slug: row.slug,
+          filePath: row.filePath ?? row.id,
+        } as const;
         return {
           type: contentKind,
           id: row.id,
           slug: row.slug,
           title: row.title,
           excerpt: row.excerpt ?? undefined,
-          content: row.type === "memo" ? row.body : undefined,
+          content:
+            row.type === "memo"
+              ? rewritePublicContentMediaUrls(row.body, publicMediaContext)
+              : undefined,
           publishDate: new Date(toMsTimestamp(row.publishDate)).toISOString(),
           tags: normalizeTags(row.tags),
           image:

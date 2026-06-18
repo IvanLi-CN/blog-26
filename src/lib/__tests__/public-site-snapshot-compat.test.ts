@@ -170,4 +170,38 @@ describe("public snapshot compatibility", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("rewrites legacy files-api content when reading a preloaded public snapshot", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "blog25-snapshot-compat-"));
+    try {
+      const snapshot = createLegacySnapshot();
+      snapshot.memos[0] = {
+        ...snapshot.memos[0],
+        slug: "legacy-webdav-memo",
+        content: "![legacy](/api/files/webdav/Memos/assets/inline-legacy.png)",
+        filePath: "Memos/legacy-webdav-memo.md",
+      } as PublicSnapshot["memos"][number];
+      snapshot.tags.timelines.Notes[1] = {
+        ...snapshot.tags.timelines.Notes[1],
+        slug: "legacy-webdav-memo",
+        content: "![legacy](/api/files/webdav/Memos/assets/inline-legacy.png)",
+        filePath: "Memos/legacy-webdav-memo.md",
+      } as PublicSnapshot["tags"]["timelines"][string][number];
+
+      const snapshotPath = join(tempDir, "legacy-public-snapshot.json");
+      await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+      process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
+      __resetSnapshotForTests();
+
+      const loaded = await getSnapshot();
+
+      expect(loaded.memos[0]?.content).toContain("/api/public/assets/memo/legacy-webdav-memo/");
+      expect(loaded.memos[0]?.content).not.toContain("/api/files/");
+      expect(loaded.tags.timelines.Notes?.[1]?.content).toContain(
+        "/api/public/assets/memo/legacy-webdav-memo/"
+      );
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });

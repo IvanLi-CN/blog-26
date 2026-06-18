@@ -12,7 +12,7 @@ import {
   normalizePersistedLink,
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
-import { buildLegacyPublicMediaUrl } from "@/lib/public-media";
+import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import {
   buildPublicMediaCollection,
   pickLegacyPublicImage,
@@ -541,13 +541,18 @@ export const memosRouter = router({
         const media = buildPublicMediaCollection("memo", memo as MemoRow);
         const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
         const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+        const publicMediaContext = {
+          kind: "memo" as const,
+          slug: memo.slug,
+          filePath: memo.filePath || memo.id,
+        };
 
         return {
           id: memo.id,
           slug: memo.slug,
           title: memo.title || "无标题 Memo",
           excerpt: memo.excerpt,
-          content: memo.body, // 使用 body 字段匹配实际数据库结构
+          content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
           isPublic: memo.public,
           tags: memo.tags ? JSON.parse(memo.tags) : [],
           attachments,
@@ -647,6 +652,11 @@ export const memosRouter = router({
 
       const media = buildPublicMediaCollection("memo", memo);
       const publicAttachments = rewritePublicMemoAttachments(memo, media);
+      const publicMediaContext = {
+        kind: "memo" as const,
+        slug: memo.slug,
+        filePath: memo.filePath || memo.id,
+      };
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
 
@@ -655,7 +665,7 @@ export const memosRouter = router({
         slug: memo.slug,
         title: memo.title || "无标题 Memo",
         excerpt: memo.excerpt,
-        content: memo.body,
+        content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
         image:

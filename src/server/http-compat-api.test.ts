@@ -880,6 +880,56 @@ describe("HTTP compatibility APIs", () => {
     );
   });
 
+  it("rewrites legacy files-api memo content to facade urls in public snapshot and internal source", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets/inline-legacy.png"),
+      "legacy-image"
+    );
+
+    await seedPost({
+      id: "Memos/legacy-webdav-memo.md",
+      filePath: "Memos/legacy-webdav-memo.md",
+      slug: "legacy-webdav-memo",
+      type: "memo",
+      title: "Legacy WebDAV Memo",
+      body: "![legacy](/api/files/webdav/Memos/assets/inline-legacy.png)",
+      public: true,
+      draft: false,
+    });
+
+    const snapshotResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(snapshotResponse.status).toBe(200);
+
+    const snapshotPayload = await readJson(snapshotResponse);
+    const snapshotMemo = snapshotPayload.memos.find(
+      (memo: { slug: string }) => memo.slug === "legacy-webdav-memo"
+    );
+    expect(snapshotMemo?.content).toContain("/api/public/assets/memo/legacy-webdav-memo/");
+    expect(snapshotMemo?.content).not.toContain("/api/files/");
+
+    const mediaHash = buildPublicMediaHash("Memos/assets/inline-legacy.png", "content");
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
+    try {
+      const internalResponse = await handleInternalAssetSourceRequest(
+        buildRequest(`/_internal/assets/source/memo/legacy-webdav-memo/${mediaHash}`),
+        {
+          kind: "memo",
+          slug: "legacy-webdav-memo",
+          mediaHash,
+        }
+      );
+
+      expect(internalResponse.status).toBe(200);
+      expect(await internalResponse.text()).toBe("legacy-image");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+  });
+
   it("rewrites local media urls to the public facade for public rows", async () => {
     await seedPost({
       id: "blog/local-media-post.md",

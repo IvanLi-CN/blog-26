@@ -2,7 +2,11 @@ import { and, desc, eq } from "drizzle-orm";
 import { SITE } from "@/config/site";
 import { db, initializeDB } from "@/lib/db";
 import { extractTextSummary } from "@/lib/markdown-utils";
-import { buildLegacyPublicMediaUrl, type PublicMediaCollection } from "@/lib/public-media";
+import {
+  buildLegacyPublicMediaUrl,
+  type PublicMediaCollection,
+  rewritePublicContentMediaUrls,
+} from "@/lib/public-media";
 import { posts } from "@/lib/schema";
 import { parseContentTags } from "@/lib/tag-parser";
 import { safeJsonParse, toMsTimestamp } from "@/lib/utils";
@@ -231,12 +235,17 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
   const postList: PublicPostRecord[] = rawPosts.map((row) => {
     const filePath = getCanonicalFilePath(row);
     const media = buildPublicMediaCollection("post", row);
+    const publicMediaContext = {
+      kind: "post" as const,
+      slug: row.slug,
+      filePath,
+    };
     return {
       id: row.id,
       slug: row.slug,
       title: row.title,
       excerpt: row.excerpt || extractTextSummary(row.body, 180),
-      body: row.body,
+      body: rewritePublicContentMediaUrls(row.body, publicMediaContext),
       publishDate: toIso(row.publishDate) ?? new Date().toISOString(),
       updateDate: toIso(row.updateDate),
       category: row.category,
@@ -264,12 +273,17 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
     const filePath = getCanonicalFilePath(row);
     const media = buildPublicMediaCollection("memo", row);
+    const publicMediaContext = {
+      kind: "memo" as const,
+      slug: row.slug,
+      filePath,
+    };
     return {
       id: row.id,
       slug: row.slug,
       title: row.title || row.slug,
       excerpt: row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
-      content: row.body,
+      content: rewritePublicContentMediaUrls(row.body, publicMediaContext),
       tags: mergedTags,
       inlineTags,
       isPublic: row.public,

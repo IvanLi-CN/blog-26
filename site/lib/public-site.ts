@@ -2,7 +2,11 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { SITE } from "@/config/site";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
-import { createEmptyPublicMediaCollection, type PublicMediaCollection } from "@/lib/public-media";
+import {
+  createEmptyPublicMediaCollection,
+  type PublicMediaCollection,
+  rewritePublicContentMediaUrls,
+} from "@/lib/public-media";
 import { getPublicSiteUrl, toPublicSitePath } from "@/lib/public-runtime-url";
 import type {
   PublicPostRecord,
@@ -51,11 +55,21 @@ function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
     ...post,
     media: normalizeSnapshotMedia(post.media),
     filePath: getSnapshotRecordPath(post),
+    body: rewritePublicContentMediaUrls(post.body, {
+      kind: "post",
+      slug: post.slug,
+      filePath: getSnapshotRecordPath(post),
+    }),
   }));
   const memos = snapshot.memos.map((memo) => ({
     ...memo,
     media: normalizeSnapshotMedia(memo.media),
     filePath: getSnapshotRecordPath(memo),
+    content: rewritePublicContentMediaUrls(memo.content, {
+      kind: "memo",
+      slug: memo.slug,
+      filePath: getSnapshotRecordPath(memo),
+    }),
   }));
   const pathByTimelineKey = new Map<string, string>();
 
@@ -83,6 +97,14 @@ function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
           ...timelineItem,
           media: normalizeSnapshotMedia(timelineItem.media),
           filePath,
+          content:
+            timelineItem.type === "memo" && typeof timelineItem.content === "string"
+              ? rewritePublicContentMediaUrls(timelineItem.content, {
+                  kind: "memo",
+                  slug: timelineItem.slug,
+                  filePath,
+                })
+              : timelineItem.content,
         };
       }),
     ])

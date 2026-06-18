@@ -3,6 +3,7 @@ import { visit } from "unist-util-visit";
 import {
   buildPublicMediaAssetUrl,
   detectPublicMediaKind,
+  isPublicAssetFacadeUrl,
   type PublicMediaContext,
 } from "@/lib/public-media";
 import type { ImageOptimizationOptions } from "../types";
@@ -79,20 +80,21 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
       // 处理 img 标签
       if (node.tagName === "img" && node.properties && node.properties.src) {
         const originalSrc = node.properties.src as string;
+        const shouldRewrite =
+          !isExternalUrl(originalSrc) &&
+          !originalSrc.startsWith("data:") &&
+          !isPublicAssetFacadeUrl(originalSrc);
+        const rewrittenSrc = shouldRewrite
+          ? buildFacadeOrOptimizedUrl(originalSrc, "content", "content")
+          : originalSrc;
 
         // 首先保存原始 src 用于灯箱功能（在任何处理之前）
         if (enableLightbox) {
-          node.properties["data-original-src"] = originalSrc;
+          node.properties["data-original-src"] = rewrittenSrc;
         }
 
-        // 如果已经是完整的 URL、base64图片或已经是文件代理端点，跳过路径处理
-        if (
-          !isExternalUrl(originalSrc) &&
-          !originalSrc.startsWith("data:") &&
-          !originalSrc.startsWith("/api/files/")
-        ) {
-          const finalPath = buildFacadeOrOptimizedUrl(originalSrc, "content", "content");
-          node.properties.src = finalPath;
+        if (shouldRewrite) {
+          node.properties.src = rewrittenSrc;
         }
 
         // 添加懒加载
@@ -119,8 +121,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
 
         const mediaKind = href ? detectPublicMediaKind(href) : null;
         if (href && (isImagePath(href) || mediaKind === "video")) {
-          // 如果已经是完整的 URL 或已经是文件代理端点，跳过处理
-          if (!isExternalUrl(href) && !href.startsWith("/api/files/")) {
+          if (!isExternalUrl(href) && !isPublicAssetFacadeUrl(href)) {
             const finalPath =
               mediaKind === "video"
                 ? buildFacadeOrOptimizedUrl(href, "playback", "play")
@@ -132,7 +133,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
 
       if ((node.tagName === "video" || node.tagName === "source") && node.properties?.src) {
         const src = String(node.properties.src);
-        if (!isExternalUrl(src) && !src.startsWith("/api/files/") && !src.startsWith("data:")) {
+        if (!isExternalUrl(src) && !isPublicAssetFacadeUrl(src) && !src.startsWith("data:")) {
           node.properties.src = buildFacadeOrOptimizedUrl(src, "playback", "play");
         }
       }
@@ -141,7 +142,7 @@ export function rehypeImageOptimization(options: ImageOptimizationOptions = {}) 
         const poster = String(node.properties.poster);
         if (
           !isExternalUrl(poster) &&
-          !poster.startsWith("/api/files/") &&
+          !isPublicAssetFacadeUrl(poster) &&
           !poster.startsWith("data:")
         ) {
           node.properties.poster = buildFacadeOrOptimizedUrl(poster, "content", "content");

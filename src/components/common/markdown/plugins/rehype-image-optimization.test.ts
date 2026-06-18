@@ -64,4 +64,41 @@ describe("rehypeImageOptimization", () => {
       `/api/public/assets/post/posts-cover-fallback/${expectedHash}/content.webp`
     );
   });
+
+  it("rewrites legacy files-api image urls to public facade urls in public mode", () => {
+    const tree: Root = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "img",
+          properties: {
+            src: "/api/files/webdav/Memos/assets/inline-123.png",
+          },
+          children: [],
+        } as Element,
+      ],
+    };
+
+    const plugin = rehypeImageOptimization({
+      articlePath: "Memos/demo.md",
+      contentSource: "local",
+      publicMediaContext: {
+        kind: "memo",
+        slug: "demo-memo",
+        filePath: "Memos/demo.md",
+      },
+    });
+
+    plugin(tree, { path: "Memos/demo.md" } as any);
+
+    const img = tree.children[0] as Element;
+    const expectedHash = buildPublicMediaHash("Memos/assets/inline-123.png", "content");
+    expect(img.properties?.src).toBe(
+      `/api/public/assets/memo/demo-memo/${expectedHash}/content.webp`
+    );
+    expect(img.properties?.["data-original-src"]).toBe(
+      `/api/public/assets/memo/demo-memo/${expectedHash}/content.webp`
+    );
+  });
 });
