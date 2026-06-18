@@ -384,7 +384,7 @@ jobs:
 
           wait_for_status \
             "200" \
-            "http://127.0.0.1:25090/api/public/posts?limit=1" \
+            "http://127.0.0.1:25090/api/public/posts?limit=20" \
             "/tmp/docker-posts.json"
 
           python3 - <<'PY'
