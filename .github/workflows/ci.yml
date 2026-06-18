@@ -320,11 +320,14 @@ jobs:
           docker run -d \
             --name imagorvideo-ci-smoke \
             --network blog-ci-smoke-net \
+            -p 127.0.0.1:18000:8000 \
             -e IMAGOR_UNSAFE=1 \
             -e HTTP_LOADER_ALLOWED_SOURCES=blog-ci-smoke:25090 \
             -e HTTP_LOADER_HTTPS_ONLY=0 \
             -e HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0 \
             ghcr.io/cshum/imagorvideo:latest
+
+          wait_for_status "200" "http://127.0.0.1:18000/healthz" "/tmp/imagor-health.txt"
 
           docker run -d \
             --name blog-ci-smoke \
@@ -376,12 +379,64 @@ jobs:
 
           first_media_path="$(python3 - <<'PY'
           import json
+
+          def iter_media_urls(item):
+              if not isinstance(item, dict):
+                  return
+
+              variants = item.get("variants")
+              if isinstance(variants, dict):
+                  for key in ("cover", "card", "content", "full", "poster", "social", "play"):
+                      url = variants.get(key)
+                      if isinstance(url, str):
+                          yield url
+                  for url in variants.values():
+                      if isinstance(url, str):
+                          yield url
+
+              for key in ("poster", "playback"):
+                  url = item.get(key)
+                  if isinstance(url, str):
+                      yield url
+
+              sources = item.get("sources")
+              if isinstance(sources, list):
+                  for source in sources:
+                      if not isinstance(source, dict):
+                          continue
+                      url = source.get("url")
+                      if isinstance(url, str):
+                          yield url
+
+          def iter_post_urls(post):
+              image = post.get("image")
+              if isinstance(image, str):
+                  yield image
+
+              media = post.get("media")
+              if not isinstance(media, dict):
+                  return
+
+              for key in ("cover", "primary"):
+                  yield from iter_media_urls(media.get(key))
+
+              for bucket in ("content", "attachments"):
+                  items = media.get(bucket)
+                  if not isinstance(items, list):
+                      continue
+                  for item in items:
+                      yield from iter_media_urls(item)
+
           with open("/tmp/docker-posts.json", "r", encoding="utf-8") as f:
               payload = json.load(f)
-          image = next((post.get("image") for post in payload["posts"] if post.get("image")), "")
-          if not image.startswith("/api/public/assets/"):
-              raise SystemExit(f"expected facade image path, got: {image!r}")
-          print(image, end="")
+
+          for post in payload["posts"]:
+              for candidate in iter_post_urls(post):
+                  if candidate.startswith("/api/public/assets/"):
+                      print(candidate, end="")
+                      raise SystemExit(0)
+
+          raise SystemExit("expected at least one facade media path in posts payload")
           PY
           )"
 

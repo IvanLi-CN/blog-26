@@ -51,6 +51,8 @@ const testProject = process.env.PLAYWRIGHT_TEST_PROJECT;
 const explicitTagFilter = readExplicitE2ETagFilter();
 const skipReset = process.env.PLAYWRIGHT_SKIP_RESET === "1";
 const skipBuild = process.env.PLAYWRIGHT_SKIP_BUILD === "1";
+const publicMediaImagorBaseUrl = process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL?.trim();
+const publicMediaInternalSourceBaseUrl = process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL?.trim();
 const jsonResultFile = testProject
   ? `${getProjectReportDir(testProject as (typeof E2E_PROJECTS)[number])}/results.json`
   : `${REPORT_ROOT}/results.json`;
@@ -132,6 +134,12 @@ export default defineConfig({
           SSO_EMAIL_HEADER_NAME: EMAIL_HEADER_NAME,
           LLM_SETTINGS_MASTER_KEY: process.env.LLM_SETTINGS_MASTER_KEY || "playwright-master-key",
           LLM_MODEL_CATALOG_SKIP_REFRESH: "1",
+          ...(publicMediaImagorBaseUrl
+            ? { PUBLIC_MEDIA_IMAGOR_BASE_URL: publicMediaImagorBaseUrl }
+            : {}),
+          ...(publicMediaInternalSourceBaseUrl
+            ? { PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL: publicMediaInternalSourceBaseUrl }
+            : {}),
         },
       }
     : undefined,

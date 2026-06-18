@@ -65,9 +65,43 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Start public media processor sidecar
+        if: ${{ matrix.project == 'admin' }}
+        run: |
+          docker rm -f imagorvideo-e2e >/dev/null 2>&1 || true
+          docker run -d \
+            --name imagorvideo-e2e \
+            --add-host host.docker.internal:host-gateway \
+            -p 127.0.0.1:18000:8000 \
+            -e IMAGOR_UNSAFE=1 \
+            -e HTTP_LOADER_ALLOWED_SOURCES=host.docker.internal:25090 \
+            -e HTTP_LOADER_HTTPS_ONLY=0 \
+            -e HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0 \
+            ghcr.io/cshum/imagorvideo:latest
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18000/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs imagorvideo-e2e || true
+          exit 1
+
       - name: Run E2E tests
         run: bun run test:e2e:project -- ${{ matrix.project }}
         env:
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           USER_EMAIL: user-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           SSO_EMAIL_HEADER_NAME: Remote-Email
+          PUBLIC_MEDIA_IMAGOR_BASE_URL: ${{ matrix.project == 'admin' && 'http://127.0.0.1:18000' || '' }}
+          PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL: ${{ matrix.project == 'admin' && 'http://host.docker.internal:25090' || '' }}
+
+      - name: Dump public media processor logs on failure
+        if: ${{ failure() && matrix.project == 'admin' }}
+        run: docker logs imagorvideo-e2e || true
+
+      - name: Cleanup public media processor sidecar
+        if: ${{ always() && matrix.project == 'admin' }}
+        run: docker rm -f imagorvideo-e2e >/dev/null 2>&1 || true
