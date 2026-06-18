@@ -1021,6 +1021,49 @@ category: frontend
     await expect(sourceEditor).toHaveValue(/tags:\n {2}- React\n {2}- Hooks/);
   });
 
+  test("creating a new post keeps auto-fixed frontmatter on the saved tab", async ({ page }) => {
+    await openDemoEditor(page);
+
+    await page.getByTestId("editor-create-post").click();
+    await expect(page.getByTestId("editor-status-badge")).toContainText("未保存");
+
+    await page.getByRole("button", { name: "Source" }).click();
+    const sourceEditor = page.getByRole("textbox", { name: "Markdown source editor" });
+    await sourceEditor.fill(`---
+title: Style Draft
+slug: style-draft
+tags:
+    - React
+    - Hooks
+category: frontend
+---
+
+# Style Draft`);
+
+    await page.getByTestId("editor-save").click();
+    await expect(
+      page.getByTestId("admin-toast-content").filter({ hasText: "已创建新草稿。" })
+    ).toContainText("已创建新草稿。");
+    await expect(
+      page
+        .getByTestId("admin-toast-content")
+        .filter({ hasText: "保存时已自动修复 Frontmatter 样式。" })
+    ).toContainText("tags 列表缩进已整理为标准 YAML 数组样式。");
+
+    const savedTab = page.getByTestId("editor-tab").filter({ hasText: "Style Draft" }).first();
+    await expect(savedTab).toBeVisible();
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+    await expect(savedTab.getByTestId("editor-tab-dirty-dot")).toHaveCount(0);
+    await expect(page.getByTestId("editor-tab").filter({ hasText: "未命名文章" })).toHaveCount(0);
+    await expect(sourceEditor).toHaveValue(/tags:\n {2}- React\n {2}- Hooks/);
+
+    await page.waitForTimeout(600);
+
+    await expect(page.getByTestId("editor-status-badge")).toContainText("已保存");
+    await expect(savedTab.getByTestId("editor-tab-dirty-dot")).toHaveCount(0);
+    await expect(sourceEditor).toHaveValue(/tags:\n {2}- React\n {2}- Hooks/);
+  });
+
   test("opening a sample file keeps it saved until the user edits it", async ({ page }) => {
     await openDemoEditor(page);
 

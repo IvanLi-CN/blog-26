@@ -74,8 +74,13 @@ import {
   shouldMarkLiveEditorContentDirty,
 } from "./editor-logic";
 
-function insertEditorTabAtStart(current: EditorTab[], tab: EditorTab) {
-  return [tab, ...current.filter((item) => item.id !== tab.id)];
+function insertEditorTabAtStart(
+  current: EditorTab[],
+  tab: EditorTab,
+  options?: { replaceIds?: string[] }
+) {
+  const replaceIds = new Set([tab.id, ...(options?.replaceIds ?? [])]);
+  return [tab, ...current.filter((item) => !replaceIds.has(item.id))];
 }
 
 const EMPTY_SOURCES: DataSourceInfo[] = [];
@@ -429,7 +434,7 @@ export function EditorPage() {
     [categorySuggestionsQuery.data, tagsOverviewQuery.data?.tagSummaries]
   );
 
-  const upsertPostTab = useCallback((post: AdminPost) => {
+  const upsertPostTab = useCallback((post: AdminPost, options?: { replaceTabId?: string }) => {
     const tabId = `post:${post.id}`;
     const databaseDraft: DatabaseDraft = {
       postId: post.id,
@@ -451,6 +456,9 @@ export function EditorPage() {
         (tab) => getTabArticleIdentity(tab) === targetIdentity
       );
       const existingDatabase = current.find((tab) => tab.id === tabId);
+      const replacingTab = options?.replaceTabId
+        ? current.find((tab) => tab.id === options.replaceTabId)
+        : undefined;
 
       if (existingByIdentity && existingByIdentity.kind !== "database") {
         nextActiveTabId = existingByIdentity.id;
@@ -458,26 +466,34 @@ export function EditorPage() {
       }
 
       const preservedTabs = current.filter(
-        (tab) => tab.id !== tabId && getTabArticleIdentity(tab) !== targetIdentity
+        (tab) =>
+          tab.id !== tabId &&
+          tab.id !== options?.replaceTabId &&
+          getTabArticleIdentity(tab) !== targetIdentity
       );
       const mode =
         existingDatabase?.mode ??
         (existingByIdentity?.kind === "database" ? existingByIdentity.mode : undefined) ??
+        replacingTab?.mode ??
         "wysiwyg";
 
       nextActiveTabId = existingByIdentity?.id ?? tabId;
 
-      return insertEditorTabAtStart(preservedTabs, {
-        id: nextActiveTabId,
-        label: derivedDraft.title || post.slug || post.id,
-        kind: "database",
-        mode,
-        dirty: false,
-        database: {
-          ...databaseDraft,
-          ...derivedDraft,
+      return insertEditorTabAtStart(
+        preservedTabs,
+        {
+          id: nextActiveTabId,
+          label: derivedDraft.title || post.slug || post.id,
+          kind: "database",
+          mode,
+          dirty: false,
+          database: {
+            ...databaseDraft,
+            ...derivedDraft,
+          },
         },
-      });
+        options?.replaceTabId ? { replaceIds: [options.replaceTabId] } : undefined
+      );
     });
     setActiveTabId(nextActiveTabId);
   }, []);
@@ -883,10 +899,43 @@ export function EditorPage() {
       if (fixedFrontmatter.fixedFields.length === 0) return;
       showAdminToast("default", formatFrontmatterStyleFixNotice(fixedFrontmatter.fixedFields));
     };
-    const syncEditorWithSavedContent = () => {
+    const syncEditorWithSavedContent = (targetTabId?: string) => {
       if (liveContent === syncedLiveContent) return;
       editorRef.current?.setContent(liveContent);
-      updateActiveTabContent(liveContent, { markDirty: false });
+      if (!targetTabId) {
+        updateActiveTabContent(liveContent, { markDirty: false });
+        return;
+      }
+      setTabs((current) =>
+        current.map((tab) => {
+          if (tab.id !== targetTabId) return tab;
+          if (tab.kind === "database" && tab.database) {
+            const derivedDraft = deriveDatabaseDraftState(tab.database, liveContent);
+            return {
+              ...tab,
+              label: derivedDraft.title || tab.label,
+              dirty: false,
+              database: {
+                ...tab.database,
+                ...derivedDraft,
+                content: liveContent,
+              },
+            };
+          }
+          if (tab.kind === "file" && tab.file) {
+            return {
+              ...tab,
+              label: deriveFileLabel(tab.file.path, liveContent),
+              dirty: false,
+              file: {
+                ...tab.file,
+                content: liveContent,
+              },
+            };
+          }
+          return tab;
+        })
+      );
     };
     frontmatterDiagnosticsRef.current = saveDiagnostics;
     if (saveDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
@@ -917,8 +966,9 @@ export function EditorPage() {
 
         if (activeTab.database.isNew) {
           const created = await adminApi.createPost(payload);
-          upsertPostTab(created.post);
-          syncEditorWithSavedContent();
+          const createdTabId = `post:${created.post.id}`;
+          upsertPostTab(created.post, { replaceTabId: activeTab.id });
+          syncEditorWithSavedContent(createdTabId);
           setNotice("已创建新草稿。");
           publishStyleFixNotice();
           return;
