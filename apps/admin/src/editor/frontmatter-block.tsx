@@ -7,7 +7,6 @@ import {
 } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { yaml as yamlLanguage } from "@codemirror/lang-yaml";
-import { lintGutter } from "@codemirror/lint";
 import {
   Compartment,
   EditorSelection,
@@ -143,24 +142,6 @@ function buildYamlTheme() {
     },
     ".cm-cursor, .cm-dropCursor": {
       borderLeftColor: "var(--foreground)",
-    },
-    ".cm-gutters": {
-      backgroundColor: "transparent",
-      border: "none",
-      paddingInline: "0.35rem 0",
-    },
-    ".cm-lintGutter": {
-      width: "1rem",
-    },
-    ".cm-gutterElement": {
-      color: "color-mix(in oklch, var(--muted-foreground) 72%, transparent)",
-      paddingInline: "0.125rem",
-    },
-    ".cm-gutterElement.cm-frontmatter-lintGutter-error": {
-      color: "var(--destructive)",
-    },
-    ".cm-gutterElement.cm-frontmatter-lintGutter-warning": {
-      color: "var(--warning)",
     },
     ".cm-activeLine": {
       backgroundColor: "transparent",
@@ -767,7 +748,6 @@ export function FrontmatterBlock({
   const initialValueRef = useRef(value);
   const syncingRef = useRef(false);
   const lineDiagnosticsCompartment = useRef(new Compartment()).current;
-  const editableCompartment = useRef(new Compartment()).current;
   const completionCompartment = useRef(new Compartment()).current;
   const readOnlyCompartment = useRef(new Compartment()).current;
   const accessibilityCompartment = useRef(new Compartment()).current;
@@ -840,7 +820,6 @@ export function FrontmatterBlock({
           EditorState.readOnly.of(readOnly),
           EditorView.editable.of(!readOnly),
         ]),
-        editableCompartment.of(readOnly ? [] : [lintGutter()]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const nextValue = update.state.doc.toString();
@@ -889,7 +868,6 @@ export function FrontmatterBlock({
   }, [
     completionCompartment,
     lineDiagnosticsCompartment,
-    editableCompartment,
     readOnlyCompartment,
     accessibilityCompartment,
     theme,
@@ -940,7 +918,6 @@ export function FrontmatterBlock({
           EditorState.readOnly.of(readOnly),
           EditorView.editable.of(!readOnly),
         ]),
-        editableCompartment.reconfigure(readOnly ? [] : [lintGutter()]),
         setLineDiagnosticsEffect.of(effectiveDiagnostics),
       ],
     });
@@ -950,7 +927,6 @@ export function FrontmatterBlock({
   }, [
     completionCompartment,
     lineDiagnosticsCompartment,
-    editableCompartment,
     readOnlyCompartment,
     accessibilityCompartment,
     effectiveDiagnostics,
