@@ -21,7 +21,10 @@ async function openDemoEditor(page: Page) {
 }
 
 async function openFileBrowserItem(page: Page, name: string, options: { dblClick?: boolean } = {}) {
-  const item = page.getByRole("button", { name, exact: true });
+  const item = page
+    .getByTestId("editor-file-browser")
+    .getByRole("button", { name, exact: true })
+    .first();
   await expect(item).toBeVisible({ timeout: 30_000 });
   if (options.dblClick) {
     await item.dblclick();
