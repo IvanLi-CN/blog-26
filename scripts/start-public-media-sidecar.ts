@@ -103,6 +103,8 @@ const dockerArgs = [
   "-p",
   `127.0.0.1:${imagorPort}:8000`,
   "-e",
+  "IMAGOR_UNSAFE=1",
+  "-e",
   `HTTP_LOADER_ALLOWED_SOURCES=${internalSourceUrl.host}`,
   "-e",
   "HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0",
