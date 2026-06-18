@@ -50,7 +50,9 @@ function resolveContainerCli() {
     try {
       execFileSync("which", [candidate], { stdio: "ignore" });
       return candidate;
-    } catch {}
+    } catch {
+      // Ignore missing PATH entries and continue scanning known container CLIs.
+    }
   }
 
   const availableFallbacks = ["/opt/homebrew/bin/colima", "/opt/homebrew/bin/limactl"].filter(
