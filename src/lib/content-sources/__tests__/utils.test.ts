@@ -273,6 +273,11 @@ describe("Memo Utils", () => {
       expect(slug).toBe("uejdtk1-");
     });
 
+    it("keeps non-memo 8-character title slugs on the normal canonical path", () => {
+      const slug = generateSlugFromPath("Posts/20260615_uEjDtK1-.md");
+      expect(slug).toBe("uejdtk1");
+    });
+
     it("normalizes title-derived memo filename slugs", () => {
       const slug = generateSlugFromPath("Memos/20260615_React Learning.md");
       expect(slug).toBe("react-learning");

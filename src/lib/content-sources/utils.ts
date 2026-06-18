@@ -277,7 +277,6 @@ export function generateSlugFromPath(
   const newFormatMatch = fileName.match(/^(\d{8})_(.+)$/);
   if (newFormatMatch) {
     const titleSlug = newFormatMatch[2];
-    // Memo 文件名已经包含稳定 slug 时，重解析必须返回同一 canonical slug。
     return canonicalizeContentSlug(titleSlug, inferredContentType);
   }
 
