@@ -723,7 +723,7 @@ export const memosRouter = router({
       const safeId = idHint || `memo-${Date.now()}`;
       return {
         id: safeId,
-        slug: generateSlugFromPath(safeId),
+        slug: generateSlugFromPath(safeId, undefined, "memo"),
         title: title || extractTitleFromContent(rawContent),
         content: rawContent,
         isPublic,
@@ -795,7 +795,7 @@ export const memosRouter = router({
           const memoData = {
             id: createdId,
             type: "memo" as const,
-            slug: generateSlugFromPath(createdId),
+            slug: generateSlugFromPath(createdId, undefined, "memo"),
             title: title || extractTitleFromContent(normalizedContent),
             excerpt: generateExcerptFromContent(normalizedContent),
             contentHash: calculateSimpleHash(normalizedContent),

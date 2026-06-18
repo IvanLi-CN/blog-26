@@ -64,7 +64,7 @@ export function createContentItemFromParsed(
     options.contentType || inferContentTypeFromPath(filePath, options.pathMappings);
 
   // 生成 slug
-  const slug = generateSlugFromPath(filePath, frontmatter.slug as string);
+  const slug = generateSlugFromPath(filePath, frontmatter.slug as string, contentType);
 
   // 提取标题
   const title = extractTitle(frontmatter, body, filePath);
@@ -255,9 +255,15 @@ export function inferContentTypeFromPath(
  * @param filePath 文件路径
  * @param frontmatterSlug frontmatter 中的 slug
  */
-export function generateSlugFromPath(filePath: string, frontmatterSlug?: string): string {
+export function generateSlugFromPath(
+  filePath: string,
+  frontmatterSlug?: string,
+  contentType?: ContentType
+): string {
+  const inferredContentType = contentType || (isMemoContentPath(filePath) ? "memo" : undefined);
+
   if (frontmatterSlug) {
-    return limax(frontmatterSlug);
+    return canonicalizeContentSlug(frontmatterSlug, inferredContentType);
   }
 
   // 从文件路径提取文件名（不含扩展名）
@@ -271,12 +277,7 @@ export function generateSlugFromPath(filePath: string, frontmatterSlug?: string)
   const newFormatMatch = fileName.match(/^(\d{8})_(.+)$/);
   if (newFormatMatch) {
     const titleSlug = newFormatMatch[2];
-    // Memo 文件名已经包含稳定 slug 时，重解析必须返回同一 canonical slug。
-    if (/^[a-zA-Z0-9_-]{8}$/.test(titleSlug)) {
-      return limax(titleSlug);
-    }
-    // 否则使用titleSlug作为基础生成slug
-    return limax(titleSlug);
+    return canonicalizeContentSlug(titleSlug, inferredContentType);
   }
 
   // 优先查找时间戳模式（如 -1756460268805）
@@ -519,12 +520,20 @@ export function sanitizeContentItem(item: ContentItem): ContentItem {
   return {
     ...item,
     title: item.title.trim(),
-    slug: limax(item.slug),
+    slug: canonicalizeContentSlug(item.slug, item.type),
     excerpt: item.excerpt?.trim() || "",
     tags: item.tags.map((tag) => tag.trim()).filter(Boolean),
     category: item.category?.trim() || undefined,
     author: item.author?.trim() || undefined,
   };
+}
+
+function canonicalizeContentSlug(slug: string, contentType?: ContentType): string {
+  if (contentType === "memo" && /^[a-zA-Z0-9_-]{8}$/.test(slug)) {
+    return slug.toLowerCase();
+  }
+
+  return limax(slug);
 }
 
 // ============================================================================

@@ -9,6 +9,7 @@ import {
   generateTitleSlug,
   mergeFrontmatterAndInlineTags,
   parseMarkdownContent,
+  sanitizeContentItem,
 } from "../utils";
 
 // Mock nanoid for predictable testing in this file
@@ -262,9 +263,49 @@ describe("Memo Utils", () => {
       expect(slug).toBe("abcd123_");
     });
 
+    it("preserves trailing dash for memo nanoid-style filename slugs", () => {
+      const slug = generateSlugFromPath("Memos/20260615_uEjDtK1-.md");
+      expect(slug).toBe("uejdtk1-");
+    });
+
+    it("preserves memo nanoid-style slugs for configured non-default memo roots", () => {
+      const slug = generateSlugFromPath("Notes/20260615_uEjDtK1-.md", undefined, "memo");
+      expect(slug).toBe("uejdtk1-");
+    });
+
+    it("keeps non-memo 8-character title slugs on the normal canonical path", () => {
+      const slug = generateSlugFromPath("Posts/20260615_uEjDtK1-.md");
+      expect(slug).toBe("uejdtk1");
+    });
+
     it("normalizes title-derived memo filename slugs", () => {
       const slug = generateSlugFromPath("Memos/20260615_React Learning.md");
       expect(slug).toBe("react-learning");
+    });
+  });
+
+  describe("sanitizeContentItem", () => {
+    it("preserves canonical memo nanoid-style slugs", () => {
+      const item = sanitizeContentItem({
+        id: "Memos/20260615_uEjDtK1-.md",
+        type: "memo",
+        slug: "uEjDtK1-",
+        title: " Untitled memo ",
+        excerpt: " excerpt ",
+        contentHash: "a".repeat(64),
+        lastModified: 1,
+        source: "local",
+        filePath: "Memos/20260615_uEjDtK1-.md",
+        draft: false,
+        public: true,
+        publishDate: 1,
+        tags: [" tag1 ", "tag2"],
+        metadata: {},
+      });
+
+      expect(item.slug).toBe("uejdtk1-");
+      expect(item.title).toBe("Untitled memo");
+      expect(item.tags).toEqual(["tag1", "tag2"]);
     });
   });
 });
