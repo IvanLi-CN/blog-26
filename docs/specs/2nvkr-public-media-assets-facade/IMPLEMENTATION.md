@@ -59,7 +59,7 @@
 9. imagor watermark filter 现在按官方合同将 watermark URL 编成 `b64:` base64url，避免 `http://...` 里的冒号破坏 `filters:` 链。
 10. CI sidecar readiness 不再假设 `200 /healthz`；当前镜像只要端口开始返回任意 HTTP 响应，即视为服务已启动，再交给后续 facade / E2E 断言验证实际功能。
 11. `site-dist` 现在显式校验并携带 `/watermark-ivanli.svg`；公开网关通过同源静态文件路由直接提供该 watermark 资源，而不是走 internal source。
-12. Playwright E2E 的 guest/admin/user/mcp 全矩阵现在都启动 imagor sidecar，并把 `PUBLIC_MEDIA_*` 环境变量注入运行时；仓库默认本地 Playwright 入口与 GitHub Actions 保持同一合同。公开媒体覆盖不再只停留在 `img src` 字符串断言，而会实际请求至少一个 facade 媒体 URL。
+12. Playwright E2E 的 guest/admin/user/mcp 全矩阵现在都通过 `playwright.config.ts` 统一管理 imagor sidecar，让 sidecar 回源地址始终跟随实际 `WEB_PORT`；仓库默认本地 Playwright 入口与 GitHub Actions 保持同一合同。公开媒体覆盖不再只停留在 `img src` 字符串断言，而会实际请求至少一个 facade 媒体 URL。
 13. 公开媒体路径解析只解码安全的 segment 内转义（例如 `%20`），并显式拒绝 `%2F` / `%5C` 这类编码后的路径分隔符，以及任何会在解码后变成 `.` / `..` 的编码 dot-segment；明文 dot-segment 会先 canonicalize，再拒绝任何越过 `LOCAL_CONTENT_BASE_PATH` 内容根的 traversal。
 
 ## 本地开发与故障语义

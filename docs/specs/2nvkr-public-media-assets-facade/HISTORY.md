@@ -22,6 +22,7 @@
 - 按 imagor 官方 filter 合同修正 watermark 参数编码：watermark URL 以 `b64:` base64url 形式写入 filter，避免绝对 URL 中的 `:` 破坏 filter 解析。
 - 修正 imagor sidecar readiness 假设：当前 CI 使用的镜像不会返回 `200 /healthz`，因此就绪门禁改为“已开始提供 HTTP 响应”，实际功能由后续 facade 请求与 E2E 断言验证。
 - 扩大 E2E 门面覆盖：guest/admin/user/mcp 全矩阵统一挂 imagor sidecar，guest 场景补充真实媒体字节请求与 `/watermark-ivanli.svg` 直连断言。
+- 修正 GitHub Actions E2E sidecar 编排：不再在 workflow 里预启动一个固定指向 `host.docker.internal:25090` 的外置 imagor sidecar，而是统一交回 `playwright.config.ts` 管理，使 sidecar internal-source 回源端口始终跟随实际选中的 `WEB_PORT`。
 - 固定门面故障语义：不提供运行时 fallback；imagor/internal source 异常时，公开门面必须直接失败并返回错误。
 - 固定浏览器端公开 API base 语义：浏览器运行时优先使用当前页面 `window.location.origin`，以支持同一份预构建前端在多端口隔离 E2E 与同源发布入口下复用；`PUBLIC_API_BASE_URL` 继续作为 SSR / 构建期基线，不引入 runtime fallback。
 - 收紧内容媒体路径解码边界：允许 `%20` 等安全 segment 转义继续解码，但显式拒绝 `%2F` / `%5C` 这类编码分隔符、以及会解码成 `.` / `..` 的编码 dot-segment；同时把明文 dot-segment 统一 canonicalize，并拒绝任何越过内容根的 traversal。

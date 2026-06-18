@@ -65,55 +65,9 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Start public media processor sidecar
-        run: |
-          wait_for_http() {
-            local url="$1"
-            local attempts="${2:-30}"
-            local delay="${3:-1}"
-            local status=""
-
-            for _ in $(seq 1 "$attempts"); do
-              status="$(curl -sS -o /dev/null -w '%{http_code}' "$url" || true)"
-              if [ "$status" != "000" ]; then
-                return 0
-              fi
-              sleep "$delay"
-            done
-
-            echo "Timed out waiting for HTTP readiness at ${url}; last status=${status}" >&2
-            return 1
-          }
-
-          docker rm -f imagorvideo-e2e >/dev/null 2>&1 || true
-          docker run -d \
-            --name imagorvideo-e2e \
-            --add-host host.docker.internal:host-gateway \
-            -p 127.0.0.1:18000:8000 \
-            -e IMAGOR_UNSAFE=1 \
-            -e HTTP_LOADER_ALLOWED_SOURCES=host.docker.internal:25090 \
-            -e HTTP_LOADER_HTTPS_ONLY=0 \
-            -e HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0 \
-            ghcr.io/cshum/imagorvideo:latest
-
-          wait_for_http "http://127.0.0.1:18000/"
-
       - name: Run E2E tests
         run: bun run test:e2e:project -- ${{ matrix.project }}
         env:
           ADMIN_EMAIL: admin-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           USER_EMAIL: user-${{ github.run_id }}-${{ github.run_attempt }}@test.local
           SSO_EMAIL_HEADER_NAME: Remote-Email
-          PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR: "0"
-          PUBLIC_MEDIA_IMAGOR_BASE_URL: http://127.0.0.1:18000
-          PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL: http://host.docker.internal:25090
-
-      - name: Dump public media processor logs on failure
-        if: ${{ failure() }}
-        run: |
-          curl -sS -D - -o /dev/null http://127.0.0.1:18000/ || true
-          docker logs imagorvideo-e2e || true
-
-      - name: Cleanup public media processor sidecar
-        if: ${{ always() }}
-        run: docker rm -f imagorvideo-e2e >/dev/null 2>&1 || true
