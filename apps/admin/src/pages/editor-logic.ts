@@ -10,6 +10,8 @@ import {
 } from "~/components/editor-file-browser";
 
 export type EditorMode = "wysiwyg" | "source" | "compare";
+export type FileEditorContentKind = "markdown" | "text";
+export type EditorSurfaceKind = "article" | "text";
 
 export type DatabaseDraft = {
   postId: string;
@@ -28,6 +30,8 @@ export type FileDraft = {
   source: "local";
   path: string;
   content: string;
+  contentKind: FileEditorContentKind;
+  size?: number;
 };
 
 export type EditorTab = {
@@ -40,6 +44,77 @@ export type EditorTab = {
   database?: DatabaseDraft;
   file?: FileDraft;
 };
+
+export function isMarkdownFileDraft(file: FileDraft | null | undefined) {
+  return file?.contentKind === "markdown";
+}
+
+export function isTextFileDraft(file: FileDraft | null | undefined) {
+  return file?.contentKind === "text";
+}
+
+export function getDefaultFileEditorMode(contentKind: FileEditorContentKind): EditorMode {
+  return contentKind === "markdown" ? "wysiwyg" : "source";
+}
+
+export function getAvailableEditorModes(tab: EditorTab | null | undefined): EditorMode[] {
+  if (tab?.kind === "file" && isTextFileDraft(tab.file)) {
+    return ["source"];
+  }
+  return ["wysiwyg", "source", "compare"];
+}
+
+export function isPreviewableEditorTab(tab: EditorTab | null | undefined) {
+  if (!tab) return false;
+  if (tab.kind === "database") return true;
+  return isMarkdownFileDraft(tab.file);
+}
+
+export function supportsEditorAttachments(tab: EditorTab | null | undefined) {
+  if (!tab) return false;
+  if (tab.kind === "database") return true;
+  return isMarkdownFileDraft(tab.file);
+}
+
+export function getEditorSurfaceKind(tab: EditorTab | null | undefined): EditorSurfaceKind {
+  if (!tab) {
+    return "article";
+  }
+  if (tab.kind === "file" && isTextFileDraft(tab.file)) {
+    return "text";
+  }
+  return "article";
+}
+
+export function getEditorHeaderCopy(tab: EditorTab | null | undefined) {
+  if (getEditorSurfaceKind(tab) === "text") {
+    return {
+      title: "纯文本编辑器",
+      description: "打开纯文本文件，直接编辑并保存到本地内容目录。",
+      backLabel: "返回文件浏览器",
+      newLabel: "新建文章",
+      emptyTitle: "选择一个纯文本文件开始编辑",
+      emptyDescription: "从左侧文件树选择一个可编辑的纯文本文件。",
+      emptyActionLabel: null,
+      placeholder: "开始编辑纯文本文件...",
+      untitledLabel: "未命名文本",
+      inlineDraftLabel: "纯文本文件",
+    };
+  }
+
+  return {
+    title: "文章编辑器",
+    description: "打开文章、切换编辑模式，并在保存前检查预览。",
+    backLabel: "返回文章列表",
+    newLabel: "新建文章",
+    emptyTitle: "选择一个文件开始编辑",
+    emptyDescription: "从左侧选择已有内容，或新建一篇文章。",
+    emptyActionLabel: "新建文章",
+    placeholder: "开始写作您的文章...",
+    untitledLabel: "未命名文章",
+    inlineDraftLabel: "新建文章",
+  };
+}
 
 export function shouldMarkLiveEditorContentDirty(
   liveContent: string,

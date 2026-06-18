@@ -76,7 +76,7 @@ Out of scope:
 9. Visual evidence covers desktop, tablet, and mobile views for key admin workflows before PR handoff.
 10. Demo mode is toggled only on real `/admin/*` URLs with `?demo=true|false`, and the choice is remembered in `localStorage`.
 11. Demo-specific code is limited to API mocking and the tiny bootstrap needed to enable that mock layer; no standalone demo route exists, and the shell, pages, router, editor, navigation, and shared components are the shipped admin implementation.
-12. The demo editor preserves the shipped editor interaction model: real file-tree and navigation modes share the left sidebar, opening content creates or activates editor tabs, tab state is independent per file, and WYSIWYG / Source / 对照 are the available editor modes. 对照 mode uses a read-only Milkdown rendered pane beside the editable Markdown source pane.
+12. The demo editor preserves the shipped editor interaction model: real file-tree and navigation modes share the left sidebar, opening content creates or activates editor tabs, tab state is independent per file, Markdown content keeps WYSIWYG / Source / 对照, and plain-text files are constrained to Source-only mode. 对照 mode uses a read-only Milkdown rendered pane beside the editable Markdown source pane.
 13. The editor renders Markdown syntax consistently across modes: Source mode keeps raw Markdown syntax visible, while WYSIWYG and the read-only compare preview render headings, lists, blockquotes, inline code, fenced code blocks, and syntax highlighting.
 14. The desktop admin left sidebar is resizable with a visible drag handle embedded inside the right edge of the sidebar card, persists its width in `localStorage`, supports keyboard adjustment, exposes an accessible vertical separator with current width values, provides a discoverability tooltip, supports double-click reset to the default width, and uses the shell grid so widening the sidebar reduces the main workspace width instead of overlapping content. The sidebar keeps its outer card effect, while route-specific panels and user/build details render as lightweight sections instead of nested cards.
 15. The WYSIWYG frontmatter block upgrades from a plain textarea to a local YAML editor that keeps the same visual shell, preserves unknown keys, offers field-name completion, boolean/date/category/tag value completion, shows real-time diagnostics directly inside the block, and auto-grows with its YAML content instead of trapping metadata behind an inner scrollbar.
@@ -127,6 +127,8 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 - Frontmatter diagnostics: header keeps a compact error badge with hover-only detail, while invalid lines carry inline line-end markers plus wavy underline for direct location
 - Sidebar reflow: width persists and the shell grid reallocates space from main content instead of overlapping it; measured `272px => 1168px` and `404px => 1036px`
 - File workflow: file actions share one toolbar, inline rename stays in place, the tree fills the available sidebar height, and the sidebar remains free of removed remote-source UI
+- Text-file routing: extensionless and whitelisted text files open as true plain-text tabs, default to Source, hide frontmatter and Markdown-only mode switches, disable preview and attachment insertion, keep save local-only instead of pretending to be managed articles, and preserve image/video/Markdown/HTML references as literal text instead of rendering them
+- Openability guardrails: unsupported file types stay visible in the tree but surface a friendly open error, and text-editable files above `2 MiB` are blocked both from tree open and direct `id=<path>` deep links with the same Chinese error copy
 - File-tree keyboard contract: `Enter` on the focused file or directory enters inline rename, `Space` keeps the primary open/expand action, and directories also support `ArrowRight` / `ArrowLeft` for explicit expand and collapse
 - File-tree write clarity: create / rename / move / copy / delete show row-level pending feedback on the affected items so the operator can see which entry is submitting without relying on toast timing alone; rename failures keep inline editing active, tint the input into an error state without adding inline error copy or shifting row layout, and keep the error toast visible until dismissed
 
@@ -184,6 +186,10 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 ![Admin editor empty file surface fills the editor height](./assets/demo/admin-editor-empty-file-height-fixed.trimmed.png)
 
 ![Admin editor compare mode fits viewport height with internal pane scrolling](./assets/demo/admin-editor-viewport-height-compare.trimmed.png)
+
+![Admin editor plain-text file opens in Source-only mode](./assets/demo/admin-editor-plain-text-source-mode.trimmed.png)
+
+![Admin editor blocks oversized text files with a clear open error](./assets/demo/admin-editor-oversized-text-blocked.trimmed.png)
 
 ![Admin editor workspace with nested cards removed](./assets/demo/admin-editor-de-nested-workspace.trimmed.png)
 

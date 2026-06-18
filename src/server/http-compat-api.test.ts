@@ -1530,6 +1530,149 @@ describe("HTTP compatibility APIs", () => {
       source: "local",
       path: "Hardware/usb-pd.md",
       content: "---\ntitle: USB PD\n---\n\n# USB PD\n",
+      contentKind: "markdown",
+    });
+  });
+
+  it("classifies directory items and extensionless text reads consistently", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "usb-pd.md"), "# USB PD\n", "utf-8");
+    fs.writeFileSync(path.join(hardwareDir, "plain-config"), "mode=5v\n", "utf-8");
+    fs.writeFileSync(path.join(hardwareDir, "settings.json"), '{"safe":true}\n', "utf-8");
+    fs.writeFileSync(path.join(hardwareDir, "archive.bin"), Buffer.from([0xde, 0xad, 0xbe, 0xef]));
+
+    const treeResponse = await handleAdminApiRequest(
+      buildRequest("/api/admin/files/tree?source=local&path=%2FHardware%2F", {}, ADMIN_EMAIL),
+      "/files/tree"
+    );
+
+    expect(treeResponse.status).toBe(200);
+    const treePayload = await readJson(treeResponse);
+    expect(treePayload.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "usb-pd.md",
+          extension: "md",
+          contentKind: "markdown",
+        }),
+        expect.objectContaining({
+          name: "plain-config",
+          extension: "",
+          contentKind: "text",
+        }),
+        expect.objectContaining({
+          name: "settings.json",
+          extension: "json",
+          contentKind: "text",
+        }),
+        expect.objectContaining({
+          name: "archive.bin",
+          extension: "bin",
+          contentKind: "unsupported",
+        }),
+      ])
+    );
+
+    const textReadResponse = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/read?source=local&path=Hardware%2Fplain-config",
+        {},
+        ADMIN_EMAIL
+      ),
+      "/files/read"
+    );
+
+    expect(textReadResponse.status).toBe(200);
+    const textReadPayload = await readJson(textReadResponse);
+    expect(textReadPayload).toMatchObject({
+      source: "local",
+      path: "Hardware/plain-config",
+      content: "mode=5v\n",
+      contentKind: "text",
+      size: 8,
+    });
+  });
+
+  it("returns a structured bad request for unsupported local file types", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(path.join(hardwareDir, "capture.bin"), Buffer.from([0x01, 0x02, 0x03]));
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/read?source=local&path=Hardware%2Fcapture.bin",
+        {},
+        ADMIN_EMAIL
+      ),
+      "/files/read"
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await readJson(response);
+    expect(payload.error).toMatchObject({
+      code: "BAD_REQUEST",
+      message: "文件类型不受支持：Hardware/capture.bin",
+    });
+  });
+
+  it("rejects unsupported file writes before touching the filesystem", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    const binaryPath = path.join(hardwareDir, "capture.bin");
+    fs.writeFileSync(binaryPath, Buffer.from([0xde, 0xad, 0xbe, 0xef]));
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/write",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            source: "local",
+            path: "Hardware/capture.bin",
+            content: "corrupted",
+          }),
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+        ADMIN_EMAIL
+      ),
+      "/files/write"
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await readJson(response);
+    expect(payload.error).toMatchObject({
+      code: "BAD_REQUEST",
+      message: "文件类型不受支持：Hardware/capture.bin",
+    });
+    expect(fs.readFileSync(binaryPath)).toEqual(Buffer.from([0xde, 0xad, 0xbe, 0xef]));
+  });
+
+  it("returns a structured bad request for oversized local text files", async () => {
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    fs.mkdirSync(hardwareDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(hardwareDir, "oversized.log"),
+      `${"0123456789abcdef".repeat(131072)}\n`,
+      "utf-8"
+    );
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/files/read?source=local&path=Hardware%2Foversized.log",
+        {},
+        ADMIN_EMAIL
+      ),
+      "/files/read"
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await readJson(response);
+    expect(payload.error).toMatchObject({
+      code: "BAD_REQUEST",
+      message: "文件过大，禁止直接打开：Hardware/oversized.log（最大支持 2 MiB）",
     });
   });
 
@@ -1650,6 +1793,54 @@ describe("HTTP compatibility APIs", () => {
       );
     } finally {
       LocalContentSource.prototype.initialize = originalInitialize;
+      manager.syncAll = originalSyncAll;
+    }
+  });
+
+  it("writes extensionless text files without triggering content sync", async () => {
+    const { getContentSourceManager } = await import("@/lib/content-sources");
+
+    const hardwareDir = path.join(LOCAL_CONTENT_BASE_PATH, "Hardware");
+    const textFilePath = "Hardware/USB-C Safe5V 诱骗器";
+    fs.mkdirSync(hardwareDir, { recursive: true });
+
+    const manager = getContentSourceManager();
+    const originalSyncAll = manager.syncAll;
+    let syncCalls = 0;
+    manager.syncAll = (async () => {
+      syncCalls += 1;
+      return createSuccessfulSyncResult();
+    }) as typeof manager.syncAll;
+
+    try {
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          "/api/admin/files/write",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              source: "local",
+              path: textFilePath,
+              content: "plain text payload",
+            }),
+          },
+          ADMIN_EMAIL
+        ),
+        "/files/write"
+      );
+
+      expect(response.status).toBe(200);
+      const payload = await readJson(response);
+      expect(payload).toMatchObject({
+        success: true,
+        path: textFilePath,
+      });
+      expect(fs.readFileSync(path.join(LOCAL_CONTENT_BASE_PATH, textFilePath), "utf-8")).toBe(
+        "plain text payload"
+      );
+      expect(syncCalls).toBe(0);
+    } finally {
       manager.syncAll = originalSyncAll;
     }
   });

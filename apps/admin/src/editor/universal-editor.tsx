@@ -39,6 +39,7 @@ export type UniversalEditorProps = {
   attachmentBasePath?: string;
   articlePath?: string;
   contentSource?: "local";
+  contentKind?: "markdown" | "text";
   title?: string;
   className?: string;
   mode?: EditorMode;
@@ -73,6 +74,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       attachmentBasePath = "assets",
       articlePath = "",
       contentSource = "local",
+      contentKind = "markdown",
       title,
       className = "",
       mode = "wysiwyg",
@@ -126,6 +128,9 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
       },
       [articlePath, attachmentBasePath, contentSource]
     );
+
+    const isTextContent = contentKind === "text";
+    const effectiveMode = isTextContent ? "source" : currentMode;
 
     useImperativeHandle(
       ref,
@@ -238,7 +243,7 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
         ) : null}
 
         <div className="min-h-0 flex-1 overflow-hidden">
-          {currentMode === "wysiwyg" ? (
+          {effectiveMode === "wysiwyg" ? (
             <div className="admin-editor-surface admin-scrollbar flex h-full flex-col gap-4 overflow-auto p-4">
               <FrontmatterBlock
                 value={parsedDocument.frontmatterText}
@@ -262,20 +267,20 @@ export const UniversalEditor = forwardRef<UniversalEditorRef, UniversalEditorPro
             </div>
           ) : null}
 
-          {currentMode === "source" ? (
+          {effectiveMode === "source" ? (
             <SourceEditor
-              content={convertApiUrlsToRelativePaths(content)}
+              content={isTextContent ? content : convertApiUrlsToRelativePaths(content)}
               onChange={(nextContent) => handleContentChange(nextContent, USER_EDITOR_CHANGE)}
               placeholder={placeholder}
               className="h-full rounded-none border-0 bg-transparent shadow-none"
               data-testid="content-input"
-              onImageUpload={handleImageUploadForSource}
-              textareaLabel="Markdown source editor"
+              onImageUpload={isTextContent ? undefined : handleImageUploadForSource}
+              textareaLabel={isTextContent ? "Plain text editor" : "Markdown source editor"}
               textareaName={`${editorId}-source`}
             />
           ) : null}
 
-          {currentMode === "compare" ? (
+          {effectiveMode === "compare" ? (
             <div className="admin-editor-compare grid h-full min-h-0 overflow-hidden lg:grid-cols-[minmax(25rem,0.96fr)_minmax(0,1fr)]">
               <section className="admin-editor-compare-pane admin-editor-compare-source flex min-h-0 min-w-0 flex-col border-b border-border/58 lg:border-r lg:border-b-0">
                 <div className="admin-editor-compare-header">

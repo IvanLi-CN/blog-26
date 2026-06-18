@@ -9,6 +9,12 @@ import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
+  ADMIN_TEXT_FILE_SIZE_LIMIT_BYTES,
+  getAdminFileContentKind,
+  getAdminFileExtension,
+  isAdminMarkdownFile,
+} from "@/lib/admin-file-content";
+import {
   getConfiguredContentRootDirs,
   isPathWithinConfiguredRoots,
   normalizeRelativeContentPath,
@@ -86,6 +92,7 @@ export interface FileItem {
   size?: number;
   lastModified?: Date;
   extension?: string;
+  contentKind?: "markdown" | "text" | "unsupported";
   count?: number;
 }
 
@@ -116,11 +123,6 @@ type ScopedMutationSnapshot = {
   postEmbeddings: Array<typeof postEmbeddings.$inferSelect>;
   vectorizedFiles: Array<typeof vectorizedFiles.$inferSelect>;
 };
-
-function isMarkdownContentFile(path: string) {
-  const lowerPath = path.toLowerCase();
-  return lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown") || lowerPath.endsWith(".mdx");
-}
 
 function requireLocalBasePath(): string {
   if (!isLocalContentEnabled()) {
@@ -588,7 +590,8 @@ async function listLocalDirectory(path: string): Promise<FileItem[]> {
         type: "file",
         size: stats.size,
         lastModified: stats.mtime,
-        extension: entry.name.split(".").pop(),
+        extension: getAdminFileExtension(entry.name),
+        contentKind: getAdminFileContentKind(entry.name),
       });
     }
   }
@@ -596,7 +599,11 @@ async function listLocalDirectory(path: string): Promise<FileItem[]> {
   return items;
 }
 
-async function readLocalFile(path: string): Promise<string> {
+async function readLocalFile(path: string): Promise<{
+  content: string;
+  size: number;
+  contentKind: "markdown" | "text";
+}> {
   const fs = await import("node:fs/promises");
   const nodePath = await import("node:path");
 
@@ -612,7 +619,25 @@ async function readLocalFile(path: string): Promise<string> {
       });
     }
 
-    return await fs.readFile(fullPath, "utf-8");
+    const contentKind = getAdminFileContentKind(safePath);
+    if (contentKind === "unsupported") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `文件类型不受支持：${safePath}`,
+      });
+    }
+    if (stats.size > ADMIN_TEXT_FILE_SIZE_LIMIT_BYTES) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `文件过大，禁止直接打开：${safePath}（最大支持 2 MiB）`,
+      });
+    }
+
+    return {
+      content: await fs.readFile(fullPath, "utf-8"),
+      size: stats.size,
+      contentKind,
+    };
   } catch (error) {
     if (error instanceof TRPCError) {
       throw error;
@@ -745,7 +770,7 @@ async function touchMarkdownContentTree(fullPath: string) {
   if (!stats) return;
 
   if (stats.isFile()) {
-    if (!isMarkdownContentFile(fullPath)) return;
+    if (!isAdminMarkdownFile(fullPath)) return;
     const now = new Date();
     await fs.utimes(fullPath, now, now);
     return;
@@ -768,7 +793,7 @@ async function containsMarkdownContentFile(
   if (!stats) return false;
 
   if (stats.isFile()) {
-    return isMarkdownContentFile(fullPath);
+    return isAdminMarkdownFile(fullPath);
   }
 
   if (!stats.isDirectory()) return false;
@@ -794,7 +819,7 @@ async function rebaseMovedMarkdownLinks(
   if (!stats) return;
 
   if (stats.isFile()) {
-    if (!isMarkdownContentFile(fullPath)) return;
+    if (!isAdminMarkdownFile(fullPath)) return;
     const currentContent = await fs.readFile(fullPath, "utf-8");
     const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
     if (rebased.changed) {
@@ -828,7 +853,7 @@ async function rebaseCopiedMarkdownLinks(
   if (!stats) return;
 
   if (stats.isFile()) {
-    if (!isMarkdownContentFile(fullPath)) return;
+    if (!isAdminMarkdownFile(fullPath)) return;
     const currentContent = await fs.readFile(fullPath, "utf-8");
     const rebased = rebasePersistedLocalLinks(currentContent, oldRelativePath, newRelativePath);
     if (rebased.changed) {
@@ -877,7 +902,7 @@ async function rebaseInboundMovedReferences(
       return;
     }
 
-    if (!stats.isFile() || !isMarkdownContentFile(fullPath)) return;
+    if (!stats.isFile() || !isAdminMarkdownFile(fullPath)) return;
 
     let content = await fs.readFile(fullPath, "utf-8");
     let changed = false;
@@ -1356,7 +1381,7 @@ export const filesRouter = createTRPCRouter({
     return {
       source: input.source,
       path: input.path,
-      content: await readLocalFile(input.path),
+      ...(await readLocalFile(input.path)),
     };
   }),
 
@@ -1371,7 +1396,15 @@ export const filesRouter = createTRPCRouter({
       });
     }
 
-    const isMarkdown = isMarkdownContentFile(input.path);
+    const contentKind = getAdminFileContentKind(input.path);
+    if (contentKind === "unsupported") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `文件类型不受支持：${normalizeLocalBrowserPath(input.path)}`,
+      });
+    }
+
+    const isMarkdown = contentKind === "markdown";
     let contentToWrite = input.content;
 
     if (isMarkdown && hasApiFilesReference(contentToWrite)) {
@@ -1390,9 +1423,12 @@ export const filesRouter = createTRPCRouter({
     await (
       source as LocalContentSource & { writeFile: (path: string, content: string) => Promise<void> }
     ).writeFile(input.path, contentToWrite);
-    await syncAndCommitFileMutation(writeSnapshot, {
-      rollbackPaths: [input.path],
-    });
+
+    if (isMarkdown) {
+      await syncAndCommitFileMutation(writeSnapshot, {
+        rollbackPaths: [input.path],
+      });
+    }
 
     return {
       success: true,
