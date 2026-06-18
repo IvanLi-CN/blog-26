@@ -26,7 +26,7 @@ describe("public-runtime-url", () => {
     );
   });
 
-  it("keeps using PUBLIC_API_BASE_URL when the browser is already running", () => {
+  it("prefers the current browser origin when the browser is already running", () => {
     (globalThis as typeof globalThis & { window?: Window }).window = {
       location: {
         origin: "http://127.0.0.1:25110",
@@ -34,11 +34,18 @@ describe("public-runtime-url", () => {
     } as Window;
     process.env.PUBLIC_API_BASE_URL = "https://api.example.test/";
 
-    expect(getPublicApiBaseUrl()).toBe("https://api.example.test");
-    expect(toPublicApiUrl("/api/public/posts")).toBe("https://api.example.test/api/public/posts");
+    expect(getPublicApiBaseUrl()).toBe("http://127.0.0.1:25110");
+    expect(toPublicApiUrl("/api/public/posts")).toBe("http://127.0.0.1:25110/api/public/posts");
     expect(toPublicAssetUrl("/api/files/local/foo.png")).toBe(
-      "https://api.example.test/api/files/local/foo.png"
+      "http://127.0.0.1:25110/api/files/local/foo.png"
     );
+  });
+
+  it("keeps server-side rendering bound to PUBLIC_API_BASE_URL when no browser origin exists", () => {
+    process.env.PUBLIC_API_BASE_URL = "https://ivanli.cc";
+
+    expect(getPublicApiBaseUrl()).toBe("https://ivanli.cc");
+    expect(toPublicApiUrl("/api/public/posts")).toBe("https://ivanli.cc/api/public/posts");
   });
 
   it("falls back to the current browser origin when no public api base is configured", () => {

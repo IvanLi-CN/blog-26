@@ -120,11 +120,11 @@ export function getPublicSiteBasePath() {
 }
 
 export function getPublicApiBaseUrl() {
-  const configuredBaseUrl = normalizeBaseUrl(readPublicApiBaseUrlValue());
-  if (configuredBaseUrl) {
-    return configuredBaseUrl;
+  const windowOrigin = readWindowOrigin();
+  if (windowOrigin) {
+    return windowOrigin;
   }
-  return readWindowOrigin();
+  return normalizeBaseUrl(readPublicApiBaseUrlValue());
 }
 
 export function toPublicApiUrl(pathname: string) {
