@@ -213,32 +213,34 @@ function normalizeTagsListIndentation(frontmatterText: string): FrontmatterStyle
     };
   }
 
-  let changed = false;
-  const normalizedLines = lines.map((line, index) => {
-    if (index === 0 || !line.trim()) {
-      return line;
-    }
-
-    const listItemMatch = line.match(/^[ \t]*-\s(.*)$/);
-    if (!listItemMatch) {
-      return line;
-    }
-
-    const normalizedLine = `  - ${listItemMatch[1] ?? ""}`;
-    if (normalizedLine !== line) {
-      changed = true;
-    }
-    return normalizedLine;
-  });
-
-  if (!changed) {
+  let parsedFrontmatter: Record<string, unknown>;
+  try {
+    parsedFrontmatter = parseFrontmatterYaml(frontmatterText);
+  } catch {
     return {
       frontmatterText,
       fixedFields: [],
     };
   }
 
-  const normalizedBlock = normalizedLines.join("\n");
+  if (!("tags" in parsedFrontmatter)) {
+    return {
+      frontmatterText,
+      fixedFields: [],
+    };
+  }
+
+  const normalizedBlock = yaml
+    .dump({ tags: parsedFrontmatter.tags }, { lineWidth: -1, noRefs: true })
+    .trimEnd();
+
+  if (normalizedBlock === block) {
+    return {
+      frontmatterText,
+      fixedFields: [],
+    };
+  }
+
   return {
     frontmatterText:
       frontmatterText.slice(0, range.from) + normalizedBlock + frontmatterText.slice(range.to),

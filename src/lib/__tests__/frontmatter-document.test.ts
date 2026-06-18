@@ -147,8 +147,20 @@ describe("frontmatter-document", () => {
     );
   });
 
-  it("auto-fixes inconsistent tags indentation into a flat YAML array style", () => {
-    const fixed = autoFixFrontmatterStyle("title: Example\ntags:\n  - React\n      - Hooks");
+  it("auto-fixes inconsistent tags indentation without changing parsed tag semantics", () => {
+    const input = "title: Example\ntags:\n  - React\n      - Hooks";
+    const fixed = autoFixFrontmatterStyle(input);
+
+    expect(fixed.fixedFields).toEqual(["tags"]);
+    expect(fixed.frontmatterText).toBe("title: Example\ntags:\n  - React - Hooks");
+    expect(parseFrontmatterDocument(`---\n${input}\n---`).frontmatter.tags).toEqual(
+      parseFrontmatterDocument(`---\n${fixed.frontmatterText}\n---`).frontmatter.tags
+    );
+    expect(validateFrontmatterText(fixed.frontmatterText).hasErrors).toBe(false);
+  });
+
+  it("canonicalizes safe tags list indentation into the standard YAML array style", () => {
+    const fixed = autoFixFrontmatterStyle("title: Example\ntags:\n    - React\n    - Hooks");
 
     expect(fixed.fixedFields).toEqual(["tags"]);
     expect(fixed.frontmatterText).toBe("title: Example\ntags:\n  - React\n  - Hooks");
