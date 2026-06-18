@@ -257,7 +257,10 @@ export function inferContentTypeFromPath(
  */
 export function generateSlugFromPath(filePath: string, frontmatterSlug?: string): string {
   if (frontmatterSlug) {
-    return limax(frontmatterSlug);
+    return canonicalizeContentSlug(
+      frontmatterSlug,
+      isMemoContentPath(filePath) ? "memo" : undefined
+    );
   }
 
   // 从文件路径提取文件名（不含扩展名）
@@ -272,11 +275,7 @@ export function generateSlugFromPath(filePath: string, frontmatterSlug?: string)
   if (newFormatMatch) {
     const titleSlug = newFormatMatch[2];
     // Memo 文件名已经包含稳定 slug 时，重解析必须返回同一 canonical slug。
-    if (/^[a-zA-Z0-9_-]{8}$/.test(titleSlug)) {
-      return titleSlug.toLowerCase();
-    }
-    // 否则使用titleSlug作为基础生成slug
-    return limax(titleSlug);
+    return canonicalizeContentSlug(titleSlug, isMemoContentPath(filePath) ? "memo" : undefined);
   }
 
   // 优先查找时间戳模式（如 -1756460268805）
@@ -519,12 +518,20 @@ export function sanitizeContentItem(item: ContentItem): ContentItem {
   return {
     ...item,
     title: item.title.trim(),
-    slug: limax(item.slug),
+    slug: canonicalizeContentSlug(item.slug, item.type),
     excerpt: item.excerpt?.trim() || "",
     tags: item.tags.map((tag) => tag.trim()).filter(Boolean),
     category: item.category?.trim() || undefined,
     author: item.author?.trim() || undefined,
   };
+}
+
+function canonicalizeContentSlug(slug: string, contentType?: ContentType): string {
+  if (contentType === "memo" && /^[a-zA-Z0-9_-]{8}$/.test(slug)) {
+    return slug.toLowerCase();
+  }
+
+  return limax(slug);
 }
 
 // ============================================================================

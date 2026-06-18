@@ -85,4 +85,29 @@ describe("LocalContentSource real path mappings", () => {
       "Hardware/after.md",
     ]);
   });
+
+  it("preserves memo nanoid-style slugs during local content scans", async () => {
+    const basePath = await createTempContentDir();
+
+    await mkdir(join(basePath, "Memos"), { recursive: true });
+    await writeFile(
+      join(basePath, "Memos", "20260615_uEjDtK1-.md"),
+      "# Untitled memo\n\nBody\n",
+      "utf-8"
+    );
+
+    const source = new LocalContentSource(
+      LocalContentSource.createDefaultConfig("local-test", 1, {
+        contentPath: basePath,
+        pathMappings: REAL_LAYOUT_MAPPINGS,
+      })
+    );
+
+    await source.initialize();
+    const items = await source.listContent();
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.type).toBe("memo");
+    expect(items[0]?.slug).toBe("uejdtk1-");
+  });
 });
