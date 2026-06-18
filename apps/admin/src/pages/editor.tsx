@@ -10,7 +10,7 @@ import {
   Save,
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EditorChangeMeta } from "@/editor/editor-change";
 import {
   AdminApiError,
@@ -19,7 +19,16 @@ import {
   type DataSourceInfo,
   type FileItem,
 } from "@/lib/admin-api-client";
-import { parseFrontmatterMap } from "@/lib/frontmatter-document";
+import {
+  autoFixFrontmatterStyle,
+  buildFrontmatterSuggestions,
+  type FrontmatterDiagnostic,
+  parseFrontmatterDocument,
+  parseFrontmatterMap,
+  splitFrontmatterDiagnosticMessage,
+  updateFrontmatterDocument,
+  validateFrontmatterText,
+} from "@/lib/frontmatter-document";
 import { isMemoContentPath } from "@/lib/memo-paths";
 import { generateContentUrl } from "@/lib/url-utils";
 import { AdminToastViewport, dismissAdminToast, showAdminToast } from "~/components/admin-toast";
@@ -192,9 +201,60 @@ function buildTreeRenameTarget(
 }
 
 type EditorErrorToast = {
-  message: string;
+  message: ReactNode;
   persistent?: boolean;
 };
+
+function formatFrontmatterSaveError(diagnostics: FrontmatterDiagnostic[]) {
+  const errors = diagnostics.filter((diagnostic) => diagnostic.severity === "error");
+  return (
+    <div className="space-y-2">
+      <p className="font-medium text-foreground">Frontmatter 里还有错误，修复后才能保存。</p>
+      <ul className="space-y-1 text-muted-foreground">
+        {errors.map((diagnostic) => (
+          <li
+            key={`${diagnostic.field ?? "root"}:${diagnostic.message}:${diagnostic.from ?? 0}:${diagnostic.to ?? 0}`}
+            className="leading-6"
+          >
+            <span className="mr-2 text-foreground/72">•</span>
+            <FrontmatterSaveErrorMessage message={diagnostic.message} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function FrontmatterSaveErrorMessage({ message }: { message: string }) {
+  const { summary, detail } = splitFrontmatterDiagnosticMessage(message);
+
+  return (
+    <span className="inline-flex min-w-0 flex-col gap-1 align-top">
+      <span>{summary}</span>
+      {detail ? (
+        <pre className="overflow-x-auto rounded-md border border-border/60 bg-muted/28 px-2.5 py-2 font-mono text-xs leading-5 text-foreground whitespace-pre-wrap">
+          {detail}
+        </pre>
+      ) : null}
+    </span>
+  );
+}
+
+function formatFrontmatterStyleFixNotice(fields: string[]) {
+  return (
+    <div className="space-y-2">
+      <p className="font-medium text-foreground">保存时已自动修复 Frontmatter 样式。</p>
+      <ul className="space-y-1 text-muted-foreground">
+        {fields.map((field) => (
+          <li key={field} className="leading-6">
+            <span className="mr-2 text-foreground/72">•</span>
+            <span>{field} 列表缩进已整理为标准 YAML 数组样式。</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function EditorPage() {
   const [tabs, setTabs] = useState<EditorTab[]>([]);
@@ -219,6 +279,7 @@ export function EditorPage() {
   const [didHandleInitialUrl, setDidHandleInitialUrl] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const editorRef = useRef<UniversalEditorRef | null>(null);
+  const frontmatterDiagnosticsRef = useRef<FrontmatterDiagnostic[]>([]);
   const loadingToastIdRef = useRef<ReturnType<typeof showAdminToast> | null>(null);
   const pendingFileTabsRef = useRef<Map<string, { promise: Promise<void>; temporary: boolean }>>(
     new Map()
@@ -233,6 +294,44 @@ export function EditorPage() {
   const sourcesQuery = useQuery({
     queryKey: ["admin-file-sources"],
     queryFn: adminApi.getFileSources,
+  });
+
+  const tagsOverviewQuery = useQuery({
+    queryKey: ["admin-tags-overview", "frontmatter"],
+    queryFn: adminApi.getTagsOverview,
+    staleTime: 60_000,
+  });
+
+  const categorySuggestionsQuery = useQuery({
+    queryKey: ["admin-post-categories", "frontmatter"],
+    queryFn: async () => {
+      const categories = new Set<string>();
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const result = await adminApi.listPosts({
+          page,
+          limit: 50,
+          status: "all",
+          sortBy: "updateDate",
+          sortOrder: "desc",
+        });
+        for (const item of result.posts) {
+          const value = item.category?.trim();
+          if (value) {
+            categories.add(value);
+          }
+        }
+        totalPages = result.pagination.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages);
+
+      return Array.from(categories).sort((left, right) =>
+        left.localeCompare(right, "zh-Hans-CN-u-co-pinyin")
+      );
+    },
+    staleTime: 60_000,
   });
 
   useEffect(() => {
@@ -263,7 +362,7 @@ export function EditorPage() {
       if (loadingToastIdRef.current) {
         dismissAdminToast(loadingToastIdRef.current);
       }
-      loadingToastIdRef.current = showAdminToast("loading", loadingMessage, {
+      loadingToastIdRef.current = showAdminToast("progress", loadingMessage, {
         toastId: "admin-editor-loading",
       });
       return;
@@ -321,6 +420,14 @@ export function EditorPage() {
     activeTab?.kind === "database"
       ? (activeTab.database?.content ?? "")
       : (activeTab?.file?.content ?? "");
+  const frontmatterSuggestions = useMemo(
+    () =>
+      buildFrontmatterSuggestions({
+        tags: (tagsOverviewQuery.data?.tagSummaries ?? []).map((item) => item.name),
+        categories: categorySuggestionsQuery.data ?? [],
+      }),
+    [categorySuggestionsQuery.data, tagsOverviewQuery.data?.tagSummaries]
+  );
 
   const upsertPostTab = useCallback((post: AdminPost) => {
     const tabId = `post:${post.id}`;
@@ -528,9 +635,15 @@ export function EditorPage() {
       return;
     }
 
+    if (activeTab.dirty) {
+      return;
+    }
+
     const params = new URLSearchParams();
     if (activeTab.kind === "database" && activeTab.database) {
-      if (activeTab.database.slug) {
+      if (activeTab.database.isNew || activeTab.dirty) {
+        params.set("id", activeTab.database.postId);
+      } else if (activeTab.database.slug) {
         params.set("slug", activeTab.database.slug);
       } else {
         params.set("id", activeTab.database.postId);
@@ -754,11 +867,39 @@ export function EditorPage() {
 
   async function saveActiveTab() {
     if (!activeTab) return;
+    const syncedLiveContent =
+      syncActiveTabFromEditor({ markDirty: activeTab.dirty }) ??
+      (activeTab.kind === "database" ? activeTab.database?.content : activeTab.file?.content) ??
+      "";
+    const parsedLiveDocument = parseFrontmatterDocument(syncedLiveContent);
+    const liveFrontmatterText = parsedLiveDocument.frontmatterText;
+    const fixedFrontmatter = autoFixFrontmatterStyle(liveFrontmatterText);
+    const liveContent =
+      fixedFrontmatter.frontmatterText === liveFrontmatterText
+        ? syncedLiveContent
+        : updateFrontmatterDocument(syncedLiveContent, fixedFrontmatter.frontmatterText);
+    const saveDiagnostics = validateFrontmatterText(fixedFrontmatter.frontmatterText).diagnostics;
+    const publishStyleFixNotice = () => {
+      if (fixedFrontmatter.fixedFields.length === 0) return;
+      showAdminToast("default", formatFrontmatterStyleFixNotice(fixedFrontmatter.fixedFields));
+    };
+    const syncEditorWithSavedContent = () => {
+      if (liveContent === syncedLiveContent) return;
+      editorRef.current?.setContent(liveContent);
+      updateActiveTabContent(liveContent, { markDirty: false });
+    };
+    frontmatterDiagnosticsRef.current = saveDiagnostics;
+    if (saveDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+      setErrorBanner({
+        message: formatFrontmatterSaveError(saveDiagnostics),
+        persistent: true,
+      });
+      return;
+    }
     setSavePending(true);
     setErrorBanner(null);
     try {
       if (activeTab.kind === "database" && activeTab.database) {
-        const liveContent = syncActiveTabFromEditor() ?? activeTab.database.content;
         const derivedDraft = deriveDatabaseDraftState(activeTab.database, liveContent);
         if (activeTab.database.isNew && isBlankEditorContent(liveContent)) {
           setErrorBanner({ message: "内容不能为空，请先输入正文后再保存。" });
@@ -777,7 +918,9 @@ export function EditorPage() {
         if (activeTab.database.isNew) {
           const created = await adminApi.createPost(payload);
           upsertPostTab(created.post);
+          syncEditorWithSavedContent();
           setNotice("已创建新草稿。");
+          publishStyleFixNotice();
           return;
         }
 
@@ -800,11 +943,12 @@ export function EditorPage() {
               : tab
           )
         );
+        syncEditorWithSavedContent();
         setNotice("文章保存成功。");
+        publishStyleFixNotice();
       }
 
       if (activeTab.kind === "file" && activeTab.file) {
-        const liveContent = syncActiveTabFromEditor() ?? activeTab.file.content;
         await adminApi.writeFile({
           source: activeTab.file.source,
           path: activeTab.file.path,
@@ -813,7 +957,9 @@ export function EditorPage() {
         setTabs((current) =>
           current.map((tab) => (tab.id === activeTab.id ? { ...tab, dirty: false } : tab))
         );
+        syncEditorWithSavedContent();
         setNotice("文件保存成功。");
+        publishStyleFixNotice();
       }
     } catch (error) {
       setErrorBanner({ message: getEditorActionErrorMessage(error) });
@@ -1503,7 +1649,10 @@ export function EditorPage() {
                     <Columns2 className="size-4" />
                     对照
                   </Button>
-                  <Badge tone={activeTab.dirty ? "warning" : "muted"}>
+                  <Badge
+                    tone={activeTab.dirty ? "warning" : "muted"}
+                    data-testid="editor-status-badge"
+                  >
                     {activeTab.dirty ? "未保存" : "已保存"}
                   </Badge>
                 </div>
@@ -1514,6 +1663,9 @@ export function EditorPage() {
                 key={activeTab.id}
                 editorId={activeTab.id}
                 initialContent={activeContent}
+                onFrontmatterDiagnosticsChange={(diagnostics) => {
+                  frontmatterDiagnosticsRef.current = diagnostics;
+                }}
                 onContentChange={(nextContent: string, meta?: EditorChangeMeta) =>
                   updateActiveTabContent(nextContent, {
                     markDirty: meta?.source !== "programmatic",
@@ -1527,6 +1679,7 @@ export function EditorPage() {
                 articlePath={activeEditorContext?.articlePath ?? "/__unknown__.md"}
                 contentSource={activeEditorContext?.contentSource ?? "local"}
                 mode={activeTab.mode}
+                frontmatterSuggestions={frontmatterSuggestions}
                 className="min-h-0 flex-1"
               />
             </div>

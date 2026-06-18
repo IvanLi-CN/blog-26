@@ -1,11 +1,17 @@
 import { describe, expect, it } from "bun:test";
 import {
+  analyzeFrontmatterDocument,
+  autoFixFrontmatterStyle,
+  buildFrontmatterSuggestions,
+  getRecommendedFrontmatterDateString,
+  lintFrontmatterStyle,
   parseFrontmatterDocument,
   parseFrontmatterMap,
   stringifyFrontmatterDocument,
   stripFrontmatter,
   updateDocumentBody,
   updateFrontmatterDocument,
+  validateFrontmatterText,
 } from "@/lib/frontmatter-document";
 
 const sampleDocument = `---
@@ -79,5 +85,118 @@ describe("frontmatter-document", () => {
 
   it("stringifies a document without frontmatter when frontmatter text is blank", () => {
     expect(stringifyFrontmatterDocument("# Hello", "")).toBe("# Hello");
+  });
+
+  it("flags unknown fields as warnings without blocking the document", () => {
+    const validation = validateFrontmatterText(
+      "title: Example\nslug: example-post\nmysteryField: keep-me"
+    );
+
+    expect(validation.hasErrors).toBe(false);
+    expect(validation.hasWarnings).toBe(true);
+    expect(validation.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: "warning",
+        field: "mysteryField",
+      })
+    );
+  });
+
+  it("requires tags to use YAML list syntax", () => {
+    const validation = validateFrontmatterText("title: Example\ntags: { primary: React }");
+
+    expect(validation.hasErrors).toBe(true);
+    expect(validation.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        field: "tags",
+        message: "tags 必须写成数组：\ntags:\n  - React\n  - Hooks",
+      })
+    );
+  });
+
+  it("accepts YAML flow sequence syntax for tags", () => {
+    const validation = validateFrontmatterText("title: Example\ntags: [React, Hooks]");
+
+    expect(validation.hasErrors).toBe(false);
+    expect(validation.diagnostics).not.toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        field: "tags",
+      })
+    );
+  });
+
+  it("keeps nested tags indentation as a non-blocking style lint finding", () => {
+    const validation = validateFrontmatterText("title: Example\ntags:\n  - Reactd\n      - Hooks");
+    const styleDiagnostics = lintFrontmatterStyle(
+      "title: Example\ntags:\n  - Reactd\n      - Hooks"
+    );
+
+    expect(validation.hasErrors).toBe(false);
+    expect(validation.diagnostics).not.toContainEqual(
+      expect.objectContaining({
+        field: "tags",
+      })
+    );
+    expect(styleDiagnostics).toContainEqual(
+      expect.objectContaining({
+        field: "tags",
+        message: "tags 列表缩进不一致。当前 YAML 仍可解析，但建议保持同层 `- item` 缩进。",
+      })
+    );
+  });
+
+  it("auto-fixes inconsistent tags indentation into a flat YAML array style", () => {
+    const fixed = autoFixFrontmatterStyle("title: Example\ntags:\n  - React\n      - Hooks");
+
+    expect(fixed.fixedFields).toEqual(["tags"]);
+    expect(fixed.frontmatterText).toBe("title: Example\ntags:\n  - React\n  - Hooks");
+    expect(validateFrontmatterText(fixed.frontmatterText).hasErrors).toBe(false);
+  });
+
+  it("validates boolean, slug, and date fields", () => {
+    const validation = validateFrontmatterText(
+      "slug: Invalid Slug\ndraft: yes\npublishDate: definitely-not-a-date\ndate: 2026-06-17"
+    );
+
+    expect(validation.hasErrors).toBe(true);
+    expect(validation.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "slug", severity: "error" }),
+        expect.objectContaining({ field: "draft", severity: "error" }),
+        expect.objectContaining({ field: "publishDate", severity: "error" }),
+      ])
+    );
+  });
+
+  it("analyzes a full document and keeps parse result plus diagnostics together", () => {
+    const analysis = analyzeFrontmatterDocument(
+      `---
+title: Example
+tags: foo
+unknown: keep
+---
+
+Body`
+    );
+
+    expect(analysis.frontmatter.title).toBe("Example");
+    expect(analysis.body).toBe("\nBody");
+    expect(analysis.hasErrors).toBe(true);
+    expect(analysis.hasWarnings).toBe(true);
+  });
+
+  it("normalizes suggestion sources and formats recommended publish dates", () => {
+    const suggestions = buildFrontmatterSuggestions({
+      tags: ["Hooks", "React", "Hooks", "  "],
+      categories: ["frontend", "backend", "frontend"],
+    });
+
+    expect(suggestions.tags).toEqual(["Hooks", "React"]);
+    expect(suggestions.categories).toEqual(["backend", "frontend"]);
+    expect(getRecommendedFrontmatterDateString(new Date("2026-06-17T09:00:00.000Z"))).toBe(
+      "2026-06-17"
+    );
   });
 });
