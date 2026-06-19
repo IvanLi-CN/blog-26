@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useEffect } from "react";
 import { expect, within } from "storybook/test";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import {
@@ -28,26 +29,10 @@ const demoHero = `data:image/svg+xml;utf8,${encodeURIComponent(`
   </svg>
 `)}`;
 
-const demoInline = `data:image/svg+xml;utf8,${encodeURIComponent(`
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320">
-    <defs>
-      <linearGradient id="inline-bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#e8f5ff" />
-        <stop offset="100%" stop-color="#d1e8f7" />
-      </linearGradient>
-    </defs>
-    <rect width="960" height="320" rx="32" fill="url(#inline-bg)" />
-    <text x="72" y="140" fill="#14324a" font-size="52" font-family="Inter, Arial, sans-serif" font-weight="700">Inline preview asset</text>
-    <text x="72" y="210" fill="#335970" font-size="30" font-family="Inter, Arial, sans-serif">Used to keep Storybook evidence deterministic.</text>
-  </svg>
-`)}`;
-
 const sharedPostBody = `
 # USB-C Safe5V 诱骗器
 
 这是一段用于预览详情节奏的示例正文。
-
-![inline](${demoInline})
 
 - 保持后台 Soft UI 的容器语言
 - 借用公开页的信息排序
@@ -73,13 +58,31 @@ const meta = {
     },
   },
   decorators: [
-    (Story) => (
-      <div className="min-h-screen bg-background p-6 text-foreground">
-        <div className="mx-auto max-w-[1100px]">
-          <Story />
+    (Story) => {
+      useEffect(() => {
+        document.documentElement.dataset.uiTheme = "light";
+        document.documentElement.dataset.theme = "light";
+        document.documentElement.dataset.uiPreference = "system";
+        document.documentElement.style.colorScheme = "light";
+        document.documentElement.classList.remove("dark");
+
+        return () => {
+          document.documentElement.dataset.uiTheme = "light";
+          document.documentElement.dataset.theme = "light";
+          document.documentElement.dataset.uiPreference = "system";
+          document.documentElement.style.colorScheme = "light";
+          document.documentElement.classList.remove("dark");
+        };
+      }, []);
+
+      return (
+        <div className="min-h-screen bg-background p-6 text-foreground" data-ui-theme="light">
+          <div className="mx-auto max-w-[1100px]">
+            <Story />
+          </div>
         </div>
-      </div>
-    ),
+      );
+    },
   ],
 } satisfies Meta;
 
