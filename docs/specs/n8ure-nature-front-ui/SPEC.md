@@ -45,7 +45,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
-- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; the page may show a static interaction note, but it must not expose a persistent live loading state after content is readable.
+- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; article detail may show static interaction guidance, but neither page may expose a persistent live loading state after content is readable.
 
 ## 5. Acceptance criteria
 
@@ -115,6 +115,14 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ![Home timeline mobile](./assets/home-timeline-mobile.png)
 
 ![Memos timeline mobile](./assets/memos-timeline-mobile.png)
+
+### Memo detail hierarchy
+
+- Evidence bound to local HEAD `0ed11b57` from Storybook mock stories for the public memo detail shell.
+- Memo detail renders as a single card instead of a split header/body pair.
+- Time, type, title, tags, and Markdown body live inside the same surface so short memos read as one unit.
+
+![Memo detail hierarchy](./assets/memo-detail-hierarchy.png)
 
 ### Hover stability on dense public lists
 
@@ -187,3 +195,4 @@ PR: include
 - 2026-05-13: Anchored the route pending indicator to the complete site header mock and production header frame, keeping it visually attached to navigation while floating outside the static document flow.
 - 2026-05-13: Changed the Markdown interaction note to static guidance so deferred hydration is discoverable without leaving a persistent loading live region.
 - 2026-05-13: Clarified same-site Markdown link handling so same-origin absolute URLs stay in the current tab while true external URLs still open safely.
+- 2026-06-19: Collapsed memo detail into a single card, removed the memo-only interaction prompt and separate summary treatment, and added Storybook coverage plus visual evidence for the memo detail shell.

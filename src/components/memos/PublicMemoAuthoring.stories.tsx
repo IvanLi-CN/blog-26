@@ -262,8 +262,8 @@ function LiveMemoDetailStory() {
           </div>
         </div>
 
-        <article className="space-y-6">
-          <div className="nature-surface px-5 py-6 sm:px-7 sm:py-7">
+        <article>
+          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-card">
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
               <span className="nature-chip nature-chip-warn">Draft / Private</span>
               <span className="nature-chip gap-1">Memo</span>
@@ -278,14 +278,10 @@ function LiveMemoDetailStory() {
                 </span>
               ))}
             </div>
-          </div>
-
-          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-body">
-            <div className="nature-markdown-interaction-note">
-              <span className="nature-markdown-interaction-mark" aria-hidden="true" />
-              <span>正文使用实时响应渲染，管理员可直接在此页编辑或删除。</span>
-            </div>
-            <div className="mt-4 space-y-3 text-[color:var(--nature-text)]">
+            <div
+              className="mt-6 space-y-3 text-[color:var(--nature-text)]"
+              data-testid="public-memo-detail-body"
+            >
               <h2 className="text-2xl font-semibold">Admin live detail shell</h2>
               <ul className="list-disc space-y-2 pl-6 text-[color:var(--nature-text-soft)]">
                 <li>Keeps the public memo reading shell intact.</li>

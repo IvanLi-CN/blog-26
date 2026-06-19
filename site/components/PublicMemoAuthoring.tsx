@@ -462,8 +462,8 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
       </div>
 
       {memo ? (
-        <article className="space-y-6">
-          <div className="nature-surface px-5 py-6 sm:px-7 sm:py-7">
+        <article>
+          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-card">
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
               <span
                 className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}
@@ -487,20 +487,19 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
                 ))}
               </div>
             ) : null}
-          </div>
-
-          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-body">
-            <MarkdownRenderer
-              content={memo.content}
-              variant="article"
-              enableMath={true}
-              enableMermaid={true}
-              enableCodeFolding={true}
-              removeTags={true}
-              rewritePublicSitePaths={true}
-              articlePath={memo.filePath ?? ""}
-              contentSource="local"
-            />
+            <div className="mt-6" data-testid="public-memo-detail-body">
+              <MarkdownRenderer
+                content={memo.content}
+                variant="article"
+                enableMath={true}
+                enableMermaid={true}
+                enableCodeFolding={true}
+                removeTags={true}
+                rewritePublicSitePaths={true}
+                articlePath={memo.filePath ?? ""}
+                contentSource="local"
+              />
+            </div>
           </div>
         </article>
       ) : null}
