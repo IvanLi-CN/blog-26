@@ -2,29 +2,18 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { ArrowUpRight, Eye, RefreshCcw } from "lucide-react";
+import { ArrowUpRight, RefreshCcw } from "lucide-react";
 import type React from "react";
-import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { type AdminPreviewMemo, type AdminPreviewPost, adminApi } from "@/lib/admin-api-client";
+import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
+import {
+  buildMemoPreviewMeta,
+  buildPostPreviewMeta,
+  buildPreviewHero,
+  PreviewArticleShell,
+} from "~/components/preview-detail";
 import { Button, EmptyState, Spinner } from "~/components/ui";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
-import { PublicMemoDetailControlsIsland } from "../../../../site/components/PublicMemoAuthoring";
-
-function PreviewTags({ tags }: { tags: string[] }) {
-  if (tags.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2">
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground"
-        >
-          #{tag}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 function PreviewChrome({
   title,
@@ -105,78 +94,54 @@ function PreviewState({
 
 function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
   return (
-    <article className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
-      <header className="space-y-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
-          <Eye className="size-3.5" />
-          预览模式
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">{post.title}</h1>
-          {post.excerpt ? <p className="text-sm text-muted-foreground">{post.excerpt}</p> : null}
-        </div>
-        {post.tags && post.tags.length > 0 ? <PreviewTags tags={post.tags} /> : null}
-      </header>
-
-      <div
-        className="rounded-2xl border border-border bg-background px-5 py-6"
-        data-testid="admin-preview-post-body"
-      >
-        <MarkdownRenderer
-          content={post.body || ""}
-          articlePath={post.filePath || post.slug}
-          contentSource="local"
-          publicMediaContext={{
-            kind: "post",
-            slug: post.slug,
-            filePath: post.filePath || post.slug,
-          }}
-          enableImageLightbox
-          enableMath
-          enableMermaid
-        />
-      </div>
-    </article>
+    <PreviewArticleShell
+      modeLabel="公开文章预览"
+      title={post.title}
+      description={post.excerpt}
+      tags={post.tags}
+      meta={buildPostPreviewMeta({
+        publishDate: post.publishDate,
+        updateDate: post.updateDate,
+        author: post.author,
+        category: post.category,
+        body: post.body,
+      })}
+      hero={buildPreviewHero(post.image, post.title)}
+      bodyTestId="admin-preview-post-body"
+      body={post.body || ""}
+      articlePath={post.filePath || post.slug}
+      publicMediaContext={{
+        kind: "post",
+        slug: post.slug,
+        filePath: post.filePath || post.slug,
+      }}
+    />
   );
 }
 
 function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
-  return (
-    <article className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
-      <PublicMemoDetailControlsIsland slug={memo.slug} />
-      <header className="space-y-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
-          <Eye className="size-3.5" />
-          预览模式
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">{memo.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            {memo.isPublic ? "公开 Memo" : "私有 Memo"} · {memo.updatedAt}
-          </p>
-        </div>
-        {memo.tags && memo.tags.length > 0 ? <PreviewTags tags={memo.tags} /> : null}
-      </header>
+  const body = stripMatchingLeadingTitleHeading(memo.content || "", memo.title || memo.slug);
 
-      <div
-        className="rounded-2xl border border-border bg-background px-5 py-6"
-        data-testid="admin-preview-memo-body"
-      >
-        <MarkdownRenderer
-          content={memo.content || ""}
-          articlePath={memo.filePath || memo.slug}
-          contentSource="local"
-          publicMediaContext={{
-            kind: "memo",
-            slug: memo.slug,
-            filePath: memo.filePath || memo.slug,
-          }}
-          enableImageLightbox
-          enableMath
-          enableMermaid
-        />
-      </div>
-    </article>
+  return (
+    <PreviewArticleShell
+      modeLabel="公开 Memo 预览"
+      title={memo.title}
+      tags={memo.tags}
+      meta={buildMemoPreviewMeta({
+        createdAt: memo.createdAt,
+        publishedAt: memo.publishedAt,
+        updatedAt: memo.updatedAt,
+        isPublic: memo.isPublic,
+      })}
+      bodyTestId="admin-preview-memo-body"
+      body={body}
+      articlePath={memo.filePath || memo.slug}
+      publicMediaContext={{
+        kind: "memo",
+        slug: memo.slug,
+        filePath: memo.filePath || memo.slug,
+      }}
+    />
   );
 }
 

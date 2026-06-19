@@ -5,6 +5,7 @@ import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
+import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 type PublicMemoRecord = {
@@ -410,6 +411,10 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
     }
   }, [isDeleting, memo, slug]);
 
+  const detailBody = memo
+    ? stripMatchingLeadingTitleHeading(memo.content, memo.title || memo.slug)
+    : "";
+
   if (isLoading || !isAdmin) {
     return null;
   }
@@ -487,19 +492,20 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
                 ))}
               </div>
             ) : null}
-            <div className="mt-6" data-testid="public-memo-detail-body">
-              <MarkdownRenderer
-                content={memo.content}
-                variant="article"
-                enableMath={true}
-                enableMermaid={true}
-                enableCodeFolding={true}
-                removeTags={true}
-                rewritePublicSitePaths={true}
-                articlePath={memo.filePath ?? ""}
-                contentSource="local"
-              />
-            </div>
+          </div>
+
+          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-body">
+            <MarkdownRenderer
+              content={detailBody}
+              variant="article"
+              enableMath={true}
+              enableMermaid={true}
+              enableCodeFolding={true}
+              removeTags={true}
+              rewritePublicSitePaths={true}
+              articlePath={memo.filePath ?? ""}
+              contentSource="local"
+            />
           </div>
         </article>
       ) : null}

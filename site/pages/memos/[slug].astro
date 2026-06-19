@@ -2,6 +2,7 @@
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { PublicMemoDetailControlsIsland } from "../../components/PublicMemoAuthoring";
@@ -23,6 +24,7 @@ const displayDate = memo.publishedAt ?? memo.createdAt;
 const contentSource = "local" as const;
 const publicMediaContext = { kind: "memo" as const, slug: memo.slug, filePath: memo.filePath };
 const memoDescription = extractTextSummary(memo.content, 180) || snapshot.site.description;
+const memoDetailContent = stripMatchingLeadingTitleHeading(memo.content, memo.title);
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
@@ -79,7 +81,7 @@ const structuredData = {
           <div class="mt-6">
             <MarkdownRenderer
               client:visible={{ rootMargin: "480px" }}
-              content={memo.content}
+              content={memoDetailContent}
               variant="article"
               enableMath={true}
               enableMermaid={true}
