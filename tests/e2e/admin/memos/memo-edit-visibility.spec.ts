@@ -49,6 +49,7 @@ test.describe("Memo 编辑可见性", () => {
       throw new Error("Expected created memo to expose a slug");
     }
     await openAdminMemoDetail(page, targetSlug);
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible({ timeout: 60_000 });
     const dialog = await openMemoEditDialog(page, page.getByRole("button", { name: "编辑 Memo" }));
 
     const visibilityToggle = dialog.getByTestId("quick-memo-visibility-input");

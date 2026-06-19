@@ -60,7 +60,8 @@ test.describe("Quick publish renders heading + list and persists multiline body"
     await expect(page.locator("body")).toBeVisible();
     const article = await waitForAdminPreviewMemoBody(page);
     await expect(article).toBeVisible({ timeout: 60_000 });
-    await expect(article).toContainText(TITLE, { timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: TITLE, exact: true })).toHaveCount(1);
+    await expect(article).not.toContainText(TITLE, { timeout: 60_000 });
     await expect
       .poll(async () => await article.locator("ul li").count(), {
         timeout: 60_000,

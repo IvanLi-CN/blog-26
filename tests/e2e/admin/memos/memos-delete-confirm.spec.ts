@@ -38,6 +38,7 @@ test.describe("Memos 删除确认 (admin)", () => {
 
   test("详情页确认删除后目标 memo 消失", async ({ page }) => {
     await openAdminMemoDetail(page, seededSlug);
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("admin-live-memo-delete")).toBeVisible({ timeout: 30_000 });
 
     page.on("dialog", async (dialog) => {
@@ -65,13 +66,14 @@ test.describe("Memos 删除确认 (admin)", () => {
     });
 
     await openAdminMemoDetail(page, seededSlug);
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("admin-live-memo-delete")).toBeVisible({ timeout: 30_000 });
     page.on("dialog", async (dialog) => {
       await dialog.accept();
     });
     await page.getByTestId("admin-live-memo-delete").click();
 
-    const failAlert = page.locator(".nature-alert-error");
+    const failAlert = page.getByTestId("admin-preview-memo-controls-error");
     await expect(failAlert).toContainText("Request failed with status 500", { timeout: 10_000 });
     await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
   });

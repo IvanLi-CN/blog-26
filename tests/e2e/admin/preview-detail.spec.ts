@@ -111,7 +111,9 @@ test.describe("Admin preview detail", () => {
     await expect(page.getByRole("heading", { name: title, exact: true })).toHaveCount(1);
     await expect(page.getByTestId("admin-preview-hero")).toHaveCount(0);
     await expect(page.getByTestId("admin-preview-description")).toHaveCount(0);
-    await expect(page.getByTestId("public-memo-detail-controls")).toHaveCount(0);
+    await expect(page.getByTestId("public-memo-detail-controls")).toBeVisible();
+    await expect(page.getByRole("button", { name: "编辑 Memo" })).toBeVisible();
+    await expect(page.getByTestId("admin-live-memo-delete")).toBeVisible();
     await expect(
       page.locator("article").first().getByText("Feedback", { exact: true })
     ).toHaveCount(0);
