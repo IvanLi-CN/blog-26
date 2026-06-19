@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PublicSnapshot } from "@/public-site/snapshot";
 import { buildSiteFeed } from "../../../site/lib/feeds";
-import { __resetSnapshotForTests, getSnapshot } from "../../../site/lib/public-site";
+import {
+  __resetSnapshotForTests,
+  appendPublicAssetVersion,
+  getSnapshot,
+} from "../../../site/lib/public-site";
 
 const originalSnapshotPath = process.env.PUBLIC_SNAPSHOT_PATH;
 
@@ -134,6 +138,23 @@ afterEach(async () => {
 });
 
 describe("public snapshot compatibility", () => {
+  it("adds a stable version query only to public asset facade urls", () => {
+    const version = "2026-06-18T19:32:50.122Z";
+
+    expect(
+      appendPublicAssetVersion("/api/public/assets/post/demo/hash1234/card.webp", version)
+    ).toBe("/api/public/assets/post/demo/hash1234/card.webp?v=2026-06-18T19%3A32%3A50.122Z");
+    expect(
+      appendPublicAssetVersion(
+        "https://ivanli.cc/api/public/assets/post/demo/hash1234/cover.webp?fit=contain",
+        version
+      )
+    ).toBe(
+      "https://ivanli.cc/api/public/assets/post/demo/hash1234/cover.webp?fit=contain&v=2026-06-18T19%3A32%3A50.122Z"
+    );
+    expect(appendPublicAssetVersion("/images/demo.webp", version)).toBe("/images/demo.webp");
+  });
+
   it("fills missing media collections from legacy snapshots before feed building", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "blog25-snapshot-compat-"));
     try {

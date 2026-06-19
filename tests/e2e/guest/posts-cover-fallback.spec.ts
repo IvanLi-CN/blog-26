@@ -24,16 +24,18 @@ test.describe("posts cover fallback", () => {
 
     const image = cover.locator("img");
     await expect(image).toBeVisible();
-    await expect(image).toHaveAttribute(
-      "src",
-      /\/api\/public\/assets\/post\/hello-world\/[0-9a-f]+\/card\.webp$/
-    );
 
     const imageSrc = await image.getAttribute("src");
     expect(imageSrc).toBeTruthy();
     if (!imageSrc) {
       throw new Error("expected facade image src");
     }
+
+    const parsedImageUrl = new URL(imageSrc, page.url());
+    expect(parsedImageUrl.pathname).toMatch(
+      /\/api\/public\/assets\/post\/hello-world\/[0-9a-f]+\/card\.webp$/
+    );
+    expect(parsedImageUrl.searchParams.has("v")).toBe(true);
 
     const imageResponse = await page.request.get(imageSrc);
     expect(imageResponse.ok()).toBeTruthy();

@@ -3,17 +3,21 @@ import Icon from "@/components/ui/Icon";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { toPublicSitePath } from "../lib/runtime-urls";
+import { appendPublicAssetVersion } from "../lib/public-site";
 
 interface Props {
   post: PublicPostRecord;
+  assetVersion?: string | null;
 }
 
-const { post } = Astro.props as Props;
+const { post, assetVersion = null } = Astro.props as Props;
 const coverCandidate = extractPostCoverCandidate(post);
-const imageSrc =
+const imageSrc = appendPublicAssetVersion(
   post.media.cover?.variants.card ??
-  post.media.primary?.variants.card ??
-  (coverCandidate && isExternalImageUrl(coverCandidate) ? coverCandidate : null);
+    post.media.primary?.variants.card ??
+    (coverCandidate && isExternalImageUrl(coverCandidate) ? coverCandidate : null),
+  assetVersion
+);
 const hasCover = Boolean(imageSrc);
 const excerpt = post.excerpt?.trim() || "";
 const articleClass = "min-w-0 self-start";

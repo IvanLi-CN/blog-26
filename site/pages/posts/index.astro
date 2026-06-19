@@ -4,6 +4,7 @@ import { getSnapshot } from "../../lib/public-site";
 import PostCard from "../../components/PostCard.astro";
 
 const snapshot = await getSnapshot();
+const assetVersion = snapshot.generatedAt;
 ---
 <BaseLayout pathname="/posts" title="文章 - Ivan's Blog" description="浏览所有公开文章">
   <section class="nature-container px-6 py-12 sm:py-16 lg:py-20">
@@ -17,7 +18,12 @@ const snapshot = await getSnapshot();
       <ul class="space-y-4 md:space-y-6">
         {snapshot.posts.map((post, index) => (
           <li class="animate-fade-in-up" style={`animation-delay: ${index * 80}ms`}>
-            <PostCard post={post} iconMap={snapshot.tags.tagIconMap} iconSvgMap={snapshot.tags.tagIconSvgMap} />
+            <PostCard
+              post={post}
+              iconMap={snapshot.tags.tagIconMap}
+              iconSvgMap={snapshot.tags.tagIconSvgMap}
+              assetVersion={assetVersion}
+            />
           </li>
         ))}
       </ul>
