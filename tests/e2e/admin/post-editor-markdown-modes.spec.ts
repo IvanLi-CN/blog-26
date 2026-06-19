@@ -542,6 +542,61 @@ async function treeRowPoint(page: Page, name: string) {
   });
 }
 
+function treeMoreActionsButton(page: Page, name: string) {
+  return page.getByRole("button", { name: `${name} 更多操作`, exact: true }).first();
+}
+
+function fileTreeOpenMenu(page: Page) {
+  return page
+    .locator('[role="menu"]')
+    .filter({ has: page.locator('[role="menuitem"]') })
+    .last();
+}
+
+async function fileTreeContextMenuState(page: Page) {
+  return fileTreeOpenMenu(page).evaluate((menu) => {
+    const sidebarCard = document.querySelector<HTMLElement>('[data-testid="admin-sidebar-card"]');
+    const menuRect = menu.getBoundingClientRect();
+    const sidebarRect = sidebarCard?.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const probeX =
+      menuRect.right > (sidebarRect?.right ?? 0)
+        ? Math.min(menuRect.right - 6, (sidebarRect?.right ?? 0) + 24)
+        : menuRect.right - 6;
+    const probeY = menuRect.top + menuRect.height / 2;
+    const hit = document.elementFromPoint(probeX, probeY) as HTMLElement | null;
+    const hitMenu = hit?.closest('[role="menu"]');
+
+    return {
+      menuLeft: menuRect.left,
+      menuRight: menuRect.right,
+      menuTop: menuRect.top,
+      menuBottom: menuRect.bottom,
+      sidebarRight: sidebarRect?.right ?? 0,
+      viewportWidth,
+      viewportHeight,
+      escapesSidebar: menuRect.right > (sidebarRect?.right ?? 0) + 1,
+      probeInsideVisibleMenu: Boolean(hitMenu),
+    };
+  });
+}
+
+async function fileTreeMenuItems(page: Page) {
+  return fileTreeOpenMenu(page)
+    .locator('[role="menuitem"]')
+    .evaluateAll((items) =>
+      items.map((item) => ({
+        label: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
+        disabled:
+          item.getAttribute("aria-disabled") === "true" ||
+          item.getAttribute("data-disabled") !== null ||
+          item.hasAttribute("disabled"),
+      }))
+    );
+}
+
 async function treeRowVisualState(page: Page, name: string) {
   const button = treeNameButton(page, name);
   return button.evaluate((node) => {
@@ -2154,6 +2209,66 @@ Body paragraph`);
     const after = await sidebarTreeBottomState(page, "projects");
     expect(after.bottomGap).toBeLessThanOrEqual(baseline.bottomGap + 8);
     expect(after.footerGap).toBeLessThanOrEqual(baseline.footerGap + 8);
+  });
+
+  test("file tree more-actions menu can escape the sidebar card while staying inside the viewport", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    await treeMoreActionsButton(page, "06-posts-cover-fallback.md").click();
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+
+    const state = await fileTreeContextMenuState(page);
+
+    expect(state.escapesSidebar).toBe(true);
+    expect(state.probeInsideVisibleMenu).toBe(true);
+    expect(state.menuLeft).toBeGreaterThanOrEqual(0);
+    expect(state.menuTop).toBeGreaterThanOrEqual(0);
+    expect(state.menuRight).toBeLessThanOrEqual(state.viewportWidth);
+    expect(state.menuBottom).toBeLessThanOrEqual(state.viewportHeight);
+  });
+
+  test("file tree right-click menu and more-actions menu expose the same command set", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+
+    await treeMoreActionsButton(page, "06-posts-cover-fallback.md").click();
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+    const moreActionsItems = await fileTreeMenuItems(page);
+    await page.keyboard.press("Escape");
+
+    await treeNameButton(page, "06-posts-cover-fallback.md").click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+    const contextMenuItems = await fileTreeMenuItems(page);
+
+    expect(contextMenuItems).toEqual(moreActionsItems);
+  });
+
+  test("file tree keyboard menu key opens the current file menu without losing selection", async ({
+    page,
+  }) => {
+    await openDemoEditor(page);
+
+    await ensureBlogDirectoryExpanded(page);
+    const target = treeNameButton(page, "06-posts-cover-fallback.md");
+    await target.click();
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
+    await target.focus();
+
+    await page.keyboard.press("Shift+F10");
+    await expect(page.getByRole("menuitem", { name: "移动" })).toBeVisible();
+
+    const row = await treeRowVisualState(page, "06-posts-cover-fallback.md");
+    expect(row.selectedLike).toBe(true);
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menuitem", { name: "移动" })).toHaveCount(0);
+    await expect(page.getByTestId("sidebar-selection-count")).toHaveText("1项");
   });
 
   test("right-clicking a different file then left-clicking the same spot keeps a single current selection", async ({

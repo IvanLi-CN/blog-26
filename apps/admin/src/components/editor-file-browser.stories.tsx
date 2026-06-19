@@ -98,7 +98,10 @@ function StoryHarness({
       <AdminToastViewport />
       <div className="mx-auto flex max-w-[460px] flex-col gap-4">
         {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
-        <div className="rounded-[2rem] bg-card/68 p-4 shadow-xl shadow-shadow-soft ring-1 ring-border/54">
+        <div
+          data-testid="file-browser-story-card"
+          className="rounded-[2rem] bg-card/68 p-4 shadow-xl shadow-shadow-soft ring-1 ring-border/54"
+        >
           <EditorFileBrowser
             selectedSource="local"
             browserPath="content"
@@ -307,21 +310,23 @@ export const SelectionMode: Story = {
 export const ClipboardReady: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(canvas.getByRole("button", { name: "切换批量选择模式" }));
     await userEvent.click(canvas.getByRole("checkbox", { name: "选择 alpha.md" }));
     await userEvent.click(canvas.getByRole("button", { name: "复制" }));
     await expect(canvas.getByText("复制 1 项，右键目录或空白处后可粘贴。")).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "archive 更多操作" }));
-    await expect(canvas.getByRole("menuitem", { name: "粘贴" })).toBeVisible();
+    await expect(body.getByRole("menuitem", { name: "粘贴" })).toBeVisible();
   },
 };
 
 export const ContextMenuAndDelete: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(canvas.getByRole("button", { name: "archive 更多操作" }));
-    await userEvent.click(canvas.getByRole("menuitem", { name: "删除" }));
-    await expect(canvas.getByRole("dialog", { name: "确认删除" })).toBeVisible();
+    await userEvent.click(body.getByRole("menuitem", { name: "删除" }));
+    await expect(body.getByRole("dialog", { name: "确认删除" })).toBeVisible();
   },
 };
 
@@ -338,6 +343,34 @@ export const ConfiguredRootContextMenu: Story = {
     await expect(body.getByRole("menuitem", { name: "新建文件" })).toBeVisible();
     await expect(body.getByRole("menuitem", { name: "新建目录" })).toBeVisible();
     await expect(body.getByRole("menuitem", { name: "粘贴" })).toBeDisabled();
+  },
+};
+
+export const MenuEscapesSidebarCard: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("button", { name: "guide.md 更多操作" }));
+
+    const menuItem = await body.findByRole("menuitem", { name: "重命名" });
+    await expect(menuItem).toBeVisible();
+
+    const card = canvas.getByTestId("file-browser-story-card");
+    const menu = menuItem.closest('[role="menu"]');
+
+    if (!menu) {
+      throw new Error("Expected file-browser menu to render in a portal.");
+    }
+
+    const cardBounds = card.getBoundingClientRect();
+    const menuBounds = menu.getBoundingClientRect();
+
+    await expect(menuBounds.right).toBeGreaterThan(cardBounds.right);
+    await expect(menuBounds.left).toBeGreaterThanOrEqual(0);
+    await expect(menuBounds.right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(menuBounds.top).toBeGreaterThanOrEqual(0);
+    await expect(menuBounds.bottom).toBeLessThanOrEqual(window.innerHeight);
   },
 };
 
@@ -385,9 +418,10 @@ export const NonEmptyDirectoryBlocked: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(canvas.getByRole("button", { name: "posts 更多操作" }));
-    await userEvent.click(canvas.getByRole("menuitem", { name: "删除" }));
-    const dialog = canvas.getByRole("dialog", { name: "确认删除" });
+    await userEvent.click(body.getByRole("menuitem", { name: "删除" }));
+    const dialog = body.getByRole("dialog", { name: "确认删除" });
     await userEvent.click(within(dialog).getByRole("button", { name: "删除" }));
     await expect(canvas.getByText("删除失败：目录不为空，无法删除: content/posts")).toBeVisible();
   },

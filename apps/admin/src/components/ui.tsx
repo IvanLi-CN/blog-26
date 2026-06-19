@@ -1,4 +1,5 @@
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
+import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as LabelPrimitive from "@radix-ui/react-label";
@@ -669,6 +670,14 @@ export const DropdownMenuRadioItem = DropdownMenuPrimitive.RadioItem;
 export const DropdownMenuLabel = DropdownMenuPrimitive.Label;
 export const DropdownMenuSeparator = DropdownMenuPrimitive.Separator;
 
+const adminMenuContentClassName =
+  "z-50 min-w-44 overflow-hidden rounded-3xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]";
+
+const adminMenuItemClassName =
+  "relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45 lg:rounded-[0.75rem] lg:py-1.5";
+
+const adminMenuSeparatorClassName = "my-1 h-px bg-border/60";
+
 export const DropdownMenuContent = forwardRef<
   ElementRef<typeof DropdownMenuPrimitive.Content>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
@@ -677,10 +686,7 @@ export const DropdownMenuContent = forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(
-        "z-50 min-w-44 overflow-hidden rounded-3xl border border-border/60 bg-popover p-1.5 text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]",
-        className
-      )}
+      className={cn(adminMenuContentClassName, className)}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -693,14 +699,69 @@ export const DropdownMenuItem = forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45 lg:rounded-[0.75rem] lg:py-1.5",
-      className
-    )}
+    className={cn(adminMenuItemClassName, className)}
     {...props}
   />
 ));
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
+
+export const DropdownMenuDivider = forwardRef<
+  ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn(adminMenuSeparatorClassName, className)}
+    {...props}
+  />
+));
+DropdownMenuDivider.displayName = DropdownMenuPrimitive.Separator.displayName;
+
+export const ContextMenu = ContextMenuPrimitive.Root;
+export const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
+export const ContextMenuGroup = ContextMenuPrimitive.Group;
+export const ContextMenuPortal = ContextMenuPrimitive.Portal;
+export const ContextMenuLabel = ContextMenuPrimitive.Label;
+export const ContextMenuSeparator = ContextMenuPrimitive.Separator;
+
+export const ContextMenuContent = forwardRef<
+  ElementRef<typeof ContextMenuPrimitive.Content>,
+  ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
+>(({ className, collisionPadding = 12, ...props }, ref) => (
+  <ContextMenuPrimitive.Portal>
+    <ContextMenuPrimitive.Content
+      ref={ref}
+      collisionPadding={collisionPadding}
+      className={cn(adminMenuContentClassName, className)}
+      {...props}
+    />
+  </ContextMenuPrimitive.Portal>
+));
+ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName;
+
+export const ContextMenuItem = forwardRef<
+  ElementRef<typeof ContextMenuPrimitive.Item>,
+  ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item>
+>(({ className, ...props }, ref) => (
+  <ContextMenuPrimitive.Item
+    ref={ref}
+    className={cn(adminMenuItemClassName, className)}
+    {...props}
+  />
+));
+ContextMenuItem.displayName = ContextMenuPrimitive.Item.displayName;
+
+export const ContextMenuDivider = forwardRef<
+  ElementRef<typeof ContextMenuPrimitive.Separator>,
+  ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <ContextMenuPrimitive.Separator
+    ref={ref}
+    className={cn(adminMenuSeparatorClassName, className)}
+    {...props}
+  />
+));
+ContextMenuDivider.displayName = ContextMenuPrimitive.Separator.displayName;
 
 export const Popover = PopoverPrimitive.Root;
 export const PopoverTrigger = PopoverPrimitive.Trigger;

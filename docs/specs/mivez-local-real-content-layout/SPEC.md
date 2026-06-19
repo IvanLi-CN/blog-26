@@ -90,6 +90,10 @@ The current blog local setup still depends on synthetic wrapper directories like
 
 ![Context menu with clipboard-ready paste](./assets/file-browser-clipboard-ready.png)
 
+### Context menu escapes the sidebar card and stays within the viewport
+
+![Context menu escapes the sidebar card and stays within the viewport](./assets/file-browser-context-menu-viewport.png)
+
 ### Delete confirmation dialog
 
 ![Delete confirmation dialog](./assets/file-browser-context-menu-delete.png)
