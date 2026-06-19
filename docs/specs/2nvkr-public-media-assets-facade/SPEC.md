@@ -217,8 +217,11 @@
 
 - Public posts list facade rendering: [public-posts-list.png](/Users/ivan/.codex/worktrees/563a/blog-25/docs/specs/2nvkr-public-media-assets-facade/assets/public-posts-list.png)
 - Public post detail facade rendering: [public-post-detail.png](/Users/ivan/.codex/worktrees/563a/blog-25/docs/specs/2nvkr-public-media-assets-facade/assets/public-post-detail.png)
+PR: include
 - Storybook preview detail rhythm inside the admin Soft UI shell: [storybook-admin-preview-post-detail.png](./assets/storybook-admin-preview-post-detail.png)
+PR: include
 - Admin post preview renders facade hero between header metadata and body content: [admin-preview-post-detail.png](./assets/admin-preview-post-detail.png)
+PR: include
 - Admin memo preview keeps the public memo detail shell rhythm without a hero or excerpt slot: [admin-preview-memo-detail.png](./assets/admin-preview-memo-detail.png)
 
 ## 10. 参考
