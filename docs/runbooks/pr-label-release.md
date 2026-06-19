@@ -113,6 +113,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - `PUBLIC_API_BASE_URL=https://ivanli.cc`
 - `PUBLIC_API_BASE_URL=https://ivanli.cc` is only valid when the public domain already routes same-origin anonymous backend traffic, including `/api/public/assets/*`, to the live gateway.
 - The frontend release remains a static `site-dist` build. Public images, GIF derivatives, video posters, and playback URLs are not bundled into static assets; they continue to depend on the live same-origin `/api/public/assets/*` facade.
+- The generated public HTML must also carry the stable build-time cache-bust query on facade card/cover URLs: `?v=<public-snapshot.generatedAt>`. This is part of the release contract for static list/detail imagery, not a runtime fallback.
 - If old project-Pages variables are still present, the workflow auto-normalizes them to the `public/CNAME` custom domain during release.
 - The workflow can consume either:
   - a raw `public-snapshot.json`, or
@@ -152,6 +153,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
 - Confirm the bundle contains `public-snapshot.json`.
 - Confirm `PUBLIC_API_BASE_URL` points at the live backend/gateway origin that really serves anonymous `/api/public/*` and `/api/public/assets/*` traffic.
+- Confirm the published HTML references build-time facade card/cover URLs with `?v=<snapshot-generatedAt>` so browsers and edge caches cannot stay pinned to an older broken media object after the facade path recovers.
 - Confirm the live imagor deployment also allows internal HTTP source fetches from the blog service, including `HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0` for the `blog:25090` internal-source model.
 - Confirm the published `site-dist` also contains `watermark-ivanli.svg`, and the public entrypoint serves `https://ivanli.cc/watermark-ivanli.svg` directly from the same-origin static surface.
 - Confirm `PUBLIC_SITE_URL` and `PUBLIC_SITE_BASE_PATH` match the custom-domain target (`https://ivanli.cc` + `/`).

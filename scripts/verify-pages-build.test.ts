@@ -34,6 +34,10 @@ describe("verify-pages-build", () => {
     const postSlug = "ship-notes";
     const tagSlug = "observability";
     const mediaUrl = `${apiBaseUrl}/api/public/assets/post/${postSlug}/abcd1234/cover.webp`;
+    const assetVersion = "2026-06-18T19%3A32%3A50.122Z";
+    const versionedRelativeMediaUrl = `/api/public/assets/post/${postSlug}/abcd1234/cover.webp?v=${assetVersion}`;
+    const versionedAbsoluteMediaUrl = `${mediaUrl}?v=${assetVersion}`;
+    const versionedCardUrl = `/api/public/assets/post/${postSlug}/abcd1234/card.webp?v=${assetVersion}`;
 
     writeBuildFile(
       cwd,
@@ -45,7 +49,7 @@ describe("verify-pages-build", () => {
         `href="${basePath}/projects/"`,
         `action="${basePath}/search/"`,
         `href="${basePath}/feed.xml"`,
-        `<img src="/api/public/assets/post/${postSlug}/abcd1234/cover.webp">`,
+        `<img src="${versionedCardUrl}">`,
       ].join("\n")
     );
     writeBuildFile(
@@ -54,8 +58,8 @@ describe("verify-pages-build", () => {
       [
         `<link rel="canonical" href="${siteUrl}/posts/${postSlug}/">`,
         `href="${basePath}/posts/"`,
-        `<meta property="og:image" content="${mediaUrl}">`,
-        `<img src="/api/public/assets/post/${postSlug}/abcd1234/cover.webp">`,
+        `<meta property="og:image" content="${versionedAbsoluteMediaUrl}">`,
+        `<img src="${versionedRelativeMediaUrl}">`,
       ].join("\n")
     );
     writeBuildFile(
@@ -115,6 +119,7 @@ describe("verify-pages-build", () => {
     const cwd = makeTempBuildRoot();
     const siteUrl = "https://ivanli.cc";
     const apiBaseUrl = "https://ivanli.cc";
+    const assetVersion = "2026-06-18T19%3A32%3A50.122Z";
 
     writeBuildFile(
       cwd,
@@ -126,6 +131,7 @@ describe("verify-pages-build", () => {
         `href="/projects/"`,
         `action="/search/"`,
         `href="/feed.xml"`,
+        `<img src="/api/public/assets/post/release-fix/hash1234/card.webp?v=${assetVersion}">`,
         `<img src="/api/files/local/leak.webp">`,
       ].join("\n")
     );
@@ -135,7 +141,7 @@ describe("verify-pages-build", () => {
       [
         `<link rel="canonical" href="${siteUrl}/posts/release-fix/">`,
         `href="/posts/"`,
-        `<img src="/api/public/assets/post/release-fix/hash1234/cover.webp">`,
+        `<img src="/api/public/assets/post/release-fix/hash1234/cover.webp?v=${assetVersion}">`,
       ].join("\n")
     );
     writeBuildFile(
@@ -193,6 +199,7 @@ describe("verify-pages-build", () => {
     const siteUrl = "https://ivanli.cc";
     const apiBaseUrl = "https://ivanli.cc";
     const mediaUrl = `${apiBaseUrl}/api/public/assets/post/release-fix/hash1234/cover.webp`;
+    const assetVersion = "2026-06-18T19%3A32%3A50.122Z";
 
     writeBuildFile(
       cwd,
@@ -204,7 +211,7 @@ describe("verify-pages-build", () => {
         `href="/projects/"`,
         `action="/search/"`,
         `href="/feed.xml"`,
-        `<img src="/api/public/assets/post/release-fix/hash1234/cover.webp">`,
+        `<img src="/api/public/assets/post/release-fix/hash1234/card.webp?v=${assetVersion}">`,
       ].join("\n")
     );
     writeBuildFile(
@@ -213,7 +220,7 @@ describe("verify-pages-build", () => {
       [
         `<link rel="canonical" href="${siteUrl}/posts/release-fix/">`,
         `href="/posts/"`,
-        `<img src="/api/public/assets/post/release-fix/hash1234/cover.webp">`,
+        `<img src="/api/public/assets/post/release-fix/hash1234/cover.webp?v=${assetVersion}">`,
       ].join("\n")
     );
     writeBuildFile(
@@ -264,5 +271,82 @@ describe("verify-pages-build", () => {
         siteUrl,
       })
     ).toThrow(`${apiBaseUrl}/api/public/assets/`);
+  });
+
+  it("fails when build-time card or cover facade urls miss the snapshot version query", () => {
+    const cwd = makeTempBuildRoot();
+    const siteUrl = "https://ivanli.cc";
+    const apiBaseUrl = "https://ivanli.cc";
+
+    writeBuildFile(
+      cwd,
+      "site-dist/index.html",
+      [
+        `<link rel="canonical" href="${siteUrl}/">`,
+        `href="/posts/"`,
+        `href="/memos/"`,
+        `href="/projects/"`,
+        `action="/search/"`,
+        `href="/feed.xml"`,
+        `<img src="/api/public/assets/post/release-fix/hash1234/card.webp">`,
+      ].join("\n")
+    );
+    writeBuildFile(
+      cwd,
+      "site-dist/posts/release-fix/index.html",
+      [
+        `<link rel="canonical" href="${siteUrl}/posts/release-fix/">`,
+        `href="/posts/"`,
+        `<meta property="og:image" content="${siteUrl}/api/public/assets/post/release-fix/hash1234/cover.webp">`,
+      ].join("\n")
+    );
+    writeBuildFile(
+      cwd,
+      "site-dist/tags/release/index.html",
+      [`<link rel="canonical" href="${siteUrl}/tags/release/">`, `href="/tags/"`].join("\n")
+    );
+    writeBuildFile(cwd, "site-dist/404.html", 'href="/"');
+    writeBuildFile(
+      cwd,
+      "site-dist/feed.xml",
+      `<rss><channel><item><link>${siteUrl}/posts/release-fix/</link><enclosure url="${siteUrl}/api/public/assets/post/release-fix/hash1234/cover.webp" /></item></channel></rss>`
+    );
+    writeBuildFile(
+      cwd,
+      "site-dist/atom.xml",
+      `<feed><entry><link href="${siteUrl}/posts/release-fix/"/><link href="${siteUrl}/api/public/assets/post/release-fix/hash1234/cover.webp"/></entry></feed>`
+    );
+    writeBuildFile(
+      cwd,
+      "site-dist/feed.json",
+      `{"items":[{"url":"${siteUrl}/posts/release-fix/","image":"${siteUrl}/api/public/assets/post/release-fix/hash1234/cover.webp"}]}`
+    );
+    writeBuildFile(cwd, "site-dist/default-avatar.svg", "<svg></svg>");
+    writeBuildFile(cwd, "site-dist/watermark-ivanli.svg", "<svg>ivanli.cc</svg>");
+    writeBuildFile(
+      cwd,
+      "site-dist/robots.txt",
+      `Host: ${siteUrl}\nSitemap: ${siteUrl}/sitemap.xml`
+    );
+    writeBuildFile(cwd, "site-dist/CNAME", "ivanli.cc");
+    writeBuildFile(
+      cwd,
+      "site-dist/_astro/public-runtime-url.js",
+      [
+        `const env={PUBLIC_API_BASE_URL:"${apiBaseUrl}"};`,
+        `fetch("/api/public/search");`,
+        `fetch("/api/public/comments");`,
+        `fetch("/api/public/reactions");`,
+      ].join("\n")
+    );
+
+    expect(() =>
+      verifyPagesBuild({
+        apiBaseUrl,
+        cwd,
+        publicSiteBasePath: "/",
+        siteUrl,
+      })
+    ).toThrow("version build-time public asset URL with ?v=");
   });
 });

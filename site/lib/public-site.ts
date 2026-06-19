@@ -146,6 +146,30 @@ export function toAbsoluteSiteUrl(pathname: string) {
   return getCanonicalUrl(pathname);
 }
 
+export function appendPublicAssetVersion(
+  url: string | null | undefined,
+  version: string | null | undefined
+) {
+  if (!url) return url ?? null;
+  if (!version) return url;
+
+  if (url.startsWith("/")) {
+    const parsed = new URL(url, "https://public.invalid");
+    if (!parsed.pathname.startsWith("/api/public/assets/")) return url;
+    parsed.searchParams.set("v", version);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (!parsed.pathname.startsWith("/api/public/assets/")) return url;
+    parsed.searchParams.set("v", version);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 function getSnapshotPath() {
   return resolve(
     process.cwd(),

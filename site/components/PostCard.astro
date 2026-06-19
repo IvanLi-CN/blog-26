@@ -4,17 +4,22 @@ import Icon from "@/components/ui/Icon";
 import type { PublicPostRecord } from "@/public-site/snapshot";
 import { formatAbsoluteDate } from "../lib/format";
 import { toPublicAssetUrl, toPublicSitePath } from "../lib/runtime-urls";
+import { appendPublicAssetVersion } from "../lib/public-site";
 import TagBadge from "./TagBadge.astro";
 
 interface Props {
   post: PublicPostRecord;
   iconMap?: Record<string, string | null>;
   iconSvgMap?: Record<string, string | null>;
+  assetVersion?: string | null;
 }
 
-const { post, iconMap = {}, iconSvgMap = {} } = Astro.props;
+const { post, iconMap = {}, iconSvgMap = {}, assetVersion = null } = Astro.props;
 const readingTime = formatReadingTime(calculateReadingTime(post.body || ""));
-const imageSrc = post.media.cover?.variants.card ?? post.media.primary?.variants.card ?? post.image;
+const imageSrc = appendPublicAssetVersion(
+  post.media.cover?.variants.card ?? post.media.primary?.variants.card ?? post.image,
+  assetVersion
+);
 ---
 <article
   class="nature-panel relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8"

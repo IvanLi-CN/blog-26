@@ -9,6 +9,7 @@ import Icon from "@/components/ui/Icon";
 
 const snapshot = await getSnapshot();
 const timeline = buildHomeTimeline(snapshot);
+const assetVersion = snapshot.generatedAt;
 ---
 <BaseLayout pathname="/" title={SITE.title} description={SITE.description}>
   <section class="px-3 py-8 sm:px-4 md:py-12">
@@ -45,6 +46,7 @@ const timeline = buildHomeTimeline(snapshot);
               isLast={index === timeline.length - 1}
               iconMap={snapshot.tags.tagIconMap}
               iconSvgMap={snapshot.tags.tagIconSvgMap}
+              assetVersion={assetVersion}
             />
           ))}
         </div>

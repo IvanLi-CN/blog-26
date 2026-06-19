@@ -30,3 +30,8 @@
 - 收紧内容媒体路径解码边界：允许 `%20` 等安全 segment 转义继续解码，但显式拒绝 `%2F` / `%5C` 这类编码分隔符、以及会解码成 `.` / `..` 的编码 dot-segment；同时把明文 dot-segment 统一 canonicalize，并拒绝任何越过内容根的 traversal。
 - 修正历史内容兼容口径：公开快照、公开 API 和 public-mode Markdown 渲染都会把 legacy `/api/files/<source>/...` 媒体链接重写为同源 `/api/public/assets/...`，并把这类 files-api path 当作内容根相对路径解析；release 使用预下载 `public-snapshot.json` 时不再把旧 `webdav` 路径泄漏进静态 HTML。
 - 固定正文媒体索引合同：Markdown 普通媒体链接与 HTML `<a href>` 指向本地图片/视频时，也必须进入服务端 `mediaHash` 索引集合，与前端 rewrite 语法面保持一致；不允许出现“HTML 已改成 facade URL，但 internal source 无法命中”的运行时断裂。
+
+## 2026-06-19
+
+- 固定静态发布缓存版本戳合同：公开 HTML 中由 build-time 直接输出的 `card` / `cover` facade URL，以及同批构建落盘的 OG/Twitter/JSON-LD 封面字段，必须统一携带 `?v=<public-snapshot.generatedAt>`。
+- 收紧 release frontend build 校验：`verify-pages-build` 现在会扫描公开 HTML 里的 build-time `card` / `cover` facade URL，缺少 `?v=` 就直接失败，避免同一路径媒体恢复后仍被旧浏览器/边缘缓存对象拖住。

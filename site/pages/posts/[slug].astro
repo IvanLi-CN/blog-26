@@ -10,6 +10,7 @@ import TagBadge from "../../components/TagBadge.astro";
 import RelatedPostCard from "../../components/RelatedPostCard.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
 import {
+  appendPublicAssetVersion,
   getCanonicalUrl,
   getRelatedPosts,
   getSnapshot,
@@ -28,9 +29,13 @@ export async function getStaticPaths() {
 const { post } = Astro.props as { post: PublicPostRecord };
 const snapshot = await getSnapshot();
 const relatedPosts = getRelatedPosts(snapshot, post.slug);
+const assetVersion = snapshot.generatedAt;
 const contentSource = "local" as const;
 const publicMediaContext = { kind: "post" as const, slug: post.slug, filePath: post.filePath };
-const imageSrc = post.media.cover?.variants.cover ?? toPublicAssetUrl(post.image);
+const imageSrc = appendPublicAssetVersion(
+  post.media.cover?.variants.cover ?? toPublicAssetUrl(post.image),
+  assetVersion
+);
 const absoluteImageSrc = imageSrc
   ? imageSrc.startsWith("http") || imageSrc.startsWith("data:")
     ? imageSrc
@@ -154,7 +159,7 @@ const structuredData = {
         </div>
         <div class="grid items-start gap-6 md:grid-cols-2 lg:grid-cols-4">
           {relatedPosts.map((relatedPost) => (
-            <RelatedPostCard post={relatedPost} />
+            <RelatedPostCard post={relatedPost} assetVersion={assetVersion} />
           ))}
         </div>
       </div>

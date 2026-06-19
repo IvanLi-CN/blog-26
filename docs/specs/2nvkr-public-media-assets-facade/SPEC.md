@@ -67,6 +67,8 @@
   - `play`
 - `mediaHash` 基于“规范化相对媒体路径 + 内容角色”计算，要求对同一内容文件稳定。
 - 公开门面必须代理 `imagorvideo` 或内部 raw 播放响应，不得 302 跳转到第三方或内网域名。
+- 静态公开 HTML 中由 build-time 直接落盘的 facade 媒体 URL，至少包括列表卡片 `card`、详情头图 `cover`、以及同一批构建时写入的 OG/Twitter/JSON-LD 封面字段，必须附带稳定查询参数 `?v=<public-snapshot.generatedAt>`。
+- 这个 `v` 只作为静态发布缓存版本戳，用于在 snapshot 更新后强制浏览器与边缘缓存切换到新对象；它不得改写 facade path 形状，也不得引入运行时 fallback。
 
 ### 5.3 内部 source 路由
 
@@ -200,6 +202,7 @@
 7. 101 上 `imagorvideo` / `blog` 所需 compose 与部署卡片改动、验证命令与回退说明具备可执行口径。
 8. 公开入口可直接返回 `/watermark-ivanli.svg`，且 E2E / smoke 覆盖至少有一条真实请求命中该文件与一个 `/api/public/assets/*` 媒体 URL。
 9. 公开媒体路径解析会拒绝编码 separator、编码 dot-segment 与越过内容根的 traversal；这类输入不得被解析成可访问文件路径。
+10. 公开 HTML 中所有 build-time 直接输出的 `card` / `cover` facade URL 都必须携带稳定 `?v=<public-snapshot.generatedAt>` 查询参数；缺失时视为静态发布不合格，而不是运行时容错场景。
 
 ## Visual Evidence
 
