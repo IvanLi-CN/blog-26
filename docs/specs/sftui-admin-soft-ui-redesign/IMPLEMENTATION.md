@@ -24,6 +24,7 @@ Implementation state is tracked here while the `sftui` spec is active.
 - The editor exposes WYSIWYG, Source, and side-by-side 对照 modes; there is no editor Preview mode. 对照 mode uses Milkdown's readonly support for the rendered pane and keeps Markdown source as the only editable pane.
 - The demo editor fixture includes headings, lists, blockquotes, inline code, and a `tsx` fenced code block so rendering can be verified in all editor modes.
 - The demo UI avoids visible implementation-mode explanatory copy; mock-only behavior remains an implementation detail of the real admin route bootstrap.
+- The admin preview routes now act as authoring preview surfaces inside the Soft UI shell: post preview borrows the public article detail rhythm including its hero placement, while memo preview stays aligned with the public memo detail shell without adding a hero. Neither route imports the public Nature UI skin or tail modules.
 - New empty post saves are blocked client-side when the editor body is still blank, and the banner now shows a natural-language validation message instead of raw serialized Zod issue arrays.
 - Admin API error mapping now preserves structured validation details for editor/post flows so the SPA can present stable friendly messages while keeping server-side validation authoritative.
 - The editor accessibility pass names the hidden attachment upload field, SourceEditor textarea, and Crepe link input to avoid unlabeled form controls.
@@ -51,6 +52,8 @@ Implementation state is tracked here while the `sftui` spec is active.
 - `bun run check:public-no-daisy`
 - `DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local CONTENT_SOURCES=local bun run build`
 - `bun run build-storybook`
+- `bun test apps/admin/src/components/preview-detail.test.tsx`
+- `PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR=0 PLAYWRIGHT_TEST_PROJECT=admin WEB_PORT=<leased> SITE_PORT=<leased+3> ADMIN_PORT=<leased+4> bunx playwright test tests/e2e/admin/preview-detail.spec.ts --project=admin`
 - `bun test src/lib/__tests__/frontmatter-document.test.ts`
 - `bun run test`
 - `WEB_PORT=61130 PORT=61130 SITE_PORT=61131 bun run test:e2e -- --project=admin-chromium`

@@ -98,6 +98,15 @@
 - 解析器必须对明文 `.` / `..` segment 做 canonicalize，但只允许结果停留在 `LOCAL_CONTENT_BASE_PATH` 内容根内；任何会越过内容根的 traversal 都必须直接拒绝。
 - 这组规则属于公开媒体合同本身，不允许通过运行时 fallback 容忍或绕过。
 
+### 5.6 Admin preview authoring surface
+
+- `/admin/preview/posts/:slug` 与 `/admin/preview/memos/:slug` 是后台 authoring preview surface，不是公开 Nature UI 详情页的样式复刻。
+- 这两个后台预览路由必须消费与公开详情页相同的 facade hero 语义，确保作者态看到的主图与公开详情页使用同一来源判断。
+- 文章预览的信息顺序固定为：元信息、标题、摘要、标签、主图、正文。
+- Memo 预览的信息顺序固定为：元信息、标题、标签、正文。
+- Memo 预览必须保持为纯详情壳，不得额外插入作者操作条、第二套详情标题、摘要卡片或公开页尾部模块。
+- Memo 预览必须忽略兼容 payload 中仍可能存在的 `excerpt` 字段，不得在后台预览面制造摘要区块。
+
 ## 6. 公开数据合同
 
 ### 6.1 统一 `media` 视图
@@ -198,17 +207,25 @@
 3. `GET /api/public/assets/:kind/:slug/:mediaHash/:variant.:ext` 始终代理处理结果，不重定向到 imagor 域名。
 4. `GET /_internal/assets/source/:kind/:slug/:mediaHash` 能稳定回源，并支持 `Range`。
 5. `/admin/preview/*` 与真实公开页使用同一套公开媒体语义；编辑器内嵌 preview/raw authoring 语义保持不变。
-6. 小图不加水印；公开派生结果不带敏感 metadata。
-7. 101 上 `imagorvideo` / `blog` 所需 compose 与部署卡片改动、验证命令与回退说明具备可执行口径。
-8. 公开入口可直接返回 `/watermark-ivanli.svg`，且 E2E / smoke 覆盖至少有一条真实请求命中该文件与一个 `/api/public/assets/*` 媒体 URL。
-9. 公开媒体路径解析会拒绝编码 separator、编码 dot-segment 与越过内容根的 traversal；这类输入不得被解析成可访问文件路径。
-10. 公开 HTML 中所有 build-time 直接输出的 `card` / `cover` facade URL 都必须携带稳定 `?v=<public-snapshot.generatedAt>` 查询参数；缺失时视为静态发布不合格，而不是运行时容错场景。
+6. `/admin/preview/posts/:slug` 与 `/admin/preview/memos/:slug` 保持后台 Soft UI 壳，但信息节奏分别符合文章/ Memo 详情预览合同；Memo 预览不显示摘要位。
+7. 小图不加水印；公开派生结果不带敏感 metadata。
+8. 101 上 `imagorvideo` / `blog` 所需 compose 与部署卡片改动、验证命令与回退说明具备可执行口径。
+9. 公开入口可直接返回 `/watermark-ivanli.svg`，且 E2E / smoke 覆盖至少有一条真实请求命中该文件与一个 `/api/public/assets/*` 媒体 URL。
+10. 公开媒体路径解析会拒绝编码 separator、编码 dot-segment 与越过内容根的 traversal；这类输入不得被解析成可访问文件路径。
+11. 公开 HTML 中所有 build-time 直接输出的 `card` / `cover` facade URL 都必须携带稳定 `?v=<public-snapshot.generatedAt>` 查询参数；缺失时视为静态发布不合格，而不是运行时容错场景。
 
 ## Visual Evidence
 
 - Public posts list facade rendering: [public-posts-list.png](/Users/ivan/.codex/worktrees/563a/blog-25/docs/specs/2nvkr-public-media-assets-facade/assets/public-posts-list.png)
 - Public post detail facade rendering: [public-post-detail.png](/Users/ivan/.codex/worktrees/563a/blog-25/docs/specs/2nvkr-public-media-assets-facade/assets/public-post-detail.png)
-- Admin preview uses the same facade semantics: [admin-preview-post.png](/Users/ivan/.codex/worktrees/563a/blog-25/docs/specs/2nvkr-public-media-assets-facade/assets/admin-preview-post.png)
+PR: include
+- Storybook preview detail rhythm inside the admin Soft UI shell: [storybook-admin-preview-post-detail.png](./assets/storybook-admin-preview-post-detail.png)
+PR: include
+- Storybook memo detail rhythm keeps a single content title with no hero or excerpt slot: [storybook-admin-preview-memo-detail.png](./assets/storybook-admin-preview-memo-detail.png)
+PR: include
+- Admin post preview renders facade hero between header metadata and body content: [admin-preview-post-detail.png](./assets/admin-preview-post-detail.png)
+PR: include
+- Admin memo preview keeps the public memo detail shell rhythm without a hero or excerpt slot: [admin-preview-memo-detail.png](./assets/admin-preview-memo-detail.png)
 
 ## 10. 参考
 

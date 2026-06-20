@@ -2,6 +2,64 @@
  * Markdown 内容处理工具函数
  */
 
+function normalizeHeadingLabel(value: string): string {
+  return value
+    .trim()
+    .replace(/\[(.*?)\]\([^)]+\)/g, "$1")
+    .replace(/[*_~`]/g, "")
+    .replace(/\\(\\|`|\\*|_|\\{|\\}|\\[|\\]|\\(|\\)|\\+|#|\\.|!|-)/g, "$1")
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * 当正文首个一级标题与详情页外层标题一致时，移除正文里的重复标题。
+ */
+export function stripMatchingLeadingTitleHeading(content: string, title: string): string {
+  if (!content?.trim() || !title?.trim()) return content ?? "";
+
+  const newline = content.includes("\r\n") ? "\r\n" : "\n";
+  const lines = content.replace(/^\uFEFF/, "").split(/\r?\n/);
+  const normalizedTitle = normalizeHeadingLabel(title);
+
+  let cursor = 0;
+  while (cursor < lines.length && lines[cursor]?.trim() === "") {
+    cursor += 1;
+  }
+
+  if (cursor >= lines.length) {
+    return content;
+  }
+
+  const currentLine = lines[cursor] ?? "";
+  const atxHeading = currentLine.match(/^#(?!#)\s+(.+?)\s*#*\s*$/u);
+  if (atxHeading?.[1]) {
+    if (normalizeHeadingLabel(atxHeading[1]) !== normalizedTitle) {
+      return content;
+    }
+
+    let start = cursor + 1;
+    while (start < lines.length && lines[start]?.trim() === "") {
+      start += 1;
+    }
+    return lines.slice(start).join(newline);
+  }
+
+  const underline = lines[cursor + 1]?.trim() ?? "";
+  if (underline && /^=+\s*$/u.test(underline)) {
+    if (normalizeHeadingLabel(currentLine) !== normalizedTitle) {
+      return content;
+    }
+
+    let start = cursor + 2;
+    while (start < lines.length && lines[start]?.trim() === "") {
+      start += 1;
+    }
+    return lines.slice(start).join(newline);
+  }
+
+  return content;
+}
+
 /**
  * 智能截断 Markdown 内容，保持语法完整性
  * @param content - 原始 Markdown 内容

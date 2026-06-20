@@ -75,6 +75,7 @@ test.describe("Nature frontend public coverage", () => {
 
     await gotoWithTheme(page, "/memos/local-memo", "light");
     await expect(page.locator("main h1").first()).toHaveText("Local Memo");
+    await expect(page.getByRole("heading", { name: "Local Memo", exact: true })).toHaveCount(1);
 
     await gotoWithTheme(page, "/tags", "light");
     const firstTag = page.locator('a[href^="/tags/"]').first();

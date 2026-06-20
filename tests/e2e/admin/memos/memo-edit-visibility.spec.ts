@@ -2,15 +2,15 @@ import { expect } from "@playwright/test";
 import { adminTest as test } from "../fixtures";
 import {
   openAdminMemoDetail,
-  openMemoEditDialog,
   waitForAdminLiveMemoCard,
+  waitForAdminPreviewMemoBody,
   waitForQuickMemoEditor,
 } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
-test.describe("Memo 编辑可见性", () => {
-  test("编辑后可从公开切换为私有并持久化", async ({ page }) => {
+test.describe("Memo 预览详情壳", () => {
+  test("详情预览保持单标题、无 hero、无 excerpt、无作者操作条", async ({ page }) => {
     test.setTimeout(150_000);
 
     // 使用开发登录接口建立管理员会话（测试环境允许）
@@ -44,37 +44,18 @@ test.describe("Memo 编辑可见性", () => {
     await expect(createdCard.locator('[data-testid="public-indicator"]')).toBeVisible();
     await expect(createdCard.locator('[data-testid="private-indicator"]')).toHaveCount(0);
 
-    // 2) 打开编辑对话框，切换为“私有保存”
+    // 2) 打开详情预览页，验证当前 memo 详情壳不再注入作者操作条
     if (!targetSlug) {
       throw new Error("Expected created memo to expose a slug");
     }
     await openAdminMemoDetail(page, targetSlug);
-    const dialog = await openMemoEditDialog(page, page.getByRole("button", { name: "编辑 Memo" }));
-
-    const visibilityToggle = dialog.getByTestId("quick-memo-visibility-input");
-    const save = dialog.getByRole("button", { name: "保存更改" });
-
-    await expect(visibilityToggle).toBeEnabled({ timeout: 30_000 });
-    await expect(save).toBeEnabled({ timeout: 30_000 });
-    await expect(visibilityToggle).toBeChecked();
-    await visibilityToggle.evaluate((element: HTMLInputElement) => {
-      element.click();
-    });
-    await expect(visibilityToggle).not.toBeChecked();
-    await expect(dialog.getByText("私有保存")).toBeVisible();
-
-    await expect(save).toBeEnabled({ timeout: 30_000 });
-    await save.click();
-    await expect(dialog).toHaveCount(0, { timeout: 60_000 });
-
-    // 3) 重新进入列表后验证该 memo 已持久化为私有
-    await page.goto("/memos", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await waitForQuickMemoEditor(page);
-    const updatedCardAfterReload = page.locator(
-      `[data-testid="admin-live-memo-card"][data-id="${targetId}"]`
-    );
-    await expect(updatedCardAfterReload).toBeVisible({ timeout: 60_000 });
-    await expect(updatedCardAfterReload.locator('[data-testid="private-indicator"]')).toBeVisible();
-    await expect(updatedCardAfterReload.locator('[data-testid="public-indicator"]')).toHaveCount(0);
+    const article = await waitForAdminPreviewMemoBody(page);
+    await expect(page.getByRole("heading", { name: TITLE, exact: true })).toHaveCount(1);
+    await expect(article).not.toContainText(TITLE, { timeout: 60_000 });
+    await expect(page.getByTestId("admin-preview-hero")).toHaveCount(0);
+    await expect(page.getByTestId("admin-preview-description")).toHaveCount(0);
+    await expect(page.getByTestId("public-memo-detail-controls")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "编辑 Memo" })).toHaveCount(0);
+    await expect(page.getByTestId("admin-live-memo-delete")).toHaveCount(0);
   });
 });

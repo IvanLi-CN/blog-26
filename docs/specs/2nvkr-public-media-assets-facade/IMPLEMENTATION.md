@@ -66,6 +66,11 @@
 14. 公开内容正文现在会在 snapshot 读取、public API 序列化与 Markdown public-mode 渲染三个入口统一把历史 `/api/files/<source>/...` 链接改写为 `/api/public/assets/...`，并把这类 legacy files-api path 当作内容根相对路径解析。这样 release 使用预下载 `public-snapshot.json` 时也不会再把旧 `webdav` 路径泄漏进 `site-dist`。
 15. 正文媒体 rewrite 与服务端索引现在保持同构：除了 Markdown 图片、wiki 图片、`<img>/<video>/<source>`，还显式覆盖指向本地媒体的 Markdown 普通链接与 HTML `<a href>`；任何会被 rewrite 成 facade URL 的正文语法，都必须能通过相同 `mediaHash` 命中 `/_internal/assets/source/...`，不依赖运行时 fallback。
 16. 静态页面里 build-time 直接输出的 facade 卡片/头图 URL 现在统一追加 `?v=<public-snapshot.generatedAt>`；release 校验会扫描公开 HTML 中的 `card` / `cover` facade URL，缺少这个稳定版本戳时直接失败，避免“同一路径媒体已恢复，但浏览器和边缘缓存仍钉住旧坏对象”。
+17. `/admin/preview/posts/:slug` 与 `/admin/preview/memos/:slug` 现在共享一层后台 Soft UI 详情预览骨架；文章预览借用公开详情页的 hero 层级，Memo 预览则保持与公开 memo 详情页一致的无主图阅读壳，不复用公开 Nature UI 组件或尾部模块。
+18. 文章后台预览直接消费现有 preview payload 里的 facade `image` 语义来渲染大主图，修复了内容 frontmatter 已有主图但后台预览缺图的问题。
+19. Memo 后台预览明确对齐 `origin/main` 公开基线：保留元信息、标题、标签与正文的详情节奏，但不渲染 hero，也不再承载作者操作条。客户端 `AdminPreviewMemo` 本地契约继续覆盖服务端已返回的 `image` / `media` 能力，以便其它消费面保持类型对齐。
+20. Memo 预览明确忽略兼容 payload 中仍可能出现的 `excerpt` 字段；这次只在预览面贯彻“memo 不应有 excerpt”的产品真相，不扩散到 feed、卡片、搜索或 snapshot 的 repo 级清理。
+21. Memo 公开详情页、管理员作者态详情壳与 `/admin/preview/memos/:slug` 现在会在外层详情标题已存在时，折叠正文开头与标题同名的首个一级标题，避免同一 memo 在详情阅读面出现两次相同标题。
 
 ## 本地开发与故障语义
 

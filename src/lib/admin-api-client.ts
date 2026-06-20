@@ -8,6 +8,7 @@ import type {
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
 import type { LlmModelOption, LlmModelSource } from "./llm-models";
+import type { PublicMediaCollection } from "./public-media";
 
 export interface AdminUser {
   id: string;
@@ -331,7 +332,11 @@ export interface AdminPreviewPost {
   excerpt?: string | null;
   tags?: string[];
   category?: string | null;
+  author?: string | null;
+  publishDate?: string | number | null;
+  updateDate?: string | number | null;
   image?: string | null;
+  media?: PublicMediaCollection | null;
   draft?: boolean;
   public?: boolean;
   filePath?: string | null;
@@ -349,6 +354,8 @@ export interface AdminPreviewMemo {
   isPublic: boolean;
   tags?: string[];
   attachments?: Array<{ filename?: string; path: string; isImage?: boolean }>;
+  image?: string | null;
+  media?: PublicMediaCollection | null;
   filePath?: string | null;
   source?: string | null;
   createdAt: string;

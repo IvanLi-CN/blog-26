@@ -2,28 +2,28 @@ import { expect } from "@playwright/test";
 import { adminTest as test } from "./fixtures";
 import {
   openAdminMemoDetail,
-  openMemoEditDialog,
   waitForAdminLiveMemoCard,
+  waitForAdminPreviewMemoBody,
   waitForQuickMemoEditor,
 } from "./memos/helpers";
 
 /**
- * Memo 编辑不重复测试
- * 验证编辑 memo 后不会在列表中创建重复项
+ * Memo 详情不重复标题测试
+ * 验证详情壳只保留外层标题，不重复渲染正文首个同名 H1。
  */
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 
-test.describe("Memo 编辑不重复", () => {
-  test("编辑 memo 后列表中不应出现重复项", async ({ page }) => {
+test.describe("Memo 详情不重复标题", () => {
+  test("详情壳不应重复渲染正文中的同名标题", async ({ page }) => {
     test.setTimeout(150_000);
 
     await page.request.post("/api/dev/login", {
       data: { email: ADMIN_EMAIL },
     });
 
-    await page.goto("/memos", { timeout: 60_000, waitUntil: "commit" });
-    await expect(page.locator("body")).toBeVisible();
+    await page.goto("/memos", { timeout: 60_000, waitUntil: "domcontentloaded" });
+    await waitForQuickMemoEditor(page);
 
     const memoCards = page.locator('[data-testid="admin-live-memo-card"]');
 
@@ -60,24 +60,14 @@ test.describe("Memo 编辑不重复", () => {
     }
 
     await openAdminMemoDetail(page, targetSlug);
-    const dialog = await openMemoEditDialog(page, page.getByRole("button", { name: "编辑 Memo" }));
-    await expect(page.getByTestId("quick-memo-edit-header")).toBeVisible({ timeout: 60_000 });
-
-    const editor = dialog.locator('[contenteditable="true"]').first();
-    await editor.click();
-    await page.keyboard.press("Control+a");
-    const newContent = `# 测试编辑 - ${Date.now()}`;
-    await page.keyboard.type(newContent);
-
-    const saveButton = dialog.getByRole("button", { name: /保存更改|保存|save/i });
-    await saveButton.click();
-
-    await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+    const article = await waitForAdminPreviewMemoBody(page);
+    await expect(page.getByRole("heading", { name: title, exact: true })).toHaveCount(1);
+    await expect(article).not.toContainText(title, { timeout: 60_000 });
     await page.goto("/memos", { timeout: 60_000, waitUntil: "domcontentloaded" });
     await waitForQuickMemoEditor(page);
 
     const finalCount = await memoCards.count();
-    console.log(`📊 编辑后 memo 数量: ${finalCount}`);
+    console.log(`📊 返回列表后 memo 数量: ${finalCount}`);
     expect(finalCount).toBe(countAfterCreate);
     if (targetId) {
       const updatedCard = page.locator(
@@ -86,8 +76,7 @@ test.describe("Memo 编辑不重复", () => {
       await expect(updatedCard).toHaveCount(1);
     }
 
-    await page.reload({ timeout: 60_000, waitUntil: "commit" });
-    await expect(page.locator("body")).toBeVisible();
+    await page.reload({ timeout: 60_000, waitUntil: "domcontentloaded" });
     await waitForQuickMemoEditor(page);
 
     const memoCardsAfterReload = page.locator('[data-testid="admin-live-memo-card"]');
