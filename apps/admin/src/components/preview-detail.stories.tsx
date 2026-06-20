@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { expect, within } from "storybook/test";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
-import { Button } from "~/components/ui";
 import {
   buildMemoPreviewMeta,
   buildPostPreviewMeta,
@@ -45,32 +44,6 @@ const sharedMemoBody = `
 
 正文段落，用来验证 memo 详情壳会折掉正文开头的重复标题。
 `;
-
-function MemoAuthoringControlsStub() {
-  return (
-    <section className="space-y-3" data-testid="public-memo-detail-controls">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-border/56 bg-muted/46 px-4 py-3 shadow-inner shadow-shadow-inset">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">作者操作</p>
-          <p className="text-sm text-muted-foreground">
-            Storybook 里只验证 preview 顶部操作条的占位与层级，不复刻真实写操作。
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm">
-            刷新当前内容
-          </Button>
-          <Button variant="outline" size="sm">
-            编辑 Memo
-          </Button>
-          <Button variant="destructive" size="sm" data-testid="admin-live-memo-delete">
-            删除 Memo
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 const meta = {
   title: "Admin/Preview Detail",
@@ -172,15 +145,12 @@ export const MemoDetailRhythm: Story = {
         slug: "memo-preview-demo",
         filePath: "Memos/demo.md",
       }}
-      leadingControls={<MemoAuthoringControlsStub />}
     />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByTestId("admin-preview-hero")).toBeNull();
     await expect(canvas.queryByTestId("admin-preview-description")).toBeNull();
-    await expect(canvas.getByTestId("public-memo-detail-controls")).toBeVisible();
-    await expect(canvas.getByRole("button", { name: "编辑 Memo" })).toBeVisible();
     expect(canvas.getAllByRole("heading", { name: "Memo 预览不显示 excerpt" })).toHaveLength(1);
   },
 };

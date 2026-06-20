@@ -37,6 +37,6 @@
 - 收紧 release frontend build 校验：`verify-pages-build` 现在会扫描公开 HTML 里的 build-time `card` / `cover` facade URL，缺少 `?v=` 就直接失败，避免同一路径媒体恢复后仍被旧浏览器/边缘缓存对象拖住。
 - 固定后台 `/admin/preview/posts/:slug` 与 `/admin/preview/memos/:slug` 的 authoring preview surface 身份：它们在 admin Soft UI 壳内借用公开详情页的信息顺序与 hero 语义，但不复用公开 Nature UI 外观。
 - 修复文章后台预览主图缺失；Memo 后台预览继续对齐公开 memo 基线，保持无主图的详情阅读壳，而不是额外制造 hero 语义。
-- 把 `/admin/preview/memos/:slug` 收回到“详情壳 + 最小作者操作条”的 authoring preview surface：恢复编辑/删除/刷新能力，但不再渲染第二套标题卡片。
+- 把 `/admin/preview/memos/:slug` 收回到纯 memo 详情壳：不渲染 hero，不注入作者操作条，也不再出现第二套标题卡片。
 - 记录领域偏差：Memo 兼容 payload 里仍可能存在 `excerpt` 字段，但后台预览面必须忽略它；repo 级 excerpt 清理留待后续专项。
 - 修正 memo 详情阅读面的重复标题：当正文开头已经含有与详情壳标题同名的一级标题时，公开详情页、管理员作者态详情壳与后台预览会统一折叠这一个重复 H1。

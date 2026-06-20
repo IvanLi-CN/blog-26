@@ -104,7 +104,7 @@
 - 这两个后台预览路由必须消费与公开详情页相同的 facade hero 语义，确保作者态看到的主图与公开详情页使用同一来源判断。
 - 文章预览的信息顺序固定为：元信息、标题、摘要、标签、主图、正文。
 - Memo 预览的信息顺序固定为：元信息、标题、标签、正文。
-- Memo 预览可以保留最小作者操作条（例如编辑、删除、刷新），但不得额外插入第二套详情标题、摘要卡片或公开页尾部模块。
+- Memo 预览必须保持为纯详情壳，不得额外插入作者操作条、第二套详情标题、摘要卡片或公开页尾部模块。
 - Memo 预览必须忽略兼容 payload 中仍可能存在的 `excerpt` 字段，不得在后台预览面制造摘要区块。
 
 ## 6. 公开数据合同
@@ -220,6 +220,8 @@
 - Public post detail facade rendering: [public-post-detail.png](/Users/ivan/.codex/worktrees/563a/blog-25/docs/specs/2nvkr-public-media-assets-facade/assets/public-post-detail.png)
 PR: include
 - Storybook preview detail rhythm inside the admin Soft UI shell: [storybook-admin-preview-post-detail.png](./assets/storybook-admin-preview-post-detail.png)
+PR: include
+- Storybook memo detail rhythm keeps a single content title with no hero or excerpt slot: [storybook-admin-preview-memo-detail.png](./assets/storybook-admin-preview-memo-detail.png)
 PR: include
 - Admin post preview renders facade hero between header metadata and body content: [admin-preview-post-detail.png](./assets/admin-preview-post-detail.png)
 PR: include
