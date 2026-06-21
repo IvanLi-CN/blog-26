@@ -307,8 +307,10 @@ export function buildInternalAssetSourcePath(params: {
   kind: PublicContentKind;
   slug: string;
   mediaHash: string;
+  scope?: PublicMediaAssetScope;
 }) {
-  return `/_internal/assets/source/${params.kind}/${encodeURIComponent(params.slug)}/${params.mediaHash}`;
+  const path = `/_internal/assets/source/${params.kind}/${encodeURIComponent(params.slug)}/${params.mediaHash}`;
+  return params.scope === "admin-preview" ? `${path}?scope=admin-preview` : path;
 }
 
 export function buildPublicMediaAssetUrl(params: {

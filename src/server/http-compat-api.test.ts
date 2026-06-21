@@ -849,6 +849,24 @@ image: ./assets/cover.png
     expect(String(payload.media?.cover?.variants?.cover)).toContain(coverHash);
     expect(String(payload.media?.primary?.variants?.cover)).toContain(coverHash);
 
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
+    try {
+      const internalResponse = await handleInternalAssetSourceRequest(
+        buildRequest(
+          `/_internal/assets/source/post/preview-contaminated-assets/${coverHash}?scope=admin-preview`
+        ),
+        {
+          kind: "post",
+          slug: "preview-contaminated-assets",
+          mediaHash: coverHash,
+        }
+      );
+      expect(internalResponse.status).toBe(200);
+      expect(await internalResponse.text()).toBe("cover");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+
     const unauthorized = await handleAdminApiRequest(
       buildRequest(
         `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
@@ -879,6 +897,7 @@ image: ./assets/cover.png
         expect(url).toContain(
           "http://blog:25090/_internal/assets/source/post/preview-contaminated-assets/"
         );
+        expect(url).toContain("scope=admin-preview");
         return new Response("admin-preview-image", {
           status: 200,
           headers: {
