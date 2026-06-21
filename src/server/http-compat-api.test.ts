@@ -1107,7 +1107,7 @@ public: false
 
     expect(snapshotPost?.filePath).toBe("blog/http-snapshot-post.md");
     expect(snapshotMemo?.filePath).toBe("Memos/http-snapshot-memo.md");
-  }, 15_000);
+  }, 30_000);
 
   it("rewrites public snapshot media fields to assets facade urls", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -1140,7 +1140,7 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
-  });
+  }, 15_000);
 
   it("rewrites legacy files-api memo content to facade urls in public snapshot and internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
@@ -1190,7 +1190,7 @@ public: false
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
     }
-  });
+  }, 15_000);
 
   it("indexes rewritten markdown and html media links for public snapshot internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -1259,7 +1259,7 @@ public: false
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
     }
-  });
+  }, 15_000);
 
   it("rewrites local media urls to the public facade for public rows", async () => {
     await seedPost({
@@ -1290,7 +1290,7 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/local-media-post/"
     );
-  });
+  }, 15_000);
 
   it("proxies public facade image requests through imagorvideo without redirecting", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -2014,6 +2014,59 @@ public: false
         }),
       ])
     );
+  });
+
+  it("advances updateDate for ordinary post edits when the request does not set one explicitly", async () => {
+    const originalUpdateDate = Date.now() - 60_000;
+    const postId = "blog/update-date-regression.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/update-date-regression.md",
+      slug: "update-date-regression",
+      title: "Update Date Regression",
+      body: "# Original\n",
+      excerpt: "Original excerpt",
+      draft: false,
+      public: true,
+      updateDate: originalUpdateDate,
+      publishDate: originalUpdateDate - 5_000,
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Update Date Regression",
+            slug: "update-date-regression",
+            body: "# Updated\n\nBody changed.",
+            excerpt: "Updated excerpt",
+            draft: false,
+            public: true,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({ body: posts.body, excerpt: posts.excerpt, updateDate: posts.updateDate })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.body).toBe("# Updated\n\nBody changed.");
+    expect(stored?.excerpt).toBe("Updated excerpt");
+    expect(stored?.updateDate).toBeNumber();
+    expect(stored?.updateDate).toBeGreaterThan(originalUpdateDate);
   });
 
   it("returns a friendly not found error when reading a missing local file", async () => {

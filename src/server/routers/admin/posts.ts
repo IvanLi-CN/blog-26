@@ -277,7 +277,7 @@ export const adminPostsRouter = createTRPCRouter({
         author: updateData.author ?? existingPost.author,
         image: updateData.image ?? existingPost.image,
         publishDate: updateData.publishDate ?? existingPost.publishDate,
-        updateDate: updateData.updateDate ?? existingPost.updateDate,
+        updateDate: updateData.updateDate,
         tags: updateData.tags ?? existingPost.tags,
       });
       const contentHash = computePostContentHash(extracted);
