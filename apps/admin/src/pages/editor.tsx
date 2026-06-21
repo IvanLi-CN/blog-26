@@ -30,6 +30,7 @@ import {
   validateFrontmatterText,
 } from "@/lib/frontmatter-document";
 import { isMemoContentPath } from "@/lib/memo-paths";
+import { extractPostDraftFields } from "@/lib/post-body-contract";
 import { generateContentUrl } from "@/lib/url-utils";
 import { AdminToastViewport, dismissAdminToast, showAdminToast } from "~/components/admin-toast";
 import { useAppShellSidebar } from "~/components/app-shell";
@@ -55,6 +56,7 @@ import { EditorTabStrip } from "~/editor/editor-tab-strip";
 import { UniversalEditor, type UniversalEditorRef } from "~/editor/universal-editor";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
 import {
+  buildDatabaseAuthoringDocument,
   type DatabaseDraft,
   deriveDatabaseDraftState,
   deriveFileLabel,
@@ -471,16 +473,42 @@ export function EditorPage() {
 
   const upsertPostTab = useCallback((post: AdminPost, options?: { replaceTabId?: string }) => {
     const tabId = `post:${post.id}`;
+    const authoringDocument = buildDatabaseAuthoringDocument(
+      {
+        postId: post.id,
+        slug: post.slug,
+        title: post.title,
+        excerpt: post.excerpt || "",
+        content: post.body,
+        draft: post.draft,
+        public: post.public,
+        source: normalizeContentSource(post.source || post.dataSource),
+        filePath: normalizeArticlePath(post.filePath, post.slug),
+        category: post.category,
+        author: post.author,
+        image: post.image,
+        publishDate: post.publishDate,
+        updateDate: post.updateDate,
+        tags: post.tags,
+      },
+      { preferEmbeddedFrontmatter: true }
+    );
     const databaseDraft: DatabaseDraft = {
       postId: post.id,
       slug: post.slug,
       title: post.title,
       excerpt: post.excerpt || "",
-      content: post.body,
+      content: authoringDocument.content,
       draft: post.draft,
       public: post.public,
       source: normalizeContentSource(post.source || post.dataSource),
       filePath: normalizeArticlePath(post.filePath, post.slug),
+      category: post.category,
+      author: post.author,
+      image: post.image,
+      publishDate: post.publishDate,
+      updateDate: post.updateDate,
+      tags: post.tags,
     };
     const derivedDraft = deriveDatabaseDraftState(databaseDraft, databaseDraft.content);
     const targetIdentity = getArticleIdentity(databaseDraft.source, databaseDraft.filePath);
@@ -774,6 +802,7 @@ export function EditorPage() {
         source: "local",
         filePath: normalizeArticlePath(undefined, `untitled-${seed}`),
         isNew: true,
+        tags: [],
       },
     };
     setTabs((current) => insertEditorTabAtStart(current, tab));
@@ -994,6 +1023,7 @@ export function EditorPage() {
     setErrorBanner(null);
     try {
       if (activeTab.kind === "database" && activeTab.database) {
+        const extracted = extractPostDraftFields(liveContent, activeTab.database);
         const derivedDraft = deriveDatabaseDraftState(activeTab.database, liveContent);
         if (activeTab.database.isNew && isBlankEditorContent(liveContent)) {
           setErrorBanner({ message: "内容不能为空，请先输入正文后再保存。" });
@@ -1003,9 +1033,15 @@ export function EditorPage() {
           title: derivedDraft.title,
           slug: derivedDraft.slug,
           excerpt: derivedDraft.excerpt,
-          body: liveContent,
+          body: extracted.body,
           draft: derivedDraft.draft,
           public: derivedDraft.public,
+          category: derivedDraft.category ?? undefined,
+          tags: derivedDraft.tags,
+          author: derivedDraft.author ?? undefined,
+          image: derivedDraft.image ?? undefined,
+          publishDate: derivedDraft.publishDate ?? undefined,
+          updateDate: derivedDraft.updateDate ?? undefined,
           type: "post",
         };
 

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { ArrowUpRight, RefreshCcw } from "lucide-react";
+import { ArrowUpRight, CircleSlash, RefreshCcw } from "lucide-react";
 import type React from "react";
 import { type AdminPreviewMemo, type AdminPreviewPost, adminApi } from "@/lib/admin-api-client";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
@@ -15,18 +15,24 @@ import {
 import { Button, EmptyState, Spinner } from "~/components/ui";
 import { getErrorMessage, PageHeader } from "~/pages/helpers";
 
-function PreviewChrome({
+export type PreviewPublicPageState = {
+  href: string;
+  enabled: boolean;
+  disabledReason?: string;
+};
+
+export function PreviewChrome({
   title,
   description,
   children,
-  publicHref,
+  publicPage,
   onRefresh,
   refreshing,
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
-  publicHref?: string;
+  publicPage?: PreviewPublicPageState | undefined;
   onRefresh: () => void;
   refreshing: boolean;
 }) {
@@ -37,12 +43,22 @@ function PreviewChrome({
         description={description}
         actions={
           <>
-            {publicHref ? (
+            {publicPage?.enabled ? (
               <Button asChild variant="outline">
-                <a href={publicHref} target="_blank" rel="noreferrer">
+                <a href={publicPage.href} target="_blank" rel="noreferrer">
                   <ArrowUpRight className="size-4" />
                   打开公开页
                 </a>
+              </Button>
+            ) : publicPage ? (
+              <Button
+                variant="outline"
+                disabled
+                title={publicPage.disabledReason}
+                aria-label={publicPage.disabledReason ?? "当前文章尚未公开"}
+              >
+                <CircleSlash className="size-4" />
+                {publicPage.disabledReason ?? "当前文章尚未公开"}
               </Button>
             ) : null}
             <Button variant="outline" onClick={onRefresh} disabled={refreshing}>
@@ -92,7 +108,9 @@ function PreviewState({
   return null;
 }
 
-function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
+export function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
+  const publicPage = post.draft || post.public === false;
+
   return (
     <PreviewArticleShell
       modeLabel="公开文章预览"
@@ -110,16 +128,28 @@ function PostPreviewArticle({ post }: { post: AdminPreviewPost }) {
       bodyTestId="admin-preview-post-body"
       body={post.body || ""}
       articlePath={post.filePath || post.slug}
+      leadingControls={
+        publicPage ? (
+          <div
+            className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-950"
+            data-testid="admin-preview-public-state"
+          >
+            <CircleSlash className="size-3.5" />
+            当前文章仍为草稿或未公开，公开页入口已禁用。
+          </div>
+        ) : null
+      }
       publicMediaContext={{
         kind: "post",
         slug: post.slug,
         filePath: post.filePath || post.slug,
+        assetScope: "admin-preview",
       }}
     />
   );
 }
 
-function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
+export function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
   const body = stripMatchingLeadingTitleHeading(memo.content || "", memo.title || memo.slug);
 
   return (
@@ -140,6 +170,7 @@ function MemoPreviewArticle({ memo }: { memo: AdminPreviewMemo }) {
         kind: "memo",
         slug: memo.slug,
         filePath: memo.filePath || memo.slug,
+        assetScope: "admin-preview",
       }}
     />
   );
@@ -156,7 +187,20 @@ export function PostPreviewPage() {
     <PreviewChrome
       title="文章预览"
       description="检查文章在公开站中的阅读效果。"
-      publicHref={`/posts/${slug}`}
+      publicPage={
+        query.data
+          ? query.data.draft || query.data.public === false
+            ? {
+                href: `/posts/${slug}`,
+                enabled: false,
+                disabledReason: "当前文章仍为草稿或未公开",
+              }
+            : {
+                href: `/posts/${slug}`,
+                enabled: true,
+              }
+          : undefined
+      }
       onRefresh={() => void query.refetch()}
       refreshing={query.isFetching}
     >
@@ -184,7 +228,7 @@ export function MemoPreviewPage() {
     <PreviewChrome
       title="Memo 预览"
       description="检查 Memo 在公开站中的阅读效果。"
-      publicHref={`/memos/${slug}`}
+      publicPage={{ href: `/memos/${slug}`, enabled: true }}
       onRefresh={() => void query.refetch()}
       refreshing={query.isFetching}
     >

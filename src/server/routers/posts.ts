@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
+import { extractPostDraftFields, normalizePostBody } from "@/lib/post-body-contract";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
@@ -243,7 +244,11 @@ export const postsRouter = router({
       });
 
       // 解析 JSON 字段并返回处理后的数据
-      const processedPost = { ...post[0] };
+      const processedPost = {
+        ...post[0],
+        tags: post[0].tags as string[] | string | null,
+        metadata: post[0].metadata as Record<string, unknown> | string | null,
+      };
 
       try {
         // 解析 tags 字段
@@ -255,13 +260,13 @@ export const postsRouter = router({
           processedPost.metadata = JSON.parse(processedPost.metadata);
           console.log("🔍 [posts.get] metadata 解析成功");
         } else {
-          processedPost.metadata = "{}";
+          processedPost.metadata = {};
         }
       } catch (parseError) {
         console.error("🔍 [posts.get] JSON 解析错误:", parseError);
         // 如果解析失败，设置默认值
         processedPost.tags = [];
-        processedPost.metadata = "{}";
+        processedPost.metadata = {};
       }
 
       console.log("🔍 [posts.get] 返回的文章数据:", {
@@ -272,19 +277,51 @@ export const postsRouter = router({
         tagsValue: processedPost.tags,
       });
 
-      const media = buildPublicMediaCollection("post", processedPost as typeof posts.$inferSelect);
+      const cleanedBody = normalizePostBody(processedPost.body).body;
+      if (isAdminPreview) {
+        const previewFields = extractPostDraftFields(processedPost.body, {
+          title: processedPost.title,
+          slug: processedPost.slug,
+          excerpt: processedPost.excerpt,
+          draft: processedPost.draft,
+          public: processedPost.public,
+          category: processedPost.category,
+          author: processedPost.author,
+          image: processedPost.image,
+          publishDate: processedPost.publishDate,
+          updateDate: processedPost.updateDate,
+          tags: processedPost.tags,
+        });
+        processedPost.title = previewFields.title;
+        processedPost.excerpt = previewFields.excerpt;
+        processedPost.category = previewFields.category;
+        processedPost.author = previewFields.author;
+        processedPost.image = previewFields.image;
+        processedPost.publishDate = previewFields.publishDate ?? processedPost.publishDate;
+        processedPost.updateDate = previewFields.updateDate ?? processedPost.updateDate;
+        processedPost.tags =
+          previewFields.tags.length > 0 ? previewFields.tags : processedPost.tags;
+      }
+
+      const media = buildPublicMediaCollection(
+        "post",
+        processedPost as typeof posts.$inferSelect,
+        isAdminPreview ? "admin-preview" : "public"
+      );
+      const previewMediaContext = {
+        kind: "post" as const,
+        slug: processedPost.slug,
+        filePath: processedPost.filePath || processedPost.id,
+        assetScope: isAdminPreview ? ("admin-preview" as const) : ("public" as const),
+      };
       processedPost.image =
-        pickLegacyPublicImage(media, "cover") ??
+        pickLegacyPublicImage(media, "cover", previewMediaContext.assetScope) ??
         buildLegacyPublicMediaUrl({
           mediaPath: processedPost.image,
           dataSource: processedPost.dataSource,
           filePath: processedPost.filePath,
         });
-      processedPost.body = rewritePublicContentMediaUrls(processedPost.body, {
-        kind: "post",
-        slug: processedPost.slug,
-        filePath: processedPost.filePath || processedPost.id,
-      });
+      processedPost.body = rewritePublicContentMediaUrls(cleanedBody, previewMediaContext);
       (processedPost as Record<string, unknown>).media = media;
 
       return processedPost;

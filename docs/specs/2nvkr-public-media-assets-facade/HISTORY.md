@@ -40,3 +40,9 @@
 - 把 `/admin/preview/memos/:slug` 收回到纯 memo 详情壳：不渲染 hero，不注入作者操作条，也不再出现第二套标题卡片。
 - 记录领域偏差：Memo 兼容 payload 里仍可能存在 `excerpt` 字段，但后台预览面必须忽略它；repo 级 excerpt 清理留待后续专项。
 - 修正 memo 详情阅读面的重复标题：当正文开头已经含有与详情壳标题同名的一级标题时，公开详情页、管理员作者态详情壳与后台预览会统一折叠这一个重复 H1。
+
+## 2026-06-21
+
+- 固定数据库文章的 `body-only canonical` 预览合同：`/admin/preview/posts/:slug` 会在读时剥离 `posts.body` 中历史混入的整篇 frontmatter 文档，只把纯正文传给作者态正文区域。
+- 修正数据库文章作者态预览标题漂移：标题优先回到 frontmatter / 结构化 metadata，不再被正文首行图片 Markdown 抢占。
+- 对 `draft: true` 或 `public: false` 的文章，后台预览把“打开公开页”改成禁用解释态，避免作者点击一个必然 404 的公开入口。

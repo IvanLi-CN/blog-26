@@ -35,6 +35,7 @@ type PreviewArticleShellProps = {
     kind: "post" | "memo";
     slug: string;
     filePath: string;
+    assetScope?: "public" | "admin-preview";
   };
   bodyClassName?: string;
   leadingControls?: ReactNode;

@@ -81,6 +81,9 @@ Out of scope:
 14. The desktop admin left sidebar is resizable with a visible drag handle embedded inside the right edge of the sidebar card, persists its width in `localStorage`, supports keyboard adjustment, exposes an accessible vertical separator with current width values, provides a discoverability tooltip, supports double-click reset to the default width, and uses the shell grid so widening the sidebar reduces the main workspace width instead of overlapping content. The sidebar keeps its outer card effect, while route-specific panels and user/build details render as lightweight sections instead of nested cards.
 15. The WYSIWYG frontmatter block upgrades from a plain textarea to a local YAML editor that keeps the same visual shell, preserves unknown keys, offers field-name completion, boolean/date/category/tag value completion, shows real-time diagnostics directly inside the block, and auto-grows with its YAML content instead of trapping metadata behind an inner scrollbar.
 16. Frontmatter validation treats `publishDate` as the preferred publish date field, recognizes `date` only as a compatibility field, keeps unknown keys as warnings, blocks save actions only when diagnostics contain errors, and auto-fixes `tags` list indentation style during save without changing the author's data.
+17. Database-backed post editing uses the same authoring-document shape as file-backed Markdown only at the editor boundary: opening a DB post reconstructs a temporary frontmatter document from structured fields plus clean body, while saving splits it back into structured metadata plus body-only canonical storage.
+18. Admin preview routes surface publication state clearly inside the Soft UI chrome: published posts keep the public-page action, while draft or non-public posts show a disabled explanatory control instead of a broken public CTA.
+19. The Soft UI admin preview surface must remain visually complete even when a draft post is not publicly reachable: hero and inline media still render for admins, and image failure in the public assets chain must not collapse authoring preview readability.
 
 ## 7. Validation
 
@@ -238,3 +241,11 @@ Verified on `/admin/posts?demo=true`.
 ![Admin sidebar bottom actions with main top row removed](./assets/demo/admin-sidebar-bottom-actions-main-top-removed.trimmed.png)
 
 ![Admin compact page header aligned with actions](./assets/demo/admin-page-header-compact-aligned.trimmed.png)
+
+### Preview Surfaces
+
+- Admin preview stays inside the shipped Soft UI shell while borrowing the public detail reading rhythm.
+- Database-backed post preview strips contaminated frontmatter from the rendered body, restores the author-facing title from metadata/frontmatter truth, and gates the public-page CTA by `draft/public` state.
+- Draft or non-public post preview uses a disabled explanatory control instead of sending the author to a public 404.
+
+![Admin preview detail rhythm in Storybook](./assets/admin-preview-draft-cta-disabled-storybook.png)

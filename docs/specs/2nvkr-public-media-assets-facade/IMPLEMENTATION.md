@@ -71,12 +71,17 @@
 19. Memo 后台预览明确对齐 `origin/main` 公开基线：保留元信息、标题、标签与正文的详情节奏，但不渲染 hero，也不再承载作者操作条。客户端 `AdminPreviewMemo` 本地契约继续覆盖服务端已返回的 `image` / `media` 能力，以便其它消费面保持类型对齐。
 20. Memo 预览明确忽略兼容 payload 中仍可能出现的 `excerpt` 字段；这次只在预览面贯彻“memo 不应有 excerpt”的产品真相，不扩散到 feed、卡片、搜索或 snapshot 的 repo 级清理。
 21. Memo 公开详情页、管理员作者态详情壳与 `/admin/preview/memos/:slug` 现在会在外层详情标题已存在时，折叠正文开头与标题同名的首个一级标题，避免同一 memo 在详情阅读面出现两次相同标题。
+22. 数据库文章后台预览现在会在读取 `posts.body` 时统一剥离历史 frontmatter 污染，并用结构化字段 / frontmatter 重建标题、摘要、标签与主图；作者态正文区域只显示纯正文，不再把 YAML 泄漏给预览页。
+23. 后台文章预览对 `draft: true` 或 `public: false` 改成禁用解释态 CTA，复用既有 preview payload 的 `draft/public` 字段，不新增浏览器可见 API 字段，也不再给作者一个稳定落到公开 404 的链接。
+24. 后台预览的 post/memo 本地媒体现在走独立的 `/api/admin/preview/assets/:kind/:slug/:mediaHash/:variant.:ext` 门面，hero 与正文图片不再复用匿名公开 `assets` 权限链路；草稿作者态预览不会因为公开门禁而掉图。
+25. 仅后台预览资产门面允许在 imagor 派生处理器不可用时回退原始本地媒体字节，保持作者态可读；匿名公开 `assets` 门面继续维持 `502 Public media processor unavailable` 的 fail-fast 合同。
 
 ## 本地开发与故障语义
 
 - 生产模型仍是 `blog -> imagorvideo -> /_internal/assets/source/...`。
 - `/_internal/assets/source/...` 只有在 `PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL` 明确指向 blog 内部地址时才会接受请求；未配置时默认返回 `404`，避免误把公开入口当作 internal source。
 - 不再提供 dev/prod 运行时 fallback。imagor 链路失败时统一返回 `502 Public media processor unavailable`，由测试、CI 与发布验证显式暴露问题。
+- 唯一例外是后台作者态预览资产门面：若 imagor 链路失败，但管理员已通过 `/api/admin/preview/assets/...` 访问本地媒体，则允许回退原始媒体字节，避免预览页出现“正文可读但图片全空白”的作者态故障。
 
 ## 101 部署卡片
 

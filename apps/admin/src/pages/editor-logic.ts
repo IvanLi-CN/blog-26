@@ -1,6 +1,11 @@
 import { parseFrontmatterMap, stripFrontmatter } from "@/lib/frontmatter-document";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import {
+  buildPostAuthoringDocument,
+  extractPostDraftFields,
+  type PostContractStructuredFields,
+} from "@/lib/post-body-contract";
+import {
   getAncestorTreePaths,
   getParentTreePath,
   normalizeTreePath,
@@ -24,6 +29,12 @@ export type DatabaseDraft = {
   source: "local";
   filePath: string;
   isNew?: boolean;
+  category?: string | null;
+  author?: string | null;
+  image?: string | null;
+  publishDate?: number | null;
+  updateDate?: number | null;
+  tags?: string[] | string | null;
 };
 
 export type FileDraft = {
@@ -165,20 +176,20 @@ export function deriveFileLabel(path: string, content: string) {
   return path.split("/").filter(Boolean).pop() || path || "untitled.md";
 }
 
-function deriveTitleFromContent(content: string) {
-  const body = stripFrontmatter(content);
-  const heading = body.match(/^\s*#\s+(.+?)\s*$/m)?.[1]?.trim();
-  if (heading) return heading;
-
-  const firstLine = body
-    .split("\n")
-    .map((line) => line.trim())
-    .find(Boolean);
-  if (firstLine) {
-    return firstLine.replace(/^#+\s*/, "").slice(0, 80);
-  }
-
-  return "Untitled Post";
+function getStructuredDraftFields(draft: DatabaseDraft): PostContractStructuredFields {
+  return {
+    title: draft.title,
+    slug: draft.slug,
+    excerpt: draft.excerpt,
+    draft: draft.draft,
+    public: draft.public,
+    category: draft.category,
+    author: draft.author,
+    image: draft.image,
+    publishDate: draft.publishDate,
+    updateDate: draft.updateDate,
+    tags: draft.tags,
+  };
 }
 
 function deriveSlugValue(input: string) {
@@ -189,13 +200,6 @@ function deriveSlugValue(input: string) {
       .replace(/^-+|-+$/g, "")
       .slice(0, 80) || `untitled-${Date.now()}`
   );
-}
-
-function parseBooleanFrontmatter(value: string | undefined, fallback: boolean) {
-  if (!value) return fallback;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  return fallback;
 }
 
 function deriveExcerptFromContent(content: string) {
@@ -215,19 +219,37 @@ export function getTabArticleIdentity(tab: EditorTab) {
 }
 
 export function deriveDatabaseDraftState(draft: DatabaseDraft, content: string) {
-  const frontmatter = parseFrontmatterMap(content);
-  const headingTitle = deriveTitleFromContent(content);
-  const title = headingTitle || frontmatter.title?.trim() || draft.title.trim() || "未命名文章";
-  const slug = frontmatter.slug?.trim() || draft.slug.trim() || deriveSlugValue(title);
-  const excerpt = frontmatter.excerpt?.trim() || draft.excerpt || deriveExcerptFromContent(content);
+  const extracted = extractPostDraftFields(content, getStructuredDraftFields(draft));
+  const title = extracted.title;
+  const slug = extracted.slug || deriveSlugValue(title);
+  const excerpt = extracted.excerpt || deriveExcerptFromContent(content);
 
   return {
     title,
     slug,
     excerpt,
-    draft: parseBooleanFrontmatter(frontmatter.draft, draft.draft),
-    public: parseBooleanFrontmatter(frontmatter.public, draft.public),
+    draft: extracted.draft,
+    public: extracted.public,
+    category: extracted.category,
+    author: extracted.author,
+    image: extracted.image,
+    publishDate: extracted.publishDate,
+    updateDate: extracted.updateDate,
+    tags: extracted.tags,
   };
+}
+
+export function buildDatabaseAuthoringDocument(
+  draft: DatabaseDraft,
+  options?: { preferEmbeddedFrontmatter?: boolean }
+) {
+  return buildPostAuthoringDocument(
+    {
+      ...getStructuredDraftFields(draft),
+      body: draft.content,
+    },
+    options
+  );
 }
 
 export function isBlankEditorContent(content: string) {

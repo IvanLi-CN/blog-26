@@ -20,6 +20,7 @@ import {
   isPublicMediaVariant,
   normalizePublicMediaExt,
   type PublicContentKind,
+  type PublicMediaAssetScope,
   type PublicMediaCollection,
   type PublicMediaContext,
   type PublicMediaItem,
@@ -348,6 +349,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
   for (const variant of IMAGE_DISPLAY_VARIANTS) {
     for (const format of rasterFormats) {
       const url = buildPublicAssetPath({
+        scope: context.assetScope,
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
@@ -373,6 +375,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   if (ref.kind === "video") {
     for (const variant of VIDEO_DISPLAY_VARIANTS) {
       variants[variant] = buildPublicAssetPath({
+        scope: context.assetScope,
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
@@ -383,6 +386,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   } else {
     for (const variant of IMAGE_DISPLAY_VARIANTS) {
       variants[variant] = buildPublicAssetPath({
+        scope: context.assetScope,
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
@@ -395,6 +399,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   const playback =
     ref.kind === "video"
       ? buildPublicAssetPath({
+          scope: context.assetScope,
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
@@ -406,6 +411,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   const poster =
     ref.kind === "video"
       ? buildPublicAssetPath({
+          scope: context.assetScope,
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
@@ -429,7 +435,8 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
 
 export function buildPublicMediaCollection(
   kind: PublicContentKind,
-  row: ContentRow
+  row: ContentRow,
+  assetScope: PublicMediaAssetScope = "public"
 ): PublicMediaCollection {
   if (!shouldUsePublicMediaFacadeForRow(row)) {
     return createEmptyPublicMediaCollection();
@@ -438,6 +445,7 @@ export function buildPublicMediaCollection(
     kind,
     slug: row.slug,
     filePath: getCanonicalFilePath(row),
+    assetScope,
   };
   const refs = buildContentMediaReferences(kind, row);
   const items = refs.map((ref) => buildPublicMediaItem(context, ref));
@@ -493,7 +501,8 @@ export function rewritePublicMemoAttachments(row: ContentRow, media: PublicMedia
 
 export function pickLegacyPublicImage(
   media: PublicMediaCollection,
-  preferredVariant: "card" | "cover" | "content" = "cover"
+  preferredVariant: "card" | "cover" | "content" = "cover",
+  _assetScope?: PublicMediaAssetScope
 ) {
   return (
     media.cover?.variants[preferredVariant] ??
@@ -820,25 +829,11 @@ async function resolveMediaReferenceFromRequest(
   };
 }
 
-export async function handlePublicAssetFacadeRequest(
+async function proxyResolvedMediaVariant(
   request: Request,
-  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+  resolved: Awaited<ReturnType<typeof resolveMediaReferenceFromRequest>>,
+  params: { variant: string; ext: string; allowOriginalFallback?: boolean }
 ) {
-  if (
-    (request.method !== "GET" && request.method !== "HEAD") ||
-    !isPublicContentKind(params.kind)
-  ) {
-    return new Response("Not Found", { status: 404 });
-  }
-  if (!isPublicMediaVariant(params.variant)) {
-    return new Response("Not Found", { status: 404 });
-  }
-
-  const resolved = await resolveMediaReferenceFromRequest(request, {
-    kind: params.kind,
-    slug: params.slug,
-    mediaHash: params.mediaHash,
-  });
   if (!resolved) {
     return new Response("Not Found", { status: 404 });
   }
@@ -878,6 +873,9 @@ export async function handlePublicAssetFacadeRequest(
       imagorUrl,
       error,
     });
+    if (params.allowOriginalFallback) {
+      return streamLocalMediaFile(request, resolved.ref);
+    }
     return createMediaProcessorUnavailableResponse(request);
   }
 
@@ -885,6 +883,61 @@ export async function handlePublicAssetFacadeRequest(
     status: upstream.status,
     statusText: upstream.statusText,
     headers: forwardProxyHeaders(upstream),
+  });
+}
+
+export async function handlePublicAssetFacadeRequest(
+  request: Request,
+  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+) {
+  if (
+    (request.method !== "GET" && request.method !== "HEAD") ||
+    !isPublicContentKind(params.kind)
+  ) {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (!isPublicMediaVariant(params.variant)) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const resolved = await resolveMediaReferenceFromRequest(request, {
+    kind: params.kind,
+    slug: params.slug,
+    mediaHash: params.mediaHash,
+  });
+  return proxyResolvedMediaVariant(request, resolved, params);
+}
+
+export async function handleAdminPreviewAssetRequest(
+  request: Request,
+  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+) {
+  if (
+    (request.method !== "GET" && request.method !== "HEAD") ||
+    !isPublicContentKind(params.kind)
+  ) {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (!isPublicMediaVariant(params.variant)) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const auth = await extractAuthFromRequest(request);
+  if (!auth.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  const resolved = await resolveMediaReferenceFromRequest(request, {
+    kind: params.kind,
+    slug: params.slug,
+    mediaHash: params.mediaHash,
+  });
+  return proxyResolvedMediaVariant(request, resolved, {
+    ...params,
+    allowOriginalFallback: true,
   });
 }
 

@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -85,6 +86,7 @@ async function seedPost(
     updateDate: number;
     draft: boolean;
     public: boolean;
+    category: string | null;
     tags: string | null;
     source: "local" | "local";
     filePath: string;
@@ -110,7 +112,7 @@ async function seedPost(
     updateDate: overrides.updateDate ?? now,
     draft: overrides.draft ?? false,
     public: overrides.public ?? true,
-    category: null,
+    category: overrides.category ?? null,
     tags: overrides.tags ?? JSON.stringify(["preview"]),
     author: overrides.author ?? ADMIN_EMAIL,
     image: overrides.image ?? null,
@@ -737,8 +739,268 @@ describe("HTTP compatibility APIs", () => {
     const payload = await readJson(ok);
     expect(payload.kind).toBe("post");
     expect(payload.slug).toBe("preview-secret");
-    expect(payload.title).toBe("Preview Secret");
+    expect(payload.title).toBe("Draft only preview");
     expect(payload.draft).toBe(true);
+  });
+
+  it("cleans contaminated post bodies for admin preview payloads while preserving draft visibility flags", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/preview-contaminated.md",
+      filePath: "blog/preview-contaminated.md",
+      slug: "preview-contaminated",
+      title: "Persisted wrong title",
+      excerpt: "Persisted wrong excerpt",
+      body: `---
+title: USB-C 安全 5V Sink
+slug: preview-contaminated
+excerpt: 面向作者态预览的摘要。
+draft: true
+public: false
+category: hardware
+author: Ivan Li
+image: ./assets/cover.png
+tags:
+  - usb-c
+  - sink
+---
+
+![1.00](./assets/cover.png)
+
+纯正文第一段。`,
+      draft: true,
+      public: false,
+      category: "hardware",
+      author: "Persisted Author",
+      image: "./assets/persisted-cover.png",
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const ok = await handleAdminApiRequest(
+      buildRequest("/api/admin/preview/posts/preview-contaminated", {}, ADMIN_EMAIL),
+      "/preview/posts/preview-contaminated"
+    );
+
+    expect(ok.status).toBe(200);
+    const payload = await readJson(ok);
+    expect(payload.kind).toBe("post");
+    expect(payload.title).toBe("USB-C 安全 5V Sink");
+    expect(payload.excerpt).toBe("面向作者态预览的摘要。");
+    expect(payload.body).toContain("纯正文第一段。");
+    expect(payload.body).not.toContain("title:");
+    expect(payload.body).not.toContain("slug:");
+    expect(payload.body).not.toContain("draft:");
+    expect(payload.body).not.toContain("public:");
+    expect(payload.draft).toBe(true);
+    expect(payload.public).toBe(false);
+  });
+
+  it("serves admin preview assets for contaminated draft posts through an admin-only facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/preview-contaminated-assets.md",
+      filePath: "blog/preview-contaminated-assets.md",
+      slug: "preview-contaminated-assets",
+      title: "Persisted wrong title",
+      excerpt: "Persisted wrong excerpt",
+      body: `---
+title: USB-C 安全 5V Sink
+slug: preview-contaminated-assets
+excerpt: 面向作者态预览的摘要。
+draft: true
+public: false
+image: ./assets/cover.png
+---
+
+![1.00](./assets/cover.png)
+
+纯正文第一段。`,
+      draft: true,
+      public: false,
+      image: "./assets/persisted-cover.png",
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const preview = await handleAdminApiRequest(
+      buildRequest("/api/admin/preview/posts/preview-contaminated-assets", {}, ADMIN_EMAIL),
+      "/preview/posts/preview-contaminated-assets"
+    );
+    expect(preview.status).toBe(200);
+    const payload = await readJson(preview);
+    expect(String(payload.image)).toContain(
+      "/api/admin/preview/assets/post/preview-contaminated-assets/"
+    );
+    expect(String(payload.body)).toContain(
+      "/api/admin/preview/assets/post/preview-contaminated-assets/"
+    );
+
+    const mediaHash = buildPublicMediaHash("blog/assets/cover.png", "cover");
+
+    const unauthorized = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+      ),
+      `/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+    );
+    expect(unauthorized.status).toBe(401);
+
+    const forbidden = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`,
+        {},
+        USER_EMAIL
+      ),
+      `/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+    );
+    expect(forbidden.status).toBe(403);
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        expect(init?.method).toBe("GET");
+        expect(url).toContain("/fit-in/1600x900/");
+        expect(url).toContain(
+          "http://blog:25090/_internal/assets/source/post/preview-contaminated-assets/"
+        );
+        return new Response("admin-preview-image", {
+          status: 200,
+          headers: {
+            "content-type": "image/webp",
+            "cache-control": "public, max-age=600",
+          },
+        });
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const ok = await handleAdminApiRequest(
+        buildRequest(
+          `/api/admin/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`,
+          {},
+          ADMIN_EMAIL
+        ),
+        `/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+      );
+
+      expect(ok.status).toBe(200);
+      expect(ok.headers.get("content-type")).toBe("image/webp");
+      expect(await ok.text()).toBe("admin-preview-image");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("falls back to the original local asset for admin preview images when imagor is unavailable", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/admin-preview-cover.png"),
+      "cover"
+    );
+
+    await seedPost({
+      id: "blog/admin-preview-fallback.md",
+      filePath: "blog/admin-preview-fallback.md",
+      slug: "admin-preview-fallback",
+      title: "Admin preview fallback",
+      body: "Body",
+      draft: true,
+      public: false,
+      image: "./assets/admin-preview-cover.png",
+    });
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        throw new Error("imagor offline");
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/admin-preview-cover.png", "cover");
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          `/api/admin/preview/assets/post/admin-preview-fallback/${mediaHash}/cover.webp`,
+          {},
+          ADMIN_EMAIL
+        ),
+        `/preview/assets/post/admin-preview-fallback/${mediaHash}/cover.webp`
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(await response.text()).toBe("cover");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("reports contaminated rows through the post body contract backfill dry-run without writing the database", async () => {
+    await seedPost({
+      id: "blog/backfill-preview-contaminated.md",
+      filePath: "blog/backfill-preview-contaminated.md",
+      slug: "backfill-preview-contaminated",
+      title: "Persisted wrong title",
+      excerpt: "Persisted wrong excerpt",
+      body: `---
+title: USB-C Safe 5V Sink
+slug: backfill-preview-contaminated
+excerpt: backfill excerpt
+draft: true
+public: false
+---
+
+![1.00](./assets/cover.png)
+
+纯正文第一段。`,
+      draft: true,
+      public: false,
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const before = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.slug, "backfill-preview-contaminated"))
+      .get();
+    expect(before?.body.startsWith("---")).toBe(true);
+
+    const result = spawnSync("bun", ["scripts/backfill-post-body-contract.ts"], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        DB_PATH: TEST_DB_PATH,
+      },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("mode=dry-run");
+    expect(result.stdout).toContain("affected_posts=1");
+    expect(result.stdout).toContain("vectorize_slugs=backfill-preview-contaminated");
+    expect(result.stdout).toContain("content_hash_rewrites=1");
+
+    const after = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.slug, "backfill-preview-contaminated"))
+      .get();
+    expect(after?.body).toBe(before?.body);
   });
 
   it("adds CORS headers for configured Pages frontend origins", async () => {

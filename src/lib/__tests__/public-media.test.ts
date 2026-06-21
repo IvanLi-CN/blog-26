@@ -93,6 +93,19 @@ describe("public-media", () => {
       expect(rewritten).not.toContain("./assets/clip.mp4");
     });
 
+    it("rewrites admin preview markdown media links to the admin preview assets facade", () => {
+      const content = "![photo](./assets/photo.png)";
+      const rewritten = rewritePublicContentMediaUrls(content, {
+        kind: "post",
+        slug: "demo-post",
+        filePath: "blog/demo-post.md",
+        assetScope: "admin-preview",
+      });
+
+      expect(rewritten).toContain("/api/admin/preview/assets/post/demo-post/");
+      expect(rewritten).not.toContain("/api/public/assets/post/demo-post/");
+    });
+
     it("rewrites html anchor media links to indexed facade urls", () => {
       const content = [
         '<a href="./assets/photo.png">Photo</a>',
