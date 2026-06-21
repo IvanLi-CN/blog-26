@@ -277,7 +277,7 @@ export const postsRouter = router({
         tagsValue: processedPost.tags,
       });
 
-      const cleanedBody = normalizePostBody(processedPost.body).body;
+      let previewBody = normalizePostBody(processedPost.body).body;
       if (isAdminPreview) {
         const previewFields = extractPostDraftFields(processedPost.body, {
           title: processedPost.title,
@@ -292,6 +292,7 @@ export const postsRouter = router({
           updateDate: processedPost.updateDate,
           tags: processedPost.tags,
         });
+        previewBody = previewFields.body;
         processedPost.title = previewFields.title;
         processedPost.excerpt = previewFields.excerpt;
         processedPost.category = previewFields.category;
@@ -303,9 +304,24 @@ export const postsRouter = router({
           previewFields.tags.length > 0 ? previewFields.tags : processedPost.tags;
       }
 
+      processedPost.body = previewBody;
+      const mediaPost = {
+        ...post[0],
+        ...processedPost,
+        body: previewBody,
+        tags: Array.isArray(processedPost.tags)
+          ? JSON.stringify(processedPost.tags)
+          : processedPost.tags,
+        metadata:
+          typeof post[0].metadata === "string"
+            ? post[0].metadata
+            : processedPost.metadata
+              ? JSON.stringify(processedPost.metadata)
+              : null,
+      };
       const media = buildPublicMediaCollection(
         "post",
-        processedPost as typeof posts.$inferSelect,
+        mediaPost as typeof posts.$inferSelect,
         isAdminPreview ? "admin-preview" : "public"
       );
       const previewMediaContext = {
@@ -321,7 +337,7 @@ export const postsRouter = router({
           dataSource: processedPost.dataSource,
           filePath: processedPost.filePath,
         });
-      processedPost.body = rewritePublicContentMediaUrls(cleanedBody, previewMediaContext);
+      processedPost.body = rewritePublicContentMediaUrls(previewBody, previewMediaContext);
       (processedPost as Record<string, unknown>).media = media;
 
       return processedPost;

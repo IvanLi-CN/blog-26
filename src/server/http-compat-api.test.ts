@@ -801,6 +801,10 @@ tags:
   it("serves admin preview assets for contaminated draft posts through an admin-only facade", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/persisted-cover.png"),
+      "persisted-cover"
+    );
 
     await seedPost({
       id: "blog/preview-contaminated-assets.md",
@@ -832,30 +836,34 @@ image: ./assets/cover.png
     );
     expect(preview.status).toBe(200);
     const payload = await readJson(preview);
+    const coverHash = buildPublicMediaHash("blog/assets/cover.png", "cover");
+    const persistedCoverHash = buildPublicMediaHash("blog/assets/persisted-cover.png", "cover");
     expect(String(payload.image)).toContain(
-      "/api/admin/preview/assets/post/preview-contaminated-assets/"
+      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover`
     );
+    expect(String(payload.image)).not.toContain(persistedCoverHash);
     expect(String(payload.body)).toContain(
       "/api/admin/preview/assets/post/preview-contaminated-assets/"
     );
-
-    const mediaHash = buildPublicMediaHash("blog/assets/cover.png", "cover");
+    expect(payload.media?.cover?.sourcePath).toBe("blog/assets/cover.png");
+    expect(String(payload.media?.cover?.variants?.cover)).toContain(coverHash);
+    expect(String(payload.media?.primary?.variants?.cover)).toContain(coverHash);
 
     const unauthorized = await handleAdminApiRequest(
       buildRequest(
-        `/api/admin/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+        `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
       ),
-      `/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+      `/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
     );
     expect(unauthorized.status).toBe(401);
 
     const forbidden = await handleAdminApiRequest(
       buildRequest(
-        `/api/admin/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`,
+        `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`,
         {},
         USER_EMAIL
       ),
-      `/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+      `/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
     );
     expect(forbidden.status).toBe(403);
 
@@ -885,11 +893,11 @@ image: ./assets/cover.png
     try {
       const ok = await handleAdminApiRequest(
         buildRequest(
-          `/api/admin/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`,
+          `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`,
           {},
           ADMIN_EMAIL
         ),
-        `/preview/assets/post/preview-contaminated-assets/${mediaHash}/cover.webp`
+        `/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
       );
 
       expect(ok.status).toBe(200);
