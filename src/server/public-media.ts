@@ -324,6 +324,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
     for (const variant of VIDEO_DISPLAY_VARIANTS) {
       for (const format of ["avif", "webp", "jpg"]) {
         const url = buildPublicAssetPath({
+          scope: context.assetScope,
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,

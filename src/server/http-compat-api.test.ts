@@ -901,6 +901,52 @@ image: ./assets/cover.png
     }
   });
 
+  it("rewrites admin preview video sources to the admin preview assets facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/preview-video.mp4"), "video");
+
+    await seedPost({
+      id: "blog/preview-video-assets.md",
+      filePath: "blog/preview-video-assets.md",
+      slug: "preview-video-assets",
+      title: "Preview Video Assets",
+      body: `---
+title: Preview Video Assets
+slug: preview-video-assets
+draft: true
+public: false
+---
+
+<video controls src="./assets/preview-video.mp4"></video>`,
+      draft: true,
+      public: false,
+    });
+
+    const preview = await handleAdminApiRequest(
+      buildRequest("/api/admin/preview/posts/preview-video-assets", {}, ADMIN_EMAIL),
+      "/preview/posts/preview-video-assets"
+    );
+
+    expect(preview.status).toBe(200);
+    const payload = await readJson(preview);
+    expect(String(payload.body)).toContain("/api/admin/preview/assets/post/preview-video-assets/");
+    expect(String(payload.body)).not.toContain("/api/public/assets/post/preview-video-assets/");
+    expect(Array.isArray(payload.media?.content)).toBe(true);
+    const videoItem = payload.media.content.find(
+      (item: { playback?: string | null }) => typeof item.playback === "string"
+    );
+    expect(String(videoItem?.playback)).toContain(
+      "/api/admin/preview/assets/post/preview-video-assets/"
+    );
+    expect(videoItem?.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/admin/preview/assets/post/preview-video-assets/"),
+        }),
+      ])
+    );
+  });
+
   it("falls back to the original local asset for admin preview images when imagor is unavailable", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(
@@ -2067,6 +2113,95 @@ public: false
     expect(stored?.excerpt).toBe("Updated excerpt");
     expect(stored?.updateDate).toBeNumber();
     expect(stored?.updateDate).toBeGreaterThan(originalUpdateDate);
+  });
+
+  it("preserves explicit metadata edits when updating a contaminated legacy post", async () => {
+    const postId = "blog/contaminated-update-fields.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/contaminated-update-fields.md",
+      slug: "contaminated-update-fields",
+      title: "Persisted Title",
+      body: `---
+title: Embedded stale title
+slug: embedded-stale-slug
+excerpt: embedded stale excerpt
+category: embedded-category
+author: Embedded Author
+image: ./assets/embedded-cover.png
+tags:
+  - embedded
+draft: true
+public: false
+---
+
+# Original
+
+Body changed.`,
+      excerpt: "Persisted excerpt",
+      draft: false,
+      public: true,
+      category: "persisted-category",
+      author: "Persisted Author",
+      image: "./assets/persisted-cover.png",
+      tags: JSON.stringify(["persisted"]),
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Updated Title",
+            slug: "updated-slug",
+            body: "# Updated\n\nBody changed.",
+            excerpt: "Updated excerpt",
+            draft: false,
+            public: true,
+            category: "updated-category",
+            author: "Updated Author",
+            image: "./assets/updated-cover.png",
+            tags: ["legacy", "updated"],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({
+        title: posts.title,
+        slug: posts.slug,
+        excerpt: posts.excerpt,
+        body: posts.body,
+        draft: posts.draft,
+        public: posts.public,
+        category: posts.category,
+        author: posts.author,
+        image: posts.image,
+        tags: posts.tags,
+      })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.title).toBe("Updated Title");
+    expect(stored?.slug).toBe("updated-slug");
+    expect(stored?.excerpt).toBe("Updated excerpt");
+    expect(stored?.body).toBe("# Updated\n\nBody changed.");
+    expect(stored?.draft).toBe(false);
+    expect(stored?.public).toBe(true);
+    expect(stored?.category).toBe("updated-category");
+    expect(stored?.author).toBe("Updated Author");
+    expect(stored?.image).toBe("./assets/updated-cover.png");
+    expect(stored?.tags).toBe(JSON.stringify(["legacy", "updated"]));
   });
 
   it("returns a friendly not found error when reading a missing local file", async () => {
