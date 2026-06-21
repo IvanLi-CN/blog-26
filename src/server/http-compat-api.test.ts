@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
+import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 
@@ -2202,6 +2203,129 @@ Body changed.`,
     expect(stored?.author).toBe("Updated Author");
     expect(stored?.image).toBe("./assets/updated-cover.png");
     expect(stored?.tags).toBe(JSON.stringify(["legacy", "updated"]));
+  });
+
+  it("recomputes contentHash from final metadata for metadata-only post updates", async () => {
+    const postId = "blog/hash-metadata-only.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/hash-metadata-only.md",
+      slug: "hash-metadata-only",
+      title: "Original Title",
+      excerpt: "Original excerpt",
+      body: "# Original\n\nBody stays the same.",
+      draft: false,
+      public: true,
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Updated Metadata Title",
+            excerpt: "Updated metadata excerpt",
+            slug: "hash-metadata-only",
+            draft: false,
+            public: true,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({
+        title: posts.title,
+        excerpt: posts.excerpt,
+        body: posts.body,
+        contentHash: posts.contentHash,
+      })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.contentHash).toBe(
+      computePostContentHash({
+        title: stored?.title,
+        excerpt: stored?.excerpt,
+        body: stored?.body,
+      })
+    );
+  });
+
+  it("recomputes contentHash from final metadata when body and structured fields change together", async () => {
+    const postId = "blog/hash-body-and-metadata.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/hash-body-and-metadata.md",
+      slug: "hash-body-and-metadata",
+      title: "Original Title",
+      excerpt: "Original excerpt",
+      body: `---
+title: Embedded Title
+excerpt: Embedded excerpt
+---
+
+# Original
+
+Body.`,
+      draft: false,
+      public: true,
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Final Title",
+            excerpt: "Final excerpt",
+            slug: "hash-body-and-metadata",
+            body: "# Updated\n\nNew body.",
+            draft: false,
+            public: true,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({
+        title: posts.title,
+        excerpt: posts.excerpt,
+        body: posts.body,
+        contentHash: posts.contentHash,
+      })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.title).toBe("Final Title");
+    expect(stored?.excerpt).toBe("Final excerpt");
+    expect(stored?.body).toBe("# Updated\n\nNew body.");
+    expect(stored?.contentHash).toBe(
+      computePostContentHash({
+        title: stored?.title,
+        excerpt: stored?.excerpt,
+        body: stored?.body,
+      })
+    );
   });
 
   it("returns a friendly not found error when reading a missing local file", async () => {

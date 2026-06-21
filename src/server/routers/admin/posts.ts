@@ -280,7 +280,6 @@ export const adminPostsRouter = createTRPCRouter({
         updateDate: existingPost.updateDate,
         tags: existingPost.tags,
       });
-      const contentHash = computePostContentHash(extracted);
 
       const updatedData = {
         title: updateData.title ?? extracted.title,
@@ -295,12 +294,15 @@ export const adminPostsRouter = createTRPCRouter({
         image: updateData.image ?? extracted.image,
         publishDate: updateData.publishDate ?? extracted.publishDate ?? existingPost.publishDate,
         updateDate: updateData.updateDate ?? Date.now(),
-        contentHash,
         lastModified: Date.now(),
         filePath: existingPost.filePath || `blog/${updateData.slug ?? extracted.slug}.md`,
       };
+      const contentHash = computePostContentHash(updatedData);
 
-      await db.update(posts).set(updatedData).where(eq(posts.id, id));
+      await db
+        .update(posts)
+        .set({ ...updatedData, contentHash })
+        .where(eq(posts.id, id));
       clearSearchCache();
 
       return {
