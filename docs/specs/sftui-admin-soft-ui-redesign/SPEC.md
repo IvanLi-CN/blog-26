@@ -248,4 +248,6 @@ Verified on `/admin/posts?demo=true`.
 - Database-backed post preview strips contaminated frontmatter from the rendered body, restores the author-facing title from metadata/frontmatter truth, and gates the public-page CTA by `draft/public` state.
 - Draft or non-public post preview uses a disabled explanatory control instead of sending the author to a public 404.
 
+PR: include
+source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin preview detail rhythm in Storybook](./assets/admin-preview-draft-cta-disabled-storybook.png)
