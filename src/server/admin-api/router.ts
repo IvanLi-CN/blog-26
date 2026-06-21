@@ -10,6 +10,7 @@ import {
 } from "@/lib/llm-models";
 import { type LlmTier, llmTierSchema } from "@/lib/llm-settings";
 import { createContext } from "@/server/context";
+import { handleAdminPreviewAssetRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
 import { getAdminLlmModelCatalog } from "@/server/services/llm-model-catalog";
 import {
@@ -388,18 +389,33 @@ export async function handleAdminApiRequest(request: Request, subPath: string) {
       );
     }
 
+    const previewAssetMatch = pathname.match(
+      /^\/preview\/assets\/(post|memo)\/([^/]+)\/([0-9a-f]+)\/(card|cover|content|full|social|poster|play)\.([a-z0-9]+)$/iu
+    );
+    if (previewAssetMatch) {
+      return handleAdminPreviewAssetRequest(request, {
+        kind: previewAssetMatch[1],
+        slug: decodeURIComponent(previewAssetMatch[2]),
+        mediaHash: previewAssetMatch[3],
+        variant: previewAssetMatch[4],
+        ext: previewAssetMatch[5],
+      });
+    }
+
     const previewMemoMatch = pathname.match(/^\/preview\/memos\/(.+)$/);
     if (previewMemoMatch) {
       if (request.method !== "GET") return methodNotAllowed(request.method, resHeaders);
       const slug = decodeURIComponent(previewMemoMatch[1]);
-      const memo = await caller.memos.bySlug({ slug });
+      const previewRequest = withExtraHeaders(request, { "x-admin-preview": "1" });
+      const previewState = await createCallerForRequest(previewRequest);
+      const memo = await previewState.caller.memos.bySlug({ slug });
       return json(
         {
           kind: "memo",
           ...memo,
         },
         { status: 200 },
-        resHeaders
+        previewState.resHeaders
       );
     }
 

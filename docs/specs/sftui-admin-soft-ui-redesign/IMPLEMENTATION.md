@@ -25,6 +25,9 @@ Implementation state is tracked here while the `sftui` spec is active.
 - The demo editor fixture includes headings, lists, blockquotes, inline code, and a `tsx` fenced code block so rendering can be verified in all editor modes.
 - The demo UI avoids visible implementation-mode explanatory copy; mock-only behavior remains an implementation detail of the real admin route bootstrap.
 - The admin preview routes now act as authoring preview surfaces inside the Soft UI shell: post preview borrows the public article detail rhythm including its hero placement, while memo preview stays aligned with the public memo detail shell without adding a hero. Neither route imports the public Nature UI skin or tail modules.
+- Database-backed post tabs now reconstruct an authoring-only frontmatter document from structured DB fields plus clean body when opened, instead of trusting persisted `posts.body` to already contain canonical frontmatter text.
+- Saving a database-backed post now inverts that adapter: frontmatter fields are split back into structured columns, while `posts.body` is persisted as pure body-only canonical content.
+- Post preview chrome now derives its public-page action entirely from existing `draft/public` flags: published posts keep the external link, while draft or non-public posts render a disabled explanatory CTA inside the same Soft UI header action row.
 - New empty post saves are blocked client-side when the editor body is still blank, and the banner now shows a natural-language validation message instead of raw serialized Zod issue arrays.
 - Admin API error mapping now preserves structured validation details for editor/post flows so the SPA can present stable friendly messages while keeping server-side validation authoritative.
 - The editor accessibility pass names the hidden attachment upload field, SourceEditor textarea, and Crepe link input to avoid unlabeled form controls.
@@ -53,6 +56,7 @@ Implementation state is tracked here while the `sftui` spec is active.
 - `DB_PATH=./dev-data/sqlite.db LOCAL_CONTENT_BASE_PATH=./dev-data/local CONTENT_SOURCES=local bun run build`
 - `bun run build-storybook`
 - `bun test apps/admin/src/components/preview-detail.test.tsx`
+- `bun test apps/admin/src/pages/editor.test.ts src/lib/__tests__/frontmatter-document.test.ts src/server/http-compat-api.test.ts`
 - `PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR=0 PLAYWRIGHT_TEST_PROJECT=admin WEB_PORT=<leased> SITE_PORT=<leased+3> ADMIN_PORT=<leased+4> bunx playwright test tests/e2e/admin/preview-detail.spec.ts --project=admin`
 - `bun test src/lib/__tests__/frontmatter-document.test.ts`
 - `bun run test`

@@ -626,6 +626,7 @@ export const memosRouter = router({
   // 获取单个 memo
   bySlug: publicProcedure.input(getMemoSchema).query(async ({ input, ctx }) => {
     const { slug } = input;
+    const isAdminPreview = ctx.isAdmin && ctx.req.headers.get("x-admin-preview") === "1";
 
     try {
       const memo = await db
@@ -650,12 +651,17 @@ export const memosRouter = router({
         });
       }
 
-      const media = buildPublicMediaCollection("memo", memo);
+      const media = buildPublicMediaCollection(
+        "memo",
+        memo,
+        isAdminPreview ? "admin-preview" : "public"
+      );
       const publicAttachments = rewritePublicMemoAttachments(memo, media);
       const publicMediaContext = {
         kind: "memo" as const,
         slug: memo.slug,
         filePath: memo.filePath || memo.id,
+        assetScope: isAdminPreview ? ("admin-preview" as const) : ("public" as const),
       };
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
@@ -669,7 +675,7 @@ export const memosRouter = router({
         isPublic: memo.public,
         tags: memo.tags ? JSON.parse(memo.tags) : [],
         image:
-          pickLegacyPublicImage(media, "content") ??
+          pickLegacyPublicImage(media, "content", publicMediaContext.assetScope) ??
           buildLegacyPublicMediaUrl({
             mediaPath: memo.image,
             dataSource: memo.dataSource,

@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildDatabaseAuthoringDocument,
+  deriveDatabaseDraftState,
   getAvailableEditorModes,
   getDefaultFileEditorMode,
   getEditorHeaderCopy,
@@ -60,6 +62,148 @@ describe("editor batch selection mapping", () => {
         },
       ])
     ).toEqual(["blog", "blog/archive", "blog/archive/2024"]);
+  });
+});
+
+describe("database post authoring contract", () => {
+  test("rebuilds an authoring document from structured fields and strips contaminated body frontmatter", () => {
+    const document = buildDatabaseAuthoringDocument({
+      postId: "blog/usb-c-safe-5v-sink.md",
+      slug: "usb-c-safe-5v-sink",
+      title: "USB-C 安全 5V Sink",
+      excerpt: "面向作者态预览的摘要。",
+      content:
+        "---\ntitle: 脏标题\nslug: dirty-slug\ndraft: true\n---\n\n# Heading\n\n正文第一段。",
+      draft: false,
+      public: false,
+      source: "local",
+      filePath: "blog/usb-c-safe-5v-sink.md",
+      category: "hardware",
+      author: "Ivan Li",
+      image: "./assets/cover.png",
+      publishDate: Date.UTC(2026, 5, 20),
+      updateDate: Date.UTC(2026, 5, 21),
+      tags: ["usb-c", "power"],
+    });
+
+    expect(document.wasContaminated).toBeTrue();
+    expect(document.body).toBe("\n# Heading\n\n正文第一段。");
+    expect(document.content).toContain("title: USB-C 安全 5V Sink");
+    expect(document.content).toContain("slug: usb-c-safe-5v-sink");
+    expect(document.content).toContain("draft: false");
+    expect(document.content).toContain("public: false");
+    expect(document.content).toContain("category: hardware");
+    expect(document.content).toContain("author: Ivan Li");
+    expect(document.content).toContain("image: ./assets/cover.png");
+    expect(document.content).toContain("tags:");
+    expect(document.content).not.toContain("title: 脏标题");
+  });
+
+  test("preserves publish and update timestamp precision when rebuilding database authoring documents", () => {
+    const publishDate = Date.parse("2026-06-20T08:15:30.000Z");
+    const updateDate = Date.parse("2026-06-21T10:45:55.000Z");
+    const document = buildDatabaseAuthoringDocument({
+      postId: "blog/timestamp-precision.md",
+      slug: "timestamp-precision",
+      title: "Timestamp Precision",
+      excerpt: "摘要",
+      content: "\n# Timestamp Precision\n\n纯正文。",
+      draft: false,
+      public: true,
+      source: "local",
+      filePath: "blog/timestamp-precision.md",
+      publishDate,
+      updateDate,
+    });
+
+    const state = deriveDatabaseDraftState(
+      {
+        postId: "blog/timestamp-precision.md",
+        slug: "timestamp-precision",
+        title: "Timestamp Precision",
+        excerpt: "摘要",
+        content: document.content,
+        draft: false,
+        public: true,
+        source: "local",
+        filePath: "blog/timestamp-precision.md",
+        publishDate,
+        updateDate,
+      },
+      document.content
+    );
+
+    expect(document.content).toContain("publishDate: '2026-06-20T08:15:30.000Z'");
+    expect(document.content).toContain("updateDate: '2026-06-21T10:45:55.000Z'");
+    expect(state.publishDate).toBe(publishDate);
+    expect(state.updateDate).toBe(updateDate);
+  });
+
+  test("prefers frontmatter title over a body image line when deriving database draft state", () => {
+    const state = deriveDatabaseDraftState(
+      {
+        postId: "post-1",
+        slug: "usb-c-safe-5v-sink",
+        title: "Persisted title",
+        excerpt: "",
+        content: "",
+        draft: true,
+        public: false,
+        source: "local",
+        filePath: "blog/usb-c-safe-5v-sink.md",
+      },
+      `---
+title: USB-C 安全 5V Sink
+slug: usb-c-safe-5v-sink
+excerpt: 面向作者态预览的摘要。
+draft: true
+public: false
+---
+
+![1.00](./assets/cover.png)
+
+正文第一段。`
+    );
+
+    expect(state.title).toBe("USB-C 安全 5V Sink");
+    expect(state.slug).toBe("usb-c-safe-5v-sink");
+    expect(state.excerpt).toBe("面向作者态预览的摘要。");
+    expect(state.draft).toBeTrue();
+    expect(state.public).toBeFalse();
+  });
+
+  test("keeps body-only canonical data when saving a database-backed draft state", () => {
+    const state = deriveDatabaseDraftState(
+      {
+        postId: "post-2",
+        slug: "body-only-canonical",
+        title: "Body Only Canonical",
+        excerpt: "Persisted excerpt",
+        content: "",
+        draft: false,
+        public: true,
+        source: "local",
+        filePath: "blog/body-only-canonical.md",
+        category: "hardware",
+        tags: ["usb-c"],
+      },
+      `---
+title: Body Only Canonical
+slug: body-only-canonical
+category: hardware
+tags:
+  - usb-c
+  - sink
+---
+
+# Body Only Canonical
+
+纯正文段落。`
+    );
+
+    expect(state.title).toBe("Body Only Canonical");
+    expect(state.tags).toEqual(["usb-c", "sink"]);
+    expect(state.category).toBe("hardware");
   });
 });
 

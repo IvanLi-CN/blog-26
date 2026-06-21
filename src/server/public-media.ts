@@ -7,6 +7,7 @@ import { extractAuthFromRequest } from "@/lib/auth-utils";
 import { db, initializeDB } from "@/lib/db";
 import { resolveImagePath } from "@/lib/image-utils";
 import { normalizePersistedLink } from "@/lib/persisted-paths";
+import { extractPostDraftFields } from "@/lib/post-body-contract";
 import { getPostCoverCandidates, normalizeWikiImageTarget } from "@/lib/post-cover";
 import {
   buildInternalAssetSourcePath,
@@ -20,6 +21,7 @@ import {
   isPublicMediaVariant,
   normalizePublicMediaExt,
   type PublicContentKind,
+  type PublicMediaAssetScope,
   type PublicMediaCollection,
   type PublicMediaContext,
   type PublicMediaItem,
@@ -92,6 +94,40 @@ function parseMetadataObject(raw: string | null | undefined): Record<string, unk
   } catch {
     return {};
   }
+}
+
+function normalizeAdminPreviewRow(kind: PublicContentKind, row: ContentRow, scope?: string | null) {
+  if (scope !== "admin-preview" || kind !== "post") return row;
+
+  const extracted = extractPostDraftFields(row.body, {
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt,
+    draft: row.draft,
+    public: row.public,
+    category: row.category,
+    author: row.author,
+    image: row.image,
+    publishDate: row.publishDate,
+    updateDate: row.updateDate,
+    tags: row.tags,
+  });
+
+  return {
+    ...row,
+    title: extracted.title,
+    slug: extracted.slug,
+    excerpt: extracted.excerpt,
+    body: extracted.body,
+    draft: extracted.draft,
+    public: extracted.public,
+    category: extracted.category,
+    author: extracted.author,
+    image: extracted.image,
+    publishDate: extracted.publishDate ?? row.publishDate,
+    updateDate: extracted.updateDate ?? row.updateDate,
+    tags: JSON.stringify(extracted.tags),
+  } satisfies ContentRow;
 }
 
 function parseAttachments(
@@ -323,6 +359,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
     for (const variant of VIDEO_DISPLAY_VARIANTS) {
       for (const format of ["avif", "webp", "jpg"]) {
         const url = buildPublicAssetPath({
+          scope: context.assetScope,
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
@@ -348,6 +385,7 @@ function buildSourceDescriptors(context: PublicMediaContext, ref: MediaReference
   for (const variant of IMAGE_DISPLAY_VARIANTS) {
     for (const format of rasterFormats) {
       const url = buildPublicAssetPath({
+        scope: context.assetScope,
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
@@ -373,6 +411,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   if (ref.kind === "video") {
     for (const variant of VIDEO_DISPLAY_VARIANTS) {
       variants[variant] = buildPublicAssetPath({
+        scope: context.assetScope,
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
@@ -383,6 +422,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   } else {
     for (const variant of IMAGE_DISPLAY_VARIANTS) {
       variants[variant] = buildPublicAssetPath({
+        scope: context.assetScope,
         kind: context.kind,
         slug: context.slug,
         mediaHash: ref.hash,
@@ -395,6 +435,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   const playback =
     ref.kind === "video"
       ? buildPublicAssetPath({
+          scope: context.assetScope,
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
@@ -406,6 +447,7 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
   const poster =
     ref.kind === "video"
       ? buildPublicAssetPath({
+          scope: context.assetScope,
           kind: context.kind,
           slug: context.slug,
           mediaHash: ref.hash,
@@ -429,7 +471,8 @@ function buildPublicMediaItem(context: PublicMediaContext, ref: MediaReference):
 
 export function buildPublicMediaCollection(
   kind: PublicContentKind,
-  row: ContentRow
+  row: ContentRow,
+  assetScope: PublicMediaAssetScope = "public"
 ): PublicMediaCollection {
   if (!shouldUsePublicMediaFacadeForRow(row)) {
     return createEmptyPublicMediaCollection();
@@ -438,6 +481,7 @@ export function buildPublicMediaCollection(
     kind,
     slug: row.slug,
     filePath: getCanonicalFilePath(row),
+    assetScope,
   };
   const refs = buildContentMediaReferences(kind, row);
   const items = refs.map((ref) => buildPublicMediaItem(context, ref));
@@ -493,7 +537,8 @@ export function rewritePublicMemoAttachments(row: ContentRow, media: PublicMedia
 
 export function pickLegacyPublicImage(
   media: PublicMediaCollection,
-  preferredVariant: "card" | "cover" | "content" = "cover"
+  preferredVariant: "card" | "cover" | "content" = "cover",
+  _assetScope?: PublicMediaAssetScope
 ) {
   return (
     media.cover?.variants[preferredVariant] ??
@@ -633,6 +678,7 @@ async function buildImagorPath(params: {
     kind: params.context.kind,
     slug: params.context.slug,
     mediaHash: params.ref.hash,
+    scope: params.context.assetScope,
   })}`;
 
   const filters: string[] = [];
@@ -802,43 +848,37 @@ async function loadContentRow(
 async function resolveMediaReferenceFromRequest(
   request: Request,
   params: { kind: PublicContentKind; slug: string; mediaHash: string },
-  internalOnly = false
+  internalOnly = false,
+  assetScope?: PublicMediaAssetScope
 ) {
   const row = await loadContentRow(params.kind, params.slug, request, internalOnly);
   if (!row) return null;
-  const refs = buildContentMediaReferences(params.kind, row);
+  const scope =
+    assetScope ??
+    (new URL(request.url).searchParams.get("scope") === "admin-preview"
+      ? "admin-preview"
+      : "public");
+  const normalizedRow = normalizeAdminPreviewRow(params.kind, row, scope);
+  const refs = buildContentMediaReferences(params.kind, normalizedRow);
   const ref = refs.find((item) => item.hash === params.mediaHash) ?? null;
   if (!ref) return null;
   return {
-    row,
+    row: normalizedRow,
     ref,
     context: {
       kind: params.kind,
-      slug: row.slug,
-      filePath: getCanonicalFilePath(row),
+      slug: normalizedRow.slug,
+      filePath: getCanonicalFilePath(normalizedRow),
+      assetScope: scope,
     } satisfies PublicMediaContext,
   };
 }
 
-export async function handlePublicAssetFacadeRequest(
+async function proxyResolvedMediaVariant(
   request: Request,
-  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+  resolved: Awaited<ReturnType<typeof resolveMediaReferenceFromRequest>>,
+  params: { variant: string; ext: string; allowOriginalFallback?: boolean }
 ) {
-  if (
-    (request.method !== "GET" && request.method !== "HEAD") ||
-    !isPublicContentKind(params.kind)
-  ) {
-    return new Response("Not Found", { status: 404 });
-  }
-  if (!isPublicMediaVariant(params.variant)) {
-    return new Response("Not Found", { status: 404 });
-  }
-
-  const resolved = await resolveMediaReferenceFromRequest(request, {
-    kind: params.kind,
-    slug: params.slug,
-    mediaHash: params.mediaHash,
-  });
   if (!resolved) {
     return new Response("Not Found", { status: 404 });
   }
@@ -878,6 +918,9 @@ export async function handlePublicAssetFacadeRequest(
       imagorUrl,
       error,
     });
+    if (params.allowOriginalFallback) {
+      return streamLocalMediaFile(request, resolved.ref);
+    }
     return createMediaProcessorUnavailableResponse(request);
   }
 
@@ -885,6 +928,66 @@ export async function handlePublicAssetFacadeRequest(
     status: upstream.status,
     statusText: upstream.statusText,
     headers: forwardProxyHeaders(upstream),
+  });
+}
+
+export async function handlePublicAssetFacadeRequest(
+  request: Request,
+  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+) {
+  if (
+    (request.method !== "GET" && request.method !== "HEAD") ||
+    !isPublicContentKind(params.kind)
+  ) {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (!isPublicMediaVariant(params.variant)) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const resolved = await resolveMediaReferenceFromRequest(request, {
+    kind: params.kind,
+    slug: params.slug,
+    mediaHash: params.mediaHash,
+  });
+  return proxyResolvedMediaVariant(request, resolved, params);
+}
+
+export async function handleAdminPreviewAssetRequest(
+  request: Request,
+  params: { kind: string; slug: string; mediaHash: string; variant: string; ext: string }
+) {
+  if (
+    (request.method !== "GET" && request.method !== "HEAD") ||
+    !isPublicContentKind(params.kind)
+  ) {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (!isPublicMediaVariant(params.variant)) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const auth = await extractAuthFromRequest(request);
+  if (!auth.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  if (!auth.isAdmin) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  const resolved = await resolveMediaReferenceFromRequest(
+    request,
+    {
+      kind: params.kind,
+      slug: params.slug,
+      mediaHash: params.mediaHash,
+    },
+    false,
+    "admin-preview"
+  );
+  return proxyResolvedMediaVariant(request, resolved, {
+    ...params,
+    allowOriginalFallback: true,
   });
 }
 

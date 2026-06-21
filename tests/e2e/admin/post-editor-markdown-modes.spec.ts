@@ -875,7 +875,9 @@ test.describe("Post editor Markdown modes", () => {
       "title: Hooks Title From Frontmatter\nslug: react-hooks-deep-dive\ndraft: false\ncreatedVia: demo"
     );
 
-    await expect(page.getByText("Hooks Title From Frontmatter")).toBeVisible();
+    await expect(page.getByTestId("editor-active-title")).toHaveText(
+      "Hooks Title From Frontmatter"
+    );
 
     await page.getByRole("button", { name: "Source" }).click();
     const source = page.getByRole("textbox", { name: "Markdown source editor" });

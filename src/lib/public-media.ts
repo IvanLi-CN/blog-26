@@ -2,6 +2,7 @@ import { resolveImagePath } from "@/lib/image-utils";
 import { toPublicAssetUrl } from "@/lib/public-runtime-url";
 
 export const PUBLIC_CONTENT_KINDS = ["post", "memo"] as const;
+export const PUBLIC_MEDIA_ASSET_SCOPES = ["public", "admin-preview"] as const;
 export const PUBLIC_MEDIA_VARIANTS = [
   "card",
   "cover",
@@ -14,6 +15,7 @@ export const PUBLIC_MEDIA_VARIANTS = [
 export const PUBLIC_MEDIA_ROLES = ["cover", "content", "attachment", "playback"] as const;
 
 export type PublicContentKind = (typeof PUBLIC_CONTENT_KINDS)[number];
+export type PublicMediaAssetScope = (typeof PUBLIC_MEDIA_ASSET_SCOPES)[number];
 export type PublicMediaVariant = (typeof PUBLIC_MEDIA_VARIANTS)[number];
 export type PublicMediaRole = (typeof PUBLIC_MEDIA_ROLES)[number];
 export type PublicMediaKind = "image" | "gif" | "video";
@@ -22,6 +24,7 @@ export interface PublicMediaContext {
   kind: PublicContentKind;
   slug: string;
   filePath: string;
+  assetScope?: PublicMediaAssetScope;
 }
 
 export interface PublicMediaSourceDescriptor {
@@ -64,6 +67,7 @@ const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "avif", "bmp", "
 const GIF_EXTENSIONS = new Set(["gif"]);
 const FILES_API_PREFIX = "/api/files/";
 const PUBLIC_ASSETS_PREFIX = "/api/public/assets/";
+const ADMIN_PREVIEW_ASSETS_PREFIX = "/api/admin/preview/assets/";
 const INLINE_MARKDOWN_LINK_RE =
   /(!?\[[^\]\n]*\]\()(\s*)(<[^>\n]+>|(?:[^\s()\\]+|\\.|\([^()\n]*\))+)([^)]*)(\))/g;
 
@@ -144,7 +148,11 @@ export function isDataMediaUrl(value: string) {
 }
 
 export function isPublicAssetFacadeUrl(value: string) {
-  return value.trim().startsWith(PUBLIC_ASSETS_PREFIX);
+  const normalized = value.trim();
+  return (
+    normalized.startsWith(PUBLIC_ASSETS_PREFIX) ||
+    normalized.startsWith(ADMIN_PREVIEW_ASSETS_PREFIX)
+  );
 }
 
 export function isPublicContentKind(value: string): value is PublicContentKind {
@@ -281,6 +289,7 @@ export function pickPublicMediaExt(
 }
 
 export function buildPublicAssetPath(params: {
+  scope?: PublicMediaAssetScope;
   kind: PublicContentKind;
   slug: string;
   mediaHash: string;
@@ -289,15 +298,19 @@ export function buildPublicAssetPath(params: {
 }) {
   const slug = encodeURIComponent(params.slug);
   const ext = normalizePublicMediaExt(params.ext) || "bin";
-  return `/api/public/assets/${params.kind}/${slug}/${params.mediaHash}/${params.variant}.${ext}`;
+  const prefix =
+    params.scope === "admin-preview" ? ADMIN_PREVIEW_ASSETS_PREFIX : PUBLIC_ASSETS_PREFIX;
+  return `${prefix}${params.kind}/${slug}/${params.mediaHash}/${params.variant}.${ext}`;
 }
 
 export function buildInternalAssetSourcePath(params: {
   kind: PublicContentKind;
   slug: string;
   mediaHash: string;
+  scope?: PublicMediaAssetScope;
 }) {
-  return `/_internal/assets/source/${params.kind}/${encodeURIComponent(params.slug)}/${params.mediaHash}`;
+  const path = `/_internal/assets/source/${params.kind}/${encodeURIComponent(params.slug)}/${params.mediaHash}`;
+  return params.scope === "admin-preview" ? `${path}?scope=admin-preview` : path;
 }
 
 export function buildPublicMediaAssetUrl(params: {
@@ -315,6 +328,7 @@ export function buildPublicMediaAssetUrl(params: {
   const mediaHash = buildPublicMediaHash(sourcePath, params.role);
   const ext = pickPublicMediaExt(mediaKind, sourcePath, params.variant);
   return buildPublicAssetPath({
+    scope: params.context.assetScope,
     kind: params.context.kind,
     slug: params.context.slug,
     mediaHash,

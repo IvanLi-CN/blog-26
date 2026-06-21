@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -7,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
+import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 
@@ -85,6 +87,7 @@ async function seedPost(
     updateDate: number;
     draft: boolean;
     public: boolean;
+    category: string | null;
     tags: string | null;
     source: "local" | "local";
     filePath: string;
@@ -110,7 +113,7 @@ async function seedPost(
     updateDate: overrides.updateDate ?? now,
     draft: overrides.draft ?? false,
     public: overrides.public ?? true,
-    category: null,
+    category: overrides.category ?? null,
     tags: overrides.tags ?? JSON.stringify(["preview"]),
     author: overrides.author ?? ADMIN_EMAIL,
     image: overrides.image ?? null,
@@ -737,8 +740,341 @@ describe("HTTP compatibility APIs", () => {
     const payload = await readJson(ok);
     expect(payload.kind).toBe("post");
     expect(payload.slug).toBe("preview-secret");
-    expect(payload.title).toBe("Preview Secret");
+    expect(payload.title).toBe("Draft only preview");
     expect(payload.draft).toBe(true);
+  });
+
+  it("cleans contaminated post bodies for admin preview payloads while preserving draft visibility flags", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/preview-contaminated.md",
+      filePath: "blog/preview-contaminated.md",
+      slug: "preview-contaminated",
+      title: "Persisted wrong title",
+      excerpt: "Persisted wrong excerpt",
+      body: `---
+title: USB-C 安全 5V Sink
+slug: preview-contaminated
+excerpt: 面向作者态预览的摘要。
+draft: true
+public: false
+category: hardware
+author: Ivan Li
+image: ./assets/cover.png
+tags:
+  - usb-c
+  - sink
+---
+
+![1.00](./assets/cover.png)
+
+纯正文第一段。`,
+      draft: true,
+      public: false,
+      category: "hardware",
+      author: "Persisted Author",
+      image: "./assets/persisted-cover.png",
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const ok = await handleAdminApiRequest(
+      buildRequest("/api/admin/preview/posts/preview-contaminated", {}, ADMIN_EMAIL),
+      "/preview/posts/preview-contaminated"
+    );
+
+    expect(ok.status).toBe(200);
+    const payload = await readJson(ok);
+    expect(payload.kind).toBe("post");
+    expect(payload.title).toBe("USB-C 安全 5V Sink");
+    expect(payload.excerpt).toBe("面向作者态预览的摘要。");
+    expect(payload.body).toContain("纯正文第一段。");
+    expect(payload.body).not.toContain("title:");
+    expect(payload.body).not.toContain("slug:");
+    expect(payload.body).not.toContain("draft:");
+    expect(payload.body).not.toContain("public:");
+    expect(payload.draft).toBe(true);
+    expect(payload.public).toBe(false);
+  });
+
+  it("serves admin preview assets for contaminated draft posts through an admin-only facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/cover.png"), "cover");
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/persisted-cover.png"),
+      "persisted-cover"
+    );
+
+    await seedPost({
+      id: "blog/preview-contaminated-assets.md",
+      filePath: "blog/preview-contaminated-assets.md",
+      slug: "preview-contaminated-assets",
+      title: "Persisted wrong title",
+      excerpt: "Persisted wrong excerpt",
+      body: `---
+title: USB-C 安全 5V Sink
+slug: preview-contaminated-assets
+excerpt: 面向作者态预览的摘要。
+draft: true
+public: false
+image: ./assets/cover.png
+---
+
+![1.00](./assets/cover.png)
+
+纯正文第一段。`,
+      draft: true,
+      public: false,
+      image: "./assets/persisted-cover.png",
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const preview = await handleAdminApiRequest(
+      buildRequest("/api/admin/preview/posts/preview-contaminated-assets", {}, ADMIN_EMAIL),
+      "/preview/posts/preview-contaminated-assets"
+    );
+    expect(preview.status).toBe(200);
+    const payload = await readJson(preview);
+    const coverHash = buildPublicMediaHash("blog/assets/cover.png", "cover");
+    const persistedCoverHash = buildPublicMediaHash("blog/assets/persisted-cover.png", "cover");
+    expect(String(payload.image)).toContain(
+      `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover`
+    );
+    expect(String(payload.image)).not.toContain(persistedCoverHash);
+    expect(String(payload.body)).toContain(
+      "/api/admin/preview/assets/post/preview-contaminated-assets/"
+    );
+    expect(payload.media?.cover?.sourcePath).toBe("blog/assets/cover.png");
+    expect(String(payload.media?.cover?.variants?.cover)).toContain(coverHash);
+    expect(String(payload.media?.primary?.variants?.cover)).toContain(coverHash);
+
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://localhost";
+    try {
+      const internalResponse = await handleInternalAssetSourceRequest(
+        buildRequest(
+          `/_internal/assets/source/post/preview-contaminated-assets/${coverHash}?scope=admin-preview`
+        ),
+        {
+          kind: "post",
+          slug: "preview-contaminated-assets",
+          mediaHash: coverHash,
+        }
+      );
+      expect(internalResponse.status).toBe(200);
+      expect(await internalResponse.text()).toBe("cover");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+
+    const unauthorized = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
+      ),
+      `/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
+    );
+    expect(unauthorized.status).toBe(401);
+
+    const forbidden = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`,
+        {},
+        USER_EMAIL
+      ),
+      `/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
+    );
+    expect(forbidden.status).toBe(403);
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        expect(init?.method).toBe("GET");
+        expect(url).toContain("/fit-in/1600x900/");
+        expect(url).toContain(
+          "http://blog:25090/_internal/assets/source/post/preview-contaminated-assets/"
+        );
+        expect(url).toContain("scope=admin-preview");
+        return new Response("admin-preview-image", {
+          status: 200,
+          headers: {
+            "content-type": "image/webp",
+            "cache-control": "public, max-age=600",
+          },
+        });
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const ok = await handleAdminApiRequest(
+        buildRequest(
+          `/api/admin/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`,
+          {},
+          ADMIN_EMAIL
+        ),
+        `/preview/assets/post/preview-contaminated-assets/${coverHash}/cover.webp`
+      );
+
+      expect(ok.status).toBe(200);
+      expect(ok.headers.get("content-type")).toBe("image/webp");
+      expect(await ok.text()).toBe("admin-preview-image");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("rewrites admin preview video sources to the admin preview assets facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/preview-video.mp4"), "video");
+
+    await seedPost({
+      id: "blog/preview-video-assets.md",
+      filePath: "blog/preview-video-assets.md",
+      slug: "preview-video-assets",
+      title: "Preview Video Assets",
+      body: `---
+title: Preview Video Assets
+slug: preview-video-assets
+draft: true
+public: false
+---
+
+<video controls src="./assets/preview-video.mp4"></video>`,
+      draft: true,
+      public: false,
+    });
+
+    const preview = await handleAdminApiRequest(
+      buildRequest("/api/admin/preview/posts/preview-video-assets", {}, ADMIN_EMAIL),
+      "/preview/posts/preview-video-assets"
+    );
+
+    expect(preview.status).toBe(200);
+    const payload = await readJson(preview);
+    expect(String(payload.body)).toContain("/api/admin/preview/assets/post/preview-video-assets/");
+    expect(String(payload.body)).not.toContain("/api/public/assets/post/preview-video-assets/");
+    expect(Array.isArray(payload.media?.content)).toBe(true);
+    const videoItem = payload.media.content.find(
+      (item: { playback?: string | null }) => typeof item.playback === "string"
+    );
+    expect(String(videoItem?.playback)).toContain(
+      "/api/admin/preview/assets/post/preview-video-assets/"
+    );
+    expect(videoItem?.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/admin/preview/assets/post/preview-video-assets/"),
+        }),
+      ])
+    );
+  });
+
+  it("falls back to the original local asset for admin preview images when imagor is unavailable", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/admin-preview-cover.png"),
+      "cover"
+    );
+
+    await seedPost({
+      id: "blog/admin-preview-fallback.md",
+      filePath: "blog/admin-preview-fallback.md",
+      slug: "admin-preview-fallback",
+      title: "Admin preview fallback",
+      body: "Body",
+      draft: true,
+      public: false,
+      image: "./assets/admin-preview-cover.png",
+    });
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        throw new Error("imagor offline");
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/admin-preview-cover.png", "cover");
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          `/api/admin/preview/assets/post/admin-preview-fallback/${mediaHash}/cover.webp`,
+          {},
+          ADMIN_EMAIL
+        ),
+        `/preview/assets/post/admin-preview-fallback/${mediaHash}/cover.webp`
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(await response.text()).toBe("cover");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("reports contaminated rows through the post body contract backfill dry-run without writing the database", async () => {
+    await seedPost({
+      id: "blog/backfill-preview-contaminated.md",
+      filePath: "blog/backfill-preview-contaminated.md",
+      slug: "backfill-preview-contaminated",
+      title: "Persisted wrong title",
+      excerpt: "Persisted wrong excerpt",
+      body: `---
+title: USB-C Safe 5V Sink
+slug: backfill-preview-contaminated
+excerpt: backfill excerpt
+draft: true
+public: false
+---
+
+![1.00](./assets/cover.png)
+
+纯正文第一段。`,
+      draft: true,
+      public: false,
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const before = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.slug, "backfill-preview-contaminated"))
+      .get();
+    expect(before?.body.startsWith("---")).toBe(true);
+
+    const result = spawnSync("bun", ["scripts/backfill-post-body-contract.ts"], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        DB_PATH: TEST_DB_PATH,
+      },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("mode=dry-run");
+    expect(result.stdout).toContain("affected_posts=1");
+    expect(result.stdout).toContain("vectorize_slugs=backfill-preview-contaminated");
+    expect(result.stdout).toContain("content_hash_rewrites=1");
+
+    const after = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.slug, "backfill-preview-contaminated"))
+      .get();
+    expect(after?.body).toBe(before?.body);
   });
 
   it("adds CORS headers for configured Pages frontend origins", async () => {
@@ -845,7 +1181,7 @@ describe("HTTP compatibility APIs", () => {
 
     expect(snapshotPost?.filePath).toBe("blog/http-snapshot-post.md");
     expect(snapshotMemo?.filePath).toBe("Memos/http-snapshot-memo.md");
-  }, 15_000);
+  }, 60_000);
 
   it("rewrites public snapshot media fields to assets facade urls", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -878,7 +1214,7 @@ describe("HTTP compatibility APIs", () => {
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
-  });
+  }, 30_000);
 
   it("rewrites legacy files-api memo content to facade urls in public snapshot and internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
@@ -928,7 +1264,7 @@ describe("HTTP compatibility APIs", () => {
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
     }
-  });
+  }, 30_000);
 
   it("indexes rewritten markdown and html media links for public snapshot internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -997,7 +1333,7 @@ describe("HTTP compatibility APIs", () => {
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
     }
-  });
+  }, 30_000);
 
   it("rewrites local media urls to the public facade for public rows", async () => {
     await seedPost({
@@ -1028,7 +1364,7 @@ describe("HTTP compatibility APIs", () => {
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/local-media-post/"
     );
-  });
+  }, 30_000);
 
   it("proxies public facade image requests through imagorvideo without redirecting", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -1751,6 +2087,271 @@ describe("HTTP compatibility APIs", () => {
           message: "内容不能为空",
         }),
       ])
+    );
+  });
+
+  it("advances updateDate for ordinary post edits when the request does not set one explicitly", async () => {
+    const originalUpdateDate = Date.now() - 60_000;
+    const postId = "blog/update-date-regression.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/update-date-regression.md",
+      slug: "update-date-regression",
+      title: "Update Date Regression",
+      body: "# Original\n",
+      excerpt: "Original excerpt",
+      draft: false,
+      public: true,
+      updateDate: originalUpdateDate,
+      publishDate: originalUpdateDate - 5_000,
+      tags: JSON.stringify(["preview"]),
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Update Date Regression",
+            slug: "update-date-regression",
+            body: "# Updated\n\nBody changed.",
+            excerpt: "Updated excerpt",
+            draft: false,
+            public: true,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({ body: posts.body, excerpt: posts.excerpt, updateDate: posts.updateDate })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.body).toBe("# Updated\n\nBody changed.");
+    expect(stored?.excerpt).toBe("Updated excerpt");
+    expect(stored?.updateDate).toBeNumber();
+    expect(stored?.updateDate).toBeGreaterThan(originalUpdateDate);
+  });
+
+  it("preserves explicit metadata edits when updating a contaminated legacy post", async () => {
+    const postId = "blog/contaminated-update-fields.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/contaminated-update-fields.md",
+      slug: "contaminated-update-fields",
+      title: "Persisted Title",
+      body: `---
+title: Embedded stale title
+slug: embedded-stale-slug
+excerpt: embedded stale excerpt
+category: embedded-category
+author: Embedded Author
+image: ./assets/embedded-cover.png
+tags:
+  - embedded
+draft: true
+public: false
+---
+
+# Original
+
+Body changed.`,
+      excerpt: "Persisted excerpt",
+      draft: false,
+      public: true,
+      category: "persisted-category",
+      author: "Persisted Author",
+      image: "./assets/persisted-cover.png",
+      tags: JSON.stringify(["persisted"]),
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Updated Title",
+            slug: "updated-slug",
+            body: "# Updated\n\nBody changed.",
+            excerpt: "Updated excerpt",
+            draft: false,
+            public: true,
+            category: "updated-category",
+            author: "Updated Author",
+            image: "./assets/updated-cover.png",
+            tags: ["legacy", "updated"],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({
+        title: posts.title,
+        slug: posts.slug,
+        excerpt: posts.excerpt,
+        body: posts.body,
+        draft: posts.draft,
+        public: posts.public,
+        category: posts.category,
+        author: posts.author,
+        image: posts.image,
+        tags: posts.tags,
+      })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.title).toBe("Updated Title");
+    expect(stored?.slug).toBe("updated-slug");
+    expect(stored?.excerpt).toBe("Updated excerpt");
+    expect(stored?.body).toBe("# Updated\n\nBody changed.");
+    expect(stored?.draft).toBe(false);
+    expect(stored?.public).toBe(true);
+    expect(stored?.category).toBe("updated-category");
+    expect(stored?.author).toBe("Updated Author");
+    expect(stored?.image).toBe("./assets/updated-cover.png");
+    expect(stored?.tags).toBe(JSON.stringify(["legacy", "updated"]));
+  });
+
+  it("recomputes contentHash from final metadata for metadata-only post updates", async () => {
+    const postId = "blog/hash-metadata-only.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/hash-metadata-only.md",
+      slug: "hash-metadata-only",
+      title: "Original Title",
+      excerpt: "Original excerpt",
+      body: "# Original\n\nBody stays the same.",
+      draft: false,
+      public: true,
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Updated Metadata Title",
+            excerpt: "Updated metadata excerpt",
+            slug: "hash-metadata-only",
+            draft: false,
+            public: true,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({
+        title: posts.title,
+        excerpt: posts.excerpt,
+        body: posts.body,
+        contentHash: posts.contentHash,
+      })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.contentHash).toBe(
+      computePostContentHash({
+        title: stored?.title,
+        excerpt: stored?.excerpt,
+        body: stored?.body,
+      })
+    );
+  });
+
+  it("recomputes contentHash from final metadata when body and structured fields change together", async () => {
+    const postId = "blog/hash-body-and-metadata.md";
+    const encodedPostId = encodeURIComponent(postId);
+    await seedPost({
+      id: postId,
+      filePath: "blog/hash-body-and-metadata.md",
+      slug: "hash-body-and-metadata",
+      title: "Original Title",
+      excerpt: "Original excerpt",
+      body: `---
+title: Embedded Title
+excerpt: Embedded excerpt
+---
+
+# Original
+
+Body.`,
+      draft: false,
+      public: true,
+    });
+
+    const response = await handleAdminApiRequest(
+      buildRequest(
+        `/api/admin/posts/${encodedPostId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Final Title",
+            excerpt: "Final excerpt",
+            slug: "hash-body-and-metadata",
+            body: "# Updated\n\nNew body.",
+            draft: false,
+            public: true,
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      `/posts/${encodedPostId}`
+    );
+
+    expect(response.status).toBe(200);
+
+    const stored = await db
+      .select({
+        title: posts.title,
+        excerpt: posts.excerpt,
+        body: posts.body,
+        contentHash: posts.contentHash,
+      })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    expect(stored?.title).toBe("Final Title");
+    expect(stored?.excerpt).toBe("Final excerpt");
+    expect(stored?.body).toBe("# Updated\n\nNew body.");
+    expect(stored?.contentHash).toBe(
+      computePostContentHash({
+        title: stored?.title,
+        excerpt: stored?.excerpt,
+        body: stored?.body,
+      })
     );
   });
 

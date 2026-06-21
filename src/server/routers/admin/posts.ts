@@ -3,6 +3,8 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { EmbeddingsRepository, type VectorizationStatus } from "@/lib/ai/embeddings-repo";
 import { clearSearchCache } from "@/lib/ai/search-cache";
+import { extractPostDraftFields } from "@/lib/post-body-contract";
+import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../../lib/db";
 import { type Post as PostRow, posts } from "../../../lib/schema";
@@ -26,6 +28,12 @@ const createPostSchema = z.object({
   type: z.string().default("post"),
   draft: z.boolean().default(true),
   public: z.boolean().default(true),
+  category: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional(),
+  author: z.string().optional().nullable(),
+  image: z.string().optional().nullable(),
+  publishDate: z.number().optional(),
+  updateDate: z.number().optional(),
 });
 
 const updatePostSchema = z.object({
@@ -37,6 +45,12 @@ const updatePostSchema = z.object({
   type: z.string().optional(),
   draft: z.boolean().optional(),
   public: z.boolean().optional(),
+  category: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional(),
+  author: z.string().optional().nullable(),
+  image: z.string().optional().nullable(),
+  publishDate: z.number().optional(),
+  updateDate: z.number().optional(),
 });
 
 const deletePostSchema = z.object({
@@ -194,12 +208,29 @@ export const adminPostsRouter = createTRPCRouter({
   create: adminProcedure.input(createPostSchema).mutation(async ({ input }) => {
     try {
       const now = Date.now();
+      const extracted = extractPostDraftFields(input.body, input);
+      const contentHash = computePostContentHash(extracted);
       const newPost = {
         id: `post-${now}`,
-        ...input,
-        publishDate: now,
-        updateDate: now,
-        contentHash: `hash-${now}`,
+        slug: extracted.slug,
+        type: input.type,
+        title: extracted.title,
+        excerpt: extracted.excerpt,
+        body: extracted.body,
+        draft: extracted.draft,
+        public: extracted.public,
+        category: extracted.category,
+        tags: JSON.stringify(extracted.tags),
+        author: extracted.author,
+        image: extracted.image,
+        publishDate: extracted.publishDate ?? input.publishDate ?? now,
+        updateDate: extracted.updateDate ?? input.updateDate ?? now,
+        contentHash,
+        metadata: null,
+        dataSource: "local",
+        lastModified: now,
+        source: "local",
+        filePath: `blog/${extracted.slug}.md`,
       };
 
       await db.insert(posts).values(newPost);
@@ -235,12 +266,43 @@ export const adminPostsRouter = createTRPCRouter({
       }
 
       // 更新文章
-      const updatedData = {
-        ...updateData,
-        updateDate: Date.now(),
-      };
+      const nextContent = updateData.body ?? existingPost.body;
+      const extracted = extractPostDraftFields(nextContent, {
+        title: existingPost.title,
+        slug: existingPost.slug,
+        excerpt: existingPost.excerpt,
+        draft: existingPost.draft,
+        public: existingPost.public,
+        category: existingPost.category,
+        author: existingPost.author,
+        image: existingPost.image,
+        publishDate: existingPost.publishDate,
+        updateDate: existingPost.updateDate,
+        tags: existingPost.tags,
+      });
 
-      await db.update(posts).set(updatedData).where(eq(posts.id, id));
+      const updatedData = {
+        title: updateData.title ?? extracted.title,
+        slug: updateData.slug ?? extracted.slug,
+        excerpt: updateData.excerpt ?? extracted.excerpt,
+        body: extracted.body,
+        draft: updateData.draft ?? extracted.draft,
+        public: updateData.public ?? extracted.public,
+        category: updateData.category ?? extracted.category,
+        tags: JSON.stringify(updateData.tags ?? extracted.tags),
+        author: updateData.author ?? extracted.author,
+        image: updateData.image ?? extracted.image,
+        publishDate: updateData.publishDate ?? extracted.publishDate ?? existingPost.publishDate,
+        updateDate: updateData.updateDate ?? Date.now(),
+        lastModified: Date.now(),
+        filePath: existingPost.filePath || `blog/${updateData.slug ?? extracted.slug}.md`,
+      };
+      const contentHash = computePostContentHash(updatedData);
+
+      await db
+        .update(posts)
+        .set({ ...updatedData, contentHash })
+        .where(eq(posts.id, id));
       clearSearchCache();
 
       return {

@@ -13,6 +13,11 @@ import {
   updateFrontmatterDocument,
   validateFrontmatterText,
 } from "@/lib/frontmatter-document";
+import {
+  buildPostAuthoringDocument,
+  extractPostDraftFields,
+  normalizePostBody,
+} from "@/lib/post-body-contract";
 
 const sampleDocument = `---
 title: React Hooks 深度解析
@@ -210,5 +215,124 @@ Body`
     expect(getRecommendedFrontmatterDateString(new Date("2026-06-17T09:00:00.000Z"))).toBe(
       "2026-06-17"
     );
+  });
+
+  it("normalizes contaminated post rows into body-only content without repeated stripping", () => {
+    const contaminated = `---
+title: USB-C 安全 5V Sink
+slug: usb-c-safe-5v-sink
+draft: true
+---
+
+# USB-C 安全 5V Sink
+
+纯正文。`;
+
+    const once = normalizePostBody(contaminated);
+    const twice = normalizePostBody(once.body);
+
+    expect(once.wasContaminated).toBeTrue();
+    expect(once.body).toBe("\n# USB-C 安全 5V Sink\n\n纯正文。");
+    expect(once.frontmatter.title).toBe("USB-C 安全 5V Sink");
+    expect(twice.wasContaminated).toBeFalse();
+    expect(twice.body).toBe(once.body);
+  });
+
+  it("rebuilds authoring documents from structured post fields and clean body", () => {
+    const document = buildPostAuthoringDocument({
+      title: "Body Only Canonical",
+      slug: "body-only-canonical",
+      excerpt: "摘要",
+      draft: false,
+      public: true,
+      category: "hardware",
+      author: "Ivan Li",
+      image: "./assets/cover.png",
+      tags: ["usb-c", "sink"],
+      publishDate: Date.UTC(2026, 5, 20),
+      updateDate: Date.UTC(2026, 5, 21),
+      body: "\n# Body Only Canonical\n\n纯正文。",
+    });
+
+    expect(document.wasContaminated).toBeFalse();
+    expect(document.content).toContain("title: Body Only Canonical");
+    expect(document.content).toContain("slug: body-only-canonical");
+    expect(document.content).toContain("category: hardware");
+    expect(document.content).toContain("author: Ivan Li");
+    expect(document.content).toContain("image: ./assets/cover.png");
+    expect(document.content).toContain("tags:");
+    expect(document.content).toContain("# Body Only Canonical");
+  });
+
+  it("preserves timestamp precision when authoring documents round-trip through frontmatter", () => {
+    const publishDate = Date.parse("2026-06-20T08:15:30.000Z");
+    const updateDate = Date.parse("2026-06-21T10:45:55.000Z");
+    const document = buildPostAuthoringDocument({
+      title: "Timestamp Precision",
+      slug: "timestamp-precision",
+      excerpt: "摘要",
+      draft: false,
+      public: true,
+      publishDate,
+      updateDate,
+      body: "\n# Timestamp Precision\n\n纯正文。",
+    });
+
+    const extracted = extractPostDraftFields(document.content, {
+      title: "Timestamp Precision",
+      slug: "timestamp-precision",
+      excerpt: "摘要",
+      draft: false,
+      public: true,
+      publishDate,
+      updateDate,
+    });
+
+    expect(document.content).toContain("publishDate: '2026-06-20T08:15:30.000Z'");
+    expect(document.content).toContain("updateDate: '2026-06-21T10:45:55.000Z'");
+    expect(extracted.publishDate).toBe(publishDate);
+    expect(extracted.updateDate).toBe(updateDate);
+  });
+
+  it("extracts body-only canonical post fields from an authoring document", () => {
+    const extracted = extractPostDraftFields(
+      `---
+title: USB-C 安全 5V Sink
+slug: usb-c-safe-5v-sink
+excerpt: 面向作者态预览的摘要。
+draft: true
+public: false
+category: hardware
+author: Ivan Li
+image: ./assets/cover.png
+tags:
+  - usb-c
+  - sink
+publishDate: 2026-06-20
+updateDate: 2026-06-21
+---
+
+![1.00](./assets/cover.png)
+
+纯正文第一段。`,
+      {
+        title: "Persisted fallback",
+        slug: "persisted-fallback",
+        excerpt: "旧摘要",
+        draft: false,
+        public: true,
+      }
+    );
+
+    expect(extracted.title).toBe("USB-C 安全 5V Sink");
+    expect(extracted.slug).toBe("usb-c-safe-5v-sink");
+    expect(extracted.excerpt).toBe("面向作者态预览的摘要。");
+    expect(extracted.draft).toBeTrue();
+    expect(extracted.public).toBeFalse();
+    expect(extracted.category).toBe("hardware");
+    expect(extracted.author).toBe("Ivan Li");
+    expect(extracted.image).toBe("./assets/cover.png");
+    expect(extracted.tags).toEqual(["usb-c", "sink"]);
+    expect(extracted.body).toBe("\n![1.00](./assets/cover.png)\n\n纯正文第一段。");
   });
 });
