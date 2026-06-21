@@ -109,8 +109,8 @@ test.describe("Admin SPA phase 2", () => {
     });
     await expect(page.locator('[data-testid="editor"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "文章编辑器" })).toBeVisible();
-    await expect(page.getByText("Hello World").first()).toBeVisible();
-    await expect(page.getByTestId("editor").getByText("hello-world")).toBeVisible();
+    await expect(page.getByTestId("editor-active-title")).toHaveText("Hello World");
+    await expect(page.getByTestId("editor-active-slug")).toHaveText("hello-world");
   });
 
   test("new empty article shows a friendly validation message instead of raw issues", async ({
