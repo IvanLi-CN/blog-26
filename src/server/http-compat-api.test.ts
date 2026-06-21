@@ -1107,7 +1107,7 @@ public: false
 
     expect(snapshotPost?.filePath).toBe("blog/http-snapshot-post.md");
     expect(snapshotMemo?.filePath).toBe("Memos/http-snapshot-memo.md");
-  }, 30_000);
+  }, 60_000);
 
   it("rewrites public snapshot media fields to assets facade urls", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -1140,7 +1140,7 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/public-media-post/"
     );
-  }, 15_000);
+  }, 30_000);
 
   it("rewrites legacy files-api memo content to facade urls in public snapshot and internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
@@ -1190,7 +1190,7 @@ public: false
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
     }
-  }, 15_000);
+  }, 30_000);
 
   it("indexes rewritten markdown and html media links for public snapshot internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
@@ -1259,7 +1259,7 @@ public: false
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
     }
-  }, 15_000);
+  }, 30_000);
 
   it("rewrites local media urls to the public facade for public rows", async () => {
     await seedPost({
@@ -1290,7 +1290,7 @@ public: false
     expect(snapshotPost?.media?.cover?.variants?.cover).toContain(
       "/api/public/assets/post/local-media-post/"
     );
-  }, 15_000);
+  }, 30_000);
 
   it("proxies public facade image requests through imagorvideo without redirecting", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });

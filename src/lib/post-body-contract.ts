@@ -79,6 +79,11 @@ function normalizeTags(value: unknown): string[] {
 }
 
 function normalizeDateValue(value: unknown): number | null {
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isFinite(time) ? time : null;
+  }
+
   if (typeof value === "number" && Number.isFinite(value)) {
     return value < 1_000_000_000_000 ? value * 1000 : value;
   }
@@ -111,6 +116,22 @@ function normalizeStructuredTags(value: PostContractStructuredFields["tags"]): s
     }
   }
   return [];
+}
+
+function formatFrontmatterDate(value: unknown): string | null {
+  const normalized = normalizeDateValue(value);
+  if (!normalized) return null;
+
+  const date = new Date(normalized);
+  if (!Number.isFinite(date.getTime())) return null;
+
+  const isDateOnly =
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0;
+
+  return isDateOnly ? date.toISOString().slice(0, 10) : date.toISOString();
 }
 
 function buildFrontmatterFromStructuredFields(
@@ -167,12 +188,12 @@ function buildFrontmatterFromStructuredFields(
 
   const publishDate = pickDate(fields.publishDate, fallback.publishDate);
   if (publishDate) {
-    next.publishDate = new Date(publishDate).toISOString().slice(0, 10);
+    next.publishDate = formatFrontmatterDate(publishDate);
   }
 
   const updateDate = pickDate(fields.updateDate, fallback.updateDate);
   if (updateDate) {
-    next.updateDate = new Date(updateDate).toISOString().slice(0, 10);
+    next.updateDate = formatFrontmatterDate(updateDate);
   }
 
   return next;

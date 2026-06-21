@@ -264,6 +264,36 @@ draft: true
     expect(document.content).toContain("# Body Only Canonical");
   });
 
+  it("preserves timestamp precision when authoring documents round-trip through frontmatter", () => {
+    const publishDate = Date.parse("2026-06-20T08:15:30.000Z");
+    const updateDate = Date.parse("2026-06-21T10:45:55.000Z");
+    const document = buildPostAuthoringDocument({
+      title: "Timestamp Precision",
+      slug: "timestamp-precision",
+      excerpt: "摘要",
+      draft: false,
+      public: true,
+      publishDate,
+      updateDate,
+      body: "\n# Timestamp Precision\n\n纯正文。",
+    });
+
+    const extracted = extractPostDraftFields(document.content, {
+      title: "Timestamp Precision",
+      slug: "timestamp-precision",
+      excerpt: "摘要",
+      draft: false,
+      public: true,
+      publishDate,
+      updateDate,
+    });
+
+    expect(document.content).toContain("publishDate: '2026-06-20T08:15:30.000Z'");
+    expect(document.content).toContain("updateDate: '2026-06-21T10:45:55.000Z'");
+    expect(extracted.publishDate).toBe(publishDate);
+    expect(extracted.updateDate).toBe(updateDate);
+  });
+
   it("extracts body-only canonical post fields from an authoring document", () => {
     const extracted = extractPostDraftFields(
       `---

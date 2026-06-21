@@ -99,6 +99,46 @@ describe("database post authoring contract", () => {
     expect(document.content).not.toContain("title: 脏标题");
   });
 
+  test("preserves publish and update timestamp precision when rebuilding database authoring documents", () => {
+    const publishDate = Date.parse("2026-06-20T08:15:30.000Z");
+    const updateDate = Date.parse("2026-06-21T10:45:55.000Z");
+    const document = buildDatabaseAuthoringDocument({
+      postId: "blog/timestamp-precision.md",
+      slug: "timestamp-precision",
+      title: "Timestamp Precision",
+      excerpt: "摘要",
+      content: "\n# Timestamp Precision\n\n纯正文。",
+      draft: false,
+      public: true,
+      source: "local",
+      filePath: "blog/timestamp-precision.md",
+      publishDate,
+      updateDate,
+    });
+
+    const state = deriveDatabaseDraftState(
+      {
+        postId: "blog/timestamp-precision.md",
+        slug: "timestamp-precision",
+        title: "Timestamp Precision",
+        excerpt: "摘要",
+        content: document.content,
+        draft: false,
+        public: true,
+        source: "local",
+        filePath: "blog/timestamp-precision.md",
+        publishDate,
+        updateDate,
+      },
+      document.content
+    );
+
+    expect(document.content).toContain("publishDate: '2026-06-20T08:15:30.000Z'");
+    expect(document.content).toContain("updateDate: '2026-06-21T10:45:55.000Z'");
+    expect(state.publishDate).toBe(publishDate);
+    expect(state.updateDate).toBe(updateDate);
+  });
+
   test("prefers frontmatter title over a body image line when deriving database draft state", () => {
     const state = deriveDatabaseDraftState(
       {
