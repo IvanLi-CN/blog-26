@@ -1,7 +1,8 @@
 ---
 import { SITE } from "@/config/site";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { featuredProjects } from "../lib/projects";
+import ProjectExternalLinks from "../components/projects/ProjectExternalLinks.astro";
+import { getFeaturedProjects, getProjectDetailPath, getProjectDomainDefinition } from "../lib/projects";
 import { buildHomeTimeline, getSnapshot } from "../lib/public-site";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import TimelineCard from "../components/TimelineCard.astro";
@@ -10,87 +11,108 @@ import Icon from "@/components/ui/Icon";
 const snapshot = await getSnapshot();
 const timeline = buildHomeTimeline(snapshot);
 const assetVersion = snapshot.generatedAt;
+const featuredProjects = getFeaturedProjects();
 ---
 <BaseLayout pathname="/" title={SITE.title} description={SITE.description}>
-  <section class="px-3 py-8 sm:px-4 md:py-12">
-    <div class="nature-container">
-      <div class="nature-surface px-5 py-8 text-center sm:px-8 sm:py-12">
-        <span class="nature-kicker mx-auto mb-5">Nature Interface</span>
-        <h1 class="nature-title mx-auto max-w-4xl text-4xl font-bold sm:text-5xl md:text-6xl">
-          Ivan&apos;s <span class="text-[color:var(--nature-accent-strong)]">Blog</span>，在流动的数字温室里安放想法。
-        </h1>
-        <p class="nature-muted mx-auto mt-5 max-w-3xl text-base leading-8 sm:text-lg">
-          {SITE.description}
-        </p>
-        <div class="mt-7 flex flex-wrap items-center justify-center gap-3">
-          <a href={toPublicSitePath("/posts")} class="nature-button nature-button-primary">
-            <Icon name="tabler:article" className="h-4 w-4" />
-            浏览文章
-          </a>
-          <a href={toPublicSitePath("/memos")} class="nature-button nature-button-outline">
-            <Icon name="tabler:bulb" className="h-4 w-4" />
-            进入 Memos
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="px-3 py-6 sm:px-4 md:py-10">
-    <div class="nature-container">
-      {timeline.length > 0 ? (
-        <div class="nature-timeline" data-testid="home-timeline">
-          {timeline.map((item, index) => (
-            <TimelineCard
-              item={item}
-              isLast={index === timeline.length - 1}
-              iconMap={snapshot.tags.tagIconMap}
-              iconSvgMap={snapshot.tags.tagIconSvgMap}
-              assetVersion={assetVersion}
-            />
-          ))}
-        </div>
-      ) : (
-        <div class="nature-empty">
-          <Icon name="tabler:timeline" className="mx-auto mb-2 h-8 w-8 opacity-50" />
-          <p>暂无内容</p>
-        </div>
-      )}
-    </div>
-  </section>
-
-  <section class="px-3 py-6 sm:px-4 md:py-8">
-    <div class="nature-container">
-      <div class="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h2 class="nature-title flex items-center gap-3 text-2xl font-semibold sm:text-3xl">
-            <Icon name="tabler:code" className="h-6 w-6 text-[color:var(--nature-accent-strong)]" />
-            精选项目 ({featuredProjects.length})
-          </h2>
-          <p class="nature-muted mt-2 text-sm">不再使用硬朗卡片网格，而是改成更柔和的气泡索引。</p>
-        </div>
-        <a href={toPublicSitePath("/projects")} class="nature-button nature-button-ghost">
-          查看全部
+  <section class="nature-container px-4 py-8 sm:px-6 md:py-12">
+    <div class="nature-surface px-5 py-8 text-center sm:px-8 sm:py-12">
+      <span class="nature-kicker mx-auto mb-5">Nature Interface</span>
+      <h1 class="nature-title mx-auto max-w-4xl text-4xl font-bold sm:text-5xl md:text-6xl">
+        Ivan&apos;s <span class="text-[color:var(--nature-accent-strong)]">Blog</span>，在流动的数字温室里安放想法。
+      </h1>
+      <p class="nature-muted mx-auto mt-5 max-w-3xl text-base leading-8 sm:text-lg">
+        {SITE.description}
+      </p>
+      <div class="mt-7 flex flex-wrap items-center justify-center gap-3">
+        <a href={toPublicSitePath("/posts")} class="nature-button nature-button-primary">
+          <Icon name="tabler:article" className="h-4 w-4" />
+          浏览文章
+        </a>
+        <a href={toPublicSitePath("/memos")} class="nature-button nature-button-outline">
+          <Icon name="tabler:bulb" className="h-4 w-4" />
+          进入 Memos
         </a>
       </div>
+    </div>
+  </section>
 
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-        {featuredProjects.map((project) => (
-          <div class="nature-panel nature-panel-soft h-full">
-            <div class="nature-panel-body flex h-full flex-col gap-3 p-4">
-              <h3 class="line-clamp-1 text-sm font-semibold text-[color:var(--nature-text)] sm:text-base">
-                <a
-                  href={toPublicSitePath(project.href)}
-                  class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
-                >
-                  {project.title}
-                </a>
-              </h3>
-              <span class="nature-chip w-fit text-xs">{project.category}</span>
-            </div>
-          </div>
+  <section class="nature-container px-4 py-6 sm:px-6 md:py-10">
+    {timeline.length > 0 ? (
+      <div class="nature-timeline" data-testid="home-timeline">
+        {timeline.map((item, index) => (
+          <TimelineCard
+            item={item}
+            isLast={index === timeline.length - 1}
+            iconMap={snapshot.tags.tagIconMap}
+            iconSvgMap={snapshot.tags.tagIconSvgMap}
+            assetVersion={assetVersion}
+          />
         ))}
       </div>
+    ) : (
+      <div class="nature-empty">
+        <Icon name="tabler:timeline" className="mx-auto mb-2 h-8 w-8 opacity-50" />
+        <p>暂无内容</p>
+      </div>
+    )}
+  </section>
+
+  <section class="nature-container px-4 py-6 sm:px-6 md:py-8">
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <h2 class="nature-title flex items-center gap-3 text-2xl font-semibold sm:text-3xl">
+          <Icon name="tabler:code" className="h-6 w-6 text-[color:var(--nature-accent-strong)]" />
+          精选项目 ({featuredProjects.length})
+        </h2>
+        <p class="nature-muted mt-2 text-sm">每个领域挑一个代表作，先看定位，再决定是否进入完整案例页。</p>
+      </div>
+      <a href={toPublicSitePath("/projects")} class="nature-button nature-button-ghost">
+        查看全部
+      </a>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {featuredProjects.map((project) => (
+        <article class="nature-hover-hitbox">
+          <div class="nature-panel nature-panel-soft nature-hover-lift nature-hover-surface h-full px-5 py-5 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.34)] [--nature-hover-lift-offset:-0.14rem] [--nature-hover-shadow:0_20px_40px_rgba(8,21,16,0.14)]">
+            <div class="flex h-full flex-col gap-4">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="nature-chip nature-chip-accent">
+                  {getProjectDomainDefinition(project.domain).title}
+                </span>
+              </div>
+
+              <div>
+                <h3 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                  <a
+                    href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                    class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+                  >
+                    {project.title}
+                  </a>
+                </h3>
+                <p class="nature-muted mt-3 text-sm leading-7">{project.summary}</p>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                {project.techTags.slice(0, 3).map((tag) => (
+                  <span class="nature-chip text-xs">{tag}</span>
+                ))}
+              </div>
+
+              <div class="mt-auto flex flex-wrap items-center justify-between gap-3">
+                <a
+                  href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                  class="nature-button nature-button-ghost min-h-10 px-4 py-2 text-sm"
+                >
+                  查看案例
+                </a>
+                <ProjectExternalLinks links={project.links} compact={true} />
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
     </div>
   </section>
 </BaseLayout>

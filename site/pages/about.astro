@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { projectCatalog } from "../lib/projects";
 import { getSnapshot } from "../lib/public-site";
 import Icon from "@/components/ui/Icon";
 
@@ -73,7 +74,7 @@ const recentMoments = [
             </div>
             <div class="nature-stat">
               <div class="nature-stat-label">公开项目</div>
-              <div class="nature-stat-value">6</div>
+              <div class="nature-stat-value">{projectCatalog.length}</div>
             </div>
           </div>
         </section>

@@ -14,7 +14,7 @@ test.describe("Nature frontend public coverage", () => {
       { path: "/tags", heading: "浏览所有标签" },
       { path: "/search", heading: "搜索内容" },
       { path: "/about", heading: /你好，我是 Ivan/ },
-      { path: "/projects", heading: "项目总览" },
+      { path: "/projects", heading: "项目展墙" },
     ] as const;
 
     for (const route of routes) {
@@ -83,6 +83,14 @@ test.describe("Nature frontend public coverage", () => {
     await firstTag.click();
     await expect(page).toHaveURL(/\/tags\//);
     await expect(page.locator("main h1").first()).toBeVisible();
+
+    await gotoWithTheme(page, "/projects/kaisoumail", "light");
+    await expect(page.locator("main h1").first()).toHaveText("KaisouMail");
+    await expect(page.getByRole("heading", { name: "公开入口" })).toBeVisible();
+
+    await gotoWithTheme(page, "/projects/loadlynx", "light");
+    await expect(page.locator("main h1").first()).toHaveText("loadlynx");
+    await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
   });
 
   test("mobile search entry still redirects correctly", async ({ page }) => {
