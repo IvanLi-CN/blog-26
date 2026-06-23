@@ -90,6 +90,14 @@ test.describe("Astro public front (phase 1)", () => {
     await page.goto("/search?q=Hello", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "搜索内容" })).toBeVisible();
     await expect(page.locator('a[href="/posts/hello-world/"]').first()).toBeVisible();
+
+    await page.goto("/projects", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "项目展墙" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "KaisouMail" })).toBeVisible();
+
+    await page.goto("/projects/kaisoumail", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "KaisouMail" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "项目是什么" })).toBeVisible();
   });
 
   test("serves feed, sitemap, and public APIs through the gateway", async ({ request }) => {
@@ -113,6 +121,7 @@ test.describe("Astro public front (phase 1)", () => {
     const sitemap = await request.get("/sitemap.xml");
     expect(sitemap.ok()).toBeTruthy();
     expect(await sitemap.text()).toContain("/posts/hello-world");
+    expect(await sitemap.text()).toContain("/projects/kaisoumail");
 
     const robots = await request.get("/robots.txt");
     expect(robots.ok()).toBeTruthy();

@@ -14,6 +14,7 @@ import type {
   PublicTagSummary,
   PublicTagTimelineItem,
 } from "@/public-site/snapshot";
+import { getProjectDetailPath, projectCatalog } from "./projects";
 
 let snapshotPromise: Promise<PublicSnapshot> | undefined;
 
@@ -384,6 +385,10 @@ export function getStaticPageEntries(snapshot: PublicSnapshot) {
     "/atom.xml",
     "/feed.json",
   ];
+
+  for (const project of projectCatalog) {
+    pages.push(getProjectDetailPath(project.slug));
+  }
 
   for (const post of snapshot.posts) {
     pages.push(`/posts/${post.slug}`);

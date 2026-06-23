@@ -1,0 +1,421 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ProjectPoster from "../../components/projects/ProjectPoster.astro";
+import { getGroupedProjectCatalog, getProjectDetailPath, projectCatalog } from "../../lib/projects";
+import { getSnapshot } from "../../lib/public-site";
+import { toPublicSitePath } from "../../lib/runtime-urls";
+
+const snapshot = await getSnapshot();
+const groupedProjects = getGroupedProjectCatalog();
+---
+<BaseLayout
+  pathname="/projects"
+  title={`项目展墙 - ${snapshot.site.title}`}
+  description="按产品领域整理的公开项目展墙。主体进入站内案例，公开链接直达源码、文档、演示或产品入口。"
+>
+  <section class="nature-container px-4 py-8 sm:px-6 lg:py-10">
+    <header class="projects-showcase-hero nature-surface px-6 py-7 sm:px-8 sm:py-8">
+      <div class="projects-showcase-hero-head">
+        <div class="projects-showcase-hero-copy">
+          <span class="nature-kicker">Projects</span>
+          <h1 class="projects-showcase-title">项目展墙</h1>
+          <p class="projects-showcase-summary">
+            把近期仍在公开维护的项目按产品领域排开来看。先看海报和定位，再进入完整案例页或公开入口。
+          </p>
+        </div>
+
+        <div class="projects-showcase-stats">
+          <div class="projects-showcase-stat">
+            <span>公开项目</span>
+            <strong>{projectCatalog.length}</strong>
+          </div>
+          <div class="projects-showcase-stat">
+            <span>产品领域</span>
+            <strong>{groupedProjects.length}</strong>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="projects-domain-stack">
+      {groupedProjects.map((group) => (
+        <section id={group.id} class="projects-domain-section">
+          <header class="projects-domain-head">
+            <div>
+              <h2 class="projects-domain-title">{group.title}</h2>
+              <p class="projects-domain-framing">{group.framing}</p>
+            </div>
+            <span class="projects-domain-count">{group.projects.length} 项</span>
+          </header>
+
+          <div class="projects-domain-rail">
+            <div
+              class="projects-domain-grid scrollbar-auto-hide"
+              data-scrollbar-auto-hide
+              style={`--showcase-cards:3;--showcase-cards-tablet:${Math.min(group.projects.length, 2)};`}
+              aria-label={`${group.title} 项目展架`}
+            >
+              {group.projects.map((project) => (
+                <article class="projects-poster-card nature-hover-hitbox">
+                  <a
+                    href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                    class="projects-poster-link nature-hover-lift"
+                    aria-label={`查看 ${project.title} 项目案例`}
+                  >
+                    <div class="projects-poster-visual">
+                      <ProjectPoster project={project} compact={true} />
+                    </div>
+                    <h3 class="projects-poster-title">
+                      {project.title}
+                    </h3>
+                  </a>
+                </article>
+              ))}
+            </div>
+
+            <div class="projects-domain-scrollbar" data-scrollbar-overlay aria-hidden="true">
+              <div class="projects-domain-scrollbar-track" data-scrollbar-track>
+                <div class="projects-domain-scrollbar-thumb" data-scrollbar-thumb></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      ))}
+    </div>
+  </section>
+
+  <style>
+    .projects-showcase-hero {
+      display: grid;
+      gap: 1.6rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .projects-showcase-hero::after {
+      content: "";
+      position: absolute;
+      right: -8%;
+      bottom: -34%;
+      width: 24rem;
+      height: 24rem;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(var(--nature-accent-rgb), 0.18), transparent 68%);
+      pointer-events: none;
+    }
+
+    .projects-showcase-hero-head {
+      display: grid;
+      gap: 1.4rem;
+      align-items: end;
+    }
+
+    .projects-showcase-title {
+      margin: 0.85rem 0 0;
+      font-family: var(--font-display), "Noto Serif SC", serif;
+      font-size: clamp(3rem, 6vw, 5rem);
+      line-height: 0.92;
+      letter-spacing: -0.04em;
+      color: var(--nature-text);
+      text-wrap: balance;
+    }
+
+    .projects-showcase-summary {
+      margin: 1.1rem 0 0;
+      max-width: 34rem;
+      font-size: 0.96rem;
+      line-height: 1.8;
+      color: var(--nature-text-soft);
+      text-wrap: pretty;
+    }
+
+    .projects-showcase-stats {
+      display: grid;
+      gap: 0.8rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .projects-showcase-stat {
+      display: grid;
+      gap: 0.3rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid rgba(var(--nature-border-rgb), 0.14);
+      border-radius: 1.15rem;
+      background: rgba(var(--nature-highlight-rgb), 0.32);
+    }
+
+    .projects-showcase-stat span {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      color: var(--nature-text-faint);
+    }
+
+    .projects-showcase-stat strong {
+      font-size: 1.7rem;
+      line-height: 1;
+      color: var(--nature-text);
+    }
+
+    .projects-domain-stack {
+      display: grid;
+      gap: 2.9rem;
+      margin-top: 2.8rem;
+    }
+
+    .projects-domain-section {
+      display: grid;
+      gap: 1.55rem;
+    }
+
+    .projects-domain-rail {
+      position: relative;
+      --showcase-scrollbar-size: 0.78rem;
+      --showcase-scrollbar-inset: 0.12rem;
+      --showcase-scrollbar-offset: 0.22rem;
+    }
+
+    .projects-domain-section + .projects-domain-section {
+      padding-top: 2.8rem;
+      border-top: 1px solid rgba(var(--nature-border-rgb), 0.12);
+    }
+
+    .projects-domain-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 1.4rem;
+    }
+
+    .projects-domain-title {
+      margin: 0;
+      font-family: var(--font-display), "Noto Serif SC", serif;
+      font-size: clamp(2.15rem, 3vw, 3rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: var(--nature-text);
+      text-wrap: balance;
+    }
+
+    .projects-domain-framing {
+      margin: 0.65rem 0 0;
+      max-width: 42rem;
+      font-size: 0.92rem;
+      line-height: 1.78;
+      color: var(--nature-text-soft);
+      text-wrap: pretty;
+    }
+
+    .projects-domain-count {
+      flex: none;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      color: var(--nature-text-faint);
+    }
+
+    .projects-domain-grid {
+      --showcase-gap: 1.25rem;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: var(--showcase-gap);
+      align-items: start;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      padding: 0.15rem 0 0.9rem;
+    }
+
+    .projects-domain-scrollbar {
+      position: absolute;
+      inset-inline: 0;
+      bottom: 0;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(var(--showcase-scrollbar-offset)) scaleY(0.82);
+      transform-origin: center;
+      transition:
+        opacity 180ms var(--nature-ease),
+        transform 220ms var(--nature-ease),
+        filter 220ms var(--nature-ease);
+      filter: saturate(0.92);
+    }
+
+    .projects-domain-scrollbar[data-scrollbar-overflow="true"][data-scrollbar-visible="true"] {
+      opacity: 1;
+      transform: translateY(0) scaleY(1);
+      filter: saturate(1);
+    }
+
+    .projects-poster-link {
+      display: grid;
+      gap: 1rem;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .projects-domain-scrollbar-track,
+    .projects-domain-scrollbar-thumb {
+      border-radius: 999px;
+    }
+
+    .projects-domain-scrollbar-track {
+      position: relative;
+      height: var(--showcase-scrollbar-size);
+      overflow: hidden;
+      border: 1px solid rgba(var(--nature-border-rgb), 0.12);
+      background:
+        linear-gradient(
+          180deg,
+          rgba(var(--nature-highlight-rgb), 0.24),
+          rgba(var(--nature-highlight-rgb), 0.12)
+        );
+      box-shadow:
+        inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.12),
+        inset 0 0 0 1px rgba(var(--nature-highlight-rgb), 0.04);
+      backdrop-filter: blur(10px);
+    }
+
+    .projects-domain-scrollbar-thumb {
+      position: absolute;
+      top: var(--showcase-scrollbar-inset);
+      left: var(--showcase-scrollbar-inset);
+      width: var(--scrollbar-thumb-size, 0px);
+      height: calc(100% - 2 * var(--showcase-scrollbar-inset));
+      min-width: 0;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(var(--nature-accent-rgb), 0.6),
+          rgba(var(--nature-accent-rgb), 0.4)
+        );
+      box-shadow:
+        inset 0 0 0 1px rgba(var(--nature-highlight-rgb), 0.08),
+        0 0.2rem 0.45rem rgba(var(--nature-accent-rgb), 0.18);
+      transform: translateX(var(--scrollbar-thumb-offset, 0px));
+      transition:
+        transform 90ms linear,
+        width 160ms var(--nature-ease),
+        background 180ms var(--nature-ease),
+        box-shadow 180ms var(--nature-ease);
+    }
+
+    .projects-domain-rail:hover .projects-domain-scrollbar-thumb,
+    .projects-domain-grid:focus-within + .projects-domain-scrollbar .projects-domain-scrollbar-thumb {
+      background:
+        linear-gradient(
+          180deg,
+          rgba(var(--nature-accent-rgb), 0.7),
+          rgba(var(--nature-accent-rgb), 0.5)
+        );
+      box-shadow:
+        inset 0 0 0 1px rgba(var(--nature-highlight-rgb), 0.1),
+        0 0.26rem 0.6rem rgba(var(--nature-accent-rgb), 0.22);
+    }
+
+    .projects-poster-card {
+      display: grid;
+      gap: 0.9rem;
+      align-content: start;
+      flex: 0 0 calc(
+        (100% - (var(--showcase-cards) - 1) * var(--showcase-gap)) / var(--showcase-cards)
+      );
+      min-width: calc(
+        (100% - (var(--showcase-cards) - 1) * var(--showcase-gap)) / var(--showcase-cards)
+      );
+      scroll-snap-align: start;
+    }
+
+    .projects-poster-visual {
+      display: block;
+      transition: transform 240ms var(--nature-ease);
+    }
+
+    .projects-poster-visual:hover {
+      transform: translateY(-0.18rem);
+    }
+
+    .projects-poster-title {
+      margin: 0;
+      font-family: var(--font-display), "Noto Serif SC", serif;
+      font-size: 1.38rem;
+      line-height: 1.04;
+      letter-spacing: -0.035em;
+      color: var(--nature-text);
+      text-wrap: balance;
+    }
+
+    @media (min-width: 960px) {
+      .projects-showcase-hero-head {
+        grid-template-columns: minmax(0, 1fr) 16rem;
+      }
+    }
+
+    @media (max-width: 1023px) {
+      .projects-domain-head {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .projects-domain-grid {
+        --showcase-gap: 1rem;
+      }
+
+      .projects-poster-card {
+        flex-basis: calc(
+          (100% - (var(--showcase-cards-tablet) - 1) * var(--showcase-gap)) /
+            var(--showcase-cards-tablet)
+        );
+        min-width: calc(
+          (100% - (var(--showcase-cards-tablet) - 1) * var(--showcase-gap)) /
+            var(--showcase-cards-tablet)
+        );
+      }
+    }
+
+    @media (max-width: 767px) {
+      .projects-showcase-hero {
+        gap: 1.2rem;
+      }
+
+      .projects-showcase-stats {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .projects-domain-stack {
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .projects-domain-section + .projects-domain-section {
+        padding-top: 2rem;
+      }
+
+      .projects-domain-grid {
+        --showcase-gap: 0.95rem;
+        padding-bottom: 0.8rem;
+      }
+
+      .projects-domain-rail {
+        --showcase-scrollbar-size: 0.68rem;
+        --showcase-scrollbar-offset: 0.18rem;
+      }
+
+      .projects-poster-card {
+        flex-basis: min(17.5rem, 78vw);
+        min-width: min(17.5rem, 78vw);
+      }
+
+      .projects-poster-title {
+        font-size: 1.28rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .projects-domain-scrollbar,
+      .projects-domain-scrollbar-thumb,
+      .projects-poster-visual {
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</BaseLayout>

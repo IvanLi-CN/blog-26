@@ -1,0 +1,39 @@
+---
+import Icon from "@/components/ui/Icon";
+import type { ProjectExternalLink } from "../../lib/projects";
+
+interface Props {
+  links: readonly ProjectExternalLink[];
+  compact?: boolean;
+  dense?: boolean;
+}
+
+const { links, compact = false, dense = false } = Astro.props as Props;
+
+const linkMeta: Record<ProjectExternalLink["kind"], { icon: string; label: string }> = {
+  github: { icon: "tabler:brand-github", label: "GitHub" },
+  docs: { icon: "tabler:book-2", label: "Docs" },
+  demo: { icon: "tabler:window-maximize", label: "Demo" },
+  site: { icon: "tabler:world", label: "Site" },
+};
+---
+{links.length > 0 && (
+  <div class={`flex flex-wrap ${dense ? "gap-1.5" : "gap-2"} ${compact ? "pt-1" : "pt-2"}`}>
+    {links.map((link) => {
+      const meta = linkMeta[link.kind];
+      return (
+        <a
+          href={link.href}
+          target="_blank"
+          rel="noreferrer"
+          class={`nature-button ${
+            link.kind === "github" ? "nature-button-ghost" : "nature-button-outline"
+          } ${dense ? "min-h-8 px-3 py-1.5 text-[0.76rem]" : compact ? "min-h-10 px-4 py-2 text-sm" : "text-sm"}`}
+        >
+          <Icon name={meta.icon} className="h-4 w-4" />
+          {link.label || meta.label}
+        </a>
+      );
+    })}
+  </div>
+)}

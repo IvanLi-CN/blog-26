@@ -1,0 +1,194 @@
+---
+import Icon from "@/components/ui/Icon";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ProjectExternalLinks from "../../components/projects/ProjectExternalLinks.astro";
+import ProjectPoster from "../../components/projects/ProjectPoster.astro";
+import {
+  getProjectBySlug,
+  getProjectCanonicalUrl,
+  getProjectDetailPath,
+  getProjectDomainDefinition,
+  projectCatalog,
+  resolveProjectRelatedEntries,
+} from "../../lib/projects";
+import { getSnapshot, toAbsoluteSiteUrl } from "../../lib/public-site";
+import { toPublicSitePath } from "../../lib/runtime-urls";
+
+export async function getStaticPaths() {
+  return projectCatalog.map((project) => ({
+    params: { slug: project.slug },
+    props: { slug: project.slug },
+  }));
+}
+
+const { slug } = Astro.props as { slug: string };
+const project = getProjectBySlug(slug);
+
+if (!project) {
+  throw new Error(`Unknown project slug: ${slug}`);
+}
+
+const snapshot = await getSnapshot();
+const domain = getProjectDomainDefinition(project.domain);
+const relatedEntries = resolveProjectRelatedEntries(snapshot, project.relatedEntries);
+const canonicalUrl = getProjectCanonicalUrl(project.slug);
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "CreativeWork",
+  name: project.title,
+  description: project.summary,
+  url: canonicalUrl,
+  isPartOf: {
+    "@type": "WebSite",
+    name: snapshot.site.title,
+    url: snapshot.site.url,
+  },
+  keywords: project.techTags.join(", "),
+  sameAs: project.links.map((link) => link.href),
+};
+---
+<BaseLayout
+  pathname={getProjectDetailPath(project.slug)}
+  title={`${project.title} - 项目案例 - ${snapshot.site.title}`}
+  description={project.summary}
+  image={toAbsoluteSiteUrl(snapshot.site.images.default)}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+
+  <section class="nature-detail-container px-4 py-8 sm:px-6 lg:py-12">
+    <div class="space-y-8">
+      <header class="nature-surface overflow-hidden px-6 py-7 sm:px-8 sm:py-8">
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] lg:items-start lg:gap-8">
+          <div>
+            <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
+              <a
+                href={toPublicSitePath("/projects")}
+                class="nature-chip gap-2 transition-colors hover:text-[color:var(--nature-accent-strong)]"
+              >
+                <Icon name="tabler:arrow-left" className="h-3.5 w-3.5" />
+                返回项目索引
+              </a>
+              <span class="nature-chip nature-chip-accent">{domain.title}</span>
+            </div>
+
+            <h1 class="mt-5 font-heading text-4xl font-semibold tracking-[-0.05em] text-[color:var(--nature-text)] md:text-5xl">
+              {project.title}
+            </h1>
+            <p class="mt-5 max-w-3xl text-base leading-8 text-[color:var(--nature-text)] sm:text-lg">
+              {project.summary}
+            </p>
+            <p class="nature-muted mt-4 max-w-3xl text-sm leading-7 sm:text-base">{project.description}</p>
+
+            <div class="mt-6 flex flex-wrap gap-2">
+              {project.techTags.map((tag) => (
+                <span class="nature-chip">{tag}</span>
+              ))}
+            </div>
+
+            <ProjectExternalLinks links={project.links} />
+          </div>
+
+          <div class="max-w-[18rem] justify-self-start lg:justify-self-end">
+            <ProjectPoster project={project} compact={true} />
+          </div>
+        </div>
+      </header>
+
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.6fr)] lg:gap-8">
+        <div class="space-y-6">
+          <section class="nature-panel px-6 py-6 sm:px-7">
+            <div class="flex items-center gap-3">
+              <Icon name="tabler:sparkles" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
+              <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                项目是什么
+              </h2>
+            </div>
+            <div class="nature-prose mt-5 space-y-4 text-[color:var(--nature-text-soft)]">
+              <p>{project.summary}</p>
+              <p>{project.description}</p>
+            </div>
+          </section>
+
+          <section class="nature-panel px-6 py-6 sm:px-7">
+            <div class="flex items-center gap-3">
+              <Icon name="tabler:target-arrow" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
+              <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                为什么值得看 / 当前角色
+              </h2>
+            </div>
+            <p class="nature-muted mt-5 text-base leading-8">
+              这类项目值得看，不只是因为它能运行，而是因为它代表了一个明确的产品面：
+              有的负责接入与观测，有的负责控制台，有的则直接承担设备或基础设施的长期维护角色。
+            </p>
+            <div class="mt-5 grid gap-3 md:grid-cols-3">
+              {project.highlights.map((item) => (
+                <div class="nature-surface-inset px-4 py-4 text-sm leading-7 text-[color:var(--nature-text-soft)]">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section class="nature-panel px-6 py-6 sm:px-7">
+            <div class="flex items-center gap-3">
+              <Icon name="tabler:stack-3" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
+              <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                关键能力或设计亮点
+              </h2>
+            </div>
+            <ul class="mt-5 grid gap-3">
+              {project.highlights.map((item) => (
+                <li class="nature-surface-inset flex gap-3 px-4 py-4 text-sm leading-7 text-[color:var(--nature-text-soft)]">
+                  <span class="mt-2 h-2.5 w-2.5 flex-none rounded-full bg-[rgba(var(--nature-accent-rgb),0.76)]"></span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {relatedEntries.length > 0 && (
+            <section class="nature-panel px-6 py-6 sm:px-7">
+              <div class="flex items-center gap-3">
+                <Icon name="tabler:book-2" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
+                <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                  相关实践
+                </h2>
+              </div>
+
+              <div class="mt-5 grid gap-4 md:grid-cols-2">
+                {relatedEntries.map((entry) => (
+                  <article class="nature-panel nature-panel-soft px-4 py-4">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="nature-chip">{entry.type === "post" ? "Post" : "Memo"}</span>
+                    </div>
+                    <h3 class="mt-3 text-lg font-semibold text-[color:var(--nature-text)]">
+                      <a
+                        href={toPublicSitePath(entry.href)}
+                        class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+                      >
+                        {entry.title}
+                      </a>
+                    </h3>
+                    {entry.excerpt && <p class="nature-muted mt-3 text-sm leading-7">{entry.excerpt}</p>}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <aside class="space-y-6">
+          <section class="nature-panel px-5 py-5">
+            <div class="flex items-center gap-3">
+              <Icon name="tabler:world" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
+              <h2 class="font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                公开入口
+              </h2>
+            </div>
+            <ProjectExternalLinks links={project.links} />
+          </section>
+        </aside>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

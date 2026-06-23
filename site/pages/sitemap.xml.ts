@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { getProjectDetailPath, projectCatalog } from "../lib/projects";
 import { getCanonicalUrl, getSnapshot } from "../lib/public-site";
 
 function escapeXml(input: string) {
@@ -31,6 +32,12 @@ export const GET: APIRoute = async () => {
       changefreq: "weekly",
       priority: "0.5",
     },
+    ...projectCatalog.map((project) => ({
+      loc: getCanonicalUrl(getProjectDetailPath(project.slug)),
+      lastmod: generatedAt,
+      changefreq: "monthly",
+      priority: "0.55",
+    })),
     {
       loc: getCanonicalUrl("/search"),
       lastmod: generatedAt,

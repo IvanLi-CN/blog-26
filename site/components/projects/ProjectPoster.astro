@@ -1,0 +1,521 @@
+---
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import type { ProjectCatalogItem, ProjectDomain } from "../../lib/projects";
+
+interface Props {
+  project: ProjectCatalogItem;
+  compact?: boolean;
+  aspect?: "poster" | "hero";
+}
+
+const { project, compact = false, aspect = "poster" } = Astro.props as Props;
+
+const domainStyleMap: Record<
+  ProjectDomain,
+  {
+    tone: string;
+    glow: string;
+    panel: string;
+  }
+> = {
+  "ai-agent-observability": {
+    tone: "112, 168, 136",
+    glow: "123, 173, 194",
+    panel: "18, 34, 28",
+  },
+  "cloud-web-platform": {
+    tone: "108, 146, 184",
+    glow: "140, 196, 162",
+    panel: "24, 36, 44",
+  },
+  "hardware-product": {
+    tone: "176, 128, 84",
+    glow: "148, 185, 148",
+    panel: "38, 31, 24",
+  },
+  "device-control-foundation": {
+    tone: "102, 140, 176",
+    glow: "118, 182, 166",
+    panel: "22, 31, 40",
+  },
+  "self-hosted-infra": {
+    tone: "118, 156, 128",
+    glow: "122, 164, 191",
+    panel: "22, 32, 27",
+  },
+};
+
+const poster = project.poster;
+const domainStyle = domainStyleMap[project.domain];
+const posterImageSrc = `/projects/posters/${project.slug}.png`;
+const posterImagePath = fileURLToPath(new URL(`../../../public${posterImageSrc}`, import.meta.url));
+const hasPosterImage = existsSync(posterImagePath);
+---
+<div
+  class={`project-poster ${compact ? "is-compact" : ""} ${aspect === "hero" ? "is-hero" : ""}`}
+  style={`--project-tone-rgb:${domainStyle.tone};--project-glow-rgb:${domainStyle.glow};--project-panel-rgb:${domainStyle.panel};`}
+>
+  <div class={`project-poster-fallback pattern-${poster.pattern}`} aria-hidden="true">
+    <span class="project-poster-orb project-poster-orb-primary"></span>
+    <span class="project-poster-orb project-poster-orb-secondary"></span>
+    <span class="project-poster-grid"></span>
+    <span class="project-poster-line project-poster-line-a"></span>
+    <span class="project-poster-line project-poster-line-b"></span>
+    <span class="project-poster-node project-poster-node-a"></span>
+    <span class="project-poster-node project-poster-node-b"></span>
+    <span class="project-poster-node project-poster-node-c"></span>
+    <span class="project-poster-stack project-poster-stack-a"></span>
+    <span class="project-poster-stack project-poster-stack-b"></span>
+  </div>
+
+  {hasPosterImage && (
+    <img
+      class="project-poster-image"
+      src={posterImageSrc}
+      alt={`${project.title} 海报`}
+      loading="lazy"
+      decoding="async"
+    />
+  )}
+
+  <div class="project-poster-scrim" aria-hidden="true"></div>
+
+  <div class="project-poster-copy">
+    <p class="project-poster-eyebrow">{poster.eyebrow}</p>
+    {!compact && <div class="project-poster-title">{project.title}</div>}
+    <p class="project-poster-strapline">{poster.strapline}</p>
+  </div>
+</div>
+
+<style>
+  .project-poster {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
+    border: 1px solid rgba(var(--nature-border-rgb), 0.2);
+    border-radius: 1.9rem;
+    background:
+      radial-gradient(circle at 14% 12%, rgba(var(--project-tone-rgb), 0.24), transparent 30%),
+      radial-gradient(circle at 88% 14%, rgba(var(--project-glow-rgb), 0.18), transparent 30%),
+      linear-gradient(160deg, rgba(var(--project-panel-rgb), 0.96), rgba(var(--project-panel-rgb), 0.82));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 24px 44px rgba(8, 21, 16, 0.16);
+  }
+
+  html[data-ui-theme="dark"] .project-poster {
+    border-color: rgba(var(--nature-border-rgb), 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 24px 54px rgba(0, 0, 0, 0.3);
+  }
+
+  .project-poster.is-compact {
+    border-radius: 1.6rem;
+  }
+
+  .project-poster.is-hero {
+    aspect-ratio: 16 / 10;
+    min-height: 22rem;
+  }
+
+  .project-poster-fallback,
+  .project-poster-image,
+  .project-poster-scrim,
+  .project-poster-copy {
+    position: absolute;
+    inset: 0;
+  }
+
+  .project-poster-fallback,
+  .project-poster-copy,
+  .project-poster-scrim {
+    z-index: 1;
+  }
+
+  .project-poster-image {
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    background: linear-gradient(160deg, rgba(var(--project-panel-rgb), 0.96), rgba(var(--project-panel-rgb), 0.82));
+  }
+
+  .project-poster-image[src$=".png"] {
+    opacity: 1;
+  }
+
+  .project-poster-scrim {
+    background:
+      linear-gradient(180deg, rgba(4, 12, 8, 0.02) 0%, rgba(4, 12, 8, 0.12) 42%, rgba(4, 12, 8, 0.74) 100%),
+      linear-gradient(135deg, rgba(10, 22, 17, 0.46), rgba(10, 22, 17, 0.08) 48%, rgba(10, 22, 17, 0.58));
+    pointer-events: none;
+  }
+
+  .project-poster-copy {
+    display: flex;
+    min-height: inherit;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0.7rem;
+    padding: 1.45rem;
+  }
+
+  .project-poster-eyebrow,
+  .project-poster-title,
+  .project-poster-strapline {
+    position: relative;
+    z-index: 2;
+    margin: 0;
+  }
+
+  .project-poster-eyebrow {
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: rgba(243, 249, 245, 0.74);
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.22);
+  }
+
+  .project-poster-title {
+    max-width: 11ch;
+    font-family: var(--font-display), "Noto Serif SC", serif;
+    font-size: clamp(1.8rem, 2vw, 2.5rem);
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+    color: rgba(250, 253, 251, 0.98);
+    text-wrap: balance;
+    text-shadow: 0 3px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .project-poster-strapline {
+    max-width: 22rem;
+    font-size: 0.92rem;
+    line-height: 1.7;
+    color: rgba(240, 247, 243, 0.88);
+    text-wrap: pretty;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.26);
+  }
+
+  .project-poster.is-compact .project-poster-copy {
+    padding: 1rem;
+  }
+
+  .project-poster.is-compact .project-poster-title {
+    max-width: 12ch;
+    font-size: clamp(1.55rem, 1.55vw, 2.05rem);
+  }
+
+  .project-poster.is-compact .project-poster-eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+  }
+
+  .project-poster.is-compact .project-poster-strapline {
+    max-width: 11rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .project-poster.is-hero .project-poster-copy {
+    padding: 1.7rem;
+  }
+
+  .project-poster.is-hero .project-poster-title {
+    max-width: 14ch;
+    font-size: clamp(2.5rem, 3.4vw, 4rem);
+  }
+
+  .project-poster.is-hero .project-poster-strapline {
+    max-width: 28rem;
+    font-size: 0.98rem;
+  }
+
+  .project-poster-grid,
+  .project-poster-line,
+  .project-poster-node,
+  .project-poster-stack,
+  .project-poster-orb {
+    position: absolute;
+    display: block;
+  }
+
+  .project-poster-grid {
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 3.5rem 3.5rem;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.28), transparent 84%);
+    opacity: 0.6;
+  }
+
+  .project-poster-orb {
+    border-radius: 999px;
+    filter: blur(12px);
+    opacity: 0.75;
+  }
+
+  .project-poster-orb-primary {
+    top: 1.2rem;
+    right: 1.5rem;
+    width: 6.5rem;
+    height: 6.5rem;
+    background: rgba(var(--project-tone-rgb), 0.5);
+  }
+
+  .project-poster-orb-secondary {
+    left: 1.4rem;
+    top: 4.2rem;
+    width: 4.3rem;
+    height: 4.3rem;
+    background: rgba(var(--project-glow-rgb), 0.34);
+  }
+
+  .project-poster-line {
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0));
+    opacity: 0.72;
+  }
+
+  .project-poster-line-a {
+    left: 12%;
+    top: 28%;
+    width: 62%;
+    height: 1px;
+  }
+
+  .project-poster-line-b {
+    right: 10%;
+    bottom: 28%;
+    width: 46%;
+    height: 1px;
+  }
+
+  .project-poster-node {
+    width: 0.58rem;
+    height: 0.58rem;
+    border-radius: 999px;
+    background: rgba(248, 252, 250, 0.9);
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+  }
+
+  .project-poster-node-a {
+    left: 18%;
+    top: 24%;
+  }
+
+  .project-poster-node-b {
+    left: 58%;
+    top: 28%;
+  }
+
+  .project-poster-node-c {
+    right: 18%;
+    bottom: 23%;
+  }
+
+  .project-poster-stack {
+    width: 5.5rem;
+    height: 3.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.1rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(2px);
+  }
+
+  .project-poster-stack-a {
+    left: 12%;
+    top: 20%;
+  }
+
+  .project-poster-stack-b {
+    right: 10%;
+    top: 42%;
+  }
+
+  .pattern-rings .project-poster-grid,
+  .pattern-beams .project-poster-grid,
+  .pattern-stack .project-poster-grid {
+    opacity: 0.36;
+  }
+
+  .pattern-rings .project-poster-line {
+    width: 9rem;
+    height: 9rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: none;
+    border-radius: 999px;
+  }
+
+  .pattern-rings .project-poster-line-a {
+    left: auto;
+    top: 1.2rem;
+    right: 1.4rem;
+  }
+
+  .pattern-rings .project-poster-line-b {
+    left: 1.4rem;
+    top: 4.3rem;
+    right: auto;
+    bottom: auto;
+    width: 5.8rem;
+    height: 5.8rem;
+  }
+
+  .pattern-rings .project-poster-node,
+  .pattern-rings .project-poster-stack {
+    display: none;
+  }
+
+  .pattern-grid .project-poster-line-a,
+  .pattern-grid .project-poster-line-b {
+    height: auto;
+    background: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
+    width: 0;
+  }
+
+  .pattern-grid .project-poster-line-a {
+    top: 14%;
+    bottom: 24%;
+    left: 24%;
+  }
+
+  .pattern-grid .project-poster-line-b {
+    top: 14%;
+    bottom: 18%;
+    right: 22%;
+  }
+
+  .pattern-beams .project-poster-line-a,
+  .pattern-beams .project-poster-line-b {
+    height: 1.15rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(var(--project-tone-rgb), 0.04), rgba(255, 255, 255, 0.3), rgba(var(--project-glow-rgb), 0.04));
+  }
+
+  .pattern-beams .project-poster-line-a {
+    left: 12%;
+    top: 26%;
+    width: 56%;
+    transform: rotate(-12deg);
+  }
+
+  .pattern-beams .project-poster-line-b {
+    right: 8%;
+    bottom: 26%;
+    width: 38%;
+    transform: rotate(-12deg);
+  }
+
+  .pattern-stack .project-poster-line,
+  .pattern-stack .project-poster-node {
+    display: none;
+  }
+
+  .pattern-stack .project-poster-stack-a {
+    left: 14%;
+    top: 16%;
+  }
+
+  .pattern-stack .project-poster-stack-b {
+    left: 21%;
+    top: 24%;
+  }
+
+  .pattern-ports .project-poster-grid {
+    opacity: 0.2;
+  }
+
+  .pattern-ports .project-poster-line,
+  .pattern-ports .project-poster-orb-secondary {
+    display: none;
+  }
+
+  .pattern-ports .project-poster-stack {
+    width: 2.7rem;
+    height: 5.6rem;
+    border-radius: 0.95rem;
+  }
+
+  .pattern-ports .project-poster-stack-a {
+    right: 2.7rem;
+    top: 2.2rem;
+  }
+
+  .pattern-ports .project-poster-stack-b {
+    right: 6.2rem;
+    top: 2.2rem;
+  }
+
+  .pattern-nodes .project-poster-stack {
+    display: none;
+  }
+
+  .pattern-nodes .project-poster-line-a {
+    left: 20%;
+    top: 26%;
+    width: 52%;
+    transform: rotate(10deg);
+  }
+
+  .pattern-nodes .project-poster-line-b {
+    left: 28%;
+    top: 46%;
+    width: 40%;
+    transform: rotate(-20deg);
+  }
+
+  .pattern-signal .project-poster-stack,
+  .pattern-signal .project-poster-node-b {
+    display: none;
+  }
+
+  .pattern-signal .project-poster-line-a,
+  .pattern-signal .project-poster-line-b {
+    height: 1.8rem;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0) 0 8%, rgba(255, 255, 255, 0.34) 8% 14%, rgba(255, 255, 255, 0) 14% 22%, rgba(255, 255, 255, 0.28) 22% 28%, rgba(255, 255, 255, 0) 28% 40%, rgba(255, 255, 255, 0.32) 40% 50%, rgba(255, 255, 255, 0) 50% 100%);
+  }
+
+  .pattern-signal .project-poster-line-a {
+    left: 10%;
+    top: 26%;
+    width: 68%;
+  }
+
+  .pattern-signal .project-poster-line-b {
+    left: 18%;
+    top: 43%;
+    width: 48%;
+  }
+
+  @media (max-width: 767px) {
+    .project-poster {
+      border-radius: 1.55rem;
+    }
+
+    .project-poster-title {
+      max-width: 100%;
+      font-size: clamp(1.7rem, 7vw, 2.2rem);
+    }
+
+    .project-poster-strapline {
+      max-width: 14rem;
+    }
+
+    .project-poster.is-hero {
+      aspect-ratio: 4 / 5;
+      min-height: 0;
+    }
+
+    .project-poster.is-hero .project-poster-title {
+      font-size: clamp(1.9rem, 8vw, 2.8rem);
+    }
+  }
+</style>

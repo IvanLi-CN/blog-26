@@ -192,8 +192,19 @@
     margin: 0 auto;
   }
 
+  .nature-detail-container {
+    width: var(--nature-content-width);
+    margin: 0 auto;
+  }
+
   .nature-reading-container {
     width: var(--nature-reading-width);
+    margin: 0 auto;
+  }
+
+  .nature-reading-measure {
+    width: 100%;
+    max-width: var(--nature-reading-width);
     margin: 0 auto;
   }
 
