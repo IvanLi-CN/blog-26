@@ -110,7 +110,7 @@ Shared capture contexts:
 
 ### Control density and preview code surface
 
-- Evidence binding `719844989e3499c674242f43c7016c6135a685b4`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- Evidence binding `ea824666e0305695f65702d39fa17af7ff182d60`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
 - Desktop primitives verify `32px` standard actions and fields, `28px` compact controls, and no oversized touch targets. The mobile shell restores `44px` buttons and icon tools. The preview uses its own low-brightness admin code surface instead of a public or GitHub highlighter default.
 
 ![Admin desktop control density](./assets/admin-control-density-desktop.png)

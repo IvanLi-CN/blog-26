@@ -15,6 +15,8 @@ Implementation state is tracked here while the `sftui` spec is active.
 - Storybook coverage is required for new and changed shared components.
 - Shared Markdown preview code now carries an explicit `admin` surface so preview tokens, background, radius, and desktop/touch padding remain independent from the public Nature frontend.
 - Admin control primitives use a fine-pointer desktop density contract of `32px` standard, `28px` compact, and `36px` explicit-large targets while preserving `44px` controls for touch and coarse pointers.
+- Storybook play coverage asserts the desktop primitive measurements and the `10px × 12px` admin code padding, preventing a later utility class or highlighter baseline from widening those controls or code blocks.
+- The primitive Storybook interaction checks portaled confirmation dialogs from the document root, preserving a real assertion for the local Radix dialog wrapper.
 - Visual evidence must be written back to the spec and shown in chat before PR handoff.
 - Demo mode is toggled on real admin URLs with `?demo=true|false`, remembered in `localStorage`, and never exposed through a standalone demo route.
 - The real admin `main.tsx` dynamically installs `setupAdminDemoApiMocks()` only when remembered demo mode is active, then renders the normal TanStack Router instance and shipped route tree.

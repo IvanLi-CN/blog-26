@@ -112,8 +112,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### Responsive control and dark code surface
 
-- Evidence binding `719844989e3499c674242f43c7016c6135a685b4`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
-- Fine-pointer desktop keeps the public navigation compact at `32px` and code at `12px × 14px` with a `12px` radius. The coarse-pointer mobile canvas restores `44px` navigation targets while retaining the same readable dark code surface.
+- Evidence binding `ea824666e0305695f65702d39fa17af7ff182d60`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- Fine-pointer desktop keeps the public navigation compact at `32px`, Memo text actions at `36px`, and code at `12px × 14px` with a `12px` radius. The coarse-pointer mobile canvas restores `44px` navigation targets while retaining the same readable dark code surface.
+- The dedicated desktop and mobile code stories use media-free Markdown fixtures so code-surface evidence does not depend on image-facade availability.
 
 ![Public dark code desktop](./assets/public-dark-code-desktop.png)
 
