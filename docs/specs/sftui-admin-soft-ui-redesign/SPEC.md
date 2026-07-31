@@ -72,7 +72,7 @@ Out of scope:
 5. Light and dark themes both render complete Soft UI surfaces with clear focus, hover, disabled, loading, empty, warning, success, and destructive states.
 6. Shared controls use local wrappers over Radix primitives where approved.
 7. Shipped admin files do not introduce DaisyUI classes.
-8. Storybook covers the redesigned primitives and representative page states.
+8. Storybook covers the redesigned primitives and representative page states; page-level fallback stories render the shipped shell and page components instead of maintaining hand-written visual mirrors.
 9. Visual evidence covers desktop, tablet, and mobile views for key admin workflows before PR handoff.
 10. Demo mode is toggled only on real `/admin/*` URLs with `?demo=true|false`, and the choice is remembered in `localStorage`.
 11. Demo-specific code is limited to API mocking and the tiny bootstrap needed to enable that mock layer; no standalone demo route exists, and the shell, pages, router, editor, navigation, and shared components are the shipped admin implementation.
@@ -110,8 +110,8 @@ Shared capture contexts:
 
 ### Control density and preview code surface
 
-- Evidence binding `ea824666e0305695f65702d39fa17af7ff182d60`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
-- Desktop primitives verify `32px` standard actions and fields, `28px` compact controls, and no oversized touch targets. The mobile shell restores `44px` buttons and icon tools. The preview uses its own low-brightness admin code surface instead of a public or GitHub highlighter default.
+- Evidence binding `21c6442e6136a5e02f4a3f65e73234f23be114a4`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, requested viewport `390px × 844px`, sensitive exclusion `N/A`.
+- Desktop primitives verify `32px` standard actions and fields, `28px` compact controls, and no oversized touch targets. The mobile evidence renders the shipped `AppShell` and `DashboardPage` with seeded query data, has no horizontal overflow, and verifies `44px` navigation and dialog-close targets. The preview uses its own low-brightness admin code surface instead of a public or GitHub highlighter default.
 
 ![Admin desktop control density](./assets/admin-control-density-desktop.png)
 
