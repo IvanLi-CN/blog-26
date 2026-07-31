@@ -84,6 +84,8 @@ Out of scope:
 17. Database-backed post editing uses the same authoring-document shape as file-backed Markdown only at the editor boundary: opening a DB post reconstructs a temporary frontmatter document from structured fields plus clean body, while saving splits it back into structured metadata plus body-only canonical storage.
 18. Admin preview routes surface publication state clearly inside the Soft UI chrome: published posts keep the public-page action, while draft or non-public posts show a disabled explanatory control instead of a broken public CTA.
 19. The Soft UI admin preview surface must remain visually complete even when a draft post is not publicly reachable: hero and inline media still render for admins, and image failure in the public assets chain must not collapse authoring preview readability.
+20. At `min-width: 1024px` with a fine pointer, standard admin actions and fields use `32px`, compact tools, icons, checkboxes, radios, switches, and tabs use `28px`, and explicit large actions use `36px`; every interactive control uses at least `44px` outside that condition.
+21. Admin previews pass `surface="admin"` to the shared Markdown renderer. Their fenced code blocks use the admin dark blue-gray code surface, scoped syntax tokens, `10px × 12px` desktop padding, a `10px` radius, and at least `12px` padding on touch layouts.
 
 ## 7. Validation
 
@@ -93,6 +95,8 @@ Out of scope:
 - `bun run build-storybook`
 - Existing admin Playwright coverage for auth, SPA routing, PATs, memos/admin where relevant, and LLM settings
 - Targeted admin editor coverage for frontmatter autocomplete, diagnostics, and save blocking
+- `bun test apps/admin/src/components/preview-detail.test.tsx src/components/common/markdown/components/CodeBlock.test.tsx`
+- `PLAYWRIGHT_DISABLE_WEBSERVER=1 BASE_URL=http://127.0.0.1:<leased-port> bunx playwright test --project=admin --grep "admin code surface"`
 - Browser visual verification from deterministic local preview or Storybook surfaces
 
 ## 8. Visual Evidence
@@ -103,6 +107,17 @@ Shared capture contexts:
 
 - Seeded preview baseline: deterministic local production preview using Playwright test data, `target_program=local test preview app`, `capture_scope=browser-viewport`, `viewport_strategy=playwright-viewport`, `source_type=mock_ui`, evidence binding `c1ade722`
 - Real admin route verification: local Vite admin preview on shipped `/admin/*` routes with demo API mocks enabled through `?demo=true` and `localStorage["admin-demo-mode"]`
+
+### Control density and preview code surface
+
+- Evidence binding `719844989e3499c674242f43c7016c6135a685b4`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- Desktop primitives verify `32px` standard actions and fields, `28px` compact controls, and no oversized touch targets. The mobile shell restores `44px` buttons and icon tools. The preview uses its own low-brightness admin code surface instead of a public or GitHub highlighter default.
+
+![Admin desktop control density](./assets/admin-control-density-desktop.png)
+
+![Admin mobile control density](./assets/admin-control-density-mobile.png)
+
+![Admin preview dark code](./assets/admin-preview-dark-code.png)
 
 ### Route Baseline
 
@@ -226,7 +241,7 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 Verified on `/admin/posts?demo=true`.
 
 - Filter alignment: labels and controls share a single grid rhythm with `0px` top and bottom deltas, and batch actions stay on one line
-- Desktop density: desktop controls render at `40px` height with `12px` radius while keeping the aligned filter rhythm
+- Desktop density: standard action and field controls render at `32px`, compact tools and table actions at `28px`, and explicit large actions at `36px`; coarse-pointer layouts restore `44px` targets
 - Sidebar footer and bottom actions: the left sidebar keeps compact identity details, theme toggle, and public-site entry; branch/version/commit clutter is absent
 - Main chrome cleanup: the right content area has no duplicated theme/public-site controls or workspace breadcrumb row
 - Header compaction: the page header measures `76px` high on desktop and the title block centerline aligns with the action group
