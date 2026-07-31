@@ -112,7 +112,7 @@ function PublicShell({
               </nav>
 
               <div className="order-2 ml-auto flex items-center gap-3 md:order-3">
-                <label className="nature-input-shell hidden min-w-[20rem] items-center xl:flex">
+                <label className="nature-input-shell nature-header-search hidden min-w-[20rem] items-center xl:flex">
                   <Icon
                     name="tabler:search"
                     className="h-5 w-5 text-[color:var(--nature-text-faint)]"

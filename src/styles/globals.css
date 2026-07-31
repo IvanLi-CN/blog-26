@@ -1445,6 +1445,13 @@ html[data-ui-theme="dark"] .nature-search-submit {
     padding: 0.3rem 0.65rem;
   }
 
+  .nature-header-search {
+    height: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.875rem;
+    gap: 0.55rem;
+  }
+
   .theme-toggle-option {
     min-width: 2rem;
     padding: 0.3rem 0.55rem;

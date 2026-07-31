@@ -172,7 +172,7 @@ function PublicDocumentShell({
 
               <div className="order-2 ml-auto flex items-center gap-3 md:order-3">
                 <form action="/search" method="get" className="hidden items-center xl:flex">
-                  <label className="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
+                  <label className="nature-input-shell nature-header-search min-w-[20rem] 2xl:min-w-[22rem]">
                     <Icon
                       name="tabler:search"
                       className="h-5 w-5 text-[color:var(--nature-text-faint)]"
@@ -350,7 +350,9 @@ export const PersistentRouteProgress: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("status", { name: /正在打开页面/ })).toBeVisible();
-    await expect(canvas.getByPlaceholderText("搜索文章...")).toBeInTheDocument();
+    const headerSearch = canvas.getByPlaceholderText("搜索文章...").closest("label");
+    await expect(headerSearch).toBeInTheDocument();
+    expect(headerSearch?.getBoundingClientRect().height).toBe(36);
     await expect(canvas.getByRole("button", { name: "Light" })).toBeVisible();
     await expect(canvas.getByRole("heading", { name: "路由反馈与文档加载体验" })).toBeVisible();
     await expect(canvas.getByRole("main")).toHaveAttribute("aria-busy", "true");
