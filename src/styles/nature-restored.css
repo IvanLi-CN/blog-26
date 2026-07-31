@@ -607,29 +607,6 @@
     padding: clamp(1rem, 3vw, 1.5rem);
   }
 
-  .nature-markdown-interaction-note {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    margin-bottom: 1.25rem;
-    border-radius: 999px;
-    border: 1px solid rgba(var(--nature-border-rgb), 0.18);
-    background: rgba(var(--nature-highlight-rgb), 0.18);
-    padding: 0.48rem 0.76rem;
-    color: var(--nature-text-soft);
-    font-size: 0.82rem;
-    font-weight: 600;
-  }
-
-  .nature-markdown-interaction-mark {
-    width: 0.48rem;
-    height: 0.48rem;
-    flex: 0 0 auto;
-    border-radius: 999px;
-    background: var(--nature-accent-strong);
-    box-shadow: 0 0 0 0.2rem rgba(var(--nature-accent-rgb), 0.14);
-  }
-
   .nature-feedback-link,
   .nature-link-inline {
     color: var(--nature-accent-strong);

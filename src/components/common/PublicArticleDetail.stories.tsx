@@ -238,13 +238,7 @@ function PublicDocumentShell({
                   用稳定的反馈告诉读者页面正在切换，同时把重型文档交互延后到需要时加载。
                 </p>
               </header>
-              <div className="nature-panel px-6 py-7 sm:px-8">
-                <div className="nature-markdown-interaction-note">
-                  <span className="nature-markdown-interaction-mark" aria-hidden="true" />
-                  <span>正文已可阅读，图片灯箱和代码折叠会按需启用</span>
-                </div>
-                {children}
-              </div>
+              <div className="nature-panel px-6 py-7 sm:px-8">{children}</div>
             </article>
           </section>
         </main>
