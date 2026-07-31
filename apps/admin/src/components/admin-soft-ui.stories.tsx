@@ -530,7 +530,9 @@ export const Primitives: Story = {
     await expect(canvas.getByRole("button", { name: "主要操作" })).toHaveClass("admin-button");
     await expect(canvas.getByLabelText("状态")).toHaveClass("admin-field-control");
     await userEvent.click(canvas.getByRole("button", { name: "删除" }));
-    await expect(canvas.getByRole("dialog", { name: "删除访问令牌" })).toBeInTheDocument();
+    await expect(
+      within(document.body).getByRole("dialog", { name: "删除访问令牌" })
+    ).toBeInTheDocument();
   },
 };
 
