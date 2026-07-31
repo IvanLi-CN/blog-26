@@ -1422,9 +1422,10 @@ html[data-ui-theme="dark"] .nature-search-submit {
 
 @media (min-width: 1024px) and (pointer: fine) {
   .nature-button {
+    height: 2.25rem;
     min-height: 2.25rem;
     gap: 0.45rem;
-    padding: 0.4rem 0.8rem;
+    padding: 0 0.8rem;
   }
 
   :where(.nature-icon-button) {

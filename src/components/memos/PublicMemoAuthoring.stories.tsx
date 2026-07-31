@@ -366,6 +366,9 @@ export const LiveDetailControls: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId("public-memo-detail-controls")).toBeVisible();
     await expect(canvas.getByTestId("admin-live-memo-delete")).toBeVisible();
+    for (const action of canvasElement.querySelectorAll(".nature-button")) {
+      expect(action.getBoundingClientRect().height).toBe(36);
+    }
     await expect(canvas.getByTestId("public-memo-detail-body")).toContainText(
       "Keeps the public memo reading shell intact."
     );

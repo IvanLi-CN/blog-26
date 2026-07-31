@@ -156,7 +156,7 @@ function PublicDocumentShell({
                     <li key={link.href}>
                       <a
                         href={link.href}
-                        className={`nature-nav-link gap-2 rounded-full px-4 py-2 transition ${
+                        className={`nature-nav-link gap-2 rounded-full px-4 transition ${
                           link.active
                             ? "aw-link-active"
                             : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
@@ -392,6 +392,11 @@ export const DarkArticle: Story = {
     const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
     await expect(codeBlock).not.toBeNull();
     await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+    const code = codeBlock?.querySelector("code");
+    await expect(code).not.toBeNull();
+    expect(getComputedStyle(codeBlock as HTMLElement).borderRadius).toBe("12px");
+    expect(getComputedStyle(code as HTMLElement).padding).toBe("12px 14px");
+    expect(getComputedStyle(code as HTMLElement).color).not.toBe("rgb(0, 0, 0)");
   },
 };
 

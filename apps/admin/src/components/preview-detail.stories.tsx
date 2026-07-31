@@ -193,5 +193,10 @@ export const DarkCodeSurface: Story = {
     const codeBlock = canvasElement.querySelector('[data-markdown-surface="admin"] pre');
     await expect(codeBlock).not.toBeNull();
     await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+    const code = codeBlock?.querySelector("code");
+    await expect(code).not.toBeNull();
+    expect(getComputedStyle(codeBlock as HTMLElement).borderRadius).toBe("10px");
+    expect(getComputedStyle(code as HTMLElement).padding).toBe("10px 12px");
+    expect(getComputedStyle(code as HTMLElement).color).not.toBe("rgb(0, 0, 0)");
   },
 };

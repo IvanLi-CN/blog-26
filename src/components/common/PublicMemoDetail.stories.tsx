@@ -97,7 +97,7 @@ function PublicShell({
                     <li key={link.href}>
                       <a
                         href={link.href}
-                        className={`nature-nav-link gap-2 rounded-full px-4 py-2 transition ${
+                        className={`nature-nav-link gap-2 rounded-full px-4 transition ${
                           link.active
                             ? "aw-link-active"
                             : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"

@@ -527,8 +527,16 @@ export const Primitives: Story = {
   render: () => <PrimitiveGallery />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: "主要操作" })).toHaveClass("admin-button");
-    await expect(canvas.getByLabelText("状态")).toHaveClass("admin-field-control");
+    const primaryAction = canvas.getByRole("button", { name: "主要操作" });
+    const statusField = canvas.getByLabelText("状态");
+    const stateCheckbox = canvas.getByLabelText("选择同步状态");
+    const overviewTab = canvas.getByRole("tab", { name: "概览" });
+    await expect(primaryAction).toHaveClass("admin-button");
+    await expect(statusField).toHaveClass("admin-field-control");
+    expect(primaryAction.getBoundingClientRect().height).toBe(32);
+    expect(statusField.getBoundingClientRect().height).toBe(32);
+    expect(stateCheckbox.getBoundingClientRect().height).toBe(28);
+    expect(overviewTab.getBoundingClientRect().height).toBe(28);
     await userEvent.click(canvas.getByRole("button", { name: "删除" }));
     await expect(
       within(document.body).getByRole("dialog", { name: "删除访问令牌" })
