@@ -325,20 +325,30 @@ function PrimitiveGallery() {
           <CardDescription>搜索、筛选、状态切换与常用操作。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 lg:grid-cols-2">
-          <div className="space-y-3">
-            <FieldLabel>搜索</FieldLabel>
-            <div className="flex gap-2">
-              <Input placeholder="标题、slug、正文关键字" />
-              <Button>
-                <Search className="size-4" />
-                搜索
-              </Button>
+          <div
+            className="grid gap-4 lg:col-span-2 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end"
+            data-testid="aligned-filter-controls"
+          >
+            <div className="grid min-w-0 gap-2">
+              <FieldLabel className="mb-0">搜索</FieldLabel>
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <Input aria-label="搜索内容" placeholder="标题、slug、正文关键字" />
+                <Button>
+                  <Search className="size-4" />
+                  搜索
+                </Button>
+              </div>
             </div>
-            <Select value="all" onChange={() => undefined} aria-label="状态">
-              <option value="all">全部</option>
-              <option value="published">已发布</option>
-              <option value="draft">草稿</option>
-            </Select>
+            <div className="grid min-w-0 gap-2">
+              <FieldLabel className="mb-0">状态</FieldLabel>
+              <Select value="all" onChange={() => undefined} aria-label="状态">
+                <option value="all">全部</option>
+                <option value="published">已发布</option>
+                <option value="draft">草稿</option>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Button>主要操作</Button>
               <Button variant="secondary">辅助操作</Button>
@@ -602,6 +612,7 @@ export const Primitives: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const primaryAction = canvas.getByRole("button", { name: "主要操作" });
+    const searchField = canvas.getByLabelText("搜索内容");
     const statusField = canvas.getByLabelText("状态");
     const stateCheckbox = canvas.getByLabelText("选择同步状态");
     const overviewTab = canvas.getByRole("tab", { name: "概览" });
@@ -609,6 +620,9 @@ export const Primitives: Story = {
     await expect(statusField).toHaveClass("admin-field-control");
     expect(primaryAction.getBoundingClientRect().height).toBe(32);
     expect(statusField.getBoundingClientRect().height).toBe(32);
+    expect(
+      Math.abs(searchField.getBoundingClientRect().top - statusField.getBoundingClientRect().top)
+    ).toBeLessThanOrEqual(1);
     expect(stateCheckbox.getBoundingClientRect().height).toBe(28);
     expect(overviewTab.getBoundingClientRect().height).toBe(28);
     await userEvent.click(canvas.getByRole("button", { name: "删除" }));

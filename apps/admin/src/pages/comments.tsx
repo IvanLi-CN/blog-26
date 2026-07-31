@@ -102,10 +102,10 @@ export function CommentsPage() {
       ) : null}
 
       <Card>
-        <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_220px]">
-          <form className="grid gap-2" onSubmit={submitSearch}>
-            <FieldLabel>搜索评论</FieldLabel>
-            <div className="flex gap-2">
+        <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
+          <form className="grid min-w-0 gap-2" onSubmit={submitSearch}>
+            <FieldLabel className="mb-0">搜索评论</FieldLabel>
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
               <Input
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
@@ -114,8 +114,8 @@ export function CommentsPage() {
               <Button type="submit">搜索</Button>
             </div>
           </form>
-          <div>
-            <FieldLabel>状态</FieldLabel>
+          <div className="grid min-w-0 gap-2">
+            <FieldLabel className="mb-0">状态</FieldLabel>
             <Select
               value={status}
               onChange={(event) => {
