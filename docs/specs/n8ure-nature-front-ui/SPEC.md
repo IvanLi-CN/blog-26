@@ -45,7 +45,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
-- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; article detail may show static interaction guidance, but neither page may expose a persistent live loading state after content is readable.
+- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; neither page may expose a persistent live loading state or static interaction guidance after content is readable.
 
 ### 4.4 Responsive control and code density
 
@@ -112,8 +112,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### Responsive control and dark code surface
 
-- Evidence binding `ea824666e0305695f65702d39fa17af7ff182d60`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
-- Fine-pointer desktop keeps the public navigation compact at `32px`, Memo text actions at `36px`, and code at `12px × 14px` with a `12px` radius. The coarse-pointer mobile canvas restores `44px` navigation targets while retaining the same readable dark code surface.
+- Evidence binding `71712d2721d8f5f88380e5c2c619234016a516f7`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, sensitive exclusion `N/A`.
+- Fine-pointer desktop keeps the public navigation compact at `32px`, Memo text actions at `36px`, and code at `12px × 14px` with a `12px` radius. The coarse-pointer mobile canvas restores `44px` navigation targets while retaining the same readable dark code surface. Both canvases confirm that the obsolete article interaction hint is absent.
 - The dedicated desktop and mobile code stories use media-free Markdown fixtures so code-surface evidence does not depend on image-facade availability.
 
 ![Public dark code desktop](./assets/public-dark-code-desktop.png)
