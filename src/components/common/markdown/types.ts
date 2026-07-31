@@ -11,6 +11,8 @@ export interface MarkdownRendererProps {
   content: string;
   /** 自定义 CSS 类名 */
   className?: string;
+  /** Render surface for code and inline-code presentation. */
+  surface?: "public" | "admin";
   /** 渲染变体，影响样式和行为 */
   variant?: "article" | "memo" | "preview";
   /** 是否启用数学公式渲染 */

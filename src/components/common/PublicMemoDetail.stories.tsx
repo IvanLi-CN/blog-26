@@ -83,7 +83,7 @@ function PublicShell({
             <div className="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
               <a
                 href="/"
-                className="inline-flex min-h-11 min-w-fit items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
+                className="nature-brand-link min-w-fit pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
               >
                 Ivan's Blog
               </a>
@@ -97,7 +97,7 @@ function PublicShell({
                     <li key={link.href}>
                       <a
                         href={link.href}
-                        className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 transition ${
+                        className={`nature-nav-link gap-2 rounded-full px-4 py-2 transition ${
                           link.active
                             ? "aw-link-active"
                             : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"

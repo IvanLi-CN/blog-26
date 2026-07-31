@@ -22,7 +22,7 @@ function isActive(href: string) {
     <div class="nature-surface relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 px-3 py-3 sm:gap-3 sm:px-5">
       <a
         href={toPublicSitePath("/")}
-        class="inline-flex min-h-11 shrink-0 items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
+        class="nature-brand-link min-w-fit shrink-0 pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
       >
         {SITE.name}
       </a>
@@ -58,7 +58,7 @@ function isActive(href: string) {
             <li>
               <a
                 href={toPublicSitePath(link.href)}
-                class={`inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full px-2 py-2 transition sm:gap-2 sm:px-3 md:w-auto md:justify-start md:px-4 ${
+                class={`nature-nav-link w-full justify-center gap-1 rounded-full px-2 py-2 transition sm:gap-2 sm:px-3 md:w-auto md:justify-start md:px-4 ${
                   isActive(link.href)
                     ? "aw-link-active"
                     : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"

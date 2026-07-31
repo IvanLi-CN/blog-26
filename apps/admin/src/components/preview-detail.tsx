@@ -224,7 +224,7 @@ export function PreviewArticleShell({
 
       <div
         className={cn(
-          "rounded-[1.6rem] border border-border/54 bg-background/88 px-5 py-6 shadow-inner shadow-shadow-inset sm:px-6",
+          "admin-editor-preview rounded-[1.6rem] border border-border/54 bg-background/88 px-5 py-6 shadow-inner shadow-shadow-inset sm:px-6",
           bodyClassName
         )}
         data-testid={bodyTestId}
@@ -232,6 +232,7 @@ export function PreviewArticleShell({
         <MarkdownRenderer
           content={body || ""}
           variant="article"
+          surface="admin"
           articlePath={articlePath}
           contentSource="local"
           publicMediaContext={publicMediaContext}

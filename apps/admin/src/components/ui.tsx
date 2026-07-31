@@ -69,10 +69,11 @@ export function Button({
           "bg-muted/54 text-muted-foreground hover:bg-muted/78 hover:text-foreground",
         variant === "destructive" &&
           "bg-destructive text-destructive-foreground shadow-lg shadow-destructive/16 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-destructive/22",
-        size === "default" && "h-11 px-5 py-2.5 lg:h-10 lg:px-4 lg:py-2",
-        size === "sm" && "h-11 rounded-2xl px-3.5 text-xs sm:h-9 lg:rounded-[0.75rem]",
-        size === "lg" && "h-12 px-6 text-base lg:h-11 lg:px-5",
-        size === "icon" && "size-11 p-0 sm:size-10 lg:size-9",
+        "admin-button",
+        size === "default" && "h-11 px-5 py-2.5",
+        size === "sm" && "admin-button-sm h-11 rounded-2xl px-3.5 text-xs",
+        size === "lg" && "admin-button-lg h-11 px-6 text-base",
+        size === "icon" && "admin-button-icon size-11 p-0",
         className
       )}
       {...props}
@@ -173,7 +174,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "flex h-11 w-full rounded-2xl border-0 bg-input-surface px-4 py-3 text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50 lg:h-10 lg:rounded-[0.75rem] lg:px-3.5 lg:py-2",
+        "admin-field-control flex h-11 w-full rounded-2xl border-0 bg-input-surface px-4 py-3 text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 placeholder:text-muted-foreground/72 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -250,7 +251,7 @@ export function Select({
       <SelectPrimitive.Trigger
         id={props.id}
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50 lg:h-10 lg:rounded-[0.75rem] lg:px-3.5 lg:py-2",
+          "admin-field-control flex h-11 w-full items-center justify-between gap-3 rounded-2xl border-0 bg-input-surface px-4 py-3 text-left text-sm text-foreground shadow-inner shadow-shadow-inset transition-all duration-200 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         {...props}
@@ -296,7 +297,7 @@ export const Checkbox = forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "peer size-11 shrink-0 rounded-2xl bg-input-surface shadow-inner shadow-shadow-inset ring-1 ring-border/64 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground sm:size-5",
+      "admin-checkbox peer size-11 shrink-0 rounded-2xl bg-input-surface shadow-inner shadow-shadow-inset ring-1 ring-border/64 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
       className
     )}
     {...props}
@@ -317,7 +318,7 @@ export const RadioGroupItem = forwardRef<
   <RadioGroupPrimitive.Item
     ref={ref}
     className={cn(
-      "aspect-square size-5 rounded-full bg-input-surface shadow-inner shadow-shadow-inset ring-1 ring-border/64 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:ring-primary",
+      "admin-radio-control aspect-square size-11 rounded-full bg-input-surface shadow-inner shadow-shadow-inset ring-1 ring-border/64 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:ring-primary",
       className
     )}
     {...props}
@@ -336,12 +337,12 @@ export const Switch = forwardRef<
   <SwitchPrimitive.Root
     ref={ref}
     className={cn(
-      "peer inline-flex h-11 w-14 shrink-0 cursor-pointer items-center rounded-full bg-muted px-1 shadow-inner shadow-shadow-inset transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary sm:h-6 sm:w-11 sm:px-0",
+      "admin-switch peer inline-flex h-11 w-14 shrink-0 cursor-pointer items-center rounded-full bg-muted px-1 shadow-inner shadow-shadow-inset transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary",
       className
     )}
     {...props}
   >
-    <SwitchPrimitive.Thumb className="pointer-events-none block size-6 rounded-full bg-card shadow-md shadow-shadow-soft transition-transform data-[state=checked]:translate-x-6 sm:size-5 sm:translate-x-0.5 sm:data-[state=checked]:translate-x-5" />
+    <SwitchPrimitive.Thumb className="admin-switch-thumb pointer-events-none block size-6 rounded-full bg-card shadow-md shadow-shadow-soft transition-transform data-[state=checked]:translate-x-6" />
   </SwitchPrimitive.Root>
 ));
 Switch.displayName = SwitchPrimitive.Root.displayName;
@@ -502,7 +503,7 @@ export function CodeBlock({ className, children }: { className?: string; childre
   return (
     <pre
       className={cn(
-        "admin-scrollbar overflow-x-auto rounded-3xl border border-border/58 bg-code-surface p-4 text-xs leading-6 shadow-inner shadow-shadow-inset lg:rounded-[1rem]",
+        "admin-code-block admin-scrollbar overflow-x-auto rounded-3xl border border-border/58 bg-code-surface p-3 text-xs leading-6 shadow-inner shadow-shadow-inset",
         className
       )}
     >
@@ -806,7 +807,7 @@ export const TabsTrigger = forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium text-muted-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-shadow-soft disabled:pointer-events-none disabled:opacity-50 sm:min-h-9 lg:min-h-8 lg:rounded-[0.75rem] lg:px-3 lg:py-1.5",
+      "admin-tabs-trigger inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium text-muted-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-shadow-soft disabled:pointer-events-none disabled:opacity-50",
       className
     )}
     {...props}

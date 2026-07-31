@@ -24,6 +24,18 @@ function seedContaminatedPreviewPost() {
   );
 }
 
+function seedAdminCodeSurfacePost() {
+  const body = "# 管理端代码预览\n\n```ts\nconst answer = 42;\n```";
+  execFileSync(
+    "python3",
+    [
+      "-c",
+      `import sqlite3\nconn = sqlite3.connect(${JSON.stringify(DB_PATH)})\nconn.execute("UPDATE posts SET image = NULL, body = ?, excerpt = NULL WHERE slug = ?", (${JSON.stringify(body)}, "usb-c-safe-5v-sink"))\nconn.commit()\nconn.close()`,
+    ],
+    { stdio: "pipe" }
+  );
+}
+
 test.describe("Admin preview detail", () => {
   test.beforeEach(() => {
     seedContaminatedPreviewPost();
@@ -158,6 +170,26 @@ test.describe("Admin preview detail", () => {
         { timeout: 30_000 }
       )
       .toBeGreaterThan(0);
+  });
+
+  test("draft preview uses the admin code surface without media dependencies", async ({ page }) => {
+    seedAdminCodeSurfacePost();
+    await page.request.post("/api/dev/login", {
+      data: { email: ADMIN_EMAIL },
+    });
+
+    await page.goto("/admin/preview/posts/usb-c-safe-5v-sink", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
+
+    const previewBody = page.getByTestId("admin-preview-post-body");
+    const previewCodeBlock = previewBody.locator('[data-markdown-surface="admin"] pre');
+    await expect(previewCodeBlock).toBeVisible();
+    await expect(previewCodeBlock.locator("code")).toContainText("const answer = 42;");
+    await expect(previewCodeBlock).toHaveCSS("border-top-left-radius", "10px");
+    await expect(previewCodeBlock).not.toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(page.getByTestId("admin-preview-hero")).toHaveCount(0);
   });
 
   test("memo preview keeps detail shell without hero and suppresses excerpt area", async ({

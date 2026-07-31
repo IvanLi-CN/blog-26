@@ -41,6 +41,19 @@ ${Array.from(
 \`\`\`
 `;
 
+const codeSurfaceMarkdown = `
+## 深色代码表面
+
+代码块应保留低亮度背景、清晰正文前景与语法 token，不依赖高亮库的默认主题。
+
+\`\`\`ts
+const controlDensity = {
+  desktop: "36px actions / 32px navigation",
+  touch: "44px targets",
+};
+\`\`\`
+`;
+
 const publicMediaMarkdown = `
 下面的正文媒体应该在公开前台被统一改写为 blog 自己的 assets 门面 URL。
 
@@ -129,7 +142,7 @@ function PublicDocumentShell({
             <div className="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
               <a
                 href="/"
-                className="inline-flex min-h-11 min-w-fit items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
+                className="nature-brand-link min-w-fit pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
               >
                 Ivan's Blog
               </a>
@@ -143,7 +156,7 @@ function PublicDocumentShell({
                     <li key={link.href}>
                       <a
                         href={link.href}
-                        className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 transition ${
+                        className={`nature-nav-link gap-2 rounded-full px-4 py-2 transition ${
                           link.active
                             ? "aw-link-active"
                             : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
@@ -375,13 +388,60 @@ export const DarkArticle: Story = {
       />
     </PublicDocumentShell>
   ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    await expect(codeBlock).not.toBeNull();
+    await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+  },
+};
+
+export const DarkCodeSurface: Story = {
+  name: "深色代码表面",
+  render: () => (
+    <PublicDocumentShell theme="dark">
+      <MarkdownRenderer content={codeSurfaceMarkdown} variant="article" enableCodeFolding />
+    </PublicDocumentShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    await expect(codeBlock).not.toBeNull();
+    await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+  },
 };
 
 export const MobileArticle: Story = {
   name: "移动宽度文档",
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
   render: () => (
-    <PublicDocumentShell compact>
+    <PublicDocumentShell compact theme="dark">
       <MarkdownRenderer content={articleMarkdown} variant="article" enableCodeFolding />
     </PublicDocumentShell>
   ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    await expect(codeBlock).not.toBeNull();
+  },
+};
+
+export const MobileDarkCodeSurface: Story = {
+  name: "移动深色代码表面",
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+  render: () => (
+    <PublicDocumentShell compact theme="dark">
+      <MarkdownRenderer content={codeSurfaceMarkdown} variant="article" enableCodeFolding />
+    </PublicDocumentShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    await expect(codeBlock).not.toBeNull();
+    await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+  },
 };

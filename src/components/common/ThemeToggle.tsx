@@ -60,7 +60,7 @@ export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps)
           key={theme}
           type="button"
           onClick={() => setTheme(theme)}
-          className="theme-toggle-option inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3 text-sm transition"
+          className="theme-toggle-option inline-flex min-w-11 items-center justify-center gap-2 rounded-full px-3 text-sm transition"
           data-theme-option={theme}
           aria-pressed={currentTheme === theme}
           title={label}

@@ -1,0 +1,160 @@
+/* The renderer owns the code treatment so highlighter defaults cannot leak across surfaces. */
+[data-markdown-surface] pre {
+  margin: 1rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--markdown-code-border);
+  border-radius: var(--markdown-code-radius);
+  background: var(--markdown-code-background);
+  box-shadow: inset 0 1px 0 var(--markdown-code-inset);
+  scrollbar-color: var(--markdown-code-scrollbar) transparent;
+}
+
+[data-markdown-surface] pre > code {
+  display: block;
+  min-width: max-content;
+  padding: var(--markdown-code-padding-y) var(--markdown-code-padding-x);
+  background: transparent;
+  color: var(--markdown-code-foreground);
+  font-size: 0.875em;
+  line-height: 1.65;
+}
+
+[data-markdown-surface] code:not(pre code) {
+  border: 1px solid var(--markdown-inline-code-border);
+  background: var(--markdown-inline-code-background);
+  color: var(--markdown-inline-code-foreground);
+}
+
+[data-markdown-surface] :is(.collapsible-code-expand-btn, .collapsible-code-collapse-btn) {
+  min-height: 44px;
+  border-color: var(--markdown-code-border);
+  background: var(--markdown-code-background);
+  color: var(--markdown-code-foreground);
+}
+
+[data-markdown-surface] pre > code.hljs,
+[data-markdown-surface] .hljs {
+  background: transparent;
+  color: var(--markdown-code-foreground);
+}
+
+[data-markdown-surface] .hljs-subst,
+[data-markdown-surface] .hljs-punctuation {
+  color: var(--markdown-code-foreground);
+}
+
+[data-markdown-surface] .hljs-comment,
+[data-markdown-surface] .hljs-quote {
+  color: var(--markdown-code-comment);
+}
+
+[data-markdown-surface] .hljs-keyword,
+[data-markdown-surface] .hljs-selector-tag,
+[data-markdown-surface] .hljs-meta .hljs-keyword,
+[data-markdown-surface] .hljs-doctag {
+  color: var(--markdown-code-keyword);
+}
+
+[data-markdown-surface] .hljs-string,
+[data-markdown-surface] .hljs-attr,
+[data-markdown-surface] .hljs-regexp,
+[data-markdown-surface] .hljs-template-variable {
+  color: var(--markdown-code-string);
+}
+
+[data-markdown-surface] .hljs-number,
+[data-markdown-surface] .hljs-literal,
+[data-markdown-surface] .hljs-symbol,
+[data-markdown-surface] .hljs-bullet {
+  color: var(--markdown-code-number);
+}
+
+[data-markdown-surface] .hljs-title,
+[data-markdown-surface] .hljs-title.class_,
+[data-markdown-surface] .hljs-title.class_.inherited__,
+[data-markdown-surface] .hljs-title.function_,
+[data-markdown-surface] .hljs-function .hljs-title,
+[data-markdown-surface] .hljs-property {
+  color: var(--markdown-code-function);
+}
+
+[data-markdown-surface] .hljs-variable,
+[data-markdown-surface] .hljs-name,
+[data-markdown-surface] .hljs-params,
+[data-markdown-surface] .hljs-attribute {
+  color: var(--markdown-code-variable);
+}
+
+[data-markdown-surface] .hljs-built_in,
+[data-markdown-surface] .hljs-type,
+[data-markdown-surface] .hljs-link {
+  color: var(--markdown-code-literal);
+}
+
+[data-markdown-surface] .hljs-meta,
+[data-markdown-surface] .hljs-selector-id,
+[data-markdown-surface] .hljs-selector-class,
+[data-markdown-surface] .hljs-section {
+  color: var(--markdown-code-meta);
+}
+
+[data-markdown-surface="public"] {
+  --markdown-code-radius: 12px;
+  --markdown-code-padding-y: 12px;
+  --markdown-code-padding-x: 14px;
+  --markdown-code-background: color-mix(in srgb, var(--nature-bg) 86%, #07110c);
+  --markdown-code-border: rgba(var(--nature-border-rgb), 0.28);
+  --markdown-code-inset: rgba(255, 255, 255, 0.035);
+  --markdown-code-scrollbar: rgba(var(--nature-border-rgb), 0.48);
+  --markdown-code-foreground: var(--nature-code-foreground);
+  --markdown-code-comment: var(--nature-code-comment);
+  --markdown-code-keyword: var(--nature-code-keyword);
+  --markdown-code-string: var(--nature-code-string);
+  --markdown-code-number: var(--nature-code-number);
+  --markdown-code-function: var(--nature-code-function);
+  --markdown-code-variable: var(--nature-code-variable);
+  --markdown-code-literal: var(--nature-code-literal);
+  --markdown-code-meta: var(--nature-code-meta);
+  --markdown-inline-code-background: color-mix(in srgb, var(--nature-bg) 72%, #101f17);
+  --markdown-inline-code-border: rgba(var(--nature-border-rgb), 0.3);
+  --markdown-inline-code-foreground: var(--nature-code-foreground);
+}
+
+[data-markdown-surface="admin"] {
+  --markdown-code-radius: 10px;
+  --markdown-code-padding-y: 12px;
+  --markdown-code-padding-x: 12px;
+  --markdown-code-background: var(--editor-code-bg, #111b26);
+  --markdown-code-border: var(--border, #334155);
+  --markdown-code-inset: rgba(255, 255, 255, 0.03);
+  --markdown-code-scrollbar: color-mix(in oklch, var(--border, #334155) 86%, transparent);
+  --markdown-code-foreground: var(--editor-code-foreground, #d7e1e9);
+  --markdown-code-comment: var(--editor-code-comment, #8d9daa);
+  --markdown-code-keyword: var(--editor-code-keyword, #e7a18d);
+  --markdown-code-string: var(--editor-code-string, #9ac8eb);
+  --markdown-code-number: var(--editor-code-number, #9dc6eb);
+  --markdown-code-function: var(--editor-code-function, #c5afe8);
+  --markdown-code-variable: var(--editor-code-variable, #98cbae);
+  --markdown-code-literal: var(--editor-code-literal, #dfc488);
+  --markdown-code-meta: var(--editor-code-meta, #a2b8db);
+  --markdown-inline-code-background: var(--editor-inline-code-bg, #1f2d3a);
+  --markdown-inline-code-border: var(--border, #334155);
+  --markdown-inline-code-foreground: var(--editor-inline-code, #d7e1e9);
+}
+
+@media (min-width: 1024px) and (pointer: fine) {
+  [data-markdown-surface="public"]
+    :is(.collapsible-code-expand-btn, .collapsible-code-collapse-btn) {
+    min-height: 36px;
+  }
+
+  [data-markdown-surface="admin"] {
+    --markdown-code-padding-y: 10px;
+    --markdown-code-padding-x: 12px;
+  }
+
+  [data-markdown-surface="admin"]
+    :is(.collapsible-code-expand-btn, .collapsible-code-collapse-btn) {
+    min-height: 32px;
+  }
+}

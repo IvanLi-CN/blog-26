@@ -527,6 +527,8 @@ export const Primitives: Story = {
   render: () => <PrimitiveGallery />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "主要操作" })).toHaveClass("admin-button");
+    await expect(canvas.getByLabelText("状态")).toHaveClass("admin-field-control");
     await userEvent.click(canvas.getByRole("button", { name: "删除" }));
     await expect(canvas.getByRole("dialog", { name: "删除访问令牌" })).toBeInTheDocument();
   },
@@ -556,7 +558,7 @@ export const EditorTabOverflow: Story = {
     const canvas = within(canvasElement);
     const strip = canvas.getByTestId("editor-tab-strip");
     await expect(strip).toBeInTheDocument();
-    await expect(strip).toHaveClass(/h-10/);
+    await expect(strip).toHaveClass(/h-12/);
     await userEvent.hover(canvas.getByRole("tab", { name: /电子负载开发笔记/ }));
     await expect(await canvas.findByRole("tooltip")).toHaveTextContent("电子负载开发笔记，未保存");
     await userEvent.click(canvas.getByRole("button", { name: "展开已打开文件列表" }));
@@ -567,7 +569,16 @@ export const EditorTabOverflow: Story = {
 };
 
 export const MobileShell: Story = {
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
   render: () => <SoftPageFrame mobile />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByRole("button")[0]).toHaveClass("admin-button-icon");
+  },
 };
 
 export const DialogState: Story = {

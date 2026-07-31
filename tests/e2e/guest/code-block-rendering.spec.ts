@@ -80,6 +80,30 @@ test.describe("Code Block Rendering", () => {
     expect(firstCode).toContain("greet");
   });
 
+  test("uses the public code surface rather than the highlighter default", async ({ page }) => {
+    const pre = articleBody(page).locator('[data-markdown-surface="public"] pre').first();
+    await expect(pre).toBeVisible();
+
+    const surface = await pre.evaluate((node) => {
+      const code = node.querySelector("code");
+      const preStyle = getComputedStyle(node);
+      const codeStyle = code ? getComputedStyle(code) : null;
+      return {
+        background: preStyle.backgroundColor,
+        borderRadius: preStyle.borderTopLeftRadius,
+        paddingTop: codeStyle?.paddingTop,
+        paddingRight: codeStyle?.paddingRight,
+        color: codeStyle?.color,
+      };
+    });
+
+    expect(surface.background).not.toBe("rgb(255, 255, 255)");
+    expect(surface.color).not.toBe(surface.background);
+    expect(surface.borderRadius).toBe("12px");
+    expect(surface.paddingTop).toBe("12px");
+    expect(surface.paddingRight).toBe("14px");
+  });
+
   test("should not break page layout", async ({ page }) => {
     await expect(page.locator("main")).toBeVisible();
     await expect(articleBody(page)).toBeVisible();

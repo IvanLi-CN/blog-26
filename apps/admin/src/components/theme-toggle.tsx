@@ -40,7 +40,7 @@ export function ThemeToggle() {
             theme === "system" ? "跟随系统" : resolvedTheme === "dark" ? "深色" : "浅色"
           }）`}
           title="切换后台主题"
-          className="size-11 rounded-full bg-card/78 sm:size-10 lg:size-9"
+          className="rounded-full bg-card/78"
         >
           <ActiveIcon className="size-4 text-primary" />
         </Button>
