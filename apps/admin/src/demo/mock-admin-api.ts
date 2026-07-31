@@ -16,7 +16,11 @@ import {
   getAdminFileContentKind,
   getAdminFileExtension,
 } from "@/lib/admin-file-content";
-import type { AdminLlmSettingsPayload } from "@/lib/llm-settings";
+import type {
+  AdminLlmSettingsPayload,
+  AdminLlmSettingsTestRequest,
+  AdminLlmSettingsUpdateInput,
+} from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
@@ -372,26 +376,178 @@ let pats: PersonalAccessTokenListRow[] = [
   createPat("pat-2", "Local automation", now - 18 * 86_400_000, now - 2 * 86_400_000),
 ];
 
+const demoChatSecret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"] = {
+  hasValue: true,
+  maskedValue: "sk-live-••••••••••••",
+  source: "db",
+  requiresMasterKey: false,
+};
+
+function inheritedDemoSecret(
+  secret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"]
+): AdminLlmSettingsPayload["settings"]["embedding"]["apiKey"] {
+  return {
+    hasValue: secret.hasValue,
+    maskedValue: secret.maskedValue,
+    source: "inherited",
+    requiresMasterKey: false,
+  };
+}
+
 let llmSettings: AdminLlmSettingsPayload = {
-  chat: {
-    provider: "openrouter",
-    model: "openai/gpt-4.1-mini",
-    baseUrl: "https://openrouter.ai/api/v1",
-    apiKey: { source: "db", masked: "sk-live-••••••••••••" },
+  savedAt: now - 3_600_000,
+  settings: {
+    chat: {
+      model: "openai/gpt-4.1-mini",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKey: demoChatSecret,
+    },
+    embedding: {
+      model: "text-embedding-3-small",
+      useCustomProvider: false,
+      baseUrlMode: "inherit",
+      baseUrl: "",
+      apiKeyMode: "inherit",
+      apiKey: inheritedDemoSecret(demoChatSecret),
+    },
+    rerank: {
+      model: "cohere/rerank-3.5",
+      useCustomProvider: false,
+      baseUrlMode: "inherit",
+      baseUrl: "",
+      apiKeyMode: "inherit",
+      apiKey: inheritedDemoSecret(demoChatSecret),
+    },
   },
-  embedding: {
-    provider: "openai-compatible",
-    model: "text-embedding-3-small",
-    baseUrl: "https://api.openai.com/v1",
-    apiKey: { source: "env", masked: null },
+  resolved: {
+    chat: {
+      model: "openai/gpt-4.1-mini",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKeyAvailable: true,
+      sources: { model: "db", baseUrl: "db", apiKey: "db" },
+    },
+    embedding: {
+      model: "text-embedding-3-small",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKeyAvailable: true,
+      sources: { model: "db", baseUrl: "inherited", apiKey: "inherited" },
+    },
+    rerank: {
+      model: "cohere/rerank-3.5",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKeyAvailable: true,
+      sources: { model: "db", baseUrl: "inherited", apiKey: "inherited" },
+    },
   },
-  tagging: {
-    provider: "openrouter",
-    model: "anthropic/claude-3.5-haiku",
-    baseUrl: "https://openrouter.ai/api/v1",
-    apiKey: { source: "db", masked: "sk-live-••••••••••••" },
+  hints: {
+    embeddingReindexRequired: false,
+    embeddingReindexSuggested: false,
+    currentIndexedModel: "text-embedding-3-small",
+    currentResolvedModel: "text-embedding-3-small",
+    currentIndexedUpdatedAt: now - 7_200_000,
+    embeddingConfigUpdatedAt: now - 3_600_000,
   },
 };
+
+function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
+  const savedAt = Date.now();
+  const chatApiKey = input.chat.clearApiKey
+    ? {
+        ...llmSettings.settings.chat.apiKey,
+        hasValue: false,
+        maskedValue: null,
+        source: "missing" as const,
+      }
+    : input.chat.apiKeyInput?.trim()
+      ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
+      : llmSettings.settings.chat.apiKey;
+  const embeddingApiKey =
+    input.embedding.apiKeyMode === "inherit"
+      ? inheritedDemoSecret(chatApiKey)
+      : input.embedding.clearApiKey
+        ? {
+            ...llmSettings.settings.embedding.apiKey,
+            hasValue: false,
+            maskedValue: null,
+            source: "missing" as const,
+          }
+        : input.embedding.apiKeyInput?.trim()
+          ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
+          : llmSettings.settings.embedding.apiKey;
+  const rerankApiKey =
+    input.rerank.apiKeyMode === "inherit"
+      ? inheritedDemoSecret(embeddingApiKey)
+      : input.rerank.clearApiKey
+        ? {
+            ...llmSettings.settings.rerank.apiKey,
+            hasValue: false,
+            maskedValue: null,
+            source: "missing" as const,
+          }
+        : input.rerank.apiKeyInput?.trim()
+          ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
+          : llmSettings.settings.rerank.apiKey;
+  const embeddingBaseUrl =
+    input.embedding.baseUrlMode === "custom" ? input.embedding.baseUrl : input.chat.baseUrl;
+  const rerankBaseUrl =
+    input.rerank.baseUrlMode === "custom" ? input.rerank.baseUrl : embeddingBaseUrl;
+
+  llmSettings = {
+    savedAt,
+    settings: {
+      chat: { model: input.chat.model, baseUrl: input.chat.baseUrl, apiKey: chatApiKey },
+      embedding: {
+        model: input.embedding.model,
+        useCustomProvider: input.embedding.useCustomProvider,
+        baseUrlMode: input.embedding.baseUrlMode,
+        baseUrl: input.embedding.baseUrl,
+        apiKeyMode: input.embedding.apiKeyMode,
+        apiKey: embeddingApiKey,
+      },
+      rerank: {
+        model: input.rerank.model,
+        useCustomProvider: input.rerank.useCustomProvider,
+        baseUrlMode: input.rerank.baseUrlMode,
+        baseUrl: input.rerank.baseUrl,
+        apiKeyMode: input.rerank.apiKeyMode,
+        apiKey: rerankApiKey,
+      },
+    },
+    resolved: {
+      chat: {
+        model: input.chat.model,
+        baseUrl: input.chat.baseUrl,
+        apiKeyAvailable: chatApiKey.hasValue,
+        sources: { model: "db", baseUrl: "db", apiKey: chatApiKey.source },
+      },
+      embedding: {
+        model: input.embedding.model,
+        baseUrl: embeddingBaseUrl,
+        apiKeyAvailable: embeddingApiKey.hasValue,
+        sources: {
+          model: "db",
+          baseUrl: input.embedding.baseUrlMode === "custom" ? "db" : "inherited",
+          apiKey: input.embedding.apiKeyMode === "custom" ? embeddingApiKey.source : "inherited",
+        },
+      },
+      rerank: {
+        model: input.rerank.model,
+        baseUrl: rerankBaseUrl,
+        apiKeyAvailable: rerankApiKey.hasValue,
+        sources: {
+          model: "db",
+          baseUrl: input.rerank.baseUrlMode === "custom" ? "db" : "inherited",
+          apiKey: input.rerank.apiKeyMode === "custom" ? rerankApiKey.source : "inherited",
+        },
+      },
+    },
+    hints: {
+      ...llmSettings.hints,
+      currentResolvedModel: input.embedding.model,
+      embeddingConfigUpdatedAt: savedAt,
+    },
+  };
+}
 
 class DemoApiError extends Error {
   status: number;
@@ -531,12 +687,26 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
     });
   if (path.startsWith("/api/admin/tag-icons/")) return json({ success: true });
   if (path === "/api/admin/llm-settings") {
-    if (method === "PUT")
-      llmSettings = { ...llmSettings, ...(body as Partial<AdminLlmSettingsPayload>) };
+    if (method === "PUT") applyDemoLlmSettingsUpdate(body as AdminLlmSettingsUpdateInput);
     return json(llmSettings);
   }
-  if (path === "/api/admin/llm-settings/test")
-    return json({ success: true, message: "连接成功", latencyMs: 184 });
+  if (path === "/api/admin/llm-settings/test") {
+    const request = body as AdminLlmSettingsTestRequest;
+    const tierSettings = request.settings[request.tier];
+    return json({
+      tier: request.tier,
+      ok: true,
+      model: tierSettings.model,
+      baseUrl:
+        request.tier === "chat"
+          ? request.settings.chat.baseUrl
+          : tierSettings.baseUrlMode === "custom"
+            ? tierSettings.baseUrl
+            : llmSettings.resolved[request.tier].baseUrl,
+      summary: `${request.tier === "chat" ? "对话" : request.tier === "embedding" ? "嵌入" : "重排序"}模型测试通过`,
+      details: [`模型：${tierSettings.model}`, "Demo 响应：184ms"],
+    });
+  }
   if (path === "/api/admin/llm/models")
     return json({ source: url.searchParams.get("source") ?? "upstream", models: llmModels() });
   if (path === "/api/admin/files/sources") return json(fileSources());
