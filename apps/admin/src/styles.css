@@ -341,11 +341,28 @@ html[data-ui-theme="light"] {
 
 .admin-editor-surface .milkdown .ProseMirror blockquote,
 .admin-editor-preview blockquote {
+  position: relative;
+  box-sizing: border-box;
   border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--border));
   background: color-mix(in oklch, var(--editor-blockquote-bg) 60%, transparent);
   color: var(--editor-text-soft);
-  padding: 0.8rem 1rem;
+  padding: 0.8rem 1rem 0.8rem 2.75rem;
   border-radius: 1.25rem;
+}
+
+.admin-editor-surface .milkdown .ProseMirror blockquote::before,
+.admin-editor-preview blockquote::before {
+  content: "“";
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: 0.55rem;
+  width: auto;
+  color: color-mix(in oklch, var(--primary) 72%, var(--editor-text-soft));
+  background: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .admin-editor-surface .milkdown .tableWrapper,

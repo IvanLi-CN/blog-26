@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { expect, within } from "storybook/test";
 import { UniversalEditor } from "./universal-editor";
 
 function StoryHarness({
@@ -58,6 +59,8 @@ public: true
 
 - 状态更新必须围绕用户动作组织。
 - Effect 只同步外部系统。
+
+> 依赖数组不是优化开关，它描述 Effect 读取到的响应式输入。
 `;
 
 const plainTextSample = `title=USB-C Safe5V 诱骗器
@@ -76,6 +79,27 @@ export const MarkdownCompare: Story = {
     initialContent: markdownSample,
     contentKind: "markdown",
     mode: "compare",
+  },
+};
+
+export const MarkdownBlockquote: Story = {
+  args: {
+    initialContent: markdownSample,
+    contentKind: "markdown",
+    mode: "wysiwyg",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const quoteText = await canvas.findByText(
+      "依赖数组不是优化开关，它描述 Effect 读取到的响应式输入。"
+    );
+    const blockquote = quoteText.closest("blockquote");
+
+    await expect(blockquote).not.toBeNull();
+    if (!blockquote) return;
+
+    await expect(getComputedStyle(blockquote).boxSizing).toBe("border-box");
+    await expect(getComputedStyle(blockquote, "::before").content).toContain("“");
   },
 };
 
