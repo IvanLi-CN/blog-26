@@ -56,7 +56,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
 - If the island does not become ready within a bounded interval, the bootstrap keeps the keyword visible, replaces the result skeleton with an accessible loading-failure message, and offers a page reload instead of waiting indefinitely.
 - At `438x852` and below the `sm` breakpoint, the query panel prioritizes the title, input, loading state, and result-type controls. The page-title kicker is omitted at every breakpoint so `搜索内容` remains the sole page-purpose label; its descriptive copy and redundant non-loading no-result summary recede on narrow viewports, while the first result surface starts in the first half of the viewport; desktop spacing and the no-keyword exploration state remain unchanged.
-- The search query field uses the shared `nature-input-shell` surface without a route-specific opaque fill or elevated shadow, while retaining its larger search affordance and shared focus treatment.
+- The search query field uses the shared, muted `nature-input-shell` surface without a route-specific opaque fill or elevated shadow. Its 2px focus ring preserves keyboard visibility without competing with search results or adjacent controls.
 
 ## 5. Acceptance criteria
 

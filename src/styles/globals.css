@@ -627,8 +627,8 @@ html[data-ui-theme="dark"] .nature-search-submit {
   padding: 0.75rem 1rem;
   border: 1px solid var(--nature-line);
   border-radius: var(--nature-radius-sm);
-  background: rgba(var(--nature-highlight-rgb), 0.34);
-  box-shadow: inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.25);
+  background: var(--nature-surface-muted);
+  box-shadow: inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.08);
   transition:
     border-color 220ms var(--nature-ease),
     box-shadow 220ms var(--nature-ease),
@@ -636,10 +636,10 @@ html[data-ui-theme="dark"] .nature-search-submit {
 }
 
 .nature-input-shell:focus-within {
-  border-color: rgba(var(--nature-accent-rgb), 0.34);
+  border-color: rgba(var(--nature-accent-rgb), 0.28);
   box-shadow:
-    0 0 0 4px rgba(var(--nature-accent-rgb), 0.1),
-    inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.3);
+    0 0 0 2px rgba(var(--nature-accent-rgb), 0.14),
+    inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.12);
 }
 
 .nature-textarea-shell {
