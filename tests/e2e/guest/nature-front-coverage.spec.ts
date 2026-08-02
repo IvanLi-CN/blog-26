@@ -164,6 +164,20 @@ test.describe("Nature frontend public coverage", () => {
     await expect(rssLink).toHaveCSS("height", "36px");
   });
 
+  test("mobile search exposes its results region in the first viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 438, height: 852 });
+    await gotoWithTheme(page, "/search/?q=SSH", "light");
+
+    const resultsRegion = page.locator("[data-search-island] [data-search-results-region]");
+    const firstResult = resultsRegion.locator(":scope > *").first();
+    await expect(resultsRegion).toBeVisible();
+    await expect(firstResult).toBeVisible();
+
+    const bounds = await firstResult.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds?.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(426);
+  });
+
   test("query stays visible while the search island is waiting to hydrate", async ({ page }) => {
     let releaseSearchIsland: (() => void) | undefined;
     let markSearchIslandRequested: (() => void) | undefined;

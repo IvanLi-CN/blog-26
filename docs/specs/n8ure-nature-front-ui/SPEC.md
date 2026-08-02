@@ -55,6 +55,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The bootstrap fills keyword nodes with `textContent` and the input `value`; it must not inject URL-derived HTML.
 - The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
 - If the island does not become ready within a bounded interval, the bootstrap keeps the keyword visible, replaces the result skeleton with an accessible loading-failure message, and offers a page reload instead of waiting indefinitely.
+- At `438x852` and below the `sm` breakpoint, the query panel prioritizes the title, input, search state, and result-type controls. Its contextual kicker and description recede, while the first result surface starts in the first half of the viewport; desktop spacing and the no-keyword exploration state remain unchanged.
 
 ## 5. Acceptance criteria
 
@@ -66,6 +67,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 6. Reduced-motion mode disables or significantly softens particles, gooey motion, and ripple effects without harming usability.
 7. Same-site Markdown links, including same-origin absolute URLs, navigate in the current tab, while external Markdown links keep a new tab target and safe `rel` attributes.
 8. Query-bearing search deep links keep the decoded keyword visible before, during, and after island hydration without exposing the no-keyword empty state or duplicate accessible controls; at `393px`, the public header aligns to the body container, exposes `Main navigation` as its second row, and keeps theme selection plus RSS directly available.
+9. At a `438x852` mobile viewport with a non-empty query, the first result surface begins at or before `y=426`, leaving at least half of the first viewport for search results.
 
 ## 6. Validation
 
@@ -211,3 +213,4 @@ PR: include
 - 2026-08-01: Delayed bootstrap handoff until the React search island has committed its URL-synchronized state, preventing a concurrent-hydration empty-state flash.
 - 2026-08-01: Added a bounded hydration fallback that preserves the query and replaces a permanently stalled skeleton with an accessible reload action.
 - 2026-08-02: Kept the public mobile navigation visible as the second header row and aligned the header frame with the shared page container.
+- 2026-08-02: Compressed the mobile query panel so the first result surface remains visible in at least half of a `438x852` search viewport.

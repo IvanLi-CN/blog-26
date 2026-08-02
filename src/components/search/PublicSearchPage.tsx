@@ -290,18 +290,18 @@ export default function PublicSearchPage({
 
   return (
     <div className={cn("w-full", className)} aria-busy={isLoading || undefined}>
-      <section className="nature-container py-4 sm:py-6 lg:py-8">
-        <div className="nature-surface overflow-hidden">
-          <div className="grid gap-5 px-5 py-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
+      <section className="nature-container pb-2 pt-2 sm:py-6 lg:py-8">
+        <div className="nature-surface overflow-hidden" data-search-query-panel>
+          <div className="grid gap-3 px-5 py-4 sm:gap-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
             <div className="min-w-0">
-              <span className="nature-kicker inline-flex gap-2 px-3 py-1 text-xs">
+              <span className="nature-kicker hidden gap-2 px-3 py-1 text-xs sm:inline-flex">
                 <SearchHydrationSafeIcon name="tabler:search" className="h-4 w-4" />
                 内容检索
               </span>
-              <h1 className="nature-title mt-3 text-2xl font-semibold leading-tight sm:text-3xl">
+              <h1 className="nature-title text-xl font-semibold leading-tight sm:mt-3 sm:text-3xl">
                 搜索内容
               </h1>
-              <p className="mt-3 max-w-[58ch] text-sm leading-6 text-[color:var(--nature-text-soft)] sm:text-base sm:leading-7">
+              <p className="mt-2 hidden max-w-[58ch] text-sm leading-6 text-[color:var(--nature-text-soft)] sm:mt-3 sm:block sm:text-base sm:leading-7">
                 输入技术名词、项目名、标签或片段，快速定位相关记录。
               </p>
             </div>
@@ -309,11 +309,11 @@ export default function PublicSearchPage({
             <form onSubmit={onSubmit} className="min-w-0">
               <label
                 htmlFor={inputId}
-                className="mb-2 block text-sm font-semibold text-[color:var(--nature-text)]"
+                className="sr-only sm:mb-2 sm:block sm:not-sr-only sm:text-sm sm:font-semibold sm:text-[color:var(--nature-text)]"
               >
                 搜索关键词
               </label>
-              <div className="nature-input-shell min-h-[4rem] bg-[rgba(var(--nature-highlight-rgb),0.48)] shadow-[0_18px_44px_rgba(var(--nature-shadow-rgb),0.12)]">
+              <div className="nature-input-shell min-h-[3.5rem] bg-[rgba(var(--nature-highlight-rgb),0.48)] shadow-[0_18px_44px_rgba(var(--nature-shadow-rgb),0.12)] sm:min-h-[4rem]">
                 <label
                   htmlFor={inputId}
                   className="flex min-w-0 flex-1 cursor-text items-center gap-3 self-stretch"
@@ -367,8 +367,8 @@ export default function PublicSearchPage({
             </form>
           </div>
 
-          <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.18)] px-5 py-4 sm:px-7 lg:px-8">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.18)] px-5 py-1.5 sm:px-7 sm:py-4 lg:px-8">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div className="text-sm text-[color:var(--nature-text-soft)]">
                 {isLoading && activeQuery ? (
                   <>
@@ -408,7 +408,7 @@ export default function PublicSearchPage({
         </div>
       </section>
 
-      <section className="nature-container pb-10 pt-3 sm:pb-14 sm:pt-4" data-search-results-region>
+      <section className="nature-container pb-10 pt-1 sm:pb-14 sm:pt-4" data-search-results-region>
         {errorMessage && (
           <SearchPromptPanel
             role="alert"

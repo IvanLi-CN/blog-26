@@ -235,11 +235,17 @@ export const MobileLoading: Story = {
     await Loading.play?.(context);
 
     const container = context.canvasElement.querySelector(".nature-container");
+    const queryPanel = context.canvasElement.querySelector("[data-search-query-panel]");
+    const resultsRegion = context.canvasElement.querySelector("[data-search-results-region]");
     expect(container).not.toBeNull();
+    expect(queryPanel).not.toBeNull();
+    expect(resultsRegion).not.toBeNull();
     const bounds = container?.getBoundingClientRect();
+    const resultsBounds = resultsRegion?.getBoundingClientRect();
     expect(
       Math.abs((bounds?.left ?? 0) - (document.documentElement.clientWidth - (bounds?.right ?? 0)))
     ).toBeLessThanOrEqual(1);
+    expect(resultsBounds?.top ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(250);
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
   },
 };
