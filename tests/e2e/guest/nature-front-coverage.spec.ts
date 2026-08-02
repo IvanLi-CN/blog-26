@@ -189,6 +189,17 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("heading", { name: "搜索内容" })).toBeVisible();
   });
 
+  test("mobile search removes the redundant no-results summary", async ({ page }) => {
+    await page.setViewportSize({ width: 438, height: 852 });
+    await gotoWithTheme(page, "/search/?q=SSH", "light");
+
+    const queryPanel = page.locator("[data-search-island] [data-search-query-panel]");
+    const redundantSummary = queryPanel.getByText("还没有找到「SSH」", { exact: true });
+    await expect(redundantSummary).toHaveCount(1);
+    await expect(redundantSummary).toBeHidden();
+    await expect(page.getByRole("heading", { name: "没有找到相关内容" })).toBeVisible();
+  });
+
   test("query stays visible while the search island is waiting to hydrate", async ({ page }) => {
     let releaseSearchIsland: (() => void) | undefined;
     let markSearchIslandRequested: (() => void) | undefined;

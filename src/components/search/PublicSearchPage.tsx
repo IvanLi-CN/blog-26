@@ -287,6 +287,7 @@ export default function PublicSearchPage({
   const filteredResults = filterSearchResults(results, filter);
   const hasResults = results.length > 0;
   const runRecommendedSearch = onRecommendedSearch ?? onQueryChange;
+  const hideNoResultsSummaryOnMobile = activeQuery.length > 0 && !isLoading && !hasResults;
 
   return (
     <div className={cn("w-full", className)} aria-busy={isLoading || undefined}>
@@ -365,7 +366,12 @@ export default function PublicSearchPage({
 
           <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.18)] px-5 py-1.5 sm:px-7 sm:py-4 lg:px-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <div className="text-sm text-[color:var(--nature-text-soft)]">
+              <div
+                className={cn(
+                  "text-sm text-[color:var(--nature-text-soft)]",
+                  hideNoResultsSummaryOnMobile && "hidden sm:block"
+                )}
+              >
                 {isLoading && activeQuery ? (
                   <>
                     正在搜索「<span data-search-query-text>{activeQuery}</span>」

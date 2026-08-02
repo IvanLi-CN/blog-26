@@ -341,6 +341,11 @@ export const MobileEmpty: Story = {
       ]}
     />
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("没有找到相关内容")).toBeVisible();
+    await expect(canvas.getByText("还没有找到「Zettelkasten」")).not.toBeVisible();
+  },
 };
 
 export const DarkEmpty: Story = {
