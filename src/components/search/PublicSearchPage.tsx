@@ -294,11 +294,7 @@ export default function PublicSearchPage({
         <div className="nature-surface overflow-hidden" data-search-query-panel>
           <div className="grid gap-3 px-5 py-4 sm:gap-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
             <div className="min-w-0">
-              <span className="nature-kicker hidden gap-2 px-3 py-1 text-xs sm:inline-flex">
-                <SearchHydrationSafeIcon name="tabler:search" className="h-4 w-4" />
-                内容检索
-              </span>
-              <h1 className="nature-title text-xl font-semibold leading-tight sm:mt-3 sm:text-3xl">
+              <h1 className="nature-title text-xl font-semibold leading-tight sm:text-3xl">
                 搜索内容
               </h1>
               <p className="mt-2 hidden max-w-[58ch] text-sm leading-6 text-[color:var(--nature-text-soft)] sm:mt-3 sm:block sm:text-base sm:leading-7">

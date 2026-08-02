@@ -240,6 +240,7 @@ export const MobileLoading: Story = {
     expect(container).not.toBeNull();
     expect(queryPanel).not.toBeNull();
     expect(resultsRegion).not.toBeNull();
+    expect(queryPanel?.querySelector(".nature-kicker")).toBeNull();
     const bounds = container?.getBoundingClientRect();
     const resultsBounds = resultsRegion?.getBoundingClientRect();
     expect(

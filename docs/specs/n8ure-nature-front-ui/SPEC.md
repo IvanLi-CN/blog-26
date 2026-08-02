@@ -55,7 +55,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The bootstrap fills keyword nodes with `textContent` and the input `value`; it must not inject URL-derived HTML.
 - The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
 - If the island does not become ready within a bounded interval, the bootstrap keeps the keyword visible, replaces the result skeleton with an accessible loading-failure message, and offers a page reload instead of waiting indefinitely.
-- At `438x852` and below the `sm` breakpoint, the query panel prioritizes the title, input, search state, and result-type controls. Its contextual kicker and description recede, while the first result surface starts in the first half of the viewport; desktop spacing and the no-keyword exploration state remain unchanged.
+- At `438x852` and below the `sm` breakpoint, the query panel prioritizes the title, input, search state, and result-type controls. The page-title kicker is omitted at every breakpoint so `搜索内容` remains the sole page-purpose label; its descriptive copy recedes on narrow viewports, while the first result surface starts in the first half of the viewport; desktop spacing and the no-keyword exploration state remain unchanged.
 
 ## 5. Acceptance criteria
 
@@ -214,3 +214,4 @@ PR: include
 - 2026-08-01: Added a bounded hydration fallback that preserves the query and replaces a permanently stalled skeleton with an accessible reload action.
 - 2026-08-02: Kept the public mobile navigation visible as the second header row and aligned the header frame with the shared page container.
 - 2026-08-02: Compressed the mobile query panel so the first result surface remains visible in at least half of a `438x852` search viewport.
+- 2026-08-02: Removed the duplicate `内容检索` page-purpose kicker from search so the title is the only page label at every viewport.

@@ -178,6 +178,17 @@ test.describe("Nature frontend public coverage", () => {
     expect(bounds?.y ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(426);
   });
 
+  test("mobile search avoids repeating its page purpose", async ({ page }) => {
+    await page.setViewportSize({ width: 438, height: 852 });
+    await gotoWithTheme(page, "/search/?q=SSH", "light");
+
+    const redundantKicker = page.locator(
+      "[data-search-island] [data-search-query-panel] .nature-kicker"
+    );
+    await expect(redundantKicker).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "搜索内容" })).toBeVisible();
+  });
+
   test("query stays visible while the search island is waiting to hydrate", async ({ page }) => {
     let releaseSearchIsland: (() => void) | undefined;
     let markSearchIslandRequested: (() => void) | undefined;
