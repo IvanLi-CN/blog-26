@@ -310,7 +310,7 @@ export default function PublicSearchPage({
               >
                 搜索关键词
               </label>
-              <div className="nature-input-shell min-h-[3.5rem] bg-[rgba(var(--nature-highlight-rgb),0.48)] shadow-[0_18px_44px_rgba(var(--nature-shadow-rgb),0.12)] sm:min-h-[4rem]">
+              <div className="nature-input-shell min-h-[3.5rem] sm:min-h-[4rem]">
                 <label
                   htmlFor={inputId}
                   className="flex min-w-0 flex-1 cursor-text items-center gap-3 self-stretch"
