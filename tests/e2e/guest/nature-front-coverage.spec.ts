@@ -116,18 +116,40 @@ test.describe("Nature frontend public coverage", () => {
     );
   });
 
-  test("mobile search keeps the site header to one row", async ({ page }) => {
+  test("mobile search keeps visible header navigation on a second aligned row", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/search/?q=SSH", "light");
 
     const headerSurface = page.locator(".nature-site-header .nature-surface");
-    await expect(headerSurface).toBeVisible();
-    expect(await headerSurface.evaluate((element) => element.clientHeight)).toBeLessThanOrEqual(72);
+    const mainContainer = page.locator("main .nature-container:visible").first();
+    const mobileNavigation = page.getByRole("navigation", { name: "Main navigation" });
+    const brand = page.getByRole("link", { name: "Ivan's Blog" });
 
-    await page.locator('summary[aria-label="打开导航"]').click();
-    const mobileNavigation = page.getByRole("navigation", { name: "移动端主导航" });
+    await expect(headerSurface).toBeVisible();
+    await expect(mainContainer).toBeVisible();
     await expect(mobileNavigation).toBeVisible();
     await expect(mobileNavigation.getByRole("link", { name: "文章", exact: true })).toBeVisible();
+    await expect(page.locator('summary[aria-label="打开导航"]')).toHaveCount(0);
+
+    const [headerBounds, mainBounds, navigationBounds, brandBounds] = await Promise.all([
+      headerSurface.boundingBox(),
+      mainContainer.boundingBox(),
+      mobileNavigation.boundingBox(),
+      brand.boundingBox(),
+    ]);
+
+    expect(headerBounds).not.toBeNull();
+    expect(mainBounds).not.toBeNull();
+    expect(navigationBounds).not.toBeNull();
+    expect(brandBounds).not.toBeNull();
+    expect(Math.abs((headerBounds?.x ?? 0) - (mainBounds?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((headerBounds?.width ?? 0) - (mainBounds?.width ?? 0))).toBeLessThanOrEqual(1);
+    expect(navigationBounds?.y ?? 0).toBeGreaterThanOrEqual(
+      brandBounds?.y ?? 0 + (brandBounds?.height ?? 0)
+    );
+
     await expect(page.getByRole("button", { name: "Auto" })).toBeVisible();
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });

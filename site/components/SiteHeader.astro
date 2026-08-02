@@ -17,9 +17,9 @@ function isActive(href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 ---
-<header class="nature-site-header sticky top-0 z-40 flex-none w-full px-3 pt-3 sm:px-4">
+<header class="nature-site-header sticky top-0 z-40 flex-none w-full pt-3">
   <div class="nature-container nature-site-header-frame">
-    <div class="nature-surface relative flex min-w-0 flex-nowrap items-center gap-2 px-4 py-3 sm:flex-wrap sm:gap-3 sm:px-5">
+    <div class="nature-surface relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 px-3 py-3 sm:gap-3 sm:px-5">
       <a
         href={toPublicSitePath("/")}
         class="inline-flex min-h-11 shrink-0 items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
@@ -27,27 +27,7 @@ function isActive(href: string) {
         {SITE.name}
       </a>
 
-      <nav class="hidden md:ml-2 md:block" aria-label="Main navigation">
-        <ul class="flex flex-wrap items-center gap-1 text-sm font-medium">
-          {headerData.links.map((link) => (
-            <li>
-              <a
-                href={toPublicSitePath(link.href)}
-                class={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 transition ${
-                  isActive(link.href)
-                    ? "aw-link-active"
-                    : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
-                }`}
-              >
-                <Icon name={link.icon} className="h-4 w-4" />
-                {link.text}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+      <div class="order-2 ml-auto flex shrink-0 items-center gap-1 sm:gap-3 md:order-3">
         {!isSearchPage && (
           <>
             <form action={toPublicSitePath("/search")} method="get" class="hidden xl:flex items-center w-auto">
@@ -61,59 +41,36 @@ function isActive(href: string) {
             </a>
           </>
         )}
-        <div class="hidden items-center gap-3 md:flex">
-          <ThemeToggle client:load transition:persist iconClass="h-4 w-4" />
-          <a
-            class="nature-icon-button inline-flex"
-            aria-label="RSS Feed"
-            title="RSS Feed"
-            href={toPublicSitePath("/feed.xml")}
-          >
-            <Icon name="tabler:rss" className="h-5 w-5" />
-          </a>
-        </div>
-        <details class="relative md:hidden">
-          <summary
-            class="nature-icon-button flex list-none cursor-pointer items-center justify-center [&::-webkit-details-marker]:hidden"
-            aria-label="打开导航"
-            title="导航"
-          >
-            <Icon name="tabler:menu-2" className="h-5 w-5" />
-          </summary>
-          <div class="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(20rem,calc(100vw-2.25rem))] rounded-[1.5rem] border border-[color:var(--nature-line)] bg-[color:var(--nature-surface-strong)] p-3 shadow-[0_18px_44px_rgba(var(--nature-shadow-rgb),0.18)]">
-            <nav aria-label="移动端主导航">
-              <ul class="grid grid-cols-2 gap-1 text-sm font-medium">
-                {headerData.links.map((link) => (
-                  <li>
-                    <a
-                      href={toPublicSitePath(link.href)}
-                      class={`inline-flex min-h-11 w-full items-center gap-2 rounded-full px-3 py-2 transition ${
-                        isActive(link.href)
-                          ? "aw-link-active"
-                          : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
-                      }`}
-                    >
-                      <Icon name={link.icon} className="h-4 w-4" />
-                      {link.text}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            <div class="mt-3 flex items-center justify-between border-t border-[color:var(--nature-line)] pt-3">
-              <ThemeToggle client:load transition:persist iconClass="h-4 w-4" />
-              <a
-                class="nature-icon-button inline-flex"
-                aria-label="RSS Feed"
-                title="RSS Feed"
-                href={toPublicSitePath("/feed.xml")}
-              >
-                <Icon name="tabler:rss" className="h-5 w-5" />
-              </a>
-            </div>
-          </div>
-        </details>
+        <ThemeToggle client:load transition:persist iconClass="h-4 w-4" />
+        <a
+          class="nature-icon-button inline-flex"
+          aria-label="RSS Feed"
+          title="RSS Feed"
+          href={toPublicSitePath("/feed.xml")}
+        >
+          <Icon name="tabler:rss" className="h-5 w-5" />
+        </a>
       </div>
+
+      <nav class="order-3 w-full md:order-2 md:ml-2 md:w-auto" aria-label="Main navigation">
+        <ul class="grid grid-cols-4 gap-1 text-sm font-medium md:flex md:flex-wrap md:items-center">
+          {headerData.links.map((link) => (
+            <li>
+              <a
+                href={toPublicSitePath(link.href)}
+                class={`inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full px-2 py-2 transition sm:gap-2 sm:px-3 md:w-auto md:justify-start md:px-4 ${
+                  isActive(link.href)
+                    ? "aw-link-active"
+                    : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
+                }`}
+              >
+                <Icon name={link.icon} className="h-4 w-4 shrink-0" />
+                {link.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </div>
     <div
       id="public-route-loading"
