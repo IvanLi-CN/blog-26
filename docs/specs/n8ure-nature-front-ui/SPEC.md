@@ -169,6 +169,24 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![Search keyword snippets](./assets/search-highlight-snippets.png)
 
+### Query-aware search viewport evidence
+
+- Evidence captured from the real production static search route at `/search/?q=SSH`, not from a Storybook shell.
+- `Storybook覆盖=已通过`; `视觉证据目标源=target_app_window`; `视觉证据=存在`; `聊天回图=已展示`; `证据落盘=已落盘`.
+- `证据绑定sha=98a280d63e2363c9bce0fd279c474ed429b6e7cc`; `submission_gate=approved`.
+
+Desktop viewport evidence:
+
+- `source_type=target_app_window`; `target_program=Chrome`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=1762x1169 CSS px`; `PR: include`.
+
+![Search query field desktop viewport](./assets/search-query-frame-desktop-1762x1169.jpg)
+
+Mobile viewport evidence:
+
+- `source_type=target_app_window`; `target_program=Chromium production preview`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=393x852 CSS px`; `PR: include`.
+
+![Search query field mobile viewport](./assets/search-query-frame-mobile-393x852.png)
+
 ![Search Storybook with site layout](./assets/search-story-layout-results.png)
 
 ![Search empty state bolder](./assets/search-empty-state-bolder.png)
