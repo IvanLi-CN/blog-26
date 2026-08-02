@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-05-13`
+- Last Updated: `2026-08-01`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -47,6 +47,17 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
 - Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; article detail may show static interaction guidance, but neither page may expose a persistent live loading state after content is readable.
 
+### 4.4 Static search deep links
+
+- The static `/search/` document must inspect the runtime URL before the first paint. When a non-blank `q` is present, the search input, query-aware status, and full loading skeleton expose the decoded keyword until React search results are ready.
+- On narrow viewports, the public site header uses the same content-width container as the page body. Its primary navigation stays visible as the second header row; theme selection and RSS remain directly available without a navigation menu. The RSS control keeps a compact 36px visual frame so it does not compete with the theme selector.
+- While the search island is pending hydration, its build-time empty state stays `hidden`, `inert`, and `aria-hidden`. The query-aware bootstrap is the only visible and accessible search surface.
+- The bootstrap fills keyword nodes with `textContent` and the input `value`; it must not inject URL-derived HTML.
+- The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
+- If the island does not become ready within a bounded interval, the bootstrap keeps the keyword visible, replaces the result skeleton with an accessible loading-failure message, and offers a page reload instead of waiting indefinitely.
+- At `438x852` and below the `sm` breakpoint, the query panel prioritizes the title, input, loading state, and result-type controls. The page-title kicker is omitted at every breakpoint so `搜索内容` remains the sole page-purpose label; its descriptive copy and redundant non-loading no-result summary recede on narrow viewports, while the first result surface starts in the first half of the viewport; desktop spacing and the no-keyword exploration state remain unchanged.
+- The search query field uses the shared `nature-input-shell` color surface without an elevated shadow. Its compact 48px search variant uses a visible 1px border, 20px corners, and a 2px focus ring so the field remains recognizable without dominating adjacent controls or results.
+
 ## 5. Acceptance criteria
 
 1. `/`, `/posts`, `/posts/[slug]`, `/memos`, `/memos/[slug]`, `/tags`, `/tags/[...tagSegments]`, `/search`, `/about`, and `/projects` render with the Nature design system in `light`, `dark`, and `system`.
@@ -56,6 +67,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 5. Existing public behaviors keep working: search, pagination, tag navigation, comments, memo browsing, markdown rendering, and theme persistence.
 6. Reduced-motion mode disables or significantly softens particles, gooey motion, and ripple effects without harming usability.
 7. Same-site Markdown links, including same-origin absolute URLs, navigate in the current tab, while external Markdown links keep a new tab target and safe `rel` attributes.
+8. Query-bearing search deep links keep the decoded keyword visible before, during, and after island hydration without exposing the no-keyword empty state or duplicate accessible controls; at `393px`, the public header aligns to the body container, exposes `Main navigation` as its second row, and keeps theme selection plus RSS directly available.
+9. At a `438x852` mobile viewport with a non-empty query, the first result surface begins at or before `y=426`, leaving at least half of the first viewport for search results.
 
 ## 6. Validation
 
@@ -140,7 +153,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Evidence captured from Storybook mock canvas for the public search page on branch `th/search-interface-redesign`.
 - The page now renders the deep-linked query in the first paint, uses query-aware status, exposes type filters with counts, and presents result cards with readable content type, keyword-aware snippets, highlight marks, and relevance metadata.
 - Keyword snippet evidence was captured with Chrome DevTools from the controlled Storybook canvas served on a local preview lease.
-- Search stories render inside a public site shell so review covers the header, main content region, and footer rather than an isolated component canvas.
+- Search stories render only the real search component. Header and full-page behavior must be verified against the actual public route, not a Storybook shell that imitates production-only components.
 - Prompt states use a shared status panel for initial, loading, empty, error, and filtered-empty stories, keeping the message aligned to the content grid with a stronger icon, title, description, and recovery action.
 - Empty, error, and filtered-empty recovery actions now use recommended search terms. The public API generates suggestions with the configured chat LLM when available and falls back to public content tags, titles, and excerpts when it is not configured.
 - Empty-result recovery keeps concept-direction fallback terms even when strict result validation finds no current hit, so the user still gets query-related generalized, related, sibling, and alternative search routes instead of unrelated popular terms.
@@ -155,6 +168,24 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ![Search redesign mobile](./assets/search-redesign-mobile.png)
 
 ![Search keyword snippets](./assets/search-highlight-snippets.png)
+
+### Query-aware search viewport evidence
+
+- Evidence captured from the real production static search route at `/search/?q=SSH`, not from a Storybook shell.
+- `Storybook覆盖=已通过`; `视觉证据目标源=target_app_window`; `视觉证据=存在`; `聊天回图=已展示`; `证据落盘=已落盘`.
+- `证据绑定sha=98a280d63e2363c9bce0fd279c474ed429b6e7cc`; `submission_gate=approved`.
+
+Desktop viewport evidence:
+
+- `source_type=target_app_window`; `target_program=Chrome`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=1762x1169 CSS px`; `PR: include`.
+
+![Search query field desktop viewport](./assets/search-query-frame-desktop-1762x1169.jpg)
+
+Mobile viewport evidence:
+
+- `source_type=target_app_window`; `target_program=Chromium production preview`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=393x852 CSS px`; `PR: include`.
+
+![Search query field mobile viewport](./assets/search-query-frame-mobile-393x852.png)
 
 ![Search Storybook with site layout](./assets/search-story-layout-results.png)
 
@@ -196,3 +227,11 @@ PR: include
 - 2026-05-13: Changed the Markdown interaction note to static guidance so deferred hydration is discoverable without leaving a persistent loading live region.
 - 2026-05-13: Clarified same-site Markdown link handling so same-origin absolute URLs stay in the current tab while true external URLs still open safely.
 - 2026-06-19: Collapsed memo detail into a single card, removed the memo-only interaction prompt and separate summary treatment, and added Storybook coverage plus visual evidence for the memo detail shell.
+- 2026-08-01: Added a query-aware static search bootstrap and accessible hydration handoff so deep-linked keywords remain visible from first paint through result loading.
+- 2026-08-01: Bound mobile search stories to a deterministic 393x852 viewport and based narrow-screen containers on available content width so classic scrollbars cannot skew horizontal margins.
+- 2026-08-01: Delayed bootstrap handoff until the React search island has committed its URL-synchronized state, preventing a concurrent-hydration empty-state flash.
+- 2026-08-01: Added a bounded hydration fallback that preserves the query and replaces a permanently stalled skeleton with an accessible reload action.
+- 2026-08-02: Kept the public mobile navigation visible as the second header row and aligned the header frame with the shared page container.
+- 2026-08-02: Compressed the mobile query panel so the first result surface remains visible in at least half of a `438x852` search viewport.
+- 2026-08-02: Removed the duplicate `内容检索` page-purpose kicker from search so the title is the only page label at every viewport.
+- 2026-08-02: Removed the mobile no-result query summary when the no-results surface already communicates the same outcome.
