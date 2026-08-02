@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-05-13`
+- Last Updated: `2026-08-01`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -47,6 +47,15 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
 - Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; article detail may show static interaction guidance, but neither page may expose a persistent live loading state after content is readable.
 
+### 4.4 Static search deep links
+
+- The static `/search/` document must inspect the runtime URL before the first paint. When a non-blank `q` is present, the search input, query-aware status, and full loading skeleton expose the decoded keyword until React search results are ready.
+- On narrow viewports, the public site header remains one row. Navigation, theme selection, and RSS remain available from the explicit menu rather than forcing the header to wrap.
+- While the search island is pending hydration, its build-time empty state stays `hidden`, `inert`, and `aria-hidden`. The query-aware bootstrap is the only visible and accessible search surface.
+- The bootstrap fills keyword nodes with `textContent` and the input `value`; it must not inject URL-derived HTML.
+- The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
+- If the island does not become ready within a bounded interval, the bootstrap keeps the keyword visible, replaces the result skeleton with an accessible loading-failure message, and offers a page reload instead of waiting indefinitely.
+
 ## 5. Acceptance criteria
 
 1. `/`, `/posts`, `/posts/[slug]`, `/memos`, `/memos/[slug]`, `/tags`, `/tags/[...tagSegments]`, `/search`, `/about`, and `/projects` render with the Nature design system in `light`, `dark`, and `system`.
@@ -56,6 +65,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 5. Existing public behaviors keep working: search, pagination, tag navigation, comments, memo browsing, markdown rendering, and theme persistence.
 6. Reduced-motion mode disables or significantly softens particles, gooey motion, and ripple effects without harming usability.
 7. Same-site Markdown links, including same-origin absolute URLs, navigate in the current tab, while external Markdown links keep a new tab target and safe `rel` attributes.
+8. Query-bearing search deep links keep the decoded keyword visible before, during, and after island hydration without exposing the no-keyword empty state or duplicate accessible controls; at `393px`, the public header remains one row and the mobile menu exposes navigation, theme selection, and RSS.
 
 ## 6. Validation
 
@@ -196,3 +206,8 @@ PR: include
 - 2026-05-13: Changed the Markdown interaction note to static guidance so deferred hydration is discoverable without leaving a persistent loading live region.
 - 2026-05-13: Clarified same-site Markdown link handling so same-origin absolute URLs stay in the current tab while true external URLs still open safely.
 - 2026-06-19: Collapsed memo detail into a single card, removed the memo-only interaction prompt and separate summary treatment, and added Storybook coverage plus visual evidence for the memo detail shell.
+- 2026-08-01: Added a query-aware static search bootstrap and accessible hydration handoff so deep-linked keywords remain visible from first paint through result loading.
+- 2026-08-01: Bound mobile search stories to a deterministic 393x852 viewport and based narrow-screen containers on available content width so classic scrollbars cannot skew horizontal margins.
+- 2026-08-01: Delayed bootstrap handoff until the React search island has committed its URL-synchronized state, preventing a concurrent-hydration empty-state flash.
+- 2026-08-01: Added a bounded hydration fallback that preserves the query and replaces a permanently stalled skeleton with an accessible reload action.
+- 2026-08-02: Kept the public mobile header to one row by moving navigation, theme selection, and RSS into an explicit touch menu.

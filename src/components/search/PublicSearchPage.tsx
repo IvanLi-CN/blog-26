@@ -29,6 +29,8 @@ export type PublicSearchPageProps = {
   recommendedSearchTerms?: Array<string | SearchSuggestionItem>;
   isLoadingRecommendations?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
+  inputId?: string;
+  isBootstrap?: boolean;
   resolveHref?: (result: SearchResultItem) => string;
   className?: string;
 };
@@ -58,7 +60,7 @@ function SearchPromptPanel({
   tone?: "neutral" | "accent" | "warning" | "error";
   icon: string;
   eyebrow: string;
-  title: string;
+  title: ReactNode;
   description: string;
   children?: ReactNode;
   role?: "status" | "alert";
@@ -272,6 +274,8 @@ export default function PublicSearchPage({
   recommendedSearchTerms = [],
   isLoadingRecommendations = false,
   inputRef,
+  inputId = "public-search-input",
+  isBootstrap = false,
   resolveHref,
   className,
 }: PublicSearchPageProps) {
@@ -285,7 +289,7 @@ export default function PublicSearchPage({
   const runRecommendedSearch = onRecommendedSearch ?? onQueryChange;
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full", className)} aria-busy={isLoading || undefined}>
       <section className="nature-container py-4 sm:py-6 lg:py-8">
         <div className="nature-surface overflow-hidden">
           <div className="grid gap-5 px-5 py-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
@@ -304,14 +308,14 @@ export default function PublicSearchPage({
 
             <form onSubmit={onSubmit} className="min-w-0">
               <label
-                htmlFor="public-search-input"
+                htmlFor={inputId}
                 className="mb-2 block text-sm font-semibold text-[color:var(--nature-text)]"
               >
                 搜索关键词
               </label>
               <div className="nature-input-shell min-h-[4rem] bg-[rgba(var(--nature-highlight-rgb),0.48)] shadow-[0_18px_44px_rgba(var(--nature-shadow-rgb),0.12)]">
                 <label
-                  htmlFor="public-search-input"
+                  htmlFor={inputId}
                   className="flex min-w-0 flex-1 cursor-text items-center gap-3 self-stretch"
                 >
                   <SearchHydrationSafeIcon
@@ -320,14 +324,16 @@ export default function PublicSearchPage({
                   />
                   <input
                     ref={inputRef}
-                    id="public-search-input"
+                    id={inputId}
                     type="text"
                     value={query}
                     onChange={(event) => onQueryChange(event.target.value)}
+                    readOnly={isBootstrap}
                     placeholder="例如 Arch、React、SQLite"
                     className="nature-input self-stretch"
                     autoComplete="off"
                     aria-label="搜索关键词"
+                    data-search-query-input
                   />
                 </label>
                 {trimmedQuery && !isLoading && onClear && (
@@ -364,13 +370,17 @@ export default function PublicSearchPage({
           <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.18)] px-5 py-4 sm:px-7 lg:px-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-[color:var(--nature-text-soft)]">
-                {isLoading && activeQuery
-                  ? `正在搜索「${activeQuery}」`
-                  : hasResults
-                    ? `关键词「${activeQuery}」 · 找到 ${results.length} 条内容`
-                    : activeQuery
-                      ? `还没有找到「${activeQuery}」`
-                      : "等待输入关键词"}
+                {isLoading && activeQuery ? (
+                  <>
+                    正在搜索「<span data-search-query-text>{activeQuery}</span>」
+                  </>
+                ) : hasResults ? (
+                  `关键词「${activeQuery}」 · 找到 ${results.length} 条内容`
+                ) : activeQuery ? (
+                  `还没有找到「${activeQuery}」`
+                ) : (
+                  "等待输入关键词"
+                )}
               </div>
               <fieldset className="flex flex-wrap items-center gap-2">
                 <legend className="sr-only">结果类型筛选</legend>
@@ -379,6 +389,7 @@ export default function PublicSearchPage({
                     key={item.key}
                     type="button"
                     onClick={() => onFilterChange(item.key)}
+                    disabled={isBootstrap}
                     className={cn(
                       "inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm transition",
                       filter === item.key
@@ -397,7 +408,7 @@ export default function PublicSearchPage({
         </div>
       </section>
 
-      <section className="nature-container pb-10 pt-3 sm:pb-14 sm:pt-4">
+      <section className="nature-container pb-10 pt-3 sm:pb-14 sm:pt-4" data-search-results-region>
         {errorMessage && (
           <SearchPromptPanel
             role="alert"
@@ -436,7 +447,11 @@ export default function PublicSearchPage({
               tone="accent"
               icon="tabler:loader-2"
               eyebrow="正在搜索"
-              title={`正在检索「${activeQuery}」`}
+              title={
+                <>
+                  正在检索「<span data-search-query-text>{activeQuery}</span>」
+                </>
+              }
               description="正在提取匹配片段并排序，命中后可直接打开结果。"
               watermark="..."
             />

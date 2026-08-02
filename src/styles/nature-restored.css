@@ -651,8 +651,8 @@
 @media (max-width: 768px) {
   @layer base {
     :root {
-      --nature-content-width: min(100vw - 1.25rem, 100%);
-      --nature-reading-width: min(100vw - 1.25rem, 100%);
+      --nature-content-width: min(calc(100% - 1.25rem), 100%);
+      --nature-reading-width: min(calc(100% - 1.25rem), 100%);
     }
   }
 

@@ -1379,8 +1379,8 @@ html[data-ui-theme="dark"] .nature-search-submit {
 
 @media (max-width: 768px) {
   :root {
-    --nature-content-width: min(100vw - 1.25rem, 100%);
-    --nature-reading-width: min(100vw - 1.25rem, 100%);
+    --nature-content-width: min(calc(100% - 1.25rem), 100%);
+    --nature-reading-width: min(calc(100% - 1.25rem), 100%);
   }
 
   .nature-panel-body {

@@ -144,17 +144,17 @@ async function loadSearchSuggestions(
     : [];
 }
 
-export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?: string }) {
+export default function SearchPageIsland() {
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const suggestionsAbortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const suggestionsRequestIdRef = useRef(0);
-  const [query, setQuery] = useState(initialQuery);
-  const [searchedQuery, setSearchedQuery] = useState(initialQuery);
+  const [query, setQuery] = useState("");
+  const [searchedQuery, setSearchedQuery] = useState("");
   const [filter, setFilter] = useState<SearchFilter>("all");
   const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [isLoading, setIsLoading] = useState(initialQuery.trim().length > 0);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendedSearchTerms, setRecommendedSearchTerms] = useState<SearchSuggestionItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +205,16 @@ export default function SearchPageIsland({ initialQuery = "" }: { initialQuery?:
   useSafeLayoutEffect(() => {
     syncFromLocation();
   }, [syncFromLocation]);
+
+  useSafeLayoutEffect(() => {
+    const current = new URL(window.location.href).searchParams.get("q") || "";
+    if (query !== current || searchedQuery !== current) return;
+
+    const island = inputRef.current?.closest("astro-island");
+    if (!(island instanceof HTMLElement)) return;
+    island.dataset.searchReady = "true";
+    island.dispatchEvent(new Event("public-search:ready"));
+  }, [query, searchedQuery]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => inputRef.current?.focus(), 50);

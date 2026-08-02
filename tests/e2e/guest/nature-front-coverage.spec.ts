@@ -116,6 +116,76 @@ test.describe("Nature frontend public coverage", () => {
     );
   });
 
+  test("mobile search keeps the site header to one row", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/search/?q=SSH", "light");
+
+    const headerSurface = page.locator(".nature-site-header .nature-surface");
+    await expect(headerSurface).toBeVisible();
+    expect(await headerSurface.evaluate((element) => element.clientHeight)).toBeLessThanOrEqual(72);
+
+    await page.locator('summary[aria-label="打开导航"]').click();
+    const mobileNavigation = page.getByRole("navigation", { name: "移动端主导航" });
+    await expect(mobileNavigation).toBeVisible();
+    await expect(mobileNavigation.getByRole("link", { name: "文章", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Auto" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
+  });
+
+  test("query stays visible while the search island is waiting to hydrate", async ({ page }) => {
+    let releaseSearchIsland: (() => void) | undefined;
+    let markSearchIslandRequested: (() => void) | undefined;
+    const searchIslandGate = new Promise<void>((resolve) => {
+      releaseSearchIsland = resolve;
+    });
+    const searchIslandRequested = new Promise<void>((resolve) => {
+      markSearchIslandRequested = resolve;
+    });
+
+    await page.route(/\/_astro\/SearchPageIsland\.[^/]+\.js$/, async (route) => {
+      markSearchIslandRequested?.();
+      await searchIslandGate;
+      await route.continue();
+    });
+
+    try {
+      await gotoWithTheme(page, "/search/?q=SSH%20%E6%8E%92%E9%9A%9C", "light");
+      await searchIslandRequested;
+
+      const bootstrap = page.locator("[data-search-bootstrap]");
+      const islandHost = page.locator("[data-search-island]");
+      await expect(bootstrap).toBeVisible();
+      await expect(islandHost).toHaveAttribute("hidden", "");
+      await expect(islandHost).toHaveAttribute("inert", "");
+      await expect(islandHost).toHaveAttribute("aria-hidden", "true");
+      await expect(page.getByRole("textbox", { name: "搜索关键词" })).toHaveCount(1);
+      await expect(page.getByRole("textbox", { name: "搜索关键词" })).toHaveValue("SSH 排障");
+      await expect(page.getByLabel("搜索结果加载中")).toBeVisible();
+      await expect(page.getByText("正在检索「SSH 排障」")).toBeVisible();
+      await expect(page.getByText("等待输入关键词")).toBeHidden();
+      await expect(page.getByText("输入关键词开始搜索")).toBeHidden();
+
+      await islandHost.locator("astro-island").dispatchEvent("public-search:error");
+      await expect(page.getByRole("alert")).toContainText("搜索组件暂时没有加载完成");
+      await expect(page.getByRole("alert")).toContainText("SSH 排障");
+      await expect(page.getByRole("button", { name: "刷新重试" })).toBeVisible();
+      await expect(page.getByLabel("搜索结果加载中")).toBeHidden();
+
+      releaseSearchIsland?.();
+      await expect(islandHost.locator("astro-island")).toHaveAttribute("data-search-ready", "true");
+      await expect(bootstrap).toBeHidden();
+      await expect(islandHost).not.toHaveAttribute("hidden", "");
+      await expect(page.getByRole("textbox", { name: "搜索关键词" })).toHaveValue("SSH 排障");
+
+      await page.goto("/search/?q=%20%20", { waitUntil: "domcontentloaded" });
+      await expect(page.locator("[data-search-bootstrap]")).toBeHidden();
+      await expect(page.getByText("等待输入关键词")).toBeVisible();
+      await expect(page.getByText("输入关键词开始搜索")).toBeVisible();
+    } finally {
+      releaseSearchIsland?.();
+    }
+  });
+
   test("home and memos timelines keep visible nodes and rails across breakpoints", async ({
     page,
   }) => {
