@@ -485,8 +485,8 @@
     padding: 0.75rem 1rem;
     border: 1px solid var(--nature-line);
     border-radius: var(--nature-radius-sm);
-    background: var(--nature-surface-muted);
-    box-shadow: inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.08);
+    background: rgba(var(--nature-highlight-rgb), 0.34);
+    box-shadow: inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.16);
     transition:
       border-color 220ms var(--nature-ease),
       box-shadow 220ms var(--nature-ease),
@@ -494,10 +494,21 @@
   }
 
   .nature-input-shell:focus-within {
-    border-color: rgba(var(--nature-accent-rgb), 0.28);
+    border-color: rgba(var(--nature-accent-rgb), 0.32);
     box-shadow:
-      0 0 0 2px rgba(var(--nature-accent-rgb), 0.14),
-      inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.12);
+      0 0 0 2px rgba(var(--nature-accent-rgb), 0.1),
+      inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.2);
+  }
+
+  .nature-search-input-shell {
+    min-height: 3rem;
+    padding: 0.5rem 0.75rem;
+    border-color: var(--nature-line-strong);
+    border-radius: 16px;
+  }
+
+  .nature-search-input-shell:focus-within {
+    border-color: rgba(var(--nature-accent-rgb), 0.36);
   }
 
   .nature-input,
