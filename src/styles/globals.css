@@ -646,7 +646,7 @@ html[data-ui-theme="dark"] .nature-search-submit {
   min-height: 3rem;
   padding: 0.5rem 0.75rem;
   border-color: var(--nature-line-strong);
-  border-radius: 16px;
+  border-radius: 20px;
 }
 
 .nature-search-input-shell:focus-within {
