@@ -43,7 +43,7 @@ function isActive(href: string) {
         )}
         <ThemeToggle client:load transition:persist iconClass="h-4 w-4" />
         <a
-          class="nature-icon-button inline-flex"
+          class="nature-header-rss-button nature-icon-button inline-flex"
           aria-label="RSS Feed"
           title="RSS Feed"
           href={toPublicSitePath("/feed.xml")}
@@ -87,3 +87,10 @@ function isActive(href: string) {
     </div>
   </div>
 </header>
+
+<style>
+  .nature-header-rss-button {
+    width: 36px;
+    height: 36px;
+  }
+</style>

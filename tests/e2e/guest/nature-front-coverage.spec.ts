@@ -154,6 +154,16 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });
 
+  test("mobile header keeps the RSS control visually compact", async ({ page }) => {
+    await page.setViewportSize({ width: 438, height: 852 });
+    await gotoWithTheme(page, "/search/?q=SSH", "light");
+
+    const rssLink = page.getByRole("link", { name: "RSS Feed" });
+    await expect(rssLink).toBeVisible();
+    await expect(rssLink).toHaveCSS("width", "36px");
+    await expect(rssLink).toHaveCSS("height", "36px");
+  });
+
   test("query stays visible while the search island is waiting to hydrate", async ({ page }) => {
     let releaseSearchIsland: (() => void) | undefined;
     let markSearchIslandRequested: (() => void) | undefined;
