@@ -98,5 +98,25 @@ describe("admin demo LLM settings", () => {
       await inheritedTestResponse.json()
     );
     expect(inheritedTestResult.baseUrl).toBe("https://chat-current.example/v1");
+
+    const inheritedRerankResponse = await demoWindow.fetch(
+      "http://localhost/api/admin/llm-settings/test",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          tier: "rerank",
+          settings: {
+            ...update,
+            chat: { ...update.chat, baseUrl: "https://chat-current.example/v1" },
+            embedding: { ...update.embedding, baseUrlMode: "inherit", baseUrl: "" },
+            rerank: { ...update.rerank, baseUrlMode: "inherit", baseUrl: "" },
+          },
+        }),
+      }
+    );
+    const inheritedRerankResult = adminLlmSettingsTestResponseSchema.parse(
+      await inheritedRerankResponse.json()
+    );
+    expect(inheritedRerankResult.baseUrl).toBe("https://chat-current.example/v1");
   });
 });

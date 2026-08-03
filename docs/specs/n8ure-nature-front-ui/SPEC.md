@@ -130,6 +130,13 @@ PR: none
 
 ![Public mobile density current](./assets/public-mobile-density-current.png)
 
+### Project poster mobile radius
+
+- Evidence binding `fd345db7e5cf08f380d7f009e0c3d8e35450fbb9`; source type `storybook_canvas`, target program `mock-only`, capture scope `element`, requested viewport `393px × 852px`, viewport strategy `storybook-viewport`, margin policy `require_margin`, evidence surface `component`, sensitive exclusion `N/A`.
+- The compact ProjectPoster keeps a restrained `14px` mobile radius instead of inheriting the larger desktop compact radius, preserving visual density in narrow project cards.
+
+![Public project poster mobile radius](./assets/public-project-poster-mobile-radius-current.png)
+
 ### Narrow mobile search density
 
 - Evidence bound to implementation commit `59d66e54`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe element`, requested viewport `320x700`, viewport strategy `storybook-viewport`, margin policy `trim_only`, sensitive exclusion `N/A`.
