@@ -112,12 +112,16 @@ Shared capture contexts:
 
 - Evidence binding `21c6442e6136a5e02f4a3f65e73234f23be114a4`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, requested viewport `390px × 844px`, sensitive exclusion `N/A`.
 - Desktop primitives verify `32px` standard actions and fields, `28px` compact controls, and no oversized touch targets. The mobile evidence renders the shipped `AppShell` and `DashboardPage` with seeded query data, has no horizontal overflow, and verifies `44px` navigation and dialog-close targets. The preview uses its own low-brightness admin code surface instead of a public or GitHub highlighter default.
+- Evidence binding `055c85d5`; source type `storybook_canvas`, target program `mock-only`, capture scope `element`, requested viewport `desktop`, viewport strategy `storybook_canvas`, margin policy `require_margin`, sensitive exclusion `N/A`, submission gate `approved`, story `Admin/Soft UI System/EditorTabOverflow`.
+- The editor tab strip renders at `40px` on fine-pointer desktop while its close and overflow controls render at `28px`; touch layouts retain their larger targets outside that condition.
 
 ![Admin desktop control density](./assets/admin-control-density-desktop.png)
 
 ![Admin mobile control density](./assets/admin-control-density-mobile.png)
 
 ![Admin preview dark code](./assets/admin-preview-dark-code.png)
+
+![Admin editor tab strip desktop density](./assets/admin-editor-tab-density-desktop.png)
 
 ### Route Baseline
 
