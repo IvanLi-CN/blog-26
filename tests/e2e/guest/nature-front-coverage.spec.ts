@@ -269,6 +269,7 @@ test.describe("Nature frontend public coverage", () => {
 
       await gotoWithTheme(page, "/memos", "dark");
       const metrics = await page.evaluate(() => {
+        const root = document.documentElement;
         const header = document.querySelector<HTMLElement>(
           ".nature-site-header-frame > .nature-surface"
         );
@@ -277,9 +278,23 @@ test.describe("Nature frontend public coverage", () => {
         const navLabels = Array.from(
           document.querySelectorAll<HTMLElement>(".nature-nav-link-label")
         );
-        const navTargets = Array.from(document.querySelectorAll<HTMLElement>(".nature-nav-link")).map(
-          (target) => target.getBoundingClientRect()
-        );
+        const navTargets = Array.from(
+          document.querySelectorAll<HTMLElement>(".nature-nav-link")
+        ).map((target) => target.getBoundingClientRect());
+        const viewportWidth = root.clientWidth;
+        const edgeSelectors = [
+          ".nature-site-header-frame > .nature-surface",
+          "main > .nature-container",
+          "footer .nature-container > .nature-surface",
+        ];
+        const shellEdges = edgeSelectors.map((selector) => {
+          const element = document.querySelector<HTMLElement>(selector);
+          const bounds = element?.getBoundingClientRect();
+
+          return bounds
+            ? { left: bounds.left, right: viewportWidth - bounds.right }
+            : { left: -1, right: -1 };
+        });
 
         return {
           hasRequiredElements: Boolean(header && card && rail),
@@ -288,6 +303,7 @@ test.describe("Nature frontend public coverage", () => {
           railWidth: rail?.getBoundingClientRect().width ?? 0,
           visibleNavLabels: navLabels.filter((label) => getComputedStyle(label).display !== "none")
             .length,
+          shellEdges,
           navTargets: navTargets.map(({ width: targetWidth, height }) => ({
             width: targetWidth,
             height,
@@ -297,6 +313,10 @@ test.describe("Nature frontend public coverage", () => {
 
       expect(metrics.hasRequiredElements).toBe(true);
       expect(metrics.headerRadius).toBeLessThanOrEqual(16);
+      for (const edges of metrics.shellEdges) {
+        expect(edges.left).toBeCloseTo(12, 0);
+        expect(edges.right).toBeCloseTo(12, 0);
+      }
       expect(metrics.navTargets).toHaveLength(4);
       for (const target of metrics.navTargets) {
         expect(target.width).toBeGreaterThanOrEqual(44);

@@ -72,9 +72,9 @@ rounded:
     xlarge: "1.75rem"
 spacing:
   public:
-    contentWidth: "min(1280px, calc(100vw - 3rem))"
-    readingWidth: "min(920px, calc(100vw - 3rem))"
-    mobileContentWidth: "calc(100vw - 1.5rem)"
+    contentWidth: "min(1280px, calc(100% - 3rem))"
+    readingWidth: "min(920px, calc(100% - 3rem))"
+    mobileContentWidth: "calc(100% - 1.5rem)"
     mobilePanelPadding: "16px"
     timelineGap: "clamp(1.5rem, 2.8vw, 2.4rem)"
   admin:

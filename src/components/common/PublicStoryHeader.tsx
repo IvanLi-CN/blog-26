@@ -16,7 +16,7 @@ export function PublicStoryHeader({
   pending?: boolean;
 }) {
   return (
-    <header className="nature-site-header sticky top-0 z-40 w-full flex-none px-3 pt-3 sm:px-4">
+    <header className="nature-site-header sticky top-0 z-40 w-full flex-none pt-3">
       <div className="nature-container nature-site-header-frame">
         <div className="nature-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:flex sm:flex-wrap sm:gap-3 sm:px-5">
           <a
