@@ -52,7 +52,7 @@ export function PublicStoryHeader({
 
           <div className="nature-header-tools order-2 ml-0 flex items-center gap-1 sm:ml-auto sm:gap-3 md:order-3">
             <form action="/search" method="get" className="hidden items-center xl:flex">
-              <label className="nature-input-shell nature-header-search min-w-[20rem] 2xl:min-w-[22rem]">
+              <label className="nature-input-shell nature-header-search min-w-[18rem] 2xl:min-w-[20rem]">
                 <Icon
                   name="tabler:search"
                   className="h-5 w-5 text-[color:var(--nature-text-faint)]"
