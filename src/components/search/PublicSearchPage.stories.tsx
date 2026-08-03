@@ -90,6 +90,23 @@ const searchMobileViewport = {
   },
 } as const;
 
+const searchNarrowMobileViewport = {
+  parameters: {
+    viewport: {
+      options: {
+        searchNarrowMobile: {
+          name: "Search narrow mobile",
+          styles: { width: "320px", height: "700px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+  globals: {
+    viewport: { value: "searchNarrowMobile", isRotated: false },
+  },
+} as const;
+
 function SearchStory({
   initialQuery = "Arch",
   searchedQuery = initialQuery,
@@ -248,6 +265,28 @@ export const MobileLoading: Story = {
     ).toBeLessThanOrEqual(1);
     expect(resultsBounds?.top ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(250);
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
+  },
+};
+
+export const NarrowMobileRecommendations: Story = {
+  name: "窄屏推荐搜索",
+  ...searchNarrowMobileViewport,
+  render: () => (
+    <SearchStory
+      initialQuery="missing"
+      searchedQuery="missing"
+      items={emptyResults}
+      recommendedTerms={["React", "Astro"]}
+      theme="dark"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const buttons = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"));
+
+    expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
+    for (const button of buttons) {
+      expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
   },
 };
 

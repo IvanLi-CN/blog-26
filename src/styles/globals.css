@@ -723,6 +723,7 @@ html[data-ui-theme="dark"] .nature-search-submit {
   padding: 0.5rem 0.75rem;
   border-color: var(--nature-line-strong);
   border-radius: 20px;
+  background: rgba(var(--nature-surface-rgb), 0.68);
 }
 
 .nature-search-input-shell:focus-within {
