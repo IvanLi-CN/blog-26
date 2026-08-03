@@ -387,6 +387,7 @@ const demoChatSecret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"] = {
 function inheritedDemoSecret(
   secret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"]
 ): AdminLlmSettingsPayload["settings"]["embedding"]["apiKey"] {
+  if (!secret.hasValue) return missingDemoSecret();
   return {
     hasValue: secret.hasValue,
     maskedValue: secret.maskedValue,
@@ -473,6 +474,8 @@ let demoRerankCustomSecret = missingDemoSecret();
 
 function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
   const savedAt = Date.now();
+  const embeddingUsesCustomProvider = input.embedding.useCustomProvider;
+  const rerankUsesCustomProvider = input.rerank.useCustomProvider;
   const chatApiKey = input.chat.clearApiKey
     ? {
         ...llmSettings.settings.chat.apiKey,
@@ -484,23 +487,23 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
       ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
       : llmSettings.settings.chat.apiKey;
   let embeddingApiKey: AdminSecretState;
-  if (input.embedding.apiKeyMode === "inherit") {
+  if (!embeddingUsesCustomProvider) {
     embeddingApiKey = inheritedDemoSecret(chatApiKey);
   } else {
     demoEmbeddingCustomSecret = resolveDemoCustomSecret(demoEmbeddingCustomSecret, input.embedding);
     embeddingApiKey = demoEmbeddingCustomSecret;
   }
   let rerankApiKey: AdminSecretState;
-  if (input.rerank.apiKeyMode === "inherit") {
+  if (!rerankUsesCustomProvider) {
     rerankApiKey = inheritedDemoSecret(embeddingApiKey);
   } else {
     demoRerankCustomSecret = resolveDemoCustomSecret(demoRerankCustomSecret, input.rerank);
     rerankApiKey = demoRerankCustomSecret;
   }
-  const embeddingBaseUrl =
-    input.embedding.baseUrlMode === "custom" ? input.embedding.baseUrl : input.chat.baseUrl;
-  const rerankBaseUrl =
-    input.rerank.baseUrlMode === "custom" ? input.rerank.baseUrl : embeddingBaseUrl;
+  const embeddingBaseUrl = embeddingUsesCustomProvider
+    ? input.embedding.baseUrl
+    : input.chat.baseUrl;
+  const rerankBaseUrl = rerankUsesCustomProvider ? input.rerank.baseUrl : embeddingBaseUrl;
 
   llmSettings = {
     savedAt,
@@ -508,18 +511,18 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
       chat: { model: input.chat.model, baseUrl: input.chat.baseUrl, apiKey: chatApiKey },
       embedding: {
         model: input.embedding.model,
-        useCustomProvider: input.embedding.useCustomProvider,
-        baseUrlMode: input.embedding.baseUrlMode,
+        useCustomProvider: embeddingUsesCustomProvider,
+        baseUrlMode: embeddingUsesCustomProvider ? "custom" : "inherit",
         baseUrl: input.embedding.baseUrl,
-        apiKeyMode: input.embedding.apiKeyMode,
+        apiKeyMode: embeddingUsesCustomProvider ? "custom" : "inherit",
         apiKey: embeddingApiKey,
       },
       rerank: {
         model: input.rerank.model,
-        useCustomProvider: input.rerank.useCustomProvider,
-        baseUrlMode: input.rerank.baseUrlMode,
+        useCustomProvider: rerankUsesCustomProvider,
+        baseUrlMode: rerankUsesCustomProvider ? "custom" : "inherit",
         baseUrl: input.rerank.baseUrl,
-        apiKeyMode: input.rerank.apiKeyMode,
+        apiKeyMode: rerankUsesCustomProvider ? "custom" : "inherit",
         apiKey: rerankApiKey,
       },
     },
@@ -536,8 +539,8 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
         apiKeyAvailable: embeddingApiKey.hasValue,
         sources: {
           model: "db",
-          baseUrl: input.embedding.baseUrlMode === "custom" ? "db" : "inherited",
-          apiKey: input.embedding.apiKeyMode === "custom" ? embeddingApiKey.source : "inherited",
+          baseUrl: embeddingUsesCustomProvider ? "db" : "inherited",
+          apiKey: embeddingApiKey.source,
         },
       },
       rerank: {
@@ -546,8 +549,8 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
         apiKeyAvailable: rerankApiKey.hasValue,
         sources: {
           model: "db",
-          baseUrl: input.rerank.baseUrlMode === "custom" ? "db" : "inherited",
-          apiKey: input.rerank.apiKeyMode === "custom" ? rerankApiKey.source : "inherited",
+          baseUrl: rerankUsesCustomProvider ? "db" : "inherited",
+          apiKey: rerankApiKey.source,
         },
       },
     },
@@ -703,14 +706,12 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
   if (path === "/api/admin/llm-settings/test") {
     const request = body as AdminLlmSettingsTestRequest;
     const tierSettings = request.settings[request.tier];
-    const embeddingBaseUrl =
-      request.settings.embedding.baseUrlMode === "custom"
-        ? request.settings.embedding.baseUrl
-        : request.settings.chat.baseUrl;
-    const rerankBaseUrl =
-      request.settings.rerank.baseUrlMode === "custom"
-        ? request.settings.rerank.baseUrl
-        : embeddingBaseUrl;
+    const embeddingBaseUrl = request.settings.embedding.useCustomProvider
+      ? request.settings.embedding.baseUrl
+      : request.settings.chat.baseUrl;
+    const rerankBaseUrl = request.settings.rerank.useCustomProvider
+      ? request.settings.rerank.baseUrl
+      : embeddingBaseUrl;
     return json({
       tier: request.tier,
       ok: true,

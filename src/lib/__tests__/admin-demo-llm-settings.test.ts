@@ -85,7 +85,13 @@ describe("admin demo LLM settings", () => {
 
     const inheritedRerankUpdate = {
       ...customRerankUpdate,
-      rerank: { ...customRerankUpdate.rerank, apiKeyMode: "inherit", apiKeyInput: undefined },
+      rerank: {
+        ...customRerankUpdate.rerank,
+        useCustomProvider: false,
+        baseUrlMode: "inherit" as const,
+        apiKeyMode: "inherit" as const,
+        apiKeyInput: undefined,
+      },
     };
     const reinheritRerankSettingsResponse = await demoWindow.fetch(
       "http://localhost/api/admin/llm-settings",
@@ -95,6 +101,7 @@ describe("admin demo LLM settings", () => {
       await reinheritRerankSettingsResponse.json()
     );
     expect(inheritedRerankSettings.settings.rerank.apiKey.source).toBe("inherited");
+    expect(inheritedRerankSettings.settings.rerank.useCustomProvider).toBe(false);
 
     const reenabledRerankResponse = await demoWindow.fetch(
       "http://localhost/api/admin/llm-settings",
@@ -102,7 +109,12 @@ describe("admin demo LLM settings", () => {
         method: "PUT",
         body: JSON.stringify({
           ...inheritedRerankUpdate,
-          rerank: { ...inheritedRerankUpdate.rerank, apiKeyMode: "custom" },
+          rerank: {
+            ...inheritedRerankUpdate.rerank,
+            useCustomProvider: true,
+            baseUrlMode: "custom",
+            apiKeyMode: "custom",
+          },
         }),
       }
     );
@@ -110,6 +122,7 @@ describe("admin demo LLM settings", () => {
       await reenabledRerankResponse.json()
     );
     expect(reenabledRerankSettings.settings.rerank.apiKey.hasValue).toBe(true);
+    expect(reenabledRerankSettings.settings.rerank.apiKey.source).toBe("db");
 
     const testResponse = await demoWindow.fetch("http://localhost/api/admin/llm-settings/test", {
       method: "POST",
@@ -152,7 +165,13 @@ describe("admin demo LLM settings", () => {
             ...update,
             chat: { ...update.chat, baseUrl: "https://chat-current.example/v1" },
             embedding: { ...update.embedding, baseUrlMode: "inherit", baseUrl: "" },
-            rerank: { ...update.rerank, baseUrlMode: "inherit", baseUrl: "" },
+            rerank: {
+              ...update.rerank,
+              useCustomProvider: false,
+              baseUrlMode: "inherit",
+              baseUrl: "",
+              apiKeyMode: "inherit",
+            },
           },
         }),
       }
@@ -161,5 +180,25 @@ describe("admin demo LLM settings", () => {
       await inheritedRerankResponse.json()
     );
     expect(inheritedRerankResult.baseUrl).toBe("https://chat-current.example/v1");
+
+    const clearedParentResponse = await demoWindow.fetch(
+      "http://localhost/api/admin/llm-settings",
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          ...update,
+          chat: { ...update.chat, clearApiKey: true },
+          embedding: { ...update.embedding, useCustomProvider: false },
+          rerank: { ...update.rerank, useCustomProvider: false },
+        }),
+      }
+    );
+    const clearedParentSettings = adminLlmSettingsPayloadSchema.parse(
+      await clearedParentResponse.json()
+    );
+    expect(clearedParentSettings.settings.embedding.apiKey.source).toBe("missing");
+    expect(clearedParentSettings.settings.rerank.apiKey.source).toBe("missing");
+    expect(clearedParentSettings.resolved.embedding.sources.apiKey).toBe("missing");
+    expect(clearedParentSettings.resolved.rerank.sources.apiKey).toBe("missing");
   });
 });
