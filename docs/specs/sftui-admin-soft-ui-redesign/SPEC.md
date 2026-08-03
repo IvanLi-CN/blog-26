@@ -103,6 +103,8 @@ Out of scope:
 
 This section keeps only the final, currently valid screenshots grouped by workflow.
 
+PR: none
+
 Shared capture contexts:
 
 - Seeded preview baseline: deterministic local production preview using Playwright test data, `target_program=local test preview app`, `capture_scope=browser-viewport`, `viewport_strategy=playwright-viewport`, `source_type=mock_ui`, evidence binding `c1ade722`
@@ -186,21 +188,17 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 
 ![Admin editor file tree inline rename](./assets/demo/admin-editor-file-tree-inline-rename.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree keyboard Enter enters inline rename](./assets/demo/admin-editor-file-tree-enter-rename.trimmed.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree row-level rename pending state](./assets/demo/admin-editor-file-tree-rename-pending.trimmed.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree keeps rename editing active with persistent error feedback](./assets/demo/admin-editor-file-tree-rename-error-retry.trimmed.png)
 
 ![Admin editor file tree fills available sidebar height](./assets/demo/admin-editor-sidebar-plain-file-icon-counts.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree menu escapes the sidebar card while staying inside the viewport](./assets/admin-editor-file-tree-context-menu-viewport.png)
 
@@ -228,7 +226,6 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 
 ![Admin editor frontmatter inline diagnostics block invalid tags and invalid publishDate values](./assets/frontmatter-errors.trimmed.png)
 
-PR: include
 source_type=mock_ui; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor save auto-fixes frontmatter tags indentation and returns to 已保存](./assets/frontmatter-save-autofix.trimmed.png)
 
@@ -236,7 +233,6 @@ source_type=mock_ui; target_program=mock-only; capture_scope=browser-viewport; s
 
 ![Admin editor tab overflow mobile bottom drawer](./assets/demo/admin-editor-tab-overflow-web-demo-mobile-bottom-drawer.trimmed.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor readable floating toast feedback](./assets/demo/admin-editor-readable-toast-feedback.png)
 
@@ -267,6 +263,5 @@ Verified on `/admin/posts?demo=true`.
 - Database-backed post preview strips contaminated frontmatter from the rendered body, restores the author-facing title from metadata/frontmatter truth, and gates the public-page CTA by `draft/public` state.
 - Draft or non-public post preview uses a disabled explanatory control instead of sending the author to a public 404.
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin preview detail rhythm in Storybook](./assets/admin-preview-draft-cta-disabled-storybook.png)
