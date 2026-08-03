@@ -67,6 +67,8 @@ describe("admin demo LLM settings", () => {
     const updated = adminLlmSettingsPayloadSchema.parse(await updateResponse.json());
     expect(updated.settings.chat.model).toBe("anthropic/claude-3.5-haiku");
     expect(updated.settings.rerank.useCustomProvider).toBe(true);
+    expect(updated.settings.rerank.apiKey.hasValue).toBe(false);
+    expect(updated.settings.rerank.apiKey.source).toBe("missing");
 
     const testResponse = await demoWindow.fetch("http://localhost/api/admin/llm-settings/test", {
       method: "POST",

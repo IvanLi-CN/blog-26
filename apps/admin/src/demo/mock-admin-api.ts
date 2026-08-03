@@ -394,6 +394,24 @@ function inheritedDemoSecret(
   };
 }
 
+function missingDemoSecret(): AdminLlmSettingsPayload["settings"]["embedding"]["apiKey"] {
+  return {
+    hasValue: false,
+    maskedValue: null,
+    source: "missing",
+    requiresMasterKey: false,
+  };
+}
+
+function resolveDemoCustomSecret(
+  current: AdminLlmSettingsPayload["settings"]["embedding"]["apiKey"],
+  input: { apiKeyInput?: string; clearApiKey?: boolean }
+) {
+  if (input.clearApiKey) return missingDemoSecret();
+  if (input.apiKeyInput?.trim()) return { ...demoChatSecret, maskedValue: "sk-demo-••••••••" };
+  return current.source === "inherited" ? missingDemoSecret() : current;
+}
+
 let llmSettings: AdminLlmSettingsPayload = {
   savedAt: now - 3_600_000,
   settings: {
@@ -464,29 +482,11 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
   const embeddingApiKey =
     input.embedding.apiKeyMode === "inherit"
       ? inheritedDemoSecret(chatApiKey)
-      : input.embedding.clearApiKey
-        ? {
-            ...llmSettings.settings.embedding.apiKey,
-            hasValue: false,
-            maskedValue: null,
-            source: "missing" as const,
-          }
-        : input.embedding.apiKeyInput?.trim()
-          ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
-          : llmSettings.settings.embedding.apiKey;
+      : resolveDemoCustomSecret(llmSettings.settings.embedding.apiKey, input.embedding);
   const rerankApiKey =
     input.rerank.apiKeyMode === "inherit"
       ? inheritedDemoSecret(embeddingApiKey)
-      : input.rerank.clearApiKey
-        ? {
-            ...llmSettings.settings.rerank.apiKey,
-            hasValue: false,
-            maskedValue: null,
-            source: "missing" as const,
-          }
-        : input.rerank.apiKeyInput?.trim()
-          ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
-          : llmSettings.settings.rerank.apiKey;
+      : resolveDemoCustomSecret(llmSettings.settings.rerank.apiKey, input.rerank);
   const embeddingBaseUrl =
     input.embedding.baseUrlMode === "custom" ? input.embedding.baseUrl : input.chat.baseUrl;
   const rerankBaseUrl =

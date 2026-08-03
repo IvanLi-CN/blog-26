@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 import "@/styles/nature-restored.css";
+import "../../../site/components/projects/project-poster-radius.css";
 
 const meta = {
   title: "Public/Projects/ProjectPoster",
@@ -33,7 +34,7 @@ function ProjectPosterRadiusContract() {
       style={{ background: "#0f1613", color: "#e6f1eb" }}
     >
       <article
-        className="project-poster-radius-contract is-compact mx-auto flex max-w-[22rem] flex-col justify-end overflow-hidden border p-5"
+        className="project-poster is-compact mx-auto flex max-w-[22rem] flex-col justify-end overflow-hidden border p-5"
         data-testid="project-poster-mobile"
       >
         <span className="text-xs uppercase tracking-[0.14em]" style={{ color: "#9db6a8" }}>
@@ -45,21 +46,13 @@ function ProjectPosterRadiusContract() {
         </span>
       </article>
       <style>{`
-        .project-poster-radius-contract {
+        .project-poster {
           aspect-ratio: 3 / 4;
           border-color: rgba(156, 190, 170, 0.24);
-          border-radius: 1.6rem;
           background:
             radial-gradient(circle at 14% 12%, rgba(108, 146, 184, 0.24), transparent 30%),
             linear-gradient(160deg, rgba(24, 36, 44, 0.96), rgba(24, 36, 44, 0.82));
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 54px rgba(0, 0, 0, 0.3);
-        }
-
-        @media (max-width: 767px) {
-          .project-poster-radius-contract,
-          .project-poster-radius-contract.is-compact {
-            border-radius: var(--nature-radius-md);
-          }
         }
       `}</style>
     </main>

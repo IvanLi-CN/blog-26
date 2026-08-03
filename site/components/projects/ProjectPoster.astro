@@ -2,6 +2,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { ProjectCatalogItem, ProjectDomain } from "../../lib/projects";
+import "./project-poster-radius.css";
 
 interface Props {
   project: ProjectCatalogItem;
@@ -95,7 +96,6 @@ const hasPosterImage = existsSync(posterImagePath);
     overflow: hidden;
     aspect-ratio: 3 / 4;
     border: 1px solid rgba(var(--nature-border-rgb), 0.2);
-    border-radius: 1.9rem;
     background:
       radial-gradient(circle at 14% 12%, rgba(var(--project-tone-rgb), 0.24), transparent 30%),
       radial-gradient(circle at 88% 14%, rgba(var(--project-glow-rgb), 0.18), transparent 30%),
@@ -110,10 +110,6 @@ const hasPosterImage = existsSync(posterImagePath);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
       0 24px 54px rgba(0, 0, 0, 0.3);
-  }
-
-  .project-poster.is-compact {
-    border-radius: 1.6rem;
   }
 
   .project-poster.is-hero {
@@ -496,11 +492,6 @@ const hasPosterImage = existsSync(posterImagePath);
   }
 
   @media (max-width: 767px) {
-    .project-poster,
-    .project-poster.is-compact {
-      border-radius: var(--nature-radius-md);
-    }
-
     .project-poster-title {
       max-width: 100%;
       font-size: clamp(1.7rem, 7vw, 2.2rem);
