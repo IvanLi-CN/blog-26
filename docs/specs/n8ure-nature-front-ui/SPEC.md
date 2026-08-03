@@ -115,13 +115,20 @@ PR: none
 
 ### Responsive control and dark code surface
 
-- Evidence binding `71712d2721d8f5f88380e5c2c619234016a516f7`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, sensitive exclusion `N/A`.
+- Evidence binding `7b2e49e54b241941b30c5350351d3a1392336471`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, sensitive exclusion `N/A`.
 - Fine-pointer desktop keeps the public navigation compact at `32px`, Memo text actions at `36px`, and code at `12px × 14px` with a `12px` radius. The coarse-pointer mobile canvas restores `44px` navigation targets while retaining the same readable dark code surface. Both canvases confirm that the obsolete article interaction hint is absent.
 - The dedicated desktop and mobile code stories use media-free Markdown fixtures so code-surface evidence does not depend on image-facade availability.
 
 ![Public dark code desktop](./assets/public-dark-code-desktop.png)
 
 ![Public dark code mobile](./assets/public-dark-code-mobile.png)
+
+### Current mobile density refresh
+
+- Evidence binding `7b2e49e54b241941b30c5350351d3a1392336471`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, requested viewport `393px × 852px`, sensitive exclusion `N/A`.
+- The current mobile canvas keeps the public search controls and result cards aligned to the 12px shell gutter while retaining touch-sized actions.
+
+![Public mobile density current](./assets/public-mobile-density-current.png)
 
 ### Narrow mobile search density
 
