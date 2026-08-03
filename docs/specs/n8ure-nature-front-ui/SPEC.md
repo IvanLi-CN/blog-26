@@ -90,11 +90,11 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest-chromium`
 - `PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR=0 bunx playwright test --project=guest --grep "Code Block Rendering"`
 - `bun run build-storybook`
-- `bun run check` is still blocked by pre-existing repository-wide issues outside this scope:
-  - `biome.jsonc` schema mismatch against the globally installed Biome CLI
-  - existing admin/editor lint findings unrelated to the public Nature redesign
+- `bun run check`
 
 ## Visual Evidence
+
+PR: none
 
 - Evidence captured against local branch `th/nature-front-redesign` on the refreshed Nature frontend worktree state after the width, comment-form, and code-highlighting fixes.
 - Assets stored under `docs/specs/n8ure-nature-front-ui/assets/`.
@@ -122,6 +122,16 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ![Public dark code desktop](./assets/public-dark-code-desktop.png)
 
 ![Public dark code mobile](./assets/public-dark-code-mobile.png)
+
+### Compact mobile density
+
+- Evidence bound to implementation commit `2b9a03c28bb0e0855794c13a050ac5fc784ddfd8`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- The controlled static fixture uses `393px × 852px` and `320px × 700px` viewports. Both keep the mobile header and timeline card within the viewport, use a `16px` maximum surface radius, and preserve `44px` navigation targets.
+- At `320px`, navigation labels collapse to labelled icons and the timeline rail compacts so the content card retains a usable reading width instead of losing space to chrome.
+
+![Public mobile density at 393px](./assets/public-mobile-density-393.png)
+
+![Public mobile density at 320px](./assets/public-mobile-density-320.png)
 
 ### Related posts responsive cards
 
