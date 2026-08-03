@@ -231,13 +231,13 @@ PR: none
 
 Desktop viewport evidence:
 
-- `source_type=target_app_window`; `target_program=Chrome`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=1762x1169 CSS px`; `PR: include`.
+- `source_type=target_app_window`; `target_program=Chrome`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=1762x1169 CSS px`.
 
 ![Search query field desktop viewport](./assets/search-query-frame-desktop-1762x1169.jpg)
 
 Mobile viewport evidence:
 
-- `source_type=target_app_window`; `target_program=Chromium production preview`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=393x852 CSS px`; `PR: include`.
+- `source_type=target_app_window`; `target_program=Chromium production preview`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=393x852 CSS px`.
 
 ![Search query field mobile viewport](./assets/search-query-frame-mobile-393x852.png)
 
@@ -253,13 +253,10 @@ Mobile viewport evidence:
 
 ![Search recovery directions](./assets/search-tool-recovery.png)
 
-PR: include
 ![Search recommendations single row](./assets/search-recommendations-single-row.png)
 
-PR: include
 ![Search recommendations single row dark](./assets/search-recommendations-single-row-dark.png)
 
-PR: include
 ![Search recommendations single row mobile](./assets/search-recommendations-single-row-mobile.png)
 
 ## Change log
