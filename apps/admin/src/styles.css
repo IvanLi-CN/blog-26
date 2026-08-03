@@ -327,15 +327,13 @@ html[data-ui-theme="light"] {
   color: var(--editor-link);
 }
 
-.admin-editor-surface .milkdown .ProseMirror code,
-.admin-editor-preview code:not(pre code) {
+.admin-editor-surface .milkdown .ProseMirror code {
   border: 1px solid var(--border);
   background: var(--editor-inline-code-bg);
   color: var(--editor-inline-code);
 }
 
-.admin-editor-surface .milkdown .ProseMirror pre,
-.admin-editor-preview pre {
+.admin-editor-surface .milkdown .ProseMirror pre {
   border: 1px solid var(--border);
   background: var(--editor-code-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -343,11 +341,28 @@ html[data-ui-theme="light"] {
 
 .admin-editor-surface .milkdown .ProseMirror blockquote,
 .admin-editor-preview blockquote {
-  border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--border));
+  position: relative;
+  box-sizing: border-box;
+  border: 0;
   background: color-mix(in oklch, var(--editor-blockquote-bg) 60%, transparent);
   color: var(--editor-text-soft);
-  padding: 0.8rem 1rem;
-  border-radius: 1.25rem;
+  padding: 0.8rem 1rem 0.8rem 2.75rem;
+  border-radius: 0.75rem;
+}
+
+.admin-editor-surface .milkdown .ProseMirror blockquote::before,
+.admin-editor-preview blockquote::before {
+  content: "“";
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: 0.55rem;
+  width: auto;
+  color: color-mix(in oklch, var(--primary) 72%, var(--editor-text-soft));
+  background: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .admin-editor-surface .milkdown .tableWrapper,
@@ -555,69 +570,98 @@ html[data-ui-theme="light"] {
   margin: 1.5rem 0;
 }
 
-.admin-editor-preview .hljs {
-  background: transparent;
-  color: var(--editor-code-foreground);
-}
+@media (min-width: 1024px) and (pointer: fine) {
+  .admin-button {
+    height: 2rem;
+    border-radius: 0.75rem;
+    padding: 0.4rem 0.8rem;
+  }
 
-.admin-editor-preview .hljs-subst,
-.admin-editor-preview .hljs-punctuation {
-  color: var(--editor-code-foreground);
-}
+  .admin-button-sm,
+  .admin-button-icon,
+  .admin-checkbox,
+  .admin-radio-control,
+  .admin-tabs-trigger {
+    min-height: 1.75rem;
+    height: 1.75rem;
+  }
 
-.admin-editor-preview .hljs-comment,
-.admin-editor-preview .hljs-quote {
-  color: var(--editor-code-comment);
-}
+  .admin-button-sm {
+    border-radius: 0.75rem;
+    padding: 0.3rem 0.625rem;
+  }
 
-.admin-editor-preview .hljs-keyword,
-.admin-editor-preview .hljs-selector-tag,
-.admin-editor-preview .hljs-meta .hljs-keyword,
-.admin-editor-preview .hljs-doctag {
-  color: var(--editor-code-keyword);
-}
+  .admin-button-lg {
+    height: 2.25rem;
+    padding: 0.45rem 1rem;
+  }
 
-.admin-editor-preview .hljs-string,
-.admin-editor-preview .hljs-attr,
-.admin-editor-preview .hljs-regexp,
-.admin-editor-preview .hljs-template-variable {
-  color: var(--editor-code-string);
-}
+  .admin-button-icon,
+  .admin-checkbox,
+  .admin-radio-control {
+    width: 1.75rem;
+  }
 
-.admin-editor-preview .hljs-number,
-.admin-editor-preview .hljs-literal,
-.admin-editor-preview .hljs-symbol,
-.admin-editor-preview .hljs-bullet {
-  color: var(--editor-code-number);
-}
+  .admin-select-scroll-button {
+    height: 1.75rem;
+    min-height: 1.75rem;
+  }
 
-.admin-editor-preview .hljs-title,
-.admin-editor-preview .hljs-title.class_,
-.admin-editor-preview .hljs-title.class_.inherited__,
-.admin-editor-preview .hljs-title.function_,
-.admin-editor-preview .hljs-function .hljs-title,
-.admin-editor-preview .hljs-property {
-  color: var(--editor-code-function);
-}
+  .admin-select-item {
+    min-height: 1.75rem;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+  }
 
-.admin-editor-preview .hljs-variable,
-.admin-editor-preview .hljs-name,
-.admin-editor-preview .hljs-params,
-.admin-editor-preview .hljs-attribute {
-  color: var(--editor-code-variable);
-}
+  .admin-field-control {
+    height: 2rem;
+    border-radius: 0.75rem;
+    padding: 0.4rem 0.875rem;
+  }
 
-.admin-editor-preview .hljs-built_in,
-.admin-editor-preview .hljs-type,
-.admin-editor-preview .hljs-link {
-  color: var(--editor-code-literal);
-}
+  .admin-switch {
+    height: 1.75rem;
+    width: 2.5rem;
+    padding: 0.125rem;
+  }
 
-.admin-editor-preview .hljs-meta,
-.admin-editor-preview .hljs-selector-id,
-.admin-editor-preview .hljs-selector-class,
-.admin-editor-preview .hljs-section {
-  color: var(--editor-code-meta);
+  .admin-switch-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .admin-switch-thumb[data-state="checked"] {
+    transform: translateX(1.125rem);
+  }
+
+  .admin-tabs-trigger {
+    border-radius: 0.75rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .admin-code-block {
+    border-radius: 0.625rem;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .admin-nav-link {
+    min-height: 2rem;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+  }
+
+  .admin-editor-tab {
+    height: 1.75rem;
+  }
+
+  .admin-editor-tab-strip {
+    height: 2.5rem;
+  }
+
+  .admin-editor-tab-icon-control {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
 }
 
 @media (min-width: 1024px) {

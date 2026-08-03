@@ -78,7 +78,7 @@ function SearchPromptPanel({
     <article
       role={role}
       aria-label={ariaLabel}
-      className="nature-panel nature-panel-soft relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6"
+      className="nature-panel nature-panel-soft relative overflow-hidden px-4 py-4 sm:px-6 sm:py-6"
     >
       <div
         aria-hidden="true"
@@ -89,7 +89,7 @@ function SearchPromptPanel({
       <div className="relative grid gap-5 sm:grid-cols-[4.25rem_minmax(0,1fr)] sm:items-start">
         <div
           className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-[1.45rem] border border-[color:var(--nature-line)] shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.25)]",
+            "flex h-12 w-12 items-center justify-center rounded-[var(--nature-radius-sm)] border border-[color:var(--nature-line)] shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.25)] sm:h-16 sm:w-16 sm:rounded-[1.45rem]",
             toneClass
           )}
         >
@@ -120,7 +120,7 @@ function SearchTermButton({ children, onClick }: { children: ReactNode; onClick:
     <button
       type="button"
       onClick={onClick}
-      className="group inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(var(--nature-accent-rgb),0.2)] bg-[rgba(var(--nature-surface-rgb),0.58)] px-3.5 text-sm font-medium text-[color:var(--nature-text)] shadow-[0_10px_28px_rgba(var(--nature-shadow-rgb),0.07)] transition hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.42)] hover:bg-[rgba(var(--nature-accent-rgb),0.12)] hover:text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(var(--nature-accent-rgb),0.42)]"
+      className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-[rgba(var(--nature-accent-rgb),0.2)] bg-[rgba(var(--nature-surface-rgb),0.58)] px-3.5 text-sm font-medium text-[color:var(--nature-text)] shadow-[0_10px_28px_rgba(var(--nature-shadow-rgb),0.07)] transition hover:-translate-y-0.5 hover:border-[rgba(var(--nature-accent-rgb),0.42)] hover:bg-[rgba(var(--nature-accent-rgb),0.12)] hover:text-[color:var(--nature-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(var(--nature-accent-rgb),0.42)]"
     >
       <SearchHydrationSafeIcon
         name="tabler:search"
@@ -192,7 +192,7 @@ function RecommendedSearchTerms({
 }) {
   if (isLoading) {
     return (
-      <div className="w-full rounded-[1.35rem] border border-[rgba(var(--nature-accent-rgb),0.16)] bg-[rgba(var(--nature-highlight-rgb),0.24)] px-4 py-3">
+      <div className="w-full rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-accent-rgb),0.16)] bg-[rgba(var(--nature-surface-rgb),0.68)] px-4 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-[color:var(--nature-text-faint)]">
             <SearchHydrationSafeIcon name="tabler:sparkles" className="h-4 w-4" />
@@ -200,7 +200,7 @@ function RecommendedSearchTerms({
           </div>
           <div className="flex flex-wrap gap-2">
             {["suggestion-loading-1", "suggestion-loading-2", "suggestion-loading-3"].map((key) => (
-              <span key={key} className="nature-skeleton h-10 w-24 rounded-full" />
+              <span key={key} className="nature-skeleton h-11 w-24 rounded-full" />
             ))}
           </div>
         </div>
@@ -212,7 +212,7 @@ function RecommendedSearchTerms({
   if (suggestionItems.length === 0) return null;
 
   return (
-    <div className="w-full rounded-[1.35rem] border border-[rgba(var(--nature-accent-rgb),0.16)] bg-[rgba(var(--nature-highlight-rgb),0.24)] px-4 py-3 shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.22)]">
+    <div className="w-full rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-accent-rgb),0.16)] bg-[rgba(var(--nature-surface-rgb),0.68)] px-4 py-3 shadow-[inset_0_1px_0_rgba(var(--nature-highlight-rgb),0.12)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-[color:var(--nature-text-faint)]">
           <SearchHydrationSafeIcon name="tabler:sparkles" className="h-4 w-4" />
@@ -293,7 +293,7 @@ export default function PublicSearchPage({
     <div className={cn("w-full", className)} aria-busy={isLoading || undefined}>
       <section className="nature-container pb-2 pt-2 sm:py-6 lg:py-8">
         <div className="nature-surface overflow-hidden" data-search-query-panel>
-          <div className="grid gap-3 px-5 py-4 sm:gap-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
+          <div className="grid gap-3 px-4 py-4 sm:gap-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
             <div className="min-w-0">
               <h1 className="nature-title text-xl font-semibold leading-tight sm:text-3xl">
                 搜索内容
@@ -364,7 +364,7 @@ export default function PublicSearchPage({
             </form>
           </div>
 
-          <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.18)] px-5 py-1.5 sm:px-7 sm:py-4 lg:px-8">
+          <div className="border-t border-[color:var(--nature-line)] bg-[rgba(var(--nature-surface-rgb),0.52)] px-4 py-1.5 sm:px-7 sm:py-4 lg:px-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div
                 className={cn(
@@ -459,7 +459,7 @@ export default function PublicSearchPage({
             />
             <div className="grid gap-3">
               {["search-loading-1", "search-loading-2", "search-loading-3"].map((key) => (
-                <div key={key} className="nature-panel-soft px-5 py-5">
+                <div key={key} className="nature-panel-soft px-4 py-4 sm:px-5 sm:py-5">
                   <div className="space-y-3">
                     <div className="nature-skeleton h-4 w-2/5 rounded-full" />
                     <div className="nature-skeleton h-3 w-full rounded-full" />

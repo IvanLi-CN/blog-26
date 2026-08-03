@@ -46,10 +46,10 @@ const recentMoments = [
 ];
 ---
 <BaseLayout pathname="/about" title="关于我 - Ivan's Blog" description="了解更多关于 Ivan 的信息，包括技术背景、工作经验和个人兴趣">
-  <section class="nature-container px-4 py-10 sm:px-6 lg:py-14">
+  <section class="nature-container px-2 py-8 sm:px-6 sm:py-10 lg:py-14">
     <div class="grid gap-8 lg:grid-cols-[minmax(0,1.9fr)_minmax(18rem,0.95fr)]">
       <div class="space-y-8">
-        <section class="nature-surface overflow-hidden px-6 py-8 sm:px-8">
+        <section class="nature-surface overflow-hidden px-4 py-5 sm:px-8 sm:py-8">
           <div class="nature-avatar-ring mb-6">
             <div class="flex h-28 w-28 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(var(--nature-accent-rgb),0.45),rgba(var(--nature-accent-2-rgb),0.7))] font-heading text-4xl font-semibold text-white">
               I
@@ -79,7 +79,7 @@ const recentMoments = [
           </div>
         </section>
 
-        <section class="nature-panel px-6 py-6 sm:px-7">
+        <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
           <h2 class="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">关于我</h2>
           <div class="nature-prose mt-5 space-y-4 text-[color:var(--nature-text-soft)]">
             <p>我长期关注现代 Web 开发、内容系统与设计工程之间的连接点。对我来说，代码不仅要能跑，还要足够稳、足够清晰，能被未来的自己和协作者继续接住。</p>
@@ -87,11 +87,11 @@ const recentMoments = [
           </div>
         </section>
 
-        <section class="nature-panel px-6 py-6 sm:px-7">
+        <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
           <h2 class="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">技术栈</h2>
           <div class="mt-6 grid gap-5 md:grid-cols-3">
             {skillGroups.map((group) => (
-              <article class="rounded-[1.6rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.16)] p-4">
+              <article class="rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.16)] p-4">
                 <h3 class="text-base font-semibold text-[color:var(--nature-text)]">{group.title}</h3>
                 <div class="mt-4 flex flex-wrap gap-2">
                   {group.items.map((item) => (
@@ -103,11 +103,11 @@ const recentMoments = [
           </div>
         </section>
 
-        <section class="nature-panel px-6 py-6 sm:px-7">
+        <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
           <h2 class="font-heading text-2xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">工作经历</h2>
           <div class="mt-6 space-y-6">
             {experienceItems.map((item) => (
-              <article class="rounded-[1.6rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.72)] p-5">
+              <article class="rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.72)] p-4 sm:p-5">
                 <div class="flex flex-wrap items-center gap-3">
                   <span class="nature-chip nature-chip-info">{item.period}</span>
                   <h3 class="text-lg font-semibold text-[color:var(--nature-text)]">{item.title}</h3>
@@ -128,7 +128,7 @@ const recentMoments = [
       </div>
 
       <aside class="space-y-6">
-        <section class="nature-panel px-5 py-5">
+        <section class="nature-panel px-4 py-5 sm:px-5">
           <h2 class="font-heading text-xl font-semibold tracking-[-0.03em] text-[color:var(--nature-text)]">最近动态</h2>
           <div class="mt-5 space-y-4">
             {recentMoments.map((item) => (

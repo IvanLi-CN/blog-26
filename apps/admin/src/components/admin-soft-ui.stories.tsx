@@ -1,4 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import {
   BrainCircuit,
   ChevronDown,
@@ -10,14 +18,22 @@ import {
   FolderUp,
   KeyRound,
   LayoutDashboard,
-  Menu,
   RefreshCcw,
   Search,
   Shield,
 } from "lucide-react";
-import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, useState } from "react";
+import {
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useMemo,
+  useState,
+} from "react";
 import { expect, userEvent, within } from "storybook/test";
+import type { ActivityItem, AdminSession, DashboardStats } from "@/lib/admin-api-client";
 import { EditorTabStrip } from "~/editor/editor-tab-strip";
+import { DashboardPage } from "~/pages/dashboard";
+import { AppShell } from "./app-shell";
+import { ThemeProvider } from "./theme-provider";
 import {
   Alert,
   Badge,
@@ -67,11 +83,14 @@ const meta = {
     },
   },
   decorators: [
-    (Story) => (
-      <div className="min-h-screen bg-background p-6 text-foreground">
+    (Story, context) =>
+      context.parameters.adminFullscreen ? (
         <Story />
-      </div>
-    ),
+      ) : (
+        <div className="min-h-screen bg-background p-6 text-foreground">
+          <Story />
+        </div>
+      ),
   ],
 } satisfies Meta;
 
@@ -79,7 +98,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-function SoftPageFrame({ mobile = false }: { mobile?: boolean }) {
+function SoftPageFrame() {
   const navItems = [
     { label: "仪表盘", icon: LayoutDashboard, active: true },
     { label: "文章", icon: FileText },
@@ -172,28 +191,83 @@ function SoftPageFrame({ mobile = false }: { mobile?: boolean }) {
     </div>
   );
 
-  if (mobile) {
-    return (
-      <div className="mx-auto max-w-[390px] overflow-hidden rounded-[2rem] border border-border/54 bg-background shadow-2xl shadow-shadow-strong">
-        <div className="flex items-center justify-between border-b border-border/48 bg-background/84 px-4 py-3">
-          <Button variant="outline" size="icon">
-            <Menu className="size-4" />
-          </Button>
-          <div className="text-sm font-semibold">管理后台</div>
-          <Button variant="outline" size="icon">
-            <Shield className="size-4" />
-          </Button>
-        </div>
-        <div className="p-4">{content}</div>
-      </div>
-    );
-  }
-
   return (
     <div className="grid min-h-[820px] grid-cols-[272px_minmax(0,1fr)] gap-6">
       {sidebar}
       <div className="min-w-0 px-2 py-2">{content}</div>
     </div>
+  );
+}
+
+const mobileDashboardSession = {
+  user: {
+    id: "storybook-admin",
+    nickname: "Ivan",
+    email: "author@example.com",
+  },
+  isAdmin: true,
+} satisfies AdminSession;
+
+const mobileDashboardStats = {
+  posts: { total: 17, published: 13, draft: 2 },
+  comments: { total: 0, approved: 0, pending: 0 },
+  users: { total: 3 },
+  activity: { verificationCodes: 0 },
+} satisfies DashboardStats;
+
+const mobileDashboardActivity = [
+  {
+    type: "post",
+    id: "activity-mobile-1",
+    title: "后台移动端证据更新",
+    action: "updated",
+    status: "published",
+    createdAt: "2026-07-31T05:45:00.000Z",
+  },
+  {
+    type: "comment",
+    id: "activity-mobile-2",
+    content: "新的评论等待审核",
+    action: "created",
+    status: "pending",
+    createdAt: "2026-07-31T04:30:00.000Z",
+  },
+] satisfies ActivityItem[];
+
+function MobileDashboardFrame() {
+  const queryClient = useMemo(() => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Number.POSITIVE_INFINITY,
+        },
+      },
+    });
+    client.setQueryData(["admin-session"], mobileDashboardSession);
+    client.setQueryData(["dashboard-stats"], mobileDashboardStats);
+    client.setQueryData(["dashboard-activity"], mobileDashboardActivity);
+    return client;
+  }, []);
+  const storyRouter = useMemo(() => {
+    const rootRoute = createRootRoute({ component: AppShell });
+    const dashboardRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/dashboard",
+      component: DashboardPage,
+    });
+    return createRouter({
+      routeTree: rootRoute.addChildren([dashboardRoute]),
+      history: createMemoryHistory({ initialEntries: ["/dashboard"] }),
+    });
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <RouterProvider router={storyRouter} />
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -251,20 +325,30 @@ function PrimitiveGallery() {
           <CardDescription>搜索、筛选、状态切换与常用操作。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5 lg:grid-cols-2">
-          <div className="space-y-3">
-            <FieldLabel>搜索</FieldLabel>
-            <div className="flex gap-2">
-              <Input placeholder="标题、slug、正文关键字" />
-              <Button>
-                <Search className="size-4" />
-                搜索
-              </Button>
+          <div
+            className="grid gap-4 lg:col-span-2 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end"
+            data-testid="aligned-filter-controls"
+          >
+            <div className="grid min-w-0 gap-2">
+              <FieldLabel className="mb-0">搜索</FieldLabel>
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <Input aria-label="搜索内容" placeholder="标题、slug、正文关键字" />
+                <Button>
+                  <Search className="size-4" />
+                  搜索
+                </Button>
+              </div>
             </div>
-            <Select value="all" onChange={() => undefined} aria-label="状态">
-              <option value="all">全部</option>
-              <option value="published">已发布</option>
-              <option value="draft">草稿</option>
-            </Select>
+            <div className="grid min-w-0 gap-2">
+              <FieldLabel className="mb-0">状态</FieldLabel>
+              <Select value="all" onChange={() => undefined} aria-label="状态">
+                <option value="all">全部</option>
+                <option value="published">已发布</option>
+                <option value="draft">草稿</option>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               <Button>主要操作</Button>
               <Button variant="secondary">辅助操作</Button>
@@ -504,7 +588,10 @@ function EditorTabOverflowFrame() {
   ]);
 
   return (
-    <div className="mx-auto max-w-[880px] overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft">
+    <div
+      data-testid="admin-editor-tab-overflow-frame"
+      className="mx-auto max-w-[880px] overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft"
+    >
       <EditorTabStrip
         tabs={tabs}
         activeTabId={activeTabId}
@@ -527,8 +614,24 @@ export const Primitives: Story = {
   render: () => <PrimitiveGallery />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const primaryAction = canvas.getByRole("button", { name: "主要操作" });
+    const searchField = canvas.getByLabelText("搜索内容");
+    const statusField = canvas.getByLabelText("状态");
+    const stateCheckbox = canvas.getByLabelText("选择同步状态");
+    const overviewTab = canvas.getByRole("tab", { name: "概览" });
+    await expect(primaryAction).toHaveClass("admin-button");
+    await expect(statusField).toHaveClass("admin-field-control");
+    expect(primaryAction.getBoundingClientRect().height).toBe(32);
+    expect(statusField.getBoundingClientRect().height).toBe(32);
+    expect(
+      Math.abs(searchField.getBoundingClientRect().top - statusField.getBoundingClientRect().top)
+    ).toBeLessThanOrEqual(1);
+    expect(stateCheckbox.getBoundingClientRect().height).toBe(28);
+    expect(overviewTab.getBoundingClientRect().height).toBe(28);
     await userEvent.click(canvas.getByRole("button", { name: "删除" }));
-    await expect(canvas.getByRole("dialog", { name: "删除访问令牌" })).toBeInTheDocument();
+    await expect(
+      within(document.body).getByRole("dialog", { name: "删除访问令牌" })
+    ).toBeInTheDocument();
   },
 };
 
@@ -556,7 +659,8 @@ export const EditorTabOverflow: Story = {
     const canvas = within(canvasElement);
     const strip = canvas.getByTestId("editor-tab-strip");
     await expect(strip).toBeInTheDocument();
-    await expect(strip).toHaveClass(/h-10/);
+    await expect(strip).toHaveClass("admin-editor-tab-strip");
+    expect(strip.getBoundingClientRect().height).toBe(40);
     await userEvent.hover(canvas.getByRole("tab", { name: /电子负载开发笔记/ }));
     await expect(await canvas.findByRole("tooltip")).toHaveTextContent("电子负载开发笔记，未保存");
     await userEvent.click(canvas.getByRole("button", { name: "展开已打开文件列表" }));
@@ -567,7 +671,43 @@ export const EditorTabOverflow: Story = {
 };
 
 export const MobileShell: Story = {
-  render: () => <SoftPageFrame mobile />,
+  parameters: {
+    adminFullscreen: true,
+    viewport: {
+      options: {
+        adminMobile: {
+          name: "Admin mobile 390 × 844",
+          styles: { width: "390px", height: "844px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+  globals: {
+    viewport: { value: "adminMobile", isRotated: false },
+  },
+  render: () => <MobileDashboardFrame />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const shellMain = canvas.getByTestId("admin-shell-main");
+    const navigationButton = canvas.getByRole("button", { name: "打开导航" });
+
+    await expect(canvas.getByRole("heading", { name: "管理员仪表盘" })).toBeVisible();
+    await expect(canvas.getByText("/dashboard")).toBeVisible();
+    await expect(navigationButton).toHaveClass("admin-button-icon");
+    expect(navigationButton.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    expect(navigationButton.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    expect(shellMain.scrollWidth).toBeLessThanOrEqual(shellMain.clientWidth);
+    expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+
+    await userEvent.click(navigationButton);
+    const dialog = await within(document.body).findByRole("dialog", { name: "后台导航" });
+    const closeButton = within(dialog).getByRole("button", { name: "关闭" });
+    expect(closeButton.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    expect(closeButton.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    await userEvent.click(closeButton);
+    await expect(dialog).not.toBeInTheDocument();
+  },
 };
 
 export const DialogState: Story = {

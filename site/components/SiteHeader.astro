@@ -17,60 +17,62 @@ function isActive(href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 ---
-<header class="nature-site-header sticky top-0 z-40 flex-none w-full pt-3">
+<header class="nature-site-header sticky top-0 z-40 w-full flex-none pt-3">
   <div class="nature-container nature-site-header-frame">
-    <div class="nature-surface relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 px-3 py-3 sm:gap-3 sm:px-5">
+    <div class="nature-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:flex sm:flex-wrap sm:gap-3 sm:px-5">
       <a
         href={toPublicSitePath("/")}
-        class="inline-flex min-h-11 shrink-0 items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
+        class="nature-brand-link min-w-0 pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:min-w-fit sm:text-2xl"
       >
         {SITE.name}
       </a>
 
-      <div class="order-2 ml-auto flex shrink-0 items-center gap-1 sm:gap-3 md:order-3">
+      <nav class="order-3 col-span-2 w-full sm:col-auto md:order-2 md:ml-2 md:w-auto" aria-label="Main navigation">
+        <ul class="flex w-full items-center justify-between gap-0 text-sm font-medium sm:w-auto sm:justify-start sm:gap-1">
+          {headerData.links.map((link) => (
+            <li>
+              <a
+                href={toPublicSitePath(link.href)}
+                aria-label={link.text}
+                class={`nature-nav-link gap-1.5 rounded-full px-2.5 transition sm:gap-2 sm:px-4 ${
+                  isActive(link.href)
+                    ? "aw-link-active"
+                    : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
+                }`}
+                >
+                  <Icon name={link.icon} className="h-4 w-4" />
+                  <span class="nature-nav-link-label">{link.text}</span>
+                </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div class="nature-header-tools order-2 ml-0 flex items-center gap-1 sm:ml-auto sm:gap-3 md:order-3">
         {!isSearchPage && (
           <>
             <form action={toPublicSitePath("/search")} method="get" class="hidden xl:flex items-center w-auto">
-              <label class="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
+              <label class="nature-input-shell nature-header-search min-w-[18rem] 2xl:min-w-[20rem]">
                 <Icon name="tabler:search" className="w-5 h-5 text-[color:var(--nature-text-faint)]" />
                 <input type="text" name="q" placeholder="搜索文章..." class="nature-input" />
               </label>
             </form>
             <a href={toPublicSitePath("/search")} class="nature-icon-button inline-flex xl:hidden" aria-label="搜索">
-              <Icon name="tabler:search" className="h-5 w-5" />
+              <Icon name="tabler:search" className="nature-header-tool-icon h-5 w-5" />
             </a>
           </>
         )}
-        <ThemeToggle client:load transition:persist iconClass="h-4 w-4" />
+        <ThemeToggle client:load transition:persist compactOnMobile iconClass="h-4 w-4" />
         <a
           class="nature-header-rss-button nature-icon-button inline-flex"
           aria-label="RSS Feed"
           title="RSS Feed"
           href={toPublicSitePath("/feed.xml")}
         >
-          <Icon name="tabler:rss" className="h-5 w-5" />
+          <Icon name="tabler:rss" className="nature-header-tool-icon h-5 w-5" />
         </a>
       </div>
 
-      <nav class="order-3 w-full md:order-2 md:ml-2 md:w-auto" aria-label="Main navigation">
-        <ul class="grid grid-cols-4 gap-1 text-sm font-medium md:flex md:flex-wrap md:items-center">
-          {headerData.links.map((link) => (
-            <li>
-              <a
-                href={toPublicSitePath(link.href)}
-                class={`inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-full px-2 py-2 transition sm:gap-2 sm:px-3 md:w-auto md:justify-start md:px-4 ${
-                  isActive(link.href)
-                    ? "aw-link-active"
-                    : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
-                }`}
-              >
-                <Icon name={link.icon} className="h-4 w-4 shrink-0" />
-                {link.text}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
     </div>
     <div
       id="public-route-loading"
@@ -87,10 +89,3 @@ function isActive(href: string) {
     </div>
   </div>
 </header>
-
-<style>
-  .nature-header-rss-button {
-    width: 36px;
-    height: 36px;
-  }
-</style>

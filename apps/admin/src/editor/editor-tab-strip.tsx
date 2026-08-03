@@ -36,9 +36,9 @@ const TAB_GAP = 6;
 const OVERFLOW_BUTTON_WIDTH = 40;
 const STRIP_INLINE_PADDING = 24;
 const closeButtonClassName =
-  "inline-flex size-[1.125rem] shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-muted-foreground transition-colors hover:border-border/58 hover:bg-background hover:text-foreground focus-visible:border-ring/60 focus-visible:bg-background focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
+  "admin-editor-tab-icon-control inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-muted-foreground transition-colors hover:border-border/58 hover:bg-background hover:text-foreground focus-visible:border-ring/60 focus-visible:bg-background focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
 const overflowButtonClassName =
-  "inline-flex size-8 shrink-0 items-center justify-center rounded-xl border border-transparent bg-transparent text-muted-foreground transition-colors hover:border-border/58 hover:bg-background hover:text-foreground focus-visible:border-ring/60 focus-visible:bg-background focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
+  "admin-editor-tab-icon-control inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-transparent bg-transparent text-muted-foreground transition-colors hover:border-border/58 hover:bg-background hover:text-foreground focus-visible:border-ring/60 focus-visible:bg-background focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
 
 function estimateTabWidth(tab: EditorTabStripItem) {
   const labelLength = (tab.label || "未命名文章").length;
@@ -162,7 +162,7 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
         data-testid="editor-tab"
         data-temporary={tab.temporary ? "true" : "false"}
         className={cn(
-          "inline-flex h-8 min-w-[8.25rem] max-w-[12.5rem] shrink-0 items-center gap-0.5 rounded-xl border px-2 text-sm leading-none",
+          "admin-editor-tab inline-flex h-11 min-w-[8.25rem] max-w-[12.5rem] shrink-0 items-center gap-0.5 rounded-xl border px-2 text-sm leading-none",
           active
             ? "border-border bg-muted text-foreground shadow-inner shadow-shadow-inset"
             : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -254,7 +254,7 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
         ref={stripRef}
         role="tablist"
         data-testid="editor-tab-strip"
-        className="flex h-10 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-b border-border/58 px-3"
+        className="admin-editor-tab-strip flex h-12 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-b border-border/58 px-3"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           {visibleTabs.map(renderTab)}

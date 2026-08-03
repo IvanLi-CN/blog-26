@@ -277,6 +277,7 @@ async function richMarkdownState(page: Page, rootSelector: string) {
       listText: listItem?.textContent ?? "",
       blockquoteText: blockquote?.textContent ?? "",
       blockquoteBorderStyle: blockquote ? getComputedStyle(blockquote).borderTopStyle : "",
+      blockquoteQuote: blockquote ? getComputedStyle(blockquote, "::before").content : "",
       codeText: codeEditor?.textContent ?? "",
       tokenCount: tokenSpans.length,
       tokenColorCount: tokenColors.length,
@@ -654,7 +655,8 @@ function expectRichMarkdownRendering(state: Awaited<ReturnType<typeof richMarkdo
   expect(state.inlineCodeBackground).not.toBe("rgba(0, 0, 0, 0)");
   expect(state.listText).toContain("状态更新必须围绕用户动作组织");
   expect(state.blockquoteText).toContain("依赖数组不是优化开关");
-  expect(state.blockquoteBorderStyle).toBe("solid");
+  expect(state.blockquoteBorderStyle).toBe("none");
+  expect(state.blockquoteQuote).toContain("“");
   expect(state.codeText).toContain("function Counter()");
   expect(state.codeText).toContain("useEffect");
   expect(state.text).not.toContain("```tsx");

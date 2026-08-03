@@ -757,7 +757,7 @@ function SidebarSelectionFloatingFooter({
         className={cn(
           "inline-flex shrink-0 whitespace-nowrap items-center justify-center border border-secondary/18 bg-secondary/12 font-semibold text-foreground/88 shadow-inner shadow-secondary/8",
           compact
-            ? "h-8 min-w-[2.5rem] rounded-xl px-2 text-[10px] leading-none"
+            ? "h-6 min-w-[2rem] rounded-lg px-1 text-[10px] leading-none"
             : "h-10 min-w-[3rem] rounded-2xl px-2.5 text-[11px]"
         )}
       >

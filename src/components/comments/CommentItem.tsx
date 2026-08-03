@@ -94,7 +94,7 @@ export default function CommentItem({
   const canDelete = userInfo && (userInfo.email === comment.authorEmail || isAdmin);
 
   return (
-    <article className="nature-panel px-5 py-5">
+    <article className="nature-panel px-4 py-5 sm:px-5">
       <div className="flex items-start gap-4">
         <div className="overflow-hidden rounded-full border border-[rgba(var(--nature-border-rgb),0.72)]">
           {/* biome-ignore lint/performance/noImgElement: comment avatar uses native img for framework-neutral rendering */}

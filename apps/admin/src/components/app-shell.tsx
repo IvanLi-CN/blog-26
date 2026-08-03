@@ -147,7 +147,7 @@ function BrandBlock({ children }: { children?: ReactNode }) {
     <div className="flex items-center justify-between gap-3">
       <Link
         to="/dashboard"
-        className="group flex min-w-0 items-center gap-3 rounded-3xl p-2 lg:rounded-[1rem]"
+        className="admin-nav-link group flex min-h-11 min-w-0 items-center gap-3 rounded-3xl p-2 lg:rounded-[1rem]"
       >
         <span className="flex size-12 shrink-0 items-center justify-center rounded-3xl bg-primary/14 text-primary shadow-lg shadow-primary/12 transition-transform group-hover:-translate-y-0.5 lg:size-10 lg:rounded-[1rem]">
           <Shield className="size-5" />
@@ -180,7 +180,7 @@ function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
                   key={item.to}
                   to={item.to}
                   onClick={onNavigate}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/62 hover:text-foreground lg:gap-2.5 lg:rounded-[0.75rem] lg:px-2.5 lg:py-2"
+                  className="admin-nav-link flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/62 hover:text-foreground lg:gap-2.5 lg:rounded-[0.75rem] lg:px-2.5 lg:py-2"
                   activeOptions={{ exact: item.to === "/dashboard" }}
                   activeProps={{
                     className:

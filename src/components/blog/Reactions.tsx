@@ -110,7 +110,7 @@ export default function Reactions({ targetType, targetId, userInfo }: ReactionsP
             key={emoji}
             onClick={() => void handleEmojiClick(emoji)}
             disabled={isLoading}
-            className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all ${
+            className={`nature-text-action inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all ${
               userReacted
                 ? "border-[rgba(var(--nature-accent-rgb),0.45)] bg-[rgba(var(--nature-accent-rgb),0.14)] text-[color:var(--nature-accent-strong)]"
                 : "border-[rgba(var(--nature-border-rgb),0.7)] bg-[rgba(var(--nature-surface-rgb),0.82)] text-[color:var(--nature-text-soft)] hover:border-[rgba(var(--nature-accent-rgb),0.4)] hover:text-[color:var(--nature-text)]"

@@ -88,7 +88,7 @@ export function ImageLightbox({
           src={src}
           alt={alt}
           className={mergeClassNames(
-            "h-auto max-w-full rounded-[1.25rem] border border-[rgba(var(--nature-border-rgb),0.72)] shadow-[0_12px_24px_rgba(8,21,16,0.08)]",
+            "h-auto max-w-full rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-border-rgb),0.72)] shadow-[0_12px_24px_rgba(8,21,16,0.08)]",
             enableLightbox &&
               !hasError &&
               "cursor-pointer transition-shadow duration-200 hover:shadow-[0_18px_34px_rgba(8,21,16,0.14)]",
@@ -110,7 +110,7 @@ export function ImageLightbox({
 
         {/* 错误状态显示 */}
         {hasError && (
-          <div className="inline-block w-full rounded-[1.25rem] border border-dashed border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.22)] p-4 text-center text-[color:var(--nature-text-soft)]">
+          <div className="inline-block w-full rounded-[var(--nature-radius-sm)] border border-dashed border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.22)] p-4 text-center text-[color:var(--nature-text-soft)]">
             <div className="block text-sm">📷 图片加载失败</div>
             <div className="mt-1 block text-xs text-[color:var(--nature-text-faint)]">{alt}</div>
             <div className="mt-1 block break-all font-mono text-xs text-[color:var(--nature-text-faint)]">
@@ -171,7 +171,7 @@ export function ImageLightbox({
               <img
                 src={src}
                 alt={alt}
-                className="max-h-full max-w-full rounded-[1.4rem] object-contain shadow-2xl"
+                className="max-h-full max-w-full rounded-[var(--nature-radius-sm)] object-contain shadow-2xl"
               />
 
               {/* 图片标题 */}

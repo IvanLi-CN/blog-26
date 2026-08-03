@@ -5,7 +5,7 @@ import "../apps/admin/src/styles.css";
 const preview: Preview = {
   decorators: [
     (Story, context) => {
-      if (context.parameters.publicSurface) {
+      if (context.parameters.publicSurface || context.parameters.adminFullscreen) {
         return <Story />;
       }
 

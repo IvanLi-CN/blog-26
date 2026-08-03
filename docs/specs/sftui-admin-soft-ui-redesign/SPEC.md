@@ -72,7 +72,7 @@ Out of scope:
 5. Light and dark themes both render complete Soft UI surfaces with clear focus, hover, disabled, loading, empty, warning, success, and destructive states.
 6. Shared controls use local wrappers over Radix primitives where approved.
 7. Shipped admin files do not introduce DaisyUI classes.
-8. Storybook covers the redesigned primitives and representative page states.
+8. Storybook covers the redesigned primitives and representative page states; page-level fallback stories render the shipped shell and page components instead of maintaining hand-written visual mirrors.
 9. Visual evidence covers desktop, tablet, and mobile views for key admin workflows before PR handoff.
 10. Demo mode is toggled only on real `/admin/*` URLs with `?demo=true|false`, and the choice is remembered in `localStorage`.
 11. Demo-specific code is limited to API mocking and the tiny bootstrap needed to enable that mock layer; no standalone demo route exists, and the shell, pages, router, editor, navigation, and shared components are the shipped admin implementation.
@@ -84,6 +84,8 @@ Out of scope:
 17. Database-backed post editing uses the same authoring-document shape as file-backed Markdown only at the editor boundary: opening a DB post reconstructs a temporary frontmatter document from structured fields plus clean body, while saving splits it back into structured metadata plus body-only canonical storage.
 18. Admin preview routes surface publication state clearly inside the Soft UI chrome: published posts keep the public-page action, while draft or non-public posts show a disabled explanatory control instead of a broken public CTA.
 19. The Soft UI admin preview surface must remain visually complete even when a draft post is not publicly reachable: hero and inline media still render for admins, and image failure in the public assets chain must not collapse authoring preview readability.
+20. At `min-width: 1024px` with a fine pointer, standard admin actions and fields use `32px`, compact tools, icons, checkboxes, radios, switches, and tabs use `28px`, and explicit large actions use `36px`; every interactive control uses at least `44px` outside that condition.
+21. Admin previews pass `surface="admin"` to the shared Markdown renderer. Their fenced code blocks use the admin dark blue-gray code surface, scoped syntax tokens, `10px × 12px` desktop padding, a `10px` radius, and at least `12px` padding on touch layouts.
 
 ## 7. Validation
 
@@ -93,16 +95,42 @@ Out of scope:
 - `bun run build-storybook`
 - Existing admin Playwright coverage for auth, SPA routing, PATs, memos/admin where relevant, and LLM settings
 - Targeted admin editor coverage for frontmatter autocomplete, diagnostics, and save blocking
+- `bun test apps/admin/src/components/preview-detail.test.tsx src/components/common/markdown/components/CodeBlock.test.tsx`
+- `PLAYWRIGHT_DISABLE_WEBSERVER=1 BASE_URL=http://127.0.0.1:<leased-port> bunx playwright test --project=admin --grep "admin code surface"`
 - Browser visual verification from deterministic local preview or Storybook surfaces
 
-## 8. Visual Evidence
+## Visual Evidence
 
 This section keeps only the final, currently valid screenshots grouped by workflow.
+
+PR: none
 
 Shared capture contexts:
 
 - Seeded preview baseline: deterministic local production preview using Playwright test data, `target_program=local test preview app`, `capture_scope=browser-viewport`, `viewport_strategy=playwright-viewport`, `source_type=mock_ui`, evidence binding `c1ade722`
 - Real admin route verification: local Vite admin preview on shipped `/admin/*` routes with demo API mocks enabled through `?demo=true` and `localStorage["admin-demo-mode"]`
+
+### Control density and preview code surface
+
+- Evidence binding `7b2e49e54b241941b30c5350351d3a1392336471`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, requested viewport `390px × 844px`, sensitive exclusion `N/A`.
+- Desktop primitives verify `32px` standard actions and fields, `28px` compact controls, and no oversized touch targets. The mobile evidence renders the shipped `AppShell` and `DashboardPage` with seeded query data, has no horizontal overflow, and verifies `44px` navigation and dialog-close targets. The preview uses its own low-brightness admin code surface instead of a public or GitHub highlighter default.
+- Evidence binding `055c85d5`; source type `storybook_canvas`, target program `mock-only`, capture scope `element`, requested viewport `desktop`, viewport strategy `storybook_canvas`, margin policy `require_margin`, sensitive exclusion `N/A`, submission gate `approved`, story `Admin/Soft UI System/EditorTabOverflow`.
+- The editor tab strip renders at `40px` on fine-pointer desktop while its close and overflow controls render at `28px`; touch layouts retain their larger targets outside that condition.
+
+![Admin desktop control density](./assets/admin-control-density-desktop.png)
+
+![Admin mobile control density](./assets/admin-control-density-mobile.png)
+
+![Admin preview dark code](./assets/admin-preview-dark-code.png)
+
+![Admin editor tab strip desktop density](./assets/admin-editor-tab-density-desktop.png)
+
+### Current mobile density refresh
+
+- Evidence binding `7b2e49e54b241941b30c5350351d3a1392336471`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, requested viewport `390px × 844px`, sensitive exclusion `N/A`.
+- The current mobile shell keeps the navigation trigger and dashboard cards within the compact admin layout without horizontal overflow.
+
+![Admin mobile density current](./assets/admin-mobile-density-current.png)
 
 ### Route Baseline
 
@@ -167,21 +195,17 @@ Verified on `/admin/posts/editor?demo=true&slug=react-hooks-deep-dive`.
 
 ![Admin editor file tree inline rename](./assets/demo/admin-editor-file-tree-inline-rename.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree keyboard Enter enters inline rename](./assets/demo/admin-editor-file-tree-enter-rename.trimmed.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree row-level rename pending state](./assets/demo/admin-editor-file-tree-rename-pending.trimmed.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree keeps rename editing active with persistent error feedback](./assets/demo/admin-editor-file-tree-rename-error-retry.trimmed.png)
 
 ![Admin editor file tree fills available sidebar height](./assets/demo/admin-editor-sidebar-plain-file-icon-counts.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor file tree menu escapes the sidebar card while staying inside the viewport](./assets/admin-editor-file-tree-context-menu-viewport.png)
 
@@ -209,7 +233,6 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 
 ![Admin editor frontmatter inline diagnostics block invalid tags and invalid publishDate values](./assets/frontmatter-errors.trimmed.png)
 
-PR: include
 source_type=mock_ui; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor save auto-fixes frontmatter tags indentation and returns to 已保存](./assets/frontmatter-save-autofix.trimmed.png)
 
@@ -217,7 +240,6 @@ source_type=mock_ui; target_program=mock-only; capture_scope=browser-viewport; s
 
 ![Admin editor tab overflow mobile bottom drawer](./assets/demo/admin-editor-tab-overflow-web-demo-mobile-bottom-drawer.trimmed.png)
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin editor readable floating toast feedback](./assets/demo/admin-editor-readable-toast-feedback.png)
 
@@ -226,7 +248,7 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-vi
 Verified on `/admin/posts?demo=true`.
 
 - Filter alignment: labels and controls share a single grid rhythm with `0px` top and bottom deltas, and batch actions stay on one line
-- Desktop density: desktop controls render at `40px` height with `12px` radius while keeping the aligned filter rhythm
+- Desktop density: standard action and field controls render at `32px`, compact tools and table actions at `28px`, and explicit large actions at `36px`; coarse-pointer layouts restore `44px` targets
 - Sidebar footer and bottom actions: the left sidebar keeps compact identity details, theme toggle, and public-site entry; branch/version/commit clutter is absent
 - Main chrome cleanup: the right content area has no duplicated theme/public-site controls or workspace breadcrumb row
 - Header compaction: the page header measures `76px` high on desktop and the title block centerline aligns with the action group
@@ -248,6 +270,5 @@ Verified on `/admin/posts?demo=true`.
 - Database-backed post preview strips contaminated frontmatter from the rendered body, restores the author-facing title from metadata/frontmatter truth, and gates the public-page CTA by `draft/public` state.
 - Draft or non-public post preview uses a disabled explanatory control instead of sending the author to a public 404.
 
-PR: include
 source_type=storybook_canvas; target_program=mock-only; capture_scope=browser-viewport; sensitive_exclusion=N/A; submission_gate=approved
 ![Admin preview detail rhythm in Storybook](./assets/admin-preview-draft-cta-disabled-storybook.png)

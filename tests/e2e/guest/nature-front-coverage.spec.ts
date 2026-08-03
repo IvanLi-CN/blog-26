@@ -93,6 +93,30 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
   });
 
+  test("mobile detail reading measure does not apply a second horizontal gutter", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoWithTheme(page, "/posts/hello-world", "light");
+
+    const detailContainer = page.locator(".nature-detail-container");
+    const readingMeasure = detailContainer.locator(":scope > .nature-reading-measure");
+    const [containerBounds, readingBounds, horizontalPadding] = await Promise.all([
+      detailContainer.boundingBox(),
+      readingMeasure.boundingBox(),
+      detailContainer.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+      }),
+    ]);
+
+    expect(containerBounds).not.toBeNull();
+    expect(readingBounds).not.toBeNull();
+    expect(
+      Math.abs((readingBounds?.width ?? 0) - ((containerBounds?.width ?? 0) - horizontalPadding))
+    ).toBeLessThanOrEqual(1);
+  });
+
   test("mobile search entry still redirects correctly", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoWithTheme(page, "/", "light");
@@ -150,18 +174,18 @@ test.describe("Nature frontend public coverage", () => {
       brandBounds?.y ?? 0 + (brandBounds?.height ?? 0)
     );
 
-    await expect(page.getByRole("button", { name: "Auto" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Auto" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });
 
-  test("mobile header keeps the RSS control visually compact", async ({ page }) => {
+  test("mobile header keeps the RSS control touch-sized", async ({ page }) => {
     await page.setViewportSize({ width: 438, height: 852 });
     await gotoWithTheme(page, "/search/?q=SSH", "light");
 
     const rssLink = page.getByRole("link", { name: "RSS Feed" });
     await expect(rssLink).toBeVisible();
-    await expect(rssLink).toHaveCSS("width", "36px");
-    await expect(rssLink).toHaveCSS("height", "36px");
+    await expect(rssLink).toHaveCSS("width", "44px");
+    await expect(rssLink).toHaveCSS("height", "44px");
   });
 
   test("mobile search exposes its results region in the first viewport", async ({ page }) => {
@@ -251,6 +275,83 @@ test.describe("Nature frontend public coverage", () => {
       await expect(page.getByText("输入关键词开始搜索")).toBeVisible();
     } finally {
       releaseSearchIsland?.();
+    }
+  });
+
+  test("public mobile density stays compact without shrinking touch targets", async ({ page }) => {
+    for (const width of [393, 320]) {
+      await page.setViewportSize({ width, height: width === 393 ? 852 : 700 });
+
+      for (const route of ["/memos", "/posts", "/search", "/projects"]) {
+        await gotoWithTheme(page, route, "dark");
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+          )
+        ).toBe(false);
+      }
+
+      await gotoWithTheme(page, "/memos", "dark");
+      const metrics = await page.evaluate(() => {
+        const root = document.documentElement;
+        const header = document.querySelector<HTMLElement>(
+          ".nature-site-header-frame > .nature-surface"
+        );
+        const card = document.querySelector<HTMLElement>(".nature-timeline-card");
+        const rail = document.querySelector<HTMLElement>(".nature-timeline-rail");
+        const navLabels = Array.from(
+          document.querySelectorAll<HTMLElement>(".nature-nav-link-label")
+        );
+        const navTargets = Array.from(
+          document.querySelectorAll<HTMLElement>(".nature-nav-link")
+        ).map((target) => target.getBoundingClientRect());
+        const viewportWidth = root.clientWidth;
+        const edgeSelectors = [
+          ".nature-site-header-frame > .nature-surface",
+          "main > .nature-container",
+          "footer .nature-container > .nature-surface",
+        ];
+        const shellEdges = edgeSelectors.map((selector) => {
+          const element = document.querySelector<HTMLElement>(selector);
+          const bounds = element?.getBoundingClientRect();
+
+          return bounds
+            ? { left: bounds.left, right: viewportWidth - bounds.right }
+            : { left: -1, right: -1 };
+        });
+
+        return {
+          hasRequiredElements: Boolean(header && card && rail),
+          headerRadius: header ? Number.parseFloat(getComputedStyle(header).borderRadius) : 0,
+          cardWidth: card?.getBoundingClientRect().width ?? 0,
+          railWidth: rail?.getBoundingClientRect().width ?? 0,
+          visibleNavLabels: navLabels.filter((label) => getComputedStyle(label).display !== "none")
+            .length,
+          shellEdges,
+          navTargets: navTargets.map(({ width: targetWidth, height }) => ({
+            width: targetWidth,
+            height,
+          })),
+        };
+      });
+
+      expect(metrics.hasRequiredElements).toBe(true);
+      expect(metrics.headerRadius).toBeLessThanOrEqual(16);
+      for (const edges of metrics.shellEdges) {
+        expect(edges.left).toBeCloseTo(12, 0);
+        expect(edges.right).toBeCloseTo(12, 0);
+      }
+      expect(metrics.navTargets).toHaveLength(4);
+      for (const target of metrics.navTargets) {
+        expect(target.width).toBeGreaterThanOrEqual(44);
+        expect(target.height).toBeGreaterThanOrEqual(44);
+      }
+
+      if (width === 320) {
+        expect(metrics.visibleNavLabels).toBe(0);
+        expect(metrics.railWidth).toBeLessThanOrEqual(16);
+        expect(metrics.cardWidth).toBeGreaterThanOrEqual(250);
+      }
     }
   });
 

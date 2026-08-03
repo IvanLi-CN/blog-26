@@ -284,7 +284,7 @@ export function QuickMemoEditor({
             <div className="space-y-2">
               <div
                 ref={containerRef}
-                className="overflow-hidden rounded-[1.5rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
+                className="overflow-hidden rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
                 style={{
                   minHeight: `${minHeight}px`,
                   maxHeight: `${maxHeight}px`,

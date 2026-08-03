@@ -37,6 +37,11 @@ const sharedPostBody = `
 - 保持后台 Soft UI 的容器语言
 - 借用公开页的信息排序
 - 不渲染评论与相关推荐
+
+\`\`\`ts
+const previewSurface = "admin";
+const padding = { desktop: "10px 12px", mobile: "12px" };
+\`\`\`
 `;
 
 const sharedMemoBody = `
@@ -58,13 +63,15 @@ const meta = {
     },
   },
   decorators: [
-    (Story) => {
+    (Story, context) => {
+      const theme = context.parameters.adminTheme === "dark" ? "dark" : "light";
+
       useEffect(() => {
-        document.documentElement.dataset.uiTheme = "light";
-        document.documentElement.dataset.theme = "light";
+        document.documentElement.dataset.uiTheme = theme;
+        document.documentElement.dataset.theme = theme;
         document.documentElement.dataset.uiPreference = "system";
-        document.documentElement.style.colorScheme = "light";
-        document.documentElement.classList.remove("dark");
+        document.documentElement.style.colorScheme = theme;
+        document.documentElement.classList.toggle("dark", theme === "dark");
 
         return () => {
           document.documentElement.dataset.uiTheme = "light";
@@ -73,10 +80,10 @@ const meta = {
           document.documentElement.style.colorScheme = "light";
           document.documentElement.classList.remove("dark");
         };
-      }, []);
+      }, [theme]);
 
       return (
-        <div className="min-h-screen bg-background p-6 text-foreground" data-ui-theme="light">
+        <div className="min-h-screen bg-background p-6 text-foreground" data-ui-theme={theme}>
           <div className="mx-auto max-w-[1100px]">
             <Story />
           </div>
@@ -152,5 +159,44 @@ export const MemoDetailRhythm: Story = {
     await expect(canvas.queryByTestId("admin-preview-hero")).toBeNull();
     await expect(canvas.queryByTestId("admin-preview-description")).toBeNull();
     expect(canvas.getAllByRole("heading", { name: "Memo 预览不显示 excerpt" })).toHaveLength(1);
+  },
+};
+
+export const DarkCodeSurface: Story = {
+  name: "深色代码表面",
+  parameters: {
+    adminTheme: "dark",
+    backgrounds: { default: "admin dark" },
+  },
+  render: () => (
+    <PreviewArticleShell
+      modeLabel="后台预览"
+      title="代码表面密度"
+      tags={["admin", "code"]}
+      meta={buildPostPreviewMeta({
+        publishDate: "2026-06-19T10:00:00.000Z",
+        author: "Ivan",
+        category: "frontend",
+        body: sharedPostBody,
+      })}
+      bodyTestId="storybook-admin-preview-code-body"
+      body={sharedPostBody}
+      articlePath="blog/code-surface.md"
+      publicMediaContext={{
+        kind: "post",
+        slug: "code-surface",
+        filePath: "blog/code-surface.md",
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="admin"] pre');
+    await expect(codeBlock).not.toBeNull();
+    await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+    const code = codeBlock?.querySelector("code");
+    await expect(code).not.toBeNull();
+    expect(getComputedStyle(codeBlock as HTMLElement).borderRadius).toBe("10px");
+    expect(getComputedStyle(code as HTMLElement).padding).toBe("10px 12px");
+    expect(getComputedStyle(code as HTMLElement).color).not.toBe("rgb(0, 0, 0)");
   },
 };

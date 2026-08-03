@@ -100,7 +100,7 @@ export default function CommentSection({
         </div>
       )}
 
-      <div className="nature-panel px-5 py-5 sm:px-6">
+      <div className="nature-panel px-4 py-5 sm:px-6">
         {isUserLoading ? (
           <div className="flex items-center justify-center p-8 text-[color:var(--nature-text-soft)]">
             <span className="nature-spinner h-5 w-5" />

@@ -4,7 +4,7 @@ import { expect, within } from "storybook/test";
 import "@/styles/nature-restored.css";
 import Icon from "../ui/Icon";
 import MarkdownRenderer from "./MarkdownRenderer";
-import ThemeToggle from "./ThemeToggle";
+import { PublicStoryHeader } from "./PublicStoryHeader";
 
 const memo = {
   title: "20241120 ica8cwah",
@@ -13,13 +13,6 @@ const memo = {
     "SLA 3D 打印的模型嵌入热融螺母，预留孔大小比最大直径小 0.2 mm，有点咬合不力。或许应该直接设计成不含花纹的直径大小。",
   tags: ["Modeling"],
 };
-
-const navLinks = [
-  { icon: "tabler:notes", text: "闪念", href: "/memos", active: true },
-  { icon: "tabler:article", text: "文章", href: "/posts" },
-  { icon: "tabler:code", text: "项目", href: "/projects" },
-  { icon: "tabler:hash", text: "标签", href: "/tags" },
-];
 
 const meta = {
   title: "Public/Memo Detail",
@@ -78,70 +71,12 @@ function PublicShell({
       data-theme={theme}
     >
       <div className="nature-content-layer flex min-h-screen flex-col">
-        <header className="nature-site-header sticky top-0 z-40 flex-none w-full px-3 pt-3 sm:px-4">
-          <div className="nature-container nature-site-header-frame">
-            <div className="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
-              <a
-                href="/"
-                className="inline-flex min-h-11 min-w-fit items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
-              >
-                Ivan's Blog
-              </a>
-
-              <nav
-                className="order-3 w-full md:order-2 md:ml-2 md:w-auto"
-                aria-label="Main navigation"
-              >
-                <ul className="flex flex-wrap items-center gap-1 text-sm font-medium">
-                  {navLinks.map((link) => (
-                    <li key={link.href}>
-                      <a
-                        href={link.href}
-                        className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 transition ${
-                          link.active
-                            ? "aw-link-active"
-                            : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
-                        }`}
-                      >
-                        <Icon name={link.icon} className="h-4 w-4" />
-                        {link.text}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-
-              <div className="order-2 ml-auto flex items-center gap-3 md:order-3">
-                <label className="nature-input-shell hidden min-w-[20rem] items-center xl:flex">
-                  <Icon
-                    name="tabler:search"
-                    className="h-5 w-5 text-[color:var(--nature-text-faint)]"
-                  />
-                  <input type="text" placeholder="搜索文章..." className="nature-input" />
-                </label>
-                <a
-                  className="nature-icon-button inline-flex xl:hidden"
-                  aria-label="搜索"
-                  href="/search"
-                >
-                  <Icon name="tabler:search" className="h-5 w-5" />
-                </a>
-                <ThemeToggle iconClass="h-4 w-4" />
-                <a
-                  className="nature-icon-button inline-flex"
-                  aria-label="RSS Feed"
-                  title="RSS Feed"
-                  href="/feed.xml"
-                >
-                  <Icon name="tabler:rss" className="h-5 w-5" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </header>
+        <PublicStoryHeader activeHref="/memos" />
 
         <main className="nature-main flex-1">
-          <section className="nature-reading-container px-6 py-10">{children}</section>
+          <section className="nature-reading-container px-2 py-8 sm:px-6 sm:py-10">
+            {children}
+          </section>
         </main>
       </div>
     </div>
@@ -161,7 +96,7 @@ function MemoDetailArticle({
 }) {
   return (
     <article data-testid="public-memo-detail">
-      <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-card">
+      <div className="nature-panel px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">
         <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
           <span className="nature-chip nature-chip-info gap-1">
             <Icon name="tabler:clock" className="h-3.5 w-3.5" />
@@ -173,7 +108,7 @@ function MemoDetailArticle({
           </span>
         </div>
 
-        <h1 className="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
+        <h1 className="nature-title mt-5 text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">
           {title}
         </h1>
 
@@ -204,5 +139,79 @@ export const MemoDetailHierarchy: Story = {
     await expect(canvas.getByTestId("public-memo-detail-card")).toBeVisible();
     await expect(canvas.getByTestId("public-memo-detail-body")).toBeVisible();
     await expect(canvas.queryByTestId("public-memo-detail-excerpt")).toBeNull();
+  },
+};
+
+export const MobileMemoDensity: Story = {
+  name: "移动端内容密度",
+  parameters: {
+    viewport: {
+      options: {
+        publicMobile: {
+          name: "Public mobile 393 x 852",
+          styles: { width: "393px", height: "852px" },
+          type: "mobile",
+        },
+      },
+    },
+    backgrounds: {
+      default: "public dark",
+    },
+  },
+  globals: {
+    viewport: { value: "publicMobile", isRotated: false },
+  },
+  render: () => (
+    <PublicShell theme="dark">
+      <MemoDetailArticle {...memo} />
+    </PublicShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = canvas.getByTestId("public-memo-detail-card");
+    const viewportWidth = canvasElement.ownerDocument.defaultView?.innerWidth ?? 0;
+
+    expect(getComputedStyle(card).borderRadius).toBe("16px");
+    expect(getComputedStyle(card).paddingLeft).toBe("16px");
+    expect(card.getBoundingClientRect().width).toBeGreaterThanOrEqual(viewportWidth - 40);
+  },
+};
+
+export const NarrowMobileMemoDensity: Story = {
+  name: "窄屏内容密度",
+  parameters: {
+    viewport: {
+      options: {
+        publicNarrowMobile: {
+          name: "Public narrow mobile 320 x 700",
+          styles: { width: "320px", height: "700px" },
+          type: "mobile",
+        },
+      },
+    },
+    backgrounds: {
+      default: "public dark",
+    },
+  },
+  globals: {
+    viewport: { value: "publicNarrowMobile", isRotated: false },
+  },
+  render: () => (
+    <PublicShell theme="dark">
+      <MemoDetailArticle {...memo} />
+    </PublicShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = canvas.getByTestId("public-memo-detail-card");
+    const navLinks = Array.from(canvasElement.querySelectorAll<HTMLElement>(".nature-nav-link"));
+
+    expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+    expect(getComputedStyle(card).borderRadius).toBe("16px");
+    expect(getComputedStyle(card).paddingLeft).toBe("16px");
+    for (const link of navLinks) {
+      expect(link.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+      expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
   },
 };

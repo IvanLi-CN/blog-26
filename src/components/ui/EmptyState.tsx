@@ -103,7 +103,7 @@ export function EmptyState({
         config.container,
         config.spacing,
         variant === "panel" &&
-          "rounded-[2rem] border border-dashed border-[rgba(var(--nature-border-rgb),0.74)] bg-[rgba(var(--nature-surface-rgb),0.7)] ring-1 ring-[rgba(var(--nature-border-rgb),0.42)]",
+          "rounded-[var(--nature-radius-lg)] border border-dashed border-[rgba(var(--nature-border-rgb),0.74)] bg-[rgba(var(--nature-surface-rgb),0.7)] ring-1 ring-[rgba(var(--nature-border-rgb),0.42)]",
         className
       )}
     >

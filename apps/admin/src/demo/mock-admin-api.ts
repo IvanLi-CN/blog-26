@@ -16,7 +16,12 @@ import {
   getAdminFileContentKind,
   getAdminFileExtension,
 } from "@/lib/admin-file-content";
-import type { AdminLlmSettingsPayload } from "@/lib/llm-settings";
+import type {
+  AdminLlmSettingsPayload,
+  AdminLlmSettingsTestRequest,
+  AdminLlmSettingsUpdateInput,
+  AdminSecretState,
+} from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import type { TagGroup } from "@/types/tag-groups";
 import type { TagSummary } from "@/types/tags";
@@ -372,26 +377,196 @@ let pats: PersonalAccessTokenListRow[] = [
   createPat("pat-2", "Local automation", now - 18 * 86_400_000, now - 2 * 86_400_000),
 ];
 
+const demoChatSecret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"] = {
+  hasValue: true,
+  maskedValue: "sk-live-••••••••••••",
+  source: "db",
+  requiresMasterKey: false,
+};
+
+function inheritedDemoSecret(
+  secret: AdminLlmSettingsPayload["settings"]["chat"]["apiKey"]
+): AdminLlmSettingsPayload["settings"]["embedding"]["apiKey"] {
+  if (!secret.hasValue) return missingDemoSecret();
+  return {
+    hasValue: secret.hasValue,
+    maskedValue: secret.maskedValue,
+    source: "inherited",
+    requiresMasterKey: false,
+  };
+}
+
+function missingDemoSecret(): AdminLlmSettingsPayload["settings"]["embedding"]["apiKey"] {
+  return {
+    hasValue: false,
+    maskedValue: null,
+    source: "missing",
+    requiresMasterKey: false,
+  };
+}
+
+function resolveDemoCustomSecret(
+  current: AdminLlmSettingsPayload["settings"]["embedding"]["apiKey"],
+  input: { apiKeyInput?: string; clearApiKey?: boolean }
+) {
+  if (input.clearApiKey) return missingDemoSecret();
+  if (input.apiKeyInput?.trim()) return { ...demoChatSecret, maskedValue: "sk-demo-••••••••" };
+  return current;
+}
+
 let llmSettings: AdminLlmSettingsPayload = {
-  chat: {
-    provider: "openrouter",
-    model: "openai/gpt-4.1-mini",
-    baseUrl: "https://openrouter.ai/api/v1",
-    apiKey: { source: "db", masked: "sk-live-••••••••••••" },
+  savedAt: now - 3_600_000,
+  settings: {
+    chat: {
+      model: "openai/gpt-4.1-mini",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKey: demoChatSecret,
+    },
+    embedding: {
+      model: "text-embedding-3-small",
+      useCustomProvider: false,
+      baseUrlMode: "inherit",
+      baseUrl: "",
+      apiKeyMode: "inherit",
+      apiKey: inheritedDemoSecret(demoChatSecret),
+    },
+    rerank: {
+      model: "cohere/rerank-3.5",
+      useCustomProvider: false,
+      baseUrlMode: "inherit",
+      baseUrl: "",
+      apiKeyMode: "inherit",
+      apiKey: inheritedDemoSecret(demoChatSecret),
+    },
   },
-  embedding: {
-    provider: "openai-compatible",
-    model: "text-embedding-3-small",
-    baseUrl: "https://api.openai.com/v1",
-    apiKey: { source: "env", masked: null },
+  resolved: {
+    chat: {
+      model: "openai/gpt-4.1-mini",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKeyAvailable: true,
+      sources: { model: "db", baseUrl: "db", apiKey: "db" },
+    },
+    embedding: {
+      model: "text-embedding-3-small",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKeyAvailable: true,
+      sources: { model: "db", baseUrl: "inherited", apiKey: "inherited" },
+    },
+    rerank: {
+      model: "cohere/rerank-3.5",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKeyAvailable: true,
+      sources: { model: "db", baseUrl: "inherited", apiKey: "inherited" },
+    },
   },
-  tagging: {
-    provider: "openrouter",
-    model: "anthropic/claude-3.5-haiku",
-    baseUrl: "https://openrouter.ai/api/v1",
-    apiKey: { source: "db", masked: "sk-live-••••••••••••" },
+  hints: {
+    embeddingReindexRequired: false,
+    embeddingReindexSuggested: false,
+    currentIndexedModel: "text-embedding-3-small",
+    currentResolvedModel: "text-embedding-3-small",
+    currentIndexedUpdatedAt: now - 7_200_000,
+    embeddingConfigUpdatedAt: now - 3_600_000,
   },
 };
+
+let demoEmbeddingCustomSecret = missingDemoSecret();
+let demoRerankCustomSecret = missingDemoSecret();
+
+function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
+  const savedAt = Date.now();
+  const embeddingUsesCustomProvider = input.embedding.useCustomProvider;
+  const rerankUsesCustomProvider = input.rerank.useCustomProvider;
+  const chatApiKey = input.chat.clearApiKey
+    ? {
+        ...llmSettings.settings.chat.apiKey,
+        hasValue: false,
+        maskedValue: null,
+        source: "missing" as const,
+      }
+    : input.chat.apiKeyInput?.trim()
+      ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
+      : llmSettings.settings.chat.apiKey;
+  let embeddingApiKey: AdminSecretState;
+  if (!embeddingUsesCustomProvider) {
+    embeddingApiKey = inheritedDemoSecret(chatApiKey);
+  } else {
+    demoEmbeddingCustomSecret = resolveDemoCustomSecret(demoEmbeddingCustomSecret, input.embedding);
+    embeddingApiKey = demoEmbeddingCustomSecret;
+  }
+  let rerankApiKey: AdminSecretState;
+  if (!rerankUsesCustomProvider) {
+    rerankApiKey = inheritedDemoSecret(embeddingApiKey);
+  } else {
+    demoRerankCustomSecret = resolveDemoCustomSecret(demoRerankCustomSecret, input.rerank);
+    rerankApiKey = demoRerankCustomSecret;
+  }
+  const embeddingBaseUrl = embeddingUsesCustomProvider
+    ? input.embedding.baseUrl
+    : input.chat.baseUrl;
+  const rerankBaseUrl = rerankUsesCustomProvider ? input.rerank.baseUrl : embeddingBaseUrl;
+  const savedEmbeddingBaseUrl = embeddingUsesCustomProvider
+    ? input.embedding.baseUrl
+    : llmSettings.settings.embedding.baseUrl;
+  const savedRerankBaseUrl = rerankUsesCustomProvider
+    ? input.rerank.baseUrl
+    : llmSettings.settings.rerank.baseUrl;
+
+  llmSettings = {
+    savedAt,
+    settings: {
+      chat: { model: input.chat.model, baseUrl: input.chat.baseUrl, apiKey: chatApiKey },
+      embedding: {
+        model: input.embedding.model,
+        useCustomProvider: embeddingUsesCustomProvider,
+        baseUrlMode: embeddingUsesCustomProvider ? "custom" : "inherit",
+        baseUrl: savedEmbeddingBaseUrl,
+        apiKeyMode: embeddingUsesCustomProvider ? "custom" : "inherit",
+        apiKey: embeddingApiKey,
+      },
+      rerank: {
+        model: input.rerank.model,
+        useCustomProvider: rerankUsesCustomProvider,
+        baseUrlMode: rerankUsesCustomProvider ? "custom" : "inherit",
+        baseUrl: savedRerankBaseUrl,
+        apiKeyMode: rerankUsesCustomProvider ? "custom" : "inherit",
+        apiKey: rerankApiKey,
+      },
+    },
+    resolved: {
+      chat: {
+        model: input.chat.model,
+        baseUrl: input.chat.baseUrl,
+        apiKeyAvailable: chatApiKey.hasValue,
+        sources: { model: "db", baseUrl: "db", apiKey: chatApiKey.source },
+      },
+      embedding: {
+        model: input.embedding.model,
+        baseUrl: embeddingBaseUrl,
+        apiKeyAvailable: embeddingApiKey.hasValue,
+        sources: {
+          model: "db",
+          baseUrl: embeddingUsesCustomProvider ? "db" : "inherited",
+          apiKey: embeddingApiKey.source,
+        },
+      },
+      rerank: {
+        model: input.rerank.model,
+        baseUrl: rerankBaseUrl,
+        apiKeyAvailable: rerankApiKey.hasValue,
+        sources: {
+          model: "db",
+          baseUrl: rerankUsesCustomProvider ? "db" : "inherited",
+          apiKey: rerankApiKey.source,
+        },
+      },
+    },
+    hints: {
+      ...llmSettings.hints,
+      currentResolvedModel: input.embedding.model,
+      embeddingConfigUpdatedAt: savedAt,
+    },
+  };
+}
 
 class DemoApiError extends Error {
   status: number;
@@ -531,12 +706,32 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
     });
   if (path.startsWith("/api/admin/tag-icons/")) return json({ success: true });
   if (path === "/api/admin/llm-settings") {
-    if (method === "PUT")
-      llmSettings = { ...llmSettings, ...(body as Partial<AdminLlmSettingsPayload>) };
+    if (method === "PUT") applyDemoLlmSettingsUpdate(body as AdminLlmSettingsUpdateInput);
     return json(llmSettings);
   }
-  if (path === "/api/admin/llm-settings/test")
-    return json({ success: true, message: "连接成功", latencyMs: 184 });
+  if (path === "/api/admin/llm-settings/test") {
+    const request = body as AdminLlmSettingsTestRequest;
+    const tierSettings = request.settings[request.tier];
+    const embeddingBaseUrl = request.settings.embedding.useCustomProvider
+      ? request.settings.embedding.baseUrl
+      : request.settings.chat.baseUrl;
+    const rerankBaseUrl = request.settings.rerank.useCustomProvider
+      ? request.settings.rerank.baseUrl
+      : embeddingBaseUrl;
+    return json({
+      tier: request.tier,
+      ok: true,
+      model: tierSettings.model,
+      baseUrl:
+        request.tier === "chat"
+          ? request.settings.chat.baseUrl
+          : request.tier === "embedding"
+            ? embeddingBaseUrl
+            : rerankBaseUrl,
+      summary: `${request.tier === "chat" ? "对话" : request.tier === "embedding" ? "嵌入" : "重排序"}模型测试通过`,
+      details: [`模型：${tierSettings.model}`, "Demo 响应：184ms"],
+    });
+  }
   if (path === "/api/admin/llm/models")
     return json({ source: url.searchParams.get("source") ?? "upstream", models: llmModels() });
   if (path === "/api/admin/files/sources") return json(fileSources());

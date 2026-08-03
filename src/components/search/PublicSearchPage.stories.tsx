@@ -90,6 +90,23 @@ const searchMobileViewport = {
   },
 } as const;
 
+const searchNarrowMobileViewport = {
+  parameters: {
+    viewport: {
+      options: {
+        searchNarrowMobile: {
+          name: "Search narrow mobile",
+          styles: { width: "320px", height: "700px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+  globals: {
+    viewport: { value: "searchNarrowMobile", isRotated: false },
+  },
+} as const;
+
 function SearchStory({
   initialQuery = "Arch",
   searchedQuery = initialQuery,
@@ -251,6 +268,28 @@ export const MobileLoading: Story = {
   },
 };
 
+export const NarrowMobileRecommendations: Story = {
+  name: "窄屏推荐搜索",
+  ...searchNarrowMobileViewport,
+  render: () => (
+    <SearchStory
+      initialQuery="missing"
+      searchedQuery="missing"
+      items={emptyResults}
+      recommendedTerms={["React", "Astro"]}
+      theme="dark"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const buttons = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"));
+
+    expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth);
+    for (const button of buttons) {
+      expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
+  },
+};
+
 export const Empty: Story = {
   name: "无结果",
   parameters: {
@@ -345,6 +384,14 @@ export const MobileEmpty: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("没有找到相关内容")).toBeVisible();
     await expect(canvas.getByText("还没有找到「Zettelkasten」")).not.toBeVisible();
+    const suggestionButtons = Array.from(
+      canvasElement.querySelectorAll<HTMLElement>(".nature-link-action")
+    );
+    expect(suggestionButtons.length).toBeGreaterThan(0);
+    expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+    for (const button of suggestionButtons) {
+      expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
   },
 };
 
@@ -373,6 +420,9 @@ export const MobileResults: Story = {
   name: "移动端结果",
   ...searchMobileViewport,
   render: () => <SearchStory />,
+  play: async ({ canvasElement }) => {
+    expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+  },
 };
 
 export const DarkResults: Story = {

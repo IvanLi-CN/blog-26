@@ -2,10 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect } from "react";
 import { expect, within } from "storybook/test";
 import "@/styles/nature-restored.css";
-import Icon from "../ui/Icon";
 import { MarkdownLoadingState } from "./MarkdownLoadingState";
 import MarkdownRenderer from "./MarkdownRenderer";
-import ThemeToggle from "./ThemeToggle";
+import { PublicStoryHeader } from "./PublicStoryHeader";
 
 const articleMarkdown = `
 这篇文章用于验证公开文档页的阅读、站内跳转和富内容交互。读者可以继续打开 [搜索页面](/search)，也可以访问 [Astro 官网](https://astro.build) 查看外部资料。
@@ -38,6 +37,19 @@ ${Array.from(
   { length: 42 },
   (_, index) => `export const row${String(index + 1).padStart(2, "0")} = "line ${index + 1}";`
 ).join("\n")}
+\`\`\`
+`;
+
+const codeSurfaceMarkdown = `
+## 深色代码表面
+
+代码块应保留低亮度背景、清晰正文前景与语法 token，不依赖高亮库的默认主题。
+
+\`\`\`ts
+const controlDensity = {
+  desktop: "36px actions / 32px navigation",
+  touch: "44px targets",
+};
 \`\`\`
 `;
 
@@ -77,13 +89,6 @@ export default meta;
 
 type Story = StoryObj;
 
-const navLinks = [
-  { icon: "tabler:note", text: "闪念", href: "/memos" },
-  { icon: "tabler:article", text: "文章", href: "/posts", active: true },
-  { icon: "tabler:code", text: "项目", href: "/projects" },
-  { icon: "tabler:hash", text: "标签", href: "/tags" },
-];
-
 function PublicDocumentShell({
   children,
   theme = "light",
@@ -117,94 +122,14 @@ function PublicDocumentShell({
   return (
     <div
       className={`nature-app-shell flex min-h-screen flex-col bg-[color:var(--nature-bg)] text-[color:var(--nature-text)] ${
-        compact ? "mx-auto w-[390px] max-w-full" : ""
+        compact ? "mx-auto w-full max-w-full" : ""
       }`}
       data-ui-theme={theme}
       data-ui-preference="system"
       data-theme={theme}
     >
       <div className="nature-content-layer flex min-h-screen flex-col">
-        <header className="nature-site-header sticky top-0 z-40 flex-none w-full px-3 pt-3 sm:px-4">
-          <div className="nature-container nature-site-header-frame">
-            <div className="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
-              <a
-                href="/"
-                className="inline-flex min-h-11 min-w-fit items-center pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
-              >
-                Ivan's Blog
-              </a>
-
-              <nav
-                className="order-3 w-full md:order-2 md:ml-2 md:w-auto"
-                aria-label="Main navigation"
-              >
-                <ul className="flex flex-wrap items-center gap-1 text-sm font-medium">
-                  {navLinks.map((link) => (
-                    <li key={link.href}>
-                      <a
-                        href={link.href}
-                        className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 transition ${
-                          link.active
-                            ? "aw-link-active"
-                            : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
-                        }`}
-                      >
-                        <Icon name={link.icon} className="h-4 w-4" />
-                        {link.text}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-
-              <div className="order-2 ml-auto flex items-center gap-3 md:order-3">
-                <form action="/search" method="get" className="hidden items-center xl:flex">
-                  <label className="nature-input-shell min-w-[20rem] 2xl:min-w-[22rem]">
-                    <Icon
-                      name="tabler:search"
-                      className="h-5 w-5 text-[color:var(--nature-text-faint)]"
-                    />
-                    <input
-                      type="text"
-                      name="q"
-                      placeholder="搜索文章..."
-                      className="nature-input"
-                    />
-                  </label>
-                </form>
-                <a
-                  href="/search"
-                  className="nature-icon-button inline-flex xl:hidden"
-                  aria-label="搜索"
-                >
-                  <Icon name="tabler:search" className="h-5 w-5" />
-                </a>
-                <ThemeToggle iconClass="h-4 w-4" />
-                <a
-                  className="nature-icon-button inline-flex"
-                  aria-label="RSS Feed"
-                  title="RSS Feed"
-                  href="/feed.xml"
-                >
-                  <Icon name="tabler:rss" className="h-5 w-5" />
-                </a>
-              </div>
-            </div>
-            <div
-              id="public-route-loading"
-              className="nature-route-loading"
-              role="status"
-              aria-live="polite"
-              aria-label="正在打开页面"
-              aria-hidden={pending ? "false" : "true"}
-            >
-              <span className="nature-route-loading-track" aria-hidden="true">
-                <span className="nature-route-loading-bar" />
-              </span>
-              <span className="nature-route-loading-label">正在打开页面</span>
-            </div>
-          </div>
-        </header>
+        <PublicStoryHeader activeHref="/posts" pending={pending} />
         <main className="nature-main flex-1" aria-busy={pending ? "true" : undefined}>
           <section
             className={
@@ -212,7 +137,10 @@ function PublicDocumentShell({
             }
           >
             <article className="space-y-8">
-              <header className="nature-surface px-6 py-7 sm:px-8">
+              <header
+                className="nature-surface px-4 py-5 sm:px-8 sm:py-7"
+                data-testid="public-document-header"
+              >
                 <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
                   <span className="nature-chip nature-chip-info">2026-05-12</span>
                   <span className="nature-chip">7 分钟</span>
@@ -225,11 +153,10 @@ function PublicDocumentShell({
                   用稳定的反馈告诉读者页面正在切换，同时把重型文档交互延后到需要时加载。
                 </p>
               </header>
-              <div className="nature-panel px-6 py-7 sm:px-8">
-                <div className="nature-markdown-interaction-note">
-                  <span className="nature-markdown-interaction-mark" aria-hidden="true" />
-                  <span>正文已可阅读，图片灯箱和代码折叠会按需启用</span>
-                </div>
+              <div
+                className="nature-panel px-4 py-5 sm:px-8 sm:py-7"
+                data-testid="public-document-body"
+              >
                 {children}
               </div>
             </article>
@@ -343,7 +270,15 @@ export const PersistentRouteProgress: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("status", { name: /正在打开页面/ })).toBeVisible();
-    await expect(canvas.getByPlaceholderText("搜索文章...")).toBeInTheDocument();
+    const headerSearch = canvas.getByPlaceholderText("搜索文章...").closest("label");
+    const headerThemeToggle = canvasElement.querySelector<HTMLElement>(
+      ".nature-header-theme-toggle"
+    );
+    const headerRssButton = canvas.getByRole("link", { name: "RSS Feed" });
+    await expect(headerSearch).toBeInTheDocument();
+    expect(headerSearch?.getBoundingClientRect().height).toBe(36);
+    expect(headerThemeToggle?.getBoundingClientRect().height).toBe(36);
+    expect(headerRssButton.getBoundingClientRect().height).toBe(36);
     await expect(canvas.getByRole("button", { name: "Light" })).toBeVisible();
     await expect(canvas.getByRole("heading", { name: "路由反馈与文档加载体验" })).toBeVisible();
     await expect(canvas.getByRole("main")).toHaveAttribute("aria-busy", "true");
@@ -360,6 +295,11 @@ export const LongCode: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: /展开全部/ })).toBeVisible();
+    const foldedCode = canvasElement.querySelector(
+      '[data-markdown-surface="public"] .collapsible-code-container code'
+    );
+    await expect(foldedCode).not.toBeNull();
+    expect(getComputedStyle(foldedCode as HTMLElement).padding).toBe("12px 14px");
   },
 };
 
@@ -375,13 +315,100 @@ export const DarkArticle: Story = {
       />
     </PublicDocumentShell>
   ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    await expect(codeBlock).not.toBeNull();
+    await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+    const code = codeBlock?.querySelector("code");
+    await expect(code).not.toBeNull();
+    expect(getComputedStyle(codeBlock as HTMLElement).borderRadius).toBe("12px");
+    expect(getComputedStyle(code as HTMLElement).padding).toBe("12px 14px");
+    expect(getComputedStyle(code as HTMLElement).color).not.toBe("rgb(0, 0, 0)");
+  },
+};
+
+export const DarkCodeSurface: Story = {
+  name: "深色代码表面",
+  render: () => (
+    <PublicDocumentShell theme="dark">
+      <MarkdownRenderer content={codeSurfaceMarkdown} variant="article" enableCodeFolding />
+    </PublicDocumentShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    await expect(codeBlock).not.toBeNull();
+    await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+  },
 };
 
 export const MobileArticle: Story = {
   name: "移动宽度文档",
+  parameters: {
+    viewport: {
+      options: {
+        publicMobile: {
+          name: "Public mobile 393 x 852",
+          styles: { width: "393px", height: "852px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+  globals: {
+    viewport: { value: "publicMobile", isRotated: false },
+  },
   render: () => (
-    <PublicDocumentShell compact>
+    <PublicDocumentShell compact theme="dark">
       <MarkdownRenderer content={articleMarkdown} variant="article" enableCodeFolding />
     </PublicDocumentShell>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    const header = canvas.getByTestId("public-document-header");
+    const body = canvas.getByTestId("public-document-body");
+    const container = canvasElement.querySelector<HTMLElement>(".nature-container");
+    const mobileSearch = canvas.getByRole("link", { name: "搜索" });
+    const mobileTheme = canvas.getByRole("combobox", { name: /主题/ });
+    const mobileRss = canvas.getByRole("link", { name: "RSS Feed" });
+    const viewportWidth = canvasElement.ownerDocument.defaultView?.innerWidth ?? 0;
+    await expect(codeBlock).not.toBeNull();
+    expect(getComputedStyle(header).borderRadius).toBe("16px");
+    expect(getComputedStyle(header).paddingLeft).toBe("16px");
+    expect(getComputedStyle(body).borderRadius).toBe("16px");
+    expect(getComputedStyle(body).paddingLeft).toBe("16px");
+    expect(container).not.toBeNull();
+    expect(container?.getBoundingClientRect().width).toBeGreaterThanOrEqual(viewportWidth - 24);
+    expect(mobileSearch.getBoundingClientRect().height).toBe(44);
+    expect(mobileTheme.getBoundingClientRect().height).toBe(44);
+    expect(mobileRss.getBoundingClientRect().height).toBe(44);
+  },
+};
+
+export const MobileDarkCodeSurface: Story = {
+  name: "移动深色代码表面",
+  parameters: {
+    viewport: {
+      options: {
+        publicMobile: {
+          name: "Public mobile 393 x 852",
+          styles: { width: "393px", height: "852px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+  globals: {
+    viewport: { value: "publicMobile", isRotated: false },
+  },
+  render: () => (
+    <PublicDocumentShell compact theme="dark">
+      <MarkdownRenderer content={codeSurfaceMarkdown} variant="article" enableCodeFolding />
+    </PublicDocumentShell>
+  ),
+  play: async ({ canvasElement }) => {
+    const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    await expect(codeBlock).not.toBeNull();
+    await expect(codeBlock?.querySelector(".hljs")).not.toBeNull();
+  },
 };

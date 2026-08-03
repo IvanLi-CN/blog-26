@@ -1,0 +1,14 @@
+.project-poster {
+  border-radius: 1.9rem;
+}
+
+.project-poster.is-compact {
+  border-radius: 1.6rem;
+}
+
+@media (max-width: 767px) {
+  .project-poster,
+  .project-poster.is-compact {
+    border-radius: var(--nature-radius-md);
+  }
+}

@@ -62,7 +62,7 @@ const markdownSanitizeSchema = {
 
 // 导入必要的样式
 import "katex/dist/katex.min.css";
-import "highlight.js/styles/github.css";
+import "@/styles/markdown-code.css";
 
 function getMarkdownLinkBehavior(href: string | undefined) {
   if (!href) {
@@ -97,6 +97,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     content,
     className,
     variant = "article",
+    surface = "public",
     enableMath,
     enableMermaid,
     enableCodeFolding,
@@ -220,10 +221,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
           // 内联代码
           if (isInline) {
             return (
-              <code
-                className="rounded-md bg-[rgba(var(--nature-highlight-rgb),0.28)] px-1.5 py-0.5 text-sm font-mono text-[color:var(--nature-text)]"
-                {...props}
-              >
+              <code className="rounded-md px-1.5 py-0.5 font-mono text-sm" {...props}>
                 {children}
               </code>
             );
@@ -313,7 +311,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 引用样式
         blockquote: ({ children }) => (
-          <blockquote className="my-5 rounded-[1.4rem] border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-5 py-4 italic text-[color:var(--nature-text-soft)] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <blockquote className="my-5 rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-4 py-4 italic text-[color:var(--nature-text-soft)] sm:px-5 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             {children}
           </blockquote>
         ),
@@ -334,13 +332,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 预格式化文本
         pre: ({ children, className, ...props }) => (
-          <pre
-            className={mergeClassNames(
-              "my-4 overflow-x-auto rounded-[1.2rem] border border-[rgba(var(--nature-border-rgb),0.7)] bg-[rgba(var(--nature-highlight-rgb),0.24)]",
-              className
-            )}
-            {...props}
-          >
+          <pre className={mergeClassNames("my-4", className)} {...props}>
             {children}
           </pre>
         ),
@@ -358,7 +350,10 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     }
 
     return (
-      <div className={mergeClassNames(variantConfig.baseClassName, className)}>
+      <div
+        className={mergeClassNames(variantConfig.baseClassName, className)}
+        data-markdown-surface={surface}
+      >
         <ReactMarkdown
           remarkPlugins={remarkPlugins as never[]}
           rehypePlugins={rehypePlugins as never[]}

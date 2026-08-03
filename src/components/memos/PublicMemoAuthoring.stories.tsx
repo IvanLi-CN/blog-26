@@ -111,7 +111,7 @@ function RealtimeMemoListStory() {
             <span className="nature-chip nature-chip-info">Admin view</span>
             <span>Live composer now writes straight to `/api/public/memos/*`.</span>
           </div>
-          <div className="rounded-[1.5rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4">
+          <div className="rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4">
             <p className="text-sm text-[color:var(--nature-text-soft)]">
               Quick memo editor is rendered inline on the page shell for fast local publishing.
             </p>
@@ -366,6 +366,9 @@ export const LiveDetailControls: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId("public-memo-detail-controls")).toBeVisible();
     await expect(canvas.getByTestId("admin-live-memo-delete")).toBeVisible();
+    for (const action of canvasElement.querySelectorAll(".nature-button")) {
+      expect(action.getBoundingClientRect().height).toBe(36);
+    }
     await expect(canvas.getByTestId("public-memo-detail-body")).toContainText(
       "Keeps the public memo reading shell intact."
     );

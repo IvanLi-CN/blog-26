@@ -13,6 +13,10 @@ Implementation state is tracked here while the `sftui` spec is active.
 ## Delivery Notes
 
 - Storybook coverage is required for new and changed shared components.
+- Shared Markdown preview code now carries an explicit `admin` surface so preview tokens, background, radius, and desktop/touch padding remain independent from the public Nature frontend.
+- Admin control primitives use a fine-pointer desktop density contract of `32px` standard, `28px` compact, and `36px` explicit-large targets while preserving `44px` controls for touch and coarse pointers.
+- Storybook play coverage asserts the desktop primitive measurements and the `10px × 12px` admin code padding, preventing a later utility class or highlighter baseline from widening those controls or code blocks.
+- The primitive Storybook interaction checks portaled confirmation dialogs from the document root, preserving a real assertion for the local Radix dialog wrapper.
 - Visual evidence must be written back to the spec and shown in chat before PR handoff.
 - Demo mode is toggled on real admin URLs with `?demo=true|false`, remembered in `localStorage`, and never exposed through a standalone demo route.
 - The real admin `main.tsx` dynamically installs `setupAdminDemoApiMocks()` only when remembered demo mode is active, then renders the normal TanStack Router instance and shipped route tree.
@@ -31,6 +35,7 @@ Implementation state is tracked here while the `sftui` spec is active.
 - New empty post saves are blocked client-side when the editor body is still blank, and the banner now shows a natural-language validation message instead of raw serialized Zod issue arrays.
 - Admin API error mapping now preserves structured validation details for editor/post flows so the SPA can present stable friendly messages while keeping server-side validation authoritative.
 - The editor accessibility pass names the hidden attachment upload field, SourceEditor textarea, and Crepe link input to avoid unlabeled form controls.
+- Editor blockquotes use a restrained tinted surface, a `12px` radius, and a quotation-mark cue without a visible outline, keeping them distinct from code blocks without reading as framed form controls.
 - The editor frontmatter pass renders YAML as one inline block inside WYSIWYG and compare mode, auto-sizes the textarea so the full metadata stays visible without an inner scrollbar, exposes a visible focus ring on keyboard focus, aligns the frontmatter text column with the body text column, preserves in-progress whitespace such as keyboard-entered spaces and new lines, and removes the extra top margin on the first rendered heading so the body starts in the same vertical rhythm as the metadata block.
 - The editor file contract now distinguishes `markdown` from `text` content explicitly. Extensionless and whitelisted text files open in true plain-text mode, stay Source-only, disable preview and attachment insertion, preserve image/video/Markdown/HTML references as raw text, and save without triggering content sync. Unsupported file types and text-editable files above `2 MiB` return friendly structured open errors instead of generic request failures.
 - The frontmatter block now uses a local CodeMirror YAML editor in WYSIWYG mode only. It shares one diagnostics rule set with the editor save gate, provides field-name completion, boolean/date/category/tag suggestions, warns on unknown keys without deleting them, keeps diagnostics compact in the block header, and still anchors each problem to the offending line with line-range highlighting, line-end markers, and lint gutter indicators before blocking both database and file saves on frontmatter errors.

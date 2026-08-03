@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-08-01`
+- Last Updated: `2026-08-03`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -45,9 +45,17 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
-- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; article detail may show static interaction guidance, but neither page may expose a persistent live loading state after content is readable.
+- Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; neither page may expose a persistent live loading state or static interaction guidance after content is readable.
 
-### 4.4 Static search deep links
+### 4.4 Responsive control and code density
+
+- At `min-width: 1024px` with a fine pointer, public text actions use a `36px` target; navigation, icon controls, and link-style badges use a `32px` target.
+- Outside that desktop condition, interactive public controls use a minimum `44px` target. Static status badges remain compact and do not imply an interactive hit area.
+- `MarkdownRenderer` owns the public Markdown code surface. Dark code blocks use a low-brightness green surface, AA-readable foreground and syntax tokens, `12px` vertical by `14px` horizontal padding, and a `12px` radius. Horizontal overflow and code folding remain available.
+- Below `640px`, public page containers keep `12px` viewport gutters, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
+- Below `360px`, timeline rails and gaps compact further so the reading column gains width, while navigation labels may collapse to their already-labelled icons.
+
+### 4.5 Static search deep links
 
 - The static `/search/` document must inspect the runtime URL before the first paint. When a non-blank `q` is present, the search input, query-aware status, and full loading skeleton expose the decoded keyword until React search results are ready.
 - On narrow viewports, the public site header uses the same content-width container as the page body. Its primary navigation stays visible as the second header row; theme selection and RSS remain directly available without a navigation menu. The RSS control keeps a compact 36px visual frame so it does not compete with the theme selector.
@@ -69,6 +77,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 7. Same-site Markdown links, including same-origin absolute URLs, navigate in the current tab, while external Markdown links keep a new tab target and safe `rel` attributes.
 8. Query-bearing search deep links keep the decoded keyword visible before, during, and after island hydration without exposing the no-keyword empty state or duplicate accessible controls; at `393px`, the public header aligns to the body container, exposes `Main navigation` as its second row, and keeps theme selection plus RSS directly available.
 9. At a `438x852` mobile viewport with a non-empty query, the first result surface begins at or before `y=426`, leaving at least half of the first viewport for search results.
+10. Public desktop and touch control density follow the `36px` / `32px` and `44px` contracts respectively without enlarging static status badges.
+11. Public Markdown rendering never depends on a light highlighter stylesheet; dark code blocks retain readable syntax colors, horizontal overflow, and folding behavior.
+12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density.
 
 ## 6. Validation
 
@@ -77,11 +88,13 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `bun test src/lib/__tests__/theme.test.ts`
 - `DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=http://localhost:30090 PUBLIC_SITE_URL=http://localhost:30090 bun run build`
 - `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest-chromium`
-- `bun run check` is still blocked by pre-existing repository-wide issues outside this scope:
-  - `biome.jsonc` schema mismatch against the globally installed Biome CLI
-  - existing admin/editor lint findings unrelated to the public Nature redesign
+- `PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR=0 bunx playwright test --project=guest --grep "Code Block Rendering"`
+- `bun run build-storybook`
+- `bun run check`
 
 ## Visual Evidence
+
+PR: none
 
 - Evidence captured against local branch `th/nature-front-redesign` on the refreshed Nature frontend worktree state after the width, comment-form, and code-highlighting fixes.
 - Assets stored under `docs/specs/n8ure-nature-front-ui/assets/`.
@@ -99,6 +112,61 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ![Comment form fixed](./assets/comment-form-fixed.png)
 
 ![Code highlight fixed](./assets/code-highlight-fixed.png)
+
+### Responsive control and dark code surface
+
+- Evidence binding `7b2e49e54b241941b30c5350351d3a1392336471`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, sensitive exclusion `N/A`.
+- Fine-pointer desktop keeps the public navigation compact at `32px`, Memo text actions at `36px`, and code at `12px × 14px` with a `12px` radius. The coarse-pointer mobile canvas restores `44px` navigation targets while retaining the same readable dark code surface. Both canvases confirm that the obsolete article interaction hint is absent.
+- The dedicated desktop and mobile code stories use media-free Markdown fixtures so code-surface evidence does not depend on image-facade availability.
+
+![Public dark code desktop](./assets/public-dark-code-desktop.png)
+
+![Public dark code mobile](./assets/public-dark-code-mobile.png)
+
+### Current mobile density refresh
+
+- Evidence binding `7b2e49e54b241941b30c5350351d3a1392336471`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, requested viewport `393px × 852px`, sensitive exclusion `N/A`.
+- The current mobile canvas keeps the public search controls and result cards aligned to the 12px shell gutter while retaining touch-sized actions.
+
+![Public mobile density current](./assets/public-mobile-density-current.png)
+
+### Project poster mobile radius
+
+- Evidence binding `fd345db7e5cf08f380d7f009e0c3d8e35450fbb9`; source type `storybook_canvas`, target program `mock-only`, capture scope `element`, requested viewport `393px × 852px`, viewport strategy `storybook-viewport`, margin policy `require_margin`, evidence surface `component`, sensitive exclusion `N/A`.
+- The compact ProjectPoster keeps a restrained `14px` mobile radius instead of inheriting the larger desktop compact radius, preserving visual density in narrow project cards.
+
+![Public project poster mobile radius](./assets/public-project-poster-mobile-radius-current.png)
+
+### Narrow mobile search density
+
+- Evidence bound to implementation commit `59d66e54`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe element`, requested viewport `320x700`, viewport strategy `storybook-viewport`, margin policy `trim_only`, sensitive exclusion `N/A`.
+- The narrow search state keeps its query panel at the mobile spacing contract, uses low-luminance surfaces for the filters and recommended terms, preserves 44px interactive controls, and does not overflow horizontally.
+
+![Public narrow mobile search](./assets/public-search-narrow-mobile-dark.png)
+
+### Desktop header search width
+
+- Evidence bound to implementation commit `1aa481c5`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, requested viewport `1280x720`, viewport strategy `storybook default`, sensitive exclusion `N/A`.
+- The desktop search shell is `288px × 36px`. Its width balances the adjacent theme surface and RSS control cluster (`299px`) without changing the header's established vertical control sizes.
+
+![Public desktop header search width](./assets/public-header-search-width-balanced-desktop.png)
+
+### Desktop header control heights
+
+- Evidence bound to implementation commit `0233f4a9`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, requested viewport `browser default`, viewport strategy `storybook canvas`, sensitive exclusion `N/A`.
+- On fine-pointer desktop, the search shell, theme-toggle outer surface, and RSS action are each exactly `36px` high with matching top and bottom edges. The mobile story separately measures search, theme selection, and RSS at `44px` each.
+
+![Public dark desktop header control heights](./assets/public-header-controls-unified-dark-desktop.png)
+
+### Compact mobile density
+
+- Evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- The controlled static fixture uses `393px × 852px` and `320px × 700px` viewports. Both keep the mobile header, main container, and footer on the same `12px` left/right gutter, use a `16px` maximum surface radius, and preserve `44px` navigation targets.
+- At `320px`, navigation labels collapse to labelled icons and the timeline rail compacts so the content card retains a usable reading width instead of losing space to chrome.
+
+![Public mobile density at 393px](./assets/public-mobile-density-393.png)
+
+![Public mobile density at 320px](./assets/public-mobile-density-320.png)
 
 ### Related posts responsive cards
 
@@ -177,13 +245,13 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 Desktop viewport evidence:
 
-- `source_type=target_app_window`; `target_program=Chrome`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=1762x1169 CSS px`; `PR: include`.
+- `source_type=target_app_window`; `target_program=Chrome`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=1762x1169 CSS px`.
 
 ![Search query field desktop viewport](./assets/search-query-frame-desktop-1762x1169.jpg)
 
 Mobile viewport evidence:
 
-- `source_type=target_app_window`; `target_program=Chromium production preview`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=393x852 CSS px`; `PR: include`.
+- `source_type=target_app_window`; `target_program=Chromium production preview`; `capture_scope=browser-viewport`; `sensitive_exclusion=only the search preview page`; `viewport=393x852 CSS px`.
 
 ![Search query field mobile viewport](./assets/search-query-frame-mobile-393x852.png)
 
@@ -199,13 +267,10 @@ Mobile viewport evidence:
 
 ![Search recovery directions](./assets/search-tool-recovery.png)
 
-PR: include
 ![Search recommendations single row](./assets/search-recommendations-single-row.png)
 
-PR: include
 ![Search recommendations single row dark](./assets/search-recommendations-single-row-dark.png)
 
-PR: include
 ![Search recommendations single row mobile](./assets/search-recommendations-single-row-mobile.png)
 
 ## Change log
@@ -235,3 +300,4 @@ PR: include
 - 2026-08-02: Compressed the mobile query panel so the first result surface remains visible in at least half of a `438x852` search viewport.
 - 2026-08-02: Removed the duplicate `内容检索` page-purpose kicker from search so the title is the only page label at every viewport.
 - 2026-08-02: Removed the mobile no-result query summary when the no-results surface already communicates the same outcome.
+- 2026-07-31: Separated public desktop and touch control density, moved Markdown code styling into a surface-aware renderer scope, and recorded dark desktop/mobile code evidence.

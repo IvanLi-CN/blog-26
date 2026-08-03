@@ -468,7 +468,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
 
       {memo ? (
         <article>
-          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-card">
+          <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-card">
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
               <span
                 className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}
@@ -494,7 +494,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
             ) : null}
           </div>
 
-          <div className="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-body">
+          <div className="nature-panel px-4 py-7 sm:px-8" data-testid="public-memo-detail-body">
             <MarkdownRenderer
               content={detailBody}
               variant="article"

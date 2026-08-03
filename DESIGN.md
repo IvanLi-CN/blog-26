@@ -60,6 +60,9 @@ rounded:
     large: "32px 38px 28px 36px / 30px 34px 40px 28px"
     medium: "24px 28px 22px 30px / 24px 24px 32px 24px"
     small: "18px 20px 16px 22px / 18px 18px 22px 18px"
+    mobileLarge: "16px"
+    mobileMedium: "14px"
+    mobileSmall: "12px"
     pill: "999px"
   admin:
     base: "1.25rem"
@@ -69,8 +72,10 @@ rounded:
     xlarge: "1.75rem"
 spacing:
   public:
-    contentWidth: "min(1280px, calc(100vw - 3rem))"
-    readingWidth: "min(920px, calc(100vw - 3rem))"
+    contentWidth: "min(1280px, calc(100% - 3rem))"
+    readingWidth: "min(920px, calc(100% - 3rem))"
+    mobileContentWidth: "calc(100% - 1.5rem)"
+    mobilePanelPadding: "16px"
     timelineGap: "clamp(1.5rem, 2.8vw, 2.4rem)"
   admin:
     shellMaxWidth: "1440px"
