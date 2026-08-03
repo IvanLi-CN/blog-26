@@ -93,6 +93,30 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
   });
 
+  test("mobile detail reading measure does not apply a second horizontal gutter", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoWithTheme(page, "/posts/hello-world", "light");
+
+    const detailContainer = page.locator(".nature-detail-container");
+    const readingMeasure = detailContainer.locator(":scope > .nature-reading-measure");
+    const [containerBounds, readingBounds, horizontalPadding] = await Promise.all([
+      detailContainer.boundingBox(),
+      readingMeasure.boundingBox(),
+      detailContainer.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+      }),
+    ]);
+
+    expect(containerBounds).not.toBeNull();
+    expect(readingBounds).not.toBeNull();
+    expect(
+      Math.abs((readingBounds?.width ?? 0) - ((containerBounds?.width ?? 0) - horizontalPadding))
+    ).toBeLessThanOrEqual(1);
+  });
+
   test("mobile search entry still redirects correctly", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoWithTheme(page, "/", "light");
