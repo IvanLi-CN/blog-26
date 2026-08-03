@@ -88,7 +88,7 @@ export default function ThemeToggle({
       )}
 
       <div
-        className={`nature-surface-quiet items-center gap-1 rounded-full p-1 ${
+        className={`nature-header-theme-toggle nature-surface-quiet items-center gap-1 rounded-full p-1 ${
           compactOnMobile ? "hidden sm:flex" : "flex"
         }`}
       >

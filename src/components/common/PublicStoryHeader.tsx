@@ -71,7 +71,7 @@ export function PublicStoryHeader({
             )}
             <ThemeToggle compactOnMobile iconClass="h-4 w-4" />
             <a
-              className="nature-icon-button inline-flex"
+              className="nature-header-rss-button nature-icon-button inline-flex"
               aria-label="RSS Feed"
               title="RSS Feed"
               href="/feed.xml"

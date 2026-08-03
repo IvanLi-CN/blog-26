@@ -271,8 +271,14 @@ export const PersistentRouteProgress: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("status", { name: /正在打开页面/ })).toBeVisible();
     const headerSearch = canvas.getByPlaceholderText("搜索文章...").closest("label");
+    const headerThemeToggle = canvasElement.querySelector<HTMLElement>(
+      ".nature-header-theme-toggle"
+    );
+    const headerRssButton = canvas.getByRole("link", { name: "RSS Feed" });
     await expect(headerSearch).toBeInTheDocument();
     expect(headerSearch?.getBoundingClientRect().height).toBe(36);
+    expect(headerThemeToggle?.getBoundingClientRect().height).toBe(36);
+    expect(headerRssButton.getBoundingClientRect().height).toBe(36);
     await expect(canvas.getByRole("button", { name: "Light" })).toBeVisible();
     await expect(canvas.getByRole("heading", { name: "路由反馈与文档加载体验" })).toBeVisible();
     await expect(canvas.getByRole("main")).toHaveAttribute("aria-busy", "true");
@@ -357,6 +363,9 @@ export const MobileArticle: Story = {
     const header = canvas.getByTestId("public-document-header");
     const body = canvas.getByTestId("public-document-body");
     const container = canvasElement.querySelector<HTMLElement>(".nature-container");
+    const mobileSearch = canvas.getByRole("link", { name: "搜索" });
+    const mobileTheme = canvas.getByRole("combobox", { name: /主题/ });
+    const mobileRss = canvas.getByRole("link", { name: "RSS Feed" });
     const viewportWidth = canvasElement.ownerDocument.defaultView?.innerWidth ?? 0;
     await expect(codeBlock).not.toBeNull();
     expect(getComputedStyle(header).borderRadius).toBe("16px");
@@ -365,6 +374,9 @@ export const MobileArticle: Story = {
     expect(getComputedStyle(body).paddingLeft).toBe("16px");
     expect(container).not.toBeNull();
     expect(container?.getBoundingClientRect().width).toBeGreaterThanOrEqual(viewportWidth - 24);
+    expect(mobileSearch.getBoundingClientRect().height).toBe(44);
+    expect(mobileTheme.getBoundingClientRect().height).toBe(44);
+    expect(mobileRss.getBoundingClientRect().height).toBe(44);
   },
 };
 

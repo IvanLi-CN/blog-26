@@ -808,6 +808,22 @@
       gap: 0.55rem;
     }
 
+    .nature-header-tools .nature-header-theme-toggle {
+      height: 2.25rem;
+      min-height: 2.25rem;
+      padding: 1px;
+    }
+
+    .nature-header-tools .nature-header-theme-toggle .theme-toggle-option {
+      height: 2rem;
+    }
+
+    .nature-header-tools .nature-header-rss-button {
+      width: 2.25rem;
+      height: 2.25rem;
+      min-height: 2.25rem;
+    }
+
     .theme-toggle-option {
       min-width: 2rem;
       padding: 0.3rem 0.55rem;
