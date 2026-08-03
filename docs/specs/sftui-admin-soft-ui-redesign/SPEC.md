@@ -99,7 +99,7 @@ Out of scope:
 - `PLAYWRIGHT_DISABLE_WEBSERVER=1 BASE_URL=http://127.0.0.1:<leased-port> bunx playwright test --project=admin --grep "admin code surface"`
 - Browser visual verification from deterministic local preview or Storybook surfaces
 
-## 8. Visual Evidence
+## Visual Evidence
 
 This section keeps only the final, currently valid screenshots grouped by workflow.
 
