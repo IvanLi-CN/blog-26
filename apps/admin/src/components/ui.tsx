@@ -263,7 +263,7 @@ export function Select({
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content className="z-50 overflow-hidden rounded-3xl border border-border/64 bg-popover text-popover-foreground shadow-2xl shadow-shadow-strong lg:rounded-[1rem]">
-          <SelectPrimitive.ScrollUpButton className="flex h-8 items-center justify-center text-muted-foreground">
+          <SelectPrimitive.ScrollUpButton className="admin-select-scroll-button flex h-11 min-h-11 items-center justify-center text-muted-foreground">
             <ChevronUp className="size-4" />
           </SelectPrimitive.ScrollUpButton>
           <SelectPrimitive.Viewport className="p-1.5">
@@ -272,7 +272,7 @@ export function Select({
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
-                className="relative flex cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2.5 pl-9 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45 lg:rounded-[0.75rem] lg:py-2"
+                className="admin-select-item relative flex min-h-11 cursor-default select-none items-center gap-2 rounded-2xl px-3 py-2.5 pl-9 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-45 lg:rounded-[0.75rem] lg:py-2"
               >
                 <SelectPrimitive.ItemIndicator className="absolute left-3 inline-flex items-center">
                   <Check className="size-4 text-primary" />
@@ -281,7 +281,7 @@ export function Select({
               </SelectPrimitive.Item>
             ))}
           </SelectPrimitive.Viewport>
-          <SelectPrimitive.ScrollDownButton className="flex h-8 items-center justify-center text-muted-foreground">
+          <SelectPrimitive.ScrollDownButton className="admin-select-scroll-button flex h-11 min-h-11 items-center justify-center text-muted-foreground">
             <ChevronDown className="size-4" />
           </SelectPrimitive.ScrollDownButton>
         </SelectPrimitive.Content>

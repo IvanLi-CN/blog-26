@@ -602,6 +602,17 @@ html[data-ui-theme="light"] {
     width: 1.75rem;
   }
 
+  .admin-select-scroll-button {
+    height: 1.75rem;
+    min-height: 1.75rem;
+  }
+
+  .admin-select-item {
+    min-height: 1.75rem;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+  }
+
   .admin-field-control {
     height: 2rem;
     border-radius: 0.75rem;

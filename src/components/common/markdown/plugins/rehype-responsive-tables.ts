@@ -26,7 +26,7 @@ export function rehypeResponsiveTables(options: ResponsiveTablesOptions = {}) {
               "my-4",
               "border",
               "border-[rgba(var(--nature-border-rgb),0.72)]",
-              "rounded-[1.25rem]",
+              "rounded-[var(--nature-radius-md)]",
               "bg-[rgba(var(--nature-surface-rgb),0.72)]",
             ],
           },

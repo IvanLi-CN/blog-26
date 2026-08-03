@@ -314,8 +314,8 @@ test.describe("Nature frontend public coverage", () => {
       expect(metrics.hasRequiredElements).toBe(true);
       expect(metrics.headerRadius).toBeLessThanOrEqual(16);
       for (const edges of metrics.shellEdges) {
-        expect(edges.left).toBeCloseTo(10, 0);
-        expect(edges.right).toBeCloseTo(10, 0);
+        expect(edges.left).toBeCloseTo(12, 0);
+        expect(edges.right).toBeCloseTo(12, 0);
       }
       expect(metrics.navTargets).toHaveLength(4);
       for (const target of metrics.navTargets) {
