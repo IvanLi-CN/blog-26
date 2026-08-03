@@ -89,6 +89,7 @@ describe("admin demo LLM settings", () => {
         ...customRerankUpdate.rerank,
         useCustomProvider: false,
         baseUrlMode: "inherit" as const,
+        baseUrl: "",
         apiKeyMode: "inherit" as const,
         apiKeyInput: undefined,
       },
@@ -102,6 +103,8 @@ describe("admin demo LLM settings", () => {
     );
     expect(inheritedRerankSettings.settings.rerank.apiKey.source).toBe("inherited");
     expect(inheritedRerankSettings.settings.rerank.useCustomProvider).toBe(false);
+    expect(inheritedRerankSettings.settings.rerank.baseUrl).toBe("https://api.cohere.com/v2");
+    expect(inheritedRerankSettings.resolved.rerank.baseUrl).toBe("https://openrouter.ai/api/v1");
 
     const reenabledRerankResponse = await demoWindow.fetch(
       "http://localhost/api/admin/llm-settings",
@@ -113,6 +116,7 @@ describe("admin demo LLM settings", () => {
             ...inheritedRerankUpdate.rerank,
             useCustomProvider: true,
             baseUrlMode: "custom",
+            baseUrl: inheritedRerankSettings.settings.rerank.baseUrl,
             apiKeyMode: "custom",
           },
         }),
@@ -123,6 +127,8 @@ describe("admin demo LLM settings", () => {
     );
     expect(reenabledRerankSettings.settings.rerank.apiKey.hasValue).toBe(true);
     expect(reenabledRerankSettings.settings.rerank.apiKey.source).toBe("db");
+    expect(reenabledRerankSettings.settings.rerank.baseUrl).toBe("https://api.cohere.com/v2");
+    expect(reenabledRerankSettings.resolved.rerank.baseUrl).toBe("https://api.cohere.com/v2");
 
     const testResponse = await demoWindow.fetch("http://localhost/api/admin/llm-settings/test", {
       method: "POST",

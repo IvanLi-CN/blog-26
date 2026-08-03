@@ -504,6 +504,12 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
     ? input.embedding.baseUrl
     : input.chat.baseUrl;
   const rerankBaseUrl = rerankUsesCustomProvider ? input.rerank.baseUrl : embeddingBaseUrl;
+  const savedEmbeddingBaseUrl = embeddingUsesCustomProvider
+    ? input.embedding.baseUrl
+    : llmSettings.settings.embedding.baseUrl;
+  const savedRerankBaseUrl = rerankUsesCustomProvider
+    ? input.rerank.baseUrl
+    : llmSettings.settings.rerank.baseUrl;
 
   llmSettings = {
     savedAt,
@@ -513,7 +519,7 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
         model: input.embedding.model,
         useCustomProvider: embeddingUsesCustomProvider,
         baseUrlMode: embeddingUsesCustomProvider ? "custom" : "inherit",
-        baseUrl: input.embedding.baseUrl,
+        baseUrl: savedEmbeddingBaseUrl,
         apiKeyMode: embeddingUsesCustomProvider ? "custom" : "inherit",
         apiKey: embeddingApiKey,
       },
@@ -521,7 +527,7 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
         model: input.rerank.model,
         useCustomProvider: rerankUsesCustomProvider,
         baseUrlMode: rerankUsesCustomProvider ? "custom" : "inherit",
-        baseUrl: input.rerank.baseUrl,
+        baseUrl: savedRerankBaseUrl,
         apiKeyMode: rerankUsesCustomProvider ? "custom" : "inherit",
         apiKey: rerankApiKey,
       },
