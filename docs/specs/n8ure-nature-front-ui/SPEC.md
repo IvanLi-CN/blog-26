@@ -123,6 +123,13 @@ PR: none
 
 ![Public dark code mobile](./assets/public-dark-code-mobile.png)
 
+### Desktop header search width
+
+- Evidence bound to implementation commit `1aa481c5`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, requested viewport `1280x720`, viewport strategy `storybook default`, sensitive exclusion `N/A`.
+- The desktop search shell is `288px × 36px`. Its width balances the adjacent theme surface and RSS control cluster (`299px`) without changing the header's established vertical control sizes.
+
+![Public desktop header search width](./assets/public-header-search-width-balanced-desktop.png)
+
 ### Compact mobile density
 
 - Evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
