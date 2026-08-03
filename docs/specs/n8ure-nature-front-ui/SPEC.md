@@ -123,6 +123,13 @@ PR: none
 
 ![Public dark code mobile](./assets/public-dark-code-mobile.png)
 
+### Narrow mobile search density
+
+- Evidence bound to implementation commit `59d66e54`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe element`, requested viewport `320x700`, viewport strategy `storybook-viewport`, margin policy `trim_only`, sensitive exclusion `N/A`.
+- The narrow search state keeps its query panel at the mobile spacing contract, uses low-luminance surfaces for the filters and recommended terms, preserves 44px interactive controls, and does not overflow horizontally.
+
+![Public narrow mobile search](./assets/public-search-narrow-mobile-dark.png)
+
 ### Desktop header search width
 
 - Evidence bound to implementation commit `1aa481c5`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, requested viewport `1280x720`, viewport strategy `storybook default`, sensitive exclusion `N/A`.
