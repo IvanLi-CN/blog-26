@@ -130,6 +130,13 @@ PR: none
 
 ![Public desktop header search width](./assets/public-header-search-width-balanced-desktop.png)
 
+### Desktop header control heights
+
+- Evidence bound to implementation commit `0233f4a9`; source type `storybook_canvas`, target program `mock-only`, capture scope `browser-viewport`, requested viewport `browser default`, viewport strategy `storybook canvas`, sensitive exclusion `N/A`.
+- On fine-pointer desktop, the search shell, theme-toggle outer surface, and RSS action are each exactly `36px` high with matching top and bottom edges. The mobile story separately measures search, theme selection, and RSS at `44px` each.
+
+![Public dark desktop header control heights](./assets/public-header-controls-unified-dark-desktop.png)
+
 ### Compact mobile density
 
 - Evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
