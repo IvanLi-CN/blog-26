@@ -20,6 +20,7 @@ import type {
   AdminLlmSettingsPayload,
   AdminLlmSettingsTestRequest,
   AdminLlmSettingsUpdateInput,
+  AdminSecretState,
 } from "@/lib/llm-settings";
 import { rebasePersistedLocalLinks, rebasePersistedLocalReferences } from "@/lib/persisted-paths";
 import type { TagGroup } from "@/types/tag-groups";
@@ -409,7 +410,7 @@ function resolveDemoCustomSecret(
 ) {
   if (input.clearApiKey) return missingDemoSecret();
   if (input.apiKeyInput?.trim()) return { ...demoChatSecret, maskedValue: "sk-demo-••••••••" };
-  return current.source === "inherited" ? missingDemoSecret() : current;
+  return current;
 }
 
 let llmSettings: AdminLlmSettingsPayload = {
@@ -467,6 +468,9 @@ let llmSettings: AdminLlmSettingsPayload = {
   },
 };
 
+let demoEmbeddingCustomSecret = missingDemoSecret();
+let demoRerankCustomSecret = missingDemoSecret();
+
 function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
   const savedAt = Date.now();
   const chatApiKey = input.chat.clearApiKey
@@ -479,14 +483,20 @@ function applyDemoLlmSettingsUpdate(input: AdminLlmSettingsUpdateInput) {
     : input.chat.apiKeyInput?.trim()
       ? { ...demoChatSecret, maskedValue: "sk-demo-••••••••" }
       : llmSettings.settings.chat.apiKey;
-  const embeddingApiKey =
-    input.embedding.apiKeyMode === "inherit"
-      ? inheritedDemoSecret(chatApiKey)
-      : resolveDemoCustomSecret(llmSettings.settings.embedding.apiKey, input.embedding);
-  const rerankApiKey =
-    input.rerank.apiKeyMode === "inherit"
-      ? inheritedDemoSecret(embeddingApiKey)
-      : resolveDemoCustomSecret(llmSettings.settings.rerank.apiKey, input.rerank);
+  let embeddingApiKey: AdminSecretState;
+  if (input.embedding.apiKeyMode === "inherit") {
+    embeddingApiKey = inheritedDemoSecret(chatApiKey);
+  } else {
+    demoEmbeddingCustomSecret = resolveDemoCustomSecret(demoEmbeddingCustomSecret, input.embedding);
+    embeddingApiKey = demoEmbeddingCustomSecret;
+  }
+  let rerankApiKey: AdminSecretState;
+  if (input.rerank.apiKeyMode === "inherit") {
+    rerankApiKey = inheritedDemoSecret(embeddingApiKey);
+  } else {
+    demoRerankCustomSecret = resolveDemoCustomSecret(demoRerankCustomSecret, input.rerank);
+    rerankApiKey = demoRerankCustomSecret;
+  }
   const embeddingBaseUrl =
     input.embedding.baseUrlMode === "custom" ? input.embedding.baseUrl : input.chat.baseUrl;
   const rerankBaseUrl =

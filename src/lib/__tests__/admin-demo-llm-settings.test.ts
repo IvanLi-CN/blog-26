@@ -70,6 +70,47 @@ describe("admin demo LLM settings", () => {
     expect(updated.settings.rerank.apiKey.hasValue).toBe(false);
     expect(updated.settings.rerank.apiKey.source).toBe("missing");
 
+    const customRerankUpdate = {
+      ...update,
+      rerank: { ...update.rerank, apiKeyInput: "sk-rerank-demo" },
+    };
+    const customRerankResponse = await demoWindow.fetch("http://localhost/api/admin/llm-settings", {
+      method: "PUT",
+      body: JSON.stringify(customRerankUpdate),
+    });
+    const customRerankSettings = adminLlmSettingsPayloadSchema.parse(
+      await customRerankResponse.json()
+    );
+    expect(customRerankSettings.settings.rerank.apiKey.hasValue).toBe(true);
+
+    const inheritedRerankUpdate = {
+      ...customRerankUpdate,
+      rerank: { ...customRerankUpdate.rerank, apiKeyMode: "inherit", apiKeyInput: undefined },
+    };
+    const reinheritRerankSettingsResponse = await demoWindow.fetch(
+      "http://localhost/api/admin/llm-settings",
+      { method: "PUT", body: JSON.stringify(inheritedRerankUpdate) }
+    );
+    const inheritedRerankSettings = adminLlmSettingsPayloadSchema.parse(
+      await reinheritRerankSettingsResponse.json()
+    );
+    expect(inheritedRerankSettings.settings.rerank.apiKey.source).toBe("inherited");
+
+    const reenabledRerankResponse = await demoWindow.fetch(
+      "http://localhost/api/admin/llm-settings",
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          ...inheritedRerankUpdate,
+          rerank: { ...inheritedRerankUpdate.rerank, apiKeyMode: "custom" },
+        }),
+      }
+    );
+    const reenabledRerankSettings = adminLlmSettingsPayloadSchema.parse(
+      await reenabledRerankResponse.json()
+    );
+    expect(reenabledRerankSettings.settings.rerank.apiKey.hasValue).toBe(true);
+
     const testResponse = await demoWindow.fetch("http://localhost/api/admin/llm-settings/test", {
       method: "POST",
       body: JSON.stringify({ tier: "rerank", settings: update }),
