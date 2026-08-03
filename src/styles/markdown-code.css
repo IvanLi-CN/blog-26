@@ -9,7 +9,12 @@
   scrollbar-color: var(--markdown-code-scrollbar) transparent;
 }
 
-[data-markdown-surface] pre > code {
+[data-markdown-surface] .collapsible-code-container {
+  display: block;
+  min-width: max-content;
+}
+
+[data-markdown-surface] :is(pre > code, .collapsible-code-container code) {
   display: block;
   min-width: max-content;
   padding: var(--markdown-code-padding-y) var(--markdown-code-padding-x);
@@ -32,7 +37,7 @@
   color: var(--markdown-code-foreground);
 }
 
-[data-markdown-surface] pre > code.hljs,
+[data-markdown-surface] :is(pre > code.hljs, .collapsible-code-container code.hljs),
 [data-markdown-surface] .hljs {
   background: transparent;
   color: var(--markdown-code-foreground);

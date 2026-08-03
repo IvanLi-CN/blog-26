@@ -295,6 +295,11 @@ export const LongCode: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: /展开全部/ })).toBeVisible();
+    const foldedCode = canvasElement.querySelector(
+      '[data-markdown-surface="public"] .collapsible-code-container code'
+    );
+    await expect(foldedCode).not.toBeNull();
+    expect(getComputedStyle(foldedCode as HTMLElement).padding).toBe("12px 14px");
   },
 };
 
