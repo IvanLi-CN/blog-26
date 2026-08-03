@@ -125,8 +125,8 @@ PR: none
 
 ### Compact mobile density
 
-- Evidence bound to implementation commit `2b9a03c28bb0e0855794c13a050ac5fc784ddfd8`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
-- The controlled static fixture uses `393px × 852px` and `320px × 700px` viewports. Both keep the mobile header and timeline card within the viewport, use a `16px` maximum surface radius, and preserve `44px` navigation targets.
+- Evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- The controlled static fixture uses `393px × 852px` and `320px × 700px` viewports. Both keep the mobile header, main container, and footer on the same `12px` left/right gutter, use a `16px` maximum surface radius, and preserve `44px` navigation targets.
 - At `320px`, navigation labels collapse to labelled icons and the timeline rail compacts so the content card retains a usable reading width instead of losing space to chrome.
 
 ![Public mobile density at 393px](./assets/public-mobile-density-393.png)
