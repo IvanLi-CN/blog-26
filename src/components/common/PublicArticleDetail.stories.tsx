@@ -2,10 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect } from "react";
 import { expect, within } from "storybook/test";
 import "@/styles/nature-restored.css";
-import Icon from "../ui/Icon";
 import { MarkdownLoadingState } from "./MarkdownLoadingState";
 import MarkdownRenderer from "./MarkdownRenderer";
-import ThemeToggle from "./ThemeToggle";
+import { PublicStoryHeader } from "./PublicStoryHeader";
 
 const articleMarkdown = `
 这篇文章用于验证公开文档页的阅读、站内跳转和富内容交互。读者可以继续打开 [搜索页面](/search)，也可以访问 [Astro 官网](https://astro.build) 查看外部资料。
@@ -90,13 +89,6 @@ export default meta;
 
 type Story = StoryObj;
 
-const navLinks = [
-  { icon: "tabler:note", text: "闪念", href: "/memos" },
-  { icon: "tabler:article", text: "文章", href: "/posts", active: true },
-  { icon: "tabler:code", text: "项目", href: "/projects" },
-  { icon: "tabler:hash", text: "标签", href: "/tags" },
-];
-
 function PublicDocumentShell({
   children,
   theme = "light",
@@ -130,94 +122,14 @@ function PublicDocumentShell({
   return (
     <div
       className={`nature-app-shell flex min-h-screen flex-col bg-[color:var(--nature-bg)] text-[color:var(--nature-text)] ${
-        compact ? "mx-auto w-[390px] max-w-full" : ""
+        compact ? "mx-auto w-full max-w-full" : ""
       }`}
       data-ui-theme={theme}
       data-ui-preference="system"
       data-theme={theme}
     >
       <div className="nature-content-layer flex min-h-screen flex-col">
-        <header className="nature-site-header sticky top-0 z-40 flex-none w-full px-3 pt-3 sm:px-4">
-          <div className="nature-container nature-site-header-frame">
-            <div className="nature-surface flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
-              <a
-                href="/"
-                className="nature-brand-link min-w-fit pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:text-2xl"
-              >
-                Ivan's Blog
-              </a>
-
-              <nav
-                className="order-3 w-full md:order-2 md:ml-2 md:w-auto"
-                aria-label="Main navigation"
-              >
-                <ul className="flex flex-wrap items-center gap-1 text-sm font-medium">
-                  {navLinks.map((link) => (
-                    <li key={link.href}>
-                      <a
-                        href={link.href}
-                        className={`nature-nav-link gap-2 rounded-full px-4 transition ${
-                          link.active
-                            ? "aw-link-active"
-                            : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
-                        }`}
-                      >
-                        <Icon name={link.icon} className="h-4 w-4" />
-                        {link.text}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-
-              <div className="order-2 ml-auto flex items-center gap-3 md:order-3">
-                <form action="/search" method="get" className="hidden items-center xl:flex">
-                  <label className="nature-input-shell nature-header-search min-w-[20rem] 2xl:min-w-[22rem]">
-                    <Icon
-                      name="tabler:search"
-                      className="h-5 w-5 text-[color:var(--nature-text-faint)]"
-                    />
-                    <input
-                      type="text"
-                      name="q"
-                      placeholder="搜索文章..."
-                      className="nature-input"
-                    />
-                  </label>
-                </form>
-                <a
-                  href="/search"
-                  className="nature-icon-button inline-flex xl:hidden"
-                  aria-label="搜索"
-                >
-                  <Icon name="tabler:search" className="h-5 w-5" />
-                </a>
-                <ThemeToggle iconClass="h-4 w-4" />
-                <a
-                  className="nature-icon-button inline-flex"
-                  aria-label="RSS Feed"
-                  title="RSS Feed"
-                  href="/feed.xml"
-                >
-                  <Icon name="tabler:rss" className="h-5 w-5" />
-                </a>
-              </div>
-            </div>
-            <div
-              id="public-route-loading"
-              className="nature-route-loading"
-              role="status"
-              aria-live="polite"
-              aria-label="正在打开页面"
-              aria-hidden={pending ? "false" : "true"}
-            >
-              <span className="nature-route-loading-track" aria-hidden="true">
-                <span className="nature-route-loading-bar" />
-              </span>
-              <span className="nature-route-loading-label">正在打开页面</span>
-            </div>
-          </div>
-        </header>
+        <PublicStoryHeader activeHref="/posts" pending={pending} />
         <main className="nature-main flex-1" aria-busy={pending ? "true" : undefined}>
           <section
             className={
@@ -225,7 +137,10 @@ function PublicDocumentShell({
             }
           >
             <article className="space-y-8">
-              <header className="nature-surface px-6 py-7 sm:px-8">
+              <header
+                className="nature-surface px-4 py-5 sm:px-8 sm:py-7"
+                data-testid="public-document-header"
+              >
                 <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
                   <span className="nature-chip nature-chip-info">2026-05-12</span>
                   <span className="nature-chip">7 分钟</span>
@@ -238,7 +153,12 @@ function PublicDocumentShell({
                   用稳定的反馈告诉读者页面正在切换，同时把重型文档交互延后到需要时加载。
                 </p>
               </header>
-              <div className="nature-panel px-6 py-7 sm:px-8">{children}</div>
+              <div
+                className="nature-panel px-4 py-5 sm:px-8 sm:py-7"
+                data-testid="public-document-body"
+              >
+                {children}
+              </div>
             </article>
           </section>
         </main>
@@ -414,8 +334,17 @@ export const MobileArticle: Story = {
   name: "移动宽度文档",
   parameters: {
     viewport: {
-      defaultViewport: "mobile1",
+      options: {
+        publicMobile: {
+          name: "Public mobile 393 x 852",
+          styles: { width: "393px", height: "852px" },
+          type: "mobile",
+        },
+      },
     },
+  },
+  globals: {
+    viewport: { value: "publicMobile", isRotated: false },
   },
   render: () => (
     <PublicDocumentShell compact theme="dark">
@@ -423,8 +352,19 @@ export const MobileArticle: Story = {
     </PublicDocumentShell>
   ),
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
     const codeBlock = canvasElement.querySelector('[data-markdown-surface="public"] pre');
+    const header = canvas.getByTestId("public-document-header");
+    const body = canvas.getByTestId("public-document-body");
+    const container = canvasElement.querySelector<HTMLElement>(".nature-container");
+    const viewportWidth = canvasElement.ownerDocument.defaultView?.innerWidth ?? 0;
     await expect(codeBlock).not.toBeNull();
+    expect(getComputedStyle(header).borderRadius).toBe("16px");
+    expect(getComputedStyle(header).paddingLeft).toBe("16px");
+    expect(getComputedStyle(body).borderRadius).toBe("16px");
+    expect(getComputedStyle(body).paddingLeft).toBe("16px");
+    expect(container).not.toBeNull();
+    expect(container?.getBoundingClientRect().width).toBeGreaterThanOrEqual(viewportWidth - 24);
   },
 };
 
@@ -432,8 +372,17 @@ export const MobileDarkCodeSurface: Story = {
   name: "移动深色代码表面",
   parameters: {
     viewport: {
-      defaultViewport: "mobile1",
+      options: {
+        publicMobile: {
+          name: "Public mobile 393 x 852",
+          styles: { width: "393px", height: "852px" },
+          type: "mobile",
+        },
+      },
     },
+  },
+  globals: {
+    viewport: { value: "publicMobile", isRotated: false },
   },
   render: () => (
     <PublicDocumentShell compact theme="dark">

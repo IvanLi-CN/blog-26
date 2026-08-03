@@ -196,7 +196,7 @@ export function QuickMemoEditModal({
             <section
               ref={containerRef}
               className={cn(
-                "overflow-hidden rounded-[1.5rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)]",
+                "overflow-hidden rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)]",
                 showSkeleton && "animate-pulse"
               )}
               data-testid="quick-memo-edit-container"

@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-08-01`
+- Last Updated: `2026-08-03`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -52,6 +52,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - At `min-width: 1024px` with a fine pointer, public text actions use a `36px` target; navigation, icon controls, and link-style badges use a `32px` target.
 - Outside that desktop condition, interactive public controls use a minimum `44px` target. Static status badges remain compact and do not imply an interactive hit area.
 - `MarkdownRenderer` owns the public Markdown code surface. Dark code blocks use a low-brightness green surface, AA-readable foreground and syntax tokens, `12px` vertical by `14px` horizontal padding, and a `12px` radius. Horizontal overflow and code folding remain available.
+- Below `640px`, public page containers keep `12px` viewport gutters, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
+- Below `360px`, timeline rails and gaps compact further so the reading column gains width, while navigation labels may collapse to their already-labelled icons.
 
 ### 4.5 Static search deep links
 
@@ -77,6 +79,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 9. At a `438x852` mobile viewport with a non-empty query, the first result surface begins at or before `y=426`, leaving at least half of the first viewport for search results.
 10. Public desktop and touch control density follow the `36px` / `32px` and `44px` contracts respectively without enlarging static status badges.
 11. Public Markdown rendering never depends on a light highlighter stylesheet; dark code blocks retain readable syntax colors, horizontal overflow, and folding behavior.
+12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density.
 
 ## 6. Validation
 

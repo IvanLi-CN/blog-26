@@ -49,12 +49,12 @@ const structuredData = {
 >
   <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
-  <section class="nature-detail-container px-4 py-10 sm:px-6">
+  <section class="nature-detail-container px-2 py-8 sm:px-6 sm:py-10">
     <article class="nature-reading-measure space-y-8">
       <PublicMemoDetailControlsIsland client:load slug={memo.slug} />
 
       <div data-public-memo-static-shell>
-        <div class="nature-panel px-6 py-7 sm:px-8" data-testid="public-memo-detail-card">
+        <div class="nature-panel px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">
           <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
             <span class="nature-chip nature-chip-info gap-1">
               <Icon name="tabler:clock" className="h-3.5 w-3.5" />
@@ -68,7 +68,7 @@ const structuredData = {
             </span>
           </div>
 
-          <h1 class="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">{memo.title}</h1>
+          <h1 class="nature-title mt-5 text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">{memo.title}</h1>
 
           {memo.tags.length > 0 && (
             <div class="mt-5 flex flex-wrap gap-2">

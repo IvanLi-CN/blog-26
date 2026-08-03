@@ -11,7 +11,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          "nature-input-shell h-11 rounded-[1.25rem] px-4 text-sm disabled:cursor-not-allowed disabled:opacity-50",
+          "nature-input-shell h-11 rounded-[var(--nature-radius-sm)] px-4 text-sm disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         ref={ref}

@@ -14,3 +14,4 @@
 - 2026-06-21: Reconstructed database-backed post authoring documents from structured fields plus clean body, stopped saving frontmatter back into `posts.body`, and changed draft/non-public preview CTA behavior to a disabled explanatory state inside the Soft UI preview chrome.
 - 2026-07-31: Established distinct desktop and touch density contracts for admin primitives, scoped preview Markdown code to the admin dark surface, and added Storybook plus E2E coverage for the resulting code presentation.
 - 2026-07-31: Replaced the hand-written mobile dashboard evidence frame with the shipped `AppShell` and `DashboardPage`, fixed the shared dialog close target to remain `44px` on touch layouts, and bound the mobile proof to an exact `390px × 844px` Storybook viewport.
+- 2026-08-03: Removed the editor blockquote's prominent outline and reduced its radius, preserving quotation semantics through the inset mark and low-contrast surface instead of a form-like border.

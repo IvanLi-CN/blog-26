@@ -77,10 +77,10 @@ const imageSrc = appendPublicAssetVersion(
       data-post-card-cover
       data-testid="post-card-cover"
     >
-      <div class="relative h-0 overflow-hidden rounded-[1.75rem] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] pb-[56.25%] shadow-[var(--nature-shadow)] transition-all duration-300 group-hover:shadow-[var(--nature-shadow-strong)] md:h-72 md:pb-[75%] lg:pb-[56.25%]">
+      <div class="relative h-0 overflow-hidden rounded-[var(--nature-radius-md)] border border-[color:var(--nature-line)] bg-[rgba(var(--nature-highlight-rgb),0.2)] pb-[56.25%] shadow-[var(--nature-shadow)] transition-all duration-300 group-hover:shadow-[var(--nature-shadow-strong)] md:h-72 md:pb-[75%] lg:pb-[56.25%]">
         <img
           src={imageSrc}
-          class="absolute inset-0 h-full w-full rounded-[1.75rem] bg-[rgba(var(--nature-highlight-rgb),0.12)] object-cover transition-transform duration-300 group-hover:scale-105"
+          class="absolute inset-0 h-full w-full rounded-[var(--nature-radius-md)] bg-[rgba(var(--nature-highlight-rgb),0.12)] object-cover transition-transform duration-300 group-hover:scale-105"
           alt={post.title}
           loading="lazy"
         />

@@ -99,6 +99,7 @@ export const MarkdownBlockquote: Story = {
     if (!blockquote) return;
 
     await expect(getComputedStyle(blockquote).boxSizing).toBe("border-box");
+    await expect(getComputedStyle(blockquote).borderStyle).toBe("none");
     await expect(getComputedStyle(blockquote, "::before").content).toContain("“");
   },
 };

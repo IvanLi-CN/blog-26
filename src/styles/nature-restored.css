@@ -87,6 +87,16 @@
     --nature-shadow-strong: 0 28px 80px rgba(0, 0, 0, 0.44);
   }
 
+  @media (max-width: 639px) {
+    :root {
+      --nature-radius-lg: 16px;
+      --nature-radius-md: 14px;
+      --nature-radius-sm: 12px;
+      --nature-content-width: min(1280px, calc(100vw - 1.5rem));
+      --nature-reading-width: min(920px, calc(100vw - 1.5rem));
+    }
+  }
+
   html {
     scrollbar-gutter: auto;
     background:
@@ -475,6 +485,75 @@
     background: rgba(var(--nature-highlight-rgb), 0.42);
   }
 
+  .nature-mobile-theme-select {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .nature-mobile-theme-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--nature-line);
+    border-radius: 999px;
+    background: rgba(var(--nature-highlight-rgb), 0.3);
+    color: var(--nature-text-soft);
+  }
+
+  .nature-mobile-theme-select:focus-visible + .nature-mobile-theme-trigger {
+    outline: 2px solid var(--nature-accent-strong);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 639px) {
+    .nature-header-tools {
+      gap: 0;
+    }
+
+    .nature-header-tools :where(.nature-icon-button, .nature-mobile-theme-trigger) {
+      border-color: transparent;
+      background: rgba(var(--nature-highlight-rgb), 0.12);
+      background-clip: content-box;
+      color: var(--nature-text-soft);
+      padding: 0.25rem;
+    }
+
+    .nature-header-tools :where(.nature-icon-button:hover:not(:disabled)) {
+      transform: none;
+      border-color: transparent;
+      background: rgba(var(--nature-highlight-rgb), 0.2);
+      background-clip: content-box;
+      color: var(--nature-text);
+    }
+
+    .nature-header-tools .nature-header-tool-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  @media (max-width: 359px) {
+    .nature-nav-link {
+      width: 2.75rem;
+      min-width: 2.75rem;
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+    }
+
+    .nature-nav-link-label {
+      display: none;
+    }
+  }
+
   .nature-chip {
     display: inline-flex;
     align-items: center;
@@ -607,6 +686,11 @@
     padding: clamp(1rem, 3vw, 1.5rem);
   }
 
+  .nature-text-action,
+  .nature-link-action {
+    min-height: 2.75rem;
+  }
+
   .nature-feedback-link,
   .nature-link-inline {
     color: var(--nature-accent-strong);
@@ -686,6 +770,14 @@
 
 @media (min-width: 1024px) and (pointer: fine) {
   @layer components {
+    .nature-text-action {
+      min-height: 2.25rem;
+    }
+
+    .nature-link-action {
+      min-height: 2rem;
+    }
+
     .nature-button {
       height: 2.25rem;
       min-height: 2.25rem;

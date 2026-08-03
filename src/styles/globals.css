@@ -93,6 +93,16 @@ html[data-ui-theme="dark"] {
   --nature-shadow-strong: 0 28px 80px rgba(0, 0, 0, 0.44);
 }
 
+@media (max-width: 639px) {
+  :root {
+    --nature-radius-lg: 16px;
+    --nature-radius-md: 14px;
+    --nature-radius-sm: 12px;
+    --nature-content-width: min(1280px, calc(100vw - 1.5rem));
+    --nature-reading-width: min(920px, calc(100vw - 1.5rem));
+  }
+}
+
 html {
   scrollbar-gutter: auto;
   background:
@@ -551,6 +561,11 @@ html[data-ui-theme="dark"] .nature-search-submit {
   color: #fff5f6;
 }
 
+.nature-text-action,
+.nature-link-action {
+  min-height: 2.75rem;
+}
+
 :where(.nature-icon-button) {
   align-items: center;
   justify-content: center;
@@ -573,6 +588,47 @@ html[data-ui-theme="dark"] .nature-search-submit {
   border-color: rgba(var(--nature-accent-rgb), 0.32);
   color: var(--nature-accent-strong);
   background: rgba(var(--nature-highlight-rgb), 0.42);
+}
+
+@media (max-width: 639px) {
+  .nature-header-tools {
+    gap: 0;
+  }
+
+  .nature-header-tools :where(.nature-icon-button, .nature-mobile-theme-trigger) {
+    border-color: transparent;
+    background: rgba(var(--nature-highlight-rgb), 0.12);
+    background-clip: content-box;
+    color: var(--nature-text-soft);
+    padding: 0.25rem;
+  }
+
+  .nature-header-tools :where(.nature-icon-button:hover:not(:disabled)) {
+    transform: none;
+    border-color: transparent;
+    background: rgba(var(--nature-highlight-rgb), 0.2);
+    background-clip: content-box;
+    color: var(--nature-text);
+  }
+
+  .nature-header-tools .nature-header-tool-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .nature-nav-link {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+  }
+
+  .nature-nav-link-label {
+    display: none;
+  }
 }
 
 .nature-chip {
@@ -1210,6 +1266,16 @@ html[data-ui-theme="dark"] .nature-search-submit {
   }
 }
 
+@media (max-width: 359px) {
+  .nature-timeline {
+    --nature-timeline-rail-width: 1rem;
+  }
+
+  .nature-timeline-item {
+    column-gap: 0.5rem;
+  }
+}
+
 .line-clamp-1,
 .line-clamp-2,
 .line-clamp-3 {
@@ -1421,6 +1487,14 @@ html[data-ui-theme="dark"] .nature-search-submit {
 }
 
 @media (min-width: 1024px) and (pointer: fine) {
+  .nature-text-action {
+    min-height: 2.25rem;
+  }
+
+  .nature-link-action {
+    min-height: 2rem;
+  }
+
   .nature-button {
     height: 2.25rem;
     min-height: 2.25rem;

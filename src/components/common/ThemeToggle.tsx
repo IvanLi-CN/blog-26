@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useState } from "react";
 import { applyThemeToDocument, isDarkTheme, normalizeThemeSelection } from "@/lib/theme";
 import { UI, type UiThemeSelection } from "../../config/site";
 import Icon from "../ui/Icon";
 
 interface ThemeToggleProps {
   iconClass?: string;
+  compactOnMobile?: boolean;
 }
 
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -29,8 +30,12 @@ function readThemeSelectionFromDocument(): UiThemeSelection {
   return UI.theme.default;
 }
 
-export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps) {
+export default function ThemeToggle({
+  iconClass = "w-6 h-6",
+  compactOnMobile = false,
+}: ThemeToggleProps) {
   const [currentTheme, setCurrentTheme] = useState<UiThemeSelection | null>(null);
+  const selectId = useId();
 
   useSafeLayoutEffect(() => {
     setCurrentTheme(readThemeSelectionFromDocument());
@@ -53,26 +58,59 @@ export default function ThemeToggle({ iconClass = "w-6 h-6" }: ThemeToggleProps)
           : "line-md:sunny-outline",
   }));
 
+  const selectedTheme = currentTheme ?? UI.theme.default;
+  const selectedMode = modes.find(({ theme }) => theme === selectedTheme) ?? modes[0];
+
   return (
-    <div className="nature-surface-quiet flex items-center gap-1 rounded-full p-1">
-      {modes.map(({ theme, label, icon }) => (
-        <button
-          key={theme}
-          type="button"
-          onClick={() => setTheme(theme)}
-          className="theme-toggle-option inline-flex min-w-11 items-center justify-center gap-2 rounded-full px-3 text-sm transition"
-          data-theme-option={theme}
-          aria-pressed={currentTheme === theme}
-          title={label}
-        >
-          {currentTheme ? (
-            <Icon name={icon} className={iconClass} />
-          ) : (
-            <span aria-hidden="true" className={iconClass} />
-          )}
-          <span className="hidden xl:inline">{label}</span>
-        </button>
-      ))}
-    </div>
+    <>
+      {compactOnMobile && (
+        <div className="relative inline-flex sm:hidden">
+          <label className="sr-only" htmlFor={selectId}>
+            主题
+          </label>
+          <select
+            id={selectId}
+            value={selectedTheme}
+            onChange={(event) => setTheme(normalizeThemeSelection(event.target.value))}
+            className="nature-mobile-theme-select"
+            aria-label={`主题：${selectedMode.label}`}
+          >
+            {modes.map(({ theme, label }) => (
+              <option key={theme} value={theme}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <span className="nature-mobile-theme-trigger pointer-events-none" aria-hidden="true">
+            <Icon name={selectedMode.icon} className={iconClass} />
+          </span>
+        </div>
+      )}
+
+      <div
+        className={`nature-surface-quiet items-center gap-1 rounded-full p-1 ${
+          compactOnMobile ? "hidden sm:flex" : "flex"
+        }`}
+      >
+        {modes.map(({ theme, label, icon }) => (
+          <button
+            key={theme}
+            type="button"
+            onClick={() => setTheme(theme)}
+            className="theme-toggle-option inline-flex min-w-11 items-center justify-center gap-2 rounded-full px-3 text-sm transition"
+            data-theme-option={theme}
+            aria-pressed={currentTheme === theme}
+            title={label}
+          >
+            {currentTheme ? (
+              <Icon name={icon} className={iconClass} />
+            ) : (
+              <span aria-hidden="true" className={iconClass} />
+            )}
+            <span className="hidden xl:inline">{label}</span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }

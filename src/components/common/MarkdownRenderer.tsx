@@ -311,7 +311,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
         // 引用样式
         blockquote: ({ children }) => (
-          <blockquote className="my-5 rounded-[1.4rem] border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-5 py-4 italic text-[color:var(--nature-text-soft)] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <blockquote className="my-5 rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-accent-rgb),0.22)] bg-[rgba(var(--nature-highlight-rgb),0.26)] px-4 py-4 italic text-[color:var(--nature-text-soft)] sm:px-5 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             {children}
           </blockquote>
         ),

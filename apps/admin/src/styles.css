@@ -343,11 +343,11 @@ html[data-ui-theme="light"] {
 .admin-editor-preview blockquote {
   position: relative;
   box-sizing: border-box;
-  border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--border));
+  border: 0;
   background: color-mix(in oklch, var(--editor-blockquote-bg) 60%, transparent);
   color: var(--editor-text-soft);
   padding: 0.8rem 1rem 0.8rem 2.75rem;
-  border-radius: 1.25rem;
+  border-radius: 0.75rem;
 }
 
 .admin-editor-surface .milkdown .ProseMirror blockquote::before,

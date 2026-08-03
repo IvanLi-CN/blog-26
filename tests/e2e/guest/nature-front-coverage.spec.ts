@@ -254,6 +254,63 @@ test.describe("Nature frontend public coverage", () => {
     }
   });
 
+  test("public mobile density stays compact without shrinking touch targets", async ({ page }) => {
+    for (const width of [393, 320]) {
+      await page.setViewportSize({ width, height: width === 393 ? 852 : 700 });
+
+      for (const route of ["/memos", "/posts", "/search", "/projects"]) {
+        await gotoWithTheme(page, route, "dark");
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+          )
+        ).toBe(false);
+      }
+
+      await gotoWithTheme(page, "/memos", "dark");
+      const metrics = await page.evaluate(() => {
+        const header = document.querySelector<HTMLElement>(
+          ".nature-site-header-frame > .nature-surface"
+        );
+        const card = document.querySelector<HTMLElement>(".nature-timeline-card");
+        const rail = document.querySelector<HTMLElement>(".nature-timeline-rail");
+        const navLabels = Array.from(
+          document.querySelectorAll<HTMLElement>(".nature-nav-link-label")
+        );
+        const navTargets = Array.from(document.querySelectorAll<HTMLElement>(".nature-nav-link")).map(
+          (target) => target.getBoundingClientRect()
+        );
+
+        return {
+          hasRequiredElements: Boolean(header && card && rail),
+          headerRadius: header ? Number.parseFloat(getComputedStyle(header).borderRadius) : 0,
+          cardWidth: card?.getBoundingClientRect().width ?? 0,
+          railWidth: rail?.getBoundingClientRect().width ?? 0,
+          visibleNavLabels: navLabels.filter((label) => getComputedStyle(label).display !== "none")
+            .length,
+          navTargets: navTargets.map(({ width: targetWidth, height }) => ({
+            width: targetWidth,
+            height,
+          })),
+        };
+      });
+
+      expect(metrics.hasRequiredElements).toBe(true);
+      expect(metrics.headerRadius).toBeLessThanOrEqual(16);
+      expect(metrics.navTargets).toHaveLength(4);
+      for (const target of metrics.navTargets) {
+        expect(target.width).toBeGreaterThanOrEqual(44);
+        expect(target.height).toBeGreaterThanOrEqual(44);
+      }
+
+      if (width === 320) {
+        expect(metrics.visibleNavLabels).toBe(0);
+        expect(metrics.railWidth).toBeLessThanOrEqual(16);
+        expect(metrics.cardWidth).toBeGreaterThanOrEqual(250);
+      }
+    }
+  });
+
   test("home and memos timelines keep visible nodes and rails across breakpoints", async ({
     page,
   }) => {

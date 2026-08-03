@@ -101,7 +101,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container my-4 rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-6",
+          "mermaid-container my-4 rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-4 sm:p-6",
           className
         )}
       >
@@ -116,7 +116,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container my-4 rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-6",
+          "mermaid-container my-4 rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-highlight-rgb),0.18)] p-4 sm:p-6",
           className
         )}
       >
@@ -153,7 +153,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-error my-4 rounded-[1.4rem] border border-[color:color-mix(in_srgb,var(--nature-danger)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--nature-danger)_10%,transparent)] p-4",
+          "mermaid-error my-4 rounded-[var(--nature-radius-sm)] border border-[color:color-mix(in_srgb,var(--nature-danger)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--nature-danger)_10%,transparent)] p-4",
           className
         )}
       >
@@ -194,7 +194,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     return (
       <div
         className={mergeClassNames(
-          "mermaid-container my-4 overflow-x-auto rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4",
+          "mermaid-container my-4 overflow-x-auto rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4",
           className
         )}
         style={{
@@ -209,7 +209,7 @@ export function MermaidChart({ chart, className }: MermaidChartProps) {
     <div
       ref={containerRef}
       className={mergeClassNames(
-        "mermaid-container my-4 overflow-x-auto rounded-[1.4rem] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4",
+        "mermaid-container my-4 overflow-x-auto rounded-[var(--nature-radius-sm)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4",
         className
       )}
       style={{

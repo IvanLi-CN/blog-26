@@ -55,9 +55,9 @@ const structuredData = {
 >
   <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
-  <section class="nature-detail-container px-4 py-8 sm:px-6 lg:py-12">
+  <section class="nature-detail-container px-2 py-8 sm:px-6 lg:py-12">
     <div class="space-y-8">
-      <header class="nature-surface overflow-hidden px-6 py-7 sm:px-8 sm:py-8">
+      <header class="nature-surface overflow-hidden px-4 py-5 sm:px-8 sm:py-8">
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] lg:items-start lg:gap-8">
           <div>
             <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
@@ -71,7 +71,7 @@ const structuredData = {
               <span class="nature-chip nature-chip-accent">{domain.title}</span>
             </div>
 
-            <h1 class="mt-5 font-heading text-4xl font-semibold tracking-[-0.05em] text-[color:var(--nature-text)] md:text-5xl">
+            <h1 class="mt-5 font-heading text-3xl font-semibold tracking-[-0.05em] text-[color:var(--nature-text)] sm:text-4xl md:text-5xl">
               {project.title}
             </h1>
             <p class="mt-5 max-w-3xl text-base leading-8 text-[color:var(--nature-text)] sm:text-lg">
@@ -96,7 +96,7 @@ const structuredData = {
 
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.6fr)] lg:gap-8">
         <div class="space-y-6">
-          <section class="nature-panel px-6 py-6 sm:px-7">
+          <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
             <div class="flex items-center gap-3">
               <Icon name="tabler:sparkles" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
               <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
@@ -109,7 +109,7 @@ const structuredData = {
             </div>
           </section>
 
-          <section class="nature-panel px-6 py-6 sm:px-7">
+          <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
             <div class="flex items-center gap-3">
               <Icon name="tabler:target-arrow" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
               <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
@@ -129,7 +129,7 @@ const structuredData = {
             </div>
           </section>
 
-          <section class="nature-panel px-6 py-6 sm:px-7">
+          <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
             <div class="flex items-center gap-3">
               <Icon name="tabler:stack-3" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
               <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
@@ -147,7 +147,7 @@ const structuredData = {
           </section>
 
           {relatedEntries.length > 0 && (
-            <section class="nature-panel px-6 py-6 sm:px-7">
+            <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
               <div class="flex items-center gap-3">
                 <Icon name="tabler:book-2" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
                 <h2 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
@@ -178,7 +178,7 @@ const structuredData = {
         </div>
 
         <aside class="space-y-6">
-          <section class="nature-panel px-5 py-5">
+          <section class="nature-panel px-4 py-5 sm:px-5">
             <div class="flex items-center gap-3">
               <Icon name="tabler:world" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />
               <h2 class="font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
