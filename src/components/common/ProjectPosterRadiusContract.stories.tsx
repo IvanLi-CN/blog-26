@@ -86,6 +86,7 @@ export const Mobile: Story = {
     const canvas = within(canvasElement);
     const poster = canvas.getByTestId("project-poster-mobile");
     await expect(poster).toBeVisible();
-    await expect(poster).toHaveCSS("border-radius", "14px");
+    const borderRadius = await poster.evaluate((element) => getComputedStyle(element).borderRadius);
+    expect(borderRadius).toBe("14px");
   },
 };
