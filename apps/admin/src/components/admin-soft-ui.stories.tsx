@@ -588,7 +588,10 @@ function EditorTabOverflowFrame() {
   ]);
 
   return (
-    <div className="mx-auto max-w-[880px] overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft">
+    <div
+      data-testid="admin-editor-tab-overflow-frame"
+      className="mx-auto max-w-[880px] overflow-hidden rounded-3xl border border-border/58 bg-card/80 shadow-xl shadow-shadow-soft"
+    >
       <EditorTabStrip
         tabs={tabs}
         activeTabId={activeTabId}
@@ -656,7 +659,8 @@ export const EditorTabOverflow: Story = {
     const canvas = within(canvasElement);
     const strip = canvas.getByTestId("editor-tab-strip");
     await expect(strip).toBeInTheDocument();
-    await expect(strip).toHaveClass(/h-12/);
+    await expect(strip).toHaveClass("admin-editor-tab-strip");
+    expect(strip.getBoundingClientRect().height).toBe(40);
     await userEvent.hover(canvas.getByRole("tab", { name: /电子负载开发笔记/ }));
     await expect(await canvas.findByRole("tooltip")).toHaveTextContent("电子负载开发笔记，未保存");
     await userEvent.click(canvas.getByRole("button", { name: "展开已打开文件列表" }));

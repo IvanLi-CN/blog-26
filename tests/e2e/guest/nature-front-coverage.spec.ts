@@ -150,18 +150,18 @@ test.describe("Nature frontend public coverage", () => {
       brandBounds?.y ?? 0 + (brandBounds?.height ?? 0)
     );
 
-    await expect(page.getByRole("button", { name: "Auto" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Auto" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });
 
-  test("mobile header keeps the RSS control visually compact", async ({ page }) => {
+  test("mobile header keeps the RSS control touch-sized", async ({ page }) => {
     await page.setViewportSize({ width: 438, height: 852 });
     await gotoWithTheme(page, "/search/?q=SSH", "light");
 
     const rssLink = page.getByRole("link", { name: "RSS Feed" });
     await expect(rssLink).toBeVisible();
-    await expect(rssLink).toHaveCSS("width", "36px");
-    await expect(rssLink).toHaveCSS("height", "36px");
+    await expect(rssLink).toHaveCSS("width", "44px");
+    await expect(rssLink).toHaveCSS("height", "44px");
   });
 
   test("mobile search exposes its results region in the first viewport", async ({ page }) => {
@@ -314,8 +314,8 @@ test.describe("Nature frontend public coverage", () => {
       expect(metrics.hasRequiredElements).toBe(true);
       expect(metrics.headerRadius).toBeLessThanOrEqual(16);
       for (const edges of metrics.shellEdges) {
-        expect(edges.left).toBeCloseTo(12, 0);
-        expect(edges.right).toBeCloseTo(12, 0);
+        expect(edges.left).toBeCloseTo(10, 0);
+        expect(edges.right).toBeCloseTo(10, 0);
       }
       expect(metrics.navTargets).toHaveLength(4);
       for (const target of metrics.navTargets) {

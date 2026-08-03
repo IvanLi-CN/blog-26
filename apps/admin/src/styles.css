@@ -643,6 +643,10 @@ html[data-ui-theme="light"] {
     height: 1.75rem;
   }
 
+  .admin-editor-tab-strip {
+    height: 2.5rem;
+  }
+
   .admin-editor-tab-icon-control {
     width: 1.75rem;
     height: 1.75rem;

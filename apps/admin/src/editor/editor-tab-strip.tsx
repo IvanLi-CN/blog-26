@@ -254,7 +254,7 @@ export function EditorTabStrip({ tabs, activeTabId, onActivate, onClose }: Edito
         ref={stripRef}
         role="tablist"
         data-testid="editor-tab-strip"
-        className="flex h-12 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-b border-border/58 px-3"
+        className="admin-editor-tab-strip flex h-12 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-b border-border/58 px-3"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           {visibleTabs.map(renderTab)}
