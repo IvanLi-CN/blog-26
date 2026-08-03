@@ -79,5 +79,24 @@ describe("admin demo LLM settings", () => {
       ok: true,
       model: "cohere/rerank-3.5",
     });
+
+    const inheritedTestResponse = await demoWindow.fetch(
+      "http://localhost/api/admin/llm-settings/test",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          tier: "embedding",
+          settings: {
+            ...update,
+            chat: { ...update.chat, baseUrl: "https://chat-current.example/v1" },
+            rerank: { ...update.rerank, baseUrlMode: "inherit", baseUrl: "" },
+          },
+        }),
+      }
+    );
+    const inheritedTestResult = adminLlmSettingsTestResponseSchema.parse(
+      await inheritedTestResponse.json()
+    );
+    expect(inheritedTestResult.baseUrl).toBe("https://chat-current.example/v1");
   });
 });

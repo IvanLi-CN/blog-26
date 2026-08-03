@@ -693,6 +693,14 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
   if (path === "/api/admin/llm-settings/test") {
     const request = body as AdminLlmSettingsTestRequest;
     const tierSettings = request.settings[request.tier];
+    const embeddingBaseUrl =
+      request.settings.embedding.baseUrlMode === "custom"
+        ? request.settings.embedding.baseUrl
+        : request.settings.chat.baseUrl;
+    const rerankBaseUrl =
+      request.settings.rerank.baseUrlMode === "custom"
+        ? request.settings.rerank.baseUrl
+        : embeddingBaseUrl;
     return json({
       tier: request.tier,
       ok: true,
@@ -700,9 +708,9 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
       baseUrl:
         request.tier === "chat"
           ? request.settings.chat.baseUrl
-          : tierSettings.baseUrlMode === "custom"
-            ? tierSettings.baseUrl
-            : llmSettings.resolved[request.tier].baseUrl,
+          : request.tier === "embedding"
+            ? embeddingBaseUrl
+            : rerankBaseUrl,
       summary: `${request.tier === "chat" ? "对话" : request.tier === "embedding" ? "嵌入" : "重排序"}模型测试通过`,
       details: [`模型：${tierSettings.model}`, "Demo 响应：184ms"],
     });

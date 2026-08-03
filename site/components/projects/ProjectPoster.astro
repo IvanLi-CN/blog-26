@@ -496,7 +496,8 @@ const hasPosterImage = existsSync(posterImagePath);
   }
 
   @media (max-width: 767px) {
-    .project-poster {
+    .project-poster,
+    .project-poster.is-compact {
       border-radius: var(--nature-radius-md);
     }
 
