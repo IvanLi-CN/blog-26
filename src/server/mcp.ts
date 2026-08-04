@@ -666,7 +666,9 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     async (args) => {
       const input = args as z.infer<typeof listMemosInput>;
       const conds: any[] = [eq(postsTable.type, "memo")];
-      if (input.publicOnly) conds.push(eq(postsTable.public, true));
+      if (input.publicOnly) {
+        conds.push(eq(postsTable.draft, false), eq(postsTable.public, true));
+      }
       if (input.search) {
         const searchCondition = buildContentSearchCondition(input.search);
         if (searchCondition) conds.push(searchCondition);

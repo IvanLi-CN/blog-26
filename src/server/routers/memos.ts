@@ -459,7 +459,7 @@ export const memosRouter = router({
 
       // 权限过滤：非管理员只能看到公开的 memo
       if (!ctx.isAdmin) {
-        conditions.push(eq(posts.public, true));
+        conditions.push(eq(posts.draft, false), eq(posts.public, true));
       }
 
       // 搜索条件

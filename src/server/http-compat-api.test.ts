@@ -1707,6 +1707,15 @@ public: false
       public: true,
       draft: false,
     });
+    await seedPost({
+      id: "fts-list-public-draft-memo",
+      slug: "fts-list-public-draft-memo",
+      type: "memo",
+      title: "Unrelated public draft memo",
+      body: "shared-list-term",
+      public: true,
+      draft: true,
+    });
 
     const publicPostsResponse = await handlePublicApiRequest(
       buildRequest("/api/public/posts?search=shared-list-term"),
