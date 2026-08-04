@@ -15,6 +15,7 @@ const TEST_DB_PATH = path.join(process.cwd(), "tmp/search-fallback-test.sqlite")
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
 
 const originalFetch = globalThis.fetch;
+const originalWarn = console.warn;
 const originalEnv = {
   embeddingModel: process.env.EMBEDDING_MODEL_NAME,
   rerankerModel: process.env.RERANKER_MODEL_NAME,
@@ -95,10 +96,12 @@ describe("AI search fallback boundaries", () => {
     delete process.env.RERANKER_MODEL_NAME;
     delete process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_BASE_URL;
+    console.warn = mock(() => undefined) as unknown as typeof console.warn;
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    console.warn = originalWarn;
   });
 
   afterAll(() => {
@@ -222,6 +225,23 @@ describe("AI search fallback boundaries", () => {
     expect(embeddingCalls).toBe(0);
   });
 
+  test("uses FTS when a stored vector is corrupt", async () => {
+    await seedPost({ id: "corrupt-vector-post", body: "SQLite corrupt vector fallback" });
+    await db?.update(postEmbeddings).set({ vector: Buffer.from([1, 2, 3]) });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+
+    globalThis.fetch = mock(async () =>
+      Response.json({ data: [{ embedding: [1, 0] }] })
+    ) as unknown as typeof fetch;
+
+    const result = await semantic({ q: "SQLite" });
+
+    expect(result.map((entry) => entry.slug)).toEqual(["corrupt-vector-post"]);
+    expect(getSearchCacheSize()).toBe(0);
+  });
+
   test("orders semantic ties by publish date and id", async () => {
     await seedPost({
       id: "semantic-tie-older-a",
@@ -273,6 +293,28 @@ describe("AI search fallback boundaries", () => {
 
     expect(result).toEqual(base);
     expect(result[0]?.final).toBeUndefined();
+  });
+
+  test("returns the semantic base and logs when reranking is not configured", async () => {
+    await seedPost();
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+
+    globalThis.fetch = mock(async () =>
+      Response.json({ data: [{ embedding: [1, 0] }] })
+    ) as unknown as typeof fetch;
+
+    const base = await semantic({ q: "SQLite", topK: 5 });
+    const result = await enhanced({ q: "SQLite", topK: 5, rerank: true });
+
+    expect(result).toEqual(base);
+    expect(console.warn).toHaveBeenCalledWith(
+      "[search] reranker unavailable; using semantic results",
+      {
+        code: "RERANKER_NOT_CONFIGURED",
+      }
+    );
   });
 
   test("returns the semantic base when rerank indexes are invalid", async () => {

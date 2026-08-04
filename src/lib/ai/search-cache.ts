@@ -8,6 +8,7 @@ type SearchCacheInput = SemanticSearchInput & {
   rerankTopK?: number;
   rerank?: boolean;
   rerankerModel?: string;
+  providerFingerprint?: string;
 };
 
 type SearchCacheEntry = {
@@ -44,6 +45,7 @@ function buildSearchCacheKey(mode: SearchCacheMode, input: SearchCacheInput) {
     rerankTopK: input.rerankTopK ?? null,
     rerank: input.rerank ?? true,
     rerankerModel: input.rerankerModel ?? null,
+    providerFingerprint: input.providerFingerprint ?? null,
   });
 }
 

@@ -4,7 +4,7 @@ import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
 import { searchContent } from "../search/content-search";
 import { parseSearchQuery } from "../search/query";
-import { cosineSimilarity, createEmbedding } from "./embeddings";
+import { cosineSimilarity, createEmbedding, hashEmbeddingInput } from "./embeddings";
 import { rerank as rerankApi } from "./rerank";
 import { getCachedSearchExecution, type SearchCacheLoadResult } from "./search-cache";
 import { buildSearchSnippet } from "./search-snippet";
@@ -158,6 +158,61 @@ type SemanticExecution = {
 };
 
 const MAX_SEMANTIC_VECTOR_ROWS = 10_000;
+type ResolvedSearchConfig = Awaited<ReturnType<typeof getResolvedLlmConfig>>;
+
+function buildProviderFingerprint(
+  mode: "semantic" | "enhanced",
+  input: SemanticSearchInput & { rerankerModel?: string },
+  resolved: ResolvedSearchConfig
+) {
+  return hashEmbeddingInput(
+    JSON.stringify({
+      embedding: {
+        model: input.model || resolved.embedding.model || "BAAI/bge-m3",
+        baseUrl: resolved.embedding.baseUrl,
+        apiKey: resolved.embedding.apiKey,
+      },
+      ...(mode === "enhanced"
+        ? {
+            rerank: {
+              model: input.rerankerModel || resolved.rerank.model,
+              baseUrl: resolved.rerank.baseUrl,
+              apiKey: resolved.rerank.apiKey,
+            },
+          }
+        : {}),
+    })
+  );
+}
+
+async function buildSearchCacheInput<T extends SemanticSearchInput & { rerankerModel?: string }>(
+  mode: "semantic" | "enhanced",
+  input: T
+) {
+  try {
+    const resolved = await getResolvedLlmConfig();
+    return {
+      ...input,
+      providerFingerprint: buildProviderFingerprint(mode, input, resolved),
+    };
+  } catch {
+    return { ...input, providerFingerprint: "config-unavailable" };
+  }
+}
+
+function decodeStoredVector(buffer: Buffer, expectedDimension: number): number[] | null {
+  if (buffer.byteLength === 0 || buffer.byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
+    return null;
+  }
+
+  const dimension = buffer.byteLength / Float32Array.BYTES_PER_ELEMENT;
+  if (dimension !== expectedDimension) return null;
+
+  const vector = Array.from({ length: dimension }, (_, index) =>
+    buffer.readFloatLE(index * Float32Array.BYTES_PER_ELEMENT)
+  );
+  return vector.every(Number.isFinite) ? vector : null;
+}
 
 async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExecution> {
   const fallback = async (): Promise<SemanticExecution> => ({
@@ -216,24 +271,30 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
       .select({ slug: postEmbeddings.slug, vector: postEmbeddings.vector })
       .from(postEmbeddings)
       .innerJoin(posts, eq(postEmbeddings.slug, posts.slug))
-      .where(and(...vectorConditions))) as Array<{
+      .where(and(...vectorConditions))
+      .limit(MAX_SEMANTIC_VECTOR_ROWS + 1)) as Array<{
       slug: string;
       vector: Buffer | null;
     }>;
+    if (eb.length > MAX_SEMANTIC_VECTOR_ROWS) return fallback();
   } catch {
     return fallback();
   }
 
   // 计算每个 slug 的最大 cosine
   const scoreBySlug = new Map<string, number>();
-  for (const row of eb) {
-    if (!row.vector) continue;
-    const buf = row.vector as unknown as Buffer;
-    const f32 = new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4));
-    const vec = Array.from(f32);
-    const s = cosineSimilarity(qv, vec);
-    const prev = scoreBySlug.get(row.slug) ?? -Infinity;
-    if (s > prev) scoreBySlug.set(row.slug, s);
+  try {
+    for (const row of eb) {
+      if (!row.vector) continue;
+      const vec = decodeStoredVector(row.vector as unknown as Buffer, qv.length);
+      if (!vec) return fallback();
+      const s = cosineSimilarity(qv, vec);
+      if (!Number.isFinite(s)) return fallback();
+      const prev = scoreBySlug.get(row.slug) ?? -Infinity;
+      if (s > prev) scoreBySlug.set(row.slug, s);
+    }
+  } catch {
+    return fallback();
   }
 
   // 过滤文章状态
@@ -285,7 +346,8 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
 }
 
 async function getSemanticExecution(input: SemanticSearchInput): Promise<SemanticExecution> {
-  const execution = await getCachedSearchExecution("semantic", input, async () => {
+  const cacheInput = await buildSearchCacheInput("semantic", input);
+  const execution = await getCachedSearchExecution("semantic", cacheInput, async () => {
     const execution = await computeSemantic(input);
     return {
       results: execution.results,
@@ -304,7 +366,7 @@ export async function semantic(input: SemanticSearchInput): Promise<SearchResult
 }
 
 async function computeEnhanced(
-  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean }
+  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
 ): Promise<SearchCacheLoadResult> {
   const semanticExecution = await getSemanticExecution(input);
   const base = semanticExecution.results;
@@ -316,10 +378,19 @@ async function computeEnhanced(
   try {
     resolved = await getResolvedLlmConfig();
   } catch {
+    console.warn("[search] reranker unavailable; using semantic results", {
+      code: "RERANKER_CONFIG_UNAVAILABLE",
+    });
     return { results: base, source: "semantic", cacheable: false };
   }
 
-  const shouldRerank = input.rerank !== false && Boolean(resolved.rerank.model);
+  const rerankModel = input.rerankerModel || resolved.rerank.model;
+  const shouldRerank = input.rerank !== false && Boolean(rerankModel);
+  if (input.rerank !== false && !rerankModel) {
+    console.warn("[search] reranker unavailable; using semantic results", {
+      code: "RERANKER_NOT_CONFIGURED",
+    });
+  }
   if (!shouldRerank) return { results: base, source: "semantic", cacheable: true };
 
   const docs = base
@@ -327,7 +398,7 @@ async function computeEnhanced(
     .map((r) => `${r.title || r.slug}\n\n${r.excerpt || ""}`);
   try {
     const items = await rerankApi(input.q, docs, {
-      model: resolved.rerank.model || undefined,
+      model: rerankModel || undefined,
       topN: docs.length,
     });
     const maxR = Math.max(...items.map((i) => i.score));
@@ -359,7 +430,9 @@ async function computeEnhanced(
 }
 
 export async function enhanced(
-  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean }
+  input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean; rerankerModel?: string }
 ) {
-  return (await getCachedSearchExecution("enhanced", input, () => computeEnhanced(input))).results;
+  const cacheInput = await buildSearchCacheInput("enhanced", input);
+  return (await getCachedSearchExecution("enhanced", cacheInput, () => computeEnhanced(input)))
+    .results;
 }

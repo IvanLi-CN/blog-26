@@ -68,3 +68,26 @@ test("does not cache FTS fallback executions", async () => {
   expect(second.source).toBe("fts");
   expect(getSearchCacheSize()).toBe(0);
 });
+
+test("separates cached results when the provider fingerprint changes", async () => {
+  let loadCount = 0;
+  const load = async () => {
+    loadCount++;
+    return [{ slug: `provider-${loadCount}` }];
+  };
+
+  const first = await getCachedSearchResults(
+    "semantic",
+    { q: "SQLite", providerFingerprint: "provider-a" },
+    load
+  );
+  const second = await getCachedSearchResults(
+    "semantic",
+    { q: "SQLite", providerFingerprint: "provider-b" },
+    load
+  );
+
+  expect(first).toEqual([{ slug: "provider-1" }]);
+  expect(second).toEqual([{ slug: "provider-2" }]);
+  expect(loadCount).toBe(2);
+});

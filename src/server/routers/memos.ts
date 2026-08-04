@@ -458,7 +458,8 @@ export const memosRouter = router({
       // 构建查询条件
       const conditions = [eq(posts.type, "memo")];
 
-      // 权限过滤：非管理员只能看到公开的 memo
+      // This public procedure is also used by authenticated admin contexts.
+      // Only the trusted request context may widen visibility; input flags cannot do so.
       if (!ctx.isAdmin) {
         conditions.push(eq(posts.draft, false), eq(posts.public, true));
       }
