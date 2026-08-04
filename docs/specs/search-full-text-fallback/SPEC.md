@@ -146,9 +146,9 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 ## Visual Evidence
 
-PR: none
+PR: include
 
-Evidence binding: `730c839` (rendered implementation commit)
+Evidence binding: `adde5d6` (current implementation head; the Storybook surface is unchanged since capture)
 
 - source_type: storybook_canvas
   target_program: mock-only
@@ -158,11 +158,11 @@ Evidence binding: `730c839` (rendered implementation commit)
   margin_policy: trim_only
   evidence_surface: page
   sensitive_exclusion: N/A
-  submission_gate: pending-owner-approval
+  submission_gate: approved
   story_id_or_title: `public-search-page--simple-and-query`
   state: simple AND query
   evidence_note: The public search surface renders a normal multi-word query and its stable result list.
-  PR: none
+  PR: include
   image: ![Simple AND query](./assets/search-simple-and.png)
 
 - source_type: storybook_canvas
@@ -173,11 +173,11 @@ Evidence binding: `730c839` (rendered implementation commit)
   margin_policy: trim_only
   evidence_surface: page
   sensitive_exclusion: N/A
-  submission_gate: pending-owner-approval
+  submission_gate: approved
   story_id_or_title: `public-search-page--advanced-query`
   state: advanced-valid query
   evidence_note: The public search surface preserves a column-filtered OR query in the existing array result layout.
-  PR: none
+  PR: include
   image: ![Advanced query](./assets/search-advanced-query.png)
 
 - source_type: storybook_canvas
@@ -188,11 +188,11 @@ Evidence binding: `730c839` (rendered implementation commit)
   margin_policy: trim_only
   evidence_surface: page
   sensitive_exclusion: N/A
-  submission_gate: pending-owner-approval
+  submission_gate: approved
   story_id_or_title: `public-search-page--invalid-query-literal-retry`
   state: advanced-invalid literal retry
   evidence_note: The public search surface keeps a malformed query usable and shows results instead of an error state.
-  PR: none
+  PR: include
   image: ![Invalid query literal retry](./assets/search-invalid-literal-retry.png)
 
 ## Related PRs
