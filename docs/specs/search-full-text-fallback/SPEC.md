@@ -146,7 +146,7 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 ## Visual Evidence
 
-Evidence binding: `a88d571` (current implementation head; the Storybook surface is unchanged since capture)
+Evidence binding: `f8ec266` (current implementation head; the Storybook surface is unchanged since capture)
 
 - source_type: storybook_canvas
   target_program: mock-only
