@@ -3,6 +3,7 @@ import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
 import { searchContent } from "../search/content-search";
+import { parseSearchQuery } from "../search/query";
 import { cosineSimilarity, createEmbedding } from "./embeddings";
 import { rerank as rerankApi } from "./rerank";
 import { getCachedSearchExecution, type SearchCacheLoadResult } from "./search-cache";
@@ -161,6 +162,11 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     results: await keywordFallback(input),
     source: "fts",
   });
+
+  // Advanced syntax must be enforced by the controlled FTS compiler. Semantic
+  // embeddings cannot preserve field, boolean, phrase, prefix, or literal-retry semantics.
+  if (parseSearchQuery(input.q).mode !== "simple") return fallback();
+
   let resolved: Awaited<ReturnType<typeof getResolvedLlmConfig>>;
   try {
     resolved = await getResolvedLlmConfig();

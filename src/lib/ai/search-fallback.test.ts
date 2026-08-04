@@ -9,7 +9,7 @@ import { db, initializeDB } from "@/lib/db";
 import { postEmbeddings, posts } from "../schema";
 import { float32ArrayToBlobBuffer } from "./embeddings";
 import { enhanced, semantic } from "./search";
-import { clearSearchCache } from "./search-cache";
+import { clearSearchCache, getSearchCacheSize } from "./search-cache";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/search-fallback-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -22,16 +22,27 @@ const originalEnv = {
   baseUrl: process.env.OPENAI_API_BASE_URL,
 };
 
-async function seedPost() {
+async function seedPost(
+  overrides: Partial<{
+    id: string;
+    slug: string;
+    title: string;
+    excerpt: string | null;
+    body: string;
+    vector: [number, number];
+  }> = {}
+) {
   if (!db) throw new Error("Database has not been initialised");
   const now = Date.now();
+  const id = overrides.id ?? "semantic-post";
+  const slug = overrides.slug ?? id;
   await db.insert(posts).values({
-    id: "semantic-post",
-    slug: "semantic-post",
+    id,
+    slug,
     type: "post",
-    title: "SQLite semantic result",
-    excerpt: "A semantic search fixture",
-    body: "SQLite and embeddings",
+    title: overrides.title ?? "SQLite semantic result",
+    excerpt: overrides.excerpt ?? "A semantic search fixture",
+    body: overrides.body ?? "SQLite and embeddings",
     publishDate: now,
     updateDate: now,
     draft: false,
@@ -44,15 +55,15 @@ async function seedPost() {
     contentHash: randomUUID(),
   });
   await db.insert(postEmbeddings).values({
-    id: "semantic-post-embedding",
-    postId: "semantic-post",
-    slug: "semantic-post",
+    id: `${id}-embedding`,
+    postId: id,
+    slug,
     type: "post",
     modelName: "test-embedding",
     dim: 2,
     contentHash: "search-test-hash",
     chunkIndex: -1,
-    vector: float32ArrayToBlobBuffer([1, 0]),
+    vector: float32ArrayToBlobBuffer(overrides.vector ?? [1, 0]),
     errorMessage: null,
     createdAt: now,
     updatedAt: now,
@@ -146,5 +157,32 @@ describe("AI search fallback boundaries", () => {
 
     expect(result).toEqual(base);
     expect(result[0]?.final).toBeUndefined();
+  });
+
+  test("routes valid and invalid advanced syntax through FTS with vectors available", async () => {
+    await seedPost();
+    await seedPost({
+      id: "body-only-post",
+      title: "Guide result",
+      body: "SQLite appears in the body",
+      vector: [0, 1],
+    });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+
+    let embeddingCalls = 0;
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/embeddings")) embeddingCalls += 1;
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    }) as unknown as typeof fetch;
+
+    const valid = await semantic({ q: "title:SQLite", topK: 10 });
+    const invalid = await semantic({ q: '"SQLite', topK: 10 });
+
+    expect(valid.map((result) => result.slug)).toEqual(["semantic-post"]);
+    expect(invalid.map((result) => result.slug)).toEqual(["semantic-post", "body-only-post"]);
+    expect(embeddingCalls).toBe(0);
+    expect(getSearchCacheSize()).toBe(0);
   });
 });
