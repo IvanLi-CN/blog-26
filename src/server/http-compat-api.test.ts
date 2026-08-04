@@ -11,6 +11,7 @@ import { db, initializeDB } from "@/lib/db";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
+import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -1654,6 +1655,112 @@ public: false
       )
     ).toBe(true);
     expect(payload.suggestions.some((term: string) => /react|hooks/i.test(term))).toBe(true);
+  });
+
+  it("keeps the public search array available when embeddings are unavailable", async () => {
+    await seedPost({
+      slug: "fts-public-search",
+      type: "post",
+      title: "FTS public search",
+      body: "This result is available without an embedding provider.",
+      public: true,
+      draft: false,
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/search?q=embedding%20provider"),
+      "/search"
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(Array.isArray(payload)).toBe(true);
+    expect(payload).toEqual(
+      expect.arrayContaining([expect.objectContaining({ slug: "fts-public-search" })])
+    );
+  });
+
+  it("returns a controlled bad request for an over-budget public search query", async () => {
+    const query = "x".repeat(SEARCH_QUERY_LIMITS.maxCodePoints + 1);
+    const response = await handlePublicApiRequest(
+      buildRequest(`/api/public/search?q=${encodeURIComponent(query)}`),
+      "/search"
+    );
+
+    expect(response.status).toBe(400);
+    expect(await readJson(response)).toEqual(expect.objectContaining({ code: "BAD_REQUEST" }));
+  });
+
+  it("shares FTS list filtering while preserving public and administrator visibility", async () => {
+    await seedPost({
+      id: "fts-list-public-post",
+      slug: "fts-list-public-post",
+      type: "post",
+      title: "Unrelated public title",
+      body: "shared-list-term",
+      public: true,
+      draft: false,
+    });
+    await seedPost({
+      id: "fts-list-private-post",
+      slug: "fts-list-private-post",
+      type: "post",
+      title: "Unrelated private title",
+      body: "shared-list-term",
+      public: false,
+      draft: true,
+    });
+    await seedPost({
+      id: "fts-list-public-memo",
+      slug: "fts-list-public-memo",
+      type: "memo",
+      title: "Unrelated memo title",
+      body: "shared-list-term",
+      public: true,
+      draft: false,
+    });
+    await seedPost({
+      id: "fts-list-public-draft-memo",
+      slug: "fts-list-public-draft-memo",
+      type: "memo",
+      title: "Unrelated public draft memo",
+      body: "shared-list-term",
+      public: true,
+      draft: true,
+    });
+
+    const publicPostsResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/posts?search=shared-list-term"),
+      "/posts"
+    );
+    const publicPosts = await readJson(publicPostsResponse);
+    expect(publicPosts.posts.map((post: { slug: string }) => post.slug)).toEqual([
+      "fts-list-public-post",
+    ]);
+
+    const publicMemosResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos?search=shared-list-term"),
+      "/memos"
+    );
+    const publicMemos = await readJson(publicMemosResponse);
+    expect(publicMemos.memos.map((memo: { slug: string }) => memo.slug)).toEqual([
+      "fts-list-public-memo",
+    ]);
+
+    const adminPostsResponse = await handleAdminApiRequest(
+      buildRequest(
+        "/api/admin/posts?page=1&limit=10&search=shared-list-term&status=all",
+        {},
+        ADMIN_EMAIL
+      ),
+      "/posts"
+    );
+    const adminPosts = await readJson(adminPostsResponse);
+    const adminSlugs = adminPosts.posts.map((post: { slug: string }) => post.slug);
+    expect(adminSlugs).toHaveLength(2);
+    expect(adminSlugs).toEqual(
+      expect.arrayContaining(["fts-list-private-post", "fts-list-public-post"])
+    );
   });
 
   it("requires admin auth for cross-origin file uploads while preserving Pages CORS", async () => {

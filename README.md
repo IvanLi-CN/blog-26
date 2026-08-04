@@ -94,6 +94,19 @@ bun run test:worktree-bootstrap
 
 Content sync imports Markdown from the configured local content root into SQLite caches and search indexes.
 
+## Search Index Operations
+
+Migrations create the `posts_search_fts` SQLite FTS5 `trigram` index for post and memo slugs, titles, excerpts, bodies, and tags. SQLite triggers keep it synchronized with inserts, updates, deletes, and post/memo type changes. The application does not rebuild the index during startup.
+
+Check or explicitly rebuild the index with:
+
+```bash
+DB_PATH=./dev-data/sqlite.db bun scripts/db-tools.ts search-index check
+DB_PATH=./dev-data/sqlite.db bun scripts/db-tools.ts search-index rebuild
+```
+
+The check command is read-only and reports missing, extra, duplicate, or stale rows. The rebuild command is writable and should be used only when the check reports drift. Public search applies `draft=false AND public=true` at query time; administrator search keeps its existing visibility and status rules.
+
 ## Testing
 
 ```bash

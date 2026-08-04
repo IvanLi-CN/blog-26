@@ -24,6 +24,8 @@ import { getContentSourceManager, LocalContentSource } from "../../lib/content-s
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
+import { buildContentSearchCondition } from "../../lib/search/content-search";
+import { isSearchQueryWithinBudget } from "../../lib/search/query";
 import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
@@ -387,7 +389,7 @@ export function buildSafeMemoResponse(
 const listMemosSchema = z.object({
   limit: z.number().min(1).max(50).default(10),
   cursor: z.string().optional(), // cursor format: "publishDate_id"
-  search: z.string().optional(),
+  search: z.string().refine(isSearchQueryWithinBudget).optional(),
   tag: z.string().optional(),
   publicOnly: z.boolean().default(true),
 });
@@ -456,14 +458,16 @@ export const memosRouter = router({
       // 构建查询条件
       const conditions = [eq(posts.type, "memo")];
 
-      // 权限过滤：非管理员只能看到公开的 memo
+      // This public procedure is also used by authenticated admin contexts.
+      // Only the trusted request context may widen visibility; input flags cannot do so.
       if (!ctx.isAdmin) {
-        conditions.push(eq(posts.public, true));
+        conditions.push(eq(posts.draft, false), eq(posts.public, true));
       }
 
       // 搜索条件
       if (search) {
-        conditions.push(like(posts.title, `%${search}%`));
+        const searchCondition = buildContentSearchCondition(search);
+        if (searchCondition) conditions.push(searchCondition);
       }
 
       // 标签过滤

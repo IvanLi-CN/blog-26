@@ -1,6 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import OpenAI from "openai";
-import { enhanced } from "@/lib/ai/search";
 import {
   buildFallbackSearchSuggestionItems,
   normalizeSearchSuggestionItems,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/ai/search-suggestions";
 import { db, initializeDB } from "@/lib/db";
 import { posts } from "@/lib/schema";
+import { searchContent } from "@/lib/search/content-search";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 
 export type PublicSearchSuggestionsResult = {
@@ -124,11 +124,11 @@ async function validateSuggestionItems(
     items.map(async (item) => {
       if (!searchSuggestionItemRelatesToQuery(item, query)) return null;
       try {
-        const results = await enhanced({
+        const results = await searchContent({
           q: item.term,
           topK: 5,
+          type: "all",
           publishedOnly: true,
-          rerank: false,
         });
         if (results.length === 0 && !seedLexicallyMatches(item.term, seeds)) return null;
         const slugSignature = results

@@ -77,7 +77,8 @@ async function main() {
   // Ensure stable ordering for reproducibility
   files.sort();
 
-  const cmd = ["bun", "test", ...files];
+  // Search/database tests use process-level DB_PATH state; isolate each file's module graph.
+  const cmd = ["bun", "test", "--isolate", ...files];
   console.log(`Running: ${cmd.join(" ")}`);
 
   // Use child_process to avoid relying on Bun global within pre-commit

@@ -1,27 +1,30 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as Search from "@/lib/ai/search";
+import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import { createTRPCRouter, publicProcedure } from "../trpc";
+
+const searchQueryInput = z.string().refine(isSearchQueryWithinBudget, {
+  message: "Search query exceeds the supported resource limits",
+});
 
 export const aiSearchRouter = createTRPCRouter({
   semantic: publicProcedure
     .input(
       z.object({
-        q: z.string().min(1),
+        q: searchQueryInput.min(1),
         topK: z.number().min(1).max(100).optional(),
         type: z.enum(["all", "post", "memo"]).optional(),
-        publishedOnly: z.boolean().optional(),
         model: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
-      return Search.semantic(input);
+      return Search.semantic({ ...input, publishedOnly: true });
     }),
 
   enhanced: publicProcedure
     .input(
       z.object({
-        q: z.string().min(1),
+        q: searchQueryInput.min(1),
         topK: z.number().min(1).max(100).optional(),
         rerankTopK: z.number().min(1).max(50).optional(),
         rerank: z.boolean().optional(),
@@ -30,14 +33,7 @@ export const aiSearchRouter = createTRPCRouter({
       })
     )
     .query(async ({ input }) => {
-      try {
-        return await Search.enhanced(input);
-      } catch (err: any) {
-        if (err?.code === "RERANKER_UNAVAILABLE") {
-          throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "RERANKER_UNAVAILABLE" });
-        }
-        throw err;
-      }
+      return Search.enhanced({ ...input, publishedOnly: true });
     }),
 });
 

@@ -1,10 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { EmbeddingsRepository, type VectorizationStatus } from "@/lib/ai/embeddings-repo";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import { extractPostDraftFields } from "@/lib/post-body-contract";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
+import { buildContentSearchCondition } from "@/lib/search/content-search";
+import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../../lib/db";
 import { type Post as PostRow, posts } from "../../../lib/schema";
@@ -14,7 +16,7 @@ import { adminProcedure, createTRPCRouter } from "../../trpc";
 const getPostsSchema = z.object({
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(100).default(20),
-  search: z.string().optional(),
+  search: z.string().refine(isSearchQueryWithinBudget).optional(),
   status: z.enum(["all", "published", "draft"]).default("all"),
   sortBy: z.enum(["publishDate", "updateDate", "title"]).default("publishDate"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
@@ -78,13 +80,8 @@ export const adminPostsRouter = createTRPCRouter({
 
       // 搜索条件
       if (search) {
-        conditions.push(
-          or(
-            like(posts.title, `%${search}%`),
-            like(posts.body, `%${search}%`),
-            like(posts.slug, `%${search}%`)
-          )
-        );
+        const searchCondition = buildContentSearchCondition(search);
+        if (searchCondition) conditions.push(searchCondition);
       }
 
       // 状态过滤

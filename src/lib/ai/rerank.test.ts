@@ -95,6 +95,15 @@ describe("rerank response parsing", () => {
     expect(parsed.rawItemCount).toBe(3);
     expect(parsed.items).toEqual([{ index: 2, document: "", score: 0.7 }]);
   });
+
+  test("keeps malformed indexes out of parsed results", () => {
+    const parsed = parseRerankResponse({
+      results: [{ index: "0", relevance_score: 0.7 }],
+    });
+
+    expect(parsed.rawItemCount).toBe(1);
+    expect(parsed.items).toEqual([]);
+  });
 });
 
 describe("rerank client", () => {
@@ -170,5 +179,15 @@ describe("rerank client", () => {
         validItemCount: 0,
       })
     );
+  });
+
+  test("throws when the upstream response has an out-of-range index", async () => {
+    globalThis.fetch = mock(async () =>
+      Response.json({ results: [{ index: 1, relevance_score: 0.9 }] })
+    ) as unknown as typeof fetch;
+
+    await expect(rerank("React", ["React docs"], { topN: 1 })).rejects.toMatchObject({
+      code: "RERANKER_UNAVAILABLE",
+    });
   });
 });

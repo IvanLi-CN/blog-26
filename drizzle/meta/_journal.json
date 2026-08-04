@@ -71,6 +71,13 @@
       "when": 1778560000000,
       "tag": "0009_remote_mcp_created_via",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785818846000,
+      "tag": "0010_search_full_text_fallback",
+      "breakpoints": true
     }
   ]
 }

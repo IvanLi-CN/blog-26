@@ -356,6 +356,72 @@ if (!ENABLE) {
       await expectCreatedViaMarker(title, "memo");
     });
 
+    it("should exclude draft memos from public memo search", async () => {
+      const marker = `mcp-public-memo-filter-${Date.now()}`;
+      const now = Date.now();
+      await db.insert(posts).values([
+        {
+          id: `${marker}-published`,
+          slug: `${marker}-published`,
+          type: "memo",
+          title: `${marker} published`,
+          excerpt: null,
+          body: marker,
+          publishDate: now + 1,
+          updateDate: now,
+          draft: false,
+          public: true,
+          category: null,
+          tags: "[]",
+          author: ADMIN_EMAIL,
+          image: null,
+          metadata: null,
+          dataSource: "local",
+          createdVia: null,
+          contentHash: `${marker}-published-hash`,
+          lastModified: now,
+          source: "local",
+          filePath: `${marker}-published.md`,
+        },
+        {
+          id: `${marker}-draft`,
+          slug: `${marker}-draft`,
+          type: "memo",
+          title: `${marker} draft`,
+          excerpt: null,
+          body: marker,
+          publishDate: now,
+          updateDate: now,
+          draft: true,
+          public: true,
+          category: null,
+          tags: "[]",
+          author: ADMIN_EMAIL,
+          image: null,
+          metadata: null,
+          dataSource: "local",
+          createdVia: null,
+          contentHash: `${marker}-draft-hash`,
+          lastModified: now,
+          source: "local",
+          filePath: `${marker}-draft.md`,
+        },
+      ]);
+
+      const listed = await rpc({
+        jsonrpc: "2.0",
+        id: "l-public-memo-filter",
+        method: "tools/call",
+        params: {
+          name: "memos_list",
+          arguments: { limit: 10, publicOnly: true, search: marker },
+        },
+      });
+      const items = JSON.parse(listed.result?.content?.[0]?.text || "{}").items || [];
+      expect(items.some((item: any) => item.slug === `${marker}-published`)).toBe(true);
+      expect(items.some((item: any) => item.slug === `${marker}-draft`)).toBe(false);
+    });
+
     it("should create post with PAT and preserve MCP origin markers", async () => {
       const title = `sdk-post-${Date.now()}`;
       const created = await rpc(

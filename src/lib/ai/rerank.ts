@@ -142,7 +142,8 @@ export function parseRerankResponse(payload: unknown) {
       const o = it as Record<string, unknown>;
       const score = readScore(o);
       if (score === null || !Number.isFinite(score)) return null;
-      const i = typeof o.index === "number" ? o.index : index;
+      const i = o.index === undefined ? index : o.index;
+      if (typeof i !== "number" || !Number.isInteger(i)) return null;
       const document = typeof o.document === "string" ? o.document : "";
       return { index: i, document, score } satisfies RerankItem;
     })
@@ -216,15 +217,6 @@ export async function rerank(
   }
 
   const { items, rawItemCount } = parseRerankResponse(json);
-  if (rawItemCount > items.length) {
-    logRerankIssue("upstream response contained unusable rerank scores", {
-      model: modelName,
-      apiBase,
-      status: res.status,
-      resultCount: rawItemCount,
-      validItemCount: items.length,
-    });
-  }
   if (items.length === 0) {
     logRerankIssue("upstream response did not contain usable rerank items", {
       model: modelName,
@@ -234,6 +226,27 @@ export async function rerank(
       validItemCount: items.length,
     });
     throw createRerankerUnavailable("Rerank response did not contain usable scores");
+  }
+
+  const expectedItemCount = Math.min(opts?.topN ?? documents.length, documents.length);
+  const indices = new Set<number>();
+  let hasInvalidIndex = false;
+  for (const item of items) {
+    if (item.index < 0 || item.index >= documents.length || indices.has(item.index)) {
+      hasInvalidIndex = true;
+      break;
+    }
+    indices.add(item.index);
+  }
+  if (rawItemCount !== items.length || hasInvalidIndex || items.length !== expectedItemCount) {
+    logRerankIssue("upstream response contained unusable rerank scores", {
+      model: modelName,
+      apiBase,
+      status: res.status,
+      resultCount: rawItemCount,
+      validItemCount: items.length,
+    });
+    throw createRerankerUnavailable("Rerank response contained invalid item indexes");
   }
 
   return items;
