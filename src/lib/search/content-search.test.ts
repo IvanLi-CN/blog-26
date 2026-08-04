@@ -120,6 +120,13 @@ describe("content search", () => {
       publishDate: 2,
     });
     await seedPost({
+      id: "short-prefix-search",
+      slug: "short-prefix-search",
+      title: "About short prefixes",
+      body: "Short prefix matching uses the controlled LIKE path.",
+      publishDate: 4,
+    });
+    await seedPost({
       id: "private-search",
       slug: "private-search",
       title: "Private SQLite note",
@@ -144,6 +151,12 @@ describe("content search", () => {
 
     const shortSearch = await searchContent({ q: "搜索", topK: 10 });
     expect(shortSearch.map((result) => result.slug)).toEqual(["chinese-search"]);
+
+    const shortPrefixSearch = await searchContent({ q: "ab*", topK: 10 });
+    expect(shortPrefixSearch.map((result) => result.slug)).toContain("short-prefix-search");
+
+    const fractionalLimitSearch = await searchContent({ q: "SQLite", topK: 1.5 });
+    expect(fractionalLimitSearch).toHaveLength(1);
 
     const privateResults = await searchContent({
       q: "SQLite",

@@ -79,13 +79,17 @@ function isShortAst(ast: SearchQueryAst) {
   return Array.from(ast.value.replace(/\s+/gu, "")).length < 3;
 }
 
+function getLikeLeafValue(ast: Extract<SearchQueryAst, { kind: "term" | "phrase" | "prefix" }>) {
+  return ast.kind === "prefix" ? ast.value.replace(/\*$/u, "") : ast.value;
+}
+
 function buildAstPredicate(ast: SearchQueryAst, scopedColumn?: SearchColumn): SQL {
   switch (ast.kind) {
     case "term":
     case "phrase":
     case "prefix":
       return isShortAst(ast)
-        ? buildLikePredicate(ast.value, scopedColumn)
+        ? buildLikePredicate(getLikeLeafValue(ast), scopedColumn)
         : buildFtsExistsPredicate(ast, scopedColumn);
     case "column":
       return buildAstPredicate(ast.child, ast.column);
@@ -297,7 +301,10 @@ export async function executeContentSearch(
   const plan = parseSearchQuery(input.q);
   if (!plan.ast) return { results: [], source: "fts", plan };
 
-  const limit = Math.max(1, Math.min(input.topK ?? 50, 100));
+  const requestedLimit = input.topK ?? 50;
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.max(1, Math.min(Math.floor(requestedLimit), 100))
+    : 50;
   const results = plan.hasShortLeaf
     ? await executeMixedSearch(input, plan, limit)
     : await executePureFtsSearch(input, plan, limit);
