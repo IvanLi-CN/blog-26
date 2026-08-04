@@ -21,7 +21,9 @@ interface TableInfo {
 function connectDatabase(readonly = true): Database {
   try {
     console.log(`📁 连接数据库: ${DB_PATH_ABSOLUTE}`);
-    return new Database(DB_PATH_ABSOLUTE, { readonly });
+    return readonly
+      ? new Database(DB_PATH_ABSOLUTE, { readonly: true })
+      : new Database(DB_PATH_ABSOLUTE);
   } catch (error) {
     console.error("❌ 数据库连接失败:", error);
     process.exit(1);
