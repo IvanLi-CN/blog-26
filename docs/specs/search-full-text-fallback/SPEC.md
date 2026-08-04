@@ -57,7 +57,8 @@ This topic defines one SQLite-backed search contract for public posts, memos, an
 - FTS results must not enter the existing AI search cache. Successful semantic/enhanced results may continue to use that cache.
 - Public `/search` must continue returning a JSON array with the existing result item fields; no mode/source field may be added.
 - Public tRPC search must always use `draft=false AND public=true`; MCP callers may request unpublished rows only when the MCP session is administrator-authenticated.
-- Public `posts.list` and `memos.list` procedures must enforce `draft=false AND public=true` regardless of compatibility input flags; administrator list procedures retain their existing visibility scope.
+- Public list contexts must enforce `draft=false AND public=true` regardless of compatibility input flags; `memos.list` is admin-aware and retains its existing draft/private scope for administrator contexts.
+- Semantic vector reads must be bounded by the eligible candidate limit, and malformed or dimension-mismatched stored vectors must select uncached FTS instead of failing the request.
 
 ### SHOULD
 
@@ -93,10 +94,12 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 - Dedicated search uses the shared search service, BM25 relevance, and stable publication-time/id tie-breaking.
 - Public list search uses the shared predicate only; existing list ordering, pagination, cursor behavior, and public filters remain authoritative.
-- Administrator list search uses the same predicate while preserving draft/private access and existing sort controls.
+- Administrator list search uses the same compiled search plan while preserving draft/private access and existing sort controls; the admin-aware `memos.list` keeps its existing visibility branch.
 - Missing embedding configuration, missing model vectors, or embedding request failure selects the FTS path and skips reranking.
+- Any non-`simple` query mode selects the controlled FTS compiler because embeddings cannot preserve advanced syntax semantics.
 - Missing or failing rerank configuration/request returns the semantic base result and does not surface a reranker 503.
 - Semantic candidate scans are restricted to eligible rows matching the requested type, model, and visibility scope and are bounded at 10,000 rows; no eligible rows or an over-limit scan selects uncached FTS.
+- Semantic/enhanced cache keys include a non-secret fingerprint of the effective provider configuration so model, endpoint, or credential changes cannot reuse stale results.
 - Rerank responses must contain the expected count of unique integer indexes within the candidate range; malformed responses return the semantic base result and are logged without a 503.
 - Search suggestion generation remains unchanged; candidate validation calls the shared FTS path directly.
 - Public search procedures cannot override the published-only visibility boundary; MCP requests for unpublished search/list results require administrator authentication.
@@ -127,6 +130,8 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Given a configured but unavailable reranker, when enhanced search is called, then it returns the semantic base array rather than a 503.
 - Given an unavailable, malformed, or out-of-range rerank response, when enhanced search is called, then it returns the semantic base array and records a diagnostic.
 - Given no eligible vectors or more than 10,000 eligible vector rows for a semantic query, when search is executed, then it uses uncached FTS without scanning an unbounded vector set.
+- Given a malformed or dimension-mismatched stored vector, when semantic search is executed, then it returns uncached FTS results instead of propagating the vector error.
+- Given a valid advanced query or invalid-syntax literal retry, when semantic search is executed, then no embedding request is made and the controlled FTS plan is used.
 - Given a private or draft row, when an administrator searches, then it is eligible under the existing admin permission rules; when a public caller searches, then it is excluded.
 - Given `publishedOnly=false` from an unauthenticated public search or MCP caller, when the request is executed, then unpublished rows are not returned and the MCP request is rejected.
 - Given `published=false` on the public `posts.list` compatibility input, when the request is executed, then private and draft rows remain excluded.
@@ -160,7 +165,7 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 ## Visual Evidence
 
-Evidence binding: `84a0952baa2211d5d59383c3fcfd039097781df7` (current implementation head; the Storybook surface is unchanged since capture)
+Evidence binding: `6a6f98e1468d71671a3d0d2c390f1a7fdf5a9ff1` (current implementation head; the Storybook surface is unchanged since capture)
 
 - source_type: storybook_canvas
   target_program: mock-only

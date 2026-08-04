@@ -11,6 +11,7 @@
 - 2026-08-04 (`PR #61`): Chose FTS fallback for embedding failures, but preserve semantic base results when only reranking is unavailable.
 - 2026-08-04 (`9d660949`, `PR #61`): Kept public tRPC search permanently published-only and made MCP unpublished search/list scopes administrator-only so caller-controlled visibility flags cannot expose draft or private rows.
 - 2026-08-04 (`84a0952`, `PR #61`): Bounded semantic vector candidates to 10,000 eligible rows, rechecked the parameter budget before invalid-query literal retry, and treated malformed rerank indexes as a recoverable semantic-base fallback.
+- 2026-08-04 (`6a6f98e`, `PR #61`): Enforced the vector read bound, routed corrupt vectors to FTS, fingerprinted effective AI providers for cache keys, and recorded missing reranker configuration without changing the semantic-base fallback contract.
 
 ## Key Reasons / Replacements
 

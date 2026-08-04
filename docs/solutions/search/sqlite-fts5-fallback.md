@@ -43,13 +43,16 @@ The old implementation had no intermediate query representation. It passed some 
 4. Treat malformed advanced syntax as a literal retry: collect literal terms, join them with `AND`, and never pass the original raw expression to SQLite.
 5. Use BM25 weights `slug=1`, `title=8`, `excerpt=4`, `body=1`, and `tags=4`, then normalize the existing `SearchResult.final` field with stable publication-time/id tie-breaking. Short-text scoring uses the same relative field weights.
 6. When vectors are unavailable or embedding fails, execute the shared FTS path and do not cache it. When reranking is missing, fails, or returns unusable output, return the semantic base result and log the diagnostic instead of returning a 503.
-7. Reuse the compiled predicate in dedicated search, public posts/memos, administrator posts/memos, and MCP list filters. Keep visibility and list-specific ordering/pagination outside the shared predicate.
+7. Reuse the shared parser/compiler plan across dedicated search, public posts/memos, administrator posts/memos, and MCP list filters. Dedicated search executes the resulting bound FTS `MATCH`/`LIKE` plan while keeping visibility and list-specific ordering/pagination outside it.
 8. Validate generated search suggestion candidates through the shared FTS/content-search path directly. Suggestion validation must not depend on embedding availability or reranking.
 9. Enforce bounded normalized query length, lexer tokens, AST depth, and compiled SQL parameter cost before FTS/`LIKE` compilation. Public schemas reject over-budget input with `400 BAD_REQUEST`; internal plans never fall through to literal retry.
 10. Run database-sensitive Bun tests with `bun test --isolate`; keep each suite's temporary `DB_PATH` independent so module-level database state cannot race across test files.
 11. Pin public tRPC search to the published-only scope and require administrator authentication before MCP callers can request unpublished search or list results.
 12. Bound semantic vector candidates to 10,000 rows after applying model, requested type, and public visibility conditions; use uncached FTS when the eligible scope is empty or exceeds that bound.
 13. Recheck the compiled parameter budget before retrying invalid advanced syntax as literals, and validate rerank indexes as integers that are in range, unique, and complete before accepting enhanced output.
+14. Route every non-`simple` query through the controlled FTS compiler because embeddings cannot preserve field filters, Boolean precedence, phrases, prefixes, `NEAR`, or literal-retry semantics.
+15. Limit semantic vector materialization to `MAX_SEMANTIC_VECTOR_ROWS + 1` so concurrent growth is detected without an unbounded read; decode stored vectors defensively and use uncached FTS for malformed or dimension-mismatched values.
+16. Include a non-secret hash of the effective embedding/rerank model, endpoint, and credential state in semantic/enhanced cache keys so provider changes cannot reuse stale results.
 
 # Guardrails / Reuse notes
 
@@ -61,8 +64,9 @@ The old implementation had no intermediate query representation. It passed some 
 - Keep parser resource limits at the shared query boundary so every public, list, MCP, and AI caller receives the same bounded behavior.
 - Keep test runners isolated when suites mutate process-level database configuration; this is part of the search fallback test contract, not an optional local workaround.
 - Never trust a caller-provided visibility flag at a public boundary; public tRPC search forces `draft=false AND public=true`, and MCP unpublished scopes require an administrator session.
-- Keep public list procedures bounded to `draft=false AND public=true` even when compatibility inputs contain `published=false`; caller flags must not expand visibility.
+- Keep public list contexts bounded to `draft=false AND public=true` even when compatibility inputs contain `published=false`; the admin-aware memo list may retain its existing private/draft branch only for authenticated administrator contexts, whose `isAdmin` state is derived from the request context rather than input.
 - Never scan an unbounded vector candidate set or accept partially/incorrectly indexed rerank output; use the bounded FTS or semantic-base fallback instead.
+- Treat `memos.list` as an admin-aware public procedure: public callers receive the enforced public scope, while only the authenticated request context can retain its private/draft branch.
 - Keep the public search response as the existing array and do not expose internal mode/source metadata.
 - Add parser tests for all three modes, precedence, quoted operators, invalid syntax, column filters, prefixes, `NEAR`, and short Unicode terms. Add SQLite tests for triggers and type transitions.
 

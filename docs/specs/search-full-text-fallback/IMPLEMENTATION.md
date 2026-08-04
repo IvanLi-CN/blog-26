@@ -20,10 +20,11 @@
 - The parser enforces normalized length, lexer token, AST depth, and compiled SQL parameter budgets; public schemas reject over-budget queries with `400 BAD_REQUEST`.
 - Long leaves use bound FTS5 expressions, short leaves use bound field-aware `LIKE`, and short queries still fail if the FTS migration is absent.
 - Semantic embedding failures use uncached FTS; rerank failures preserve the semantic base result.
-- Semantic vector candidates are joined to eligible posts, scoped by type/model/visibility, and capped at 10,000 rows before vector search; empty or over-limit scopes use uncached FTS.
+- Semantic vector candidates are joined to eligible posts, scoped by type/model/visibility, and capped at 10,000 rows before vector search; empty, over-limit, or corrupt-vector scopes use uncached FTS.
 - Invalid advanced literal retry rechecks the compiled SQL parameter budget, and rerank responses are validated for integer, range, uniqueness, and expected count before enhanced scoring.
-- Dedicated search, public/admin post and memo lists, MCP list filters, and suggestion validation share the compiled predicate.
-- Public tRPC search and public post/memo lists pin the published-only visibility filter; MCP search and list requests for unpublished rows require administrator authentication.
+- Dedicated search, public/admin post and memo lists, MCP list filters, and suggestion validation share the parser/compiler plan; non-simple AI queries bypass embeddings.
+- Public tRPC search and public list contexts pin the published-only visibility filter; the admin-aware memo list retains its authenticated administrator branch, and MCP unpublished requests require administrator authentication.
+- Semantic/enhanced cache keys include a non-secret fingerprint of the effective embedding/rerank provider configuration, and rerank model overrides are honored.
 - Unit, SQLite trigger, cache, embedding fallback, rerank fallback, API, and Storybook scenario tests are in place.
 
 ## Verification
@@ -34,7 +35,7 @@
 ## Related Changes
 
 - PR #61: `feat(search): add SQLite FTS5 fallback and query parser`
-- Implementation hardening: `fix(search): enforce public visibility boundaries` and `fix(search): harden fallback resource boundaries`
+- Implementation hardening: `fix(search): enforce public visibility boundaries`, `fix(search): harden fallback resource boundaries`, and `fix(search): harden semantic fallback boundaries`
 
 ## References
 
