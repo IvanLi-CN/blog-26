@@ -21,6 +21,7 @@
 - Long leaves use bound FTS5 expressions, short leaves use bound field-aware `LIKE`, and short queries still fail if the FTS migration is absent.
 - Semantic embedding failures use uncached FTS; rerank failures preserve the semantic base result.
 - Dedicated search, public/admin post and memo lists, MCP list filters, and suggestion validation share the compiled predicate.
+- Public tRPC search pins the published-only visibility filter; MCP search and list requests for unpublished rows require administrator authentication.
 - Unit, SQLite trigger, cache, embedding fallback, rerank fallback, API, and Storybook scenario tests are in place.
 
 ## Verification

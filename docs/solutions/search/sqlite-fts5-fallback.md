@@ -47,6 +47,7 @@ The old implementation had no intermediate query representation. It passed some 
 8. Validate generated search suggestion candidates through the shared FTS/content-search path directly. Suggestion validation must not depend on embedding availability or reranking.
 9. Enforce bounded normalized query length, lexer tokens, AST depth, and compiled SQL parameter cost before FTS/`LIKE` compilation. Public schemas reject over-budget input with `400 BAD_REQUEST`; internal plans never fall through to literal retry.
 10. Run database-sensitive Bun tests with `bun test --isolate`; keep each suite's temporary `DB_PATH` independent so module-level database state cannot race across test files.
+11. Pin public tRPC search to the published-only scope and require administrator authentication before MCP callers can request unpublished search or list results.
 
 # Guardrails / Reuse notes
 
@@ -57,6 +58,7 @@ The old implementation had no intermediate query representation. It passed some 
 - Keep search suggestion candidate validation on the shared FTS path; do not reintroduce embedding or reranking as a validation dependency.
 - Keep parser resource limits at the shared query boundary so every public, list, MCP, and AI caller receives the same bounded behavior.
 - Keep test runners isolated when suites mutate process-level database configuration; this is part of the search fallback test contract, not an optional local workaround.
+- Never trust a caller-provided visibility flag at a public boundary; public tRPC search forces `draft=false AND public=true`, and MCP unpublished scopes require an administrator session.
 - Keep the public search response as the existing array and do not expose internal mode/source metadata.
 - Add parser tests for all three modes, precedence, quoted operators, invalid syntax, column filters, prefixes, `NEAR`, and short Unicode terms. Add SQLite tests for triggers and type transitions.
 

@@ -56,6 +56,7 @@ This topic defines one SQLite-backed search contract for public posts, memos, an
 - Operators inside quotes must remain literal text. Malformed or unsupported advanced syntax must be classified as `advanced-invalid` and retried as literal terms joined by `AND`.
 - FTS results must not enter the existing AI search cache. Successful semantic/enhanced results may continue to use that cache.
 - Public `/search` must continue returning a JSON array with the existing result item fields; no mode/source field may be added.
+- Public tRPC search must always use `draft=false AND public=true`; MCP callers may request unpublished rows only when the MCP session is administrator-authenticated.
 
 ### SHOULD
 
@@ -95,6 +96,7 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Missing embedding configuration, missing model vectors, or embedding request failure selects the FTS path and skips reranking.
 - Missing or failing rerank configuration/request returns the semantic base result and does not surface a reranker 503.
 - Search suggestion generation remains unchanged; candidate validation calls the shared FTS path directly.
+- Public search procedures cannot override the published-only visibility boundary; MCP requests for unpublished search/list results require administrator authentication.
 
 ## Interfaces & Contracts
 
@@ -120,6 +122,7 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Given a missing embedding model or failed embedding request, when `/api/public/search` is called, then it returns a 200 JSON array from FTS and does not cache that fallback result.
 - Given a configured but unavailable reranker, when enhanced search is called, then it returns the semantic base array rather than a 503.
 - Given a private or draft row, when an administrator searches, then it is eligible under the existing admin permission rules; when a public caller searches, then it is excluded.
+- Given `publishedOnly=false` from an unauthenticated public search or MCP caller, when the request is executed, then unpublished rows are not returned and the MCP request is rejected.
 - Given index drift, when `search-index check` runs, then it exits non-zero with a diagnostic; after `rebuild`, the check passes.
 
 ## Acceptance Checklist
@@ -150,7 +153,7 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 ## Visual Evidence
 
-Evidence binding: `9eda1c08181ec4180e3feaefcbe39e49db4ff4f1` (current implementation head; the Storybook surface is unchanged since capture)
+Evidence binding: `9d660949ff3b92a0ed5559e2b2b66135ba8fd3e1` (current implementation head; the Storybook surface is unchanged since capture)
 
 - source_type: storybook_canvas
   target_program: mock-only
