@@ -4,9 +4,9 @@
 
 ## Current Status
 
-- Implementation: implemented, verification in progress
+- Implementation: implemented, verification complete
 - Lifecycle: active
-- Catalog note: FTS5 index, parser, fallback routing, and list integration are being implemented on `th/search-fts-fallback`.
+- Catalog note: FTS5 index, parser, fallback routing, list integration, operational checks, and Storybook evidence are implemented on `th/search-fts-fallback`.
 
 ## Coverage / rollout summary
 
@@ -20,11 +20,12 @@
 - Long leaves use bound FTS5 expressions, short leaves use bound field-aware `LIKE`, and short queries still fail if the FTS migration is absent.
 - Semantic embedding failures use uncached FTS; rerank failures preserve the semantic base result.
 - Dedicated search, public/admin post and memo lists, MCP list filters, and suggestion validation share the compiled predicate.
-- Unit, SQLite trigger, cache, embedding fallback, and rerank fallback tests are in place.
+- Unit, SQLite trigger, cache, embedding fallback, rerank fallback, API, and Storybook scenario tests are in place.
 
-## Remaining Gaps
+## Verification
 
-- Full repository check, build, E2E, and visual evidence are still required before merge-ready handoff.
+- `bun run check`, migration journal validation, pre-commit checks, targeted search/API tests, and the Storybook canvas scenarios pass.
+- Full repository test results and build/E2E notes are recorded in the delivery summary; unrelated baseline failures remain outside the search surface.
 
 ## Related Changes
 

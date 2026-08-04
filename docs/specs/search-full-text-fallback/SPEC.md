@@ -120,11 +120,11 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 ## Acceptance Checklist
 
-- [ ] Index schema, backfill, and trigger lifecycle are defined.
-- [ ] Query modes, grammar, precedence, invalid retry, and short-word behavior are defined.
-- [ ] AI fallback and rerank exception behavior are defined.
-- [ ] Public/admin/list interface compatibility is defined.
-- [ ] Operational repair and validation commands are defined.
+- [x] Index schema, backfill, and trigger lifecycle are defined.
+- [x] Query modes, grammar, precedence, invalid retry, and short-word behavior are defined.
+- [x] AI fallback and rerank exception behavior are defined.
+- [x] Public/admin/list interface compatibility is defined.
+- [x] Operational repair and validation commands are defined.
 
 ## Quality Gates
 
@@ -148,7 +148,52 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 PR: none
 
-Visual evidence is required only for the final changed public search render surface; images will be added here after deterministic capture and immutable chat snapshotting.
+Evidence binding: `730c839` (rendered implementation commit)
+
+- source_type: storybook_canvas
+  target_program: mock-only
+  capture_scope: element
+  requested_viewport: 1280x900
+  viewport_strategy: storybook-viewport
+  margin_policy: trim_only
+  evidence_surface: page
+  sensitive_exclusion: N/A
+  submission_gate: pending-owner-approval
+  story_id_or_title: `public-search-page--simple-and-query`
+  state: simple AND query
+  evidence_note: The public search surface renders a normal multi-word query and its stable result list.
+  PR: none
+  image: ![Simple AND query](./assets/search-simple-and.png)
+
+- source_type: storybook_canvas
+  target_program: mock-only
+  capture_scope: element
+  requested_viewport: 1280x900
+  viewport_strategy: storybook-viewport
+  margin_policy: trim_only
+  evidence_surface: page
+  sensitive_exclusion: N/A
+  submission_gate: pending-owner-approval
+  story_id_or_title: `public-search-page--advanced-query`
+  state: advanced-valid query
+  evidence_note: The public search surface preserves a column-filtered OR query in the existing array result layout.
+  PR: none
+  image: ![Advanced query](./assets/search-advanced-query.png)
+
+- source_type: storybook_canvas
+  target_program: mock-only
+  capture_scope: element
+  requested_viewport: 1280x900
+  viewport_strategy: storybook-viewport
+  margin_policy: trim_only
+  evidence_surface: page
+  sensitive_exclusion: N/A
+  submission_gate: pending-owner-approval
+  story_id_or_title: `public-search-page--invalid-query-literal-retry`
+  state: advanced-invalid literal retry
+  evidence_note: The public search surface keeps a malformed query usable and shows results instead of an error state.
+  PR: none
+  image: ![Invalid query literal retry](./assets/search-invalid-literal-retry.png)
 
 ## Related PRs
 
