@@ -228,25 +228,71 @@ function countOccurrences(value: string, term: string) {
   }
 }
 
-function scoreShortSearchRow(row: ContentSearchRow, plan: SearchQueryPlan) {
-  const fields: Array<[string, number]> = [
-    [row.title ?? "", 8],
-    [row.excerpt ?? "", 4],
-    [row.tags ?? "", 4],
-    [row.body, 1],
-    [row.slug, 1],
-  ];
-  return plan.literalTerms.reduce((total, term) => {
-    const normalizedTerm = normalizeText(term);
-    return (
-      total +
-      fields.reduce(
-        (fieldTotal, [value, weight]) =>
-          fieldTotal + Math.min(4, countOccurrences(normalizeText(value), normalizedTerm)) * weight,
-        0
-      )
+const SEARCH_FIELD_WEIGHTS: Record<SearchColumn, number> = {
+  slug: 1,
+  title: 8,
+  excerpt: 4,
+  body: 1,
+  tags: 4,
+};
+
+function getSearchFieldValue(row: ContentSearchRow, column: SearchColumn) {
+  switch (column) {
+    case "slug":
+      return row.slug;
+    case "title":
+      return row.title ?? "";
+    case "excerpt":
+      return row.excerpt ?? "";
+    case "body":
+      return row.body;
+    case "tags":
+      return row.tags ?? "";
+  }
+}
+
+function scoreSearchLeaf(row: ContentSearchRow, value: string, scopedColumn?: SearchColumn) {
+  const normalizedValue = normalizeText(value);
+  if (!normalizedValue) return 0;
+
+  const columns = scopedColumn ? [scopedColumn] : SEARCH_COLUMNS;
+  return columns.reduce((total, column) => {
+    const matches = Math.min(
+      4,
+      countOccurrences(normalizeText(getSearchFieldValue(row, column)), normalizedValue)
     );
+    return total + matches * SEARCH_FIELD_WEIGHTS[column];
   }, 0);
+}
+
+function scoreSearchAst(
+  row: ContentSearchRow,
+  ast: SearchQueryAst,
+  scopedColumn?: SearchColumn
+): number {
+  switch (ast.kind) {
+    case "term":
+    case "phrase":
+    case "prefix":
+      return scoreSearchLeaf(row, ast.value, scopedColumn);
+    case "column":
+      return scoreSearchAst(row, ast.child, ast.column);
+    case "near":
+      return ast.atoms.reduce((total, atom) => total + scoreSearchAst(row, atom, scopedColumn), 0);
+    case "and":
+      return ast.children.reduce(
+        (total, child) => total + scoreSearchAst(row, child, scopedColumn),
+        0
+      );
+    case "or":
+      return Math.max(...ast.children.map((child) => scoreSearchAst(row, child, scopedColumn)));
+    case "not":
+      return scoreSearchAst(row, ast.include, scopedColumn);
+  }
+}
+
+function scoreShortSearchRow(row: ContentSearchRow, plan: SearchQueryPlan) {
+  return plan.ast ? scoreSearchAst(row, plan.ast) : 0;
 }
 
 async function executeMixedSearch(

@@ -127,6 +127,20 @@ describe("content search", () => {
       publishDate: 4,
     });
     await seedPost({
+      id: "short-title-newer",
+      slug: "short-title-newer",
+      title: "搜索标题",
+      body: "A body without the short query",
+      publishDate: 6,
+    });
+    await seedPost({
+      id: "short-title-body-heavy",
+      slug: "short-title-body-heavy",
+      title: "搜索",
+      body: "搜索 搜索 搜索",
+      publishDate: 5,
+    });
+    await seedPost({
       id: "private-search",
       slug: "private-search",
       title: "Private SQLite note",
@@ -150,7 +164,14 @@ describe("content search", () => {
     expect(nearSearch.map((result) => result.slug)).toEqual(["sqlite-guide"]);
 
     const shortSearch = await searchContent({ q: "搜索", topK: 10 });
-    expect(shortSearch.map((result) => result.slug)).toEqual(["chinese-search"]);
+    expect(shortSearch.map((result) => result.slug)).toContain("chinese-search");
+
+    const scopedShortSearch = await searchContent({ q: "title:搜索", topK: 10 });
+    expect(scopedShortSearch.map((result) => result.slug)).toEqual([
+      "short-title-newer",
+      "short-title-body-heavy",
+      "chinese-search",
+    ]);
 
     const shortPrefixSearch = await searchContent({ q: "ab*", topK: 10 });
     expect(shortPrefixSearch.map((result) => result.slug)).toContain("short-prefix-search");
