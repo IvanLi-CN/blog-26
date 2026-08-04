@@ -44,6 +44,7 @@ The old implementation had no intermediate query representation. It passed some 
 5. Use BM25 weights `slug=1`, `title=8`, `excerpt=4`, `body=1`, and `tags=4`, then normalize the existing `SearchResult.final` field with stable publication-time/id tie-breaking. Short-text scoring uses the same relative field weights.
 6. When vectors are unavailable or embedding fails, execute the shared FTS path and do not cache it. When reranking is missing, fails, or returns unusable output, return the semantic base result and log the diagnostic instead of returning a 503.
 7. Reuse the compiled predicate in dedicated search, public posts/memos, administrator posts/memos, and MCP list filters. Keep visibility and list-specific ordering/pagination outside the shared predicate.
+8. Validate generated search suggestion candidates through the shared FTS/content-search path directly. Suggestion validation must not depend on embedding availability or reranking.
 
 # Guardrails / Reuse notes
 
@@ -51,6 +52,7 @@ The old implementation had no intermediate query representation. It passed some 
 - Keep the physical index inclusive of drafts and private rows; enforce public visibility in the caller query.
 - Do not rebuild on application startup. Use `bun scripts/db-tools.ts search-index check` for read-only diagnostics and `... rebuild` for explicit repair.
 - Do not put FTS fallback results into the semantic/enhanced AI cache. A cache hit must never hide newly indexed content after a provider outage.
+- Keep search suggestion candidate validation on the shared FTS path; do not reintroduce embedding or reranking as a validation dependency.
 - Keep the public search response as the existing array and do not expose internal mode/source metadata.
 - Add parser tests for all three modes, precedence, quoted operators, invalid syntax, column filters, prefixes, `NEAR`, and short Unicode terms. Add SQLite tests for triggers and type transitions.
 
@@ -60,5 +62,6 @@ The old implementation had no intermediate query representation. It passed some 
 - `src/lib/search/query.ts`
 - `src/lib/search/content-search.ts`
 - `src/lib/ai/search.ts`
+- `src/server/services/search-suggestions.ts`
 - `scripts/db-tools.ts`
 - [SQLite FTS5 documentation](https://www.sqlite.org/fts5.html)
