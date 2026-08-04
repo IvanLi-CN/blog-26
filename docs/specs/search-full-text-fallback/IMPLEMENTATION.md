@@ -11,7 +11,7 @@
 ## Coverage / rollout summary
 
 - Baseline inspection confirmed Bun SQLite FTS5 and the `trigram` tokenizer are available.
-- Existing search code has a SQL `LIKE` fallback and an in-process AI result cache; the new implementation will make FTS fallback explicit and uncached.
+- Existing search code had a SQL `LIKE` fallback and an in-process AI result cache; this implementation makes FTS fallback explicit and uncached.
 
 ## Completed Coverage
 
@@ -29,11 +29,12 @@
 ## Verification
 
 - `bun run check`, migration journal validation, pre-commit checks, targeted search/API tests, and the Storybook canvas scenarios pass.
-- Full repository test results and build/E2E notes are recorded in the delivery summary; unrelated baseline failures remain outside the search surface.
+- The local check, targeted tests, build, E2E, and PR CI results are recorded in the PR checks and delivery history; unrelated baseline failures remain outside the search surface.
 
 ## Related Changes
 
-- None yet.
+- PR #61: `feat(search): add SQLite FTS5 fallback and query parser`
+- Implementation hardening: `fix(search): enforce public visibility boundaries` and `fix(search): harden fallback resource boundaries`
 
 ## References
 
