@@ -57,6 +57,7 @@ This topic defines one SQLite-backed search contract for public posts, memos, an
 - FTS results must not enter the existing AI search cache. Successful semantic/enhanced results may continue to use that cache.
 - Public `/search` must continue returning a JSON array with the existing result item fields; no mode/source field may be added.
 - Public tRPC search must always use `draft=false AND public=true`; MCP callers may request unpublished rows only when the MCP session is administrator-authenticated.
+- Public `posts.list` and `memos.list` procedures must enforce `draft=false AND public=true` regardless of compatibility input flags; administrator list procedures retain their existing visibility scope.
 
 ### SHOULD
 
@@ -82,7 +83,7 @@ Supported constructs are `AND`, `OR`, binary `NOT`, parentheses, quoted phrases,
 
 Long searchable leaves use FTS5 `MATCH`; leaves shorter than three Unicode code points use escaped field-aware `LIKE`, preserving the surrounding Boolean AST. A literal retry treats syntax punctuation and invalid operator markers as ordinary text and joins the extracted literals with `AND`.
 
-The parser also applies fixed resource budgets for normalized query length, lexer tokens, AST depth, and bound SQL parameters. A query that exceeds any budget is rejected before compilation; public tRPC/API callers receive `400 BAD_REQUEST`, while internal execution returns an empty constrained predicate rather than retrying the oversized input literally.
+The parser also applies fixed resource budgets for normalized query length, lexer tokens, AST depth, and bound SQL parameters. A query that exceeds any budget is rejected before compilation; public tRPC/API callers receive `400 BAD_REQUEST`, while internal execution returns an empty constrained predicate rather than retrying the oversized input literally. Invalid advanced syntax must re-check the same AST/SQL parameter budget before literal retry.
 
 ### Index lifecycle
 
@@ -95,6 +96,8 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Administrator list search uses the same predicate while preserving draft/private access and existing sort controls.
 - Missing embedding configuration, missing model vectors, or embedding request failure selects the FTS path and skips reranking.
 - Missing or failing rerank configuration/request returns the semantic base result and does not surface a reranker 503.
+- Semantic candidate scans are restricted to eligible rows matching the requested type, model, and visibility scope and are bounded at 10,000 rows; no eligible rows or an over-limit scan selects uncached FTS.
+- Rerank responses must contain the expected count of unique integer indexes within the candidate range; malformed responses return the semantic base result and are logged without a 503.
 - Search suggestion generation remains unchanged; candidate validation calls the shared FTS path directly.
 - Public search procedures cannot override the published-only visibility boundary; MCP requests for unpublished search/list results require administrator authentication.
 
@@ -118,11 +121,15 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Given `"alpha OR beta"`, when the query is executed, then `OR` is literal phrase content, not an operator.
 - Given malformed advanced syntax such as `alpha AND`, an unknown column, or an unterminated quote, when the query is executed, then it is classified as `advanced-invalid` and retried literally without a 400 response.
 - Given a query that exceeds the parser resource budgets, when the public search API is called, then it returns `400 BAD_REQUEST` without literal retry or SQL compilation.
+- Given invalid advanced syntax whose literal retry would exceed the SQL parameter budget, when the query is executed internally, then it returns the constrained empty plan without compiling or executing the oversized retry.
 - Given a two-character Chinese query, when the query is executed, then the controlled `LIKE` path can find matching title/body/tag/slug text.
 - Given a missing embedding model or failed embedding request, when `/api/public/search` is called, then it returns a 200 JSON array from FTS and does not cache that fallback result.
 - Given a configured but unavailable reranker, when enhanced search is called, then it returns the semantic base array rather than a 503.
+- Given an unavailable, malformed, or out-of-range rerank response, when enhanced search is called, then it returns the semantic base array and records a diagnostic.
+- Given no eligible vectors or more than 10,000 eligible vector rows for a semantic query, when search is executed, then it uses uncached FTS without scanning an unbounded vector set.
 - Given a private or draft row, when an administrator searches, then it is eligible under the existing admin permission rules; when a public caller searches, then it is excluded.
 - Given `publishedOnly=false` from an unauthenticated public search or MCP caller, when the request is executed, then unpublished rows are not returned and the MCP request is rejected.
+- Given `published=false` on the public `posts.list` compatibility input, when the request is executed, then private and draft rows remain excluded.
 - Given index drift, when `search-index check` runs, then it exits non-zero with a diagnostic; after `rebuild`, the check passes.
 
 ## Acceptance Checklist
@@ -153,7 +160,7 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 
 ## Visual Evidence
 
-Evidence binding: `9d660949ff3b92a0ed5559e2b2b66135ba8fd3e1` (current implementation head; the Storybook surface is unchanged since capture)
+Evidence binding: `84a0952baa2211d5d59383c3fcfd039097781df7` (current implementation head; the Storybook surface is unchanged since capture)
 
 - source_type: storybook_canvas
   target_program: mock-only

@@ -20,8 +20,10 @@
 - The parser enforces normalized length, lexer token, AST depth, and compiled SQL parameter budgets; public schemas reject over-budget queries with `400 BAD_REQUEST`.
 - Long leaves use bound FTS5 expressions, short leaves use bound field-aware `LIKE`, and short queries still fail if the FTS migration is absent.
 - Semantic embedding failures use uncached FTS; rerank failures preserve the semantic base result.
+- Semantic vector candidates are joined to eligible posts, scoped by type/model/visibility, and capped at 10,000 rows before vector search; empty or over-limit scopes use uncached FTS.
+- Invalid advanced literal retry rechecks the compiled SQL parameter budget, and rerank responses are validated for integer, range, uniqueness, and expected count before enhanced scoring.
 - Dedicated search, public/admin post and memo lists, MCP list filters, and suggestion validation share the compiled predicate.
-- Public tRPC search pins the published-only visibility filter; MCP search and list requests for unpublished rows require administrator authentication.
+- Public tRPC search and public post/memo lists pin the published-only visibility filter; MCP search and list requests for unpublished rows require administrator authentication.
 - Unit, SQLite trigger, cache, embedding fallback, rerank fallback, API, and Storybook scenario tests are in place.
 
 ## Verification

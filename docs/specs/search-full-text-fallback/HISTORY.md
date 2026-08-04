@@ -10,6 +10,7 @@
 - 2026-08-04: Chose literal retry for malformed advanced syntax, preserving a useful search result without passing invalid raw `MATCH` input through.
 - 2026-08-04: Chose FTS fallback for embedding failures, but preserve semantic base results when only reranking is unavailable.
 - 2026-08-04: Kept public tRPC search permanently published-only and made MCP unpublished search/list scopes administrator-only so caller-controlled visibility flags cannot expose draft or private rows.
+- 2026-08-04: Bounded semantic vector candidates to 10,000 eligible rows, rechecked the parameter budget before invalid-query literal retry, and treated malformed rerank indexes as a recoverable semantic-base fallback.
 
 ## Key Reasons / Replacements
 
