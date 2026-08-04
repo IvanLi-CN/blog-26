@@ -56,10 +56,39 @@ function escapeLikeValue(value: string) {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }
 
-function buildLikePredicate(value: string, column?: SearchColumn): SQL {
-  const pattern = `%${escapeLikeValue(value)}%`;
-  const clauses = getSearchColumns(column).map(
-    (searchColumn) => sql`${searchColumn} LIKE ${pattern} ESCAPE ${"\\"}`
+const PREFIX_BOUNDARIES = [
+  " ",
+  "\t",
+  "\n",
+  "\r",
+  "\u3000",
+  "-",
+  "_",
+  "/",
+  ".",
+  ":",
+  ",",
+  ";",
+  "#",
+  "(",
+  "[",
+  "{",
+  '"',
+  "'",
+  "`",
+  "|",
+] as const;
+
+function buildLikePredicate(value: string, column?: SearchColumn, prefix = false): SQL {
+  const escapedValue = escapeLikeValue(value);
+  const patterns = prefix
+    ? [
+        `${escapedValue}%`,
+        ...PREFIX_BOUNDARIES.map((boundary) => `%${escapeLikeValue(`${boundary}${value}`)}%`),
+      ]
+    : [`%${escapedValue}%`];
+  const clauses = getSearchColumns(column).flatMap((searchColumn) =>
+    patterns.map((pattern) => sql`${searchColumn} LIKE ${pattern} ESCAPE ${"\\"}`)
   );
   return sql`(${sql.join(clauses, sql` OR `)})`;
 }
@@ -89,7 +118,7 @@ function buildAstPredicate(ast: SearchQueryAst, scopedColumn?: SearchColumn): SQ
     case "phrase":
     case "prefix":
       return isShortAst(ast)
-        ? buildLikePredicate(getLikeLeafValue(ast), scopedColumn)
+        ? buildLikePredicate(getLikeLeafValue(ast), scopedColumn, ast.kind === "prefix")
         : buildFtsExistsPredicate(ast, scopedColumn);
     case "column":
       return buildAstPredicate(ast.child, ast.column);
@@ -117,7 +146,15 @@ export function buildContentSearchCondition(
   queryOrPlan: string | SearchQueryPlan
 ): SQL | undefined {
   const plan = typeof queryOrPlan === "string" ? parseSearchQuery(queryOrPlan) : queryOrPlan;
-  if (!plan.ast) return plan.query ? sql`0 = 1` : undefined;
+  if (!plan.ast) {
+    return typeof queryOrPlan === "string"
+      ? queryOrPlan.length > 0
+        ? sql`0 = 1`
+        : undefined
+      : plan.query
+        ? sql`0 = 1`
+        : undefined;
+  }
 
   const predicate = buildAstPredicate(plan.ast);
   if (!plan.hasShortLeaf) return predicate;

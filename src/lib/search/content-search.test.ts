@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { db, initializeDB } from "@/lib/db";
 import { posts } from "@/lib/schema";
-import { executeContentSearch, searchContent } from "./content-search";
+import { buildContentSearchCondition, executeContentSearch, searchContent } from "./content-search";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/content-search-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -127,6 +127,13 @@ describe("content search", () => {
       publishDate: 4,
     });
     await seedPost({
+      id: "short-prefix-substring",
+      slug: "short-prefix-substring",
+      title: "Grab a substring candidate",
+      body: "cab is not a prefix match.",
+      publishDate: 7,
+    });
+    await seedPost({
       id: "short-title-newer",
       slug: "short-title-newer",
       title: "搜索标题",
@@ -175,6 +182,14 @@ describe("content search", () => {
 
     const shortPrefixSearch = await searchContent({ q: "ab*", topK: 10 });
     expect(shortPrefixSearch.map((result) => result.slug)).toContain("short-prefix-search");
+    expect(shortPrefixSearch.map((result) => result.slug)).not.toContain("short-prefix-substring");
+
+    const blankSearchCondition = buildContentSearchCondition("   ");
+    const blankSearchRows = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(blankSearchCondition);
+    expect(blankSearchRows).toEqual([]);
 
     const fractionalLimitSearch = await searchContent({ q: "SQLite", topK: 1.5 });
     expect(fractionalLimitSearch).toHaveLength(1);
