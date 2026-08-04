@@ -194,6 +194,75 @@ export const Results: Story = {
   },
 };
 
+export const SimpleAndQuery: Story = {
+  name: "查询语法 / 简单 AND",
+  parameters: {
+    docs: {
+      description: {
+        story: "普通多词查询按 AND 连接所有字面量，展示稳定的结果列表和关键词高亮。",
+      },
+    },
+  },
+  render: () => (
+    <SearchStory initialQuery="Arch Linux" searchedQuery="Arch Linux" items={results} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("textbox", { name: "搜索关键词" })).toHaveValue("Arch Linux");
+    await expect(canvas.getByText("关键词「Arch Linux」 · 找到 3 条内容")).toBeInTheDocument();
+    await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+  },
+};
+
+export const AdvancedQuery: Story = {
+  name: "查询语法 / 高级搜索",
+  parameters: {
+    docs: {
+      description: {
+        story: "受控列过滤和 OR 组合按高级语法执行，视觉上保留原有数组结果结构。",
+      },
+    },
+  },
+  render: () => (
+    <SearchStory
+      initialQuery="title:Arch OR tags:linux"
+      searchedQuery="title:Arch OR tags:linux"
+      items={results}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("textbox", { name: "搜索关键词" })).toHaveValue(
+      "title:Arch OR tags:linux"
+    );
+    await expect(
+      canvas.getByText("关键词「title:Arch OR tags:linux」 · 找到 3 条内容")
+    ).toBeInTheDocument();
+    await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+  },
+};
+
+export const InvalidQueryLiteralRetry: Story = {
+  name: "查询语法 / 无效语法字面量重试",
+  parameters: {
+    docs: {
+      description: {
+        story: "残缺高级语法按字面量重试，页面继续显示搜索结果而不是错误状态。",
+      },
+    },
+  },
+  render: () => (
+    <SearchStory initialQuery="title:Arch AND" searchedQuery="title:Arch AND" items={results} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("textbox", { name: "搜索关键词" })).toHaveValue("title:Arch AND");
+    await expect(canvas.getByText("关键词「title:Arch AND」 · 找到 3 条内容")).toBeInTheDocument();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+  },
+};
+
 export const Initial: Story = {
   name: "初始状态",
   parameters: {

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { clearSearchCache, getCachedSearchResults, getSearchCacheSize } from "./search-cache";
+import {
+  clearSearchCache,
+  getCachedSearchExecution,
+  getCachedSearchResults,
+  getSearchCacheSize,
+} from "./search-cache";
 
 beforeEach(() => {
   clearSearchCache();
@@ -41,4 +46,25 @@ test("search cache keeps distinct search modes separate", async () => {
   expect(semantic).not.toEqual(enhanced);
   expect(loadCount).toBe(2);
   expect(getSearchCacheSize()).toBe(2);
+});
+
+test("does not cache FTS fallback executions", async () => {
+  let loadCount = 0;
+  const load = async () => {
+    loadCount++;
+    return {
+      results: [{ slug: `fallback-${loadCount}` }],
+      source: "fts" as const,
+      cacheable: false,
+    };
+  };
+
+  const first = await getCachedSearchExecution("semantic", { q: "搜索" }, load);
+  const second = await getCachedSearchExecution("semantic", { q: "搜索" }, load);
+
+  expect(first.results).toEqual([{ slug: "fallback-1" }]);
+  expect(second.results).toEqual([{ slug: "fallback-2" }]);
+  expect(first.source).toBe("fts");
+  expect(second.source).toBe("fts");
+  expect(getSearchCacheSize()).toBe(0);
 });

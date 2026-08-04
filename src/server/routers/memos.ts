@@ -24,6 +24,7 @@ import { getContentSourceManager, LocalContentSource } from "../../lib/content-s
 import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-sources/utils";
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
+import { buildContentSearchCondition } from "../../lib/search/content-search";
 import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
@@ -463,7 +464,8 @@ export const memosRouter = router({
 
       // 搜索条件
       if (search) {
-        conditions.push(like(posts.title, `%${search}%`));
+        const searchCondition = buildContentSearchCondition(search);
+        if (searchCondition) conditions.push(searchCondition);
       }
 
       // 标签过滤

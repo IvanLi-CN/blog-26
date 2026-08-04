@@ -1,10 +1,11 @@
-import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
+import { searchContent } from "../search/content-search";
 import { cosineSimilarity, createEmbedding } from "./embeddings";
 import { rerank as rerankApi } from "./rerank";
-import { getCachedSearchResults } from "./search-cache";
+import { getCachedSearchExecution, type SearchCacheLoadResult } from "./search-cache";
 import { buildSearchSnippet } from "./search-snippet";
 
 export type SemanticSearchInput = {
@@ -146,110 +147,65 @@ export function scoreKeywordSearchCandidate(query: string, candidate: KeywordSea
   );
 }
 
-function normalizeKeywordScore(score: number) {
-  if (score <= 0) return undefined;
-  return Math.max(0.12, Math.min(0.98, score / 220));
-}
-
 async function keywordFallback(input: SemanticSearchInput): Promise<SearchResult[]> {
-  const q = input.q.trim();
-  if (!q) return [];
-
-  // Build dynamic condition without using `any` casts
-
-  // 关键字匹配（title/ excerpt/ body）
-  const pattern = `%${q}%`;
-  const matchCond = or(
-    like(posts.title, pattern),
-    like(posts.excerpt, pattern),
-    like(posts.body, pattern)
-  );
-
-  // 发布状态过滤（除非显式传 publishedOnly=false）
-  let condition = matchCond;
-  if (input.publishedOnly !== false) {
-    condition = and(condition, eq(posts.draft, false), eq(posts.public, true));
-  }
-
-  // 类型过滤
-  if (input.type && input.type !== "all") {
-    condition = and(condition, eq(posts.type, input.type));
-  } else {
-    // 仅在搜索时纳入主要类型
-    condition = and(condition, inArray(posts.type, ["post", "memo"]));
-  }
-
-  const rows = await db
-    .select({
-      slug: posts.slug,
-      title: posts.title,
-      excerpt: posts.excerpt,
-      body: posts.body,
-      tags: posts.tags,
-      type: posts.type,
-      publishDate: posts.publishDate,
-    })
-    .from(posts)
-    .where(condition)
-    .orderBy(desc(posts.publishDate))
-    .limit(Math.max(input.topK ?? 50, 200));
-
-  return rows
-    .map((r) => {
-      const score = scoreKeywordSearchCandidate(q, r);
-      return {
-        slug: r.slug,
-        title: r.title,
-        excerpt: r.excerpt,
-        snippet: buildSearchSnippet(q, r),
-        type: r.type === "post" || r.type === "memo" ? r.type : undefined,
-        final: normalizeKeywordScore(score),
-        lexicalScore: score,
-        publishDate: r.publishDate ? String(r.publishDate) : "",
-      };
-    })
-    .filter((r) => r.lexicalScore > 0)
-    .sort((a, b) => {
-      const scoreDiff = b.lexicalScore - a.lexicalScore;
-      if (scoreDiff !== 0) return scoreDiff;
-      return b.publishDate.localeCompare(a.publishDate);
-    })
-    .slice(0, input.topK ?? 50)
-    .map(({ lexicalScore: _lexicalScore, publishDate: _publishDate, ...result }) => result);
+  return searchContent(input);
 }
 
-async function computeSemantic(input: SemanticSearchInput): Promise<SearchResult[]> {
-  const resolved = await getResolvedLlmConfig();
+type SemanticExecution = {
+  results: SearchResult[];
+  source: "semantic" | "fts";
+};
+
+async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExecution> {
+  const fallback = async (): Promise<SemanticExecution> => ({
+    results: await keywordFallback(input),
+    source: "fts",
+  });
+  let resolved: Awaited<ReturnType<typeof getResolvedLlmConfig>>;
+  try {
+    resolved = await getResolvedLlmConfig();
+  } catch {
+    return fallback();
+  }
   const model = input.model || resolved.embedding.model || "BAAI/bge-m3";
 
-  // 若当前模型尚无向量索引，降级为关键字搜索
   try {
     const countRows = await db
       .select({ count: sql<number>`count(*)` })
       .from(postEmbeddings)
-      .where(eq(postEmbeddings.modelName, model));
+      .where(
+        and(eq(postEmbeddings.modelName, model), inArray(postEmbeddings.type, ["post", "memo"]))
+      );
     const hasIndex = (countRows[0]?.count ?? 0) > 0;
     if (!hasIndex) {
-      return keywordFallback(input);
+      return fallback();
     }
   } catch {
-    // 统计失败时，不阻断主流程
+    return fallback();
   }
 
-  // 生成查询向量；失败时也回退到关键字搜索
   let qv: number[];
   try {
     const { vector } = await createEmbedding(input.q, model);
     qv = vector;
   } catch {
-    return keywordFallback(input);
+    return fallback();
   }
-  const _targetTypes = input.type && input.type !== "all" ? [input.type] : ["post", "memo"];
 
-  const eb = await db
-    .select({ slug: postEmbeddings.slug, vector: postEmbeddings.vector })
-    .from(postEmbeddings)
-    .where(eq(postEmbeddings.modelName, model));
+  let eb: Array<{ slug: string; vector: Buffer | null }>;
+  try {
+    eb = (await db
+      .select({ slug: postEmbeddings.slug, vector: postEmbeddings.vector })
+      .from(postEmbeddings)
+      .where(
+        and(eq(postEmbeddings.modelName, model), inArray(postEmbeddings.type, ["post", "memo"]))
+      )) as Array<{
+      slug: string;
+      vector: Buffer | null;
+    }>;
+  } catch {
+    return fallback();
+  }
 
   // 计算每个 slug 的最大 cosine
   const scoreBySlug = new Map<string, number>();
@@ -265,7 +221,13 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SearchResult
 
   // 过滤文章状态
   const slugs = Array.from(scoreBySlug.keys());
-  if (slugs.length === 0) return [];
+  if (slugs.length === 0) return { results: [], source: "semantic" };
+  const targetTypes =
+    input.type && input.type !== "all" ? [input.type] : (["post", "memo"] as const);
+  const postConditions = [inArray(posts.slug, slugs), inArray(posts.type, targetTypes)];
+  if (input.publishedOnly !== false) {
+    postConditions.push(eq(posts.draft, false), eq(posts.public, true));
+  }
   const postsRows = await db
     .select({
       slug: posts.slug,
@@ -277,35 +239,58 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SearchResult
       type: posts.type,
     })
     .from(posts)
-    .where(inArray(posts.slug, slugs));
+    .where(and(...postConditions));
 
-  const results: SearchResult[] = postsRows
-    .filter((p) => (input.publishedOnly !== false ? !p.draft && p.public : true))
-    .filter((p) => (input.type && input.type !== "all" ? p.type === input.type : true))
-    .map((p) => ({
-      slug: p.slug,
-      title: p.title,
-      excerpt: p.excerpt,
-      snippet: buildSearchSnippet(input.q, p),
-      type: p.type === "post" || p.type === "memo" ? p.type : undefined,
-      cosine: scoreBySlug.get(p.slug) ?? 0,
-    }));
+  const results: SearchResult[] = postsRows.map((p) => ({
+    slug: p.slug,
+    title: p.title,
+    excerpt: p.excerpt,
+    snippet: buildSearchSnippet(input.q, p),
+    type: p.type === "post" || p.type === "memo" ? p.type : undefined,
+    cosine: scoreBySlug.get(p.slug) ?? 0,
+  }));
 
   results.sort((a, b) => (b.cosine ?? 0) - (a.cosine ?? 0));
-  return results.slice(0, input.topK ?? 50);
+  return { results: results.slice(0, input.topK ?? 50), source: "semantic" };
+}
+
+async function getSemanticExecution(input: SemanticSearchInput): Promise<SemanticExecution> {
+  const execution = await getCachedSearchExecution("semantic", input, async () => {
+    const execution = await computeSemantic(input);
+    return {
+      results: execution.results,
+      source: execution.source,
+      cacheable: execution.source === "semantic",
+    };
+  });
+  return {
+    results: execution.results,
+    source: execution.source === "fts" ? "fts" : "semantic",
+  };
 }
 
 export async function semantic(input: SemanticSearchInput): Promise<SearchResult[]> {
-  return getCachedSearchResults("semantic", input, () => computeSemantic(input));
+  return (await getSemanticExecution(input)).results;
 }
 
 async function computeEnhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean }
-) {
-  const resolved = await getResolvedLlmConfig();
-  const base = await semantic(input);
+): Promise<SearchCacheLoadResult> {
+  const semanticExecution = await getSemanticExecution(input);
+  const base = semanticExecution.results;
+  if (semanticExecution.source === "fts") {
+    return { results: base, source: "fts", cacheable: false };
+  }
+
+  let resolved: Awaited<ReturnType<typeof getResolvedLlmConfig>>;
+  try {
+    resolved = await getResolvedLlmConfig();
+  } catch {
+    return { results: base, source: "semantic", cacheable: false };
+  }
+
   const shouldRerank = input.rerank !== false && Boolean(resolved.rerank.model);
-  if (!shouldRerank) return base;
+  if (!shouldRerank) return { results: base, source: "semantic", cacheable: true };
 
   const docs = base
     .slice(0, input.rerankTopK ?? 20)
@@ -322,31 +307,29 @@ async function computeEnhanced(
     const alpha = 0.3;
     const beta = Number(process.env.RERANKER_WEIGHT || 0.7);
 
-    return base
-      .map((r, i) => {
-        const rr = items.find((it) => it.index === i)?.score ?? 0;
-        const final = (alpha * ((r.cosine ?? 0) + 1)) / 2 + beta * norm(rr);
-        return { ...r, rerank: rr, final };
-      })
-      .sort((a, b) => (b.final ?? 0) - (a.final ?? 0));
-  } catch (err: unknown) {
-    const hasCode = (e: unknown, code: string): e is { code: string } => {
-      return (
-        typeof e === "object" &&
-        e !== null &&
-        "code" in (e as Record<string, unknown>) &&
-        (e as Record<string, unknown>).code === code
-      );
+    return {
+      results: base
+        .map((r, i) => {
+          const rr = items.find((it) => it.index === i)?.score ?? 0;
+          const final = (alpha * ((r.cosine ?? 0) + 1)) / 2 + beta * norm(rr);
+          return { ...r, rerank: rr, final };
+        })
+        .sort((a, b) => (b.final ?? 0) - (a.final ?? 0)),
+      source: "enhanced",
+      cacheable: true,
     };
-    if (hasCode(err, "RERANKER_UNAVAILABLE")) {
-      throw err; // 由上层返回明确错误
-    }
-    throw err;
+  } catch (err: unknown) {
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? (err as { code?: unknown }).code
+        : "unknown";
+    console.warn("[search] reranker unavailable; using semantic results", { code });
+    return { results: base, source: "semantic", cacheable: false };
   }
 }
 
 export async function enhanced(
   input: SemanticSearchInput & { rerankTopK?: number; rerank?: boolean }
 ) {
-  return getCachedSearchResults("enhanced", input, () => computeEnhanced(input));
+  return (await getCachedSearchExecution("enhanced", input, () => computeEnhanced(input))).results;
 }

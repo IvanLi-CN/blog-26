@@ -3,6 +3,7 @@ import type { SearchResult, SemanticSearchInput } from "./search";
 const DEFAULT_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type SearchCacheMode = "semantic" | "enhanced";
+export type SearchExecutionSource = "semantic" | "fts" | "enhanced";
 type SearchCacheInput = SemanticSearchInput & {
   rerankTopK?: number;
   rerank?: boolean;
@@ -12,6 +13,13 @@ type SearchCacheInput = SemanticSearchInput & {
 type SearchCacheEntry = {
   expiresAt: number;
   results: SearchResult[];
+  source: SearchExecutionSource;
+};
+
+export type SearchCacheLoadResult = {
+  results: SearchResult[];
+  source?: SearchExecutionSource;
+  cacheable?: boolean;
 };
 
 const searchCache = new Map<string, SearchCacheEntry>();
@@ -39,29 +47,60 @@ function buildSearchCacheKey(mode: SearchCacheMode, input: SearchCacheInput) {
   });
 }
 
-export async function getCachedSearchResults(
+export async function getCachedSearchExecution(
   mode: SearchCacheMode,
   input: SearchCacheInput,
-  load: () => Promise<SearchResult[]>
+  load: () => Promise<SearchResult[] | SearchCacheLoadResult>
 ) {
   const key = buildSearchCacheKey(mode, input);
   const now = Date.now();
   const cached = searchCache.get(key);
 
   if (cached && cached.expiresAt > now) {
-    return cached.results.map((result) => ({ ...result }));
+    return {
+      results: cached.results.map((result) => ({ ...result })),
+      source: cached.source,
+    };
   }
 
   if (cached) {
     searchCache.delete(key);
   }
 
-  const results = await load();
-  searchCache.set(key, {
-    expiresAt: now + getSearchCacheTtlMs(),
-    results: results.map((result) => ({ ...result })),
-  });
-  return results;
+  const loaded = await load();
+  const normalized = Array.isArray(loaded)
+    ? {
+        results: loaded,
+        source: mode === "semantic" ? ("semantic" as const) : ("enhanced" as const),
+        cacheable: true,
+      }
+    : {
+        results: loaded.results,
+        source:
+          loaded.source ?? (mode === "semantic" ? ("semantic" as const) : ("enhanced" as const)),
+        cacheable: loaded.cacheable !== false,
+      };
+
+  if (normalized.cacheable) {
+    searchCache.set(key, {
+      expiresAt: now + getSearchCacheTtlMs(),
+      results: normalized.results.map((result) => ({ ...result })),
+      source: normalized.source,
+    });
+  }
+
+  return {
+    results: normalized.results,
+    source: normalized.source,
+  };
+}
+
+export async function getCachedSearchResults(
+  mode: SearchCacheMode,
+  input: SearchCacheInput,
+  load: () => Promise<SearchResult[]>
+) {
+  return (await getCachedSearchExecution(mode, input, load)).results;
 }
 
 export function clearSearchCache() {

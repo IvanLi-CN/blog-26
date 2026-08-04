@@ -10,6 +10,7 @@ import path from "node:path";
 
 const DB_PATH_RELATIVE = process.env.DB_PATH || "./sqlite.db";
 const DB_PATH_ABSOLUTE = path.resolve(process.cwd(), DB_PATH_RELATIVE);
+const SEARCH_INDEX_TABLE = "posts_search_fts";
 
 interface TableInfo {
   name: string;
@@ -17,14 +18,101 @@ interface TableInfo {
 }
 
 // 数据库连接函数
-function connectDatabase(): Database {
+function connectDatabase(readonly = true): Database {
   try {
     console.log(`📁 连接数据库: ${DB_PATH_ABSOLUTE}`);
-    return new Database(DB_PATH_ABSOLUTE, { readonly: true });
+    return new Database(DB_PATH_ABSOLUTE, { readonly });
   } catch (error) {
     console.error("❌ 数据库连接失败:", error);
     process.exit(1);
   }
+}
+
+function getCount(sqlite: Database, query: string): number {
+  return Number((sqlite.query(query).get() as { count?: number } | null)?.count ?? 0);
+}
+
+function checkSearchIndex(sqlite: Database): void {
+  if (!tableExists(sqlite, SEARCH_INDEX_TABLE)) {
+    throw new Error(`${SEARCH_INDEX_TABLE} 不存在，请先运行 bun run migrate`);
+  }
+
+  const eligible = getCount(
+    sqlite,
+    "SELECT COUNT(*) AS count FROM posts WHERE type IN ('post', 'memo')"
+  );
+  const indexed = getCount(sqlite, `SELECT COUNT(*) AS count FROM ${SEARCH_INDEX_TABLE}`);
+  const duplicate = getCount(
+    sqlite,
+    `SELECT COUNT(*) AS count FROM (SELECT post_id FROM ${SEARCH_INDEX_TABLE} GROUP BY post_id HAVING COUNT(*) <> 1)`
+  );
+  const missing = getCount(
+    sqlite,
+    `SELECT COUNT(*) AS count
+     FROM posts AS p
+     LEFT JOIN ${SEARCH_INDEX_TABLE} AS f ON f.post_id = p.id
+     WHERE p.type IN ('post', 'memo') AND f.post_id IS NULL`
+  );
+  const extra = getCount(
+    sqlite,
+    `SELECT COUNT(*) AS count
+     FROM ${SEARCH_INDEX_TABLE} AS f
+     LEFT JOIN posts AS p ON p.id = f.post_id
+     WHERE p.id IS NULL OR p.type NOT IN ('post', 'memo')`
+  );
+  const stale = getCount(
+    sqlite,
+    `SELECT COUNT(*) AS count
+     FROM posts AS p
+     INNER JOIN ${SEARCH_INDEX_TABLE} AS f ON f.post_id = p.id
+     WHERE p.type IN ('post', 'memo')
+       AND (
+         COALESCE(f.type, '') <> COALESCE(p.type, '') OR
+         COALESCE(f.slug, '') <> COALESCE(p.slug, '') OR
+         COALESCE(f.title, '') <> COALESCE(p.title, '') OR
+         COALESCE(f.excerpt, '') <> COALESCE(p.excerpt, '') OR
+         COALESCE(f.body, '') <> COALESCE(p.body, '') OR
+         COALESCE(f.tags, '') <> COALESCE(p.tags, '')
+       )`
+  );
+
+  console.log("🔎 搜索索引检查");
+  console.log(`   可索引内容: ${eligible}`);
+  console.log(`   索引记录: ${indexed}`);
+  console.log(`   缺失: ${missing}`);
+  console.log(`   多余: ${extra}`);
+  console.log(`   重复: ${duplicate}`);
+  console.log(`   过期: ${stale}`);
+
+  if (indexed !== eligible || missing > 0 || extra > 0 || duplicate > 0 || stale > 0) {
+    throw new Error("搜索索引与 posts 不一致，请运行 search-index rebuild");
+  }
+
+  console.log("✅ 搜索索引一致");
+}
+
+function rebuildSearchIndex(sqlite: Database): void {
+  if (!tableExists(sqlite, SEARCH_INDEX_TABLE)) {
+    throw new Error(`${SEARCH_INDEX_TABLE} 不存在，请先运行 bun run migrate`);
+  }
+
+  sqlite.run("BEGIN IMMEDIATE");
+  try {
+    sqlite.run(`DELETE FROM ${SEARCH_INDEX_TABLE}`);
+    sqlite.run(
+      `INSERT INTO ${SEARCH_INDEX_TABLE} (post_id, type, slug, title, excerpt, body, tags)
+       SELECT id, type, slug, title, excerpt, body, tags
+       FROM posts
+       WHERE type IN ('post', 'memo')`
+    );
+    sqlite.run("COMMIT");
+  } catch (error) {
+    sqlite.run("ROLLBACK");
+    throw error;
+  }
+
+  console.log("✅ 搜索索引已重建");
+  checkSearchIndex(sqlite);
 }
 
 // 获取数据库结构
@@ -207,6 +295,8 @@ function printHelp(): void {
   comments    检查评论数据
   users       检查用户数据
   all         显示所有信息
+  search-index check    检查 posts_search_fts 一致性
+  search-index rebuild  显式重建 posts_search_fts
   help        显示此帮助信息
 
 示例:
@@ -214,6 +304,8 @@ function printHelp(): void {
   bun run scripts/db-tools.ts schema    # 显示结构
   bun run scripts/db-tools.ts posts     # 检查文章
   bun run scripts/db-tools.ts all       # 显示所有信息
+  bun run scripts/db-tools.ts search-index check
+  bun run scripts/db-tools.ts search-index rebuild
 
 环境变量:
   DB_PATH     数据库文件路径（默认: ./sqlite.db）
@@ -226,6 +318,27 @@ function main(): void {
 
   if (command === "help" || command === "--help" || command === "-h") {
     printHelp();
+    return;
+  }
+
+  if (command === "search-index") {
+    const action = process.argv[3] || "check";
+    if (action !== "check" && action !== "rebuild") {
+      console.error(`❌ 未知的 search-index 操作: ${action}`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const sqlite = connectDatabase(action !== "rebuild");
+    try {
+      if (action === "check") checkSearchIndex(sqlite);
+      else rebuildSearchIndex(sqlite);
+    } catch (error) {
+      console.error("❌ 搜索索引操作失败:", error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    } finally {
+      sqlite.close();
+    }
     return;
   }
 

@@ -13,6 +13,7 @@ import { db, initializeDB } from "@/lib/db";
 import { formatMarkdownBody } from "@/lib/markdown-format";
 import { buildMemoRelativePath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
+import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { requireAdmin } from "./mcp-auth-context";
 
@@ -374,7 +375,10 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       const offset = (page - 1) * limit;
       const conds: any[] = [eq(postsTable.type, "post")];
       if (published) conds.push(eq(postsTable.draft, false), eq(postsTable.public, true));
-      if (search) conds.push(like(postsTable.title, `%${search}%`));
+      if (search) {
+        const searchCondition = buildContentSearchCondition(search);
+        if (searchCondition) conds.push(searchCondition);
+      }
       if (category) conds.push(eq(postsTable.category, category));
       if (tag) conds.push(like(postsTable.tags, `%${tag}%`));
       const rows = await db
@@ -663,7 +667,10 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
       const input = args as z.infer<typeof listMemosInput>;
       const conds: any[] = [eq(postsTable.type, "memo")];
       if (input.publicOnly) conds.push(eq(postsTable.public, true));
-      if (input.search) conds.push(like(postsTable.title, `%${input.search}%`));
+      if (input.search) {
+        const searchCondition = buildContentSearchCondition(input.search);
+        if (searchCondition) conds.push(searchCondition);
+      }
       if (input.tag) conds.push(like(postsTable.tags, `%${input.tag}%`));
       if (input.cursor) {
         const [cursorDate] = decodeURIComponent(input.cursor).split("_");

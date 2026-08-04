@@ -1,10 +1,11 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { EmbeddingsRepository, type VectorizationStatus } from "@/lib/ai/embeddings-repo";
 import { clearSearchCache } from "@/lib/ai/search-cache";
 import { extractPostDraftFields } from "@/lib/post-body-contract";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
+import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../../lib/db";
 import { type Post as PostRow, posts } from "../../../lib/schema";
@@ -78,13 +79,8 @@ export const adminPostsRouter = createTRPCRouter({
 
       // 搜索条件
       if (search) {
-        conditions.push(
-          or(
-            like(posts.title, `%${search}%`),
-            like(posts.body, `%${search}%`),
-            like(posts.slug, `%${search}%`)
-          )
-        );
+        const searchCondition = buildContentSearchCondition(search);
+        if (searchCondition) conditions.push(searchCondition);
       }
 
       // 状态过滤

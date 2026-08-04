@@ -4,6 +4,7 @@ import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { extractPostDraftFields, normalizePostBody } from "@/lib/post-body-contract";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
+import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../lib/db";
@@ -75,7 +76,8 @@ export const postsRouter = router({
 
       // 搜索条件
       if (search) {
-        conditions.push(like(posts.title, `%${search}%`));
+        const searchCondition = buildContentSearchCondition(search);
+        if (searchCondition) conditions.push(searchCondition);
       }
 
       // 分类过滤

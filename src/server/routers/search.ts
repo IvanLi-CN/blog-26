@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as Search from "@/lib/ai/search";
 import { createTRPCRouter, publicProcedure } from "../trpc";
@@ -30,14 +29,7 @@ export const aiSearchRouter = createTRPCRouter({
       })
     )
     .query(async ({ input }) => {
-      try {
-        return await Search.enhanced(input);
-      } catch (err: any) {
-        if (err?.code === "RERANKER_UNAVAILABLE") {
-          throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "RERANKER_UNAVAILABLE" });
-        }
-        throw err;
-      }
+      return Search.enhanced(input);
     }),
 });
 
