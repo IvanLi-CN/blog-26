@@ -579,6 +579,16 @@ function measureSearchAstBudget(
   }
 }
 
+function getSearchBudgetError(budget: SearchAstBudget) {
+  if (budget.depth > SEARCH_QUERY_LIMITS.maxAstDepth) {
+    return `Search query exceeds AST depth ${SEARCH_QUERY_LIMITS.maxAstDepth}`;
+  }
+  if (budget.sqlParameters > SEARCH_QUERY_LIMITS.maxSqlParameters) {
+    return `Search query exceeds SQL parameter budget ${SEARCH_QUERY_LIMITS.maxSqlParameters}`;
+  }
+  return null;
+}
+
 function limitExceededPlan(query: string, error: string): SearchQueryPlan {
   return {
     query,
@@ -595,6 +605,10 @@ function limitExceededPlan(query: string, error: string): SearchQueryPlan {
 function invalidPlan(query: string, error: string): SearchQueryPlan {
   const literalTerms = collectLiteralTerms(query);
   const ast = buildAndAst(literalTerms);
+  if (ast) {
+    const budgetError = getSearchBudgetError(measureSearchAstBudget(ast));
+    if (budgetError) return limitExceededPlan(query, budgetError);
+  }
   return {
     query,
     mode: "advanced-invalid",
@@ -639,19 +653,8 @@ export function parseSearchQuery(input: string): SearchQueryPlan {
     if (hasShortNearOperand(ast)) {
       return invalidPlan(query, "NEAR operands must contain at least three Unicode code points");
     }
-    const budget = measureSearchAstBudget(ast);
-    if (budget.depth > SEARCH_QUERY_LIMITS.maxAstDepth) {
-      return limitExceededPlan(
-        query,
-        `Search query exceeds AST depth ${SEARCH_QUERY_LIMITS.maxAstDepth}`
-      );
-    }
-    if (budget.sqlParameters > SEARCH_QUERY_LIMITS.maxSqlParameters) {
-      return limitExceededPlan(
-        query,
-        `Search query exceeds SQL parameter budget ${SEARCH_QUERY_LIMITS.maxSqlParameters}`
-      );
-    }
+    const budgetError = getSearchBudgetError(measureSearchAstBudget(ast));
+    if (budgetError) return limitExceededPlan(query, budgetError);
     const literalTerms = getSearchLiteralTerms(ast);
     const mode: SearchQueryMode = scan.hasAdvancedMarker ? "advanced-valid" : "simple";
     return {

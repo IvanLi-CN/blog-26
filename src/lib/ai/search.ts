@@ -157,6 +157,8 @@ type SemanticExecution = {
   source: "semantic" | "fts";
 };
 
+const MAX_SEMANTIC_VECTOR_ROWS = 10_000;
+
 async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExecution> {
   const fallback = async (): Promise<SemanticExecution> => ({
     results: await keywordFallback(input),
@@ -174,20 +176,26 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     return fallback();
   }
   const model = input.model || resolved.embedding.model || "BAAI/bge-m3";
+  const targetTypes =
+    input.type && input.type !== "all" ? [input.type] : (["post", "memo"] as const);
+  const vectorConditions = [
+    eq(postEmbeddings.modelName, model),
+    inArray(postEmbeddings.type, targetTypes),
+    eq(posts.type, postEmbeddings.type),
+    isNotNull(postEmbeddings.vector),
+  ];
+  if (input.publishedOnly !== false) {
+    vectorConditions.push(eq(posts.draft, false), eq(posts.public, true));
+  }
 
   try {
     const countRows = await db
       .select({ count: sql<number>`count(*)` })
       .from(postEmbeddings)
-      .where(
-        and(
-          eq(postEmbeddings.modelName, model),
-          inArray(postEmbeddings.type, ["post", "memo"]),
-          isNotNull(postEmbeddings.vector)
-        )
-      );
-    const hasIndex = (countRows[0]?.count ?? 0) > 0;
-    if (!hasIndex) {
+      .innerJoin(posts, eq(postEmbeddings.slug, posts.slug))
+      .where(and(...vectorConditions));
+    const vectorRowCount = countRows[0]?.count ?? 0;
+    if (vectorRowCount === 0 || vectorRowCount > MAX_SEMANTIC_VECTOR_ROWS) {
       return fallback();
     }
   } catch {
@@ -207,9 +215,8 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     eb = (await db
       .select({ slug: postEmbeddings.slug, vector: postEmbeddings.vector })
       .from(postEmbeddings)
-      .where(
-        and(eq(postEmbeddings.modelName, model), inArray(postEmbeddings.type, ["post", "memo"]))
-      )) as Array<{
+      .innerJoin(posts, eq(postEmbeddings.slug, posts.slug))
+      .where(and(...vectorConditions))) as Array<{
       slug: string;
       vector: Buffer | null;
     }>;
@@ -231,9 +238,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
 
   // 过滤文章状态
   const slugs = Array.from(scoreBySlug.keys());
-  if (slugs.length === 0) return { results: [], source: "semantic" };
-  const targetTypes =
-    input.type && input.type !== "all" ? [input.type] : (["post", "memo"] as const);
+  if (slugs.length === 0) return fallback();
   const postConditions = [inArray(posts.slug, slugs), inArray(posts.type, targetTypes)];
   if (input.publishedOnly !== false) {
     postConditions.push(eq(posts.draft, false), eq(posts.public, true));
@@ -252,6 +257,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
     })
     .from(posts)
     .where(and(...postConditions));
+  if (postsRows.length === 0) return fallback();
 
   const rankedResults = postsRows.map((p) => ({
     id: p.id,

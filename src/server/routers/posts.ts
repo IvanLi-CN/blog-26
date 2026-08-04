@@ -59,7 +59,7 @@ function normalizeTags(raw: unknown): string[] {
 export const postsRouter = router({
   // 获取文章列表
   list: publicProcedure.input(listPostsSchema).query(async ({ input }) => {
-    const { page, limit, search, category, tag, published } = input;
+    const { page, limit, search, category, tag } = input;
     const offset = (page - 1) * limit;
 
     try {
@@ -69,11 +69,8 @@ export const postsRouter = router({
       // 只显示文章类型的内容，排除闪念(memo)和其他类型
       conditions.push(eq(posts.type, "post"));
 
-      // 只显示已发布的文章（除非明确指定）
-      if (published) {
-        conditions.push(eq(posts.draft, false));
-        conditions.push(eq(posts.public, true));
-      }
+      // This is a public procedure; caller input cannot expand its visibility.
+      conditions.push(eq(posts.draft, false), eq(posts.public, true));
 
       // 搜索条件
       if (search) {

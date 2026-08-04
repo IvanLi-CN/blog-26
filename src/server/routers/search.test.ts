@@ -95,5 +95,11 @@ describe("search router visibility", () => {
     } as never);
 
     expect(result.map((entry) => entry.slug)).toEqual([`${marker}-public`]);
+
+    const list = await createCaller().posts.list({
+      search: marker,
+      published: false,
+    });
+    expect(list.posts.map((entry) => entry.slug)).toEqual([`${marker}-public`]);
   });
 });

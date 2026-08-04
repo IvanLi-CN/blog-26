@@ -26,9 +26,12 @@ async function seedPost(
   overrides: Partial<{
     id: string;
     slug: string;
+    type: "post" | "memo";
     title: string;
     excerpt: string | null;
     body: string;
+    draft: boolean;
+    public: boolean;
     vector: [number, number] | null;
     publishDate: number;
   }> = {}
@@ -40,14 +43,14 @@ async function seedPost(
   await db.insert(posts).values({
     id,
     slug,
-    type: "post",
+    type: overrides.type ?? "post",
     title: overrides.title ?? "SQLite semantic result",
     excerpt: overrides.excerpt ?? "A semantic search fixture",
     body: overrides.body ?? "SQLite and embeddings",
     publishDate: overrides.publishDate ?? now,
     updateDate: overrides.publishDate ?? now,
-    draft: false,
-    public: true,
+    draft: overrides.draft ?? false,
+    public: overrides.public ?? true,
     tags: JSON.stringify(["search"]),
     author: "search-test",
     image: null,
@@ -162,6 +165,63 @@ describe("AI search fallback boundaries", () => {
     expect(getSearchCacheSize()).toBe(0);
   });
 
+  test("uses FTS when vectors do not cover the requested type", async () => {
+    await seedPost({
+      id: "type-scoped-post",
+      body: "type scoped fallback",
+      vector: null,
+    });
+    await seedPost({
+      id: "type-scoped-memo",
+      type: "memo",
+      body: "type scoped fallback",
+      vector: [1, 0],
+    });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+
+    let embeddingCalls = 0;
+    globalThis.fetch = mock(async () => {
+      embeddingCalls += 1;
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    }) as unknown as typeof fetch;
+
+    const result = await semantic({ q: "type scoped fallback", type: "post" });
+
+    expect(result.map((entry) => entry.slug)).toEqual(["type-scoped-post"]);
+    expect(embeddingCalls).toBe(0);
+  });
+
+  test("uses FTS when vectors only cover private rows for public search", async () => {
+    await seedPost({
+      id: "visibility-scoped-private",
+      body: "visibility scoped fallback",
+      draft: true,
+      public: false,
+      vector: [1, 0],
+    });
+    await seedPost({
+      id: "visibility-scoped-public",
+      body: "visibility scoped fallback",
+      vector: null,
+    });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+
+    let embeddingCalls = 0;
+    globalThis.fetch = mock(async () => {
+      embeddingCalls += 1;
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    }) as unknown as typeof fetch;
+
+    const result = await semantic({ q: "visibility scoped fallback" });
+
+    expect(result.map((entry) => entry.slug)).toEqual(["visibility-scoped-public"]);
+    expect(embeddingCalls).toBe(0);
+  });
+
   test("orders semantic ties by publish date and id", async () => {
     await seedPost({
       id: "semantic-tie-older-a",
@@ -206,6 +266,27 @@ describe("AI search fallback boundaries", () => {
         return Response.json({ data: [{ embedding: [1, 0] }] });
       }
       return new Response("rerank unavailable", { status: 503 });
+    }) as unknown as typeof fetch;
+
+    const base = await semantic({ q: "SQLite", topK: 5 });
+    const result = await enhanced({ q: "SQLite", topK: 5, rerank: true });
+
+    expect(result).toEqual(base);
+    expect(result[0]?.final).toBeUndefined();
+  });
+
+  test("returns the semantic base when rerank indexes are invalid", async () => {
+    await seedPost();
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.RERANKER_MODEL_NAME = "test-reranker";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/embeddings")) {
+        return Response.json({ data: [{ embedding: [1, 0] }] });
+      }
+      return Response.json({ results: [{ index: 1, relevance_score: 0.9 }] });
     }) as unknown as typeof fetch;
 
     const base = await semantic({ q: "SQLite", topK: 5 });

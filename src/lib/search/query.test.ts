@@ -107,4 +107,17 @@ describe("search query parser", () => {
     expect(nestedPlan.limitExceeded).toBe(true);
     expect(shortPlan.limitExceeded).toBe(true);
   });
+
+  test("rechecks SQL parameter cost for invalid literal retries", () => {
+    const query = `${Array.from(
+      { length: 127 },
+      (_, index) => `${String.fromCodePoint(0x4e00 + index)}x`
+    ).join(" ")} AND`;
+    const plan = parseSearchQuery(query);
+
+    expect(plan.mode).toBe("advanced-invalid");
+    expect(plan.limitExceeded).toBe(true);
+    expect(plan.ast).toBeNull();
+    expect(plan.literalTerms).toEqual([]);
+  });
 });
