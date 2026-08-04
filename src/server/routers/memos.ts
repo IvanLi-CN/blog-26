@@ -25,6 +25,7 @@ import { generateMemoFilename, generateSlugFromPath } from "../../lib/content-so
 import { db } from "../../lib/db";
 import { posts } from "../../lib/schema";
 import { buildContentSearchCondition } from "../../lib/search/content-search";
+import { isSearchQueryWithinBudget } from "../../lib/search/query";
 import { toMsTimestamp } from "../../lib/utils";
 import { adminProcedure, publicProcedure, router } from "../trpc";
 
@@ -388,7 +389,7 @@ export function buildSafeMemoResponse(
 const listMemosSchema = z.object({
   limit: z.number().min(1).max(50).default(10),
   cursor: z.string().optional(), // cursor format: "publishDate_id"
-  search: z.string().optional(),
+  search: z.string().refine(isSearchQueryWithinBudget).optional(),
   tag: z.string().optional(),
   publicOnly: z.boolean().default(true),
 });

@@ -5,6 +5,7 @@ import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
 import { extractPostDraftFields, normalizePostBody } from "@/lib/post-body-contract";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
 import { buildContentSearchCondition } from "@/lib/search/content-search";
+import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import { buildPublicMediaCollection, pickLegacyPublicImage } from "@/server/public-media";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../../lib/db";
@@ -14,7 +15,7 @@ import { publicProcedure, router } from "../trpc";
 const listPostsSchema = z.object({
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(50).default(10),
-  search: z.string().optional(),
+  search: z.string().refine(isSearchQueryWithinBudget).optional(),
   category: z.string().optional(),
   tag: z.string().optional(),
   published: z.boolean().default(true),

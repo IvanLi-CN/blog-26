@@ -17,6 +17,7 @@
 
 - Migration creates and backfills the FTS5 trigram table and maintains it with insert/update/delete/type-transition triggers.
 - `SearchQueryAst` classifies simple, valid advanced, and invalid advanced input; invalid input retries extracted literals with `AND`.
+- The parser enforces normalized length, lexer token, AST depth, and compiled SQL parameter budgets; public schemas reject over-budget queries with `400 BAD_REQUEST`.
 - Long leaves use bound FTS5 expressions, short leaves use bound field-aware `LIKE`, and short queries still fail if the FTS migration is absent.
 - Semantic embedding failures use uncached FTS; rerank failures preserve the semantic base result.
 - Dedicated search, public/admin post and memo lists, MCP list filters, and suggestion validation share the compiled predicate.

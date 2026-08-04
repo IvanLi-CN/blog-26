@@ -4,6 +4,13 @@ export type SearchColumn = (typeof SEARCH_COLUMNS)[number];
 
 export type SearchQueryMode = "simple" | "advanced-valid" | "advanced-invalid";
 
+export const SEARCH_QUERY_LIMITS = {
+  maxCodePoints: 2048,
+  maxTokens: 128,
+  maxAstDepth: 32,
+  maxSqlParameters: 256,
+} as const;
+
 export type SearchQueryAst =
   | { kind: "term"; value: string }
   | { kind: "phrase"; value: string }
@@ -22,6 +29,7 @@ export type SearchQueryPlan = {
   ftsQuery: string | null;
   hasShortLeaf: boolean;
   error?: string;
+  limitExceeded?: boolean;
 };
 
 type Token =
@@ -39,6 +47,7 @@ type ScanResult = {
   tokens: Token[];
   hasAdvancedMarker: boolean;
   error?: string;
+  limitExceeded?: boolean;
 };
 
 const MAX_NEAR_DISTANCE = 64;
@@ -183,11 +192,21 @@ function scanQuery(query: string): ScanResult {
     }
   }
 
+  if (tokens.length > SEARCH_QUERY_LIMITS.maxTokens) {
+    return {
+      tokens,
+      hasAdvancedMarker,
+      error: `Search query exceeds ${SEARCH_QUERY_LIMITS.maxTokens} tokens`,
+      limitExceeded: true,
+    };
+  }
+
   return { tokens, hasAdvancedMarker };
 }
 
 class QueryParser {
   private position = 0;
+  private parenthesisDepth = 0;
 
   constructor(private readonly tokens: Token[]) {}
 
@@ -254,9 +273,14 @@ class QueryParser {
 
     if (token.kind === "lparen") {
       this.consume();
+      this.parenthesisDepth += 1;
+      if (this.parenthesisDepth > SEARCH_QUERY_LIMITS.maxAstDepth) {
+        throw new Error(`Search query exceeds AST depth ${SEARCH_QUERY_LIMITS.maxAstDepth}`);
+      }
       const child = this.parseOr();
       if (this.peek()?.kind !== "rparen") throw new Error("Unclosed parenthesis");
       this.consume();
+      this.parenthesisDepth -= 1;
       return child;
     }
 
@@ -495,6 +519,79 @@ function hasShortNearOperand(ast: SearchQueryAst): boolean {
   }
 }
 
+const SHORT_PREFIX_PARAMETER_COUNT = 21;
+
+type SearchAstBudget = {
+  depth: number;
+  sqlParameters: number;
+};
+
+function measureSearchAstBudget(
+  ast: SearchQueryAst,
+  scopedColumn?: SearchColumn,
+  depth = 1
+): SearchAstBudget {
+  switch (ast.kind) {
+    case "term":
+    case "phrase":
+    case "prefix": {
+      const isShort = Array.from(ast.value.replace(/\s+/gu, "")).length < 3;
+      const columnCount = scopedColumn ? 1 : SEARCH_COLUMNS.length;
+      return {
+        depth,
+        sqlParameters:
+          isShort && ast.kind === "prefix"
+            ? columnCount * SHORT_PREFIX_PARAMETER_COUNT
+            : isShort
+              ? columnCount
+              : 1,
+      };
+    }
+    case "column":
+      return measureSearchAstBudget(ast.child, ast.column, depth + 1);
+    case "near": {
+      const atomBudgets = ast.atoms.map((atom) =>
+        measureSearchAstBudget(atom, scopedColumn, depth + 1)
+      );
+      return {
+        depth: Math.max(depth, ...atomBudgets.map((budget) => budget.depth)),
+        sqlParameters: 1,
+      };
+    }
+    case "and":
+    case "or": {
+      const childBudgets = ast.children.map((child) =>
+        measureSearchAstBudget(child, scopedColumn, depth + 1)
+      );
+      return {
+        depth: Math.max(depth, ...childBudgets.map((budget) => budget.depth)),
+        sqlParameters: childBudgets.reduce((total, budget) => total + budget.sqlParameters, 0),
+      };
+    }
+    case "not": {
+      const includeBudget = measureSearchAstBudget(ast.include, scopedColumn, depth + 1);
+      const excludeBudget = measureSearchAstBudget(ast.exclude, scopedColumn, depth + 1);
+      return {
+        depth: Math.max(includeBudget.depth, excludeBudget.depth, depth),
+        sqlParameters: includeBudget.sqlParameters + excludeBudget.sqlParameters,
+      };
+    }
+  }
+}
+
+function limitExceededPlan(query: string, error: string): SearchQueryPlan {
+  return {
+    query,
+    mode: "advanced-invalid",
+    ast: null,
+    literalTerms: [],
+    ftsQuery: null,
+    hasShortLeaf: false,
+    error,
+    limitExceeded: true,
+  };
+}
+
 function invalidPlan(query: string, error: string): SearchQueryPlan {
   const literalTerms = collectLiteralTerms(query);
   const ast = buildAndAst(literalTerms);
@@ -511,6 +608,13 @@ function invalidPlan(query: string, error: string): SearchQueryPlan {
 
 export function parseSearchQuery(input: string): SearchQueryPlan {
   const query = normalizeQuery(input);
+  if (Array.from(query).length > SEARCH_QUERY_LIMITS.maxCodePoints) {
+    return limitExceededPlan(
+      query,
+      `Search query exceeds ${SEARCH_QUERY_LIMITS.maxCodePoints} Unicode code points`
+    );
+  }
+
   if (!query) {
     return {
       query,
@@ -523,6 +627,9 @@ export function parseSearchQuery(input: string): SearchQueryPlan {
   }
 
   const scan = scanQuery(query);
+  if (scan.limitExceeded) {
+    return limitExceededPlan(query, scan.error ?? "Search query exceeds parser limits");
+  }
   if (scan.error || scan.tokens.some((token) => token.kind === "unsupported")) {
     return invalidPlan(query, scan.error ?? "Unsupported advanced syntax");
   }
@@ -531,6 +638,19 @@ export function parseSearchQuery(input: string): SearchQueryPlan {
     const ast = new QueryParser(scan.tokens).parse();
     if (hasShortNearOperand(ast)) {
       return invalidPlan(query, "NEAR operands must contain at least three Unicode code points");
+    }
+    const budget = measureSearchAstBudget(ast);
+    if (budget.depth > SEARCH_QUERY_LIMITS.maxAstDepth) {
+      return limitExceededPlan(
+        query,
+        `Search query exceeds AST depth ${SEARCH_QUERY_LIMITS.maxAstDepth}`
+      );
+    }
+    if (budget.sqlParameters > SEARCH_QUERY_LIMITS.maxSqlParameters) {
+      return limitExceededPlan(
+        query,
+        `Search query exceeds SQL parameter budget ${SEARCH_QUERY_LIMITS.maxSqlParameters}`
+      );
     }
     const literalTerms = getSearchLiteralTerms(ast);
     const mode: SearchQueryMode = scan.hasAdvancedMarker ? "advanced-valid" : "simple";
@@ -543,6 +663,13 @@ export function parseSearchQuery(input: string): SearchQueryPlan {
       hasShortLeaf: hasShortSearchLeaf(ast),
     };
   } catch (error) {
-    return invalidPlan(query, error instanceof Error ? error.message : "Invalid search syntax");
+    const message = error instanceof Error ? error.message : "Invalid search syntax";
+    return message.startsWith("Search query exceeds")
+      ? limitExceededPlan(query, message)
+      : invalidPlan(query, message);
   }
+}
+
+export function isSearchQueryWithinBudget(input: string) {
+  return !parseSearchQuery(input).limitExceeded;
 }

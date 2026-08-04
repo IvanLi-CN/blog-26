@@ -14,6 +14,7 @@ import { formatMarkdownBody } from "@/lib/markdown-format";
 import { buildMemoRelativePath } from "@/lib/memo-paths";
 import { posts as postsTable } from "@/lib/schema";
 import { buildContentSearchCondition } from "@/lib/search/content-search";
+import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
 import { requireAdmin } from "./mcp-auth-context";
 
@@ -273,7 +274,7 @@ function buildDatedMarkdownPath(basePath: string, title: string): string {
 const listPostsInput = z.object({
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).max(50).default(10),
-  search: z.string().optional(),
+  search: z.string().refine(isSearchQueryWithinBudget).optional(),
   category: z.string().optional(),
   tag: z.string().optional(),
   published: z.boolean().default(true),
@@ -306,7 +307,7 @@ const listMemosInput = z.object({
   limit: z.number().int().min(1).max(50).default(10),
   cursor: z.string().optional(),
   publicOnly: z.boolean().default(true),
-  search: z.string().optional(),
+  search: z.string().refine(isSearchQueryWithinBudget).optional(),
   tag: z.string().optional(),
 });
 const createMemoInput = z.object({
@@ -325,7 +326,7 @@ const updateMemoInput = z.object({
 const deleteMemoInput = z.object({ slug: z.string() });
 
 const semanticInput = z.object({
-  q: z.string().min(1),
+  q: z.string().min(1).refine(isSearchQueryWithinBudget),
   topK: z.number().int().min(1).max(50).default(20),
   type: z.enum(["all", "post", "memo"]).default("all"),
   publishedOnly: z.boolean().default(true),

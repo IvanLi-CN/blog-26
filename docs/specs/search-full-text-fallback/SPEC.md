@@ -50,6 +50,7 @@ This topic defines one SQLite-backed search contract for public posts, memos, an
 - The physical index must contain every row whose `type` is `post` or `memo`; caller-specific visibility and type filters must be applied outside the index.
 - The migration must backfill the index and create triggers for inserts, updates, deletes, and type changes. A migration failure must fail the migration command.
 - User input must be lexed and parsed before it reaches FTS5. Values and `LIKE` patterns must be bound parameters; column identifiers must come from an allowlist.
+- Search input must enforce bounded Unicode length, lexer token count, AST depth, and compiled SQL parameter cost before FTS/`LIKE` compilation; over-budget public requests must return a controlled `400 BAD_REQUEST` and must not enter literal retry.
 - A `simple` query must produce an AST whose literal leaves are joined with `AND`.
 - A valid advanced query must preserve its AST, with `NOT`/`AND` evaluated before `OR` and parentheses taking precedence.
 - Operators inside quotes must remain literal text. Malformed or unsupported advanced syntax must be classified as `advanced-invalid` and retried as literal terms joined by `AND`.
@@ -79,6 +80,8 @@ The parser returns a plan containing the classification, AST, searchable literal
 Supported constructs are `AND`, `OR`, binary `NOT`, parentheses, quoted phrases, `term*`/`"phrase"*`, `slug:`, `title:`, `excerpt:`, `body:`, `tags:`, and `NEAR(atom..., distance)`. `NEAR` operands must be FTS-capable terms or phrases and its distance must be a non-negative bounded integer.
 
 Long searchable leaves use FTS5 `MATCH`; leaves shorter than three Unicode code points use escaped field-aware `LIKE`, preserving the surrounding Boolean AST. A literal retry treats syntax punctuation and invalid operator markers as ordinary text and joins the extracted literals with `AND`.
+
+The parser also applies fixed resource budgets for normalized query length, lexer tokens, AST depth, and bound SQL parameters. A query that exceeds any budget is rejected before compilation; public tRPC/API callers receive `400 BAD_REQUEST`, while internal execution returns an empty constrained predicate rather than retrying the oversized input literally.
 
 ### Index lifecycle
 
@@ -112,6 +115,7 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Given `alpha OR beta gamma`, when the query is executed, then it behaves as `alpha OR (beta AND gamma)` unless parentheses change it.
 - Given `"alpha OR beta"`, when the query is executed, then `OR` is literal phrase content, not an operator.
 - Given malformed advanced syntax such as `alpha AND`, an unknown column, or an unterminated quote, when the query is executed, then it is classified as `advanced-invalid` and retried literally without a 400 response.
+- Given a query that exceeds the parser resource budgets, when the public search API is called, then it returns `400 BAD_REQUEST` without literal retry or SQL compilation.
 - Given a two-character Chinese query, when the query is executed, then the controlled `LIKE` path can find matching title/body/tag/slug text.
 - Given a missing embedding model or failed embedding request, when `/api/public/search` is called, then it returns a 200 JSON array from FTS and does not cache that fallback result.
 - Given a configured but unavailable reranker, when enhanced search is called, then it returns the semantic base array rather than a 503.

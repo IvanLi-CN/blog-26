@@ -11,6 +11,7 @@ import { db, initializeDB } from "@/lib/db";
 import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
+import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -1677,6 +1678,17 @@ public: false
     expect(payload).toEqual(
       expect.arrayContaining([expect.objectContaining({ slug: "fts-public-search" })])
     );
+  });
+
+  it("returns a controlled bad request for an over-budget public search query", async () => {
+    const query = "x".repeat(SEARCH_QUERY_LIMITS.maxCodePoints + 1);
+    const response = await handlePublicApiRequest(
+      buildRequest(`/api/public/search?q=${encodeURIComponent(query)}`),
+      "/search"
+    );
+
+    expect(response.status).toBe(400);
+    expect(await readJson(response)).toEqual(expect.objectContaining({ code: "BAD_REQUEST" }));
   });
 
   it("shares FTS list filtering while preserving public and administrator visibility", async () => {

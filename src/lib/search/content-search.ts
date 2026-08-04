@@ -146,6 +146,7 @@ export function buildContentSearchCondition(
   queryOrPlan: string | SearchQueryPlan
 ): SQL | undefined {
   const plan = typeof queryOrPlan === "string" ? parseSearchQuery(queryOrPlan) : queryOrPlan;
+  if (plan.limitExceeded) return sql`0 = 1`;
   if (!plan.ast) {
     return typeof queryOrPlan === "string"
       ? queryOrPlan.length > 0
@@ -384,6 +385,7 @@ export async function executeContentSearch(
   input: SemanticSearchInput
 ): Promise<ContentSearchExecution> {
   const plan = parseSearchQuery(input.q);
+  if (plan.limitExceeded) return { results: [], source: "fts", plan };
   if (!plan.ast) return { results: [], source: "fts", plan };
 
   const requestedLimit = input.topK ?? 50;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseSearchQuery, renderFts5Query } from "./query";
+import { parseSearchQuery, renderFts5Query, SEARCH_COLUMNS, SEARCH_QUERY_LIMITS } from "./query";
 
 describe("search query parser", () => {
   test("joins ordinary whitespace-separated terms with AND", () => {
@@ -77,5 +77,34 @@ describe("search query parser", () => {
 
     expect(plan.mode).toBe("advanced-invalid");
     expect(plan.error).toContain("NEAR operands");
+  });
+
+  test("rejects over-budget input without literal retry", () => {
+    const plan = parseSearchQuery(
+      Array.from({ length: SEARCH_QUERY_LIMITS.maxTokens + 1 }, () => "term").join(" ")
+    );
+
+    expect(plan.limitExceeded).toBe(true);
+    expect(plan.ast).toBeNull();
+    expect(plan.literalTerms).toEqual([]);
+  });
+
+  test("rejects excessive length, nesting, and short-leaf SQL cost", () => {
+    const longPlan = parseSearchQuery("x".repeat(SEARCH_QUERY_LIMITS.maxCodePoints + 1));
+    const nestedQuery =
+      "(".repeat(SEARCH_QUERY_LIMITS.maxAstDepth + 1) +
+      "term" +
+      ")".repeat(SEARCH_QUERY_LIMITS.maxAstDepth + 1);
+    const nestedPlan = parseSearchQuery(nestedQuery);
+    const shortPlan = parseSearchQuery(
+      Array.from(
+        { length: Math.floor(SEARCH_QUERY_LIMITS.maxSqlParameters / SEARCH_COLUMNS.length) + 1 },
+        () => "搜索"
+      ).join(" ")
+    );
+
+    expect(longPlan.limitExceeded).toBe(true);
+    expect(nestedPlan.limitExceeded).toBe(true);
+    expect(shortPlan.limitExceeded).toBe(true);
   });
 });
