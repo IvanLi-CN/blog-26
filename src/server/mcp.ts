@@ -16,7 +16,7 @@ import { posts as postsTable } from "@/lib/schema";
 import { buildContentSearchCondition } from "@/lib/search/content-search";
 import { isSearchQueryWithinBudget } from "@/lib/search/query";
 import { getPostsByTag, getTagSummaries, groupPostsByTag } from "@/server/services/tag-service";
-import { requireAdmin } from "./mcp-auth-context";
+import { getMcpAuthContext, requireAdmin } from "./mcp-auth-context";
 
 const MCP_CREATED_VIA = "mcp";
 const MCP_UPDATED_VIA = "mcp";
@@ -353,6 +353,12 @@ function ands(conds: any[]) {
   return conds.length ? and(...conds) : undefined;
 }
 
+function requireAdminForUnpublished(publishedOnly: boolean) {
+  if (!publishedOnly && !getMcpAuthContext().isAdmin) {
+    requireAdmin();
+  }
+}
+
 async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
   await initializeDB(false);
   const server = new McpServer(
@@ -373,6 +379,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
         tag,
         published = true,
       } = args as z.infer<typeof listPostsInput>;
+      requireAdminForUnpublished(published);
       const offset = (page - 1) * limit;
       const conds: any[] = [eq(postsTable.type, "post")];
       if (published) conds.push(eq(postsTable.draft, false), eq(postsTable.public, true));
@@ -666,6 +673,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     listMemosInput.shape,
     async (args) => {
       const input = args as z.infer<typeof listMemosInput>;
+      requireAdminForUnpublished(input.publicOnly);
       const conds: any[] = [eq(postsTable.type, "memo")];
       if (input.publicOnly) {
         conds.push(eq(postsTable.draft, false), eq(postsTable.public, true));
@@ -772,6 +780,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
     semanticInput.shape,
     async (args) => {
       const input = args as z.infer<typeof semanticInput>;
+      requireAdminForUnpublished(input.publishedOnly);
       const items = await semanticSearch({
         q: input.q,
         topK: input.topK,
@@ -783,6 +792,7 @@ async function buildConnectedServer<TTransport>(nextTransport: TTransport) {
   );
   server.tool("search_enhanced", "Semantic+rerank search", enhancedInput.shape, async (args) => {
     const input = args as z.infer<typeof enhancedInput>;
+    requireAdminForUnpublished(input.publishedOnly);
     const items = await enhancedSearch({
       q: input.q,
       topK: input.topK,

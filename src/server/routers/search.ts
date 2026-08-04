@@ -14,12 +14,11 @@ export const aiSearchRouter = createTRPCRouter({
         q: searchQueryInput.min(1),
         topK: z.number().min(1).max(100).optional(),
         type: z.enum(["all", "post", "memo"]).optional(),
-        publishedOnly: z.boolean().optional(),
         model: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
-      return Search.semantic(input);
+      return Search.semantic({ ...input, publishedOnly: true });
     }),
 
   enhanced: publicProcedure
@@ -34,7 +33,7 @@ export const aiSearchRouter = createTRPCRouter({
       })
     )
     .query(async ({ input }) => {
-      return Search.enhanced(input);
+      return Search.enhanced({ ...input, publishedOnly: true });
     }),
 });
 
