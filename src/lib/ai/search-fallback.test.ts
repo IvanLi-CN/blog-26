@@ -30,6 +30,7 @@ async function seedPost(
     excerpt: string | null;
     body: string;
     vector: [number, number] | null;
+    publishDate: number;
   }> = {}
 ) {
   if (!db) throw new Error("Database has not been initialised");
@@ -43,8 +44,8 @@ async function seedPost(
     title: overrides.title ?? "SQLite semantic result",
     excerpt: overrides.excerpt ?? "A semantic search fixture",
     body: overrides.body ?? "SQLite and embeddings",
-    publishDate: now,
-    updateDate: now,
+    publishDate: overrides.publishDate ?? now,
+    updateDate: overrides.publishDate ?? now,
     draft: false,
     public: true,
     tags: JSON.stringify(["search"]),
@@ -159,6 +160,38 @@ describe("AI search fallback boundaries", () => {
     expect(result.map((entry) => entry.slug)).toEqual(["failed-embedding-post"]);
     expect(embeddingCalls).toBe(0);
     expect(getSearchCacheSize()).toBe(0);
+  });
+
+  test("orders semantic ties by publish date and id", async () => {
+    await seedPost({
+      id: "semantic-tie-older-a",
+      slug: "semantic-tie-older-a",
+      publishDate: 100,
+    });
+    await seedPost({
+      id: "semantic-tie-older-b",
+      slug: "semantic-tie-older-b",
+      publishDate: 100,
+    });
+    await seedPost({
+      id: "semantic-tie-newer",
+      slug: "semantic-tie-newer",
+      publishDate: 200,
+    });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+    globalThis.fetch = mock(async () =>
+      Response.json({ data: [{ embedding: [1, 0] }] })
+    ) as unknown as typeof fetch;
+
+    const result = await semantic({ q: "SQLite", topK: 10 });
+
+    expect(result.map((entry) => entry.slug)).toEqual([
+      "semantic-tie-newer",
+      "semantic-tie-older-b",
+      "semantic-tie-older-a",
+    ]);
   });
 
   test("returns the semantic base when reranking fails", async () => {

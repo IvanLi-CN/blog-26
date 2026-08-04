@@ -240,6 +240,7 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
   }
   const postsRows = await db
     .select({
+      id: posts.id,
       slug: posts.slug,
       title: posts.title,
       excerpt: posts.excerpt,
@@ -247,21 +248,34 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
       draft: posts.draft,
       public: posts.public,
       type: posts.type,
+      publishDate: posts.publishDate,
     })
     .from(posts)
     .where(and(...postConditions));
 
-  const results: SearchResult[] = postsRows.map((p) => ({
+  const rankedResults = postsRows.map((p) => ({
+    id: p.id,
     slug: p.slug,
     title: p.title,
     excerpt: p.excerpt,
     snippet: buildSearchSnippet(input.q, p),
     type: p.type === "post" || p.type === "memo" ? p.type : undefined,
     cosine: scoreBySlug.get(p.slug) ?? 0,
+    publishDate: p.publishDate,
   }));
 
-  results.sort((a, b) => (b.cosine ?? 0) - (a.cosine ?? 0));
-  return { results: results.slice(0, input.topK ?? 50), source: "semantic" };
+  rankedResults.sort((a, b) => {
+    const cosineDiff = (b.cosine ?? 0) - (a.cosine ?? 0);
+    if (cosineDiff !== 0) return cosineDiff;
+    const publishDateDiff = b.publishDate - a.publishDate;
+    if (publishDateDiff !== 0) return publishDateDiff;
+    return b.id.localeCompare(a.id);
+  });
+
+  const results: SearchResult[] = rankedResults
+    .slice(0, input.topK ?? 50)
+    .map(({ id: _id, publishDate: _publishDate, ...result }) => result);
+  return { results, source: "semantic" };
 }
 
 async function getSemanticExecution(input: SemanticSearchInput): Promise<SemanticExecution> {
