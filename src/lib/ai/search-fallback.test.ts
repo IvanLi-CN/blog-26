@@ -29,7 +29,7 @@ async function seedPost(
     title: string;
     excerpt: string | null;
     body: string;
-    vector: [number, number];
+    vector: [number, number] | null;
   }> = {}
 ) {
   if (!db) throw new Error("Database has not been initialised");
@@ -63,7 +63,7 @@ async function seedPost(
     dim: 2,
     contentHash: "search-test-hash",
     chunkIndex: -1,
-    vector: float32ArrayToBlobBuffer(overrides.vector ?? [1, 0]),
+    vector: overrides.vector === null ? null : float32ArrayToBlobBuffer(overrides.vector ?? [1, 0]),
     errorMessage: null,
     createdAt: now,
     updatedAt: now,
@@ -136,6 +136,29 @@ describe("AI search fallback boundaries", () => {
 
     expect(first.map((result) => result.slug)).toEqual(["fts-fallback-post"]);
     expect(second.map((result) => result.title)).toEqual(["FTS fallback result updated"]);
+  });
+
+  test("uses FTS when the selected model only has failed vector rows", async () => {
+    await seedPost({
+      id: "failed-embedding-post",
+      title: "FTS after embedding failure",
+      vector: null,
+    });
+    process.env.EMBEDDING_MODEL_NAME = "test-embedding";
+    process.env.OPENAI_API_KEY = "search-test-key";
+    process.env.OPENAI_API_BASE_URL = "https://search.example.test";
+
+    let embeddingCalls = 0;
+    globalThis.fetch = mock(async () => {
+      embeddingCalls += 1;
+      return Response.json({ data: [{ embedding: [1, 0] }] });
+    }) as unknown as typeof fetch;
+
+    const result = await semantic({ q: "SQLite" });
+
+    expect(result.map((entry) => entry.slug)).toEqual(["failed-embedding-post"]);
+    expect(embeddingCalls).toBe(0);
+    expect(getSearchCacheSize()).toBe(0);
   });
 
   test("returns the semantic base when reranking fails", async () => {

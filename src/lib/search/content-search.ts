@@ -256,13 +256,15 @@ function scoreSearchLeaf(row: ContentSearchRow, value: string, scopedColumn?: Se
   if (!normalizedValue) return 0;
 
   const columns = scopedColumn ? [scopedColumn] : SEARCH_COLUMNS;
-  return columns.reduce((total, column) => {
+  let score = 0;
+  for (const column of columns) {
     const matches = Math.min(
       4,
       countOccurrences(normalizeText(getSearchFieldValue(row, column)), normalizedValue)
     );
-    return total + matches * SEARCH_FIELD_WEIGHTS[column];
-  }, 0);
+    score += matches * SEARCH_FIELD_WEIGHTS[column];
+  }
+  return score;
 }
 
 function scoreSearchAst(

@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import { db } from "../db";
 import { postEmbeddings, posts } from "../schema";
@@ -180,7 +180,11 @@ async function computeSemantic(input: SemanticSearchInput): Promise<SemanticExec
       .select({ count: sql<number>`count(*)` })
       .from(postEmbeddings)
       .where(
-        and(eq(postEmbeddings.modelName, model), inArray(postEmbeddings.type, ["post", "memo"]))
+        and(
+          eq(postEmbeddings.modelName, model),
+          inArray(postEmbeddings.type, ["post", "memo"]),
+          isNotNull(postEmbeddings.vector)
+        )
       );
     const hasIndex = (countRows[0]?.count ?? 0) > 0;
     if (!hasIndex) {
