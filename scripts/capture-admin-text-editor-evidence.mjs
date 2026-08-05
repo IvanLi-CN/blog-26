@@ -1,7 +1,7 @@
 import { chromium } from "@playwright/test";
 
 const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:62144";
-const OUTPUT_DIR = process.env.OUTPUT_DIR || "docs/specs/sftui-admin-soft-ui-redesign/assets/demo";
+const OUTPUT_DIR = process.env.OUTPUT_DIR || "docs/specs/admin-soft-ui-redesign/assets/demo";
 
 function ensureEnv(name, value) {
   if (!value) {
