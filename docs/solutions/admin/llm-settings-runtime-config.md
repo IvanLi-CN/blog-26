@@ -11,7 +11,7 @@ tags:
   - encryption
 status: "active"
 related_specs:
-  - "docs/specs/2dvb9-admin-llm-settings/SPEC.md"
+  - "docs/specs/admin-llm-settings/SPEC.md"
 symptoms:
   - "AI-backed features read different env variables directly and drift apart at runtime."
   - "Operators cannot safely change models, base URLs, or keys without a restart."
@@ -74,7 +74,7 @@ The project previously let each AI-related module read environment variables dir
 
 # References
 
-- `docs/specs/2dvb9-admin-llm-settings/SPEC.md`
-- `docs/specs/2dvb9-admin-llm-settings/contracts/http-apis.md`
+- `docs/specs/admin-llm-settings/SPEC.md`
+- `docs/specs/admin-llm-settings/contracts/http-apis.md`
 - `/Users/ivan/.codex/worktrees/50d8/blog-25/src/server/services/llm-settings.ts`
 - `/Users/ivan/.codex/worktrees/50d8/blog-25/src/server/services/llm-model-catalog.ts`

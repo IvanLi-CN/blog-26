@@ -137,13 +137,13 @@ The migration creates and backfills `posts_search_fts`, then installs triggers. 
 - Given `published=false` on the public `posts.list` compatibility input, when the request is executed, then private and draft rows remain excluded.
 - Given index drift, when `search-index check` runs, then it exits non-zero with a diagnostic; after `rebuild`, the check passes.
 
-## Acceptance Checklist
+## Acceptance Coverage
 
-- [x] Index schema, backfill, and trigger lifecycle are defined.
-- [x] Query modes, grammar, precedence, invalid retry, and short-word behavior are defined.
-- [x] AI fallback and rerank exception behavior are defined.
-- [x] Public/admin/list interface compatibility is defined.
-- [x] Operational repair and validation commands are defined.
+- Index schema, backfill, and trigger lifecycle are defined.
+- Query modes, grammar, precedence, invalid retry, and short-word behavior are defined.
+- AI fallback and rerank exception behavior are defined.
+- Public/admin/list interface compatibility is defined.
+- Operational repair and validation commands are defined.
 
 ## Quality Gates
 
