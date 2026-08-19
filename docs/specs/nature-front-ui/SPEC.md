@@ -66,6 +66,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - At `438x852` and below the `sm` breakpoint, the query panel prioritizes the title, input, loading state, and result-type controls. The page-title kicker is omitted at every breakpoint so `搜索内容` remains the sole page-purpose label; its descriptive copy and redundant non-loading no-result summary recede on narrow viewports, while the first result surface starts in the first half of the viewport; desktop spacing and the no-keyword exploration state remain unchanged.
 - The search query field uses the shared `nature-input-shell` color surface without an elevated shadow. Its compact 48px search variant uses a visible 1px border, 20px corners, and a 2px focus ring so the field remains recognizable without dominating adjacent controls or results.
 
+### 4.6 Project media
+
+- Project cards and detail heroes use a stable 4:5 poster frame. Repository-provided artwork fills that frame without a color scrim or duplicated title copy.
+- Project detail pages render a social preview only when a repository-provided asset exists. The image keeps its intrinsic ratio and does not reserve a fixed height.
+- A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme; incomplete pairs fall back to the single project asset or the existing generated poster surface.
+
 ## 5. Acceptance criteria
 
 1. `/`, `/posts`, `/posts/[slug]`, `/memos`, `/memos/[slug]`, `/tags`, `/tags/[...tagSegments]`, `/search`, `/about`, and `/projects` render with the Nature design system in `light`, `dark`, and `system`.
@@ -80,6 +86,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 10. Public desktop and touch control density follow the `36px` / `32px` and `44px` contracts respectively without enlarging static status badges.
 11. Public Markdown rendering never depends on a light highlighter stylesheet; dark code blocks retain readable syntax colors, horizontal overflow, and folding behavior.
 12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density.
+13. Project posters render in 4:5 frames without overlay scrims, available social previews render at intrinsic height, and complete light/dark asset pairs follow the resolved public theme.
 
 ## 6. Validation
 
@@ -94,7 +101,27 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ## Visual Evidence
 
-PR: none
+### Project media showcase
+
+- Evidence captured from the local Astro project catalog and detail pages after the final poster and social-preview assets were installed.
+- The project wall uses a stable 4:5 presentation without an overlay scrim. Project detail pages show available social previews at their intrinsic 2:1 ratio, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
+- Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
+
+PR: include
+
+![Project wall dark](./assets/projects-wall-dark.png)
+
+PR: include
+
+![Tavily Hikari detail light](./assets/project-tavily-hikari-light.png)
+
+PR: include
+
+![Tavily Hikari detail dark](./assets/project-tavily-hikari-dark.png)
+
+PR: include
+
+![LoadLynx detail dark](./assets/project-loadlynx-dark.png)
 
 - Evidence captured against local branch `th/nature-front-redesign` on the refreshed Nature frontend worktree state after the width, comment-form, and code-highlighting fixes.
 - Assets stored under `docs/specs/nature-front-ui/assets/`.

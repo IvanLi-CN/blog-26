@@ -16,7 +16,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Mock-only visual contract for the Astro ProjectPoster mobile surface. The compact poster keeps the public mobile shell radius instead of retaining the desktop hero radius.",
+          "Mock-only visual contract for the Astro ProjectPoster mobile surface. The compact poster keeps the public mobile shell radius and the 4:5 project-poster ratio.",
       },
     },
   },
@@ -47,7 +47,7 @@ function ProjectPosterRadiusContract() {
       </article>
       <style>{`
         .project-poster {
-          aspect-ratio: 3 / 4;
+          aspect-ratio: 4 / 5;
           border-color: rgba(156, 190, 170, 0.24);
           background:
             radial-gradient(circle at 14% 12%, rgba(108, 146, 184, 0.24), transparent 30%),
@@ -79,6 +79,8 @@ export const Mobile: Story = {
     const canvas = within(canvasElement);
     const poster = canvas.getByTestId("project-poster-mobile");
     await expect(poster).toBeVisible();
+    const aspectRatio = await poster.evaluate((element) => getComputedStyle(element).aspectRatio);
+    expect(aspectRatio).toBe("4 / 5");
     const borderRadius = await poster.evaluate((element) => getComputedStyle(element).borderRadius);
     expect(borderRadius).toBe("14px");
   },

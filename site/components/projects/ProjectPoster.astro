@@ -52,6 +52,14 @@ const domainStyle = domainStyleMap[project.domain];
 const posterImageSrc = `/projects/posters/${project.slug}.png`;
 const posterImagePath = fileURLToPath(new URL(`../../../public${posterImageSrc}`, import.meta.url));
 const hasPosterImage = existsSync(posterImagePath);
+const themedPosterImages = {
+  light: `/projects/posters/${project.slug}-light.png`,
+  dark: `/projects/posters/${project.slug}-dark.png`,
+};
+const hasThemedPosterImages = Object.values(themedPosterImages).every((src) =>
+  existsSync(fileURLToPath(new URL(`../../../public${src}`, import.meta.url)))
+);
+const hasRenderablePosterImage = hasPosterImage || hasThemedPosterImages;
 ---
 <div
   class={`project-poster ${compact ? "is-compact" : ""} ${aspect === "hero" ? "is-hero" : ""}`}
@@ -70,23 +78,42 @@ const hasPosterImage = existsSync(posterImagePath);
     <span class="project-poster-stack project-poster-stack-b"></span>
   </div>
 
-  {hasPosterImage && (
-    <img
-      class="project-poster-image"
-      src={posterImageSrc}
-      alt={`${project.title} 海报`}
-      loading="lazy"
-      decoding="async"
-    />
+  {hasRenderablePosterImage && (
+    hasThemedPosterImages ? (
+      <>
+        <img
+          class="project-poster-image is-light"
+          src={themedPosterImages.light}
+          alt={`${project.title} 海报`}
+          loading="lazy"
+          decoding="async"
+        />
+        <img
+          class="project-poster-image is-dark"
+          src={themedPosterImages.dark}
+          alt={`${project.title} 海报`}
+          loading="lazy"
+          decoding="async"
+        />
+      </>
+    ) : (
+      <img
+        class="project-poster-image"
+        src={posterImageSrc}
+        alt={`${project.title} 海报`}
+        loading="lazy"
+        decoding="async"
+      />
+    )
   )}
 
-  <div class="project-poster-scrim" aria-hidden="true"></div>
-
-  <div class="project-poster-copy">
-    <p class="project-poster-eyebrow">{poster.eyebrow}</p>
-    {!compact && <div class="project-poster-title">{project.title}</div>}
-    <p class="project-poster-strapline">{poster.strapline}</p>
-  </div>
+  {!hasRenderablePosterImage && (
+    <div class="project-poster-copy">
+      <p class="project-poster-eyebrow">{poster.eyebrow}</p>
+      {!compact && <div class="project-poster-title">{project.title}</div>}
+      <p class="project-poster-strapline">{poster.strapline}</p>
+    </div>
+  )}
 </div>
 
 <style>
@@ -94,22 +121,16 @@ const hasPosterImage = existsSync(posterImagePath);
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    aspect-ratio: 3 / 4;
-    border: 1px solid rgba(var(--nature-border-rgb), 0.2);
+    aspect-ratio: 4 / 5;
     background:
       radial-gradient(circle at 14% 12%, rgba(var(--project-tone-rgb), 0.24), transparent 30%),
       radial-gradient(circle at 88% 14%, rgba(var(--project-glow-rgb), 0.18), transparent 30%),
       linear-gradient(160deg, rgba(var(--project-panel-rgb), 0.96), rgba(var(--project-panel-rgb), 0.82));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 24px 44px rgba(8, 21, 16, 0.16);
+    box-shadow: 0 14px 30px rgba(30, 56, 42, 0.1);
   }
 
-  html[data-ui-theme="dark"] .project-poster {
-    border-color: rgba(var(--nature-border-rgb), 0.16);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 24px 54px rgba(0, 0, 0, 0.3);
+  :global(html[data-ui-theme="dark"]) .project-poster {
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2);
   }
 
   .project-poster.is-hero {
@@ -119,7 +140,6 @@ const hasPosterImage = existsSync(posterImagePath);
 
   .project-poster-fallback,
   .project-poster-image,
-  .project-poster-scrim,
   .project-poster-copy {
     position: absolute;
     inset: 0;
@@ -143,12 +163,16 @@ const hasPosterImage = existsSync(posterImagePath);
     opacity: 1;
   }
 
-  .project-poster-scrim {
-    z-index: 2;
-    background:
-      linear-gradient(180deg, rgba(4, 12, 8, 0.02) 0%, rgba(4, 12, 8, 0.12) 42%, rgba(4, 12, 8, 0.74) 100%),
-      linear-gradient(135deg, rgba(10, 22, 17, 0.46), rgba(10, 22, 17, 0.08) 48%, rgba(10, 22, 17, 0.58));
-    pointer-events: none;
+  .project-poster-image.is-dark {
+    display: none;
+  }
+
+  :global(html[data-ui-theme="dark"]) .project-poster-image.is-light {
+    display: none;
+  }
+
+  :global(html[data-ui-theme="dark"]) .project-poster-image.is-dark {
+    display: block;
   }
 
   .project-poster-copy {

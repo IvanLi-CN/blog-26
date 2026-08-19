@@ -1,0 +1,86 @@
+---
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import type { ProjectCatalogItem } from "../../lib/projects";
+
+interface Props {
+  project: ProjectCatalogItem;
+}
+
+const { project } = Astro.props as Props;
+const socialPreviewSrc = `/projects/social/${project.slug}.png`;
+const socialPreviewPath = fileURLToPath(new URL(`../../../public${socialPreviewSrc}`, import.meta.url));
+const hasSocialPreview = existsSync(socialPreviewPath);
+const themedSocialPreview = {
+  light: `/projects/social/${project.slug}-light.png`,
+  dark: `/projects/social/${project.slug}-dark.png`,
+};
+const hasThemedSocialPreview = Object.values(themedSocialPreview).every((src) =>
+  existsSync(fileURLToPath(new URL(`../../../public${src}`, import.meta.url)))
+);
+const hasRenderableSocialPreview = hasSocialPreview || hasThemedSocialPreview;
+---
+
+{
+  hasRenderableSocialPreview && (
+    <figure class="project-social-preview">
+      {hasThemedSocialPreview ? (
+        <>
+          <img
+            class="project-social-preview-image is-light"
+            src={themedSocialPreview.light}
+            alt={`${project.title} 社交图`}
+            loading="lazy"
+            decoding="async"
+          />
+          <img
+            class="project-social-preview-image is-dark"
+            src={themedSocialPreview.dark}
+            alt={`${project.title} 社交图`}
+            loading="lazy"
+            decoding="async"
+          />
+        </>
+      ) : (
+        <img src={socialPreviewSrc} alt={`${project.title} 社交图`} loading="lazy" decoding="async" />
+      )}
+    </figure>
+  )
+}
+
+<style>
+  .project-social-preview {
+    margin: 0;
+    overflow: hidden;
+    border-radius: var(--nature-radius-lg);
+    box-shadow: 0 14px 30px rgba(30, 56, 42, 0.08);
+  }
+
+  :global(html[data-ui-theme="dark"]) .project-social-preview {
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+  }
+
+  .project-social-preview img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .project-social-preview-image.is-dark {
+    display: none !important;
+  }
+
+  :global(html[data-ui-theme="dark"]) .project-social-preview-image.is-light {
+    display: none !important;
+  }
+
+  :global(html[data-ui-theme="dark"]) .project-social-preview-image.is-dark {
+    display: block !important;
+  }
+
+  @media (max-width: 767px) {
+    .project-social-preview {
+      border-radius: var(--nature-radius-md);
+    }
+  }
+</style>
