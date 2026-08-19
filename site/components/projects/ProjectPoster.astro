@@ -2,6 +2,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { ProjectCatalogItem, ProjectDomain } from "../../lib/projects";
+import { toPublicSitePath } from "../../lib/runtime-urls";
 import "./project-poster-radius.css";
 
 interface Props {
@@ -60,6 +61,11 @@ const hasThemedPosterImages = Object.values(themedPosterImages).every((src) =>
   existsSync(fileURLToPath(new URL(`../../../public${src}`, import.meta.url)))
 );
 const hasRenderablePosterImage = hasPosterImage || hasThemedPosterImages;
+const servedPosterImageSrc = toPublicSitePath(posterImageSrc);
+const servedThemedPosterImages = {
+  light: toPublicSitePath(themedPosterImages.light),
+  dark: toPublicSitePath(themedPosterImages.dark),
+};
 ---
 <div
   class={`project-poster ${compact ? "is-compact" : ""} ${aspect === "hero" ? "is-hero" : ""}`}
@@ -80,27 +86,20 @@ const hasRenderablePosterImage = hasPosterImage || hasThemedPosterImages;
 
   {hasRenderablePosterImage && (
     hasThemedPosterImages ? (
-      <>
-        <img
-          class="project-poster-image is-light"
-          src={themedPosterImages.light}
-          alt={`${project.title} 海报`}
-          loading="lazy"
-          decoding="async"
-        />
-        <img
-          class="project-poster-image is-dark"
-          src={themedPosterImages.dark}
-          alt={`${project.title} 海报`}
-          loading="lazy"
-          decoding="async"
-        />
-      </>
+      <img
+        class="project-poster-image"
+        data-themed-project-image
+        data-light-src={servedThemedPosterImages.light}
+        data-dark-src={servedThemedPosterImages.dark}
+        alt={`${project.title} 项目海报`}
+        loading="lazy"
+        decoding="async"
+      />
     ) : (
       <img
         class="project-poster-image"
-        src={posterImageSrc}
-        alt={`${project.title} 海报`}
+        src={servedPosterImageSrc}
+        alt={`${project.title} 项目海报`}
         loading="lazy"
         decoding="async"
       />
@@ -115,6 +114,23 @@ const hasRenderablePosterImage = hasPosterImage || hasThemedPosterImages;
     </div>
   )}
 </div>
+
+<script>
+  const updateThemedProjectImages = () => {
+    const theme = document.documentElement.dataset.uiTheme === "dark" ? "dark" : "light";
+
+    document.querySelectorAll<HTMLImageElement>("img[data-themed-project-image]").forEach((image) => {
+      const nextSrc = theme === "dark" ? image.dataset.darkSrc : image.dataset.lightSrc;
+      if (nextSrc && image.getAttribute("src") !== nextSrc) image.src = nextSrc;
+    });
+  };
+
+  updateThemedProjectImages();
+  new MutationObserver(updateThemedProjectImages).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-ui-theme"],
+  });
+</script>
 
 <style>
   .project-poster {
@@ -161,18 +177,6 @@ const hasRenderablePosterImage = hasPosterImage || hasThemedPosterImages;
 
   .project-poster-image[src$=".png"] {
     opacity: 1;
-  }
-
-  .project-poster-image.is-dark {
-    display: none;
-  }
-
-  :global(html[data-ui-theme="dark"]) .project-poster-image.is-light {
-    display: none;
-  }
-
-  :global(html[data-ui-theme="dark"]) .project-poster-image.is-dark {
-    display: block;
   }
 
   .project-poster-copy {

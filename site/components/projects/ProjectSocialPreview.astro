@@ -2,6 +2,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { ProjectCatalogItem } from "../../lib/projects";
+import { toPublicSitePath } from "../../lib/runtime-urls";
 
 interface Props {
   project: ProjectCatalogItem;
@@ -19,30 +20,37 @@ const hasThemedSocialPreview = Object.values(themedSocialPreview).every((src) =>
   existsSync(fileURLToPath(new URL(`../../../public${src}`, import.meta.url)))
 );
 const hasRenderableSocialPreview = hasSocialPreview || hasThemedSocialPreview;
+const servedSocialPreviewSrc = toPublicSitePath(socialPreviewSrc);
+const servedThemedSocialPreview = {
+  light: toPublicSitePath(themedSocialPreview.light),
+  dark: toPublicSitePath(themedSocialPreview.dark),
+};
 ---
 
 {
   hasRenderableSocialPreview && (
     <figure class="project-social-preview">
       {hasThemedSocialPreview ? (
-        <>
-          <img
-            class="project-social-preview-image is-light"
-            src={themedSocialPreview.light}
-            alt={`${project.title} 社交图`}
-            loading="lazy"
-            decoding="async"
-          />
-          <img
-            class="project-social-preview-image is-dark"
-            src={themedSocialPreview.dark}
-            alt={`${project.title} 社交图`}
-            loading="lazy"
-            decoding="async"
-          />
-        </>
+        <img
+          class="project-social-preview-image"
+          data-themed-project-image
+          data-light-src={servedThemedSocialPreview.light}
+          data-dark-src={servedThemedSocialPreview.dark}
+          alt={`${project.title} 项目界面与功能概览`}
+          width="1280"
+          height="640"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
-        <img src={socialPreviewSrc} alt={`${project.title} 社交图`} loading="lazy" decoding="async" />
+        <img
+          src={servedSocialPreviewSrc}
+          alt={`${project.title} 项目界面与功能概览`}
+          width="1280"
+          height="640"
+          loading="lazy"
+          decoding="async"
+        />
       )}
     </figure>
   )
@@ -64,18 +72,6 @@ const hasRenderableSocialPreview = hasSocialPreview || hasThemedSocialPreview;
     display: block;
     width: 100%;
     height: auto;
-  }
-
-  .project-social-preview-image.is-dark {
-    display: none !important;
-  }
-
-  :global(html[data-ui-theme="dark"]) .project-social-preview-image.is-light {
-    display: none !important;
-  }
-
-  :global(html[data-ui-theme="dark"]) .project-social-preview-image.is-dark {
-    display: block !important;
   }
 
   @media (max-width: 767px) {

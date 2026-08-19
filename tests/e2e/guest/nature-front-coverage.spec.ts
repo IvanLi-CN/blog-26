@@ -89,7 +89,10 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("heading", { name: "公开入口" })).toBeVisible();
 
     await gotoWithTheme(page, "/projects/loadlynx", "light");
-    await expect(page.locator("main h1").first()).toHaveText("loadlynx");
+    await expect(page.locator("main h1").first()).toHaveText("LoadLynx");
+    await expect(page.locator(".project-poster img")).toHaveCount(1);
+    await expect(page.locator(".project-social-preview img")).toHaveAttribute("width", "1280");
+    await expect(page.locator(".project-social-preview img")).toHaveAttribute("height", "640");
     await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
   });
 
