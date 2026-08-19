@@ -131,7 +131,7 @@ function createLinks(
 export const projectCatalog: ProjectCatalog = [
   {
     slug: "codex-vibe-monitor",
-    title: "codex-vibe-monitor",
+    title: "Codex Vibe Monitor",
     domain: "ai-agent-observability",
     summary:
       "面向 Codex / OpenAI 兼容流量的观测代理与调试入口，用来把 prompt、token、响应链路和故障上下文放到同一个工作台里看清楚。",
@@ -154,7 +154,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "tavily-hikari",
-    title: "tavily-hikari",
+    title: "Tavily Hikari",
     domain: "ai-agent-observability",
     summary:
       "为 Tavily API 做的代理与审计控制台，把 key 池、额度、调用日志和团队入口统一到一个 Rust 服务里。",
@@ -205,7 +205,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "octo-rill",
-    title: "octo-rill",
+    title: "OctoRill",
     domain: "cloud-web-platform",
     summary: "围绕 GitHub 个人活动整理出的阅读与运营工作台，用来集中查看 release、通知和项目流动。",
     description:
@@ -230,7 +230,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "paste-preset",
-    title: "paste-preset",
+    title: "PastePreset",
     domain: "cloud-web-platform",
     summary:
       "一个偏生产力取向的浏览器内图片处理工具，用预设流程把常见裁切、压缩和导出动作收束到同一界面。",
@@ -255,7 +255,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "blog-26",
-    title: "blog-26",
+    title: "Ivan's Blog",
     domain: "cloud-web-platform",
     summary:
       "当前公开博客的开源镜像版本：Astro 前台、Admin SPA、Bun gateway 和内容快照导出都在同一仓里协作。",
@@ -278,7 +278,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "loadlynx",
-    title: "loadlynx",
+    title: "LoadLynx",
     domain: "hardware-product",
     summary: "便携式电子负载整机，围绕 STM32G431 与 ESP32-S3 做量测、控制与联网能力整合。",
     description:
@@ -306,7 +306,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "mains-aegis",
-    title: "mains-aegis",
+    title: "Mains Aegis",
     domain: "hardware-product",
     summary:
       "一套面向 HomeLab 和设备供电场景的 UPS 产品尝试，把供电、检测、策略控制和用户入口合到同一体系内。",
@@ -362,7 +362,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "tuckmark",
-    title: "tuckmark",
+    title: "Tuckmark",
     domain: "device-control-foundation",
     summary:
       "面向标签打印和代理流程的控制平面，把打印任务、设备入口与自动化工作流捏成一个轻量操作台。",
@@ -387,7 +387,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "flux-purr",
-    title: "flux-purr",
+    title: "Flux Purr",
     domain: "device-control-foundation",
     summary:
       "设备侧 monorepo 基座，把固件、React 控制台和本地 devd 接口摆在同一开发体系内，降低设备产品的多端割裂感。",
@@ -410,7 +410,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "iso-usb-hub",
-    title: "iso-usb-hub",
+    title: "ISO USB Hub",
     domain: "device-control-foundation",
     summary:
       "围绕四口 USB Hub 控制面展开的设备软件项目，负责端口、电源与设备侧能力的可见化与可控化。",
@@ -458,7 +458,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "dockrev",
-    title: "dockrev",
+    title: "Dockrev",
     domain: "self-hosted-infra",
     summary: "一个面向 Docker / Compose 自托管环境的更新与运维助手，帮助梳理版本、容器和维护动作。",
     description:

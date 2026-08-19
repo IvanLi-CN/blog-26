@@ -3,6 +3,7 @@ import Icon from "@/components/ui/Icon";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import ProjectExternalLinks from "../../components/projects/ProjectExternalLinks.astro";
 import ProjectPoster from "../../components/projects/ProjectPoster.astro";
+import ProjectSocialPreview from "../../components/projects/ProjectSocialPreview.astro";
 import {
   getProjectBySlug,
   getProjectCanonicalUrl,
@@ -88,7 +89,7 @@ const structuredData = {
             <ProjectExternalLinks links={project.links} />
           </div>
 
-          <div class="max-w-[18rem] justify-self-start lg:justify-self-end">
+          <div class="w-full max-w-[18rem] justify-self-start lg:justify-self-end">
             <ProjectPoster project={project} compact={true} />
           </div>
         </div>
@@ -96,6 +97,8 @@ const structuredData = {
 
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.6fr)] lg:gap-8">
         <div class="space-y-6">
+          <ProjectSocialPreview project={project} />
+
           <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
             <div class="flex items-center gap-3">
               <Icon name="tabler:sparkles" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" />

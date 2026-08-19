@@ -3,4 +3,5 @@
 - 2026-04-05: The Nature redesign topic was created.
 - 2026-04-06 through 2026-06-19: Visual, responsive, search, timeline, hydration, and memo-detail decisions were added under the same public design contract.
 - 2026-07-31 through 2026-08-02: Mobile density, code surfaces, navigation, and query hydration were hardened.
+- 2026-08-19: Project posters and social previews moved to repository-owned media, including intrinsic social-preview sizing and theme-aware asset pairs.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

@@ -89,8 +89,34 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("heading", { name: "公开入口" })).toBeVisible();
 
     await gotoWithTheme(page, "/projects/loadlynx", "light");
-    await expect(page.locator("main h1").first()).toHaveText("loadlynx");
+    await expect(page.locator("main h1").first()).toHaveText("LoadLynx");
+    const poster = page.locator(".project-poster");
+    const posterImage = poster.locator("img");
+    const socialPreviewImage = page.locator(".project-social-preview img");
+    await expect(posterImage).toHaveCount(1);
+    await expect(posterImage).toHaveAttribute("src", /loadlynx-light\.png$/);
+    await expect(poster).toHaveCSS("aspect-ratio", "4 / 5");
+    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light\.png$/);
+    await expect(socialPreviewImage).toHaveAttribute("width", "1280");
+    await expect(socialPreviewImage).toHaveAttribute("height", "640");
+    await expect
+      .poll(() =>
+        socialPreviewImage.evaluate(
+          (image: HTMLImageElement) => image.complete && image.naturalWidth > 0
+        )
+      )
+      .toBe(true);
+    await page.evaluate(() => {
+      document.documentElement.dataset.uiTheme = "dark";
+    });
+    await expect(posterImage).toHaveAttribute("src", /loadlynx-dark\.png$/);
+    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-dark\.png$/);
     await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
+
+    await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
+    await expect(page.locator(".project-poster img")).toHaveCount(0);
+    await expect(page.locator(".project-poster-copy")).toBeVisible();
+    await expect(page.locator(".project-social-preview")).toHaveCount(0);
   });
 
   test("mobile detail reading measure does not apply a second horizontal gutter", async ({
