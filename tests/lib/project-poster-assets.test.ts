@@ -49,6 +49,26 @@ test("project poster generator emits responsive assets and an inline preview", a
     expect(verification.variants).toHaveLength(16);
     expect(verification.priorityTransfers.avif).toBeLessThanOrEqual(750 * 1024);
     expect(verification.priorityTransfers.webp).toBeLessThanOrEqual(1050 * 1024);
+
+    const leakedPngDir = join(outputDir, "legacy");
+    await mkdir(leakedPngDir, { recursive: true });
+    await sharp({
+      create: {
+        width: 32,
+        height: 32,
+        channels: 3,
+        background: { r: 0, g: 0, b: 0 },
+      },
+    })
+      .png()
+      .toFile(join(leakedPngDir, "source.PNG"));
+
+    await expect(
+      verifyProjectPosterAssets({ sourceDir, publicDir: outputDir, distDir: null })
+    ).rejects.toThrow(/Raw PNG poster/);
+    await expect(
+      generateProjectPosterAssets({ sourceDir, outputDir, manifestPath })
+    ).rejects.toThrow(/Raw PNG poster/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -39,9 +39,17 @@ function defaultOptions(): Required<Omit<VerifyProjectPosterAssetsOptions, "dist
 }
 
 async function assertNoRawPng(directory: string) {
-  const entries = await readdir(directory);
-  const png = entries.find((entry) => extname(entry) === ".png");
-  if (png) throw new Error(`Raw PNG poster found in ${directory}: ${png}`);
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const entryPath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await assertNoRawPng(entryPath);
+      continue;
+    }
+    if (entry.isFile() && extname(entry.name).toLowerCase() === ".png") {
+      throw new Error(`Raw PNG poster found in ${directory}: ${entry.name}`);
+    }
+  }
 }
 
 async function assertVariant(

@@ -112,7 +112,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ### Project media showcase
 
 - Evidence captured from the local Astro project catalog and detail pages after the final poster and social-preview assets were installed.
-- The project wall uses a stable 4:5 presentation without an overlay scrim. Project detail pages show available social previews at their intrinsic 2:1 ratio, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
+- The project wall uses a stable 4:5 presentation: catalog cards retain their fallback copy layer, while detail-page posters display the supplied artwork without an overlay or added copy. Project detail pages show available social previews at their intrinsic 2:1 ratio, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
 - Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
 
 PR: include

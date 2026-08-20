@@ -84,10 +84,18 @@ export function generatedProjectPosterFileName(
 }
 
 async function assertNoPublicSourcePng(outputDir: string) {
-  const entries = await readdir(outputDir).catch(() => [] as string[]);
-  const sourcePng = entries.find((entry) => extname(entry) === ".png");
-  if (sourcePng) {
-    throw new Error(`Raw PNG poster must not remain in ${outputDir}: ${sourcePng}`);
+  const entries = await readdir(outputDir, { withFileTypes: true }).catch(
+    () => [] as Awaited<ReturnType<typeof readdir>>
+  );
+  for (const entry of entries) {
+    const entryPath = join(outputDir, entry.name);
+    if (entry.isDirectory()) {
+      await assertNoPublicSourcePng(entryPath);
+      continue;
+    }
+    if (entry.isFile() && extname(entry.name).toLowerCase() === ".png") {
+      throw new Error(`Raw PNG poster must not remain in ${outputDir}: ${entry.name}`);
+    }
   }
 }
 
