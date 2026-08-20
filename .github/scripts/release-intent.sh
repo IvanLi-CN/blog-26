@@ -112,7 +112,7 @@ fi
 
 if [[ "${branch_head_sha}" != "${sha}" ]]; then
   is_latest_branch_head="false"
-  echo "release-intent: non-head commit on ${target_branch}; continue with commit-level intent resolution"
+  emit_failure "release_head_must_match_current_${target_branch}"
 fi
 
 pulls_json=""

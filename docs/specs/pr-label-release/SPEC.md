@@ -62,7 +62,13 @@ Major-version compatibility rule:
 - when only one component releases, its computed major must match the latest stable major of the other component
 - therefore, single-component releases are limited to changes that stay within the already-published shared major
 
-### 4.3 Release outputs
+### 4.3 Mainline source contract
+
+- The release workflow only accepts the exact current `main` head SHA as its release source.
+- `workflow_run` releases use the completed `main` push SHA; manual `workflow_dispatch` requires the same current `main` head SHA as input.
+- A stale or non-main SHA fails in `prepare` before any tag, release artifact, container image, or Pages deployment is created. Each release side effect rechecks the same source immediately before publishing.
+
+### 4.4 Release outputs
 
 Frontend release:
 
@@ -89,7 +95,7 @@ Unified Docker image release:
   - additionally publish `ghcr.io/<repo>:latest` only for stable releases whose commit is still the current `main` head
   - never publish `backend-*` image tags
 
-### 4.4 Frontend content source contract
+### 4.5 Frontend content source contract
 
 - CI fetches a content bundle from `PUBLIC_CONTENT_BUNDLE_URL`
 - the bundle must contain `public-snapshot.json` (directly or inside an archive)
@@ -97,17 +103,17 @@ Unified Docker image release:
 - public runtime API/file URLs inside the static site are rewritten against `PUBLIC_API_BASE_URL`, which must be configured to the live backend origin
 - Docker image builds must receive a preloaded `site/generated/public-snapshot.json` or fetch one from `PUBLIC_CONTENT_BUNDLE_URL`; they must fail fast instead of falling back to an empty local DB when the snapshot is missing
 
-### 4.5 Docker runtime contract
+### 4.6 Docker runtime contract
 
 - The unified Docker image contains `site-dist`, backend runtime bundle, and `admin-dist`
 - The Docker container must not run public-site SSG at startup
 - Production health reports public-site status as `ok` with `site.mode=static`
 - Public-page routes such as `/` and `/posts` are served by the Docker image from `site-dist`
 
-### 4.6 PR release receipt comment contract
+### 4.7 PR release receipt comment contract
 
 - Every successful release run for a merged PR upserts exactly one managed PR issue comment as the release receipt.
-- The managed comment is keyed by repository + PR number through an HTML marker and must be updated in place on rerun or `workflow_dispatch` backfill instead of appending a new history comment.
+- The managed comment is keyed by repository + PR number through an HTML marker and must be updated in place on rerun or `workflow_dispatch` for the current `main` head instead of appending a new history comment.
 - The receipt body must include:
   - PR number + URL
   - release `head_sha`
@@ -147,6 +153,7 @@ Unified Docker image release:
    - `/api/public/*` stays available
    - `/posts` is served by the unified Docker image
 7. Add a dedicated release-receipt comment step that consumes `prepare` outputs as the only source of receipt truth and upserts the managed PR comment through the issue-comments API.
+8. Require the release source SHA to equal the current `main` head before resolving release intent or publishing any output.
 
 ## 6. Acceptance criteria
 
@@ -177,6 +184,7 @@ Unified Docker image release:
    - the comment is omitted when any expected publish job fails or when release intent is skipped
    - `Pages` is reported as `deployed` or explicit `skipped`, not guessed from release intent alone
    - receipt permission/API failures are reported as non-blocking summary states and do not mark the release run itself failed
+7. A manual dispatch or delayed release run for a stale or non-main SHA fails before it can publish an artifact, tag, image, or Pages deployment.
 
 ## 7. Risks and rollback
 

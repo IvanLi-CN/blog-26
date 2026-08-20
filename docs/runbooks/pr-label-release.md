@@ -51,7 +51,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 1. `CI/CD Pipeline` runs on PR and push.
 2. `release.yml` triggers on successful `workflow_run` for `main`.
-3. `prepare` resolves release intent by the triggering commit SHA, even when `main` has already moved forward.
+3. `prepare` accepts only the current `main` head SHA. A manual dispatch must provide that exact SHA; a stale or non-main SHA fails before release intent, tag creation, artifact publishing, image publishing, or Pages deployment. Each publish side effect rechecks the same `main` head immediately before it runs.
 4. `prepare` verifies no post-merge mutations on release labels (`type:*` / `channel:*` / `release:*`), then resolves release intent from merged PR labels.
 5. If `should_release=false`, workflow exits with summary only.
 6. If `release:frontend` is present, the workflow:
@@ -73,7 +73,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 ## PR release receipt comment
 
 - A successful release run keeps exactly one managed PR comment as the release receipt.
-- Reruns and manual `workflow_dispatch` backfills update the same comment instead of creating a new one.
+- Reruns and manual `workflow_dispatch` runs for the current `main` head update the same comment instead of creating a new one.
 - The receipt includes:
   - PR link
   - release `head_sha`
@@ -143,6 +143,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 ### Release failed in `prepare`
 
 - Common failure reasons:
+  - `release_head_must_match_current_main`
   - `invalid_label_count(...)`
   - `unknown_label(...)`
   - `post_merge_label_mutation(...)`
