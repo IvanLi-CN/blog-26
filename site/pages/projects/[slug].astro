@@ -90,7 +90,13 @@ const structuredData = {
           </div>
 
           <div class="w-full max-w-[18rem] justify-self-start lg:justify-self-end">
-            <ProjectPoster project={project} compact={true} />
+            <ProjectPoster
+              project={project}
+              compact={true}
+              showOverlay={false}
+              priority={true}
+              fetchPriority="high"
+            />
           </div>
         </div>
       </header>

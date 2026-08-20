@@ -94,7 +94,14 @@ test.describe("Nature frontend public coverage", () => {
     const posterImage = poster.locator("img");
     const socialPreviewImage = page.locator(".project-social-preview img");
     await expect(posterImage).toHaveCount(1);
-    await expect(posterImage).toHaveAttribute("src", /loadlynx-light\.png$/);
+    await expect(posterImage).toHaveAttribute("src", /loadlynx-light-960\.webp$/);
+    await expect(posterImage).toHaveAttribute("srcset", /loadlynx-light-480\.webp 480w/);
+    await expect(poster.locator('source[type="image/avif"]')).toHaveAttribute(
+      "srcset",
+      /loadlynx-light-480\.avif 480w/
+    );
+    await expect(posterImage).toHaveAttribute("loading", "eager");
+    await expect(posterImage).toHaveAttribute("fetchpriority", "high");
     await expect(poster).toHaveCSS("aspect-ratio", "4 / 5");
     await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light\.png$/);
     await expect(socialPreviewImage).toHaveAttribute("width", "1280");
@@ -109,14 +116,69 @@ test.describe("Nature frontend public coverage", () => {
     await page.evaluate(() => {
       document.documentElement.dataset.uiTheme = "dark";
     });
-    await expect(posterImage).toHaveAttribute("src", /loadlynx-dark\.png$/);
+    await expect(posterImage).toHaveAttribute("src", /loadlynx-dark-960\.webp$/);
+    await expect(posterImage).toHaveAttribute("srcset", /loadlynx-dark-480\.webp 480w/);
     await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-dark\.png$/);
     await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
 
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
     await expect(page.locator(".project-poster img")).toHaveCount(0);
-    await expect(page.locator(".project-poster-copy")).toBeVisible();
+    await expect(page.locator(".project-poster-copy")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Codex Vibe Monitor" })).toBeVisible();
     await expect(page.locator(".project-social-preview")).toHaveCount(0);
+  });
+
+  test("project posters provide progressive media and first-row priority", async ({ page }) => {
+    await gotoWithTheme(page, "/projects", "light");
+
+    const posters = page.locator(".project-poster");
+    const posterImages = page.locator("img[data-project-poster-image]");
+    const eagerPosters = page.locator('img[data-project-poster-image][loading="eager"]');
+    const lazyPosters = page.locator('img[data-project-poster-image][loading="lazy"]');
+    const kaisouPoster = posters
+      .filter({ has: page.getByRole("img", { name: "KaisouMail 项目海报" }) })
+      .first();
+    const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
+
+    await expect(posterImages).toHaveCount(8);
+    await expect(eagerPosters).toHaveCount(3);
+    await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
+    await expect(eagerPosters.nth(1)).toHaveAttribute("fetchpriority", "auto");
+    await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
+    await expect(lazyPosters).toHaveCount(5);
+    await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
+    await expect(kaisouPoster.locator(".project-poster-copy")).toBeVisible();
+    await expect(kaisouPoster.locator('source[type="image/avif"]')).toHaveAttribute(
+      "srcset",
+      /kaisoumail-480\.avif 480w/
+    );
+    await expect(kaisouPoster.locator('source[type="image/webp"]')).toHaveAttribute(
+      "srcset",
+      /kaisoumail-480\.webp 480w/
+    );
+    await expect(kaisouImage).toHaveAttribute("src", /kaisoumail-960\.webp$/);
+    await expect(kaisouImage).toHaveClass(/is-loaded/);
+  });
+
+  test("project poster preserves its fallback when image delivery fails", async ({ page }) => {
+    await page.route(/\/projects\/posters\/kaisoumail-(480|960)\.(avif|webp)$/, (route) =>
+      route.abort()
+    );
+    await gotoWithTheme(page, "/projects/kaisoumail", "light");
+
+    const poster = page.locator(".project-poster");
+    const image = poster.locator("img[data-project-poster-image]");
+    await expect(poster.locator(".project-poster-fallback")).toBeVisible();
+    await expect(poster.locator(".project-poster-copy")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "KaisouMail" })).toBeVisible();
+    await expect(image).toHaveClass(/is-error/);
+  });
+
+  test("project poster disables the reveal transition for reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await gotoWithTheme(page, "/projects/kaisoumail", "dark");
+
+    await expect(page.locator(".project-poster-image")).toHaveCSS("transition-duration", "0s");
   });
 
   test("mobile detail reading measure does not apply a second horizontal gutter", async ({

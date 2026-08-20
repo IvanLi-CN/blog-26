@@ -56,6 +56,31 @@ const servedThemedSocialPreview = {
   )
 }
 
+<script>
+  const themedSocialPreviewSelector = "img[data-themed-project-image]";
+
+  const updateThemedSocialPreviews = () => {
+    const theme = document.documentElement.dataset.uiTheme === "dark" ? "dark" : "light";
+
+    document.querySelectorAll<HTMLImageElement>(themedSocialPreviewSelector).forEach((image) => {
+      if (image.dataset.projectSocialTheme === theme) return;
+
+      const source = theme === "dark" ? image.dataset.darkSrc : image.dataset.lightSrc;
+      if (!source) return;
+
+      image.dataset.projectSocialTheme = theme;
+      image.src = source;
+    });
+  };
+
+  updateThemedSocialPreviews();
+  document.addEventListener("astro:page-load", updateThemedSocialPreviews);
+  new MutationObserver(updateThemedSocialPreviews).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-ui-theme"],
+  });
+</script>
+
 <style>
   .project-social-preview {
     margin: 0;

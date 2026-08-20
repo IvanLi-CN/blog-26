@@ -2,6 +2,10 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import ProjectPoster from "../../components/projects/ProjectPoster.astro";
 import { getGroupedProjectCatalog, getProjectDetailPath, projectCatalog } from "../../lib/projects";
+import {
+  isPrimaryProjectPosterPriority,
+  isProjectPosterPriority,
+} from "../../lib/project-poster-media";
 import { getSnapshot } from "../../lib/public-site";
 import { toPublicSitePath } from "../../lib/runtime-urls";
 
@@ -63,7 +67,12 @@ const groupedProjects = getGroupedProjectCatalog();
                     aria-label={`查看 ${project.title} 项目案例`}
                   >
                     <div class="projects-poster-visual">
-                      <ProjectPoster project={project} compact={true} />
+                      <ProjectPoster
+                        project={project}
+                        compact={true}
+                        priority={isProjectPosterPriority(project.slug)}
+                        fetchPriority={isPrimaryProjectPosterPriority(project.slug) ? "high" : "auto"}
+                      />
                     </div>
                     <h3 class="projects-poster-title">
                       {project.title}

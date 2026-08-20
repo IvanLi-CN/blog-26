@@ -1,17 +1,31 @@
 ---
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import type { ProjectCatalogItem, ProjectDomain } from "../../lib/projects";
+import type { ProjectPosterAsset } from "../../lib/project-poster-media";
+import { projectPosterFormats, projectPosterWidths } from "../../lib/project-poster-media";
 import { toPublicSitePath } from "../../lib/runtime-urls";
+import {
+  projectPosterAssets,
+  projectPosterThemedAssets,
+} from "../../generated/project-poster-assets";
 import "./project-poster-radius.css";
 
 interface Props {
   project: ProjectCatalogItem;
   compact?: boolean;
   aspect?: "poster" | "hero";
+  showOverlay?: boolean;
+  priority?: boolean;
+  fetchPriority?: "auto" | "high";
 }
 
-const { project, compact = false, aspect = "poster" } = Astro.props as Props;
+const {
+  project,
+  compact = false,
+  aspect = "poster",
+  showOverlay = true,
+  priority = false,
+  fetchPriority = "auto",
+} = Astro.props as Props;
 
 const domainStyleMap: Record<
   ProjectDomain,
@@ -50,26 +64,29 @@ const domainStyleMap: Record<
 
 const poster = project.poster;
 const domainStyle = domainStyleMap[project.domain];
-const posterImageSrc = `/projects/posters/${project.slug}.png`;
-const posterImagePath = fileURLToPath(new URL(`../../../public${posterImageSrc}`, import.meta.url));
-const hasPosterImage = existsSync(posterImagePath);
-const themedPosterImages = {
-  light: `/projects/posters/${project.slug}-light.png`,
-  dark: `/projects/posters/${project.slug}-dark.png`,
-};
-const hasThemedPosterImages = Object.values(themedPosterImages).every((src) =>
-  existsSync(fileURLToPath(new URL(`../../../public${src}`, import.meta.url)))
-);
-const hasRenderablePosterImage = hasPosterImage || hasThemedPosterImages;
-const servedPosterImageSrc = toPublicSitePath(posterImageSrc);
-const servedThemedPosterImages = {
-  light: toPublicSitePath(themedPosterImages.light),
-  dark: toPublicSitePath(themedPosterImages.dark),
-};
+const posterAsset = projectPosterAssets[project.slug];
+const themedPosterAsset = projectPosterThemedAssets[project.slug];
+const previewAsset = posterAsset ?? themedPosterAsset?.light;
+const sizes =
+  aspect === "hero"
+    ? "(min-width: 1024px) min(100vw - 4rem, 46rem), (min-width: 640px) 60vw, calc(100vw - 2rem)"
+    : "(min-width: 1024px) 30vw, (min-width: 640px) 45vw, calc(100vw - 2rem)";
+const imageLoading = priority ? "eager" : "lazy";
+const imageFetchPriority = fetchPriority;
+
+function toPosterSourceSet(asset: ProjectPosterAsset, format: (typeof projectPosterFormats)[number]) {
+  return projectPosterWidths
+    .map((width) => `${toPublicSitePath(asset.sources[format][width])} ${width}w`)
+    .join(", ");
+}
+
+function toPosterFallbackSource(asset: ProjectPosterAsset) {
+  return toPublicSitePath(asset.sources.webp[960]);
+}
 ---
 <div
   class={`project-poster ${compact ? "is-compact" : ""} ${aspect === "hero" ? "is-hero" : ""}`}
-  style={`--project-tone-rgb:${domainStyle.tone};--project-glow-rgb:${domainStyle.glow};--project-panel-rgb:${domainStyle.panel};`}
+  style={`--project-tone-rgb:${domainStyle.tone};--project-glow-rgb:${domainStyle.glow};--project-panel-rgb:${domainStyle.panel};--project-poster-placeholder:url("${previewAsset?.placeholder ?? ""}");`}
 >
   <div class={`project-poster-fallback pattern-${poster.pattern}`} aria-hidden="true">
     <span class="project-poster-orb project-poster-orb-primary"></span>
@@ -84,48 +101,122 @@ const servedThemedPosterImages = {
     <span class="project-poster-stack project-poster-stack-b"></span>
   </div>
 
-  {hasRenderablePosterImage && (
-    hasThemedPosterImages ? (
+  {previewAsset && <div class="project-poster-preview" aria-hidden="true"></div>}
+
+  {posterAsset && (
+    <picture class="project-poster-media">
+      <source type="image/avif" srcset={toPosterSourceSet(posterAsset, "avif")} sizes={sizes} />
+      <source type="image/webp" srcset={toPosterSourceSet(posterAsset, "webp")} sizes={sizes} />
       <img
         class="project-poster-image"
-        data-themed-project-image
-        data-light-src={servedThemedPosterImages.light}
-        data-dark-src={servedThemedPosterImages.dark}
+        data-project-poster-image
+        src={toPosterFallbackSource(posterAsset)}
+        srcset={toPosterSourceSet(posterAsset, "webp")}
+        sizes={sizes}
+        width={posterAsset.width}
+        height={posterAsset.height}
         alt={`${project.title} 项目海报`}
-        loading="lazy"
+        loading={imageLoading}
+        fetchpriority={imageFetchPriority}
         decoding="async"
       />
-    ) : (
-      <img
-        class="project-poster-image"
-        src={servedPosterImageSrc}
-        alt={`${project.title} 项目海报`}
-        loading="lazy"
-        decoding="async"
-      />
-    )
+    </picture>
   )}
 
-  {!hasRenderablePosterImage && (
-    <div class="project-poster-copy">
-      <p class="project-poster-eyebrow">{poster.eyebrow}</p>
-      {!compact && <div class="project-poster-title">{project.title}</div>}
-      <p class="project-poster-strapline">{poster.strapline}</p>
-    </div>
+  {themedPosterAsset && (
+    <picture
+      class="project-poster-media"
+      data-themed-project-picture
+      data-light-avif-srcset={toPosterSourceSet(themedPosterAsset.light, "avif")}
+      data-dark-avif-srcset={toPosterSourceSet(themedPosterAsset.dark, "avif")}
+      data-light-webp-srcset={toPosterSourceSet(themedPosterAsset.light, "webp")}
+      data-dark-webp-srcset={toPosterSourceSet(themedPosterAsset.dark, "webp")}
+      data-light-src={toPosterFallbackSource(themedPosterAsset.light)}
+      data-dark-src={toPosterFallbackSource(themedPosterAsset.dark)}
+    >
+      <source data-project-poster-avif type="image/avif" sizes={sizes} />
+      <source data-project-poster-webp type="image/webp" sizes={sizes} />
+      <img
+        class="project-poster-image"
+        data-project-poster-image
+        width={themedPosterAsset.light.width}
+        height={themedPosterAsset.light.height}
+        alt={`${project.title} 项目海报`}
+        loading={imageLoading}
+        fetchpriority={imageFetchPriority}
+        decoding="async"
+      />
+    </picture>
+  )}
+
+  {showOverlay && (
+    <>
+      <div class="project-poster-scrim" aria-hidden="true"></div>
+
+      <div class="project-poster-copy">
+        <p class="project-poster-eyebrow">{poster.eyebrow}</p>
+        {!compact && <div class="project-poster-title">{project.title}</div>}
+        <p class="project-poster-strapline">{poster.strapline}</p>
+      </div>
+    </>
   )}
 </div>
 
 <script>
+  const imageSelector = "img[data-project-poster-image]";
+
+  const updateImageState = (image: HTMLImageElement) => {
+    image.classList.toggle("is-loaded", image.complete && image.naturalWidth > 0);
+    image.classList.toggle("is-error", image.complete && image.naturalWidth === 0);
+  };
+
   const updateThemedProjectImages = () => {
     const theme = document.documentElement.dataset.uiTheme === "dark" ? "dark" : "light";
 
-    document.querySelectorAll<HTMLImageElement>("img[data-themed-project-image]").forEach((image) => {
-      const nextSrc = theme === "dark" ? image.dataset.darkSrc : image.dataset.lightSrc;
-      if (nextSrc && image.getAttribute("src") !== nextSrc) image.src = nextSrc;
+    document.querySelectorAll<HTMLPictureElement>("picture[data-themed-project-picture]").forEach((picture) => {
+      if (picture.dataset.projectPosterTheme === theme) return;
+
+      const image = picture.querySelector<HTMLImageElement>(imageSelector);
+      const avif = picture.querySelector<HTMLSourceElement>("source[data-project-poster-avif]");
+      const webp = picture.querySelector<HTMLSourceElement>("source[data-project-poster-webp]");
+      const avifSrcSet = theme === "dark" ? picture.dataset.darkAvifSrcset : picture.dataset.lightAvifSrcset;
+      const webpSrcSet = theme === "dark" ? picture.dataset.darkWebpSrcset : picture.dataset.lightWebpSrcset;
+      const fallbackSrc = theme === "dark" ? picture.dataset.darkSrc : picture.dataset.lightSrc;
+      if (!image || !avifSrcSet || !webpSrcSet || !fallbackSrc) return;
+
+      picture.dataset.projectPosterTheme = theme;
+      image.classList.remove("is-loaded", "is-error");
+      avif.srcset = avifSrcSet;
+      webp.srcset = webpSrcSet;
+      image.srcset = webpSrcSet;
+      image.src = fallbackSrc;
+      queueMicrotask(() => updateImageState(image));
     });
   };
 
+  document.addEventListener(
+    "load",
+    (event) => {
+      if (event.target instanceof HTMLImageElement && event.target.matches(imageSelector)) {
+        updateImageState(event.target);
+      }
+    },
+    true
+  );
+  document.addEventListener(
+    "error",
+    (event) => {
+      if (event.target instanceof HTMLImageElement && event.target.matches(imageSelector)) {
+        event.target.classList.remove("is-loaded");
+        event.target.classList.add("is-error");
+      }
+    },
+    true
+  );
+
   updateThemedProjectImages();
+  document.querySelectorAll<HTMLImageElement>(imageSelector).forEach(updateImageState);
+  document.addEventListener("astro:page-load", updateThemedProjectImages);
   new MutationObserver(updateThemedProjectImages).observe(document.documentElement, {
     attributes: true,
     attributeFilter: ["data-ui-theme"],
@@ -155,32 +246,57 @@ const servedThemedPosterImages = {
   }
 
   .project-poster-fallback,
+  .project-poster-preview,
+  .project-poster-media,
   .project-poster-image,
+  .project-poster-scrim,
   .project-poster-copy {
     position: absolute;
     inset: 0;
-  }
-
-  .project-poster-image {
-    z-index: 1;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    display: block;
-    background: linear-gradient(160deg, rgba(var(--project-panel-rgb), 0.96), rgba(var(--project-panel-rgb), 0.82));
   }
 
   .project-poster-fallback {
     z-index: 0;
   }
 
-  .project-poster-image[src$=".png"] {
+  .project-poster-preview {
+    z-index: 1;
+    background-image: var(--project-poster-placeholder);
+    background-position: center;
+    background-size: cover;
+    filter: blur(12px);
+    transform: scale(1.05);
+  }
+
+  .project-poster-media {
+    z-index: 2;
+  }
+
+  .project-poster-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    opacity: 0;
+    transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity;
+  }
+
+  .project-poster-image.is-loaded {
     opacity: 1;
   }
 
-  .project-poster-copy {
+  .project-poster-scrim {
     z-index: 3;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(4, 12, 8, 0.02) 0%, rgba(4, 12, 8, 0.12) 42%, rgba(4, 12, 8, 0.74) 100%),
+      linear-gradient(135deg, rgba(10, 22, 17, 0.46), rgba(10, 22, 17, 0.08) 48%, rgba(10, 22, 17, 0.58));
+  }
+
+  .project-poster-copy {
+    z-index: 4;
     display: flex;
     min-height: inherit;
     flex-direction: column;
@@ -257,6 +373,12 @@ const servedThemedPosterImages = {
   .project-poster.is-hero .project-poster-strapline {
     max-width: 28rem;
     font-size: 0.98rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .project-poster-image {
+      transition: none;
+    }
   }
 
   .project-poster-grid,

@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-08-19`
+- Last Updated: `2026-08-20`
 - Owner: `main-agent`
 
 ## 1. Background
@@ -68,9 +68,14 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### 4.6 Project media
 
-- Project cards and detail heroes use a stable 4:5 poster frame. Repository-provided artwork fills that frame without a color scrim or duplicated title copy.
+- Project cards and detail heroes use a stable 4:5 poster frame. Catalog cards retain their overlay copy so the domain fallback, project eyebrow, and project strapline remain visible while poster delivery is pending or fails. Detail-page posters display supplied artwork without text or an overlay; the title and descriptions remain in the adjacent detail content.
+- Versioned source PNGs live only under `site/assets/projects/posters-source/`. `generate:project-posters` creates ignored AVIF and WebP variants at 480w and 960w, dimensions, and a no-larger-than-2-KiB inline WebP preview. Neither `public/projects/posters/` nor `site-dist/projects/posters/` may contain a raw PNG source.
+- Each generated 480w AVIF/WebP variant is limited to 100/150 KiB and each 960w variant to 250/350 KiB. The visual-order first three renderable posters may transfer at most 750 KiB as AVIF or 1.05 MiB as WebP at 960w.
+- Non-themed posters expose AVIF-first responsive `picture` candidates with WebP fallback, intrinsic dimensions, and a `sizes` contract. The light/dark poster pair binds only the resolved theme candidate at runtime, clears loading state on a theme change, and leaves the preview, fallback, and copy visible on failure.
+- The first three renderable catalog posters use `eager`; only the first gets `fetchpriority=high`. Detail-page poster media is eager and high priority. Other catalog posters stay lazy.
+- Poster reveal uses a 180ms opacity transition only when motion is allowed. Reduced-motion mode removes that transition without changing the fallback or layout.
 - Project detail pages render a social preview only when a repository-provided asset exists. The image keeps its intrinsic ratio and does not reserve a fixed height.
-- A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme; incomplete pairs fall back to the single project asset or the existing generated poster surface.
+- A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 
 ## 5. Acceptance criteria
 
@@ -86,13 +91,16 @@ We need a frontend-owned design system that keeps routes and content behavior st
 10. Public desktop and touch control density follow the `36px` / `32px` and `44px` contracts respectively without enlarging static status badges.
 11. Public Markdown rendering never depends on a light highlighter stylesheet; dark code blocks retain readable syntax colors, horizontal overflow, and folding behavior.
 12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density.
-13. Project posters render in 4:5 frames without overlay scrims, available social previews render at intrinsic height, and complete light/dark asset pairs follow the resolved public theme.
+13. Project posters render in 4:5 frames with a continuously readable fallback and project copy, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render at intrinsic height, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
+14. Poster asset generation and production builds fail when a raw public PNG, a missing generated variant, an oversized variant, or an oversized first-row transfer is detected.
 
 ## 6. Validation
 
 - `bun run check:public-no-daisy`
 - `git diff --name-only -- '*.ts' '*.tsx' '*.css' '*.json' '*.md' | xargs bunx biome check`
 - `bun test src/lib/__tests__/theme.test.ts`
+- `bun test tests/lib/project-poster-assets.test.ts`
+- `bun run generate:project-posters && PROJECT_POSTER_REQUIRE_DIST=1 bun run verify:project-posters`
 - `DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=http://localhost:30090 PUBLIC_SITE_URL=http://localhost:30090 bun run build`
 - `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest`
 - `PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR=0 bunx playwright test --project=guest --grep "Code Block Rendering"`
