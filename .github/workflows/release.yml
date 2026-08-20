@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       head_sha:
-        description: Commit SHA on main to backfill release for
+        description: Current main head SHA to rerun through the release path
         required: true
         type: string
       pr_number:
@@ -200,8 +200,27 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Create and push frontend tag (if missing)
+      - name: Recheck current main head before frontend tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' }}
+        id: main-head-before-frontend-tag
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ env.RELEASE_HEAD_SHA }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
+      - name: Create and push frontend tag (if missing)
+        if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.frontend_release == 'true' && steps.main-head-before-frontend-tag.outputs.is_current_head == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -213,8 +232,27 @@ jobs:
           git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
           git push origin "${tag}"
 
-      - name: Create and push backend tag (if missing)
+      - name: Recheck current main head before backend tag
         if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' }}
+        id: main-head-before-backend-tag
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ env.RELEASE_HEAD_SHA }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
+      - name: Create and push backend tag (if missing)
+        if: ${{ steps.intent.outputs.should_release == 'true' && steps.intent.outputs.backend_release == 'true' && steps.main-head-before-backend-tag.outputs.is_current_head == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -226,8 +264,27 @@ jobs:
           git tag -a "${tag}" "${{ env.RELEASE_HEAD_SHA }}" -m "${tag}"
           git push origin "${tag}"
 
-      - name: Create and push Docker image tag (if missing)
+      - name: Recheck current main head before image tag
         if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') }}
+        id: main-head-before-image-tag
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ env.RELEASE_HEAD_SHA }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
+      - name: Create and push Docker image tag (if missing)
+        if: ${{ steps.intent.outputs.should_release == 'true' && (steps.intent.outputs.frontend_release == 'true' || steps.intent.outputs.backend_release == 'true') && steps.main-head-before-image-tag.outputs.is_current_head == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -413,12 +470,50 @@ jobs:
           tar -C site-dist -czf "release-assets/frontend/frontend-site-dist-${version}.tar.gz" .
           sha256sum "release-assets/frontend/frontend-site-dist-${version}.tar.gz" > "release-assets/frontend/frontend-sha256-${version}.txt"
 
+      - name: Recheck current main head before frontend publication
+        id: main-head-before-frontend-publication
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
       - name: Upload Pages artifact
+        if: ${{ steps.main-head-before-frontend-publication.outputs.is_current_head == 'true' }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site-dist
 
+      - name: Recheck current main head before frontend GitHub Release
+        id: main-head-before-frontend-release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
       - name: Create or update frontend GitHub Release
+        if: ${{ steps.main-head-before-frontend-release.outputs.is_current_head == 'true' }}
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -470,9 +565,28 @@ jobs:
         if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
         uses: actions/configure-pages@v5
 
+      - name: Recheck current main head before Pages deployment
+        if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
+        id: main-head-before-pages-deployment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
       - name: Deploy to GitHub Pages
         id: deployment
-        if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
+        if: ${{ steps.main-head-before-pages-deployment.outputs.is_current_head == 'true' }}
         uses: actions/deploy-pages@v4
 
       - name: Record Pages receipt status
@@ -484,7 +598,7 @@ jobs:
           status="skipped_unknown"
           if [[ "${{ steps.deployment.outcome || '' }}" == "success" ]]; then
             status="deployed"
-          elif [[ "${{ steps.latest-head.outputs.is_current_head || 'false' }}" != "true" ]]; then
+          elif [[ "${{ steps.main-head-before-pages-deployment.outputs.is_current_head || 'false' }}" != "true" ]]; then
             status="skipped_recheck_head_moved"
           fi
           echo "pages_status=${status}" >> "$GITHUB_OUTPUT"
@@ -649,7 +763,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Recheck current main head before image publication
+        id: main-head-before-image-publication
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
       - name: Build and push unified Docker image
+        if: ${{ steps.main-head-before-image-publication.outputs.is_current_head == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -732,7 +865,26 @@ jobs:
             "release-assets/backend/backend-admin-dist-${version}.tar.gz" \
             > "release-assets/backend/backend-sha256-${version}.txt"
 
+      - name: Recheck current main head before backend GitHub Release
+        id: main-head-before-backend-release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+            const currentSha = data?.object?.sha ?? "";
+            const isCurrentHead = currentSha === expectedSha;
+            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
+            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
+            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
+
       - name: Create or update backend GitHub Release
+        if: ${{ steps.main-head-before-backend-release.outputs.is_current_head == 'true' }}
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
