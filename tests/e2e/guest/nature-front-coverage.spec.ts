@@ -88,22 +88,35 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator("main h1").first()).toHaveText("KaisouMail");
     await expect(page.getByRole("heading", { name: "公开入口" })).toBeVisible();
 
-    await gotoWithTheme(page, "/projects/loadlynx", "light");
+    await gotoWithTheme(page, "/projects/loadlynx", "dark");
     await expect(page.locator("main h1").first()).toHaveText("LoadLynx");
     const poster = page.locator(".project-poster");
     const posterImage = poster.locator("img");
+    const posterPicture = poster.locator("picture[data-themed-project-picture]");
     const socialPreviewImage = page.locator(".project-social-preview img");
     await expect(posterImage).toHaveCount(1);
-    await expect(posterImage).toHaveAttribute("src", /loadlynx-light-960\.webp$/);
-    await expect(posterImage).toHaveAttribute("srcset", /loadlynx-light-480\.webp 480w/);
+    await expect(posterImage).toHaveAttribute("src", /loadlynx-dark-960\.webp$/);
+    await expect(posterImage).toHaveAttribute("srcset", /loadlynx-dark-480\.webp 480w/);
     await expect(poster.locator('source[type="image/avif"]')).toHaveAttribute(
       "srcset",
-      /loadlynx-light-480\.avif 480w/
+      /loadlynx-dark-480\.avif 480w/
     );
     await expect(posterImage).toHaveAttribute("loading", "eager");
     await expect(posterImage).toHaveAttribute("fetchpriority", "high");
     await expect(poster).toHaveCSS("aspect-ratio", "4 / 5");
-    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light\.png$/);
+    await expect(posterPicture).toHaveAttribute("data-project-poster-theme", "dark");
+    await expect
+      .poll(() =>
+        poster.evaluate((element) => {
+          const picture = element.querySelector<HTMLPictureElement>(
+            "[data-themed-project-picture]"
+          );
+          const placeholder = picture?.dataset.darkPlaceholder;
+          return Boolean(placeholder && element.getAttribute("style")?.includes(placeholder));
+        })
+      )
+      .toBe(true);
+    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-dark\.png$/);
     await expect(socialPreviewImage).toHaveAttribute("width", "1280");
     await expect(socialPreviewImage).toHaveAttribute("height", "640");
     await expect
@@ -114,11 +127,23 @@ test.describe("Nature frontend public coverage", () => {
       )
       .toBe(true);
     await page.evaluate(() => {
-      document.documentElement.dataset.uiTheme = "dark";
+      document.documentElement.dataset.uiTheme = "light";
     });
-    await expect(posterImage).toHaveAttribute("src", /loadlynx-dark-960\.webp$/);
-    await expect(posterImage).toHaveAttribute("srcset", /loadlynx-dark-480\.webp 480w/);
-    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-dark\.png$/);
+    await expect(posterImage).toHaveAttribute("src", /loadlynx-light-960\.webp$/);
+    await expect(posterImage).toHaveAttribute("srcset", /loadlynx-light-480\.webp 480w/);
+    await expect(posterPicture).toHaveAttribute("data-project-poster-theme", "light");
+    await expect
+      .poll(() =>
+        poster.evaluate((element) => {
+          const picture = element.querySelector<HTMLPictureElement>(
+            "[data-themed-project-picture]"
+          );
+          const placeholder = picture?.dataset.lightPlaceholder;
+          return Boolean(placeholder && element.getAttribute("style")?.includes(placeholder));
+        })
+      )
+      .toBe(true);
+    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light\.png$/);
     await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
 
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");

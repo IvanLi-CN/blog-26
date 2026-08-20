@@ -133,6 +133,8 @@ function toPosterFallbackSource(asset: ProjectPosterAsset) {
       data-dark-webp-srcset={toPosterSourceSet(themedPosterAsset.dark, "webp")}
       data-light-src={toPosterFallbackSource(themedPosterAsset.light)}
       data-dark-src={toPosterFallbackSource(themedPosterAsset.dark)}
+      data-light-placeholder={themedPosterAsset.light.placeholder}
+      data-dark-placeholder={themedPosterAsset.dark.placeholder}
     >
       <source data-project-poster-avif type="image/avif" sizes={sizes} />
       <source data-project-poster-webp type="image/webp" sizes={sizes} />
@@ -147,6 +149,33 @@ function toPosterFallbackSource(asset: ProjectPosterAsset) {
         decoding="async"
       />
     </picture>
+    <script is:inline>
+      (() => {
+        const picture = document.currentScript?.previousElementSibling;
+        if (!(picture instanceof HTMLPictureElement)) return;
+
+        const theme = document.documentElement.dataset.uiTheme === "dark" ? "dark" : "light";
+        const image = picture.querySelector("img[data-project-poster-image]");
+        const avif = picture.querySelector("source[data-project-poster-avif]");
+        const webp = picture.querySelector("source[data-project-poster-webp]");
+        const prefix = theme === "dark" ? "dark" : "light";
+        const avifSrcSet = picture.dataset[`${prefix}AvifSrcset`];
+        const webpSrcSet = picture.dataset[`${prefix}WebpSrcset`];
+        const fallbackSrc = picture.dataset[`${prefix}Src`];
+        const placeholder = picture.dataset[`${prefix}Placeholder`];
+        if (!image || !avif || !webp || !avifSrcSet || !webpSrcSet || !fallbackSrc || !placeholder) return;
+
+        picture.dataset.projectPosterTheme = theme;
+        avif.srcset = avifSrcSet;
+        webp.srcset = webpSrcSet;
+        image.srcset = webpSrcSet;
+        image.src = fallbackSrc;
+        picture.closest(".project-poster")?.style.setProperty(
+          "--project-poster-placeholder",
+          `url("${placeholder}")`
+        );
+      })();
+    </script>
   )}
 
   {showOverlay && (
@@ -182,7 +211,8 @@ function toPosterFallbackSource(asset: ProjectPosterAsset) {
       const avifSrcSet = theme === "dark" ? picture.dataset.darkAvifSrcset : picture.dataset.lightAvifSrcset;
       const webpSrcSet = theme === "dark" ? picture.dataset.darkWebpSrcset : picture.dataset.lightWebpSrcset;
       const fallbackSrc = theme === "dark" ? picture.dataset.darkSrc : picture.dataset.lightSrc;
-      if (!image || !avifSrcSet || !webpSrcSet || !fallbackSrc) return;
+      const placeholder = theme === "dark" ? picture.dataset.darkPlaceholder : picture.dataset.lightPlaceholder;
+      if (!image || !avif || !webp || !avifSrcSet || !webpSrcSet || !fallbackSrc || !placeholder) return;
 
       picture.dataset.projectPosterTheme = theme;
       image.classList.remove("is-loaded", "is-error");
@@ -190,6 +220,10 @@ function toPosterFallbackSource(asset: ProjectPosterAsset) {
       webp.srcset = webpSrcSet;
       image.srcset = webpSrcSet;
       image.src = fallbackSrc;
+      picture.closest<HTMLElement>(".project-poster")?.style.setProperty(
+        "--project-poster-placeholder",
+        `url("${placeholder}")`
+      );
       queueMicrotask(() => updateImageState(image));
     });
   };
