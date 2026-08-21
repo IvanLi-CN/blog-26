@@ -4,4 +4,5 @@
 - 2026-04-06 through 2026-06-19: Visual, responsive, search, timeline, hydration, and memo-detail decisions were added under the same public design contract.
 - 2026-07-31 through 2026-08-02: Mobile density, code surfaces, navigation, and query hydration were hardened.
 - 2026-08-19: Project posters and social previews moved to repository-owned media, including intrinsic social-preview sizing and theme-aware asset pairs.
+- 2026-08-20: Project poster delivery gained build-generated responsive AVIF/WebP variants, hard size budgets, inline previews, persistent fallback copy, and first-load theme binding for social previews.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.
