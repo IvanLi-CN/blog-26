@@ -16,7 +16,7 @@ const socialPreviewAsset = projectSocialPreviewAssets[project.slug];
 const themedSocialPreviewAsset = projectSocialPreviewThemedAssets[project.slug];
 const fallbackSocialPreviewAsset = socialPreviewAsset ?? themedSocialPreviewAsset?.light;
 const hasRenderableSocialPreview = Boolean(fallbackSocialPreviewAsset);
-const sizes = "(min-width: 1024px) 46rem, (min-width: 640px) 70vw, calc(100vw - 2rem)";
+const sizes = "(min-width: 1024px) 46rem, (min-width: 640px) calc(100vw - 6rem), calc(100vw - 2rem)";
 
 function toSocialPreviewSourceSet(
   asset: ProjectSocialPreviewAsset,
