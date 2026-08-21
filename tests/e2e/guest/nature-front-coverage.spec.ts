@@ -127,6 +127,10 @@ test.describe("Nature frontend public coverage", () => {
     );
     await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-dark-1280\.webp$/);
     await expect(socialPreviewImage).toHaveAttribute("srcset", /loadlynx-dark-640\.webp 640w/);
+    await expect(socialPreviewImage).toHaveAttribute(
+      "sizes",
+      "(min-width: 1024px) 46rem, (min-width: 640px) 70vw, calc(100vw - 2rem)"
+    );
     await expect(socialPreviewImage).toHaveAttribute("width", "1280");
     await expect(socialPreviewImage).toHaveAttribute("height", "640");
     await expect
@@ -178,6 +182,10 @@ test.describe("Nature frontend public coverage", () => {
     await expect(octoSocialPreviewImage).toHaveAttribute("src", /octo-rill-1280\.webp$/);
     await expect(octoSocialPreviewImage).toHaveAttribute("width", "1280");
     await expect(octoSocialPreviewImage).toHaveAttribute("height", "640");
+    await expect(octoSocialPreviewImage).toHaveAttribute(
+      "sizes",
+      "(min-width: 1024px) 46rem, (min-width: 640px) 70vw, calc(100vw - 2rem)"
+    );
     await expect(octoSocialPreview).toHaveCSS("aspect-ratio", "2 / 1");
     await expect
       .poll(() =>

@@ -16,7 +16,7 @@ const socialPreviewAsset = projectSocialPreviewAssets[project.slug];
 const themedSocialPreviewAsset = projectSocialPreviewThemedAssets[project.slug];
 const fallbackSocialPreviewAsset = socialPreviewAsset ?? themedSocialPreviewAsset?.light;
 const hasRenderableSocialPreview = Boolean(fallbackSocialPreviewAsset);
-const sizes = "(min-width: 1024px) min(100%, 46rem), 100vw";
+const sizes = "(min-width: 1024px) 46rem, (min-width: 640px) 70vw, calc(100vw - 2rem)";
 
 function toSocialPreviewSourceSet(
   asset: ProjectSocialPreviewAsset,
@@ -84,6 +84,7 @@ function toSocialPreviewStyle(asset: ProjectSocialPreviewAsset) {
           <img
             class="project-social-preview-image"
             data-project-social-preview-image
+            sizes={sizes}
             alt={`${project.title} 项目界面与功能概览`}
             width={themedSocialPreviewAsset.light.width}
             height={themedSocialPreviewAsset.light.height}
