@@ -129,7 +129,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(socialPreviewImage).toHaveAttribute("srcset", /loadlynx-dark-640\.webp 640w/);
     await expect(socialPreviewImage).toHaveAttribute(
       "sizes",
-      "(min-width: 1024px) 46rem, (min-width: 640px) calc(100vw - 6rem), calc(100vw - 2rem)"
+      "(min-width: 1328px) 52.5rem, (min-width: 1200px) calc(70vw - 5.625rem), (min-width: 1024px) calc(100vw - 28rem), (min-width: 640px) calc(100vw - 6rem), calc(100vw - 2rem)"
     );
     await expect(socialPreviewImage).toHaveAttribute("width", "1280");
     await expect(socialPreviewImage).toHaveAttribute("height", "640");
@@ -184,7 +184,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(octoSocialPreviewImage).toHaveAttribute("height", "640");
     await expect(octoSocialPreviewImage).toHaveAttribute(
       "sizes",
-      "(min-width: 1024px) 46rem, (min-width: 640px) calc(100vw - 6rem), calc(100vw - 2rem)"
+      "(min-width: 1328px) 52.5rem, (min-width: 1200px) calc(70vw - 5.625rem), (min-width: 1024px) calc(100vw - 28rem), (min-width: 640px) calc(100vw - 6rem), calc(100vw - 2rem)"
     );
     await expect(octoSocialPreview).toHaveCSS("aspect-ratio", "2 / 1");
     await expect
@@ -201,6 +201,16 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-poster-scrim")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Codex Vibe Monitor" })).toBeVisible();
     await expect(page.locator(".project-social-preview")).toHaveCount(0);
+  });
+
+  test("social preview selects the 640w candidate at the lg boundary", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 720 });
+    await gotoWithTheme(page, "/projects/octo-rill", "light");
+
+    const socialPreviewImage = page.locator(".project-social-preview img");
+    await expect
+      .poll(() => socialPreviewImage.evaluate((image: HTMLImageElement) => image.currentSrc))
+      .toMatch(/octo-rill-640\.(avif|webp)$/);
   });
 
   test("project posters provide progressive media and first-row priority", async ({ page }) => {
