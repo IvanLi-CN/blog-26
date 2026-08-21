@@ -68,13 +68,15 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### 4.6 Project media
 
-- Project cards and detail heroes use a stable 4:5 poster frame. Catalog cards retain their overlay copy so the domain fallback, project eyebrow, and project strapline remain visible while poster delivery is pending or fails. Detail-page posters display supplied artwork without text or an overlay; the title and descriptions remain in the adjacent detail content.
+- Project cards and detail heroes use a stable 4:5 poster frame. Cards with a repository-provided poster display that artwork without added text or a scrim. Cards without poster media use the domain fallback and project copy as their placeholder. Detail-page posters display supplied artwork without text or an overlay; the title and descriptions remain in the adjacent detail content.
 - Versioned source PNGs live only under `site/assets/projects/posters-source/`. `generate:project-posters` creates ignored AVIF and WebP variants at 480w and 960w, dimensions, and a no-larger-than-2-KiB inline WebP preview. Neither `public/projects/posters/` nor `site-dist/projects/posters/` may contain a raw PNG source.
+- Versioned social-preview source PNGs live only under `site/assets/projects/social-source/`. `generate:project-social-previews` creates ignored AVIF and WebP variants at 640w and 1280w, intrinsic dimensions, and a no-larger-than-2-KiB inline WebP preview. Neither `public/projects/social/` nor `site-dist/projects/social/` may contain a raw PNG source.
 - Each generated 480w AVIF/WebP variant is limited to 100/150 KiB and each 960w variant to 250/350 KiB. The visual-order first three renderable posters may transfer at most 750 KiB as AVIF or 1.05 MiB as WebP at 960w.
-- Non-themed posters expose AVIF-first responsive `picture` candidates with WebP fallback, intrinsic dimensions, and a `sizes` contract. The light/dark poster pair binds only the resolved theme candidate at runtime, clears loading state on a theme change, and leaves the preview, fallback, and copy visible on failure.
+- Each generated 640w social-preview AVIF/WebP variant is limited to 100/150 KiB and each 1280w variant to 250/350 KiB.
+- Non-themed posters expose AVIF-first responsive `picture` candidates with WebP fallback, intrinsic dimensions, and a `sizes` contract. The light/dark poster pair binds only the resolved theme candidate at runtime, clears loading state on a theme change, and leaves the low-resolution preview and domain fallback visible on failure. Social previews use the same AVIF-first responsive contract, with a stable 2:1 frame and theme-aware candidate binding.
 - The first three renderable catalog posters use `eager`; only the first gets `fetchpriority=high`. Detail-page poster media is eager and high priority. Other catalog posters stay lazy.
-- Poster reveal uses a 180ms opacity transition only when motion is allowed. Reduced-motion mode removes that transition without changing the fallback or layout.
-- Project detail pages render a social preview only when a repository-provided asset exists. The image keeps its intrinsic ratio and does not reserve a fixed height.
+- Poster and social-preview reveals use a 180ms opacity transition only when motion is allowed. Reduced-motion mode removes that transition without changing the fallback or layout.
+- Project detail pages render a social preview only when a generated repository-provided asset exists. The image keeps a stable 2:1 intrinsic ratio and does not reserve a fixed height outside that ratio.
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 
 ## 5. Acceptance criteria
@@ -91,7 +93,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 10. Public desktop and touch control density follow the `36px` / `32px` and `44px` contracts respectively without enlarging static status badges.
 11. Public Markdown rendering never depends on a light highlighter stylesheet; dark code blocks retain readable syntax colors, horizontal overflow, and folding behavior.
 12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density.
-13. Project posters render in 4:5 frames with a continuously readable fallback and project copy, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render at intrinsic height, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
+13. Project posters render in 4:5 frames with a continuously readable image or placeholder state, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render in a stable intrinsic 2:1 frame with responsive AVIF/WebP candidates, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
 14. Poster asset generation and production builds fail when a raw public PNG, a missing generated variant, an oversized variant, or an oversized first-row transfer is detected.
 
 ## 6. Validation
@@ -112,7 +114,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ### Project media showcase
 
 - Evidence captured from the local Astro project catalog and detail pages after the final poster and social-preview assets were installed.
-- The project wall uses a stable 4:5 presentation: catalog cards retain their fallback copy layer, while detail-page posters display the supplied artwork without an overlay or added copy. Project detail pages show available social previews at their intrinsic 2:1 ratio, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
+- The project wall uses a stable 4:5 presentation: media-backed catalog cards display supplied artwork without a copy layer or scrim, while media-free placeholders retain the fallback copy. Detail-page posters display supplied artwork without an overlay or added copy. Project detail pages show generated social previews in a stable 2:1 frame, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
 - Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
 
 PR: include

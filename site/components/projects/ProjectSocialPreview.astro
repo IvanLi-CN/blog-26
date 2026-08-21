@@ -1,7 +1,10 @@
 ---
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import type { ProjectCatalogItem } from "../../lib/projects";
+import type { ProjectSocialPreviewAsset } from "../../lib/project-social-preview-media";
+import {
+  projectSocialPreviewAssets,
+  projectSocialPreviewThemedAssets,
+} from "../../generated/project-social-preview-assets";
 import { toPublicSitePath } from "../../lib/runtime-urls";
 
 interface Props {
@@ -9,71 +12,158 @@ interface Props {
 }
 
 const { project } = Astro.props as Props;
-const socialPreviewSrc = `/projects/social/${project.slug}.png`;
-const socialPreviewPath = fileURLToPath(new URL(`../../../public${socialPreviewSrc}`, import.meta.url));
-const hasSocialPreview = existsSync(socialPreviewPath);
-const themedSocialPreview = {
-  light: `/projects/social/${project.slug}-light.png`,
-  dark: `/projects/social/${project.slug}-dark.png`,
-};
-const hasThemedSocialPreview = Object.values(themedSocialPreview).every((src) =>
-  existsSync(fileURLToPath(new URL(`../../../public${src}`, import.meta.url)))
-);
-const hasRenderableSocialPreview = hasSocialPreview || hasThemedSocialPreview;
-const servedSocialPreviewSrc = toPublicSitePath(socialPreviewSrc);
-const servedThemedSocialPreview = {
-  light: toPublicSitePath(themedSocialPreview.light),
-  dark: toPublicSitePath(themedSocialPreview.dark),
-};
+const socialPreviewAsset = projectSocialPreviewAssets[project.slug];
+const themedSocialPreviewAsset = projectSocialPreviewThemedAssets[project.slug];
+const fallbackSocialPreviewAsset = socialPreviewAsset ?? themedSocialPreviewAsset?.light;
+const hasRenderableSocialPreview = Boolean(fallbackSocialPreviewAsset);
+const sizes = "(min-width: 1024px) min(100%, 46rem), 100vw";
+
+function toSocialPreviewSourceSet(
+  asset: ProjectSocialPreviewAsset,
+  format: "avif" | "webp"
+) {
+  return Object.entries(asset.sources[format])
+    .map(([width, source]) => `${toPublicSitePath(source)} ${width}w`)
+    .join(", ");
+}
+
+function toSocialPreviewFallbackSource(asset: ProjectSocialPreviewAsset) {
+  return toPublicSitePath(asset.sources.webp[1280]);
+}
+
+function toSocialPreviewStyle(asset: ProjectSocialPreviewAsset) {
+  return `--project-social-preview-placeholder:url("${asset.placeholder}");`;
+}
 ---
 
 {
   hasRenderableSocialPreview && (
-    <figure class="project-social-preview">
-      {hasThemedSocialPreview ? (
-        <img
-          class="project-social-preview-image"
-          data-themed-project-image
-          data-light-src={servedThemedSocialPreview.light}
-          data-dark-src={servedThemedSocialPreview.dark}
-          alt={`${project.title} 项目界面与功能概览`}
-          width="1280"
-          height="640"
-          loading="lazy"
-          decoding="async"
-        />
-      ) : (
-        <img
-          src={servedSocialPreviewSrc}
-          alt={`${project.title} 项目界面与功能概览`}
-          width="1280"
-          height="640"
-          loading="lazy"
-          decoding="async"
-        />
-      )}
+    <figure
+      class="project-social-preview"
+      style={fallbackSocialPreviewAsset ? toSocialPreviewStyle(fallbackSocialPreviewAsset) : undefined}
+    >
+      {socialPreviewAsset ? (
+        <picture>
+          <source
+            type="image/avif"
+            srcset={toSocialPreviewSourceSet(socialPreviewAsset, "avif")}
+            sizes={sizes}
+          />
+          <source
+            type="image/webp"
+            srcset={toSocialPreviewSourceSet(socialPreviewAsset, "webp")}
+            sizes={sizes}
+          />
+          <img
+            class="project-social-preview-image"
+            data-project-social-preview-image
+            src={toSocialPreviewFallbackSource(socialPreviewAsset)}
+            srcset={toSocialPreviewSourceSet(socialPreviewAsset, "webp")}
+            sizes={sizes}
+            alt={`${project.title} 项目界面与功能概览`}
+            width={socialPreviewAsset.width}
+            height={socialPreviewAsset.height}
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
+      ) : themedSocialPreviewAsset ? (
+        <picture
+          data-themed-project-social-picture
+          data-light-avif-srcset={toSocialPreviewSourceSet(themedSocialPreviewAsset.light, "avif")}
+          data-dark-avif-srcset={toSocialPreviewSourceSet(themedSocialPreviewAsset.dark, "avif")}
+          data-light-webp-srcset={toSocialPreviewSourceSet(themedSocialPreviewAsset.light, "webp")}
+          data-dark-webp-srcset={toSocialPreviewSourceSet(themedSocialPreviewAsset.dark, "webp")}
+          data-light-src={toSocialPreviewFallbackSource(themedSocialPreviewAsset.light)}
+          data-dark-src={toSocialPreviewFallbackSource(themedSocialPreviewAsset.dark)}
+          data-light-placeholder={themedSocialPreviewAsset.light.placeholder}
+          data-dark-placeholder={themedSocialPreviewAsset.dark.placeholder}
+        >
+          <source data-project-social-preview-avif type="image/avif" sizes={sizes} />
+          <source data-project-social-preview-webp type="image/webp" sizes={sizes} />
+          <img
+            class="project-social-preview-image"
+            data-project-social-preview-image
+            alt={`${project.title} 项目界面与功能概览`}
+            width={themedSocialPreviewAsset.light.width}
+            height={themedSocialPreviewAsset.light.height}
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
+      ) : null}
     </figure>
   )
 }
 
 <script>
-  const themedSocialPreviewSelector = "img[data-themed-project-image]";
+  const socialImageSelector = "img[data-project-social-preview-image]";
+
+  const updateImageState = (image: HTMLImageElement) => {
+    image.classList.toggle("is-loaded", image.complete && image.naturalWidth > 0);
+    image.classList.toggle("is-error", image.complete && image.naturalWidth === 0);
+  };
 
   const updateThemedSocialPreviews = () => {
     const theme = document.documentElement.dataset.uiTheme === "dark" ? "dark" : "light";
 
-    document.querySelectorAll<HTMLImageElement>(themedSocialPreviewSelector).forEach((image) => {
-      if (image.dataset.projectSocialTheme === theme) return;
+    document
+      .querySelectorAll<HTMLPictureElement>("picture[data-themed-project-social-picture]")
+      .forEach((picture) => {
+        if (picture.dataset.projectSocialTheme === theme) return;
 
-      const source = theme === "dark" ? image.dataset.darkSrc : image.dataset.lightSrc;
-      if (!source) return;
+        const image = picture.querySelector<HTMLImageElement>(socialImageSelector);
+        const avif = picture.querySelector<HTMLSourceElement>(
+          "source[data-project-social-preview-avif]"
+        );
+        const webp = picture.querySelector<HTMLSourceElement>(
+          "source[data-project-social-preview-webp]"
+        );
+        const prefix = theme === "dark" ? "dark" : "light";
+        const avifSrcSet = picture.dataset[`${prefix}AvifSrcset`];
+        const webpSrcSet = picture.dataset[`${prefix}WebpSrcset`];
+        const fallbackSrc = picture.dataset[`${prefix}Src`];
+        const placeholder = picture.dataset[`${prefix}Placeholder`];
+        if (!image || !avif || !webp || !avifSrcSet || !webpSrcSet || !fallbackSrc || !placeholder) {
+          return;
+        }
 
-      image.dataset.projectSocialTheme = theme;
-      image.src = source;
-    });
+        picture.dataset.projectSocialTheme = theme;
+        image.classList.remove("is-loaded", "is-error");
+        avif.srcset = avifSrcSet;
+        webp.srcset = webpSrcSet;
+        image.srcset = webpSrcSet;
+        image.src = fallbackSrc;
+        picture.closest<HTMLElement>(".project-social-preview")?.style.setProperty(
+          "--project-social-preview-placeholder",
+          `url("${placeholder}")`
+        );
+        queueMicrotask(() => updateImageState(image));
+      });
   };
 
+  document.addEventListener(
+    "load",
+    (event) => {
+      if (event.target instanceof HTMLImageElement && event.target.matches(socialImageSelector)) {
+        updateImageState(event.target);
+      }
+    },
+    true
+  );
+  document.addEventListener(
+    "error",
+    (event) => {
+      if (event.target instanceof HTMLImageElement && event.target.matches(socialImageSelector)) {
+        event.target.classList.remove("is-loaded");
+        event.target.classList.add("is-error");
+      }
+    },
+    true
+  );
+
   updateThemedSocialPreviews();
+  document.querySelectorAll<HTMLImageElement>(socialImageSelector).forEach(updateImageState);
   document.addEventListener("astro:page-load", updateThemedSocialPreviews);
   new MutationObserver(updateThemedSocialPreviews).observe(document.documentElement, {
     attributes: true,
@@ -83,9 +173,16 @@ const servedThemedSocialPreview = {
 
 <style>
   .project-social-preview {
+    --project-social-preview-placeholder: none;
+    position: relative;
+    aspect-ratio: 2 / 1;
     margin: 0;
     overflow: hidden;
     border-radius: var(--nature-radius-lg);
+    background-color: rgba(22, 38, 31, 0.16);
+    background-image: var(--project-social-preview-placeholder);
+    background-position: center;
+    background-size: cover;
     box-shadow: 0 14px 30px rgba(30, 56, 42, 0.08);
   }
 
@@ -93,10 +190,26 @@ const servedThemedSocialPreview = {
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
   }
 
+  .project-social-preview picture,
   .project-social-preview img {
     display: block;
     width: 100%;
     height: auto;
+  }
+
+  .project-social-preview-image {
+    opacity: 0;
+    transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .project-social-preview-image.is-loaded {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .project-social-preview-image {
+      transition: none;
+    }
   }
 
   @media (max-width: 767px) {
