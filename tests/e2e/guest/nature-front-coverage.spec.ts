@@ -93,6 +93,7 @@ test.describe("Nature frontend public coverage", () => {
     const poster = page.locator(".project-poster");
     const posterImage = poster.locator("img");
     const posterPicture = poster.locator("picture[data-themed-project-picture]");
+    const socialPreview = page.locator(".project-social-preview");
     const socialPreviewImage = page.locator(".project-social-preview img");
     await expect(posterImage).toHaveCount(1);
     await expect(posterImage).toHaveAttribute("src", /loadlynx-dark-960\.webp$/);
@@ -116,7 +117,20 @@ test.describe("Nature frontend public coverage", () => {
         })
       )
       .toBe(true);
-    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-dark\.png$/);
+    await expect(socialPreview.locator('source[type="image/avif"]')).toHaveAttribute(
+      "srcset",
+      /loadlynx-dark-640\.avif 640w/
+    );
+    await expect(socialPreview.locator('source[type="image/webp"]')).toHaveAttribute(
+      "srcset",
+      /loadlynx-dark-640\.webp 640w/
+    );
+    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-dark-1280\.webp$/);
+    await expect(socialPreviewImage).toHaveAttribute("srcset", /loadlynx-dark-640\.webp 640w/);
+    await expect(socialPreviewImage).toHaveAttribute(
+      "sizes",
+      "(min-width: 1328px) 52.5rem, (min-width: 1200px) calc(70vw - 5.625rem), (min-width: 1024px) calc(100vw - 28rem), (min-width: 640px) calc(100vw - 6rem), calc(100vw - 2rem)"
+    );
     await expect(socialPreviewImage).toHaveAttribute("width", "1280");
     await expect(socialPreviewImage).toHaveAttribute("height", "640");
     await expect
@@ -143,14 +157,60 @@ test.describe("Nature frontend public coverage", () => {
         })
       )
       .toBe(true);
-    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light\.png$/);
+    await expect(socialPreview.locator('source[type="image/avif"]')).toHaveAttribute(
+      "srcset",
+      /loadlynx-light-640\.avif 640w/
+    );
+    await expect(socialPreview.locator('source[type="image/webp"]')).toHaveAttribute(
+      "srcset",
+      /loadlynx-light-640\.webp 640w/
+    );
+    await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light-1280\.webp$/);
     await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
+
+    await gotoWithTheme(page, "/projects/octo-rill", "light");
+    const octoSocialPreview = page.locator(".project-social-preview");
+    const octoSocialPreviewImage = octoSocialPreview.locator("img");
+    await expect(octoSocialPreview.locator('source[type="image/avif"]')).toHaveAttribute(
+      "srcset",
+      /octo-rill-640\.avif 640w/
+    );
+    await expect(octoSocialPreview.locator('source[type="image/webp"]')).toHaveAttribute(
+      "srcset",
+      /octo-rill-640\.webp 640w/
+    );
+    await expect(octoSocialPreviewImage).toHaveAttribute("src", /octo-rill-1280\.webp$/);
+    await expect(octoSocialPreviewImage).toHaveAttribute("width", "1280");
+    await expect(octoSocialPreviewImage).toHaveAttribute("height", "640");
+    await expect(octoSocialPreviewImage).toHaveAttribute(
+      "sizes",
+      "(min-width: 1328px) 52.5rem, (min-width: 1200px) calc(70vw - 5.625rem), (min-width: 1024px) calc(100vw - 28rem), (min-width: 640px) calc(100vw - 6rem), calc(100vw - 2rem)"
+    );
+    await expect(octoSocialPreview).toHaveCSS("aspect-ratio", "2 / 1");
+    await expect
+      .poll(() =>
+        octoSocialPreviewImage.evaluate(
+          (image: HTMLImageElement) => image.complete && image.naturalWidth > 0
+        )
+      )
+      .toBe(true);
 
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
     await expect(page.locator(".project-poster img")).toHaveCount(0);
     await expect(page.locator(".project-poster-copy")).toHaveCount(0);
+    await expect(page.locator(".project-poster-scrim")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Codex Vibe Monitor" })).toBeVisible();
     await expect(page.locator(".project-social-preview")).toHaveCount(0);
+  });
+
+  test("social preview selects the 640w candidate at the lg boundary", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 720 });
+    await gotoWithTheme(page, "/projects/octo-rill", "light");
+
+    const socialPreviewImage = page.locator(".project-social-preview img");
+    await expect
+      .poll(() => socialPreviewImage.evaluate((image: HTMLImageElement) => image.currentSrc))
+      .toMatch(/octo-rill-640\.(avif|webp)$/);
   });
 
   test("project posters provide progressive media and first-row priority", async ({ page }) => {
@@ -172,7 +232,8 @@ test.describe("Nature frontend public coverage", () => {
     await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
     await expect(lazyPosters).toHaveCount(5);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
-    await expect(kaisouPoster.locator(".project-poster-copy")).toBeVisible();
+    await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
+    await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
     await expect(kaisouPoster.locator('source[type="image/avif"]')).toHaveAttribute(
       "srcset",
       /kaisoumail-480\.avif 480w/
@@ -183,6 +244,15 @@ test.describe("Nature frontend public coverage", () => {
     );
     await expect(kaisouImage).toHaveAttribute("src", /kaisoumail-960\.webp$/);
     await expect(kaisouImage).toHaveClass(/is-loaded/);
+    await expect(
+      posters.filter({ has: page.locator(".project-poster-media") }).locator(".project-poster-copy")
+    ).toHaveCount(0);
+
+    const placeholderPoster = page
+      .getByRole("link", { name: "查看 Codex Vibe Monitor 项目案例" })
+      .locator(".project-poster");
+    await expect(placeholderPoster.locator(".project-poster-copy")).toHaveCount(1);
+    await expect(placeholderPoster.locator(".project-poster-scrim")).toHaveCount(0);
   });
 
   test("project poster preserves its fallback when image delivery fails", async ({ page }) => {
