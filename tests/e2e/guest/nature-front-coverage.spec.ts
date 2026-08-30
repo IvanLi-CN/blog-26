@@ -200,7 +200,45 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-poster-copy")).toHaveCount(0);
     await expect(page.locator(".project-poster-scrim")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Codex Vibe Monitor" })).toBeVisible();
-    await expect(page.locator(".project-social-preview")).toHaveCount(0);
+    await expect(page.locator(".project-social-preview")).toHaveCount(1);
+    await expect(page.locator(".project-social-preview img")).toHaveAttribute(
+      "src",
+      /codex-vibe-monitor-light-1280\.webp$/
+    );
+  });
+
+  test("new project media selects the matching light and dark variants", async ({ page }) => {
+    const themedMedia = [
+      { slug: "codex-vibe-monitor", selector: ".project-social-preview", width: 1280 },
+      { slug: "kaisoumail", selector: ".project-poster", width: 960 },
+      { slug: "kaisoumail", selector: ".project-social-preview", width: 1280 },
+      { slug: "octo-rill", selector: ".project-poster", width: 960 },
+      { slug: "octo-rill", selector: ".project-social-preview", width: 1280 },
+      { slug: "paste-preset", selector: ".project-poster", width: 960 },
+      { slug: "paste-preset", selector: ".project-social-preview", width: 1280 },
+      { slug: "isolappurr-usb-hub", selector: ".project-poster", width: 960 },
+      { slug: "isolappurr-usb-hub", selector: ".project-social-preview", width: 1280 },
+      { slug: "tuckmark", selector: ".project-poster", width: 960 },
+      { slug: "tuckmark", selector: ".project-social-preview", width: 1280 },
+      { slug: "dockrev", selector: ".project-poster", width: 960 },
+    ] as const;
+
+    for (const media of themedMedia) {
+      await gotoWithTheme(page, `/projects/${media.slug}`, "light");
+      const image = page.locator(`${media.selector} img`).first();
+      await expect(image).toHaveAttribute(
+        "src",
+        new RegExp(`${media.slug}-light-${media.width}\\.webp$`)
+      );
+
+      await page.evaluate(() => {
+        document.documentElement.dataset.uiTheme = "dark";
+      });
+      await expect(image).toHaveAttribute(
+        "src",
+        new RegExp(`${media.slug}-dark-${media.width}\\.webp$`)
+      );
+    }
   });
 
   test("social preview selects the 640w candidate at the lg boundary", async ({ page }) => {
@@ -225,12 +263,12 @@ test.describe("Nature frontend public coverage", () => {
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
-    await expect(posterImages).toHaveCount(8);
+    await expect(posterImages).toHaveCount(9);
     await expect(eagerPosters).toHaveCount(3);
     await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
     await expect(eagerPosters.nth(1)).toHaveAttribute("fetchpriority", "auto");
     await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
-    await expect(lazyPosters).toHaveCount(5);
+    await expect(lazyPosters).toHaveCount(6);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
