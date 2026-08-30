@@ -173,13 +173,13 @@ test.describe("Nature frontend public coverage", () => {
     const octoSocialPreviewImage = octoSocialPreview.locator("img");
     await expect(octoSocialPreview.locator('source[type="image/avif"]')).toHaveAttribute(
       "srcset",
-      /octo-rill-640\.avif 640w/
+      /octo-rill-light-640\.avif 640w/
     );
     await expect(octoSocialPreview.locator('source[type="image/webp"]')).toHaveAttribute(
       "srcset",
-      /octo-rill-640\.webp 640w/
+      /octo-rill-light-640\.webp 640w/
     );
-    await expect(octoSocialPreviewImage).toHaveAttribute("src", /octo-rill-1280\.webp$/);
+    await expect(octoSocialPreviewImage).toHaveAttribute("src", /octo-rill-light-1280\.webp$/);
     await expect(octoSocialPreviewImage).toHaveAttribute("width", "1280");
     await expect(octoSocialPreviewImage).toHaveAttribute("height", "640");
     await expect(octoSocialPreviewImage).toHaveAttribute(
@@ -239,6 +239,23 @@ test.describe("Nature frontend public coverage", () => {
         new RegExp(`${media.slug}-dark-${media.width}\\.webp$`)
       );
     }
+
+    const singleMedia = [
+      { slug: "mains-aegis", selector: ".project-social-preview" },
+      { slug: "dockrev", selector: ".project-social-preview" },
+    ] as const;
+
+    for (const media of singleMedia) {
+      await gotoWithTheme(page, `/projects/${media.slug}`, "light");
+      const image = page.locator(`${media.selector} img`).first();
+      await expect(image).toHaveAttribute("src", new RegExp(`${media.slug}-1280\\.webp$`));
+      await expect(image).toHaveAttribute("srcset", new RegExp(`${media.slug}-640\\.webp 640w`));
+
+      await page.evaluate(() => {
+        document.documentElement.dataset.uiTheme = "dark";
+      });
+      await expect(image).toHaveAttribute("src", new RegExp(`${media.slug}-1280\\.webp$`));
+    }
   });
 
   test("social preview selects the 640w candidate at the lg boundary", async ({ page }) => {
@@ -248,7 +265,7 @@ test.describe("Nature frontend public coverage", () => {
     const socialPreviewImage = page.locator(".project-social-preview img");
     await expect
       .poll(() => socialPreviewImage.evaluate((image: HTMLImageElement) => image.currentSrc))
-      .toMatch(/octo-rill-640\.(avif|webp)$/);
+      .toMatch(/octo-rill-light-640\.(avif|webp)$/);
   });
 
   test("project posters provide progressive media and first-row priority", async ({ page }) => {
@@ -274,13 +291,13 @@ test.describe("Nature frontend public coverage", () => {
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
     await expect(kaisouPoster.locator('source[type="image/avif"]')).toHaveAttribute(
       "srcset",
-      /kaisoumail-480\.avif 480w/
+      /kaisoumail-light-480\.avif 480w/
     );
     await expect(kaisouPoster.locator('source[type="image/webp"]')).toHaveAttribute(
       "srcset",
-      /kaisoumail-480\.webp 480w/
+      /kaisoumail-light-480\.webp 480w/
     );
-    await expect(kaisouImage).toHaveAttribute("src", /kaisoumail-960\.webp$/);
+    await expect(kaisouImage).toHaveAttribute("src", /kaisoumail-light-960\.webp$/);
     await expect(kaisouImage).toHaveClass(/is-loaded/);
     await expect(
       posters.filter({ has: page.locator(".project-poster-media") }).locator(".project-poster-copy")
@@ -294,7 +311,7 @@ test.describe("Nature frontend public coverage", () => {
   });
 
   test("project poster preserves its fallback when image delivery fails", async ({ page }) => {
-    await page.route(/\/projects\/posters\/kaisoumail-(480|960)\.(avif|webp)$/, (route) =>
+    await page.route(/\/projects\/posters\/kaisoumail-light-(480|960)\.(avif|webp)$/, (route) =>
       route.abort()
     );
     await gotoWithTheme(page, "/projects/kaisoumail", "light");
