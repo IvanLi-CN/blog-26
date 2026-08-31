@@ -196,19 +196,29 @@ test.describe("Nature frontend public coverage", () => {
       .toBe(true);
 
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
-    await expect(page.locator(".project-poster img")).toHaveCount(0);
-    await expect(page.locator(".project-poster-copy")).toHaveCount(0);
-    await expect(page.locator(".project-poster-scrim")).toHaveCount(0);
+    const codexPoster = page.locator(".project-poster");
+    const codexPosterImage = codexPoster.locator("img[data-project-poster-image]");
+    const codexPosterPicture = codexPoster.locator("picture[data-themed-project-picture]");
+    await expect(codexPosterImage).toHaveCount(1);
+    await expect(codexPosterImage).toHaveAttribute("src", /codex-vibe-monitor-light-960\.webp$/);
+    await expect(codexPosterPicture).toHaveAttribute("data-project-poster-theme", "light");
+    await expect(codexPoster).toHaveCSS("aspect-ratio", "4 / 5");
     await expect(page.getByRole("heading", { name: "Codex Vibe Monitor" })).toBeVisible();
     await expect(page.locator(".project-social-preview")).toHaveCount(1);
     await expect(page.locator(".project-social-preview img")).toHaveAttribute(
       "src",
       /codex-vibe-monitor-light-1280\.webp$/
     );
+    await page.evaluate(() => {
+      document.documentElement.dataset.uiTheme = "dark";
+    });
+    await expect(codexPosterImage).toHaveAttribute("src", /codex-vibe-monitor-dark-960\.webp$/);
+    await expect(codexPosterPicture).toHaveAttribute("data-project-poster-theme", "dark");
   });
 
   test("new project media selects the matching light and dark variants", async ({ page }) => {
     const themedMedia = [
+      { slug: "codex-vibe-monitor", selector: ".project-poster", width: 960 },
       { slug: "codex-vibe-monitor", selector: ".project-social-preview", width: 1280 },
       { slug: "kaisoumail", selector: ".project-poster", width: 960 },
       { slug: "kaisoumail", selector: ".project-social-preview", width: 1280 },
@@ -280,12 +290,12 @@ test.describe("Nature frontend public coverage", () => {
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
-    await expect(posterImages).toHaveCount(9);
+    await expect(posterImages).toHaveCount(10);
     await expect(eagerPosters).toHaveCount(3);
     await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
     await expect(eagerPosters.nth(1)).toHaveAttribute("fetchpriority", "auto");
     await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
-    await expect(lazyPosters).toHaveCount(6);
+    await expect(lazyPosters).toHaveCount(7);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
@@ -304,7 +314,7 @@ test.describe("Nature frontend public coverage", () => {
     ).toHaveCount(0);
 
     const placeholderPoster = page
-      .getByRole("link", { name: "查看 Codex Vibe Monitor 项目案例" })
+      .getByRole("link", { name: "查看 ISO USB Hub 项目案例" })
       .locator(".project-poster");
     await expect(placeholderPoster.locator(".project-poster-copy")).toHaveCount(1);
     await expect(placeholderPoster.locator(".project-poster-scrim")).toHaveCount(0);
