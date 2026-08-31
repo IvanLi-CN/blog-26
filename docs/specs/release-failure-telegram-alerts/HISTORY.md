@@ -1,3 +1,3 @@
 # History
 
-- 2026-04-12: The topic was created to make release-failure notifications identify the actual release target SHA and reuse the shared Telegram workflow.
+- The topic makes release-failure notifications identify the actual release target SHA through a shared workflow; Oidrune now owns the OIDC-authenticated delivery handoff.
