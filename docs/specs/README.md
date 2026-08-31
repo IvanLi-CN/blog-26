@@ -33,7 +33,7 @@
 | Posts list title contrast | archived | implemented | `posts-list-title-contrast/SPEC.md` | - | Semantic title colors preserve hierarchy across themes. |
 | PR + label driven release | active | in progress | `pr-label-release/SPEC.md` | - | Component-aware releases publish frontend, backend, Pages, and a unified image. |
 | Public media assets facade | active | implemented | `public-media-assets-facade/SPEC.md` | - | Public media references use blog-owned stable facade URLs. |
-| Release failure Telegram alerts | active | in progress | `release-failure-telegram-alerts/SPEC.md` | - | Release failures report the actual target SHA through the shared Telegram workflow. |
+| Release failure Oidrune alerts | active | in progress | `release-failure-telegram-alerts/SPEC.md` | - | Release failures report the actual target SHA through the OIDC-authenticated Oidrune workflow. |
 | Remote MCP reimplementation | active | implemented | `remote-mcp/SPEC.md` | - | `/mcp` uses current Streamable HTTP sessions and durable content-origin metadata. |
 | Search syntax parsing and SQLite FTS5 fallback | active | implemented | `search-full-text-fallback/SPEC.md` | - | Controlled advanced syntax and SQLite FTS5 preserve search when AI providers are unavailable. |
 | Zero Next cleanup | active | in progress | `zero-next-cleanup/SPEC.md` | - | Removes remaining Next ownership while preserving Astro, admin SPA, gateway, and MCP behavior. |
