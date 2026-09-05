@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import "@/styles/nature-restored.css";
 import { QuickMemoEditModal } from "./QuickMemoEditModal";
+import { QuickMemoEditor } from "./QuickMemoEditor";
 
 type MemoRecord = {
   id: string;
@@ -66,10 +67,12 @@ function PublicShell({
   children,
   theme = "light",
   compact = false,
+  wide = false,
 }: {
   children: ReactNode;
   theme?: "light" | "dark";
   compact?: boolean;
+  wide?: boolean;
 }) {
   useEffect(() => {
     document.documentElement.dataset.uiTheme = theme;
@@ -94,7 +97,9 @@ function PublicShell({
       data-theme={theme}
     >
       <main className="nature-main py-10">
-        <div className="nature-reading-container space-y-8">{children}</div>
+        <div className={`${wide ? "nature-container" : "nature-reading-container"} space-y-8`}>
+          {children}
+        </div>
       </main>
     </div>
   );
@@ -296,12 +301,18 @@ function LiveMemoDetailStory() {
   );
 }
 
-function QuickEditModalStory() {
+function QuickEditModalStory({
+  theme = "light",
+  compact = true,
+}: {
+  theme?: "light" | "dark";
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(true);
   const [saved, setSaved] = useState(false);
 
   return (
-    <PublicShell compact>
+    <PublicShell compact={compact} theme={theme}>
       <div className="nature-panel px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -346,6 +357,30 @@ function QuickEditModalStory() {
   );
 }
 
+function QuickPublishStory({ theme = "light" }: { theme?: "light" | "dark" }) {
+  return (
+    <PublicShell theme={theme} wide>
+      <section className="px-2 py-8 sm:px-6 sm:py-12">
+        <div className="mb-8 text-center sm:mb-12">
+          <span className="nature-kicker justify-center">Flow Notes</span>
+          <h1 className="nature-title mt-4 text-4xl sm:text-5xl">Memos</h1>
+          <p className="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">
+            记录想法、灵感和日常思考的快速笔记
+          </p>
+        </div>
+
+        <div className="nature-panel px-5 py-4">
+          <div className="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+            <span aria-hidden="true">◈</span>
+            <span>当前为管理员视角：这里会直接调用 `/api/public/memos/*`。</span>
+          </div>
+          <QuickMemoEditor onSave={async () => undefined} localSourceEnabled={true} />
+        </div>
+      </section>
+    </PublicShell>
+  );
+}
+
 export const RealtimeList: Story = {
   name: "实时列表",
   render: () => <RealtimeMemoListStory />,
@@ -386,5 +421,30 @@ export const QuickEditModal: Story = {
     await userEvent.click(within(dialog).getByRole("button", { name: "关闭快速编辑" }));
     await userEvent.click(canvas.getByRole("button", { name: "打开编辑器" }));
     await expect(canvas.getByRole("dialog")).toBeVisible();
+  },
+};
+
+export const QuickEditModalDark: Story = {
+  name: "快速编辑弹窗（暗色）",
+  render: () => <QuickEditModalStory theme="dark" compact={false} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialog = canvas.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(within(dialog).getByTestId("quick-memo-edit-editor")).toBeVisible();
+    expect(dialog.querySelector(".milkdown")).not.toBeNull();
+    await expect(within(dialog).getByTestId("quick-memo-visibility-switch")).toBeVisible();
+  },
+};
+
+export const QuickPublishDark: Story = {
+  name: "快速发布（暗色）",
+  render: () => <QuickPublishStory theme="dark" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = canvas.getByTestId("quick-memo-editor");
+    await expect(editor).toBeVisible();
+    expect(editor.querySelector(".milkdown")).not.toBeNull();
+    expect(editor.querySelector(".ProseMirror")).not.toBeNull();
   },
 };
