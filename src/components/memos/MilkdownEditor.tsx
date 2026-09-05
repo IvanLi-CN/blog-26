@@ -20,6 +20,7 @@ import { isExternalUrl, resolveRelativePath } from "../../utils/path-resolver";
 
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
+import "@/styles/milkdown-nature.css";
 
 // 基于标签页的编辑器实例管理
 const editorInstances = new Map<string, Crepe>();
