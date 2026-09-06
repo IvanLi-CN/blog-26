@@ -83,6 +83,8 @@ class Config:
     deploy_frontend_pages_result: str
     pages_status: str
     pages_url: str
+    deploy_frontend_edgeone_result: str
+    edgeone_status: str
     dry_run: bool
     issue_comments_json: Any
 
@@ -209,6 +211,8 @@ def ensure_successful_release(config: Config) -> tuple[bool, str]:
         return False, f"image job result={config.publish_image_result}"
     if config.expected_frontend and config.deploy_frontend_pages_result not in {"success", "skipped"}:
         return False, f"pages job result={config.deploy_frontend_pages_result}"
+    if config.expected_frontend and config.deploy_frontend_edgeone_result not in {"success", "skipped"}:
+        return False, f"edgeone job result={config.deploy_frontend_edgeone_result}"
     return True, "ready"
 
 
@@ -228,6 +232,7 @@ def render_pages_line(config: Config) -> str | None:
     reason_map = {
         "skipped_initial_non_head": "skipped because the release commit was not the latest `main` head when this run started",
         "skipped_recheck_head_moved": "skipped because `main` moved before the deploy step re-check completed",
+        "skipped_prerelease": "skipped because `channel:rc` never deploys a production frontend",
         "skipped_frontend_not_released": "skipped because this PR did not publish `frontend`",
         "skipped_unknown": "skipped by workflow contract",
     }
@@ -245,6 +250,32 @@ def render_pages_line(config: Config) -> str | None:
 
     reason = reason_map.get(status, f"skipped ({status})")
     return f"- Pages: {reason}"
+
+
+def render_edgeone_line(config: Config) -> str | None:
+    if not config.expected_frontend:
+        return None
+
+    status = config.edgeone_status.strip()
+    if status == "deployed":
+        return "- EdgeOne Makers: deployed"
+
+    reason_map = {
+        "skipped_initial_non_head": "skipped because the release commit was not the latest `main` head when this run started",
+        "skipped_recheck_head_moved": "skipped because `main` moved before the deploy step re-check completed",
+        "skipped_prerelease": "skipped because `channel:rc` never deploys a production frontend",
+        "skipped_frontend_not_released": "skipped because this PR did not publish `frontend`",
+        "skipped_unknown": "skipped by workflow contract",
+    }
+
+    if not status:
+        if not config.is_latest_branch_head:
+            status = "skipped_initial_non_head"
+        elif config.deploy_frontend_edgeone_result == "skipped":
+            status = "skipped_unknown"
+
+    reason = reason_map.get(status, f"skipped ({status})")
+    return f"- EdgeOne Makers: {reason}"
 
 
 def build_comment_body(config: Config) -> str:
@@ -287,6 +318,10 @@ def build_comment_body(config: Config) -> str:
     pages_line = render_pages_line(config)
     if pages_line:
         lines.append(pages_line)
+
+    edgeone_line = render_edgeone_line(config)
+    if edgeone_line:
+        lines.append(edgeone_line)
 
     run_label = f"Run {env('GITHUB_RUN_ID', 'unknown')}"
     if config.workflow_run_attempt:
@@ -351,6 +386,8 @@ def main() -> int:
         deploy_frontend_pages_result=env("DEPLOY_FRONTEND_PAGES_RESULT", "skipped"),
         pages_status=env("PAGES_STATUS"),
         pages_url=env("PAGES_URL"),
+        deploy_frontend_edgeone_result=env("DEPLOY_FRONTEND_EDGEONE_RESULT", "skipped"),
+        edgeone_status=env("EDGEONE_STATUS"),
         dry_run=env_bool("RELEASE_RECEIPT_DRY_RUN"),
         issue_comments_json=parse_json_env("ISSUE_COMMENTS_JSON", None),
     )
