@@ -29,9 +29,6 @@ function runReceipt(overrides: Record<string, string> = {}) {
       PUBLISH_FRONTEND_RESULT: "success",
       PUBLISH_BACKEND_RESULT: "skipped",
       PUBLISH_IMAGE_RESULT: "success",
-      DEPLOY_FRONTEND_PAGES_RESULT: "success",
-      PAGES_STATUS: "deployed",
-      PAGES_URL: "https://ivanli.cc",
       DEPLOY_FRONTEND_EDGEONE_RESULT: "success",
       EDGEONE_STATUS: "deployed",
       ISSUE_COMMENTS_JSON: "[]",
@@ -46,6 +43,7 @@ describe("release-receipt.sh", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("- EdgeOne Makers: deployed");
+    expect(result.stdout).not.toContain("- Pages:");
   });
 
   test("does not create a receipt when the EdgeOne deployment fails", () => {

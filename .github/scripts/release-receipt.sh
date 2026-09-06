@@ -80,9 +80,6 @@ class Config:
     publish_frontend_result: str
     publish_backend_result: str
     publish_image_result: str
-    deploy_frontend_pages_result: str
-    pages_status: str
-    pages_url: str
     deploy_frontend_edgeone_result: str
     edgeone_status: str
     dry_run: bool
@@ -209,8 +206,6 @@ def ensure_successful_release(config: Config) -> tuple[bool, str]:
         return False, f"backend job result={config.publish_backend_result}"
     if config.expected_image and config.publish_image_result != "success":
         return False, f"image job result={config.publish_image_result}"
-    if config.expected_frontend and config.deploy_frontend_pages_result not in {"success", "skipped"}:
-        return False, f"pages job result={config.deploy_frontend_pages_result}"
     if config.expected_frontend and config.deploy_frontend_edgeone_result not in {"success", "skipped"}:
         return False, f"edgeone job result={config.deploy_frontend_edgeone_result}"
     return True, "ready"
@@ -219,37 +214,6 @@ def ensure_successful_release(config: Config) -> tuple[bool, str]:
 def release_url(repo: str, tag: str) -> str:
     encoded_tag = urllib.parse.quote(tag, safe="")
     return f"https://github.com/{repo}/releases/tag/{encoded_tag}"
-
-
-def render_pages_line(config: Config) -> str | None:
-    if not config.expected_frontend:
-        return None
-
-    status = config.pages_status.strip()
-    if status == "deployed" and config.pages_url:
-        return f"- Pages: deployed to [{config.pages_url}]({config.pages_url})"
-
-    reason_map = {
-        "skipped_initial_non_head": "skipped because the release commit was not the latest `main` head when this run started",
-        "skipped_recheck_head_moved": "skipped because `main` moved before the deploy step re-check completed",
-        "skipped_prerelease": "skipped because `channel:rc` never deploys a production frontend",
-        "skipped_frontend_not_released": "skipped because this PR did not publish `frontend`",
-        "skipped_unknown": "skipped by workflow contract",
-    }
-
-    if not status:
-        if not config.is_latest_branch_head:
-            status = "skipped_initial_non_head"
-        elif config.deploy_frontend_pages_result == "success" and not config.pages_url:
-            status = "skipped_unknown"
-        elif config.deploy_frontend_pages_result == "skipped":
-            status = "skipped_unknown"
-
-    if status == "deployed" and not config.pages_url:
-        return "- Pages: deployed (GitHub Pages URL unavailable from workflow output)"
-
-    reason = reason_map.get(status, f"skipped ({status})")
-    return f"- Pages: {reason}"
 
 
 def render_edgeone_line(config: Config) -> str | None:
@@ -315,10 +279,6 @@ def build_comment_body(config: Config) -> str:
     if config.expected_image and config.image_release_tag:
         lines.append(f"- image release: `ghcr.io/{config.repo_lower}:{config.image_release_tag}`")
 
-    pages_line = render_pages_line(config)
-    if pages_line:
-        lines.append(pages_line)
-
     edgeone_line = render_edgeone_line(config)
     if edgeone_line:
         lines.append(edgeone_line)
@@ -383,9 +343,6 @@ def main() -> int:
         publish_frontend_result=env("PUBLISH_FRONTEND_RESULT", "skipped"),
         publish_backend_result=env("PUBLISH_BACKEND_RESULT", "skipped"),
         publish_image_result=env("PUBLISH_IMAGE_RESULT", "skipped"),
-        deploy_frontend_pages_result=env("DEPLOY_FRONTEND_PAGES_RESULT", "skipped"),
-        pages_status=env("PAGES_STATUS"),
-        pages_url=env("PAGES_URL"),
         deploy_frontend_edgeone_result=env("DEPLOY_FRONTEND_EDGEONE_RESULT", "skipped"),
         edgeone_status=env("EDGEONE_STATUS"),
         dry_run=env_bool("RELEASE_RECEIPT_DRY_RUN"),

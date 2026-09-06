@@ -81,6 +81,7 @@ export default defineConfig({
       "process.env.PUBLIC_LUOSIMAO_SITE_KEY": JSON.stringify(
         process.env.PUBLIC_LUOSIMAO_SITE_KEY ?? ""
       ),
+      "process.env.PUBLIC_API_BASE_URL": JSON.stringify(process.env.PUBLIC_API_BASE_URL ?? ""),
       "process.env.PUBLIC_SITE_URL": JSON.stringify(process.env.PUBLIC_SITE_URL ?? ""),
       "process.env.PUBLIC_SITE_BASE_PATH": JSON.stringify(process.env.PUBLIC_SITE_BASE_PATH ?? ""),
     },
