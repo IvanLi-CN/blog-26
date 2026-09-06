@@ -4,6 +4,10 @@
 - Status: `active`
 - Owner: `main-agent`
 
+## Related ADRs
+
+None
+
 ## 1. 背景
 
 当前公开前台的内容源媒体仍直接暴露运行时文件代理语义：
