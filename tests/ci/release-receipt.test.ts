@@ -31,6 +31,11 @@ function runReceipt(overrides: Record<string, string> = {}) {
       PUBLISH_IMAGE_RESULT: "success",
       DEPLOY_FRONTEND_EDGEONE_RESULT: "success",
       EDGEONE_STATUS: "deployed",
+      PUBLIC_MEDIA_PACKAGED_COUNT: "12",
+      PUBLIC_MEDIA_PACKAGED_BYTES: "3456",
+      PUBLIC_MEDIA_EXTERNAL_COUNT: "1",
+      PUBLIC_MEDIA_ARTIFACT_FILES: "80",
+      PUBLIC_MEDIA_ARTIFACT_BYTES: "4567",
       ISSUE_COMMENTS_JSON: "[]",
       ...overrides,
     },
@@ -43,6 +48,9 @@ describe("release-receipt.sh", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("- EdgeOne Makers: deployed");
+    expect(result.stdout).toContain(
+      "- static media: packaged `12` files (3456 bytes); external exceptions `1`; artifact `80` files (4567 bytes)"
+    );
     expect(result.stdout).not.toContain("- Pages:");
   });
 

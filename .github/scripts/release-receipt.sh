@@ -82,6 +82,11 @@ class Config:
     publish_image_result: str
     deploy_frontend_edgeone_result: str
     edgeone_status: str
+    public_media_packaged_count: str
+    public_media_packaged_bytes: str
+    public_media_external_count: str
+    public_media_artifact_files: str
+    public_media_artifact_bytes: str
     dry_run: bool
     issue_comments_json: Any
 
@@ -242,6 +247,19 @@ def render_edgeone_line(config: Config) -> str | None:
     return f"- EdgeOne Makers: {reason}"
 
 
+def render_public_media_line(config: Config) -> str | None:
+    if not config.expected_frontend:
+        return None
+    return (
+        "- static media: "
+        f"packaged `{config.public_media_packaged_count or '0'}` files "
+        f"({config.public_media_packaged_bytes or '0'} bytes); "
+        f"external exceptions `{config.public_media_external_count or '0'}`; "
+        f"artifact `{config.public_media_artifact_files or '0'}` files "
+        f"({config.public_media_artifact_bytes or '0'} bytes)"
+    )
+
+
 def build_comment_body(config: Config) -> str:
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     release_targets = []
@@ -282,6 +300,10 @@ def build_comment_body(config: Config) -> str:
     edgeone_line = render_edgeone_line(config)
     if edgeone_line:
         lines.append(edgeone_line)
+
+    public_media_line = render_public_media_line(config)
+    if public_media_line:
+        lines.append(public_media_line)
 
     run_label = f"Run {env('GITHUB_RUN_ID', 'unknown')}"
     if config.workflow_run_attempt:
@@ -345,6 +367,11 @@ def main() -> int:
         publish_image_result=env("PUBLISH_IMAGE_RESULT", "skipped"),
         deploy_frontend_edgeone_result=env("DEPLOY_FRONTEND_EDGEONE_RESULT", "skipped"),
         edgeone_status=env("EDGEONE_STATUS"),
+        public_media_packaged_count=env("PUBLIC_MEDIA_PACKAGED_COUNT"),
+        public_media_packaged_bytes=env("PUBLIC_MEDIA_PACKAGED_BYTES"),
+        public_media_external_count=env("PUBLIC_MEDIA_EXTERNAL_COUNT"),
+        public_media_artifact_files=env("PUBLIC_MEDIA_ARTIFACT_FILES"),
+        public_media_artifact_bytes=env("PUBLIC_MEDIA_ARTIFACT_BYTES"),
         dry_run=env_bool("RELEASE_RECEIPT_DRY_RUN"),
         issue_comments_json=parse_json_env("ISSUE_COMMENTS_JSON", None),
     )

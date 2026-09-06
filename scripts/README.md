@@ -15,6 +15,8 @@ Key project scripts live in this directory. Use Bun unless a shell script is exp
 - `generate-test-data.ts`: create dev/test local content fixtures
 - `trigger-sync.ts`: run content sync against the configured local content root
 - `verify-test-data.ts`: validate generated fixture shape
+- `package-public-media.ts`: package processed facade media referenced by the generated public site
+- `verify-public-media-package.ts`: verify packaged media references and EdgeOne artifact quotas
 
 ## Common Commands
 
@@ -27,6 +29,8 @@ bun run dev-db:reset
 bun run test-env:reset
 bun run test-data:generate
 bun run test-data:verify
+bun run frontend:package-media
+bun run frontend:verify-media
 ```
 
 ## Notes

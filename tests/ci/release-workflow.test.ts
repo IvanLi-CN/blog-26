@@ -75,9 +75,17 @@ describe("release.yml", () => {
 
   test("publishes the verified static artifact and functions to EdgeOne Makers only", () => {
     const publishFrontend = jobBlock("publish_frontend");
+    expect(publishFrontend).toContain("- name: Package referenced public media");
+    expect(publishFrontend).toContain(
+      "PUBLIC_STATIC_MEDIA_ORIGIN: $" +
+        "{{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}"
+    );
+    expect(publishFrontend).toContain("run: bun run frontend:package-media");
     expect(publishFrontend).toContain("- name: Stage EdgeOne deployment artifact");
     expect(publishFrontend).toContain("cp -R ./site-dist/. ./edgeone-dist/");
     expect(publishFrontend).toContain("cp -R ./edge-functions ./edgeone-dist/edge-functions");
+    expect(publishFrontend).toContain("- name: Verify EdgeOne deployment artifact");
+    expect(publishFrontend).toContain("run: bun run frontend:verify-media");
     expect(publishFrontend).toContain("- name: Upload frontend EdgeOne artifact");
     expect(publishFrontend).toContain("uses: actions/upload-artifact@v4");
     expect(publishFrontend).toContain("name: frontend-edgeone-site");
@@ -85,6 +93,7 @@ describe("release.yml", () => {
     expect(workflow).not.toContain("\n  deploy_frontend_pages:\n");
     expect(workflow).not.toContain("actions/upload-pages-artifact");
     expect(workflow).not.toContain("actions/deploy-pages");
+    expect(workflow).not.toContain("pages: write");
 
     const edgeone = jobBlock("deploy_frontend_edgeone");
     expect(edgeone).toContain("needs: [prepare, publish_frontend]");

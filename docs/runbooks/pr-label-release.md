@@ -110,13 +110,17 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - `PUBLIC_SITE_URL=https://ivanli.cc`
   - `PUBLIC_SITE_BASE_PATH=/`
   - `PUBLIC_API_BASE_URL=https://ivanli.cc`
+  - `PUBLIC_STATIC_MEDIA_ORIGIN=https://api.ivanli.cc`
 - Configure the EdgeOne Makers CI inputs before the next stable frontend release:
   - repository secret `EDGEONE_API_TOKEN`
   - repository variable `EDGEONE_PROJECT_NAME`
 - The stable EdgeOne deployment reconciles the Makers production environment variable `BLOG_BACKEND_ORIGIN=https://api.ivanli.cc` through the official CLI in a runner-local temporary directory. The deployed functions proxy only `/api/public/*`, `/api/health`, and `/mcp` to this upstream, preserving the public site's same-origin contract.
 - The release workflow deploys EdgeOne only from the verified `site-dist` output plus `edge-functions`, and only for `channel:stable`. Its first eligible deployment creates the named direct-upload project if it does not yet exist; it does not bind a custom domain, alter DNS, or perform a manual upload.
 - `PUBLIC_API_BASE_URL=https://ivanli.cc` is only valid when the public domain already routes same-origin anonymous backend traffic, including `/api/public/assets/*`, to the live gateway.
-- The frontend release remains a static `site-dist` build. Public images, GIF derivatives, video posters, and playback URLs are not bundled into static assets; they continue to depend on the live same-origin `/api/public/assets/*` facade.
+- The frontend release remains a static `site-dist` build. Its build step scans generated HTML, feeds, JSON and scripts for facade references, downloads referenced processed media from `PUBLIC_STATIC_MEDIA_ORIGIN`, writes qualifying files below `/_content/assets/`, and records `_content/media-manifest.json`.
+- Media downloads allow only redirects that remain on the configured backend origin; a cross-origin redirect fails the release rather than expanding the runner's fetch scope.
+- A processed media file at or above 20 MiB is deliberately excluded from the artifact and rewritten to an absolute `https://api.ivanli.cc/api/public/assets/*` URL so it does not pass through the Edge Function response path. Missing media, invalid responses, or an artifact reaching 20,000 files or 5 GiB fail the release before publication.
+- Raw content files are never copied into the frontend artifact. The public media facade remains the source for oversized media and runtime interactions continue to use the live `/api/public/*` API.
 - The generated public HTML must also carry the stable build-time cache-bust query on facade card/cover URLs: `?v=<public-snapshot.generatedAt>`. This is part of the release contract for static list/detail imagery, not a runtime fallback.
 - If old project Pages variables are still present, the workflow auto-normalizes their values to the `public/CNAME` custom domain during release.
 - The workflow can consume either:
@@ -157,6 +161,8 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
 - Confirm the bundle contains `public-snapshot.json`.
 - Confirm `PUBLIC_API_BASE_URL` points at the live backend/gateway origin that really serves anonymous `/api/public/*` and `/api/public/assets/*` traffic.
+- Confirm `PUBLIC_STATIC_MEDIA_ORIGIN` points at the live HTTPS backend origin and that every referenced processed media URL responds to `HEAD` or `GET` from Actions.
+- Inspect the `Public media package` and `EdgeOne artifact` workflow summaries. A media download failure, file-count/size limit, or missing `_content/media-manifest.json` blocks the release.
 - Confirm the published HTML references build-time facade card/cover URLs with `?v=<snapshot-generatedAt>` so browsers and edge caches cannot stay pinned to an older broken media object after the facade path recovers.
 - Confirm the live imagor deployment also allows internal HTTP source fetches from the blog service, including `HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=0` for the `blog:25090` internal-source model.
 - Confirm the published `site-dist` also contains `watermark-ivanli.svg`, and the public entrypoint serves `https://ivanli.cc/watermark-ivanli.svg` directly from the same-origin static surface.
