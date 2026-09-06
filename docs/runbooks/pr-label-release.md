@@ -30,7 +30,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 | labels | should release | Git tag | GitHub Release | Additional publish |
 |---|---|---|---|---|
-| `type:*` + `channel:stable` + `release:frontend` | yes | `frontend-vX.Y.Z` + `vX.Y.Z` | stable frontend release | deploy GitHub Pages + GHCR `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
+| `type:*` + `channel:stable` + `release:frontend` | yes | `frontend-vX.Y.Z` + `vX.Y.Z` | stable frontend release | deploy EdgeOne Makers + GitHub Pages hot standby + GHCR `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
 | `type:*` + `channel:rc` + `release:frontend` | yes | `frontend-vX.Y.Z-rc.<sha7>` + `vX.Y.Z-rc.<sha7>` | prerelease frontend release | GHCR `vX.Y.Z-rc.<sha7>` |
 | `type:*` + `channel:stable` + `release:backend` | yes | `backend-vX.Y.Z` + `vX.Y.Z` | stable backend release | backend artifacts + GHCR `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
 | `type:*` + `channel:rc` + `release:backend` | yes | `backend-vX.Y.Z-rc.<sha7>` + `vX.Y.Z-rc.<sha7>` | prerelease backend release | backend artifacts + GHCR `vX.Y.Z-rc.<sha7>` |
@@ -59,7 +59,8 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
    - reuses the bundled `public-snapshot.json`
    - builds `site-dist`
    - uploads frontend release assets
-   - deploys the same build output to GitHub Pages
+   - uploads the same build output as a GitHub Actions artifact
+   - deploys that artifact to EdgeOne Makers and GitHub Pages
 7. If `release:backend` is present, the workflow:
    - builds `admin-dist`
    - prepares `backend-dist`
@@ -111,6 +112,10 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - `PUBLIC_SITE_URL=https://ivanli.cc`
   - `PUBLIC_SITE_BASE_PATH=/`
   - `PUBLIC_API_BASE_URL=https://ivanli.cc`
+- Configure the EdgeOne Makers CI inputs before the next stable frontend release:
+  - repository secret `EDGEONE_API_TOKEN`
+  - repository variable `EDGEONE_PROJECT_NAME`
+- The release workflow deploys EdgeOne only from the verified `site-dist` artifact and only for `channel:stable`. Its first eligible deployment creates the named direct-upload project if it does not yet exist; it does not bind a custom domain, alter DNS, or perform a manual upload.
 - `PUBLIC_API_BASE_URL=https://ivanli.cc` is only valid when the public domain already routes same-origin anonymous backend traffic, including `/api/public/assets/*`, to the live gateway.
 - The frontend release remains a static `site-dist` build. Public images, GIF derivatives, video posters, and playback URLs are not bundled into static assets; they continue to depend on the live same-origin `/api/public/assets/*` facade.
 - The generated public HTML must also carry the stable build-time cache-bust query on facade card/cover URLs: `?v=<public-snapshot.generatedAt>`. This is part of the release contract for static list/detail imagery, not a runtime fallback.
