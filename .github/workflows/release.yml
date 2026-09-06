@@ -563,6 +563,25 @@ jobs:
             core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
             if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
 
+      - name: Configure EdgeOne Makers backend origin
+        if: ${{ steps.main-head-before-edgeone-deployment.outputs.is_current_head == 'true' }}
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+          EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
+        run: |
+          set -euo pipefail
+          environment_log="$RUNNER_TEMP/edgeone-environment.log"
+          environment_dir="$(mktemp -d "$RUNNER_TEMP/edgeone-environment.XXXXXX")"
+          if ! (
+            cd "$environment_dir"
+            npx edgeone@1.6.33 makers link -n "$EDGEONE_PROJECT_NAME" -t "$EDGEONE_API_TOKEN"
+            npx edgeone@1.6.33 makers env set BLOG_BACKEND_ORIGIN https://api.ivanli.cc -t "$EDGEONE_API_TOKEN"
+          ) >"$environment_log" 2>&1; then
+            sed -E '/Deploy URL:/d; s/(eo_token=)[^&[:space:]]+/\1[REDACTED]/g; s/(eo_time=)[^&[:space:]]+/\1[REDACTED]/g' "$environment_log"
+            exit 1
+          fi
+          sed -E '/Deploy URL:/d; s/(eo_token=)[^&[:space:]]+/\1[REDACTED]/g; s/(eo_time=)[^&[:space:]]+/\1[REDACTED]/g' "$environment_log"
+
       - name: Deploy to EdgeOne Makers
         id: deployment
         if: ${{ steps.main-head-before-edgeone-deployment.outputs.is_current_head == 'true' }}

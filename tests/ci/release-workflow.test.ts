@@ -58,7 +58,7 @@ describe("release.yml", () => {
     );
     assertMainHeadGate(
       "deploy_frontend_edgeone",
-      "Deploy to EdgeOne Makers",
+      "Configure EdgeOne Makers backend origin",
       "main-head-before-edgeone-deployment"
     );
     assertMainHeadGate(
@@ -95,6 +95,12 @@ describe("release.yml", () => {
     expect(edgeone).toContain("path: ./edgeone-dist");
     expect(edgeone).toContain(`EDGEONE_API_TOKEN: \${{ secrets.EDGEONE_API_TOKEN }}`);
     expect(edgeone).toContain(`EDGEONE_PROJECT_NAME: \${{ vars.EDGEONE_PROJECT_NAME }}`);
+    expect(edgeone).toContain("- name: Configure EdgeOne Makers backend origin");
+    expect(edgeone).toContain('makers link -n "$EDGEONE_PROJECT_NAME"');
+    expect(edgeone).toContain("makers env set BLOG_BACKEND_ORIGIN https://api.ivanli.cc");
+    expect(edgeone).toContain(
+      `if: \${{ steps.main-head-before-edgeone-deployment.outputs.is_current_head == 'true' }}`
+    );
     expect(edgeone).toContain('deployment_log="$RUNNER_TEMP/edgeone-deploy.log"');
     expect(edgeone).toContain("/Deploy URL:/d");
   });
