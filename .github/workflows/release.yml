@@ -21,7 +21,6 @@ permissions:
   packages: write
   issues: write
   pull-requests: write
-  pages: write
   id-token: write
 
 env:
@@ -347,6 +346,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [prepare]
     if: ${{ needs.prepare.outputs.should_release == 'true' && needs.prepare.outputs.frontend_release == 'true' }}
+    outputs:
+      public_media_packaged_count: ${{ steps.package-public-media.outputs.public_media_packaged_count }}
+      public_media_packaged_bytes: ${{ steps.package-public-media.outputs.public_media_packaged_bytes }}
+      public_media_external_count: ${{ steps.package-public-media.outputs.public_media_external_count }}
+      public_media_artifact_files: ${{ steps.verify-public-media.outputs.public_media_artifact_files }}
+      public_media_artifact_bytes: ${{ steps.verify-public-media.outputs.public_media_artifact_bytes }}
     permissions:
       contents: write
     steps:
@@ -459,6 +464,17 @@ jobs:
           PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
         run: bun ./scripts/verify-pages-build.ts
 
+      - name: Package referenced public media
+        id: package-public-media
+        env:
+          PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}
+          PUBLIC_SITE_URL: ${{ env.PUBLIC_SITE_URL }}
+          PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
+          PUBLIC_STATIC_MEDIA_MAX_BYTES: 20971520
+          PUBLIC_STATIC_MEDIA_MAX_FILES: 20000
+          PUBLIC_STATIC_MEDIA_MAX_PROJECT_BYTES: 5368709120
+        run: bun run frontend:package-media
+
       - name: Package frontend release assets
         shell: bash
         run: |
@@ -476,6 +492,27 @@ jobs:
           mkdir -p ./edgeone-dist
           cp -R ./site-dist/. ./edgeone-dist/
           cp -R ./edge-functions ./edgeone-dist/edge-functions
+
+      - name: Verify EdgeOne deployment artifact
+        id: verify-public-media
+        env:
+          PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}
+          PUBLIC_SITE_URL: ${{ env.PUBLIC_SITE_URL }}
+          PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
+          PUBLIC_STATIC_MEDIA_MAX_FILES: 20000
+          PUBLIC_STATIC_MEDIA_MAX_PROJECT_BYTES: 5368709120
+        run: bun run frontend:verify-media
+
+      - name: Record public media artifact summary
+        shell: bash
+        run: |
+          {
+            echo "### EdgeOne artifact"
+            echo "- files: \`${{ steps.verify-public-media.outputs.public_media_artifact_files }}\`"
+            echo "- bytes: \`${{ steps.verify-public-media.outputs.public_media_artifact_bytes }}\`"
+            echo "- packaged media: \`${{ steps.package-public-media.outputs.public_media_packaged_count }}\` files"
+            echo "- external media exceptions: \`${{ steps.package-public-media.outputs.public_media_external_count }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload frontend EdgeOne artifact
         uses: actions/upload-artifact@v4
@@ -947,6 +984,11 @@ jobs:
           PUBLISH_IMAGE_RESULT: ${{ needs.publish_image.result }}
           DEPLOY_FRONTEND_EDGEONE_RESULT: ${{ needs.deploy_frontend_edgeone.result }}
           EDGEONE_STATUS: ${{ needs.deploy_frontend_edgeone.outputs.edgeone_status || (needs.prepare.outputs.frontend_release == 'true' && needs.prepare.outputs.channel != 'stable' && 'skipped_prerelease') || (needs.prepare.outputs.frontend_release == 'true' && needs.prepare.outputs.is_latest_branch_head != 'true' && 'skipped_initial_non_head') || '' }}
+          PUBLIC_MEDIA_PACKAGED_COUNT: ${{ needs.publish_frontend.outputs.public_media_packaged_count || '0' }}
+          PUBLIC_MEDIA_PACKAGED_BYTES: ${{ needs.publish_frontend.outputs.public_media_packaged_bytes || '0' }}
+          PUBLIC_MEDIA_EXTERNAL_COUNT: ${{ needs.publish_frontend.outputs.public_media_external_count || '0' }}
+          PUBLIC_MEDIA_ARTIFACT_FILES: ${{ needs.publish_frontend.outputs.public_media_artifact_files || '0' }}
+          PUBLIC_MEDIA_ARTIFACT_BYTES: ${{ needs.publish_frontend.outputs.public_media_artifact_bytes || '0' }}
         run: bash ./.github/scripts/release-receipt.sh
 
       - name: Write receipt summary

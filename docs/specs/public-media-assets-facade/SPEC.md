@@ -69,6 +69,10 @@
 - 公开门面必须代理 `imagorvideo` 或内部 raw 播放响应，不得 302 跳转到第三方或内网域名。
 - 静态公开 HTML 中由 build-time 直接落盘的 facade 媒体 URL，至少包括列表卡片 `card`、详情头图 `cover`、以及同一批构建时写入的 OG/Twitter/JSON-LD 封面字段，必须附带稳定查询参数 `?v=<public-snapshot.generatedAt>`。
 - 这个 `v` 只作为静态发布缓存版本戳，用于在 snapshot 更新后强制浏览器与边缘缓存切换到新对象；它不得改写 facade path 形状，也不得引入运行时 fallback。
+- 前台 release 必须扫描生成的公开文档，按实际引用拉取已处理的 facade 派生文件并写入静态发布包的 `/_content/assets/` 命名空间；原始内容文件不得进入发布包。
+- 媒体下载只允许停留在配置的后端 origin 内的重定向；跨域重定向必须让发布失败，不能扩大 CI runner 的请求范围。
+- 单个派生媒体文件小于 20 MiB 时必须随包发布；达到 20 MiB 时允许改写为 `https://api.ivanli.cc/api/public/assets/*` 后端直连，并在发布清单中记录。
+- 发布包必须带有 `_content/media-manifest.json`；媒体下载失败、静态 artifact 达到 20,000 文件或 5 GiB 时，发布必须失败并保持现网版本。
 
 ### 5.3 内部 source 路由
 
@@ -226,13 +230,9 @@
 - Public posts list facade rendering: [public-posts-list.png](./assets/public-posts-list.png)
 - Public post detail facade rendering: [public-post-detail.png](./assets/public-post-detail.png)
 - Admin post preview facade rendering: [admin-preview-post.png](./assets/admin-preview-post.png)
-PR: include
 - Storybook preview detail rhythm inside the admin Soft UI shell: [storybook-admin-preview-post-detail.png](./assets/storybook-admin-preview-post-detail.png)
-PR: include
 - Storybook memo detail rhythm keeps a single content title with no hero or excerpt slot: [storybook-admin-preview-memo-detail.png](./assets/storybook-admin-preview-memo-detail.png)
-PR: include
 - Admin post preview renders facade hero between header metadata and body content: [admin-preview-post-detail.png](./assets/admin-preview-post-detail.png)
-PR: include
 - Admin memo preview keeps the public memo detail shell rhythm without a hero or excerpt slot: [admin-preview-memo-detail.png](./assets/admin-preview-memo-detail.png)
 
 ## 10. 参考
