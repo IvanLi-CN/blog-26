@@ -113,7 +113,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Configure the EdgeOne Makers CI inputs before the next stable frontend release:
   - repository secret `EDGEONE_API_TOKEN`
   - repository variable `EDGEONE_PROJECT_NAME`
-- Configure the Makers production environment variable `BLOG_BACKEND_ORIGIN=https://api.ivanli.cc`. The deployed functions proxy only `/api/public/*`, `/api/health`, and `/mcp` to this upstream, preserving the public site's same-origin contract.
+- The stable EdgeOne deployment reconciles the Makers production environment variable `BLOG_BACKEND_ORIGIN=https://api.ivanli.cc` through the official CLI in a runner-local temporary directory. The deployed functions proxy only `/api/public/*`, `/api/health`, and `/mcp` to this upstream, preserving the public site's same-origin contract.
 - The release workflow deploys EdgeOne only from the verified `site-dist` output plus `edge-functions`, and only for `channel:stable`. Its first eligible deployment creates the named direct-upload project if it does not yet exist; it does not bind a custom domain, alter DNS, or perform a manual upload.
 - `PUBLIC_API_BASE_URL=https://ivanli.cc` is only valid when the public domain already routes same-origin anonymous backend traffic, including `/api/public/assets/*`, to the live gateway.
 - The frontend release remains a static `site-dist` build. Public images, GIF derivatives, video posters, and playback URLs are not bundled into static assets; they continue to depend on the live same-origin `/api/public/assets/*` facade.
