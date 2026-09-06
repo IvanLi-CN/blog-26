@@ -53,18 +53,8 @@ describe("release.yml", () => {
   test("gates every release publication side effect on the current main head", () => {
     assertMainHeadGate(
       "publish_frontend",
-      "Upload Pages artifact",
-      "main-head-before-frontend-publication"
-    );
-    assertMainHeadGate(
-      "publish_frontend",
       "Create or update frontend GitHub Release",
       "main-head-before-frontend-release"
-    );
-    assertMainHeadGate(
-      "deploy_frontend_pages",
-      "Deploy to GitHub Pages",
-      "main-head-before-pages-deployment"
     );
     assertMainHeadGate(
       "deploy_frontend_edgeone",
@@ -83,21 +73,29 @@ describe("release.yml", () => {
     );
   });
 
-  test("publishes the verified static artifact to Pages and EdgeOne Makers", () => {
+  test("publishes the verified static artifact and functions to EdgeOne Makers only", () => {
     const publishFrontend = jobBlock("publish_frontend");
-    expect(publishFrontend).toContain("- name: Upload frontend static site artifact");
+    expect(publishFrontend).toContain("- name: Stage EdgeOne deployment artifact");
+    expect(publishFrontend).toContain("cp -R ./site-dist/. ./edgeone-dist/");
+    expect(publishFrontend).toContain("cp -R ./edge-functions ./edgeone-dist/edge-functions");
+    expect(publishFrontend).toContain("- name: Upload frontend EdgeOne artifact");
     expect(publishFrontend).toContain("uses: actions/upload-artifact@v4");
-    expect(publishFrontend).toContain("name: frontend-static-site");
-    expect(publishFrontend).toContain("path: ./site-dist");
+    expect(publishFrontend).toContain("name: frontend-edgeone-site");
+    expect(publishFrontend).toContain("path: ./edgeone-dist");
+    expect(workflow).not.toContain("\n  deploy_frontend_pages:\n");
+    expect(workflow).not.toContain("actions/upload-pages-artifact");
+    expect(workflow).not.toContain("actions/deploy-pages");
 
     const edgeone = jobBlock("deploy_frontend_edgeone");
     expect(edgeone).toContain("needs: [prepare, publish_frontend]");
     expect(edgeone).toContain("needs.prepare.outputs.channel == 'stable'");
-    expect(edgeone).toContain("- name: Download frontend static site artifact");
+    expect(edgeone).toContain("- name: Download frontend EdgeOne artifact");
     expect(edgeone).toContain("uses: actions/download-artifact@v4");
-    expect(edgeone).toContain("name: frontend-static-site");
-    expect(edgeone).toContain("path: ./site-dist");
+    expect(edgeone).toContain("name: frontend-edgeone-site");
+    expect(edgeone).toContain("path: ./edgeone-dist");
     expect(edgeone).toContain(`EDGEONE_API_TOKEN: \${{ secrets.EDGEONE_API_TOKEN }}`);
     expect(edgeone).toContain(`EDGEONE_PROJECT_NAME: \${{ vars.EDGEONE_PROJECT_NAME }}`);
+    expect(edgeone).toContain('deployment_log="$RUNNER_TEMP/edgeone-deploy.log"');
+    expect(edgeone).toContain("/Deploy URL:/d");
   });
 });

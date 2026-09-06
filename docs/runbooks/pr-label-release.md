@@ -30,11 +30,11 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 | labels | should release | Git tag | GitHub Release | Additional publish |
 |---|---|---|---|---|
-| `type:*` + `channel:stable` + `release:frontend` | yes | `frontend-vX.Y.Z` + `vX.Y.Z` | stable frontend release | deploy EdgeOne Makers + GitHub Pages hot standby + GHCR `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
+| `type:*` + `channel:stable` + `release:frontend` | yes | `frontend-vX.Y.Z` + `vX.Y.Z` | stable frontend release | deploy EdgeOne Makers + GHCR `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
 | `type:*` + `channel:rc` + `release:frontend` | yes | `frontend-vX.Y.Z-rc.<sha7>` + `vX.Y.Z-rc.<sha7>` | prerelease frontend release | GHCR `vX.Y.Z-rc.<sha7>` |
 | `type:*` + `channel:stable` + `release:backend` | yes | `backend-vX.Y.Z` + `vX.Y.Z` | stable backend release | backend artifacts + GHCR `vX.Y.Z` (+ `latest` only when commit is current `main` head) |
 | `type:*` + `channel:rc` + `release:backend` | yes | `backend-vX.Y.Z-rc.<sha7>` + `vX.Y.Z-rc.<sha7>` | prerelease backend release | backend artifacts + GHCR `vX.Y.Z-rc.<sha7>` |
-| both `release:frontend` + `release:backend` | yes | both component tags + image tag | both component releases | Pages + backend artifacts + GHCR |
+| both `release:frontend` + `release:backend` | yes | both component tags + image tag | both component releases | EdgeOne Makers + backend artifacts + GHCR |
 
 > `type:major` is only valid when both `release:frontend` and `release:backend` are present. Single-component majors are rejected before release so the shared major version cannot drift.
 | `type:docs`/`type:skip` | no | none | none | none |
@@ -51,7 +51,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 1. `CI/CD Pipeline` runs on PR and push.
 2. `release.yml` triggers on successful `workflow_run` for `main`.
-3. `prepare` accepts only the current `main` head SHA. A manual dispatch must provide that exact SHA; a stale or non-main SHA fails before release intent, tag creation, artifact publishing, image publishing, or Pages deployment. Each publish side effect rechecks the same `main` head immediately before it runs.
+3. `prepare` accepts only the current `main` head SHA. A manual dispatch must provide that exact SHA; a stale or non-main SHA fails before release intent, tag creation, artifact publishing, image publishing, or EdgeOne deployment. Each publish side effect rechecks the same `main` head immediately before it runs.
 4. `prepare` verifies no post-merge mutations on release labels (`type:*` / `channel:*` / `release:*`), then resolves release intent from merged PR labels.
 5. If `should_release=false`, workflow exits with summary only.
 6. If `release:frontend` is present, the workflow:
@@ -59,8 +59,8 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
    - reuses the bundled `public-snapshot.json`
    - builds `site-dist`
    - uploads frontend release assets
-   - uploads the same build output as a GitHub Actions artifact
-   - deploys that artifact to EdgeOne Makers and GitHub Pages
+   - packages the verified static output with `edge-functions` as a GitHub Actions artifact
+   - deploys that artifact to EdgeOne Makers
 7. If `release:backend` is present, the workflow:
    - builds `admin-dist`
    - prepares `backend-dist`
@@ -86,9 +86,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
   - plain `ghcr.io/<repo>:v*` image ref
   - workflow run URL
   - last-updated timestamp
-- `Pages` is reported only for `frontend` releases:
-  - `deployed` with the Pages URL when the deploy step actually ran
-  - `skipped` with an explicit reason when the deploy contract intentionally skipped because the commit was no longer the latest `main` head
+- `EdgeOne Makers` is reported only for `frontend` releases as `deployed` or an explicit skip reason.
 - The receipt is not written when:
   - `should_release=false`
   - the merged PR cannot be resolved uniquely
@@ -108,24 +106,24 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 - Preferred value: `https://ivanli.cc/api/public/snapshot`.
 - If the live snapshot endpoint is not wired to the public mirror yet, use the repo-hosted fallback bundle instead: `https://raw.githubusercontent.com/IvanLi-CN/blog-26/public-content-bundle/public-bundles/live/public-snapshot.json`.
 - The URL may contain an embedded token; do not expose it in `PUBLIC_*` client config.
-- Configure these repository variables for GitHub Pages frontend releases:
+- Configure these repository variables for frontend releases:
   - `PUBLIC_SITE_URL=https://ivanli.cc`
   - `PUBLIC_SITE_BASE_PATH=/`
   - `PUBLIC_API_BASE_URL=https://ivanli.cc`
 - Configure the EdgeOne Makers CI inputs before the next stable frontend release:
   - repository secret `EDGEONE_API_TOKEN`
   - repository variable `EDGEONE_PROJECT_NAME`
-- The release workflow deploys EdgeOne only from the verified `site-dist` artifact and only for `channel:stable`. Its first eligible deployment creates the named direct-upload project if it does not yet exist; it does not bind a custom domain, alter DNS, or perform a manual upload.
+- Configure the Makers production environment variable `BLOG_BACKEND_ORIGIN=https://api.ivanli.cc`. The deployed functions proxy only `/api/public/*`, `/api/health`, and `/mcp` to this upstream, preserving the public site's same-origin contract.
+- The release workflow deploys EdgeOne only from the verified `site-dist` output plus `edge-functions`, and only for `channel:stable`. Its first eligible deployment creates the named direct-upload project if it does not yet exist; it does not bind a custom domain, alter DNS, or perform a manual upload.
 - `PUBLIC_API_BASE_URL=https://ivanli.cc` is only valid when the public domain already routes same-origin anonymous backend traffic, including `/api/public/assets/*`, to the live gateway.
 - The frontend release remains a static `site-dist` build. Public images, GIF derivatives, video posters, and playback URLs are not bundled into static assets; they continue to depend on the live same-origin `/api/public/assets/*` facade.
 - The generated public HTML must also carry the stable build-time cache-bust query on facade card/cover URLs: `?v=<public-snapshot.generatedAt>`. This is part of the release contract for static list/detail imagery, not a runtime fallback.
-- If old project-Pages variables are still present, the workflow auto-normalizes them to the `public/CNAME` custom domain during release.
+- If old project Pages variables are still present, the workflow auto-normalizes their values to the `public/CNAME` custom domain during release.
 - The workflow can consume either:
   - a raw `public-snapshot.json`, or
   - an archive containing `public-snapshot.json`
-- Pages runtime requests use `PUBLIC_API_BASE_URL`, and it must point at the live backend origin.
-- A release is incomplete if `site-dist` points at `/api/public/assets/*` but the public entrypoint does not actually forward those requests to the live backend/gateway.
-- The primary deployment target is the `ivanli.cc` custom domain. The raw `ivanli-cn.github.io/blog-26` URL is only a fallback/debug path.
+- Browser runtime requests use the current page origin. A release is incomplete if the bound Makers domain does not proxy `/api/public/*` to `https://api.ivanli.cc`.
+- The primary deployment target is the `ivanli.cc` Makers custom domain. The historical GitHub Pages URL is not updated by this workflow.
 - Local unified Docker builds also require the public snapshot. `bun run docker:build` fetches it when `PUBLIC_CONTENT_BUNDLE_URL` is set, reuses `site/generated/public-snapshot.json` when present, and otherwise fails before Docker starts so the build cannot silently read an empty local DB.
 
 ## Troubleshooting

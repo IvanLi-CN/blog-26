@@ -343,14 +343,12 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
   publish_frontend:
-    name: Publish frontend release + Pages artifact
+    name: Publish frontend release + EdgeOne artifact
     runs-on: ubuntu-latest
     needs: [prepare]
     if: ${{ needs.prepare.outputs.should_release == 'true' && needs.prepare.outputs.frontend_release == 'true' }}
     permissions:
       contents: write
-      pages: write
-      id-token: write
     steps:
       - name: Checkout workflow head
         uses: actions/checkout@v4
@@ -399,7 +397,7 @@ jobs:
           fi
           echo "PUBLIC_API_BASE_URL=${api_base}" >> "$GITHUB_ENV"
 
-      - name: Resolve frontend Pages site config
+      - name: Resolve frontend site config
         shell: bash
         env:
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
@@ -470,37 +468,22 @@ jobs:
           tar -C site-dist -czf "release-assets/frontend/frontend-site-dist-${version}.tar.gz" .
           sha256sum "release-assets/frontend/frontend-site-dist-${version}.tar.gz" > "release-assets/frontend/frontend-sha256-${version}.txt"
 
-      - name: Upload frontend static site artifact
+      - name: Stage EdgeOne deployment artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ./edgeone-dist
+          mkdir -p ./edgeone-dist
+          cp -R ./site-dist/. ./edgeone-dist/
+          cp -R ./edge-functions ./edgeone-dist/edge-functions
+
+      - name: Upload frontend EdgeOne artifact
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-static-site
-          path: ./site-dist
+          name: frontend-edgeone-site
+          path: ./edgeone-dist
           if-no-files-found: error
           include-hidden-files: true
-
-      - name: Recheck current main head before frontend publication
-        id: main-head-before-frontend-publication
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
-            const { data } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-            const currentSha = data?.object?.sha ?? "";
-            const isCurrentHead = currentSha === expectedSha;
-            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
-            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
-            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
-
-      - name: Upload Pages artifact
-        if: ${{ steps.main-head-before-frontend-publication.outputs.is_current_head == 'true' }}
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./site-dist
 
       - name: Recheck current main head before frontend GitHub Release
         id: main-head-before-frontend-release
@@ -535,82 +518,6 @@ jobs:
             release-assets/frontend/frontend-site-dist-${{ needs.prepare.outputs.frontend_app_version }}.tar.gz
             release-assets/frontend/frontend-sha256-${{ needs.prepare.outputs.frontend_app_version }}.txt
 
-  deploy_frontend_pages:
-    name: Deploy frontend to GitHub Pages
-    runs-on: ubuntu-latest
-    needs: [prepare, publish_frontend]
-    if: ${{ needs.publish_frontend.result == 'success' && needs.prepare.outputs.channel == 'stable' && needs.prepare.outputs.is_latest_branch_head == 'true' }}
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    outputs:
-      pages_status: ${{ steps.pages-status.outputs.pages_status }}
-      page_url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Re-check branch head before deploying Pages
-        id: latest-head
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const branch = "${{ needs.prepare.outputs.head_branch }}";
-            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
-            const { data } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `heads/${branch}`,
-            });
-            const currentSha = data?.object?.sha ?? "";
-            const isCurrentHead = currentSha === expectedSha;
-            core.info(`latest-head check: branch=${branch} expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
-            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
-
-      - name: Configure GitHub Pages
-        if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
-        uses: actions/configure-pages@v5
-
-      - name: Recheck current main head before Pages deployment
-        if: ${{ steps.latest-head.outputs.is_current_head == 'true' }}
-        id: main-head-before-pages-deployment
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const expectedSha = "${{ needs.prepare.outputs.head_sha }}";
-            const { data } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-            const currentSha = data?.object?.sha ?? "";
-            const isCurrentHead = currentSha === expectedSha;
-            core.info(`main-head check: expected=${expectedSha} current=${currentSha} isCurrent=${isCurrentHead}`);
-            core.setOutput("is_current_head", isCurrentHead ? "true" : "false");
-            if (!isCurrentHead) core.setFailed("Release source is no longer the current main head");
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        if: ${{ steps.main-head-before-pages-deployment.outputs.is_current_head == 'true' }}
-        uses: actions/deploy-pages@v4
-
-      - name: Record Pages receipt status
-        id: pages-status
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          status="skipped_unknown"
-          if [[ "${{ steps.deployment.outcome || '' }}" == "success" ]]; then
-            status="deployed"
-          elif [[ "${{ steps.main-head-before-pages-deployment.outputs.is_current_head || 'false' }}" != "true" ]]; then
-            status="skipped_recheck_head_moved"
-          fi
-          echo "pages_status=${status}" >> "$GITHUB_OUTPUT"
-
   deploy_frontend_edgeone:
     name: Deploy frontend to EdgeOne Makers
     runs-on: ubuntu-latest
@@ -624,18 +531,18 @@ jobs:
         with:
           node-version: 22.11.0
 
-      - name: Download frontend static site artifact
+      - name: Download frontend EdgeOne artifact
         uses: actions/download-artifact@v4
         with:
-          name: frontend-static-site
-          path: ./site-dist
+          name: frontend-edgeone-site
+          path: ./edgeone-dist
 
       - name: Stage EdgeOne artifact outside repository
         shell: bash
         run: |
           set -euo pipefail
           edgeone_artifact_dir="$(mktemp -d "$RUNNER_TEMP/edgeone-site.XXXXXX")"
-          cp -R ./site-dist/. "$edgeone_artifact_dir/"
+          cp -R ./edgeone-dist/. "$edgeone_artifact_dir/"
           echo "EDGEONE_ARTIFACT_DIR=$edgeone_artifact_dir" >> "$GITHUB_ENV"
 
       - name: Recheck current main head before EdgeOne deployment
@@ -662,7 +569,14 @@ jobs:
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
           EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
-        run: npx edgeone@1.6.33 makers deploy "$EDGEONE_ARTIFACT_DIR" -n "$EDGEONE_PROJECT_NAME" -t "$EDGEONE_API_TOKEN" -e production
+        run: |
+          set -euo pipefail
+          deployment_log="$RUNNER_TEMP/edgeone-deploy.log"
+          if ! npx edgeone@1.6.33 makers deploy "$EDGEONE_ARTIFACT_DIR" -n "$EDGEONE_PROJECT_NAME" -t "$EDGEONE_API_TOKEN" -e production >"$deployment_log" 2>&1; then
+            sed -E '/Deploy URL:/d; s/(eo_token=)[^&[:space:]]+/\1[REDACTED]/g; s/(eo_time=)[^&[:space:]]+/\1[REDACTED]/g' "$deployment_log"
+            exit 1
+          fi
+          sed -E '/Deploy URL:/d; s/(eo_token=)[^&[:space:]]+/\1[REDACTED]/g; s/(eo_time=)[^&[:space:]]+/\1[REDACTED]/g' "$deployment_log"
 
       - name: Record EdgeOne receipt status
         id: edgeone-status
@@ -977,7 +891,7 @@ jobs:
   comment_release_receipt:
     name: Comment PR release receipt
     runs-on: ubuntu-latest
-    needs: [prepare, publish_frontend, deploy_frontend_pages, deploy_frontend_edgeone, publish_image, publish_backend]
+    needs: [prepare, publish_frontend, deploy_frontend_edgeone, publish_image, publish_backend]
     if: always()
     permissions:
       contents: read
@@ -1012,9 +926,6 @@ jobs:
           PUBLISH_FRONTEND_RESULT: ${{ needs.publish_frontend.result }}
           PUBLISH_BACKEND_RESULT: ${{ needs.publish_backend.result }}
           PUBLISH_IMAGE_RESULT: ${{ needs.publish_image.result }}
-          DEPLOY_FRONTEND_PAGES_RESULT: ${{ needs.deploy_frontend_pages.result }}
-          PAGES_STATUS: ${{ needs.deploy_frontend_pages.outputs.pages_status || (needs.prepare.outputs.frontend_release == 'true' && needs.prepare.outputs.channel != 'stable' && 'skipped_prerelease') || (needs.prepare.outputs.frontend_release == 'true' && needs.prepare.outputs.is_latest_branch_head != 'true' && 'skipped_initial_non_head') || '' }}
-          PAGES_URL: ${{ needs.deploy_frontend_pages.outputs.page_url || '' }}
           DEPLOY_FRONTEND_EDGEONE_RESULT: ${{ needs.deploy_frontend_edgeone.result }}
           EDGEONE_STATUS: ${{ needs.deploy_frontend_edgeone.outputs.edgeone_status || (needs.prepare.outputs.frontend_release == 'true' && needs.prepare.outputs.channel != 'stable' && 'skipped_prerelease') || (needs.prepare.outputs.frontend_release == 'true' && needs.prepare.outputs.is_latest_branch_head != 'true' && 'skipped_initial_non_head') || '' }}
         run: bash ./.github/scripts/release-receipt.sh

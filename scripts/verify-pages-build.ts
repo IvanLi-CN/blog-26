@@ -344,7 +344,7 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
     }
   }
 
-  return `GitHub Pages output verified for ${siteUrl}${basePath || "/"}.`;
+  return `Frontend static output verified for ${siteUrl}${basePath || "/"}.`;
 }
 
 if (import.meta.main) {

@@ -112,7 +112,7 @@ describe("verify-pages-build", () => {
         publicSiteBasePath: `${basePath}/`,
         siteUrl,
       })
-    ).toBe(`GitHub Pages output verified for ${siteUrl}${basePath}.`);
+    ).toBe(`Frontend static output verified for ${siteUrl}${basePath}.`);
   });
 
   it("fails when a discovered public document still leaks raw file URLs", () => {
