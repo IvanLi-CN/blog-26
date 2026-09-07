@@ -616,13 +616,78 @@ jobs:
           if ! (
             cd "$environment_dir"
             npx edgeone@1.6.34 makers link -n "$EDGEONE_PROJECT_NAME" -t "$EDGEONE_API_TOKEN"
-            npx edgeone@1.6.34 makers env set -t "$EDGEONE_API_TOKEN" BLOG_BACKEND_ORIGIN https://api.ivanli.cc
+            project_id="$(node -e 'const fs=require("fs"); const project=JSON.parse(fs.readFileSync(".edgeone/project.json", "utf8")); process.stdout.write(project.ProjectId || project.projectId || "");')"
+            if [[ -z "$project_id" ]]; then
+              echo "EdgeOne project link did not provide a project id" >&2
+              exit 1
+            fi
+
+            api_base="https://pages-api.cloud.tencent.com/v1"
+            set_request="$RUNNER_TEMP/edgeone-env-set.json"
+            set_response="$RUNNER_TEMP/edgeone-env-set-response.json"
+            node - "$project_id" >"$set_request" <<'NODE'
+            const projectId = process.argv[2];
+            process.stdout.write(JSON.stringify({
+              Action: "ModifyPagesProjectEnvs",
+              ProjectId: projectId,
+              EnvVars: [{ Key: "BLOG_BACKEND_ORIGIN", Value: "https://api.ivanli.cc" }],
+            }));
+          NODE
+            if ! http_status="$(curl --silent --show-error --output "$set_response" --write-out '%{http_code}' \
+              -H "Authorization: Bearer $EDGEONE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data-binary "@$set_request" "$api_base")"; then
+              echo "EdgeOne environment API request failed" >&2
+              exit 1
+            fi
+            if [[ "$http_status" != 2* ]]; then
+              echo "EdgeOne environment API returned HTTP $http_status" >&2
+              exit 1
+            fi
+            if ! node - "$set_response" <<'NODE'
+            const fs = require("fs");
+            const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            const response = body?.Data?.Response ?? body?.Response ?? body;
+            const error = response?.Error ?? body?.Error;
+            if (error || (body?.Code !== undefined && body.Code !== 0) || body?.Message) {
+              const code = error?.Code ?? body?.Code ?? "unknown";
+              const message = error?.Message ?? body?.Message ?? "unknown error";
+              console.error(`EdgeOne environment API rejected the update (${code}): ${message}`);
+              process.exit(1);
+            }
+          NODE
+            then
+              exit 1
+            fi
+
+            ls_request="$RUNNER_TEMP/edgeone-env-ls.json"
+            ls_response="$RUNNER_TEMP/edgeone-env-ls-response.json"
+            node - "$project_id" >"$ls_request" <<'NODE'
+            process.stdout.write(JSON.stringify({
+              Action: "DescribePagesProjectEnvs",
+              ProjectId: process.argv[2],
+            }));
+          NODE
             for attempt in {1..10}; do
-              if ! env_output="$(npx edgeone@1.6.34 makers env ls -t "$EDGEONE_API_TOKEN")"; then
-                echo "Makers environment lookup failed on attempt ${attempt}" >&2
+              if ! http_status="$(curl --silent --show-error --output "$ls_response" --write-out '%{http_code}' \
+                -H "Authorization: Bearer $EDGEONE_API_TOKEN" \
+                -H 'Content-Type: application/json' \
+                --data-binary "@$ls_request" "$api_base")"; then
+                echo "EdgeOne environment lookup failed on attempt ${attempt}" >&2
                 exit 1
               fi
-              if printf '%s\n' "$env_output" | grep -Fqx 'BLOG_BACKEND_ORIGIN=https://api.ivanli.cc'; then
+              if [[ "$http_status" != 2* ]]; then
+                echo "EdgeOne environment lookup returned HTTP $http_status on attempt ${attempt}" >&2
+                exit 1
+              fi
+              if node - "$ls_response" <<'NODE'
+              const fs = require("fs");
+              const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+              const response = body?.Data?.Response ?? body?.Response ?? body;
+              const envVars = response?.EnvVars ?? body?.EnvVars ?? [];
+              process.exit(envVars.some((entry) => entry?.Key === "BLOG_BACKEND_ORIGIN" && entry?.Value === "https://api.ivanli.cc") ? 0 : 1);
+          NODE
+              then
                 echo "BLOG_BACKEND_ORIGIN=https://api.ivanli.cc verified"
                 exit 0
               fi
@@ -630,12 +695,6 @@ jobs:
             done
             echo "Makers environment did not contain the expected BLOG_BACKEND_ORIGIN after 10 attempts" >&2
             exit 1
-            env_output="$(npx edgeone@1.6.33 makers env ls -t "$EDGEONE_API_TOKEN")"
-            printf '%s\n' "$env_output"
-            if ! printf '%s\n' "$env_output" | grep -Fqx 'BLOG_BACKEND_ORIGIN=https://api.ivanli.cc'; then
-              echo "Makers environment did not contain the expected BLOG_BACKEND_ORIGIN" >&2
-              exit 1
-            fi
           ) >"$environment_log" 2>&1; then
             sed -E '/Deploy URL:/d; s/(eo_token=)[^&[:space:]]+/\1[REDACTED]/g; s/(eo_time=)[^&[:space:]]+/\1[REDACTED]/g' "$environment_log"
             exit 1
