@@ -75,6 +75,10 @@ describe("release.yml", () => {
 
   test("publishes the verified static artifact and functions to EdgeOne Makers only", () => {
     const publishFrontend = jobBlock("publish_frontend");
+    expect(publishFrontend).toContain(
+      "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
+        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}"
+    );
     expect(publishFrontend).toContain("- name: Package referenced public media");
     expect(publishFrontend).toContain(
       "PUBLIC_STATIC_MEDIA_ORIGIN: $" +
@@ -112,5 +116,11 @@ describe("release.yml", () => {
     );
     expect(edgeone).toContain('deployment_log="$RUNNER_TEMP/edgeone-deploy.log"');
     expect(edgeone).toContain("/Deploy URL:/d");
+
+    const publishImage = jobBlock("publish_image");
+    expect(publishImage).toContain(
+      "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
+        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}"
+    );
   });
 });
