@@ -1217,6 +1217,31 @@ public: false
     );
   }, 30_000);
 
+  it("omits local public content whose media source is missing", async () => {
+    await seedPost({
+      id: "Memos/missing-public-media.md",
+      filePath: "Memos/missing-public-media.md",
+      slug: "missing-public-media",
+      type: "memo",
+      title: "Missing Public Media",
+      body: "![missing](./assets/does-not-exist.png)",
+      public: true,
+      draft: false,
+      source: "local",
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(response.status).toBe(200);
+
+    const payload = await readJson(response);
+    expect(
+      payload.memos.some((memo: { slug: string }) => memo.slug === "missing-public-media")
+    ).toBe(false);
+  }, 30_000);
+
   it("rewrites legacy files-api memo content to facade urls in public snapshot and internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
     fs.writeFileSync(
@@ -1337,6 +1362,9 @@ public: false
   }, 30_000);
 
   it("rewrites local media urls to the public facade for public rows", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/local-cover.png"), "cover");
+
     await seedPost({
       id: "blog/local-media-post.md",
       filePath: "blog/local-media-post.md",
