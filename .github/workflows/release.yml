@@ -474,6 +474,7 @@ jobs:
           PUBLIC_STATIC_MEDIA_MAX_FILES: 20000
           PUBLIC_STATIC_MEDIA_MAX_PROJECT_BYTES: 5368709120
           PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY: 4
+          PUBLIC_STATIC_MEDIA_DOWNLOAD_ATTEMPTS: 3
         run: bun run frontend:package-media
 
       - name: Package frontend release assets

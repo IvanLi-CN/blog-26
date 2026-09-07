@@ -10,6 +10,7 @@ export const DEFAULT_MAX_FILES = 20_000;
 export const DEFAULT_MAX_PROJECT_BYTES = 5 * 1024 * 1024 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const DEFAULT_DOWNLOAD_CONCURRENCY = 4;
+export const DEFAULT_DOWNLOAD_ATTEMPTS = 3;
 
 const TEXT_EXTENSIONS = new Set([
   ".css",
@@ -61,6 +62,7 @@ export type PublicMediaPackageOptions = {
   maxProjectBytes?: number;
   requestTimeoutMs?: number;
   downloadConcurrency?: number;
+  downloadAttempts?: number;
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -255,6 +257,9 @@ async function readResponseWithinLimit(
       }
       chunks.push(next.value);
     }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
   } finally {
     reader.releaseLock();
   }
@@ -310,7 +315,8 @@ async function downloadMedia(
   maxBytes: number,
   mediaOrigin: string,
   fetchImpl: PublicMediaFetcher,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
+  downloadAttempts: number
 ): Promise<DownloadResult> {
   let head: Response | null = null;
   try {
@@ -334,29 +340,45 @@ async function downloadMedia(
     throw new Error(`Media origin returned HTTP ${head.status}`);
   }
 
-  const response = await fetchMediaWithinOrigin(
-    url,
-    mediaOrigin,
-    { method: "GET" },
-    fetchImpl,
-    requestTimeoutMs
-  );
-  if (!response.ok) {
-    throw new Error(`Media origin returned HTTP ${response.status}`);
-  }
-  const declaredLength = readContentLength(response);
-  if (declaredLength !== null && declaredLength > maxBytes) {
-    return { status: "external", bytes: declaredLength, reason: "over_max_bytes" };
-  }
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= downloadAttempts; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetchMediaWithinOrigin(
+        url,
+        mediaOrigin,
+        { method: "GET" },
+        fetchImpl,
+        requestTimeoutMs
+      );
+    } catch (error) {
+      lastError = error;
+      if (attempt === downloadAttempts) throw error;
+      continue;
+    }
+    if (!response.ok) {
+      throw new Error(`Media origin returned HTTP ${response.status}`);
+    }
+    const declaredLength = readContentLength(response);
+    if (declaredLength !== null && declaredLength > maxBytes) {
+      return { status: "external", bytes: declaredLength, reason: "over_max_bytes" };
+    }
 
-  const result = await readResponseWithinLimit(response, maxBytes, requestTimeoutMs, url);
-  if (result.tooLarge) {
-    return { status: "external", bytes: maxBytes + 1, reason: "over_max_bytes" };
+    try {
+      const result = await readResponseWithinLimit(response, maxBytes, requestTimeoutMs, url);
+      if (result.tooLarge) {
+        return { status: "external", bytes: maxBytes + 1, reason: "over_max_bytes" };
+      }
+      if (!result.body || result.body.byteLength === 0) {
+        throw new Error("Media origin returned an empty body");
+      }
+      return { status: "packaged", bytes: result.body.byteLength, body: result.body, reason: null };
+    } catch (error) {
+      lastError = error;
+      if (attempt === downloadAttempts) throw error;
+    }
   }
-  if (!result.body || result.body.byteLength === 0) {
-    throw new Error("Media origin returned an empty body");
-  }
-  return { status: "packaged", bytes: result.body.byteLength, body: result.body, reason: null };
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 function fetchKey(reference: AssetReference) {
@@ -416,6 +438,9 @@ export async function packagePublicMedia(
   const downloadConcurrency =
     options.downloadConcurrency ??
     Number(process.env.PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY ?? DEFAULT_DOWNLOAD_CONCURRENCY);
+  const downloadAttempts =
+    options.downloadAttempts ??
+    Number(process.env.PUBLIC_STATIC_MEDIA_DOWNLOAD_ATTEMPTS ?? DEFAULT_DOWNLOAD_ATTEMPTS);
   const fetchImpl = options.fetchImpl ?? fetch;
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
@@ -430,6 +455,9 @@ export async function packagePublicMedia(
   }
   if (!Number.isSafeInteger(downloadConcurrency) || downloadConcurrency <= 0) {
     throw new Error("downloadConcurrency must be a positive integer");
+  }
+  if (!Number.isSafeInteger(downloadAttempts) || downloadAttempts <= 0) {
+    throw new Error("downloadAttempts must be a positive integer");
   }
 
   await stat(siteDistDir).catch(() => {
@@ -468,7 +496,8 @@ export async function packagePublicMedia(
         maxBytes,
         mediaOrigin,
         fetchImpl,
-        requestTimeoutMs
+        requestTimeoutMs,
+        downloadAttempts
       );
       let outputPath: string | null = null;
       if (result.status === "packaged") {
