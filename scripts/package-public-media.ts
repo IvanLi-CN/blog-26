@@ -8,6 +8,7 @@ export const STATIC_MEDIA_PREFIX = "/_content/assets/";
 export const DEFAULT_MAX_BYTES = 20 * 1024 * 1024;
 export const DEFAULT_MAX_FILES = 20_000;
 export const DEFAULT_MAX_PROJECT_BYTES = 5 * 1024 * 1024 * 1024;
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 const TEXT_EXTENSIONS = new Set([
   ".css",
@@ -58,6 +59,7 @@ export type PublicMediaPackageOptions = {
   maxBytes?: number;
   maxFiles?: number;
   maxProjectBytes?: number;
+  requestTimeoutMs?: number;
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -239,11 +241,24 @@ async function fetchMediaWithinOrigin(
   url: string,
   mediaOrigin: string,
   init: RequestInit,
-  fetchImpl: PublicMediaFetcher
+  fetchImpl: PublicMediaFetcher,
+  requestTimeoutMs: number
 ) {
   let currentUrl = url;
   for (let redirectCount = 0; redirectCount <= MAX_MEDIA_REDIRECTS; redirectCount += 1) {
-    const response = await fetchImpl(currentUrl, { ...init, redirect: "manual" });
+    const timeoutSignal = AbortSignal.timeout(requestTimeoutMs);
+    const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
+    let response: Response;
+    try {
+      response = await fetchImpl(currentUrl, { ...init, redirect: "manual", signal });
+    } catch (error) {
+      if (timeoutSignal.aborted) {
+        throw new Error(
+          `Media origin request timed out after ${requestTimeoutMs} ms: ${currentUrl}`
+        );
+      }
+      throw error;
+    }
     if (response.status < 300 || response.status >= 400) return response;
 
     const location = response.headers.get("location");
@@ -261,11 +276,18 @@ async function downloadMedia(
   url: string,
   maxBytes: number,
   mediaOrigin: string,
-  fetchImpl: PublicMediaFetcher
+  fetchImpl: PublicMediaFetcher,
+  requestTimeoutMs: number
 ): Promise<DownloadResult> {
   let head: Response | null = null;
   try {
-    head = await fetchMediaWithinOrigin(url, mediaOrigin, { method: "HEAD" }, fetchImpl);
+    head = await fetchMediaWithinOrigin(
+      url,
+      mediaOrigin,
+      { method: "HEAD" },
+      fetchImpl,
+      requestTimeoutMs
+    );
   } catch {
     head = null;
   }
@@ -279,7 +301,13 @@ async function downloadMedia(
     throw new Error(`Media origin returned HTTP ${head.status}`);
   }
 
-  const response = await fetchMediaWithinOrigin(url, mediaOrigin, { method: "GET" }, fetchImpl);
+  const response = await fetchMediaWithinOrigin(
+    url,
+    mediaOrigin,
+    { method: "GET" },
+    fetchImpl,
+    requestTimeoutMs
+  );
   if (!response.ok) {
     throw new Error(`Media origin returned HTTP ${response.status}`);
   }
@@ -349,6 +377,9 @@ export async function packagePublicMedia(
   const maxProjectBytes =
     options.maxProjectBytes ??
     Number(process.env.PUBLIC_STATIC_MEDIA_MAX_PROJECT_BYTES ?? DEFAULT_MAX_PROJECT_BYTES);
+  const requestTimeoutMs =
+    options.requestTimeoutMs ??
+    Number(process.env.PUBLIC_STATIC_MEDIA_REQUEST_TIMEOUT_MS ?? DEFAULT_REQUEST_TIMEOUT_MS);
   const fetchImpl = options.fetchImpl ?? fetch;
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
@@ -357,6 +388,9 @@ export async function packagePublicMedia(
     throw new Error("maxFiles must be a positive integer");
   if (!Number.isSafeInteger(maxProjectBytes) || maxProjectBytes <= 0) {
     throw new Error("maxProjectBytes must be a positive integer");
+  }
+  if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs <= 0) {
+    throw new Error("requestTimeoutMs must be a positive integer");
   }
 
   await stat(siteDistDir).catch(() => {
@@ -390,7 +424,13 @@ export async function packagePublicMedia(
       const currentIndex = nextReferenceIndex;
       nextReferenceIndex += 1;
       const [key, reference] = referenceEntries[currentIndex];
-      const result = await downloadMedia(reference.fetchUrl, maxBytes, mediaOrigin, fetchImpl);
+      const result = await downloadMedia(
+        reference.fetchUrl,
+        maxBytes,
+        mediaOrigin,
+        fetchImpl,
+        requestTimeoutMs
+      );
       let outputPath: string | null = null;
       if (result.status === "packaged") {
         if (!result.body) throw new Error(`Media origin returned no body: ${reference.sourcePath}`);
