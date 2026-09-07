@@ -7,7 +7,7 @@ const TRAILING_SLASH = /\/+$/;
 const SITE_DIST_DIR = "site-dist";
 const FEED_FILES = ["site-dist/feed.xml", "site-dist/atom.xml", "site-dist/feed.json"] as const;
 const BUILD_TIME_PUBLIC_ASSET_PATTERN =
-  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:card|cover)\.[^"'`\s?#]+(?:\?[^"'`\s]*)?/g;
+  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:card|cover|content|full|social|poster|play)\.[^"'`\s?#)]+(?:\?[^"'`\s)]*)?/g;
 
 type FileCheck = {
   file: string;
@@ -100,6 +100,10 @@ function readContent(cwd: string, contents: Map<string, string>, file: string) {
 
 function extractBuildTimePublicAssetUrls(content: string) {
   return content.match(BUILD_TIME_PUBLIC_ASSET_PATTERN) ?? [];
+}
+
+function requiresBuildTimeAssetVersion(url: string) {
+  return /\/(?:card|cover)\.[^/?#]+(?:[?#]|$)/u.test(url);
 }
 
 function listBuildFiles(
@@ -345,11 +349,13 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
 
     if (buildTimePublicAssetHits.length === 0) {
       throw new Error(
-        "Expected at least one build-time /api/public/assets/* card|cover facade URL in generated HTML."
+        "Expected at least one build-time /api/public/assets/* media facade URL in generated HTML."
       );
     }
 
     for (const hit of buildTimePublicAssetHits) {
+      if (!requiresBuildTimeAssetVersion(hit.url)) continue;
+
       const parsed = new URL(hit.url, siteUrl);
       if (!parsed.searchParams.has("v")) {
         throw new Error(

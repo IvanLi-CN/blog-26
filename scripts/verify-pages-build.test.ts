@@ -38,6 +38,7 @@ describe("verify-pages-build", () => {
     const versionedRelativeMediaUrl = `/api/public/assets/post/${postSlug}/abcd1234/cover.webp?v=${assetVersion}`;
     const versionedAbsoluteMediaUrl = `${mediaUrl}?v=${assetVersion}`;
     const versionedCardUrl = `/api/public/assets/post/${postSlug}/abcd1234/card.webp?v=${assetVersion}`;
+    const versionedContentUrl = `/api/public/assets/post/${postSlug}/abcd1234/content.webp?v=${assetVersion}`;
 
     writeBuildFile(
       cwd,
@@ -50,6 +51,8 @@ describe("verify-pages-build", () => {
         `action="${basePath}/search/"`,
         `href="${basePath}/feed.xml"`,
         `<img src="${versionedCardUrl}">`,
+        `<img src="${versionedContentUrl}">`,
+        `<img src="/api/public/assets/post/${postSlug}/abcd1234/content.webp">`,
       ].join("\n")
     );
     writeBuildFile(
