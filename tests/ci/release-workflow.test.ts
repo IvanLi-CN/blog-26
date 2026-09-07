@@ -84,6 +84,7 @@ describe("release.yml", () => {
       "PUBLIC_STATIC_MEDIA_ORIGIN: $" +
         "{{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}"
     );
+    expect(publishFrontend).toContain("PUBLIC_STATIC_MEDIA_RETRY_DELAY_MS: 1000");
     expect(publishFrontend).toContain("run: bun run frontend:package-media");
     expect(publishFrontend).toContain("- name: Stage EdgeOne deployment artifact");
     expect(publishFrontend).toContain("cp -R ./site-dist/. ./edgeone-dist/");

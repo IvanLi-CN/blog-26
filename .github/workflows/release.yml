@@ -476,6 +476,7 @@ jobs:
           PUBLIC_STATIC_MEDIA_MAX_PROJECT_BYTES: 5368709120
           PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY: 1
           PUBLIC_STATIC_MEDIA_DOWNLOAD_ATTEMPTS: 3
+          PUBLIC_STATIC_MEDIA_RETRY_DELAY_MS: 1000
         run: bun run frontend:package-media
 
       - name: Package frontend release assets

@@ -366,6 +366,32 @@ describe("packagePublicMedia", () => {
     ).toBe("four");
   });
 
+  test("retries transient not-found media responses", async () => {
+    const cwd = await fixture();
+    const mediaPath = "/api/public/assets/post/retry-404/hash/card.webp";
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${mediaPath}">`);
+
+    let getAttempts = 0;
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      downloadAttempts: 2,
+      retryDelayMs: 1,
+      fetchImpl: async (_input, init) => {
+        if (init?.method === "HEAD") return response("", { "content-length": "4" });
+        getAttempts += 1;
+        if (getAttempts === 1) return new Response("not ready", { status: 404 });
+        return response("four", { "content-length": "4" });
+      },
+    });
+
+    expect(getAttempts).toBe(2);
+    expect(
+      await readFile(join(cwd, "site-dist/_content/assets/post/retry-404/hash/card.webp"), "utf8")
+    ).toBe("four");
+  });
+
   test("fails when the manifest and packaged static files drift", async () => {
     const cwd = await fixture();
     await writeFile(
