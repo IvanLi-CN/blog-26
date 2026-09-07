@@ -337,7 +337,7 @@ async function downloadMedia(
       return { status: "external", bytes: length, reason: "over_max_bytes" };
     }
   } else if (head && ![405, 501].includes(head.status)) {
-    throw new Error(`Media origin returned HTTP ${head.status}`);
+    throw new Error(`Media origin returned HTTP ${head.status} for ${url}`);
   }
 
   let lastError: unknown;
@@ -357,7 +357,7 @@ async function downloadMedia(
       continue;
     }
     if (!response.ok) {
-      throw new Error(`Media origin returned HTTP ${response.status}`);
+      throw new Error(`Media origin returned HTTP ${response.status} for ${url}`);
     }
     const declaredLength = readContentLength(response);
     if (declaredLength !== null && declaredLength > maxBytes) {
