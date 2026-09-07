@@ -110,8 +110,13 @@ describe("release.yml", () => {
     expect(edgeone).toContain(`EDGEONE_API_TOKEN: \${{ secrets.EDGEONE_API_TOKEN }}`);
     expect(edgeone).toContain(`EDGEONE_PROJECT_NAME: \${{ vars.EDGEONE_PROJECT_NAME }}`);
     expect(edgeone).toContain("- name: Configure EdgeOne Makers backend origin");
-    expect(edgeone).toContain('makers link -n "$EDGEONE_PROJECT_NAME"');
-    expect(edgeone).toContain("makers env set BLOG_BACKEND_ORIGIN https://api.ivanli.cc");
+    expect(edgeone).toContain('npx edgeone@1.6.34 makers link -n "$EDGEONE_PROJECT_NAME"');
+    expect(edgeone).toContain(
+      'npx edgeone@1.6.34 makers env set -t "$EDGEONE_API_TOKEN" BLOG_BACKEND_ORIGIN https://api.ivanli.cc'
+    );
+    expect(edgeone).toContain("for attempt in {1..10}; do");
+    expect(edgeone).toContain("BLOG_BACKEND_ORIGIN=https://api.ivanli.cc verified");
+    expect(edgeone).toContain('npx edgeone@1.6.34 makers deploy "$EDGEONE_ARTIFACT_DIR"');
     expect(edgeone).toContain('makers env ls -t "$EDGEONE_API_TOKEN"');
     expect(edgeone).toContain(
       "Makers environment did not contain the expected BLOG_BACKEND_ORIGIN"
