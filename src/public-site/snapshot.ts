@@ -1,9 +1,12 @@
+import { existsSync } from "node:fs";
 import { and, desc, eq } from "drizzle-orm";
+import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
 import { SITE } from "@/config/site";
 import { db, initializeDB } from "@/lib/db";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import {
   buildLegacyPublicMediaUrl,
+  isLocalPublicMediaDataSource,
   type PublicMediaCollection,
   rewritePublicContentMediaUrls,
 } from "@/lib/public-media";
@@ -217,6 +220,32 @@ function buildTagTimelines(
   return timelines;
 }
 
+function publicMediaItems(media: PublicMediaCollection) {
+  return [media.primary, media.cover, ...media.content, ...media.attachments].filter(
+    (item): item is NonNullable<typeof item> => item !== null
+  );
+}
+
+function hasAvailableLocalMedia(kind: "post" | "memo", row: typeof posts.$inferSelect) {
+  if (!isLocalContentEnabled() || !isLocalPublicMediaDataSource(row.dataSource)) {
+    return true;
+  }
+
+  const media = buildPublicMediaCollection(kind, row);
+  const missing = publicMediaItems(media).filter(
+    (item) => !existsSync(getLocalPath(item.sourcePath))
+  );
+  if (missing.length > 0) {
+    console.warn("[public-snapshot] skipping content with missing local media:", {
+      kind,
+      slug: row.slug,
+      sourcePaths: missing.map((item) => item.sourcePath),
+    });
+    return false;
+  }
+  return true;
+}
+
 export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
   await initializeDB();
 
@@ -232,76 +261,80 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
     .where(and(eq(posts.type, "memo"), eq(posts.public, true)))
     .orderBy(desc(posts.publishDate), desc(posts.id));
 
-  const postList: PublicPostRecord[] = rawPosts.map((row) => {
-    const filePath = getCanonicalFilePath(row);
-    const media = buildPublicMediaCollection("post", row);
-    const publicMediaContext = {
-      kind: "post" as const,
-      slug: row.slug,
-      filePath,
-    };
-    return {
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      excerpt: row.excerpt || extractTextSummary(row.body, 180),
-      body: rewritePublicContentMediaUrls(row.body, publicMediaContext),
-      publishDate: toIso(row.publishDate) ?? new Date().toISOString(),
-      updateDate: toIso(row.updateDate),
-      category: row.category,
-      tags: normalizeTags(row.tags),
-      author: row.author,
-      image:
-        pickLegacyPublicImage(media, "cover") ??
-        buildLegacyPublicMediaUrl({
-          mediaPath: row.image,
-          dataSource: row.dataSource,
-          filePath,
-        }),
-      media,
-      dataSource: row.dataSource,
-      filePath,
-      metadata: normalizeMetadata(row.metadata),
-    };
-  });
+  const postList: PublicPostRecord[] = rawPosts
+    .filter((row) => hasAvailableLocalMedia("post", row))
+    .map((row) => {
+      const filePath = getCanonicalFilePath(row);
+      const media = buildPublicMediaCollection("post", row);
+      const publicMediaContext = {
+        kind: "post" as const,
+        slug: row.slug,
+        filePath,
+      };
+      return {
+        id: row.id,
+        slug: row.slug,
+        title: row.title,
+        excerpt: row.excerpt || extractTextSummary(row.body, 180),
+        body: rewritePublicContentMediaUrls(row.body, publicMediaContext),
+        publishDate: toIso(row.publishDate) ?? new Date().toISOString(),
+        updateDate: toIso(row.updateDate),
+        category: row.category,
+        tags: normalizeTags(row.tags),
+        author: row.author,
+        image:
+          pickLegacyPublicImage(media, "cover") ??
+          buildLegacyPublicMediaUrl({
+            mediaPath: row.image,
+            dataSource: row.dataSource,
+            filePath,
+          }),
+        media,
+        dataSource: row.dataSource,
+        filePath,
+        metadata: normalizeMetadata(row.metadata),
+      };
+    });
 
-  const memoList: PublicMemoRecord[] = rawMemos.map((row) => {
-    const parsed = parseContentTags(row.body || "");
-    const storedTags = normalizeTags(row.tags);
-    const inlineTags = parsed.tags.map((tag) => tag.name);
-    const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
-    const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
-    const filePath = getCanonicalFilePath(row);
-    const media = buildPublicMediaCollection("memo", row);
-    const publicMediaContext = {
-      kind: "memo" as const,
-      slug: row.slug,
-      filePath,
-    };
-    return {
-      id: row.id,
-      slug: row.slug,
-      title: row.title || row.slug,
-      excerpt: row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
-      content: rewritePublicContentMediaUrls(row.body, publicMediaContext),
-      tags: mergedTags,
-      inlineTags,
-      isPublic: row.public,
-      createdAt,
-      publishedAt,
-      updatedAt,
-      dataSource: row.dataSource,
-      filePath,
-      image:
-        pickLegacyPublicImage(media, "content") ??
-        buildLegacyPublicMediaUrl({
-          mediaPath: row.image,
-          dataSource: row.dataSource,
-          filePath,
-        }),
-      media,
-    };
-  });
+  const memoList: PublicMemoRecord[] = rawMemos
+    .filter((row) => hasAvailableLocalMedia("memo", row))
+    .map((row) => {
+      const parsed = parseContentTags(row.body || "");
+      const storedTags = normalizeTags(row.tags);
+      const inlineTags = parsed.tags.map((tag) => tag.name);
+      const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
+      const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
+      const filePath = getCanonicalFilePath(row);
+      const media = buildPublicMediaCollection("memo", row);
+      const publicMediaContext = {
+        kind: "memo" as const,
+        slug: row.slug,
+        filePath,
+      };
+      return {
+        id: row.id,
+        slug: row.slug,
+        title: row.title || row.slug,
+        excerpt: row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
+        content: rewritePublicContentMediaUrls(row.body, publicMediaContext),
+        tags: mergedTags,
+        inlineTags,
+        isPublic: row.public,
+        createdAt,
+        publishedAt,
+        updatedAt,
+        dataSource: row.dataSource,
+        filePath,
+        image:
+          pickLegacyPublicImage(media, "content") ??
+          buildLegacyPublicMediaUrl({
+            mediaPath: row.image,
+            dataSource: row.dataSource,
+            filePath,
+          }),
+        media,
+      };
+    });
 
   const [tagSummaries, tagGroupsConfig, categoryIcons] = await Promise.all([
     getTagSummaries({ includeDrafts: false, includeUnpublished: false }),
