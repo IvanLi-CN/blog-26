@@ -111,11 +111,18 @@ describe("release.yml", () => {
     expect(edgeone).toContain("- name: Configure EdgeOne Makers backend origin");
     expect(edgeone).toContain('makers link -n "$EDGEONE_PROJECT_NAME"');
     expect(edgeone).toContain("makers env set BLOG_BACKEND_ORIGIN https://api.ivanli.cc");
+    expect(edgeone).toContain('makers env ls -t "$EDGEONE_API_TOKEN"');
+    expect(edgeone).toContain(
+      "Makers environment did not contain the expected BLOG_BACKEND_ORIGIN"
+    );
     expect(edgeone).toContain(
       `if: \${{ steps.main-head-before-edgeone-deployment.outputs.is_current_head == 'true' }}`
     );
     expect(edgeone).toContain('deployment_log="$RUNNER_TEMP/edgeone-deploy.log"');
     expect(edgeone).toContain("/Deploy URL:/d");
+    expect(edgeone).toContain("- name: Verify same-origin EdgeOne proxy");
+    expect(edgeone).toContain("https://ivanli.cc/api/health");
+    expect(edgeone).toContain("https://ivanli.cc/mcp");
 
     const publishImage = jobBlock("publish_image");
     expect(publishImage).toContain(
