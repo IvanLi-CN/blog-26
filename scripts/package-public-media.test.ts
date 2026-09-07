@@ -193,6 +193,36 @@ describe("packagePublicMedia", () => {
     ).rejects.toThrow("HTTP 404");
   });
 
+  test("falls back to GET when the media origin rejects HEAD", async () => {
+    const cwd = await fixture();
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      '<img src="/api/public/assets/memo/animated/hash/content.webp">'
+    );
+
+    const methods: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (_input, init) => {
+        methods.push(init?.method ?? "GET");
+        if (init?.method === "HEAD") {
+          return new Response('{"message":"maximum resolution exceeded"}', { status: 422 });
+        }
+        return response("animated-derivative", { "content-length": "18" });
+      },
+    });
+
+    expect(methods).toEqual(["HEAD", "GET"]);
+    expect(
+      await readFile(
+        join(cwd, "site-dist", "_content/assets/memo/animated/hash/content.webp"),
+        "utf8"
+      )
+    ).toBe("animated-derivative");
+  });
+
   test("packages an asset exactly at the limit and preserves a site base path", async () => {
     const cwd = await fixture();
     await writeFile(
