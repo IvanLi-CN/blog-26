@@ -50,6 +50,15 @@ describe("packagePublicMedia", () => {
     expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
       "/_content/assets/post/hello/hash/content.webp)\\n\\n正文"
     );
+    await expect(
+      verifyPublicMediaPackage({
+        cwd,
+        mediaOrigin: "https://api.example",
+        siteBasePath: "/",
+        maxFiles: 100,
+        maxProjectBytes: 1024 * 1024,
+      })
+    ).resolves.toMatchObject({ fileCount: expect.any(Number) });
   });
 
   test("does not include HTML entities after an embedded media URL", async () => {
