@@ -1187,6 +1187,7 @@ public: false
   it("rewrites public snapshot media fields to assets facade urls", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/public-cover.png"), "cover");
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/public-media-post.md"), "content");
 
     await seedPost({
       id: "blog/public-media-post.md",
@@ -1242,12 +1243,41 @@ public: false
     ).toBe(false);
   }, 30_000);
 
+  it("omits local public media when the content source file is missing", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets/existing.png"), "image");
+
+    await seedPost({
+      id: "Memos/missing-content-source.md",
+      filePath: "Memos/missing-content-source.md",
+      slug: "missing-content-source",
+      type: "memo",
+      title: "Missing Content Source",
+      body: "![existing](./assets/existing.png)",
+      public: true,
+      draft: false,
+      source: "local",
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(response.status).toBe(200);
+
+    const payload = await readJson(response);
+    expect(
+      payload.memos.some((memo: { slug: string }) => memo.slug === "missing-content-source")
+    ).toBe(false);
+  }, 30_000);
+
   it("rewrites legacy files-api memo content to facade urls in public snapshot and internal source", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
     fs.writeFileSync(
       path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets/inline-legacy.png"),
       "legacy-image"
     );
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/legacy-webdav-memo.md"), "content");
 
     await seedPost({
       id: "Memos/legacy-webdav-memo.md",
@@ -1299,6 +1329,7 @@ public: false
       "link-photo"
     );
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/link-clip.mp4"), "link-clip");
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/link-media-post.md"), "content");
 
     await seedPost({
       id: "blog/link-media-post.md",
@@ -1364,6 +1395,7 @@ public: false
   it("rewrites local media urls to the public facade for public rows", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/local-cover.png"), "cover");
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/local-media-post.md"), "content");
 
     await seedPost({
       id: "blog/local-media-post.md",
