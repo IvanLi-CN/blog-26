@@ -23,6 +23,7 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 const PUBLIC_MEDIA_URL_RE = /(?:https?:\/\/[^"'`\s<>]+)?\/api\/public\/assets\/[^"'`\s<>]+/g;
 const TRAILING_URL_PUNCTUATION_RE = /[.,;:!?)}\]]+$/u;
+const PUBLIC_MEDIA_DOWNLOAD_CONCURRENCY = 8;
 
 export type PublicMediaPackageStatus = "packaged" | "external";
 
@@ -382,27 +383,41 @@ export async function packagePublicMedia(
 
   const entriesByKey = new Map<string, PublicMediaManifestEntry>();
   const outputRoot = resolve(siteDistDir, ".");
-  for (const [key, reference] of uniqueReferences) {
-    const result = await downloadMedia(reference.fetchUrl, maxBytes, mediaOrigin, fetchImpl);
-    let outputPath: string | null = null;
-    if (result.status === "packaged") {
-      if (!result.body) throw new Error(`Media origin returned no body: ${reference.sourcePath}`);
-      const relativeOutput = reference.staticPath.replace(basePath, "").replace(/^\/+/, "");
-      const destination = resolve(siteDistDir, relativeOutput);
-      if (!destination.startsWith(`${outputRoot}/`))
-        throw new Error("Static media path escapes site-dist");
-      await mkdir(resolve(destination, ".."), { recursive: true });
-      await writeFile(destination, result.body);
-      outputPath = reference.staticPath;
+  const referenceEntries = [...uniqueReferences.entries()];
+  let nextReferenceIndex = 0;
+  const downloadWorker = async () => {
+    while (nextReferenceIndex < referenceEntries.length) {
+      const currentIndex = nextReferenceIndex;
+      nextReferenceIndex += 1;
+      const [key, reference] = referenceEntries[currentIndex];
+      const result = await downloadMedia(reference.fetchUrl, maxBytes, mediaOrigin, fetchImpl);
+      let outputPath: string | null = null;
+      if (result.status === "packaged") {
+        if (!result.body) throw new Error(`Media origin returned no body: ${reference.sourcePath}`);
+        const relativeOutput = reference.staticPath.replace(basePath, "").replace(/^\/+/, "");
+        const destination = resolve(siteDistDir, relativeOutput);
+        if (!destination.startsWith(`${outputRoot}/`))
+          throw new Error("Static media path escapes site-dist");
+        await mkdir(resolve(destination, ".."), { recursive: true });
+        await writeFile(destination, result.body);
+        outputPath = reference.staticPath;
+      }
+      entriesByKey.set(key, {
+        sourcePath: reference.sourcePath,
+        outputPath,
+        bytes: result.bytes,
+        status: result.status,
+        reason: result.reason,
+      });
     }
-    entriesByKey.set(key, {
-      sourcePath: reference.sourcePath,
-      outputPath,
-      bytes: result.bytes,
-      status: result.status,
-      reason: result.reason,
-    });
-  }
+  };
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(PUBLIC_MEDIA_DOWNLOAD_CONCURRENCY, referenceEntries.length) },
+      downloadWorker
+    )
+  );
 
   for (const [file, content] of fileContents) {
     const rewritten = content.replace(PUBLIC_MEDIA_URL_RE, (token) => {
