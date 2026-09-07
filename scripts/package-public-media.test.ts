@@ -52,6 +52,30 @@ describe("packagePublicMedia", () => {
     );
   });
 
+  test("does not include HTML entities after an embedded media URL", async () => {
+    const cwd = await fixture();
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      '<script type="application/json">{"body":"![diagram](/api/public/assets/post/hello/hash/content.webp)&quot;],&quot;variant&quot;:[0,"article"]}</script>'
+    );
+
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (input, init) => {
+        requestedUrls.push(String(input));
+        return response(init?.method === "HEAD" ? "" : "four", { "content-length": "4" });
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      "https://api.example/api/public/assets/post/hello/hash/content.webp",
+      "https://api.example/api/public/assets/post/hello/hash/content.webp",
+    ]);
+  });
+
   test("packages small facade assets and rewrites oversized assets to the backend origin", async () => {
     const cwd = await fixture();
     await writeFile(
