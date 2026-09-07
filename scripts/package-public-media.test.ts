@@ -165,6 +165,35 @@ describe("packagePublicMedia", () => {
     ).toBe("four");
   });
 
+  test("downloads referenced media with bounded concurrency", async () => {
+    const cwd = await fixture();
+    const references = Array.from(
+      { length: 10 },
+      (_, index) => `/api/public/assets/post/concurrent/hash${index}/card.webp`
+    );
+    await writeFile(join(cwd, "site-dist", "index.html"), references.join("\n"));
+
+    let active = 0;
+    let maximumActive = 0;
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (_input, init) => {
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+        return response(init?.method === "HEAD" ? "" : "four", {
+          "content-length": init?.method === "HEAD" ? "4" : "4",
+        });
+      },
+    });
+
+    expect(maximumActive).toBeGreaterThan(1);
+    expect(maximumActive).toBeLessThanOrEqual(8);
+  });
+
   test("fails when the manifest and packaged static files drift", async () => {
     const cwd = await fixture();
     await writeFile(
