@@ -9,6 +9,7 @@ export const DEFAULT_MAX_BYTES = 20 * 1024 * 1024;
 export const DEFAULT_MAX_FILES = 20_000;
 export const DEFAULT_MAX_PROJECT_BYTES = 5 * 1024 * 1024 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+export const DEFAULT_DOWNLOAD_CONCURRENCY = 4;
 
 const TEXT_EXTENSIONS = new Set([
   ".css",
@@ -24,7 +25,6 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 const PUBLIC_MEDIA_URL_RE = /(?:https?:\/\/[^"'`&\\\s<>]+)?\/api\/public\/assets\/[^"'`&\\\s<>]+/g;
 const TRAILING_URL_PUNCTUATION_RE = /[.,;:!?)}\]]+$/u;
-const PUBLIC_MEDIA_DOWNLOAD_CONCURRENCY = 8;
 
 export type PublicMediaPackageStatus = "packaged" | "external";
 
@@ -60,6 +60,7 @@ export type PublicMediaPackageOptions = {
   maxFiles?: number;
   maxProjectBytes?: number;
   requestTimeoutMs?: number;
+  downloadConcurrency?: number;
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -412,6 +413,9 @@ export async function packagePublicMedia(
   const requestTimeoutMs =
     options.requestTimeoutMs ??
     Number(process.env.PUBLIC_STATIC_MEDIA_REQUEST_TIMEOUT_MS ?? DEFAULT_REQUEST_TIMEOUT_MS);
+  const downloadConcurrency =
+    options.downloadConcurrency ??
+    Number(process.env.PUBLIC_STATIC_MEDIA_DOWNLOAD_CONCURRENCY ?? DEFAULT_DOWNLOAD_CONCURRENCY);
   const fetchImpl = options.fetchImpl ?? fetch;
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
@@ -423,6 +427,9 @@ export async function packagePublicMedia(
   }
   if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs <= 0) {
     throw new Error("requestTimeoutMs must be a positive integer");
+  }
+  if (!Number.isSafeInteger(downloadConcurrency) || downloadConcurrency <= 0) {
+    throw new Error("downloadConcurrency must be a positive integer");
   }
 
   await stat(siteDistDir).catch(() => {
@@ -485,10 +492,7 @@ export async function packagePublicMedia(
   };
 
   await Promise.all(
-    Array.from(
-      { length: Math.min(PUBLIC_MEDIA_DOWNLOAD_CONCURRENCY, referenceEntries.length) },
-      downloadWorker
-    )
+    Array.from({ length: Math.min(downloadConcurrency, referenceEntries.length) }, downloadWorker)
   );
 
   for (const [file, content] of fileContents) {
