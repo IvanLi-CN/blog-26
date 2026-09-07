@@ -22,7 +22,7 @@ const TEXT_EXTENSIONS = new Set([
   ".webmanifest",
   ".xml",
 ]);
-const PUBLIC_MEDIA_URL_RE = /(?:https?:\/\/[^"'`\\\s<>]+)?\/api\/public\/assets\/[^"'`\\\s<>]+/g;
+const PUBLIC_MEDIA_URL_RE = /(?:https?:\/\/[^"'`&\\\s<>]+)?\/api\/public\/assets\/[^"'`&\\\s<>]+/g;
 const TRAILING_URL_PUNCTUATION_RE = /[.,;:!?)}\]]+$/u;
 const PUBLIC_MEDIA_DOWNLOAD_CONCURRENCY = 8;
 
