@@ -7,7 +7,7 @@ const TRAILING_SLASH = /\/+$/;
 const SITE_DIST_DIR = "site-dist";
 const FEED_FILES = ["site-dist/feed.xml", "site-dist/atom.xml", "site-dist/feed.json"] as const;
 const BUILD_TIME_PUBLIC_ASSET_PATTERN =
-  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:card|cover)\.[^"'`\s?#]+(?:\?[^"'`\s]*)?/g;
+  /(?:https?:\/\/[^"'`\s]+)?\/api\/public\/assets\/[^"'`\s?#]+\/(?:card|cover|content|full|social|poster|play)\.[^"'`\s?#]+(?:\?[^"'`\s]*)?/g;
 
 type FileCheck = {
   file: string;
@@ -345,7 +345,7 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
 
     if (buildTimePublicAssetHits.length === 0) {
       throw new Error(
-        "Expected at least one build-time /api/public/assets/* card|cover facade URL in generated HTML."
+        "Expected at least one build-time /api/public/assets/* media facade URL in generated HTML."
       );
     }
 
