@@ -801,6 +801,57 @@ async function streamLocalMediaFile(request: Request, ref: MediaReference) {
   });
 }
 
+async function renderLocalMediaVariant(
+  request: Request,
+  resolved: NonNullable<Awaited<ReturnType<typeof resolveMediaReferenceFromRequest>>>,
+  params: { variant: Exclude<keyof typeof VARIANT_RECIPES, "play">; ext: string }
+) {
+  if (!isLocalContentEnabled() || resolved.ref.kind === "video") return null;
+
+  const recipe = IMAGE_VARIANT_RECIPES[params.variant];
+  const format = normalizePublicMediaExt(params.ext) || "webp";
+  const animated =
+    resolved.ref.kind === "gif" && (params.variant === "content" || params.variant === "full");
+  let pipeline = sharp(getLocalPath(resolved.ref.sourcePath), {
+    animated,
+    limitInputPixels: false,
+  }).resize({
+    width: recipe.width || undefined,
+    height: recipe.height || undefined,
+    fit: "inside",
+    withoutEnlargement: true,
+  });
+
+  switch (format) {
+    case "avif":
+      pipeline = pipeline.avif();
+      break;
+    case "jpg":
+    case "jpeg":
+      pipeline = pipeline.jpeg();
+      break;
+    case "png":
+      pipeline = pipeline.png();
+      break;
+    case "gif":
+      pipeline = pipeline.gif();
+      break;
+    default:
+      pipeline = pipeline.webp();
+      break;
+  }
+
+  const body = await pipeline.toBuffer();
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers: {
+      "cache-control": "public, max-age=31536000, immutable",
+      "content-length": String(body.byteLength),
+      "content-type": inferPublicMediaMimeType(`asset.${format}`),
+    },
+  });
+}
+
 function createMediaProcessorUnavailableResponse(request: Request) {
   const headers = new Headers({
     "cache-control": "no-store",
@@ -821,28 +872,23 @@ function createMediaProcessorUnavailableResponse(request: Request) {
   );
 }
 
-async function loadContentRow(
+async function loadContentRows(
   kind: PublicContentKind,
   slug: string,
   request: Request,
   internalOnly = false
 ) {
   await initializeDB();
-  const row = await db
+  const rows = await db
     .select()
     .from(posts)
-    .where(and(eq(posts.slug, slug), eq(posts.type, kind)))
-    .limit(1)
-    .then((rows) => rows[0] ?? null);
+    .where(and(eq(posts.slug, slug), eq(posts.type, kind)));
 
-  if (!row) return null;
-  if (internalOnly) return row;
-  if (row.public && (kind !== "post" || !row.draft)) {
-    return row;
-  }
+  if (internalOnly) return rows;
+  if (!rows.length) return [];
 
   const auth = await extractAuthFromRequest(request);
-  return auth.isAdmin ? row : null;
+  return rows.filter((row) => (row.public && (kind !== "post" || !row.draft)) || auth.isAdmin);
 }
 
 async function resolveMediaReferenceFromRequest(
@@ -851,27 +897,30 @@ async function resolveMediaReferenceFromRequest(
   internalOnly = false,
   assetScope?: PublicMediaAssetScope
 ) {
-  const row = await loadContentRow(params.kind, params.slug, request, internalOnly);
-  if (!row) return null;
   const scope =
     assetScope ??
     (new URL(request.url).searchParams.get("scope") === "admin-preview"
       ? "admin-preview"
       : "public");
-  const normalizedRow = normalizeAdminPreviewRow(params.kind, row, scope);
-  const refs = buildContentMediaReferences(params.kind, normalizedRow);
-  const ref = refs.find((item) => item.hash === params.mediaHash) ?? null;
-  if (!ref) return null;
-  return {
-    row: normalizedRow,
-    ref,
-    context: {
-      kind: params.kind,
-      slug: normalizedRow.slug,
-      filePath: getCanonicalFilePath(normalizedRow),
-      assetScope: scope,
-    } satisfies PublicMediaContext,
-  };
+  const rows = await loadContentRows(params.kind, params.slug, request, internalOnly);
+  for (const row of rows) {
+    const normalizedRow = normalizeAdminPreviewRow(params.kind, row, scope);
+    const ref = buildContentMediaReferences(params.kind, normalizedRow).find(
+      (item) => item.hash === params.mediaHash
+    );
+    if (!ref) continue;
+    return {
+      row: normalizedRow,
+      ref,
+      context: {
+        kind: params.kind,
+        slug: normalizedRow.slug,
+        filePath: getCanonicalFilePath(normalizedRow),
+        assetScope: scope,
+      } satisfies PublicMediaContext,
+    };
+  }
+  return null;
 }
 
 async function proxyResolvedMediaVariant(
@@ -922,6 +971,27 @@ async function proxyResolvedMediaVariant(
       return streamLocalMediaFile(request, resolved.ref);
     }
     return createMediaProcessorUnavailableResponse(request);
+  }
+
+  if (upstream.status === 422) {
+    const errorBody = await upstream
+      .clone()
+      .text()
+      .catch(() => "");
+    if (errorBody.includes("maximum resolution exceeded")) {
+      try {
+        const fallback = await renderLocalMediaVariant(request, resolved, {
+          variant: params.variant as Exclude<keyof typeof VARIANT_RECIPES, "play">,
+          ext: params.ext,
+        });
+        if (fallback) return fallback;
+      } catch (error) {
+        console.error("[public-media] local derivative fallback failed:", {
+          sourcePath: resolved.ref.sourcePath,
+          error,
+        });
+      }
+    }
   }
 
   return new Response(request.method === "HEAD" ? null : upstream.body, {

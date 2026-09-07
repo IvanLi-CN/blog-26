@@ -1487,6 +1487,104 @@ public: false
     }
   });
 
+  it("resolves duplicate public slugs by the requested media hash", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/duplicate-old.png"), "old");
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/duplicate-current.png"),
+      "current"
+    );
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/duplicate-old.md"), "old");
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/duplicate-current.md"), "current");
+
+    await seedPost({
+      id: "blog/duplicate-old.md",
+      filePath: "blog/duplicate-old.md",
+      slug: "duplicate-media-post",
+      type: "post",
+      title: "Duplicate Media Post (old)",
+      body: "![old](./assets/duplicate-old.png)",
+      public: true,
+      draft: false,
+    });
+    await seedPost({
+      id: "blog/duplicate-current.md",
+      filePath: "blog/duplicate-current.md",
+      slug: "duplicate-media-post",
+      type: "post",
+      title: "Duplicate Media Post (current)",
+      body: "![current](./assets/duplicate-current.png)",
+      public: true,
+      draft: false,
+    });
+
+    const mediaHash = buildPublicMediaHash("blog/assets/duplicate-current.png", "content");
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      expect(url).toContain(`/${mediaHash}`);
+      return new Response("optimized-image", {
+        status: 200,
+        headers: { "content-type": "image/webp" },
+      });
+    }) as typeof fetch;
+
+    try {
+      const response = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/post/duplicate-media-post/${mediaHash}/content.webp`),
+        `/assets/post/duplicate-media-post/${mediaHash}/content.webp`
+      );
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("optimized-image");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("renders a local derivative when imagor rejects an oversized animated source", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets/large-frame.png"),
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+        "base64"
+      )
+    );
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/large-frame.md"), "content");
+    await seedPost({
+      id: "Memos/large-frame.md",
+      filePath: "Memos/large-frame.md",
+      slug: "large-frame",
+      type: "memo",
+      title: "Large Frame",
+      body: "![image](./assets/large-frame.png)",
+      public: true,
+      draft: false,
+    });
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async () =>
+      new Response('{"message":"maximum resolution exceeded"}', { status: 422 })) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("Memos/assets/large-frame.png", "content");
+      const response = await handlePublicApiRequest(
+        buildRequest(`/api/public/assets/memo/large-frame/${mediaHash}/content.webp`),
+        `/assets/memo/large-frame/${mediaHash}/content.webp`
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/webp");
+      expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("returns 502 in non-production when imagor is unavailable", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/fallback-cover.png"), "cover");
