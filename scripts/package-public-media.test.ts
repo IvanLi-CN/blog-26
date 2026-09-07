@@ -230,6 +230,7 @@ describe("packagePublicMedia", () => {
       cwd,
       mediaOrigin: "https://api.example",
       siteUrl: "https://site.example",
+      downloadConcurrency: 2,
       fetchImpl: async (_input, init) => {
         active += 1;
         maximumActive = Math.max(maximumActive, active);
@@ -242,7 +243,7 @@ describe("packagePublicMedia", () => {
     });
 
     expect(maximumActive).toBeGreaterThan(1);
-    expect(maximumActive).toBeLessThanOrEqual(8);
+    expect(maximumActive).toBeLessThanOrEqual(2);
   });
 
   test("fails with the media URL when a request exceeds its timeout", async () => {
