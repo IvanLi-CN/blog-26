@@ -11,6 +11,7 @@ export const DEFAULT_MAX_PROJECT_BYTES = 5 * 1024 * 1024 * 1024;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const DEFAULT_DOWNLOAD_CONCURRENCY = 1;
 export const DEFAULT_DOWNLOAD_ATTEMPTS = 3;
+export const DEFAULT_RETRY_DELAY_MS = 500;
 
 const TEXT_EXTENSIONS = new Set([
   ".css",
@@ -63,6 +64,7 @@ export type PublicMediaPackageOptions = {
   requestTimeoutMs?: number;
   downloadConcurrency?: number;
   downloadAttempts?: number;
+  retryDelayMs?: number;
   fetchImpl?: PublicMediaFetcher;
 };
 
@@ -316,7 +318,8 @@ async function downloadMedia(
   mediaOrigin: string,
   fetchImpl: PublicMediaFetcher,
   requestTimeoutMs: number,
-  downloadAttempts: number
+  downloadAttempts: number,
+  retryDelayMs: number
 ): Promise<DownloadResult> {
   let head: Response | null = null;
   try {
@@ -352,9 +355,19 @@ async function downloadMedia(
     } catch (error) {
       lastError = error;
       if (attempt === downloadAttempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
       continue;
     }
     if (!response.ok) {
+      const retryable =
+        response.status === 404 ||
+        response.status === 408 ||
+        response.status === 429 ||
+        response.status >= 500;
+      if (retryable && attempt < downloadAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
+        continue;
+      }
       throw new Error(`Media origin returned HTTP ${response.status} for ${url}`);
     }
     const declaredLength = readContentLength(response);
@@ -374,6 +387,7 @@ async function downloadMedia(
     } catch (error) {
       lastError = error;
       if (attempt === downloadAttempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
     }
   }
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
@@ -439,6 +453,9 @@ export async function packagePublicMedia(
   const downloadAttempts =
     options.downloadAttempts ??
     Number(process.env.PUBLIC_STATIC_MEDIA_DOWNLOAD_ATTEMPTS ?? DEFAULT_DOWNLOAD_ATTEMPTS);
+  const retryDelayMs =
+    options.retryDelayMs ??
+    Number(process.env.PUBLIC_STATIC_MEDIA_RETRY_DELAY_MS ?? DEFAULT_RETRY_DELAY_MS);
   const fetchImpl = options.fetchImpl ?? fetch;
 
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
@@ -456,6 +473,9 @@ export async function packagePublicMedia(
   }
   if (!Number.isSafeInteger(downloadAttempts) || downloadAttempts <= 0) {
     throw new Error("downloadAttempts must be a positive integer");
+  }
+  if (!Number.isSafeInteger(retryDelayMs) || retryDelayMs < 0) {
+    throw new Error("retryDelayMs must be a non-negative integer");
   }
 
   await stat(siteDistDir).catch(() => {
@@ -495,7 +515,8 @@ export async function packagePublicMedia(
         mediaOrigin,
         fetchImpl,
         requestTimeoutMs,
-        downloadAttempts
+        downloadAttempts,
+        retryDelayMs
       );
       let outputPath: string | null = null;
       if (result.status === "packaged") {
