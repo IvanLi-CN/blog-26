@@ -52,6 +52,7 @@ describe("verify-pages-build", () => {
         `href="${basePath}/feed.xml"`,
         `<img src="${versionedCardUrl}">`,
         `<img src="${versionedContentUrl}">`,
+        `<img src="/api/public/assets/post/${postSlug}/abcd1234/content.webp">`,
       ].join("\n")
     );
     writeBuildFile(
