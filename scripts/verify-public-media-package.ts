@@ -23,6 +23,8 @@ const TEXT_EXTENSIONS = new Set([
   ".webmanifest",
   ".xml",
 ]);
+const STATIC_MEDIA_URL_RE =
+  /(?:https?:\/\/[^"'`\s<>\\]+)?\/_content\/assets\/[^"'`\s<>\\()[\]{}]+/g;
 
 export type VerifyPublicMediaPackageOptions = {
   cwd?: string;
@@ -262,9 +264,7 @@ export async function verifyPublicMediaPackage(
       }
     }
 
-    for (const match of content.matchAll(
-      /(?:https?:\/\/[^"'`\s<>]+)?\/_content\/assets\/[^"'`\s<>]+/g
-    )) {
+    for (const match of content.matchAll(STATIC_MEDIA_URL_RE)) {
       const raw = match[0].replace(/[.,;:!?)}\]]+$/u, "");
       const parsed = new URL(raw, siteUrl);
       const outputPath = removeBasePath(parsed.pathname, basePath);
