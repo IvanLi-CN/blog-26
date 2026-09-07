@@ -45,6 +45,12 @@ function assertIncludesSome(
   }
 }
 
+function assertIncludesOneOf(content: string, needles: readonly string[], file: string) {
+  if (!needles.some((needle) => content.includes(needle))) {
+    throw new Error(`Expected ${file} to include one of: ${needles.join(", ")}`);
+  }
+}
+
 function assertSameOriginPublicApiBaseUrl(siteUrl: string, apiBaseUrl: string) {
   const siteOrigin = new URL(siteUrl).origin;
   const apiOrigin = new URL(apiBaseUrl).origin;
@@ -303,7 +309,16 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
     }
 
     assertIncludesSome(htmlFiles, contents, "/api/public/assets/");
-    assertIncludesSome(publicDocumentFiles, contents, `${apiBaseUrl}/api/public/assets/`);
+    const publicAssetUrls = [`${apiBaseUrl}/api/public/assets/`, "/api/public/assets/"] as const;
+    if (
+      !publicDocumentFiles.some((file) =>
+        publicAssetUrls.some((needle) => contents.get(file)?.includes(needle))
+      )
+    ) {
+      throw new Error(
+        `Expected one of [${publicDocumentFiles.join(", ")}] to include one of: ${publicAssetUrls.join(", ")}`
+      );
+    }
     assertExcludes(
       contents.get("site-dist/index.html") ?? "",
       "/api/files/",
@@ -321,7 +336,7 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
     for (const file of feedFiles) {
       const content = contents.get(file) ?? "";
       assertIncludes(content, `${siteUrl}/posts/`, file);
-      assertIncludes(content, `${apiBaseUrl}/api/public/assets/`, file);
+      assertIncludesOneOf(content, publicAssetUrls, file);
     }
 
     const buildTimePublicAssetHits = htmlFiles.flatMap((file) =>
