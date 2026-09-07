@@ -386,6 +386,7 @@ jobs:
       - name: Fetch content bundle
         env:
           PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
 
@@ -668,6 +669,7 @@ jobs:
       - name: Fetch content bundle
         env:
           PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
 

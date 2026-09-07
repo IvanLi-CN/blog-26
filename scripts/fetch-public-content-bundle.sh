@@ -3,10 +3,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUNDLE_URL="${PUBLIC_CONTENT_BUNDLE_URL:-}"
+SNAPSHOT_URL="${PUBLIC_CONTENT_SNAPSHOT_URL:-}"
 OUTPUT_PATH="${PUBLIC_SNAPSHOT_PATH:-${ROOT_DIR}/site/generated/public-snapshot.json}"
 WORK_DIR="${PUBLIC_CONTENT_WORK_DIR:-${ROOT_DIR}/.tmp/public-content-bundle}"
 ARCHIVE_PATH="${WORK_DIR}/bundle.bin"
 EXTRACT_DIR="${WORK_DIR}/extract"
+LIVE_SNAPSHOT_PATH="${WORK_DIR}/live-public-snapshot.json"
 
 if [[ -z "${BUNDLE_URL}" ]]; then
   echo "PUBLIC_CONTENT_BUNDLE_URL is required" >&2
@@ -66,6 +68,42 @@ if [[ "${kind}" != "json" ]]; then
     exit 4
   fi
   cp "${snapshot_file}" "${OUTPUT_PATH}"
+fi
+
+if [[ -n "${SNAPSHOT_URL}" ]]; then
+  echo "Refreshing public snapshot from ${SNAPSHOT_URL}..."
+  curl -fsSL \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    --max-time 120 \
+    "${SNAPSHOT_URL}" \
+    -o "${LIVE_SNAPSHOT_PATH}"
+
+  python3 - "${LIVE_SNAPSHOT_PATH}" "${OUTPUT_PATH}" <<'PY'
+from pathlib import Path
+import json
+import sys
+
+source = Path(sys.argv[1])
+output = Path(sys.argv[2])
+try:
+    snapshot = json.loads(source.read_text("utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"Invalid live public snapshot: {exc}")
+
+if not isinstance(snapshot, dict):
+    raise SystemExit("Live public snapshot must be a JSON object")
+for key in ("posts", "memos", "tags"):
+    if key not in snapshot:
+        raise SystemExit(f"Live public snapshot is missing required key: {key}")
+
+output.write_text(
+    json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n",
+    encoding="utf-8",
+)
+PY
+  echo "Live public snapshot accepted and written to ${OUTPUT_PATH}"
 fi
 
 echo "Public snapshot ready at ${OUTPUT_PATH}"
