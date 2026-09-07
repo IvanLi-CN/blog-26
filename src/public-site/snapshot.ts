@@ -232,9 +232,17 @@ function hasAvailableLocalMedia(kind: "post" | "memo", row: typeof posts.$inferS
   }
 
   const media = buildPublicMediaCollection(kind, row);
-  const missing = publicMediaItems(media).filter(
-    (item) => !existsSync(getLocalPath(item.sourcePath))
-  );
+  const mediaItems = publicMediaItems(media);
+  const missing = mediaItems.filter((item) => !existsSync(getLocalPath(item.sourcePath)));
+  const contentPath = getCanonicalFilePath(row);
+  if (mediaItems.length > 0 && !existsSync(getLocalPath(contentPath))) {
+    console.warn("[public-snapshot] skipping content with missing local source:", {
+      kind,
+      slug: row.slug,
+      contentPath,
+    });
+    return false;
+  }
   if (missing.length > 0) {
     console.warn("[public-snapshot] skipping content with missing local media:", {
       kind,
