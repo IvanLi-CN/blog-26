@@ -200,9 +200,41 @@ function readContentLength(response: Response) {
   return Number(value);
 }
 
-async function readResponseWithinLimit(response: Response, maxBytes: number) {
+async function readResponseWithinLimit(
+  response: Response,
+  maxBytes: number,
+  requestTimeoutMs: number,
+  url: string
+) {
+  const deadline = Date.now() + requestTimeoutMs;
+  const readWithinDeadline = async <T>(operation: Promise<T>) => {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      throw new Error(`Media origin response body timed out after ${requestTimeoutMs} ms: ${url}`);
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Media origin response body timed out after ${requestTimeoutMs} ms: ${url}`
+                )
+              ),
+            remainingMs
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
   if (!response.body) {
-    const buffer = new Uint8Array(await response.arrayBuffer());
+    const buffer = new Uint8Array(await readWithinDeadline(response.arrayBuffer()));
     return buffer.byteLength <= maxBytes
       ? { body: buffer, tooLarge: false }
       : { body: undefined, tooLarge: true };
@@ -213,7 +245,7 @@ async function readResponseWithinLimit(response: Response, maxBytes: number) {
   let total = 0;
   try {
     while (true) {
-      const next = await reader.read();
+      const next = await readWithinDeadline(reader.read());
       if (next.done) break;
       total += next.value.byteLength;
       if (total > maxBytes) {
@@ -316,7 +348,7 @@ async function downloadMedia(
     return { status: "external", bytes: declaredLength, reason: "over_max_bytes" };
   }
 
-  const result = await readResponseWithinLimit(response, maxBytes);
+  const result = await readResponseWithinLimit(response, maxBytes, requestTimeoutMs, url);
   if (result.tooLarge) {
     return { status: "external", bytes: maxBytes + 1, reason: "over_max_bytes" };
   }

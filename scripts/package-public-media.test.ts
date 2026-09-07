@@ -268,6 +268,32 @@ describe("packagePublicMedia", () => {
     );
   });
 
+  test("fails when a media response body exceeds its timeout", async () => {
+    const cwd = await fixture();
+    const mediaPath = "/api/public/assets/post/timeout-body/hash/card.webp";
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${mediaPath}">`);
+
+    await expect(
+      packagePublicMedia({
+        cwd,
+        mediaOrigin: "https://api.example",
+        siteUrl: "https://site.example",
+        requestTimeoutMs: 5,
+        fetchImpl: async (_input, init) => {
+          if (init?.method === "HEAD") return response("", { "content-length": "4" });
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: () => undefined,
+            }),
+            { status: 200 }
+          );
+        },
+      })
+    ).rejects.toThrow(
+      "Media origin response body timed out after 5 ms: https://api.example/api/public/assets/post/timeout-body/hash/card.webp"
+    );
+  });
+
   test("fails when the manifest and packaged static files drift", async () => {
     const cwd = await fixture();
     await writeFile(
