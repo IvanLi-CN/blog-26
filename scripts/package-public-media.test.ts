@@ -25,6 +25,33 @@ function response(body: string, headers: Record<string, string> = {}) {
 }
 
 describe("packagePublicMedia", () => {
+  test("does not include escaped JSON text after an embedded media URL", async () => {
+    const cwd = await fixture();
+    await writeFile(
+      join(cwd, "site-dist", "index.html"),
+      '<script type="application/json">{"body":"![diagram](/api/public/assets/post/hello/hash/content.webp)\\n\\n正文"}</script>'
+    );
+
+    const requestedUrls: string[] = [];
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async (input, init) => {
+        requestedUrls.push(String(input));
+        return response(init?.method === "HEAD" ? "" : "four", { "content-length": "4" });
+      },
+    });
+
+    expect(requestedUrls).toEqual([
+      "https://api.example/api/public/assets/post/hello/hash/content.webp",
+      "https://api.example/api/public/assets/post/hello/hash/content.webp",
+    ]);
+    expect(await readFile(join(cwd, "site-dist", "index.html"), "utf8")).toContain(
+      "/_content/assets/post/hello/hash/content.webp)\\n\\n正文"
+    );
+  });
+
   test("packages small facade assets and rewrites oversized assets to the backend origin", async () => {
     const cwd = await fixture();
     await writeFile(
