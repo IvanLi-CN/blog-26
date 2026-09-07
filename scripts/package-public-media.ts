@@ -336,8 +336,6 @@ async function downloadMedia(
     if (length !== null && length > maxBytes) {
       return { status: "external", bytes: length, reason: "over_max_bytes" };
     }
-  } else if (head && ![405, 501].includes(head.status)) {
-    throw new Error(`Media origin returned HTTP ${head.status} for ${url}`);
   }
 
   let lastError: unknown;
