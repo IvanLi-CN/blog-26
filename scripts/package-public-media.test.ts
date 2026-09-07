@@ -295,6 +295,38 @@ describe("packagePublicMedia", () => {
     );
   });
 
+  test("retries transient media response body failures", async () => {
+    const cwd = await fixture();
+    const mediaPath = "/api/public/assets/post/retry/hash/card.webp";
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${mediaPath}">`);
+
+    let getAttempts = 0;
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      downloadAttempts: 2,
+      fetchImpl: async (_input, init) => {
+        if (init?.method === "HEAD") return response("", { "content-length": "4" });
+        getAttempts += 1;
+        if (getAttempts === 1) {
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => controller.error(new Error("socket reset")),
+            }),
+            { status: 200 }
+          );
+        }
+        return response("four", { "content-length": "4" });
+      },
+    });
+
+    expect(getAttempts).toBe(2);
+    expect(
+      await readFile(join(cwd, "site-dist", "_content/assets/post/retry/hash/card.webp"), "utf8")
+    ).toBe("four");
+  });
+
   test("fails when the manifest and packaged static files drift", async () => {
     const cwd = await fixture();
     await writeFile(
