@@ -117,33 +117,11 @@ Unified Docker image release:
 - Production health reports public-site status as `ok` with `site.mode=static`
 - Public-page routes such as `/` and `/posts` are served by the Docker image from `site-dist`
 
-### 4.7 PR release receipt comment contract
+### 4.7 Publication reporting contract
 
-- Every successful release run for a merged PR upserts exactly one managed PR issue comment as the release receipt.
-- The managed comment is keyed by repository + PR number through an HTML marker and must be updated in place on rerun or `workflow_dispatch` for the current `main` head instead of appending a new history comment.
-- The receipt body must include:
-  - PR number + URL
-  - release `head_sha`
-  - trigger kind (`workflow_run` or `workflow_dispatch`)
-  - `intent_type`
-  - `channel`
-  - actual `release:*` targets
-  - actual `frontend-*` / `backend-*` release tags with GitHub Release links when those targets were published
-  - plain `ghcr.io/<repo>:v*` image ref when any release target was published
-  - GitHub Actions run URL
-  - last-updated timestamp
-- `EdgeOne Makers` status is reported only for `frontend` releases:
-  - `deployed` when the verified static artifact and proxy functions upload completes
-  - `skipped` with an explicit reason when the workflow intentionally skips production deploy because the release is `channel:rc` or the release commit is no longer the latest `main` head
-- The receipt is written only when the current run's expected release outputs all succeeded:
-  - `frontend` release => `publish_frontend=success`
-  - `backend` release => `publish_backend=success`
-  - any release target => `publish_image=success`
-  - `deploy_frontend_edgeone` may be `success` or contractually `skipped`
-- No receipt is written for `should_release=false`, ambiguous/missing merged PR resolution, missing PR number, or any failed expected publish job.
-- The receipt comment path is best-effort and must not flip an otherwise successful release run to failed:
-  - permission or API failures are surfaced in the workflow summary as `permission_blocked` / `failed_soft`
-  - release tags, releases, EdgeOne deploys, and Docker publish remain the release workflow's source-of-truth outcome
+- Release job summaries and publish job results are the source of truth for the actual publication outcome.
+- The release-owning agent reports successful publication or failure to the owner after inspecting the release workflow.
+- The release workflow does not write a release result comment to the source PR.
 
 ## 5. Implementation decisions
 
@@ -159,7 +137,7 @@ Unified Docker image release:
    - `/api/health` reports `site.status=ok` and `site.mode=static`
    - `/api/public/*` stays available
    - `/posts` is served by the unified Docker image
-7. Add a dedicated release-receipt comment step that consumes `prepare` outputs as the only source of receipt truth and upserts the managed PR comment through the issue-comments API.
+7. Report publication outcomes from release job summaries through the release-owning agent rather than writing to the source PR.
 8. Require the release source SHA to equal the current `main` head before resolving release intent or publishing any output.
 
 ## 6. Acceptance criteria
@@ -184,13 +162,10 @@ Unified Docker image release:
    - Docker image starts without runtime public-site build
    - `/api/health` stays healthy and reports `site.status=ok`
    - `/posts` is served from bundled static assets
-6. Release receipt comment:
-   - a successful release run creates or updates exactly one managed PR receipt comment
-   - rerun and `workflow_dispatch` backfill update the same managed comment instead of creating a second one
-   - the comment shows only the actual outputs from the current run
-   - the comment is omitted when any expected publish job fails or when release intent is skipped
-   - `EdgeOne Makers` is reported as `deployed` or explicit `skipped`, not guessed from release intent alone
-   - receipt permission/API failures are reported as non-blocking summary states and do not mark the release run itself failed
+6. Publication reporting:
+   - release job summaries expose the actual outcomes of expected publication jobs
+   - the release-owning agent reports successful publication or failure to the owner
+   - the workflow does not write a result comment to the source PR
 7. A manual dispatch or delayed release run for a stale or non-main SHA fails before it can publish an artifact, tag, image, or EdgeOne deployment.
 
 ## 7. Risks and rollback
@@ -200,8 +175,6 @@ Unified Docker image release:
 - Component tag history can drift if tags are edited manually.
 - Frontend releases depend on availability and correctness of `PUBLIC_CONTENT_BUNDLE_URL`.
 - EdgeOne Makers, backend artifact releases, and unified Docker image releases now have partially independent failure modes.
-- Managed receipt comments can drift if repository permissions stop allowing issue-comment updates or if multiple historical managed comments already exist.
-- GitHub may still deny PR comment writes in some `workflow_run` contexts even when the workflow requests comment permissions.
 
 ### Mitigations
 
@@ -210,8 +183,6 @@ Unified Docker image release:
 - Keep release jobs idempotent by reusing existing matching tags on rerun.
 - Preserve explicit workflow summaries for skip/failure reasons.
 - Keep the EdgeOne project type as direct upload so the workflow can publish the verified artifact without a second build.
-- Deduplicate managed receipt comments during update and scope write permission to the dedicated receipt job.
-- Treat the receipt upsert as best-effort so a comment-permission regression cannot block actual artifact publication.
 - Repository admins still need GitHub-side proof that `PR Label Gate` is configured as a required check; the workflow/spec cannot prove that from within this private repo context.
 
 ### Rollback
