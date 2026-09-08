@@ -54,7 +54,6 @@ emit_skip() {
   write_output "backend_release" "false"
   write_output "components" ""
   write_output "pr_number" ""
-  write_output "pr_url" ""
   write_output "is_latest_branch_head" "${is_latest_branch_head}"
   write_output "reason" "${reason}"
 }
@@ -70,7 +69,6 @@ emit_failure() {
   write_output "backend_release" "false"
   write_output "components" ""
   write_output "pr_number" ""
-  write_output "pr_url" ""
   write_output "is_latest_branch_head" "${is_latest_branch_head}"
   write_output "reason" "${reason}"
   exit 3
@@ -236,7 +234,6 @@ if len(pulls) != 1:
 
 pull = pulls[0]
 number = pull.get("number")
-url = pull.get("html_url", "")
 merged_at = pull.get("merged_at", "")
 merge_commit_sha = pull.get("merge_commit_sha", "")
 if not isinstance(number, int):
@@ -244,7 +241,6 @@ if not isinstance(number, int):
     sys.exit(0)
 
 print(f"pr_number={number}")
-print(f"pr_url={url}")
 print(f"pr_merged_at={merged_at}")
 print(f"pr_merge_commit_sha={merge_commit_sha}")
 PY
@@ -252,7 +248,6 @@ PY
 
 count="$(echo "${pull_info}" | sed -n 's/^count=//p')"
 pr_number="$(echo "${pull_info}" | sed -n 's/^pr_number=//p')"
-pr_url="$(echo "${pull_info}" | sed -n 's/^pr_url=//p')"
 pr_merged_at="$(echo "${pull_info}" | sed -n 's/^pr_merged_at=//p')"
 pr_merge_commit_sha="$(echo "${pull_info}" | sed -n 's/^pr_merge_commit_sha=//p')"
 
@@ -534,6 +529,5 @@ write_output "frontend_release" "${frontend_release}"
 write_output "backend_release" "${backend_release}"
 write_output "components" "${components}"
 write_output "pr_number" "${pr_number}"
-write_output "pr_url" "${pr_url}"
 write_output "is_latest_branch_head" "${is_latest_branch_head}"
 write_output "reason" "${reason}"
