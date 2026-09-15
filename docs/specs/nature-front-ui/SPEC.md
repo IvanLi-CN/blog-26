@@ -117,21 +117,28 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The project wall uses a stable 4:5 presentation: media-backed catalog cards display supplied artwork without a copy layer or scrim, while media-free placeholders retain the fallback copy. Detail-page posters display supplied artwork without an overlay or added copy. Project detail pages show generated social previews in a stable 2:1 frame, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
 - Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
 
-PR: include
 
 ![Project wall dark](./assets/projects-wall-dark.png)
 
-PR: include
 
 ![Tavily Hikari detail light](./assets/project-tavily-hikari-light.png)
 
-PR: include
 
 ![Tavily Hikari detail dark](./assets/project-tavily-hikari-dark.png)
 
-PR: include
 
 ![LoadLynx detail dark](./assets/project-loadlynx-dark.png)
+
+- Evidence captured for the Mains Aegis light/dark poster and social-preview pair after importing the upstream dark campaign assets.
+- The project wall and detail page keep the light artwork in light mode and select the matching dark artwork in dark mode without changing the surrounding layout.
+
+![Mains Aegis project wall light](./assets/mains-aegis-projects-light.png)
+
+![Mains Aegis project wall dark](./assets/mains-aegis-projects-dark.png)
+
+![Mains Aegis detail light](./assets/mains-aegis-detail-light.png)
+
+![Mains Aegis detail dark](./assets/mains-aegis-detail-dark.png)
 
 - Evidence captured against local branch `th/nature-front-redesign` on the refreshed Nature frontend worktree state after the width, comment-form, and code-highlighting fixes.
 - Assets stored under `docs/specs/nature-front-ui/assets/`.
