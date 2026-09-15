@@ -228,6 +228,8 @@ test.describe("Nature frontend public coverage", () => {
       { slug: "paste-preset", selector: ".project-social-preview", width: 1280 },
       { slug: "isolappurr-usb-hub", selector: ".project-poster", width: 960 },
       { slug: "isolappurr-usb-hub", selector: ".project-social-preview", width: 1280 },
+      { slug: "mains-aegis", selector: ".project-poster", width: 960 },
+      { slug: "mains-aegis", selector: ".project-social-preview", width: 1280 },
       { slug: "tuckmark", selector: ".project-poster", width: 960 },
       { slug: "tuckmark", selector: ".project-social-preview", width: 1280 },
       { slug: "dockrev", selector: ".project-poster", width: 960 },
@@ -250,10 +252,7 @@ test.describe("Nature frontend public coverage", () => {
       );
     }
 
-    const singleMedia = [
-      { slug: "mains-aegis", selector: ".project-social-preview" },
-      { slug: "dockrev", selector: ".project-social-preview" },
-    ] as const;
+    const singleMedia = [{ slug: "dockrev", selector: ".project-social-preview" }] as const;
 
     for (const media of singleMedia) {
       await gotoWithTheme(page, `/projects/${media.slug}`, "light");
