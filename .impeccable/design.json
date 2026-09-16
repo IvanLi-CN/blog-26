@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-16T04:30:01.000Z",
+  "title": "Design System: Ivan's Blog",
+  "source": "DESIGN.md",
+  "extensions": {
+    "colorMeta": {
+      "public.accent": {
+        "role": "primary",
+        "displayName": "Nature Green Accent",
+        "canonical": "#7ca98b",
+        "description": "Public-site accent for primary actions, tags, timeline nodes, and paths that invite continued exploration."
+      },
+      "public.accentStrong": {
+        "role": "primary",
+        "displayName": "Deep Nature Green",
+        "canonical": "#4e7e60",
+        "description": "Stronger public-site accent for emphasis and contrast."
+      },
+      "public.secondary": {
+        "role": "secondary",
+        "displayName": "Blue Green Secondary",
+        "canonical": "#84a7b5",
+        "description": "Secondary public-site color for timeline changes and information classification."
+      },
+      "admin.primary": {
+        "role": "primary",
+        "displayName": "Console Blue",
+        "canonical": "hsl(221 83% 53%)",
+        "description": "Primary admin color for key actions, current selection, and focus."
+      },
+      "admin.secondary": {
+        "role": "secondary",
+        "displayName": "Console Secondary",
+        "canonical": "hsl(221 70% 97%)",
+        "description": "Quiet admin surface color for supporting paths and dense information grouping."
+      },
+      "admin.destructive": {
+        "role": "state",
+        "displayName": "Destructive State",
+        "canonical": "hsl(0 72% 51%)",
+        "description": "Admin destructive state color used only for real danger and recovery feedback."
+      }
+    },
+    "typographyMeta": {
+      "public.body": {
+        "displayName": "Public Body",
+        "purpose": "Noto Sans SC keeps long-form articles, Memos, tag lists, and search results readable."
+      },
+      "public.display": {
+        "displayName": "Public Display",
+        "purpose": "Noto Serif SC carries the literary character of public headings and content."
+      },
+      "admin.body": {
+        "displayName": "Admin Utility",
+        "purpose": "InterVariable, Inter, and system fallbacks support compact, direct, repeatable admin work."
+      },
+      "technicalText": {
+        "displayName": "Technical Text",
+        "purpose": "Code, paths, logs, tokens, and model names remain distinct from ordinary explanatory text."
+      }
+    },
+    "shadows": [
+      {
+        "name": "Public Ambient",
+        "value": "0 24px 60px rgba(95, 122, 108, 0.14)",
+        "purpose": "Soft grouping for public content surfaces."
+      },
+      {
+        "name": "Public Strong",
+        "value": "0 24px 70px rgba(74, 98, 86, 0.2)",
+        "purpose": "Stronger lift for public surfaces that need additional separation."
+      },
+      {
+        "name": "Public Dark Ambient",
+        "value": "0 24px 70px rgba(0, 0, 0, 0.36)",
+        "purpose": "Dark-theme public surface separation."
+      },
+      {
+        "name": "Public Dark Strong",
+        "value": "0 28px 80px rgba(0, 0, 0, 0.44)",
+        "purpose": "Strong dark-theme public surface separation."
+      }
+    ],
+    "motion": [
+      {
+        "name": "Public Ambient",
+        "value": "low-frequency ambient motion",
+        "purpose": "Allow restrained atmosphere on public surfaces while reducing motion on reading-heavy pages."
+      },
+      {
+        "name": "Admin Feedback",
+        "value": "feedback-only motion",
+        "purpose": "Use motion for loading, saving, testing, syncing, and state-change feedback."
+      },
+      {
+        "name": "Reduced Motion",
+        "value": "preserve structure and feedback",
+        "purpose": "Keep status text, progress, structure, and hierarchy understandable when motion is reduced."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "Public Content",
+        "value": "min(1280px, calc(100vw - 3rem))"
+      },
+      {
+        "name": "Public Reading",
+        "value": "min(920px, calc(100vw - 3rem))"
+      },
+      {
+        "name": "Admin Maximum",
+        "value": "1760px"
+      }
+    ]
+  },
+  "narrative": {
+    "northStar": "数字温室",
+    "overview": "公共站采用 Nature Interface。它固定为当前公共站的长期方向：自然色、柔和半透明 surface、有机圆角、时间线节奏、轻量 ambient layer，以及 light、dark、system 三态主题。文章、Memos、标签、搜索和项目都应保持读者能继续探索的路径。\n\n后台采用 Soft UI 内容养护台。它不参考旧后台的样式、排版或布局，而以柔和 surface、大圆角、低饱和色、清楚状态、稳定操作反馈和宽屏工作区承载写作、审核、同步、计划任务和 AI 配置。",
+    "keyCharacteristics": [
+      "公共站保持数字温室方向。",
+      "后台保持安静、密集、任务优先。",
+      "公共站与后台可以有不同密度与气质，但都体现安静、精确、可亲。",
+      "减少动态偏好下仍保留可理解的结构和反馈。"
+    ],
+    "rules": [],
+    "dos": [
+      "让内容和状态先被看懂。",
+      "公共站保持数字温室方向。",
+      "后台保持安静、密集、任务优先。",
+      "状态必须有文本、图标、位置或结构辅助。",
+      "减少动态偏好下仍保留可理解的结构和反馈。"
+    ],
+    "donts": [
+      "不要把个人博客做成通用 SaaS 营销页。",
+      "不要把公开站做成社交信息流。",
+      "不要把后台做成无差别企业模板。",
+      "不要使用默认 AI 产品视觉作为主要风格。",
+      "不要新增卡片套卡片、过强阴影或不可解释动效。"
+    ]
+  }
+}
