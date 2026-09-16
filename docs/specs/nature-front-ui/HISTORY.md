@@ -6,4 +6,5 @@
 - 2026-08-19: Project posters and social previews moved to repository-owned media, including intrinsic social-preview sizing and theme-aware asset pairs.
 - 2026-08-20: Project poster delivery gained build-generated responsive AVIF/WebP variants, hard size budgets, inline previews, persistent fallback copy, and first-load theme binding for social previews.
 - 2026-08-21: Poster overlays were limited to media-free placeholders, and social previews gained private PNG sources, responsive AVIF/WebP generation, intrinsic 2:1 frames, and build-time size guards.
+- 2026-09-16: The project catalog expanded with SpotiBind and settled on six single-name groups with no more than three cards per group.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

@@ -5,6 +5,10 @@
 - Last Updated: `2026-08-20`
 - Owner: `main-agent`
 
+## Related ADRs
+
+None
+
 ## 1. Background
 
 The public blog frontend currently mixes content-focused pages with DaisyUI theme tokens and component classes.
@@ -78,6 +82,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Poster and social-preview reveals use a 180ms opacity transition only when motion is allowed. Reduced-motion mode removes that transition without changing the fallback or layout.
 - Project detail pages render a social preview only when a generated repository-provided asset exists. The image keeps a stable 2:1 intrinsic ratio and does not reserve a fixed height outside that ratio.
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
+- The project catalog uses six single-name groups: 开发工具 (3), 效率工具 (2), Web 产品 (2), 硬件产品 (3), 设备控制 (3), and 运维工具 (2). Every group stays within three cards, and the homepage selects one representative project from each group.
 
 ## 5. Acceptance criteria
 
@@ -95,6 +100,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density.
 13. Project posters render in 4:5 frames with a continuously readable image or placeholder state, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render in a stable intrinsic 2:1 frame with responsive AVIF/WebP candidates, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
 14. Poster asset generation and production builds fail when a raw public PNG, a missing generated variant, an oversized variant, or an oversized first-row transfer is detected.
+15. The project catalog contains 15 entries across the six groups above; `/projects/spoti-bind` renders SpotiBind, and the homepage presents six featured projects derived from those groups.
 
 ## 6. Validation
 
@@ -102,6 +108,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `git diff --name-only -- '*.ts' '*.tsx' '*.css' '*.json' '*.md' | xargs bunx biome check`
 - `bun test src/lib/__tests__/theme.test.ts`
 - `bun test tests/lib/project-poster-assets.test.ts`
+- `bun test tests/lib/project-social-preview-assets.test.ts`
 - `bun run generate:project-posters && PROJECT_POSTER_REQUIRE_DIST=1 bun run verify:project-posters`
 - `DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local NEXT_PUBLIC_SITE_URL=http://localhost:30090 PUBLIC_SITE_URL=http://localhost:30090 bun run build`
 - `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true DB_PATH=$(pwd)/test-data/sqlite.db LOCAL_CONTENT_BASE_PATH=$(pwd)/test-data/local CONTENT_SOURCES=local bunx playwright test tests/e2e/guest/astro-front-phase1.spec.ts tests/e2e/guest/hover-stability.spec.ts tests/e2e/guest/nature-front-coverage.spec.ts --project=guest`
@@ -117,19 +124,33 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The project wall uses a stable 4:5 presentation: media-backed catalog cards display supplied artwork without a copy layer or scrim, while media-free placeholders retain the fallback copy. Detail-page posters display supplied artwork without an overlay or added copy. Project detail pages show generated social previews in a stable 2:1 frame, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
 - Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
 
-PR: include
+- Evidence binding `57933c79c062dac0f15abe0514190810c2a7546c` baseline to the current candidate; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, requested mobile viewport `393px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+
+![Current project wall light](./assets/projects-wall-light-current.png)
+
+![Current project wall dark](./assets/projects-wall-dark-current.png)
+
+![Current project wall light mobile](./assets/projects-wall-light-mobile-current.png)
+
+![Current project wall dark mobile](./assets/projects-wall-dark-mobile-current.png)
+
+![SpotiBind detail light](./assets/project-spoti-bind-light.png)
+
+![SpotiBind detail dark](./assets/project-spoti-bind-dark.png)
+
+![SpotiBind detail light mobile](./assets/project-spoti-bind-light-mobile.png)
+
+![SpotiBind detail dark mobile](./assets/project-spoti-bind-dark-mobile.png)
+
 
 ![Project wall dark](./assets/projects-wall-dark.png)
 
-PR: include
 
 ![Tavily Hikari detail light](./assets/project-tavily-hikari-light.png)
 
-PR: include
 
 ![Tavily Hikari detail dark](./assets/project-tavily-hikari-dark.png)
 
-PR: include
 
 ![LoadLynx detail dark](./assets/project-loadlynx-dark.png)
 
