@@ -359,12 +359,12 @@ test.describe("Nature frontend public coverage", () => {
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
-    await expect(posterImages).toHaveCount(11);
+    await expect(posterImages).toHaveCount(12);
     await expect(eagerPosters).toHaveCount(3);
     await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
     await expect(eagerPosters.nth(1)).toHaveAttribute("fetchpriority", "auto");
     await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
-    await expect(lazyPosters).toHaveCount(8);
+    await expect(lazyPosters).toHaveCount(9);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
