@@ -2,11 +2,12 @@ import type { PublicMemoRecord, PublicPostRecord, PublicSnapshot } from "@/publi
 import { getCanonicalUrl } from "./public-site";
 
 export type ProjectDomain =
-  | "ai-agent-observability"
-  | "cloud-web-platform"
+  | "developer-tools"
+  | "productivity-tools"
+  | "web-products"
   | "hardware-product"
-  | "device-control-foundation"
-  | "self-hosted-infra";
+  | "device-control"
+  | "operations-tools";
 
 export type ProjectExternalLinkKind = "github" | "docs" | "demo" | "site";
 
@@ -68,34 +69,40 @@ export type ProjectCatalog = readonly ProjectCatalogItem[];
 
 export const projectDomains: readonly ProjectDomainDefinition[] = [
   {
-    id: "ai-agent-observability",
-    title: "AI 接入、代理与观测",
-    framing: "偏代理接入层与观测工作台，强调协议兼容、运行态追踪与团队可操作性。",
-    leadLabel: "Runtime Surface",
+    id: "developer-tools",
+    title: "开发工具",
+    framing: "面向开发者日常调试、检索与项目协作的工具。",
+    leadLabel: "Developer Tools",
   },
   {
-    id: "cloud-web-platform",
-    title: "云端控制台 / Web 平台产品",
-    framing: "偏公开 Web 产品与控制台体验，关注端到端交付、运维可见性与内容组织。",
-    leadLabel: "Public Product",
+    id: "productivity-tools",
+    title: "效率工具",
+    framing: "把个人计算中的高频动作收束成轻量工具。",
+    leadLabel: "Productivity Tools",
+  },
+  {
+    id: "web-products",
+    title: "Web 产品",
+    framing: "面向访客的在线服务和内容站点。",
+    leadLabel: "Web Product",
   },
   {
     id: "hardware-product",
-    title: "硬件整机产品",
-    framing: "偏完整设备交付，既包含电源、隔离、量测等硬件取舍，也包含用户可见控制面。",
+    title: "硬件产品",
+    framing: "从电路、固件到用户入口的完整设备交付。",
     leadLabel: "Hardware Build",
   },
   {
-    id: "device-control-foundation",
-    title: "设备控制平面 / 设备软件基座",
-    framing: "偏设备侧软件栈和控制平面，为固件、桌面或 Web 控制台提供稳定接口。",
+    id: "device-control",
+    title: "设备控制",
+    framing: "把设备能力整理成稳定、可操作的软件控制面。",
     leadLabel: "Control Plane",
   },
   {
-    id: "self-hosted-infra",
-    title: "自托管基础设施 / 运维工具",
-    framing: "偏自托管与运维基建，关注可持续维护、资源协调和最小运营面。",
-    leadLabel: "Infra Utility",
+    id: "operations-tools",
+    title: "运维工具",
+    framing: "面向服务部署和日常维护的操作工具。",
+    leadLabel: "Operations Tools",
   },
 ] as const;
 
@@ -132,7 +139,7 @@ export const projectCatalog: ProjectCatalog = [
   {
     slug: "codex-vibe-monitor",
     title: "Codex Vibe Monitor",
-    domain: "ai-agent-observability",
+    domain: "developer-tools",
     summary:
       "面向 Codex / OpenAI 兼容流量的观测代理与调试入口，用来把 prompt、token、响应链路和故障上下文放到同一个工作台里看清楚。",
     description:
@@ -155,7 +162,7 @@ export const projectCatalog: ProjectCatalog = [
   {
     slug: "tavily-hikari",
     title: "Tavily Hikari",
-    domain: "ai-agent-observability",
+    domain: "developer-tools",
     summary:
       "为 Tavily API 做的代理与审计控制台，把 key 池、额度、调用日志和团队入口统一到一个 Rust 服务里。",
     description:
@@ -181,7 +188,7 @@ export const projectCatalog: ProjectCatalog = [
   {
     slug: "kaisoumail",
     title: "KaisouMail",
-    domain: "cloud-web-platform",
+    domain: "web-products",
     summary: "基于 Cloudflare 的临时邮箱控制台，把邮箱生成、投递查看和公开前台整理成一套轻量产品。",
     description:
       "这类工具最容易沦为脚本集合，但它被做成了完整的 Web 产品：既有面向访客的使用入口，也有可维护、可扩展的后台组织方式。",
@@ -206,7 +213,7 @@ export const projectCatalog: ProjectCatalog = [
   {
     slug: "octo-rill",
     title: "OctoRill",
-    domain: "cloud-web-platform",
+    domain: "developer-tools",
     summary: "围绕 GitHub 个人活动整理出的阅读与运营工作台，用来集中查看 release、通知和项目流动。",
     description:
       "它更像一块为开发者自己定制的云端仪表板，重点不是社交网络式展示，而是把分散的 GitHub 动态重新组织成可消费的操作界面。",
@@ -231,7 +238,7 @@ export const projectCatalog: ProjectCatalog = [
   {
     slug: "paste-preset",
     title: "PastePreset",
-    domain: "cloud-web-platform",
+    domain: "productivity-tools",
     summary:
       "一个偏生产力取向的浏览器内图片处理工具，用预设流程把常见裁切、压缩和导出动作收束到同一界面。",
     description:
@@ -251,12 +258,34 @@ export const projectCatalog: ProjectCatalog = [
       "入口就是在线站点，适合直接体验产品形态。",
     ],
     relatedEntries: [],
-    order: 203,
+    order: 202,
+  },
+  {
+    slug: "spoti-bind",
+    title: "SpotiBind",
+    domain: "productivity-tools",
+    summary: "macOS 菜单栏工具，把硬件媒体键转发给你选择的桌面音乐播放器。",
+    description:
+      "SpotiBind 把播放、下一首和上一首按键交给指定播放器，同时提供自动路由、固定目标和启动位置配置。目标不可用时，按键会继续交给 macOS 的默认行为。",
+    poster: {
+      eyebrow: "媒体键控制",
+      strapline: "把播放按键交给指定播放器",
+      pattern: "signal",
+    },
+    links: createLinks("spoti-bind"),
+    techTags: ["macOS", "Swift", "Menu Bar", "Media Keys"],
+    highlights: [
+      "在 Spotify、Fastpotify、Sonora 和 Spotifly 之间自动选择可用目标。",
+      "支持固定播放器、关闭转发和从菜单栏直接控制播放。",
+      "只有目标就绪时才消费媒体键，异常时保留 macOS 原有行为。",
+    ],
+    relatedEntries: [],
+    order: 201,
   },
   {
     slug: "blog-26",
     title: "Ivan's Blog",
-    domain: "cloud-web-platform",
+    domain: "web-products",
     summary:
       "当前公开博客的开源镜像版本：Astro 前台、Admin SPA、Bun gateway 和内容快照导出都在同一仓里协作。",
     description:
@@ -274,7 +303,7 @@ export const projectCatalog: ProjectCatalog = [
       "项目页、内容索引和后台协作都在同一套公开系统里收束。",
     ],
     relatedEntries: [],
-    order: 204,
+    order: 302,
   },
   {
     slug: "loadlynx",
@@ -302,7 +331,7 @@ export const projectCatalog: ProjectCatalog = [
       { type: "post", slug: "dian4-zi3-fu4-zai4-kai1-fa1-bi3-ji4" },
       { type: "post", slug: "dian4-zi3-fu4-zai4-rev3-kai1-fa1-bi3-ji4" },
     ],
-    order: 301,
+    order: 401,
   },
   {
     slug: "mains-aegis",
@@ -330,7 +359,7 @@ export const projectCatalog: ProjectCatalog = [
       { type: "post", slug: "ups-design-hardware" },
       { type: "memo", slug: "tps55288-she4-ji4-yao4-dian3" },
     ],
-    order: 302,
+    order: 402,
   },
   {
     slug: "isolappurr-usb-hub",
@@ -358,12 +387,12 @@ export const projectCatalog: ProjectCatalog = [
       { type: "post", slug: "usb-hub-for-electronic-lovers" },
       { type: "post", slug: "usb-hub-for-electronic-lovers-rev-2" },
     ],
-    order: 303,
+    order: 403,
   },
   {
     slug: "tuckmark",
     title: "Tuckmark",
-    domain: "device-control-foundation",
+    domain: "device-control",
     summary:
       "面向标签打印和代理流程的控制平面，把打印任务、设备入口与自动化工作流捏成一个轻量操作台。",
     description:
@@ -383,12 +412,12 @@ export const projectCatalog: ProjectCatalog = [
       "公开入口已在线，方便直接理解产品方向。",
     ],
     relatedEntries: [],
-    order: 401,
+    order: 501,
   },
   {
     slug: "flux-purr",
     title: "Flux Purr",
-    domain: "device-control-foundation",
+    domain: "device-control",
     summary:
       "设备侧 monorepo 基座，把固件、React 控制台和本地 devd 接口摆在同一开发体系内，降低设备产品的多端割裂感。",
     description:
@@ -406,12 +435,12 @@ export const projectCatalog: ProjectCatalog = [
       "重点是开发与控制面一致性，不是单次硬件原型。",
     ],
     relatedEntries: [],
-    order: 402,
+    order: 502,
   },
   {
     slug: "iso-usb-hub",
     title: "ISO USB Hub",
-    domain: "device-control-foundation",
+    domain: "device-control",
     summary:
       "围绕四口 USB Hub 控制面展开的设备软件项目，负责端口、电源与设备侧能力的可见化与可控化。",
     description:
@@ -431,12 +460,12 @@ export const projectCatalog: ProjectCatalog = [
     relatedEntries: [
       { type: "post", slug: "build-a-2a2c-usb-hub-with-independent-power-supply-using-ch335f" },
     ],
-    order: 403,
+    order: 503,
   },
   {
     slug: "xp",
-    title: "xp",
-    domain: "self-hosted-infra",
+    title: "XP",
+    domain: "operations-tools",
     summary:
       "一套偏自托管运维的 Xray 集群管理工具，用来整理多主机、多节点下的部署、配置与维护动作。",
     description:
@@ -454,12 +483,12 @@ export const projectCatalog: ProjectCatalog = [
       "适合放在项目集里代表你的基础设施面工作。",
     ],
     relatedEntries: [{ type: "post", slug: "cloudflare-tunnel-for-intranet-penetration" }],
-    order: 501,
+    order: 601,
   },
   {
     slug: "dockrev",
     title: "Dockrev",
-    domain: "self-hosted-infra",
+    domain: "operations-tools",
     summary: "一个面向 Docker / Compose 自托管环境的更新与运维助手，帮助梳理版本、容器和维护动作。",
     description:
       "它关注的是“小而长期”的运维负担：部署了很多服务以后，如何用更低认知成本看清哪些东西该更新、该重启、该回滚。",
@@ -478,7 +507,7 @@ export const projectCatalog: ProjectCatalog = [
       "有公开文档入口，适合直接了解工具边界。",
     ],
     relatedEntries: [{ type: "post", slug: "upgrade-all-in-one-pve-8-to-9-and-pbs-3-to-4" }],
-    order: 502,
+    order: 602,
   },
 ] as const;
 

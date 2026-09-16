@@ -226,6 +226,8 @@ test.describe("Nature frontend public coverage", () => {
       { slug: "octo-rill", selector: ".project-social-preview", width: 1280 },
       { slug: "paste-preset", selector: ".project-poster", width: 960 },
       { slug: "paste-preset", selector: ".project-social-preview", width: 1280 },
+      { slug: "spoti-bind", selector: ".project-poster", width: 960 },
+      { slug: "spoti-bind", selector: ".project-social-preview", width: 1280 },
       { slug: "isolappurr-usb-hub", selector: ".project-poster", width: 960 },
       { slug: "isolappurr-usb-hub", selector: ".project-social-preview", width: 1280 },
       { slug: "mains-aegis", selector: ".project-poster", width: 960 },
@@ -267,6 +269,41 @@ test.describe("Nature frontend public coverage", () => {
     }
   });
 
+  test("project catalog keeps each domain within the card-density contract", async ({ page }) => {
+    await gotoWithTheme(page, "/projects", "light");
+
+    const expectedGroups = [
+      { title: "开发工具", count: 3 },
+      { title: "效率工具", count: 2 },
+      { title: "Web 产品", count: 2 },
+      { title: "硬件产品", count: 3 },
+      { title: "设备控制", count: 3 },
+      { title: "运维工具", count: 2 },
+    ] as const;
+    const sections = page.locator(".projects-domain-section");
+    await expect(sections).toHaveCount(expectedGroups.length);
+
+    for (const [index, group] of expectedGroups.entries()) {
+      const section = sections.nth(index);
+      await expect(section.getByRole("heading", { name: group.title, exact: true })).toBeVisible();
+      await expect(section.locator(".projects-poster-card")).toHaveCount(group.count);
+      await expect(section.locator(".projects-domain-count")).toHaveText(`${group.count} 项`);
+    }
+
+    await gotoWithTheme(page, "/", "light");
+    await expect(page.getByRole("heading", { name: "精选项目 (6)", exact: true })).toBeVisible();
+  });
+
+  test("SpotiBind exposes its catalog metadata", async ({ page }) => {
+    await gotoWithTheme(page, "/projects/spoti-bind", "light");
+
+    await expect(page.getByRole("heading", { name: "SpotiBind", exact: true })).toBeVisible();
+    await expect(
+      page.locator('a[href="https://github.com/IvanLi-CN/spoti-bind"]').first()
+    ).toBeVisible();
+    await expect(page.getByText("Media Keys", { exact: true })).toBeVisible();
+  });
+
   test("social preview selects the 640w candidate at the lg boundary", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 720 });
     await gotoWithTheme(page, "/projects/octo-rill", "light");
@@ -289,12 +326,12 @@ test.describe("Nature frontend public coverage", () => {
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
-    await expect(posterImages).toHaveCount(10);
+    await expect(posterImages).toHaveCount(11);
     await expect(eagerPosters).toHaveCount(3);
     await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
     await expect(eagerPosters.nth(1)).toHaveAttribute("fetchpriority", "auto");
     await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
-    await expect(lazyPosters).toHaveCount(7);
+    await expect(lazyPosters).toHaveCount(8);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
