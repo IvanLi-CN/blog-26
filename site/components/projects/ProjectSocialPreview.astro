@@ -32,16 +32,28 @@ function toSocialPreviewFallbackSource(asset: ProjectSocialPreviewAsset) {
   return toPublicSitePath(asset.sources.webp[1280]);
 }
 
-function toSocialPreviewStyle(asset: ProjectSocialPreviewAsset) {
-  return `--project-social-preview-placeholder:url("${asset.placeholder}");`;
+function toSocialPreviewStyle(
+  lightAsset: ProjectSocialPreviewAsset,
+  darkAsset = lightAsset
+) {
+  return [
+    `--project-social-preview-placeholder-light:url("${lightAsset.placeholder}")`,
+    `--project-social-preview-placeholder-dark:url("${darkAsset.placeholder}")`,
+  ].join(";");
 }
+
+const socialPreviewStyle = socialPreviewAsset
+  ? toSocialPreviewStyle(socialPreviewAsset)
+  : themedSocialPreviewAsset
+    ? toSocialPreviewStyle(themedSocialPreviewAsset.light, themedSocialPreviewAsset.dark)
+    : undefined;
 ---
 
 {
   hasRenderableSocialPreview && (
     <figure
       class="project-social-preview"
-      style={fallbackSocialPreviewAsset ? toSocialPreviewStyle(fallbackSocialPreviewAsset) : undefined}
+      style={socialPreviewStyle}
     >
       {socialPreviewAsset ? (
         <picture>
@@ -175,7 +187,7 @@ function toSocialPreviewStyle(asset: ProjectSocialPreviewAsset) {
 
 <style>
   .project-social-preview {
-    --project-social-preview-placeholder: none;
+    --project-social-preview-placeholder: var(--project-social-preview-placeholder-light, none);
     position: relative;
     aspect-ratio: 2 / 1;
     margin: 0;
@@ -189,6 +201,10 @@ function toSocialPreviewStyle(asset: ProjectSocialPreviewAsset) {
   }
 
   :global(html[data-ui-theme="dark"]) .project-social-preview {
+    --project-social-preview-placeholder: var(
+      --project-social-preview-placeholder-dark,
+      var(--project-social-preview-placeholder-light, none)
+    );
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
   }
 

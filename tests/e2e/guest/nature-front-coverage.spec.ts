@@ -234,6 +234,8 @@ test.describe("Nature frontend public coverage", () => {
       { slug: "mains-aegis", selector: ".project-social-preview", width: 1280 },
       { slug: "tuckmark", selector: ".project-poster", width: 960 },
       { slug: "tuckmark", selector: ".project-social-preview", width: 1280 },
+      { slug: "xp", selector: ".project-poster", width: 960 },
+      { slug: "xp", selector: ".project-social-preview", width: 1280 },
       { slug: "dockrev", selector: ".project-poster", width: 960 },
     ] as const;
 
@@ -267,6 +269,37 @@ test.describe("Nature frontend public coverage", () => {
       });
       await expect(image).toHaveAttribute("src", new RegExp(`${media.slug}-1280\\.webp$`));
     }
+  });
+
+  test("themed project placeholders match the active theme before media loads", async ({
+    page,
+  }) => {
+    await page.route(/\/projects\/(posters|social)\/xp-(light|dark)-/, (route) => route.abort());
+    await gotoWithTheme(page, "/projects/xp/", "dark");
+
+    const placeholders = await page.evaluate(() => {
+      const poster = document.querySelector(".project-poster");
+      const posterPreview = poster?.querySelector(".project-poster-preview");
+      const posterPicture = poster?.querySelector("picture[data-themed-project-picture]");
+      const social = document.querySelector(".project-social-preview");
+      const socialPicture = social?.querySelector("picture[data-themed-project-social-picture]");
+
+      return {
+        poster: {
+          expected: posterPicture?.getAttribute("data-dark-placeholder") ?? "",
+          actual: posterPreview ? getComputedStyle(posterPreview).backgroundImage : "",
+        },
+        social: {
+          expected: socialPicture?.getAttribute("data-dark-placeholder") ?? "",
+          actual: social ? getComputedStyle(social).backgroundImage : "",
+        },
+      };
+    });
+
+    expect(placeholders.poster.expected).not.toBe("");
+    expect(placeholders.poster.actual).toContain(placeholders.poster.expected);
+    expect(placeholders.social.expected).not.toBe("");
+    expect(placeholders.social.actual).toContain(placeholders.social.expected);
   });
 
   test("project catalog keeps each domain within the card-density contract", async ({ page }) => {
