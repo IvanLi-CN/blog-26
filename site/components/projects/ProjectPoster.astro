@@ -89,10 +89,26 @@ function toPosterSourceSet(asset: ProjectPosterAsset, format: (typeof projectPos
 function toPosterFallbackSource(asset: ProjectPosterAsset) {
   return toPublicSitePath(asset.sources.webp[960]);
 }
+
+function toPosterPlaceholderStyle(
+  lightAsset: ProjectPosterAsset,
+  darkAsset = lightAsset
+) {
+  return [
+    `--project-poster-placeholder-light:url("${lightAsset.placeholder}")`,
+    `--project-poster-placeholder-dark:url("${darkAsset.placeholder}")`,
+  ].join(";");
+}
+
+const posterPlaceholderStyle = posterAsset
+  ? toPosterPlaceholderStyle(posterAsset)
+  : themedPosterAsset
+    ? toPosterPlaceholderStyle(themedPosterAsset.light, themedPosterAsset.dark)
+    : undefined;
 ---
 <div
   class={`project-poster ${compact ? "is-compact" : ""} ${aspect === "hero" ? "is-hero" : ""}`}
-  style={`--project-tone-rgb:${domainStyle.tone};--project-glow-rgb:${domainStyle.glow};--project-panel-rgb:${domainStyle.panel};--project-poster-placeholder:url("${previewAsset?.placeholder ?? ""}");`}
+  style={`--project-tone-rgb:${domainStyle.tone};--project-glow-rgb:${domainStyle.glow};--project-panel-rgb:${domainStyle.panel};${posterPlaceholderStyle ?? ""}`}
 >
   <div class={`project-poster-fallback pattern-${poster.pattern}`} aria-hidden="true">
     <span class="project-poster-orb project-poster-orb-primary"></span>
@@ -263,6 +279,7 @@ function toPosterFallbackSource(asset: ProjectPosterAsset) {
 
 <style>
   .project-poster {
+    --project-poster-placeholder: var(--project-poster-placeholder-light, none);
     position: relative;
     isolation: isolate;
     overflow: hidden;
@@ -275,6 +292,10 @@ function toPosterFallbackSource(asset: ProjectPosterAsset) {
   }
 
   :global(html[data-ui-theme="dark"]) .project-poster {
+    --project-poster-placeholder: var(
+      --project-poster-placeholder-dark,
+      var(--project-poster-placeholder-light, none)
+    );
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2);
   }
 
