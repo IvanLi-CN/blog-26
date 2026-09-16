@@ -142,7 +142,6 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![SpotiBind detail dark mobile](./assets/project-spoti-bind-dark-mobile.png)
 
-
 ![Project wall dark](./assets/projects-wall-dark.png)
 
 
@@ -153,6 +152,17 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 
 ![LoadLynx detail dark](./assets/project-loadlynx-dark.png)
+
+- Evidence captured for the Mains Aegis light/dark poster and social-preview pair after importing the upstream dark campaign assets.
+- The project wall and detail page keep the light artwork in light mode and select the matching dark artwork in dark mode without changing the surrounding layout.
+
+![Mains Aegis project wall light](./assets/mains-aegis-projects-light.png)
+
+![Mains Aegis project wall dark](./assets/mains-aegis-projects-dark.png)
+
+![Mains Aegis detail light](./assets/mains-aegis-detail-light.png)
+
+![Mains Aegis detail dark](./assets/mains-aegis-detail-dark.png)
 
 - Evidence captured against local branch `th/nature-front-redesign` on the refreshed Nature frontend worktree state after the width, comment-form, and code-highlighting fixes.
 - Assets stored under `docs/specs/nature-front-ui/assets/`.
