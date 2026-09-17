@@ -373,9 +373,11 @@ test.describe("Nature frontend public coverage", () => {
     await codexCard.hover();
     await expect(codexCard.locator(".project-external-links")).toHaveCSS("opacity", "1");
     const [gridTop, posterTop] = await Promise.all([
-      codexCard.evaluate(
-        (element) => element.closest(".projects-domain-grid")?.getBoundingClientRect().top ?? 0
-      ),
+      codexCard.evaluate((element) => {
+        const grid = element.closest(".projects-domain-grid");
+        if (!grid) throw new Error("Project card is outside its scroll grid");
+        return grid.getBoundingClientRect().top;
+      }),
       codexCard
         .locator(".project-poster")
         .evaluate((element) => element.getBoundingClientRect().top),
