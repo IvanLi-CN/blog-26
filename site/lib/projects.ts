@@ -11,6 +11,14 @@ export type ProjectDomain =
 
 export type ProjectExternalLinkKind = "github" | "docs" | "demo" | "site";
 
+export type ProjectPublicEntryKind = "site" | "demo" | "officialDocs" | "docs" | "repository";
+
+export interface ProjectPublicEntry {
+  kind: ProjectPublicEntryKind;
+  label: string;
+  href: string;
+}
+
 export interface ProjectExternalLink {
   kind: ProjectExternalLinkKind;
   label: string;
@@ -43,9 +51,16 @@ export interface ProjectCatalogItem {
   title: string;
   domain: ProjectDomain;
   summary: string;
+  heroSummary?: string;
   description: string;
   poster: ProjectPosterDefinition;
   links: ProjectExternalLink[];
+  /** Semantic entry overrides. Legacy links remain the source for older catalog rows. */
+  site?: string;
+  demo?: string;
+  officialDocs?: string;
+  docs?: string;
+  repository?: string;
   techTags: string[];
   highlights: string[];
   relatedEntries: ProjectRelatedEntry[];
@@ -62,7 +77,7 @@ export interface ProjectDomainDefinition {
 export interface ResolvedProjectRelatedEntry extends ProjectRelatedEntry {
   href: string;
   title: string;
-  excerpt?: string | null;
+  excerpt: string | null;
 }
 
 export type ProjectCatalog = readonly ProjectCatalogItem[];
@@ -140,17 +155,21 @@ export const projectCatalog: ProjectCatalog = [
     slug: "codex-vibe-monitor",
     title: "Codex Vibe Monitor",
     domain: "developer-tools",
-    summary:
-      "面向 Codex / OpenAI 兼容流量的观测代理与调试入口，用来把 prompt、token、响应链路和故障上下文放到同一个工作台里看清楚。",
+    summary: "自部署 OpenAI 兼容代理的观测与排障工作台。",
+    heroSummary:
+      "面向自部署环境的 OpenAI 兼容代理观测工作台，统一记录请求链路、流式响应、延迟指标、失败原因与上游尝试，帮助定位 AI 接入层的问题。",
     description:
-      "它不是单纯的流量转发器，而是把 AI 接入层做成一个可检查、可比较、可定位问题的运行面板。适合在多模型、多客户端、需要回放或追查行为差异的场景里使用。",
+      "面向自部署环境的 OpenAI 兼容代理观测工作台，统一记录请求链路、流式响应、延迟指标、失败原因与上游尝试，帮助定位 AI 接入层的问题。",
     poster: {
       eyebrow: "运行观测",
       strapline: "Prompt、token 与 traces 同屏可见",
       pattern: "signal",
     },
-    links: createLinks("codex-vibe-monitor"),
-    techTags: ["TypeScript", "Bun", "OpenAI-Compatible API", "Observability"],
+    links: createLinks("codex-vibe-monitor", {
+      docs: "https://ivanli-cn.github.io/codex-vibe-monitor/",
+      demo: "https://ivanli-cn.github.io/codex-vibe-monitor/storybook.html",
+    }),
+    techTags: ["Rust", "Axum", "React", "SQLite", "SSE", "OpenAI-Compatible API", "Observability"],
     highlights: [
       "把模型请求、响应和运行态线索压到同一条调试路径里。",
       "适合做代理层试验场，也适合当团队共享的排障入口。",
@@ -531,6 +550,41 @@ export function getProjectDomainDefinition(domain: ProjectDomain) {
   return projectDomains.find((item) => item.id === domain) ?? projectDomains[0];
 }
 
+const publicEntryMeta: Record<ProjectPublicEntryKind, { label: string }> = {
+  site: { label: "项目站点" },
+  demo: { label: "Demo" },
+  officialDocs: { label: "官方文档" },
+  docs: { label: "文档" },
+  repository: { label: "开源仓库" },
+};
+
+/** Return verified public destinations in the detail-sidebar order. */
+export function getProjectPublicEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {
+  const legacy = new Map(project.links.map((link) => [link.kind, link.href]));
+  const values: Array<[ProjectPublicEntryKind, string | undefined]> = [
+    ["site", project.site ?? legacy.get("site")],
+    ["demo", project.demo ?? legacy.get("demo")],
+    ["officialDocs", project.officialDocs ?? legacy.get("docs")],
+    ["docs", project.docs],
+    ["repository", project.repository ?? legacy.get("github")],
+  ];
+
+  return values
+    .filter((entry): entry is [ProjectPublicEntryKind, string] => Boolean(entry[1]))
+    .map(([kind, href]) => ({ kind, href, label: publicEntryMeta[kind].label }));
+}
+
+/** Return one representative destination for the compact project-card actions. */
+export function getProjectCardEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {
+  const entries = getProjectPublicEntries(project);
+  const byKind = new Map(entries.map((entry) => [entry.kind, entry]));
+  const online = byKind.get("site") ?? byKind.get("demo");
+  const docs = byKind.get("officialDocs") ?? byKind.get("docs");
+  return [online, docs, byKind.get("repository")].filter((entry): entry is ProjectPublicEntry =>
+    Boolean(entry)
+  );
+}
+
 export function getProjectsByDomain(domain: ProjectDomain) {
   return projectCatalog
     .filter((project) => project.domain === domain)
@@ -558,29 +612,30 @@ export function resolveProjectRelatedEntries(
   snapshot: PublicSnapshot,
   entries: readonly ProjectRelatedEntry[]
 ): ResolvedProjectRelatedEntry[] {
-  return entries
-    .map((entry) => {
-      if (entry.type === "post") {
-        const post = snapshot.posts.find((item) => item.slug === entry.slug);
-        if (!post) return null;
-        return {
-          ...entry,
-          href: `/posts/${post.slug}`,
-          title: entry.label ?? post.title,
-          excerpt: post.excerpt,
-        } satisfies ResolvedProjectRelatedEntry;
-      }
-
-      const memo = snapshot.memos.find((item) => item.slug === entry.slug);
-      if (!memo) return null;
+  const resolvedEntries = entries.map((entry) => {
+    if (entry.type === "post") {
+      const post = snapshot.posts.find((item) => item.slug === entry.slug);
+      if (!post) return null;
       return {
         ...entry,
-        href: `/memos/${memo.slug}`,
-        title: entry.label ?? memo.title,
-        excerpt: memo.excerpt,
+        href: `/posts/${post.slug}`,
+        title: entry.label ?? post.title,
+        excerpt: post.excerpt,
       } satisfies ResolvedProjectRelatedEntry;
-    })
-    .filter((entry): entry is ResolvedProjectRelatedEntry => Boolean(entry))
+    }
+
+    const memo = snapshot.memos.find((item) => item.slug === entry.slug);
+    if (!memo) return null;
+    return {
+      ...entry,
+      href: `/memos/${memo.slug}`,
+      title: entry.label ?? memo.title,
+      excerpt: memo.excerpt,
+    } satisfies ResolvedProjectRelatedEntry;
+  });
+
+  return resolvedEntries
+    .filter((entry): entry is ResolvedProjectRelatedEntry => entry !== null)
     .sort((left, right) => {
       const leftRecord =
         left.type === "post"

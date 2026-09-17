@@ -7,7 +7,7 @@
 
 ## Related ADRs
 
-None
+- [ADR 0001: Project Detail MDX Authoring](../../adr/0001-project-detail-mdx-authoring.md)
 
 ## 1. Background
 
@@ -25,7 +25,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ## 3. Non-goals
 
 - No admin panel redesign or admin-only component migration.
-- No content model, API, search contract, comment moderation, or sync workflow changes.
+- No API, search contract, comment moderation, or sync workflow changes. Project detail content now has an Astro MDX authoring path described by ADR 0001.
 - No repository-wide DaisyUI dependency removal in the same change.
 - No Storybook adoption for this task.
 
@@ -81,6 +81,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The first three renderable catalog posters use `eager`; only the first gets `fetchpriority=high`. Detail-page poster media is eager and high priority. Other catalog posters stay lazy.
 - Poster and social-preview reveals use a 180ms opacity transition only when motion is allowed. Reduced-motion mode removes that transition without changing the fallback or layout.
 - Project detail pages render a social preview only when a generated repository-provided asset exists. The image keeps a stable 2:1 intrinsic ratio and does not reserve a fixed height outside that ratio.
+
+### 4.7 Project catalog and detail content
+
+- Project cards expose only available online, documentation, and repository shortcuts. The online shortcut prefers the formal site over Demo; the documentation shortcut prefers official documentation over a documentation site.
+- Project detail pages list all available public entries in the sidebar. The sidebar may also contain an H2/H3 table of contents when the MDX body has at least three headings.
+- Project bodies live under `site/content/projects/` and remain continuous, project-specific prose. A missing body falls back to verified catalog material without generic filler cards.
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 - The project catalog uses six single-name groups: 开发工具 (3), 效率工具 (2), Web 产品 (2), 硬件产品 (3), 设备控制 (3), and 运维工具 (2). Every group stays within three cards, and the homepage selects one representative project from each group.
 

@@ -1,7 +1,8 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import ProjectPoster from "../../components/projects/ProjectPoster.astro";
-import { getGroupedProjectCatalog, getProjectDetailPath, projectCatalog } from "../../lib/projects";
+import ProjectExternalLinks from "../../components/projects/ProjectExternalLinks.astro";
+import { getGroupedProjectCatalog, getProjectCardEntries, getProjectDetailPath, projectCatalog } from "../../lib/projects";
 import {
   isPrimaryProjectPosterPriority,
   isProjectPosterPriority,
@@ -74,10 +75,29 @@ const groupedProjects = getGroupedProjectCatalog();
                         fetchPriority={isPrimaryProjectPosterPriority(project.slug) ? "high" : "auto"}
                       />
                     </div>
-                    <h3 class="projects-poster-title">
-                      {project.title}
-                    </h3>
                   </a>
+                  <div class="projects-poster-copy">
+                    <div class="projects-poster-heading">
+                      <a
+                        href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                        class="projects-poster-title-link"
+                      >
+                        <h3 class="projects-poster-title">{project.title}</h3>
+                      </a>
+                      <ProjectExternalLinks
+                        entries={getProjectCardEntries(project)}
+                        iconOnly={true}
+                        compact={true}
+                        dense={true}
+                      />
+                    </div>
+                    <a
+                      href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                      class="projects-poster-summary-link"
+                    >
+                      <p class="projects-poster-summary" title={project.summary}>{project.summary}</p>
+                    </a>
+                  </div>
                 </article>
               ))}
             </div>
@@ -344,6 +364,27 @@ const groupedProjects = getGroupedProjectCatalog();
       transform: translateY(-0.18rem);
     }
 
+    .projects-poster-copy {
+      display: grid;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+
+    .projects-poster-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      min-width: 0;
+    }
+
+    .projects-poster-title-link,
+    .projects-poster-summary-link {
+      min-width: 0;
+      color: inherit;
+      text-decoration: none;
+    }
+
     .projects-poster-title {
       margin: 0;
       font-family: var(--font-display), "Noto Serif SC", serif;
@@ -352,6 +393,34 @@ const groupedProjects = getGroupedProjectCatalog();
       letter-spacing: -0.035em;
       color: var(--nature-text);
       text-wrap: balance;
+    }
+
+    .projects-poster-summary {
+      margin: -0.35rem 0 0;
+      overflow: hidden;
+      color: var(--nature-text-soft);
+      font-size: 0.84rem;
+      line-height: 1.5;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .projects-poster-heading .project-external-links {
+      flex: none;
+      padding-top: 0;
+      opacity: 0.48;
+      transition: opacity 180ms var(--nature-ease);
+    }
+
+    .projects-poster-card:hover .projects-poster-heading .project-external-links,
+    .projects-poster-card:focus-within .projects-poster-heading .project-external-links {
+      opacity: 1;
+    }
+
+    .project-external-link-icon {
+      min-height: 2rem;
+      width: 2rem;
+      padding: 0;
     }
 
     @media (min-width: 960px) {
@@ -417,6 +486,14 @@ const groupedProjects = getGroupedProjectCatalog();
 
       .projects-poster-title {
         font-size: 1.28rem;
+      }
+
+      .projects-poster-heading {
+        align-items: flex-start;
+      }
+
+      .projects-poster-heading .project-external-links {
+        gap: 0.35rem;
       }
     }
 
