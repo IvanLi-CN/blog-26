@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 
 interface EmailOptions {
   to: string;
@@ -8,7 +8,7 @@ interface EmailOptions {
 }
 
 // 创建邮件传输器（延迟初始化）
-let transporter: nodemailer.Transporter | null = null;
+let transporter: Transporter | null = null;
 
 function getTransporter() {
   if (!transporter) {
