@@ -350,7 +350,10 @@ test.describe("Nature frontend public coverage", () => {
       "href",
       "/projects/codex-vibe-monitor/"
     );
-    await expect(codexCard.getByRole("link", { name: "Demo" })).toHaveAttribute("target", "_blank");
+    await expect(codexCard.getByRole("link", { name: "项目站点" })).toHaveAttribute(
+      "target",
+      "_blank"
+    );
     await expect(codexCard.getByRole("link", { name: "官方文档" })).toHaveAttribute(
       "target",
       "_blank"
@@ -393,7 +396,7 @@ test.describe("Nature frontend public coverage", () => {
         .evaluate((element) => element.getBoundingClientRect().top),
     ]);
     expect(posterTop).toBeGreaterThanOrEqual(gridTop - 0.5);
-    await expect(codexCard.getByRole("link", { name: "Demo" })).toHaveCount(1);
+    await expect(codexCard.getByRole("link", { name: "项目站点" })).toHaveCount(1);
     await expect(codexCard.locator(".projects-poster-summary")).toHaveAttribute(
       "title",
       "自部署 OpenAI 兼容代理的观测与排障工作台。"
@@ -415,7 +418,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-detail-sidebar .project-external-links a")).toHaveCount(3);
     await expect(
       page.locator(".project-detail-sidebar .project-external-links a").nth(0)
-    ).toHaveAccessibleName("Demo");
+    ).toHaveAccessibleName("项目站点");
     await expect(
       page.locator(".project-detail-sidebar .project-external-links a").nth(1)
     ).toHaveAccessibleName("官方文档");
