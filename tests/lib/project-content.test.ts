@@ -13,9 +13,9 @@ describe("project content contracts", () => {
     if (!project) throw new Error("Codex Vibe Monitor catalog entry is missing");
     expect(getProjectCardEntries(project)).toEqual([
       {
-        kind: "demo",
-        label: "Demo",
-        href: "https://ivanli-cn.github.io/codex-vibe-monitor/storybook.html",
+        kind: "site",
+        label: "项目站点",
+        href: "https://vibe-code.ivanli.cc/",
       },
       {
         kind: "officialDocs",
@@ -35,10 +35,69 @@ describe("project content contracts", () => {
     expect(project).toBeDefined();
     if (!project) throw new Error("Codex Vibe Monitor catalog entry is missing");
     expect(getProjectPublicEntries(project).map((entry) => entry.kind)).toEqual([
+      "site",
       "demo",
       "officialDocs",
       "repository",
     ]);
+  });
+
+  test("confirmed production and demo destinations stay in the catalog", () => {
+    const expected = {
+      "tavily-hikari": {
+        site: "https://tavily.ivanli.cc/",
+      },
+      "octo-rill": {
+        site: "https://octo-rill.ivanli.cc/",
+        demo: "https://ivanli-cn.github.io/octo-rill/demo/",
+      },
+      "blog-26": {
+        site: "https://ivanli.cc/",
+      },
+      "flux-purr": {
+        site: "https://flux-purr.ivanli.cc/",
+        demo: "https://flux-purr-demo.ivanli.cc/",
+      },
+      "iso-usb-hub": {
+        site: "https://isolarail.ivanli.cc/",
+        officialDocs: "https://isolarail.ivanli.cc/docs/",
+        repository: "https://github.com/IvanLi-CN/isolarail",
+      },
+      xp: {
+        site: "https://xp.ivanli.cc/",
+      },
+      dockrev: {
+        site: "https://dockrev.ivanli.cc/",
+        demo: "https://ivanli-cn.github.io/dockrev/demo/",
+      },
+    } as const;
+
+    for (const [slug, destinations] of Object.entries(expected)) {
+      const project = projectCatalog.find((item) => item.slug === slug);
+      expect(project).toBeDefined();
+      if (!project) throw new Error(`${slug} catalog entry is missing`);
+
+      const entries = getProjectPublicEntries(project);
+      for (const [kind, href] of Object.entries(destinations)) {
+        const entryKind = kind === "officialDocs" ? "officialDocs" : kind;
+        expect(entries.find((entry) => entry.kind === entryKind)?.href).toBe(href);
+      }
+    }
+  });
+
+  test("KaisouMail uses the confirmed production site", () => {
+    const project = projectCatalog.find((item) => item.slug === "kaisoumail");
+    expect(project).toBeDefined();
+    if (!project) throw new Error("KaisouMail catalog entry is missing");
+
+    expect(getProjectCardEntries(project)[0]).toEqual({
+      kind: "site",
+      label: "项目站点",
+      href: "https://km.707979.xyz/",
+    });
+    expect(getProjectPublicEntries(project).map((entry) => entry.href)).not.toContain(
+      "https://cfm.707979.xyz/"
+    );
   });
 
   test("TOC requires three headings and nests H3", () => {

@@ -168,6 +168,7 @@ export const projectCatalog: ProjectCatalog = [
     links: createLinks("codex-vibe-monitor", {
       docs: "https://ivanli-cn.github.io/codex-vibe-monitor/",
       demo: "https://ivanli-cn.github.io/codex-vibe-monitor/storybook.html",
+      site: "https://vibe-code.ivanli.cc/",
     }),
     techTags: ["Rust", "Axum", "React", "SQLite", "SSE", "OpenAI-Compatible API", "Observability"],
     highlights: [
@@ -194,6 +195,7 @@ export const projectCatalog: ProjectCatalog = [
     links: createLinks("tavily-hikari", {
       docs: "https://ivanli-cn.github.io/tavily-hikari/",
       demo: "https://ivanli-cn.github.io/tavily-hikari/storybook.html",
+      site: "https://tavily.ivanli.cc/",
     }),
     techTags: ["Rust", "Axum", "SQLite", "Web Console"],
     highlights: [
@@ -219,6 +221,7 @@ export const projectCatalog: ProjectCatalog = [
     links: createLinks("KaisouMail", {
       docs: "https://ivanli-cn.github.io/KaisouMail/",
       demo: "https://ivanli-cn.github.io/KaisouMail/storybook.html",
+      site: "https://km.707979.xyz/",
     }),
     techTags: ["Cloudflare", "TypeScript", "React", "Email Workflow"],
     highlights: [
@@ -243,7 +246,8 @@ export const projectCatalog: ProjectCatalog = [
     },
     links: createLinks("octo-rill", {
       docs: "https://ivanli-cn.github.io/octo-rill/",
-      demo: "https://ivanli-cn.github.io/octo-rill/storybook.html",
+      demo: "https://ivanli-cn.github.io/octo-rill/demo/",
+      site: "https://octo-rill.ivanli.cc/",
     }),
     techTags: ["GitHub API", "React", "TypeScript", "Dashboard"],
     highlights: [
@@ -314,7 +318,9 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "前台、后台与内容管线",
       pattern: "stack",
     },
-    links: createLinks("blog-26"),
+    links: createLinks("blog-26", {
+      site: "https://ivanli.cc/",
+    }),
     techTags: ["Astro", "Bun", "React", "SQLite"],
     highlights: [
       "把公开前台、内容导出和后台编辑统一到一个可发布仓库。",
@@ -422,7 +428,7 @@ export const projectCatalog: ProjectCatalog = [
       pattern: "grid",
     },
     links: createLinks("tuckmark", {
-      site: "http://tuckmark.ivanli.cc/",
+      site: "https://tuckmark.ivanli.cc/",
     }),
     techTags: ["Control Plane", "Workflow Tooling", "TypeScript", "Device Ops"],
     highlights: [
@@ -446,7 +452,10 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "固件、控制台与本地 devd",
       pattern: "stack",
     },
-    links: createLinks("flux-purr"),
+    links: createLinks("flux-purr", {
+      site: "https://flux-purr.ivanli.cc/",
+      demo: "https://flux-purr-demo.ivanli.cc/",
+    }),
     techTags: ["Monorepo", "Firmware", "React", "Local Devd"],
     highlights: [
       "把固件、控制台和本地服务端接口统一进一套仓库结构。",
@@ -458,7 +467,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "iso-usb-hub",
-    title: "ISO USB Hub",
+    title: "IsolaRail",
     domain: "device-control",
     summary:
       "围绕四口 USB Hub 控制面展开的设备软件项目，负责端口、电源与设备侧能力的可见化与可控化。",
@@ -469,7 +478,10 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "端口、电源与状态可见",
       pattern: "ports",
     },
-    links: createLinks("iso-usb-hub"),
+    links: createLinks("isolarail", {
+      docs: "https://isolarail.ivanli.cc/docs/",
+      site: "https://isolarail.ivanli.cc/",
+    }),
     techTags: ["USB Hub", "Control Surface", "Embedded UI", "Device Management"],
     highlights: [
       "把端口、电源、状态这些底层能力抬升为明确的控制面语义。",
@@ -494,7 +506,9 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "多节点、多主机配置维护",
       pattern: "nodes",
     },
-    links: createLinks("xp"),
+    links: createLinks("xp", {
+      site: "https://xp.ivanli.cc/",
+    }),
     techTags: ["Xray", "Self-Hosting", "Ops", "Cluster Management"],
     highlights: [
       "聚焦多节点、多主机的运维复杂度，而不是单机脚本。",
@@ -518,6 +532,8 @@ export const projectCatalog: ProjectCatalog = [
     },
     links: createLinks("dockrev", {
       docs: "https://ivanli-cn.github.io/dockrev/",
+      demo: "https://ivanli-cn.github.io/dockrev/demo/",
+      site: "https://dockrev.ivanli.cc/",
     }),
     techTags: ["Docker", "Compose", "Operations", "Self-Hosted"],
     highlights: [
