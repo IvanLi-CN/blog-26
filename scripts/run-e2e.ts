@@ -7,7 +7,7 @@ import {
   E2E_DEFAULT_DB_PATH,
   E2E_DEFAULT_LOCAL_CONTENT_PATH,
   E2E_DEFAULT_WEB_PORT,
-  E2E_GATEWAY_HOSTNAME,
+  E2E_GATEWAY_BIND_HOST,
 } from "../tests/e2e/runtime";
 import { E2E_PROJECTS, type E2EProjectName, getProjectReportDir } from "../tests/e2e/taxonomy";
 
@@ -134,7 +134,7 @@ export function buildSingleProjectEnv(
 ) {
   const env: NodeJS.ProcessEnv = {
     ...baseEnv,
-    BIND_HOST: E2E_GATEWAY_HOSTNAME,
+    BIND_HOST: E2E_GATEWAY_BIND_HOST,
     PLAYWRIGHT_TEST_PROJECT: project,
   };
   assignIfPresent(env, "PUBLIC_MEDIA_IMAGOR_BASE_URL", baseEnv.PUBLIC_MEDIA_IMAGOR_BASE_URL);

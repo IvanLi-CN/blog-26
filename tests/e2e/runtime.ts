@@ -11,7 +11,7 @@ export const E2E_DEFAULT_WEB_PORT = 25090;
 export const E2E_DEFAULT_BASE_URL = `http://localhost:${E2E_DEFAULT_WEB_PORT}`;
 export const E2E_DEFAULT_SITE_PORT = E2E_DEFAULT_WEB_PORT + 3;
 export const E2E_DEFAULT_ADMIN_PORT = E2E_DEFAULT_WEB_PORT + 4;
-export const E2E_GATEWAY_HOSTNAME = "127.0.0.1";
+export const E2E_GATEWAY_BIND_HOST = "0.0.0.0";
 
 export const E2E_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 export const E2E_USER_EMAIL = process.env.USER_EMAIL || "user@test.local";

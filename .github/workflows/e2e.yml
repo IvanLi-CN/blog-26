@@ -31,7 +31,6 @@ jobs:
           - user
           - mcp
     timeout-minutes: 60
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
