@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { buildSingleProjectEnv } from "../../scripts/run-e2e";
+import { E2E_GATEWAY_HOSTNAME } from "../e2e/runtime";
 
 describe("run-e2e single-project env", () => {
   it("lets Playwright derive the internal source URL from the selected web port by default", () => {
@@ -9,6 +10,7 @@ describe("run-e2e single-project env", () => {
     });
 
     expect(env.PLAYWRIGHT_TEST_PROJECT).toBe("guest");
+    expect(env.BIND_HOST).toBe(E2E_GATEWAY_HOSTNAME);
     expect(env.WEB_PORT).toBe("26110");
     expect(env.PUBLIC_MEDIA_IMAGOR_BASE_URL).toBeUndefined();
     expect(env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL).toBeUndefined();

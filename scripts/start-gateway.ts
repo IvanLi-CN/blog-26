@@ -21,7 +21,7 @@ const mode = (process.env.NODE_ENV === "production" ? "production" : "dev") as G
 const publicPort = resolveWorktreePort("web");
 const sitePort = resolveWorktreePort("site");
 const adminPort = resolveWorktreePort("admin");
-const hostname = process.env.HOSTNAME || "0.0.0.0";
+const hostname = process.env.BIND_HOST || "0.0.0.0";
 const internalHostname = process.env.INTERNAL_HOSTNAME || "127.0.0.1";
 const siteDistDir = resolve(process.cwd(), process.env.SITE_DIST_DIR || "site-dist");
 const adminDistDir = resolve(process.cwd(), process.env.ADMIN_DIST_DIR || "admin-dist");

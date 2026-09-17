@@ -80,7 +80,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
       gosu && \
     rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
+ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 ENV SERVE_PUBLIC_SITE=true
@@ -114,7 +114,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
       gosu && \
     rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
+ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 ENV SERVE_PUBLIC_SITE=true
