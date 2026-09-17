@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { parse } from "@babel/parser";
 import { Glob } from "bun";
-import ts from "typescript";
 
 const ROOT = process.cwd();
 
@@ -58,49 +58,71 @@ function getContext(source: string, index: number) {
 
 const CLASS_CALLS = new Set(["cn", "cva", "clsx", "twJoin", "twMerge"]);
 
-function isClassAttribute(node: ts.Node) {
-  return ts.isJsxAttribute(node) && (node.name.text === "className" || node.name.text === "class");
+type AstNode = {
+  type: string;
+  start?: number | null;
+  [key: string]: unknown;
+};
+
+function isAstNode(value: unknown): value is AstNode {
+  return (
+    typeof value === "object" && value !== null && "type" in value && typeof value.type === "string"
+  );
 }
 
-function isClassCall(node: ts.Node) {
-  if (!ts.isCallExpression(node)) {
+function getAstNode(value: unknown): AstNode | undefined {
+  return isAstNode(value) ? value : undefined;
+}
+
+function getStringProperty(node: AstNode, property: string): string | undefined {
+  const value = node[property];
+  return typeof value === "string" ? value : undefined;
+}
+
+function isClassAttribute(node: AstNode) {
+  if (node.type !== "JSXAttribute") {
     return false;
   }
 
-  if (ts.isIdentifier(node.expression)) {
-    return CLASS_CALLS.has(node.expression.text);
+  const name = getAstNode(node.name);
+  const value = name ? getStringProperty(name, "name") : undefined;
+  return value === "className" || value === "class";
+}
+
+function isClassCall(node: AstNode) {
+  if (node.type !== "CallExpression") {
+    return false;
   }
 
-  if (ts.isPropertyAccessExpression(node.expression)) {
-    return CLASS_CALLS.has(node.expression.name.text);
+  const callee = getAstNode(node.callee);
+  if (!callee) {
+    return false;
+  }
+
+  if (callee.type === "Identifier") {
+    return CLASS_CALLS.has(getStringProperty(callee, "name") ?? "");
+  }
+
+  if (callee.type === "MemberExpression") {
+    const property = getAstNode(callee.property);
+    return CLASS_CALLS.has(property ? (getStringProperty(property, "name") ?? "") : "");
   }
 
   return false;
 }
 
-function hasClassContext(node: ts.Node) {
-  let current: ts.Node | undefined = node.parent;
-
-  while (current) {
-    if (isClassAttribute(current) || isClassCall(current)) {
-      return true;
-    }
-    current = current.parent;
-  }
-
-  return false;
+function hasClassContext(ancestors: readonly AstNode[]) {
+  return ancestors.some((ancestor) => isClassAttribute(ancestor) || isClassCall(ancestor));
 }
 
 function collectClassStrings(source: string, filePath: string) {
   const candidates: Array<{ value: string; pos: number }> = [];
   const seen = new Set<number>();
-  const sourceFile = ts.createSourceFile(
-    filePath,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX
-  );
+  const ast = parse(source, {
+    sourceFilename: filePath,
+    sourceType: "module",
+    plugins: ["typescript", "jsx"],
+  });
 
   function pushCandidate(value: string, pos: number) {
     if (seen.has(pos)) {
@@ -111,22 +133,40 @@ function collectClassStrings(source: string, filePath: string) {
     candidates.push({ value, pos });
   }
 
-  function visit(node: ts.Node) {
-    if (ts.isStringLiteralLike(node) && hasClassContext(node)) {
-      pushCandidate(node.text, node.getStart(sourceFile));
-    }
-
-    if (ts.isTemplateExpression(node) && hasClassContext(node)) {
-      const value = [node.head.text, ...node.templateSpans.map((span) => span.literal.text)].join(
-        " "
+  function visit(node: AstNode, ancestors: readonly AstNode[]) {
+    if ((node.type === "StringLiteral" || node.type === "JSXText") && hasClassContext(ancestors)) {
+      pushCandidate(
+        getStringProperty(node, "value") ?? getStringProperty(node, "extra") ?? "",
+        node.start ?? 0
       );
-      pushCandidate(value, node.getStart(sourceFile));
     }
 
-    ts.forEachChild(node, visit);
+    if (node.type === "TemplateLiteral" && hasClassContext(ancestors)) {
+      const quasis = Array.isArray(node.quasis) ? node.quasis : [];
+      const value = quasis
+        .map((quasi) => {
+          const quasiNode = getAstNode(quasi);
+          const quasiValue = quasiNode ? getAstNode(quasiNode.value) : undefined;
+          return quasiValue ? (getStringProperty(quasiValue, "raw") ?? "") : "";
+        })
+        .join(" ");
+      pushCandidate(value, node.start ?? 0);
+    }
+
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) {
+        for (const child of value) {
+          if (isAstNode(child)) {
+            visit(child, [...ancestors, node]);
+          }
+        }
+      } else if (isAstNode(value)) {
+        visit(value, [...ancestors, node]);
+      }
+    }
   }
 
-  visit(sourceFile);
+  visit(ast as unknown as AstNode, []);
 
   return candidates;
 }
