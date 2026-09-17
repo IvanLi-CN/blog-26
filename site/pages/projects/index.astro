@@ -405,15 +405,15 @@ const groupedProjects = getGroupedProjectCatalog();
       white-space: nowrap;
     }
 
-    .projects-poster-heading .project-external-links {
+    .projects-poster-heading :global(.project-external-links) {
       flex: none;
       padding-top: 0;
       opacity: 0.48;
       transition: opacity 180ms var(--nature-ease);
     }
 
-    .projects-poster-card:hover .projects-poster-heading .project-external-links,
-    .projects-poster-card:focus-within .projects-poster-heading .project-external-links {
+    .projects-poster-card:hover .projects-poster-heading :global(.project-external-links),
+    .projects-poster-card:focus-within .projects-poster-heading :global(.project-external-links) {
       opacity: 1;
     }
 
