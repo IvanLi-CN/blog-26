@@ -253,7 +253,13 @@ async function expectFrontmatterBodyRhythm(page: Page) {
 }
 
 async function richMarkdownState(page: Page, rootSelector: string) {
-  return page.locator(rootSelector).evaluate((root) => {
+  const root = page.locator(rootSelector);
+  const codeBlock = root.locator(".milkdown-code-block").first();
+  await expect(codeBlock).toBeVisible();
+  await codeBlock.scrollIntoViewIfNeeded();
+  await expect(codeBlock.locator(".cm-editor")).toBeVisible();
+
+  return root.evaluate((root) => {
     const h1 = root.querySelector("h1");
     const h2 = root.querySelector("h2");
     const paragraph = root.querySelector("p");
