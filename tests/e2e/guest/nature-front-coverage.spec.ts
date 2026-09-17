@@ -372,6 +372,15 @@ test.describe("Nature frontend public coverage", () => {
     await expect(codexCard.locator(".project-external-links")).toHaveCSS("opacity", "0.48");
     await codexCard.hover();
     await expect(codexCard.locator(".project-external-links")).toHaveCSS("opacity", "1");
+    const [gridTop, posterTop] = await Promise.all([
+      codexCard.evaluate(
+        (element) => element.closest(".projects-domain-grid")?.getBoundingClientRect().top ?? 0
+      ),
+      codexCard
+        .locator(".project-poster")
+        .evaluate((element) => element.getBoundingClientRect().top),
+    ]);
+    expect(posterTop).toBeGreaterThanOrEqual(gridTop - 0.5);
     await expect(codexCard.getByRole("link", { name: "Demo" })).toHaveCount(1);
     await expect(codexCard.locator(".projects-poster-summary")).toHaveAttribute(
       "title",
