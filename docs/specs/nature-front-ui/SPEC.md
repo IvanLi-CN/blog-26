@@ -2,12 +2,12 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-08-20`
+- Last Updated: `2026-09-17`
 - Owner: `main-agent`
 
 ## Related ADRs
 
-None
+- [ADR 0001: Project Detail MDX Authoring](../../adr/0001-project-detail-mdx-authoring.md)
 
 ## 1. Background
 
@@ -25,7 +25,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ## 3. Non-goals
 
 - No admin panel redesign or admin-only component migration.
-- No content model, API, search contract, comment moderation, or sync workflow changes.
+- No API, search contract, comment moderation, or sync workflow changes. Project detail content now has an Astro MDX authoring path described by ADR 0001.
 - No repository-wide DaisyUI dependency removal in the same change.
 - No Storybook adoption for this task.
 
@@ -81,6 +81,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The first three renderable catalog posters use `eager`; only the first gets `fetchpriority=high`. Detail-page poster media is eager and high priority. Other catalog posters stay lazy.
 - Poster and social-preview reveals use a 180ms opacity transition only when motion is allowed. Reduced-motion mode removes that transition without changing the fallback or layout.
 - Project detail pages render a social preview only when a generated repository-provided asset exists. The image keeps a stable 2:1 intrinsic ratio and does not reserve a fixed height outside that ratio.
+
+### 4.7 Project catalog and detail content
+
+- Project cards expose only available online, documentation, and repository shortcuts. The online shortcut prefers the formal site over Demo; the documentation shortcut prefers official documentation over a documentation site.
+- Project detail pages list all available public entries in the sidebar. The sidebar may also contain an H2/H3 table of contents when the MDX body has at least three headings.
+- Project bodies live under `site/content/projects/` and remain continuous, project-specific prose. A missing body falls back to verified catalog material without generic filler cards.
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 - The project catalog uses six single-name groups: 开发工具 (3), 效率工具 (2), Web 产品 (2), 硬件产品 (3), 设备控制 (3), and 运维工具 (2). Every group stays within three cards, and the homepage selects one representative project from each group.
 
@@ -124,7 +130,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The project wall uses a stable 4:5 presentation: media-backed catalog cards display supplied artwork without a copy layer or scrim, while media-free placeholders retain the fallback copy. Detail-page posters display supplied artwork without an overlay or added copy. Project detail pages show generated social previews in a stable 2:1 frame, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
 - Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
 
-- Evidence binding `57933c79c062dac0f15abe0514190810c2a7546c` baseline to the current candidate; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, requested mobile viewport `393px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- Evidence binding `61146e8e2c450730eba77501b7f01b7b10dd0939` baseline to the current candidate; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, requested mobile viewport `393px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`. The current candidate preserves the captured rest-state layout; the keyboard-focus summary expansion is covered by the focused guest Playwright contract.
 
 ![Current project wall light](./assets/projects-wall-light-current.png)
 
@@ -211,6 +217,24 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The narrow search state keeps its query panel at the mobile spacing contract, uses low-luminance surfaces for the filters and recommended terms, preserves 44px interactive controls, and does not overflow horizontally.
 
 ![Public narrow mobile search](./assets/public-search-narrow-mobile-dark.png)
+
+## Context and Scope
+
+This topic owns the public Nature frontend shell and its visitor-facing page surfaces. The project index, project detail routes, semantic public-entry shortcuts, project-specific MDX bodies, responsive reading layout, and their visual evidence are in scope. Backend APIs, admin surfaces, and the poster/social-preview generation pipelines remain outside this topic's project-detail content contract.
+
+## Requirements
+
+- `REQ-NATURE-PROJECT-CATALOG`: The project catalog MUST own project identity, discovery copy, media references, and semantic public entries; card shortcuts MUST prefer the formal site over Demo, official documentation over a documentation site, and the public repository as the source entry.
+- `REQ-NATURE-PROJECT-DETAIL-MDX`: Project detail bodies MUST be project-specific MDX with build-time slug validation, optional reviewed static content blocks, and a verified catalog-only fallback when no body exists.
+- `REQ-NATURE-PROJECT-READING`: Project detail pages MUST keep the Hero free of duplicate external links, expose all available entries in the sidebar, and place the sidebar before the body on narrow screens while preserving readable heading navigation.
+- `REQ-NATURE-PROJECT-INTERACTION`: Project-wall summaries MUST remain one-line and ellipsized at rest, expose their full text on keyboard focus, and keep icon-only external shortcuts weak at rest but usable on hover, focus, and touch.
+
+## Verification
+
+- `VER-NATURE-PROJECT-CATALOG`: covers: `REQ-NATURE-PROJECT-CATALOG`; semantic-entry unit tests and the static site build verify precedence, labels, missing-entry omission, and public output.
+- `VER-NATURE-PROJECT-DETAIL-MDX`: covers: `REQ-NATURE-PROJECT-DETAIL-MDX`; MDX loader/TOC tests, the Codex Vibe Monitor detail route, and the static build verify slug validation, reviewed block rendering, and catalog-only fallback.
+- `VER-NATURE-PROJECT-READING`: covers: `REQ-NATURE-PROJECT-READING`; focused guest Playwright coverage and the desktop/mobile light/dark page evidence verify sidebar order, TOC behavior, spacing, and responsive stacking.
+- `VER-NATURE-PROJECT-INTERACTION`: covers: `REQ-NATURE-PROJECT-INTERACTION`; focused guest Playwright coverage verifies rest-state truncation, focus-visible expansion, shortcut names/targets, and hover/focus contrast behavior.
 
 ### Desktop header search width
 

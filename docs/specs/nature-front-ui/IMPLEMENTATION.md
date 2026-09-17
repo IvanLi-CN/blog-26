@@ -10,3 +10,5 @@ Project cards use 4:5 poster frames with build-generated AVIF/WebP candidates, i
 Social previews use a separate Sharp pipeline with 640w and 1280w AVIF/WebP candidates, intrinsic dimensions, inline previews, and production budget checks. Raw social PNG sources remain private to the build input, while the rendered 2:1 frame keeps the inline preview visible during lazy loading or delivery failure. Complete light/dark poster or social-preview pairs follow the resolved public theme.
 
 The project catalog contains 15 entries in six groups sized between two and three cards. SpotiBind is the second productivity tool, uses the repository's English light/dark media pair, and is included in the six-project homepage selection.
+
+Project detail content uses Astro MDX with build-time slug validation and a small static React content-block allowlist. Codex Vibe Monitor is the first migrated body; projects without MDX retain a verified catalog fallback. Project cards derive compact online, documentation, and repository shortcuts from semantic public-entry precedence, while detail pages expose the full entry list in a responsive sidebar.

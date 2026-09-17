@@ -11,6 +11,14 @@ export type ProjectDomain =
 
 export type ProjectExternalLinkKind = "github" | "docs" | "demo" | "site";
 
+export type ProjectPublicEntryKind = "site" | "demo" | "officialDocs" | "docs" | "repository";
+
+export interface ProjectPublicEntry {
+  kind: ProjectPublicEntryKind;
+  label: string;
+  href: string;
+}
+
 export interface ProjectExternalLink {
   kind: ProjectExternalLinkKind;
   label: string;
@@ -43,9 +51,16 @@ export interface ProjectCatalogItem {
   title: string;
   domain: ProjectDomain;
   summary: string;
+  heroSummary?: string;
   description: string;
   poster: ProjectPosterDefinition;
   links: ProjectExternalLink[];
+  /** Semantic entry overrides. Legacy links remain the source for older catalog rows. */
+  site?: string;
+  demo?: string;
+  officialDocs?: string;
+  docs?: string;
+  repository?: string;
   techTags: string[];
   highlights: string[];
   relatedEntries: ProjectRelatedEntry[];
@@ -62,7 +77,7 @@ export interface ProjectDomainDefinition {
 export interface ResolvedProjectRelatedEntry extends ProjectRelatedEntry {
   href: string;
   title: string;
-  excerpt?: string | null;
+  excerpt: string | null;
 }
 
 export type ProjectCatalog = readonly ProjectCatalogItem[];
@@ -140,17 +155,22 @@ export const projectCatalog: ProjectCatalog = [
     slug: "codex-vibe-monitor",
     title: "Codex Vibe Monitor",
     domain: "developer-tools",
-    summary:
-      "面向 Codex / OpenAI 兼容流量的观测代理与调试入口，用来把 prompt、token、响应链路和故障上下文放到同一个工作台里看清楚。",
+    summary: "自部署 OpenAI 兼容代理的观测与排障工作台。",
+    heroSummary:
+      "面向自部署环境的 OpenAI 兼容代理观测工作台，统一记录请求链路、流式响应、延迟指标、失败原因与上游尝试，帮助定位 AI 接入层的问题。",
     description:
-      "它不是单纯的流量转发器，而是把 AI 接入层做成一个可检查、可比较、可定位问题的运行面板。适合在多模型、多客户端、需要回放或追查行为差异的场景里使用。",
+      "面向自部署环境的 OpenAI 兼容代理观测工作台，统一记录请求链路、流式响应、延迟指标、失败原因与上游尝试，帮助定位 AI 接入层的问题。",
     poster: {
       eyebrow: "运行观测",
       strapline: "Prompt、token 与 traces 同屏可见",
       pattern: "signal",
     },
-    links: createLinks("codex-vibe-monitor"),
-    techTags: ["TypeScript", "Bun", "OpenAI-Compatible API", "Observability"],
+    links: createLinks("codex-vibe-monitor", {
+      docs: "https://ivanli-cn.github.io/codex-vibe-monitor/",
+      demo: "https://ivanli-cn.github.io/codex-vibe-monitor/storybook.html",
+      site: "https://vibe-code.ivanli.cc/",
+    }),
+    techTags: ["Rust", "Axum", "React", "SQLite", "SSE", "OpenAI-Compatible API", "Observability"],
     highlights: [
       "把模型请求、响应和运行态线索压到同一条调试路径里。",
       "适合做代理层试验场，也适合当团队共享的排障入口。",
@@ -175,6 +195,7 @@ export const projectCatalog: ProjectCatalog = [
     links: createLinks("tavily-hikari", {
       docs: "https://ivanli-cn.github.io/tavily-hikari/",
       demo: "https://ivanli-cn.github.io/tavily-hikari/storybook.html",
+      site: "https://tavily.ivanli.cc/",
     }),
     techTags: ["Rust", "Axum", "SQLite", "Web Console"],
     highlights: [
@@ -200,6 +221,7 @@ export const projectCatalog: ProjectCatalog = [
     links: createLinks("KaisouMail", {
       docs: "https://ivanli-cn.github.io/KaisouMail/",
       demo: "https://ivanli-cn.github.io/KaisouMail/storybook.html",
+      site: "https://km.707979.xyz/",
     }),
     techTags: ["Cloudflare", "TypeScript", "React", "Email Workflow"],
     highlights: [
@@ -224,7 +246,8 @@ export const projectCatalog: ProjectCatalog = [
     },
     links: createLinks("octo-rill", {
       docs: "https://ivanli-cn.github.io/octo-rill/",
-      demo: "https://ivanli-cn.github.io/octo-rill/storybook.html",
+      demo: "https://ivanli-cn.github.io/octo-rill/demo/",
+      site: "https://octo-rill.ivanli.cc/",
     }),
     techTags: ["GitHub API", "React", "TypeScript", "Dashboard"],
     highlights: [
@@ -295,7 +318,9 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "前台、后台与内容管线",
       pattern: "stack",
     },
-    links: createLinks("blog-26"),
+    links: createLinks("blog-26", {
+      site: "https://ivanli.cc/",
+    }),
     techTags: ["Astro", "Bun", "React", "SQLite"],
     highlights: [
       "把公开前台、内容导出和后台编辑统一到一个可发布仓库。",
@@ -403,7 +428,7 @@ export const projectCatalog: ProjectCatalog = [
       pattern: "grid",
     },
     links: createLinks("tuckmark", {
-      site: "http://tuckmark.ivanli.cc/",
+      site: "https://tuckmark.ivanli.cc/",
     }),
     techTags: ["Control Plane", "Workflow Tooling", "TypeScript", "Device Ops"],
     highlights: [
@@ -427,7 +452,10 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "固件、控制台与本地 devd",
       pattern: "stack",
     },
-    links: createLinks("flux-purr"),
+    links: createLinks("flux-purr", {
+      site: "https://flux-purr.ivanli.cc/",
+      demo: "https://flux-purr-demo.ivanli.cc/",
+    }),
     techTags: ["Monorepo", "Firmware", "React", "Local Devd"],
     highlights: [
       "把固件、控制台和本地服务端接口统一进一套仓库结构。",
@@ -439,7 +467,7 @@ export const projectCatalog: ProjectCatalog = [
   },
   {
     slug: "iso-usb-hub",
-    title: "ISO USB Hub",
+    title: "IsolaRail",
     domain: "device-control",
     summary:
       "围绕四口 USB Hub 控制面展开的设备软件项目，负责端口、电源与设备侧能力的可见化与可控化。",
@@ -450,7 +478,10 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "端口、电源与状态可见",
       pattern: "ports",
     },
-    links: createLinks("iso-usb-hub"),
+    links: createLinks("isolarail", {
+      docs: "https://isolarail.ivanli.cc/docs/",
+      site: "https://isolarail.ivanli.cc/",
+    }),
     techTags: ["USB Hub", "Control Surface", "Embedded UI", "Device Management"],
     highlights: [
       "把端口、电源、状态这些底层能力抬升为明确的控制面语义。",
@@ -475,7 +506,9 @@ export const projectCatalog: ProjectCatalog = [
       strapline: "多节点、多主机配置维护",
       pattern: "nodes",
     },
-    links: createLinks("xp"),
+    links: createLinks("xp", {
+      site: "https://xp.ivanli.cc/",
+    }),
     techTags: ["Xray", "Self-Hosting", "Ops", "Cluster Management"],
     highlights: [
       "聚焦多节点、多主机的运维复杂度，而不是单机脚本。",
@@ -499,6 +532,8 @@ export const projectCatalog: ProjectCatalog = [
     },
     links: createLinks("dockrev", {
       docs: "https://ivanli-cn.github.io/dockrev/",
+      demo: "https://ivanli-cn.github.io/dockrev/demo/",
+      site: "https://dockrev.ivanli.cc/",
     }),
     techTags: ["Docker", "Compose", "Operations", "Self-Hosted"],
     highlights: [
@@ -531,6 +566,41 @@ export function getProjectDomainDefinition(domain: ProjectDomain) {
   return projectDomains.find((item) => item.id === domain) ?? projectDomains[0];
 }
 
+const publicEntryMeta: Record<ProjectPublicEntryKind, { label: string }> = {
+  site: { label: "项目站点" },
+  demo: { label: "Demo" },
+  officialDocs: { label: "官方文档" },
+  docs: { label: "文档" },
+  repository: { label: "开源仓库" },
+};
+
+/** Return verified public destinations in the detail-sidebar order. */
+export function getProjectPublicEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {
+  const legacy = new Map(project.links.map((link) => [link.kind, link.href]));
+  const values: Array<[ProjectPublicEntryKind, string | undefined]> = [
+    ["site", project.site ?? legacy.get("site")],
+    ["demo", project.demo ?? legacy.get("demo")],
+    ["officialDocs", project.officialDocs ?? legacy.get("docs")],
+    ["docs", project.docs],
+    ["repository", project.repository ?? legacy.get("github")],
+  ];
+
+  return values
+    .filter((entry): entry is [ProjectPublicEntryKind, string] => Boolean(entry[1]))
+    .map(([kind, href]) => ({ kind, href, label: publicEntryMeta[kind].label }));
+}
+
+/** Return one representative destination for the compact project-card actions. */
+export function getProjectCardEntries(project: ProjectCatalogItem): ProjectPublicEntry[] {
+  const entries = getProjectPublicEntries(project);
+  const byKind = new Map(entries.map((entry) => [entry.kind, entry]));
+  const online = byKind.get("site") ?? byKind.get("demo");
+  const docs = byKind.get("officialDocs") ?? byKind.get("docs");
+  return [online, docs, byKind.get("repository")].filter((entry): entry is ProjectPublicEntry =>
+    Boolean(entry)
+  );
+}
+
 export function getProjectsByDomain(domain: ProjectDomain) {
   return projectCatalog
     .filter((project) => project.domain === domain)
@@ -558,29 +628,30 @@ export function resolveProjectRelatedEntries(
   snapshot: PublicSnapshot,
   entries: readonly ProjectRelatedEntry[]
 ): ResolvedProjectRelatedEntry[] {
-  return entries
-    .map((entry) => {
-      if (entry.type === "post") {
-        const post = snapshot.posts.find((item) => item.slug === entry.slug);
-        if (!post) return null;
-        return {
-          ...entry,
-          href: `/posts/${post.slug}`,
-          title: entry.label ?? post.title,
-          excerpt: post.excerpt,
-        } satisfies ResolvedProjectRelatedEntry;
-      }
-
-      const memo = snapshot.memos.find((item) => item.slug === entry.slug);
-      if (!memo) return null;
+  const resolvedEntries = entries.map((entry) => {
+    if (entry.type === "post") {
+      const post = snapshot.posts.find((item) => item.slug === entry.slug);
+      if (!post) return null;
       return {
         ...entry,
-        href: `/memos/${memo.slug}`,
-        title: entry.label ?? memo.title,
-        excerpt: memo.excerpt,
+        href: `/posts/${post.slug}`,
+        title: entry.label ?? post.title,
+        excerpt: post.excerpt,
       } satisfies ResolvedProjectRelatedEntry;
-    })
-    .filter((entry): entry is ResolvedProjectRelatedEntry => Boolean(entry))
+    }
+
+    const memo = snapshot.memos.find((item) => item.slug === entry.slug);
+    if (!memo) return null;
+    return {
+      ...entry,
+      href: `/memos/${memo.slug}`,
+      title: entry.label ?? memo.title,
+      excerpt: memo.excerpt,
+    } satisfies ResolvedProjectRelatedEntry;
+  });
+
+  return resolvedEntries
+    .filter((entry): entry is ResolvedProjectRelatedEntry => entry !== null)
     .sort((left, right) => {
       const leftRecord =
         left.type === "post"

@@ -166,7 +166,7 @@ test.describe("Nature frontend public coverage", () => {
       /loadlynx-light-640\.webp 640w/
     );
     await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light-1280\.webp$/);
-    await expect(page.getByRole("heading", { name: "关键能力或设计亮点" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
 
     await gotoWithTheme(page, "/projects/octo-rill", "light");
     const octoSocialPreview = page.locator(".project-social-preview");
@@ -204,6 +204,9 @@ test.describe("Nature frontend public coverage", () => {
     await expect(codexPosterPicture).toHaveAttribute("data-project-poster-theme", "light");
     await expect(codexPoster).toHaveCSS("aspect-ratio", "4 / 5");
     await expect(page.getByRole("heading", { name: "Codex Vibe Monitor" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "定位与问题边界" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "设计取舍：保留可复盘的证据链" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "系统结构与实现重点" })).toBeVisible();
     await expect(page.locator(".project-social-preview")).toHaveCount(1);
     await expect(page.locator(".project-social-preview img")).toHaveAttribute(
       "src",
@@ -337,6 +340,112 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByText("Media Keys", { exact: true })).toBeVisible();
   });
 
+  test("project wall separates detail navigation from available quick links", async ({ page }) => {
+    await gotoWithTheme(page, "/projects", "light");
+
+    const codexCard = page.locator(".projects-poster-card").filter({
+      has: page.getByRole("link", { name: "查看 Codex Vibe Monitor 项目案例" }),
+    });
+    await expect(codexCard.locator(".projects-poster-link")).toHaveAttribute(
+      "href",
+      "/projects/codex-vibe-monitor/"
+    );
+    await expect(codexCard.getByRole("link", { name: "项目站点" })).toHaveAttribute(
+      "target",
+      "_blank"
+    );
+    await expect(codexCard.getByRole("link", { name: "官方文档" })).toHaveAttribute(
+      "target",
+      "_blank"
+    );
+    await expect(codexCard.getByRole("link", { name: "开源仓库" })).toHaveAttribute(
+      "target",
+      "_blank"
+    );
+    await expect(codexCard.locator(".project-external-link-icon.nature-button-ghost")).toHaveCount(
+      3
+    );
+    await expect(
+      codexCard.locator(".project-external-link-icon.nature-button-outline")
+    ).toHaveCount(0);
+    await expect(codexCard.locator(".project-external-link-icon").first()).toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)"
+    );
+    await expect(codexCard.locator(".project-external-links")).toHaveCSS("opacity", "0.48");
+    const posterVisual = codexCard.locator(".projects-poster-visual");
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(300);
+    const restingVisualTop = await posterVisual.evaluate(
+      (element) => element.getBoundingClientRect().top
+    );
+    await codexCard.hover();
+    await expect(codexCard.locator(".project-external-links")).toHaveCSS("opacity", "1");
+    await expect(posterVisual).toHaveCSS("transition-property", "transform");
+    await expect
+      .poll(() => posterVisual.evaluate((element) => element.getBoundingClientRect().top))
+      .toBeLessThan(restingVisualTop - 1);
+    const [gridTop, posterTop] = await Promise.all([
+      codexCard.evaluate((element) => {
+        const grid = element.closest(".projects-domain-grid");
+        if (!grid) throw new Error("Project card is outside its scroll grid");
+        return grid.getBoundingClientRect().top;
+      }),
+      codexCard
+        .locator(".project-poster")
+        .evaluate((element) => element.getBoundingClientRect().top),
+    ]);
+    expect(posterTop).toBeGreaterThanOrEqual(gridTop - 0.5);
+    await expect(codexCard.getByRole("link", { name: "项目站点" })).toHaveCount(1);
+    await expect(codexCard.locator(".projects-poster-summary-link")).toHaveAttribute(
+      "title",
+      "自部署 OpenAI 兼容代理的观测与排障工作台。"
+    );
+    await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS("white-space", "nowrap");
+    await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS(
+      "text-overflow",
+      "ellipsis"
+    );
+    await codexCard.locator(".projects-poster-summary-link").focus();
+    await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS("white-space", "normal");
+    await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS("overflow", "visible");
+    await expect(codexCard.locator(".projects-poster-heading")).toHaveCSS("display", "flex");
+  });
+
+  test("MDX detail keeps sidebar entry order and omits generic fallback cards", async ({
+    page,
+  }) => {
+    await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
+
+    await expect(page.locator(".project-detail-sidebar")).toBeVisible();
+    await expect(page.locator(".project-detail-sidebar .project-external-links a")).toHaveCount(4);
+    await expect(
+      page.locator(".project-detail-sidebar .project-external-links a").nth(0)
+    ).toHaveAccessibleName("项目站点");
+    await expect(
+      page.locator(".project-detail-sidebar .project-external-links a").nth(1)
+    ).toHaveAccessibleName("Demo");
+    await expect(
+      page.locator(".project-detail-sidebar .project-external-links a").nth(2)
+    ).toHaveAccessibleName("官方文档");
+    await expect(
+      page.locator(".project-detail-sidebar .project-external-links a").nth(3)
+    ).toHaveAccessibleName("开源仓库");
+    await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
+    await expect(page.locator(".project-toc a")).toHaveCount(3);
+    await expect(page.locator(".project-mdx-section")).toHaveCount(3);
+  });
+
+  test("catalog-only detail falls back to verified catalog content", async ({ page }) => {
+    await gotoWithTheme(page, "/projects/kaisoumail", "light");
+
+    await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
+    await expect(page.locator(".project-toc")).toHaveCount(0);
+    await expect(
+      page.getByText("把临时邮箱能力做成可公开使用的产品面，而不是脚本工具。", { exact: true })
+    ).toBeVisible();
+  });
+
   test("social preview selects the 640w candidate at the lg boundary", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 720 });
     await gotoWithTheme(page, "/projects/octo-rill", "light");
@@ -383,7 +492,7 @@ test.describe("Nature frontend public coverage", () => {
     ).toHaveCount(0);
 
     const placeholderPoster = page
-      .getByRole("link", { name: "查看 ISO USB Hub 项目案例" })
+      .getByRole("link", { name: "查看 IsolaRail 项目案例" })
       .locator(".project-poster");
     await expect(placeholderPoster.locator(".project-poster-copy")).toHaveCount(1);
     await expect(placeholderPoster.locator(".project-poster-scrim")).toHaveCount(0);

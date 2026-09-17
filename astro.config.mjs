@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import mdx from "@astrojs/mdx";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
 
@@ -51,7 +52,7 @@ const astroBasePath =
 const astroSiteUrl = resolveAstroSite(configuredSiteUrl, astroBasePath);
 
 export default defineConfig({
-  integrations: [react()],
+  integrations: [react(), mdx()],
   output: "static",
   trailingSlash: "always",
   srcDir: "./site",
