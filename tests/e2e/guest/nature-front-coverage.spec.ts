@@ -365,6 +365,10 @@ test.describe("Nature frontend public coverage", () => {
     await expect(
       codexCard.locator(".project-external-link-icon.nature-button-outline")
     ).toHaveCount(0);
+    await expect(codexCard.locator(".project-external-link-icon").first()).toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)"
+    );
     await expect(codexCard.getByRole("link", { name: "Demo" })).toHaveCount(1);
     await expect(codexCard.locator(".projects-poster-summary")).toHaveAttribute(
       "title",

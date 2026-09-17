@@ -417,10 +417,23 @@ const groupedProjects = getGroupedProjectCatalog();
       opacity: 1;
     }
 
-    .project-external-link-icon {
+    :global(.project-external-link-icon) {
       min-height: 2rem;
       width: 2rem;
       padding: 0;
+      border-color: transparent;
+      border-radius: 0.7rem;
+      background: transparent;
+      box-shadow: none;
+      color: var(--nature-text-soft);
+    }
+
+    :global(.project-external-link-icon:hover:not(:disabled)),
+    :global(.project-external-link-icon:focus-visible) {
+      border-color: transparent;
+      background: rgba(var(--nature-highlight-rgb), 0.24);
+      color: var(--nature-accent-strong);
+      box-shadow: none;
     }
 
     @media (min-width: 960px) {
