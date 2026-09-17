@@ -415,15 +415,18 @@ test.describe("Nature frontend public coverage", () => {
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
 
     await expect(page.locator(".project-detail-sidebar")).toBeVisible();
-    await expect(page.locator(".project-detail-sidebar .project-external-links a")).toHaveCount(3);
+    await expect(page.locator(".project-detail-sidebar .project-external-links a")).toHaveCount(4);
     await expect(
       page.locator(".project-detail-sidebar .project-external-links a").nth(0)
     ).toHaveAccessibleName("项目站点");
     await expect(
       page.locator(".project-detail-sidebar .project-external-links a").nth(1)
-    ).toHaveAccessibleName("官方文档");
+    ).toHaveAccessibleName("Demo");
     await expect(
       page.locator(".project-detail-sidebar .project-external-links a").nth(2)
+    ).toHaveAccessibleName("官方文档");
+    await expect(
+      page.locator(".project-detail-sidebar .project-external-links a").nth(3)
     ).toHaveAccessibleName("开源仓库");
     await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
     await expect(page.locator(".project-toc a")).toHaveCount(3);
@@ -486,7 +489,7 @@ test.describe("Nature frontend public coverage", () => {
     ).toHaveCount(0);
 
     const placeholderPoster = page
-      .getByRole("link", { name: "查看 ISO USB Hub 项目案例" })
+      .getByRole("link", { name: "查看 IsolaRail 项目案例" })
       .locator(".project-poster");
     await expect(placeholderPoster.locator(".project-poster-copy")).toHaveCount(1);
     await expect(placeholderPoster.locator(".project-poster-scrim")).toHaveCount(0);
