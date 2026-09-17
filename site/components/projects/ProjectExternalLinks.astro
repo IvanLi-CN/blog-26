@@ -35,7 +35,7 @@ const renderedLinks = entries ?? links ?? [];
           title={meta.label}
           aria-label={meta.label}
           class={`nature-button ${
-            link.kind === "github" ? "nature-button-ghost" : "nature-button-outline"
+            iconOnly || link.kind === "github" ? "nature-button-ghost" : "nature-button-outline"
           } ${iconOnly ? "project-external-link-icon" : dense ? "min-h-8 px-3 py-1.5 text-[0.76rem]" : compact ? "min-h-10 px-4 py-2 text-sm" : "text-sm"}`}
         >
           <Icon name={meta.icon} className="h-4 w-4" />

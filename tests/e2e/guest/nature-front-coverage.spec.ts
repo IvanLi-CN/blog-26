@@ -359,6 +359,12 @@ test.describe("Nature frontend public coverage", () => {
       "target",
       "_blank"
     );
+    await expect(codexCard.locator(".project-external-link-icon.nature-button-ghost")).toHaveCount(
+      3
+    );
+    await expect(
+      codexCard.locator(".project-external-link-icon.nature-button-outline")
+    ).toHaveCount(0);
     await expect(codexCard.getByRole("link", { name: "Demo" })).toHaveCount(1);
     await expect(codexCard.locator(".projects-poster-summary")).toHaveAttribute(
       "title",
