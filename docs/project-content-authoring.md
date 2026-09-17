@@ -59,16 +59,18 @@ These questions are prompts, not required headings. A short utility might need o
 
 Standard MDX handles prose, headings, lists, block quotes, links, code, tables, and local asset imports. Project MDX may use only the reviewed project content blocks and standard Markdown:
 
-- `ProjectFigure` for a project image, meaningful alternative text, caption, and optional source link.
+- `ProjectFigure` for a project image, meaningful alternative text, and an optional caption.
 - `ProjectCallout` for a constraint, decision, limitation, or key conclusion.
 - `ProjectFacts` for compact factual details that do not warrant a narrative section.
 - `ProjectComparison` for alternatives and the trade-offs between them.
 
 Do not import arbitrary site components. Add a new project content block only after at least two projects need the same semantic presentation; otherwise, use standard Markdown or a project-local asset.
 
+The site build validates component imports: only named imports of the four reviewed blocks from the project content-block module are accepted.
+
 ## Catalog Copy and Public Entries
 
-`cardSummary` is a concise, project-specific statement of purpose. It has a one-line visual budget on the project wall, where overflow is truncated but the full text remains available through hover and keyboard focus. Prefer roughly 30 to 44 Chinese characters when the project name is not included.
+`summary` is a concise, project-specific statement of purpose. It has a one-line visual budget on the project wall, where overflow is truncated but the full text remains available through hover and keyboard focus. Prefer roughly 30 to 44 Chinese characters when the project name is not included.
 
 The Hero summary may be longer and is the canonical description for search metadata and structured data. It should complement, not duplicate, the MDX body.
 
@@ -100,6 +102,6 @@ Codex Vibe Monitor is the first complete migration and establishes the quality b
 - There is no repeated Hero copy, duplicate public-entry block, or mandatory section added only for visual symmetry.
 - Links point to the intended destination and appear only when that destination exists.
 - The project wall remains scannable: title, quick entries, and one-line summary do not collide at supported widths.
-- The MDX document has a sensible heading hierarchy; side navigation appears only when it has at least three second-level headings.
+- The MDX document has a sensible heading hierarchy; side navigation appears only when it has at least three total H2/H3 headings, listing H2 entries and nesting H3 entries.
 - Images reveal the project, have meaningful alternative text, and fit without horizontal overflow.
 - The detail page remains readable without JavaScript beyond enhancements such as active in-page navigation state.

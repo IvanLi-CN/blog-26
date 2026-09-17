@@ -68,10 +68,11 @@ const structuredData = {
           {body ? (
             <article class="project-mdx-content"><div class="nature-prose"><Body /></div></article>
           ) : (
-            <article class="nature-panel project-mdx-content px-4 py-6 sm:px-8 sm:py-8">
-              <h2 class="font-heading text-2xl font-semibold text-[color:var(--nature-text)]">项目概览</h2>
-              <p class="nature-muted mt-5 leading-8">{project.description}</p>
-              <ul class="mt-5 grid gap-3">{project.highlights.map((item) => <li class="nature-surface-inset px-4 py-3 text-sm leading-7 text-[color:var(--nature-text-soft)]">{item}</li>)}</ul>
+            <article class="project-mdx-content project-catalog-fallback">
+              <div class="nature-prose">
+                <p>{project.description}</p>
+                <ul>{project.highlights.map((item) => <li>{item}</li>)}</ul>
+              </div>
             </article>
           )}
           {relatedEntries.length > 0 && (

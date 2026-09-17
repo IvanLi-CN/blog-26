@@ -166,7 +166,7 @@ test.describe("Nature frontend public coverage", () => {
       /loadlynx-light-640\.webp 640w/
     );
     await expect(socialPreviewImage).toHaveAttribute("src", /loadlynx-light-1280\.webp$/);
-    await expect(page.getByRole("heading", { name: "项目概览" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
 
     await gotoWithTheme(page, "/projects/octo-rill", "light");
     const octoSocialPreview = page.locator(".project-social-preview");
@@ -433,10 +433,10 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-mdx-section")).toHaveCount(3);
   });
 
-  test("catalog-only detail falls back to project overview content", async ({ page }) => {
+  test("catalog-only detail falls back to verified catalog content", async ({ page }) => {
     await gotoWithTheme(page, "/projects/kaisoumail", "light");
 
-    await expect(page.getByRole("heading", { name: "项目概览" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
     await expect(page.locator(".project-toc")).toHaveCount(0);
     await expect(
       page.getByText("把临时邮箱能力做成可公开使用的产品面，而不是脚本工具。", { exact: true })

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractProjectToc } from "../../site/lib/project-content-utils";
+import { extractProjectToc, validateProjectMdxImports } from "../../site/lib/project-content-utils";
 import {
   getProjectCardEntries,
   getProjectPublicEntries,
@@ -107,5 +107,32 @@ describe("project content contracts", () => {
       { depth: 2, text: "Two", slug: "two" },
     ]);
     expect(extractProjectToc("## One\n\n## Two")).toEqual([]);
+  });
+
+  test("TOC follows Astro heading IDs and ignores fenced code", () => {
+    expect(
+      extractProjectToc(
+        "## 设计取舍：保留证据\n\n```md\n## 伪标题\n```\n\n## 设计取舍：保留证据\n\n### 子项"
+      )
+    ).toEqual([
+      { depth: 2, text: "设计取舍：保留证据", slug: "设计取舍保留证据" },
+      { depth: 2, text: "设计取舍：保留证据", slug: "设计取舍保留证据-1" },
+      { depth: 3, text: "子项", slug: "子项" },
+    ]);
+  });
+
+  test("MDX component imports stay within the reviewed allowlist", () => {
+    expect(() =>
+      validateProjectMdxImports(
+        'import { ProjectFacts } from "../../../src/components/project-content-blocks";',
+        "codex-vibe-monitor.mdx"
+      )
+    ).not.toThrow();
+    expect(() =>
+      validateProjectMdxImports(
+        'import Button from "../../../src/components/ui/Button";',
+        "example.mdx"
+      )
+    ).toThrow(/unsupported site component/);
   });
 });

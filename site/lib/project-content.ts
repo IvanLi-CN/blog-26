@@ -1,4 +1,8 @@
-import { extractProjectToc, type ProjectTocItem } from "./project-content-utils";
+import {
+  extractProjectToc,
+  type ProjectTocItem,
+  validateProjectMdxImports,
+} from "./project-content-utils";
 
 export type { ProjectTocItem } from "./project-content-utils";
 
@@ -36,6 +40,7 @@ function validateBodies() {
         `Project MDX slug mismatch: ${path} declares ${declaredSlug ?? "missing slug"}`
       );
     }
+    validateProjectMdxImports(source, path);
     if (!compiledBodies[path]) {
       throw new Error(`Project MDX source was not compiled: ${path}`);
     }

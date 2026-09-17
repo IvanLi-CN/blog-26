@@ -466,6 +466,16 @@ const groupedProjects = getGroupedProjectCatalog();
       }
     }
 
+    @media (hover: none) {
+      .projects-poster-card .projects-poster-heading :global(.project-external-links) {
+        opacity: 0.72;
+      }
+
+      .projects-poster-card :global(.project-external-link-icon) {
+        color: var(--nature-text);
+      }
+    }
+
     @media (max-width: 767px) {
       .projects-showcase-hero {
         gap: 1.2rem;

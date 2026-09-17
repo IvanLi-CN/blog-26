@@ -69,11 +69,11 @@ A semantic element available to 项目 MDX 正文: `ProjectFigure`, `ProjectCall
 _Avoid_: 通用装饰卡片
 
 **项目资料侧栏**:
-The supporting column of 项目详情. It always presents 公开入口 and adds in-page navigation when the 项目 MDX 正文 has at least three second-level headings. It remains visible beside the body on desktop and is placed after the Hero before the body on narrow screens.
+The supporting column of 项目详情. It always presents 公开入口 and adds in-page navigation when the 项目 MDX 正文 has at least three total H2/H3 headings. It remains visible beside the body on desktop and is placed after the Hero before the body on narrow screens.
 _Avoid_: 重复 Hero 入口
 
 **本页内容导航**:
-The in-page navigation in 项目资料侧栏. It lists second-level MDX headings and nests their third-level headings; deeper headings stay within the document only.
+The in-page navigation in 项目资料侧栏. It lists H2 MDX headings and nests their H3 headings; deeper headings stay within the document only.
 _Avoid_: 完整标题树
 
 **延伸阅读**:
