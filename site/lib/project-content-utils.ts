@@ -1,4 +1,7 @@
 import GithubSlugger from "github-slugger";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
+import { visit } from "unist-util-visit";
 
 export interface ProjectTocItem {
   depth: 2 | 3;
@@ -19,7 +22,13 @@ const allowedProjectContentBlockSources = new Set([
 ]);
 
 export function validateProjectMdxImports(source: string, filePath: string) {
-  for (const match of source.matchAll(/^\s*import\s+(.+?)\s+from\s+["']([^"']+)["']\s*;?\s*$/gm)) {
+  const sourceWithoutFences = source.replace(
+    /^\s{0,3}(`{3,}|~{3,})[\s\S]*?(?:^\s{0,3}\1\s*$|$)/gm,
+    ""
+  );
+  for (const match of sourceWithoutFences.matchAll(
+    /^\s*import\s+([\s\S]*?)\s+from\s+["']([^"']+)["']\s*;?\s*$/gm
+  )) {
     const [, specifiers, importedFrom] = match;
     if (!importedFrom.includes("/components/")) continue;
 
@@ -43,30 +52,38 @@ export function validateProjectMdxImports(source: string, filePath: string) {
   }
 }
 
+function stripFrontmatter(source: string) {
+  return source.replace(/^---\s*\n[\s\S]*?\n---\s*(?:\n|$)/, "");
+}
+
+type MarkdownNode = {
+  type: string;
+  value?: string;
+  depth?: number;
+  children?: MarkdownNode[];
+};
+
+function headingText(node: MarkdownNode) {
+  const values: string[] = [];
+  const collect = (child: MarkdownNode) => {
+    if (child.type === "html") return;
+    if (typeof child.value === "string") values.push(child.value);
+    child.children?.forEach(collect);
+  };
+  node.children?.forEach(collect);
+  return values.join("").trim();
+}
+
 export function extractProjectToc(source: string): ProjectTocItem[] {
   const headings: ProjectTocItem[] = [];
   const slugger = new GithubSlugger();
-  let fence: { marker: string; length: number } | null = null;
-
-  for (const line of source.split(/\r?\n/)) {
-    const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})/);
-    if (fence) {
-      if (fenceMatch && fenceMatch[1][0] === fence.marker && fenceMatch[1].length >= fence.length) {
-        fence = null;
-      }
-      continue;
-    }
-    if (fenceMatch) {
-      fence = { marker: fenceMatch[1][0], length: fenceMatch[1].length };
-      continue;
-    }
-
-    const match = line.match(/^\s{0,3}(#{2,3})\s+(.+?)\s*#*\s*$/);
-    if (!match) continue;
-    const depth = match[1].length as 2 | 3;
-    const text = match[2].replace(/[`*~]/g, "").trim();
+  const tree = unified().use(remarkParse).parse(stripFrontmatter(source)) as MarkdownNode;
+  visit(tree, "heading", (node) => {
+    const heading = node as MarkdownNode;
+    if (heading.depth !== 2 && heading.depth !== 3) return;
+    const text = headingText(heading);
     const slug = slugger.slug(text) || slugger.slug(`section-${headings.length + 1}`);
-    headings.push({ depth, text, slug });
-  }
+    headings.push({ depth: heading.depth, text, slug });
+  });
   return headings.length >= 3 ? headings : [];
 }

@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-08-20`
+- Last Updated: `2026-09-17`
 - Owner: `main-agent`
 
 ## Related ADRs

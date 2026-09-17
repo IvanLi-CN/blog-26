@@ -14,7 +14,7 @@ The project catalog in `site/lib/projects.ts` owns project identity and discover
 - card summary and Hero summary;
 - poster, social preview, technology tags, public entries, related posts, and ordering.
 
-The project body lives at `site/content/projects/<slug>.mdx`. It owns the project-specific narrative and does not repeat catalog metadata in frontmatter. A missing MDX file is valid: the detail page must show only the verified catalog information, available media, public entries, and related reading.
+The project body lives at `site/content/projects/<slug>.mdx`. It owns the project-specific narrative and does not repeat catalog metadata in frontmatter, except for the required `slug` identity field used to validate the file-to-project binding. A missing MDX file is valid: the detail page must show only the verified catalog information, available media, public entries, and related reading.
 
 Project-specific body assets live beside the body at `site/content/projects/<slug>/assets/`. They are separate from the theme-aware project poster and social-preview pipelines.
 

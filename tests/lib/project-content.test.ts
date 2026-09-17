@@ -121,6 +121,14 @@ describe("project content contracts", () => {
     ]);
   });
 
+  test("TOC uses rendered text for inline Markdown links", () => {
+    expect(extractProjectToc("## [API docs](https://example.com)\n\n## Two\n\n## Three")).toEqual([
+      { depth: 2, text: "API docs", slug: "api-docs" },
+      { depth: 2, text: "Two", slug: "two" },
+      { depth: 2, text: "Three", slug: "three" },
+    ]);
+  });
+
   test("MDX component imports stay within the reviewed allowlist", () => {
     expect(() =>
       validateProjectMdxImports(
@@ -131,6 +139,12 @@ describe("project content contracts", () => {
     expect(() =>
       validateProjectMdxImports(
         'import Button from "../../../src/components/ui/Button";',
+        "example.mdx"
+      )
+    ).toThrow(/unsupported site component/);
+    expect(() =>
+      validateProjectMdxImports(
+        'import {\n  Button\n} from "../../../src/components/ui/Button";',
         "example.mdx"
       )
     ).toThrow(/unsupported site component/);

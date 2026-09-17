@@ -94,8 +94,9 @@ const groupedProjects = getGroupedProjectCatalog();
                     <a
                       href={toPublicSitePath(getProjectDetailPath(project.slug))}
                       class="projects-poster-summary-link"
+                      title={project.summary}
                     >
-                      <p class="projects-poster-summary" title={project.summary}>{project.summary}</p>
+                      <p class="projects-poster-summary">{project.summary}</p>
                     </a>
                   </div>
                 </article>
@@ -420,8 +421,8 @@ const groupedProjects = getGroupedProjectCatalog();
     }
 
     :global(.project-external-link-icon) {
-      min-height: 2rem;
-      width: 2rem;
+      min-height: 2.75rem;
+      width: 2.75rem;
       padding: 0;
       border-color: transparent;
       border-radius: 0.7rem;
@@ -441,6 +442,13 @@ const groupedProjects = getGroupedProjectCatalog();
     @media (min-width: 960px) {
       .projects-showcase-hero-head {
         grid-template-columns: minmax(0, 1fr) 16rem;
+      }
+    }
+
+    @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+      :global(.project-external-link-icon) {
+        min-height: 2rem;
+        width: 2rem;
       }
     }
 
@@ -468,7 +476,7 @@ const groupedProjects = getGroupedProjectCatalog();
 
     @media (hover: none) {
       .projects-poster-card .projects-poster-heading :global(.project-external-links) {
-        opacity: 0.72;
+        opacity: 0.8;
       }
 
       .projects-poster-card :global(.project-external-link-icon) {
