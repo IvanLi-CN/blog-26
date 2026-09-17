@@ -406,6 +406,9 @@ test.describe("Nature frontend public coverage", () => {
       "text-overflow",
       "ellipsis"
     );
+    await codexCard.locator(".projects-poster-summary-link").focus();
+    await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS("white-space", "normal");
+    await expect(codexCard.locator(".projects-poster-summary")).toHaveCSS("overflow", "visible");
     await expect(codexCard.locator(".projects-poster-heading")).toHaveCSS("display", "flex");
   });
 

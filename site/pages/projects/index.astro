@@ -408,6 +408,12 @@ const groupedProjects = getGroupedProjectCatalog();
       white-space: nowrap;
     }
 
+    .projects-poster-summary-link:focus-visible .projects-poster-summary {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+    }
+
     .projects-poster-heading :global(.project-external-links) {
       flex: none;
       padding-top: 0;
