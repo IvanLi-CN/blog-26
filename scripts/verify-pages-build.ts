@@ -37,12 +37,19 @@ function assertExcludes(content: string, needle: string, file: string) {
 function assertIncludesSome(
   files: readonly string[],
   contents: ReadonlyMap<string, string>,
-  needle: string
+  needle: string | RegExp
 ) {
-  const hit = files.find((file) => contents.get(file)?.includes(needle));
+  const hit = files.find((file) => {
+    const content = contents.get(file) ?? "";
+    return typeof needle === "string" ? content.includes(needle) : needle.test(content);
+  });
   if (!hit) {
     throw new Error(`Expected one of [${files.join(", ")}] to include: ${needle}`);
   }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function assertIncludesOneOf(content: string, needles: readonly string[], file: string) {
@@ -328,7 +335,11 @@ export function verifyPagesBuild(options: VerifyPagesBuildOptions) {
       "/api/files/",
       "site-dist/index.html"
     );
-    assertIncludesSome(astroFiles, contents, `PUBLIC_API_BASE_URL:"${apiBaseUrl}"`);
+    assertIncludesSome(
+      astroFiles,
+      contents,
+      new RegExp(`PUBLIC_API_BASE_URL\\s*:\\s*["'\`]${escapeRegExp(apiBaseUrl)}["'\`]`)
+    );
     assertIncludesSome(astroFiles, contents, "/api/public/search");
     assertIncludesSome(astroFiles, contents, "/api/public/comments");
     assertIncludesSome(astroFiles, contents, "/api/public/reactions");
