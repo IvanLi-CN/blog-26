@@ -130,7 +130,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The project wall uses a stable 4:5 presentation: media-backed catalog cards display supplied artwork without a copy layer or scrim, while media-free placeholders retain the fallback copy. Detail-page posters display supplied artwork without an overlay or added copy. Project detail pages show generated social previews in a stable 2:1 frame, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
 - Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
 
-- Evidence binding `57933c79c062dac0f15abe0514190810c2a7546c` baseline to the current candidate; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, requested mobile viewport `393px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- Evidence binding `61146e8e2c450730eba77501b7f01b7b10dd0939` baseline to the current candidate; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, requested mobile viewport `393px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`. The current candidate preserves the captured rest-state layout; the keyboard-focus summary expansion is covered by the focused guest Playwright contract.
 
 ![Current project wall light](./assets/projects-wall-light-current.png)
 
@@ -217,6 +217,24 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The narrow search state keeps its query panel at the mobile spacing contract, uses low-luminance surfaces for the filters and recommended terms, preserves 44px interactive controls, and does not overflow horizontally.
 
 ![Public narrow mobile search](./assets/public-search-narrow-mobile-dark.png)
+
+## Context and Scope
+
+This topic owns the public Nature frontend shell and its visitor-facing page surfaces. The project index, project detail routes, semantic public-entry shortcuts, project-specific MDX bodies, responsive reading layout, and their visual evidence are in scope. Backend APIs, admin surfaces, and the poster/social-preview generation pipelines remain outside this topic's project-detail content contract.
+
+## Requirements
+
+- `REQ-NATURE-PROJECT-CATALOG`: The project catalog MUST own project identity, discovery copy, media references, and semantic public entries; card shortcuts MUST prefer the formal site over Demo, official documentation over a documentation site, and the public repository as the source entry.
+- `REQ-NATURE-PROJECT-DETAIL-MDX`: Project detail bodies MUST be project-specific MDX with build-time slug validation, optional reviewed static content blocks, and a verified catalog-only fallback when no body exists.
+- `REQ-NATURE-PROJECT-READING`: Project detail pages MUST keep the Hero free of duplicate external links, expose all available entries in the sidebar, and place the sidebar before the body on narrow screens while preserving readable heading navigation.
+- `REQ-NATURE-PROJECT-INTERACTION`: Project-wall summaries MUST remain one-line and ellipsized at rest, expose their full text on keyboard focus, and keep icon-only external shortcuts weak at rest but usable on hover, focus, and touch.
+
+## Verification
+
+- `VER-NATURE-PROJECT-CATALOG`: covers: `REQ-NATURE-PROJECT-CATALOG`; semantic-entry unit tests and the static site build verify precedence, labels, missing-entry omission, and public output.
+- `VER-NATURE-PROJECT-DETAIL-MDX`: covers: `REQ-NATURE-PROJECT-DETAIL-MDX`; MDX loader/TOC tests, the Codex Vibe Monitor detail route, and the static build verify slug validation, reviewed block rendering, and catalog-only fallback.
+- `VER-NATURE-PROJECT-READING`: covers: `REQ-NATURE-PROJECT-READING`; focused guest Playwright coverage and the desktop/mobile light/dark page evidence verify sidebar order, TOC behavior, spacing, and responsive stacking.
+- `VER-NATURE-PROJECT-INTERACTION`: covers: `REQ-NATURE-PROJECT-INTERACTION`; focused guest Playwright coverage verifies rest-state truncation, focus-visible expansion, shortcut names/targets, and hover/focus contrast behavior.
 
 ### Desktop header search width
 
