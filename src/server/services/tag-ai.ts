@@ -1,4 +1,5 @@
-import OpenAI from "openai";
+import OpenAI, { type APIError } from "openai";
+import type { ChatCompletion } from "openai/resources/chat/completions";
 import { getResolvedLlmConfig } from "@/server/services/llm-settings";
 import type { TagGroup } from "@/types/tag-groups";
 import { getCurrentGroupCount, validateTagGroupsConfig } from "./tag-groups";
@@ -120,7 +121,7 @@ export async function organizeTagsWithAI(options?: {
 
   const openai = new OpenAI({ apiKey, baseURL });
   const maxAttempts = Number(process.env.TAG_AI_MAX_RETRY ?? 3);
-  let completion: Awaited<ReturnType<typeof openai.chat.completions.create>> | undefined;
+  let completion: ChatCompletion | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const attemptLabel = `[ai-tag-organize attempt ${attempt}/${maxAttempts}]`;
     try {
@@ -133,6 +134,7 @@ export async function organizeTagsWithAI(options?: {
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
+          stream: false,
           temperature: 0.2,
         },
         { signal }
@@ -141,7 +143,7 @@ export async function organizeTagsWithAI(options?: {
       break;
     } catch (error) {
       console.timeEnd(attemptLabel);
-      const err = error as OpenAI.APIError & { response?: Response; status?: number };
+      const err = error as APIError & { response?: Response; status?: number };
       const body =
         err.response && !err.response.bodyUsed
           ? await err.response.text().catch(() => "<unreadable>")

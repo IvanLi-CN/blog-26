@@ -1,4 +1,4 @@
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { parseFrontmatterDocument, stringifyFrontmatterDocument } from "@/lib/frontmatter-document";
 
 export type PostContractStructuredFields = {
