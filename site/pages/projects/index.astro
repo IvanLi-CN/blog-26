@@ -244,6 +244,7 @@ const groupedProjects = getGroupedProjectCatalog();
 
     .projects-domain-grid {
       --showcase-gap: 1.25rem;
+      --showcase-hover-clearance: calc(2px + 0.18rem);
       display: flex;
       flex-wrap: nowrap;
       gap: var(--showcase-gap);
@@ -252,7 +253,8 @@ const groupedProjects = getGroupedProjectCatalog();
       overflow-y: hidden;
       overscroll-behavior-x: contain;
       scroll-snap-type: x proximity;
-      padding: 0.15rem 0 0.9rem;
+      margin-top: calc(-1 * var(--showcase-hover-clearance));
+      padding: calc(0.15rem + var(--showcase-hover-clearance)) 0 0.9rem;
     }
 
     .projects-domain-scrollbar {
@@ -357,6 +359,11 @@ const groupedProjects = getGroupedProjectCatalog();
 
     .projects-poster-visual {
       display: block;
+      transition: transform 240ms var(--nature-ease);
+    }
+
+    .projects-poster-visual:hover {
+      transform: translateY(-0.18rem);
     }
 
     .projects-poster-copy {

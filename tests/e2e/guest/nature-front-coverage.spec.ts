@@ -370,8 +370,18 @@ test.describe("Nature frontend public coverage", () => {
       "rgba(0, 0, 0, 0)"
     );
     await expect(codexCard.locator(".project-external-links")).toHaveCSS("opacity", "0.48");
+    const posterVisual = codexCard.locator(".projects-poster-visual");
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(300);
+    const restingVisualTop = await posterVisual.evaluate(
+      (element) => element.getBoundingClientRect().top
+    );
     await codexCard.hover();
     await expect(codexCard.locator(".project-external-links")).toHaveCSS("opacity", "1");
+    await expect(posterVisual).toHaveCSS("transition-property", "transform");
+    await expect
+      .poll(() => posterVisual.evaluate((element) => element.getBoundingClientRect().top))
+      .toBeLessThan(restingVisualTop - 1);
     const [gridTop, posterTop] = await Promise.all([
       codexCard.evaluate((element) => {
         const grid = element.closest(".projects-domain-grid");
