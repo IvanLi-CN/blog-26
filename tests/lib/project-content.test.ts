@@ -1,12 +1,76 @@
 import { describe, expect, test } from "bun:test";
-import { extractProjectToc, validateProjectMdxImports } from "../../site/lib/project-content-utils";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  extractProjectToc,
+  resolveProjectBody,
+  resolveProjectDetailBody,
+  validateProjectMdxImports,
+} from "../../site/lib/project-content-utils";
 import {
   getProjectCardEntries,
   getProjectPublicEntries,
   projectCatalog,
 } from "../../site/lib/projects";
+import { catalogOnlyProjectSlugs, migratedProjectSlugs } from "../fixtures/project-content";
 
 describe("project content contracts", () => {
+  test("migrated projects have slug-bound MDX bodies", () => {
+    const contentDir = join(process.cwd(), "site/content/projects");
+    const catalogSlugs = projectCatalog.map((project) => project.slug).sort();
+    const classifiedSlugs = [...migratedProjectSlugs, ...catalogOnlyProjectSlugs].sort();
+    expect(classifiedSlugs).toEqual(catalogSlugs);
+
+    const mdxSlugs = readdirSync(contentDir)
+      .filter((file) => file.endsWith(".mdx"))
+      .map((file) => file.replace(/\.mdx$/, ""))
+      .sort();
+    expect(mdxSlugs).toEqual([...migratedProjectSlugs].sort());
+
+    for (const slug of migratedProjectSlugs) {
+      const source = readFileSync(join(contentDir, `${slug}.mdx`), "utf8");
+      expect(source).toMatch(new RegExp(`^---\\nslug: ${slug}\\n---\\n`));
+      expect(source).toMatch(/^## /m);
+      expect(source).not.toContain("项目是什么");
+    }
+  });
+
+  test("missing project bodies preserve catalog-only fallback", () => {
+    const compiledBodies = {
+      "../content/projects/migrated.mdx": { default: "compiled body" },
+    };
+    const sourceBodies = {
+      "../content/projects/migrated.mdx": "## One\n\n## Two\n\n## Three",
+    };
+
+    expect(resolveProjectBody("not-yet-migrated", compiledBodies, sourceBodies)).toBeNull();
+    expect(resolveProjectBody("migrated", compiledBodies, sourceBodies)).toEqual({
+      Content: "compiled body",
+      toc: [
+        { depth: 2, text: "One", slug: "one" },
+        { depth: 2, text: "Two", slug: "two" },
+        { depth: 2, text: "Three", slug: "three" },
+      ],
+    });
+
+    expect(
+      resolveProjectDetailBody(null, {
+        description: "目录描述",
+        highlights: ["亮点一", "亮点二"],
+      })
+    ).toEqual({
+      kind: "catalog",
+      description: "目录描述",
+      highlights: ["亮点一", "亮点二"],
+    });
+
+    const detailSource = readFileSync(
+      join(process.cwd(), "site/pages/projects/[slug].astro"),
+      "utf8"
+    );
+    expect(detailSource).toContain("project-catalog-fallback");
+  });
+
   test("card shortcuts use site, official docs, then repository precedence", () => {
     const project = projectCatalog.find((item) => item.slug === "codex-vibe-monitor");
     expect(project).toBeDefined();
@@ -145,6 +209,18 @@ describe("project content contracts", () => {
     expect(() =>
       validateProjectMdxImports(
         'import {\n  Button\n} from "../../../src/components/ui/Button";',
+        "example.mdx"
+      )
+    ).toThrow(/unsupported site component/);
+    expect(() =>
+      validateProjectMdxImports(
+        'import { Button } from "../../../src/components/ui/Button"; // trailing comment',
+        "example.mdx"
+      )
+    ).toThrow(/unsupported site component/);
+    expect(() =>
+      validateProjectMdxImports(
+        'import { Button } from "../../../src/components/ui/Button"; /*\n  trailing comment\n*/',
         "example.mdx"
       )
     ).toThrow(/unsupported site component/);

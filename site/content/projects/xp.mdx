@@ -1,0 +1,63 @@
+---
+slug: xp
+---
+
+<section className="project-mdx-section">
+
+## Xray 集群控制面
+
+XP 在多台自托管主机之间维护可写控制面。每台主机运行 `xp` 与 `xray`：前者维护集群配置和运维入口，后者负责代理转发。节点、端点、用户和授权组成集群期望状态，由 Raft leader 串行写入并复制到其他节点。
+
+控制面、订阅入口和集群内部接口共用 XP 的 HTTP 服务；节点默认只监听本机回环地址，外部可达性由反向代理、隧道或组网入口提供。单节点和多主机部署使用同一套状态模型。
+
+</section>
+
+<section className="project-mdx-section">
+
+## Raft 期望状态
+
+节点、端点、用户、授权和禁用状态属于集群期望状态，由 leader 串行写入并复制。流量累计、进程存活和节点健康则留在本机，reconcile 根据本地 Xray gRPC 结果把运行态重新拉回期望状态。
+
+节点重启、重新加入集群或 inbound 暂时失败时，reconcile 可以重试恢复；流量累计和健康探针留在本机，避免进入 Raft 日志。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 授权订阅
+
+XP 根据仍然有效的 Grant 生成 VLESS + REALITY 或 Shadowsocks 2022 的 Raw URI、Base64 和 Clash YAML。授权撤销后，订阅停止生成对应入口。
+
+配额执行器从 Xray StatsService 读取累计流量，用本地游标计算增量；达到阈值时先在本机移除 client，再把禁用状态写回集群。配额判定、实际断流和其它节点的授权视图最终回到同一条状态链路。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 运行态同步
+
+XP 将“配置写入”和“Xray 完成”分开记录。每个节点只处理自己拥有的端点：通过 Xray gRPC API 创建或删除 inbound，再按授权状态添加或移除 client。reconcile 在启动、Raft 状态应用和 Xray 恢复等时机运行，重复操作保持幂等，单个步骤失败也会记录并继续处理其他资源。
+
+期望状态与运行态分开处理 Xray 重启、端点参数变化和节点加入。Raft 保存全局配置；流量累计、健康状态和进程运行态保留在节点本地。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 协议与配额
+
+端点目前覆盖 VLESS + REALITY 与 Shadowsocks 2022。用户授权由 `Grant` 关联到具体端点，XP 为每个授权生成协议凭据，并用固定的 grant 标识把 Xray 的 uplink/downlink 统计映射回用户。
+
+订阅服务从用户的有效授权生成 Raw URI、Base64 或 Clash YAML。配额执行器读取 Xray StatsService 的累计流量，通过本地游标计算增量；达到配额阈值时先在本机移除 client，再把禁用状态写回 Raft，其他节点随后同步禁用状态。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 主机与容器部署
+
+`xp-ops` 把安装、初始化、升级、部署和容器启动整理成独立的运维入口。XP 既可以由 systemd 或 OpenRC 管理，也可以运行在官方单镜像容器中；容器入口负责启动 XP、Xray 及可选的运行时，并保留集群已有的端点端口归属。
+
+管理界面构建产物会嵌入 XP，同时发布为可独立访问的静态控制台。PWA 负责缓存应用壳和只读数据，但写操作仍需连接经过验证的集群节点，避免离线界面把未知状态误当成已经提交。
+
+</section>

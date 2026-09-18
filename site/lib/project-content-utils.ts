@@ -9,6 +9,29 @@ export interface ProjectTocItem {
   slug: string;
 }
 
+export type ProjectDetailBodyState =
+  | { kind: "mdx"; body: { Content: any; toc: ProjectTocItem[] } }
+  | { kind: "catalog"; description: string; highlights: string[] };
+
+export function resolveProjectDetailBody(
+  body: { Content: any; toc: ProjectTocItem[] } | null,
+  fallback: { description: string; highlights: string[] }
+): ProjectDetailBodyState {
+  return body ? { kind: "mdx", body } : { kind: "catalog", ...fallback };
+}
+
+export function resolveProjectBody(
+  slug: string,
+  compiledBodies: Record<string, { default: any }>,
+  sourceBodies: Record<string, string>
+) {
+  const path = `../content/projects/${slug}.mdx`;
+  const module = compiledBodies[path];
+  const source = sourceBodies[path];
+  if (!module || !source) return null;
+  return { Content: module.default, toc: extractProjectToc(source) };
+}
+
 const allowedProjectContentBlocks = new Set([
   "ProjectCallout",
   "ProjectComparison",
@@ -27,7 +50,7 @@ export function validateProjectMdxImports(source: string, filePath: string) {
     ""
   );
   for (const match of sourceWithoutFences.matchAll(
-    /^\s*import\s+([\s\S]*?)\s+from\s+["']([^"']+)["']\s*;?\s*$/gm
+    /^\s*import\s+([\s\S]*?)\s+from\s+["']([^"']+)["']\s*;?\s*(?:(?:\/\/[^\n]*)|(?:\/\*[\s\S]*?\*\/))*\s*$/gm
   )) {
     const [, specifiers, importedFrom] = match;
     if (!importedFrom.includes("/components/")) continue;

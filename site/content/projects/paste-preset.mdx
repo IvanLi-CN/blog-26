@@ -1,0 +1,63 @@
+---
+slug: paste-preset
+---
+
+<section className="project-mdx-section">
+
+## 浏览器内图像处理
+
+PastePreset 处理截图、手机照片和待发送图片，提供裁切、缩放、格式转换、元数据处理、复制和下载。所有图像处理在浏览器本地完成。
+
+它把重复的整理动作保存为可执行的配置。用户可以从粘贴、拖放或文件选择开始处理。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 输入、配置与结果
+
+PastePreset 分开保存原始文件、处理配置和生成结果。格式、质量或尺寸变更后，旧结果标记为过期，原始输入保持不变。
+
+一个 batch 可以包含不同来源和尺寸的图片。单张任务的失败、旋转或重新处理不改变其它任务的输入顺序，已完成结果仍然可见。
+
+</section>
+
+<section className="project-mdx-section">
+
+## PWA 离线能力
+
+PWA 首次在线访问后缓存应用壳，离线时可以重新打开导入、处理和下载流程。HEIC/HEIF 与动画格式的辅助 codec 在后台预热，返回时先显示应用界面，格式能力准备好后再开放对应处理。
+
+离线打开与格式支持是两种状态。浏览器能力、codec 预热状态和输入格式共同决定处理路径，界面显示处理中、不可用或回退状态。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 预设配置
+
+`Original`、`Large`、`Medium` 和 `Small` 分别表达保留原尺寸或限制最长边的处理意图。当前预设配置由代码中的 `PRESETS` 定义，用户可以在本地保存配置、编辑既有预设，或从一次临时调整中创建自定义预设。
+
+预设数据保存在浏览器本地。存储不可用时，应用使用当前会话中的固定预设，图片处理仍可继续。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 批量任务
+
+一次粘贴、拖放或文件选择会形成一个 batch，batch 内的每张图片都会成为独立任务。任务列表保留文件顺序，并提供展开、复制、下载和旋转等操作；新的输入批次会出现在列表顶部，当前任务也随之更新。
+
+输出设置变化后，任务进入重新处理流程；当前查看的任务优先处理，旧结果保留并标记为过期。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 兼容性路径
+
+常规图片可以交给 Web Worker 和 OffscreenCanvas 处理，以减少图像转换对界面的阻塞。浏览器不具备这些能力，或输入属于依赖 DOM 的 HEIC/HEIF 时，应用会回到主线程路径。这个回退是同一处理流程针对运行环境的不同执行方式。
+
+处理管线会先识别输入格式，再计算目标尺寸、应用 `fit`、`fill` 或 `stretch` 等缩放策略，最后输出 JPEG、PNG、WebP、GIF 或 APNG。动画输入在选择动画输出时保留帧信息；元数据则根据当前设置和具体格式路径决定保留或移除。
+
+</section>

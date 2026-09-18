@@ -1,0 +1,71 @@
+---
+slug: tavily-hikari
+---
+
+<section className="project-mdx-section">
+
+## Tavily 代理边界
+
+Tavily Hikari 位于 Tavily 上游与实际调用者之间。它把 MCP 请求、HTTP API 客户端和多把 Tavily Key 放进同一条可观测的代理链路，让调用方只需要持有 Hikari access token，而不必直接接触上游 Key。
+
+密钥调度、访问配额、匿名透传和请求审计集中在代理边界内。Rust 与 Axum 负责请求和运行时，SQLite 保存 Key 状态与日志，控制台展示运行信息。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 配额与请求调度
+
+请求转发在毫秒级内选择可用 Key，月度额度、租户用量和高峰回收由持久化记录和后台 reconciliation 处理。短期亲和减少同一 token 在多把 Key 之间抖动；耗尽或禁用的 Key 退出候选池。
+
+当上游返回 432，调度器记录耗尽时间并退出普通候选集合；月初或管理员恢复后，Key 重新参与选择。请求路径无需等待月度结算，运维路径保留额度变化来源。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 高可用与凭据边界
+
+HA 状态、远程尝试和 SQLite 迁移围绕单文件数据模型协作，服务重启或切换时先确认 schema、Key 观察值和请求日志的收敛状态，再恢复调度。原始 Tavily Key 仍然只在管理员接口中可见，控制面和日志默认使用短 ID。
+
+部署可以使用内嵌 Web 资源、Docker 或发行版二进制，所有入口共用 access token、上游隐私策略和请求日志合同。Cherry Studio 与 CLI 使用 Hikari token，不接触上游密钥。
+
+</section>
+
+<section className="project-mdx-section">
+
+## Key 调度
+
+Hikari 为每个 Tavily Key 保存最近使用时间和当前状态，并为访问令牌建立短期 Key 亲和关系。亲和关系仍然有效时，同一个 token 会优先使用同一把 Key；Key 被耗尽、禁用或亲和过期后，系统再回到健康 Key 集合中按最久未使用策略重新选择。
+
+上游返回 432 时，Hikari 会把对应 Key 标记为 `exhausted`，调度器暂时跳过它，直到下一个 UTC 月初或管理员手动恢复。对外展示的只是 4 位短 ID，真实凭据仍然留在管理员边界内。
+
+</section>
+
+<section className="project-mdx-section">
+
+## MCP 与 HTTP 入口
+
+原生 MCP 客户端通过 `/mcp` 进入代理；直接使用 Tavily HTTP API 的客户端，则可以将 Base URL 指向 `/api/tavily`。搜索、提取、爬取、映射和 Research 等 HTTP 端点都复用 Hikari 的访问令牌、Key 池与配额检查。
+
+两类客户端共享同一套控制面：客户端拿到 `th-<id>-<secret>` 形式的 Hikari token，Hikari 再在内部完成上游 Key 选择和请求转发。官方 Tavily CLI 也可以通过 wrapper 使用同一地址和令牌。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 匿名策略与请求日志
+
+Hikari 的高匿策略按不同上游协议定义允许转发的头部集合。Tavily HTTP 与 Rebalance MCP HTTP 会清除客户端身份和代理链路信息；Control MCP 则只在管理员明确配置时发送固定的 `User-Agent`。
+
+每次请求的 method、path、query、上游响应、状态码、错误以及透传或丢弃的头部都会进入 `request_logs`。管理员可以回看异常请求、配额消耗与上游返回。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 运维控制台
+
+Web 控制台提供 Key 健康、请求统计、日志和管理员操作入口。软删除、恢复和真实 Key 查看都受管理员认证保护；运行状态和历史流量则通过页面直接呈现，不需要依赖数据库命令或容器日志完成日常判断。
+
+</section>

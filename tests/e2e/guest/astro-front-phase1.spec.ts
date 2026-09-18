@@ -98,9 +98,7 @@ test.describe("Astro public front (phase 1)", () => {
     await page.goto("/projects/kaisoumail", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "KaisouMail" }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
-    await expect(
-      page.getByText("把临时邮箱能力做成可公开使用的产品面，而不是脚本工具。", { exact: true })
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "临时邮箱控制面", exact: true })).toBeVisible();
   });
 
   test("serves feed, sitemap, and public APIs through the gateway", async ({ request }) => {

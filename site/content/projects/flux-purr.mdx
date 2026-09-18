@@ -1,0 +1,63 @@
+---
+slug: flux-purr
+---
+
+<section className="project-mdx-section">
+
+## 单仓设备软件结构
+
+Flux Purr 是一个面向嵌入式设备的单仓工程：ESP32-S3 固件、React 控制台以及本地 CLI/devd 工具共同维护同一套设备控制契约。
+
+设备身份、能力、状态和错误语义由共享领域模型定义，再通过 USB、native IPC、Web Serial、局域网 HTTP 和 Web 控制台传递。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 校准数据归属
+
+Flux Purr 的校准流程把采样、拟合建议和生效参数分成不同阶段。电压与温度校准先产生带设备身份的样本，热控测试再根据受控的 PD 条件和温度曲线形成建议；只有写入明确的 A/B 参数槽位并完成设备确认后，控制运行时才会把它当成当前参数。
+
+实验数据不直接改变设备。操作者可以比较不同批次和硬件变体；参数不完整或来源不匹配时，流程停在诊断界面。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 连接与能力模型
+
+USB、Web Serial、native IPC 和 LAN HTTP 使用同一设备模型。连接建立后，控制台依据设备能力、当前状态和 lease 结果决定动作；离线或降级状态只提供已知信息。
+
+公共 Demo 只模拟状态和交互。烧录、凭据写入和配对重置保留在具备设备身份与安全前置条件的本地路径。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 控制台能力状态
+
+Flux Purr Web App 面向一次操作一台设备的硬件和固件操作者。界面会区分 live、mock、offline、degraded、pending 与 unsupported 状态，并把当前设备、连接方式、遥测、热控状态和能力限制放在同一条操作路径里。
+
+VIN ADC、RTD ADC、加热曲线校准和固件产物检查都带有对应的设备、传输和安全前置条件。动作只有在当前设备确实具备能力时才开放，无法执行的原因也保留在界面上。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 热控运行时
+
+当前固件基线以 ESP32-S3 热控设备为中心，包含 RTD 温度采样、PID 加热、PD 合同判断、风扇策略、前面板状态和 EEPROM 持久化。PD contract 尚未就绪、传感器故障或绝对过温时，输出会保持在安全状态，而 Dashboard 仍可用于诊断。
+
+校准分成电压读数、温度和加热曲线三个 owner-facing 模式。样本、拟合建议和真正生效的 A/B 参数槽位各自有清晰边界，避免把测到的建议值误写成设备已经采用的控制参数。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 本地 devd 边界
+
+`flux-purr-devd` 处理 USB/串口发现、独占 lease、有限监视事件和 Wi-Fi provisioning bridge。CLI 与 devd 之间保持 native IPC 边界；浏览器需要本地能力时，才显式使用 Web companion。
+
+局域网控制面用于已配对设备的状态和有限维护动作，初始 Wi-Fi 配置、凭据写入、烧录和配对重置仍然要求 USB-backed 路径。公共 Demo 保持 mock-only，复用控制台交互而不触碰真实设备。
+
+</section>

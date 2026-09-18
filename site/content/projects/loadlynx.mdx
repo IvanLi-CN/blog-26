@@ -1,0 +1,57 @@
+---
+slug: loadlynx
+---
+
+<section className="project-mdx-section">
+
+## 双 MCU 负载闭环
+
+LoadLynx 将实时控制和设备控制面拆到两颗 MCU 上。STM32G431 负责 CC/CV 闭环、保护和高速遥测；ESP32-S3 负责本地界面、USB/Wi-Fi 控制、标定、Preset 持久化，以及与主机工具和 Web Console 的连接。
+
+实时控制和用户操作分别由两颗 MCU 处理。模拟侧专注闭环与保护，数字侧负责界面和连接。
+
+</section>
+
+<section className="project-mdx-section">
+
+## Preset 与标定
+
+Preset 描述 CC/CV 模式、目标值、软限制和输出开关；标定描述 ADC 读数到物理量的转换。数字侧分别保存两类数据，临时样本不进入运行 Preset。
+
+数字侧还负责触摸、提示音、前面板显示和网络连接，UI 同时展示目标值与实际值。模拟侧负责闭环和保护，界面提交设定并显示结果。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 输出保护链
+
+输入合同未建立、模拟侧回报故障或温度达到阈值时，系统关闭或限制输出。数字侧继续提供设置、监视和日志，保留故障前后的状态。
+
+固件产物和设备会话也有自己的校验边界。`loadlynx-devd` 在烧录、reset 和 monitor 前确认设备身份与 artifact hash，主机工具再把串口响应整理成可读事件，避免把“命令已发送”当作“设备已进入目标状态”。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 控制协议与遥测
+
+两颗 MCU 之间通过隔离 UART 交换协议帧。当前协议使用 SLIP 处理边界、CBOR 表达载荷，并以 CRC 校验整帧；确认行为由消息类型决定，例如 `SetMode` 会请求 ACK，遥测则以周期状态帧为主。
+
+`SetMode` 是当前主控制链的原子消息：一次携带 active preset、输出开关、CC/CV 模式、目标值和软限制，避免先改目标、再改模式、最后改输出时出现短暂不一致。STM32G431 以 `FAST_STATUS` 周期返回工作模式、目标值、物理量、温度和故障状态，ESP32-S3 再把这些状态交给本地 UI、CLI 和 Web 控制面。
+
+USB-PD 也沿着同一条链路进入系统。数字侧提交目标 PDO/APDO 和请求电压、电流，模拟侧返回实际合同状态；请求是否被接受与最终协商结果被明确区分。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 设备验证链
+
+LoadLynx 的控制面不只提供一个网页。`loadlynx` CLI 和 `loadlynx-devd` 共同负责设备发现、已绑定设备记忆、USB CDC 会话、固件 artifact 校验、烧录、reset、monitor 和日志读取。Web Console 通过受控的 devd bridge 接入，适合在工作台旁观察设备状态和执行调整。
+
+在外部 USB-C Source 验证中，LoadLynx 作为通用 Sink 产生 PD 请求和受控负载刺激。外部被测设备的故障状态是主要判定依据，LoadLynx 的端电压、电流、功率和 PD contract 用于补充记录。
+
+当前工程仍保留明确边界：模拟侧 RTT/defmt monitor、跨 MCU 热降额联动，以及若干独立诊断和升级帧仍未作为已交付能力对外宣称。
+
+</section>

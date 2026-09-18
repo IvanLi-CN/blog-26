@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { migratedProjectSlugs } from "../../fixtures/project-content";
 
 async function gotoWithTheme(page: Page, route: string, theme: "light" | "dark" | "system") {
   await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
@@ -436,14 +437,38 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.locator(".project-mdx-section")).toHaveCount(3);
   });
 
-  test("catalog-only detail falls back to verified catalog content", async ({ page }) => {
+  test("migrated detail renders project-specific MDX content", async ({ page }) => {
     await gotoWithTheme(page, "/projects/kaisoumail", "light");
 
     await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
-    await expect(page.locator(".project-toc")).toHaveCount(0);
-    await expect(
-      page.getByText("把临时邮箱能力做成可公开使用的产品面，而不是脚本工具。", { exact: true })
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "临时邮箱控制面" })).toBeVisible();
+  });
+
+  test("all migrated detail routes render their compiled body and TOC targets", async ({
+    page,
+  }) => {
+    for (const slug of migratedProjectSlugs) {
+      await gotoWithTheme(page, `/projects/${slug}`, "light");
+
+      const body = page.locator("article.project-mdx-content:not(.project-catalog-fallback)");
+      await expect(body, `${slug} should render MDX instead of fallback`).toHaveCount(1);
+      expect(await body.locator("h2").count(), `${slug} should have an H2`).toBeGreaterThan(0);
+
+      const tocTargets = await page
+        .locator(".project-toc a")
+        .evaluateAll((links) =>
+          links
+            .map((link) => link.getAttribute("href"))
+            .filter((href): href is string => Boolean(href))
+        );
+      for (const href of tocTargets) {
+        const targetId = href.startsWith("#") ? href.slice(1) : href;
+        expect(
+          await page.evaluate((id) => document.getElementById(id) !== null, targetId),
+          `${slug} TOC target ${href}`
+        ).toBe(true);
+      }
+    }
   });
 
   test("social preview selects the 640w candidate at the lg boundary", async ({ page }) => {
