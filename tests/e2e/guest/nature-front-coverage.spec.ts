@@ -441,9 +441,7 @@ test.describe("Nature frontend public coverage", () => {
     await gotoWithTheme(page, "/projects/kaisoumail", "light");
 
     await expect(page.getByRole("heading", { name: "项目概览" })).toHaveCount(0);
-    await expect(
-      page.getByRole("heading", { name: "把一次性邮箱做成可操作的控制面" })
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "临时邮箱控制面" })).toBeVisible();
     await expect(page.locator(".project-toc a")).toHaveCount(5);
   });
 
