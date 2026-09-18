@@ -2,11 +2,17 @@
 slug: loadlynx
 ---
 
+<section className="project-mdx-section">
+
 ## 分体架构下的负载闭环
 
 LoadLynx 将实时控制和设备控制面拆到两颗 MCU 上。STM32G431 负责 CC/CV 闭环、保护和高速遥测；ESP32-S3 负责本地界面、USB/Wi-Fi 控制、标定、Preset 持久化，以及与主机工具和 Web Console 的连接。
 
 这样的分工把实时控制和用户可见的设备操作分开处理。模拟侧不需要承担完整的用户界面，数字侧也不直接替代实时保护路径。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 控制命令与遥测如何对齐
 
@@ -16,6 +22,10 @@ LoadLynx 将实时控制和设备控制面拆到两颗 MCU 上。STM32G431 负�
 
 USB-PD 也沿着同一条链路进入系统。数字侧提交目标 PDO/APDO 和请求电压、电流，模拟侧返回实际合同状态；请求是否被接受与最终协商结果被明确区分。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 从设备操作到可复盘的验证链
 
 LoadLynx 的控制面不只提供一个网页。`loadlynx` CLI 和 `loadlynx-devd` 共同负责设备发现、已绑定设备记忆、USB CDC 会话、固件 artifact 校验、烧录、reset、monitor 和日志读取。Web Console 通过受控的 devd bridge 接入，适合在工作台旁观察设备状态和执行调整。
@@ -23,3 +33,5 @@ LoadLynx 的控制面不只提供一个网页。`loadlynx` CLI 和 `loadlynx-dev
 在外部 USB-C Source 验证中，LoadLynx 可以作为通用 Sink 产生 PD 请求和受控负载刺激，但外部被测设备的故障状态仍是主要判定依据。LoadLynx 的端电压、电流、功率和 PD contract 用来提供第二条证据链，而不是替代 DUT 自己的诊断。
 
 当前工程仍保留明确边界：模拟侧 RTT/defmt monitor、跨 MCU 热降额联动，以及若干独立诊断和升级帧仍未作为已交付能力对外宣称。
+
+</section>

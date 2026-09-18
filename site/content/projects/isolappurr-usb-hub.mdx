@@ -2,11 +2,17 @@
 slug: isolappurr-usb-hub
 ---
 
+<section className="project-mdx-section">
+
 ## 把隔离落实到端口边界
 
 IsolaPurr USB Hub 是一台面向桌面工作台的有源 USB 集线器和供电模块。它提供 USB-C 上行、USB-C 下行和 USB-A 下行：USB-C 上行承载主机连接，USB-C 下行承担可调供电路径，USB-A 下行则通过独立的隔离 DC/DC 供电，把数据链路和端口电源的边界落到硬件上。
 
 当前正式硬件基线是 `tps-sw`。CH334P 处理 USB2.0 Hub，CH318T 负责隔离数据链路，URB2405S-3WR3 负责隔离侧供电；CH217、CH442E、TVS0500 和 TPS55288 分别承担接口保护、USB 数据切换、VBUS 保护和可调电源控制。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 三条连接路径共享一套设备身份
 
@@ -14,14 +20,24 @@ IsolaPurr USB Hub 是一台面向桌面工作台的有源 USB 集线器和供电
 
 三条路径最终都解析到同一个完整的 12 字符 `device_id`。端口、网络和本地保存记录围绕这个身份合并，短前缀只用于显示或输入便利，不能替代完整身份。这样可以避免 USB、Wi-Fi 和 LAN 同时出现时把同一台 Hub 误判成多台设备。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 端口动作必须有设备确认
 
 设备控制面把端口状态和端口能力分开处理。HTTP API 可以读取端口快照，也可以提交端口电源开关和 replug 操作；Web 控制台则根据设备声明的 capability schema 判断某个动作是 `supported`、`unsupported` 还是 `unknown`。
 
 没有足够的兼容性证据时，系统不能凭固件版本或界面猜测来提供危险动作。端口的 confirmed state 是设备真正返回的状态，capability 则是系统是否有依据安全地展示动作，两者分别服务于反馈和准入。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 当前版本与下一版硬件分开叙述
 
 仓库同时保留 `tps-sw` 和 `tps-fusb` 两个硬件方案。前者是当前正式版本，后者是下一版设计基线：它计划使用双 FUSB302B，并由 MCU 实现 USB-PD Fixed/PPS 的策略控制，但目前仍处于网表归档和验证前阶段。
 
 因此，IsolaPurr 的当前正文只把 `tps-sw` 的隔离、端口控制、设备身份和三种连接路径写成现状；`tps-fusb`、完整的主动协议档位配置以及尚未完成的实物验证都保留为工程后续。
+
+</section>

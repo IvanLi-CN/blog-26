@@ -2,11 +2,17 @@
 slug: octo-rill
 ---
 
+<section className="project-mdx-section">
+
 ## 把 GitHub 动态整理成个人阅读工作区
 
 OctoRill 面向需要持续查看 GitHub 动态的个人用户。它把发布更新、与当前用户直接相关的社交反馈、日报和收件箱入口放到同一个阅读工作区中，减少在仓库页、Release 页和通知页之间反复切换的成本。
 
 它保留 GitHub 作为事实来源，也刻意不在站内重做完整 GitHub 工作流。用户在这里先判断“今天发生了什么、哪些内容值得继续读”，需要进行评论、合并或通知处理时再回到 GitHub。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## Release 是主要阅读对象
 
@@ -14,11 +20,19 @@ Release 卡片同时保留原始上下文和面向阅读的处理结果。用户
 
 这使 Release 不只是信息流中的一条记录，而是一个可以从摘要进入完整上下文的阅读单元。社交活动保持轻量，只展示与当前用户直接相关的获星和关注，不把 Dashboard 扩展成嘈杂的社交 Feed。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 以自然日而不是滚动时间窗口回顾变化
 
 日报回答的是“昨天发生了什么”，不是“最近 24 小时发生了什么”。系统按照用户设置的时区解释本地自然日，将内容窗口固定为昨天 `00:00` 到今天 `00:00`，自动生成时间由管理员统一控制。
 
 日报正文以项目更新为主；只有当天确实存在获星或关注事件时，才展开相应的社交部分。低信息 Release 不会被强行补成伪摘要，AI 不可用时也会使用中性兜底语义，以免把生成结果误当作原始事实。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 同一工作区容纳不同阅读范围
 
@@ -26,8 +40,14 @@ Dashboard 提供全部、发布、加星、关注、日报和收件箱六个入�
 
 列表和日报候选会受到用户关注范围影响，但 Release 详情和详情翻译按照稳定的 `release_id` 读取，避免用户取消关注某个仓库后，已经进入阅读路径的详情突然失去共享事实。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 后端聚合，前端保持阅读路径
 
 Rust 后端负责认证、GitHub 同步、翻译请求、日报生成、管理员任务和静态资源托管；React/Vite 前端负责主工作区、范围收窄页面、管理页面和公开 Demo。浏览器不直接连接 GitHub、LinuxDO 或 AI provider，外部依赖统一经过后端边界。
 
 公开 `/demo/` 使用 mock-only runtime，用于页面验证和交互展示，不承担真实业务写入。真正的产品工作区则继续以 GitHub 为事实来源，把生成内容放在可核对的阅读路径旁边。
+
+</section>

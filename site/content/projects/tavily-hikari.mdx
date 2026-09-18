@@ -2,11 +2,17 @@
 slug: tavily-hikari
 ---
 
+<section className="project-mdx-section">
+
 ## 把 Tavily 调用收拢到自己的代理边界
 
 Tavily Hikari 位于 Tavily 上游与实际调用者之间。它把 MCP 请求、HTTP API 客户端和多把 Tavily Key 放进同一条可观测的代理链路，让调用方只需要持有 Hikari access token，而不必直接接触上游 Key。
 
 项目的核心不是再做一层简单转发，而是把密钥调度、访问配额、匿名透传和请求审计集中到代理边界内。Rust 与 Axum 负责请求和运行时，SQLite 保存需要长期判断的 Key 状态与日志，控制台把这些状态呈现给运维者。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 让一组 Key 成为可调度资源
 
@@ -14,11 +20,19 @@ Hikari 为每个 Tavily Key 保存最近使用时间和当前状态，并为访�
 
 上游返回 432 时，Hikari 会把对应 Key 标记为 `exhausted`，调度器暂时跳过它，直到下一个 UTC 月初或管理员手动恢复。对外展示的只是 4 位短 ID，真实凭据仍然留在管理员边界内。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## MCP 与 HTTP 客户端共用一套入口
 
 原生 MCP 客户端通过 `/mcp` 进入代理；直接使用 Tavily HTTP API 的客户端，则可以将 Base URL 指向 `/api/tavily`。搜索、提取、爬取、映射和 Research 等 HTTP 端点都复用 Hikari 的访问令牌、Key 池与配额检查。
 
 两类客户端共享同一套控制面：客户端拿到 `th-<id>-<secret>` 形式的 Hikari token，Hikari 再在内部完成上游 Key 选择和请求转发。官方 Tavily CLI 也可以通过 wrapper 使用同一地址和令牌。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 在代理层处理匿名与证据链
 
@@ -26,6 +40,12 @@ Hikari 的高匿策略按不同上游协议定义允许转发的头部集合。T
 
 每次请求的 method、path、query、上游响应、状态码、错误以及透传或丢弃的头部都会进入 `request_logs`。因此，代理层同时承担隐私边界和排障证据链：管理员可以回看异常请求、配额消耗与上游返回，而不必重新拼接分散的运行日志。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 把运维状态放回可见界面
 
 Web 控制台提供 Key 健康、请求统计、日志和管理员操作入口。软删除、恢复和真实 Key 查看都受管理员认证保护；运行状态和历史流量则通过页面直接呈现，不需要依赖数据库命令或容器日志完成日常判断。
+
+</section>

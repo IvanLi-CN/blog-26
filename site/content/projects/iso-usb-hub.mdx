@@ -2,11 +2,17 @@
 slug: iso-usb-hub
 ---
 
+<section className="project-mdx-section">
+
 ## 从四口硬件到一套可操作的控制面
 
 IsolaRail 是当前 V3 硬件基线上的四口 USB Hub 控制平面。ESP32-S3 负责输入电源资格、四路端口门控、遥测、持久化配置和前面板；CH335F 负责 USB Hub 数据面，并通过 `PWREN#` 与 `OVCUR#` 把上游状态和过流反馈交给控制面。
 
 项目关注的不是重新包装一个 USB Hub，而是把端口、电源、状态和维护动作组织成用户与本机工具都能理解的控制语义。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 启动自检先决定哪些能力可以放行
 
@@ -14,11 +20,19 @@ IsolaRail 是当前 V3 硬件基线上的四口 USB Hub 控制平面。ESP32-S3 
 
 当前策略是只读探测和分级降级。输入电源不安全时，系统保持 Fatal 并阻止运行；前面板、风扇或单路遥测模块异常时，则尽量保留其它可用能力，并把缺失节点和故障原因继续暴露给控制面。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 每一路端口都有可解释的门控
 
 四路端口的输出不是单一开关。VIN 是否 ready、CH335F sideband 是否在线、设备处于 standalone 还是 upstream-managed、对应的 `PWREN#` 是否允许、软件过流 latch 是否存在，以及用户是否手动关闭，都会参与最终的 `EN1..EN4` 决策。
 
 过流时，固件会立即关闭对应输出并向 CH335F 注入 `OVCUR#`；只有连续的带电安全采样满足条件后，latch 才能释放。`port.replug` 被限定为受控断电再上电，不把电源动作描述成 USB 数据拓扑变化。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 本机与局域网入口各自守住写入边界
 
@@ -26,8 +40,14 @@ IsolaRail 是当前 V3 硬件基线上的四口 USB Hub 控制平面。ESP32-S3 
 
 LAN HTTP v1 主要提供设备身份、状态、端口信息和有限维护动作。Wi-Fi 凭据写入仍要求 USB-backed 设备路径；`hardware.snapshot` 则是只读诊断接口，用来汇总电源、I²C、sideband、前面板、风扇、蜂鸣器和端口模块状态。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 160x50 前面板把四路状态压缩到一屏
 
 本机 dashboard 使用 160x50 像素的四列布局，每列对应一个物理端口，优先显示电压、电流、功率和当前状态。过流、关闭、断开和初始化等状态有明确优先级，不会用一个看似正常的 `0V/0mA` 掩盖尚未测量或保护已触发。
 
 五向按键只发布去抖后的选择和手动切换事件，真正的输出决策仍由运行时 reducer 经过电源、sideband、过流和端口门控完成。
+
+</section>

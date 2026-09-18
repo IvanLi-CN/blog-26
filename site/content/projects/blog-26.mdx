@@ -2,11 +2,17 @@
 slug: blog-26
 ---
 
+<section className="project-mdx-section">
+
 ## 三个运行面共享同一内容底座
 
 Ivan's Blog 不是只负责输出文章的前台模板。它把公共阅读、后台编辑和服务运行拆成三个明确的表面：Astro 负责公开站，Vite/React Admin SPA 负责 `/admin/*`，Bun gateway 负责运行时入口与 API。SQLite 和 Drizzle 则为内容、状态和管理操作提供持久化基础。
 
 这样的拆分让页面职责和运行职责可以分别演进。读者访问的是静态化、可缓存的公共站，作者在后台处理内容和系统状态，gateway 负责把两者连接到同一套受控接口。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 内容从本地文件到公开快照
 
@@ -14,14 +20,24 @@ Ivan's Blog 不是只负责输出文章的前台模板。它把公共阅读、�
 
 公共站不会直接把数据库中的所有行展示出来。构建公开快照时，系统只选择已发布且公开的文章和 Memos，同时检查正文与本地媒体是否仍然存在，再把结果导出给 Astro 页面和订阅源使用。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 搜索与订阅共享发布结果
 
 搜索路径同时考虑字面检索和语义检索。SQLite 中维护 `posts_search_fts` 内容索引，普通搜索可以使用 FTS 和关键词路径；当 embedding、向量或 reranker 不可用时，系统回退到可用的文本搜索，而不是让整个搜索入口失效。
 
 同一份公开快照还被 RSS、Atom、JSON Feed、标签订阅和 Memos 订阅复用。订阅路由只读取公开内容，因此搜索、网页阅读和订阅虽然呈现方式不同，使用的仍是同一个发布边界。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 后台工作流保留操作边界
 
 后台提供文章、评论、内容同步、标签、计划任务以及模型配置等管理入口，浏览器通过 `/api/admin/*` 与 gateway 通信。对外公开的 Admin 演示使用真实 SPA 路由和组件，只替换 API 为确定性的 mock 数据，不需要把演示状态误认为真实生产数据。
 
 博客本身也作为公开项目维护：项目索引、文章、Memos、搜索和订阅都由同一套仓库持续演进。它展示的是内容从本地编辑、同步、筛选到公开交付的完整工程边界。
+
+</section>

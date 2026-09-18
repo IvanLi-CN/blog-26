@@ -2,11 +2,17 @@
 slug: tuckmark
 ---
 
+<section className="project-mdx-section">
+
 ## 把标签打印组织成可调用的工作区
 
 Tuckmark 是一个面向标签打印场景的 agent-native 工作区。它把打印机发现、模板渲染、预览、结构化输入和打印产物放进同一套领域模型，再通过 CLI、MCP、HTTP 与 Web 提供不同入口。
 
 它的重点不是再做一个点击打印页面，而是把模板、批量输入、预览和设备能力整理成可以被人和自动化流程共同使用的工作面。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 把设备适配隔离在 Detonger
 
@@ -14,14 +20,24 @@ Tuckmark 位于工作流和设备适配之间。`detonger` 作为独立的 Rust 
 
 这种分层让打印机协议不必渗入 Web、CLI 或 Agent 流程。设备适配可以单独验证，工作区则继续围绕可复用的打印产物组织。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 代理参与，但确认和写入仍由系统负责
 
 Tuckmark 不解析私有订单文件，也不在产品内部托管 LLM。外部 Agent 可以根据已经授权的材料生成 `tuckmark.agent-import.v1` proposal，Tuckmark 再把它交给 DEVD 进行模板补全、用户确认和确定性写入。
 
 新物料和库存补货被明确分开：前者创建物料、标签绑定和入库调整，后者只写入已有物料的入库调整。版本检查、冲突处理和事务提交由 DEVD 负责，避免自动化流程直接绕过用户确认修改库存。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 两种打印路径对应两种运行边界
 
 浏览器直接打印路径在支持 Web Bluetooth 的安全上下文中完成本地渲染、编码和发送；服务 API 打印路径则由 Web 请求本地运行时服务，再由服务端和 detonger 控制设备。
 
 两条路径共享打印产物语义，却不共享运行时依赖。这样既能让静态浏览器模式保持独立，也能在需要本地服务时明确表达设备、权限和能力门禁。
+
+</section>

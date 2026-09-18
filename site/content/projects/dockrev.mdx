@@ -2,11 +2,17 @@
 slug: dockrev
 ---
 
+<section className="project-mdx-section">
+
 ## 从运行中的 Compose 容器重建服务清单
 
 Dockrev 面对的不是一份永远整齐的服务注册表，而是一个会被手动操作、重启和迁移不断改变的 Docker 环境。它从运行容器的 Compose 标签中发现项目和配置文件，再把这些信息整理成可检查、可更新的 stack 与 service。
 
 发现过程会保留配置文件的实际边界。保存的 Compose 文件全部可读且可解析时，项目可以进入 stopped 状态并继续出现在列表中；全部文件都不存在时才会自动归档；部分缺失、权限错误或解析失败则保持为 invalid，并把原因留给运维者处理。
+
+</section>
+
+<section className="project-mdx-section">
 
 ## 把检查、预览和更新拆成可追踪任务
 
@@ -14,14 +20,24 @@ Dockrev 的使用路径从 Overview 或 Services 发起 discovery，再对服务
 
 每一步都进入 Queue。任务有独立状态、日志和事件流，前端可以持续观察检查、拉取、Compose 执行和结果收尾，而不是只得到一个“按钮已经点击”的瞬时反馈。对于 floating tag 或多架构镜像，版本显示还会结合 digest 与异步快照进行推断，避免把 registry 返回的原始 tag 直接当成可靠版本号。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 更新动作必须尊重 Compose 的运行边界
 
 更新不是简单地替换一行 image tag。Dockrev 会在执行前检查目标 Compose 环境、记录明确的更新目标，并在需要时留下可恢复的配置来源。自动更新生成的 image-only override 会持久化保存，避免一次任务结束后丢失“实际使用了哪个镜像”的证据。
 
 生命周期操作同样有明确约束。Compose V2 启动使用 `--pull never --no-recreate`，服务级启动还不会拉起依赖；Compose V1、版本探测失败或关键路径不可用时，写操作会被拒绝。更新过程会结合 healthcheck、任务状态和日志暴露结果，失败时再进入备份恢复或回滚路径。它不会把普通 recreate 包装成零停机方案，带有 Traefik 路由的生产服务仍需要运维者自行设计切换策略。
 
+</section>
+
+<section className="project-mdx-section">
+
 ## 自升级与外部集成各自保持边界
 
 Dockrev 自身通过独立的 Supervisor 控制台执行 apply、状态观察和 rollback，避免被普通服务更新动作直接覆盖。API、内嵌 Web UI、Supervisor 和外部入口可以按部署拓扑分别配置，但生产环境仍由 Dockrev 自己划分匿名健康接口与受保护业务面。
 
 对外集成围绕任务触发和结果通知展开：外部系统可以通过带 secret 的 webhook 触发 check/update，GHCR package webhook 会优先定位受影响的服务，无法精确定位时才退回 discovery。检查结果还可以发送到 Webhook、Telegram、Email 或 Web Push；每条集成路径都保留鉴权、去重和失败状态。
+
+</section>
