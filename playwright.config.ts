@@ -5,6 +5,7 @@ import {
   E2E_DEFAULT_DB_PATH,
   E2E_DEFAULT_LOCAL_CONTENT_PATH,
   E2E_EMAIL_HEADER_NAME,
+  E2E_GATEWAY_BIND_HOST,
   E2E_MCP_TEST_PAT_TOKEN,
   E2E_USER_EMAIL,
 } from "./tests/e2e/runtime";
@@ -164,6 +165,7 @@ export default defineConfig({
           env: {
             ADMIN_EMAIL,
             USER_EMAIL,
+            BIND_HOST: E2E_GATEWAY_BIND_HOST,
             BLOG_PAT_ENV: "test",
             DB_PATH: ABS_TEST_DB,
             LOCAL_CONTENT_BASE_PATH: ABS_LOCAL_CONTENT,

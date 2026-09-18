@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import mdx from "@astrojs/mdx";
 import react from "@astrojs/react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 
 const sitePort = Number(process.env.SITE_PORT || 25093);
@@ -65,6 +66,7 @@ export default defineConfig({
     port: sitePort,
   },
   vite: {
+    plugins: [tailwindcss()],
     cacheDir: viteCacheDir,
     server: {
       hmr: {

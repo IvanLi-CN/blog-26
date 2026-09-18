@@ -177,9 +177,10 @@ export function buildFeed(
     };
 
     // Minimal enclosure support (non-standard across formats but supported by feed for RSS)
-    if (it.enclosureUrl) {
+    const enclosureUrl = it.enclosureUrl ? toAbsoluteUrl(it.enclosureUrl) : undefined;
+    if (enclosureUrl) {
       itemDef.enclosure = {
-        url: toAbsoluteUrl(it.enclosureUrl),
+        url: enclosureUrl,
         type: enclosureType,
       };
     }

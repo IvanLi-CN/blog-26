@@ -101,7 +101,7 @@ describe("verify-pages-build", () => {
       cwd,
       "site-dist/_astro/public-runtime-url.js",
       [
-        `const env={PUBLIC_API_BASE_URL:"${apiBaseUrl}"};`,
+        `const env={PUBLIC_API_BASE_URL:\`${apiBaseUrl}\`};`,
         `fetch("/api/public/search");`,
         `fetch("/api/public/comments");`,
         `fetch("/api/public/reactions");`,
