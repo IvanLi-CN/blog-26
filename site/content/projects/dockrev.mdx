@@ -14,6 +14,26 @@ Dockrev 面对的不是一份永远整齐的服务注册表，而是一个会被
 
 <section className="project-mdx-section">
 
+## 状态分类比“在线或离线”更重要
+
+Dockrev 把 stack 的发现状态拆成 active、stopped、invalid 和 archived。运行容器存在但 Compose 文件缺失时，项目不会被伪装成已停止；文件存在但权限或解析失败时，也会保留 invalid 原因供修复。只有确认全部来源都不存在，系统才会把对象归档。
+
+这种分类让列表承担诊断入口，而不只是给出一组绿色的服务名。运维者可以先处理来源丢失、权限错误或版本不兼容，再决定是否进入更新路径。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 版本判断和执行结果必须分开
+
+检查阶段只回答当前镜像、候选版本和 digest 之间的关系，不会因为 registry 返回了一个 tag 就直接执行更新。对于 floating tag、多架构镜像和暂时无法解析的版本，Dockrev 会保留快照状态，直到证据足够或任务明确失败。
+
+执行阶段则只消费已经确认的目标，并把 Compose 命令、healthcheck、日志和备份恢复结果写入 Queue。这样“有新版本”“已经拉取”“服务健康”和“更新完成”不会被压缩成一个模糊的成功提示。
+
+</section>
+
+<section className="project-mdx-section">
+
 ## 把检查、预览和更新拆成可追踪任务
 
 Dockrev 的使用路径从 Overview 或 Services 发起 discovery，再对服务执行 check，获取当前镜像与候选版本的关系。真正写入之前，Service Detail 可以先运行 dry-run，验证目标版本和部署条件；确认后再按 service、stack 或 all 的作用域创建 update job。

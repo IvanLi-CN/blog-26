@@ -14,6 +14,26 @@ Tuckmark 是一个面向标签打印场景的 agent-native 工作区。它把打
 
 <section className="project-mdx-section">
 
+## 模板是稳定的输入契约
+
+模板不只是一个预览字符串。它带有固定的 package schema、变量和版本信息，渲染、批量输入、预览和打印都围绕同一份结构化数据工作。模板版本发生冲突时，系统会先要求处理冲突，不把旧模板静默覆盖成自动化流程刚生成的版本。
+
+这让 Agent 可以生成 proposal，却不能直接改变用户正在使用的打印工作区。模板补全、确认和最终写入仍然经过 DEVD 的确定性检查，打印产物也能回到对应模板和输入批次。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 运行时归档不等于物理删除
+
+模板、物料和打印记录需要长期可追溯，因此归档是运行时状态的一部分，而不是简单删除数据库行。工作区默认隐藏已归档对象，恢复操作可以重新让它们参与模板选择或库存流程，同时保留原有版本和关联关系。
+
+这套处理方式也适用于 agent import：proposal 被拒绝、过期或冲突时，系统可以保留这次输入的审计上下文，而不会把未确认的修改混入正式库存。
+
+</section>
+
+<section className="project-mdx-section">
+
 ## 把设备适配隔离在 Detonger
 
 Tuckmark 位于工作流和设备适配之间。`detonger` 作为独立的 Rust 子项目负责通过 BLE/GATT 与 DeTong / Detonger P2 通信，完成协议编码、预览、扫描和位图打印；Tuckmark 负责把这些能力接入更高层的模板、库存和运行时边界。

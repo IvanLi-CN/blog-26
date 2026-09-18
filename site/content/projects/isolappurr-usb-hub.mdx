@@ -14,6 +14,26 @@ IsolaPurr USB Hub 是一台面向桌面工作台的有源 USB 集线器和供电
 
 <section className="project-mdx-section">
 
+## 隔离电源和数据，但不隔离诊断事实
+
+USB 数据经过 Hub 与隔离链路，端口电源则由独立的可调路径管理。控制面因此需要同时观察输入资格、端口输出、温度和过流等状态，不能只根据 USB 枚举结果推断“端口已经可用”。
+
+当某一路能力没有得到设备确认时，界面仍然可以显示已知状态和故障原因，但不会提供一个看似普通的强制开关。安全门的价值正在于把不确定性留在诊断层，而不是让用户用一次写入动作承担它。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 完整身份是跨连接路径的索引
+
+本地 USB、Web Serial 和 LAN 发现都可能同时看到同一台 Hub。系统用完整 `device_id` 合并这些观察结果，并把端口、硬件 variant、固件版本和网络地址作为同一设备的属性管理；显示用的短名称不能参与身份判断。
+
+因此，换一条连接方式不会创建一份新的设备配置。操作者看到的仍是同一台 Hub 的 confirmed state、能力声明和最近一次维护记录。
+
+</section>
+
+<section className="project-mdx-section">
+
 ## 三条连接路径共享一套设备身份
 
 设备可以通过 Wi-Fi/LAN、Web Serial 或 Local USB 进入控制台。Wi-Fi/LAN 适合日常局域网控制，Web Serial 适合浏览器直接连接，Local USB 则由 `isolapurr-devd` 和 `isolapurr` 负责串口、代理、烧录和身份校验。它们对应不同生命周期和使用环境，而不是三档产品等级。

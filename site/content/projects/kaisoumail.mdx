@@ -14,6 +14,26 @@ KaisouMail 面向需要管理临时邮箱、接入自有域名并查看邮件内
 
 <section className="project-mdx-section">
 
+## 三种存储各自保存不同事实
+
+KaisouMail 没有把整封邮件塞进同一张业务表。D1 保存邮箱、消息索引、域名和任务状态，R2 保存原始 EML、HTML、纯文本和附件，Pages Proxy 只负责把前端请求稳定地转到 Worker。读取列表时只取需要排序和筛选的元数据，打开详情时才按对象键取回正文。
+
+这种分层让清理策略也能保持明确：邮箱生命周期结束时，任务可以分别处理索引记录与对象存储，不必把一次删除动作隐藏成一个不可观察的巨大请求。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 异步 cutover 需要能被追踪和恢复
+
+域名接入并不止是保存一个字符串。系统需要检查 Cloudflare zone、创建或重建 Email Routing 记录、确认 Catch All 状态，再把结果回写到域名和任务模型。任何一步等待 DNS 或上游 API 的过程，都通过 task 状态和 SSE 进度呈现给控制面。
+
+任务失败时，界面能够看到是发现、写入、校验还是清理阶段出错；重试也围绕同一个域名和任务边界执行，而不是让用户重复提交一个可能已经部分生效的 onboarding 表单。
+
+</section>
+
+<section className="project-mdx-section">
+
 ## 从入站路由到可读消息
 
 入站邮件首先经过 Cloudflare Email Routing，再由 Email Worker 接收。Worker 将结构化元数据写入 D1，将原始邮件正文和相关内容放入 R2；控制面通过 API Worker 读取这些状态，React 界面则负责邮箱列表、消息列表和正文阅读。

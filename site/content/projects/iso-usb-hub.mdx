@@ -14,6 +14,26 @@ IsolaRail 是当前 V3 硬件基线上的四口 USB Hub 控制平面。ESP32-S3 
 
 <section className="project-mdx-section">
 
+## 传输层只负责送达，控制契约负责判断
+
+USB JSONL、native IPC 和 LAN HTTP 都围绕设备身份、硬件快照和端口状态传递数据。它们不会各自定义一套“打开端口”的含义；请求最终进入同一个运行时控制路径，由电源资格、sideband、过流 latch 和用户状态共同决定 `EN1..EN4`。
+
+这样，CLI、桌面应用和 Web 页面可以有不同的交互形式，却不会因为 transport 不同而产生相反的安全结果。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 诊断快照把现场留在设备边界内
+
+`hardware.snapshot` 汇总输入电源、I2C、CH335F sideband、前面板、风扇、蜂鸣器和四路端口模块状态，服务于只读排障。它与端口写入接口分开，读取完整快照不会意外触发 replug 或改变门控。
+
+前面板的 160x50 布局也遵循同一原则：缺失、过流、关闭和未测量有不同状态，不能用一组 `0V/0mA` 数字掩盖“尚未确认”的事实。
+
+</section>
+
+<section className="project-mdx-section">
+
 ## 启动自检先决定哪些能力可以放行
 
 固件启动固定经过 `Early Bring-up`、`Self-Check`、`Gate Apply` 和 `Runtime` 四阶段。LCD 自检页、串口日志和运行时门控共享同一个 `BootSelfCheckSnapshot`，因此设备不会出现多套互相矛盾的启动判断。
