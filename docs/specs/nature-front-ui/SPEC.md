@@ -2,7 +2,7 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-09-17`
+- Last Updated: `2026-09-18`
 - Owner: `main-agent`
 
 ## Related ADRs
@@ -163,6 +163,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 - Evidence captured from the current static Astro output after the 15 project bodies were compiled. Five representative groups were checked at desktop and `393px × 852px` mobile viewports in both light and dark themes; Hero, public-entry sidebar, optional TOC, continuous MDX prose, and footer remained readable without horizontal overflow.
 - Source type `ui_demo`; target program `mock-only`; capture scope `browser-viewport`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
+- Evidence binding: implementation commit `35e2e231`; the follow-up change only records this binding and the spec date, so the rendered surface and captured inputs are unchanged.
 - Representative captures: [Tavily Hikari desktop light](./assets/project-content-migration/tavily-hikari-desktop-light.webp), [Tavily Hikari mobile dark](./assets/project-content-migration/tavily-hikari-mobile-dark.webp), [SpotiBind desktop light](./assets/project-content-migration/spoti-bind-desktop-light.webp), [SpotiBind mobile dark](./assets/project-content-migration/spoti-bind-mobile-dark.webp), [LoadLynx desktop light](./assets/project-content-migration/loadlynx-desktop-light.webp), [LoadLynx mobile dark](./assets/project-content-migration/loadlynx-mobile-dark.webp), [Tuckmark desktop dark](./assets/project-content-migration/tuckmark-desktop-dark.webp), [Tuckmark mobile light](./assets/project-content-migration/tuckmark-mobile-light.webp), [XP desktop dark](./assets/project-content-migration/xp-desktop-dark.webp), and [XP mobile light](./assets/project-content-migration/xp-mobile-light.webp). Paired captures for each project and theme are stored beside these files.
 
 - Evidence captured for the Mains Aegis light/dark poster and social-preview pair after importing the upstream dark campaign assets.
