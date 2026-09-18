@@ -195,6 +195,34 @@ test.describe("Nature frontend public coverage", () => {
         )
       )
       .toBe(true);
+    await expect(page.locator(".project-poster img[data-project-poster-image]")).toHaveAttribute(
+      "src",
+      /octo-rill-light-960\.webp$/
+    );
+    await expect(
+      page.locator(".project-poster picture[data-themed-project-picture]")
+    ).toHaveAttribute("data-project-poster-theme", "light");
+
+    await page.evaluate(() => {
+      document.documentElement.setAttribute("data-ui-theme", "dark");
+    });
+    await expect(octoSocialPreviewImage).toHaveAttribute("src", /octo-rill-dark-1280\.webp$/);
+    await expect(octoSocialPreviewImage).toHaveAttribute("srcset", /octo-rill-dark-640\.webp 640w/);
+    await expect(octoSocialPreview.locator('source[type="image/avif"]')).toHaveAttribute(
+      "srcset",
+      /octo-rill-dark-640\.avif 640w/
+    );
+    await expect(octoSocialPreview.locator('source[type="image/webp"]')).toHaveAttribute(
+      "srcset",
+      /octo-rill-dark-640\.webp 640w/
+    );
+    await expect(page.locator(".project-poster img[data-project-poster-image]")).toHaveAttribute(
+      "src",
+      /octo-rill-dark-960\.webp$/
+    );
+    await expect(
+      page.locator(".project-poster picture[data-themed-project-picture]")
+    ).toHaveAttribute("data-project-poster-theme", "dark");
 
     await gotoWithTheme(page, "/projects/codex-vibe-monitor", "light");
     const codexPoster = page.locator(".project-poster");

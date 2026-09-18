@@ -130,6 +130,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The project wall uses a stable 4:5 presentation: media-backed catalog cards display supplied artwork without a copy layer or scrim, while media-free placeholders retain the fallback copy. Detail-page posters display supplied artwork without an overlay or added copy. Project detail pages show generated social previews in a stable 2:1 frame, and Tavily Hikari plus LoadLynx select matching light and dark variants from the active public theme.
 - Source type `ui_demo`; target program `Chrome`; capture scope `browser-viewport`; sensitive exclusion `N/A`.
 
+- OctoRill detail-page evidence was captured from the local Astro `ui_demo` at `1440px × 1100px` with the current poster and social-preview sources. Both themes select their matching `-light` and `-dark` poster and social-preview variants.
+
+![OctoRill detail light](./assets/octo-rill-detail-light.png)
+
+![OctoRill detail dark](./assets/octo-rill-detail-dark.png)
+
 - Evidence binding `61146e8e2c450730eba77501b7f01b7b10dd0939` baseline to the current candidate; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, requested mobile viewport `393px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`. The current candidate preserves the captured rest-state layout; the keyboard-focus summary expansion is covered by the focused guest Playwright contract.
 
 ![Current project wall light](./assets/projects-wall-light-current.png)
