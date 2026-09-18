@@ -4,17 +4,17 @@ slug: tuckmark
 
 <section className="project-mdx-section">
 
-## 把标签打印组织成可调用的工作区
+## 标签打印工作区
 
 Tuckmark 是一个面向标签打印场景的 agent-native 工作区。它把打印机发现、模板渲染、预览、结构化输入和打印产物放进同一套领域模型，再通过 CLI、MCP、HTTP 与 Web 提供不同入口。
 
-它的重点不是再做一个点击打印页面，而是把模板、批量输入、预览和设备能力整理成可以被人和自动化流程共同使用的工作面。
+模板、批量输入、预览和设备能力在同一工作区中提供给人工操作和自动化流程。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 模板是稳定的输入契约
+## 模板输入契约
 
 模板不只是一个预览字符串。它带有固定的 package schema、变量和版本信息，渲染、批量输入、预览和打印都围绕同一份结构化数据工作。模板版本发生冲突时，系统会先要求处理冲突，不把旧模板静默覆盖成自动化流程刚生成的版本。
 
@@ -24,27 +24,27 @@ Tuckmark 是一个面向标签打印场景的 agent-native 工作区。它把打
 
 <section className="project-mdx-section">
 
-## 运行时归档不等于物理删除
+## 运行时归档
 
-模板、物料和打印记录需要长期可追溯，因此归档是运行时状态的一部分，而不是简单删除数据库行。工作区默认隐藏已归档对象，恢复操作可以重新让它们参与模板选择或库存流程，同时保留原有版本和关联关系。
+模板、物料和打印记录需要长期可追溯，归档是运行时状态，不删除数据库记录。工作区默认隐藏已归档对象，恢复后可重新参与模板选择或库存流程，并保留版本和关联关系。
 
-这套处理方式也适用于 agent import：proposal 被拒绝、过期或冲突时，系统可以保留这次输入的审计上下文，而不会把未确认的修改混入正式库存。
+Agent import 的 proposal 被拒绝、过期或冲突时，系统保留输入和审计上下文；只有确认后的修改进入正式库存。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 把设备适配隔离在 Detonger
+## Detonger 设备适配
 
 Tuckmark 位于工作流和设备适配之间。`detonger` 作为独立的 Rust 子项目负责通过 BLE/GATT 与 DeTong / Detonger P2 通信，完成协议编码、预览、扫描和位图打印；Tuckmark 负责把这些能力接入更高层的模板、库存和运行时边界。
 
-这种分层让打印机协议不必渗入 Web、CLI 或 Agent 流程。设备适配可以单独验证，工作区则继续围绕可复用的打印产物组织。
+打印机协议只位于 Detonger 子项目，Web、CLI 和 Agent 流程使用上层打印产物。设备适配可以单独验证。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 代理参与，但确认和写入仍由系统负责
+## Agent proposal 与确定性写入
 
 Tuckmark 不解析私有订单文件，也不在产品内部托管 LLM。外部 Agent 可以根据已经授权的材料生成 `tuckmark.agent-import.v1` proposal，Tuckmark 再把它交给 DEVD 进行模板补全、用户确认和确定性写入。
 
@@ -54,10 +54,10 @@ Tuckmark 不解析私有订单文件，也不在产品内部托管 LLM。外部 
 
 <section className="project-mdx-section">
 
-## 两种打印路径对应两种运行边界
+## 打印运行路径
 
 浏览器直接打印路径在支持 Web Bluetooth 的安全上下文中完成本地渲染、编码和发送；服务 API 打印路径则由 Web 请求本地运行时服务，再由服务端和 detonger 控制设备。
 
-两条路径共享打印产物语义，却不共享运行时依赖。这样既能让静态浏览器模式保持独立，也能在需要本地服务时明确表达设备、权限和能力门禁。
+两条路径共享打印产物语义，运行时依赖分别管理。静态浏览器模式保持独立；本地服务路径明确表达设备、权限和能力门禁。
 
 </section>

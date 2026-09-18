@@ -4,37 +4,37 @@ slug: flux-purr
 
 <section className="project-mdx-section">
 
-## 一套仓库承载设备软件的三条边界
+## 单仓设备软件结构
 
 Flux Purr 是一个面向嵌入式设备的单仓工程：ESP32-S3 固件、React 控制台以及本地 CLI/devd 工具共同维护同一套设备控制契约。
 
-设备身份、能力、状态和错误语义先被整理成共享领域模型，再由 USB、native IPC、Web Serial、局域网 HTTP 和 Web 控制台分别承载。控制台因此不需要猜测固件当前提供了哪些动作。
+设备身份、能力、状态和错误语义由共享领域模型定义，再通过 USB、native IPC、Web Serial、局域网 HTTP 和 Web 控制台传递。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 校准数据必须经过明确的归属
+## 校准数据归属
 
 Flux Purr 的校准流程把采样、拟合建议和生效参数分成不同阶段。电压与温度校准先产生带设备身份的样本，热控测试再根据受控的 PD 条件和温度曲线形成建议；只有写入明确的 A/B 参数槽位并完成设备确认后，控制运行时才会把它当成当前参数。
 
-这使得一份实验数据不会悄悄改变真实设备。操作者可以比较不同批次和不同硬件变体的结果，也能在参数不完整或来源不匹配时停在诊断界面，而不是带着未经确认的数字继续加热。
+实验数据不直接改变设备。操作者可以比较不同批次和硬件变体；参数不完整或来源不匹配时，流程停在诊断界面。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 连接方式不同，但能力判断不能分叉
+## 连接与能力模型
 
-USB、Web Serial、native IPC 和 LAN HTTP 只是把同一设备模型送到不同边界。连接建立后，控制台仍依据设备声明的能力、当前状态和 lease 结果决定动作是否可用；离线或降级状态可以继续阅读已知信息，但不会被当成实时控制已成功。
+USB、Web Serial、native IPC 和 LAN HTTP 使用同一设备模型。连接建立后，控制台依据设备能力、当前状态和 lease 结果决定动作；离线或降级状态只提供已知信息。
 
-公共 Demo 因此只模拟状态和交互，不模拟真实烧录、凭据写入或配对重置。真正需要修改设备的动作始终保留在有明确身份和安全前置条件的本地路径中。
+公共 Demo 只模拟状态和交互。烧录、凭据写入和配对重置保留在具备设备身份与安全前置条件的本地路径。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 控制台首先回答“这台设备现在能做什么”
+## 控制台能力状态
 
 Flux Purr Web App 面向一次操作一台设备的硬件和固件操作者。界面会区分 live、mock、offline、degraded、pending 与 unsupported 状态，并把当前设备、连接方式、遥测、热控状态和能力限制放在同一条操作路径里。
 
@@ -44,7 +44,7 @@ VIN ADC、RTD ADC、加热曲线校准和固件产物检查都带有对应的设
 
 <section className="project-mdx-section">
 
-## 热控运行时把安全条件写进控制契约
+## 热控运行时
 
 当前固件基线以 ESP32-S3 热控设备为中心，包含 RTD 温度采样、PID 加热、PD 合同判断、风扇策略、前面板状态和 EEPROM 持久化。PD contract 尚未就绪、传感器故障或绝对过温时，输出会保持在安全状态，而 Dashboard 仍可用于诊断。
 
@@ -54,7 +54,7 @@ VIN ADC、RTD ADC、加热曲线校准和固件产物检查都带有对应的设
 
 <section className="project-mdx-section">
 
-## 本地 devd 负责设备边界，而不是隐藏复杂性
+## 本地 devd 边界
 
 `flux-purr-devd` 处理 USB/串口发现、独占 lease、有限监视事件和 Wi-Fi provisioning bridge。CLI 与 devd 之间保持 native IPC 边界；浏览器需要本地能力时，才显式使用 Web companion。
 

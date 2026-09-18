@@ -4,7 +4,7 @@ slug: isolappurr-usb-hub
 
 <section className="project-mdx-section">
 
-## 把隔离落实到端口边界
+## 隔离电源与数据
 
 IsolaPurr USB Hub 是一台面向桌面工作台的有源 USB 集线器和供电模块。它提供 USB-C 上行、USB-C 下行和 USB-A 下行：USB-C 上行承载主机连接，USB-C 下行承担可调供电路径，USB-A 下行则通过独立的隔离 DC/DC 供电，把数据链路和端口电源的边界落到硬件上。
 
@@ -14,37 +14,37 @@ IsolaPurr USB Hub 是一台面向桌面工作台的有源 USB 集线器和供电
 
 <section className="project-mdx-section">
 
-## 隔离电源和数据，但不隔离诊断事实
+## 端口诊断状态
 
-USB 数据经过 Hub 与隔离链路，端口电源则由独立的可调路径管理。控制面因此需要同时观察输入资格、端口输出、温度和过流等状态，不能只根据 USB 枚举结果推断“端口已经可用”。
+USB 数据经过 Hub 与隔离链路，端口电源由独立的可调路径管理。控制面同时观察输入资格、端口输出、温度和过流状态，USB 枚举结果不代表端口已经可用。
 
-当某一路能力没有得到设备确认时，界面仍然可以显示已知状态和故障原因，但不会提供一个看似普通的强制开关。安全门的价值正在于把不确定性留在诊断层，而不是让用户用一次写入动作承担它。
+能力没有得到设备确认时，界面显示已知状态和故障原因，不提供强制开关。未确认状态留在诊断层。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 完整身份是跨连接路径的索引
+## 设备身份与连接路径
 
 本地 USB、Web Serial 和 LAN 发现都可能同时看到同一台 Hub。系统用完整 `device_id` 合并这些观察结果，并把端口、硬件 variant、固件版本和网络地址作为同一设备的属性管理；显示用的短名称不能参与身份判断。
 
-因此，换一条连接方式不会创建一份新的设备配置。操作者看到的仍是同一台 Hub 的 confirmed state、能力声明和最近一次维护记录。
+更换连接方式仍指向同一份设备配置，操作者看到同一台 Hub 的 confirmed state、能力声明和维护记录。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 三条连接路径共享一套设备身份
+## 三种连接路径
 
-设备可以通过 Wi-Fi/LAN、Web Serial 或 Local USB 进入控制台。Wi-Fi/LAN 适合日常局域网控制，Web Serial 适合浏览器直接连接，Local USB 则由 `isolapurr-devd` 和 `isolapurr` 负责串口、代理、烧录和身份校验。它们对应不同生命周期和使用环境，而不是三档产品等级。
+设备可以通过 Wi-Fi/LAN、Web Serial 或 Local USB 进入控制台。Wi-Fi/LAN 适合日常局域网控制，Web Serial 适合浏览器直接连接，Local USB 由 `isolapurr-devd` 和 `isolapurr` 负责串口、代理、烧录和身份校验。三种路径对应不同的生命周期和使用环境。
 
-三条路径最终都解析到同一个完整的 12 字符 `device_id`。端口、网络和本地保存记录围绕这个身份合并，短前缀只用于显示或输入便利，不能替代完整身份。这样可以避免 USB、Wi-Fi 和 LAN 同时出现时把同一台 Hub 误判成多台设备。
+三条路径最终都解析到同一个完整的 12 字符 `device_id`。端口、网络和本地保存记录围绕这个身份合并，短前缀只用于显示或输入便利，不能替代完整身份。USB、Wi-Fi 和 LAN 同时出现时，系统仍将它们归并为同一台 Hub。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 端口动作必须有设备确认
+## 端口动作确认
 
 设备控制面把端口状态和端口能力分开处理。HTTP API 可以读取端口快照，也可以提交端口电源开关和 replug 操作；Web 控制台则根据设备声明的 capability schema 判断某个动作是 `supported`、`unsupported` 还是 `unknown`。
 
@@ -54,10 +54,10 @@ USB 数据经过 Hub 与隔离链路，端口电源则由独立的可调路径�
 
 <section className="project-mdx-section">
 
-## 当前版本与下一版硬件分开叙述
+## 硬件版本边界
 
 仓库同时保留 `tps-sw` 和 `tps-fusb` 两个硬件方案。前者是当前正式版本，后者是下一版设计基线：它计划使用双 FUSB302B，并由 MCU 实现 USB-PD Fixed/PPS 的策略控制，但目前仍处于网表归档和验证前阶段。
 
-因此，IsolaPurr 的当前正文只把 `tps-sw` 的隔离、端口控制、设备身份和三种连接路径写成现状；`tps-fusb`、完整的主动协议档位配置以及尚未完成的实物验证都保留为工程后续。
+当前版本正文只描述 `tps-sw` 的隔离、端口控制、设备身份和三种连接路径；`tps-fusb`、主动协议档位配置和未完成的实物验证仍属于后续工程。
 
 </section>

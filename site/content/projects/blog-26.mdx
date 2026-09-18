@@ -4,57 +4,57 @@ slug: blog-26
 
 <section className="project-mdx-section">
 
-## 三个运行面共享同一内容底座
+## 运行面与内容底座
 
-Ivan's Blog 不是只负责输出文章的前台模板。它把公共阅读、后台编辑和服务运行拆成三个明确的表面：Astro 负责公开站，Vite/React Admin SPA 负责 `/admin/*`，Bun gateway 负责运行时入口与 API。SQLite 和 Drizzle 则为内容、状态和管理操作提供持久化基础。
+Ivan's Blog 由公开站、管理后台和 Bun gateway 组成。Astro 负责公开站，Vite/React Admin SPA 负责 `/admin/*`，Bun gateway 提供运行时入口与 API。SQLite 和 Drizzle 保存内容、状态与管理操作。
 
-这样的拆分让页面职责和运行职责可以分别演进。读者访问的是静态化、可缓存的公共站，作者在后台处理内容和系统状态，gateway 负责把两者连接到同一套受控接口。
-
-</section>
-
-<section className="project-mdx-section">
-
-## 公开快照不是数据库镜像
-
-同步完成后，数据库承担的是可查询的缓存与操作状态，公开站仍然按照发布规则重新组成快照。草稿、私有条目、缺少本地正文或媒体的记录不会因为已经进入 SQLite 就自动出现在公开页面；构建阶段还会检查 slug、标题、标签和日期是否能够生成稳定的路由。
-
-这条边界也让内容源可以继续演进。作者可以在本地 Markdown 中调整 frontmatter，后台观察同步结果，公开站只接收通过校验并满足可见性条件的版本，而不是把一次中间状态直接暴露给读者。
+公开站输出静态、可缓存的页面；作者在后台处理内容和系统状态；gateway 连接两侧的受控接口。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 演示路径复用真实应用骨架
+## 公开快照边界
 
-管理后台的 Demo 使用真实的 Vite/React 路由、编辑器、导航和组件，只在 API 层注入确定性的 mock 数据。它可以展示文章编辑、同步状态和操作反馈的完整路径，但不会伪造真实数据库写入，也不会要求访客先完成管理员登录。
+同步完成后，数据库承担可查询缓存与操作状态，公开站按发布规则重新组成快照。草稿、私有条目、缺少本地正文或媒体的记录不进入公开页面；构建阶段还会检查 slug、标题、标签和日期。
 
-因此项目索引、公开文章和管理 Demo 各自服务不同的阅读目的：前者说明产品的工程边界，后者让人直接检查工作流。三者共享代码结构，却不会把演示状态误认为线上内容。
+作者在本地 Markdown 中调整 frontmatter，后台显示同步结果，公开站只接收通过校验且满足可见性条件的版本。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 内容从本地文件到公开快照
+## 管理后台演示
+
+管理后台 Demo 使用真实的 Vite/React 路由、编辑器、导航和组件，只在 API 层注入确定性的 mock 数据。它展示文章编辑、同步状态和操作反馈，不写入真实数据库，也不要求访客登录。
+
+项目索引、公开文章和管理 Demo 分别呈现工程边界、发布内容和操作流程。Demo 使用同一套路由与组件，数据不写入线上内容。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 本地内容同步
 
 当前内容源以本地文件系统为准。同步流程会扫描配置的 Markdown 根目录，解析 frontmatter 和正文，验证内容项后写入数据库；后台可以触发同步、查看进度、读取来源状态和检查同步日志。
 
-公共站不会直接把数据库中的所有行展示出来。构建公开快照时，系统只选择已发布且公开的文章和 Memos，同时检查正文与本地媒体是否仍然存在，再把结果导出给 Astro 页面和订阅源使用。
+构建公开快照时，系统筛选已发布且公开的文章和 Memos，检查正文与本地媒体，再将结果交给 Astro 页面和订阅源。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 搜索与订阅共享发布结果
+## 搜索与订阅
 
-搜索路径同时考虑字面检索和语义检索。SQLite 中维护 `posts_search_fts` 内容索引，普通搜索可以使用 FTS 和关键词路径；当 embedding、向量或 reranker 不可用时，系统回退到可用的文本搜索，而不是让整个搜索入口失效。
+搜索同时支持字面检索和语义检索。SQLite 维护 `posts_search_fts` 内容索引；embedding、向量或 reranker 不可用时，系统使用文本搜索。
 
-同一份公开快照还被 RSS、Atom、JSON Feed、标签订阅和 Memos 订阅复用。订阅路由只读取公开内容，因此搜索、网页阅读和订阅虽然呈现方式不同，使用的仍是同一个发布边界。
+RSS、Atom、JSON Feed、标签订阅和 Memos 订阅都读取公开快照。搜索、网页阅读和订阅使用同一份发布结果。
 
 </section>
 
 <section className="project-mdx-section">
 
-## 后台工作流保留操作边界
+## 后台工作流
 
 后台提供文章、评论、内容同步、标签、计划任务以及模型配置等管理入口，浏览器通过 `/api/admin/*` 与 gateway 通信。对外公开的 Admin 演示使用真实 SPA 路由和组件，只替换 API 为确定性的 mock 数据，不需要把演示状态误认为真实生产数据。
 
