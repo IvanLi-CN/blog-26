@@ -55,9 +55,20 @@ jobs:
           set -euo pipefail
           output="$(bun outdated)"
           printf '%s\n' "$output"
-          findings="$(printf '%s\n' "$output" | sed -E '/^[[:space:]]*$/d; /^bun outdated v[0-9]+\.[0-9]+\.[0-9]+/d')"
+          findings="$(printf '%s\n' "$output" | awk -F'|' '
+            /^[|]/ {
+              package = $2
+              current = $3
+              update = $4
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", package)
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", current)
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", update)
+              if (package == "" || package == "Package" || package ~ /^-+$/ || current ~ /^-+$/) next
+              if (current != update) print
+            }
+          ')"
           if [ -n "$findings" ]; then
-            printf 'Outdated dependencies detected:\n%s\n' "$findings" >&2
+            printf 'Dependencies with available non-major updates detected:\n%s\n' "$findings" >&2
             exit 1
           fi
       - name: Biome check
