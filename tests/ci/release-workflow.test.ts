@@ -26,7 +26,7 @@ function assertMainHeadGate(jobName: string, sideEffectName: string, gateId: str
   const gate = job.slice(gateStart, sideEffectStart);
   const sideEffect = job.slice(sideEffectStart, sideEffectStart + 500);
   expect(gate).toContain(`id: ${gateId}`);
-  expect(gate).toContain("uses: actions/github-script@v7");
+  expect(gate).toContain("uses: actions/github-script@v9");
   expect(gate).toContain("Release source is no longer the current main head");
   expect(sideEffect).toContain(`steps.${gateId}.outputs.is_current_head == 'true'`);
 }
@@ -92,7 +92,7 @@ describe("release.yml", () => {
     expect(publishFrontend).toContain("- name: Verify EdgeOne deployment artifact");
     expect(publishFrontend).toContain("run: bun run frontend:verify-media");
     expect(publishFrontend).toContain("- name: Upload frontend EdgeOne artifact");
-    expect(publishFrontend).toContain("uses: actions/upload-artifact@v4");
+    expect(publishFrontend).toContain("uses: actions/upload-artifact@v7");
     expect(publishFrontend).toContain("name: frontend-edgeone-site");
     expect(publishFrontend).toContain("path: ./edgeone-dist");
     expect(workflow).not.toContain("\n  deploy_frontend_pages:\n");
@@ -104,7 +104,7 @@ describe("release.yml", () => {
     expect(edgeone).toContain("needs: [prepare, publish_frontend]");
     expect(edgeone).toContain("needs.prepare.outputs.channel == 'stable'");
     expect(edgeone).toContain("- name: Download frontend EdgeOne artifact");
-    expect(edgeone).toContain("uses: actions/download-artifact@v4");
+    expect(edgeone).toContain("uses: actions/download-artifact@v8");
     expect(edgeone).toContain("name: frontend-edgeone-site");
     expect(edgeone).toContain("path: ./edgeone-dist");
     expect(edgeone).toContain(`EDGEONE_API_TOKEN: \${{ secrets.EDGEONE_API_TOKEN }}`);
