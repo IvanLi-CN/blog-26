@@ -159,6 +159,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![LoadLynx detail dark](./assets/project-loadlynx-dark.png)
 
+### Project content migration
+
+- Evidence captured from the current static Astro output after the 15 project bodies were compiled. Five representative groups were checked at desktop and `393px × 852px` mobile viewports in both light and dark themes; Hero, public-entry sidebar, optional TOC, continuous MDX prose, and footer remained readable without horizontal overflow.
+- Source type `ui_demo`; target program `mock-only`; capture scope `browser-viewport`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
+- Representative captures: [Tavily Hikari desktop light](./assets/project-content-migration/tavily-hikari-desktop-light.webp), [Tavily Hikari mobile dark](./assets/project-content-migration/tavily-hikari-mobile-dark.webp), [SpotiBind desktop light](./assets/project-content-migration/spoti-bind-desktop-light.webp), [SpotiBind mobile dark](./assets/project-content-migration/spoti-bind-mobile-dark.webp), [LoadLynx desktop light](./assets/project-content-migration/loadlynx-desktop-light.webp), [LoadLynx mobile dark](./assets/project-content-migration/loadlynx-mobile-dark.webp), [Tuckmark desktop dark](./assets/project-content-migration/tuckmark-desktop-dark.webp), [Tuckmark mobile light](./assets/project-content-migration/tuckmark-mobile-light.webp), [XP desktop dark](./assets/project-content-migration/xp-desktop-dark.webp), and [XP mobile light](./assets/project-content-migration/xp-mobile-light.webp). Paired captures for each project and theme are stored beside these files.
+
 - Evidence captured for the Mains Aegis light/dark poster and social-preview pair after importing the upstream dark campaign assets.
 - The project wall and detail page keep the light artwork in light mode and select the matching dark artwork in dark mode without changing the surrounding layout.
 
@@ -232,7 +238,7 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 ## Verification
 
 - `VER-NATURE-PROJECT-CATALOG`: covers: `REQ-NATURE-PROJECT-CATALOG`; semantic-entry unit tests and the static site build verify precedence, labels, missing-entry omission, and public output.
-- `VER-NATURE-PROJECT-DETAIL-MDX`: covers: `REQ-NATURE-PROJECT-DETAIL-MDX`; MDX loader/TOC tests, the Codex Vibe Monitor detail route, and the static build verify slug validation, reviewed block rendering, and catalog-only fallback.
+- `VER-NATURE-PROJECT-DETAIL-MDX`: covers: `REQ-NATURE-PROJECT-DETAIL-MDX`; MDX loader/TOC tests, the migrated detail routes, the static build, and the detail-route fallback branch verify slug validation, reviewed block rendering, compiled bodies, and safe catalog-only fallback behavior for projects without a body.
 - `VER-NATURE-PROJECT-READING`: covers: `REQ-NATURE-PROJECT-READING`; focused guest Playwright coverage and the desktop/mobile light/dark page evidence verify sidebar order, TOC behavior, spacing, and responsive stacking.
 - `VER-NATURE-PROJECT-INTERACTION`: covers: `REQ-NATURE-PROJECT-INTERACTION`; focused guest Playwright coverage verifies rest-state truncation, focus-visible expansion, shortcut names/targets, and hover/focus contrast behavior.
 

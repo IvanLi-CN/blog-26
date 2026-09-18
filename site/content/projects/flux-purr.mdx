@@ -1,0 +1,27 @@
+---
+slug: flux-purr
+---
+
+## 一套仓库承载设备软件的三条边界
+
+Flux Purr 是一个面向嵌入式设备的单仓工程：ESP32-S3 固件、React 控制台以及本地 CLI/devd 工具共同维护同一套设备控制契约。
+
+设备身份、能力、状态和错误语义先被整理成共享领域模型，再由 USB、native IPC、Web Serial、局域网 HTTP 和 Web 控制台分别承载。控制台因此不需要猜测固件当前提供了哪些动作。
+
+## 控制台首先回答“这台设备现在能做什么”
+
+Flux Purr Web App 面向一次操作一台设备的硬件和固件操作者。界面会区分 live、mock、offline、degraded、pending 与 unsupported 状态，并把当前设备、连接方式、遥测、热控状态和能力限制放在同一条操作路径里。
+
+VIN ADC、RTD ADC、加热曲线校准和固件产物检查都带有对应的设备、传输和安全前置条件。动作只有在当前设备确实具备能力时才开放，无法执行的原因也保留在界面上。
+
+## 热控运行时把安全条件写进控制契约
+
+当前固件基线以 ESP32-S3 热控设备为中心，包含 RTD 温度采样、PID 加热、PD 合同判断、风扇策略、前面板状态和 EEPROM 持久化。PD contract 尚未就绪、传感器故障或绝对过温时，输出会保持在安全状态，而 Dashboard 仍可用于诊断。
+
+校准分成电压读数、温度和加热曲线三个 owner-facing 模式。样本、拟合建议和真正生效的 A/B 参数槽位各自有清晰边界，避免把测到的建议值误写成设备已经采用的控制参数。
+
+## 本地 devd 负责设备边界，而不是隐藏复杂性
+
+`flux-purr-devd` 处理 USB/串口发现、独占 lease、有限监视事件和 Wi-Fi provisioning bridge。CLI 与 devd 之间保持 native IPC 边界；浏览器需要本地能力时，才显式使用 Web companion。
+
+局域网控制面用于已配对设备的状态和有限维护动作，初始 Wi-Fi 配置、凭据写入、烧录和配对重置仍然要求 USB-backed 路径。公共 Demo 保持 mock-only，复用控制台交互而不触碰真实设备。

@@ -14,6 +14,7 @@ import {
   resolveProjectRelatedEntries,
 } from "../../lib/projects";
 import { getProjectBody } from "../../lib/project-content";
+import { resolveProjectDetailBody } from "../../lib/project-content-utils";
 import { getSnapshot, toAbsoluteSiteUrl } from "../../lib/public-site";
 import { toPublicSitePath } from "../../lib/runtime-urls";
 
@@ -30,7 +31,11 @@ const domain = getProjectDomainDefinition(project.domain);
 const relatedEntries = resolveProjectRelatedEntries(snapshot, project.relatedEntries);
 const publicEntries = getProjectPublicEntries(project);
 const body = getProjectBody(project.slug);
-const Body = body?.Content;
+const detailBody = resolveProjectDetailBody(body, {
+  description: project.description,
+  highlights: project.highlights,
+});
+const Body = detailBody.kind === "mdx" ? detailBody.body.Content : undefined;
 const canonicalUrl = getProjectCanonicalUrl(project.slug);
 const heroSummary = project.heroSummary ?? project.description;
 const structuredData = {
@@ -65,13 +70,13 @@ const structuredData = {
       <div class="project-detail-layout">
         <main class="project-detail-main">
           <ProjectSocialPreview project={project} />
-          {body ? (
+          {detailBody.kind === "mdx" ? (
             <article class="project-mdx-content"><div class="nature-prose"><Body /></div></article>
           ) : (
             <article class="project-mdx-content project-catalog-fallback">
               <div class="nature-prose">
-                <p>{project.description}</p>
-                <ul>{project.highlights.map((item) => <li>{item}</li>)}</ul>
+                <p>{detailBody.description}</p>
+                <ul>{detailBody.highlights.map((item) => <li>{item}</li>)}</ul>
               </div>
             </article>
           )}
@@ -84,7 +89,7 @@ const structuredData = {
         </main>
         <aside class="project-detail-sidebar space-y-6">
           <section class="nature-panel px-4 py-5 sm:px-5"><div class="flex items-center gap-3"><Icon name="tabler:world" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" /><h2 class="font-heading text-xl font-semibold text-[color:var(--nature-text)]">公开入口</h2></div><ProjectExternalLinks entries={publicEntries} /></section>
-          {body && body.toc.length > 0 && <nav class="nature-panel project-toc px-4 py-5 sm:px-5" aria-label="本页内容导航"><h2 class="font-heading text-xl font-semibold text-[color:var(--nature-text)]">本页内容</h2><ol class="mt-4 grid gap-2">{body.toc.map((item) => <li class={item.depth === 3 ? "pl-4" : ""}><a href={`#${item.slug}`} class="text-sm leading-6 text-[color:var(--nature-text-soft)] transition-colors hover:text-[color:var(--nature-accent-strong)]">{item.text}</a></li>)}</ol></nav>}
+          {detailBody.kind === "mdx" && detailBody.body.toc.length > 0 && <nav class="nature-panel project-toc px-4 py-5 sm:px-5" aria-label="本页内容导航"><h2 class="font-heading text-xl font-semibold text-[color:var(--nature-text)]">本页内容</h2><ol class="mt-4 grid gap-2">{detailBody.body.toc.map((item) => <li class={item.depth === 3 ? "pl-4" : ""}><a href={`#${item.slug}`} class="text-sm leading-6 text-[color:var(--nature-text-soft)] transition-colors hover:text-[color:var(--nature-accent-strong)]">{item.text}</a></li>)}</ol></nav>}
         </aside>
       </div>
     </div>

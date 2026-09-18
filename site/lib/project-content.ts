@@ -1,6 +1,6 @@
 import {
-  extractProjectToc,
   type ProjectTocItem,
+  resolveProjectBody,
   validateProjectMdxImports,
 } from "./project-content-utils";
 
@@ -50,9 +50,5 @@ function validateBodies() {
 validateBodies();
 
 export function getProjectBody(slug: string): ProjectBody | null {
-  const path = `../content/projects/${slug}.mdx`;
-  const module = compiledBodies[path];
-  const source = sourceBodies[path];
-  if (!module || !source) return null;
-  return { Content: module.default, toc: extractProjectToc(source) };
+  return resolveProjectBody(slug, compiledBodies, sourceBodies);
 }
