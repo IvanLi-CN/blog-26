@@ -1,0 +1,63 @@
+---
+slug: dockrev
+---
+
+<section className="project-mdx-section">
+
+## Compose 服务发现
+
+Dockrev 从运行容器的 Compose 标签和配置文件中发现 stack 与 service。发现结果来自实际 Docker 环境，能够反映手动操作、重启和迁移后的状态。
+
+发现过程会保留配置文件的实际边界。保存的 Compose 文件全部可读且可解析时，项目可以进入 stopped 状态并继续出现在列表中；全部文件都不存在时才会自动归档；部分缺失、权限错误或解析失败则保持为 invalid，并把原因留给运维者处理。
+
+</section>
+
+<section className="project-mdx-section">
+
+## Stack 状态分类
+
+Dockrev 将 stack 状态分为 active、stopped、invalid 和 archived。运行容器存在但 Compose 文件缺失时，保留缺失原因；文件权限或解析失败时，状态为 invalid；全部来源确认不存在后才归档。
+
+列表同时承担诊断入口。运维者可以先处理来源丢失、权限错误或版本不兼容，再进入更新流程。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 版本检查与执行结果
+
+检查阶段比较当前镜像、候选版本和 digest。floating tag、多架构镜像和暂时无法解析的版本保留快照状态，直到证据足够或任务失败。
+
+执行阶段只消费已确认的目标，并将 Compose 命令、healthcheck、日志和备份恢复结果写入 Queue。“有新版本”“已经拉取”“服务健康”和“更新完成”分别记录。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 检查、预览与更新任务
+
+Dockrev 的使用路径从 Overview 或 Services 发起 discovery，再对服务执行 check，获取当前镜像与候选版本的关系。真正写入之前，Service Detail 可以先运行 dry-run，验证目标版本和部署条件；确认后再按 service、stack 或 all 的作用域创建 update job。
+
+每一步都进入 Queue，任务拥有独立状态、日志和事件流。前端可以观察检查、拉取、Compose 执行和收尾；floating tag 和多架构镜像的版本显示结合 digest 与异步快照。
+
+</section>
+
+<section className="project-mdx-section">
+
+## Compose 更新边界
+
+更新前，Dockrev 检查目标 Compose 环境并记录更新目标。自动更新生成的 image-only override 会持久化保存，保留实际使用的镜像记录。
+
+生命周期操作同样有明确约束。Compose V2 启动使用 `--pull never --no-recreate`，服务级启动不拉起依赖；Compose V1、版本探测失败或关键路径不可用时，写操作被拒绝。更新过程结合 healthcheck、任务状态和日志暴露结果，失败时进入备份恢复或回滚路径。普通 recreate 仍可能中断服务，带有 Traefik 路由的生产服务需要运维者自行设计切换策略。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 自升级与外部集成
+
+Dockrev 自身通过独立的 Supervisor 控制台执行 apply、状态观察和 rollback，避免被普通服务更新动作直接覆盖。API、内嵌 Web UI、Supervisor 和外部入口可以按部署拓扑分别配置，但生产环境仍由 Dockrev 自己划分匿名健康接口与受保护业务面。
+
+对外集成围绕任务触发和结果通知展开：外部系统可以通过带 secret 的 webhook 触发 check/update，GHCR package webhook 会优先定位受影响的服务，无法精确定位时才退回 discovery。检查结果还可以发送到 Webhook、Telegram、Email 或 Web Push；每条集成路径都保留鉴权、去重和失败状态。
+
+</section>

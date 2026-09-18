@@ -1,0 +1,55 @@
+---
+slug: mains-aegis
+---
+
+<section className="project-mdx-section">
+
+## UPS 系统边界
+
+Mains Aegis 把 UPS 看成一套可被软件理解的供电系统。它的结构分成主板、前面板和固件三层：主板承载电池、BMS、充电、主输出与监测，前面板负责显示、触摸、按键和 USB 前端，ESP32-S3 固件则把这些模块串成统一的启动、自检和运行状态。
+
+电源链路以 4S1P 电池包为基础，经 BQ40Z50-R2 负责计量与主保护，BQ25792 处理 USB-C/PD(PPS) 与 DC 双输入充电，再由两路 TPS55288 生成主输出。INA3221 和 TMP112A 负责把输入、输出、电流和温度状态送回控制链路。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 前面板与运行状态
+
+前面板、Web 控制台和串口日志读取同一组运行状态。显示层展示 `SELF CHECK`、`HOLD`、`BYPASS` 或 `BACKUP`；BMS 授权、充电器状态和 TPS 输出门控仍由固件决定。
+
+USB、触摸和按键输入都经过固件状态机。输入电源切换、温度告警或电池不可用时，界面显示对应状态，输出状态以固件结果为准。
+
+</section>
+
+<section className="project-mdx-section">
+
+## Bring-up 证据链
+
+硬件调试从输入资格、BMS 通讯和充电器状态开始，再逐步放行两路 TPS55288。每一级都在自检快照、串口日志和 Dashboard 中留下结果，便于定位同步、监测、授权或输出级故障。
+
+设计文档、样机实测和固件行为分开记录。热行为、VBUS 偏差和完整驱动验证仍在验证清单中。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 启动自检
+
+设备启动后先进入 `SELF CHECK`。固件按固定顺序确认同步、监测、前面板、BMS、充电器和两路 TPS55288 的状态，再决定是否允许进入 Dashboard。这个页面也是 bring-up 时判断哪一段链路没有准备好的第一现场。
+
+自检的门控规则区分“上游没有授权”和“输出级本身故障”。例如 BQ40Z50 缺失或放电未授权时，TPS55288 会保持 `HOLD`；热停机、TPS 故障和保护锁存则进入更严格的禁止输出路径，等待对应条件恢复或显式恢复操作。
+
+</section>
+
+<section className="project-mdx-section">
+
+## 保护状态
+
+运行态 Dashboard 使用 `BYPASS`、`STANDBY`、`ASSIST` 和 `BACKUP` 表达输入、电池和输出之间的关系，同时保留 Battery、Charge、Dischg 等观察入口，让操作者能够区分输入在线但没有实际输出、TPS 正在辅助供电和电池正在承担负载。
+
+硬件保护也不只停留在电路层。INA3221 监视 UPS VIN 以及两路 TPS55288 输出，并通过 PV、Warning 和 Critical 信号触发欠压、预警和过流处理；TMP112A 的两路热告警汇总到 `THERM_KILL_N`，作为禁止继续出力的硬条件。固件再把这些信号映射到自检、Dashboard、串口日志和输出门控。
+
+项目仍保留样机阶段的验证边界：INA3221 VBUS 偏高问题和部分热行为需要继续通过实测收敛，TPS55288 的完整驱动能力也不能仅依据设计蓝图推断。
+
+</section>

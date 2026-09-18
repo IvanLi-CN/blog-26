@@ -128,6 +128,7 @@
     "backend:build": "bun run prebuild && bun run admin:build:compiled && bun run backend:dist"
   },
   "dependencies": {
+    "@astrojs/mdx": "5.0.5",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-yaml": "^6.1.3",

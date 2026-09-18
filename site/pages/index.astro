@@ -2,7 +2,12 @@
 import { SITE } from "@/config/site";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProjectExternalLinks from "../components/projects/ProjectExternalLinks.astro";
-import { getFeaturedProjects, getProjectDetailPath, getProjectDomainDefinition } from "../lib/projects";
+import {
+  getFeaturedProjects,
+  getProjectCardEntries,
+  getProjectDetailPath,
+  getProjectDomainDefinition,
+} from "../lib/projects";
 import { buildHomeTimeline, getSnapshot } from "../lib/public-site";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import TimelineCard from "../components/TimelineCard.astro";
@@ -107,7 +112,7 @@ const featuredProjects = getFeaturedProjects();
                 >
                   查看案例
                 </a>
-                <ProjectExternalLinks links={project.links} compact={true} />
+                <ProjectExternalLinks entries={getProjectCardEntries(project)} compact={true} />
               </div>
             </div>
           </div>

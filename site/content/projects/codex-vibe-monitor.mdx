@@ -1,0 +1,39 @@
+---
+slug: codex-vibe-monitor
+---
+
+import { ProjectCallout, ProjectFacts } from "../../../src/components/project-content-blocks";
+
+<section className="project-mdx-section">
+
+## 定位与问题边界
+
+Codex Vibe Monitor 是一个面向自部署环境的 OpenAI 兼容代理观测工作台。它把请求链路、流式响应、延迟指标、失败原因和上游尝试放在同一条可追踪的记录里，帮助定位 AI 接入层的问题。
+
+它记录每次请求的完整证据：客户端送入的内容、代理动作、上游响应和故障阶段都留在同一条链路中。
+
+<ProjectFacts items={[{ label: "运行方式", value: "自部署代理" }, { label: "主要对象", value: "OpenAI 兼容流量" }, { label: "关注重点", value: "观测与排障" }]} />
+
+</section>
+
+<section className="project-mdx-section">
+
+## 设计取舍：保留可复盘的证据链
+
+一次调用拆成请求入口、上游尝试、流式输出和最终结果。记录保留原始上下文，并单独记录延迟、错误和重试信息，便于定位偶发失败。
+
+<ProjectCallout title="观测层的必要性">
+  当模型、客户端和上游服务同时变化时，单看最终响应很难判断问题来自哪里。代理层保留证据，才能把接入问题从猜测变成定位。
+</ProjectCallout>
+
+</section>
+
+<section className="project-mdx-section">
+
+## 系统结构与实现重点
+
+后端以 Rust 和 Axum 处理代理边界与请求生命周期，SQLite 保存可查询的运行记录，SSE 负责把流式响应传递给客户端。前端用 React 呈现请求详情、延迟指标、失败原因和上游尝试，重点是让一条调用链可以快速展开、比较和回看。
+
+这套结构也让它适合作为 OpenAI 兼容接入层的试验场：新增上游、调整代理策略或复现客户端差异时，观测数据仍然按照同一套语义归档。
+
+</section>
