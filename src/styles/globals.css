@@ -30,6 +30,8 @@
   --nature-secondary-soft: rgba(132, 167, 181, 0.18);
   --nature-action-primary-bg: #477956;
   --nature-action-primary-bg-hover: #477956;
+  --nature-action-primary-gradient-start: #4e7e60;
+  --nature-action-primary-gradient-end: #294e3a;
   --nature-action-primary-fg: #f7fff8;
   --nature-highlight-rgb: 255, 255, 255;
   --nature-timeline-node-highlight-alpha: 0.46;
@@ -82,6 +84,8 @@ html[data-ui-theme="dark"] {
   --nature-secondary-soft: rgba(131, 179, 198, 0.2);
   --nature-action-primary-bg: #88c1a0;
   --nature-action-primary-bg-hover: #88c1a0;
+  --nature-action-primary-gradient-start: #88c1a0;
+  --nature-action-primary-gradient-end: #4f966e;
   --nature-action-primary-fg: #0f1613;
   --nature-highlight-rgb: 247, 255, 250;
   --nature-timeline-node-highlight-alpha: 0.22;
@@ -520,14 +524,23 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 }
 
 .nature-button-primary {
-  background: var(--nature-action-primary-bg);
+  background-color: var(--nature-action-primary-bg);
+  background-image: linear-gradient(
+    135deg,
+    var(--nature-action-primary-gradient-start),
+    var(--nature-action-primary-gradient-end)
+  );
   color: var(--nature-action-primary-fg);
   box-shadow: 0 18px 34px rgba(var(--nature-accent-rgb), 0.22);
 }
 
-.nature-button-primary:hover:not(:disabled),
-.nature-search-submit:hover:not(:disabled) {
-  background: var(--nature-action-primary-bg-hover);
+.nature-button-primary:hover:not(:disabled) {
+  background-color: var(--nature-action-primary-bg-hover);
+  background-image: linear-gradient(
+    135deg,
+    var(--nature-action-primary-gradient-start),
+    var(--nature-action-primary-gradient-end)
+  );
   transform: translateY(-1px) scale(1.01);
   box-shadow: 0 22px 42px rgba(var(--nature-accent-rgb), 0.28);
 }
@@ -536,6 +549,12 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   background: var(--nature-action-primary-bg);
   color: var(--nature-action-primary-fg);
   box-shadow: 0 18px 34px rgba(var(--nature-accent-rgb), 0.22);
+}
+
+.nature-search-submit:hover:not(:disabled) {
+  background: var(--nature-action-primary-bg-hover);
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 22px 42px rgba(var(--nature-accent-rgb), 0.28);
 }
 
 :where(.nature-button-primary, .nature-search-submit):focus-visible {
