@@ -95,7 +95,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Content type is secondary metadata. An icon, restrained semantic tint, and visible text label distinguish articles from Memos; color alone must never carry the distinction, and a timeline node must not imply a different interaction level or priority by its shape or material.
 - Narrow layouts may compact the timeline rail and nodes, but must preserve the circular frame, the type icon, and the visual continuity of the connector.
 - `--nature-secondary-rgb` is the canonical RGB token for the public secondary color. Timeline rails, nodes, and other public components must use that name rather than introducing alternate names for the same color role.
-- A primary action with text or an icon uses paired `--nature-action-primary-bg` and `--nature-action-primary-fg` tokens. The foreground must maintain at least a 4.5:1 contrast ratio against every visible default, hover, and focus background; unverified multi-stop gradients are not permitted for those actions.
+- A primary action with text or an icon uses paired `--nature-action-primary-bg` and `--nature-action-primary-fg` tokens. The foreground must maintain at least a 4.5:1 contrast ratio against every visible default, hover, and focus background. A multi-stop gradient is allowed only when every declared stop is verified at or above 4.5:1; the homepage article action uses this verified gradient treatment (`#4e7e60` to `#294e3a` in light mode, `#88c1a0` to `#4f966e` in dark mode), while the search submit keeps the solid token background.
 - The resolved primary-action pairs are `#477956` on `#f7fff8` in light mode and `#88c1a0` on `#0f1613` in dark mode. Shared public component selectors have one authoritative stylesheet so these pairs cannot drift between duplicate implementations.
 
 ## 5. Acceptance criteria
@@ -317,7 +317,7 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - Evidence captured from the deterministic local Astro preview after the timeline and action-token fixes. The four current-only candidates were compared against `main@4fb46c58892c1c2c0e8e7de0b1767c499e623264` and shown for owner confirmation.
 - Source type `ui_demo`; target program `mock-only`; capture scope `browser-viewport`; desktop viewport `1440px × 1100px`; requested mobile viewport `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
 - Article and Memo nodes share a closed circular frame, visible border, shadow, and continuous connector. The measured node diameter is `46.39px` on desktop and `20px` at `393px`; dark-theme highlight alpha is reduced to `0.22` with a `0.12` inset highlight. Visible `文章` and `闪念` labels remain present in both viewports.
-- The shared solid primary-action tokens measure `4.9826:1` in light mode and `8.8970:1` in dark mode for default, hover, and focus states; focus retains a visible `3px` outline with `3px` offset.
+- The search submit solid primary-action tokens measure `4.9826:1` in light mode and `8.8970:1` in dark mode for default, hover, and focus states. The homepage article CTA verifies every gradient stop at or above `4.5:1` and retains a visible `3px` outline with `3px` offset.
 
 ![Public timeline and CTA light desktop](./assets/home-timeline-cta-light-desktop.png)
 

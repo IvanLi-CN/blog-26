@@ -39,6 +39,11 @@ function contrastRatio(foreground: string, background: string) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+function parseBackgroundColors(backgroundColor: string, backgroundImage: string) {
+  const imageColors = backgroundImage.match(/rgba?\([^)]*\)/g) ?? [];
+  return [backgroundColor, ...imageColors];
+}
+
 async function expectPrimaryActionContrast(action: ReturnType<Page["locator"]>, label: string) {
   await expect(action).toBeVisible();
   const readState = async (state: string) => {
@@ -47,14 +52,17 @@ async function expectPrimaryActionContrast(action: ReturnType<Page["locator"]>, 
       return {
         foreground: style.color,
         background: style.backgroundColor,
+        backgroundImage: style.backgroundImage,
         outlineStyle: style.outlineStyle,
         outlineWidth: style.outlineWidth,
       };
     });
-    expect(
-      contrastRatio(colors.foreground, colors.background),
-      `${label} ${state} contrast`
-    ).toBeGreaterThanOrEqual(4.5);
+    for (const background of parseBackgroundColors(colors.background, colors.backgroundImage)) {
+      expect(
+        contrastRatio(colors.foreground, background),
+        `${label} ${state} contrast against ${background}`
+      ).toBeGreaterThanOrEqual(4.5);
+    }
     if (state === "focus") {
       expect(colors.outlineStyle, `${label} focus outline`).not.toBe("none");
       expect(colors.outlineWidth, `${label} focus outline width`).not.toBe("0px");
@@ -203,16 +211,14 @@ test.describe("Primary action contrast", () => {
   test("CTA and search submit keep AA contrast in every action state", async ({ page }) => {
     for (const theme of ["light", "dark"] as const) {
       await gotoWithTheme(page, "/", theme);
-      await expectPrimaryActionContrast(
-        page.getByRole("link", { name: "浏览文章" }),
-        `${theme} homepage CTA`
-      );
+      const homepageCta = page.getByRole("link", { name: "浏览文章" });
+      await expectPrimaryActionContrast(homepageCta, `${theme} homepage CTA`);
+      await expect(homepageCta).toHaveCSS("background-image", /gradient/);
 
       await gotoWithTheme(page, "/search?q=usb", theme);
-      await expectPrimaryActionContrast(
-        page.getByRole("button", { name: "搜索", exact: true }),
-        `${theme} search submit`
-      );
+      const searchSubmit = page.getByRole("button", { name: "搜索", exact: true });
+      await expectPrimaryActionContrast(searchSubmit, `${theme} search submit`);
+      await expect(searchSubmit).toHaveCSS("background-image", "none");
     }
   });
 });
