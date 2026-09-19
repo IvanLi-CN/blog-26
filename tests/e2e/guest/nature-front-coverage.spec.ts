@@ -667,6 +667,156 @@ test.describe("Nature frontend public coverage", () => {
     await expect(rssLink).toHaveCSS("height", "44px");
   });
 
+  test("mobile public header scroll follows document movement and settles at endpoints", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/memos", "light");
+
+    const header = page.locator("[data-public-header]");
+    await expect(header).toHaveAttribute("data-public-header-state", "expanded");
+
+    const initialHeight = await header.evaluate(
+      (element) => element.getBoundingClientRect().height
+    );
+    expect(initialHeight).toBeGreaterThan(0);
+
+    const firstScroll = Math.min(
+      48,
+      Math.max(
+        1,
+        await page.evaluate(() => document.documentElement.scrollHeight - innerHeight - 1)
+      )
+    );
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), firstScroll);
+    await expect
+      .poll(() => header.getAttribute("data-public-header-offset"))
+      .toBe(`${Math.max(initialHeight - firstScroll, 0)}`);
+
+    const collapseScroll = Math.min(
+      Math.ceil(initialHeight * 1.2),
+      await page.evaluate(() => document.documentElement.scrollHeight - innerHeight - 1)
+    );
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), collapseScroll);
+    await expect(header).toHaveAttribute("data-public-header-state", "collapsed");
+    await expect(header).toHaveAttribute("data-public-header-offset", "0");
+    await expect
+      .poll(() => header.evaluate((element) => element.getBoundingClientRect().bottom))
+      .toBeLessThanOrEqual(0);
+    expect(await header.evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(
+      -initialHeight,
+      0
+    );
+
+    const firstNavigationLink = header.getByRole("link", { name: "文章", exact: true });
+    await firstNavigationLink.focus();
+    await expect(header).toHaveAttribute("data-public-header-state", "expanded");
+    await expect(firstNavigationLink).not.toHaveAttribute("tabindex", "-1");
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(header).toHaveAttribute("data-public-header-state", "expanded");
+  });
+
+  test("mobile header keeps a focused control visible during collapse", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/memos", "light");
+
+    const header = page.locator("[data-public-header]");
+    const firstNavigationLink = header.getByRole("link", { name: "文章", exact: true });
+    await firstNavigationLink.focus();
+
+    const headerHeight = await header.evaluate((element) => element.getBoundingClientRect().height);
+    const maxScroll = await page.evaluate(
+      () => document.documentElement.scrollHeight - innerHeight - 1
+    );
+    await page.evaluate(
+      (scrollY) => window.scrollTo(0, scrollY),
+      Math.min(Math.ceil(headerHeight * 1.2), maxScroll)
+    );
+
+    await expect(header).toHaveAttribute("data-public-header-state", "expanded");
+    await expect(firstNavigationLink).toBeFocused();
+    await expect(firstNavigationLink).not.toHaveAttribute("tabindex", "-1");
+  });
+
+  test("mobile header settles only after touch release", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/memos", "light");
+
+    const header = page.locator("[data-public-header]");
+    const initialHeight = await header.evaluate(
+      (element) => element.getBoundingClientRect().height
+    );
+    await page.evaluate(() => window.dispatchEvent(new Event("touchstart")));
+    const firstTouchScroll = Math.ceil(initialHeight * 0.3);
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), firstTouchScroll);
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), firstTouchScroll - 5);
+    await page.waitForTimeout(180);
+
+    await expect(header).toHaveAttribute("data-public-header-state", "partial");
+    await expect(header).toHaveAttribute(
+      "data-public-header-offset",
+      `${initialHeight - firstTouchScroll + 5}`
+    );
+    await expect.poll(() => header.getAttribute("data-public-header-settling")).toBeNull();
+
+    await page.evaluate(() => window.dispatchEvent(new Event("touchend")));
+    await expect(header).toHaveAttribute("data-public-header-state", "expanded");
+  });
+
+  test("mobile header honors reduced motion and remeasures its height", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/memos", "light");
+
+    const header = page.locator("[data-public-header]");
+    await expect
+      .poll(() => header.evaluate((element) => getComputedStyle(element).transitionProperty))
+      .toBe("none");
+
+    const initialHeight = await header.getAttribute("data-public-header-height");
+    expect(initialHeight).toBeTruthy();
+    await page.evaluate(() => {
+      const header = document.querySelector<HTMLElement>("[data-public-header]");
+      if (header) header.style.minHeight = "180px";
+    });
+    await expect
+      .poll(() => header.getAttribute("data-public-header-height"))
+      .not.toBe(initialHeight);
+  });
+
+  test("public header resets on client navigation and stays untouched on desktop", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/memos", "dark");
+
+    const mobileHeader = page.locator("[data-public-header]");
+    const maxScroll = await page.evaluate(
+      () => document.documentElement.scrollHeight - innerHeight - 1
+    );
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), Math.min(220, maxScroll));
+    await expect(mobileHeader).toHaveAttribute("data-public-header-state", "collapsed");
+
+    await page
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "文章", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/posts\/$/);
+    await expect(page.locator("[data-public-header]")).toHaveAttribute(
+      "data-public-header-state",
+      "expanded"
+    );
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await gotoWithTheme(page, "/posts", "dark");
+    const desktopHeader = page.locator("[data-public-header]");
+    await expect(desktopHeader).toBeVisible();
+    await expect(desktopHeader).toHaveAttribute("data-public-header-state", "expanded");
+    await expect(desktopHeader).toHaveCSS("top", "0px");
+    await expect(desktopHeader).not.toHaveAttribute("data-public-header-offset");
+  });
+
   test("mobile search exposes its results region in the first viewport", async ({ page }) => {
     await page.setViewportSize({ width: 438, height: 852 });
     await gotoWithTheme(page, "/search/?q=SSH", "light");

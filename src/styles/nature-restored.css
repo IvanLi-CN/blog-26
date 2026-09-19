@@ -155,6 +155,21 @@
     position: relative;
   }
 
+  .nature-site-header[data-public-header] {
+    top: 0;
+  }
+
+  @media (max-width: 639px) {
+    .nature-site-header[data-public-header] {
+      top: var(--public-header-sticky-top, 0px);
+      transition: top 180ms var(--nature-ease);
+    }
+
+    .nature-site-header[data-public-header][data-public-header-scrolling="true"] {
+      transition: none;
+    }
+  }
+
   .nature-route-loading {
     position: absolute;
     top: calc(100% + 0.4rem);
@@ -776,6 +791,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   @layer components {
+    .nature-site-header[data-public-header] {
+      transition: none;
+    }
+
     .nature-ambient-layer,
     .nature-ambient-glow {
       animation: none;

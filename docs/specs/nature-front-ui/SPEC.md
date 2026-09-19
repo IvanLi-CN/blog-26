@@ -7,6 +7,7 @@
 ## Related ADRs
 
 - [ADR 0001: Project Detail MDX Authoring](../../adr/0001-project-detail-mdx-authoring.md)
+- [ADR 0002: Mobile Public Header Scroll Model](../../adr/0002-mobile-public-header-scroll.md)
 
 ## 1. Background
 
@@ -89,7 +90,35 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 - The project catalog uses six single-name groups: 开发工具 (3), 效率工具 (2), Web 产品 (2), 硬件产品 (3), 设备控制 (3), and 运维工具 (2). Every group stays within three cards, and the homepage selects one representative project from each group.
 
-### 4.8 Timeline and primary-action semantics
+### 4.8 Mobile public header motion
+
+- Below `640px`, every `BaseLayout` public page uses one real header element in
+  normal document flow. It does not create a fixed clone, switch to a separate
+  scroll container, or replace the header with a transform-driven duplicate.
+- The header measures its complete height `H` and exposes a visible offset
+  `V∈[0,H]` through sticky `top=V-H`. Positive document scroll movement reduces
+  `V` one-for-one until the header is fully offscreen.
+- Reverse movement is classified from a rolling `100ms` sample window. A
+  reverse displacement below `12px` does not switch the active gesture; a
+  reverse speed at or above `0.3px/ms` is eligible to restore the header one
+  for one. Slow reverse movement does not actively reveal a fully hidden header;
+  reaching the document origin restores the expanded endpoint.
+- A release settles only after about `120ms` without effective movement. A
+  hidden progress of at least `50%` snaps fully closed; fast reverse recovery of
+  at least `20%` of the full header height snaps fully open; smaller gestures
+  return to their gesture-start endpoint. While a touch contact is active,
+  pauses do not settle the gesture; `touchend` or `touchcancel` starts the
+  release settling window. Once a touch gesture has started moving the header,
+  every subsequent document delta follows one-for-one in either direction
+  until release; reverse speed and distance gates apply only before that direct
+  follow mode starts.
+- Fully collapsed descendants are removed from sequential Tab order. Programmatic
+  focus entering the header expands it before focus delivery. `ResizeObserver`
+  remeasures the header, Astro ClientRouter swaps reset the controller, reduced
+  motion removes only the settling transition, and inner scroll containers are
+  ignored.
+
+### 4.9 Timeline and primary-action semantics
 
 - A timeline node represents one chronological content event. Every article and Memo event uses the same closed circular frame, dimensions, border, elevation, and connection rhythm at a given breakpoint; type must not remove or weaken that frame.
 - Content type is secondary metadata. An icon, restrained semantic tint, and visible text label distinguish articles from Memos; color alone must never carry the distinction, and a timeline node must not imply a different interaction level or priority by its shape or material.
@@ -115,8 +144,11 @@ We need a frontend-owned design system that keeps routes and content behavior st
 13. Project posters render in 4:5 frames with a continuously readable image or placeholder state, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render in a stable intrinsic 2:1 frame with responsive AVIF/WebP candidates, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
 14. Poster asset generation and production builds fail when a raw public PNG, a missing generated variant, an oversized variant, or an oversized first-row transfer is detected.
 15. The project catalog contains 15 entries across the six groups above; `/projects/spoti-bind` renders SpotiBind, and the homepage presents six featured projects derived from those groups.
-16. Every article and Memo event on public timelines retains the shared circular node frame and connector rhythm at desktop and narrow breakpoints; its icon and visible text label communicate content type without relying on color alone.
-17. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
+16. On mobile public routes, the header follows the documented scroll, speed,
+    release-settling, focus-order, resize, router, and reduced-motion contracts;
+    desktop public behavior remains unchanged.
+17. Every article and Memo event on public timelines retains the shared circular node frame and connector rhythm at desktop and narrow breakpoints; its icon and visible text label communicate content type without relying on color alone.
+18. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
 
 ## 6. Validation
 
@@ -131,6 +163,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR=0 bunx playwright test --project=guest --grep "Code Block Rendering"`
 - `bun run build-storybook`
 - `bun run check`
+- `bun test src/lib/__tests__/public-header-scroll.test.ts`
+- `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true bunx playwright test tests/e2e/guest/nature-front-coverage.spec.ts --project=guest --grep "public header scroll|mobile header"
 
 ## Visual Evidence
 

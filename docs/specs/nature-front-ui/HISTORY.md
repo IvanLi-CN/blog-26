@@ -9,4 +9,14 @@
 - 2026-09-16: The project catalog expanded with SpotiBind and settled on six single-name groups with no more than three cards per group.
 - 2026-09-17: Project details gained an Astro MDX authoring path, semantic public-entry shortcuts, responsive entry/TOC sidebar behavior, and the first Codex Vibe Monitor body migration.
 - 2026-09-18: The remaining 14 catalog projects gained evidence-led MDX bodies with project-specific headings and preserved catalog-only fallback rules for future projects without sufficient material.
+- 2026-09-19: Mobile public header motion was specified as a single sticky document-flow controller with speed-aware reverse scrolling and release-only endpoint settling; ADR 0002 records the boundary decision.
+- 2026-09-19: Reverse-direction changes now accumulate the 12px minimum before changing the active gesture, keeping partial hide gestures stable during small counter-scrolls.
+- 2026-09-19: Slow reverse movement that crosses the distance threshold remains attached to the active hide gesture, so release settling cannot leave a partially visible header.
+- 2026-09-19: Reverse speed now measures only the current directional run inside the rolling window, and overlapping settle transitions are cancelled before a new release timer starts.
+- 2026-09-19: Zero-delta samples no longer break directional speed windows, and a focused header control keeps the header expanded until focus leaves it.
+- 2026-09-19: Sub-threshold reverse jitter is cancelled when the active scroll direction resumes, preventing duplicate distance from changing the visible offset.
+- 2026-09-19: Touch-active pauses no longer settle the header; endpoint absorption starts only after the final touch release or cancellation.
+- 2026-09-19: Once a touch gesture starts moving the header, later deltas follow one-for-one in either direction until release.
+- 2026-09-19: Route, viewport, and controller refreshes cancel the active touch gesture and reset its origin, preventing a missing terminal event from blocking later settling.
+- 2026-09-19: Touch direct-follow now ignores endpoint no-op deltas so a new reverse gesture still uses the normal direction gates.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.
