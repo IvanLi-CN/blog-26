@@ -49,6 +49,15 @@ describe("public header scroll state", () => {
     expect(fastReverse.visibleOffset).toBe(30);
   });
 
+  test("does not switch a partial hide gesture before 12px of reverse movement", () => {
+    const partial = scroll(createHeaderScrollState(200), 100, 100);
+    const shortReverse = scroll(partial, 95, 140);
+
+    expect(shortReverse.direction).toBe("hide");
+    expect(shortReverse.visibleOffset).toBe(100);
+    expect(settleHeaderScrollState(shortReverse).visibleOffset).toBe(0);
+  });
+
   test("treats 0.3px per millisecond as fast and keeps sub-threshold recovery hidden", () => {
     const hidden = scroll(createHeaderScrollState(200), 220, 220);
     const belowDistance = reduceHeaderScrollState(hidden, { scrollY: 209, timestamp: 260 });

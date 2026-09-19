@@ -25,6 +25,9 @@ export interface HeaderScrollState {
   gestureOriginOffset: number;
   gestureDistance: number;
   fastReverseEligible: boolean;
+  pendingDirection: HeaderScrollDirection;
+  pendingDistance: number;
+  pendingFastReverseEligible: boolean;
   samples: HeaderScrollSample[];
 }
 
@@ -73,6 +76,9 @@ export function createHeaderScrollState(
     gestureOriginOffset: height,
     gestureDistance: 0,
     fastReverseEligible: false,
+    pendingDirection: "idle",
+    pendingDistance: 0,
+    pendingFastReverseEligible: false,
     samples: [{ scrollY: normalizedScrollY, timestamp: normalizedTimestamp }],
   };
 }
@@ -88,6 +94,9 @@ function resetGesture(
     gestureOriginOffset: clamp(visibleOffset, 0, state.headerHeight),
     gestureDistance: 0,
     fastReverseEligible: false,
+    pendingDirection: "idle",
+    pendingDistance: 0,
+    pendingFastReverseEligible: false,
   };
 }
 
@@ -141,14 +150,43 @@ export function reduceHeaderScrollState(
   }
 
   const direction: HeaderScrollDirection = delta > 0 ? "hide" : "reveal";
-  if (direction !== state.direction) {
+  if (direction !== state.direction && state.direction !== "idle") {
+    const pendingDistance =
+      state.pendingDirection === direction
+        ? state.pendingDistance + effectiveDeltaPx
+        : effectiveDeltaPx;
+    const pendingFastReverseEligible =
+      (state.pendingDirection === direction && state.pendingFastReverseEligible) ||
+      (direction === "reveal" && speedPxPerMs >= config.fastReverseSpeedPxPerMs);
+
+    if (pendingDistance < config.reverseDistancePx) {
+      next.pendingDirection = direction;
+      next.pendingDistance = pendingDistance;
+      next.pendingFastReverseEligible = pendingFastReverseEligible;
+      return { state: next, speedPxPerMs, effectiveDeltaPx };
+    }
+
+    next.direction = direction;
+    next.gestureOriginOffset = state.visibleOffset;
+    next.gestureDistance = pendingDistance;
+    next.fastReverseEligible = pendingFastReverseEligible;
+    next.pendingDirection = "idle";
+    next.pendingDistance = 0;
+    next.pendingFastReverseEligible = false;
+  } else if (direction !== state.direction) {
     next.direction = direction;
     next.gestureOriginOffset = state.visibleOffset;
     next.gestureDistance = effectiveDeltaPx;
     next.fastReverseEligible =
       direction === "reveal" && speedPxPerMs >= config.fastReverseSpeedPxPerMs;
+    next.pendingDirection = "idle";
+    next.pendingDistance = 0;
+    next.pendingFastReverseEligible = false;
   } else {
     next.gestureDistance += effectiveDeltaPx;
+    next.pendingDirection = "idle";
+    next.pendingDistance = 0;
+    next.pendingFastReverseEligible = false;
   }
 
   if (direction === "hide") {
