@@ -446,6 +446,7 @@ function handleTouchStart() {
   touchActive = true;
   for (const controller of controllers.values()) {
     clearSettleTimers(controller);
+    controller.state = resetGesture(controller.state, controller.state.visibleOffset);
   }
 }
 
@@ -542,7 +543,6 @@ function attachController(header: HTMLElement) {
 }
 
 function refreshControllers() {
-  touchActive = false;
   for (const [header, controller] of controllers) {
     clearSettleTimers(controller);
     if (header.isConnected && isMobileViewport()) {

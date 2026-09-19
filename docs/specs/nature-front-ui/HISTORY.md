@@ -17,5 +17,5 @@
 - 2026-09-19: Sub-threshold reverse jitter is cancelled when the active scroll direction resumes, preventing duplicate distance from changing the visible offset.
 - 2026-09-19: Touch-active pauses no longer settle the header; endpoint absorption starts only after the final touch release or cancellation.
 - 2026-09-19: Once a touch gesture starts moving the header, later deltas follow one-for-one in either direction until release.
-- 2026-09-19: Controller refreshes clear interrupted touch state and settle timers so route, viewport, and disconnect lifecycles cannot strand a touch gesture.
+- 2026-09-19: Controller refreshes preserve an active touch until its terminal event; each new touch start resets the prior gesture origin, while teardown clears settle timers and DOM state.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

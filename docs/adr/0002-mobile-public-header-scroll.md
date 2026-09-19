@@ -33,8 +33,9 @@ after the final `touchend` or `touchcancel`, so a paused finger remains in
 direct control of the current offset. After the header begins moving during
 that touch, subsequent deltas follow one-for-one in either direction until
 release; the reverse speed gates are for non-touch or pre-gesture movement.
-Controller refreshes clear interrupted touch state and timers so route and
-viewport lifecycle changes cannot strand a gesture in direct-follow mode.
+Controller refreshes preserve an active touch until its terminal event; each
+new touch start resets the prior gesture origin before tracking a new gesture,
+while teardown still clears timers and DOM state.
 
 The behavior is enabled only below the public `640px` breakpoint, observes the
 top-level window scroll stream, remeasures with `ResizeObserver`, and resets on
