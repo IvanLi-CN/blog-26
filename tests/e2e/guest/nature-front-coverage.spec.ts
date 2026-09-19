@@ -748,10 +748,16 @@ test.describe("Nature frontend public coverage", () => {
       (element) => element.getBoundingClientRect().height
     );
     await page.evaluate(() => window.dispatchEvent(new Event("touchstart")));
-    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), Math.ceil(initialHeight * 0.3));
+    const firstTouchScroll = Math.ceil(initialHeight * 0.3);
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), firstTouchScroll);
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), firstTouchScroll - 5);
     await page.waitForTimeout(180);
 
     await expect(header).toHaveAttribute("data-public-header-state", "partial");
+    await expect(header).toHaveAttribute(
+      "data-public-header-offset",
+      `${initialHeight - firstTouchScroll + 5}`
+    );
     await expect.poll(() => header.getAttribute("data-public-header-settling")).toBeNull();
 
     await page.evaluate(() => window.dispatchEvent(new Event("touchend")));

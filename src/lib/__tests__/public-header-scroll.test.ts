@@ -113,6 +113,21 @@ describe("public header scroll state", () => {
     expect(slowReverse.state.fastReverseEligible).toBe(false);
   });
 
+  test("direct touch follow tracks slow reverse movement after the header starts", () => {
+    const initial = createHeaderScrollState(200);
+    const started = reduceHeaderScrollState(initial, { scrollY: 60, timestamp: 60 }).state;
+    const followed = reduceHeaderScrollState(
+      started,
+      { scrollY: 55, timestamp: 180 },
+      undefined,
+      true
+    ).state;
+
+    expect(started.visibleOffset).toBe(140);
+    expect(followed.visibleOffset).toBe(145);
+    expect(followed.direction).toBe("reveal");
+  });
+
   test("settles fast reverse recovery at the 20 percent endpoint", () => {
     const hidden = scroll(createHeaderScrollState(200), 220, 220);
     const recovered = scroll(hidden, 170, 270);

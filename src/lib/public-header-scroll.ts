@@ -136,7 +136,8 @@ function getRollingSpeed(
 export function reduceHeaderScrollState(
   state: HeaderScrollState,
   update: HeaderScrollUpdate,
-  config = PUBLIC_HEADER_SCROLL_CONFIG
+  config = PUBLIC_HEADER_SCROLL_CONFIG,
+  directFollow = false
 ): HeaderScrollUpdateResult {
   const scrollY = normalizeScrollY(update.scrollY);
   const timestamp = normalizeTimestamp(update.timestamp, state.lastTimestamp);
@@ -169,6 +170,20 @@ export function reduceHeaderScrollState(
   }
 
   if (effectiveDeltaPx === 0) {
+    return { state: next, speedPxPerMs, effectiveDeltaPx };
+  }
+
+  if (directFollow && state.direction !== "idle") {
+    next.direction = direction;
+    next.gestureOriginOffset =
+      direction !== state.direction ? state.visibleOffset : state.gestureOriginOffset;
+    next.gestureDistance =
+      direction !== state.direction ? effectiveDeltaPx : state.gestureDistance + effectiveDeltaPx;
+    next.fastReverseEligible = direction === "reveal";
+    next.pendingDirection = "idle";
+    next.pendingDistance = 0;
+    next.pendingFastReverseEligible = false;
+    next.visibleOffset = clamp(state.visibleOffset - delta, 0, state.headerHeight);
     return { state: next, speedPxPerMs, effectiveDeltaPx };
   }
 
@@ -450,10 +465,15 @@ function handleTouchEnd(event: TouchEvent) {
 function handleWindowScroll() {
   const timestamp = performance.now();
   for (const controller of controllers.values()) {
-    const result = reduceHeaderScrollState(controller.state, {
-      scrollY: window.scrollY,
-      timestamp,
-    });
+    const result = reduceHeaderScrollState(
+      controller.state,
+      {
+        scrollY: window.scrollY,
+        timestamp,
+      },
+      PUBLIC_HEADER_SCROLL_CONFIG,
+      touchActive && controller.state.direction !== "idle"
+    );
     controller.state = result.state;
     if (result.effectiveDeltaPx > 0 || window.scrollY <= 0) {
       applyHeaderState(controller, "scroll");

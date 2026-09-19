@@ -30,7 +30,9 @@ gesture's starting endpoint. Fully collapsed descendants leave sequential Tab
 order; a capture-phase focus handler expands the header before focus delivery.
 Touch-active scrolling never starts that release timer; the timer begins only
 after the final `touchend` or `touchcancel`, so a paused finger remains in
-direct control of the current offset.
+direct control of the current offset. After the header begins moving during
+that touch, subsequent deltas follow one-for-one in either direction until
+release; the reverse speed gates are for non-touch or pre-gesture movement.
 
 The behavior is enabled only below the public `640px` breakpoint, observes the
 top-level window scroll stream, remeasures with `ResizeObserver`, and resets on

@@ -35,3 +35,6 @@ offset.
 Touch-active scrolling clears and suppresses settle timers until the final
 touch release, so a paused finger retains direct control of the current
 offset; release then uses the existing quiet-window endpoint rules.
+Once touch movement starts the header, subsequent deltas use a direct-follow
+path in either direction until release, avoiding slow-reverse gating while the
+finger remains down.
