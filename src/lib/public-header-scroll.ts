@@ -102,18 +102,32 @@ function resetGesture(
 
 function getRollingSpeed(
   samples: HeaderScrollSample[],
+  direction: HeaderScrollDirection,
   fallbackDelta: number,
   fallbackTime: number
 ) {
-  const first = samples[0];
-  const last = samples[samples.length - 1];
-  const elapsed = last && first ? last.timestamp - first.timestamp : fallbackTime;
-  if (elapsed <= 0) {
-    return 0;
+  if (direction === "idle" || samples.length < 2) {
+    return fallbackTime > 0 ? fallbackDelta / fallbackTime : 0;
   }
 
-  const distance = last && first ? Math.abs(last.scrollY - first.scrollY) : fallbackDelta;
-  return distance / elapsed;
+  const lastIndex = samples.length - 1;
+  let firstIndex = lastIndex;
+  let distance = 0;
+
+  for (let index = lastIndex; index > 0; index -= 1) {
+    const delta = samples[index].scrollY - samples[index - 1].scrollY;
+    const matchesDirection =
+      (direction === "hide" && delta > 0) || (direction === "reveal" && delta < 0);
+    if (!matchesDirection) {
+      break;
+    }
+
+    distance += Math.abs(delta);
+    firstIndex = index - 1;
+  }
+
+  const elapsed = samples[lastIndex].timestamp - samples[firstIndex].timestamp;
+  return elapsed > 0 ? distance / elapsed : 0;
 }
 
 export function reduceHeaderScrollState(
@@ -125,11 +139,17 @@ export function reduceHeaderScrollState(
   const timestamp = normalizeTimestamp(update.timestamp, state.lastTimestamp);
   const delta = scrollY - state.lastScrollY;
   const effectiveDeltaPx = Math.abs(delta);
+  const direction: HeaderScrollDirection = delta > 0 ? "hide" : delta < 0 ? "reveal" : "idle";
   const nextSamples = [...state.samples, { scrollY, timestamp }].filter(
     (sample) => timestamp - sample.timestamp <= config.sampleWindowMs
   );
   const samples = nextSamples.length > 0 ? nextSamples : [{ scrollY, timestamp }];
-  const speedPxPerMs = getRollingSpeed(samples, effectiveDeltaPx, timestamp - state.lastTimestamp);
+  const speedPxPerMs = getRollingSpeed(
+    samples,
+    direction,
+    effectiveDeltaPx,
+    timestamp - state.lastTimestamp
+  );
   const next: HeaderScrollState = {
     ...state,
     lastScrollY: scrollY,
@@ -149,7 +169,6 @@ export function reduceHeaderScrollState(
     return { state: next, speedPxPerMs, effectiveDeltaPx };
   }
 
-  const direction: HeaderScrollDirection = delta > 0 ? "hide" : "reveal";
   if (direction !== state.direction && state.direction !== "idle") {
     const pendingDistance =
       state.pendingDirection === direction
@@ -359,6 +378,11 @@ function applyHeaderState(
 function scheduleSettle(controller: RuntimeHeaderController) {
   if (controller.settleTimer !== null) {
     window.clearTimeout(controller.settleTimer);
+    controller.settleTimer = null;
+  }
+  if (controller.transitionTimer !== null) {
+    window.clearTimeout(controller.transitionTimer);
+    controller.transitionTimer = null;
   }
 
   controller.settleTimer = window.setTimeout(() => {

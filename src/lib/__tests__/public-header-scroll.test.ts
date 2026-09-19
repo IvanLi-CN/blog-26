@@ -78,6 +78,19 @@ describe("public header scroll state", () => {
     expect(exactSpeed.state.visibleOffset).toBe(12);
   });
 
+  test("does not let prior downward movement make a slow reverse gesture fast", () => {
+    let state = createHeaderScrollState(200);
+    state = scroll(state, 100, 50);
+    state = scroll(state, 200, 100);
+    state = scroll(state, 190, 150);
+    const slowReverse = reduceHeaderScrollState(state, { scrollY: 180, timestamp: 200 });
+
+    expect(slowReverse.speedPxPerMs).toBeCloseTo(0.2);
+    expect(slowReverse.state.direction).toBe("hide");
+    expect(slowReverse.state.visibleOffset).toBe(0);
+    expect(settleHeaderScrollState(slowReverse.state).visibleOffset).toBe(0);
+  });
+
   test("settles fast reverse recovery at the 20 percent endpoint", () => {
     const hidden = scroll(createHeaderScrollState(200), 220, 220);
     const recovered = scroll(hidden, 170, 270);

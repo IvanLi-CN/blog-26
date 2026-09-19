@@ -12,4 +12,5 @@
 - 2026-09-19: Mobile public header motion was specified as a single sticky document-flow controller with speed-aware reverse scrolling and release-only endpoint settling; ADR 0002 records the boundary decision.
 - 2026-09-19: Reverse-direction changes now accumulate the 12px minimum before changing the active gesture, keeping partial hide gestures stable during small counter-scrolls.
 - 2026-09-19: Slow reverse movement that crosses the distance threshold remains attached to the active hide gesture, so release settling cannot leave a partially visible header.
+- 2026-09-19: Reverse speed now measures only the current directional run inside the rolling window, and overlapping settle transitions are cancelled before a new release timer starts.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

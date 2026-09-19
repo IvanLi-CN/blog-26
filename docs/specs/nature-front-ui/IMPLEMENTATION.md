@@ -22,4 +22,7 @@ change the active gesture or its release endpoint. A slow reverse remains on
 the active hide gesture even after that distance is crossed, preserving the
 endpoint-only release contract. Unit tests cover the state machine; guest
 Playwright coverage covers route integration, responsive behavior, focus order,
-lifecycle reset, and reduced motion.
+lifecycle reset, and reduced motion. Reverse speed is calculated from the
+current directional run within the rolling window, so earlier movement cannot
+promote a slow counter-scroll; overlapping settle transitions are cancelled
+before a new release timer starts.
