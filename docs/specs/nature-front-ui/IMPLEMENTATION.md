@@ -29,3 +29,6 @@ again until the 12px crossing. Overlapping settle transitions are cancelled
 before a new release timer starts. Zero-delta samples preserve the directional
 window's elapsed time, and a focused header descendant prevents collapse until
 focus leaves the header.
+Pending reverse distance is cancelled before resumed movement contributes to
+the active gesture, preventing zero-net scroll jitter from changing the header
+offset.

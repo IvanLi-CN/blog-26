@@ -58,6 +58,17 @@ describe("public header scroll state", () => {
     expect(settleHeaderScrollState(shortReverse).visibleOffset).toBe(0);
   });
 
+  test("cancels sub-threshold reverse jitter when the active direction resumes", () => {
+    let state = createHeaderScrollState(200);
+    state = scroll(state, 100, 100);
+    state = scroll(state, 95, 140);
+    state = scroll(state, 100, 180);
+
+    expect(state.visibleOffset).toBe(100);
+    expect(state.pendingDirection).toBe("idle");
+    expect(state.pendingDistance).toBe(0);
+  });
+
   test("keeps a slow partial reverse gesture on an endpoint after crossing 12px", () => {
     const partial = scroll(createHeaderScrollState(200), 100, 100);
     const slowReverseStart = scroll(partial, 95, 140);

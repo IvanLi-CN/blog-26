@@ -211,7 +211,18 @@ export function reduceHeaderScrollState(
     next.pendingDistance = 0;
     next.pendingFastReverseEligible = false;
   } else {
-    next.gestureDistance += effectiveDeltaPx;
+    const pendingReturnDistance = state.pendingDirection !== "idle" ? state.pendingDistance : 0;
+    const resumedDelta = effectiveDeltaPx - pendingReturnDistance;
+    if (resumedDelta <= 0 && pendingReturnDistance > 0) {
+      const remainingPendingDistance = pendingReturnDistance - effectiveDeltaPx;
+      next.pendingDirection = remainingPendingDistance > 0 ? state.pendingDirection : "idle";
+      next.pendingDistance = Math.max(remainingPendingDistance, 0);
+      next.pendingFastReverseEligible =
+        remainingPendingDistance > 0 && state.pendingFastReverseEligible;
+      return { state: next, speedPxPerMs, effectiveDeltaPx };
+    }
+
+    next.gestureDistance += Math.max(resumedDelta, 0);
     next.pendingDirection = "idle";
     next.pendingDistance = 0;
     next.pendingFastReverseEligible = false;
