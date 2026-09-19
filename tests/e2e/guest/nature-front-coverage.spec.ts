@@ -908,8 +908,11 @@ test.describe("Nature frontend public coverage", () => {
   });
 
   test("public mobile density stays compact without shrinking touch targets", async ({ page }) => {
-    for (const width of [393, 320]) {
-      await page.setViewportSize({ width, height: width === 393 ? 852 : 700 });
+    for (const width of [393, 375, 360, 320]) {
+      await page.setViewportSize({
+        width,
+        height: width === 393 ? 852 : width === 320 ? 700 : 800,
+      });
 
       for (const route of ["/memos", "/posts", "/search", "/projects"]) {
         await gotoWithTheme(page, route, "dark");
@@ -967,8 +970,9 @@ test.describe("Nature frontend public coverage", () => {
       expect(metrics.hasRequiredElements).toBe(true);
       expect(metrics.headerRadius).toBeLessThanOrEqual(16);
       for (const edges of metrics.shellEdges) {
-        expect(edges.left).toBeCloseTo(12, 0);
-        expect(edges.right).toBeCloseTo(12, 0);
+        const expectedEdge = width <= 375 ? 8 : 12;
+        expect(edges.left).toBeCloseTo(expectedEdge, 0);
+        expect(edges.right).toBeCloseTo(expectedEdge, 0);
       }
       expect(metrics.navTargets).toHaveLength(4);
       for (const target of metrics.navTargets) {

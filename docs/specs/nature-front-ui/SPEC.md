@@ -59,7 +59,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `MarkdownRenderer` owns the public Markdown code surface. Dark code blocks use a low-brightness green surface, AA-readable foreground and syntax tokens, `12px` vertical by `14px` horizontal padding, and a `12px` radius. Horizontal overflow and code folding remain available.
 - Below `640px`, public page containers keep `12px` viewport gutters, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Structural wrappers may flatten to the page background when a nested surface adds no scanning or interaction value. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
 - Below `640px`, the homepage and Memos use a 移动内容流: chronological order, dates, and content-type metadata remain, while the decorative timeline rail, nodes, and connectors are removed. The homepage event entry follows the compact Memos item pattern, with only the article/Memo type icon immediately before the date; the desktop-only type text chip is not rendered in the narrow flow.
-- Below `360px`, mobile content-flow gaps and section spacing compact further so the reading column gains width, while navigation labels may collapse to their already-labelled icons.
+- Below `375px`, mobile content-flow gaps, shell gutters, and section spacing compact further so the reading column gains width; below `360px`, navigation labels may collapse to their already-labelled icons.
 
 ### 4.5 Static search deep links
 

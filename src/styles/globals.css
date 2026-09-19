@@ -669,6 +669,22 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   }
 }
 
+@media (max-width: 375px) {
+  .nature-main > .nature-container,
+  .nature-main > .nature-detail-container {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+
+  .nature-site-header-frame > .nature-surface {
+    padding-inline: 0.375rem !important;
+  }
+
+  .nature-content-layer > footer .nature-surface {
+    padding: 1rem 0.75rem !important;
+  }
+}
+
 @media (max-width: 359px) {
   .nature-main > .nature-container,
   .nature-main > .nature-detail-container {
@@ -1621,6 +1637,13 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     padding: 1rem;
   }
 
+}
+
+@media (max-width: 375px) {
+  :root {
+    --nature-content-width: min(1280px, calc(100% - 1rem));
+    --nature-reading-width: min(920px, calc(100% - 1rem));
+  }
 }
 
 @media (min-width: 1024px) and (pointer: fine) {
