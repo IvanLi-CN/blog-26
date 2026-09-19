@@ -18,6 +18,8 @@ The mobile public header uses a pure scroll-state controller shared by every
 height to a CSS `top` offset, distinguishes slow and fast reverse movement, and
 settles only after the quiet-release window. Reverse-direction samples remain
 pending until the 12px minimum is reached, so small counter-scrolls cannot
-change the active gesture or its release endpoint. Unit tests cover the state
-machine; guest Playwright coverage covers route integration, responsive
-behavior, focus order, lifecycle reset, and reduced motion.
+change the active gesture or its release endpoint. A slow reverse remains on
+the active hide gesture even after that distance is crossed, preserving the
+endpoint-only release contract. Unit tests cover the state machine; guest
+Playwright coverage covers route integration, responsive behavior, focus order,
+lifecycle reset, and reduced motion.

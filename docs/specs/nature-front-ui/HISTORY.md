@@ -11,4 +11,5 @@
 - 2026-09-18: The remaining 14 catalog projects gained evidence-led MDX bodies with project-specific headings and preserved catalog-only fallback rules for future projects without sufficient material.
 - 2026-09-19: Mobile public header motion was specified as a single sticky document-flow controller with speed-aware reverse scrolling and release-only endpoint settling; ADR 0002 records the boundary decision.
 - 2026-09-19: Reverse-direction changes now accumulate the 12px minimum before changing the active gesture, keeping partial hide gestures stable during small counter-scrolls.
+- 2026-09-19: Slow reverse movement that crosses the distance threshold remains attached to the active hide gesture, so release settling cannot leave a partially visible header.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

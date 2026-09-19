@@ -166,6 +166,13 @@ export function reduceHeaderScrollState(
       return { state: next, speedPxPerMs, effectiveDeltaPx };
     }
 
+    if (direction === "reveal" && !pendingFastReverseEligible) {
+      next.pendingDirection = direction;
+      next.pendingDistance = pendingDistance;
+      next.pendingFastReverseEligible = false;
+      return { state: next, speedPxPerMs, effectiveDeltaPx };
+    }
+
     next.direction = direction;
     next.gestureOriginOffset = state.visibleOffset;
     next.gestureDistance = pendingDistance;
