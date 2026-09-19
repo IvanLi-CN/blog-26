@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
+import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import type { SearchSuggestionItem } from "@/lib/ai/search-suggestions";
 import PublicSearchPage from "./PublicSearchPage";

@@ -1,6 +1,6 @@
 # Public Project Showcase
 
-This context covers the public presentation of projects and the visual assets that help readers move from project discovery into a focused project case.
+This context covers the public reading and project-presentation concepts that help readers move from chronological discovery into focused content and project cases.
 
 ## Language
 
@@ -91,3 +91,19 @@ _Avoid_: 社交图
 **主题素材对**:
 A light and dark version of the same project visual, kept as a matched pair so the visual remains appropriate across reader themes.
 _Avoid_: 两套图片
+
+**内容时间线**:
+A public chronological overview that combines article and Memo events into one reading path.
+_Avoid_: 文章列表
+
+**时间线节点**:
+A decorative structural marker for one 内容时间线 event. It gives every event the same chronological position and does not encode content priority or an interaction level.
+_Avoid_: 类型图标, 操作入口
+
+**内容类型标识**:
+The icon, restrained tint, and visible text label that distinguish an article from a Memo while leaving the 时间线节点 structure unchanged.
+_Avoid_: 节点样式
+
+**主要行动**:
+The single reader-facing action that advances the primary path on a public surface, such as entering articles from the homepage.
+_Avoid_: 强调色按钮

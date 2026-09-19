@@ -26,9 +26,14 @@
   --nature-accent-strong: #4e7e60;
   --nature-accent-soft: rgba(78, 126, 96, 0.14);
   --nature-secondary: #84a7b5;
-  --nature-accent-2-rgb: 132, 167, 181;
+  --nature-secondary-rgb: 132, 167, 181;
   --nature-secondary-soft: rgba(132, 167, 181, 0.18);
+  --nature-action-primary-bg: #477956;
+  --nature-action-primary-bg-hover: #477956;
+  --nature-action-primary-fg: #f7fff8;
   --nature-highlight-rgb: 255, 255, 255;
+  --nature-timeline-node-highlight-alpha: 0.46;
+  --nature-timeline-node-inset-highlight-alpha: 0.22;
   --nature-mist-rgb: 244, 248, 244;
   --nature-success: #3f8f68;
   --nature-warning: #b17d45;
@@ -73,9 +78,14 @@ html[data-ui-theme="dark"] {
   --nature-accent-strong: #b3f2cd;
   --nature-accent-soft: rgba(136, 193, 160, 0.18);
   --nature-secondary: #83b3c6;
-  --nature-accent-2-rgb: 131, 179, 198;
+  --nature-secondary-rgb: 131, 179, 198;
   --nature-secondary-soft: rgba(131, 179, 198, 0.2);
+  --nature-action-primary-bg: #88c1a0;
+  --nature-action-primary-bg-hover: #88c1a0;
+  --nature-action-primary-fg: #0f1613;
   --nature-highlight-rgb: 247, 255, 250;
+  --nature-timeline-node-highlight-alpha: 0.22;
+  --nature-timeline-node-inset-highlight-alpha: 0.12;
   --nature-mist-rgb: 59, 86, 72;
   --nature-success: #78d4a2;
   --nature-warning: #e8bc75;
@@ -397,34 +407,21 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   border-radius: 999px;
   border: 1px solid rgba(var(--nature-border-rgb), 0.76);
   background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 58%),
-    linear-gradient(145deg, rgba(var(--nature-surface-rgb), 0.96), rgba(var(--nature-surface-alt-rgb), 0.84));
-  box-shadow:
-    0 18px 34px rgba(8, 21, 16, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(14px) saturate(1.05);
-}
-
-.nature-timeline-node[data-timeline-kind="memo"] {
-  border-color: rgba(var(--nature-accent-rgb), 0.34);
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0) 56%),
+    radial-gradient(
+      circle at 30% 30%,
+      rgba(var(--nature-highlight-rgb), var(--nature-timeline-node-highlight-alpha)),
+      rgba(var(--nature-highlight-rgb), 0) 62%
+    ),
     linear-gradient(
       145deg,
-      rgba(var(--nature-accent-rgb), 0.18),
-      rgba(var(--nature-secondary-rgb), 0.2) 52%,
-      rgba(var(--nature-surface-rgb), 0.92)
+      rgba(var(--nature-accent-rgb), 0.16),
+      rgba(var(--nature-secondary-rgb), 0.14) 52%,
+      rgba(var(--nature-surface-rgb), 0.94)
     );
   box-shadow:
-    0 20px 34px rgba(var(--nature-accent-rgb), 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.42);
-}
-
-.nature-timeline-node[data-timeline-kind="post"] {
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
+    0 14px 28px rgba(8, 21, 16, 0.12),
+    inset 0 1px 0 rgba(var(--nature-highlight-rgb), var(--nature-timeline-node-inset-highlight-alpha));
+  backdrop-filter: blur(14px) saturate(1.05);
 }
 
 .nature-timeline-connector {
@@ -523,22 +520,27 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
 }
 
 .nature-button-primary {
-  background: linear-gradient(135deg, var(--nature-accent), var(--nature-accent-strong));
-  color: #f7fff8;
+  background: var(--nature-action-primary-bg);
+  color: var(--nature-action-primary-fg);
   box-shadow: 0 18px 34px rgba(var(--nature-accent-rgb), 0.22);
 }
 
-.nature-button-primary:hover:not(:disabled) {
+.nature-button-primary:hover:not(:disabled),
+.nature-search-submit:hover:not(:disabled) {
+  background: var(--nature-action-primary-bg-hover);
   transform: translateY(-1px) scale(1.01);
   box-shadow: 0 22px 42px rgba(var(--nature-accent-rgb), 0.28);
 }
 
 .nature-search-submit {
-  color: #f7fff8;
+  background: var(--nature-action-primary-bg);
+  color: var(--nature-action-primary-fg);
+  box-shadow: 0 18px 34px rgba(var(--nature-accent-rgb), 0.22);
 }
 
-html[data-ui-theme="dark"] .nature-search-submit {
-  color: var(--nature-bg);
+:where(.nature-button-primary, .nature-search-submit):focus-visible {
+  outline: 3px solid var(--nature-accent-strong);
+  outline-offset: 3px;
 }
 
 .nature-button-outline {
@@ -796,7 +798,7 @@ html[data-ui-theme="dark"] .nature-search-submit {
 .nature-switch[data-state="checked"] {
   border-color: rgba(var(--nature-accent-rgb), 0.58);
   background:
-    linear-gradient(135deg, rgba(var(--nature-accent-rgb), 0.7), rgba(var(--nature-accent-2-rgb), 0.56));
+    linear-gradient(135deg, rgba(var(--nature-accent-rgb), 0.7), rgba(var(--nature-secondary-rgb), 0.56));
   box-shadow:
     0 14px 30px rgba(var(--nature-accent-rgb), 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
@@ -1025,7 +1027,7 @@ html[data-ui-theme="dark"] .nature-search-submit {
     conic-gradient(
       from 180deg,
       rgba(var(--nature-accent-rgb), 0.2),
-      rgba(var(--nature-accent-2-rgb), 0.45),
+      rgba(var(--nature-secondary-rgb), 0.45),
       rgba(var(--nature-accent-rgb), 0.2)
     );
   box-shadow:
@@ -1323,7 +1325,7 @@ html[data-ui-theme="dark"] .nature-search-submit {
   .nature-timeline {
     --nature-timeline-gap: 1.2rem;
     --nature-timeline-rail-width: 1.5rem;
-    --nature-timeline-node-size: 1rem;
+    --nature-timeline-node-size: 1.25rem;
     --nature-timeline-node-offset: 0.35rem;
   }
 
@@ -1333,8 +1335,8 @@ html[data-ui-theme="dark"] .nature-search-submit {
 
   .nature-timeline-node {
     box-shadow:
-      0 0 0 4px rgba(var(--nature-surface-rgb), 0.84),
-      0 12px 20px rgba(8, 21, 16, 0.1);
+      0 0 0 3px rgba(var(--nature-surface-rgb), 0.72),
+      0 10px 18px rgba(8, 21, 16, 0.1);
   }
 
   .nature-timeline-rail::before {
@@ -1344,8 +1346,8 @@ html[data-ui-theme="dark"] .nature-search-submit {
   }
 
   .nature-timeline-node svg {
-    width: 0.62rem;
-    height: 0.62rem;
+    width: 0.9rem;
+    height: 0.9rem;
   }
 
   .nature-timeline-connector {
@@ -1359,6 +1361,7 @@ html[data-ui-theme="dark"] .nature-search-submit {
 @media (max-width: 359px) {
   .nature-timeline {
     --nature-timeline-rail-width: 1rem;
+    --nature-timeline-node-size: 1.125rem;
   }
 
   .nature-timeline-item {

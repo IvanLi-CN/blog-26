@@ -4,10 +4,69 @@ import { UI } from "../../../src/config/site";
 type ThemePreference = (typeof UI.theme.options)[number];
 type ResolvedTheme = Exclude<ThemePreference, "system">;
 
+type RgbColor = [number, number, number];
+
 const THEMES_EXCEPT_SYSTEM = UI.theme.options.filter(
   (theme): theme is ResolvedTheme => theme !== "system"
 );
 const DARK_THEMES = new Set<ResolvedTheme>(UI.theme.darkResolved);
+
+function parseRgbColor(color: string): RgbColor {
+  const channels = color
+    .match(/[\d.]+/g)
+    ?.slice(0, 3)
+    .map(Number);
+  if (channels?.length !== 3) {
+    throw new Error(`Unable to parse computed color: ${color}`);
+  }
+  return channels as RgbColor;
+}
+
+function relativeLuminance(color: RgbColor) {
+  return color.reduce((sum, channel, index) => {
+    const normalized = channel / 255;
+    const linear =
+      normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    return sum + linear * [0.2126, 0.7152, 0.0722][index];
+  }, 0);
+}
+
+function contrastRatio(foreground: string, background: string) {
+  const foregroundLuminance = relativeLuminance(parseRgbColor(foreground));
+  const backgroundLuminance = relativeLuminance(parseRgbColor(background));
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+async function expectPrimaryActionContrast(action: ReturnType<Page["locator"]>, label: string) {
+  await expect(action).toBeVisible();
+  const readState = async (state: string) => {
+    const colors = await action.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        foreground: style.color,
+        background: style.backgroundColor,
+        outlineStyle: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+      };
+    });
+    expect(
+      contrastRatio(colors.foreground, colors.background),
+      `${label} ${state} contrast`
+    ).toBeGreaterThanOrEqual(4.5);
+    if (state === "focus") {
+      expect(colors.outlineStyle, `${label} focus outline`).not.toBe("none");
+      expect(colors.outlineWidth, `${label} focus outline width`).not.toBe("0px");
+    }
+  };
+
+  await readState("default");
+  await action.hover();
+  await readState("hover");
+  await action.focus();
+  await readState("focus");
+}
 
 async function openHome(page: Page) {
   await page.goto("/", { timeout: 60_000, waitUntil: "commit" });
@@ -137,5 +196,23 @@ test.describe("Memos contrast", () => {
     expect(sample.fg).not.toBe("rgba(0, 0, 0, 0)");
     expect(sample.panelBgColor !== "rgba(0, 0, 0, 0)" || sample.panelBgImage !== "none").toBe(true);
     expect(sample.panelBackdropFilter).not.toBe("none");
+  });
+});
+
+test.describe("Primary action contrast", () => {
+  test("CTA and search submit keep AA contrast in every action state", async ({ page }) => {
+    for (const theme of ["light", "dark"] as const) {
+      await gotoWithTheme(page, "/", theme);
+      await expectPrimaryActionContrast(
+        page.getByRole("link", { name: "浏览文章" }),
+        `${theme} homepage CTA`
+      );
+
+      await gotoWithTheme(page, "/search?q=usb", theme);
+      await expectPrimaryActionContrast(
+        page.getByRole("button", { name: "搜索", exact: true }),
+        `${theme} search submit`
+      );
+    }
   });
 });

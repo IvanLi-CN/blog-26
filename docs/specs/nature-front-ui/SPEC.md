@@ -2,7 +2,6 @@
 
 - Spec ID: `n8ure`
 - Status: `done`
-- Last Updated: `2026-09-18`
 - Owner: `main-agent`
 
 ## Related ADRs
@@ -90,6 +89,15 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 - The project catalog uses six single-name groups: 开发工具 (3), 效率工具 (2), Web 产品 (2), 硬件产品 (3), 设备控制 (3), and 运维工具 (2). Every group stays within three cards, and the homepage selects one representative project from each group.
 
+### 4.8 Timeline and primary-action semantics
+
+- A timeline node represents one chronological content event. Every article and Memo event uses the same closed circular frame, dimensions, border, elevation, and connection rhythm at a given breakpoint; type must not remove or weaken that frame.
+- Content type is secondary metadata. An icon, restrained semantic tint, and visible text label distinguish articles from Memos; color alone must never carry the distinction, and a timeline node must not imply a different interaction level or priority by its shape or material.
+- Narrow layouts may compact the timeline rail and nodes, but must preserve the circular frame, the type icon, and the visual continuity of the connector.
+- `--nature-secondary-rgb` is the canonical RGB token for the public secondary color. Timeline rails, nodes, and other public components must use that name rather than introducing alternate names for the same color role.
+- A primary action with text or an icon uses paired `--nature-action-primary-bg` and `--nature-action-primary-fg` tokens. The foreground must maintain at least a 4.5:1 contrast ratio against every visible default, hover, and focus background; unverified multi-stop gradients are not permitted for those actions.
+- The resolved primary-action pairs are `#477956` on `#f7fff8` in light mode and `#88c1a0` on `#0f1613` in dark mode. Shared public component selectors have one authoritative stylesheet so these pairs cannot drift between duplicate implementations.
+
 ## 5. Acceptance criteria
 
 1. `/`, `/posts`, `/posts/[slug]`, `/memos`, `/memos/[slug]`, `/tags`, `/tags/[...tagSegments]`, `/search`, `/about`, and `/projects` render with the Nature design system in `light`, `dark`, and `system`.
@@ -107,6 +115,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 13. Project posters render in 4:5 frames with a continuously readable image or placeholder state, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render in a stable intrinsic 2:1 frame with responsive AVIF/WebP candidates, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
 14. Poster asset generation and production builds fail when a raw public PNG, a missing generated variant, an oversized variant, or an oversized first-row transfer is detected.
 15. The project catalog contains 15 entries across the six groups above; `/projects/spoti-bind` renders SpotiBind, and the homepage presents six featured projects derived from those groups.
+16. Every article and Memo event on public timelines retains the shared circular node frame and connector rhythm at desktop and narrow breakpoints; its icon and visible text label communicate content type without relying on color alone.
+17. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
 
 ## 6. Validation
 
@@ -301,6 +311,21 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 ![Home timeline mobile](./assets/home-timeline-mobile.png)
 
 ![Memos timeline mobile](./assets/memos-timeline-mobile.png)
+
+### Public timeline node and primary-action accessibility
+
+- Evidence captured from the deterministic local Astro preview after the timeline and action-token fixes. The four current-only candidates were compared against `main@4fb46c58892c1c2c0e8e7de0b1767c499e623264` and shown for owner confirmation.
+- Source type `ui_demo`; target program `mock-only`; capture scope `browser-viewport`; desktop viewport `1440px × 1100px`; requested mobile viewport `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
+- Article and Memo nodes share a closed circular frame, visible border, shadow, and continuous connector. The measured node diameter is `46.39px` on desktop and `20px` at `393px`; dark-theme highlight alpha is reduced to `0.22` with a `0.12` inset highlight. Visible `文章` and `闪念` labels remain present in both viewports.
+- The shared solid primary-action tokens measure `4.9826:1` in light mode and `8.8970:1` in dark mode for default, hover, and focus states; focus retains a visible `3px` outline with `3px` offset.
+
+![Public timeline and CTA light desktop](./assets/home-timeline-cta-light-desktop.png)
+
+![Public timeline and CTA dark desktop](./assets/home-timeline-cta-dark-desktop.png)
+
+![Public timeline and CTA light mobile](./assets/home-timeline-cta-light-mobile.png)
+
+![Public timeline and CTA dark mobile](./assets/home-timeline-cta-dark-mobile.png)
 
 ### Memo detail hierarchy
 

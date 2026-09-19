@@ -29,7 +29,6 @@
     --nature-accent-strong: #4e7e60;
     --nature-accent-soft: rgba(78, 126, 96, 0.14);
     --nature-secondary: #84a7b5;
-    --nature-accent-2-rgb: 132, 167, 181;
     --nature-secondary-soft: rgba(132, 167, 181, 0.18);
     --nature-highlight-rgb: 255, 255, 255;
     --nature-mist-rgb: 244, 248, 244;
@@ -76,7 +75,6 @@
     --nature-accent-strong: #b3f2cd;
     --nature-accent-soft: rgba(136, 193, 160, 0.18);
     --nature-secondary: #83b3c6;
-    --nature-accent-2-rgb: 131, 179, 198;
     --nature-secondary-soft: rgba(131, 179, 198, 0.2);
     --nature-highlight-rgb: 247, 255, 250;
     --nature-mist-rgb: 59, 86, 72;
@@ -403,62 +401,6 @@
 
   .nature-faint {
     color: var(--nature-text-faint);
-  }
-
-  .nature-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.55rem;
-    min-height: 2.75rem;
-    padding: 0.72rem 1rem;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition:
-      transform 220ms var(--nature-ease),
-      box-shadow 220ms var(--nature-ease),
-      border-color 220ms var(--nature-ease),
-      background-color 220ms var(--nature-ease),
-      color 220ms var(--nature-ease);
-  }
-
-  .nature-button-primary {
-    background: linear-gradient(135deg, var(--nature-accent), var(--nature-accent-strong));
-    color: #f7fff8;
-    box-shadow: 0 18px 34px rgba(var(--nature-accent-rgb), 0.22);
-  }
-
-  .nature-button-outline {
-    border-color: var(--nature-line-strong);
-    background: rgba(var(--nature-highlight-rgb), 0.34);
-    color: var(--nature-text);
-  }
-
-  .nature-button-ghost {
-    border-color: rgba(var(--nature-highlight-rgb), 0.02);
-    background: rgba(var(--nature-highlight-rgb), 0.06);
-    color: var(--nature-text-soft);
-  }
-
-  .nature-button-primary:hover:not(:disabled) {
-    transform: translateY(-1px) scale(1.01);
-    box-shadow: 0 22px 42px rgba(var(--nature-accent-rgb), 0.28);
-  }
-
-  .nature-search-submit {
-    color: #f7fff8;
-  }
-
-  html[data-ui-theme="dark"] .nature-search-submit {
-    color: var(--nature-bg);
-  }
-
-  .nature-button-outline:hover:not(:disabled),
-  .nature-button-ghost:hover:not(:disabled) {
-    transform: translateY(-1px);
-    border-color: rgba(var(--nature-accent-rgb), 0.32);
-    color: var(--nature-accent-strong);
   }
 
   :where(.nature-icon-button) {

@@ -40,7 +40,7 @@ const imageSrc = appendPublicAssetVersion(
     <div class="nature-timeline-node" data-testid="timeline-node" data-timeline-kind={item.type}>
       <Icon
         name={item.type === "memo" ? "tabler:bulb" : "tabler:article"}
-        className={`h-4 w-4 sm:h-5 sm:w-5 ${item.type === "memo" ? "text-[color:var(--nature-secondary)]" : "text-[color:var(--nature-accent-strong)]"}`}
+        className={`h-5 w-5 sm:h-6 sm:w-6 ${item.type === "memo" ? "text-[color:var(--nature-secondary)]" : "text-[color:var(--nature-accent-strong)]"}`}
       />
     </div>
     {!isLast && <div class="nature-timeline-connector" data-testid="timeline-connector"></div>}
