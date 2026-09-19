@@ -927,7 +927,7 @@ test.describe("Nature frontend public coverage", () => {
           ".nature-site-header-frame > .nature-surface"
         );
         const card = document.querySelector<HTMLElement>(".nature-timeline-card");
-        const rail = document.querySelector<HTMLElement>(".nature-timeline-rail");
+        const typeIcon = document.querySelector<HTMLElement>('[data-testid="timeline-type-icon"]');
         const navLabels = Array.from(
           document.querySelectorAll<HTMLElement>(".nature-nav-link-label")
         );
@@ -950,10 +950,10 @@ test.describe("Nature frontend public coverage", () => {
         });
 
         return {
-          hasRequiredElements: Boolean(header && card && rail),
+          hasRequiredElements: Boolean(header && card && typeIcon),
           headerRadius: header ? Number.parseFloat(getComputedStyle(header).borderRadius) : 0,
           cardWidth: card?.getBoundingClientRect().width ?? 0,
-          railWidth: rail?.getBoundingClientRect().width ?? 0,
+          typeIconWidth: typeIcon?.getBoundingClientRect().width ?? 0,
           visibleNavLabels: navLabels.filter((label) => getComputedStyle(label).display !== "none")
             .length,
           shellEdges,
@@ -978,13 +978,13 @@ test.describe("Nature frontend public coverage", () => {
 
       if (width === 320) {
         expect(metrics.visibleNavLabels).toBe(0);
-        expect(metrics.railWidth).toBeLessThanOrEqual(16);
+        expect(metrics.typeIconWidth).toBeGreaterThanOrEqual(20);
         expect(metrics.cardWidth).toBeGreaterThanOrEqual(250);
       }
     }
   });
 
-  test("home and memos timelines keep visible nodes and rails across breakpoints", async ({
+  test("home and memos switch from desktop timelines to mobile content streams", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 1200 });
@@ -1052,63 +1052,31 @@ test.describe("Nature frontend public coverage", () => {
     await gotoWithTheme(page, "/", "light");
     const mobileTimeline = page.getByTestId("home-timeline");
     const mobileNodes = mobileTimeline.getByTestId("timeline-node");
-    const mobileNode = mobileNodes.first();
-    await expect(mobileNode).toBeVisible();
-    await expect(mobileTimeline.getByText("文章", { exact: true }).first()).toBeVisible();
-    await expect(mobileTimeline.getByText("闪念", { exact: true }).first()).toBeVisible();
+    await expect(mobileNodes.first()).toBeHidden();
+    await expect(mobileTimeline.getByTestId("timeline-connector").first()).toBeHidden();
+    await expect(mobileTimeline.getByTestId("timeline-type-icon").first()).toBeVisible();
+    await expect(mobileTimeline.getByTestId("timeline-type-label").first()).toBeHidden();
 
-    const nodeBox = await mobileNode.boundingBox();
-    expect(nodeBox).not.toBeNull();
-
-    if (!nodeBox) {
-      throw new Error("timeline node is not measurable on mobile");
-    }
-
-    expect(nodeBox.width).toBeGreaterThan(8);
-    const mobileNodeMetrics = await mobileNodes.evaluateAll((nodes) =>
-      nodes.map((node) => {
-        const style = getComputedStyle(node);
-        const rect = node.getBoundingClientRect();
-        return {
-          kind: node.getAttribute("data-timeline-kind"),
-          width: rect.width,
-          height: rect.height,
-          border: style.border,
-          borderRadius: style.borderRadius,
-          backgroundColor: style.backgroundColor,
-          backgroundImage: style.backgroundImage,
-          boxShadow: style.boxShadow,
-        };
-      })
+    const mobileTypeIconAndDate = await mobileTimeline
+      .getByTestId("timeline-type-icon")
+      .first()
+      .evaluate((icon) => {
+        const date = icon.parentElement?.querySelector("time");
+        if (!date) return null;
+        const iconBox = icon.getBoundingClientRect();
+        const dateBox = date.getBoundingClientRect();
+        return { iconRight: iconBox.right, dateLeft: dateBox.left };
+      });
+    expect(mobileTypeIconAndDate).not.toBeNull();
+    expect(mobileTypeIconAndDate?.iconRight).toBeLessThanOrEqual(
+      (mobileTypeIconAndDate?.dateLeft ?? 0) + 12
     );
-    expect(mobileNodeMetrics.map((node) => node.kind)).toEqual(
-      expect.arrayContaining(["post", "memo"])
-    );
-    const mobileReference = mobileNodeMetrics[0];
-    for (const node of mobileNodeMetrics) {
-      expect(Math.abs(node.width - node.height)).toBeLessThanOrEqual(0.5);
-      expect(Math.abs(node.width - (mobileReference?.width ?? node.width))).toBeLessThanOrEqual(
-        0.5
-      );
-      expect(node.border).not.toBe("none");
-      expect(Number.parseFloat(node.borderRadius)).toBeGreaterThanOrEqual(node.width / 2);
-      expect(node.backgroundColor !== "rgba(0, 0, 0, 0)" || node.backgroundImage !== "none").toBe(
-        true
-      );
-      expect(node.boxShadow).not.toBe("none");
-    }
 
-    const mobileConnector = mobileTimeline.getByTestId("timeline-connector").first();
-    await expect(mobileConnector).toBeVisible();
-
-    const connectorBox = await mobileConnector.boundingBox();
-    expect(connectorBox).not.toBeNull();
-
-    if (!connectorBox) {
-      throw new Error("timeline connector is not measurable on mobile");
-    }
-
-    expect(connectorBox.height).toBeGreaterThan(24);
+    await gotoWithTheme(page, "/memos", "light");
+    const mobileMemosTimeline = page.getByTestId("memos-timeline");
+    await expect(mobileMemosTimeline.getByTestId("timeline-node").first()).toBeHidden();
+    await expect(mobileMemosTimeline.getByTestId("timeline-connector").first()).toBeHidden();
+    await expect(mobileMemosTimeline.getByTestId("timeline-type-icon").first()).toBeVisible();
   });
 
   test.describe("system theme and reduced motion", () => {

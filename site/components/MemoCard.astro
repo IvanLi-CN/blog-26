@@ -32,7 +32,13 @@ const showMobileDetailLink = !memo.title;
   <div class="nature-timeline-content">
     <div class="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
       <div class="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-        <Icon name="tabler:clock" className="h-4 w-4 text-[color:var(--nature-accent-strong)]" />
+        <span
+          class="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]"
+          data-testid="timeline-type-icon"
+          aria-hidden="true"
+        >
+          <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+        </span>
         <time dateTime={displayDate}>{formatAbsoluteDate(displayDate)}</time>
       </div>
 

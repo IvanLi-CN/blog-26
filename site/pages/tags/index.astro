@@ -41,7 +41,7 @@ const groups = getGroupedTags(snapshot);
               <span class="text-xs text-[color:var(--nature-text-faint)]">{group.items.length} 个标签</span>
             </div>
 
-            <div class="nature-surface p-3 sm:p-4">
+            <div class="nature-surface nature-mobile-structural p-3 sm:p-4">
               <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3 sm:gap-4">
                 {group.items.map((tag) => {
                   const { iconId, iconSvg } = pickTagIconSvg(tag.name, snapshot.tags.tagIconMap, snapshot.tags.tagIconSvgMap);

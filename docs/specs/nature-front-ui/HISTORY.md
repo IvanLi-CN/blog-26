@@ -19,4 +19,5 @@
 - 2026-09-19: Once a touch gesture starts moving the header, later deltas follow one-for-one in either direction until release.
 - 2026-09-19: Route, viewport, and controller refreshes cancel the active touch gesture and reset its origin, preventing a missing terminal event from blocking later settling.
 - 2026-09-19: Touch direct-follow now ignores endpoint no-op deltas so a new reverse gesture still uses the normal direction gates.
+- 2026-09-19: Narrow public content timelines were redefined as 移动内容流: the homepage and Memos remove decorative rails and connectors, place the type icon before the date, and flatten non-semantic structural surfaces where mobile density benefits; ADR 0003 records the boundary decision.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

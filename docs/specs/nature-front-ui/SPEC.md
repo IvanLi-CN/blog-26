@@ -8,6 +8,7 @@
 
 - [ADR 0001: Project Detail MDX Authoring](../../adr/0001-project-detail-mdx-authoring.md)
 - [ADR 0002: Mobile Public Header Scroll Model](../../adr/0002-mobile-public-header-scroll.md)
+- [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
 
 ## 1. Background
 
@@ -56,8 +57,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - At `min-width: 1024px` with a fine pointer, public text actions use a `36px` target; navigation, icon controls, and link-style badges use a `32px` target.
 - Outside that desktop condition, interactive public controls use a minimum `44px` target. Static status badges remain compact and do not imply an interactive hit area.
 - `MarkdownRenderer` owns the public Markdown code surface. Dark code blocks use a low-brightness green surface, AA-readable foreground and syntax tokens, `12px` vertical by `14px` horizontal padding, and a `12px` radius. Horizontal overflow and code folding remain available.
-- Below `640px`, public page containers keep `12px` viewport gutters, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
-- Below `360px`, timeline rails and gaps compact further so the reading column gains width, while navigation labels may collapse to their already-labelled icons.
+- Below `640px`, public page containers keep `12px` viewport gutters, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Structural wrappers may flatten to the page background when a nested surface adds no scanning or interaction value. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
+- Below `640px`, the homepage and Memos use a 移动内容流: chronological order, dates, and content-type metadata remain, while the decorative timeline rail, nodes, and connectors are removed. The homepage event entry follows the compact Memos item pattern, with only the article/Memo type icon immediately before the date; the desktop-only type text chip is not rendered in the narrow flow.
+- Below `360px`, mobile content-flow gaps and section spacing compact further so the reading column gains width, while navigation labels may collapse to their already-labelled icons.
 
 ### 4.5 Static search deep links
 
@@ -120,9 +122,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### 4.9 Timeline and primary-action semantics
 
-- A timeline node represents one chronological content event. Every article and Memo event uses the same closed circular frame, dimensions, border, elevation, and connection rhythm at a given breakpoint; type must not remove or weaken that frame.
-- Content type is secondary metadata. An icon, restrained semantic tint, and visible text label distinguish articles from Memos; color alone must never carry the distinction, and a timeline node must not imply a different interaction level or priority by its shape or material.
-- Narrow layouts may compact the timeline rail and nodes, but must preserve the circular frame, the type icon, and the visual continuity of the connector.
+- A desktop timeline node represents one chronological content event. Every article and Memo event uses the same closed circular frame, dimensions, border, elevation, and connection rhythm at desktop; type must not remove or weaken that frame.
+- Content type is secondary metadata. An icon and restrained semantic tint distinguish articles from Memos; desktop mixed-content surfaces may retain a visible text label when it improves clarity, but mobile content flows use only the inline icon and do not render a type text chip.
+- Narrow layouts use 移动内容流 for the homepage and Memos: the rail, nodes, and connectors are absent, while the event order, date, and inline type icon remain. The icon is placed immediately before the date, matching the Memos item rhythm.
 - `--nature-secondary-rgb` is the canonical RGB token for the public secondary color. Timeline rails, nodes, and other public components must use that name rather than introducing alternate names for the same color role.
 - A primary action with text or an icon uses paired `--nature-action-primary-bg` and `--nature-action-primary-fg` tokens. The foreground must maintain at least a 4.5:1 contrast ratio against every visible default, hover, and focus background. A multi-stop gradient is allowed only when every declared stop is verified at or above 4.5:1; the homepage article action uses this verified gradient treatment (`#4e7e60` to `#294e3a` in light mode, `#88c1a0` to `#4f966e` in dark mode), while the search submit keeps the solid token background.
 - The resolved primary-action pairs are `#477956` on `#f7fff8` in light mode and `#88c1a0` on `#0f1613` in dark mode. Shared public component selectors have one authoritative stylesheet so these pairs cannot drift between duplicate implementations.
@@ -147,7 +149,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 16. On mobile public routes, the header follows the documented scroll, speed,
     release-settling, focus-order, resize, router, and reduced-motion contracts;
     desktop public behavior remains unchanged.
-17. Every article and Memo event on public timelines retains the shared circular node frame and connector rhythm at desktop and narrow breakpoints; its icon and visible text label communicate content type without relying on color alone.
+17. Desktop article and Memo timelines retain the shared circular node frame and connector rhythm; below `640px`, the homepage and Memos render a 移动内容流 with no rail, node, or connector, and place the type icon immediately before the date. The mobile type text chip is omitted without horizontal overflow.
 18. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
 
 ## 6. Validation

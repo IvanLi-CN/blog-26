@@ -292,7 +292,10 @@ export default function PublicSearchPage({
   return (
     <div className={cn("w-full", className)} aria-busy={isLoading || undefined}>
       <section className="nature-container pb-2 pt-2 sm:py-6 lg:py-8">
-        <div className="nature-surface overflow-hidden" data-search-query-panel>
+        <div
+          className="nature-surface nature-mobile-structural overflow-hidden"
+          data-search-query-panel
+        >
           <div className="grid gap-3 px-4 py-4 sm:gap-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,0.68fr)_minmax(26rem,1fr)] lg:items-center lg:gap-8 lg:px-8">
             <div className="min-w-0">
               <h1 className="nature-title text-xl font-semibold leading-tight sm:text-3xl">
