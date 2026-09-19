@@ -703,6 +703,10 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   .nature-nav-link-label {
     display: none;
   }
+
+  .nature-site-header nav ul {
+    justify-content: space-evenly;
+  }
 }
 
 .nature-chip {

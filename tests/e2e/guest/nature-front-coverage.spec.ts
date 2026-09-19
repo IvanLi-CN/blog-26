@@ -937,6 +937,8 @@ test.describe("Nature frontend public coverage", () => {
         const navTargets = Array.from(
           document.querySelectorAll<HTMLElement>(".nature-nav-link")
         ).map((target) => target.getBoundingClientRect());
+        const nav = document.querySelector<HTMLElement>(".nature-site-header-frame nav");
+        const navBounds = nav?.getBoundingClientRect();
         const viewportWidth = root.clientWidth;
         const edgeSelectors = [
           ".nature-site-header-frame > .nature-surface",
@@ -964,6 +966,16 @@ test.describe("Nature frontend public coverage", () => {
             width: targetWidth,
             height,
           })),
+          navSpacing:
+            navBounds && navTargets.length > 0
+              ? {
+                  left: navTargets[0].left - navBounds.left,
+                  between: navTargets
+                    .slice(1)
+                    .map((target, index) => target.left - navTargets[index].right),
+                  right: navBounds.right - navTargets[navTargets.length - 1].right,
+                }
+              : null,
         };
       });
 
@@ -984,6 +996,13 @@ test.describe("Nature frontend public coverage", () => {
         expect(metrics.visibleNavLabels).toBe(0);
         expect(metrics.typeIconWidth).toBeGreaterThanOrEqual(20);
         expect(metrics.cardWidth).toBeGreaterThanOrEqual(250);
+        expect(metrics.navSpacing).not.toBeNull();
+        const spacing = metrics.navSpacing;
+        const reference = spacing?.left ?? 0;
+        expect(Math.abs((spacing?.right ?? reference) - reference)).toBeLessThanOrEqual(1);
+        for (const gap of spacing?.between ?? []) {
+          expect(Math.abs(gap - reference)).toBeLessThanOrEqual(1);
+        }
       }
     }
   });
