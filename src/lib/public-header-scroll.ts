@@ -329,6 +329,7 @@ interface RuntimeHeaderController {
   suppressedTabIndexes: Map<HTMLElement, string | null>;
   settleTimer: number | null;
   transitionTimer: number | null;
+  touchFollowActive: boolean;
   cleanup: () => void;
 }
 
@@ -448,6 +449,7 @@ function handleTouchStart() {
   for (const controller of controllers.values()) {
     clearSettleTimers(controller);
     controller.state = resetGesture(controller.state, controller.state.visibleOffset);
+    controller.touchFollowActive = false;
   }
 }
 
@@ -458,6 +460,7 @@ function handleTouchEnd(event: TouchEvent) {
   }
 
   for (const controller of controllers.values()) {
+    controller.touchFollowActive = false;
     if (controller.state.direction !== "idle") {
       scheduleSettle(controller);
     }
@@ -467,6 +470,7 @@ function handleTouchEnd(event: TouchEvent) {
 function handleWindowScroll() {
   const timestamp = performance.now();
   for (const controller of controllers.values()) {
+    const previousOffset = controller.state.visibleOffset;
     const delta = window.scrollY - controller.state.lastScrollY;
     const canMoveHeader =
       (delta > 0 && controller.state.visibleOffset > 0) ||
@@ -478,9 +482,12 @@ function handleWindowScroll() {
         timestamp,
       },
       PUBLIC_HEADER_SCROLL_CONFIG,
-      touchActive && controller.state.direction !== "idle" && canMoveHeader
+      touchActive && controller.touchFollowActive && canMoveHeader
     );
     controller.state = result.state;
+    if (touchActive && result.state.visibleOffset !== previousOffset) {
+      controller.touchFollowActive = true;
+    }
     if (result.effectiveDeltaPx > 0 || window.scrollY <= 0) {
       applyHeaderState(controller, "scroll");
       scheduleSettle(controller);
@@ -520,6 +527,7 @@ function attachController(header: HTMLElement) {
   controller.suppressedTabIndexes = new Map();
   controller.settleTimer = null;
   controller.transitionTimer = null;
+  controller.touchFollowActive = false;
   controller.resizeObserver = new ResizeObserver(() => {
     const nextHeight = header.getBoundingClientRect().height;
     controller.state = resizeHeaderScrollState(controller.state, nextHeight);
@@ -548,9 +556,13 @@ function attachController(header: HTMLElement) {
 }
 
 function refreshControllers() {
+  touchActive = false;
   for (const [header, controller] of controllers) {
     clearSettleTimers(controller);
     if (header.isConnected && isMobileViewport()) {
+      controller.state = resetGesture(controller.state, controller.state.visibleOffset);
+      controller.touchFollowActive = false;
+      applyHeaderState(controller, "steady");
       continue;
     }
 

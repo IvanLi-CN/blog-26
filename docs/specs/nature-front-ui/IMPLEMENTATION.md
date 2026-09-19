@@ -38,8 +38,8 @@ offset; release then uses the existing quiet-window endpoint rules.
 Once touch movement starts the header, subsequent deltas use a direct-follow
 path in either direction until release, avoiding slow-reverse gating while the
 finger remains down.
-Controller refreshes preserve an active touch until its terminal event; each
-new touch start resets the prior gesture origin, while teardown clears settle
-timers and DOM state.
+Route, viewport, and controller refreshes cancel the active touch gesture and
+reset its origin; a subsequent touch start begins a fresh gesture while
+teardown clears settle timers and DOM state.
 Direct-follow is enabled only when the current delta can change the header
 offset; endpoint no-ops continue through the normal direction gates.
