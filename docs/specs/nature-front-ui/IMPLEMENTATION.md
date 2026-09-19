@@ -12,3 +12,10 @@ Social previews use a separate Sharp pipeline with 640w and 1280w AVIF/WebP cand
 The project catalog contains 15 entries in six groups sized between two and three cards. SpotiBind is the second productivity tool, uses the repository's English light/dark media pair, and is included in the six-project homepage selection.
 
 Project detail content uses Astro MDX with build-time slug validation and a small static React content-block allowlist. All 15 current catalog projects now have evidence-led bodies, while future projects without sufficient source material retain a verified catalog fallback. Each body chooses its own narrative and headings; no shared chapter or card outline is generated. Project cards derive compact online, documentation, and repository shortcuts from semantic public-entry precedence, while detail pages expose the full entry list in a responsive sidebar.
+
+The mobile public header uses a pure scroll-state controller shared by every
+`BaseLayout` route. It keeps one sticky header in document flow, maps measured
+height to a CSS `top` offset, distinguishes slow and fast reverse movement, and
+settles only after the quiet-release window. Unit tests cover the state machine;
+guest Playwright coverage covers route integration, responsive behavior, focus
+order, lifecycle reset, and reduced motion.
