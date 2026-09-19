@@ -16,6 +16,8 @@ Project detail content uses Astro MDX with build-time slug validation and a smal
 The mobile public header uses a pure scroll-state controller shared by every
 `BaseLayout` route. It keeps one sticky header in document flow, maps measured
 height to a CSS `top` offset, distinguishes slow and fast reverse movement, and
-settles only after the quiet-release window. Unit tests cover the state machine;
-guest Playwright coverage covers route integration, responsive behavior, focus
-order, lifecycle reset, and reduced motion.
+settles only after the quiet-release window. Reverse-direction samples remain
+pending until the 12px minimum is reached, so small counter-scrolls cannot
+change the active gesture or its release endpoint. Unit tests cover the state
+machine; guest Playwright coverage covers route integration, responsive
+behavior, focus order, lifecycle reset, and reduced motion.
