@@ -318,6 +318,7 @@ interface RuntimeHeaderController {
 }
 
 const controllers = new Map<HTMLElement, RuntimeHeaderController>();
+let touchActive = false;
 
 function isMobileViewport() {
   return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
@@ -401,6 +402,11 @@ function applyHeaderState(
 }
 
 function scheduleSettle(controller: RuntimeHeaderController) {
+  if (touchActive) {
+    clearSettleTimers(controller);
+    return;
+  }
+
   if (controller.settleTimer !== null) {
     window.clearTimeout(controller.settleTimer);
     controller.settleTimer = null;
@@ -419,6 +425,26 @@ function scheduleSettle(controller: RuntimeHeaderController) {
       controller.header.removeAttribute("data-public-header-settling");
     }, PUBLIC_HEADER_SCROLL_CONFIG.settleTransitionMs);
   }, PUBLIC_HEADER_SCROLL_CONFIG.settleDelayMs);
+}
+
+function handleTouchStart() {
+  touchActive = true;
+  for (const controller of controllers.values()) {
+    clearSettleTimers(controller);
+  }
+}
+
+function handleTouchEnd(event: TouchEvent) {
+  touchActive = (event.touches?.length ?? 0) > 0;
+  if (touchActive) {
+    return;
+  }
+
+  for (const controller of controllers.values()) {
+    if (controller.state.direction !== "idle") {
+      scheduleSettle(controller);
+    }
+  }
 }
 
 function handleWindowScroll() {
@@ -525,6 +551,9 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     document.addEventListener("astro:page-load", refreshControllers);
     document.addEventListener("astro:after-swap", refreshControllers);
     document.addEventListener("DOMContentLoaded", refreshControllers, { once: true });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: true });
     window.matchMedia(MOBILE_MEDIA_QUERY).addEventListener("change", refreshControllers);
   }
 }

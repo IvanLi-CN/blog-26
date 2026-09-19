@@ -28,6 +28,9 @@ gesture: at least half-hidden snaps closed, a fast reverse recovery of at least
 one fifth of the full height snaps open, and smaller movements return to the
 gesture's starting endpoint. Fully collapsed descendants leave sequential Tab
 order; a capture-phase focus handler expands the header before focus delivery.
+Touch-active scrolling never starts that release timer; the timer begins only
+after the final `touchend` or `touchcancel`, so a paused finger remains in
+direct control of the current offset.
 
 The behavior is enabled only below the public `640px` breakpoint, observes the
 top-level window scroll stream, remeasures with `ResizeObserver`, and resets on

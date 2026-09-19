@@ -106,7 +106,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - A release settles only after about `120ms` without effective movement. A
   hidden progress of at least `50%` snaps fully closed; fast reverse recovery of
   at least `20%` of the full header height snaps fully open; smaller gestures
-  return to their gesture-start endpoint.
+  return to their gesture-start endpoint. While a touch contact is active,
+  pauses do not settle the gesture; `touchend` or `touchcancel` starts the
+  release settling window.
 - Fully collapsed descendants are removed from sequential Tab order. Programmatic
   focus entering the header expands it before focus delivery. `ResizeObserver`
   remeasures the header, Astro ClientRouter swaps reset the controller, reduced

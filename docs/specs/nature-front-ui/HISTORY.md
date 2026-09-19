@@ -15,4 +15,5 @@
 - 2026-09-19: Reverse speed now measures only the current directional run inside the rolling window, and overlapping settle transitions are cancelled before a new release timer starts.
 - 2026-09-19: Zero-delta samples no longer break directional speed windows, and a focused header control keeps the header expanded until focus leaves it.
 - 2026-09-19: Sub-threshold reverse jitter is cancelled when the active scroll direction resumes, preventing duplicate distance from changing the visible offset.
+- 2026-09-19: Touch-active pauses no longer settle the header; endpoint absorption starts only after the final touch release or cancellation.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

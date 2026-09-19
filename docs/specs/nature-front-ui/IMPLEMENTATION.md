@@ -32,3 +32,6 @@ focus leaves the header.
 Pending reverse distance is cancelled before resumed movement contributes to
 the active gesture, preventing zero-net scroll jitter from changing the header
 offset.
+Touch-active scrolling clears and suppresses settle timers until the final
+touch release, so a paused finger retains direct control of the current
+offset; release then uses the existing quiet-window endpoint rules.

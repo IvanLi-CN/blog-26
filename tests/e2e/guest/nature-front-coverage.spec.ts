@@ -739,6 +739,25 @@ test.describe("Nature frontend public coverage", () => {
     await expect(firstNavigationLink).not.toHaveAttribute("tabindex", "-1");
   });
 
+  test("mobile header settles only after touch release", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/memos", "light");
+
+    const header = page.locator("[data-public-header]");
+    const initialHeight = await header.evaluate(
+      (element) => element.getBoundingClientRect().height
+    );
+    await page.evaluate(() => window.dispatchEvent(new Event("touchstart")));
+    await page.evaluate((scrollY) => window.scrollTo(0, scrollY), Math.ceil(initialHeight * 0.3));
+    await page.waitForTimeout(180);
+
+    await expect(header).toHaveAttribute("data-public-header-state", "partial");
+    await expect.poll(() => header.getAttribute("data-public-header-settling")).toBeNull();
+
+    await page.evaluate(() => window.dispatchEvent(new Event("touchend")));
+    await expect(header).toHaveAttribute("data-public-header-state", "expanded");
+  });
+
   test("mobile header honors reduced motion and remeasures its height", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 393, height: 852 });
