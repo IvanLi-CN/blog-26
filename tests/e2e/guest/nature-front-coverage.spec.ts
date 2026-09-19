@@ -657,6 +657,37 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });
 
+  test("medium header keeps tools on the first row and navigation on the second", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 772, height: 599 });
+    await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
+
+    const headerSurface = page.locator(".nature-site-header .nature-surface");
+    const brand = page.getByRole("link", { name: "Ivan's Blog" });
+    const navigation = page.getByRole("navigation", { name: "Main navigation" });
+    const tools = page.locator(".nature-header-tools");
+    const [headerBounds, brandBounds, navigationBounds, toolsBounds] = await Promise.all([
+      headerSurface.boundingBox(),
+      brand.boundingBox(),
+      navigation.boundingBox(),
+      tools.boundingBox(),
+    ]);
+
+    expect(headerBounds).not.toBeNull();
+    expect(brandBounds).not.toBeNull();
+    expect(navigationBounds).not.toBeNull();
+    expect(toolsBounds).not.toBeNull();
+    const brandCenter = (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0) / 2;
+    const toolsCenter = (toolsBounds?.y ?? 0) + (toolsBounds?.height ?? 0) / 2;
+    expect(Math.abs(brandCenter - toolsCenter)).toBeLessThanOrEqual(1);
+    expect(navigationBounds?.y ?? 0).toBeGreaterThan(
+      (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0)
+    );
+    expect(toolsBounds?.right ?? 0).toBeLessThanOrEqual((headerBounds?.right ?? 0) + 1);
+    expect(navigationBounds?.right ?? 0).toBeLessThanOrEqual((headerBounds?.right ?? 0) + 1);
+  });
+
   test("mobile header keeps the RSS control touch-sized", async ({ page }) => {
     await page.setViewportSize({ width: 438, height: 852 });
     await gotoWithTheme(page, "/search/?q=SSH", "light");

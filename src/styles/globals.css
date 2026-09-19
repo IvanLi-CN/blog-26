@@ -685,6 +685,34 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   }
 }
 
+@media (min-width: 640px) and (max-width: 1023px) {
+  .nature-site-header-frame > .nature-surface {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.75rem;
+  }
+
+  .nature-site-header-frame nav {
+    grid-column: 1 / -1;
+    order: 3 !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .nature-site-header-frame nav ul {
+    width: 100% !important;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .nature-site-header-frame .nature-header-tools {
+    order: 2 !important;
+    margin-left: 0 !important;
+  }
+}
+
 @media (max-width: 359px) {
   .nature-main > .nature-container,
   .nature-main > .nature-detail-container {
