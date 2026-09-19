@@ -717,6 +717,28 @@ test.describe("Nature frontend public coverage", () => {
     await expect(header).toHaveAttribute("data-public-header-state", "expanded");
   });
 
+  test("mobile header keeps a focused control visible during collapse", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/memos", "light");
+
+    const header = page.locator("[data-public-header]");
+    const firstNavigationLink = header.getByRole("link", { name: "文章", exact: true });
+    await firstNavigationLink.focus();
+
+    const headerHeight = await header.evaluate((element) => element.getBoundingClientRect().height);
+    const maxScroll = await page.evaluate(
+      () => document.documentElement.scrollHeight - innerHeight - 1
+    );
+    await page.evaluate(
+      (scrollY) => window.scrollTo(0, scrollY),
+      Math.min(Math.ceil(headerHeight * 1.2), maxScroll)
+    );
+
+    await expect(header).toHaveAttribute("data-public-header-state", "expanded");
+    await expect(firstNavigationLink).toBeFocused();
+    await expect(firstNavigationLink).not.toHaveAttribute("tabindex", "-1");
+  });
+
   test("mobile header honors reduced motion and remeasures its height", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 393, height: 852 });

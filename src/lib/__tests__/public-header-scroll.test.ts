@@ -91,6 +91,17 @@ describe("public header scroll state", () => {
     expect(settleHeaderScrollState(slowReverse.state).visibleOffset).toBe(0);
   });
 
+  test("keeps idle samples inside a slow reverse speed window", () => {
+    const hidden = scroll(createHeaderScrollState(200), 220, 220);
+    const firstReverse = scroll(hidden, 215, 230);
+    const idle = scroll(firstReverse, 215, 300);
+    const slowReverse = reduceHeaderScrollState(idle, { scrollY: 208, timestamp: 310 });
+
+    expect(slowReverse.speedPxPerMs).toBeCloseTo(12 / 90);
+    expect(slowReverse.state.visibleOffset).toBe(0);
+    expect(slowReverse.state.fastReverseEligible).toBe(false);
+  });
+
   test("settles fast reverse recovery at the 20 percent endpoint", () => {
     const hidden = scroll(createHeaderScrollState(200), 220, 220);
     const recovered = scroll(hidden, 170, 270);

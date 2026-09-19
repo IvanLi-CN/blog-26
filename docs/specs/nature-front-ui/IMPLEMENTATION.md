@@ -24,5 +24,8 @@ endpoint-only release contract. Unit tests cover the state machine; guest
 Playwright coverage covers route integration, responsive behavior, focus order,
 lifecycle reset, and reduced motion. Reverse speed is calculated from the
 current directional run within the rolling window, so earlier movement cannot
-promote a slow counter-scroll; overlapping settle transitions are cancelled
-before a new release timer starts.
+promote a slow counter-scroll; pending fast-reverse eligibility is evaluated
+again until the 12px crossing. Overlapping settle transitions are cancelled
+before a new release timer starts. Zero-delta samples preserve the directional
+window's elapsed time, and a focused header descendant prevents collapse until
+focus leaves the header.

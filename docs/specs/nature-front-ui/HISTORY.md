@@ -13,4 +13,5 @@
 - 2026-09-19: Reverse-direction changes now accumulate the 12px minimum before changing the active gesture, keeping partial hide gestures stable during small counter-scrolls.
 - 2026-09-19: Slow reverse movement that crosses the distance threshold remains attached to the active hide gesture, so release settling cannot leave a partially visible header.
 - 2026-09-19: Reverse speed now measures only the current directional run inside the rolling window, and overlapping settle transitions are cancelled before a new release timer starts.
+- 2026-09-19: Zero-delta samples no longer break directional speed windows, and a focused header control keeps the header expanded until focus leaves it.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

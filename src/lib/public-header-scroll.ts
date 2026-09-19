@@ -116,6 +116,9 @@ function getRollingSpeed(
 
   for (let index = lastIndex; index > 0; index -= 1) {
     const delta = samples[index].scrollY - samples[index - 1].scrollY;
+    if (delta === 0) {
+      continue;
+    }
     const matchesDirection =
       (direction === "hide" && delta > 0) || (direction === "reveal" && delta < 0);
     if (!matchesDirection) {
@@ -175,8 +178,7 @@ export function reduceHeaderScrollState(
         ? state.pendingDistance + effectiveDeltaPx
         : effectiveDeltaPx;
     const pendingFastReverseEligible =
-      (state.pendingDirection === direction && state.pendingFastReverseEligible) ||
-      (direction === "reveal" && speedPxPerMs >= config.fastReverseSpeedPxPerMs);
+      direction === "reveal" && speedPxPerMs >= config.fastReverseSpeedPxPerMs;
 
     if (pendingDistance < config.reverseDistancePx) {
       next.pendingDirection = direction;
@@ -347,8 +349,20 @@ function applyHeaderState(
   controller: RuntimeHeaderController,
   phase: "scroll" | "settle" | "steady"
 ) {
-  const { header, state } = controller;
-  const offset = clamp(state.visibleOffset, 0, state.headerHeight);
+  const { header } = controller;
+  let state = controller.state;
+  let offset = clamp(state.visibleOffset, 0, state.headerHeight);
+  const activeElement = document.activeElement;
+  if (
+    state.headerHeight > 0 &&
+    offset <= 0 &&
+    activeElement instanceof HTMLElement &&
+    header.contains(activeElement)
+  ) {
+    state = resetGesture(state, state.headerHeight);
+    controller.state = state;
+    offset = state.headerHeight;
+  }
   const top = offset - state.headerHeight;
   header.style.setProperty("--public-header-sticky-top", `${top}px`);
   header.dataset.publicHeaderOffset = `${offset}`;
