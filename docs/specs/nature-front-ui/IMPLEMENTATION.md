@@ -38,3 +38,6 @@ offset; release then uses the existing quiet-window endpoint rules.
 Once touch movement starts the header, subsequent deltas use a direct-follow
 path in either direction until release, avoiding slow-reverse gating while the
 finger remains down.
+Controller refreshes also clear interrupted touch state and settle timers, so
+route swaps, viewport changes, and disconnected headers cannot strand a direct
+follow gesture.

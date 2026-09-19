@@ -542,7 +542,9 @@ function attachController(header: HTMLElement) {
 }
 
 function refreshControllers() {
+  touchActive = false;
   for (const [header, controller] of controllers) {
+    clearSettleTimers(controller);
     if (header.isConnected && isMobileViewport()) {
       continue;
     }
