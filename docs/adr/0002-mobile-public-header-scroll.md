@@ -36,6 +36,8 @@ release; the reverse speed gates are for non-touch or pre-gesture movement.
 Controller refreshes preserve an active touch until its terminal event; each
 new touch start resets the prior gesture origin before tracking a new gesture,
 while teardown still clears timers and DOM state.
+Touch direct-follow is entered only when the current scroll delta can change the
+header offset; endpoint no-ops continue through the normal direction gates.
 
 The behavior is enabled only below the public `640px` breakpoint, observes the
 top-level window scroll stream, remeasures with `ResizeObserver`, and resets on

@@ -18,4 +18,5 @@
 - 2026-09-19: Touch-active pauses no longer settle the header; endpoint absorption starts only after the final touch release or cancellation.
 - 2026-09-19: Once a touch gesture starts moving the header, later deltas follow one-for-one in either direction until release.
 - 2026-09-19: Controller refreshes preserve an active touch until its terminal event; each new touch start resets the prior gesture origin, while teardown clears settle timers and DOM state.
+- 2026-09-19: Touch direct-follow now ignores endpoint no-op deltas so a new reverse gesture still uses the normal direction gates.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

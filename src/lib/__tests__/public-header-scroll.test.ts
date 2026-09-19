@@ -128,6 +128,26 @@ describe("public header scroll state", () => {
     expect(followed.direction).toBe("reveal");
   });
 
+  test("does not start direct touch follow from an endpoint no-op", () => {
+    const hidden = scroll(createHeaderScrollState(200), 220, 220);
+    const endpointNoOp = reduceHeaderScrollState(
+      hidden,
+      { scrollY: 280, timestamp: 280 },
+      undefined,
+      true
+    ).state;
+    const slowReverse = reduceHeaderScrollState(
+      endpointNoOp,
+      { scrollY: 275, timestamp: 400 },
+      undefined,
+      false
+    ).state;
+
+    expect(endpointNoOp.visibleOffset).toBe(0);
+    expect(slowReverse.visibleOffset).toBe(0);
+    expect(slowReverse.pendingDirection).toBe("reveal");
+  });
+
   test("settles fast reverse recovery at the 20 percent endpoint", () => {
     const hidden = scroll(createHeaderScrollState(200), 220, 220);
     const recovered = scroll(hidden, 170, 270);

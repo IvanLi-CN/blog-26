@@ -41,3 +41,5 @@ finger remains down.
 Controller refreshes preserve an active touch until its terminal event; each
 new touch start resets the prior gesture origin, while teardown clears settle
 timers and DOM state.
+Direct-follow is enabled only when the current delta can change the header
+offset; endpoint no-ops continue through the normal direction gates.

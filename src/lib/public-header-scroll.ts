@@ -370,6 +370,7 @@ function clearSettleTimers(controller: RuntimeHeaderController) {
     window.clearTimeout(controller.transitionTimer);
     controller.transitionTimer = null;
   }
+  controller.header.removeAttribute("data-public-header-settling");
 }
 
 function applyHeaderState(
@@ -466,6 +467,10 @@ function handleTouchEnd(event: TouchEvent) {
 function handleWindowScroll() {
   const timestamp = performance.now();
   for (const controller of controllers.values()) {
+    const delta = window.scrollY - controller.state.lastScrollY;
+    const canMoveHeader =
+      (delta > 0 && controller.state.visibleOffset > 0) ||
+      (delta < 0 && controller.state.visibleOffset < controller.state.headerHeight);
     const result = reduceHeaderScrollState(
       controller.state,
       {
@@ -473,7 +478,7 @@ function handleWindowScroll() {
         timestamp,
       },
       PUBLIC_HEADER_SCROLL_CONFIG,
-      touchActive && controller.state.direction !== "idle"
+      touchActive && controller.state.direction !== "idle" && canMoveHeader
     );
     controller.state = result.state;
     if (result.effectiveDeltaPx > 0 || window.scrollY <= 0) {
