@@ -846,6 +846,44 @@ test.describe("Nature frontend public coverage", () => {
     await expect(homeTimeline.getByTestId("timeline-node").first()).toBeVisible();
     await expect(homeTimeline.getByTestId("timeline-connector").first()).toBeVisible();
     expect(await homeTimeline.getByTestId("timeline-item").count()).toBeGreaterThan(1);
+    await expect(homeTimeline.getByText("文章", { exact: true }).first()).toBeVisible();
+    await expect(homeTimeline.getByText("闪念", { exact: true }).first()).toBeVisible();
+
+    const desktopNodeMetrics = await homeTimeline
+      .getByTestId("timeline-node")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return {
+            kind: node.getAttribute("data-timeline-kind"),
+            width: rect.width,
+            height: rect.height,
+            border: style.border,
+            borderRadius: style.borderRadius,
+            backgroundColor: style.backgroundColor,
+            backgroundImage: style.backgroundImage,
+            boxShadow: style.boxShadow,
+          };
+        })
+      );
+    expect(desktopNodeMetrics.map((node) => node.kind)).toEqual(
+      expect.arrayContaining(["post", "memo"])
+    );
+    const desktopReference = desktopNodeMetrics[0];
+    expect(desktopReference).toBeTruthy();
+    for (const node of desktopNodeMetrics) {
+      expect(Math.abs(node.width - node.height)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(node.width - (desktopReference?.width ?? node.width))).toBeLessThanOrEqual(
+        0.5
+      );
+      expect(node.border).not.toBe("none");
+      expect(Number.parseFloat(node.borderRadius)).toBeGreaterThanOrEqual(node.width / 2);
+      expect(node.backgroundColor !== "rgba(0, 0, 0, 0)" || node.backgroundImage !== "none").toBe(
+        true
+      );
+      expect(node.boxShadow).not.toBe("none");
+    }
 
     await gotoWithTheme(page, "/memos", "light");
     const memosTimeline = page.getByTestId("memos-timeline");
@@ -860,11 +898,14 @@ test.describe("Nature frontend public coverage", () => {
       await expect(memosTimeline.getByTestId("timeline-connector")).toHaveCount(0);
     }
 
-    await page.setViewportSize({ width: 390, height: 844 });
-    await gotoWithTheme(page, "/memos", "light");
-    const mobileTimeline = page.getByTestId("memos-timeline");
-    const mobileNode = mobileTimeline.getByTestId("timeline-node").first();
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/", "light");
+    const mobileTimeline = page.getByTestId("home-timeline");
+    const mobileNodes = mobileTimeline.getByTestId("timeline-node");
+    const mobileNode = mobileNodes.first();
     await expect(mobileNode).toBeVisible();
+    await expect(mobileTimeline.getByText("文章", { exact: true }).first()).toBeVisible();
+    await expect(mobileTimeline.getByText("闪念", { exact: true }).first()).toBeVisible();
 
     const nodeBox = await mobileNode.boundingBox();
     expect(nodeBox).not.toBeNull();
@@ -874,21 +915,50 @@ test.describe("Nature frontend public coverage", () => {
     }
 
     expect(nodeBox.width).toBeGreaterThan(8);
-    if (memoCount > 1) {
-      const mobileConnector = mobileTimeline.getByTestId("timeline-connector").first();
-      await expect(mobileConnector).toBeVisible();
-
-      const connectorBox = await mobileConnector.boundingBox();
-      expect(connectorBox).not.toBeNull();
-
-      if (!connectorBox) {
-        throw new Error("timeline connector is not measurable on mobile");
-      }
-
-      expect(connectorBox.height).toBeGreaterThan(24);
-    } else {
-      await expect(mobileTimeline.getByTestId("timeline-connector")).toHaveCount(0);
+    const mobileNodeMetrics = await mobileNodes.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        return {
+          kind: node.getAttribute("data-timeline-kind"),
+          width: rect.width,
+          height: rect.height,
+          border: style.border,
+          borderRadius: style.borderRadius,
+          backgroundColor: style.backgroundColor,
+          backgroundImage: style.backgroundImage,
+          boxShadow: style.boxShadow,
+        };
+      })
+    );
+    expect(mobileNodeMetrics.map((node) => node.kind)).toEqual(
+      expect.arrayContaining(["post", "memo"])
+    );
+    const mobileReference = mobileNodeMetrics[0];
+    for (const node of mobileNodeMetrics) {
+      expect(Math.abs(node.width - node.height)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(node.width - (mobileReference?.width ?? node.width))).toBeLessThanOrEqual(
+        0.5
+      );
+      expect(node.border).not.toBe("none");
+      expect(Number.parseFloat(node.borderRadius)).toBeGreaterThanOrEqual(node.width / 2);
+      expect(node.backgroundColor !== "rgba(0, 0, 0, 0)" || node.backgroundImage !== "none").toBe(
+        true
+      );
+      expect(node.boxShadow).not.toBe("none");
     }
+
+    const mobileConnector = mobileTimeline.getByTestId("timeline-connector").first();
+    await expect(mobileConnector).toBeVisible();
+
+    const connectorBox = await mobileConnector.boundingBox();
+    expect(connectorBox).not.toBeNull();
+
+    if (!connectorBox) {
+      throw new Error("timeline connector is not measurable on mobile");
+    }
+
+    expect(connectorBox.height).toBeGreaterThan(24);
   });
 
   test.describe("system theme and reduced motion", () => {

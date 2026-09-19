@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect } from "react";
 import { expect, within } from "storybook/test";
+import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import Icon from "../ui/Icon";
 import MarkdownRenderer from "./MarkdownRenderer";

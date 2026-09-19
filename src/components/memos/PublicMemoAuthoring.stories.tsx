@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
+import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import { QuickMemoEditModal } from "./QuickMemoEditModal";
 import { QuickMemoEditor } from "./QuickMemoEditor";

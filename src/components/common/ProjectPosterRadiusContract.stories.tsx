@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
+import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import "../../../site/components/projects/project-poster-radius.css";
 

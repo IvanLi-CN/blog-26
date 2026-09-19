@@ -70,7 +70,7 @@ function SearchPromptPanel({
   const toneClass = {
     neutral: "bg-[rgba(var(--nature-highlight-rgb),0.28)] text-[color:var(--nature-text-soft)]",
     accent: "bg-[rgba(var(--nature-accent-rgb),0.14)] text-[color:var(--nature-accent-strong)]",
-    warning: "bg-[rgba(var(--nature-accent-2-rgb),0.18)] text-[color:var(--nature-accent-strong)]",
+    warning: "bg-[rgba(var(--nature-secondary-rgb),0.18)] text-[color:var(--nature-accent-strong)]",
     error: "bg-[rgba(179,92,98,0.14)] text-[color:var(--nature-danger)]",
   }[tone];
 
@@ -354,7 +354,7 @@ export default function PublicSearchPage({
                     type="submit"
                     disabled={!canSearch}
                     aria-label="搜索"
-                    className="nature-search-submit inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[color:var(--nature-accent-strong)] px-4 text-sm font-medium transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-45"
+                    className="nature-search-submit inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     <SearchHydrationSafeIcon name="tabler:arrow-right" className="h-4 w-4" />
                     <span className="hidden sm:inline">搜索</span>
