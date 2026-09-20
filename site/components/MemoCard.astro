@@ -39,6 +39,14 @@ const showMobileDetailLink = !memo.title;
         >
           <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
         </span>
+        <span class="sr-only sm:hidden" data-testid="timeline-accessible-type">闪念</span>
+        <span
+          class="nature-timeline-date-icon inline-flex h-4 w-4 items-center justify-center text-[color:var(--nature-accent-strong)]"
+          aria-hidden="true"
+          data-testid="timeline-date-icon"
+        >
+          <Icon name="tabler:clock" className="h-4 w-4" />
+        </span>
         <time dateTime={displayDate}>{formatAbsoluteDate(displayDate)}</time>
       </div>
 

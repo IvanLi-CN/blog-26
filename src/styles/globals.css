@@ -1444,6 +1444,10 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     display: inline-flex;
   }
 
+  .nature-timeline-date-icon {
+    display: none;
+  }
+
   .nature-timeline-type-label {
     display: none;
   }

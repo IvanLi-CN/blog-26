@@ -58,6 +58,9 @@ const imageSrc = appendPublicAssetVersion(
           className="h-3.5 w-3.5"
         />
       </span>
+      <span class="sr-only sm:hidden" data-testid="timeline-accessible-type">
+        {item.type === "memo" ? "闪念" : "文章"}
+      </span>
       <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
       <span class="nature-chip nature-timeline-type-label gap-1" data-testid="timeline-type-label">
         <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />

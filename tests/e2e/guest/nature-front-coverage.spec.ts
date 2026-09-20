@@ -1097,8 +1097,12 @@ test.describe("Nature frontend public coverage", () => {
     await expect(homeTimeline.getByTestId("timeline-node").first()).toBeVisible();
     await expect(homeTimeline.getByTestId("timeline-connector").first()).toBeVisible();
     expect(await homeTimeline.getByTestId("timeline-item").count()).toBeGreaterThan(1);
-    await expect(homeTimeline.getByText("文章", { exact: true }).first()).toBeVisible();
-    await expect(homeTimeline.getByText("闪念", { exact: true }).first()).toBeVisible();
+    await expect(
+      homeTimeline.getByTestId("timeline-type-label").filter({ hasText: "文章" }).first()
+    ).toBeVisible();
+    await expect(
+      homeTimeline.getByTestId("timeline-type-label").filter({ hasText: "闪念" }).first()
+    ).toBeVisible();
 
     const desktopNodeMetrics = await homeTimeline
       .getByTestId("timeline-node")
@@ -1141,6 +1145,9 @@ test.describe("Nature frontend public coverage", () => {
     await expect(memosTimeline).toBeVisible();
     await expect(memosTimeline.getByTestId("memo-card").first()).toBeVisible();
     await expect(memosTimeline.getByTestId("timeline-node").first()).toBeVisible();
+    const desktopMemo = memosTimeline.getByTestId("memo-card").first();
+    await expect(desktopMemo.getByTestId("timeline-date-icon")).toBeVisible();
+    await expect(desktopMemo.getByTestId("timeline-type-icon")).toBeHidden();
     const memoCount = await memosTimeline.getByTestId("memo-card").count();
     expect(memoCount).toBeGreaterThan(0);
     if (memoCount > 1) {
@@ -1157,6 +1164,12 @@ test.describe("Nature frontend public coverage", () => {
     await expect(mobileTimeline.getByTestId("timeline-connector").first()).toBeHidden();
     await expect(mobileTimeline.getByTestId("timeline-type-icon").first()).toBeVisible();
     await expect(mobileTimeline.getByTestId("timeline-type-label").first()).toBeHidden();
+    const firstMobileItem = mobileTimeline.getByTestId("timeline-item").first();
+    const hiddenTypeLabel = await firstMobileItem.getByTestId("timeline-type-label").textContent();
+    await expect(firstMobileItem.getByTestId("timeline-accessible-type")).toHaveText(
+      hiddenTypeLabel?.trim() ?? ""
+    );
+    expect(await firstMobileItem.ariaSnapshot()).toContain(hiddenTypeLabel?.trim() ?? "");
 
     const mobileTypeIconAndDate = await mobileTimeline
       .getByTestId("timeline-type-icon")
@@ -1177,7 +1190,11 @@ test.describe("Nature frontend public coverage", () => {
     const mobileMemosTimeline = page.getByTestId("memos-timeline");
     await expect(mobileMemosTimeline.getByTestId("timeline-node").first()).toBeHidden();
     await expect(mobileMemosTimeline.getByTestId("timeline-connector").first()).toBeHidden();
-    await expect(mobileMemosTimeline.getByTestId("timeline-type-icon").first()).toBeVisible();
+    const mobileMemo = mobileMemosTimeline.getByTestId("memo-card").first();
+    await expect(mobileMemo.getByTestId("timeline-type-icon")).toBeVisible();
+    await expect(mobileMemo.getByTestId("timeline-date-icon")).toBeHidden();
+    await expect(mobileMemo.getByTestId("timeline-accessible-type")).toHaveText("闪念");
+    expect(await mobileMemo.ariaSnapshot()).toContain("闪念");
   });
 
   test.describe("system theme and reduced motion", () => {
