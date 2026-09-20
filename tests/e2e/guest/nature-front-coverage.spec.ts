@@ -1,9 +1,22 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { migratedProjectSlugs } from "../../fixtures/project-content";
 
 async function gotoWithTheme(page: Page, route: string, theme: "light" | "dark" | "system") {
   await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
   await page.goto(route, { waitUntil: "domcontentloaded" });
+}
+
+async function readTimelineEntries(items: Locator) {
+  return items.evaluateAll((entries) =>
+    entries.map((entry) => ({
+      kind: entry.querySelector<HTMLElement>("[data-timeline-kind]")?.dataset.timelineKind ?? null,
+      date: entry.querySelector("time")?.getAttribute("datetime") ?? null,
+      href:
+        entry
+          .querySelector<HTMLAnchorElement>(".nature-timeline-card h2 a, a[href*='/memos/']")
+          ?.getAttribute("href") ?? null,
+    }))
+  );
 }
 
 test.describe("Nature frontend public coverage", () => {
@@ -1103,6 +1116,8 @@ test.describe("Nature frontend public coverage", () => {
     await expect(
       homeTimeline.getByTestId("timeline-type-label").filter({ hasText: "闪念" }).first()
     ).toBeVisible();
+    const desktopHomeEntries = await readTimelineEntries(homeTimeline.getByTestId("timeline-item"));
+    expect(desktopHomeEntries.every((entry) => entry.kind && entry.date && entry.href)).toBe(true);
 
     const desktopNodeMetrics = await homeTimeline
       .getByTestId("timeline-node")
@@ -1150,6 +1165,8 @@ test.describe("Nature frontend public coverage", () => {
     await expect(desktopMemo.getByTestId("timeline-type-icon")).toBeHidden();
     const memoCount = await memosTimeline.getByTestId("memo-card").count();
     expect(memoCount).toBeGreaterThan(0);
+    const desktopMemoEntries = await readTimelineEntries(memosTimeline.getByTestId("memo-card"));
+    expect(desktopMemoEntries.every((entry) => entry.kind && entry.date && entry.href)).toBe(true);
     if (memoCount > 1) {
       await expect(memosTimeline.getByTestId("timeline-connector").first()).toBeVisible();
     } else {
@@ -1164,6 +1181,10 @@ test.describe("Nature frontend public coverage", () => {
     await expect(mobileTimeline.getByTestId("timeline-connector").first()).toBeHidden();
     await expect(mobileTimeline.getByTestId("timeline-type-icon").first()).toBeVisible();
     await expect(mobileTimeline.getByTestId("timeline-type-label").first()).toBeHidden();
+    const mobileHomeEntries = await readTimelineEntries(
+      mobileTimeline.getByTestId("timeline-item")
+    );
+    expect(mobileHomeEntries).toEqual(desktopHomeEntries);
     const firstMobileItem = mobileTimeline.getByTestId("timeline-item").first();
     const hiddenTypeLabel = await firstMobileItem.getByTestId("timeline-type-label").textContent();
     await expect(firstMobileItem.getByTestId("timeline-accessible-type")).toHaveText(
@@ -1188,6 +1209,10 @@ test.describe("Nature frontend public coverage", () => {
 
     await gotoWithTheme(page, "/memos", "light");
     const mobileMemosTimeline = page.getByTestId("memos-timeline");
+    const mobileMemoEntries = await readTimelineEntries(
+      mobileMemosTimeline.getByTestId("memo-card")
+    );
+    expect(mobileMemoEntries).toEqual(desktopMemoEntries);
     await expect(mobileMemosTimeline.getByTestId("timeline-node").first()).toBeHidden();
     await expect(mobileMemosTimeline.getByTestId("timeline-connector").first()).toBeHidden();
     const mobileMemo = mobileMemosTimeline.getByTestId("memo-card").first();
@@ -1213,6 +1238,21 @@ test.describe("Nature frontend public coverage", () => {
       expect(media.prefersDark).toBe(true);
       expect(media.prefersReducedMotion).toBe(true);
       await expect(page.getByRole("heading", { name: /Ivan's Blog/ })).toBeVisible();
+      const panelTransitionDurationMs = await page
+        .locator(".nature-panel")
+        .first()
+        .evaluate((panel) =>
+          Math.max(
+            ...getComputedStyle(panel)
+              .transitionDuration.split(",")
+              .map((duration) => {
+                const value = duration.trim();
+                const numericValue = Number.parseFloat(value);
+                return value.endsWith("ms") ? numericValue : numericValue * 1000;
+              })
+          )
+        );
+      expect(panelTransitionDurationMs).toBeLessThanOrEqual(0.01);
     });
   });
 
