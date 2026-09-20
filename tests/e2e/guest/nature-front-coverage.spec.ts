@@ -660,32 +660,75 @@ test.describe("Nature frontend public coverage", () => {
   test("medium header keeps tools on the first row and navigation on the second", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 772, height: 599 });
-    await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
+    for (const width of [640, 772, 1023]) {
+      await page.setViewportSize({ width, height: width === 772 ? 599 : 800 });
+      await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
 
-    const headerSurface = page.locator(".nature-site-header .nature-surface");
-    const brand = page.getByRole("link", { name: "Ivan's Blog" });
-    const navigation = page.getByRole("navigation", { name: "Main navigation" });
-    const tools = page.locator(".nature-header-tools");
-    const [headerBounds, brandBounds, navigationBounds, toolsBounds] = await Promise.all([
-      headerSurface.boundingBox(),
-      brand.boundingBox(),
-      navigation.boundingBox(),
-      tools.boundingBox(),
-    ]);
+      const headerSurface = page.locator(".nature-site-header .nature-surface");
+      const brand = page.getByRole("link", { name: "Ivan's Blog" });
+      const navigation = page.getByRole("navigation", { name: "Main navigation" });
+      const navigationList = navigation.locator("ul");
+      const tools = page.locator(".nature-header-tools");
+      const [headerBounds, brandBounds, navigationBounds, listBounds, toolsBounds, navMetrics] =
+        await Promise.all([
+          headerSurface.boundingBox(),
+          brand.boundingBox(),
+          navigation.boundingBox(),
+          navigationList.boundingBox(),
+          tools.boundingBox(),
+          navigation.evaluate((nav) => {
+            const list = nav.querySelector("ul");
+            if (!list) return null;
+            const bounds = [...list.querySelectorAll("a")].map((link) => {
+              const rect = link.getBoundingClientRect();
+              return { left: rect.left, right: rect.right };
+            });
+            return {
+              gap: Number.parseFloat(getComputedStyle(list).columnGap),
+              gaps: bounds.slice(1).map((link, index) => link.left - bounds[index].right),
+            };
+          }),
+        ]);
 
-    expect(headerBounds).not.toBeNull();
-    expect(brandBounds).not.toBeNull();
-    expect(navigationBounds).not.toBeNull();
-    expect(toolsBounds).not.toBeNull();
-    const brandCenter = (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0) / 2;
-    const toolsCenter = (toolsBounds?.y ?? 0) + (toolsBounds?.height ?? 0) / 2;
-    expect(Math.abs(brandCenter - toolsCenter)).toBeLessThanOrEqual(1);
-    expect(navigationBounds?.y ?? 0).toBeGreaterThan(
-      (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0)
-    );
-    expect(toolsBounds?.right ?? 0).toBeLessThanOrEqual((headerBounds?.right ?? 0) + 1);
-    expect(navigationBounds?.right ?? 0).toBeLessThanOrEqual((headerBounds?.right ?? 0) + 1);
+      expect(headerBounds).not.toBeNull();
+      expect(brandBounds).not.toBeNull();
+      expect(navigationBounds).not.toBeNull();
+      expect(listBounds).not.toBeNull();
+      expect(toolsBounds).not.toBeNull();
+      expect(navMetrics).not.toBeNull();
+
+      const brandCenter = (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0) / 2;
+      const toolsCenter = (toolsBounds?.y ?? 0) + (toolsBounds?.height ?? 0) / 2;
+      const navigationCenter = (navigationBounds?.x ?? 0) + (navigationBounds?.width ?? 0) / 2;
+      const groupCenter = (listBounds?.x ?? 0) + (listBounds?.width ?? 0) / 2;
+      const leftInset = (listBounds?.x ?? 0) - (navigationBounds?.x ?? 0);
+      const rightInset =
+        (navigationBounds?.x ?? 0) +
+        (navigationBounds?.width ?? 0) -
+        (listBounds?.x ?? 0) -
+        (listBounds?.width ?? 0);
+      expect(Math.abs(brandCenter - toolsCenter)).toBeLessThanOrEqual(1);
+      expect(navigationBounds?.y ?? 0).toBeGreaterThan(
+        (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0)
+      );
+      expect(Math.abs(navigationCenter - groupCenter)).toBeLessThanOrEqual(1);
+      expect(listBounds?.width ?? 0).toBeLessThan(navigationBounds?.width ?? 0);
+      expect(Math.abs(leftInset - rightInset)).toBeLessThanOrEqual(1);
+      const headerRight = (headerBounds?.x ?? 0) + (headerBounds?.width ?? 0);
+      const toolsRight = (toolsBounds?.x ?? 0) + (toolsBounds?.width ?? 0);
+      const navigationRight = (navigationBounds?.x ?? 0) + (navigationBounds?.width ?? 0);
+      expect(toolsRight).toBeLessThanOrEqual(headerRight + 1);
+      expect(navigationRight).toBeLessThanOrEqual(headerRight + 1);
+      expect(navMetrics?.gap).toBeCloseTo(8, 0);
+      for (const gap of navMetrics?.gaps ?? []) {
+        expect(gap).toBeCloseTo(8, 0);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+        )
+      ).toBe(false);
+    }
   });
 
   test("mobile header keeps the RSS control touch-sized", async ({ page }) => {
