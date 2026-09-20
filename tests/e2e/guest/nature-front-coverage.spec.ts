@@ -19,6 +19,17 @@ async function readTimelineEntries(items: Locator) {
   );
 }
 
+async function readTypeDateGaps(items: Locator) {
+  return items.evaluateAll((entries) =>
+    entries.map((entry) => {
+      const icon = entry.querySelector<HTMLElement>('[data-testid="timeline-type-icon"]');
+      const date = entry.querySelector("time");
+      if (!icon || !date) return null;
+      return date.getBoundingClientRect().left - icon.getBoundingClientRect().right;
+    })
+  );
+}
+
 test.describe("Nature frontend public coverage", () => {
   test("core public routes render under the Nature shell", async ({ page }) => {
     const routes = [
@@ -1005,7 +1016,7 @@ test.describe("Nature frontend public coverage", () => {
         height: width === 393 ? 852 : width === 320 ? 700 : 800,
       });
 
-      for (const route of ["/memos", "/posts", "/search", "/projects"]) {
+      for (const route of ["/", "/memos", "/posts", "/search", "/projects"]) {
         await gotoWithTheme(page, route, "dark");
         expect(
           await page.evaluate(
@@ -1192,20 +1203,15 @@ test.describe("Nature frontend public coverage", () => {
     );
     expect(await firstMobileItem.ariaSnapshot()).toContain(hiddenTypeLabel?.trim() ?? "");
 
-    const mobileTypeIconAndDate = await mobileTimeline
-      .getByTestId("timeline-type-icon")
-      .first()
-      .evaluate((icon) => {
-        const date = icon.parentElement?.querySelector("time");
-        if (!date) return null;
-        const iconBox = icon.getBoundingClientRect();
-        const dateBox = date.getBoundingClientRect();
-        return { iconRight: iconBox.right, dateLeft: dateBox.left };
-      });
-    expect(mobileTypeIconAndDate).not.toBeNull();
-    expect(mobileTypeIconAndDate?.iconRight).toBeLessThanOrEqual(
-      (mobileTypeIconAndDate?.dateLeft ?? 0) + 12
+    const mobileHomeTypeDateGaps = await readTypeDateGaps(
+      mobileTimeline.getByTestId("timeline-item")
     );
+    expect(mobileHomeTypeDateGaps.length).toBe(mobileHomeEntries.length);
+    for (const gap of mobileHomeTypeDateGaps) {
+      expect(gap).not.toBeNull();
+      expect(gap).toBeGreaterThanOrEqual(0);
+      expect(gap).toBeLessThanOrEqual(9);
+    }
 
     await gotoWithTheme(page, "/memos", "light");
     const mobileMemosTimeline = page.getByTestId("memos-timeline");
@@ -1213,6 +1219,15 @@ test.describe("Nature frontend public coverage", () => {
       mobileMemosTimeline.getByTestId("memo-card")
     );
     expect(mobileMemoEntries).toEqual(desktopMemoEntries);
+    const mobileMemoTypeDateGaps = await readTypeDateGaps(
+      mobileMemosTimeline.getByTestId("memo-card")
+    );
+    expect(mobileMemoTypeDateGaps.length).toBe(mobileMemoEntries.length);
+    for (const gap of mobileMemoTypeDateGaps) {
+      expect(gap).not.toBeNull();
+      expect(gap).toBeGreaterThanOrEqual(0);
+      expect(gap).toBeLessThanOrEqual(9);
+    }
     await expect(mobileMemosTimeline.getByTestId("timeline-node").first()).toBeHidden();
     await expect(mobileMemosTimeline.getByTestId("timeline-connector").first()).toBeHidden();
     const mobileMemo = mobileMemosTimeline.getByTestId("memo-card").first();

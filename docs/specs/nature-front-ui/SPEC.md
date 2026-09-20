@@ -334,7 +334,7 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - Evidence bound to implementation commit `f2e752a1c69a320a6427ffd29e2e5c88ceaeac19`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, viewport strategy `Playwright CSS viewport`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
 - The deterministic local production preview contains five Memos. Desktop captures use `1440px × 1200px` in dark and light themes; narrow captures use `393px × 852px` and `320px × 700px` in dark theme.
 - Desktop retains the timeline rail and clock metadata. At both mobile widths, the rail, node, connector, and clock icon are hidden; the Memo type icon appears immediately before its date, the accessible type name remains available, and the list has no horizontal overflow.
-- Guest E2E compares each homepage and Memos entry's type, date, and href sequence between desktop and mobile viewports. Its reduced-motion check also verifies the computed panel transition duration remains at or below `0.01ms`.
+- Guest E2E compares each homepage and Memos entry's type, date, and href sequence between desktop and mobile viewports. At `393px`, every mobile entry also verifies a non-overlapping type-icon/date gap of at most `9px`; the density matrix checks homepage and Memos overflow at `393px`, `375px`, `360px`, and `320px`. The reduced-motion check verifies the computed panel transition duration remains at or below `0.01ms`.
 
 ![Memos stream desktop dark](./assets/memo-stream-desktop-dark.png)
 
