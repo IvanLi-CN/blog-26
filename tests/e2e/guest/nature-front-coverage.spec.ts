@@ -657,9 +657,7 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });
 
-  test("medium header keeps tools on the first row and navigation on the second", async ({
-    page,
-  }) => {
+  test("medium header keeps navigation left-aligned with compact gaps", async ({ page }) => {
     for (const width of [640, 772, 1023]) {
       await page.setViewportSize({ width, height: width === 772 ? 599 : 800 });
       await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
@@ -679,13 +677,24 @@ test.describe("Nature frontend public coverage", () => {
           navigation.evaluate((nav) => {
             const list = nav.querySelector("ul");
             if (!list) return null;
-            const bounds = [...list.querySelectorAll("a")].map((link) => {
+            const links = [...list.querySelectorAll("a")].map((link) => {
               const rect = link.getBoundingClientRect();
-              return { left: rect.left, right: rect.right };
+              const styles = getComputedStyle(link);
+              const horizontalInsets =
+                Number.parseFloat(styles.paddingLeft) +
+                Number.parseFloat(styles.paddingRight) +
+                Number.parseFloat(styles.borderLeftWidth) +
+                Number.parseFloat(styles.borderRightWidth);
+              return {
+                left: rect.left,
+                right: rect.right,
+                contentWidth: rect.width - horizontalInsets,
+              };
             });
             return {
-              gap: Number.parseFloat(getComputedStyle(list).columnGap),
-              gaps: bounds.slice(1).map((link, index) => link.left - bounds[index].right),
+              gaps: links.slice(1).map((link, index) => link.left - links[index].right),
+              averageContentWidth:
+                links.reduce((total, link) => total + link.contentWidth, 0) / links.length,
             };
           }),
         ]);
@@ -699,29 +708,24 @@ test.describe("Nature frontend public coverage", () => {
 
       const brandCenter = (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0) / 2;
       const toolsCenter = (toolsBounds?.y ?? 0) + (toolsBounds?.height ?? 0) / 2;
-      const navigationCenter = (navigationBounds?.x ?? 0) + (navigationBounds?.width ?? 0) / 2;
-      const groupCenter = (listBounds?.x ?? 0) + (listBounds?.width ?? 0) / 2;
-      const leftInset = (listBounds?.x ?? 0) - (navigationBounds?.x ?? 0);
-      const rightInset =
-        (navigationBounds?.x ?? 0) +
-        (navigationBounds?.width ?? 0) -
-        (listBounds?.x ?? 0) -
-        (listBounds?.width ?? 0);
       expect(Math.abs(brandCenter - toolsCenter)).toBeLessThanOrEqual(1);
       expect(navigationBounds?.y ?? 0).toBeGreaterThan(
         (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0)
       );
-      expect(Math.abs(navigationCenter - groupCenter)).toBeLessThanOrEqual(1);
+      expect(Math.abs((listBounds?.x ?? 0) - (navigationBounds?.x ?? 0))).toBeLessThanOrEqual(1);
       expect(listBounds?.width ?? 0).toBeLessThan(navigationBounds?.width ?? 0);
-      expect(Math.abs(leftInset - rightInset)).toBeLessThanOrEqual(1);
       const headerRight = (headerBounds?.x ?? 0) + (headerBounds?.width ?? 0);
       const toolsRight = (toolsBounds?.x ?? 0) + (toolsBounds?.width ?? 0);
       const navigationRight = (navigationBounds?.x ?? 0) + (navigationBounds?.width ?? 0);
       expect(toolsRight).toBeLessThanOrEqual(headerRight + 1);
       expect(navigationRight).toBeLessThanOrEqual(headerRight + 1);
-      expect(navMetrics?.gap).toBeCloseTo(8, 0);
-      for (const gap of navMetrics?.gaps ?? []) {
-        expect(gap).toBeCloseTo(8, 0);
+      const gaps = navMetrics?.gaps ?? [];
+      const averageContentWidth = navMetrics?.averageContentWidth ?? 0;
+      expect(gaps).toHaveLength(3);
+      expect(averageContentWidth).toBeGreaterThan(0);
+      for (const gap of gaps) {
+        expect(gap).toBeCloseTo(16, 0);
+        expect(gap).toBeLessThanOrEqual(averageContentWidth);
       }
       expect(
         await page.evaluate(

@@ -704,9 +704,9 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   .nature-site-header-frame nav ul {
     width: fit-content !important;
     max-width: 100%;
-    margin-inline: auto;
-    justify-content: center;
-    gap: 0.5rem;
+    margin-inline: 0;
+    justify-content: flex-start;
+    gap: 1rem;
   }
 
   .nature-site-header-frame .nature-header-tools {

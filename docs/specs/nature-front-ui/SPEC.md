@@ -65,7 +65,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 - The static `/search/` document must inspect the runtime URL before the first paint. When a non-blank `q` is present, the search input, query-aware status, and full loading skeleton expose the decoded keyword until React search results are ready.
 - On narrow viewports, the public site header uses the same content-width container as the page body. Its primary navigation stays visible as the second header row; theme selection and RSS remain directly available without a navigation menu. The RSS control keeps a compact 36px visual frame so it does not compete with the theme selector.
-- At `640px–1023px`, the public header keeps the brand and tool controls on the first row and primary navigation on the second. The four navigation items form a centered intrinsic-width group with a consistent `8px` gap; free row width is not distributed between items.
+- At `640px–1023px`, the public header keeps the brand and tool controls on the first row and primary navigation on the second. The navigation stays left-aligned with a fixed `16px` gap between links; the gap must not exceed the average content width of a navigation link. Unused row width remains to the right rather than stretching or centering the group.
 - While the search island is pending hydration, its build-time empty state stays `hidden`, `inert`, and `aria-hidden`. The query-aware bootstrap is the only visible and accessible search surface.
 - The bootstrap fills keyword nodes with `textContent` and the input `value`; it must not inject URL-derived HTML.
 - The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
@@ -309,6 +309,15 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - On fine-pointer desktop, the search shell, theme-toggle outer surface, and RSS action are each exactly `36px` high with matching top and bottom edges. The mobile story separately measures search, theme selection, and RSS at `44px` each.
 
 ![Public dark desktop header control heights](./assets/public-header-controls-unified-dark-desktop.png)
+
+### Medium-width header navigation
+
+- Evidence captured from the deterministic local Astro Demo in dark theme at `772x599` and `1023x800` CSS px. Source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, viewport strategy `Playwright CSS viewport`, margin policy `trim_only`, sensitive exclusion `N/A`.
+- The four links stay left-aligned on the second header row. Their fixed `16px` gaps remain below the measured `52px` average content width, and the page has no horizontal overflow. Guest E2E also covers the `640px` lower boundary.
+
+![Medium-width public header at 772px](./assets/public-header-medium-compact-772-dark.png)
+
+![Medium-width public header at 1023px](./assets/public-header-medium-compact-1023-dark.png)
 
 ### Compact mobile density
 
