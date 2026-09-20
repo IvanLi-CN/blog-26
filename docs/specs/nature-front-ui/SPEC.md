@@ -319,15 +319,29 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ![Medium-width public header at 1023px](./assets/public-header-medium-compact-1023-dark.png)
 
-### Compact mobile density
+### Compact mobile density (historical)
 
-- Evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- Historical evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
 - The controlled static fixture uses `393px × 852px` and `320px × 700px` viewports. Both keep the mobile header, main container, and footer on the same `12px` left/right gutter, use a `16px` maximum surface radius, and preserve `44px` navigation targets.
-- At `320px`, navigation labels collapse to labelled icons and the timeline rail compacts so the content card retains a usable reading width instead of losing space to chrome.
+- Its `320px` timeline-rail compaction claim is superseded: the current homepage and Memos stream remove the rail, nodes, and connectors below `640px`. See “Memo timeline across breakpoints” for current Memos evidence.
 
 ![Public mobile density at 393px](./assets/public-mobile-density-393.png)
 
 ![Public mobile density at 320px](./assets/public-mobile-density-320.png)
+
+### Memo timeline across breakpoints
+
+- Evidence bound to implementation commit `f2e752a1c69a320a6427ffd29e2e5c88ceaeac19`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, viewport strategy `Playwright CSS viewport`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- The deterministic local production preview contains five Memos. Desktop captures use `1440px × 1200px` in dark and light themes; narrow captures use `393px × 852px` and `320px × 700px` in dark theme.
+- Desktop retains the timeline rail and clock metadata. At both mobile widths, the rail, node, connector, and clock icon are hidden; the Memo type icon appears immediately before its date, the accessible type name remains available, and the list has no horizontal overflow.
+
+![Memos stream desktop dark](./assets/memo-stream-desktop-dark.png)
+
+![Memos stream desktop light](./assets/memo-stream-desktop-light.png)
+
+![Memos stream mobile 393px dark](./assets/memo-stream-mobile-393-dark.png)
+
+![Memos stream mobile 320px dark](./assets/memo-stream-mobile-320-dark.png)
 
 ### Related posts responsive cards
 
