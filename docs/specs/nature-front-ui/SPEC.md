@@ -8,6 +8,7 @@
 
 - [ADR 0001: Project Detail MDX Authoring](../../adr/0001-project-detail-mdx-authoring.md)
 - [ADR 0002: Mobile Public Header Scroll Model](../../adr/0002-mobile-public-header-scroll.md)
+- [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
 
 ## 1. Background
 
@@ -56,13 +57,15 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - At `min-width: 1024px` with a fine pointer, public text actions use a `36px` target; navigation, icon controls, and link-style badges use a `32px` target.
 - Outside that desktop condition, interactive public controls use a minimum `44px` target. Static status badges remain compact and do not imply an interactive hit area.
 - `MarkdownRenderer` owns the public Markdown code surface. Dark code blocks use a low-brightness green surface, AA-readable foreground and syntax tokens, `12px` vertical by `14px` horizontal padding, and a `12px` radius. Horizontal overflow and code folding remain available.
-- Below `640px`, public page containers keep `12px` viewport gutters, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
-- Below `360px`, timeline rails and gaps compact further so the reading column gains width, while navigation labels may collapse to their already-labelled icons.
+- Below `640px`, public page containers keep `12px` viewport gutters, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Structural wrappers may flatten to the page background when a nested surface adds no scanning or interaction value. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
+- Below `640px`, the homepage and Memos use a 移动内容流: chronological order, dates, and content-type metadata remain, while the decorative timeline rail, nodes, and connectors are removed. The homepage event entry follows the compact Memos item pattern, with only the article/Memo type icon immediately before the date; the desktop-only type text chip is not rendered visually in the narrow flow, but its text remains available to assistive technology.
+- Below `375px`, mobile content-flow gaps, shell gutters, and section spacing compact further so the reading column gains width; below `360px`, navigation labels may collapse to their already-labelled icons.
 
 ### 4.5 Static search deep links
 
 - The static `/search/` document must inspect the runtime URL before the first paint. When a non-blank `q` is present, the search input, query-aware status, and full loading skeleton expose the decoded keyword until React search results are ready.
 - On narrow viewports, the public site header uses the same content-width container as the page body. Its primary navigation stays visible as the second header row; theme selection and RSS remain directly available without a navigation menu. The RSS control keeps a compact 36px visual frame so it does not compete with the theme selector.
+- At `640px–1023px`, the public header keeps the brand and tool controls on the first row and primary navigation on the second. The navigation stays left-aligned with a fixed `16px` gap between links; the gap must not exceed the average content width of a navigation link. Unused row width remains to the right rather than stretching or centering the group.
 - While the search island is pending hydration, its build-time empty state stays `hidden`, `inert`, and `aria-hidden`. The query-aware bootstrap is the only visible and accessible search surface.
 - The bootstrap fills keyword nodes with `textContent` and the input `value`; it must not inject URL-derived HTML.
 - The bootstrap hands off in place only after the React island emits its component-level ready signal from a committed query-aware render, including after Astro ClientRouter swaps. Missing, empty, or whitespace-only `q` values bypass it and keep the existing exploration state.
@@ -120,9 +123,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### 4.9 Timeline and primary-action semantics
 
-- A timeline node represents one chronological content event. Every article and Memo event uses the same closed circular frame, dimensions, border, elevation, and connection rhythm at a given breakpoint; type must not remove or weaken that frame.
-- Content type is secondary metadata. An icon, restrained semantic tint, and visible text label distinguish articles from Memos; color alone must never carry the distinction, and a timeline node must not imply a different interaction level or priority by its shape or material.
-- Narrow layouts may compact the timeline rail and nodes, but must preserve the circular frame, the type icon, and the visual continuity of the connector.
+- A desktop timeline node represents one chronological content event. Every article and Memo event uses the same closed circular frame, dimensions, border, elevation, and connection rhythm at desktop; type must not remove or weaken that frame.
+- Content type is secondary metadata. An icon and restrained semantic tint distinguish articles from Memos; desktop mixed-content surfaces may retain a visible text label when it improves clarity, but mobile content flows use only the inline icon and do not render a type text chip.
+- Narrow layouts use 移动内容流 for the homepage and Memos: the rail, nodes, and connectors are absent, while the event order, date, and inline type icon remain. The icon is placed immediately before the date, matching the Memos item rhythm.
 - `--nature-secondary-rgb` is the canonical RGB token for the public secondary color. Timeline rails, nodes, and other public components must use that name rather than introducing alternate names for the same color role.
 - A primary action with text or an icon uses paired `--nature-action-primary-bg` and `--nature-action-primary-fg` tokens. The foreground must maintain at least a 4.5:1 contrast ratio against every visible default, hover, and focus background. A multi-stop gradient is allowed only when every declared stop is verified at or above 4.5:1; the homepage article action uses this verified gradient treatment (`#4e7e60` to `#294e3a` in light mode, `#88c1a0` to `#4f966e` in dark mode), while the search submit keeps the solid token background.
 - The resolved primary-action pairs are `#477956` on `#f7fff8` in light mode and `#88c1a0` on `#0f1613` in dark mode. Shared public component selectors have one authoritative stylesheet so these pairs cannot drift between duplicate implementations.
@@ -147,7 +150,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 16. On mobile public routes, the header follows the documented scroll, speed,
     release-settling, focus-order, resize, router, and reduced-motion contracts;
     desktop public behavior remains unchanged.
-17. Every article and Memo event on public timelines retains the shared circular node frame and connector rhythm at desktop and narrow breakpoints; its icon and visible text label communicate content type without relying on color alone.
+17. Desktop article and Memo timelines retain the shared circular node frame and connector rhythm; below `640px`, the homepage and Memos render a 移动内容流 with no rail, node, or connector, and place the type icon immediately before the date. The mobile type text chip is omitted without horizontal overflow.
 18. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
 
 ## 6. Validation
@@ -307,15 +310,39 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ![Public dark desktop header control heights](./assets/public-header-controls-unified-dark-desktop.png)
 
-### Compact mobile density
+### Medium-width header navigation
 
-- Evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
+- Evidence bound to implementation commit `1c5305c858372668272bca2a20d6294e50382e44`, captured from the deterministic local Astro Demo in dark theme at `772x599` and `1023x800` CSS px. Source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, viewport strategy `Playwright CSS viewport`, margin policy `trim_only`, sensitive exclusion `N/A`.
+- The four links stay left-aligned on the second header row. Their fixed `16px` gaps remain below the measured `52px` average content width, and the page has no horizontal overflow. Guest E2E also covers the `640px` lower boundary.
+
+![Medium-width public header at 772px](./assets/public-header-medium-compact-772-dark.png)
+
+![Medium-width public header at 1023px](./assets/public-header-medium-compact-1023-dark.png)
+
+### Compact mobile density (historical)
+
+- Historical evidence bound to implementation commit `d7c1f8c4`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, sensitive exclusion `N/A`.
 - The controlled static fixture uses `393px × 852px` and `320px × 700px` viewports. Both keep the mobile header, main container, and footer on the same `12px` left/right gutter, use a `16px` maximum surface radius, and preserve `44px` navigation targets.
-- At `320px`, navigation labels collapse to labelled icons and the timeline rail compacts so the content card retains a usable reading width instead of losing space to chrome.
+- Its `320px` timeline-rail compaction claim is superseded: the current homepage and Memos stream remove the rail, nodes, and connectors below `640px`. See “Memo timeline across breakpoints” for current Memos evidence.
 
 ![Public mobile density at 393px](./assets/public-mobile-density-393.png)
 
 ![Public mobile density at 320px](./assets/public-mobile-density-320.png)
+
+### Memo timeline across breakpoints
+
+- Evidence bound to implementation commit `f2e752a1c69a320a6427ffd29e2e5c88ceaeac19`; source type `ui_demo`, target program `mock-only`, capture scope `browser-viewport`, viewport strategy `Playwright CSS viewport`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- The deterministic local production preview contains five Memos. Desktop captures use `1440px × 1200px` in dark and light themes; narrow captures use `393px × 852px` and `320px × 700px` in dark theme.
+- Desktop retains the timeline rail and clock metadata. At both mobile widths, the rail, node, connector, and clock icon are hidden; the Memo type icon appears immediately before its date, the accessible type name remains available, and the list has no horizontal overflow.
+- Guest E2E compares each homepage and Memos entry's type, date, and href sequence between desktop and mobile viewports. At `393px`, every mobile entry also verifies a non-overlapping type-icon/date gap of at most `9px`; the density matrix checks homepage and Memos overflow at `393px`, `375px`, `360px`, and `320px`. The reduced-motion check verifies the computed panel transition duration remains at or below `0.01ms`.
+
+![Memos stream desktop dark](./assets/memo-stream-desktop-dark.png)
+
+![Memos stream desktop light](./assets/memo-stream-desktop-light.png)
+
+![Memos stream mobile 393px dark](./assets/memo-stream-mobile-393-dark.png)
+
+![Memos stream mobile 320px dark](./assets/memo-stream-mobile-320-dark.png)
 
 ### Related posts responsive cards
 
@@ -328,11 +355,10 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ![Related posts mobile](./assets/related-posts-mobile.png)
 
-### Home and memos timeline restoration
+### Home and memos timeline restoration (historical)
 
-- Evidence captured from the stable production gateway preview on local branch `th/timeline-visual-restore`.
-- Desktop restores a shared timeline rail and node rhythm across `/` and `/memos`, verifies the memos guide line in both light and dark themes, and removes the extra intro cards that previously sat between the home hero and the first timeline item.
-- Mobile keeps a reduced-but-visible rail instead of collapsing into plain stacked cards, and the memo detail affordance is hidden there so it does not compete with tags or content.
+- Historical evidence captured from the stable production gateway preview on local branch `th/timeline-visual-restore`, before the mobile content-stream contract.
+- Desktop retains a shared timeline rail and node rhythm across `/` and `/memos`; the mobile screenshots below in the compact-density section supersede this section's rail-on-mobile presentation.
 
 ![Home timeline light](./assets/home-timeline-light-final.png)
 
@@ -346,11 +372,11 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 
 ![Memos timeline mobile](./assets/memos-timeline-mobile.png)
 
-### Public timeline node and primary-action accessibility
+### Public timeline node and primary-action accessibility (historical)
 
-- Evidence captured from the deterministic local Astro preview after the timeline and action-token fixes. The four current-only candidates were compared against `main@4fb46c58892c1c2c0e8e7de0b1767c499e623264` and shown for owner confirmation.
+- Historical evidence captured from the deterministic local Astro preview after the timeline and action-token fixes, before the mobile content-stream contract. The four current-only candidates were compared against `main@4fb46c58892c1c2c0e8e7de0b1767c499e623264` and shown for owner confirmation.
 - Source type `ui_demo`; target program `mock-only`; capture scope `browser-viewport`; desktop viewport `1440px × 1100px`; requested mobile viewport `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`; sensitive exclusion `N/A`.
-- Article and Memo nodes share a closed circular frame, visible border, shadow, and continuous connector. The measured node diameter is `46.39px` on desktop and `20px` at `393px`; dark-theme highlight alpha is reduced to `0.22` with a `0.12` inset highlight. Visible `文章` and `闪念` labels remain present in both viewports.
+- Article and Memo nodes share a closed circular frame, visible border, shadow, and continuous connector on desktop. These mobile captures show the earlier rail-and-label treatment; current mobile content-stream evidence supersedes them.
 - The search submit solid primary-action tokens measure `4.9826:1` in light mode and `8.8970:1` in dark mode for default, hover, and focus states. The homepage article CTA verifies every gradient stop at or above `4.5:1` and retains a visible `3px` outline with `3px` offset.
 
 ![Public timeline and CTA light desktop](./assets/home-timeline-cta-light-desktop.png)

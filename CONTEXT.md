@@ -96,12 +96,16 @@ _Avoid_: 两套图片
 A public chronological overview that combines article and Memo events into one reading path.
 _Avoid_: 文章列表
 
+**移动内容流**:
+The narrow-screen presentation of 内容时间线. It keeps chronological order and item metadata while removing the decorative rail, nodes, and connectors so each event reads like a compact content entry.
+_Avoid_: 移动时间轴
+
 **时间线节点**:
-A decorative structural marker for one 内容时间线 event. It gives every event the same chronological position and does not encode content priority or an interaction level.
+A desktop-only decorative structural marker for one 内容时间线 event. It gives every event the same chronological position and does not encode content priority or an interaction level.
 _Avoid_: 类型图标, 操作入口
 
 **内容类型标识**:
-The icon, restrained tint, and visible text label that distinguish an article from a Memo while leaving the 时间线节点 structure unchanged.
+The restrained icon and tint that distinguish an article from a Memo. In a 移动内容流, the icon sits immediately before the date and carries the compact type cue; desktop mixed-content surfaces may retain a text label when extra clarification helps.
 _Avoid_: 节点样式
 
 **主要行动**:

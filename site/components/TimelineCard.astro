@@ -48,8 +48,21 @@ const imageSrc = appendPublicAssetVersion(
 
   <div class="nature-timeline-content pb-1 sm:pb-2">
     <div class="mb-2 flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+      <span
+        class="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-accent-rgb),0.12)] text-[color:var(--nature-accent-strong)]"
+        data-testid="timeline-type-icon"
+        aria-hidden="true"
+      >
+        <Icon
+          name={item.type === "memo" ? "tabler:bulb" : "tabler:article"}
+          className="h-3.5 w-3.5"
+        />
+      </span>
+      <span class="sr-only sm:hidden" data-testid="timeline-accessible-type">
+        {item.type === "memo" ? "闪念" : "文章"}
+      </span>
       <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
-      <span class="nature-chip gap-1">
+      <span class="nature-chip nature-timeline-type-label gap-1" data-testid="timeline-type-label">
         <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
         {item.type === "memo" ? "闪念" : "文章"}
       </span>

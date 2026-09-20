@@ -1,9 +1,33 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { migratedProjectSlugs } from "../../fixtures/project-content";
 
 async function gotoWithTheme(page: Page, route: string, theme: "light" | "dark" | "system") {
   await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
   await page.goto(route, { waitUntil: "domcontentloaded" });
+}
+
+async function readTimelineEntries(items: Locator) {
+  return items.evaluateAll((entries) =>
+    entries.map((entry) => ({
+      kind: entry.querySelector<HTMLElement>("[data-timeline-kind]")?.dataset.timelineKind ?? null,
+      date: entry.querySelector("time")?.getAttribute("datetime") ?? null,
+      href:
+        entry
+          .querySelector<HTMLAnchorElement>(".nature-timeline-card h2 a, a[href*='/memos/']")
+          ?.getAttribute("href") ?? null,
+    }))
+  );
+}
+
+async function readTypeDateGaps(items: Locator) {
+  return items.evaluateAll((entries) =>
+    entries.map((entry) => {
+      const icon = entry.querySelector<HTMLElement>('[data-testid="timeline-type-icon"]');
+      const date = entry.querySelector("time");
+      if (!icon || !date) return null;
+      return date.getBoundingClientRect().left - icon.getBoundingClientRect().right;
+    })
+  );
 }
 
 test.describe("Nature frontend public coverage", () => {
@@ -657,6 +681,84 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("link", { name: "RSS Feed" })).toBeVisible();
   });
 
+  test("medium header keeps navigation left-aligned with compact gaps", async ({ page }) => {
+    for (const width of [640, 772, 1023]) {
+      await page.setViewportSize({ width, height: width === 772 ? 599 : 800 });
+      await gotoWithTheme(page, "/posts/code-block-fixture", "dark");
+
+      const headerSurface = page.locator(".nature-site-header .nature-surface");
+      const brand = page.getByRole("link", { name: "Ivan's Blog" });
+      const navigation = page.getByRole("navigation", { name: "Main navigation" });
+      const navigationList = navigation.locator("ul");
+      const tools = page.locator(".nature-header-tools");
+      const [headerBounds, brandBounds, navigationBounds, listBounds, toolsBounds, navMetrics] =
+        await Promise.all([
+          headerSurface.boundingBox(),
+          brand.boundingBox(),
+          navigation.boundingBox(),
+          navigationList.boundingBox(),
+          tools.boundingBox(),
+          navigation.evaluate((nav) => {
+            const list = nav.querySelector("ul");
+            if (!list) return null;
+            const links = [...list.querySelectorAll("a")].map((link) => {
+              const rect = link.getBoundingClientRect();
+              const styles = getComputedStyle(link);
+              const horizontalInsets =
+                Number.parseFloat(styles.paddingLeft) +
+                Number.parseFloat(styles.paddingRight) +
+                Number.parseFloat(styles.borderLeftWidth) +
+                Number.parseFloat(styles.borderRightWidth);
+              return {
+                left: rect.left,
+                right: rect.right,
+                contentWidth: rect.width - horizontalInsets,
+              };
+            });
+            return {
+              gaps: links.slice(1).map((link, index) => link.left - links[index].right),
+              averageContentWidth:
+                links.reduce((total, link) => total + link.contentWidth, 0) / links.length,
+            };
+          }),
+        ]);
+
+      expect(headerBounds).not.toBeNull();
+      expect(brandBounds).not.toBeNull();
+      expect(navigationBounds).not.toBeNull();
+      expect(listBounds).not.toBeNull();
+      expect(toolsBounds).not.toBeNull();
+      expect(navMetrics).not.toBeNull();
+
+      const brandCenter = (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0) / 2;
+      const toolsCenter = (toolsBounds?.y ?? 0) + (toolsBounds?.height ?? 0) / 2;
+      expect(Math.abs(brandCenter - toolsCenter)).toBeLessThanOrEqual(1);
+      expect(navigationBounds?.y ?? 0).toBeGreaterThan(
+        (brandBounds?.y ?? 0) + (brandBounds?.height ?? 0)
+      );
+      expect(Math.abs((listBounds?.x ?? 0) - (navigationBounds?.x ?? 0))).toBeLessThanOrEqual(1);
+      expect(listBounds?.width ?? 0).toBeLessThan(navigationBounds?.width ?? 0);
+      const headerRight = (headerBounds?.x ?? 0) + (headerBounds?.width ?? 0);
+      const toolsRight = (toolsBounds?.x ?? 0) + (toolsBounds?.width ?? 0);
+      const navigationRight = (navigationBounds?.x ?? 0) + (navigationBounds?.width ?? 0);
+      expect(toolsRight).toBeLessThanOrEqual(headerRight + 1);
+      expect(navigationRight).toBeLessThanOrEqual(headerRight + 1);
+      const gaps = navMetrics?.gaps ?? [];
+      const averageContentWidth = navMetrics?.averageContentWidth ?? 0;
+      expect(gaps).toHaveLength(3);
+      expect(averageContentWidth).toBeGreaterThan(0);
+      for (const gap of gaps) {
+        expect(gap).toBeCloseTo(16, 0);
+        expect(gap).toBeLessThanOrEqual(averageContentWidth);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+        )
+      ).toBe(false);
+    }
+  });
+
   test("mobile header keeps the RSS control touch-sized", async ({ page }) => {
     await page.setViewportSize({ width: 438, height: 852 });
     await gotoWithTheme(page, "/search/?q=SSH", "light");
@@ -908,10 +1010,13 @@ test.describe("Nature frontend public coverage", () => {
   });
 
   test("public mobile density stays compact without shrinking touch targets", async ({ page }) => {
-    for (const width of [393, 320]) {
-      await page.setViewportSize({ width, height: width === 393 ? 852 : 700 });
+    for (const width of [393, 375, 360, 320]) {
+      await page.setViewportSize({
+        width,
+        height: width === 393 ? 852 : width === 320 ? 700 : 800,
+      });
 
-      for (const route of ["/memos", "/posts", "/search", "/projects"]) {
+      for (const route of ["/", "/memos", "/posts", "/search", "/projects"]) {
         await gotoWithTheme(page, route, "dark");
         expect(
           await page.evaluate(
@@ -927,13 +1032,15 @@ test.describe("Nature frontend public coverage", () => {
           ".nature-site-header-frame > .nature-surface"
         );
         const card = document.querySelector<HTMLElement>(".nature-timeline-card");
-        const rail = document.querySelector<HTMLElement>(".nature-timeline-rail");
+        const typeIcon = document.querySelector<HTMLElement>('[data-testid="timeline-type-icon"]');
         const navLabels = Array.from(
           document.querySelectorAll<HTMLElement>(".nature-nav-link-label")
         );
         const navTargets = Array.from(
           document.querySelectorAll<HTMLElement>(".nature-nav-link")
         ).map((target) => target.getBoundingClientRect());
+        const nav = document.querySelector<HTMLElement>(".nature-site-header-frame nav");
+        const navBounds = nav?.getBoundingClientRect();
         const viewportWidth = root.clientWidth;
         const edgeSelectors = [
           ".nature-site-header-frame > .nature-surface",
@@ -950,10 +1057,10 @@ test.describe("Nature frontend public coverage", () => {
         });
 
         return {
-          hasRequiredElements: Boolean(header && card && rail),
+          hasRequiredElements: Boolean(header && card && typeIcon),
           headerRadius: header ? Number.parseFloat(getComputedStyle(header).borderRadius) : 0,
           cardWidth: card?.getBoundingClientRect().width ?? 0,
-          railWidth: rail?.getBoundingClientRect().width ?? 0,
+          typeIconWidth: typeIcon?.getBoundingClientRect().width ?? 0,
           visibleNavLabels: navLabels.filter((label) => getComputedStyle(label).display !== "none")
             .length,
           shellEdges,
@@ -961,14 +1068,25 @@ test.describe("Nature frontend public coverage", () => {
             width: targetWidth,
             height,
           })),
+          navSpacing:
+            navBounds && navTargets.length > 0
+              ? {
+                  left: navTargets[0].left - navBounds.left,
+                  between: navTargets
+                    .slice(1)
+                    .map((target, index) => target.left - navTargets[index].right),
+                  right: navBounds.right - navTargets[navTargets.length - 1].right,
+                }
+              : null,
         };
       });
 
       expect(metrics.hasRequiredElements).toBe(true);
       expect(metrics.headerRadius).toBeLessThanOrEqual(16);
       for (const edges of metrics.shellEdges) {
-        expect(edges.left).toBeCloseTo(12, 0);
-        expect(edges.right).toBeCloseTo(12, 0);
+        const expectedEdge = width <= 375 ? 8 : 12;
+        expect(edges.left).toBeCloseTo(expectedEdge, 0);
+        expect(edges.right).toBeCloseTo(expectedEdge, 0);
       }
       expect(metrics.navTargets).toHaveLength(4);
       for (const target of metrics.navTargets) {
@@ -978,13 +1096,20 @@ test.describe("Nature frontend public coverage", () => {
 
       if (width === 320) {
         expect(metrics.visibleNavLabels).toBe(0);
-        expect(metrics.railWidth).toBeLessThanOrEqual(16);
+        expect(metrics.typeIconWidth).toBeGreaterThanOrEqual(20);
         expect(metrics.cardWidth).toBeGreaterThanOrEqual(250);
+        expect(metrics.navSpacing).not.toBeNull();
+        const spacing = metrics.navSpacing;
+        const reference = spacing?.left ?? 0;
+        expect(Math.abs((spacing?.right ?? reference) - reference)).toBeLessThanOrEqual(1);
+        for (const gap of spacing?.between ?? []) {
+          expect(Math.abs(gap - reference)).toBeLessThanOrEqual(1);
+        }
       }
     }
   });
 
-  test("home and memos timelines keep visible nodes and rails across breakpoints", async ({
+  test("home and memos switch from desktop timelines to mobile content streams", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 1200 });
@@ -996,8 +1121,14 @@ test.describe("Nature frontend public coverage", () => {
     await expect(homeTimeline.getByTestId("timeline-node").first()).toBeVisible();
     await expect(homeTimeline.getByTestId("timeline-connector").first()).toBeVisible();
     expect(await homeTimeline.getByTestId("timeline-item").count()).toBeGreaterThan(1);
-    await expect(homeTimeline.getByText("文章", { exact: true }).first()).toBeVisible();
-    await expect(homeTimeline.getByText("闪念", { exact: true }).first()).toBeVisible();
+    await expect(
+      homeTimeline.getByTestId("timeline-type-label").filter({ hasText: "文章" }).first()
+    ).toBeVisible();
+    await expect(
+      homeTimeline.getByTestId("timeline-type-label").filter({ hasText: "闪念" }).first()
+    ).toBeVisible();
+    const desktopHomeEntries = await readTimelineEntries(homeTimeline.getByTestId("timeline-item"));
+    expect(desktopHomeEntries.every((entry) => entry.kind && entry.date && entry.href)).toBe(true);
 
     const desktopNodeMetrics = await homeTimeline
       .getByTestId("timeline-node")
@@ -1040,8 +1171,13 @@ test.describe("Nature frontend public coverage", () => {
     await expect(memosTimeline).toBeVisible();
     await expect(memosTimeline.getByTestId("memo-card").first()).toBeVisible();
     await expect(memosTimeline.getByTestId("timeline-node").first()).toBeVisible();
+    const desktopMemo = memosTimeline.getByTestId("memo-card").first();
+    await expect(desktopMemo.getByTestId("timeline-date-icon")).toBeVisible();
+    await expect(desktopMemo.getByTestId("timeline-type-icon")).toBeHidden();
     const memoCount = await memosTimeline.getByTestId("memo-card").count();
     expect(memoCount).toBeGreaterThan(0);
+    const desktopMemoEntries = await readTimelineEntries(memosTimeline.getByTestId("memo-card"));
+    expect(desktopMemoEntries.every((entry) => entry.kind && entry.date && entry.href)).toBe(true);
     if (memoCount > 1) {
       await expect(memosTimeline.getByTestId("timeline-connector").first()).toBeVisible();
     } else {
@@ -1052,63 +1188,53 @@ test.describe("Nature frontend public coverage", () => {
     await gotoWithTheme(page, "/", "light");
     const mobileTimeline = page.getByTestId("home-timeline");
     const mobileNodes = mobileTimeline.getByTestId("timeline-node");
-    const mobileNode = mobileNodes.first();
-    await expect(mobileNode).toBeVisible();
-    await expect(mobileTimeline.getByText("文章", { exact: true }).first()).toBeVisible();
-    await expect(mobileTimeline.getByText("闪念", { exact: true }).first()).toBeVisible();
-
-    const nodeBox = await mobileNode.boundingBox();
-    expect(nodeBox).not.toBeNull();
-
-    if (!nodeBox) {
-      throw new Error("timeline node is not measurable on mobile");
-    }
-
-    expect(nodeBox.width).toBeGreaterThan(8);
-    const mobileNodeMetrics = await mobileNodes.evaluateAll((nodes) =>
-      nodes.map((node) => {
-        const style = getComputedStyle(node);
-        const rect = node.getBoundingClientRect();
-        return {
-          kind: node.getAttribute("data-timeline-kind"),
-          width: rect.width,
-          height: rect.height,
-          border: style.border,
-          borderRadius: style.borderRadius,
-          backgroundColor: style.backgroundColor,
-          backgroundImage: style.backgroundImage,
-          boxShadow: style.boxShadow,
-        };
-      })
+    await expect(mobileNodes.first()).toBeHidden();
+    await expect(mobileTimeline.getByTestId("timeline-connector").first()).toBeHidden();
+    await expect(mobileTimeline.getByTestId("timeline-type-icon").first()).toBeVisible();
+    await expect(mobileTimeline.getByTestId("timeline-type-label").first()).toBeHidden();
+    const mobileHomeEntries = await readTimelineEntries(
+      mobileTimeline.getByTestId("timeline-item")
     );
-    expect(mobileNodeMetrics.map((node) => node.kind)).toEqual(
-      expect.arrayContaining(["post", "memo"])
+    expect(mobileHomeEntries).toEqual(desktopHomeEntries);
+    const firstMobileItem = mobileTimeline.getByTestId("timeline-item").first();
+    const hiddenTypeLabel = await firstMobileItem.getByTestId("timeline-type-label").textContent();
+    await expect(firstMobileItem.getByTestId("timeline-accessible-type")).toHaveText(
+      hiddenTypeLabel?.trim() ?? ""
     );
-    const mobileReference = mobileNodeMetrics[0];
-    for (const node of mobileNodeMetrics) {
-      expect(Math.abs(node.width - node.height)).toBeLessThanOrEqual(0.5);
-      expect(Math.abs(node.width - (mobileReference?.width ?? node.width))).toBeLessThanOrEqual(
-        0.5
-      );
-      expect(node.border).not.toBe("none");
-      expect(Number.parseFloat(node.borderRadius)).toBeGreaterThanOrEqual(node.width / 2);
-      expect(node.backgroundColor !== "rgba(0, 0, 0, 0)" || node.backgroundImage !== "none").toBe(
-        true
-      );
-      expect(node.boxShadow).not.toBe("none");
+    expect(await firstMobileItem.ariaSnapshot()).toContain(hiddenTypeLabel?.trim() ?? "");
+
+    const mobileHomeTypeDateGaps = await readTypeDateGaps(
+      mobileTimeline.getByTestId("timeline-item")
+    );
+    expect(mobileHomeTypeDateGaps.length).toBe(mobileHomeEntries.length);
+    for (const gap of mobileHomeTypeDateGaps) {
+      expect(gap).not.toBeNull();
+      expect(gap).toBeGreaterThanOrEqual(0);
+      expect(gap).toBeLessThanOrEqual(9);
     }
 
-    const mobileConnector = mobileTimeline.getByTestId("timeline-connector").first();
-    await expect(mobileConnector).toBeVisible();
-
-    const connectorBox = await mobileConnector.boundingBox();
-    expect(connectorBox).not.toBeNull();
-
-    if (!connectorBox) {
-      throw new Error("timeline connector is not measurable on mobile");
+    await gotoWithTheme(page, "/memos", "light");
+    const mobileMemosTimeline = page.getByTestId("memos-timeline");
+    const mobileMemoEntries = await readTimelineEntries(
+      mobileMemosTimeline.getByTestId("memo-card")
+    );
+    expect(mobileMemoEntries).toEqual(desktopMemoEntries);
+    const mobileMemoTypeDateGaps = await readTypeDateGaps(
+      mobileMemosTimeline.getByTestId("memo-card")
+    );
+    expect(mobileMemoTypeDateGaps.length).toBe(mobileMemoEntries.length);
+    for (const gap of mobileMemoTypeDateGaps) {
+      expect(gap).not.toBeNull();
+      expect(gap).toBeGreaterThanOrEqual(0);
+      expect(gap).toBeLessThanOrEqual(9);
     }
-
-    expect(connectorBox.height).toBeGreaterThan(24);
+    await expect(mobileMemosTimeline.getByTestId("timeline-node").first()).toBeHidden();
+    await expect(mobileMemosTimeline.getByTestId("timeline-connector").first()).toBeHidden();
+    const mobileMemo = mobileMemosTimeline.getByTestId("memo-card").first();
+    await expect(mobileMemo.getByTestId("timeline-type-icon")).toBeVisible();
+    await expect(mobileMemo.getByTestId("timeline-date-icon")).toBeHidden();
+    await expect(mobileMemo.getByTestId("timeline-accessible-type")).toHaveText("闪念");
+    expect(await mobileMemo.ariaSnapshot()).toContain("闪念");
   });
 
   test.describe("system theme and reduced motion", () => {
@@ -1127,6 +1253,21 @@ test.describe("Nature frontend public coverage", () => {
       expect(media.prefersDark).toBe(true);
       expect(media.prefersReducedMotion).toBe(true);
       await expect(page.getByRole("heading", { name: /Ivan's Blog/ })).toBeVisible();
+      const panelTransitionDurationMs = await page
+        .locator(".nature-panel")
+        .first()
+        .evaluate((panel) =>
+          Math.max(
+            ...getComputedStyle(panel)
+              .transitionDuration.split(",")
+              .map((duration) => {
+                const value = duration.trim();
+                const numericValue = Number.parseFloat(value);
+                return value.endsWith("ms") ? numericValue : numericValue * 1000;
+              })
+          )
+        );
+      expect(panelTransitionDurationMs).toBeLessThanOrEqual(0.01);
     });
   });
 
