@@ -1,7 +1,13 @@
 import { SITE } from "@/config/site";
 import { type BuiltFeed, buildFeed } from "@/lib/rss";
 import type { PublicSnapshot } from "@/public-site/snapshot";
-import { buildTagFeedItems, getCanonicalUrl, getSiteUrl, toAbsoluteSiteUrl } from "./public-site";
+import {
+  buildTagFeedItems,
+  getCanonicalUrl,
+  getMemoMetadataTitle,
+  getSiteUrl,
+  toAbsoluteSiteUrl,
+} from "./public-site";
 
 type FeedFormat = "rss" | "atom" | "json";
 
@@ -70,7 +76,7 @@ export function buildMemosFeed(snapshot: PublicSnapshot): BuiltFeed {
     const imageUrl = resolveContentImageUrl(memo.image, memo.media);
     return {
       id: getCanonicalUrl(`/memos/${memo.slug}`),
-      title: memo.title,
+      title: getMemoMetadataTitle(memo.title, memo.publishedAt ?? memo.createdAt),
       link: getCanonicalUrl(`/memos/${memo.slug}`),
       description: memo.excerpt ?? undefined,
       content: memo.content,

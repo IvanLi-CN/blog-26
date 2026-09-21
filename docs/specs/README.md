@@ -26,6 +26,7 @@
 | Full direct dependency upgrade to latest | archived | implemented | `deps-update-latest/SPEC.md` | - | Legacy plan `0004` and the later direct-latest upgrade are consolidated here. |
 | Local memo root keeps `Memos` case | active | implemented | `local-memos-root-case/SPEC.md` | - | Local memo paths preserve canonical case and strict path safety. |
 | Local content source uses real directory layout | active | in progress | `local-real-content-layout/SPEC.md` | - | Configured real roots drive scanning, classification, and admin browsing. |
+| Memo title semantics | active | implemented | `memo-title-semantics/SPEC.md` | - | Optional memo titles resolve from approved metadata/headings and stay nullable in the public model. |
 | Memos Markdown theme contrast | archived | implemented | `memos-content-contrast/SPEC.md` | - | Semantic theme colors keep Memo Markdown readable across supported themes. |
 | Nature frontend redesign without DaisyUI | active | implemented | `nature-front-ui/SPEC.md` | - | Public styling uses the Nature design system with responsive and visual evidence contracts. |
 | Next runtime reduction after admin SPA migration | superseded | implemented | `next-runtime-reduction/SPEC.md` | `zero-next-cleanup/SPEC.md` | Production runtime reduction completed; repository-wide removal moved to the successor. |

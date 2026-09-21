@@ -1,7 +1,13 @@
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { and, desc, eq } from "drizzle-orm";
 import { getLocalPath, isLocalContentEnabled } from "@/config/paths";
 import { SITE } from "@/config/site";
+import {
+  extractMemoTitle,
+  isGeneratedMemoTitle,
+  parseMarkdownContent,
+} from "@/lib/content-sources/utils";
 import { db, initializeDB } from "@/lib/db";
 import { extractTextSummary } from "@/lib/markdown-utils";
 import {
@@ -40,7 +46,7 @@ export interface PublicPostRecord {
 export interface PublicMemoRecord {
   id: string;
   slug: string;
-  title: string;
+  title: string | null;
   excerpt: string | null;
   content: string;
   tags: string[];
@@ -65,7 +71,7 @@ export interface PublicTagSummary {
 export interface PublicTagTimelineItem {
   type: "post" | "memo";
   slug: string;
-  title: string;
+  title: string | null;
   excerpt: string | null;
   content: string | null;
   publishDate: string;
@@ -149,6 +155,48 @@ function getCanonicalFilePath(row: typeof posts.$inferSelect): string {
     throw new Error(`Public content row ${row.slug || row.id} is missing a canonical file path`);
   }
   return filePath;
+}
+
+function isLocalMemoRow(row: typeof posts.$inferSelect) {
+  return row.dataSource === "local" || row.source === "local";
+}
+
+/**
+ * Resolve memo titles at the public read boundary. Legacy rows whose title is
+ * exactly the generated filename title are re-read from the local Markdown
+ * source; inaccessible sources keep the stored value conservatively.
+ */
+export async function resolvePublicMemoTitle(
+  row: typeof posts.$inferSelect
+): Promise<string | null> {
+  const storedTitle = row.title?.trim() || "";
+  if (!storedTitle) return null;
+
+  const filePath = getCanonicalFilePath(row);
+  if (!isLocalMemoRow(row) || !isGeneratedMemoTitle(storedTitle, filePath)) {
+    return storedTitle;
+  }
+
+  if (!isLocalContentEnabled()) {
+    console.warn("[public-snapshot] cannot verify legacy memo title without local source", {
+      slug: row.slug,
+      filePath,
+    });
+    return storedTitle;
+  }
+
+  try {
+    const rawContent = await readFile(getLocalPath(filePath), "utf8");
+    const parsed = parseMarkdownContent(rawContent, filePath);
+    return extractMemoTitle(parsed.frontmatter, parsed.body) || null;
+  } catch (error) {
+    console.warn("[public-snapshot] preserving legacy memo title because source is unavailable", {
+      slug: row.slug,
+      filePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return storedTitle;
+  }
 }
 
 function buildRelatedPosts(postList: PublicPostRecord[]): Record<string, string[]> {
@@ -304,45 +352,50 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
       };
     });
 
-  const memoList: PublicMemoRecord[] = rawMemos
-    .filter((row) => hasAvailableLocalMedia("memo", row))
-    .map((row) => {
-      const parsed = parseContentTags(row.body || "");
-      const storedTags = normalizeTags(row.tags);
-      const inlineTags = parsed.tags.map((tag) => tag.name);
-      const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
-      const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
-      const filePath = getCanonicalFilePath(row);
-      const media = buildPublicMediaCollection("memo", row);
-      const publicMediaContext = {
-        kind: "memo" as const,
-        slug: row.slug,
-        filePath,
-      };
-      return {
-        id: row.id,
-        slug: row.slug,
-        title: row.title || row.slug,
-        excerpt: row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
-        content: rewritePublicContentMediaUrls(row.body, publicMediaContext),
-        tags: mergedTags,
-        inlineTags,
-        isPublic: row.public,
-        createdAt,
-        publishedAt,
-        updatedAt,
-        dataSource: row.dataSource,
-        filePath,
-        image:
-          pickLegacyPublicImage(media, "content") ??
-          buildLegacyPublicMediaUrl({
-            mediaPath: row.image,
+  const memoList: PublicMemoRecord[] = (
+    await Promise.all(
+      rawMemos
+        .filter((row) => hasAvailableLocalMedia("memo", row))
+        .map(async (row) => {
+          const parsed = parseContentTags(row.body || "");
+          const storedTags = normalizeTags(row.tags);
+          const inlineTags = parsed.tags.map((tag) => tag.name);
+          const mergedTags = Array.from(new Set([...inlineTags, ...storedTags]));
+          const { createdAt, publishedAt, updatedAt } = resolveMemoTime(row);
+          const filePath = getCanonicalFilePath(row);
+          const media = buildPublicMediaCollection("memo", row);
+          const publicMediaContext = {
+            kind: "memo" as const,
+            slug: row.slug,
+            filePath,
+          };
+          const title = await resolvePublicMemoTitle(row);
+          return {
+            id: row.id,
+            slug: row.slug,
+            title,
+            excerpt: row.excerpt || extractTextSummary(parsed.cleanedContent || row.body, 140),
+            content: rewritePublicContentMediaUrls(row.body, publicMediaContext),
+            tags: mergedTags,
+            inlineTags,
+            isPublic: row.public,
+            createdAt,
+            publishedAt,
+            updatedAt,
             dataSource: row.dataSource,
             filePath,
-          }),
-        media,
-      };
-    });
+            image:
+              pickLegacyPublicImage(media, "content") ??
+              buildLegacyPublicMediaUrl({
+                mediaPath: row.image,
+                dataSource: row.dataSource,
+                filePath,
+              }),
+            media,
+          };
+        })
+    )
+  ).filter((memo): memo is PublicMemoRecord => Boolean(memo));
 
   const [tagSummaries, tagGroupsConfig, categoryIcons] = await Promise.all([
     getTagSummaries({ includeDrafts: false, includeUnpublished: false }),

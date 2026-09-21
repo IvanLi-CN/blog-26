@@ -76,7 +76,7 @@ export interface ProjectDomainDefinition {
 
 export interface ResolvedProjectRelatedEntry extends ProjectRelatedEntry {
   href: string;
-  title: string;
+  title: string | null;
   excerpt: string | null;
 }
 

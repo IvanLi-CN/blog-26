@@ -1838,6 +1838,83 @@ public: false
     );
   });
 
+  it("normalizes legacy memo titles in public search using local Markdown only", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_xayc4b0t.md"),
+      "---\ntitle: Source-derived memo title\n---\n\nneedle-public-search-marker",
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_notitle1.md"),
+      "A prose-only memo\n\n#### A detail heading",
+      "utf8"
+    );
+    await seedPost({
+      id: "Memos/20260615_xayc4b0t.md",
+      filePath: "Memos/20260615_xayc4b0t.md",
+      slug: "legacy-title-with-source",
+      type: "memo",
+      title: "20260615 xayc4b0t",
+      body: "needle-public-search-marker",
+    });
+    await seedPost({
+      id: "Memos/20260615_notitle1.md",
+      filePath: "Memos/20260615_notitle1.md",
+      slug: "legacy-title-without-heading",
+      type: "memo",
+      title: "20260615 notitle1",
+      body: "A prose-only memo\n\n#### A detail heading",
+    });
+    await seedPost({
+      id: "Memos/20260615_missin12.md",
+      filePath: "Memos/20260615_missin12.md",
+      slug: "legacy-title-without-source",
+      type: "memo",
+      title: "20260615 missin12",
+      body: "needle-public-search-marker",
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/search?q=needle-public-search-marker&topK=20"),
+      "/search"
+    );
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as Array<{ slug: string; title: string | null }>;
+    expect(payload).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slug: "legacy-title-with-source",
+          title: "Source-derived memo title",
+        }),
+        expect.objectContaining({
+          slug: "legacy-title-without-source",
+          title: "20260615 missin12",
+        }),
+      ])
+    );
+
+    const snapshotResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    const snapshot = await readJson(snapshotResponse);
+    expect(snapshot.memos).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slug: "legacy-title-with-source",
+          title: "Source-derived memo title",
+        }),
+        expect.objectContaining({ slug: "legacy-title-without-heading", title: null }),
+        expect.objectContaining({
+          slug: "legacy-title-without-source",
+          title: "20260615 missin12",
+        }),
+      ])
+    );
+  });
+
   it("returns a controlled bad request for an over-budget public search query", async () => {
     const query = "x".repeat(SEARCH_QUERY_LIMITS.maxCodePoints + 1);
     const response = await handlePublicApiRequest(

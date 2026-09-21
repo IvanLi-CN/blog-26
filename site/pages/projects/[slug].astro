@@ -83,7 +83,7 @@ const structuredData = {
           {relatedEntries.length > 0 && (
             <section class="nature-panel px-4 py-5 sm:px-7 sm:py-6">
               <div class="flex items-center gap-3"><Icon name="tabler:book-2" className="h-5 w-5 text-[color:var(--nature-accent-strong)]" /><h2 class="font-heading text-2xl font-semibold text-[color:var(--nature-text)]">延伸阅读</h2></div>
-              <div class="mt-5 grid gap-4 md:grid-cols-2">{relatedEntries.map((entry) => <article class="nature-panel nature-panel-soft px-4 py-4"><span class="nature-chip">{entry.type === "post" ? "Post" : "Memo"}</span><h3 class="mt-3 text-lg font-semibold text-[color:var(--nature-text)]"><a href={toPublicSitePath(entry.href)} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">{entry.title}</a></h3>{entry.excerpt && <p class="nature-muted mt-3 text-sm leading-7">{entry.excerpt}</p>}</article>)}</div>
+              <div class="mt-5 grid gap-4 md:grid-cols-2">{relatedEntries.map((entry) => <article class="nature-panel nature-panel-soft px-4 py-4"><span class="nature-chip">{entry.type === "post" ? "Post" : "Memo"}</span>{entry.title ? <h3 class="mt-3 text-lg font-semibold text-[color:var(--nature-text)]"><a href={toPublicSitePath(entry.href)} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">{entry.title}</a></h3> : <a href={toPublicSitePath(entry.href)} class="nature-link-inline mt-3 inline-flex min-h-10 items-center px-2 text-sm">查看闪念详情</a>}{entry.excerpt && <p class="nature-muted mt-3 text-sm leading-7">{entry.excerpt}</p>}</article>)}</div>
             </section>
           )}
         </main>

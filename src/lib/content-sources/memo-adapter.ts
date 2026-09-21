@@ -6,6 +6,7 @@
 
 import type { Post as PostRow } from "../schema";
 import type { ContentItem } from "./types";
+import { extractMemoTitle } from "./utils";
 
 /**
  * 将数据库中的 Memo 记录转换为 ContentItem
@@ -21,7 +22,7 @@ export function memoToContentItem(memo: PostRow): ContentItem {
     id: memo.id,
     type: "memo" as const,
     slug: memo.slug || generateSlugFromId(memo.id),
-    title: memo.title || extractTitleFromContent(memo.body),
+    title: memo.title?.trim() || extractMemoTitle({}, memo.body),
     excerpt: memo.excerpt || generateExcerptFromContent(memo.body),
     contentHash: memo.contentHash,
     lastModified: memo.lastModified || memo.updateDate || memo.publishDate,
@@ -100,31 +101,6 @@ function generateSlugFromId(id: string): string {
     .replace(/[^a-zA-Z0-9\-_]/g, "-") // 替换非法字符
     .replace(/-+/g, "-") // 合并多个连字符
     .toLowerCase();
-}
-
-/**
- * 从内容中提取标题
- */
-function extractTitleFromContent(content: string): string {
-  // 查找第一个 H1 标题
-  const h1Match = content.match(/^#\s+(.+)$/m);
-  if (h1Match) {
-    return h1Match[1].trim();
-  }
-
-  // 查找第一个 H2 标题
-  const h2Match = content.match(/^##\s+(.+)$/m);
-  if (h2Match) {
-    return h2Match[1].trim();
-  }
-
-  // 使用第一行非空内容
-  const firstLine = content.split("\n").find((line) => line.trim());
-  if (firstLine) {
-    return firstLine.trim().substring(0, 50);
-  }
-
-  return "无标题 Memo";
 }
 
 /**

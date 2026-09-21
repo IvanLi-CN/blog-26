@@ -19,14 +19,14 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ## 2. Goals
 
 1. Replace DaisyUI-driven public styling with a dedicated Nature design system for the visitor-facing frontend.
-2. Keep public routes, data fetching, metadata, comments, tags, search, and memo behavior unchanged.
+2. Keep public routes, data fetching, metadata, comments, tags, search, and established memo behavior unchanged, except for title resolution, metadata compatibility, and optional-title presentation defined by the [memo-title-semantics Spec](../memo-title-semantics/SPEC.md).
 3. Reduce theme behavior to `light`, `dark`, and `system`, driven by a custom `data-ui-theme` runtime.
 4. Provide deterministic visual verification for the redesigned public pages through a stable local preview surface and recorded screenshots.
 
 ## 3. Non-goals
 
 - No admin panel redesign or admin-only component migration.
-- No API, search contract, comment moderation, or sync workflow changes. Project detail content now has an Astro MDX authoring path described by ADR 0001.
+- No API, search, comment moderation, or sync workflow changes except the cross-layer memo title contract owned by [memo-title-semantics](../memo-title-semantics/SPEC.md). Project detail content now has an Astro MDX authoring path described by ADR 0001.
 - No repository-wide DaisyUI dependency removal in the same change.
 - No Storybook adoption for this task.
 
@@ -130,6 +130,11 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - A primary action with text or an icon uses paired `--nature-action-primary-bg` and `--nature-action-primary-fg` tokens. The foreground must maintain at least a 4.5:1 contrast ratio against every visible default, hover, and focus background. A multi-stop gradient is allowed only when every declared stop is verified at or above 4.5:1; the homepage article action uses this verified gradient treatment (`#4e7e60` to `#294e3a` in light mode, `#88c1a0` to `#4f966e` in dark mode), while the search submit keeps the solid token background.
 - The resolved primary-action pairs are `#477956` on `#f7fff8` in light mode and `#88c1a0` on `#0f1613` in dark mode. Shared public component selectors have one authoritative stylesheet so these pairs cannot drift between duplicate implementations.
 
+### 4.10 Optional memo titles
+
+- The public Nature frontend omits the visible title when a memo's resolved public title is absent. It does not substitute a slug or generated filename.
+- Titleless memo cards and detail pages retain their date, type, tags, excerpt or body, and detail navigation. Protocol metadata fallbacks and title-resolution rules are defined by the memo-title-semantics Spec.
+
 ## 5. Acceptance criteria
 
 1. `/`, `/posts`, `/posts/[slug]`, `/memos`, `/memos/[slug]`, `/tags`, `/tags/[...tagSegments]`, `/search`, `/about`, and `/projects` render with the Nature design system in `light`, `dark`, and `system`.
@@ -152,6 +157,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
     desktop public behavior remains unchanged.
 17. Desktop article and Memo timelines retain the shared circular node frame and connector rhythm; below `640px`, the homepage and Memos render a 移动内容流 with no rail, node, or connector, and place the type icon immediately before the date. The mobile type text chip is omitted without horizontal overflow.
 18. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
+
+19. Public memo surfaces omit an absent resolved title without substituting a slug, while preserving available date, type, tags, excerpt or body, and detail navigation; cross-layer resolution and protocol metadata follow the memo-title-semantics Spec.
 
 ## 6. Validation
 
@@ -280,9 +287,11 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ## Context and Scope
 
-This topic owns the public Nature frontend shell and its visitor-facing page surfaces. The project index, project detail routes, semantic public-entry shortcuts, project-specific MDX bodies, responsive reading layout, and their visual evidence are in scope. Backend APIs, admin surfaces, and the poster/social-preview generation pipelines remain outside this topic's project-detail content contract.
+This topic owns the public Nature frontend shell and its visitor-facing page surfaces. The project index, project detail routes, semantic public-entry shortcuts, project-specific MDX bodies, responsive reading layout, and their visual evidence are in scope. Memo title resolution is owned by the [memo-title-semantics Spec](../memo-title-semantics/SPEC.md); this topic owns its visible treatment. Backend APIs, admin surfaces, and the poster/social-preview generation pipelines remain outside this topic's project-detail content contract.
 
 ## Requirements
+
+- `REQ-NATURE-MEMO-TITLE`: Public memo surfaces MUST omit an absent resolved title without substituting a slug, while preserving the date, type, tags, available excerpt or body, and detail navigation; resolution and protocol metadata rules are owned by the [memo-title-semantics Spec](../memo-title-semantics/SPEC.md).
 
 - `REQ-NATURE-PROJECT-CATALOG`: The project catalog MUST own project identity, discovery copy, media references, and semantic public entries; card shortcuts MUST prefer the formal site over Demo, official documentation over a documentation site, and the public repository as the source entry.
 - `REQ-NATURE-PROJECT-DETAIL-MDX`: Project detail bodies MUST be project-specific MDX with build-time slug validation, optional reviewed static content blocks, and a verified catalog-only fallback when no body exists.
@@ -290,6 +299,8 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - `REQ-NATURE-PROJECT-INTERACTION`: Project-wall summaries MUST remain one-line and ellipsized at rest, expose their full text on keyboard focus, and keep icon-only external shortcuts weak at rest but usable on hover, focus, and touch.
 
 ## Verification
+
+- `VER-NATURE-MEMO-TITLE`: covers: `REQ-NATURE-MEMO-TITLE`; public list and detail rendering checks verify title omission, retained content metadata, and working detail navigation for titleless memos.
 
 - `VER-NATURE-PROJECT-CATALOG`: covers: `REQ-NATURE-PROJECT-CATALOG`; semantic-entry unit tests and the static site build verify precedence, labels, missing-entry omission, and public output.
 - `VER-NATURE-PROJECT-DETAIL-MDX`: covers: `REQ-NATURE-PROJECT-DETAIL-MDX`; MDX loader/TOC tests, the migrated detail routes, the static build, and the detail-route fallback branch verify slug validation, reviewed block rendering, compiled bodies, and safe catalog-only fallback behavior for projects without a body.

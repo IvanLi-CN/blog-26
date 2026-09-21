@@ -82,11 +82,18 @@ const imageSrc = appendPublicAssetVersion(
             </a>
           )}
           <div class="min-w-0 flex-1">
-            <h2 class="nature-title text-xl font-semibold">
-              <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
-                {item.title || item.slug}
+            {item.title && (
+              <h2 class="nature-title text-xl font-semibold">
+                <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+                  {item.title}
+                </a>
+              </h2>
+            )}
+            {!item.title && item.type === "memo" && (
+              <a href={href} class="nature-link-inline mt-3 inline-flex min-h-10 items-center px-2 text-sm">
+                查看闪念详情
               </a>
-            </h2>
+            )}
             {preview && <p class="nature-muted mt-3 text-base leading-7">{preview}</p>}
             {item.tags.length > 0 && (
               <div class="mt-4 flex flex-wrap gap-2">

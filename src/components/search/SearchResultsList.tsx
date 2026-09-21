@@ -155,12 +155,15 @@ export default function SearchResultsList({
             : typeof r.cosine === "number"
               ? (r.cosine + 1) / 2
               : null;
+        const displayTitle = type === "memo" ? r.title?.trim() || "" : r.title || r.slug;
+        const accessibleTitle =
+          type === "memo" ? r.title?.trim() || "无标题闪念" : r.title || r.slug;
 
         return (
           <li key={`${type}-${r.slug}`} className="list-none">
             <a
               href={href}
-              aria-label={`打开 ${r.title || r.slug}`}
+              aria-label={`打开 ${accessibleTitle}`}
               className="nature-hover-hitbox group block"
               data-search-result-card
             >
@@ -186,9 +189,11 @@ export default function SearchResultsList({
                       )}
                     </div>
 
-                    <h2 className="mt-2 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)] sm:text-xl">
-                      {r.title || r.slug}
-                    </h2>
+                    {displayTitle ? (
+                      <h2 className="mt-2 line-clamp-2 font-heading text-lg font-semibold leading-7 text-[color:var(--nature-text)] transition-colors group-hover:text-[color:var(--nature-accent-strong)] sm:text-xl">
+                        {displayTitle}
+                      </h2>
+                    ) : null}
 
                     {snippet && (
                       <div className="nature-muted mt-1.5 max-h-48 overflow-hidden break-words text-sm leading-6">

@@ -2,11 +2,13 @@ import { describe, expect, it, mock } from "bun:test";
 import { parseContentTags } from "@/lib/tag-parser";
 import {
   createContentItemFromParsed,
+  extractMemoTitle,
   extractTitle,
   generateMemoFilename,
   generateNanoidSlug,
   generateSlugFromPath,
   generateTitleSlug,
+  isGeneratedMemoTitle,
   mergeFrontmatterAndInlineTags,
   parseMarkdownContent,
   sanitizeContentItem,
@@ -128,6 +130,46 @@ describe("Memo Utils", () => {
 
       const title = extractTitle(frontmatter, body, filePath);
       expect(title).toBe("my post");
+    });
+  });
+
+  describe("extractMemoTitle", () => {
+    it("prefers a non-empty frontmatter title", () => {
+      expect(extractMemoTitle({ title: "Frontmatter title" }, "# Body title")).toBe(
+        "Frontmatter title"
+      );
+    });
+
+    it("uses the first non-empty H1-H3 line after blank lines", () => {
+      expect(extractMemoTitle({}, "\n\n### First memo heading\n\nBody")).toBe("First memo heading");
+    });
+
+    it("falls back to the first H1 when the first content line is not H1-H3", () => {
+      expect(extractMemoTitle({}, "Plain opening\n\n## Later section\n\n# Memo title")).toBe(
+        "Memo title"
+      );
+      expect(extractMemoTitle({}, "#### Detail\n\n# Memo title")).toBe("Memo title");
+    });
+
+    it("does not use prose or H4+ headings as a memo title", () => {
+      expect(extractMemoTitle({}, "Plain opening\n\n#### Detail\n\nBody")).toBe("");
+    });
+
+    it("ignores heading-like lines inside code fences", () => {
+      expect(extractMemoTitle({}, "```md\n# Not a heading\n```\n\nBody")).toBe("");
+      expect(extractMemoTitle({}, "```md\n# Not a heading\n```\n\n# Real heading")).toBe(
+        "Real heading"
+      );
+    });
+  });
+
+  describe("isGeneratedMemoTitle", () => {
+    it("matches only the exact legacy filename-derived title", () => {
+      expect(isGeneratedMemoTitle("20250706 4wodwy2s", "Memos/20250706_4wodwy2s.md")).toBe(true);
+      expect(isGeneratedMemoTitle("Intentional title", "Memos/20250706_4wodwy2s.md")).toBe(false);
+      expect(isGeneratedMemoTitle("20250706 4wodwy2s", "Memos/20250706_custom-title.md")).toBe(
+        false
+      );
     });
   });
 

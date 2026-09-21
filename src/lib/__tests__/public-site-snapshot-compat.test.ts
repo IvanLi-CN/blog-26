@@ -3,10 +3,11 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PublicSnapshot } from "@/public-site/snapshot";
-import { buildSiteFeed } from "../../../site/lib/feeds";
+import { buildMemosFeed, buildSiteFeed, buildTagFeed } from "../../../site/lib/feeds";
 import {
   __resetSnapshotForTests,
   appendPublicAssetVersion,
+  getMemoMetadataTitle,
   getSnapshot,
 } from "../../../site/lib/public-site";
 
@@ -138,6 +139,133 @@ afterEach(async () => {
 });
 
 describe("public snapshot compatibility", () => {
+  it("removes generated memo titles from legacy snapshots and keeps a stable feed title", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "blog25-snapshot-untitled-"));
+    try {
+      const snapshot = createLegacySnapshot();
+      snapshot.memos[0] = {
+        ...snapshot.memos[0],
+        slug: "legacy-random-slug",
+        title: "20250706 4wodwy2s",
+        filePath: "Memos/20250706_4wodwy2s.md",
+        publishedAt: "2025-07-06T00:00:00.000Z",
+      };
+      snapshot.tags.timelines.Notes[1] = {
+        ...snapshot.tags.timelines.Notes[1],
+        slug: "legacy-random-slug",
+        title: "20250706 4wodwy2s",
+        filePath: "Memos/20250706_4wodwy2s.md",
+        publishDate: "2025-07-06T00:00:00.000Z",
+      };
+      const snapshotPath = join(tempDir, "legacy-public-snapshot.json");
+      await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+      process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
+      __resetSnapshotForTests();
+
+      const loaded = await getSnapshot();
+
+      expect(loaded.memos[0]?.title).toBeNull();
+      expect(loaded.tags.timelines.Notes?.[1]?.title).toBeNull();
+      expect(buildMemosFeed(loaded).rss).toContain("无标题闪念 · 2025年7月6日");
+      expect(buildTagFeed(loaded, "Notes").rss).toContain("无标题闪念 · 2025年7月6日");
+      expect(getMemoMetadataTitle(loaded.memos[0]?.title, loaded.memos[0]?.publishedAt)).toBe(
+        "无标题闪念 · 2025年7月6日"
+      );
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("restores a real markdown heading when a legacy filename title is detected", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "blog25-snapshot-derived-title-"));
+    try {
+      const snapshot = createLegacySnapshot();
+      snapshot.memos[0] = {
+        ...snapshot.memos[0],
+        slug: "legacy-random-slug",
+        title: "20250706 4wodwy2s",
+        filePath: "Memos/20250706_4wodwy2s.md",
+        content: "---\ntitle: Frontmatter memo title\n---\n\nBody without a heading",
+      };
+      snapshot.tags.timelines.Notes[1] = {
+        ...snapshot.tags.timelines.Notes[1],
+        slug: "legacy-random-slug",
+        title: "20250706 4wodwy2s",
+        filePath: "Memos/20250706_4wodwy2s.md",
+        content: snapshot.memos[0].content,
+      };
+      const snapshotPath = join(tempDir, "legacy-public-snapshot.json");
+      await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+      process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
+      __resetSnapshotForTests();
+
+      const loaded = await getSnapshot();
+
+      expect(loaded.memos[0]?.title).toBe("Frontmatter memo title");
+      expect(loaded.tags.timelines.Notes?.[1]?.title).toBe("Frontmatter memo title");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("removes a legacy public snapshot slug fallback from memo titles", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "blog25-snapshot-slug-title-"));
+    try {
+      const snapshot = createLegacySnapshot();
+      snapshot.memos[0] = {
+        ...snapshot.memos[0],
+        slug: "legacy-random-slug",
+        title: "legacy-random-slug",
+      };
+      snapshot.tags.timelines.Notes[1] = {
+        ...snapshot.tags.timelines.Notes[1],
+        slug: "legacy-random-slug",
+        title: "legacy-random-slug",
+      };
+      const snapshotPath = join(tempDir, "legacy-public-snapshot.json");
+      await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+      process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
+      __resetSnapshotForTests();
+
+      const loaded = await getSnapshot();
+
+      expect(loaded.memos[0]?.title).toBeNull();
+      expect(loaded.tags.timelines.Notes?.[1]?.title).toBeNull();
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("restores a real heading when a legacy public snapshot used the slug fallback", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "blog25-snapshot-slug-heading-"));
+    try {
+      const snapshot = createLegacySnapshot();
+      snapshot.memos[0] = {
+        ...snapshot.memos[0],
+        slug: "legacy-random-slug",
+        title: "legacy-random-slug",
+        content: "# Actual memo heading\n\nBody text",
+      };
+      snapshot.tags.timelines.Notes[1] = {
+        ...snapshot.tags.timelines.Notes[1],
+        slug: "legacy-random-slug",
+        title: "legacy-random-slug",
+        content: "# Actual memo heading\n\nBody text",
+      };
+      const snapshotPath = join(tempDir, "legacy-public-snapshot.json");
+      await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+      process.env.PUBLIC_SNAPSHOT_PATH = snapshotPath;
+      __resetSnapshotForTests();
+
+      const loaded = await getSnapshot();
+
+      expect(loaded.memos[0]?.title).toBe("Actual memo heading");
+      expect(loaded.tags.timelines.Notes?.[1]?.title).toBe("Actual memo heading");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("adds a stable version query only to public asset facade urls", () => {
     const version = "2026-06-18T19:32:50.122Z";
 
