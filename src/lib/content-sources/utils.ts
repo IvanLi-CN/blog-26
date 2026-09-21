@@ -7,6 +7,8 @@
 import matter from "gray-matter";
 import limax from "limax";
 import { nanoid } from "nanoid";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
 import {
   type ContentPathMappings,
   inferContentTypeFromConfiguredPaths,
@@ -67,7 +69,10 @@ export function createContentItemFromParsed(
   const slug = generateSlugFromPath(filePath, frontmatter.slug as string, contentType);
 
   // 提取标题
-  const title = extractTitle(frontmatter, body, filePath);
+  const title =
+    contentType === "memo"
+      ? extractMemoTitle(frontmatter, body)
+      : extractTitle(frontmatter, body, filePath);
 
   // 提取发布日期
   const publishDate = extractPublishDate(frontmatter, filePath);
@@ -363,6 +368,73 @@ export function extractTitle(
 }
 
 /**
+ * Extract a title for a memo without treating arbitrary prose or its generated
+ * filename as a reader-facing title.
+ */
+export function extractMemoTitle(frontmatter: Record<string, unknown>, body: string): string {
+  const frontmatterTitle = frontmatter.title;
+  if (typeof frontmatterTitle === "string" && frontmatterTitle.trim()) {
+    return frontmatterTitle.trim();
+  }
+
+  const normalizedBody = body.replace(/^\uFEFF/, "");
+  const lines = normalizedBody.split(/\r?\n/);
+  const firstNonEmptyLineIndex = lines.findIndex((line) => line.trim());
+  if (firstNonEmptyLineIndex === -1) return "";
+
+  const tree = unified().use(remarkParse).parse(normalizedBody) as {
+    children?: Array<{
+      type: string;
+      depth?: number;
+      position?: { start?: { line?: number } };
+    }>;
+  };
+  const rootHeadings = (tree.children ?? []).filter((node) => node.type === "heading");
+  const getAtxTitle = (node: (typeof rootHeadings)[number]) => {
+    const lineNumber = node.position?.start?.line;
+    const line = lineNumber ? (lines[lineNumber - 1] ?? "") : "";
+    const match = line.match(/^ {0,3}(#{1,6})[\t ]+(.+?)\s*$/u);
+    if (!match || match[1]?.length !== node.depth) return "";
+    return (match[2] ?? "").replace(/[\t ]+#+[\t ]*$/u, "").trim();
+  };
+
+  const firstLineHeading = rootHeadings.find(
+    (node) =>
+      node.depth !== undefined &&
+      node.depth <= 3 &&
+      node.position?.start?.line === firstNonEmptyLineIndex + 1
+  );
+  const firstLineTitle = firstLineHeading ? getAtxTitle(firstLineHeading) : "";
+  if (firstLineTitle) return firstLineTitle;
+
+  const firstH1 = rootHeadings.find((node) => node.depth === 1);
+  return firstH1 ? getAtxTitle(firstH1) : "";
+}
+
+/**
+ * Match the legacy title generated from a memo filename exactly. This narrow
+ * comparison lets public reads repair old rows without guessing about titles
+ * that were intentionally authored in the database.
+ */
+export function isGeneratedMemoTitle(title: string | null | undefined, filePath: string): boolean {
+  const normalizedTitle = title?.trim();
+  if (!normalizedTitle) return false;
+
+  const fileName =
+    filePath
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/\.(md|mdx)$/i, "") || "";
+  if (!fileName) return false;
+
+  const defaultTitle = fileName
+    .replace(/^\d{4}-\d{2}-\d{2}-/, "")
+    .replace(/[-_]/g, " ")
+    .trim();
+  return normalizedTitle === defaultTitle;
+}
+
+/**
  * 提取发布日期
  * @param frontmatter frontmatter 数据
  * @param filePath 文件路径
@@ -493,7 +565,7 @@ function extractExcerpt(body: string, maxLength: number = 200): string {
  * @param item 内容项
  */
 export function validateContentItem(item: ContentItem): boolean {
-  if (!item.id || !item.title || !item.slug) {
+  if (!item.id || (!item.title && item.type !== "memo") || !item.slug) {
     return false;
   }
 

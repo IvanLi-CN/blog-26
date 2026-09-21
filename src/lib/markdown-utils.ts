@@ -14,7 +14,10 @@ function normalizeHeadingLabel(value: string): string {
 /**
  * 当正文首个一级标题与详情页外层标题一致时，移除正文里的重复标题。
  */
-export function stripMatchingLeadingTitleHeading(content: string, title: string): string {
+export function stripMatchingLeadingTitleHeading(
+  content: string,
+  title: string | null | undefined
+): string {
   if (!content?.trim() || !title?.trim()) return content ?? "";
 
   const newline = content.includes("\r\n") ? "\r\n" : "\n";
@@ -31,7 +34,7 @@ export function stripMatchingLeadingTitleHeading(content: string, title: string)
   }
 
   const currentLine = lines[cursor] ?? "";
-  const atxHeading = currentLine.match(/^#(?!#)\s+(.+?)\s*#*\s*$/u);
+  const atxHeading = currentLine.match(/^#{1,3}\s+(.+?)\s*#*\s*$/u);
   if (atxHeading?.[1]) {
     if (normalizeHeadingLabel(atxHeading[1]) !== normalizedTitle) {
       return content;

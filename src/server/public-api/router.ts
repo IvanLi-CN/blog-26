@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { SearchSuggestionReason } from "@/lib/ai/search-suggestions";
 import { db } from "@/lib/db";
 import { appendPublicCorsHeaders, createPublicCorsPreflightResponse } from "@/lib/public-cors";
 import { posts } from "@/lib/schema";
-import { buildPublicSnapshot } from "@/public-site/snapshot";
+import { buildPublicSnapshot, resolvePublicMemoTitle } from "@/public-site/snapshot";
 import { createContext } from "@/server/context";
 import { handlePublicAssetFacadeRequest } from "@/server/public-media";
 import { appRouter } from "@/server/router";
@@ -81,6 +81,31 @@ function normalizeSuggestionReason(value: string | null): SearchSuggestionReason
   return SEARCH_SUGGESTION_REASONS.has(value as SearchSuggestionReason)
     ? (value as SearchSuggestionReason)
     : "empty";
+}
+
+async function normalizePublicSearchTitles<
+  T extends { slug: string; type?: string; title?: string | null },
+>(results: T[]) {
+  const memoSlugs = Array.from(
+    new Set(results.filter((result) => result.type === "memo").map((result) => result.slug))
+  );
+  if (memoSlugs.length === 0) return results;
+
+  const memoRows = await db
+    .select()
+    .from(posts)
+    .where(and(eq(posts.type, "memo"), inArray(posts.slug, memoSlugs)));
+  const titleBySlug = new Map(
+    await Promise.all(
+      memoRows.map(async (row) => [row.slug, await resolvePublicMemoTitle(row)] as const)
+    )
+  );
+
+  return results.map((result) =>
+    result.type === "memo" && titleBySlug.has(result.slug)
+      ? { ...result, title: titleBySlug.get(result.slug) ?? null }
+      : result
+  );
 }
 
 export async function handlePublicApiRequest(request: Request, subPath: string) {
@@ -242,7 +267,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         q,
         topK: Number(url.searchParams.get("topK") || 20),
       });
-      return json(request, result, { status: 200 }, resHeaders);
+      return json(request, await normalizePublicSearchTitles(result), { status: 200 }, resHeaders);
     }
 
     if (pathname === "/search/suggestions") {

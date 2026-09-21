@@ -195,6 +195,41 @@ export const Results: Story = {
   },
 };
 
+export const UntitledMemoResult: Story = {
+  name: "结果 / 无标题闪念",
+  parameters: {
+    docs: {
+      description: {
+        story: "无标题闪念保留搜索片段和详情链接，不以 slug 生成可见标题。",
+      },
+    },
+  },
+  render: () => (
+    <SearchStory
+      initialQuery="killport"
+      searchedQuery="killport"
+      items={[
+        {
+          slug: "killport",
+          title: null,
+          excerpt: "killport 是一个轻量级命令行工具。",
+          snippet: "killport 是一个轻量级命令行工具。",
+          type: "memo",
+        },
+      ]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("link", { name: "打开 无标题闪念" })).toHaveAttribute(
+      "href",
+      "/memos/killport"
+    );
+    await expect(canvas.getByText("killport 是一个轻量级命令行工具。")).toBeVisible();
+    await expect(canvasElement.querySelector("[data-search-result-card] h2")).toBeNull();
+  },
+};
+
 export const SimpleAndQuery: Story = {
   name: "查询语法 / 简单 AND",
   parameters: {

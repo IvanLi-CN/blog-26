@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import matter from "gray-matter";
 import { SITE } from "@/config/site";
+import { extractMemoTitle, isGeneratedMemoTitle } from "@/lib/content-sources/utils";
 import { extractPostCoverCandidate, isExternalImageUrl } from "@/lib/post-cover";
 import {
   createEmptyPublicMediaCollection,
@@ -14,6 +16,7 @@ import type {
   PublicTagSummary,
   PublicTagTimelineItem,
 } from "@/public-site/snapshot";
+import { formatAbsoluteDate } from "./format";
 import { getProjectDetailPath, projectCatalog } from "./projects";
 
 let snapshotPromise: Promise<PublicSnapshot> | undefined;
@@ -30,6 +33,37 @@ function getSnapshotRecordPath(record: SnapshotRecordWithPath) {
     throw new Error(`Public snapshot record ${record.slug} is missing a canonical file path`);
   }
   return filePath;
+}
+
+export function getMemoMetadataTitle(
+  title: string | null | undefined,
+  date: string | number | Date | null | undefined
+) {
+  const normalizedTitle = title?.trim();
+  if (normalizedTitle) return normalizedTitle;
+  return `无标题闪念 · ${formatAbsoluteDate(date)}`;
+}
+
+function normalizeLegacyMemoTitle(
+  title: string | null | undefined,
+  filePath: string,
+  content?: string | null,
+  slug?: string
+) {
+  const normalizedTitle = title?.trim() || "";
+  if (!normalizedTitle) return null;
+  const isSlugFallback = Boolean(slug && normalizedTitle === slug);
+  if (!isSlugFallback && !isGeneratedMemoTitle(normalizedTitle, filePath)) {
+    return normalizedTitle;
+  }
+  if (typeof content !== "string") return normalizedTitle;
+
+  try {
+    const parsed = matter(content);
+    return extractMemoTitle(parsed.data, parsed.content) || null;
+  } catch {
+    return normalizedTitle;
+  }
 }
 
 function normalizeSnapshotMedia(
@@ -64,6 +98,12 @@ function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
   }));
   const memos = snapshot.memos.map((memo) => ({
     ...memo,
+    title: normalizeLegacyMemoTitle(
+      memo.title,
+      getSnapshotRecordPath(memo),
+      memo.content,
+      memo.slug
+    ),
     media: normalizeSnapshotMedia(memo.media),
     filePath: getSnapshotRecordPath(memo),
     content: rewritePublicContentMediaUrls(memo.content, {
@@ -94,8 +134,20 @@ function normalizeSnapshotPaths(snapshot: PublicSnapshot): PublicSnapshot {
             `Public snapshot timeline item ${timelineItem.type}:${timelineItem.slug} is missing a canonical file path`
           );
         }
+        const normalizedMemo = memos.find((memo) => memo.slug === timelineItem.slug);
         return {
           ...timelineItem,
+          title:
+            timelineItem.type === "memo"
+              ? normalizedMemo
+                ? normalizedMemo.title
+                : normalizeLegacyMemoTitle(
+                    timelineItem.title,
+                    filePath,
+                    timelineItem.content,
+                    timelineItem.slug
+                  )
+              : timelineItem.title,
           media: normalizeSnapshotMedia(timelineItem.media),
           filePath,
           content:
@@ -429,7 +481,7 @@ export function buildTagFeedItems(
         : (snapshot.posts.find((post) => post.slug === item.slug)?.body ?? item.excerpt ?? "");
     return {
       id: getCanonicalUrl(path),
-      title: item.title,
+      title: item.type === "memo" ? getMemoMetadataTitle(item.title, item.publishDate) : item.title,
       link: getCanonicalUrl(path),
       description: item.excerpt ?? undefined,
       content: source,

@@ -15,6 +15,7 @@ interface Props {
 const { memo, isLast = true, iconMap = {}, iconSvgMap = {} } = Astro.props;
 const displayDate = memo.publishedAt ?? memo.createdAt;
 const showMobileDetailLink = !memo.title;
+const detailLabel = memo.title || `无标题闪念 · ${formatAbsoluteDate(displayDate)}`;
 ---
 <article
   class="nature-timeline-item"
@@ -89,8 +90,8 @@ const showMobileDetailLink = !memo.title;
         <a
           href={toPublicSitePath(`/memos/${memo.slug}`)}
           class="nature-icon-button hidden shrink-0 self-start border-0 bg-[rgba(var(--nature-accent-rgb),0.9)] text-white shadow-[0_14px_28px_rgba(var(--nature-accent-rgb),0.28)] transition-transform duration-200 hover:translate-x-0.5 sm:inline-flex sm:self-end"
-          aria-label={`查看详情: ${memo.title ?? "无标题"}`}
-          title={`查看详情: ${memo.title ?? "无标题"}`}
+          aria-label={`查看详情: ${detailLabel}`}
+          title={`查看详情: ${detailLabel}`}
         >
           <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
         </a>

@@ -77,11 +77,21 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
                 </span>
                 <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
               </div>
-              <h2 class="nature-title mt-3 text-xl font-semibold">
-                <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
-                  {item.title}
+              {item.title && (
+                <h2 class="nature-title mt-3 text-xl font-semibold">
+                  <a href={href} class="transition-colors hover:text-[color:var(--nature-accent-strong)]">
+                    {item.title}
+                  </a>
+                </h2>
+              )}
+              {!item.title && item.type === "memo" && (
+                <a
+                  href={href}
+                  class="nature-link-inline mt-3 inline-flex min-h-10 items-center px-2 text-sm"
+                >
+                  查看闪念详情
                 </a>
-              </h2>
+              )}
               {item.excerpt && <p class="nature-muted mt-3 text-base leading-7">{item.excerpt}</p>}
             </article>
           );

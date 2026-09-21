@@ -6,7 +6,7 @@ import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/sear
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
-const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v3:";
+const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v4:";
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v3:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 

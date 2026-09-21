@@ -23,7 +23,21 @@ describe("stripMatchingLeadingTitleHeading", () => {
   });
 
   it("does not strip deeper heading levels", () => {
-    const content = "## Local Memo\n\nBody paragraph";
+    const content = "#### Local Memo\n\nBody paragraph";
     expect(stripMatchingLeadingTitleHeading(content, "Local Memo")).toBe(content);
+  });
+
+  it("strips a matching leading H2 or H3 title", () => {
+    expect(stripMatchingLeadingTitleHeading("## Local Memo\n\nBody paragraph", "Local Memo")).toBe(
+      "Body paragraph"
+    );
+    expect(stripMatchingLeadingTitleHeading("### Local Memo\n\nBody paragraph", "Local Memo")).toBe(
+      "Body paragraph"
+    );
+  });
+
+  it("preserves the body when no outer title exists", () => {
+    const content = "### Local Memo\n\nBody paragraph";
+    expect(stripMatchingLeadingTitleHeading(content, null)).toBe(content);
   });
 });

@@ -8,7 +8,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { PublicMemoDetailControlsIsland } from "../../components/PublicMemoAuthoring";
 import TagBadge from "../../components/TagBadge.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
-import { getCanonicalUrl, getSnapshot } from "../../lib/public-site";
+import { getCanonicalUrl, getMemoMetadataTitle, getSnapshot } from "../../lib/public-site";
 
 export async function getStaticPaths() {
   const snapshot = await getSnapshot();
@@ -21,6 +21,7 @@ export async function getStaticPaths() {
 const { memo } = Astro.props as { memo: PublicMemoRecord };
 const snapshot = await getSnapshot();
 const displayDate = memo.publishedAt ?? memo.createdAt;
+const metadataTitle = getMemoMetadataTitle(memo.title, displayDate);
 const contentSource = "local" as const;
 const publicMediaContext = { kind: "memo" as const, slug: memo.slug, filePath: memo.filePath };
 const memoDescription = extractTextSummary(memo.content, 180) || snapshot.site.description;
@@ -28,7 +29,7 @@ const memoDetailContent = stripMatchingLeadingTitleHeading(memo.content, memo.ti
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  headline: memo.title,
+  headline: metadataTitle,
   description: memoDescription,
   datePublished: displayDate,
   dateModified: memo.updatedAt ?? displayDate,
@@ -44,7 +45,7 @@ const structuredData = {
 ---
 <BaseLayout
   pathname={`/memos/${memo.slug}`}
-  title={`${memo.title} - ${snapshot.site.title}`}
+  title={`${metadataTitle} - ${snapshot.site.title}`}
   description={memoDescription}
 >
   <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
@@ -68,7 +69,7 @@ const structuredData = {
             </span>
           </div>
 
-          <h1 class="nature-title mt-5 text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">{memo.title}</h1>
+          <h1 class:list={["nature-title", "mt-5", "text-3xl", "font-semibold", "leading-tight", "tracking-[-0.04em]", "sm:text-4xl", !memo.title && "sr-only"]}>{metadataTitle}</h1>
 
           {memo.tags.length > 0 && (
             <div class="mt-5 flex flex-wrap gap-2">
