@@ -76,7 +76,9 @@ None
 
 ## Visual Evidence
 
-- None
+- The local read-only mirror preview for `killport` search results shows titleless memo cards without a visible title while retaining their snippets and detail routes.
+
+![Titleless memo search results](./assets/search-untitled-memo.png)
 
 ## References
 
