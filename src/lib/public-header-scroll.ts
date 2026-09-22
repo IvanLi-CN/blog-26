@@ -175,8 +175,6 @@ export function reduceHeaderScrollState(
 
   if (directFollow && state.direction !== "idle") {
     next.direction = direction;
-    next.gestureOriginOffset =
-      direction !== state.direction ? state.visibleOffset : state.gestureOriginOffset;
     next.gestureDistance =
       direction !== state.direction ? effectiveDeltaPx : state.gestureDistance + effectiveDeltaPx;
     next.fastReverseEligible = direction === "reveal";
