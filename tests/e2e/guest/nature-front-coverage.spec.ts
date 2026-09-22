@@ -580,11 +580,11 @@ test.describe("Nature frontend public coverage", () => {
       posters.filter({ has: page.locator(".project-poster-media") }).locator(".project-poster-copy")
     ).toHaveCount(0);
 
-    const placeholderPoster = page
+    const themedPoster = page
       .getByRole("link", { name: "查看 IsolaRail 项目案例" })
       .locator(".project-poster");
-    await expect(placeholderPoster.locator(".project-poster-copy")).toHaveCount(1);
-    await expect(placeholderPoster.locator(".project-poster-scrim")).toHaveCount(0);
+    await expect(themedPoster.locator(".project-poster-copy")).toHaveCount(0);
+    await expect(themedPoster.locator(".project-poster-scrim")).toHaveCount(0);
   });
 
   test("project poster preserves its fallback when image delivery fails", async ({ page }) => {
