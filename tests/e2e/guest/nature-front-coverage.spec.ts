@@ -3,7 +3,19 @@ import { migratedProjectSlugs } from "../../fixtures/project-content";
 
 async function gotoWithTheme(page: Page, route: string, theme: "light" | "dark" | "system") {
   await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+  await page.addInitScript(() => {
+    const scopedWindow = window as Window & { __naturePageLoadReady?: boolean };
+    if (scopedWindow.__naturePageLoadReady) return;
+    scopedWindow.__naturePageLoadReady = false;
+    document.addEventListener("astro:page-load", () => {
+      scopedWindow.__naturePageLoadReady = true;
+    });
+  });
   await page.goto(route, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => {
+    const scopedWindow = window as Window & { __naturePageLoadReady?: boolean };
+    return scopedWindow.__naturePageLoadReady === true;
+  });
 }
 
 async function readTimelineEntries(items: Locator) {

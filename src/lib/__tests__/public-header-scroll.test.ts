@@ -128,6 +128,20 @@ describe("public header scroll state", () => {
     expect(followed.direction).toBe("reveal");
   });
 
+  test("settles a short touch reversal at the original endpoint", () => {
+    const initial = createHeaderScrollState(100);
+    const started = reduceHeaderScrollState(initial, { scrollY: 30, timestamp: 30 }).state;
+    const followed = reduceHeaderScrollState(
+      started,
+      { scrollY: 25, timestamp: 210 },
+      undefined,
+      true
+    ).state;
+
+    expect(followed.visibleOffset).toBe(75);
+    expect(settleHeaderScrollState(followed).visibleOffset).toBe(100);
+  });
+
   test("does not start direct touch follow from an endpoint no-op", () => {
     const hidden = scroll(createHeaderScrollState(200), 220, 220);
     const endpointNoOp = reduceHeaderScrollState(
