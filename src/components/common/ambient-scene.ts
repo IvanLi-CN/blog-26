@@ -150,7 +150,8 @@ function getAmbientLayerCanvasSize(
   minScale: number
 ): AmbientLayerCanvasSize {
   const pixelBudgetScale = Math.sqrt(maxPixels / (width * height));
-  const scale = Math.max(minScale, Math.min(preferredScale, pixelBudgetScale));
+  const budgetedScale = Math.min(preferredScale, pixelBudgetScale);
+  const scale = pixelBudgetScale < minScale ? budgetedScale : Math.max(minScale, budgetedScale);
   const backingWidth = Math.max(1, Math.floor(width * scale));
   const backingHeight = Math.max(1, Math.floor(height * scale));
 

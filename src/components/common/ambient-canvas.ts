@@ -57,6 +57,7 @@ class CanvasRenderer {
   private size: AmbientCanvasSize | null = null;
   private reducedMotion: boolean;
   private hidden = false;
+  private available = false;
   private timer: number | null = null;
   private raf: number | null = null;
   private running = false;
@@ -71,7 +72,9 @@ class CanvasRenderer {
   mount() {
     this.currentContext = this.currentCanvas.getContext("2d", { desynchronized: true });
     this.seedContext = this.seedCanvas.getContext("2d", { desynchronized: true });
+    this.available = Boolean(this.currentContext && this.seedContext);
     this.root.replaceChildren(this.currentCanvas, this.seedCanvas);
+    if (!this.available) return;
     this.rebuildSprites();
     this.syncPlayback();
   }
@@ -97,6 +100,7 @@ class CanvasRenderer {
   setPalette(palette: AmbientPalette) {
     this.palette = palette;
     this.rebuildSprites();
+    if (this.hidden || !this.available) return;
     this.render(performance.now());
   }
 
@@ -127,7 +131,7 @@ class CanvasRenderer {
 
   private syncPlayback() {
     this.stop();
-    if (this.hidden) return;
+    if (this.hidden || !this.available) return;
     this.render(performance.now());
     if (!this.hidden && !this.reducedMotion) {
       this.running = true;

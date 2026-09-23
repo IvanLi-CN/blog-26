@@ -32,6 +32,13 @@ describe("ambient scene performance budget", () => {
     expect(size.pixelCount).toBe(size.wind.pixelCount + size.seeds.pixelCount);
   });
 
+  test("keeps both backing layers within budget on very large displays", () => {
+    const size = getAmbientCanvasSize(3840, 2160, 2);
+
+    expect(size.wind.pixelCount).toBeLessThanOrEqual(AMBIENT_WIND_TARGET_PIXELS);
+    expect(size.seeds.pixelCount).toBeLessThanOrEqual(AMBIENT_MAX_CANVAS_PIXELS);
+  });
+
   test("does not schedule nonessential motion for hidden or reduced-motion pages", () => {
     expect(AMBIENT_FRAME_RATE).toBe(24);
     expect(shouldAnimateAmbient(false, false)).toBe(true);
