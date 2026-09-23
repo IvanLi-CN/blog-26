@@ -1,7 +1,10 @@
 # Ambient Renderer Quality And Benchmark Protocol
 
-- Status: accepted
+- Status: superseded by [ADR 0006: Ambient WebGPU Strategy](./0006-ambient-webgpu-strategy.md)
 - Date: 2026-09-23
+
+This document records the controlled comparison and production decision state
+as of 2026-09-23. ADR 0006 is the current production renderer decision.
 
 The ambient scene keeps separate backing-size policies for its two Canvas
 layers: the wind layer never renders below one CSS pixel per backing pixel when
@@ -16,8 +19,9 @@ Canvas and WebGPU fixtures with the same deterministic model and a toggleable
 project-wall foreground. Lifecycle, GPU-service, paint/raster, frame, and
 backing-buffer values remain browser proxy measurements rather than system GPU
 or power claims. The temporary fixtures and diagnostics are removed from the
-final public delivery; the production surface remains the layered Canvas
-renderer recorded in ADR 0004.
+final public delivery; at the time of this benchmark the production surface
+was the layered Canvas renderer recorded in ADR 0004. The current production
+surface is WebGPU with static SVG fallback as recorded in ADR 0006.
 
 ## Controlled Browser Result
 
@@ -47,5 +51,7 @@ shortened run; because browser automation adds variable time between tab
 clicks, those counters are directional only and are not used as a ranking
 metric. WebGPU therefore wins the raw backing-pixel comparison, but neither
 backend shows a stable frame-time advantage for this low-complexity effect.
-The production choice remains layered Canvas because it preserves the tuned
-visual quality with simpler lifecycle behavior and broader fallback coverage.
+At the time of this benchmark, the production choice was layered Canvas because
+it preserved tuned visual quality with simpler lifecycle behavior and broader
+fallback coverage. That historical choice was replaced by ADR 0006 after the
+final WebGPU/SVG implementation and native-browser validation.
