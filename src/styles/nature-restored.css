@@ -257,7 +257,8 @@
     overflow: hidden;
   }
 
-  .nature-ambient-canvas {
+  .nature-ambient-svg,
+  .nature-ambient-webgpu {
     position: absolute;
     inset: 0;
     display: block;
