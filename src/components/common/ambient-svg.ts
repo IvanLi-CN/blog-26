@@ -93,6 +93,8 @@ class SvgRenderer implements AmbientRenderer {
       const group = svgElement("g");
       const path = svgElement("path");
       group.classList.add("nature-ambient-seed", `nature-ambient-seed-${seed.tone}`);
+      group.style.setProperty("--ambient-seed-fill-alpha", (seed.alpha * 0.26).toFixed(4));
+      group.style.setProperty("--ambient-seed-stroke-alpha", seed.alpha.toFixed(4));
       group.setAttribute(
         "transform",
         `translate(${pose.x.toFixed(2)} ${pose.y.toFixed(2)}) rotate(${(

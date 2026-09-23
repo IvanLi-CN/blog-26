@@ -291,12 +291,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### Ambient renderer selection
 
-- Evidence binding `e7234f6f`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `layered Canvas 2D`.
+- Evidence binding `ce3e3963478d1ebee21cc909683114ed31e99fe6c6a14343f10a0257744d7c28`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `WebGPU with complete static SVG fallback`.
 - The WebGPU scene and SVG fallback preserve the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The WebGPU backing store uses the exact CSS size multiplied by the native device-pixel ratio; the SVG path is vector-scaled through its viewBox. Both paths pause or remain static while the document is hidden, and a failed WebGPU lifecycle must not leave an animation scheduler running. The renderer decision is recorded in [ADR 0006](../../adr/0006-ambient-webgpu-strategy.md); ADR 0004 and ADR 0005 remain historical decision and benchmark records.
 
-![Ambient renderer desktop light](./assets/ambient-renderer-final-desktop-light.png)
+![Ambient renderer desktop light](./assets/ambient-webgpu-final-desktop-light.png)
 
-![Ambient renderer mobile dark reduced motion](./assets/ambient-renderer-final-mobile-dark-reduced.png)
+![Ambient renderer mobile dark reduced motion](./assets/ambient-svg-final-mobile-dark-reduced.png)
 
 ## Context and Scope
 

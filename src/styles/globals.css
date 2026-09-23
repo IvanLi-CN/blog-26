@@ -223,13 +223,13 @@ h6 {
 }
 
 .nature-ambient-svg .nature-ambient-seed-accent {
-  fill: rgba(var(--ambient-accent-rgb), 0.09);
-  stroke: rgba(var(--ambient-accent-rgb), 0.34);
+  fill: rgba(var(--ambient-accent-rgb), var(--ambient-seed-fill-alpha));
+  stroke: rgba(var(--ambient-accent-rgb), var(--ambient-seed-stroke-alpha));
 }
 
 .nature-ambient-svg .nature-ambient-seed-mist {
-  fill: rgba(var(--ambient-mist-rgb), 0.09);
-  stroke: rgba(var(--ambient-mist-rgb), 0.34);
+  fill: rgba(var(--ambient-mist-rgb), var(--ambient-seed-fill-alpha));
+  stroke: rgba(var(--ambient-mist-rgb), var(--ambient-seed-stroke-alpha));
 }
 
 .nature-surface {

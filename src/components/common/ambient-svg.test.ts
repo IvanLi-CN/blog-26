@@ -47,6 +47,9 @@ describe("ambient SVG fallback", () => {
     renderer.setPalette({ accent: "1, 2, 3", mist: "4, 5, 6" });
 
     expect(root.querySelectorAll("g.nature-ambient-seed")).toHaveLength(7);
+    const firstSeed = root.querySelector("g.nature-ambient-seed") as SVGGElement;
+    expect(firstSeed.style.getPropertyValue("--ambient-seed-fill-alpha")).toBe("0.0627");
+    expect(firstSeed.style.getPropertyValue("--ambient-seed-stroke-alpha")).toBe("0.2412");
     expect(root.querySelector("svg")?.style.getPropertyValue("--ambient-accent-rgb")).toBe(
       "1, 2, 3"
     );
