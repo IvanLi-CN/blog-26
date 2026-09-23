@@ -557,12 +557,12 @@ test.describe("Nature frontend public coverage", () => {
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
-    await expect(posterImages).toHaveCount(12);
+    await expect(posterImages).toHaveCount(14);
     await expect(eagerPosters).toHaveCount(3);
     await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
     await expect(eagerPosters.nth(1)).toHaveAttribute("fetchpriority", "auto");
     await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
-    await expect(lazyPosters).toHaveCount(9);
+    await expect(lazyPosters).toHaveCount(11);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
@@ -580,11 +580,11 @@ test.describe("Nature frontend public coverage", () => {
       posters.filter({ has: page.locator(".project-poster-media") }).locator(".project-poster-copy")
     ).toHaveCount(0);
 
-    const placeholderPoster = page
+    const themedPoster = page
       .getByRole("link", { name: "查看 IsolaRail 项目案例" })
       .locator(".project-poster");
-    await expect(placeholderPoster.locator(".project-poster-copy")).toHaveCount(1);
-    await expect(placeholderPoster.locator(".project-poster-scrim")).toHaveCount(0);
+    await expect(themedPoster.locator(".project-poster-copy")).toHaveCount(0);
+    await expect(themedPoster.locator(".project-poster-scrim")).toHaveCount(0);
   });
 
   test("project poster preserves its fallback when image delivery fails", async ({ page }) => {
