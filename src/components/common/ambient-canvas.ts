@@ -103,6 +103,7 @@ class CanvasRenderer implements AmbientRenderer {
 
   private syncPlayback() {
     this.stop();
+    if (this.hidden) return;
     this.render(performance.now());
     if (!this.hidden && !this.reducedMotion) {
       this.running = true;
