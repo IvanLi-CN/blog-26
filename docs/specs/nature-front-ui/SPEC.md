@@ -10,6 +10,7 @@
 - [ADR 0002: Mobile Public Header Scroll Model](../../adr/0002-mobile-public-header-scroll.md)
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
 - [ADR 0004: Ambient Renderer Strategy](../../adr/0004-ambient-renderer-strategy.md)
+- [ADR 0005: Ambient Renderer Quality And Benchmark Protocol](../../adr/0005-ambient-benchmark-protocol.md)
 
 ## 1. Background
 
@@ -290,7 +291,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ### Ambient renderer selection
 
 - Evidence binding `e3948d4a`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `layered Canvas 2D`.
-- The final Canvas scene preserves the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The renderer decision and browser trace comparison are recorded in [ADR 0004](../../adr/0004-ambient-renderer-strategy.md).
+- The final Canvas scene preserves the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The wind backing store never drops below CSS-pixel resolution, while the leaf backing store remains budgeted independently. The renderer decision is recorded in [ADR 0004](../../adr/0004-ambient-renderer-strategy.md), and the quality/measurement contract is recorded in [ADR 0005](../../adr/0005-ambient-benchmark-protocol.md).
 
 ![Ambient renderer desktop light](./assets/ambient-renderer-final-desktop-light.png)
 

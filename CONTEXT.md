@@ -111,3 +111,19 @@ _Avoid_: 节点样式
 **主要行动**:
 The single reader-facing action that advances the primary path on a public surface, such as entering articles from the homepage.
 _Avoid_: 强调色按钮
+
+**环境背景层**:
+A full-viewport visual layer that gives the public shell its quiet wind-and-leaf atmosphere while remaining separate from page content.
+_Avoid_: 背景动画, 装饰层
+
+**模拟前景层**:
+A deterministic benchmark surface that approximates the visible project-wall content placed above the 环境背景层 so renderer cost can be compared with realistic page density.
+_Avoid_: Mock 内容, 测试卡片
+
+**渲染器基准用例**:
+One measured combination of a background renderer and the 模拟前景层 visibility state.
+_Avoid_: 单次测试, 性能截图
+
+**浏览器 GPU 代理指标**:
+Trace, compositor, raster, frame-interval, and backing-buffer observations used to compare browser rendering behavior; they are not system GPU utilization, power, or battery measurements.
+_Avoid_: GPU 占用率, 功耗指标

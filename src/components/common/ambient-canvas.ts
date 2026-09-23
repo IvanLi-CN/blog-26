@@ -4,6 +4,7 @@ import {
   type AmbientMotionModel,
   type AmbientPalette,
   ambientColor,
+  getAmbientCurrentPath,
   getAmbientSeedPose,
 } from "./ambient-scene";
 
@@ -19,6 +20,27 @@ function createCanvas(className: string) {
   canvas.className = className;
   canvas.setAttribute("aria-hidden", "true");
   return canvas;
+}
+
+function strokeSmoothPath(context: CanvasRenderingContext2D, points: { x: number; y: number }[]) {
+  const first = points[0];
+  const last = points.at(-1);
+  if (!first || !last) return;
+
+  context.beginPath();
+  context.moveTo(first.x, first.y);
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const midpointX = (current.x + next.x) / 2;
+    const midpointY = (current.y + next.y) / 2;
+    context.quadraticCurveTo(current.x, current.y, midpointX, midpointY);
+  }
+  if (points.length > 1) {
+    const penultimate = points.at(-2) ?? first;
+    context.quadraticCurveTo(penultimate.x, penultimate.y, last.x, last.y);
+  }
+  context.stroke();
 }
 
 class CanvasRenderer {
@@ -57,14 +79,17 @@ class CanvasRenderer {
   resize(model: AmbientMotionModel, size: AmbientCanvasSize) {
     this.model = model;
     this.size = size;
-    for (const canvas of [this.currentCanvas, this.seedCanvas]) {
-      canvas.width = size.backingWidth;
-      canvas.height = size.backingHeight;
-      canvas.style.width = `${size.cssWidth}px`;
-      canvas.style.height = `${size.cssHeight}px`;
+    const layers = [
+      { canvas: this.currentCanvas, context: this.currentContext, size: size.wind },
+      { canvas: this.seedCanvas, context: this.seedContext, size: size.seeds },
+    ];
+    for (const layer of layers) {
+      layer.canvas.width = layer.size.backingWidth;
+      layer.canvas.height = layer.size.backingHeight;
+      layer.canvas.style.width = `${size.cssWidth}px`;
+      layer.canvas.style.height = `${size.cssHeight}px`;
+      layer.context?.setTransform(layer.size.scale, 0, 0, layer.size.scale, 0, 0);
     }
-    this.currentContext?.setTransform(size.scale, 0, 0, size.scale, 0, 0);
-    this.seedContext?.setTransform(size.scale, 0, 0, size.scale, 0, 0);
     this.rebuildSprites();
     this.syncPlayback();
   }
@@ -127,24 +152,24 @@ class CanvasRenderer {
     this.spriteCanvases.clear();
     for (const tone of ["accent", "mist"] as const) {
       const canvas = document.createElement("canvas");
-      canvas.width = 128;
-      canvas.height = 80;
+      canvas.width = 256;
+      canvas.height = 160;
       const context = canvas.getContext("2d");
       if (!context) continue;
-      context.translate(64, 40);
+      context.translate(128, 80);
       context.lineCap = "round";
-      context.lineWidth = 2.2;
+      context.lineWidth = 4.4;
       context.strokeStyle = ambientColor(this.palette, tone, 0.34);
       context.fillStyle = ambientColor(this.palette, tone, 0.09);
       context.beginPath();
-      context.moveTo(-40, 0);
-      context.quadraticCurveTo(0, -19, 40, 0);
-      context.quadraticCurveTo(0, 19, -40, 0);
+      context.moveTo(-80, 0);
+      context.quadraticCurveTo(0, -38, 80, 0);
+      context.quadraticCurveTo(0, 38, -80, 0);
       context.fill();
       context.stroke();
       context.beginPath();
-      context.moveTo(-50, 0);
-      context.lineTo(49, 0);
+      context.moveTo(-100, 0);
+      context.lineTo(98, 0);
       context.stroke();
       this.spriteCanvases.set(tone, canvas);
     }
@@ -160,26 +185,13 @@ class CanvasRenderer {
     current.clearRect(0, 0, width, height);
     current.lineCap = "round";
     current.lineWidth = 1.2;
-    const phase = timestamp / 6_000;
     for (let index = 0; index < 3; index += 1) {
-      const baseline = height * (0.18 + index * 0.29);
-      const amplitude = Math.max(18, height * (0.035 + index * 0.006));
       current.strokeStyle = ambientColor(
         this.palette,
         index === 1 ? "mist" : "accent",
         index === 1 ? 0.17 : 0.24
       );
-      current.beginPath();
-      for (let x = -96; x <= width + 96; x += 72) {
-        const progress = x / Math.max(width, 1);
-        const y =
-          baseline +
-          Math.sin(progress * Math.PI * 2.4 + phase + index * 1.5) * amplitude +
-          Math.cos(progress * Math.PI * 1.2 - phase * 0.7) * amplitude * 0.35;
-        if (x === -96) current.moveTo(x, y);
-        else current.lineTo(x, y);
-      }
-      current.stroke();
+      strokeSmoothPath(current, getAmbientCurrentPath(this.model, timestamp, index));
     }
 
     seeds.clearRect(0, 0, width, height);

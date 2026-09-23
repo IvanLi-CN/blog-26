@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test";
 import {
   AMBIENT_FRAME_RATE,
   AMBIENT_MAX_CANVAS_PIXELS,
+  AMBIENT_MIN_SEED_SCALE,
+  AMBIENT_MIN_WIND_SCALE,
+  AMBIENT_WIND_TARGET_PIXELS,
   createAmbientMotionModel,
   getAmbientCanvasSize,
   getAmbientCurrentPath,
@@ -10,18 +13,23 @@ import {
 } from "./ambient-scene";
 
 describe("ambient scene performance budget", () => {
-  test("caps a high-density desktop canvas within its backing-pixel budget", () => {
+  test("keeps the wind layer at CSS-pixel resolution on a high-density desktop", () => {
     const size = getAmbientCanvasSize(2336, 1329, 2);
 
-    expect(size.pixelCount).toBeLessThanOrEqual(AMBIENT_MAX_CANVAS_PIXELS);
-    expect(size.scale).toBeLessThan(1);
+    expect(size.wind.scale).toBeGreaterThanOrEqual(AMBIENT_MIN_WIND_SCALE);
+    expect(size.wind.backingWidth).toBeGreaterThanOrEqual(size.cssWidth);
+    expect(size.wind.backingHeight).toBeGreaterThanOrEqual(size.cssHeight);
+    expect(size.wind.pixelCount).toBeGreaterThanOrEqual(size.cssWidth * size.cssHeight);
+    expect(size.wind.pixelCount).toBeLessThanOrEqual(AMBIENT_WIND_TARGET_PIXELS * 1.02);
   });
 
-  test("keeps ordinary viewports below the capped device pixel ratio", () => {
+  test("keeps the leaf layer bounded while preserving a minimum sampling floor", () => {
     const size = getAmbientCanvasSize(1280, 720, 3);
 
-    expect(size.scale).toBeLessThanOrEqual(1.25);
-    expect(size.pixelCount).toBeLessThanOrEqual(AMBIENT_MAX_CANVAS_PIXELS);
+    expect(size.seeds.scale).toBeLessThanOrEqual(1.25);
+    expect(size.seeds.scale).toBeGreaterThanOrEqual(AMBIENT_MIN_SEED_SCALE);
+    expect(size.seeds.pixelCount).toBeLessThanOrEqual(AMBIENT_MAX_CANVAS_PIXELS);
+    expect(size.pixelCount).toBe(size.wind.pixelCount + size.seeds.pixelCount);
   });
 
   test("does not schedule nonessential motion for hidden or reduced-motion pages", () => {

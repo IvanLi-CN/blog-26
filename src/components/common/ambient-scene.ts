@@ -1,7 +1,10 @@
 export const AMBIENT_FRAME_RATE = 24;
 export const AMBIENT_FRAME_INTERVAL = 1000 / AMBIENT_FRAME_RATE;
 export const AMBIENT_MAX_CANVAS_PIXELS = 1_800_000;
+export const AMBIENT_WIND_TARGET_PIXELS = 3_200_000;
 export const AMBIENT_MAX_DEVICE_PIXEL_RATIO = 1.25;
+export const AMBIENT_MIN_WIND_SCALE = 1;
+export const AMBIENT_MIN_SEED_SCALE = 0.75;
 export const AMBIENT_MODEL_SEED = 0x6a09e667;
 
 export type AmbientTone = "accent" | "mist";
@@ -124,14 +127,40 @@ export function ambientColor(palette: AmbientPalette, tone: AmbientTone, alpha: 
   return `rgba(${palette[tone]}, ${alpha})`;
 }
 
-export type AmbientCanvasSize = {
-  cssWidth: number;
-  cssHeight: number;
+export type AmbientLayerCanvasSize = {
   backingWidth: number;
   backingHeight: number;
   scale: number;
   pixelCount: number;
 };
+
+export type AmbientCanvasSize = {
+  cssWidth: number;
+  cssHeight: number;
+  wind: AmbientLayerCanvasSize;
+  seeds: AmbientLayerCanvasSize;
+  pixelCount: number;
+};
+
+function getAmbientLayerCanvasSize(
+  width: number,
+  height: number,
+  preferredScale: number,
+  maxPixels: number,
+  minScale: number
+): AmbientLayerCanvasSize {
+  const pixelBudgetScale = Math.sqrt(maxPixels / (width * height));
+  const scale = Math.max(minScale, Math.min(preferredScale, pixelBudgetScale));
+  const backingWidth = Math.max(1, Math.floor(width * scale));
+  const backingHeight = Math.max(1, Math.floor(height * scale));
+
+  return {
+    backingWidth,
+    backingHeight,
+    scale,
+    pixelCount: backingWidth * backingHeight,
+  };
+}
 
 export function getAmbientCanvasSize(
   cssWidth: number,
@@ -144,18 +173,27 @@ export function getAmbientCanvasSize(
     Math.max(Number.isFinite(devicePixelRatio) ? devicePixelRatio : 1, 1),
     AMBIENT_MAX_DEVICE_PIXEL_RATIO
   );
-  const pixelBudgetScale = Math.sqrt(AMBIENT_MAX_CANVAS_PIXELS / (width * height));
-  const scale = Math.min(preferredScale, pixelBudgetScale);
-  const backingWidth = Math.max(1, Math.floor(width * scale));
-  const backingHeight = Math.max(1, Math.floor(height * scale));
+  const wind = getAmbientLayerCanvasSize(
+    width,
+    height,
+    preferredScale,
+    AMBIENT_WIND_TARGET_PIXELS,
+    AMBIENT_MIN_WIND_SCALE
+  );
+  const seeds = getAmbientLayerCanvasSize(
+    width,
+    height,
+    preferredScale,
+    AMBIENT_MAX_CANVAS_PIXELS,
+    AMBIENT_MIN_SEED_SCALE
+  );
 
   return {
     cssWidth: width,
     cssHeight: height,
-    backingWidth,
-    backingHeight,
-    scale,
-    pixelCount: backingWidth * backingHeight,
+    wind,
+    seeds,
+    pixelCount: wind.pixelCount + seeds.pixelCount,
   };
 }
 

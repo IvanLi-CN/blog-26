@@ -9,8 +9,7 @@ The public Nature shell carries a full-viewport ambient scene on every public
 route. The scene uses three slowly moving wind paths and a small set of drifting
 leaf shapes, so the renderer must preserve the visual language while avoiding
 continuous high-cost work after a tab is backgrounded. SVG, layered Canvas 2D,
-and WebGPU were implemented against the same deterministic motion model and
-measured in the production public build.
+and WebGPU were considered against the same deterministic motion model.
 
 ## Decision
 
@@ -39,23 +38,24 @@ ADR when its performance or compatibility trade-offs differ from this decision.
 
 ## Evidence
 
-All candidates used the same production `/projects` build, native Ego Browser
-viewport, five 20-second warmups, five 10-second frozen background windows, and
-five 10-second restore windows. The trace values below are browser GPU/compositor
-proxies, not system GPU percentage or power measurements.
+The renderer comparison used deterministic Canvas and WebGPU fixtures with
+foreground-on and foreground-off states. Trace values were treated as
+GPU/compositor proxies, not system GPU percentage, power, or battery data. The
+corrected real-tab protocol exposed active-page scheduler throttling in the
+automation window, so its four cases were marked `scheduler-limited` and were
+not used as a causal performance ranking. The decision rests on the current
+effect's low geometric complexity, Canvas's predictable lifecycle and fallback
+behavior, the shared visual contract, and the tuned backing budgets.
 
-- Initial medians: WebGPU `577ms`, Canvas `714ms`, SVG `1207ms` GPU-task proxy.
-- Top-two tuning medians: Canvas `556ms`, WebGPU `644ms`.
-- Every candidate reported zero renderer frames during the frozen window.
-- Desktop and `393x852` light/dark/reduced-motion captures preserved the shared
-  wind-path and leaf-count contract.
+Desktop and `393x852` light/dark/reduced-motion captures preserve the shared
+wind-path and leaf-count contract.
 
 ## Consequences
 
 - The current effect favors predictable browser compatibility and stable
   low-load behavior over a more complex GPU abstraction.
 - Two Canvas backing stores use more raw backing pixels than one WebGPU Canvas,
-  but the measured tuned Canvas path had the lower and more stable proxy cost
-  for this scene.
+  but the extra allocation buys a simple wind/leaf quality boundary and a
+  predictable browser fallback for this scene.
 - Increasing particle count, adding shader-heavy post-processing, or changing
   the full-viewport effect materially reopens the renderer decision.

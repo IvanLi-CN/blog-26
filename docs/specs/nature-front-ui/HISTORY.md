@@ -27,4 +27,5 @@
 - 2026-09-20: Visual review replaced the centered intrinsic-width treatment with full-row navigation spacing that equalizes both edge insets and every gap between links.
 - 2026-09-20: Follow-up review compacted medium-width navigation to a left-aligned group with fixed `16px` gaps, capped by the average link content width.
 - 2026-09-23: The ambient public scene was evaluated across SVG, layered Canvas, and WebGPU implementations; the accepted production renderer is layered Canvas with a capped backing budget, hidden-tab pause, and reduced-motion static frame.
+- 2026-09-23: The ambient quality floor separated wind and leaf backing policies so wind paths stay at CSS-pixel resolution; temporary Canvas/WebGPU fixtures were used for foreground-on and foreground-off browser-proxy diagnostics and removed from the final public delivery.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

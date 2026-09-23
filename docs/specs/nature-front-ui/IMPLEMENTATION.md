@@ -50,8 +50,11 @@ offset; endpoint no-ops continue through the normal direction gates.
 
 The public shell mounts one layered Canvas 2D ambient renderer. A deterministic
 motion model drives three wind paths and the responsive desktop/mobile leaf
-count. The wind and leaf layers share a capped backing-pixel budget, cache their
-leaf sprites, pause on document visibility loss, and render one stable frame for
-reduced-motion mode. The renderer selection experiment and its SVG/WebGPU
-implementations are not shipped in the public bundle; the accepted trade-off is
-recorded in ADR 0004.
+count. The wind layer keeps at least one backing pixel per CSS pixel so thin
+paths are not enlarged from a lower-resolution bitmap; the leaf-sprite layer
+uses its own bounded backing budget and a `0.75` minimum scale. Both layers
+cache their sprites, pause on document visibility loss, and render one stable
+frame for reduced-motion mode. The renderer selection experiment and its
+SVG/WebGPU implementations are not shipped in the public bundle; the quality
+floor is recorded in ADR 0005, while the production choice remains in ADR
+0004.
