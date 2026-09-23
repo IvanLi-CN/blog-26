@@ -45,3 +45,19 @@ reset its origin; a subsequent touch start begins a fresh gesture while
 teardown clears settle timers and DOM state.
 Direct-follow is enabled only when the current delta can change the header
 offset; endpoint no-ops continue through the normal direction gates.
+
+## Ambient renderer
+
+The public shell mounts one layered Canvas 2D ambient renderer. A deterministic
+motion model drives three wind paths and the responsive desktop/mobile leaf
+count. The wind layer keeps at least one backing pixel per CSS pixel when its
+budget permits so thin paths are not enlarged from a lower-resolution bitmap;
+the leaf-sprite layer uses its own bounded backing budget and a `0.75` minimum
+scale when that floor fits. At extreme viewport sizes the layer budgets take
+precedence. Both layers cache their sprites, pause on document visibility loss,
+skip hidden palette redraws, and render one stable frame for reduced-motion
+mode. A failed Canvas context disables the scheduler instead of spinning a
+no-op timer/RAF loop. The renderer selection experiment and its
+SVG/WebGPU implementations are not shipped in the public bundle; the quality
+floor is recorded in ADR 0005, while the production choice remains in ADR
+0004.

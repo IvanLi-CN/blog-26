@@ -9,6 +9,8 @@
 - [ADR 0001: Project Detail MDX Authoring](../../adr/0001-project-detail-mdx-authoring.md)
 - [ADR 0002: Mobile Public Header Scroll Model](../../adr/0002-mobile-public-header-scroll.md)
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
+- [ADR 0004: Ambient Renderer Strategy](../../adr/0004-ambient-renderer-strategy.md)
+- [ADR 0005: Ambient Renderer Quality And Benchmark Protocol](../../adr/0005-ambient-benchmark-protocol.md)
 
 ## 1. Background
 
@@ -49,6 +51,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The public shell uses soft gradients, translucent surfaces, organic radii, and low-frequency ambient motion.
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
+- The ambient public scene uses the accepted layered Canvas renderer: wind paths and leaf sprites share a capped backing-pixel budget, pause while the document is hidden, and settle to one stable frame when reduced motion is requested.
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
 - Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; neither page may expose a persistent live loading state or static interaction guidance after content is readable.
 
@@ -284,6 +287,15 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The narrow search state keeps its query panel at the mobile spacing contract, uses low-luminance surfaces for the filters and recommended terms, preserves 44px interactive controls, and does not overflow horizontally.
 
 ![Public narrow mobile search](./assets/public-search-narrow-mobile-dark.png)
+
+### Ambient renderer selection
+
+- Evidence binding `e7234f6f`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `layered Canvas 2D`.
+- The final Canvas scene preserves the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The wind and leaf backing stores use separate caps; the wind store stays at CSS-pixel resolution when its budget permits, and the leaf sampling floor yields to its cap at extreme viewport sizes. Both pause while the document is hidden, and a failed Canvas context must not leave an animation scheduler running. The renderer decision is recorded in [ADR 0004](../../adr/0004-ambient-renderer-strategy.md), and the quality/measurement contract is recorded in [ADR 0005](../../adr/0005-ambient-benchmark-protocol.md).
+
+![Ambient renderer desktop light](./assets/ambient-renderer-final-desktop-light.png)
+
+![Ambient renderer mobile dark reduced motion](./assets/ambient-renderer-final-mobile-dark-reduced.png)
 
 ## Context and Scope
 
