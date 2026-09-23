@@ -5,7 +5,6 @@ import {
   type AmbientMotionModel,
   type AmbientPalette,
   ambientColor,
-  getAmbientCurrentPath,
   getAmbientSeedPose,
 } from "./ambient-scene";
 
@@ -46,8 +45,8 @@ class CanvasRenderer implements AmbientRenderer {
   }
 
   mount() {
-    this.currentContext = this.currentCanvas.getContext("2d");
-    this.seedContext = this.seedCanvas.getContext("2d");
+    this.currentContext = this.currentCanvas.getContext("2d", { desynchronized: true });
+    this.seedContext = this.seedCanvas.getContext("2d", { desynchronized: true });
     this.root.replaceChildren(this.currentCanvas, this.seedCanvas);
     this.rebuildSprites();
     this.syncPlayback();
@@ -161,18 +160,25 @@ class CanvasRenderer implements AmbientRenderer {
     current.clearRect(0, 0, width, height);
     current.lineCap = "round";
     current.lineWidth = 1.2;
+    const phase = timestamp / 6_000;
     for (let index = 0; index < 3; index += 1) {
-      const path = getAmbientCurrentPath(this.model, timestamp, index);
+      const baseline = height * (0.18 + index * 0.29);
+      const amplitude = Math.max(18, height * (0.035 + index * 0.006));
       current.strokeStyle = ambientColor(
         this.palette,
         index === 1 ? "mist" : "accent",
         index === 1 ? 0.17 : 0.24
       );
       current.beginPath();
-      path.forEach((point, pointIndex) => {
-        if (pointIndex === 0) current.moveTo(point.x, point.y);
-        else current.lineTo(point.x, point.y);
-      });
+      for (let x = -96; x <= width + 96; x += 72) {
+        const progress = x / Math.max(width, 1);
+        const y =
+          baseline +
+          Math.sin(progress * Math.PI * 2.4 + phase + index * 1.5) * amplitude +
+          Math.cos(progress * Math.PI * 1.2 - phase * 0.7) * amplitude * 0.35;
+        if (x === -96) current.moveTo(x, y);
+        else current.lineTo(x, y);
+      }
       current.stroke();
     }
 

@@ -144,21 +144,6 @@ function parseRgb(value: string, fallback: [number, number, number]): [number, n
   return values.map((part) => part / 255) as [number, number, number];
 }
 
-function uniformData(palette: AmbientPalette, model: AmbientMotionModel, timestamp: number) {
-  const accent = parseRgb(palette.accent, [0.49, 0.66, 0.55]);
-  const mist = parseRgb(palette.mist, [0.96, 0.97, 0.96]);
-  return new Float32Array([
-    model.width,
-    model.height,
-    timestamp,
-    model.seeds.length,
-    ...accent,
-    1,
-    ...mist,
-    1,
-  ]);
-}
-
 function seedData(model: AmbientMotionModel) {
   const data = new Float32Array(12 * 8);
   model.seeds.forEach((seed, index) => {
@@ -196,8 +181,11 @@ class WebGpuRenderer implements AmbientRenderer {
   private readonly currentPipeline: unknown;
   private readonly leafPipeline: unknown;
   private readonly leafOutlinePipeline: unknown;
+  private readonly uniformValues = new Float32Array(12);
   private model: AmbientMotionModel;
   private palette: AmbientPalette;
+  private accentColor: [number, number, number] = [0.49, 0.66, 0.55];
+  private mistColor: [number, number, number] = [0.96, 0.97, 0.96];
   private size: AmbientCanvasSize | null = null;
   private reducedMotion: boolean;
   private hidden = false;
@@ -239,6 +227,7 @@ class WebGpuRenderer implements AmbientRenderer {
     this.format = format;
     this.model = context.model;
     this.palette = context.palette;
+    this.updatePaletteValues(context.palette);
     this.reducedMotion = context.reducedMotion;
 
     const shader = device.createShaderModule({ code: shaderCode });
@@ -321,6 +310,7 @@ class WebGpuRenderer implements AmbientRenderer {
 
   setPalette(palette: AmbientPalette) {
     this.palette = palette;
+    this.updatePaletteValues(palette);
     this.render(performance.now());
   }
 
@@ -373,13 +363,31 @@ class WebGpuRenderer implements AmbientRenderer {
     }, AMBIENT_FRAME_INTERVAL);
   }
 
+  private updatePaletteValues(palette: AmbientPalette) {
+    this.accentColor = parseRgb(palette.accent, [0.49, 0.66, 0.55]);
+    this.mistColor = parseRgb(palette.mist, [0.96, 0.97, 0.96]);
+  }
+
+  private updateUniforms(timestamp: number) {
+    const values = this.uniformValues;
+    values[0] = this.model.width;
+    values[1] = this.model.height;
+    values[2] = timestamp;
+    values[3] = this.model.seeds.length;
+    values[4] = this.accentColor[0];
+    values[5] = this.accentColor[1];
+    values[6] = this.accentColor[2];
+    values[7] = 1;
+    values[8] = this.mistColor[0];
+    values[9] = this.mistColor[1];
+    values[10] = this.mistColor[2];
+    values[11] = 1;
+  }
+
   private render(timestamp: number) {
     if (!this.size) return;
-    this.queue.writeBuffer(
-      this.uniformBuffer,
-      0,
-      uniformData(this.palette, this.model, timestamp).buffer
-    );
+    this.updateUniforms(timestamp);
+    this.queue.writeBuffer(this.uniformBuffer, 0, this.uniformValues.buffer);
     const encoder = this.device.createCommandEncoder();
     const pass = encoder.beginRenderPass({
       colorAttachments: [
