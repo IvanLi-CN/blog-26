@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import {
-  type AmbientRenderer,
-  type AmbientRendererRequest,
-  createAmbientRenderer,
-} from "./ambient-renderer";
+import { createCanvasRenderer } from "./ambient-canvas";
 import {
   type AmbientPalette,
-  createAmbientDiagnostics,
   createAmbientMotionModel,
   DEFAULT_AMBIENT_PALETTE,
   getAmbientCanvasSize,
@@ -22,11 +17,6 @@ function readPalette(): AmbientPalette {
   };
 }
 
-function readRendererRequest(): AmbientRendererRequest {
-  const value = String(import.meta.env.PUBLIC_AMBIENT_RENDERER || "canvas");
-  return value === "svg" || value === "webgpu" ? value : "canvas";
-}
-
 export default function AmbientScene() {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -34,16 +24,15 @@ export default function AmbientScene() {
     const root = rootRef.current;
     if (!root) return;
 
-    const rendererRequest = readRendererRequest();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const diagnostics = createAmbientDiagnostics(
-      import.meta.env.PUBLIC_AMBIENT_DIAGNOSTICS === "1",
-      rendererRequest
-    );
     let palette = readPalette();
     let model = createAmbientMotionModel(window.innerWidth, window.innerHeight);
-    let renderer: AmbientRenderer | null = null;
-    let disposed = false;
+    const renderer = createCanvasRenderer({
+      root,
+      model,
+      palette,
+      reducedMotion: reducedMotion.matches,
+    });
 
     const size = () =>
       getAmbientCanvasSize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
@@ -51,22 +40,20 @@ export default function AmbientScene() {
     const syncSize = () => {
       const nextSize = size();
       model = createAmbientMotionModel(nextSize.cssWidth, nextSize.cssHeight);
-      renderer?.resize(model, nextSize);
-      diagnostics?.setBackingSize(nextSize.backingWidth, nextSize.backingHeight);
+      renderer.resize(model, nextSize);
     };
 
     const syncPalette = () => {
       palette = readPalette();
-      renderer?.setPalette(palette);
+      renderer.setPalette(palette);
     };
 
     const syncVisibility = () => {
-      diagnostics?.setVisibility(document.hidden);
-      renderer?.setVisibility(document.hidden);
+      renderer.setVisibility(document.hidden);
     };
 
     const syncReducedMotion = () => {
-      renderer?.setReducedMotion(reducedMotion.matches);
+      renderer.setReducedMotion(reducedMotion.matches);
     };
 
     const themeObserver = new MutationObserver(syncPalette);
@@ -75,32 +62,18 @@ export default function AmbientScene() {
       attributeFilter: ["data-ui-theme"],
     });
 
+    renderer.mount();
+    renderer.resize(model, size());
+    renderer.setPalette(palette);
+    renderer.setReducedMotion(reducedMotion.matches);
+    renderer.setVisibility(document.hidden);
+
     window.addEventListener("resize", syncSize);
     document.addEventListener("visibilitychange", syncVisibility);
     reducedMotion.addEventListener("change", syncReducedMotion);
 
-    void createAmbientRenderer(rendererRequest, {
-      root,
-      model,
-      palette,
-      reducedMotion: reducedMotion.matches,
-      diagnostics,
-    }).then((created) => {
-      if (disposed) {
-        created.destroy();
-        return;
-      }
-      renderer = created;
-      created.mount();
-      created.resize(model, size());
-      created.setPalette(palette);
-      created.setReducedMotion(reducedMotion.matches);
-      created.setVisibility(document.hidden);
-    });
-
     return () => {
-      disposed = true;
-      renderer?.destroy();
+      renderer.destroy();
       themeObserver.disconnect();
       window.removeEventListener("resize", syncSize);
       document.removeEventListener("visibilitychange", syncVisibility);

@@ -1,4 +1,3 @@
-import type { AmbientRenderer, AmbientRendererContext } from "./ambient-renderer";
 import {
   AMBIENT_FRAME_INTERVAL,
   type AmbientCanvasSize,
@@ -8,6 +7,13 @@ import {
   getAmbientSeedPose,
 } from "./ambient-scene";
 
+export type CanvasRendererContext = {
+  root: HTMLElement;
+  model: AmbientMotionModel;
+  palette: AmbientPalette;
+  reducedMotion: boolean;
+};
+
 function createCanvas(className: string) {
   const canvas = document.createElement("canvas");
   canvas.className = className;
@@ -15,11 +21,8 @@ function createCanvas(className: string) {
   return canvas;
 }
 
-class CanvasRenderer implements AmbientRenderer {
-  readonly kind = "canvas" as const;
-
+class CanvasRenderer {
   private readonly root: HTMLElement;
-  private readonly diagnostics: AmbientRendererContext["diagnostics"];
   private readonly currentCanvas = createCanvas(
     "nature-ambient-canvas nature-ambient-canvas-current"
   );
@@ -36,12 +39,11 @@ class CanvasRenderer implements AmbientRenderer {
   private raf: number | null = null;
   private running = false;
 
-  constructor(context: AmbientRendererContext) {
+  constructor(context: CanvasRendererContext) {
     this.root = context.root;
     this.model = context.model;
     this.palette = context.palette;
     this.reducedMotion = context.reducedMotion;
-    this.diagnostics = context.diagnostics;
   }
 
   mount() {
@@ -64,7 +66,6 @@ class CanvasRenderer implements AmbientRenderer {
     this.currentContext?.setTransform(size.scale, 0, 0, size.scale, 0, 0);
     this.seedContext?.setTransform(size.scale, 0, 0, size.scale, 0, 0);
     this.rebuildSprites();
-    this.diagnostics?.setBackingSize(size.backingWidth, size.backingHeight);
     this.syncPlayback();
   }
 
@@ -81,7 +82,6 @@ class CanvasRenderer implements AmbientRenderer {
 
   setVisibility(hidden: boolean) {
     this.hidden = hidden;
-    this.diagnostics?.setVisibility(hidden);
     this.syncPlayback();
   }
 
@@ -195,10 +195,9 @@ class CanvasRenderer implements AmbientRenderer {
       seeds.restore();
     }
     seeds.globalAlpha = 1;
-    this.diagnostics?.recordFrame(timestamp, this.hidden);
   }
 }
 
-export function createCanvasRenderer(context: AmbientRendererContext): AmbientRenderer {
+export function createCanvasRenderer(context: CanvasRendererContext) {
   return new CanvasRenderer(context);
 }

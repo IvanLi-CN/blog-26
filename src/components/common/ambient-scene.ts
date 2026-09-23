@@ -3,7 +3,6 @@ export const AMBIENT_FRAME_INTERVAL = 1000 / AMBIENT_FRAME_RATE;
 export const AMBIENT_MAX_CANVAS_PIXELS = 1_800_000;
 export const AMBIENT_MAX_DEVICE_PIXEL_RATIO = 1.25;
 export const AMBIENT_MODEL_SEED = 0x6a09e667;
-export const AMBIENT_CURRENT_CYCLE_MS = Math.PI * 2 * 6_000;
 
 export type AmbientTone = "accent" | "mist";
 
@@ -39,36 +38,10 @@ export type AmbientSeedPose = AmbientPoint & {
   progress: number;
 };
 
-export type AmbientRendererKind = "svg" | "canvas" | "webgpu" | "svg-fallback";
-
-export type AmbientBenchmarkState = {
-  requestedRenderer: AmbientRendererKind;
-  activeRenderer: AmbientRendererKind;
-  frames: number;
-  hiddenFrames: number;
-  frameTimes: number[];
-  visibilityChanges: Array<{ hidden: boolean; at: number }>;
-  backingPixels: number;
-  backingSize: { width: number; height: number };
-};
-
-export type AmbientDiagnostics = {
-  setActiveRenderer(kind: AmbientRendererKind): void;
-  setBackingSize(width: number, height: number): void;
-  setVisibility(hidden: boolean): void;
-  recordFrame(timestamp: number, hidden: boolean): void;
-};
-
 export const DEFAULT_AMBIENT_PALETTE: AmbientPalette = {
   accent: "124, 169, 139",
   mist: "244, 248, 244",
 };
-
-declare global {
-  interface Window {
-    __ambientBenchmark?: AmbientBenchmarkState;
-  }
-}
 
 type Random = () => number;
 
@@ -151,12 +124,6 @@ export function ambientColor(palette: AmbientPalette, tone: AmbientTone, alpha: 
   return `rgba(${palette[tone]}, ${alpha})`;
 }
 
-export function ambientPathData(points: AmbientPoint[]) {
-  return points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-    .join(" ");
-}
-
 export type AmbientCanvasSize = {
   cssWidth: number;
   cssHeight: number;
@@ -194,47 +161,4 @@ export function getAmbientCanvasSize(
 
 export function shouldAnimateAmbient(documentHidden: boolean, reducedMotion: boolean) {
   return !documentHidden && !reducedMotion;
-}
-
-export function createAmbientDiagnostics(
-  enabled: boolean,
-  requestedRenderer: AmbientRendererKind
-): AmbientDiagnostics | null {
-  if (!enabled || typeof window === "undefined") return null;
-
-  const state: AmbientBenchmarkState = {
-    requestedRenderer,
-    activeRenderer: requestedRenderer,
-    frames: 0,
-    hiddenFrames: 0,
-    frameTimes: [],
-    visibilityChanges: [],
-    backingPixels: 0,
-    backingSize: { width: 0, height: 0 },
-  };
-
-  window.__ambientBenchmark = state;
-
-  return {
-    setActiveRenderer(kind) {
-      state.activeRenderer = kind;
-      window.__ambientBenchmark = { ...state };
-    },
-    setBackingSize(width, height) {
-      state.backingSize = { width, height };
-      state.backingPixels = width * height;
-      window.__ambientBenchmark = { ...state };
-    },
-    setVisibility(hidden) {
-      state.visibilityChanges.push({ hidden, at: performance.now() });
-      window.__ambientBenchmark = { ...state };
-    },
-    recordFrame(timestamp, hidden) {
-      state.frames += 1;
-      if (hidden) state.hiddenFrames += 1;
-      state.frameTimes.push(timestamp);
-      if (state.frameTimes.length > 720) state.frameTimes.shift();
-      window.__ambientBenchmark = { ...state, frameTimes: [...state.frameTimes] };
-    },
-  };
 }
