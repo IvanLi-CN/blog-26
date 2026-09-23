@@ -291,7 +291,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ### Ambient renderer selection
 
 - Evidence binding `e7234f6f`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `layered Canvas 2D`.
-- The final Canvas scene preserves the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The wind backing store never drops below CSS-pixel resolution, while the leaf backing store remains budgeted independently. The renderer decision is recorded in [ADR 0004](../../adr/0004-ambient-renderer-strategy.md), and the quality/measurement contract is recorded in [ADR 0005](../../adr/0005-ambient-benchmark-protocol.md).
+- The final Canvas scene preserves the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The wind and leaf backing stores use separate caps; the wind store stays at CSS-pixel resolution when its budget permits, and the leaf sampling floor yields to its cap at extreme viewport sizes. Both pause while the document is hidden, and a failed Canvas context must not leave an animation scheduler running. The renderer decision is recorded in [ADR 0004](../../adr/0004-ambient-renderer-strategy.md), and the quality/measurement contract is recorded in [ADR 0005](../../adr/0005-ambient-benchmark-protocol.md).
 
 ![Ambient renderer desktop light](./assets/ambient-renderer-final-desktop-light.png)
 
