@@ -1,8 +1,9 @@
 # ADR 0006: Ambient WebGPU Strategy
 
-- Status: accepted
+- Status: superseded
 - Date: 2026-09-24
 - Supersedes: [ADR 0004: Ambient Renderer Strategy](./0004-ambient-renderer-strategy.md)
+- Superseded by: [ADR 0007: Ambient WebGPU Capability Profile](./0007-ambient-webgpu-capability-profile.md)
 
 ## Context
 
@@ -37,13 +38,9 @@ benchmark selector or diagnostics object.
 Before the first resize, the renderer checks the adapter's public limits against
 the required native-DPR backing dimensions and fixed seed storage buffer. A
 limit failure selects SVG; the renderer never lowers devicePixelRatio to fit a
-weak adapter. While running, `GPUQueue.onSubmittedWorkDone()` is used only when
-the browser exposes it as a queue-completion proxy. Three consecutive samples
-above 75% of the 30Hz frame budget enter a conservative tier that omits the
-non-essential leaf outline pass; six more slow samples select SVG. Thirty
-consecutive samples below 40% of the budget restore the full pass. These are
-browser rendering-budget signals, not system GPU utilization, power, or energy
-measurements.
+weak adapter. The superseding capability profile removes the runtime queue
+completion governor and defines deterministic WebGPU detail tiers from public
+adapter limits only.
 
 ## Alternatives Considered
 
@@ -66,9 +63,9 @@ measurements.
 - The WebGPU Canvas must keep its backing dimensions at native CSS size times
   devicePixelRatio; allocation failure is a compatibility fallback, not a
   reason to lower visual quality.
-- Capability limits and the runtime budget governor provide explicit behavior
-  for lower-capability devices without introducing a vendor or browser model
-  table. The visual quality floor remains native-DPR rendering or the complete
-  vector SVG fallback.
+- The superseding capability profile provides explicit behavior for lower-
+  capability devices without introducing a vendor or browser model table. The
+  visual quality floor remains native-DPR rendering or the complete vector SVG
+  fallback.
 - ADR 0004 and ADR 0005 remain historical records of the Canvas decision and
   benchmark protocol. This ADR is the active renderer decision.

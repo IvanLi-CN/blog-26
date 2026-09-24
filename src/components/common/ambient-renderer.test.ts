@@ -38,7 +38,6 @@ describe("ambient renderer capability detection", () => {
     let frameCallback: FrameRequestCallback | null = null;
     let resolveLost: (() => void) | null = null;
     let unavailable = 0;
-    let completionCalls = 0;
     const device = {
       queue: {
         writeBuffer() {
@@ -48,10 +47,7 @@ describe("ambient renderer capability detection", () => {
           submits += 1;
         },
         onSubmittedWorkDone() {
-          completionCalls += 1;
-          return new Promise<void>(() => {
-            // Simulate a queue completion that never settles.
-          });
+          throw new Error("runtime queue timing must not control rendering");
         },
       },
       lost: new Promise<void>((resolve) => {
@@ -139,9 +135,7 @@ describe("ambient renderer capability detection", () => {
       expect(submits).toBe(submitCountAfterResize);
       frameCallback?.(1040);
       expect(submits).toBeGreaterThan(submitCountAfterResize);
-      expect(completionCalls).toBe(1);
       frameCallback?.(1080);
-      expect(completionCalls).toBe(1);
       const submitCount = submits;
       renderer?.setVisibility(true);
       expect(submits).toBe(submitCount);

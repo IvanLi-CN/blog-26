@@ -2,10 +2,10 @@ import {
   AMBIENT_FRAME_INTERVAL_MS,
   AMBIENT_SEED_BUFFER_BYTES,
   type AmbientGpuLimits,
-  type AmbientPerformanceState,
+  type AmbientPerformanceScore,
   ambientGpuLimitsSupportSize,
-  createAmbientPerformanceState,
-  recordAmbientGpuSample,
+  ambientPerformanceScore,
+  ambientRenderTierForScore,
 } from "./ambient-performance";
 import type { AmbientRenderer, AmbientRendererContext } from "./ambient-renderer";
 import type { AmbientCanvasSize, AmbientMotionModel, AmbientPalette } from "./ambient-scene";
@@ -31,7 +31,6 @@ type GpuEncoderLike = {
 type GpuQueueLike = {
   writeBuffer(buffer: GpuBufferLike, offset: number, data: ArrayBuffer | ArrayBufferView): void;
   submit(commands: readonly unknown[]): void;
-  onSubmittedWorkDone?: () => Promise<void>;
 };
 type GpuDeviceLike = {
   queue: GpuQueueLike;
@@ -213,10 +212,9 @@ class WebGpuRenderer implements AmbientRenderer {
   private running = false;
   private raf: number | null = null;
   private lastRenderTime: number | null = null;
-  private gpuCompletionPending = false;
   private destroyed = false;
   private failed = false;
-  private performanceState: AmbientPerformanceState = createAmbientPerformanceState();
+  private performanceScore: AmbientPerformanceScore = 1;
 
   static async create(context: AmbientRendererContext): Promise<WebGpuRenderer | null> {
     const gpu = (navigator as unknown as { gpu?: GpuNamespaceLike }).gpu;
@@ -344,6 +342,7 @@ class WebGpuRenderer implements AmbientRenderer {
       this.fail();
       return;
     }
+    this.performanceScore = ambientPerformanceScore(this.adapterLimits, size);
     this.canvas.width = size.backingWidth;
     this.canvas.height = size.backingHeight;
     this.canvas.style.width = `${size.cssWidth}px`;
@@ -440,45 +439,16 @@ class WebGpuRenderer implements AmbientRenderer {
       pass.draw(256, 3);
       pass.setPipeline(this.leafPipeline);
       pass.draw(6, this.model.seeds.length);
-      if (this.performanceState.tier === "full") {
+      if (ambientRenderTierForScore(this.performanceScore) === "full") {
         pass.setPipeline(this.leafOutlinePipeline);
         pass.draw(9, this.model.seeds.length);
       }
       pass.end();
       this.queue.submit([encoder.finish()]);
       this.lastRenderTime = timestamp;
-      this.observeGpuCompletion();
     } catch {
       this.fail();
     }
-  }
-
-  private observeGpuCompletion() {
-    if (!this.queue.onSubmittedWorkDone || this.gpuCompletionPending) return;
-    this.gpuCompletionPending = true;
-    const submittedAt = performance.now();
-    let completion: Promise<void>;
-    try {
-      completion = this.queue.onSubmittedWorkDone();
-    } catch {
-      this.gpuCompletionPending = false;
-      return;
-    }
-    void completion
-      .then(() => {
-        if (this.destroyed || this.failed) return;
-        this.performanceState = recordAmbientGpuSample(
-          this.performanceState,
-          performance.now() - submittedAt
-        );
-        if (this.performanceState.fallback) this.fail();
-      })
-      .catch(() => {
-        // Queue completion is an optional performance signal; rendering stays active.
-      })
-      .finally(() => {
-        this.gpuCompletionPending = false;
-      });
   }
 
   private fail() {
