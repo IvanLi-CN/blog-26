@@ -11,6 +11,7 @@
 - [ADR 0003: Public Mobile Content Stream](../../adr/0003-public-mobile-content-stream.md)
 - [ADR 0004: Ambient Renderer Strategy](../../adr/0004-ambient-renderer-strategy.md)
 - [ADR 0005: Ambient Renderer Quality And Benchmark Protocol](../../adr/0005-ambient-benchmark-protocol.md)
+- [ADR 0006: Ambient WebGPU Strategy](../../adr/0006-ambient-webgpu-strategy.md)
 
 ## 1. Background
 
@@ -51,7 +52,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - The public shell uses soft gradients, translucent surfaces, organic radii, and low-frequency ambient motion.
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
-- The ambient public scene uses the accepted layered Canvas renderer: wind paths and leaf sprites share a capped backing-pixel budget, pause while the document is hidden, and settle to one stable frame when reduced motion is requested.
+- The ambient public scene uses a transparent native-DPR WebGPU Canvas for normal-motion pages. The page's themed CSS background remains below the canvas; WebGPU draws three wind paths and the responsive leaf count with premultiplied alpha, pauses while the document is hidden, and uses requestAnimationFrame as a clock for approximately 30Hz visible submissions. Adapter limits are checked against the native-DPR backing and fixed seed buffer before the first resize; a limit failure falls back to SVG rather than lowering DPR. When available, queue completion samples provide a browser rendering-budget signal: sustained pressure first omits the non-essential leaf outline pass, then falls back to SVG, with hysteresis for recovery. These samples are not system GPU utilization or power measurements. Reduced-motion users and environments without a usable WebGPU adapter receive one complete deterministic SVG scene with three wind paths and the responsive leaf count. WebGPU initialization or device loss must fall back to SVG without leaving an animation scheduler running.
 - Public route transitions expose a non-blocking pending indicator anchored to the site header. The indicator floats below the header frame without shifting document flow, sets page busy state while navigation is preparing, and clears after the next page load.
 - Article and memo detail pages preserve server-rendered Markdown content for first paint while deferring interactive Markdown hydration until the content approaches the viewport; neither page may expose a persistent live loading state or static interaction guidance after content is readable.
 
@@ -290,12 +291,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### Ambient renderer selection
 
-- Evidence binding `e7234f6f`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `layered Canvas 2D`.
-- The final Canvas scene preserves the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The wind and leaf backing stores use separate caps; the wind store stays at CSS-pixel resolution when its budget permits, and the leaf sampling floor yields to its cap at extreme viewport sizes. Both pause while the document is hidden, and a failed Canvas context must not leave an animation scheduler running. The renderer decision is recorded in [ADR 0004](../../adr/0004-ambient-renderer-strategy.md), and the quality/measurement contract is recorded in [ADR 0005](../../adr/0005-ambient-benchmark-protocol.md).
+- Evidence binding `ce3e3963478d1ebee21cc909683114ed31e99fe6c6a14343f10a0257744d7c28`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, and final production renderer `WebGPU with complete static SVG fallback`.
+- The WebGPU scene and SVG fallback preserve the three wind paths and responsive leaf count in light, dark, and reduced-motion states. The WebGPU backing store uses the exact CSS size multiplied by the native device-pixel ratio; the SVG path is vector-scaled through its viewBox. Both paths pause or remain static while the document is hidden, and a failed WebGPU lifecycle must not leave an animation scheduler running. The renderer decision is recorded in [ADR 0006](../../adr/0006-ambient-webgpu-strategy.md); ADR 0004 and ADR 0005 remain historical decision and benchmark records.
 
-![Ambient renderer desktop light](./assets/ambient-renderer-final-desktop-light.png)
+![Ambient renderer desktop light](./assets/ambient-webgpu-final-desktop-light.png)
 
-![Ambient renderer mobile dark reduced motion](./assets/ambient-renderer-final-mobile-dark-reduced.png)
+![Ambient renderer mobile dark reduced motion](./assets/ambient-svg-final-mobile-dark-reduced.png)
 
 ## Context and Scope
 

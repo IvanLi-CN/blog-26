@@ -1,10 +1,4 @@
-export const AMBIENT_FRAME_RATE = 24;
-export const AMBIENT_FRAME_INTERVAL = 1000 / AMBIENT_FRAME_RATE;
-export const AMBIENT_MAX_CANVAS_PIXELS = 1_800_000;
-export const AMBIENT_WIND_TARGET_PIXELS = 3_200_000;
-export const AMBIENT_MAX_DEVICE_PIXEL_RATIO = 1.25;
-export const AMBIENT_MIN_WIND_SCALE = 1;
-export const AMBIENT_MIN_SEED_SCALE = 0.75;
+export const AMBIENT_STATIC_FRAME_TIME = 0;
 export const AMBIENT_MODEL_SEED = 0x6a09e667;
 
 export type AmbientTone = "accent" | "mist";
@@ -123,78 +117,39 @@ export function getAmbientSeedPose(
   };
 }
 
-export function ambientColor(palette: AmbientPalette, tone: AmbientTone, alpha: number) {
-  return `rgba(${palette[tone]}, ${alpha})`;
+export function ambientPathData(points: AmbientPoint[]) {
+  return points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
 }
 
-export type AmbientLayerCanvasSize = {
+export type AmbientCanvasSize = {
+  cssWidth: number;
+  cssHeight: number;
   backingWidth: number;
   backingHeight: number;
   scale: number;
   pixelCount: number;
 };
 
-export type AmbientCanvasSize = {
-  cssWidth: number;
-  cssHeight: number;
-  wind: AmbientLayerCanvasSize;
-  seeds: AmbientLayerCanvasSize;
-  pixelCount: number;
-};
-
-function getAmbientLayerCanvasSize(
-  width: number,
-  height: number,
-  preferredScale: number,
-  maxPixels: number,
-  minScale: number
-): AmbientLayerCanvasSize {
-  const pixelBudgetScale = Math.sqrt(maxPixels / (width * height));
-  const budgetedScale = Math.min(preferredScale, pixelBudgetScale);
-  const scale = pixelBudgetScale < minScale ? budgetedScale : Math.max(minScale, budgetedScale);
-  const backingWidth = Math.max(1, Math.floor(width * scale));
-  const backingHeight = Math.max(1, Math.floor(height * scale));
-
-  return {
-    backingWidth,
-    backingHeight,
-    scale,
-    pixelCount: backingWidth * backingHeight,
-  };
-}
-
-export function getAmbientCanvasSize(
+export function getAmbientWebGpuCanvasSize(
   cssWidth: number,
   cssHeight: number,
   devicePixelRatio: number
 ): AmbientCanvasSize {
   const width = Math.max(1, Math.round(cssWidth));
   const height = Math.max(1, Math.round(cssHeight));
-  const preferredScale = Math.min(
-    Math.max(Number.isFinite(devicePixelRatio) ? devicePixelRatio : 1, 1),
-    AMBIENT_MAX_DEVICE_PIXEL_RATIO
-  );
-  const wind = getAmbientLayerCanvasSize(
-    width,
-    height,
-    preferredScale,
-    AMBIENT_WIND_TARGET_PIXELS,
-    AMBIENT_MIN_WIND_SCALE
-  );
-  const seeds = getAmbientLayerCanvasSize(
-    width,
-    height,
-    preferredScale,
-    AMBIENT_MAX_CANVAS_PIXELS,
-    AMBIENT_MIN_SEED_SCALE
-  );
+  const scale = Math.max(Number.isFinite(devicePixelRatio) ? devicePixelRatio : 1, 1);
+  const backingWidth = Math.max(1, Math.ceil(width * scale));
+  const backingHeight = Math.max(1, Math.ceil(height * scale));
 
   return {
     cssWidth: width,
     cssHeight: height,
-    wind,
-    seeds,
-    pixelCount: wind.pixelCount + seeds.pixelCount,
+    backingWidth,
+    backingHeight,
+    scale,
+    pixelCount: backingWidth * backingHeight,
   };
 }
 
