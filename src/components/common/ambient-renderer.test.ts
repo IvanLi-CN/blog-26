@@ -87,6 +87,8 @@ describe("ambient renderer capability detection", () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
     const originalRaf = window.requestAnimationFrame;
     const originalCancelRaf = window.cancelAnimationFrame;
+    const originalPerformanceNow = performance.now;
+    performance.now = () => 1000;
     HTMLCanvasElement.prototype.getContext = ((kind: string) =>
       kind === "webgpu" ? canvasContext : null) as typeof HTMLCanvasElement.prototype.getContext;
     window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
@@ -126,10 +128,9 @@ describe("ambient renderer capability detection", () => {
       expect((root.querySelector("canvas") as HTMLCanvasElement).width).toBe(2880);
       expect(submits).toBeGreaterThan(0);
       const submitCountAfterResize = submits;
-      const baseline = performance.now();
-      frameCallback?.(baseline + 10);
+      frameCallback?.(1010);
       expect(submits).toBe(submitCountAfterResize);
-      frameCallback?.(baseline + 40);
+      frameCallback?.(1040);
       expect(submits).toBeGreaterThan(submitCountAfterResize);
       const submitCount = submits;
       renderer?.setVisibility(true);
@@ -142,6 +143,7 @@ describe("ambient renderer capability detection", () => {
       HTMLCanvasElement.prototype.getContext = originalGetContext;
       window.requestAnimationFrame = originalRaf;
       window.cancelAnimationFrame = originalCancelRaf;
+      performance.now = originalPerformanceNow;
       Object.defineProperty(navigator, "gpu", { configurable: true, value: originalGpu });
     }
   });
