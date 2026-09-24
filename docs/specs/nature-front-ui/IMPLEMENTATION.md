@@ -56,14 +56,15 @@ alpha and a transparent clear value, while visible pages use direct
 submitting commands.
 The adapter's public limits are checked against the exact native-DPR backing
 size before configuration; an unsupported allocation uses SVG instead of
-lowering DPR. When the browser exposes queue completion, a small hysteretic
-budget governor temporarily omits the leaf outline pass under sustained
-pressure and falls back to SVG if pressure persists, then restores full detail
-after a stable fast window. This signal describes the browser rendering queue,
-not system GPU utilization or energy use.
+lowering DPR. A deterministic internal `performanceScore` uses only the
+adapter's public limits and fixed seed-buffer requirement: score 2 renders the
+complete WebGPU scene, score 1 keeps WebGPU while omitting the non-essential
+leaf outline, and score 0 uses SVG. Queue completion timing, frame timing,
+private browser fields, vendor tables, and hardware heuristics do not affect
+this score or select another renderer.
 The shell first mounts a complete static SVG scene so reduced-motion users and
 unsupported or failed WebGPU initialization have an immediate, vector-quality
 fallback. Device loss, context/pipeline failure, theme changes, resize, and
 reduced-motion changes are guarded by the renderer lifecycle coordinator. The
-production decision is recorded in ADR 0006; ADR 0004 and ADR 0005 remain the
-historical Canvas and benchmark decisions.
+production decision is recorded in ADR 0007; ADR 0004 through ADR 0006 remain
+historical Canvas, benchmark, and initial WebGPU decisions.

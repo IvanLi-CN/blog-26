@@ -1,10 +1,11 @@
 # Ambient Renderer Quality And Benchmark Protocol
 
-- Status: superseded by [ADR 0006: Ambient WebGPU Strategy](./0006-ambient-webgpu-strategy.md)
+- Status: superseded by [ADR 0007: Ambient WebGPU Capability Profile](./0007-ambient-webgpu-capability-profile.md)
 - Date: 2026-09-23
 
 This document records the controlled comparison and production decision state
-as of 2026-09-23. ADR 0006 is the current production renderer decision.
+as of 2026-09-23. ADR 0007 is the current production renderer decision; ADR
+0006 records the initial WebGPU strategy that preceded its capability profile.
 
 The ambient scene keeps separate backing-size policies for its two Canvas
 layers: the wind layer never renders below one CSS pixel per backing pixel when
@@ -21,7 +22,7 @@ backing-buffer values remain browser proxy measurements rather than system GPU
 or power claims. The temporary fixtures and diagnostics are removed from the
 final public delivery; at the time of this benchmark the production surface
 was the layered Canvas renderer recorded in ADR 0004. The current production
-surface is WebGPU with static SVG fallback as recorded in ADR 0006.
+surface is WebGPU with static SVG fallback as recorded in ADR 0007.
 
 ## Controlled Browser Result
 
