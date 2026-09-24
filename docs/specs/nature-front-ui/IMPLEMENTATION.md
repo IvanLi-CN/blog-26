@@ -54,6 +54,13 @@ and the responsive desktop/mobile leaf count. The WebGPU pass uses premultiplied
 alpha and a transparent clear value, while visible pages use direct
 `requestAnimationFrame` scheduling at approximately 30Hz and hidden pages stop
 submitting commands.
+The adapter's public limits are checked against the exact native-DPR backing
+size before configuration; an unsupported allocation uses SVG instead of
+lowering DPR. When the browser exposes queue completion, a small hysteretic
+budget governor temporarily omits the leaf outline pass under sustained
+pressure and falls back to SVG if pressure persists, then restores full detail
+after a stable fast window. This signal describes the browser rendering queue,
+not system GPU utilization or energy use.
 The shell first mounts a complete static SVG scene so reduced-motion users and
 unsupported or failed WebGPU initialization have an immediate, vector-quality
 fallback. Device loss, context/pipeline failure, theme changes, resize, and

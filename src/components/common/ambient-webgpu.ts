@@ -1,3 +1,12 @@
+import {
+  AMBIENT_FRAME_INTERVAL_MS,
+  AMBIENT_SEED_BUFFER_BYTES,
+  type AmbientGpuLimits,
+  type AmbientPerformanceState,
+  ambientGpuLimitsSupportSize,
+  createAmbientPerformanceState,
+  recordAmbientGpuSample,
+} from "./ambient-performance";
 import type { AmbientRenderer, AmbientRendererContext } from "./ambient-renderer";
 import type { AmbientCanvasSize, AmbientMotionModel, AmbientPalette } from "./ambient-scene";
 
@@ -6,8 +15,6 @@ const GPU_BUFFER_USAGE_UNIFORM = 0x40;
 const GPU_BUFFER_USAGE_COPY_DST = 0x08;
 const GPU_SHADER_STAGE_VERTEX = 0x1;
 const GPU_SHADER_STAGE_FRAGMENT = 0x2;
-const AMBIENT_TARGET_FPS = 30;
-const AMBIENT_FRAME_INTERVAL_MS = 1000 / AMBIENT_TARGET_FPS;
 
 type GpuBufferLike = { destroy(): void };
 type GpuTextureLike = { createView(): unknown };
@@ -24,6 +31,7 @@ type GpuEncoderLike = {
 type GpuQueueLike = {
   writeBuffer(buffer: GpuBufferLike, offset: number, data: ArrayBuffer | ArrayBufferView): void;
   submit(commands: readonly unknown[]): void;
+  onSubmittedWorkDone?: () => Promise<void>;
 };
 type GpuDeviceLike = {
   queue: GpuQueueLike;
@@ -36,7 +44,10 @@ type GpuDeviceLike = {
   createRenderPipeline(descriptor: unknown): unknown;
   createCommandEncoder(): GpuEncoderLike;
 };
-type GpuAdapterLike = { requestDevice(): Promise<GpuDeviceLike> };
+type GpuAdapterLike = {
+  requestDevice(): Promise<GpuDeviceLike>;
+  limits?: AmbientGpuLimits;
+};
 type GpuCanvasContextLike = {
   configure(config: unknown): void;
   getCurrentTexture(): GpuTextureLike;
@@ -186,6 +197,7 @@ class WebGpuRenderer implements AmbientRenderer {
   private readonly device: GpuDeviceLike;
   private readonly queue: GpuQueueLike;
   private readonly format: string;
+  private readonly adapterLimits: AmbientGpuLimits | undefined;
   private readonly uniformBuffer: GpuBufferLike;
   private readonly seedBuffer: GpuBufferLike;
   private readonly bindGroup: unknown;
@@ -203,6 +215,7 @@ class WebGpuRenderer implements AmbientRenderer {
   private lastRenderTime: number | null = null;
   private destroyed = false;
   private failed = false;
+  private performanceState: AmbientPerformanceState = createAmbientPerformanceState();
 
   static async create(context: AmbientRendererContext): Promise<WebGpuRenderer | null> {
     const gpu = (navigator as unknown as { gpu?: GpuNamespaceLike }).gpu;
@@ -218,7 +231,8 @@ class WebGpuRenderer implements AmbientRenderer {
       canvas,
       gpuContext,
       device,
-      gpu.getPreferredCanvasFormat?.() ?? "bgra8unorm"
+      gpu.getPreferredCanvasFormat?.() ?? "bgra8unorm",
+      adapter.limits
     );
   }
 
@@ -227,7 +241,8 @@ class WebGpuRenderer implements AmbientRenderer {
     canvas: HTMLCanvasElement,
     gpuContext: GpuCanvasContextLike,
     device: GpuDeviceLike,
-    format: string
+    format: string,
+    adapterLimits: AmbientGpuLimits | undefined
   ) {
     this.root = context.root;
     this.canvas = canvas;
@@ -235,6 +250,7 @@ class WebGpuRenderer implements AmbientRenderer {
     this.device = device;
     this.queue = device.queue;
     this.format = format;
+    this.adapterLimits = adapterLimits;
     this.model = context.model;
     this.palette = context.palette;
     this.reducedMotion = context.reducedMotion;
@@ -257,7 +273,7 @@ class WebGpuRenderer implements AmbientRenderer {
       usage: GPU_BUFFER_USAGE_UNIFORM | GPU_BUFFER_USAGE_COPY_DST,
     });
     this.seedBuffer = device.createBuffer({
-      size: 12 * 8 * 4,
+      size: AMBIENT_SEED_BUFFER_BYTES,
       usage: GPU_BUFFER_USAGE_STORAGE | GPU_BUFFER_USAGE_COPY_DST,
     });
     this.bindGroup = device.createBindGroup({
@@ -309,6 +325,10 @@ class WebGpuRenderer implements AmbientRenderer {
   resize(model: AmbientMotionModel, size: AmbientCanvasSize) {
     this.model = model;
     this.size = size;
+    if (!ambientGpuLimitsSupportSize(this.adapterLimits, size)) {
+      this.fail();
+      return;
+    }
     this.canvas.width = size.backingWidth;
     this.canvas.height = size.backingHeight;
     this.canvas.style.width = `${size.cssWidth}px`;
@@ -405,14 +425,35 @@ class WebGpuRenderer implements AmbientRenderer {
       pass.draw(256, 3);
       pass.setPipeline(this.leafPipeline);
       pass.draw(6, this.model.seeds.length);
-      pass.setPipeline(this.leafOutlinePipeline);
-      pass.draw(9, this.model.seeds.length);
+      if (this.performanceState.tier === "full") {
+        pass.setPipeline(this.leafOutlinePipeline);
+        pass.draw(9, this.model.seeds.length);
+      }
       pass.end();
       this.queue.submit([encoder.finish()]);
       this.lastRenderTime = timestamp;
+      this.observeGpuCompletion();
     } catch {
       this.fail();
     }
+  }
+
+  private observeGpuCompletion() {
+    if (!this.queue.onSubmittedWorkDone) return;
+    const submittedAt = performance.now();
+    void this.queue
+      .onSubmittedWorkDone()
+      .then(() => {
+        if (this.destroyed || this.failed) return;
+        this.performanceState = recordAmbientGpuSample(
+          this.performanceState,
+          performance.now() - submittedAt
+        );
+        if (this.performanceState.fallback) this.fail();
+      })
+      .catch(() => {
+        // Queue completion is an optional performance signal; rendering stays active.
+      });
   }
 
   private fail() {
