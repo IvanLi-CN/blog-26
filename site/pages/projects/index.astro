@@ -3,46 +3,29 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import ProjectPoster from "../../components/projects/ProjectPoster.astro";
 import ProjectExternalLinks from "../../components/projects/ProjectExternalLinks.astro";
 import { getGroupedProjectCatalog, getProjectCardEntries, getProjectDetailPath, projectCatalog } from "../../lib/projects";
-import {
-  isPrimaryProjectPosterPriority,
-  isProjectPosterPriority,
-} from "../../lib/project-poster-media";
 import { getSnapshot } from "../../lib/public-site";
 import { toPublicSitePath } from "../../lib/runtime-urls";
 
 const snapshot = await getSnapshot();
 const groupedProjects = getGroupedProjectCatalog();
+const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
 ---
 <BaseLayout
   pathname="/projects"
-  title={`项目展墙 - ${snapshot.site.title}`}
-  description="按产品领域整理的公开项目展墙。主体进入站内案例，公开链接直达源码、文档、演示或产品入口。"
+  title={`项目 - ${snapshot.site.title}`}
+  description="浏览按产品领域整理的公开项目，进入完整案例，或前往源码、文档、演示与产品入口。"
 >
-  <section class="nature-container px-2 py-8 sm:px-6 lg:py-10">
-    <header class="projects-showcase-hero nature-surface nature-mobile-structural px-4 py-5 sm:px-8 sm:py-8">
-      <div class="projects-showcase-hero-head">
-        <div class="projects-showcase-hero-copy">
-          <span class="nature-kicker">Projects</span>
-          <h1 class="projects-showcase-title">项目展墙</h1>
-          <p class="projects-showcase-summary">
-            把近期仍在公开维护的项目按产品领域排开来看。先看海报和定位，再进入完整案例页或公开入口。
-          </p>
-        </div>
-
-        <div class="projects-showcase-stats">
-          <div class="projects-showcase-stat">
-            <span>公开项目</span>
-            <strong>{projectCatalog.length}</strong>
-          </div>
-          <div class="projects-showcase-stat">
-            <span>产品领域</span>
-            <strong>{groupedProjects.length}</strong>
-          </div>
-        </div>
-      </div>
+  <section class="nature-container px-2 py-10 sm:px-6 sm:py-16 lg:py-20">
+    <header class="mb-8 text-center sm:mb-12">
+      <span class="nature-kicker justify-center">Projects</span>
+      <h1 class="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">项目</h1>
+      <p class="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">
+        收录了近期仍在维护的 <strong class="whitespace-nowrap font-semibold text-[color:var(--nature-text)]">{projectCatalog.length} 个公开项目</strong>，涵盖
+        <strong class="whitespace-nowrap font-semibold text-[color:var(--nature-text)]">{groupedProjects.length} 个产品领域</strong>。先看海报和定位，再进入完整案例页或公开入口。
+      </p>
     </header>
 
-    <div class="projects-domain-stack">
+    <div class="projects-domain-stack nature-surface">
       {groupedProjects.map((group) => (
         <section id={group.id} class="projects-domain-section">
           <header class="projects-domain-head">
@@ -71,8 +54,8 @@ const groupedProjects = getGroupedProjectCatalog();
                       <ProjectPoster
                         project={project}
                         compact={true}
-                        priority={isProjectPosterPriority(project.slug)}
-                        fetchPriority={isPrimaryProjectPosterPriority(project.slug) ? "high" : "auto"}
+                        priority={project.slug === firstProjectSlug}
+                        fetchPriority={project.slug === firstProjectSlug ? "high" : "auto"}
                       />
                     </div>
                   </a>
@@ -115,86 +98,29 @@ const groupedProjects = getGroupedProjectCatalog();
   </section>
 
   <style>
-    .projects-showcase-hero {
-      display: grid;
-      gap: 1.6rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .projects-showcase-hero::after {
-      content: "";
-      position: absolute;
-      right: -8%;
-      bottom: -34%;
-      width: 24rem;
-      height: 24rem;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(var(--nature-accent-rgb), 0.18), transparent 68%);
-      pointer-events: none;
-    }
-
-    .projects-showcase-hero-head {
-      display: grid;
-      gap: 1.4rem;
-      align-items: end;
-    }
-
-    .projects-showcase-title {
-      margin: 0.85rem 0 0;
-      font-family: var(--font-display), "Noto Serif SC", serif;
-      font-size: clamp(3rem, 6vw, 5rem);
-      line-height: 0.92;
-      letter-spacing: -0.04em;
-      color: var(--nature-text);
-      text-wrap: balance;
-    }
-
-    .projects-showcase-summary {
-      margin: 1.1rem 0 0;
-      max-width: 34rem;
-      font-size: 0.96rem;
-      line-height: 1.8;
-      color: var(--nature-text-soft);
-      text-wrap: pretty;
-    }
-
-    .projects-showcase-stats {
-      display: grid;
-      gap: 0.8rem;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .projects-showcase-stat {
-      display: grid;
-      gap: 0.3rem;
-      padding: 1rem 1.1rem;
-      border: 1px solid rgba(var(--nature-border-rgb), 0.14);
-      border-radius: 1.15rem;
-      background: rgba(var(--nature-highlight-rgb), 0.32);
-    }
-
-    .projects-showcase-stat span {
-      font-size: 0.78rem;
-      letter-spacing: 0.08em;
-      color: var(--nature-text-faint);
-    }
-
-    .projects-showcase-stat strong {
-      font-size: 1.7rem;
-      line-height: 1;
-      color: var(--nature-text);
-    }
-
     .projects-domain-stack {
       display: grid;
-      gap: 2.9rem;
-      margin-top: 2.8rem;
     }
 
     .projects-domain-section {
       display: grid;
-      gap: 1.55rem;
+      gap: 1.35rem;
+      min-width: 0;
+      padding: 1.75rem 1.75rem 1.1rem;
+    }
+
+    .projects-domain-section + .projects-domain-section {
+      position: relative;
+    }
+
+    .projects-domain-section + .projects-domain-section::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      inset-inline: 1.75rem;
+      height: 1px;
+      background: rgba(var(--nature-border-rgb), 0.24);
+      pointer-events: none;
     }
 
     .projects-domain-rail {
@@ -203,11 +129,6 @@ const groupedProjects = getGroupedProjectCatalog();
       --showcase-scrollbar-size: 0.78rem;
       --showcase-scrollbar-inset: 0.12rem;
       --showcase-scrollbar-offset: 0.22rem;
-    }
-
-    .projects-domain-section + .projects-domain-section {
-      padding-top: 2.8rem;
-      border-top: 1px solid rgba(var(--nature-border-rgb), 0.12);
     }
 
     .projects-domain-head {
@@ -220,9 +141,9 @@ const groupedProjects = getGroupedProjectCatalog();
     .projects-domain-title {
       margin: 0;
       font-family: var(--font-display), "Noto Serif SC", serif;
-      font-size: clamp(2.15rem, 3vw, 3rem);
-      line-height: 1;
-      letter-spacing: -0.04em;
+      font-size: 2rem;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
       color: var(--nature-text);
       text-wrap: balance;
     }
@@ -375,6 +296,7 @@ const groupedProjects = getGroupedProjectCatalog();
 
     .projects-poster-heading {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 0.6rem;
@@ -386,6 +308,11 @@ const groupedProjects = getGroupedProjectCatalog();
       min-width: 0;
       color: inherit;
       text-decoration: none;
+    }
+
+    .projects-poster-title-link {
+      flex: 1 1 0;
+      min-width: min(100%, 6rem);
     }
 
     .projects-poster-title {
@@ -416,6 +343,7 @@ const groupedProjects = getGroupedProjectCatalog();
 
     .projects-poster-heading :global(.project-external-links) {
       flex: none;
+      max-width: 100%;
       padding-top: 0;
       opacity: 0.48;
       transition: opacity 180ms var(--nature-ease);
@@ -443,12 +371,6 @@ const groupedProjects = getGroupedProjectCatalog();
       background: rgba(var(--nature-highlight-rgb), 0.24);
       color: var(--nature-accent-strong);
       box-shadow: none;
-    }
-
-    @media (min-width: 960px) {
-      .projects-showcase-hero-head {
-        grid-template-columns: minmax(0, 1fr) 16rem;
-      }
     }
 
     @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
@@ -491,21 +413,17 @@ const groupedProjects = getGroupedProjectCatalog();
     }
 
     @media (max-width: 767px) {
-      .projects-showcase-hero {
-        gap: 1.2rem;
+      .projects-domain-title {
+        font-size: 1.7rem;
       }
 
-      .projects-showcase-stats {
-        grid-template-columns: 1fr 1fr;
+      .projects-domain-section {
+        gap: 1rem;
+        padding: 1.1rem 1rem 0.6rem;
       }
 
-      .projects-domain-stack {
-        gap: 2rem;
-        margin-top: 2rem;
-      }
-
-      .projects-domain-section + .projects-domain-section {
-        padding-top: 2rem;
+      .projects-domain-section + .projects-domain-section::before {
+        inset-inline: 1rem;
       }
 
       .projects-domain-grid {

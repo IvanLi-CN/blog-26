@@ -83,7 +83,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Each generated 480w AVIF/WebP variant is limited to 100/150 KiB and each 960w variant to 250/350 KiB. The visual-order first three renderable posters may transfer at most 750 KiB as AVIF or 1.05 MiB as WebP at 960w.
 - Each generated 640w social-preview AVIF/WebP variant is limited to 100/150 KiB and each 1280w variant to 250/350 KiB.
 - Non-themed posters expose AVIF-first responsive `picture` candidates with WebP fallback, intrinsic dimensions, and a `sizes` contract. The light/dark poster pair binds only the resolved theme candidate at runtime, clears loading state on a theme change, and leaves the low-resolution preview and domain fallback visible on failure. Social previews use the same AVIF-first responsive contract, with a stable 2:1 frame and theme-aware candidate binding.
-- The first three renderable catalog posters use `eager`; only the first gets `fetchpriority=high`. Detail-page poster media is eager and high priority. Other catalog posters stay lazy.
+- On `/projects`, the first catalog poster uses `eager` and `fetchpriority=high`; every later catalog poster stays lazy. Detail-page poster media is eager and high priority.
 - Poster and social-preview reveals use a 180ms opacity transition only when motion is allowed. Reduced-motion mode removes that transition without changing the fallback or layout.
 - Project detail pages render a social preview only when a generated repository-provided asset exists. The image keeps a stable 2:1 intrinsic ratio and does not reserve a fixed height outside that ratio.
 
@@ -94,6 +94,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Project bodies live under `site/content/projects/` and remain continuous, project-specific prose. A missing body falls back to verified catalog material without generic filler cards.
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 - The project catalog uses six single-name groups: 开发工具 (3), 效率工具 (2), Web 产品 (2), 硬件产品 (3), 设备控制 (3), and 运维工具 (2). Every group stays within three cards, and the homepage selects one representative project from each group.
+- The `/projects` page uses the title `项目` and shows the public-project and product-domain totals in its introduction. All domain groups share one surface, with subtle horizontal separators between sections and a horizontal poster rail in each group.
+- Project title and shortcut links reflow when narrow space or enlarged text requires it; they must remain visible and must not create horizontal page overflow.
 
 ### 4.8 Mobile public header motion
 
@@ -153,7 +155,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density.
 13. Project posters render in 4:5 frames with a continuously readable image or placeholder state, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render in a stable intrinsic 2:1 frame with responsive AVIF/WebP candidates, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
 14. Poster asset generation and production builds fail when a raw public PNG, a missing generated variant, an oversized variant, or an oversized first-row transfer is detected.
-15. The project catalog contains 15 entries across the six groups above; `/projects/spoti-bind` renders SpotiBind, and the homepage presents six featured projects derived from those groups.
+15. The project catalog contains 15 entries across the six groups above; `/projects/spoti-bind` renders SpotiBind, and the homepage presents six featured projects derived from those groups. The project index shows both catalog totals, presents its groups in one shared surface, and keeps all poster titles and shortcuts usable at narrow widths and enlarged text.
 16. On mobile public routes, the header follows the documented scroll, speed,
     release-settling, focus-order, resize, router, and reduced-motion contracts;
     desktop public behavior remains unchanged.
