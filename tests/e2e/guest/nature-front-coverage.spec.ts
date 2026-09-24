@@ -51,7 +51,7 @@ test.describe("Nature frontend public coverage", () => {
       { path: "/tags", heading: "浏览所有标签" },
       { path: "/search", heading: "搜索内容" },
       { path: "/about", heading: /你好，我是 Ivan/ },
-      { path: "/projects", heading: "项目展墙" },
+      { path: "/projects", heading: "项目" },
     ] as const;
 
     for (const route of routes) {
@@ -373,6 +373,9 @@ test.describe("Nature frontend public coverage", () => {
   test("project catalog keeps each domain within the card-density contract", async ({ page }) => {
     await gotoWithTheme(page, "/projects", "light");
 
+    await expect(page.getByText("15 个公开项目", { exact: true })).toBeVisible();
+    await expect(page.getByText("6 个产品领域", { exact: true })).toBeVisible();
+
     const expectedGroups = [
       { title: "开发工具", count: 3 },
       { title: "效率工具", count: 2 },
@@ -381,8 +384,14 @@ test.describe("Nature frontend public coverage", () => {
       { title: "设备控制", count: 3 },
       { title: "运维工具", count: 2 },
     ] as const;
-    const sections = page.locator(".projects-domain-section");
+    const panel = page.locator(".projects-domain-stack.nature-surface");
+    await expect(panel).toHaveCount(1);
+    const sections = panel.locator(":scope > .projects-domain-section");
     await expect(sections).toHaveCount(expectedGroups.length);
+    const dividerContent = await sections
+      .nth(1)
+      .evaluate((section) => getComputedStyle(section, "::before").getPropertyValue("content"));
+    expect(dividerContent).not.toBe("none");
 
     for (const [index, group] of expectedGroups.entries()) {
       const section = sections.nth(index);
@@ -390,6 +399,11 @@ test.describe("Nature frontend public coverage", () => {
       await expect(section.locator(".projects-poster-card")).toHaveCount(group.count);
       await expect(section.locator(".projects-domain-count")).toHaveText(`${group.count} 项`);
     }
+
+    const projectImages = page.locator(".projects-poster-card img");
+    await expect(projectImages.first()).toHaveAttribute("loading", "eager");
+    await expect(projectImages.first()).toHaveAttribute("fetchpriority", "high");
+    await expect(projectImages.nth(1)).toHaveAttribute("loading", "lazy");
 
     await gotoWithTheme(page, "/", "light");
     await expect(page.getByRole("heading", { name: "精选项目 (6)", exact: true })).toBeVisible();
