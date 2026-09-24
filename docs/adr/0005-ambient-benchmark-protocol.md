@@ -22,7 +22,7 @@ backing-buffer values remain browser proxy measurements rather than system GPU
 or power claims. The temporary fixtures and diagnostics are removed from the
 final public delivery; at the time of this benchmark the production surface
 was the layered Canvas renderer recorded in ADR 0004. The current production
-surface is WebGPU with static SVG fallback as recorded in ADR 0006.
+surface is WebGPU with static SVG fallback as recorded in ADR 0007.
 
 ## Controlled Browser Result
 
