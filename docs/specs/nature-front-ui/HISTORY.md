@@ -30,4 +30,5 @@
 - 2026-09-23: The ambient quality floor separated wind and leaf backing policies so wind paths stay at CSS-pixel resolution; temporary Canvas/WebGPU fixtures were used for foreground-on and foreground-off browser-proxy diagnostics and removed from the final public delivery.
 - 2026-09-23: Review hardening kept extreme viewport backing stores within their layer budgets, skipped hidden palette redraws, and stopped scheduling when a Canvas context cannot be created; the benchmark ADR records the fixture-versus-production backing-policy distinction.
 - 2026-09-24: The ambient production path moved to a transparent native-DPR WebGPU canvas with direct visible-page requestAnimationFrame scheduling; a complete static SVG scene now covers reduced-motion, unsupported, initialization-failure, and device-loss cases while CSS remains responsible for themed background color.
+- 2026-09-24: Visible WebGPU submissions are capped at approximately 30Hz using requestAnimationFrame as the scheduling clock, reducing redundant GPU work while preserving the same motion model and lifecycle fallbacks.
 - Detailed final evidence and its binding metadata remain in `SPEC.md`.

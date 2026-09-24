@@ -6,6 +6,8 @@ const GPU_BUFFER_USAGE_UNIFORM = 0x40;
 const GPU_BUFFER_USAGE_COPY_DST = 0x08;
 const GPU_SHADER_STAGE_VERTEX = 0x1;
 const GPU_SHADER_STAGE_FRAGMENT = 0x2;
+const AMBIENT_TARGET_FPS = 30;
+const AMBIENT_FRAME_INTERVAL_MS = 1000 / AMBIENT_TARGET_FPS;
 
 type GpuBufferLike = { destroy(): void };
 type GpuTextureLike = { createView(): unknown };
@@ -198,6 +200,7 @@ class WebGpuRenderer implements AmbientRenderer {
   private hidden = false;
   private running = false;
   private raf: number | null = null;
+  private lastRenderTime: number | null = null;
   private destroyed = false;
   private failed = false;
 
@@ -350,6 +353,7 @@ class WebGpuRenderer implements AmbientRenderer {
 
   private stop() {
     this.running = false;
+    this.lastRenderTime = null;
     if (this.raf !== null) window.cancelAnimationFrame(this.raf);
     this.raf = null;
   }
@@ -367,7 +371,12 @@ class WebGpuRenderer implements AmbientRenderer {
     this.raf = window.requestAnimationFrame((timestamp) => {
       this.raf = null;
       if (!this.running || this.destroyed || this.failed) return;
-      this.render(timestamp);
+      if (
+        this.lastRenderTime === null ||
+        timestamp - this.lastRenderTime >= AMBIENT_FRAME_INTERVAL_MS
+      ) {
+        this.render(timestamp);
+      }
       this.schedule();
     });
   }
@@ -400,6 +409,7 @@ class WebGpuRenderer implements AmbientRenderer {
       pass.draw(9, this.model.seeds.length);
       pass.end();
       this.queue.submit([encoder.finish()]);
+      this.lastRenderTime = timestamp;
     } catch {
       this.fail();
     }

@@ -52,7 +52,8 @@ The public shell mounts a transparent native-DPR WebGPU ambient renderer over
 the CSS theme background. A deterministic motion model drives three wind paths
 and the responsive desktop/mobile leaf count. The WebGPU pass uses premultiplied
 alpha and a transparent clear value, while visible pages use direct
-`requestAnimationFrame` scheduling and hidden pages stop submitting commands.
+`requestAnimationFrame` scheduling at approximately 30Hz and hidden pages stop
+submitting commands.
 The shell first mounts a complete static SVG scene so reduced-motion users and
 unsupported or failed WebGPU initialization have an immediate, vector-quality
 fallback. Device loss, context/pipeline failure, theme changes, resize, and

@@ -35,6 +35,7 @@ describe("ambient renderer capability detection", () => {
     let configure: Record<string, unknown> | null = null;
     let submits = 0;
     let rafRequests = 0;
+    let frameCallback: FrameRequestCallback | null = null;
     let resolveLost: (() => void) | null = null;
     let unavailable = 0;
     const device = {
@@ -88,8 +89,9 @@ describe("ambient renderer capability detection", () => {
     const originalCancelRaf = window.cancelAnimationFrame;
     HTMLCanvasElement.prototype.getContext = ((kind: string) =>
       kind === "webgpu" ? canvasContext : null) as typeof HTMLCanvasElement.prototype.getContext;
-    window.requestAnimationFrame = (() => {
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
       rafRequests += 1;
+      frameCallback = callback;
       return rafRequests;
     }) as typeof window.requestAnimationFrame;
     window.cancelAnimationFrame = (() => {
@@ -123,6 +125,12 @@ describe("ambient renderer capability detection", () => {
       expect(configure).toMatchObject({ alphaMode: "premultiplied" });
       expect((root.querySelector("canvas") as HTMLCanvasElement).width).toBe(2880);
       expect(submits).toBeGreaterThan(0);
+      const submitCountAfterResize = submits;
+      const baseline = performance.now();
+      frameCallback?.(baseline + 10);
+      expect(submits).toBe(submitCountAfterResize);
+      frameCallback?.(baseline + 40);
+      expect(submits).toBeGreaterThan(submitCountAfterResize);
       const submitCount = submits;
       renderer?.setVisibility(true);
       expect(submits).toBe(submitCount);

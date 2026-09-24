@@ -18,8 +18,9 @@ Use one transparent, native-DPR WebGPU Canvas as the production renderer for
 normal-motion pages. The page's existing themed CSS background remains below
 the canvas; the render pass clears with alpha zero and uses premultiplied
 alpha, so WebGPU draws only the three wind paths and responsive leaf instances.
-Visible pages schedule direct requestAnimationFrame work. Hidden documents stop
-submitting commands and resume on return.
+Visible pages use requestAnimationFrame as a clock and submit at approximately
+30Hz, avoiding unnecessary GPU work while keeping motion continuous. Hidden
+documents stop submitting commands and resume on return.
 
 Use one complete, deterministic SVG scene as the fallback. It contains three
 independent wind paths and seven or twelve independent leaf groups, depending
@@ -37,7 +38,8 @@ benchmark selector or diagnostics object.
 
 - Layered Canvas 2D remains a viable compatibility implementation, but it is
   no longer the preferred normal-motion path after the controlled renderer
-  comparison and the requirement for a smooth uncapped visible animation.
+  comparison and the requirement for a smooth, approximately 30Hz visible
+  animation.
 - Animated SVG was rejected because retained-mode path and transform animation
   creates unnecessary browser paint/compositor work for the full-viewport
   scene.
