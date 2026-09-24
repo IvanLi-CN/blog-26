@@ -213,6 +213,7 @@ class WebGpuRenderer implements AmbientRenderer {
   private running = false;
   private raf: number | null = null;
   private lastRenderTime: number | null = null;
+  private gpuCompletionPending = false;
   private destroyed = false;
   private failed = false;
   private performanceState: AmbientPerformanceState = createAmbientPerformanceState();
@@ -256,58 +257,72 @@ class WebGpuRenderer implements AmbientRenderer {
     this.reducedMotion = context.reducedMotion;
     this.onUnavailable = context.onUnavailable;
 
-    const shader = device.createShaderModule({ code: shaderCode });
-    const layout = device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPU_SHADER_STAGE_VERTEX | GPU_SHADER_STAGE_FRAGMENT,
-          buffer: { type: "uniform" },
+    let uniformBuffer: GpuBufferLike | undefined;
+    let seedBuffer: GpuBufferLike | undefined;
+    try {
+      const shader = device.createShaderModule({ code: shaderCode });
+      const layout = device.createBindGroupLayout({
+        entries: [
+          {
+            binding: 0,
+            visibility: GPU_SHADER_STAGE_VERTEX | GPU_SHADER_STAGE_FRAGMENT,
+            buffer: { type: "uniform" },
+          },
+          {
+            binding: 1,
+            visibility: GPU_SHADER_STAGE_VERTEX,
+            buffer: { type: "read-only-storage" },
+          },
+        ],
+      });
+      const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [layout] });
+      uniformBuffer = device.createBuffer({
+        size: 48,
+        usage: GPU_BUFFER_USAGE_UNIFORM | GPU_BUFFER_USAGE_COPY_DST,
+      });
+      seedBuffer = device.createBuffer({
+        size: AMBIENT_SEED_BUFFER_BYTES,
+        usage: GPU_BUFFER_USAGE_STORAGE | GPU_BUFFER_USAGE_COPY_DST,
+      });
+      this.uniformBuffer = uniformBuffer;
+      this.seedBuffer = seedBuffer;
+      this.bindGroup = device.createBindGroup({
+        layout,
+        entries: [
+          { binding: 0, resource: { buffer: uniformBuffer } },
+          { binding: 1, resource: { buffer: seedBuffer } },
+        ],
+      });
+      const target = {
+        format,
+        blend: {
+          color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" },
+          alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
         },
-        { binding: 1, visibility: GPU_SHADER_STAGE_VERTEX, buffer: { type: "read-only-storage" } },
-      ],
-    });
-    const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [layout] });
-    this.uniformBuffer = device.createBuffer({
-      size: 48,
-      usage: GPU_BUFFER_USAGE_UNIFORM | GPU_BUFFER_USAGE_COPY_DST,
-    });
-    this.seedBuffer = device.createBuffer({
-      size: AMBIENT_SEED_BUFFER_BYTES,
-      usage: GPU_BUFFER_USAGE_STORAGE | GPU_BUFFER_USAGE_COPY_DST,
-    });
-    this.bindGroup = device.createBindGroup({
-      layout,
-      entries: [
-        { binding: 0, resource: { buffer: this.uniformBuffer } },
-        { binding: 1, resource: { buffer: this.seedBuffer } },
-      ],
-    });
-    const target = {
-      format,
-      blend: {
-        color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" },
-        alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
-      },
-    };
-    this.currentPipeline = device.createRenderPipeline({
-      layout: pipelineLayout,
-      vertex: { module: shader, entryPoint: "currentVertex" },
-      fragment: { module: shader, entryPoint: "fragmentMain", targets: [target] },
-      primitive: { topology: "line-strip" },
-    });
-    this.leafPipeline = device.createRenderPipeline({
-      layout: pipelineLayout,
-      vertex: { module: shader, entryPoint: "leafVertex" },
-      fragment: { module: shader, entryPoint: "fragmentMain", targets: [target] },
-      primitive: { topology: "triangle-list" },
-    });
-    this.leafOutlinePipeline = device.createRenderPipeline({
-      layout: pipelineLayout,
-      vertex: { module: shader, entryPoint: "leafOutlineVertex" },
-      fragment: { module: shader, entryPoint: "fragmentMain", targets: [target] },
-      primitive: { topology: "line-strip" },
-    });
+      };
+      this.currentPipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: { module: shader, entryPoint: "currentVertex" },
+        fragment: { module: shader, entryPoint: "fragmentMain", targets: [target] },
+        primitive: { topology: "line-strip" },
+      });
+      this.leafPipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: { module: shader, entryPoint: "leafVertex" },
+        fragment: { module: shader, entryPoint: "fragmentMain", targets: [target] },
+        primitive: { topology: "triangle-list" },
+      });
+      this.leafOutlinePipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: { module: shader, entryPoint: "leafOutlineVertex" },
+        fragment: { module: shader, entryPoint: "fragmentMain", targets: [target] },
+        primitive: { topology: "line-strip" },
+      });
+    } catch (error) {
+      uniformBuffer?.destroy();
+      seedBuffer?.destroy();
+      throw error;
+    }
 
     device.lost?.then(
       () => this.fail(),
@@ -439,10 +454,17 @@ class WebGpuRenderer implements AmbientRenderer {
   }
 
   private observeGpuCompletion() {
-    if (!this.queue.onSubmittedWorkDone) return;
+    if (!this.queue.onSubmittedWorkDone || this.gpuCompletionPending) return;
+    this.gpuCompletionPending = true;
     const submittedAt = performance.now();
-    void this.queue
-      .onSubmittedWorkDone()
+    let completion: Promise<void>;
+    try {
+      completion = this.queue.onSubmittedWorkDone();
+    } catch {
+      this.gpuCompletionPending = false;
+      return;
+    }
+    void completion
       .then(() => {
         if (this.destroyed || this.failed) return;
         this.performanceState = recordAmbientGpuSample(
@@ -453,6 +475,9 @@ class WebGpuRenderer implements AmbientRenderer {
       })
       .catch(() => {
         // Queue completion is an optional performance signal; rendering stays active.
+      })
+      .finally(() => {
+        this.gpuCompletionPending = false;
       });
   }
 

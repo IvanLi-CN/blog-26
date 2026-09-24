@@ -38,6 +38,7 @@ describe("ambient renderer capability detection", () => {
     let frameCallback: FrameRequestCallback | null = null;
     let resolveLost: (() => void) | null = null;
     let unavailable = 0;
+    let completionCalls = 0;
     const device = {
       queue: {
         writeBuffer() {
@@ -45,6 +46,12 @@ describe("ambient renderer capability detection", () => {
         },
         submit() {
           submits += 1;
+        },
+        onSubmittedWorkDone() {
+          completionCalls += 1;
+          return new Promise<void>(() => {
+            // Simulate a queue completion that never settles.
+          });
         },
       },
       lost: new Promise<void>((resolve) => {
@@ -132,6 +139,9 @@ describe("ambient renderer capability detection", () => {
       expect(submits).toBe(submitCountAfterResize);
       frameCallback?.(1040);
       expect(submits).toBeGreaterThan(submitCountAfterResize);
+      expect(completionCalls).toBe(1);
+      frameCallback?.(1080);
+      expect(completionCalls).toBe(1);
       const submitCount = submits;
       renderer?.setVisibility(true);
       expect(submits).toBe(submitCount);
@@ -144,6 +154,80 @@ describe("ambient renderer capability detection", () => {
       window.requestAnimationFrame = originalRaf;
       window.cancelAnimationFrame = originalCancelRaf;
       performance.now = originalPerformanceNow;
+      Object.defineProperty(navigator, "gpu", { configurable: true, value: originalGpu });
+    }
+  });
+
+  test("releases buffers when pipeline initialization fails", async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const originalGpu = (navigator as unknown as { gpu?: unknown }).gpu;
+    const canvasContext = {
+      configure() {
+        // The renderer should fail before configuration.
+      },
+      getCurrentTexture: () => ({ createView: () => ({}) }),
+    };
+    let destroyedBuffers = 0;
+    const device = {
+      queue: {
+        writeBuffer() {
+          // No GPU writes occur before pipeline construction completes.
+        },
+        submit() {
+          // No command submission occurs before pipeline construction completes.
+        },
+      },
+      createShaderModule: () => ({}),
+      createBuffer: () => ({
+        destroy() {
+          destroyedBuffers += 1;
+        },
+      }),
+      createBindGroupLayout: () => ({}),
+      createPipelineLayout: () => ({}),
+      createBindGroup: () => ({}),
+      createRenderPipeline: () => {
+        throw new Error("pipeline unsupported");
+      },
+      createCommandEncoder: () => ({
+        beginRenderPass: () => ({
+          setPipeline() {
+            // The failing pipeline is raised before a pass can execute.
+          },
+          setBindGroup() {
+            // The failing pipeline is raised before a pass can execute.
+          },
+          draw() {
+            // The failing pipeline is raised before a pass can execute.
+          },
+          end() {
+            // The failing pipeline is raised before a pass can execute.
+          },
+        }),
+        finish: () => ({}),
+      }),
+    };
+    HTMLCanvasElement.prototype.getContext = ((kind: string) =>
+      kind === "webgpu" ? canvasContext : null) as typeof HTMLCanvasElement.prototype.getContext;
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: {
+        requestAdapter: async () => ({ requestDevice: async () => device }),
+        getPreferredCanvasFormat: () => "bgra8unorm",
+      },
+    });
+
+    try {
+      const renderer = await createWebGpuRenderer({
+        root: document.createElement("div"),
+        model: createAmbientMotionModel(1440, 1000),
+        palette: DEFAULT_AMBIENT_PALETTE,
+        reducedMotion: false,
+      });
+      expect(renderer).toBeNull();
+      expect(destroyedBuffers).toBe(2);
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext;
       Object.defineProperty(navigator, "gpu", { configurable: true, value: originalGpu });
     }
   });
