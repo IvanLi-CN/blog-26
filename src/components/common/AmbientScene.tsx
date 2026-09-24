@@ -85,6 +85,7 @@ export default function AmbientScene() {
         candidate?.destroy();
         return;
       }
+      candidate.setVisibility(document.hidden);
       candidate.mount();
       candidate.resize(model, size());
       if (candidateFailed) {
@@ -93,12 +94,6 @@ export default function AmbientScene() {
         return;
       }
       candidate.setPalette(palette);
-      if (candidateFailed) {
-        candidate.destroy();
-        if (!disposed && token === generation && !reducedMotion.matches) mountSvg();
-        return;
-      }
-      candidate.setVisibility(document.hidden);
       if (candidateFailed) {
         candidate.destroy();
         if (!disposed && token === generation && !reducedMotion.matches) mountSvg();

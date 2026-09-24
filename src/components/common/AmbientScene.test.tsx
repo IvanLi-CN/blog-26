@@ -68,13 +68,15 @@ describe("AmbientScene coordinator", () => {
 
   test("promotes the initial SVG scene to WebGPU and falls back after device loss", async () => {
     let resolveLost: (() => void) | undefined;
+    let submits = 0;
+    const originalHidden = Object.getOwnPropertyDescriptor(document, "hidden");
     const device = {
       queue: {
         writeBuffer() {
           // The coordinator test only needs a valid queue shape.
         },
         submit() {
-          // The coordinator test only needs a valid queue shape.
+          submits += 1;
         },
       },
       lost: new Promise<void>((resolve) => {
@@ -140,12 +142,14 @@ describe("AmbientScene coordinator", () => {
         // The coordinator removes the listener during cleanup.
       },
     })) as typeof window.matchMedia;
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
 
     try {
       const { container } = render(<AmbientScene />);
       expect(container.querySelector("svg.nature-ambient-svg")).toBeTruthy();
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(container.querySelector("canvas.nature-ambient-webgpu")).toBeTruthy();
+      expect(submits).toBe(0);
       resolveLost?.();
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(container.querySelector("svg.nature-ambient-svg")).toBeTruthy();
@@ -153,6 +157,7 @@ describe("AmbientScene coordinator", () => {
       HTMLCanvasElement.prototype.getContext = originalGetContext;
       window.requestAnimationFrame = originalRaf;
       window.cancelAnimationFrame = originalCancelRaf;
+      if (originalHidden) Object.defineProperty(document, "hidden", originalHidden);
     }
   });
 });
