@@ -68,4 +68,5 @@ adapter limits only.
   visual quality floor remains native-DPR rendering or the complete vector SVG
   fallback.
 - ADR 0004 and ADR 0005 remain historical records of the Canvas decision and
-  benchmark protocol. This ADR is the active renderer decision.
+  benchmark protocol. ADR 0007 is the active renderer decision; this ADR is the
+  historical initial WebGPU strategy.
