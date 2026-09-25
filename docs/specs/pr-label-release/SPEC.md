@@ -6,7 +6,27 @@
 
 ## Related ADRs
 
-- None
+- [ADR 0008](../../adr/0008-ci-dependency-freshness-policy.md)
+
+## Context and Scope
+
+This spec owns the label-driven release workflow and the CI quality gates that must pass before that workflow can publish frontend, backend, unified-image, or EdgeOne outputs. It covers reproducible installation, functional validation, release intent, and current-main source integrity. It does not own dependency upgrade scheduling or vulnerability scanning policy.
+
+## Requirements
+
+- `REQ-CI-FRESHNESS`: CI MUST NOT execute `bun outdated` or fail because a newer registry version exists.
+- `REQ-CI-REPRODUCIBLE`: CI MUST keep `bun install --frozen-lockfile` as a blocking reproducible-installation check.
+- `REQ-CI-FUNCTIONAL`: CI MUST keep lint, unit, worktree bootstrap, build, and Docker smoke checks as blocking functional gates.
+- `REQ-RELEASE-INTENT`: Release publication MUST use the validated PR `type:*`, `channel:*`, and `release:*` label contract.
+- `REQ-RELEASE-CURRENT-MAIN`: Release publication MUST use the exact current `main` head and MUST reject stale or non-main source SHAs before publication.
+
+## Verification
+
+- `VER-CI-FRESHNESS`: Inspect the CI workflow and run the lint job against a candidate with newer registry versions; covers: `REQ-CI-FRESHNESS`.
+- `VER-CI-REPRODUCIBLE`: Run `bun install --frozen-lockfile` and confirm the lockfile remains unchanged; covers: `REQ-CI-REPRODUCIBLE`.
+- `VER-CI-FUNCTIONAL`: Run lint, unit, worktree, build, Docker smoke, and applicable E2E checks; covers: `REQ-CI-FUNCTIONAL`.
+- `VER-RELEASE-INTENT`: Run the label gate and inspect the release intent resolution for the labeled repair PR; covers: `REQ-RELEASE-INTENT`.
+- `VER-RELEASE-CURRENT-MAIN`: Inspect release prepare checks and the post-merge workflow source SHA; covers: `REQ-RELEASE-CURRENT-MAIN`.
 
 ## 1. Background
 
@@ -122,6 +142,13 @@ Unified Docker image release:
 - Release job summaries and publish job results are the source of truth for the actual publication outcome.
 - The release-owning agent reports successful publication or failure to the owner after inspecting the release workflow.
 - The release workflow does not write a release result comment to the source PR.
+
+### 4.8 CI quality gate contract
+
+- `bun install --frozen-lockfile` remains a blocking check for reproducible dependency installation.
+- `bun run check`, unit tests, worktree bootstrap, production build, and Docker smoke checks remain blocking functional quality gates.
+- CI does not run `bun outdated`; registry freshness is not a required merge or release gate.
+- Dependency declarations and `bun.lock` changes remain independent maintenance work and are not implied by a passing CI run.
 
 ## 5. Implementation decisions
 
