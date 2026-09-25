@@ -15,7 +15,7 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
   title={`项目 - ${snapshot.site.title}`}
   description="浏览按产品领域整理的公开项目，进入完整案例，或前往源码、文档、演示与产品入口。"
 >
-  <section class="nature-container px-2 py-10 sm:px-6 sm:py-16 lg:py-20">
+  <section class="nature-container px-1 py-10 sm:px-6 sm:py-16 lg:py-20">
     <header class="mb-8 text-center sm:mb-12">
       <span class="nature-kicker justify-center">Projects</span>
       <h1 class="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">项目</h1>
@@ -451,6 +451,43 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
 
       .projects-poster-heading .project-external-links {
         gap: 0.35rem;
+      }
+    }
+
+    @media (max-width: 639px) {
+      .projects-domain-stack {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+
+      .projects-domain-section {
+        padding: 1.25rem 0 1rem;
+      }
+
+      .projects-domain-section + .projects-domain-section::before {
+        inset-inline: 0;
+      }
+
+      .projects-domain-rail {
+        margin-right: -1rem;
+      }
+
+      .projects-domain-grid {
+        padding-right: 1rem;
+      }
+
+      .projects-poster-card {
+        flex-basis: min(24rem, 85vw);
+        min-width: min(24rem, 85vw);
+      }
+    }
+
+    @media (max-width: 375px) {
+      .projects-domain-rail {
+        margin-right: -0.75rem;
       }
     }
 

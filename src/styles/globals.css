@@ -1439,7 +1439,23 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   }
 
   .nature-timeline-card {
-    border-radius: var(--nature-radius-md);
+    padding: 0 0 1.25rem !important;
+    border: 0;
+    border-bottom: 1px solid var(--nature-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .nature-timeline-item[data-is-last="true"] .nature-timeline-card {
+    border-bottom: 0;
+  }
+
+  .nature-timeline-card:is(:hover, :focus-within) {
+    transform: none !important;
+    border-color: var(--nature-line);
+    box-shadow: none;
   }
 }
 
@@ -1449,7 +1465,7 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   }
 
   .nature-timeline-card {
-    padding: 0.875rem !important;
+    padding: 0 0 1rem !important;
   }
 }
 

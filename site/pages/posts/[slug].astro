@@ -68,10 +68,10 @@ const structuredData = {
 >
   <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
-  <section class="nature-detail-container px-2 py-8 sm:px-6 sm:py-10 lg:py-14">
+  <section class="nature-detail-container post-detail-layout px-2 py-8 sm:px-6 sm:py-10 lg:py-14">
     <article class="nature-reading-measure">
       <header class="space-y-6">
-        <div class="nature-surface px-4 py-5 sm:px-8 sm:py-7">
+        <div class="nature-surface post-detail-header px-4 py-5 sm:px-8 sm:py-7">
           <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
             <span class="nature-chip nature-chip-info gap-1">
               <Icon name="tabler:clock" className="h-3.5 w-3.5" />
@@ -111,7 +111,7 @@ const structuredData = {
         </div>
 
         {imageSrc ? (
-          <div class="overflow-hidden rounded-[var(--nature-radius-lg)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.78)] p-2.5 shadow-[0_18px_40px_rgba(8,21,16,0.12)] sm:p-3">
+          <div class="post-detail-cover overflow-hidden rounded-[var(--nature-radius-lg)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.78)] p-2.5 shadow-[0_18px_40px_rgba(8,21,16,0.12)] sm:p-3">
             <img src={imageSrc} class="max-h-[60vh] w-full rounded-[var(--nature-radius-md)] object-contain" alt={post.title} loading="lazy" />
           </div>
         ) : (
@@ -119,7 +119,7 @@ const structuredData = {
         )}
       </header>
 
-      <div class="nature-panel mt-6 px-4 py-5 sm:mt-8 sm:px-8 sm:py-7">
+      <div class="nature-panel post-detail-body mt-6 px-4 py-5 sm:mt-8 sm:px-8 sm:py-7">
         <MarkdownRenderer
           client:visible={{ rootMargin: "480px" }}
           content={post.body}
@@ -162,3 +162,48 @@ const structuredData = {
     </section>
   )}
 </BaseLayout>
+
+<style>
+  @media (max-width: 639px) {
+    .post-detail-layout {
+      padding-inline: 0;
+    }
+
+    .post-detail-header,
+    .post-detail-body {
+      padding-inline: 0.25rem;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .post-detail-body:is(:hover, :focus-within) {
+      transform: none;
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .post-detail-cover {
+      width: calc(100% + 1.5rem);
+      margin-inline: -0.75rem;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .post-detail-cover img {
+      border-radius: 0;
+    }
+  }
+
+  @media (max-width: 375px) {
+    .post-detail-cover {
+      width: calc(100% + 1rem);
+      margin-inline: -0.5rem;
+    }
+  }
+</style>
