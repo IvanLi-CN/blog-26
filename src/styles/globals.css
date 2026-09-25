@@ -1457,6 +1457,25 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     border-color: var(--nature-line);
     box-shadow: none;
   }
+
+  .search-result-card {
+    border: 0;
+    border-bottom: 1px solid var(--nature-line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .search-result-card:is(:hover, :focus-within) {
+    transform: none !important;
+    border-color: var(--nature-line);
+    box-shadow: none;
+  }
+
+  li:last-child .search-result-card {
+    border-bottom: 0;
+  }
 }
 
 @media (max-width: 359px) {

@@ -169,7 +169,7 @@ export default function SearchResultsList({
             >
               <div
                 className={cn(
-                  "nature-panel nature-panel-soft nature-hover-lift nature-hover-surface block px-0 py-0 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.32)] [--nature-hover-lift-offset:-0.025rem]",
+                  "nature-panel search-result-card nature-panel-soft nature-hover-lift nature-hover-surface block px-0 py-0 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.32)] [--nature-hover-lift-offset:-0.025rem]",
                   linkClassName
                 )}
               >
