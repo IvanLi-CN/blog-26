@@ -559,7 +559,9 @@ test.describe("Nature frontend public coverage", () => {
       .toMatch(/octo-rill-light-640\.(avif|webp)$/);
   });
 
-  test("project posters provide progressive media and first-row priority", async ({ page }) => {
+  test("project posters provide progressive media and prioritize only the first poster", async ({
+    page,
+  }) => {
     await gotoWithTheme(page, "/projects", "light");
 
     const posters = page.locator(".project-poster");
@@ -572,11 +574,9 @@ test.describe("Nature frontend public coverage", () => {
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
     await expect(posterImages).toHaveCount(14);
-    await expect(eagerPosters).toHaveCount(3);
+    await expect(eagerPosters).toHaveCount(1);
     await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
-    await expect(eagerPosters.nth(1)).toHaveAttribute("fetchpriority", "auto");
-    await expect(eagerPosters.nth(2)).toHaveAttribute("fetchpriority", "auto");
-    await expect(lazyPosters).toHaveCount(11);
+    await expect(lazyPosters).toHaveCount(13);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
