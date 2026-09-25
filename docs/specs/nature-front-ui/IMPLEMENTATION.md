@@ -15,7 +15,7 @@ The project catalog contains 15 entries in six groups sized between two and thre
 
 The project index presents both catalog totals in its introduction and keeps all six poster groups inside one shared desktop surface with restrained separators. On phones, the group surface flattens and the poster rail extends to the viewport edge; cards use `85vw` with a visible next-card peek. The first catalog poster is eager and high priority; later index posters remain lazy. Poster title and shortcut links wrap when available width or enlarged text requires it.
 
-Mobile homepage, article-list, and Memo streams use an unframed reading row with a divider and a `16px` text inset at `393px`. Article detail flattens its title and body surfaces to the same inset and lets the cover image reach both viewport edges without cropping. Desktop surfaces retain their existing framing.
+Mobile homepage, article-list, and Memo streams use an unframed reading row with a divider and a `16px` text inset at `393px`. Article and Memo detail pages flatten their reading surfaces to the same inset; article cover media reaches both viewport edges without cropping. Desktop surfaces retain their existing framing.
 
 Project detail content uses Astro MDX with build-time slug validation and a small static React content-block allowlist. All 15 current catalog projects now have evidence-led bodies, while future projects without sufficient source material retain a verified catalog fallback. Each body chooses its own narrative and headings; no shared chapter or card outline is generated. Project cards derive compact online, documentation, and repository shortcuts from semantic public-entry precedence, while detail pages expose the full entry list in a responsive sidebar.
 
