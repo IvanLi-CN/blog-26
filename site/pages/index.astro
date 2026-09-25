@@ -12,11 +12,52 @@ import { buildHomeTimeline, getSnapshot } from "../lib/public-site";
 import { toPublicSitePath } from "../lib/runtime-urls";
 import TimelineCard from "../components/TimelineCard.astro";
 import Icon from "@/components/ui/Icon";
+import FeaturedProjectLogo from "../components/projects/FeaturedProjectLogo.astro";
+import codexVibeMonitorLogo from "../assets/projects/logos/codex-vibe-monitor-product-mark.svg";
+import spotiBindLogo from "../assets/projects/logos/spotibind-logo-monochrome.svg";
+import kaisouMailLogo from "../assets/projects/logos/kaisoumail-brand-symbol.png";
+import kaisouMailLogoDark from "../assets/projects/logos/kaisoumail-brand-symbol-on-dark.png";
+import tuckmarkLogo from "../assets/projects/logos/tuckmark-mark-square-light.svg";
+import tuckmarkLogoDark from "../assets/projects/logos/tuckmark-mark-square-dark.svg";
+import xpLogo from "../assets/projects/logos/xp-logo-monochrome.svg";
 
 const snapshot = await getSnapshot();
 const timeline = buildHomeTimeline(snapshot);
 const assetVersion = snapshot.generatedAt;
 const featuredProjects = getFeaturedProjects();
+const featuredProjectLogos = {
+  "codex-vibe-monitor": {
+    src: codexVibeMonitorLogo.src,
+    kind: "native" as const,
+    label: "Codex Vibe Monitor Logo",
+  },
+  "spoti-bind": {
+    src: spotiBindLogo.src,
+    kind: "mask" as const,
+    label: "SpotiBind Logo",
+    colorLight: "#178243",
+    colorDark: "#65d596",
+  },
+  kaisoumail: {
+    src: kaisouMailLogo.src,
+    darkSrc: kaisouMailLogoDark.src,
+    kind: "native" as const,
+    label: "KaisouMail Logo",
+  },
+  tuckmark: {
+    src: tuckmarkLogo.src,
+    darkSrc: tuckmarkLogoDark.src,
+    kind: "native" as const,
+    label: "Tuckmark Logo",
+  },
+  xp: {
+    src: xpLogo.src,
+    kind: "mask" as const,
+    label: "XP Logo",
+    colorLight: "#277d78",
+    colorDark: "#89d8be",
+  },
+} as const;
 ---
 <BaseLayout pathname="/" title={SITE.title} description={SITE.description}>
   <section class="nature-container px-2 py-7 sm:px-6 sm:py-8 md:py-12">
@@ -77,47 +118,77 @@ const featuredProjects = getFeaturedProjects();
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {featuredProjects.map((project) => (
-        <article class="nature-hover-hitbox">
-          <div class="nature-panel nature-panel-soft nature-hover-lift nature-hover-surface h-full px-4 py-4 sm:px-5 sm:py-5 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.34)] [--nature-hover-lift-offset:-0.14rem] [--nature-hover-shadow:0_20px_40px_rgba(8,21,16,0.14)]">
-            <div class="flex h-full flex-col gap-4">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="nature-chip nature-chip-accent">
-                  {getProjectDomainDefinition(project.domain).title}
-                </span>
-              </div>
+      {featuredProjects.map((project) => {
+        const logo = featuredProjectLogos[project.slug as keyof typeof featuredProjectLogos];
+        return (
+          <article
+            class="nature-hover-hitbox"
+            data-testid="featured-project-card"
+            data-project-slug={project.slug}
+            data-logo-state={logo ? "available" : "missing"}
+          >
+            <div class="nature-panel nature-panel-soft nature-hover-lift nature-hover-surface featured-project-panel h-full px-4 py-4 sm:px-5 sm:py-5 [--nature-hover-border-color:rgba(var(--nature-accent-rgb),0.34)] [--nature-hover-lift-offset:-0.14rem] [--nature-hover-shadow:0_20px_40px_rgba(8,21,16,0.14)]">
+              {logo && (
+                <FeaturedProjectLogo
+                  {...logo}
+                  variant="watermark"
+                />
+              )}
+              <div class="relative z-[1] flex h-full flex-col gap-4">
+                <div class="flex min-h-14 items-center gap-3">
+                  {logo && <FeaturedProjectLogo {...logo} variant="inline" />}
+                  <div class="min-w-0">
+                    <h3 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                      <a
+                        href={toPublicSitePath(getProjectDetailPath(project.slug))}
+                        class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+                      >
+                        {project.title}
+                      </a>
+                    </h3>
+                    <span class="nature-muted mt-1 block text-xs font-medium">
+                      {getProjectDomainDefinition(project.domain).title}
+                    </span>
+                  </div>
+                </div>
 
-              <div>
-                <h3 class="font-heading text-2xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)]">
+                <p class="nature-muted min-h-[4.25rem] text-sm leading-7">{project.summary}</p>
+
+                <div class="flex min-h-8 flex-wrap content-start gap-2">
+                  {project.techTags.slice(0, 2).map((tag) => (
+                    <span class="nature-chip text-xs">{tag}</span>
+                  ))}
+                </div>
+
+                <div class="featured-project-footer mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-[color:rgba(var(--nature-border-rgb),0.32)] pt-3" data-featured-project-footer>
                   <a
                     href={toPublicSitePath(getProjectDetailPath(project.slug))}
-                    class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
+                    class="nature-button nature-button-ghost px-3 py-2 text-sm"
+                    data-project-case-link
                   >
-                    {project.title}
+                    <Icon name="tabler:arrow-right" className="h-4 w-4" />
+                    查看案例
                   </a>
-                </h3>
-                <p class="nature-muted mt-3 text-sm leading-7">{project.summary}</p>
-              </div>
-
-              <div class="flex flex-wrap gap-2">
-                {project.techTags.slice(0, 3).map((tag) => (
-                  <span class="nature-chip text-xs">{tag}</span>
-                ))}
-              </div>
-
-              <div class="mt-auto flex flex-wrap items-center justify-between gap-3">
-                <a
-                  href={toPublicSitePath(getProjectDetailPath(project.slug))}
-                  class="nature-button nature-button-ghost min-h-10 px-4 py-2 text-sm"
-                >
-                  查看案例
-                </a>
-                <ProjectExternalLinks entries={getProjectCardEntries(project)} compact={true} />
+                  <ProjectExternalLinks
+                    entries={getProjectCardEntries(project)}
+                    compact={true}
+                    adaptive={true}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   </section>
 </BaseLayout>
+
+<style>
+  .featured-project-panel {
+    position: relative;
+    isolation: isolate;
+    min-height: 18rem;
+    overflow: hidden;
+  }
+</style>

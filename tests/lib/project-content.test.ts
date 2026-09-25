@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   extractProjectToc,
@@ -162,6 +163,36 @@ describe("project content contracts", () => {
     expect(getProjectPublicEntries(project).map((entry) => entry.href)).not.toContain(
       "https://cfm.707979.xyz/"
     );
+  });
+
+  test("homepage featured logos keep the approved official assets", () => {
+    const logoDir = join(process.cwd(), "site/assets/projects/logos");
+    const expectedHashes = {
+      "codex-vibe-monitor-product-mark.svg":
+        "e65ebc46a41276938e41794fe226fc49490461652403ebdf288e03ca753d05f0",
+      "spotibind-logo-monochrome.svg":
+        "0a3a4f2544f310d55cee0bfaaf1c2c3a1093f2de11be9b8c95cdc3719c6a4344",
+      "kaisoumail-brand-symbol.png":
+        "0356e54a04aac8fc9a5382dffdb5506ce16ffd2a1bdb5697700e5c6845f1bcd3",
+      "kaisoumail-brand-symbol-on-dark.png":
+        "b10cadde3896b03f1cba9f562bb0c49f54685a3eadf26d2db406521891781fb2",
+      "tuckmark-mark-square-light.svg":
+        "3307a6a7dacfa99cefb8632762da69821049b727b6306f887c511f92e4e0ff4e",
+      "tuckmark-mark-square-dark.svg":
+        "9727cbb9889d052224001bc6009501ef4797b445b23fcada86c6f367cdeaa3b0",
+      "xp-logo-monochrome.svg": "339520812e23050a05137e776ce2a50d87a1c15fc7f0e1971ab5a5963354a5f3",
+    } as const;
+
+    for (const [fileName, expectedHash] of Object.entries(expectedHashes)) {
+      const filePath = join(logoDir, fileName);
+      expect(existsSync(filePath)).toBe(true);
+      const actualHash = createHash("sha256").update(readFileSync(filePath)).digest("hex");
+      expect(actualHash).toBe(expectedHash);
+    }
+
+    const homepageSource = readFileSync(join(process.cwd(), "site/pages/index.astro"), "utf8");
+    expect(homepageSource).toContain("featuredProjectLogos");
+    expect(homepageSource).not.toContain("loadlynxLogo");
   });
 
   test("TOC requires three headings and nests H3", () => {

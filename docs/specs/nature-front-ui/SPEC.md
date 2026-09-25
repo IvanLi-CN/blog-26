@@ -94,6 +94,10 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Project bodies live under `site/content/projects/` and remain continuous, project-specific prose. A missing body falls back to verified catalog material without generic filler cards.
 - A project may provide paired `-light` and `-dark` poster or social-preview files. Complete pairs follow the resolved public theme, including the first page load and subsequent theme changes; incomplete pairs fall back to the single project asset or the existing generated poster surface.
 - The project catalog uses six single-name groups: 开发工具 (3), 效率工具 (2), Web 产品 (2), 硬件产品 (3), 设备控制 (3), and 运维工具 (2). Every group stays within three cards, and the homepage selects one representative project from each group.
+- Homepage featured-project cards place an available official logo beside the project title, with the domain label below the title, a stable summary, at most two technology tags, and a divided footer for the case link and external entries. The existing one/two/three-column grid and Nature panels remain in use.
+- The homepage keeps an explicit local logo map for the five featured projects with approved independent assets. Native-color logos keep their source artwork and any supplied light/dark pair; monochrome SpotiBind and XP logos use their approved per-project theme colors. LoadLynx has no card logo or watermark until an independent official asset is available. No logo data is added to the public project catalog.
+- Available logos may repeat as a decorative, non-interactive upper-right watermark. Watermarks stay behind the card content, use the documented native/monochrome light and dark opacity values, scale from 148px to 112px, and are hidden at viewport widths of 420px or less.
+- Homepage external entries opt into an adaptive mode: short visible labels remain beside icons when their footer fits, then switch to icon-only links when it does not. The complete title and accessible name stay available, mobile targets remain at least 44px, and the shared component's default mode remains unchanged.
 - The `/projects` page uses the title `项目` and shows the public-project and product-domain totals in its introduction. On desktop, all domain groups share one surface, with subtle horizontal separators between sections and a horizontal poster rail in each group. Below `640px`, the shared surface flattens, group headings align to the reading inset, and each rail uses approximately `85vw` poster cards with the next card visibly peeking into the viewport.
 - Project title and shortcut links reflow when narrow space or enlarged text requires it; they must remain visible and must not create horizontal page overflow.
 
@@ -163,6 +167,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 18. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
 
 19. Public memo surfaces omit an absent resolved title without substituting a slug, while preserving available date, type, tags, excerpt or body, and detail navigation; cross-layer resolution and protocol metadata follow the memo-title-semantics Spec.
+20. The homepage's six featured-project cards keep available official logos beside titles, omit the LoadLynx logo slot, and use non-interactive theme-aware watermarks without obscuring card content. Footer links show short labels when space allows and switch to accessible 44px-or-larger icon targets at narrow widths; the page has no horizontal overflow at 393px or 320px.
 
 ## 6. Validation
 
@@ -177,6 +182,8 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - `PLAYWRIGHT_START_PUBLIC_MEDIA_SIDECAR=0 bunx playwright test --project=guest --grep "Code Block Rendering"`
 - `bun run build-storybook`
 - `bun run check`
+- `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true bunx playwright test tests/e2e/guest/nature-front-coverage.spec.ts --project=guest --grep "homepage featured"`
+- `bun run site:build`
 - `bun test src/lib/__tests__/public-header-scroll.test.ts`
 - `BASE_URL=http://localhost:30090 PLAYWRIGHT_REUSE_APP=true bunx playwright test tests/e2e/guest/nature-front-coverage.spec.ts --project=guest --grep "public header scroll|mobile header"
 

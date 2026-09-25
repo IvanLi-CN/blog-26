@@ -1,0 +1,142 @@
+---
+interface Props {
+  src: string;
+  darkSrc?: string;
+  kind: "native" | "mask";
+  label: string;
+  colorLight?: string;
+  colorDark?: string;
+  variant: "inline" | "watermark";
+}
+
+const {
+  src,
+  darkSrc,
+  kind,
+  label,
+  colorLight,
+  colorDark,
+  variant,
+} = Astro.props as Props;
+
+const isWatermark = variant === "watermark";
+const style =
+  kind === "mask"
+    ? `--featured-project-logo-src: url(${JSON.stringify(src)}); --featured-project-logo-color-light: ${colorLight}; --featured-project-logo-color-dark: ${colorDark};`
+    : undefined;
+---
+<span
+  class:list={[
+    "featured-project-logo",
+    `featured-project-logo-${variant}`,
+    `featured-project-logo-${kind}`,
+    { "featured-project-logo-has-dark": Boolean(darkSrc) },
+  ]}
+  data-featured-project-logo
+  data-logo-kind={kind}
+  data-logo-variant={variant}
+  aria-hidden={isWatermark ? "true" : undefined}
+  aria-label={!isWatermark ? label : undefined}
+  role={!isWatermark ? "img" : undefined}
+  style={style}
+>
+  {kind === "mask" ? (
+    <span class="featured-project-logo-mask" aria-hidden="true"></span>
+  ) : (
+    <>
+      <img class="featured-project-logo-image featured-project-logo-light" src={src} alt="" />
+      {darkSrc && (
+        <img class="featured-project-logo-image featured-project-logo-dark" src={darkSrc} alt="" />
+      )}
+    </>
+  )}
+</span>
+
+<style>
+  .featured-project-logo {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    color: var(--featured-project-logo-color-light, currentColor);
+  }
+
+  .featured-project-logo-inline {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .featured-project-logo-watermark {
+    position: absolute;
+    top: 1rem;
+    right: 1.125rem;
+    z-index: 0;
+    width: 9.25rem;
+    height: 9.25rem;
+    opacity: 0.09;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .featured-project-logo-watermark.featured-project-logo-mask {
+    opacity: 0.07;
+  }
+
+  .featured-project-logo-image,
+  .featured-project-logo > .featured-project-logo-mask {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .featured-project-logo > .featured-project-logo-mask {
+    background-color: currentColor;
+    -webkit-mask-image: var(--featured-project-logo-src);
+    mask-image: var(--featured-project-logo-src);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+  }
+
+  .featured-project-logo-dark {
+    display: none;
+  }
+
+  :global(html[data-ui-theme="dark"]) .featured-project-logo {
+    color: var(--featured-project-logo-color-dark, currentColor);
+  }
+
+  :global(html[data-ui-theme="dark"]) .featured-project-logo-watermark {
+    opacity: 0.12;
+  }
+
+  :global(html[data-ui-theme="dark"]) .featured-project-logo-watermark.featured-project-logo-mask {
+    opacity: 0.09;
+  }
+
+  :global(html[data-ui-theme="dark"]) .featured-project-logo-has-dark .featured-project-logo-light {
+    display: none;
+  }
+
+  :global(html[data-ui-theme="dark"]) .featured-project-logo-dark {
+    display: block;
+  }
+
+  @media (max-width: 690px) {
+    .featured-project-logo-watermark {
+      width: 7rem;
+      height: 7rem;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .featured-project-logo-watermark {
+      display: none;
+    }
+  }
+</style>

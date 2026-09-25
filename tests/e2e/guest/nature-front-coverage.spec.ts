@@ -409,6 +409,123 @@ test.describe("Nature frontend public coverage", () => {
     await expect(page.getByRole("heading", { name: "精选项目 (6)", exact: true })).toBeVisible();
   });
 
+  test("homepage featured cards align project identities and theme-aware logos", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await gotoWithTheme(page, "/", "light");
+
+    const cards = page.getByTestId("featured-project-card");
+    await expect(cards).toHaveCount(6);
+    await expect(page.locator('[data-logo-state="available"]')).toHaveCount(5);
+    const wideCodexLinks = page
+      .locator('[data-testid="featured-project-card"][data-project-slug="codex-vibe-monitor"]')
+      .locator("[data-project-external-links]");
+    await expect(wideCodexLinks).toHaveAttribute("data-ready", "true");
+    await expect(wideCodexLinks).toHaveAttribute("data-compact", "false");
+    await expect(wideCodexLinks.locator(".project-external-link-label").first()).toBeVisible();
+
+    const loadLynxCard = page.locator(
+      '[data-testid="featured-project-card"][data-project-slug="loadlynx"]'
+    );
+    await expect(loadLynxCard).toHaveAttribute("data-logo-state", "missing");
+    await expect(loadLynxCard.locator("[data-featured-project-logo]")).toHaveCount(0);
+    await expect(
+      page.locator('[data-featured-project-logo][data-logo-variant="watermark"]')
+    ).toHaveCount(5);
+
+    const codexCard = page.locator(
+      '[data-testid="featured-project-card"][data-project-slug="codex-vibe-monitor"]'
+    );
+    const codexLogo = codexCard.locator('[data-featured-project-logo][data-logo-variant="inline"]');
+    const codexTitle = codexCard.locator("h3");
+    const [logoBox, titleBox] = await Promise.all([
+      codexLogo.boundingBox(),
+      codexTitle.boundingBox(),
+    ]);
+    expect(logoBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
+    if (!logoBox || !titleBox) throw new Error("Featured project identity row is not measurable");
+    expect(
+      Math.abs(logoBox.y + logoBox.height / 2 - (titleBox.y + titleBox.height / 2))
+    ).toBeLessThan(12);
+    await expect(
+      codexCard.locator('[data-featured-project-logo][data-logo-variant="watermark"]')
+    ).toHaveAttribute("aria-hidden", "true");
+    await expect(
+      codexCard.locator('[data-featured-project-logo][data-logo-variant="watermark"]')
+    ).toHaveCSS("opacity", "0.09");
+
+    const spotiCard = page.locator(
+      '[data-testid="featured-project-card"][data-project-slug="spoti-bind"]'
+    );
+    await expect(
+      spotiCard.locator('[data-featured-project-logo][data-logo-kind="mask"]').first()
+    ).toHaveCSS("color", "rgb(23, 130, 67)");
+    await page.locator("html").evaluate((element) => element.setAttribute("data-ui-theme", "dark"));
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "dark");
+    await expect(
+      codexCard.locator('[data-featured-project-logo][data-logo-variant="watermark"]')
+    ).toHaveCSS("opacity", "0.12");
+    await expect(
+      spotiCard.locator('[data-featured-project-logo][data-logo-kind="mask"]').first()
+    ).toHaveCSS("color", "rgb(101, 213, 150)");
+
+    const kaisouInlineLogo = page
+      .locator('[data-testid="featured-project-card"][data-project-slug="kaisoumail"]')
+      .locator('[data-featured-project-logo][data-logo-variant="inline"]');
+    await expect(kaisouInlineLogo.locator(".featured-project-logo-light")).toBeHidden();
+    await expect(kaisouInlineLogo.locator(".featured-project-logo-dark")).toBeVisible();
+  });
+
+  test("homepage featured links adapt at mobile widths without overflow", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/", "light");
+
+    for (const width of [393, 320]) {
+      await page.setViewportSize({ width, height: 852 });
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const pageWidth = document.documentElement.clientWidth;
+            return document.documentElement.scrollWidth <= pageWidth;
+          })
+        )
+        .toBe(true);
+      await expect(
+        page.locator('[data-featured-project-logo][data-logo-variant="watermark"]:visible')
+      ).toHaveCount(0);
+
+      const codexLinks = page
+        .locator('[data-testid="featured-project-card"][data-project-slug="codex-vibe-monitor"]')
+        .locator("[data-project-external-links]");
+      await expect(codexLinks).toHaveAttribute("data-ready", "true");
+      await expect(codexLinks.locator("[data-project-external-link]")).toHaveCount(3);
+      await expect(codexLinks.locator("[data-project-external-link]").first()).toHaveAttribute(
+        "aria-label",
+        "项目站点"
+      );
+      await expect(codexLinks.locator("[data-project-external-link]").first()).toHaveAttribute(
+        "target",
+        "_blank"
+      );
+
+      if (width === 320) {
+        await expect(codexLinks).toHaveAttribute("data-compact", "true");
+        const iconTargets = codexLinks.locator("[data-project-external-link]");
+        const targetBoxes = await iconTargets.evaluateAll((links) =>
+          links.map((link) => ({
+            width: link.getBoundingClientRect().width,
+            height: link.getBoundingClientRect().height,
+          }))
+        );
+        expect(
+          targetBoxes.every(({ width: targetWidth, height }) => targetWidth >= 44 && height >= 44)
+        ).toBe(true);
+      }
+    }
+  });
+
   test("SpotiBind exposes its catalog metadata", async ({ page }) => {
     await gotoWithTheme(page, "/projects/spoti-bind", "light");
 
