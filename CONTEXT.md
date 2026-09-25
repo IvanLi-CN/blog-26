@@ -127,3 +127,29 @@ _Avoid_: 单次测试, 性能截图
 **浏览器 GPU 代理指标**:
 Trace, compositor, raster, frame-interval, and backing-buffer observations used to compare browser rendering behavior; they are not system GPU utilization, power, or battery measurements.
 _Avoid_: GPU 占用率, 功耗指标
+
+## CI 与发布
+
+**依赖新鲜度漂移**:
+Registry exposes a newer package version than the version currently declared or resolved by the repository; it does not mean the dependency installation is unreproducible.
+_Avoid_: 锁文件漂移, 安全漏洞
+
+**锁文件漂移**:
+The package manifest and `bun.lock` no longer satisfy the repository's reproducible-installation contract; in CI this is represented by `bun install --frozen-lockfile` failing.
+_Avoid_: 依赖版本过期
+
+**安全漏洞门禁**:
+A quality gate based on known vulnerability findings. It is a separate concern from dependency freshness and lockfile consistency.
+_Avoid_: 过期依赖检查
+
+**发布意图**:
+The validated combination of PR `type:*`, `channel:*`, and `release:*` labels that selects whether and what the release workflow may publish.
+_Avoid_: CI 通过, 发布成功
+
+**清退（依赖新鲜度检查）**:
+Removing the `bun outdated` freshness check from CI entirely. It does not delete dependency declarations, lockfiles, versions, tags, releases, or deployments.
+_Avoid_: 撤回版本, 删除 release
+
+**稳定前端补发**:
+Publishing a stable frontend release from the current `main` head after the release path was previously skipped, including the unified image and stable frontend deployment effects defined by the release workflow.
+_Avoid_: 回滚, 重建已发布版本

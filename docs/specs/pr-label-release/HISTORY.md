@@ -5,3 +5,4 @@
 - Stable EdgeOne releases reconcile the server-side proxy origin through the official CLI, using runner-local project metadata rather than static frontend output.
 - Release publication outcomes are reported from workflow job summaries and do not determine release success through source-PR comments.
 - Release sourcing is constrained to the exact current `main` head so manual dispatches cannot publish a topic-branch or stale commit.
+- Dependency registry freshness is no longer a blocking CI gate; frozen installation and functional quality checks remain part of the release readiness contract.
