@@ -92,7 +92,7 @@ test.describe("Astro public front (phase 1)", () => {
     await expect(page.locator('a[href="/posts/hello-world/"]').first()).toBeVisible();
 
     await page.goto("/projects", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "项目展墙" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "项目" })).toBeVisible();
     await expect(page.getByRole("link", { name: "KaisouMail", exact: true })).toBeVisible();
 
     await page.goto("/projects/kaisoumail", { waitUntil: "domcontentloaded" });
