@@ -288,6 +288,17 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![Public mobile density current](./assets/public-mobile-density-current.png)
 
+### Mobile content surface coverage
+
+- Evidence bound to candidate `e0321396`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, requested viewports `393px × 852px` and `320px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- The mobile content audit covers homepage, article list and detail, Memo list and detail, tag detail, search results, project index and project detail. Continuous reading content uses unframed rows with separators; distinct modules such as posters, profile blocks, search states, project sections, and navigation panels retain their own surfaces. Both mobile widths keep `document.body.scrollWidth` equal to the viewport width, while desktop detail pages retain their card framing.
+
+![Mobile tag detail final](./assets/mobile-tag-detail-final.png)
+
+![Mobile project detail final](./assets/mobile-project-detail-final.png)
+
+![Mobile Memo detail final](./assets/mobile-memo-detail-final.png)
+
 ### Project poster mobile radius
 
 - Evidence binding `fd345db7e5cf08f380d7f009e0c3d8e35450fbb9`; source type `storybook_canvas`, target program `mock-only`, capture scope `element`, requested viewport `393px × 852px`, viewport strategy `storybook-viewport`, margin policy `require_margin`, evidence surface `component`, sensitive exclusion `N/A`.
