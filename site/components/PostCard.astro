@@ -22,10 +22,10 @@ const imageSrc = appendPublicAssetVersion(
 );
 ---
 <article
-  class="nature-panel relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8"
+  class="nature-panel post-list-entry relative mx-auto grid max-w-md gap-6 p-4 md:max-w-none md:grid-cols-2 md:gap-8"
   data-testid="post-card"
 >
-  <div class={`mt-2 ${imageSrc ? "md:col-start-2 md:row-start-1" : "md:col-span-2"} flex h-full flex-col`}>
+  <div class={`post-list-copy mt-2 ${imageSrc ? "md:col-start-2 md:row-start-1" : "md:col-span-2"} flex h-full flex-col`}>
     <header>
       <div class="mb-1">
         <span class="nature-muted flex flex-wrap items-center gap-1 text-sm">
@@ -88,3 +88,28 @@ const imageSrc = appendPublicAssetVersion(
     </a>
   )}
 </article>
+
+<style>
+  @media (max-width: 639px) {
+    .post-list-entry {
+      gap: 1rem;
+      padding: 0 0 1.5rem;
+      border: 0;
+      border-bottom: 1px solid var(--nature-line);
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .post-list-entry:is(:hover, :focus-within) {
+      transform: none;
+      border-color: var(--nature-line);
+      box-shadow: none;
+    }
+
+    .post-list-copy {
+      margin-top: 0;
+    }
+  }
+</style>

@@ -50,12 +50,12 @@ const structuredData = {
 >
   <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
-  <section class="nature-detail-container px-2 py-8 sm:px-6 sm:py-10">
+  <section class="nature-detail-container memo-detail-layout px-2 py-8 sm:px-6 sm:py-10">
     <article class="nature-reading-measure space-y-8">
       <PublicMemoDetailControlsIsland client:load slug={memo.slug} />
 
       <div data-public-memo-static-shell>
-        <div class="nature-panel px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">
+        <div class="nature-panel memo-detail-card px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">
           <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
             <span class="nature-chip nature-chip-info gap-1">
               <Icon name="tabler:clock" className="h-3.5 w-3.5" />
@@ -99,3 +99,26 @@ const structuredData = {
     </article>
   </section>
 </BaseLayout>
+
+<style>
+  @media (max-width: 639px) {
+    .memo-detail-layout {
+      padding-inline: 0;
+    }
+
+    .memo-detail-card {
+      padding-inline: 0.25rem;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .memo-detail-card:is(:hover, :focus-within) {
+      transform: none;
+      border-color: transparent;
+      box-shadow: none;
+    }
+  }
+</style>
