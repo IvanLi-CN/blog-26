@@ -182,6 +182,19 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ## Visual Evidence
 
+### Project index grouped panel
+
+- The public project index is captured at desktop (`1780px × 1071px`) and mobile (`393px × 852px`) sizes in light and dark themes after the grouped-panel refinement.
+- Source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; the owner confirmed that these images accurately show the current page.
+
+![Project index desktop light](./assets/projects-index-grouped-desktop-light.png)
+
+![Project index desktop dark](./assets/projects-index-grouped-desktop-dark.png)
+
+![Project index mobile light](./assets/projects-index-grouped-mobile-light.png)
+
+![Project index mobile dark](./assets/projects-index-grouped-mobile-dark.png)
+
 ### Project media showcase
 
 - Evidence captured from the local Astro project catalog and detail pages after the final poster and social-preview assets were installed.
