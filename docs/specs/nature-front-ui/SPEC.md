@@ -97,7 +97,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Homepage featured-project cards place an available official logo beside the project title, with the domain label below the title, a stable summary, at most two technology tags, and a divided footer for the case link and external entries. The existing one/two/three-column grid and Nature panels remain in use.
 - The homepage keeps an explicit local logo map for the five featured projects with approved independent assets. Native-color logos keep their source artwork and any supplied light/dark pair; monochrome SpotiBind and XP logos use their approved per-project theme colors. LoadLynx has no card logo or watermark until an independent official asset is available. No logo data is added to the public project catalog.
 - Available logos may repeat as a decorative, non-interactive upper-right watermark. Watermarks stay behind the card content, use the documented native/monochrome light and dark opacity values, scale from 148px to 112px, and are hidden at viewport widths of 420px or less.
-- Homepage external entries opt into an adaptive mode: short visible labels remain beside icons when their footer fits, then switch to icon-only links when it does not. The complete title and accessible name stay available, mobile targets remain at least 44px, and the shared component's default mode remains unchanged.
+- Homepage external entries opt into an adaptive mode: short visible labels remain beside icons when their footer fits, then switch to icon-only links when it does not. The complete title and accessible name stay available, mobile targets remain at least 44px, and the shared component's default mode remains unchanged. The section-level browse-all action follows the same icon-and-label pattern, becoming an accessible icon-only 44px target at `360px` and below.
 - The `/projects` page uses the title `项目` and shows the public-project and product-domain totals in its introduction. On desktop, all domain groups share one surface, with subtle horizontal separators between sections and a horizontal poster rail in each group. Below `640px`, the shared surface flattens, group headings align to the reading inset, and each rail uses approximately `85vw` poster cards with the next card visibly peeking into the viewport.
 - Project title and shortcut links reflow when narrow space or enlarged text requires it; they must remain visible and must not create horizontal page overflow.
 
@@ -167,7 +167,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 18. Public primary actions meet a 4.5:1 foreground/background contrast ratio in light and dark themes for default, hover, and focus states.
 
 19. Public memo surfaces omit an absent resolved title without substituting a slug, while preserving available date, type, tags, excerpt or body, and detail navigation; cross-layer resolution and protocol metadata follow the memo-title-semantics Spec.
-20. The homepage's six featured-project cards keep available official logos beside titles, omit the LoadLynx logo slot, and use non-interactive theme-aware watermarks without obscuring card content. Footer links show short labels when space allows and switch to accessible 44px-or-larger icon targets at narrow widths; the page has no horizontal overflow at 393px or 320px.
+20. The homepage's six featured-project cards keep available official logos beside titles, omit the LoadLynx logo slot, and use non-interactive theme-aware watermarks without obscuring card content. Card footer links show short labels when space allows and switch to accessible 44px-or-larger icon targets when needed. The section-level browse-all action keeps its icon and label at `393px` and becomes an accessible 44px icon target at `320px`; the page has no horizontal overflow at either width.
 
 ## 6. Validation
 
@@ -191,9 +191,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ### Homepage featured project cards
 
-- Evidence bound to implementation commit `f7d5973ca693295b0424411b5d8040c72e546c07`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- Evidence bound to implementation commit `f01d504142a1a454ccf7a3b62d9509f0c3968665`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
 - Desktop captures use `1440px × 1000px` in light and dark themes. Narrow captures use `393px × 852px` and `320px × 852px` in light theme. All four screenshots were confirmed by the owner.
-- The desktop cards show five approved official logos and muted watermarks; LoadLynx has neither. At narrow widths, logos/watermarks and adaptive external links retain the accepted layout without horizontal overflow.
+- The desktop cards show five approved official logos and muted watermarks; LoadLynx has neither. At narrow widths, watermarks are hidden, external links adapt, and the section-level browse-all action is icon-only at `320px`, with no horizontal overflow.
 
 ![Featured projects desktop light](./assets/featured-projects-home-1440-light.png)
 
