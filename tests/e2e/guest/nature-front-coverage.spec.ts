@@ -496,6 +496,19 @@ test.describe("Nature frontend public coverage", () => {
         page.locator('[data-featured-project-logo][data-logo-variant="watermark"]:visible')
       ).toHaveCount(0);
 
+      const featuredAllLink = page.getByRole("link", { name: "查看全部项目" });
+      await expect(featuredAllLink).toBeVisible();
+      if (width === 320) {
+        await expect(featuredAllLink.locator(".featured-projects-all-label")).toBeHidden();
+        const allLinkBox = await featuredAllLink.boundingBox();
+        expect(allLinkBox).not.toBeNull();
+        if (!allLinkBox) throw new Error("Featured projects all-link is not measurable");
+        expect(allLinkBox.width).toBeGreaterThanOrEqual(44);
+        expect(allLinkBox.height).toBeGreaterThanOrEqual(44);
+      } else {
+        await expect(featuredAllLink.locator(".featured-projects-all-label")).toBeVisible();
+      }
+
       const codexLinks = page
         .locator('[data-testid="featured-project-card"][data-project-slug="codex-vibe-monitor"]')
         .locator("[data-project-external-links]");

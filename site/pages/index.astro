@@ -112,8 +112,14 @@ const featuredProjectLogos = {
         </h2>
         <p class="nature-muted mt-2 text-sm">每个领域挑一个代表作，先看定位，再决定是否进入完整案例页。</p>
       </div>
-      <a href={toPublicSitePath("/projects")} class="nature-button nature-button-ghost">
-        查看全部
+      <a
+        href={toPublicSitePath("/projects")}
+        class="nature-button nature-button-ghost featured-projects-all-link"
+        aria-label="查看全部项目"
+        title="查看全部项目"
+      >
+        <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
+        <span class="featured-projects-all-label">查看全部</span>
       </a>
     </div>
 
@@ -190,5 +196,22 @@ const featuredProjectLogos = {
     isolation: isolate;
     min-height: 18rem;
     overflow: hidden;
+  }
+
+  .featured-projects-all-link {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 360px) {
+    .featured-projects-all-link {
+      width: 2.75rem;
+      min-width: 2.75rem;
+      padding-inline: 0;
+    }
+
+    .featured-projects-all-label {
+      display: none;
+    }
   }
 </style>
