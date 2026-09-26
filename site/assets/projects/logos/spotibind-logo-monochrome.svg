@@ -1,0 +1,32 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1024 1024"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">SpotiBind monochrome logo</title>
+  <desc id="desc">A rounded play icon cut through by an S-shaped negative-space mask.</desc>
+  <defs>
+    <mask
+      id="s-cutout"
+      x="0"
+      y="0"
+      width="1024"
+      height="1024"
+      maskUnits="userSpaceOnUse"
+      maskContentUnits="userSpaceOnUse"
+      style="mask-type:luminance"
+    >
+      <rect width="1024" height="1024" fill="#fff" />
+      <path
+        fill="#000"
+        d="M625 279C520 315 402 337 339 384C288 419 299 466 339 501C375 532 447 552 490 571A38 38 0 0 1 500 635C470 650 355 670 243 686L243 766C350 740 465 716 533 687C590 663 621 637 626 609C631 578 607 549 565 523C528 500 483 485 450 464A32 32 0 0 1 462 416C495 397 570 372 683 346Z"
+      />
+    </mask>
+  </defs>
+  <path
+    fill="#000"
+    mask="url(#s-cutout)"
+    d="M280 760V260C280 218 312 184 354 184C373 184 392 191 410 203L780 440C816 462 838 488 838 516C838 544 820 568 798 582L416 822C387 840 358 858 330 848C296 837 280 807 280 760Z"
+  />
+</svg>
