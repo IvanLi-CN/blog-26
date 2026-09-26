@@ -189,6 +189,20 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ## Visual Evidence
 
+### Homepage featured project cards
+
+- Evidence bound to implementation commit `f7d5973ca693295b0424411b5d8040c72e546c07`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
+- Desktop captures use `1440px × 1000px` in light and dark themes. Narrow captures use `393px × 852px` and `320px × 852px` in light theme. All four screenshots were confirmed by the owner.
+- The desktop cards show five approved official logos and muted watermarks; LoadLynx has neither. At narrow widths, logos/watermarks and adaptive external links retain the accepted layout without horizontal overflow.
+
+![Featured projects desktop light](./assets/featured-projects-home-1440-light.png)
+
+![Featured projects desktop dark](./assets/featured-projects-home-1440-dark.png)
+
+![Featured projects mobile 393px](./assets/featured-projects-home-393-light.png)
+
+![Featured projects mobile 320px](./assets/featured-projects-home-320-light.png)
+
 ### Project index grouped panel
 
 - The public project index is captured at desktop (`1780px × 1071px`) and mobile (`393px × 852px`) sizes in light and dark themes after the grouped-panel refinement.
