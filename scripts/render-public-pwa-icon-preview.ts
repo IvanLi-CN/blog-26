@@ -12,9 +12,13 @@ const outputPath = resolve(root, "docs/specs/public-pwa/assets/icon-preview.png"
 const canvasWidth = 1280;
 const canvasHeight = 720;
 const background = Buffer.from(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}"><rect width="100%" height="100%" fill="#f8fbf8"/><path d="M0 342H${canvasWidth}V343H0Z" fill="#d8e2db"/><style>text{font-family:Arial,sans-serif;letter-spacing:0}</style><text x="36" y="45" font-size="23" font-weight="700" fill="#24352d">Browser and install assets</text><text x="36" y="83" font-size="16" fill="#55675d">Transparent, solid, and platform-cropped previews</text><text x="38" y="126" font-size="16" fill="#55675d">Favicon source</text><text x="38" y="378" font-size="16" fill="#24352d">Any purpose: transparent background</text><text x="660" y="378" font-size="16" fill="#24352d">Maskable: platform circle crop</text><text x="38" y="680" font-size="14" fill="#55675d">IB-M17-01 derived from the approved vector source</text></svg>`
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}"><rect width="100%" height="100%" fill="#f8fbf8"/><path d="M0 342H${canvasWidth}V343H0Z" fill="#d8e2db"/><style>text{font-family:Arial,sans-serif;letter-spacing:0}</style><text x="36" y="45" font-size="23" font-weight="700" fill="#24352d">Browser and install assets</text><text x="36" y="83" font-size="16" fill="#55675d">Transparent, solid, and platform-cropped previews</text><text x="38" y="126" font-size="16" fill="#55675d">Light browser surface</text><text x="38" y="378" font-size="16" fill="#24352d">Any purpose: transparent background</text><text x="660" y="378" font-size="16" fill="#24352d">Maskable: platform circle crop</text><text x="38" y="680" font-size="14" fill="#55675d">IB-M17-01 derived from the approved vector source</text></svg>`
 );
 const layers: sharp.OverlayOptions[] = [{ input: background, left: 0, top: 0 }];
+const darkBrowserSurface = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="730" height="215"><rect width="100%" height="100%" fill="#2f2f30"/><text x="20" y="26" font-family="Arial,sans-serif" font-size="16" fill="#e9f1eb">Dark browser surface</text></svg>'
+);
+layers.push({ input: darkBrowserSurface, left: 520, top: 100 });
 
 async function addImage(
   path: string,
@@ -44,16 +48,23 @@ async function addTransparencyTile(left: number, top: number, size: number) {
   layers.push({ input: checker, left, top });
 }
 
-const favicon = await readFile(resolve(root, "public/favicon.ico"));
+const lightFavicon = await readFile(resolve(root, "public/favicon.ico"));
+const darkFavicon = await readFile(resolve(root, "public/favicon-dark.ico"));
 for (const [index, size] of [16, 32, 48].entries()) {
   const offset = 6 + index * 16;
-  const length = favicon.readUInt32LE(offset + 8);
-  const start = favicon.readUInt32LE(offset + 12);
-  const png = favicon.subarray(start, start + length);
   await addTransparencyTile(42 + index * 150, 145, 96);
-  const preview = await sharp(png).resize(96, 96, { kernel: "nearest" }).png().toBuffer();
-  layers.push({ input: preview, left: 42 + index * 150, top: 145 });
+  for (const [favicon, left] of [
+    [lightFavicon, 42 + index * 150],
+    [darkFavicon, 560 + index * 150],
+  ] as const) {
+    const length = favicon.readUInt32LE(offset + 8);
+    const start = favicon.readUInt32LE(offset + 12);
+    const png = favicon.subarray(start, start + length);
+    const preview = await sharp(png).resize(96, 96, { kernel: "nearest" }).png().toBuffer();
+    layers.push({ input: preview, left, top: 145 });
+  }
   await addLabel(`${size}px ICO`, 48 + index * 150, 245, "#24352d");
+  await addLabel(`${size}px ICO`, 566 + index * 150, 245, "#e9f1eb");
 }
 
 const any192 = resolve(iconDir, "icon-any-192.png");

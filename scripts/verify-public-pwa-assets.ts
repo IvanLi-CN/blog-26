@@ -195,6 +195,7 @@ async function verifyBuiltSite(
     scopePath(basePath, "/site.webmanifest"),
     scopePath(basePath, assets.faviconSvg),
     scopePath(basePath, assets.faviconIco),
+    scopePath(basePath, assets.faviconDarkIco),
     scopePath(basePath, assets.appleTouch180),
   ];
   for (const link of expectedLinks) {
@@ -244,6 +245,7 @@ export async function verifyPublicPwaAssets(options: VerifyPublicPwaAssetsOption
     verifyPng(join(iconDir, "icon-maskable-512.png"), 512, "maskable"),
     verifyPng(join(iconDir, "apple-touch-icon-180.png"), 180, "opaque"),
     verifyIco(join(publicDir, "favicon.ico")),
+    verifyIco(join(publicDir, "favicon-dark.ico")),
   ]);
 
   const [any192, maskable192, apple180, faviconSvg] = await Promise.all([

@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import sharp from "sharp";
 import {
   APPROVED_BRAND_PNG_SHA256,
   APPROVED_BRAND_SVG_SHA256,
@@ -45,6 +47,25 @@ describe("public PWA assets", () => {
     expect(APPROVED_BRAND_PNG_SHA256).toBe(
       "922b43ef7b0a0328886132b1815c101f0aa037f80793d5ed14c56c527fabe06d"
     );
+  });
+
+  it("uses a dark mark for light browsers and a light mark for dark browsers", async () => {
+    const publicDir = resolve(makeTempRoot(), "public");
+    await generatePublicPwaAssets({ root: repoRoot, publicDir });
+
+    async function markCenter(path: string) {
+      const ico = await readFile(resolve(publicDir, path));
+      const length = ico.readUInt32LE(6 + 8);
+      const offset = ico.readUInt32LE(6 + 12);
+      const { data, info } = await sharp(ico.subarray(offset, offset + length))
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      return data[(8 * info.width + 4) * info.channels];
+    }
+
+    expect(await markCenter("favicon.ico")).toBeLessThan(100);
+    expect(await markCenter("favicon-dark.ico")).toBeGreaterThan(180);
   });
 
   it("scopes manifest identity and every icon URL to root or a configured base path", async () => {

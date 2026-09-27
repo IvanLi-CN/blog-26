@@ -25,6 +25,7 @@ export type PublicPwaAssetPaths = {
   publicDirectory: string;
   faviconSvg: string;
   faviconIco: string;
+  faviconDarkIco: string;
   any192: string;
   any512: string;
   maskable192: string;
@@ -47,6 +48,7 @@ export async function getPublicPwaAssetPaths(root = process.cwd()): Promise<Publ
     publicDirectory,
     faviconSvg: "/favicon.svg",
     faviconIco: "/favicon.ico",
+    faviconDarkIco: "/favicon-dark.ico",
     any192: `${publicDirectory}/icon-any-192.png`,
     any512: `${publicDirectory}/icon-any-512.png`,
     maskable192: `${publicDirectory}/icon-maskable-192.png`,
