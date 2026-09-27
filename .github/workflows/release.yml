@@ -488,12 +488,15 @@ jobs:
 
       - name: Stage EdgeOne deployment artifact
         shell: bash
+        env:
+          PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
         run: |
           set -euo pipefail
           rm -rf ./edgeone-dist
           mkdir -p ./edgeone-dist
           cp -R ./site-dist/. ./edgeone-dist/
           cp -R ./edge-functions ./edgeone-dist/edge-functions
+          bun ./scripts/prepare-edgeone-pwa-config.ts
 
       - name: Verify EdgeOne deployment artifact
         id: verify-public-media

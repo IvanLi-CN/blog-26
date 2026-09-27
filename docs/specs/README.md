@@ -32,6 +32,7 @@
 | Next runtime reduction after admin SPA migration | superseded | implemented | `next-runtime-reduction/SPEC.md` | `zero-next-cleanup/SPEC.md` | Production runtime reduction completed; repository-wide removal moved to the successor. |
 | Posts cover fallback | active | implemented | `posts-cover-fallback/SPEC.md` | - | Post cards fall back to the first supported body image. |
 | Posts list title contrast | archived | implemented | `posts-list-title-contrast/SPEC.md` | - | Semantic title colors preserve hierarchy across themes. |
+| Public Blog Logo Assets and Online-First PWA | active | implemented | `public-pwa/SPEC.md` | - | Approved brand source, generated browser/install icons, public-only install metadata, and online-first caching. |
 | PR + label driven release | active | in progress | `pr-label-release/SPEC.md` | - | Component-aware releases publish frontend, backend, Pages, and a unified image. |
 | Public media assets facade | active | implemented | `public-media-assets-facade/SPEC.md` | - | Public media references use blog-owned stable facade URLs. |
 | Release failure Oidrune alerts | active | in progress | `release-failure-telegram-alerts/SPEC.md` | - | Release failures report the actual target SHA through the OIDC-authenticated Oidrune workflow. |

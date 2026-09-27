@@ -8,6 +8,7 @@ import { SITE, UI } from "@/config/site";
 import IconifyBoot from "../components/IconifyBoot";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
+import { getPublicPwaAssetPaths } from "../lib/public-pwa";
 import { getCanonicalUrl, toAbsoluteSiteUrl } from "../lib/public-site";
 import { toPublicSitePath } from "../lib/runtime-urls";
 
@@ -25,6 +26,7 @@ const {
   image = SITE.images.default,
 } = Astro.props;
 const canonical = getCanonicalUrl(pathname);
+const pwaAssets = await getPublicPwaAssetPaths();
 const resolvedImage =
   image.startsWith("http") || image.startsWith("data:")
     ? image
@@ -46,7 +48,10 @@ const resolvedImage =
     <meta name="keywords" content={SITE.keywords.join(",")} />
     <meta name="generator" content="Astro" />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href={toPublicSitePath("/favicon.ico")} />
+    <link rel="manifest" href={toPublicSitePath("/site.webmanifest")} />
+    <link rel="icon" type="image/svg+xml" href={toPublicSitePath(pwaAssets.faviconSvg)} />
+    <link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48" href={toPublicSitePath(pwaAssets.faviconIco)} />
+    <link rel="apple-touch-icon" sizes="180x180" href={toPublicSitePath(pwaAssets.appleTouch180)} />
     <link
       rel="alternate"
       type="application/rss+xml"
@@ -79,6 +84,7 @@ const resolvedImage =
     <meta name="twitter:creator" content={SITE.seo.twitter.creator} />
     <meta name="twitter:site" content={SITE.seo.twitter.site} />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#edf4ef" />
     <ClientRouter />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
@@ -110,6 +116,14 @@ const resolvedImage =
           return localStorage.getItem("theme") || defaultTheme;
         }
 
+        function syncThemeColor(doc = document) {
+          const themeColor = doc.querySelector('meta[name="theme-color"]');
+          const backgroundColor = getComputedStyle(doc.documentElement)
+            .getPropertyValue("--nature-bg")
+            .trim();
+          if (themeColor && backgroundColor) themeColor.setAttribute("content", backgroundColor);
+        }
+
         function ensureNavigationSession(doc = document) {
           if (!window[SESSION_KEY]) {
             window[SESSION_KEY] =
@@ -130,6 +144,8 @@ const resolvedImage =
           d.setAttribute("data-theme", resolvedTheme);
           d.classList.toggle("dark", resolvedTheme === "dark");
           d.style.colorScheme = resolvedTheme;
+          syncThemeColor(doc);
+          window.requestAnimationFrame(() => syncThemeColor(doc));
 
           if (theme !== normalizedTheme) {
             localStorage.setItem("theme", normalizedTheme);
@@ -148,8 +164,9 @@ const resolvedImage =
           syncDocumentState();
         });
         document.addEventListener("astro:page-load", () => {
-          ensureNavigationSession();
+          syncDocumentState();
         });
+        document.addEventListener("DOMContentLoaded", () => syncThemeColor(), { once: true });
 
         syncDocumentState();
       })();
