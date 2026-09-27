@@ -504,9 +504,14 @@ jobs:
           PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ env.PUBLIC_SITE_URL }}
           PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
+          PUBLIC_EDGEONE_ARTIFACT_DIR: ./edgeone-dist
+          PUBLIC_MEDIA_ARTIFACT_DIR: ./edgeone-dist
           PUBLIC_STATIC_MEDIA_MAX_FILES: 20000
           PUBLIC_STATIC_MEDIA_MAX_PROJECT_BYTES: 5368709120
-        run: bun run frontend:verify-media
+        run: |
+          set -euo pipefail
+          bun run pwa:verify-edgeone-artifact
+          bun run frontend:verify-media
 
       - name: Record public media artifact summary
         shell: bash

@@ -181,7 +181,7 @@ export function findEdgeoneCacheRule(config: EdgeoneCacheConfig, pathname: strin
   return config.headers.find((headerRule) => edgeoneSourceMatches(headerRule.source, pathname));
 }
 
-async function collectStaticFiles(root: string, directory = root): Promise<string[]> {
+export async function collectStaticFiles(root: string, directory = root): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const nested = await Promise.all(
     entries.map(async (entry) => {
@@ -222,7 +222,9 @@ export async function prepareEdgeonePwaConfig(
   options: { siteDistDir?: string; artifactDir?: string; basePath?: string } = {}
 ) {
   const siteDistDir = resolve(options.siteDistDir ?? "site-dist");
-  const artifactDir = resolve(options.artifactDir ?? "edgeone-dist");
+  const artifactDir = resolve(
+    options.artifactDir ?? process.env.PUBLIC_EDGEONE_ARTIFACT_DIR ?? "edgeone-dist"
+  );
   const staticFiles = await collectStaticFiles(siteDistDir);
   const config = createEdgeoneCacheConfig(
     options.basePath ?? process.env.PUBLIC_SITE_BASE_PATH ?? "",

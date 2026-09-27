@@ -1,9 +1,22 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   createEdgeoneCacheConfig,
   EDGEONE_PUBLIC_CACHE_CONTROL,
   findEdgeoneCacheRule,
+  prepareEdgeonePwaConfig,
 } from "../../scripts/prepare-edgeone-pwa-config";
+import { verifyEdgeonePwaArtifact } from "../../scripts/verify-edgeone-pwa-artifact";
+
+const temporaryRoots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true }))
+  );
+});
 
 describe("EdgeOne public PWA cache config", () => {
   it("covers public pages and assets at a base path without matching API or admin", () => {
@@ -125,5 +138,30 @@ describe("EdgeOne public PWA cache config", () => {
     expect(config.headers.some(({ source }) => source === "/projects/*")).toBe(false);
     expect(config.headers.some(({ source }) => source === "/_content/assets/*")).toBe(false);
     expect(config.headers.length).toBeLessThanOrEqual(30);
+  });
+
+  it("verifies the staged EdgeOne artifact config against the site output", async () => {
+    const root = await mkdtemp(join(tmpdir(), "public-pwa-edgeone-artifact-"));
+    temporaryRoots.push(root);
+    const siteDistDir = join(root, "site-dist");
+    const artifactDir = join(root, "edgeone-dist");
+    await mkdir(join(siteDistDir, "memos"), { recursive: true });
+    await writeFile(join(siteDistDir, "index.html"), "<main>home</main>");
+    await writeFile(join(siteDistDir, "memos", "index.html"), "<main>memos</main>");
+    await writeFile(join(siteDistDir, "memos", "feed.xml"), "<feed />");
+
+    const generated = await prepareEdgeonePwaConfig({ siteDistDir, artifactDir });
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).resolves.toEqual({
+      configPath: join(artifactDir, "edgeone.json"),
+      ruleCount: generated.headers.length,
+    });
+
+    const configPath = join(artifactDir, "edgeone.json");
+    const written = JSON.parse(await readFile(configPath, "utf8")) as { headers: unknown[] };
+    written.headers.pop();
+    await writeFile(configPath, `${JSON.stringify(written)}\n`);
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
+      "do not match site output"
+    );
   });
 });

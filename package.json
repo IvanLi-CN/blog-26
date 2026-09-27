@@ -110,6 +110,7 @@
     "public:export": "bun ./scripts/export-public-site-data.ts",
     "frontend:package-media": "bun ./scripts/package-public-media.ts",
     "frontend:verify-media": "bun ./scripts/verify-public-media-package.ts",
+    "pwa:verify-edgeone-artifact": "bun ./scripts/verify-edgeone-pwa-artifact.ts",
     "generate:public-pwa": "bun ./scripts/generate-public-pwa-assets.ts",
     "verify:public-pwa": "bun ./scripts/verify-public-pwa-assets.ts",
     "preview:public-pwa": "bun ./scripts/render-public-pwa-icon-preview.ts",

@@ -17,6 +17,7 @@ Key project scripts live in this directory. Use Bun unless a shell script is exp
 - `verify-test-data.ts`: validate generated fixture shape
 - `package-public-media.ts`: package processed facade media referenced by the generated public site
 - `verify-public-media-package.ts`: verify packaged media references and EdgeOne artifact quotas
+- `verify-edgeone-pwa-artifact.ts`: verify the staged EdgeOne cache configuration matches the public site output
 
 ## Common Commands
 
@@ -31,7 +32,10 @@ bun run test-data:generate
 bun run test-data:verify
 bun run frontend:package-media
 bun run frontend:verify-media
+bun run pwa:verify-edgeone-artifact
 ```
+
+Set `PUBLIC_MEDIA_ARTIFACT_DIR=./edgeone-dist` to make the media verifier inspect the final staged EdgeOne directory; it defaults to `site-dist` for local frontend checks.
 
 ## Notes
 

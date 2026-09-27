@@ -90,7 +90,10 @@ describe("release.yml", () => {
     expect(publishFrontend).toContain("cp -R ./site-dist/. ./edgeone-dist/");
     expect(publishFrontend).toContain("cp -R ./edge-functions ./edgeone-dist/edge-functions");
     expect(publishFrontend).toContain("- name: Verify EdgeOne deployment artifact");
-    expect(publishFrontend).toContain("run: bun run frontend:verify-media");
+    expect(publishFrontend).toContain("PUBLIC_EDGEONE_ARTIFACT_DIR: ./edgeone-dist");
+    expect(publishFrontend).toContain("PUBLIC_MEDIA_ARTIFACT_DIR: ./edgeone-dist");
+    expect(publishFrontend).toContain("bun run pwa:verify-edgeone-artifact");
+    expect(publishFrontend).toContain("bun run frontend:verify-media");
     expect(publishFrontend).toContain("- name: Upload frontend EdgeOne artifact");
     expect(publishFrontend).toContain("uses: actions/upload-artifact@v7");
     expect(publishFrontend).toContain("name: frontend-edgeone-site");
