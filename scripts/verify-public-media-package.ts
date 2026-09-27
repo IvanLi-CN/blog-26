@@ -144,7 +144,10 @@ export async function verifyPublicMediaPackage(
   options: VerifyPublicMediaPackageOptions = {}
 ): Promise<{ fileCount: number; totalBytes: number }> {
   const cwd = resolve(options.cwd ?? process.cwd());
-  const artifactDir = resolve(cwd, options.artifactDir ?? "site-dist");
+  const artifactDir = resolve(
+    cwd,
+    options.artifactDir ?? process.env.PUBLIC_MEDIA_ARTIFACT_DIR ?? "site-dist"
+  );
   const basePath = normalizeBasePath(
     options.siteBasePath ?? process.env.PUBLIC_SITE_BASE_PATH ?? ""
   );

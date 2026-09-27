@@ -511,6 +511,68 @@
     justify-content: center;
   }
 
+  .nature-brand-link {
+    gap: 0.75rem;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .nature-brand-link:is(:hover, :focus-visible) {
+    color: var(--nature-accent-strong);
+  }
+
+  .nature-brand-name {
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .nature-brand-mark {
+    --nature-brand-mark-url: url("/ivan-blog-mark.svg");
+    display: block;
+    width: 3.25rem;
+    height: 2.3125rem;
+    flex: none;
+    background-color: var(--nature-accent-strong);
+    -webkit-mask: var(--nature-brand-mark-url) center / contain no-repeat;
+    mask: var(--nature-brand-mark-url) center / contain no-repeat;
+  }
+
+  html[data-ui-theme="dark"] .nature-brand-mark {
+    background-color: currentColor;
+  }
+
+  @media (max-width: 639px) {
+    .nature-brand-link {
+      gap: 0.5rem;
+    }
+
+    .nature-brand-name {
+      font-size: 1.0625rem;
+    }
+
+    .nature-brand-mark {
+      width: 2.6875rem;
+      height: 1.9375rem;
+    }
+  }
+
+  @media (max-width: 359px) {
+    .nature-brand-link {
+      gap: 0.375rem;
+    }
+
+    .nature-brand-name {
+      font-size: 0.9375rem;
+    }
+
+    .nature-brand-mark {
+      width: 2.1875rem;
+      height: 1.625rem;
+    }
+  }
+
   .nature-chip-accent {
     border-color: rgba(var(--nature-accent-rgb), 0.28);
     background: var(--nature-accent-soft);

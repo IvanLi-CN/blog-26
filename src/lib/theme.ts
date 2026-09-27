@@ -46,6 +46,9 @@ export function applyThemeToDocument(selectedTheme: UiThemeSelection | string): 
   root.setAttribute("data-theme", resolvedTheme);
   root.classList.toggle("dark", isDarkTheme(resolvedTheme));
   root.style.colorScheme = resolvedTheme;
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  const backgroundColor = window.getComputedStyle(root).getPropertyValue("--nature-bg").trim();
+  if (themeColor && backgroundColor) themeColor.setAttribute("content", backgroundColor);
 
   return resolvedTheme;
 }

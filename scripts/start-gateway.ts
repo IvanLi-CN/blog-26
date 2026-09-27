@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { getSsoEmailHeaderName } from "@/lib/admin-config";
 import { extractAuthFromRequest } from "@/lib/auth-utils";
+import { getPublicStaticCacheControl } from "@/lib/public-static-cache-policy";
 import { loadWorktreeEnvFileIfPresent, resolveWorktreePort } from "@/lib/worktree-env";
 import { handleAdminApiRequest } from "@/server/admin-api/router";
 import { handleDevApiRequest } from "@/server/dev-api/router";
@@ -221,6 +222,8 @@ async function servePublicStaticFile(request: Request, path: string, status = 20
     etag,
     "last-modified": info.mtime.toUTCString(),
   });
+  const cacheControl = getPublicStaticCacheControl(new URL(request.url).pathname, path, status);
+  if (cacheControl) headers.set("cache-control", cacheControl);
 
   if (request.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers });

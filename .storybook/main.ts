@@ -7,6 +7,7 @@ const repoRoot = resolve(import.meta.dirname, "..");
 
 const config: StorybookConfig = {
   stories: ["../apps/admin/src/**/*.stories.@(ts|tsx|mdx)", "../src/**/*.stories.@(ts|tsx|mdx)"],
+  staticDirs: [{ from: "../public", to: "/" }],
   addons: ["@storybook/addon-docs"],
   framework: {
     name: "@storybook/react-vite",

@@ -21,9 +21,10 @@ export function PublicStoryHeader({
         <div className="nature-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:flex sm:flex-wrap sm:gap-3 sm:px-5">
           <a
             href="/"
-            className="nature-brand-link min-w-0 pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:min-w-fit sm:text-2xl"
+            className="nature-brand-link min-w-0 pl-1 text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:min-w-fit"
           >
-            Ivan's Blog
+            <span className="nature-brand-mark" aria-hidden="true" />
+            <span className="nature-brand-name">Ivan's Blog</span>
           </a>
 
           <nav

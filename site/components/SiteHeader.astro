@@ -26,9 +26,14 @@ function isActive(href: string) {
     <div class="nature-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:flex sm:flex-wrap sm:gap-3 sm:px-5">
       <a
         href={toPublicSitePath("/")}
-        class="nature-brand-link min-w-0 pl-1 font-heading text-xl font-semibold tracking-[-0.04em] text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:min-w-fit sm:text-2xl"
+        class="nature-brand-link min-w-0 pl-1 text-[color:var(--nature-text)] transition-colors hover:text-[color:var(--nature-accent-strong)] sm:min-w-fit"
       >
-        {SITE.name}
+        <span
+          class="nature-brand-mark"
+          aria-hidden="true"
+          style={`--nature-brand-mark-url: url("${toPublicSitePath("/ivan-blog-mark.svg")}")`}
+        ></span>
+        <span class="nature-brand-name">{SITE.name}</span>
       </a>
 
       <nav class="order-3 col-span-2 w-full sm:col-auto md:order-2 md:ml-2 md:w-auto" aria-label="Main navigation">

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type PublicMediaFetcher, packagePublicMedia } from "./package-public-media";
@@ -25,6 +25,43 @@ function response(body: string, headers: Record<string, string> = {}) {
 }
 
 describe("packagePublicMedia", () => {
+  test("verifies the configured final EdgeOne media artifact directory", async () => {
+    const cwd = await fixture();
+    await writeFile(join(cwd, "site-dist", "index.html"), "<main>site</main>");
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      fetchImpl: async () => response(""),
+    });
+
+    const siteResult = await verifyPublicMediaPackage({
+      cwd,
+      artifactDir: "site-dist",
+      mediaOrigin: "https://api.example",
+      maxFiles: 100,
+      maxProjectBytes: 1024 * 1024,
+    });
+    const artifactDir = join(cwd, "edgeone-dist");
+    await cp(join(cwd, "site-dist"), artifactDir, { recursive: true });
+    await writeFile(join(artifactDir, "edgeone.json"), '{"headers":[]}\n');
+
+    const previousArtifactDir = process.env.PUBLIC_MEDIA_ARTIFACT_DIR;
+    process.env.PUBLIC_MEDIA_ARTIFACT_DIR = "edgeone-dist";
+    try {
+      const artifactResult = await verifyPublicMediaPackage({
+        cwd,
+        mediaOrigin: "https://api.example",
+        maxFiles: 100,
+        maxProjectBytes: 1024 * 1024,
+      });
+      expect(artifactResult.fileCount).toBe(siteResult.fileCount + 1);
+    } finally {
+      if (previousArtifactDir === undefined) delete process.env.PUBLIC_MEDIA_ARTIFACT_DIR;
+      else process.env.PUBLIC_MEDIA_ARTIFACT_DIR = previousArtifactDir;
+    }
+  });
+
   test("does not include escaped JSON text after an embedded media URL", async () => {
     const cwd = await fixture();
     await writeFile(
