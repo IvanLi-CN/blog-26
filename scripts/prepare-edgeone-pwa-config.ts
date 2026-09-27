@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { mkdir, readdir, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, join, relative, resolve, sep } from "node:path";
 
 export const EDGEONE_PUBLIC_CACHE_CONTROL = {
   html: "public, max-age=60, must-revalidate",
@@ -58,6 +58,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
         .filter((path): path is string => path !== undefined)
     ),
   ].sort();
+  const hasContentAssetFiles = normalizedStaticFiles.some((path) =>
+    path.startsWith("_content/assets/")
+  );
   const htmlRules = [
     rule(scopedPath(basePath, "/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
     ...["/about*", "/search*", "/posts*", "/memos*", "/tags*"].map((path) =>
@@ -68,7 +71,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   ];
   const versionedRules = [
     rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
-    rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
+    ...(hasContentAssetFiles
+      ? [rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)]
+      : []),
     ...versionedPwaDirectories.map((path) =>
       rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
     ),
@@ -77,30 +82,64 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     .filter((path) => path && !path.endsWith(".html") && path !== "CNAME")
     .filter((path) => !isVersionedAsset(path))
     .sort();
+  const exactAssetSources = new Set<string>();
   const assetSources = new Set<string>();
+  const projectAssetSources = new Set<string>();
 
   for (const path of unversionedFiles) {
     const parent = dirname(path).replaceAll("\\", "/");
     const basename = path.slice(path.lastIndexOf("/") + 1);
+    const exactSource = scopedPath(basePath, `/${path}`);
+    const overlapsHtmlRoute = htmlRules.some(({ source }) =>
+      edgeoneSourceMatches(source, exactSource)
+    );
+
+    if (overlapsHtmlRoute) {
+      exactAssetSources.add(exactSource);
+      continue;
+    }
+
     if (parent === "." && /^favicon\.(?:ico|svg)$/.test(basename)) {
       assetSources.add(scopedPath(basePath, "/favicon.*"));
       continue;
     }
+
+    if (path.startsWith("projects/")) {
+      const extension = extname(path);
+      if (!extension) {
+        exactAssetSources.add(exactSource);
+        continue;
+      }
+
+      const projectDirectoryDepth = path.split("/").length - 2;
+      const pattern = [
+        "projects",
+        ...Array.from({ length: projectDirectoryDepth }, (_, index) => `:projectDir${index + 1}`),
+        `*${extension}`,
+      ].join("/");
+      projectAssetSources.add(scopedPath(basePath, `/${pattern}`));
+      continue;
+    }
+
     const useExactPath =
       parent === "." || parent === "_content" || parent === "_astro" || parent === "pwa";
-    const source = useExactPath
-      ? scopedPath(basePath, `/${path}`)
-      : scopedPath(basePath, `/${parent}/*`);
+    const source = useExactPath ? exactSource : scopedPath(basePath, `/${parent}/*`);
     assetSources.add(source);
   }
 
   const config: EdgeoneCacheConfig = {
     headers: [
       ...versionedRules,
-      ...[...assetSources]
+      ...[...exactAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
       ...htmlRules,
+      ...[...assetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...[...projectAssetSources]
+        .sort()
+        .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
     ],
   };
 

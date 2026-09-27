@@ -14,6 +14,7 @@ describe("EdgeOne public PWA cache config", () => {
       "posts/index.html",
       "posts/example/index.html",
       "memos/index.html",
+      "memos/feed.xml",
       "tags/index.html",
       "tags/nature/index.html",
       "projects/index.html",
@@ -38,6 +39,12 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/projects/blog-26/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
+    expect(findEdgeoneCacheRule(config, "/blog-26/memos/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/memos/feed.xml")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
     expect(findEdgeoneCacheRule(config, "/blog-26/_astro/app-123456.js")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.immutable
     );
@@ -61,6 +68,9 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
+    expect(
+      config.headers.some(({ source }) => source === "/blog-26/projects/:projectDir1/*.webp")
+    ).toBe(true);
     expect(findEdgeoneCacheRule(config, "/api/health")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/api/public/assets/post/a/cover.webp")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/admin/")).toBeUndefined();
@@ -74,5 +84,46 @@ describe("EdgeOne public PWA cache config", () => {
         "Public HTML route has no EdgeOne HTML cache rule"
       );
     }
+  });
+
+  it("keeps HTML routes ahead of project asset wildcards and narrows overlapping assets", () => {
+    const projectOutputFiles = Array.from({ length: 40 }, (_, index) => [
+      `projects/project-${index}/index.html`,
+      `projects/project-${index}/assets/cover-${index}.webp`,
+    ]).flat();
+    const config = createEdgeoneCacheConfig("", [
+      "index.html",
+      "memos/index.html",
+      "memos/feed.xml",
+      "projects/index.html",
+      "projects/posters/blog-26.webp",
+      ...projectOutputFiles,
+    ]);
+
+    expect(findEdgeoneCacheRule(config, "/memos/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/memos/feed.xml")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(findEdgeoneCacheRule(config, "/projects/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/projects/project-39/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/projects/posters/blog-26.webp")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(
+      findEdgeoneCacheRule(config, "/projects/project-39/assets/cover-39.webp")?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
+    expect(config.headers.some(({ source }) => source === "/memos/*")).toBe(false);
+    expect(
+      config.headers.some(({ source }) => source === "/projects/:projectDir1/:projectDir2/*.webp")
+    ).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/projects/*")).toBe(false);
+    expect(config.headers.some(({ source }) => source === "/_content/assets/*")).toBe(false);
+    expect(config.headers.length).toBeLessThanOrEqual(30);
   });
 });

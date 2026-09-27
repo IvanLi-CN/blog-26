@@ -48,6 +48,7 @@
 - Digest-qualified build assets and install assets under `/pwa/<16-hex-digest>/` MUST use `Cache-Control: public, max-age=31536000, immutable`.
 - Manifest, stable favicon, and other unversioned public static assets MUST revalidate using ETag and `Cache-Control: public, max-age=0, must-revalidate`.
 - The Bun gateway and EdgeOne Makers static artifact MUST implement equivalent public cache boundaries.
+- The EdgeOne configuration MUST stay within the platform limit of 30 header rules. Asset rules MUST NOT shadow a matching HTML route; colliding assets must retain revalidation through a more specific rule.
 - The EdgeOne configuration generator MUST fail when a non-error public HTML output has no matching HTML cache rule, including flat `.html` files.
 - Inputs: the resolved public static-file path and EdgeOne artifact path.
 - Outputs: consistent cache directives for public static responses.
@@ -88,7 +89,7 @@
 
 - Method: gateway HTTP checks and EdgeOne artifact route-policy checks.
 - covers: `REQ-PWA-005`, `REQ-PWA-006`.
-- Pass condition: HTML, versioned assets, and stable assets receive the prescribed headers; a matching ETag yields 304; unclassified non-error HTML output is rejected; API and admin paths receive no new cache policy.
+- Pass condition: HTML, versioned assets, and stable assets receive the prescribed headers; the EdgeOne artifact stays within 30 rules; overlapping HTML and asset paths resolve to the right policy; a matching ETag yields 304; unclassified non-error HTML output is rejected; API and admin paths receive no new cache policy.
 
 ### VER-PWA-005
 
