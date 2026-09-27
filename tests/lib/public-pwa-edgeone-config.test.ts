@@ -30,6 +30,7 @@ describe("EdgeOne public PWA cache config", () => {
       "memos/feed.xml",
       "tags/index.html",
       "tags/nature/index.html",
+      "tags/nature/feed.xml",
       "projects/index.html",
       "projects/blog-26/index.html",
       "_astro/app-123456.js",
@@ -55,6 +56,12 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/memos/")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.html
     );
+    expect(findEdgeoneCacheRule(config, "/blog-26/tags/nature/")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.html
+    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/tags/nature/feed.xml")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
     expect(findEdgeoneCacheRule(config, "/blog-26/memos/feed.xml")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
@@ -78,6 +85,7 @@ describe("EdgeOne public PWA cache config", () => {
     expect(findEdgeoneCacheRule(config, "/blog-26/favicon.ico")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
+    expect(config.headers.some(({ source }) => source === "/blog-26/f*")).toBe(true);
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
@@ -86,6 +94,8 @@ describe("EdgeOne public PWA cache config", () => {
     ).toBe(true);
     expect(findEdgeoneCacheRule(config, "/api/health")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/api/public/assets/post/a/cover.webp")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/api/v1/feed.xml")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/mcp")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/admin/")).toBeUndefined();
   });
 
@@ -97,6 +107,49 @@ describe("EdgeOne public PWA cache config", () => {
         "Public HTML route has no EdgeOne HTML cache rule"
       );
     }
+  });
+
+  it("keeps nested tag pages and feeds within the EdgeOne rule limit", () => {
+    const tagSegments = [
+      "Hardware/Component/OperationalAmplifier",
+      "HomeLab/内网穿透",
+      "Software/FreeCAD",
+      ...Array.from({ length: 36 }, (_, index) => `Topic/Group-${index}/Tag-${index}`),
+    ];
+    const tagOutputFiles = tagSegments.flatMap((tag) => [
+      `tags/${tag}/index.html`,
+      `tags/${tag}/feed.xml`,
+    ]);
+    const config = createEdgeoneCacheConfig("", [
+      "index.html",
+      "tags/index.html",
+      ...tagOutputFiles,
+      "_astro/app-123456.js",
+      "_content/assets/post/example/hash/cover.webp",
+      "_content/media-manifest.json",
+      "site.webmanifest",
+      "favicon.svg",
+      "projects/posters/blog-26.webp",
+      "projects/social/blog-26-640.webp",
+      "atom.xml",
+      "feed.json",
+      "feed.xml",
+      "rss.xml",
+      "sitemap.xml",
+    ]);
+
+    expect(config.headers.length).toBeLessThanOrEqual(30);
+    expect(
+      findEdgeoneCacheRule(config, "/tags/Hardware/Component/OperationalAmplifier/")?.headers[0]
+        ?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.html);
+    expect(
+      findEdgeoneCacheRule(config, "/tags/Hardware/Component/OperationalAmplifier/feed.xml")
+        ?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
+    expect(config.headers.filter(({ source }) => source === "/tags/*/feed.xml")).toHaveLength(1);
+    expect(findEdgeoneCacheRule(config, "/api/public/assets/post/a/cover.webp")).toBeUndefined();
+    expect(findEdgeoneCacheRule(config, "/admin/")).toBeUndefined();
   });
 
   it("keeps HTML routes ahead of project asset wildcards and narrows overlapping assets", () => {
@@ -149,12 +202,36 @@ describe("EdgeOne public PWA cache config", () => {
     await writeFile(join(siteDistDir, "index.html"), "<main>home</main>");
     await writeFile(join(siteDistDir, "memos", "index.html"), "<main>memos</main>");
     await writeFile(join(siteDistDir, "memos", "feed.xml"), "<feed />");
+    await mkdir(join(artifactDir, "memos"), { recursive: true });
+    await mkdir(join(artifactDir, "edge-functions"), { recursive: true });
+    await writeFile(join(artifactDir, "index.html"), "<main>home</main>");
+    await writeFile(join(artifactDir, "memos", "index.html"), "<main>memos</main>");
+    await writeFile(join(artifactDir, "memos", "feed.xml"), "<feed />");
+    await writeFile(join(artifactDir, "edge-functions", "index.js"), "export {};");
 
     const generated = await prepareEdgeonePwaConfig({ siteDistDir, artifactDir });
     await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).resolves.toEqual({
       configPath: join(artifactDir, "edgeone.json"),
       ruleCount: generated.headers.length,
     });
+
+    await writeFile(join(artifactDir, "index.html"), "<main>changed</main>");
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
+      "file content differs from site output: index.html"
+    );
+    await writeFile(join(artifactDir, "index.html"), "<main>home</main>");
+
+    await writeFile(join(artifactDir, "extra.txt"), "unexpected");
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
+      "0 missing, 1 extra"
+    );
+    await rm(join(artifactDir, "extra.txt"));
+
+    await rm(join(artifactDir, "memos", "feed.xml"));
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
+      "1 missing, 0 extra"
+    );
+    await writeFile(join(artifactDir, "memos", "feed.xml"), "<feed />");
 
     const configPath = join(artifactDir, "edgeone.json");
     const written = JSON.parse(await readFile(configPath, "utf8")) as { headers: unknown[] };
