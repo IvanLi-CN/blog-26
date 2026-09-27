@@ -171,20 +171,25 @@ export async function generatePublicPwaAssets(options: GeneratePublicPwaAssetsOp
       PUBLIC_PWA_COLORS.background
     )
   );
-  const faviconPngs = await Promise.all(
-    PUBLIC_PWA_ICON_CONTRACT.favicon.sizes.map(async (size) => ({
-      size,
-      buffer: await renderPng(
-        buildIconSvg(
-          sourceSvg,
-          size,
-          PUBLIC_PWA_ICON_CONTRACT.favicon.markWidth,
-          PUBLIC_PWA_COLORS.foreground,
-          PUBLIC_PWA_ICON_CONTRACT.favicon.background
-        )
-      ),
-    }))
-  );
+  const renderFaviconPngs = (foreground: string) =>
+    Promise.all(
+      PUBLIC_PWA_ICON_CONTRACT.favicon.sizes.map(async (size) => ({
+        size,
+        buffer: await renderPng(
+          buildIconSvg(
+            sourceSvg,
+            size,
+            PUBLIC_PWA_ICON_CONTRACT.favicon.markWidth,
+            foreground,
+            PUBLIC_PWA_ICON_CONTRACT.favicon.background
+          )
+        ),
+      }))
+    );
+  const [lightFaviconPngs, darkFaviconPngs] = await Promise.all([
+    renderFaviconPngs(PUBLIC_PWA_COLORS.foreground),
+    renderFaviconPngs(PUBLIC_PWA_COLORS.darkThemeForeground),
+  ]);
 
   const generatedFiles = [
     [resolve(versionedDir, "icon-any-192.png"), any192],
@@ -193,7 +198,8 @@ export async function generatePublicPwaAssets(options: GeneratePublicPwaAssetsOp
     [resolve(versionedDir, "icon-maskable-512.png"), maskable512],
     [resolve(versionedDir, "apple-touch-icon-180.png"), apple180],
     [resolve(publicDir, "favicon.svg"), Buffer.from(buildAdaptiveFaviconSvg(sourceSvg))],
-    [resolve(publicDir, "favicon.ico"), createIco(faviconPngs)],
+    [resolve(publicDir, "favicon.ico"), createIco(lightFaviconPngs)],
+    [resolve(publicDir, "favicon-dark.ico"), createIco(darkFaviconPngs)],
     [resolve(publicDir, "ivan-blog-mark.svg"), svgBuffer],
   ] as const;
 

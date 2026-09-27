@@ -40,6 +40,7 @@ describe("EdgeOne public PWA cache config", () => {
       "site.webmanifest",
       "favicon.svg",
       "favicon.ico",
+      "favicon-dark.ico",
       "ivan-blog-mark.svg",
       "projects/posters/blog-26.webp",
     ]);
@@ -83,6 +84,9 @@ describe("EdgeOne public PWA cache config", () => {
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
     expect(findEdgeoneCacheRule(config, "/blog-26/favicon.ico")?.headers[0]?.value).toBe(
+      EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
+    );
+    expect(findEdgeoneCacheRule(config, "/blog-26/favicon-dark.ico")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );
     expect(config.headers.some(({ source }) => source === "/blog-26/f*")).toBe(true);

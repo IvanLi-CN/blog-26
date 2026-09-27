@@ -11,7 +11,7 @@
 - `brand master`: the approved `IB-M17-01` reference image and the exact black-on-transparent `ivan-blog-mark.svg` source.
 - `versioned asset`: a public asset whose URL contains a digest derived from the brand source and icon-generation contract.
 - `online-first`: the site requires a network connection for navigation and content; regular browser caching may improve repeat visits but does not promise offline access.
-- Interface: the build-generated `/site.webmanifest`, stable `/favicon.svg` and `/favicon.ico`, and digest-qualified files under `/pwa/`.
+- Interface: the build-generated `/site.webmanifest`, stable `/favicon.svg`, `/favicon.ico`, and `/favicon-dark.ico`, and digest-qualified files under `/pwa/`.
 
 ## Requirements
 
@@ -23,8 +23,9 @@
 
 ### REQ-PWA-002
 
-- The system MUST deterministically derive transparent SVG and ICO favicons, transparent `any` PNG icons at 192 and 512 pixels, opaque `maskable` PNG icons at 192 and 512 pixels, and an opaque 180-pixel Apple touch icon.
+- The system MUST deterministically derive a transparent adaptive SVG favicon and separate transparent light- and dark-theme ICO favicons, transparent `any` PNG icons at 192 and 512 pixels, opaque `maskable` PNG icons at 192 and 512 pixels, and an opaque 180-pixel Apple touch icon.
 - `any` icons MUST use the `#24352d` mark on transparency with the mark width at 72% of the canvas. `maskable` and Apple icons MUST use a `#24352d` mark at 60% width on a solid `#edf4ef` background. The generator MUST NOT bake in rounded corners or shadows.
+- The SVG favicon MUST adapt its mark color to the browser color scheme. The light-theme ICO MUST use the dark mark, and the dark-theme ICO MUST use the light mark. The document MUST select the ICO fallback by browser color scheme and prefer the SVG favicon where supported.
 - Each generated install asset URL MUST include a digest of the SVG source and generation contract so changed artwork or geometry receives a new URL.
 - Inputs: the version-controlled SVG source and fixed icon-generation parameters.
 - Outputs: reproducible files under `/public/pwa/<digest>/` and stable compatibility favicons.
@@ -95,7 +96,7 @@
 
 - Method: icon preview and browser installation metadata inspection.
 - covers: `REQ-PWA-002`, `REQ-PWA-003`, `REQ-PWA-007`.
-- Pass condition: 16, 32, 48, 180, 192, and 512 pixel previews remain legible, and the 192/512 maskable marks stay inside the platform safe circle with no baked shape or clipping.
+- Pass condition: 16, 32, and 48 pixel favicon previews remain legible on light and dark surfaces; 180, 192, and 512 pixel previews remain legible; and the 192/512 maskable marks stay inside the platform safe circle with no baked shape or clipping.
 
 ## Related ADRs
 

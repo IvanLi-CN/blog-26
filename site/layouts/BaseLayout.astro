@@ -49,8 +49,9 @@ const resolvedImage =
     <meta name="generator" content="Astro" />
     <link rel="canonical" href={canonical} />
     <link rel="manifest" href={toPublicSitePath("/site.webmanifest")} />
-    <link rel="icon" type="image/svg+xml" href={toPublicSitePath(pwaAssets.faviconSvg)} />
-    <link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48" href={toPublicSitePath(pwaAssets.faviconIco)} />
+    <link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48" media="(prefers-color-scheme: light)" href={toPublicSitePath(pwaAssets.faviconIco)} />
+    <link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48" media="(prefers-color-scheme: dark)" href={toPublicSitePath(pwaAssets.faviconDarkIco)} />
+    <link rel="icon" type="image/svg+xml" sizes="any" href={toPublicSitePath(pwaAssets.faviconSvg)} />
     <link rel="apple-touch-icon" sizes="180x180" href={toPublicSitePath(pwaAssets.appleTouch180)} />
     <link
       rel="alternate"
