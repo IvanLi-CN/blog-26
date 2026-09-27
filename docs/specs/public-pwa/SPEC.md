@@ -38,14 +38,14 @@
 
 ### REQ-PWA-004
 
-- The public document's `theme-color` MUST track the resolved light or dark theme, including after Astro client-side navigation and theme changes.
+- The public document's `theme-color` MUST track the resolved light or dark theme, including operating-system color-scheme changes while system theme is selected, Astro client-side navigation, and explicit theme changes.
 - Inputs: the existing `data-ui-theme` theme state and the active `--nature-bg` value.
 - Outputs: a matching `<meta name="theme-color">` value.
 
 ### REQ-PWA-005
 
 - Public HTML responses MUST use `Cache-Control: public, max-age=60, must-revalidate`.
-- Digest-qualified build and install assets MUST use `Cache-Control: public, max-age=31536000, immutable`.
+- Digest-qualified build assets and install assets under `/pwa/<16-hex-digest>/` MUST use `Cache-Control: public, max-age=31536000, immutable`.
 - Manifest, stable favicon, and other unversioned public static assets MUST revalidate using ETag and `Cache-Control: public, max-age=0, must-revalidate`.
 - The Bun gateway and EdgeOne Makers static artifact MUST implement equivalent public cache boundaries.
 - The EdgeOne configuration generator MUST fail when a non-error public HTML output has no matching HTML cache rule, including flat `.html` files.
@@ -82,7 +82,7 @@
 
 - Method: browser theme toggle and Astro client-side navigation check.
 - covers: `REQ-PWA-004`.
-- Pass condition: the theme-color value follows light and dark `--nature-bg` values after initial load, theme change, and navigation.
+- Pass condition: the theme-color value follows light and dark `--nature-bg` values after initial load, OS color-scheme changes in system mode, explicit theme changes, and navigation.
 
 ### VER-PWA-004
 

@@ -21,6 +21,7 @@ describe("EdgeOne public PWA cache config", () => {
       "_astro/app-123456.js",
       "_content/assets/post/example/hash/cover.webp",
       "pwa/1234567890abcdef/icon-any-192.png",
+      "pwa/undigested/icon.png",
       "site.webmanifest",
       "favicon.svg",
       "favicon.ico",
@@ -44,6 +45,10 @@ describe("EdgeOne public PWA cache config", () => {
       findEdgeoneCacheRule(config, "/blog-26/pwa/1234567890abcdef/icon-any-192.png")?.headers[0]
         ?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.immutable);
+    expect(
+      findEdgeoneCacheRule(config, "/blog-26/pwa/undigested/icon.png")?.headers[0]?.value
+    ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
+    expect(config.headers.some(({ source }) => source === "/blog-26/pwa/*")).toBe(false);
     expect(findEdgeoneCacheRule(config, "/blog-26/site.webmanifest")?.headers[0]?.value).toBe(
       EDGEONE_PUBLIC_CACHE_CONTROL.revalidate
     );

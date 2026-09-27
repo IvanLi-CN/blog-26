@@ -105,11 +105,13 @@ const resolvedImage =
           return "system";
         }
 
+        const colorSchemePreference = window.matchMedia("(prefers-color-scheme: dark)");
+
         function resolveTheme(theme) {
           const normalizedTheme = normalizeTheme(theme);
           if (normalizedTheme === "dark") return "dark";
           if (normalizedTheme === "light") return "light";
-          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          return colorSchemePreference.matches ? "dark" : "light";
         }
 
         function getStoredTheme() {
@@ -156,6 +158,10 @@ const resolvedImage =
           applyTheme(getStoredTheme(), doc);
           ensureNavigationSession(doc);
         }
+
+        colorSchemePreference.addEventListener("change", () => {
+          if (normalizeTheme(getStoredTheme()) === "system") applyTheme("system");
+        });
 
         document.addEventListener("astro:before-swap", (event) => {
           syncDocumentState(event.newDocument);

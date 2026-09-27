@@ -250,5 +250,45 @@ test.describe("Astro public front (phase 1)", () => {
 
       expect(pageErrors).not.toContain("UI is not defined");
     });
+
+    test("updates resolved theme and theme-color when the OS preference changes", async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: "light" });
+      await gotoWithTheme(page, "/", "system");
+      await expectThemeState(page, "system", "light");
+
+      const initialThemeColor = await page
+        .locator('meta[name="theme-color"]')
+        .getAttribute("content");
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const meta = document.querySelector('meta[name="theme-color"]');
+            const background = getComputedStyle(document.documentElement)
+              .getPropertyValue("--nature-bg")
+              .trim();
+            return meta?.content === background;
+          })
+        )
+        .toBe(true);
+
+      await page.emulateMedia({ colorScheme: "dark" });
+      await expectThemeState(page, "system", "dark");
+      await expect
+        .poll(() => page.locator('meta[name="theme-color"]').getAttribute("content"))
+        .not.toBe(initialThemeColor);
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const meta = document.querySelector('meta[name="theme-color"]');
+            const background = getComputedStyle(document.documentElement)
+              .getPropertyValue("--nature-bg")
+              .trim();
+            return meta?.content === background;
+          })
+        )
+        .toBe(true);
+    });
   });
 });

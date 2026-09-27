@@ -37,12 +37,27 @@ function isVersionedAsset(path: string) {
   );
 }
 
+function versionedPwaDirectory(path: string) {
+  const match = /^pwa\/([a-f0-9]{16})\//.exec(path);
+  return match ? `pwa/${match[1]}` : undefined;
+}
+
 function rule(source: string, value: string): EdgeoneHeaderRule {
   return { source, headers: [{ key: "Cache-Control", value }] };
 }
 
 export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly string[]) {
   validateHtmlFiles(staticFiles, basePath);
+  const normalizedStaticFiles = staticFiles
+    .map((path) => path.replaceAll("\\", "/").replace(/^\.\//, ""))
+    .filter(Boolean);
+  const versionedPwaDirectories = [
+    ...new Set(
+      normalizedStaticFiles
+        .map(versionedPwaDirectory)
+        .filter((path): path is string => path !== undefined)
+    ),
+  ].sort();
   const htmlRules = [
     rule(scopedPath(basePath, "/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
     ...["/about*", "/search*", "/posts*", "/memos*", "/tags*"].map((path) =>
@@ -51,11 +66,14 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
     rule(scopedPath(basePath, "/projects/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
     rule(scopedPath(basePath, "/projects/:slug/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
   ];
-  const versionedRules = ["/_astro/*", "/_content/assets/*", "/pwa/*"].map((path) =>
-    rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
-  );
-  const unversionedFiles = staticFiles
-    .map((path) => path.replaceAll("\\", "/").replace(/^\.\//, ""))
+  const versionedRules = [
+    rule(scopedPath(basePath, "/_astro/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
+    rule(scopedPath(basePath, "/_content/assets/*"), EDGEONE_PUBLIC_CACHE_CONTROL.immutable),
+    ...versionedPwaDirectories.map((path) =>
+      rule(scopedPath(basePath, `/${path}/*`), EDGEONE_PUBLIC_CACHE_CONTROL.immutable)
+    ),
+  ];
+  const unversionedFiles = normalizedStaticFiles
     .filter((path) => path && !path.endsWith(".html") && path !== "CNAME")
     .filter((path) => !isVersionedAsset(path))
     .sort();
