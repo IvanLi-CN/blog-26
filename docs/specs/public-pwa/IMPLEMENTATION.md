@@ -8,16 +8,14 @@
 
 ## Implementation Coverage
 
-- Requirement coverage: `REQ-PWA-001` and `REQ-PWA-002` are implemented by the approved brand masters, deterministic icon generator, and asset verifier. `REQ-PWA-003` and `REQ-PWA-004` are implemented by the public Astro manifest and theme-color synchronization, including system color-scheme changes. `REQ-PWA-005` and `REQ-PWA-006` are implemented by the Bun gateway cache policy and generated EdgeOne route configuration, which rejects unclassified non-error HTML outputs, uses non-overlapping project asset suffix rules, narrows assets that share a matching HTML route, stays within the 30-rule platform limit, and applies immutable caching only to digest-qualified install asset directories. The release workflow verifies the staged `edgeone-dist/edgeone.json` against the site output and runs media-manifest/quota checks against that same final directory. `REQ-PWA-007` is covered by source, asset, manifest, cache-policy, EdgeOne artifact tests, and the icon preview.
+- Requirement coverage: `REQ-PWA-001` and `REQ-PWA-002` are implemented by the approved brand masters, deterministic icon generator, and asset verifier. `REQ-PWA-003` and `REQ-PWA-004` are implemented by the public Astro manifest and theme-color synchronization, including system color-scheme changes. `REQ-PWA-005` and `REQ-PWA-006` are implemented by the Bun gateway cache policy and generated EdgeOne route configuration, which rejects unclassified non-error HTML outputs, groups nested tag feed XML under one revalidation rule separate from tag HTML paths, groups root-level favicon/feed/file assets without matching API or gateway paths, keeps project asset rules suffix-scoped so they do not shadow HTML routes, stays within the 30-rule platform limit, and applies immutable caching only to digest-qualified install asset directories. The release workflow verifies the staged `edgeone-dist/edgeone.json` against the site output and runs media-manifest/quota checks against that same final directory. `REQ-PWA-007` is covered by source, asset, manifest, cache-policy, EdgeOne artifact tests, and the icon preview.
 - Repeatable checks: `bun run test:public-pwa`, `bun run verify:public-pwa`, `bun run check`, and `bun run site:build`.
 - Base-path build check: run `bun run site:build` with `PUBLIC_SITE_BASE_PATH` set to the deployment prefix, and with the repository's normal `DB_PATH`, `LOCAL_CONTENT_BASE_PATH`, and `CONTENT_SOURCES=local` build environment.
 - Browser check: inspect the root and base-path manifests and icon URLs; change the OS color scheme while system theme is selected, toggle light/dark themes, and navigate between Astro pages; verify public HTML, versioned assets, stable assets, and API/admin response cache headers.
-- Rollout facts: this change prepares source and static artifacts only; it does not deploy production.
-
 ## Coverage / rollout summary
 
 - Public install metadata and generated icons are available at build time. Browsing and content remain online-first; no Service Worker or offline-reading behavior is included.
-- No production rollout has been performed.
+- Stable frontend releases publish the verified static artifact to EdgeOne Makers and attach the site archive and checksum to the matching frontend GitHub Release.
 
 ## Remaining Gaps
 

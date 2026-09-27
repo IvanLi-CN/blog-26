@@ -63,7 +63,7 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   );
   const htmlRules = [
     rule(scopedPath(basePath, "/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
-    ...["/about*", "/search*", "/posts*", "/memos*", "/tags*"].map((path) =>
+    ...["/about*", "/search*", "/posts*", "/memos*", "/tags/", "/tags/*/"].map((path) =>
       rule(scopedPath(basePath, path), EDGEONE_PUBLIC_CACHE_CONTROL.html)
     ),
     rule(scopedPath(basePath, "/projects/"), EDGEONE_PUBLIC_CACHE_CONTROL.html),
@@ -85,11 +85,18 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
   const exactAssetSources = new Set<string>();
   const assetSources = new Set<string>();
   const projectAssetSources = new Set<string>();
+  let hasTagFeedFiles = false;
 
   for (const path of unversionedFiles) {
     const parent = dirname(path).replaceAll("\\", "/");
     const basename = path.slice(path.lastIndexOf("/") + 1);
     const exactSource = scopedPath(basePath, `/${path}`);
+
+    if (path.startsWith("tags/") && path.endsWith("/feed.xml")) {
+      hasTagFeedFiles = true;
+      continue;
+    }
+
     const overlapsHtmlRoute = htmlRules.some(({ source }) =>
       edgeoneSourceMatches(source, exactSource)
     );
@@ -99,8 +106,8 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       continue;
     }
 
-    if (parent === "." && /^favicon\.(?:ico|svg)$/.test(basename)) {
-      assetSources.add(scopedPath(basePath, "/favicon.*"));
+    if (parent === "." && basename.startsWith("f")) {
+      assetSources.add(scopedPath(basePath, "/f*"));
       continue;
     }
 
@@ -133,6 +140,9 @@ export function createEdgeoneCacheConfig(basePath: string, staticFiles: readonly
       ...[...exactAssetSources]
         .sort()
         .map((source) => rule(source, EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)),
+      ...(hasTagFeedFiles
+        ? [rule(scopedPath(basePath, "/tags/*/feed.xml"), EDGEONE_PUBLIC_CACHE_CONTROL.revalidate)]
+        : []),
       ...htmlRules,
       ...[...assetSources]
         .sort()
@@ -210,7 +220,8 @@ function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
       "/search*",
       "/posts*",
       "/memos*",
-      "/tags*",
+      "/tags/",
+      "/tags/*/",
       "/projects/",
       "/projects/:slug/",
     ].some((source) => edgeoneSourceMatches(scopedPath(normalizedBase, source), scoped));
