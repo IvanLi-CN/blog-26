@@ -44,7 +44,10 @@ describe("packagePublicMedia", () => {
     });
     const artifactDir = join(cwd, "edgeone-dist");
     await cp(join(cwd, "site-dist"), artifactDir, { recursive: true });
-    await writeFile(join(artifactDir, "edgeone.json"), '{"headers":[]}\n');
+    await writeFile(
+      join(artifactDir, "edgeone.json"),
+      '{"headers":[{"source":"/_content/assets/*","headers":[{"key":"Cache-Control","value":"public, max-age=31536000, immutable"}]}]}\n'
+    );
 
     const previousArtifactDir = process.env.PUBLIC_MEDIA_ARTIFACT_DIR;
     process.env.PUBLIC_MEDIA_ARTIFACT_DIR = "edgeone-dist";
