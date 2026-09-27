@@ -31,7 +31,13 @@ bun run worktree:bootstrap -- --force
 
 A Web Demo is a real browser route served by the shipped web application with deterministic demo data enabled. It is not a Storybook story, component iframe, static screenshot, or isolated visual fixture.
 
-The admin Web Demo uses the normal Vite admin SPA routes with `?demo=true`. Demo mode installs frontend API mocks in `apps/admin/src/main.tsx`, remembers the setting in `localStorage["admin-demo-mode"]`, and keeps the real router, shell, pages, editor, navigation, and components in use. It does not require auth, seeded data, or a backend service.
+The admin Web Demo uses the normal Vite admin SPA routes with `?demo=true`. Demo mode installs frontend API mocks in `apps/admin/src/main.tsx`, remembers the setting in `localStorage["admin-demo-mode"]`, and keeps the real router, shell, pages, editor, navigation, and components in use. Open the Demo directly on `ADMIN_PORT`; the gateway `PORT` is the authenticated application entry and `?demo=true` does not bypass its session check. The direct Demo does not require auth, seeded data, or a backend service.
+
+For the dashboard Demo, open:
+
+```text
+http://127.0.0.1:${ADMIN_PORT}/admin/dashboard?demo=true
+```
 
 For the editor demo, start the admin SPA and open:
 

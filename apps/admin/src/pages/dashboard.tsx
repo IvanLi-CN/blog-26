@@ -96,7 +96,7 @@ export function DashboardPage() {
         })}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle>最近活动</CardTitle>
@@ -131,19 +131,6 @@ export function DashboardPage() {
             ) : (
               <EmptyState title="暂无活动" description="当前还没有可展示的后台活动记录。" />
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>后台入口</CardTitle>
-            <CardDescription>当前后台的主要管理范围。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <Alert>编辑器支持附件上传，保存前请确认预览结果。</Alert>
-            <div>· 文章、评论、同步、计划任务和令牌都在后台统一管理。</div>
-            <div>· 访问权限由当前会话决定，异常时请重新登录或刷新会话。</div>
-            <div>· Memos 仍在公开站入口维护。</div>
           </CardContent>
         </Card>
       </div>

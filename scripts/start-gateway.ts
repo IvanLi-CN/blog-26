@@ -723,6 +723,7 @@ log("gateway ready", {
   publicPort,
   sitePort,
   adminPort,
+  adminDemoUrl: `http://${internalHostname}:${adminPort}/admin/dashboard?demo=true`,
   hostname,
   siteDistDir,
   adminDistDir,

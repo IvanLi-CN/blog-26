@@ -109,6 +109,15 @@ export type ActivityItem = {
 
 export type VectorizationStatus = "indexed" | "unindexed" | "outdated";
 
+export interface VectorizationStats {
+  indexed: number;
+  outdated: number;
+  unindexed: number;
+  lastIndexedAt: number | string | null;
+  model: string;
+  dim: number;
+}
+
 export interface AdminPost {
   id: string;
   slug: string;
@@ -522,7 +531,7 @@ export const adminApi = {
   getContentSyncHistory: (params: { limit?: number }) =>
     adminRequest<SyncHistoryEntry[]>(`/api/admin/content-sync/history${buildSearch(params)}`),
   getVectorizationStats: () =>
-    adminRequest<Record<string, unknown>>("/api/admin/content-sync/vectorization-stats"),
+    adminRequest<VectorizationStats>("/api/admin/content-sync/vectorization-stats"),
   triggerContentSync: (input: Record<string, unknown> = {}) =>
     adminRequest<Record<string, unknown>>("/api/admin/content-sync/trigger", {
       method: "POST",
