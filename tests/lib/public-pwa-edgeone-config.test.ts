@@ -202,12 +202,24 @@ describe("EdgeOne public PWA cache config", () => {
     await writeFile(join(siteDistDir, "index.html"), "<main>home</main>");
     await writeFile(join(siteDistDir, "memos", "index.html"), "<main>memos</main>");
     await writeFile(join(siteDistDir, "memos", "feed.xml"), "<feed />");
+    await mkdir(join(artifactDir, "memos"), { recursive: true });
+    await mkdir(join(artifactDir, "edge-functions"), { recursive: true });
+    await writeFile(join(artifactDir, "index.html"), "<main>home</main>");
+    await writeFile(join(artifactDir, "memos", "index.html"), "<main>memos</main>");
+    await writeFile(join(artifactDir, "memos", "feed.xml"), "<feed />");
+    await writeFile(join(artifactDir, "edge-functions", "index.js"), "export {};");
 
     const generated = await prepareEdgeonePwaConfig({ siteDistDir, artifactDir });
     await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).resolves.toEqual({
       configPath: join(artifactDir, "edgeone.json"),
       ruleCount: generated.headers.length,
     });
+
+    await rm(join(artifactDir, "memos", "feed.xml"));
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
+      "1 missing, 0 extra"
+    );
+    await writeFile(join(artifactDir, "memos", "feed.xml"), "<feed />");
 
     const configPath = join(artifactDir, "edgeone.json");
     const written = JSON.parse(await readFile(configPath, "utf8")) as { headers: unknown[] };

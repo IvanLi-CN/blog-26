@@ -20,13 +20,28 @@ export async function verifyEdgeonePwaArtifact(
     options.artifactDir ?? process.env.PUBLIC_EDGEONE_ARTIFACT_DIR ?? "edgeone-dist"
   );
   const basePath = normalizeBasePath(options.basePath ?? process.env.PUBLIC_SITE_BASE_PATH ?? "");
-  const expected = createEdgeoneCacheConfig(basePath, await collectStaticFiles(siteDistDir));
+  const siteFiles = await collectStaticFiles(siteDistDir);
+  const expected = createEdgeoneCacheConfig(basePath, siteFiles);
   const configPath = join(artifactDir, "edgeone.json");
   const actual = JSON.parse(await readFile(configPath, "utf8")) as EdgeoneCacheConfig;
 
   if (!isDeepStrictEqual(actual, expected)) {
     throw new Error(
       `EdgeOne deployment artifact cache rules do not match site output: ${configPath}`
+    );
+  }
+
+  const artifactFiles = (await collectStaticFiles(artifactDir))
+    .filter((path) => path !== "edgeone.json" && !path.startsWith("edge-functions/"))
+    .sort();
+  const expectedFiles = [...siteFiles].sort();
+  if (!isDeepStrictEqual(artifactFiles, expectedFiles)) {
+    const expectedSet = new Set(expectedFiles);
+    const artifactSet = new Set(artifactFiles);
+    const missingCount = expectedFiles.filter((path) => !artifactSet.has(path)).length;
+    const extraCount = artifactFiles.filter((path) => !expectedSet.has(path)).length;
+    throw new Error(
+      `EdgeOne deployment artifact static files do not match site output: ${missingCount} missing, ${extraCount} extra`
     );
   }
 
