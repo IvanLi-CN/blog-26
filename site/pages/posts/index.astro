@@ -15,9 +15,9 @@ const assetVersion = snapshot.generatedAt;
     </div>
 
     {snapshot.posts.length > 0 ? (
-      <ul class="space-y-4 md:space-y-6">
+      <ul class="nature-mobile-reading-stream space-y-4 md:space-y-6">
         {snapshot.posts.map((post, index) => (
-          <li class="animate-fade-in-up" style={`animation-delay: ${index * 80}ms`}>
+          <li class="nature-mobile-reading-row animate-fade-in-up" style={`animation-delay: ${index * 80}ms`}>
             <PostCard
               post={post}
               iconMap={snapshot.tags.tagIconMap}

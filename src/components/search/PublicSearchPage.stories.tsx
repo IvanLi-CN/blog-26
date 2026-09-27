@@ -527,6 +527,23 @@ export const MobileResults: Story = {
   render: () => <SearchStory />,
   play: async ({ canvasElement }) => {
     expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+    const stream = canvasElement.querySelector<HTMLElement>(".nature-mobile-reading-stream");
+    const resultLink = canvasElement.querySelector<HTMLElement>("a[data-search-result-card]");
+    const resultContent = canvasElement.querySelector<HTMLElement>(".search-result-card h2");
+    expect(stream).not.toBeNull();
+    expect(resultLink).not.toBeNull();
+    expect(resultContent).not.toBeNull();
+    expect(Math.abs(stream?.getBoundingClientRect().left ?? 0)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs((stream?.getBoundingClientRect().right ?? 0) - canvasElement.clientWidth)
+    ).toBeLessThanOrEqual(1);
+    expect(Math.abs((resultContent?.getBoundingClientRect().left ?? 0) - 16)).toBeLessThanOrEqual(
+      1
+    );
+    expect(Math.abs(resultLink?.getBoundingClientRect().left ?? 0)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs((resultLink?.getBoundingClientRect().right ?? 0) - canvasElement.clientWidth)
+    ).toBeLessThanOrEqual(1);
   },
 };
 

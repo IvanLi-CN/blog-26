@@ -1,7 +1,7 @@
 # Implementation
 
 - Lifecycle: active
-- Implementation: implemented
+- Implementation: in progress
 
 The public frontend uses the Nature design system without DaisyUI ownership. Subsequent work extended responsive cards, timelines, memo hierarchy, search states, Markdown hydration, mobile density, theme persistence, and repository-owned project media while retaining the same topic contract.
 
@@ -13,9 +13,9 @@ Social previews use a separate Sharp pipeline with 640w and 1280w AVIF/WebP cand
 
 The project catalog contains 15 entries in six groups sized between two and three cards. SpotiBind is the second productivity tool, uses the repository's English light/dark media pair, and is included in the six-project homepage selection.
 
-The project index presents both catalog totals in its introduction and keeps all six poster groups inside one shared desktop surface with restrained separators. On phones, the group surface flattens and the poster rail extends to the viewport edge; cards use `85vw` with a visible next-card peek. The first catalog poster is eager and high priority; later index posters remain lazy. Poster title and shortcut links wrap when available width or enlarged text requires it.
+The project index presents both catalog totals in its introduction and keeps all six poster groups inside one shared desktop surface with restrained separators. On phones, the grouped surface reaches both viewport edges with inset headings and descriptions; category separators remain, and each horizontal poster rail extends to the viewport edge with an `85vw` card and a visible next-card peek. The first catalog poster is eager and high priority; later index posters remain lazy. Poster title and shortcut links wrap when available width or enlarged text requires it.
 
-Mobile homepage, article-list, Memo, tag-detail, and search-result streams use an unframed reading row with a divider and a `16px` text inset at `393px`. Article and Memo detail pages flatten their reading surfaces to the same inset, and project-detail headers flatten their primary surface; article cover media reaches both viewport edges without cropping. Distinct project sections, search states, tag tiles, poster cards, and profile modules retain their own framing. Desktop surfaces retain their existing framing.
+Mobile homepage, article-list, Memo, tag-detail, and search-result streams use one theme-aware edge-to-edge reading surface with inset content and dividers. The grouped project index uses the same surface around its category rails while preserving horizontal poster browsing. The homepage introduction, Article and Memo details, project-detail introductions and prose, and About prose also use the theme-aware reading surface. Article cover media still reaches both viewport edges without cropping. Distinct project-detail sections, search states, tag tiles, individual poster cards, and profile modules retain their own framing. Desktop surfaces retain their existing framing.
 
 The homepage keeps a local mapping from five featured projects to their official independent logo files. Native-color assets use the available theme pair; the monochrome SpotiBind and XP marks take their approved light/dark project colors through CSS masks. Each available mark sits beside its project title and may repeat as a decorative watermark behind the card content. LoadLynx intentionally has neither mark nor placeholder slot. Homepage-only adaptive external links retain full accessible names while changing from short icon-and-label buttons to icon-only buttons when the footer width requires it; other `ProjectExternalLinks` callers keep their existing behavior. The section-level browse-all action also keeps an accessible name and becomes icon-only at `360px` and below.
 

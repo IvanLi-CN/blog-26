@@ -71,7 +71,7 @@ const structuredData = {
   <section class="nature-detail-container post-detail-layout px-2 py-8 sm:px-6 sm:py-10 lg:py-14">
     <article class="nature-reading-measure">
       <header class="space-y-6">
-        <div class="nature-surface post-detail-header px-4 py-5 sm:px-8 sm:py-7">
+        <div class="nature-surface nature-mobile-reading-surface post-detail-header px-4 py-5 sm:px-8 sm:py-7">
           <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
             <span class="nature-chip nature-chip-info gap-1">
               <Icon name="tabler:clock" className="h-3.5 w-3.5" />
@@ -119,7 +119,7 @@ const structuredData = {
         )}
       </header>
 
-      <div class="nature-panel post-detail-body mt-6 px-4 py-5 sm:mt-8 sm:px-8 sm:py-7">
+      <div class="nature-panel nature-mobile-reading-surface post-detail-body mt-6 px-4 py-5 sm:mt-8 sm:px-8 sm:py-7">
         <MarkdownRenderer
           client:visible={{ rootMargin: "480px" }}
           content={post.body}
@@ -167,16 +167,6 @@ const structuredData = {
   @media (max-width: 639px) {
     .post-detail-layout {
       padding-inline: 0;
-    }
-
-    .post-detail-header,
-    .post-detail-body {
-      padding-inline: 0.25rem;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-      backdrop-filter: none;
     }
 
     .post-detail-body:is(:hover, :focus-within) {

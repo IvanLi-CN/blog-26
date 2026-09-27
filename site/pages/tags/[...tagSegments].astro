@@ -63,13 +63,13 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
     </div>
 
     {items.length > 0 ? (
-      <div class="space-y-4">
+      <div class="nature-mobile-reading-stream space-y-4">
         {items.map((item) => {
           const href = toPublicSitePath(
             item.type === "memo" ? `/memos/${item.slug}` : `/posts/${item.slug}`
           );
           return (
-            <article class="nature-panel nature-panel-soft tag-detail-entry px-4 py-4 sm:px-6 sm:py-5">
+            <article class="nature-panel nature-panel-soft nature-mobile-reading-row tag-detail-entry px-4 py-4 sm:px-6 sm:py-5">
               <div class="flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
                 <span class="nature-chip gap-1">
                   <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
@@ -109,29 +109,29 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
       padding-inline: 0;
     }
 
-    .tag-detail-header,
+    .tag-detail-header {
+      padding-inline: 1rem;
+    }
+
     .tag-detail-entry {
-      padding-inline: 0.25rem;
-      border: 0;
+      padding: 1.25rem 1rem;
+      border-color: transparent;
       border-radius: 0;
       background: transparent;
       box-shadow: none;
       backdrop-filter: none;
     }
 
-    .tag-detail-entry {
-      padding-bottom: 1.25rem;
-      border-bottom: 1px solid var(--nature-line);
-    }
-
     .tag-detail-entry:is(:hover, :focus-within) {
       transform: none;
-      border-color: var(--nature-line);
+      border-color: transparent;
       box-shadow: none;
     }
+  }
 
-    .tag-detail-entry:last-child {
-      border-bottom: 0;
+  @media (max-width: 374px) {
+    .tag-detail-entry {
+      padding-inline: 0.75rem;
     }
   }
 </style>

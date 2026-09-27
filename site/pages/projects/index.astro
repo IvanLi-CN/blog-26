@@ -25,7 +25,7 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
       </p>
     </header>
 
-    <div class="projects-domain-stack nature-surface">
+    <div class="projects-domain-stack nature-surface nature-mobile-reading-surface">
       {groupedProjects.map((group) => (
         <section id={group.id} class="projects-domain-section">
           <header class="projects-domain-head">
@@ -455,14 +455,6 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
     }
 
     @media (max-width: 639px) {
-      .projects-domain-stack {
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
-        backdrop-filter: none;
-      }
-
       .projects-domain-section {
         padding: 1.25rem 0 1rem;
       }
@@ -485,7 +477,7 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
       }
     }
 
-    @media (max-width: 375px) {
+    @media (max-width: 374px) {
       .projects-domain-rail {
         margin-right: -0.75rem;
       }

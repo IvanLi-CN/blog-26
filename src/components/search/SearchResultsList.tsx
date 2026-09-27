@@ -144,7 +144,12 @@ export default function SearchResultsList({
   resolveHref?: (result: SearchResultItem) => string;
 }) {
   return (
-    <ul className={cn("flex w-full flex-col gap-3 sm:gap-4", containerClassName)}>
+    <ul
+      className={cn(
+        "nature-mobile-reading-stream flex w-full flex-col gap-3 sm:gap-4",
+        containerClassName
+      )}
+    >
       {results.map((r) => {
         const type = getSearchResultType(r);
         const href = resolveHref(r);
@@ -160,7 +165,7 @@ export default function SearchResultsList({
           type === "memo" ? r.title?.trim() || "无标题闪念" : r.title || r.slug;
 
         return (
-          <li key={`${type}-${r.slug}`} className="list-none">
+          <li key={`${type}-${r.slug}`} className="nature-mobile-reading-row list-none">
             <a
               href={href}
               aria-label={`打开 ${accessibleTitle}`}
