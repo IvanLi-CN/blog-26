@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PauseCircle, PlayCircle, RefreshCcw, Sparkles } from "lucide-react";
-import { adminApi } from "@/lib/admin-api-client";
+import { Info, PauseCircle, PlayCircle, RefreshCcw, Sparkles } from "lucide-react";
+import { adminApi, type VectorizationStats } from "@/lib/admin-api-client";
 import {
   Alert,
   Badge,
@@ -10,7 +10,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CodeBlock,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Spinner,
   Table,
   TableBody,
@@ -89,7 +91,7 @@ export function ContentSyncPage() {
     total?: number;
     byType?: Record<string, { total: number; sources?: Record<string, number> }>;
   };
-  const vectorStats = vectorStatsQuery.data ?? {};
+  const vectorStats = vectorStatsQuery.data;
   const progress = progressQuery.data;
   const busy = syncMutation.isPending || cancelMutation.isPending || vectorizeMutation.isPending;
 
@@ -216,12 +218,48 @@ export function ContentSyncPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>向量化摘要</CardTitle>
-            <CardDescription>查看当前索引状态与向量统计。</CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle>向量化状态</CardTitle>
+                <CardDescription>检查内容是否已建立搜索索引。</CardDescription>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" aria-label="查看向量化详情">
+                    <Info className="size-4" aria-hidden="true" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 text-sm">
+                  <div className="space-y-3">
+                    <p className="font-medium">向量化详情</p>
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-muted-foreground">
+                      <dt>模型</dt>
+                      <dd className="break-all text-right text-foreground">
+                        {vectorStats?.model ?? "未提供"}
+                      </dd>
+                      <dt>维度</dt>
+                      <dd className="text-right text-foreground">{vectorStats?.dim ?? "未提供"}</dd>
+                    </dl>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <Badge tone="outline">{managerStats.currentSyncStatus ?? "idle"}</Badge>
-            <CodeBlock>{JSON.stringify(vectorStats, null, 2)}</CodeBlock>
+            {vectorStatsQuery.isLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner /> 读取向量化状态中…
+              </div>
+            ) : vectorStatsQuery.error ? (
+              <Alert tone="danger">
+                读取向量化状态失败：{getErrorMessage(vectorStatsQuery.error)}
+              </Alert>
+            ) : vectorStats ? (
+              <VectorizationStatsGrid stats={vectorStats} />
+            ) : (
+              <Alert>暂无向量化状态。</Alert>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -336,6 +374,31 @@ export function ContentSyncPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function VectorizationStatsGrid({ stats }: { stats: VectorizationStats }) {
+  const items = [
+    { label: "已索引", value: stats.indexed, tone: "text-success" },
+    { label: "待处理", value: stats.unindexed, tone: "text-warning" },
+    { label: "需更新", value: stats.outdated, tone: "text-secondary" },
+    { label: "最近更新", value: formatDateTime(stats.lastIndexedAt), tone: "text-foreground" },
+  ] as const;
+
+  return (
+    <dl className="grid gap-3 sm:grid-cols-2" data-testid="vectorization-stats">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="rounded-2xl bg-muted/46 p-3 shadow-inner shadow-shadow-inset"
+        >
+          <dt className="text-xs text-muted-foreground">{item.label}</dt>
+          <dd className={`mt-1 font-semibold ${item.tone}`}>
+            {typeof item.value === "number" ? formatCount(item.value) : item.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

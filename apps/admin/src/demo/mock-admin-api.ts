@@ -10,6 +10,7 @@ import type {
   SyncHistoryEntry,
   SyncLog,
   SyncProgress,
+  VectorizationStats,
 } from "@/lib/admin-api-client";
 import {
   ADMIN_TEXT_FILE_SIZE_LIMIT_BYTES,
@@ -663,7 +664,14 @@ async function handleAdminRequest(url: URL, method: string, init?: RequestInit) 
   if (path === "/api/admin/content-sync/logs") return json(syncLogs());
   if (path === "/api/admin/content-sync/history") return json(syncHistory());
   if (path === "/api/admin/content-sync/vectorization-stats")
-    return json({ indexed: 2, outdated: 1, unindexed: 1 });
+    return json({
+      indexed: 2,
+      outdated: 1,
+      unindexed: 1,
+      lastIndexedAt: now - 15 * 60 * 1000,
+      model: "BAAI/bge-m3",
+      dim: 1024,
+    } satisfies VectorizationStats);
   if (path.startsWith("/api/admin/content-sync/"))
     return json({ success: true, message: "任务已加入队列" });
   if (path === "/api/admin/jobs") return json(jobs());

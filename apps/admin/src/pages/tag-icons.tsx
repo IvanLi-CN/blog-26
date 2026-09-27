@@ -89,7 +89,6 @@ export function TagIconsPage() {
       <Card>
         <CardHeader>
           <CardTitle>分类图标</CardTitle>
-          <CardDescription>优先处理分类图标，保证公开站展示稳定。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           {categories.map((key) => (

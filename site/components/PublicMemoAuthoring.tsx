@@ -267,9 +267,7 @@ export function PublicMemoComposerIsland({
             name="tabler:shield-check"
             className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
           />
-          <span>
-            当前为管理员视角：这里会直接调用 `/api/public/memos/*`，不再走 `/api/trpc/memos.*`。
-          </span>
+          <span>当前为管理员模式，可直接编辑和管理实时 Memo。</span>
         </div>
         <QuickMemoEditor
           onSave={handleSave}
@@ -282,7 +280,7 @@ export function PublicMemoComposerIsland({
         <div className="nature-alert nature-alert-success flex flex-wrap items-center justify-between gap-3">
           <span>
             Memo 已创建：<strong>{createdMemo.title || createdMemo.slug}</strong>
-            。公开静态页会在下一次站点构建后刷新。
+            。公开页面将在下一次发布后更新。
           </span>
           <a
             className="nature-button nature-button-outline"
@@ -296,12 +294,9 @@ export function PublicMemoComposerIsland({
       <div className="nature-panel px-5 py-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-[color:var(--nature-text-strong)]">
-              管理员实时 Memo 视图
-            </p>
+            <p className="text-sm font-medium text-[color:var(--nature-text-strong)]">实时 Memo</p>
             <p className="text-sm text-[color:var(--nature-text-soft)]">
-              这里展示最近 50 条 `/api/public/memos/*`
-              实时数据，便于管理；完整公开时间线仍保留在下方静态列表中。
+              这里展示最近 50 条实时 Memo，公开时间线仍可在下方查看。
             </p>
           </div>
           <button
@@ -428,10 +423,10 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
               name="tabler:shield-check"
               className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
             />
-            <span>管理员作者视图</span>
+            <span>管理员模式</span>
           </div>
           <p className="text-sm text-[color:var(--nature-text-soft)]">
-            当前正文来自 `/api/public/memos/:slug` 的实时响应；静态发布快照已为管理员隐藏。
+            当前显示最新管理员内容；公开页面显示最近发布版本。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
