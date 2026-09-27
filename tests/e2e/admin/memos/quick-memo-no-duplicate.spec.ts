@@ -20,7 +20,7 @@ test.describe("Quick Memo publish no duplicate (admin)", () => {
     await editor.click();
     await page.keyboard.insertText(TITLE);
 
-    const publish = container.getByRole("button", { name: "发布 Memo" });
+    const publish = container.getByRole("button", { name: "公开发布 Memo" });
     await expect(publish).toBeEnabled();
 
     await publish.click();

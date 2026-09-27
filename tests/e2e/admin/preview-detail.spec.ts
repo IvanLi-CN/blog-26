@@ -212,10 +212,13 @@ test.describe("Admin preview detail", () => {
     await page.keyboard.insertText("正文段落");
     await page.waitForTimeout(300);
 
-    const publish = container.getByRole("button", { name: "发布 Memo" });
+    const publish = container.getByRole("button", { name: "公开发布 Memo" });
     await expect(publish).toBeEnabled();
     await publish.click();
-    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("status")).toHaveText(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。",
+      { timeout: 30_000 }
+    );
 
     const memoCards = page.locator('[data-testid="admin-live-memo-card"]');
     const createdCard = memoCards.filter({ hasText: title }).first();

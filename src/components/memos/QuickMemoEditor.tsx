@@ -57,6 +57,7 @@ export function QuickMemoEditor({
   const [content, setContent] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const clientMemoRoot = resolveClientMemoRootPath({
     localSourceEnabled,
     memoRoot: localMemoRootPath,
@@ -107,6 +108,7 @@ export function QuickMemoEditor({
       if (!hasAnyContent || isSaving) return;
 
       setIsSaving(true);
+      setSaveError(null);
       try {
         // 处理内联图片转换
         // 优先从编辑器实例读取最新 Markdown，避免 setState 未及时同步导致内容丢失
@@ -201,11 +203,8 @@ export function QuickMemoEditor({
         setTimeout(() => {
           resetEditorHeight();
         }, 100);
-
-        // 显示成功提示（可选）
-        // 这里可以添加 toast 通知
       } catch (error) {
-        console.error("保存快速 memo 失败:", error);
+        setSaveError(error instanceof Error ? error.message : String(error));
       } finally {
         setIsSaving(false);
       }
@@ -257,6 +256,21 @@ export function QuickMemoEditor({
       className={cn("mb-6 sm:mb-8", className)}
       data-testid="quick-memo-editor"
       onKeyDown={handleKeyDown}
+      onKeyDownCapture={(event) => {
+        const visibilityInput =
+          event.currentTarget.querySelector<HTMLInputElement>('input[type="checkbox"]');
+        if (
+          event.key === "Tab" &&
+          !event.shiftKey &&
+          containerRef.current?.contains(event.target as Node)
+        ) {
+          event.preventDefault();
+          visibilityInput?.focus();
+        } else if (event.key === "Tab" && event.shiftKey && event.target === visibilityInput) {
+          event.preventDefault();
+          containerRef.current?.querySelector<HTMLElement>(".ProseMirror")?.focus();
+        }
+      }}
       aria-label="快速发布区域"
     >
       <div className="nature-panel overflow-hidden">
@@ -285,6 +299,7 @@ export function QuickMemoEditor({
               <div
                 ref={containerRef}
                 className="overflow-hidden rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
+                data-testid="quick-memo-editor-surface"
                 style={{
                   minHeight: `${minHeight}px`,
                   maxHeight: `${maxHeight}px`,
@@ -294,7 +309,10 @@ export function QuickMemoEditor({
                 <MilkdownEditor
                   ref={editorRef}
                   content={content}
-                  onChange={setContent}
+                  onChange={(nextContent) => {
+                    setContent(nextContent);
+                    setSaveError(null);
+                  }}
                   placeholder={placeholder}
                   articlePath={getMemoDraftPath(clientMemoRoot)}
                   contentSource={memoContentSource}
@@ -320,11 +338,15 @@ export function QuickMemoEditor({
                     isSaving ? "cursor-not-allowed" : "cursor-pointer"
                   )}
                 >
-                  <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
+                  <span className="relative inline-flex h-11 w-[3.1rem] flex-shrink-0 items-center justify-center">
                     <input
                       type="checkbox"
+                      data-testid="quick-memo-visibility-input"
                       checked={isPublic}
-                      onChange={(e) => setIsPublic(e.target.checked)}
+                      onChange={(e) => {
+                        setIsPublic(e.target.checked);
+                        setSaveError(null);
+                      }}
                       className="nature-switch-input peer absolute inset-0 m-0 cursor-inherit opacity-0"
                       disabled={isSaving}
                     />
@@ -381,9 +403,17 @@ export function QuickMemoEditor({
               <button
                 type="submit"
                 disabled={!(content.trim().length > 0 || hasEditorContent) || isSaving}
-                className="nature-button nature-button-primary min-h-10 gap-2 px-4 py-2 text-sm"
-                aria-label={isSaving ? "正在发布 Memo..." : "发布 Memo"}
-                aria-describedby={helpId}
+                className="nature-button nature-button-primary min-h-11 gap-2 px-4 py-2 text-sm sm:min-h-10"
+                aria-label={
+                  isSaving
+                    ? isPublic
+                      ? "正在公开发布 Memo..."
+                      : "正在保存私有 Memo..."
+                    : isPublic
+                      ? "公开发布 Memo"
+                      : "保存私有 Memo"
+                }
+                aria-describedby={saveError ? `${helpId} quick-memo-save-error` : helpId}
               >
                 {isSaving ? (
                   <span className="nature-spinner h-4 w-4" />
@@ -404,9 +434,26 @@ export function QuickMemoEditor({
                     />
                   </svg>
                 )}
-                {isSaving ? "发布中..." : "发布 Memo"}
+                {isSaving
+                  ? isPublic
+                    ? "公开发布中..."
+                    : "保存中..."
+                  : isPublic
+                    ? "公开发布 Memo"
+                    : "保存私有 Memo"}
               </button>
             </div>
+            {saveError ? (
+              <div
+                id="quick-memo-save-error"
+                className="nature-alert nature-alert-error"
+                role="alert"
+                aria-live="assertive"
+              >
+                <span>{saveError}</span>
+                <span className="text-sm">请检查内容后重试；编辑内容已保留。</span>
+              </div>
+            ) : null}
           </form>
         </div>
       </div>

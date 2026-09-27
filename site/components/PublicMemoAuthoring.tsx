@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
@@ -11,7 +11,7 @@ import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 type PublicMemoRecord = {
   id: string;
   slug: string;
-  title?: string;
+  title?: string | null;
   content: string;
   excerpt?: string;
   isPublic: boolean;
@@ -23,7 +23,11 @@ type PublicMemoRecord = {
 type PublicMemoListResponse = {
   items?: PublicMemoRecord[];
   memos?: PublicMemoRecord[];
+  hasMore?: boolean;
+  nextCursor?: string | null;
 };
+
+const LIVE_MEMO_PAGE_SIZE = 10;
 
 type PublicAuthUser = {
   id: string;
@@ -107,24 +111,32 @@ function useHideStaticSnapshot(selector: string, active: boolean) {
   }, [active, selector]);
 }
 
-function normalizeMemoList(
+function normalizeMemoPage(
   payload: PublicMemoListResponse | PublicMemoRecord[] | null | undefined
 ) {
   if (Array.isArray(payload)) {
-    return payload;
+    return { memos: payload, hasMore: false, nextCursor: null };
   }
-  if (Array.isArray(payload?.memos)) {
-    return payload.memos;
-  }
-  return Array.isArray(payload?.items) ? payload.items : [];
+  const memos = Array.isArray(payload?.memos)
+    ? payload.memos
+    : Array.isArray(payload?.items)
+      ? payload.items
+      : [];
+  return {
+    memos,
+    hasMore: Boolean(payload?.hasMore),
+    nextCursor: payload?.nextCursor ?? null,
+  };
 }
 
 function PublicMemoList({
   memos,
   emptyMessage,
+  onEdit,
 }: {
   memos: PublicMemoRecord[];
   emptyMessage: string;
+  onEdit: (memo: PublicMemoRecord) => void;
 }) {
   if (memos.length === 0) {
     return (
@@ -145,23 +157,25 @@ function PublicMemoList({
           data-slug={memo.slug}
           data-source={memo.source ?? "local"}
         >
-          <div className="space-y-3">
+          <div className="min-w-0 flex-1 space-y-3" data-testid="admin-live-memo-content">
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
               <span className="nature-chip gap-1">
                 <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
                 Memo
               </span>
               <span
-                className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}
+                className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warning"}`}
                 data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
               >
                 {memo.isPublic ? "Public" : "Draft / Private"}
               </span>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-[color:var(--nature-text-strong)]">
-                {memo.title || memo.slug}
-              </h2>
+              {memo.title?.trim() ? (
+                <h2 className="break-words text-lg font-semibold text-[color:var(--nature-text)]">
+                  {memo.title}
+                </h2>
+              ) : null}
               {memo.excerpt ? (
                 <p className="mt-2 text-sm leading-6 text-[color:var(--nature-text-soft)]">
                   {memo.excerpt}
@@ -179,17 +193,21 @@ function PublicMemoList({
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <a className="nature-button nature-button-outline" href={buildPreviewHref(memo.slug)}>
+          <div
+            className="flex w-full flex-wrap gap-2 sm:w-36 sm:shrink-0 sm:flex-col sm:items-stretch"
+            data-testid="admin-live-memo-actions"
+          >
+            <a
+              className="nature-button nature-button-outline min-h-11 flex-1 justify-center sm:min-h-9 sm:flex-none"
+              href={buildPreviewHref(memo.slug)}
+            >
               预览
             </a>
             <button
               type="button"
-              className="nature-button nature-button-outline"
+              className="nature-button nature-button-outline min-h-11 flex-1 justify-center sm:min-h-9 sm:flex-none"
               data-testid="admin-live-memo-edit"
-              onClick={() => {
-                window.location.href = buildPreviewHref(memo.slug);
-              }}
+              onClick={() => onEdit(memo)}
             >
               编辑 Memo
             </button>
@@ -209,51 +227,228 @@ export function PublicMemoComposerIsland({
 }) {
   const { isAdmin, isLoading } = usePublicAuth();
   const [memos, setMemos] = useState<PublicMemoRecord[]>([]);
-  const [isListLoading, setIsListLoading] = useState(false);
-  const [createdMemo, setCreatedMemo] = useState<PublicMemoRecord | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isListLoading, setIsListLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [creationFeedback, setCreationFeedback] = useState<string | null>(null);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  const [editingMemo, setEditingMemo] = useState<PublicMemoRecord | null>(null);
+  const [isEditLoading, setIsEditLoading] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const listRequestId = useRef(0);
+  const editRequestId = useRef(0);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadLiveMemos = useCallback(async () => {
-    setIsListLoading(true);
-    setErrorMessage(null);
-    try {
-      const result = await readJson<PublicMemoListResponse>(
-        toPublicApiUrl("/api/public/memos?publicOnly=false&limit=50")
-      );
-      setMemos(normalizeMemoList(result));
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsListLoading(false);
-    }
-  }, []);
+  const requestMemoPage = useCallback(
+    async ({
+      query,
+      cursor,
+      append = false,
+    }: {
+      query: string;
+      cursor?: string;
+      append?: boolean;
+    }) => {
+      const requestId = ++listRequestId.current;
+      setListError(null);
+      setIsListLoading(!append);
+      setIsLoadingMore(append);
+
+      const params = new URLSearchParams({
+        publicOnly: "false",
+        limit: String(LIVE_MEMO_PAGE_SIZE),
+      });
+      if (query) params.set("search", query);
+      if (cursor) params.set("cursor", cursor);
+
+      try {
+        const result = await readJson<PublicMemoListResponse>(
+          toPublicApiUrl(`/api/public/memos?${params.toString()}`)
+        );
+        if (requestId !== listRequestId.current) return;
+        const page = normalizeMemoPage(result);
+        setMemos((current) => {
+          if (!append) return page.memos;
+          const existing = new Set(current.map((memo) => memo.id || memo.slug));
+          const additions = page.memos.filter((memo) => {
+            const key = memo.id || memo.slug;
+            if (existing.has(key)) return false;
+            existing.add(key);
+            return true;
+          });
+          return [...current, ...additions];
+        });
+        setHasMore(page.hasMore);
+        setNextCursor(page.nextCursor);
+      } catch (error) {
+        if (requestId === listRequestId.current) {
+          setListError(error instanceof Error ? error.message : String(error));
+        }
+      } finally {
+        if (requestId === listRequestId.current) {
+          setIsListLoading(false);
+          setIsLoadingMore(false);
+        }
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    if (!isAdmin) {
-      return;
-    }
-    void loadLiveMemos();
-  }, [isAdmin, loadLiveMemos]);
+    if (!isAdmin) return;
+    void requestMemoPage({ query: searchQuery });
+    return () => {
+      listRequestId.current += 1;
+    };
+  }, [isAdmin, requestMemoPage, searchQuery]);
 
-  const handleSave = useCallback(async (data: QuickMemoData) => {
-    setErrorMessage(null);
-    try {
+  useEffect(
+    () => () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    },
+    []
+  );
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+      searchTimer.current = setTimeout(() => {
+        const query = value.trim();
+        if (query === searchQuery) return;
+        setHasMore(false);
+        setNextCursor(null);
+        setSearchQuery(query);
+      }, 300);
+    },
+    [searchQuery]
+  );
+
+  const submitSearch = useCallback(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const query = searchInput.trim();
+    setHasMore(false);
+    setNextCursor(null);
+    setSearchQuery(query);
+    if (query === searchQuery) void requestMemoPage({ query });
+  }, [requestMemoPage, searchInput, searchQuery]);
+
+  const refreshList = useCallback(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const query = searchInput.trim();
+    setSearchQuery(query);
+    setHasMore(false);
+    setNextCursor(null);
+    if (query === searchQuery) void requestMemoPage({ query });
+  }, [requestMemoPage, searchInput, searchQuery]);
+
+  const handleSave = useCallback(
+    async (data: QuickMemoData) => {
+      setCreationFeedback(null);
       const result = await readJson<PublicMemoRecord>(toPublicApiUrl("/api/public/memos"), {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
       });
-      setCreatedMemo(result);
-      setMemos((current) => [result, ...current.filter((memo) => memo.slug !== result.slug)]);
+      setCreationFeedback(
+        data.isPublic
+          ? "公开 Memo 已保存；公开时间线将在下次发布后更新。"
+          : "私有 Memo 已保存，仅管理员可见。"
+      );
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+      setSearchInput("");
+      setSearchQuery("");
+      setHasMore(false);
+      setMemos((current) =>
+        [
+          result,
+          ...current.filter((memo) => memo.id !== result.id && memo.slug !== result.slug),
+        ].slice(0, LIVE_MEMO_PAGE_SIZE)
+      );
+      setNextCursor(null);
+      if (!searchQuery) void requestMemoPage({ query: "" });
+    },
+    [requestMemoPage, searchQuery]
+  );
+
+  const handleEdit = useCallback(async (memo: PublicMemoRecord) => {
+    const requestId = ++editRequestId.current;
+    setEditingSlug(memo.slug);
+    setEditingMemo(null);
+    setIsEditLoading(true);
+    setEditError(null);
+    try {
+      const fullMemo = await readJson<PublicMemoRecord>(
+        toPublicApiUrl(`/api/public/memos/${encodeURIComponent(memo.slug)}`)
+      );
+      if (requestId === editRequestId.current) setEditingMemo(fullMemo);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : String(error));
-      throw error;
+      if (requestId === editRequestId.current) {
+        setEditError(error instanceof Error ? error.message : String(error));
+      }
+    } finally {
+      if (requestId === editRequestId.current) setIsEditLoading(false);
     }
   }, []);
 
-  const adminMemoList = useMemo(() => memos, [memos]);
+  const closeEdit = useCallback(() => {
+    editRequestId.current += 1;
+    setEditingSlug(null);
+    setEditingMemo(null);
+    setIsEditLoading(false);
+    setEditError(null);
+  }, []);
+
+  const saveEditedMemo = useCallback(
+    async (values: { content: string; isPublic: boolean }) => {
+      if (!editingMemo || !editingSlug) throw new Error("Memo 尚未加载完成，请重试。");
+      setEditError(null);
+      setIsEditSaving(true);
+      try {
+        const updated = await readJson<PublicMemoRecord>(
+          toPublicApiUrl(`/api/public/memos/${encodeURIComponent(editingSlug)}`),
+          {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              id: editingMemo.id,
+              content: values.content,
+              isPublic: values.isPublic,
+              title: editingMemo.title,
+              tags: editingMemo.tags,
+            }),
+          }
+        );
+        setEditingMemo(updated);
+        setMemos((current) =>
+          current.map((memo) =>
+            memo.id === updated.id || memo.slug === updated.slug ? updated : memo
+          )
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setEditError(message);
+        throw error;
+      } finally {
+        setIsEditSaving(false);
+      }
+    },
+    [editingMemo, editingSlug]
+  );
+
+  const isListBusy = isListLoading || isLoadingMore;
+  const emptyMessage = isListLoading
+    ? "正在加载实时 Memo 列表…"
+    : listError
+      ? "暂时无法加载实时 Memo。"
+      : searchQuery
+        ? "没有匹配的 Memo。"
+        : "当前没有可管理的 Memo。";
 
   if (isLoading || !isAdmin) {
     return null;
@@ -261,64 +456,151 @@ export function PublicMemoComposerIsland({
 
   return (
     <section className="mb-8 space-y-4" data-testid="public-memo-composer">
-      <div className="nature-panel px-5 py-4">
-        <div className="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-          <Icon
-            name="tabler:shield-check"
-            className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
-          />
-          <span>当前为管理员模式，可直接编辑和管理实时 Memo。</span>
-        </div>
-        <QuickMemoEditor
-          onSave={handleSave}
-          localSourceEnabled={localSourceEnabled}
-          localMemoRootPath={localMemoRootPath}
+      <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+        <Icon
+          name="tabler:shield-check"
+          className="h-4 w-4 text-[color:var(--nature-accent-strong)]"
         />
+        <span>管理员模式</span>
       </div>
+      <QuickMemoEditor
+        onSave={handleSave}
+        localSourceEnabled={localSourceEnabled}
+        localMemoRootPath={localMemoRootPath}
+        className="mb-0 sm:mb-0"
+      />
 
-      {createdMemo ? (
-        <div className="nature-alert nature-alert-success flex flex-wrap items-center justify-between gap-3">
-          <span>
-            Memo 已创建：<strong>{createdMemo.title || createdMemo.slug}</strong>
-            。公开页面将在下一次发布后更新。
-          </span>
-          <a
-            className="nature-button nature-button-outline"
-            href={buildPreviewHref(createdMemo.slug)}
-          >
-            打开专用预览
-          </a>
+      {creationFeedback ? (
+        <div className="nature-alert nature-alert-success" role="status" aria-live="polite">
+          <span>{creationFeedback}</span>
         </div>
       ) : null}
 
-      <div className="nature-panel px-5 py-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-[color:var(--nature-text-strong)]">实时 Memo</p>
-            <p className="text-sm text-[color:var(--nature-text-soft)]">
-              这里展示最近 50 条实时 Memo，公开时间线仍可在下方查看。
+      <section aria-labelledby="admin-live-memos-heading" data-testid="admin-live-memo-list">
+        <header className="mb-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <h2
+                id="admin-live-memos-heading"
+                className="text-base font-semibold text-[color:var(--nature-text)]"
+              >
+                实时 Memo
+              </h2>
+              <p className="text-sm text-[color:var(--nature-text-soft)]">
+                当前已保存内容；公开时间线仍展示上次发布的快照。
+              </p>
+            </div>
+            <button
+              type="button"
+              className="nature-button nature-button-outline min-h-11 gap-2 px-3 sm:min-h-9"
+              onClick={refreshList}
+              disabled={isListBusy}
+            >
+              <Icon name="tabler:refresh" className="h-4 w-4" />
+              刷新列表
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <search aria-label="搜索实时 Memo" className="w-full sm:max-w-md">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitSearch();
+                }}
+              >
+                <label className="nature-input-shell nature-search-input-shell">
+                  <Icon
+                    name="tabler:search"
+                    className="h-4 w-4 shrink-0 text-[color:var(--nature-text-faint)]"
+                  />
+                  <input
+                    type="search"
+                    className="nature-input min-w-0 appearance-none"
+                    aria-label="搜索实时 Memo"
+                    placeholder="搜索已保存的 Memo"
+                    value={searchInput}
+                    onChange={(event) => handleSearchChange(event.target.value)}
+                  />
+                  {searchInput ? (
+                    <button
+                      type="button"
+                      className="nature-icon-button h-11 w-11 shrink-0"
+                      aria-label="清除搜索"
+                      onClick={() => {
+                        if (searchTimer.current) clearTimeout(searchTimer.current);
+                        setSearchInput("");
+                        setHasMore(false);
+                        setNextCursor(null);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <Icon name="tabler:x" className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </label>
+              </form>
+            </search>
+            <p className="text-sm text-[color:var(--nature-text-soft)]" aria-live="polite">
+              {isListLoading ? "正在更新列表…" : `${memos.length} 条已显示`}
             </p>
           </div>
-          <button
-            type="button"
-            className="nature-button nature-button-outline"
-            onClick={() => void loadLiveMemos()}
-            disabled={isListLoading}
-          >
-            刷新列表
-          </button>
-        </div>
-        <PublicMemoList
-          memos={adminMemoList}
-          emptyMessage={isListLoading ? "正在加载实时 Memo 列表…" : "当前没有可管理的 Memo。"}
-        />
-      </div>
+        </header>
 
-      {errorMessage ? (
-        <div className="nature-alert nature-alert-error">
-          <span>{errorMessage}</span>
-        </div>
-      ) : null}
+        {listError ? (
+          <div
+            className="nature-alert nature-alert-error mb-4 flex flex-wrap items-center justify-between gap-3"
+            role="alert"
+          >
+            <span>实时 Memo 列表加载失败：{listError}</span>
+            <button
+              type="button"
+              className="nature-button nature-button-outline min-h-11 sm:min-h-9"
+              onClick={refreshList}
+              disabled={isListBusy}
+            >
+              重试
+            </button>
+          </div>
+        ) : null}
+
+        <PublicMemoList
+          memos={memos}
+          emptyMessage={emptyMessage}
+          onEdit={(memo) => void handleEdit(memo)}
+        />
+
+        {hasMore ? (
+          <div className="flex justify-center pt-4">
+            <button
+              type="button"
+              className="nature-button nature-button-outline min-h-11 gap-2 sm:min-h-9"
+              onClick={() => {
+                if (nextCursor) {
+                  void requestMemoPage({ query: searchQuery, cursor: nextCursor, append: true });
+                }
+              }}
+              disabled={!nextCursor || isListBusy}
+            >
+              {isLoadingMore ? <span className="nature-spinner h-4 w-4" /> : null}
+              {isLoadingMore ? "正在加载…" : "加载更多"}
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <QuickMemoEditModal
+        open={Boolean(editingSlug)}
+        onClose={closeEdit}
+        onSave={saveEditedMemo}
+        memoTitle={editingMemo?.title ?? undefined}
+        initialContent={editingMemo?.content ?? ""}
+        initialIsPublic={editingMemo?.isPublic ?? true}
+        articlePath={editingMemo?.filePath ?? (editingSlug ? `${editingSlug}.md` : "")}
+        isLoading={isEditLoading}
+        isSaving={isEditSaving}
+        errorMessage={editError ?? undefined}
+      />
     </section>
   );
 }

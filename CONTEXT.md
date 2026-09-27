@@ -96,6 +96,14 @@ _Avoid_: 两套图片
 A public chronological overview that combines article and Memo events into one reading path.
 _Avoid_: 文章列表
 
+**实时 Memo**:
+The author's current saved Memo, including public and private entries, available for management before the next public-site publication.
+_Avoid_: 已发布 Memo, 公开时间线
+
+**公开 Memo 时间线**:
+The reader-facing sequence of Memo snapshots in the published public site. It may lag behind 实时 Memo until the next publication.
+_Avoid_: 实时 Memo 列表, 管理列表
+
 **移动内容流**:
 The narrow-screen presentation of 内容时间线. It keeps chronological order and item metadata while removing the decorative rail, nodes, and connectors so each event reads like a compact content entry.
 _Avoid_: 移动时间轴
