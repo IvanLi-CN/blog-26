@@ -251,7 +251,15 @@ export async function verifyPublicMediaPackage(
   }
 
   for (const file of files) {
-    if (file === manifestPath || !TEXT_EXTENSIONS.has(extname(file).toLowerCase())) continue;
+    const artifactPath = relative(artifactDir, file).split(sep).join("/");
+    // EdgeOne config stores URL globs, not concrete media references.
+    if (
+      file === manifestPath ||
+      artifactPath === "edgeone.json" ||
+      !TEXT_EXTENSIONS.has(extname(file).toLowerCase())
+    ) {
+      continue;
+    }
     const content = await readFile(file, "utf8");
     for (const raw of extractPublicMediaUrls(content)) {
       const parsed = new URL(raw, siteUrl);
