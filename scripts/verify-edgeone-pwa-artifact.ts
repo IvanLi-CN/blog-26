@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -45,7 +47,23 @@ export async function verifyEdgeonePwaArtifact(
     );
   }
 
+  for (const path of expectedFiles) {
+    const [siteDigest, artifactDigest] = await Promise.all([
+      hashFile(join(siteDistDir, path)),
+      hashFile(join(artifactDir, path)),
+    ]);
+    if (siteDigest !== artifactDigest) {
+      throw new Error(`EdgeOne deployment artifact file content differs from site output: ${path}`);
+    }
+  }
+
   return { configPath, ruleCount: actual.headers.length };
+}
+
+async function hashFile(path: string) {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return hash.digest("hex");
 }
 
 if (import.meta.main) {

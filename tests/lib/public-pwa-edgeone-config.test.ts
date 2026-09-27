@@ -215,6 +215,18 @@ describe("EdgeOne public PWA cache config", () => {
       ruleCount: generated.headers.length,
     });
 
+    await writeFile(join(artifactDir, "index.html"), "<main>changed</main>");
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
+      "file content differs from site output: index.html"
+    );
+    await writeFile(join(artifactDir, "index.html"), "<main>home</main>");
+
+    await writeFile(join(artifactDir, "extra.txt"), "unexpected");
+    await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
+      "0 missing, 1 extra"
+    );
+    await rm(join(artifactDir, "extra.txt"));
+
     await rm(join(artifactDir, "memos", "feed.xml"));
     await expect(verifyEdgeonePwaArtifact({ siteDistDir, artifactDir })).rejects.toThrow(
       "1 missing, 0 extra"
