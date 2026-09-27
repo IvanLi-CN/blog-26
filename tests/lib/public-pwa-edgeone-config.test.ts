@@ -62,8 +62,12 @@ describe("EdgeOne public PWA cache config", () => {
   });
 
   it("builds rules from site output and refuses an unclassified HTML page", () => {
-    expect(() => createEdgeoneCacheConfig("", ["index.html", "unknown-route/index.html"])).toThrow(
-      "Public HTML route has no EdgeOne HTML cache rule"
-    );
+    const unclassifiedHtmlFiles = ["unknown-route/index.html", "feed.html", "nested/feed.html"];
+
+    for (const file of unclassifiedHtmlFiles) {
+      expect(() => createEdgeoneCacheConfig("", ["index.html", file])).toThrow(
+        "Public HTML route has no EdgeOne HTML cache rule"
+      );
+    }
   });
 });

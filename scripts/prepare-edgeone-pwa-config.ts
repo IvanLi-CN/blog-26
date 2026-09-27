@@ -140,7 +140,12 @@ async function collectStaticFiles(root: string, directory = root): Promise<strin
 function validateHtmlFiles(staticFiles: readonly string[], basePath: string) {
   const normalizedBase = normalizeBasePath(basePath);
   for (const file of staticFiles.filter((path) => path.endsWith(".html") && path !== "404.html")) {
-    const urlPath = file === "index.html" ? "/" : `/${file.slice(0, -"index.html".length)}`;
+    const urlPath =
+      file === "index.html"
+        ? "/"
+        : file.endsWith("/index.html")
+          ? `/${file.slice(0, -"/index.html".length)}/`
+          : `/${file}`;
     const scoped = scopedPath(normalizedBase, urlPath);
     const represented = [
       "/",
