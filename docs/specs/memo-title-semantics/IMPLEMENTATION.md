@@ -11,13 +11,13 @@
 ## Implementation Coverage
 
 - REQ-MTS-001: src/lib/content-sources/utils.ts resolves titles from frontmatter and permitted ATX headings.
-- REQ-MTS-002 and REQ-MTS-003: src/public-site/snapshot.ts normalizes exact legacy filename-derived titles at the public read boundary and exposes nullable memo titles.
+- REQ-MTS-002 and REQ-MTS-003: src/public-site/snapshot.ts normalizes exact legacy filename-derived titles at the public read boundary and exposes nullable memo titles. The admin-aware Memo list and detail API also expose absent titles as null without a slug or display fallback.
 - REQ-MTS-004: site/components/TimelineCard.astro, site/components/MemoCard.astro, site/pages/memos/[slug].astro, site/pages/tags/[...tagSegments].astro, site/pages/projects/[slug].astro, src/components/search/SearchResultsList.tsx, src/server/public-api/router.ts, and site/lib/feeds.ts preserve titleless memo content and routes.
-- REQ-MTS-005: post, project, slug, and admin CRUD paths retain their existing contracts.
+- REQ-MTS-005: post, project, slug, and admin CRUD paths retain their existing contracts. A titleless Memo PATCH sends an empty title to preserve the existing empty storage value.
 
 ## Coverage / rollout summary
 
-- Focused Bun tests cover title parsing, local sync, public snapshot compatibility, HTTP contracts, feeds, and search.
+- Focused Bun tests cover title parsing, local sync, public snapshot compatibility, HTTP contracts, feeds, and search. `src/server/http-compat-api.test.ts` verifies nullable admin-aware list/detail titles and that PATCH keeps a titleless Memo's storage title empty.
 - The local read-only preview uses a temporary SQLite database, a read-only Notes mirror, and a temporary public snapshot.
 - One malformed source memo was corrected by owner request; the production source was not bulk rewritten, the production database was not modified, and the static site was not rebuilt or restarted.
 

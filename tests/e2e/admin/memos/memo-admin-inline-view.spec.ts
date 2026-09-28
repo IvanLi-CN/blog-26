@@ -54,6 +54,9 @@ test.describe("Inline memo admin view", () => {
 
     const cards = page.getByTestId("admin-live-memo-card");
     await expect(cards).toHaveCount(10);
+    const initialIds = await cards.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("data-id"))
+    );
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
       .find((url) => !url.searchParams.has("cursor"));
@@ -82,6 +85,10 @@ test.describe("Inline memo admin view", () => {
     await page.getByRole("button", { name: "刷新列表" }).click();
     await refreshRequest;
     await expect(cards).toHaveCount(10);
+    const refreshedIds = await cards.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("data-id"))
+    );
+    expect(refreshedIds).toEqual(initialIds);
   });
 
   test("edits in the current list, saves through PATCH, restores focus, and previews read-only", async ({
@@ -194,6 +201,52 @@ test.describe("Inline memo admin view", () => {
     expect(postAttempts).toBe(2);
   });
 
+  test("keeps a new memo visible when the first refreshed page is briefly stale", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
+    let createdId: string | undefined;
+    let stalePageReturned = false;
+
+    await page.route("**/api/public/memos**", async (route) => {
+      if (route.request().method() === "POST") {
+        const response = await route.fetch();
+        const created = (await response.json()) as { id: string; slug: string };
+        createdId = created.id;
+        await route.fulfill({ response, json: created });
+        return;
+      }
+
+      if (isMemoListRequest(route.request()) && createdId && !stalePageReturned) {
+        stalePageReturned = true;
+        const response = await route.fetch();
+        const payload = (await response.json()) as {
+          memos?: Array<{ id: string }>;
+          items?: Array<{ id: string }>;
+        };
+        if (payload.memos) payload.memos = payload.memos.filter((memo) => memo.id !== createdId);
+        if (payload.items) payload.items = payload.items.filter((memo) => memo.id !== createdId);
+        await route.fulfill({ response, json: payload });
+        return;
+      }
+
+      await route.continue();
+    });
+
+    const title = `列表同步延迟闪念 ${Date.now()}`;
+    await editor.click();
+    await page.keyboard.insertText(`# ${title}\n\n保存成功后保留在当前列表。`);
+    await container.getByRole("button", { name: "公开发布 Memo" }).click();
+
+    await expect(page.getByRole("status")).toHaveText(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。"
+    );
+    expect(stalePageReturned).toBe(true);
+    await expect(await waitForAdminLiveMemoCard(page, title)).toBeVisible();
+  });
+
   test("keeps the full editor and long card actions usable at desktop, 393px, and 320px", async ({
     page,
   }) => {
@@ -217,6 +270,18 @@ test.describe("Inline memo admin view", () => {
         .getByTestId("quick-memo-editor-surface")
         .evaluate((element) => element.scrollWidth > element.clientWidth);
       expect(editorSurfaceOverflow).toBe(false);
+
+      const editor = container.locator(".ProseMirror");
+      await editor.click();
+      await page.keyboard.insertText("键盘路径测试");
+      await page.keyboard.press("Tab");
+      const visibility = container.getByTestId("quick-memo-visibility-input");
+      await expect(visibility).toBeFocused();
+      expect(await visibility.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+      await page.keyboard.press("Tab");
+      const submit = container.getByRole("button", { name: "公开发布 Memo" });
+      await expect(submit).toBeFocused();
+      expect(await submit.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
 
       await expect(page.getByRole("searchbox", { name: "搜索实时 Memo" })).toHaveCount(0);
       const card = await waitForAdminLiveMemoCard(page, marker);

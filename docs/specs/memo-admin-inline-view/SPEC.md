@@ -83,7 +83,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ## Visual Evidence
 
-The approved captures below were rendered from the Storybook page fallback using mock API data. The source is bound to the current candidate working tree at base commit `f4eac63dca12bf1c92867acf41266d59413ba859`. List captures show the administrator management area; top captures show the full-size editor and page hierarchy.
+The approved captures below were rendered from the Storybook page fallback using mock API data. They were re-rendered against the repaired candidate at the same source-bound viewports; comparison found no visible layout change, so the approved assets remain canonical. List captures show the administrator management area; top captures show the full-size editor and page hierarchy.
 
 source_type=storybook_canvas; target_program=mock-only; capture_scope=element; viewport_strategy=storybook-viewport; evidence_surface=page; sensitive_exclusion=N/A; submission_gate=approved
 - Story: `public-memo-authoring--admin-page-fallback-visual-light`; viewport: `memoDesktop` (1440x1000); state: light theme, page top.

@@ -554,7 +554,7 @@ export const memosRouter = router({
         return {
           id: memo.id,
           slug: memo.slug,
-          title: memo.title || "无标题 Memo",
+          title: memo.title || null,
           excerpt: memo.excerpt,
           content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
           isPublic: memo.public,
@@ -673,7 +673,7 @@ export const memosRouter = router({
       const base = {
         id: memo.id,
         slug: memo.slug,
-        title: memo.title || "无标题 Memo",
+        title: memo.title || null,
         excerpt: memo.excerpt,
         content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
         isPublic: memo.public,
@@ -929,11 +929,12 @@ export const memosRouter = router({
         attachments: Array.isArray(attachments) ? attachments : [],
         markdownFilePath,
       });
+      const resolvedTitle = title ?? extractTitleFromContent(normalized.content);
 
       // 构建 markdown 内容
       const nowIso = new Date().toISOString();
       const frontmatter: Record<string, unknown> = {
-        title: title || extractTitleFromContent(normalized.content),
+        title: resolvedTitle,
         public: isPublic,
         tags,
         attachments: normalized.attachments,
@@ -966,7 +967,7 @@ export const memosRouter = router({
       meta.attachments = normalized.attachments;
 
       const updateData = {
-        title: title || extractTitleFromContent(normalized.content),
+        title: resolvedTitle,
         excerpt: generateExcerptFromContent(normalized.content),
         body: normalized.content, // 使用 body 字段匹配实际数据库结构
         public: isPublic,

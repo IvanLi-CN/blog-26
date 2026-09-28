@@ -2229,6 +2229,70 @@ public: false
     expect(preview.content).toContain("inline image marker");
   });
 
+  it("keeps titleless memos nullable through the admin-aware API and preserves them on PATCH", async () => {
+    const id = "Memos/titleless-admin-roundtrip.md";
+    await seedPost({
+      id,
+      filePath: id,
+      slug: "titleless-admin-roundtrip",
+      type: "memo",
+      title: "",
+      body: "A memo without a title.",
+      public: true,
+      tags: JSON.stringify(["titleless"]),
+    });
+
+    const listResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos?publicOnly=false&limit=20", {}, ADMIN_EMAIL),
+      "/memos"
+    );
+    expect(listResponse.status).toBe(200);
+    const listPayload = await readJson(listResponse);
+    const listedMemo = listPayload.memos.find(
+      (memo: { slug: string }) => memo.slug === "titleless-admin-roundtrip"
+    );
+    expect(listedMemo?.title).toBeNull();
+
+    const detailResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/titleless-admin-roundtrip", {}, ADMIN_EMAIL),
+      "/memos/titleless-admin-roundtrip"
+    );
+    expect(detailResponse.status).toBe(200);
+    expect((await readJson(detailResponse)).title).toBeNull();
+
+    const patchResponse = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/memos/titleless-admin-roundtrip",
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            content: "Updated memo body without a title.",
+            title: "",
+            isPublic: false,
+            tags: ["titleless", "updated"],
+            attachments: [],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/memos/titleless-admin-roundtrip"
+    );
+    expect(patchResponse.status).toBe(200);
+    const updated = await readJson(patchResponse);
+    expect(updated.title).toBeNull();
+    expect(updated.isPublic).toBe(false);
+
+    const stored = await db
+      .select({ title: posts.title, body: posts.body })
+      .from(posts)
+      .where(eq(posts.id, id))
+      .limit(1)
+      .then((rows) => rows[0]);
+    expect(stored?.title).toBe("");
+    expect(stored?.body).toBe("Updated memo body without a title.");
+  });
+
   it("keeps the path slug authoritative when patching /api/public/memos/:slug", async () => {
     const primaryId = await seedPost({
       id: "memos/path-authoritative.md",

@@ -211,7 +211,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       if (request.method === "PATCH") {
         const body = ((await parseBody(request)) || {}) as {
           content?: string;
-          title?: string;
+          title?: string | null;
           isPublic?: boolean;
           tags?: string[];
           attachments?: Array<{ path: string }>;
@@ -229,14 +229,19 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         const result = await caller.memos.update({
           id: existing.id,
           content: typeof body.content === "string" ? body.content : rawExisting.body,
-          title: body.title ?? existing.title,
+          title: body.title ?? existing.title ?? "",
           isPublic: body.isPublic ?? existing.isPublic,
           tags: Array.isArray(body.tags) ? body.tags : (existing.tags ?? []),
           attachments: Array.isArray(body.attachments)
             ? body.attachments
             : ((existing as { attachments?: Array<{ path: string }> }).attachments ?? []),
         });
-        return json(request, result, { status: 200 }, resHeaders);
+        return json(
+          request,
+          { ...result, title: result.title || null },
+          { status: 200 },
+          resHeaders
+        );
       }
       if (request.method === "DELETE") {
         const existing = await caller.memos.bySlug({ slug });

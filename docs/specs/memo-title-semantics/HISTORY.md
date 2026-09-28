@@ -12,7 +12,7 @@
 
 ## Related Changes
 
-- None
+- The inline Memo admin view keeps an absent title nullable in its admin-aware list and detail responses and preserves the empty title when PATCH saves a titleless Memo.
 
 ## References
 

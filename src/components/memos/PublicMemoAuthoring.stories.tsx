@@ -13,7 +13,7 @@ import { QuickMemoEditor } from "./QuickMemoEditor";
 type MemoRecord = {
   id: string;
   slug: string;
-  title?: string;
+  title?: string | null;
   content: string;
   excerpt?: string;
   isPublic: boolean;
@@ -278,7 +278,7 @@ function createAdminPageMemos(): MemoRecord[] {
     return {
       id,
       slug: `admin-story-memo-${index + 1}`,
-      title: title ?? undefined,
+      title,
       excerpt: isTitleless
         ? "没有标题时继续展示摘要、标签和操作，不用 slug 代替标题。"
         : `这是一条用于检查卡片信息层级和操作位置的 Memo 摘要 ${index + 1}。`,
@@ -311,6 +311,7 @@ function AdminPageFallback({
     const originalFetch = window.fetch.bind(window);
     const memos = createAdminPageMemos();
     let failNextCreation = scenario === "create-error";
+    let failNextList = scenario === "list-error";
 
     root.dataset.uiPreference = theme;
     root.dataset.uiTheme = theme;
@@ -344,7 +345,8 @@ function AdminPageFallback({
       }
 
       if (url.pathname === "/api/public/memos" && method === "GET") {
-        if (scenario === "list-error") {
+        if (scenario === "list-error" && failNextList) {
+          failNextList = false;
           return json({ error: "Storybook 模拟列表读取失败" }, 503);
         }
         const start = Number(url.searchParams.get("cursor")?.replace("cursor-", "") ?? 0);
@@ -392,6 +394,9 @@ function AdminPageFallback({
         const data = JSON.parse(String(init?.body ?? "{}")) as Partial<MemoRecord>;
         const index = memos.findIndex((memo) => memo.slug === slug);
         if (index < 0) return json({ error: "Memo not found" }, 404);
+        if (memos[index]?.title === null && data.title !== "") {
+          return json({ error: "Titleless memos must keep an empty title" }, 400);
+        }
         memos[index] = { ...memos[index], ...data };
         return json(memos[index]);
       }
@@ -544,14 +549,38 @@ export const AdminPageFallbackStory: Story = {
     const quickEditor = canvas.getByTestId("quick-memo-editor");
     const editor = quickEditor.querySelector<HTMLElement>(".ProseMirror");
     if (!editor) throw new Error("Quick memo editor surface did not render");
+    await userEvent.click(editor);
+    await userEvent.keyboard("键盘路径测试");
     const visibility = canvas.getByTestId("quick-memo-visibility-input");
     editor.focus();
     await userEvent.keyboard("{Tab}");
     expect(canvasElement.ownerDocument.activeElement).toBe(visibility);
-    await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
-    expect(canvasElement.ownerDocument.activeElement).toBe(editor);
+    expect(visibility.matches(":focus-visible")).toBe(true);
+    await userEvent.keyboard("{Tab}");
+    const submit = canvas.getByRole("button", { name: "公开发布 Memo" });
+    expect(canvasElement.ownerDocument.activeElement).toBe(submit);
+    expect(submit.matches(":focus-visible")).toBe(true);
+    await userEvent.keyboard("{Tab}");
+    const refresh = canvas.getByRole("button", { name: "刷新列表" });
+    expect(canvasElement.ownerDocument.activeElement).toBe(refresh);
+    await userEvent.keyboard("{Tab}");
 
-    await userEvent.click(canvas.getByRole("button", { name: "加载更多" }));
+    const initialCards = canvas.getAllByTestId("admin-live-memo-card");
+    for (const card of initialCards) {
+      const preview = within(card).getByRole("link", { name: "预览" });
+      expect(canvasElement.ownerDocument.activeElement).toBe(preview);
+      expect(preview.matches(":focus-visible")).toBe(true);
+      await userEvent.keyboard("{Tab}");
+      const edit = within(card).getByTestId("admin-live-memo-edit");
+      expect(canvasElement.ownerDocument.activeElement).toBe(edit);
+      expect(edit.matches(":focus-visible")).toBe(true);
+      await userEvent.keyboard("{Tab}");
+    }
+    const loadMore = canvas.getByRole("button", { name: "加载更多" });
+    expect(canvasElement.ownerDocument.activeElement).toBe(loadMore);
+    expect(loadMore.matches(":focus-visible")).toBe(true);
+
+    await userEvent.click(loadMore);
     await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(12));
 
     const firstCard = canvas.getAllByTestId("admin-live-memo-card")[0];
@@ -568,6 +597,18 @@ export const AdminPageFallbackStory: Story = {
       expect(canvas.queryByRole("dialog", { name: "快速编辑 Memo" })).not.toBeInTheDocument()
     );
     await waitFor(() => expect(canvasElement.ownerDocument.activeElement).toBe(editTrigger));
+
+    const titlelessCard = canvasElement.querySelector<HTMLElement>(
+      '[data-slug="admin-story-memo-2"]'
+    );
+    if (!titlelessCard) throw new Error("Titleless memo did not render");
+    await userEvent.click(within(titlelessCard).getByTestId("admin-live-memo-edit"));
+    const titlelessDialog = await canvas.findByRole("dialog", { name: "快速编辑 Memo" });
+    await userEvent.click(within(titlelessDialog).getByRole("button", { name: "保存更改" }));
+    await waitFor(() =>
+      expect(canvas.queryByRole("dialog", { name: "快速编辑 Memo" })).not.toBeInTheDocument()
+    );
+    await expect(within(titlelessCard).queryByRole("heading")).not.toBeInTheDocument();
   },
 };
 
@@ -663,9 +704,14 @@ export const AdminPageListError: Story = {
     const canvas = within(canvasElement);
     const alert = await canvas.findByRole("alert");
     await expect(alert).toContainText("Storybook 模拟列表读取失败");
-    await expect(canvas.getByRole("button", { name: "重试" })).toBeVisible();
+    const retry = canvas.getByRole("button", { name: "重试" });
+    await expect(retry).toBeVisible();
+    await expect(retry).toBeEnabled();
     await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
     await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
+    await userEvent.click(retry);
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10));
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
   },
 };
 

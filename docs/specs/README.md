@@ -26,7 +26,7 @@
 | Full direct dependency upgrade to latest | archived | implemented | `deps-update-latest/SPEC.md` | - | Legacy plan `0004` and the later direct-latest upgrade are consolidated here. |
 | Local memo root keeps `Memos` case | active | implemented | `local-memos-root-case/SPEC.md` | - | Local memo paths preserve canonical case and strict path safety. |
 | Local content source uses real directory layout | active | in progress | `local-real-content-layout/SPEC.md` | - | Configured real roots drive scanning, classification, and admin browsing. |
-| Inline Memo admin view | active | implemented | `memo-admin-inline-view/SPEC.md` | - | Build, lint, targeted HTTP/title tests, Storybook checks, and seven admin/guest browser cases pass; visual confirmation, Tier 3 review, and PR/CI gates remain open. |
+| Inline Memo admin view | active | implemented | `memo-admin-inline-view/SPEC.md` | - | Build, lint, HTTP/title tests, Storybook Canvas checks, and six targeted admin browser cases pass; eight owner-approved visual captures are stored. Current-candidate Tier 3 review and PR/required-CI remain open. |
 | Memo title semantics | active | implemented | `memo-title-semantics/SPEC.md` | - | Optional memo titles resolve from approved metadata/headings and stay nullable in the public model. |
 | Memos Markdown theme contrast | archived | implemented | `memos-content-contrast/SPEC.md` | - | Semantic theme colors keep Memo Markdown readable across supported themes. |
 | Nature frontend redesign without DaisyUI | active | in progress | `nature-front-ui/SPEC.md` | - | Public styling uses the Nature design system; mobile reading surfaces remain to be implemented and verified. |

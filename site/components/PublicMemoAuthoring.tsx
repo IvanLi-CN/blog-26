@@ -242,7 +242,15 @@ export function PublicMemoComposerIsland({
   const editRequestId = useRef(0);
 
   const requestMemoPage = useCallback(
-    async ({ cursor, append = false }: { cursor?: string; append?: boolean }) => {
+    async ({
+      cursor,
+      append = false,
+      preserveMemo,
+    }: {
+      cursor?: string;
+      append?: boolean;
+      preserveMemo?: PublicMemoRecord;
+    }) => {
       const requestId = ++listRequestId.current;
       setListError(null);
       setIsListLoading(!append);
@@ -261,7 +269,17 @@ export function PublicMemoComposerIsland({
         if (requestId !== listRequestId.current) return;
         const page = normalizeMemoPage(result);
         setMemos((current) => {
-          if (!append) return page.memos;
+          if (!append) {
+            if (
+              preserveMemo &&
+              !page.memos.some(
+                (memo) => memo.id === preserveMemo.id || memo.slug === preserveMemo.slug
+              )
+            ) {
+              return [preserveMemo, ...page.memos];
+            }
+            return page.memos;
+          }
           const existing = new Set(current.map((memo) => memo.id || memo.slug));
           const additions = page.memos.filter((memo) => {
             const key = memo.id || memo.slug;
@@ -322,7 +340,7 @@ export function PublicMemoComposerIsland({
         ].slice(0, LIVE_MEMO_PAGE_SIZE)
       );
       setNextCursor(null);
-      void requestMemoPage({});
+      void requestMemoPage({ preserveMemo: result });
     },
     [requestMemoPage]
   );
@@ -370,7 +388,7 @@ export function PublicMemoComposerIsland({
               id: editingMemo.id,
               content: values.content,
               isPublic: values.isPublic,
-              title: editingMemo.title,
+              title: editingMemo.title ?? "",
               tags: editingMemo.tags,
             }),
           }
