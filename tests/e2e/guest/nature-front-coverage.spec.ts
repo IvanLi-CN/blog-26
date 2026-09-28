@@ -964,6 +964,24 @@ test.describe("Nature frontend public coverage", () => {
     await expect(cards.octo.locator(".runtime-freshness-cell")).toHaveCount(501);
     await expect(cards.octo.locator(".runtime-freshness-list")).toHaveCount(0);
     await expect
+      .poll(async () => {
+        const [cvmActivityHeight, hikariActivityHeight, octoFreshnessHeight] = await Promise.all([
+          cards.cvm
+            .locator(".runtime-activity-grid")
+            .evaluate((grid) => grid.getBoundingClientRect().height),
+          cards.hikari
+            .locator(".runtime-activity-grid")
+            .evaluate((grid) => grid.getBoundingClientRect().height),
+          cards.octo
+            .locator(".runtime-freshness-grid")
+            .evaluate((grid) => grid.getBoundingClientRect().height),
+        ]);
+        return (
+          octoFreshnessHeight > cvmActivityHeight && octoFreshnessHeight > hikariActivityHeight
+        );
+      })
+      .toBe(true);
+    await expect
       .poll(() =>
         cards.octo
           .locator(".runtime-freshness-cell")
