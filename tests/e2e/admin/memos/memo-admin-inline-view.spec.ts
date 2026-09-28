@@ -42,9 +42,13 @@ test.describe("Inline memo admin view", () => {
   }) => {
     await loginAsAdmin(page);
     const marker = `inline-page-${Date.now()}`;
+    const createdMemos: Array<{ id: string }> = [];
     for (let index = 0; index < 12; index += 1) {
-      await createMemo(page, `${marker}-${String(index).padStart(2, "0")}`, index % 2 === 0);
+      createdMemos.push(
+        await createMemo(page, `${marker}-${String(index).padStart(2, "0")}`, index % 2 === 0)
+      );
     }
+    const expectedLatestIds = [...createdMemos].reverse().map((memo) => memo.id);
 
     const requests: string[] = [];
     page.on("request", (request) => {
@@ -57,6 +61,7 @@ test.describe("Inline memo admin view", () => {
     const initialIds = await cards.evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-id"))
     );
+    expect(initialIds).toEqual(expectedLatestIds.slice(0, 10));
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
       .find((url) => !url.searchParams.has("cursor"));
@@ -77,6 +82,7 @@ test.describe("Inline memo admin view", () => {
         (element) => element.getAttribute("data-id") ?? element.getAttribute("data-slug")
       )
     );
+    expect(ids.slice(0, expectedLatestIds.length)).toEqual(expectedLatestIds);
     expect(new Set(ids).size).toBe(ids.length);
 
     const refreshRequest = page.waitForRequest(
@@ -245,6 +251,70 @@ test.describe("Inline memo admin view", () => {
     );
     expect(stalePageReturned).toBe(true);
     await expect(await waitForAdminLiveMemoCard(page, title)).toBeVisible();
+  });
+
+  test("keeps the successful create response when refresh returns the same ID with stale content", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
+    let created: Record<string, unknown> | undefined;
+    let stalePageReturned = false;
+    const staleTitle = `旧列表响应 ${Date.now()}`;
+
+    await page.route("**/api/public/memos**", async (route) => {
+      if (route.request().method() === "POST") {
+        const response = await route.fetch();
+        created = (await response.json()) as Record<string, unknown>;
+        await route.fulfill({ response, json: created });
+        return;
+      }
+
+      if (isMemoListRequest(route.request()) && created && !stalePageReturned) {
+        stalePageReturned = true;
+        const response = await route.fetch();
+        const payload = (await response.json()) as {
+          memos?: Array<Record<string, unknown>>;
+          items?: Array<Record<string, unknown>>;
+        };
+        if (payload.memos) {
+          const staleMemo = {
+            ...created,
+            title: staleTitle,
+            content: "# 旧列表内容",
+            excerpt: "旧列表内容",
+          };
+          const index = payload.memos.findIndex((memo) => memo.id === created?.id);
+          if (index >= 0) payload.memos[index] = staleMemo;
+          else payload.memos.unshift(staleMemo);
+        }
+        if (payload.items) {
+          payload.items = payload.items.map((memo) =>
+            memo.id === created?.id
+              ? { ...created, title: staleTitle, content: "# 旧列表内容", excerpt: "旧列表内容" }
+              : memo
+          );
+        }
+        await route.fulfill({ response, json: payload });
+        return;
+      }
+
+      await route.continue();
+    });
+
+    const title = `列表旧内容闪念 ${Date.now()}`;
+    await editor.click();
+    await page.keyboard.insertText(`# ${title}\n\n成功响应应优先于旧列表内容。`);
+    await container.getByRole("button", { name: "公开发布 Memo" }).click();
+
+    await expect(page.getByRole("status")).toHaveText(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。"
+    );
+    expect(stalePageReturned).toBe(true);
+    const card = await waitForAdminLiveMemoCard(page, title);
+    await expect(card.getByRole("heading", { name: title })).toBeVisible();
+    await expect(card).not.toContainText(staleTitle);
   });
 
   test("keeps the full editor and long card actions usable at desktop, 393px, and 320px", async ({

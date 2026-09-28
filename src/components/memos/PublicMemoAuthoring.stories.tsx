@@ -311,7 +311,6 @@ function AdminPageFallback({
     const originalFetch = window.fetch.bind(window);
     const memos = createAdminPageMemos();
     let failNextCreation = scenario === "create-error";
-    let failNextList = scenario === "list-error";
 
     root.dataset.uiPreference = theme;
     root.dataset.uiTheme = theme;
@@ -345,8 +344,10 @@ function AdminPageFallback({
       }
 
       if (url.pathname === "/api/public/memos" && method === "GET") {
-        if (scenario === "list-error" && failNextList) {
-          failNextList = false;
+        const shouldFailListRequest =
+          scenario === "list-error" && root.dataset.storyListFailure === "armed";
+        if (shouldFailListRequest) {
+          delete root.dataset.storyListFailure;
           return json({ error: "Storybook 模拟列表读取失败" }, 503);
         }
         const start = Number(url.searchParams.get("cursor")?.replace("cursor-", "") ?? 0);
@@ -472,7 +473,7 @@ export const LiveDetailControls: Story = {
     for (const action of canvasElement.querySelectorAll(".nature-button")) {
       expect(action.getBoundingClientRect().height).toBe(36);
     }
-    await expect(canvas.getByTestId("public-memo-detail-body")).toContainText(
+    await expect(canvas.getByTestId("public-memo-detail-body")).toHaveTextContent(
       "Keeps the public memo reading shell intact."
     );
   },
@@ -697,16 +698,20 @@ export const AdminPageFallback320: Story = {
 };
 
 export const AdminPageListError: Story = {
-  name: "管理员闪念页（列表错误）",
+  name: "管理员闪念页（刷新错误恢复）",
   globals: { viewport: { value: "memoDesktop", isRotated: false } },
   render: () => <AdminPageFallback scenario="list-error" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10));
+    canvasElement.ownerDocument.documentElement.dataset.storyListFailure = "armed";
+    await userEvent.click(canvas.getByRole("button", { name: "刷新列表" }));
     const alert = await canvas.findByRole("alert");
-    await expect(alert).toContainText("Storybook 模拟列表读取失败");
+    await expect(alert).toHaveTextContent("Storybook 模拟列表读取失败");
     const retry = canvas.getByRole("button", { name: "重试" });
     await expect(retry).toBeVisible();
     await expect(retry).toBeEnabled();
+    await expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10);
     await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
     await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
     await userEvent.click(retry);
@@ -731,16 +736,16 @@ export const AdminPageCreateError: Story = {
     const submit = canvas.getByRole("button", { name: "公开发布 Memo" });
     await userEvent.click(submit);
     const error = await canvas.findByRole("alert");
-    await expect(error).toContainText("Storybook 模拟发布失败");
-    await expect(error).toContainText("请检查内容后重试");
-    await expect(editor).toContainText(content);
+    await expect(error).toHaveTextContent("Storybook 模拟发布失败");
+    await expect(error).toHaveTextContent("请检查内容后重试");
+    await expect(editor).toHaveTextContent(content);
     await expect(submit).toBeEnabled();
 
     await userEvent.click(submit);
     await expect(canvas.getByRole("status")).toHaveText(
       "公开 Memo 已保存；公开时间线将在下次发布后更新。"
     );
-    await expect(editor).not.toContainText(content);
+    await expect(editor).not.toHaveTextContent(content);
   },
 };
 

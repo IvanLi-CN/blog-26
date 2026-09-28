@@ -270,15 +270,13 @@ export function PublicMemoComposerIsland({
         const page = normalizeMemoPage(result);
         setMemos((current) => {
           if (!append) {
-            if (
-              preserveMemo &&
-              !page.memos.some(
-                (memo) => memo.id === preserveMemo.id || memo.slug === preserveMemo.slug
-              )
-            ) {
-              return [preserveMemo, ...page.memos];
-            }
-            return page.memos;
+            if (!preserveMemo) return page.memos;
+            return [
+              preserveMemo,
+              ...page.memos.filter(
+                (memo) => memo.id !== preserveMemo.id && memo.slug !== preserveMemo.slug
+              ),
+            ].slice(0, LIVE_MEMO_PAGE_SIZE);
           }
           const existing = new Set(current.map((memo) => memo.id || memo.slug));
           const additions = page.memos.filter((memo) => {

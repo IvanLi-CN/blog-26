@@ -12,6 +12,7 @@
 
 - REQ-MTS-001: src/lib/content-sources/utils.ts resolves titles from frontmatter and permitted ATX headings.
 - REQ-MTS-002 and REQ-MTS-003: src/public-site/snapshot.ts normalizes exact legacy filename-derived titles at the public read boundary and exposes nullable memo titles. The admin-aware Memo list and detail API also expose absent titles as null without a slug or display fallback.
+- The inline admin list keeps the successful create response authoritative when an immediate refresh returns stale data for the same Memo; this preserves the saved nullable title and does not introduce a slug fallback.
 - REQ-MTS-004: site/components/TimelineCard.astro, site/components/MemoCard.astro, site/pages/memos/[slug].astro, site/pages/tags/[...tagSegments].astro, site/pages/projects/[slug].astro, src/components/search/SearchResultsList.tsx, src/server/public-api/router.ts, and site/lib/feeds.ts preserve titleless memo content and routes.
 - REQ-MTS-005: post, project, slug, and admin CRUD paths retain their existing contracts. A titleless Memo PATCH sends an empty title to preserve the existing empty storage value.
 
