@@ -379,7 +379,7 @@ test.describe("mobile public reading surfaces", () => {
   test("composited text contrast stays AA-readable across ambient frames and theme changes", async ({
     page,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/tags", "light");
     const tagRoute = await page.locator('main a[href^="/tags/"]').first().getAttribute("href");
@@ -387,6 +387,11 @@ test.describe("mobile public reading surfaces", () => {
 
     const cases = [
       { path: "/", surface: ".nature-mobile-reading-surface", text: "p" },
+      {
+        path: "/",
+        surface: ".nature-mobile-reading-stream",
+        text: ".nature-timeline-content",
+      },
       {
         path: "/posts",
         surface: ".nature-mobile-reading-stream",
@@ -404,10 +409,24 @@ test.describe("mobile public reading surfaces", () => {
       },
       {
         path: "/posts/code-block-fixture",
+        surface: ".post-detail-header",
+        text: "h1, p, time",
+      },
+      {
+        path: "/posts/code-block-fixture",
         surface: ".post-detail-body",
         text: "p",
       },
-      { path: "/memos/local-memo", surface: ".memo-detail-card", text: "p" },
+      {
+        path: "/memos/local-memo",
+        surface: ".memo-detail-card",
+        text: "h1, p, time",
+      },
+      {
+        path: "/projects/kaisoumail",
+        surface: ".project-detail-header",
+        text: "h1, p",
+      },
       { path: "/projects/kaisoumail", surface: ".project-mdx-section", text: "p" },
       {
         path: "/projects",
@@ -418,6 +437,12 @@ test.describe("mobile public reading surfaces", () => {
         path: "/search/?q=Hello",
         surface: ".nature-mobile-reading-stream",
         text: "[data-search-match-meta], [data-search-relevance-meta], .search-result-card h2, .search-result-card .nature-muted",
+      },
+      {
+        path: "/about",
+        surface: ".nature-mobile-reading-surface",
+        index: 0,
+        text: "h1, p",
       },
       {
         path: "/about",
@@ -445,18 +470,46 @@ test.describe("mobile public reading surfaces", () => {
       }
     }
 
+    for (const theme of ["light", "dark"] as const) {
+      await gotoWithTheme(page, "/posts/code-block-fixture", theme);
+      const body = page.locator(".post-detail-body");
+      await body.evaluate((element) => {
+        const placeholder = document.createElement("div");
+        placeholder.className = "nature-faint py-8 text-center italic";
+        placeholder.textContent = "暂无内容";
+        element.append(placeholder);
+      });
+      const placeholder = body.getByText("暂无内容");
+      const ratio = await sampleSurfaceContrast(page, body, placeholder, 3);
+      expect(ratio, `${theme} empty Markdown placeholder contrast`).toBeGreaterThanOrEqual(4.5);
+    }
+
     await page.emulateMedia({ colorScheme: "dark" });
     await gotoWithTheme(page, "/", "system");
     const homeSurface = page.locator(".nature-mobile-reading-surface").first();
     const darkBackground = await homeSurface.evaluate(
       (element) => getComputedStyle(element).backgroundColor
     );
+    const darkSystemContrast = await sampleSurfaceContrast(
+      page,
+      homeSurface,
+      homeSurface.locator("p").first(),
+      3
+    );
+    expect(darkSystemContrast).toBeGreaterThanOrEqual(4.5);
     await page.emulateMedia({ colorScheme: "light" });
     await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "light");
     const lightBackground = await homeSurface.evaluate(
       (element) => getComputedStyle(element).backgroundColor
     );
     expect(darkBackground).not.toBe(lightBackground);
+    const lightSystemContrast = await sampleSurfaceContrast(
+      page,
+      homeSurface,
+      homeSurface.locator("p").first(),
+      3
+    );
+    expect(lightSystemContrast).toBeGreaterThanOrEqual(4.5);
   });
 
   test("press and keyboard feedback stay within the actionable search row", async ({ page }) => {
@@ -514,6 +567,53 @@ test.describe("mobile public reading surfaces", () => {
     expect(parseCssColor(staticBackground).alpha).toBe(0);
     await page.mouse.up();
     await expect(page).toHaveURL(beforeUrl);
+  });
+
+  test("edge-to-edge reading surfaces follow the available layout width", async ({ page }) => {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/posts", "light");
+    const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue("--nature-reading-viewport-width")
+        )
+      )
+      .toBe(`${viewportWidth}px`);
+    await page.addStyleTag({
+      content: ".nature-app-shell { width: calc(100% - 16px) !important; }",
+    });
+    const availableWidth = await page.locator(".nature-app-shell").evaluate((element) => {
+      const width = element.getBoundingClientRect().width;
+      document.documentElement.style.setProperty("--nature-reading-viewport-width", `${width}px`);
+      document.documentElement.style.setProperty(
+        "--nature-reading-viewport-half-width",
+        `${width / 2}px`
+      );
+      return width;
+    });
+
+    const stream = page.locator(".nature-mobile-reading-stream").first();
+    const streamBounds = await stream.boundingBox();
+    expect(streamBounds).not.toBeNull();
+    expect(Math.abs(streamBounds?.x ?? -100)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs((streamBounds?.x ?? 0) + (streamBounds?.width ?? 0) - availableWidth)
+    ).toBeLessThanOrEqual(1);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+        )
+      )
+      .toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue("--nature-reading-viewport-width")
+        )
+      )
+      .toBe(`${availableWidth}px`);
   });
 
   test("long unbroken text stays inside the reading surface while code scrolls locally", async ({
