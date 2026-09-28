@@ -369,10 +369,14 @@ test.describe("mobile public reading surfaces", () => {
     });
     await page.mouse.move((linkBox?.x ?? 0) + 24, (linkBox?.y ?? 0) + 24);
     await page.mouse.down();
-    const pressedBackground = await card.evaluate(
-      (element) => getComputedStyle(element).backgroundColor
-    );
-    expect(parseCssColor(pressedBackground).alpha).toBeGreaterThan(0);
+    await expect
+      .poll(async () => {
+        const pressedBackground = await card.evaluate(
+          (element) => getComputedStyle(element).backgroundColor
+        );
+        return parseCssColor(pressedBackground).alpha;
+      })
+      .toBeGreaterThan(0);
     await page.mouse.up();
 
     await gotoWithTheme(page, "/search/?q=Hello", "dark");
