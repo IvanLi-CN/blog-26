@@ -37,7 +37,7 @@ test.describe("Inline memo admin view", () => {
     );
   });
 
-  test("uses ten-item server pages, search, load more, and refresh from the first cursor", async ({
+  test("uses ten-item server pages, load more, and refreshes from the first cursor", async ({
     page,
   }) => {
     await loginAsAdmin(page);
@@ -56,9 +56,12 @@ test.describe("Inline memo admin view", () => {
     await expect(cards).toHaveCount(10);
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
-      .find((url) => !url.searchParams.has("cursor") && !url.searchParams.has("search"));
+      .find((url) => !url.searchParams.has("cursor"));
     expect(initialRequest?.searchParams.get("limit")).toBe("10");
     expect(initialRequest?.searchParams.get("publicOnly")).toBe("false");
+    expect(initialRequest?.searchParams.has("search")).toBe(false);
+    await expect(page.getByRole("searchbox", { name: "搜索实时 Memo" })).toHaveCount(0);
+    await expect(page.getByPlaceholder("搜索文章...")).toBeVisible();
 
     const loadMoreRequest = page.waitForRequest(
       (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
@@ -73,46 +76,12 @@ test.describe("Inline memo admin view", () => {
     );
     expect(new Set(ids).size).toBe(ids.length);
 
-    const search = page.getByRole("searchbox", { name: "搜索实时 Memo" });
-    const searchRequest = page.waitForRequest(
-      (request) =>
-        isMemoListRequest(request) && new URL(request.url()).searchParams.get("search") === marker
-    );
-    await search.fill(marker);
-    await search.press("Enter");
-    await searchRequest;
-    await expect(cards).toHaveCount(10);
-
-    const filteredLoadMore = page.waitForRequest(
-      (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
-    );
-    await page.getByRole("button", { name: "加载更多" }).click();
-    await filteredLoadMore;
-    await expect(cards).toHaveCount(12);
-    const filteredIds = await cards.evaluateAll((elements) =>
-      elements.map((element) => element.getAttribute("data-id"))
-    );
-    expect(new Set(filteredIds).size).toBe(12);
-
     const refreshRequest = page.waitForRequest(
-      (request) =>
-        isMemoListRequest(request) &&
-        new URL(request.url()).searchParams.get("search") === marker &&
-        !new URL(request.url()).searchParams.has("cursor")
+      (request) => isMemoListRequest(request) && !new URL(request.url()).searchParams.has("cursor")
     );
     await page.getByRole("button", { name: "刷新列表" }).click();
     await refreshRequest;
     await expect(cards).toHaveCount(10);
-
-    const noResultsRequest = page.waitForRequest(
-      (request) =>
-        isMemoListRequest(request) &&
-        new URL(request.url()).searchParams.get("search") === "memo-no-match-marker"
-    );
-    await search.fill("memo-no-match-marker");
-    await search.press("Enter");
-    await noResultsRequest;
-    await expect(page.getByText("没有匹配的 Memo。", { exact: true })).toBeVisible();
   });
 
   test("edits in the current list, saves through PATCH, restores focus, and previews read-only", async ({
@@ -123,9 +92,6 @@ test.describe("Inline memo admin view", () => {
     const memo = await createMemo(page, title);
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
 
-    const search = page.getByRole("searchbox", { name: "搜索实时 Memo" });
-    await search.fill(title);
-    await search.press("Enter");
     const card = await waitForAdminLiveMemoCard(page, title);
     const editButton = card.getByTestId("admin-live-memo-edit");
     await editButton.scrollIntoViewIfNeeded();
@@ -169,16 +135,11 @@ test.describe("Inline memo admin view", () => {
     await expect(page.getByTestId("public-memo-detail-controls")).toHaveCount(0);
   });
 
-  test("saves private creation, clears search, and shows the private-only message", async ({
-    page,
-  }) => {
+  test("saves private creation and shows the private-only message", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
     const { container, editor } = await waitForQuickMemoEditor(page);
-    const search = page.getByRole("searchbox", { name: "搜索实时 Memo" });
-    await search.fill("search-before-private-create");
-    await search.press("Enter");
-    await expect(page.getByText("没有匹配的 Memo。", { exact: true })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "搜索实时 Memo" })).toHaveCount(0);
 
     const title = `私有闪念 ${Date.now()}`;
     await editor.click();
@@ -190,7 +151,6 @@ test.describe("Inline memo admin view", () => {
     await save.click();
 
     await expect(page.getByRole("status")).toHaveText("私有 Memo 已保存，仅管理员可见。");
-    await expect(search).toHaveValue("");
     const card = await waitForAdminLiveMemoCard(page, title);
     await expect(card.getByTestId("private-indicator")).toBeVisible();
   });
@@ -253,11 +213,15 @@ test.describe("Inline memo admin view", () => {
       const editorSurface = container.getByTestId("quick-memo-editor-surface");
       const editorBox = await editorSurface.boundingBox();
       expect(editorBox?.height).toBeGreaterThanOrEqual(120);
+      const editorSurfaceOverflow = await container
+        .getByTestId("quick-memo-editor-surface")
+        .evaluate((element) => element.scrollWidth > element.clientWidth);
+      expect(editorSurfaceOverflow).toBe(false);
 
-      const search = page.getByRole("searchbox", { name: "搜索实时 Memo" });
-      await search.fill(marker);
-      await search.press("Enter");
+      await expect(page.getByRole("searchbox", { name: "搜索实时 Memo" })).toHaveCount(0);
       const card = await waitForAdminLiveMemoCard(page, marker);
+      const cardList = page.getByTestId("admin-live-memo-list").getByTestId("admin-live-memo-card");
+      const firstCard = cardList.first();
       const contentBox = await card.getByTestId("admin-live-memo-content").boundingBox();
       const actionsBox = await card.getByTestId("admin-live-memo-actions").boundingBox();
       expect(contentBox).not.toBeNull();
@@ -267,9 +231,37 @@ test.describe("Inline memo admin view", () => {
 
       if (viewport.width < 640) {
         expect(actionsBox.y).toBeGreaterThanOrEqual(contentBox.y + contentBox.height);
+
+        const stream = page
+          .getByTestId("admin-live-memo-list")
+          .locator(".nature-mobile-reading-stream");
+        const streamBox = await stream.boundingBox();
+        const rowBox = await firstCard.boundingBox();
+        const rowMetrics = await firstCard.evaluate((element) => {
+          const style = window.getComputedStyle(element);
+          return {
+            paddingLeft: Number.parseFloat(style.paddingLeft),
+            borderRadius: Number.parseFloat(style.borderTopLeftRadius),
+            borderBottomWidth: Number.parseFloat(style.borderBottomWidth),
+            borderBottomStyle: style.borderBottomStyle,
+          };
+        });
+        expect(streamBox?.x).toBeCloseTo(0, 0);
+        expect(streamBox?.width).toBeCloseTo(viewport.width, 0);
+        expect(rowBox?.x).toBeCloseTo(0, 0);
+        expect(rowBox?.width).toBeCloseTo(viewport.width, 0);
+        expect(rowMetrics.paddingLeft).toBe(viewport.width < 375 ? 12 : 16);
+        expect(rowMetrics.borderRadius).toBe(0);
+        expect(rowMetrics.borderBottomWidth).toBe(1);
+        expect(rowMetrics.borderBottomStyle).toBe("solid");
       } else {
         expect(actionsBox.x).toBeGreaterThan(contentBox.x + contentBox.width - 1);
         expect(actionsBox.width).toBeGreaterThanOrEqual(143);
+        const desktopCardMetrics = await card.evaluate((element) => {
+          const style = window.getComputedStyle(element);
+          return Number.parseFloat(style.borderTopLeftRadius);
+        });
+        expect(desktopCardMetrics).toBeGreaterThan(0);
       }
 
       for (const action of [
@@ -283,9 +275,14 @@ test.describe("Inline memo admin view", () => {
       const visibilityBox = await container
         .getByTestId("quick-memo-visibility-input")
         .boundingBox();
+      const visibilityLabelBox = await container
+        .getByTestId("quick-memo-visibility-label")
+        .boundingBox();
       const saveBox = await container.getByRole("button", { name: "公开发布 Memo" }).boundingBox();
       expect(visibilityBox?.height).toBeGreaterThanOrEqual(44);
+      expect(visibilityLabelBox?.height).toBeLessThanOrEqual(20);
       expect(saveBox?.height).toBeGreaterThanOrEqual(viewport.width < 640 ? 44 : 36);
+      expect(saveBox?.height).toBeLessThanOrEqual(52);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
       ).toBe(true);

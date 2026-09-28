@@ -7,7 +7,9 @@
 
 ## Related Changes
 
-- None recorded for this contract.
+- Owner review removed the duplicate search control from the administrator list while retaining site-wide search, corrected the mobile editor action row so visibility and submit labels remain intact at narrow widths, and removed the editor's narrow-screen horizontal overflow while preserving its full outer height.
+- The editor and recent management section use an explicit separation so their distinct tasks are immediately apparent.
+- The latest mainline Nature contract requires continuous reading surfaces below 640px. The administrator list now keeps desktop cards while rendering narrow-screen rows on one edge-to-edge surface with separators and the existing 16px/12px reading insets.
 
 ## References
 

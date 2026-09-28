@@ -2,30 +2,33 @@
 
 ## Current Status
 
-- Implementation: implemented; build, lint, targeted HTTP and title-contract tests, and targeted browser acceptance passed.
+- Implementation: implemented; the administrator list follows the latest Nature mobile content-stream contract below 640px.
+- Visual evidence: owner-approved Storybook captures are persisted as eight canonical Spec assets and documented in the Spec.
 - Lifecycle: active.
 
 ## Implementation Coverage
 
 - The administrator island remains on `/memos`, between the existing public introduction and timeline. Guests do not receive the editor or management list.
 - Quick creation keeps the existing editor dimensions and Nature surface. Visibility-specific actions and success messages distinguish current saved content from the published timeline snapshot; failures remain beside the submit action and preserve input.
-- The management list requests 10 records from the existing admin-aware API, uses server cursors, debounces search, resets to the first page on query changes and refresh, and deduplicates appended records. A failed request leaves visible records in place and offers a retry.
-- Cards retain the existing fields and Nature form. Desktop actions use a fixed-width column; mobile actions move below content. Titleless memos do not display their slug as a title, and private status uses the existing warning token.
+- The management list requests 10 records from the existing admin-aware API, uses server cursors, resets to the first page on refresh, and deduplicates appended records. It has no duplicate local search control. A failed request leaves visible records in place and offers a retry.
+- A 32px gap separates the full-size quick editor from recent management. On narrow screens the editor surface has responsive inner padding to avoid horizontal scrolling without changing its configured height; the visibility label and submit text remain intact on one line, and the submit control wraps as a whole when the available row width is insufficient.
+- Cards retain the existing fields and information density. Desktop keeps the existing Nature card form with a fixed-width action column. Below 640px, the list uses one edge-to-edge translucent surface with row separators and no individual card shells; row content is inset 16px at 393px and 12px below 375px. Actions move below content. At 320px, row and section spacing compact without shrinking controls. Titleless memos do not display their slug as a title, and private status uses the existing warning token.
 - Preview keeps the read-only route. Edit fetches the current memo, opens the existing dialog in place, saves through the existing PATCH route, updates the original card, and restores focus to its trigger.
-- The Storybook page fallback renders the production island with mock API responses and covers admin, guest, list error, create retry, desktop themes, and 393px/320px viewport states.
+- The Storybook page fallback renders the production island with mock API responses and covers admin, guest, list error, create retry, desktop themes, and 393px/320px viewport states. Its public timeline fixture uses the same mobile-stream structure as production. The responsive stories check the full editor surface, one-line control labels, stream geometry, 44px-plus touch targets, and horizontal overflow.
 
 ## Verification
 
-- `bun run check` passed on the shared testbox across 469 files. Biome reported three existing warnings outside this change.
-- `bun run build` passed on the shared testbox with Bun 1.4.2 and Node 22.12.0; the public site, admin SPA, backend runtime bundle, and generated project-media checks completed.
+- `bun run check` passed locally across 487 files. Biome reported three existing warnings outside this change and one configuration deprecation notice.
+- The shared-testbox Playwright web server completed `bun run build`; Astro public output, Vite admin output, backend runtime bundle, and generated project-media checks completed.
 - Targeted HTTP and title-contract tests passed: 10 tests and 53 assertions covered Memo CRUD, untitled Memo slug behavior, PATCH path semantics, and Memo title parsing.
-- Targeted Playwright passed: 7 admin and guest cases covered 10-item cursor pagination, search and refresh, in-place PATCH editing and focus restoration, read-only preview, private creation, public creation retry, public empty state, and desktop/393px/320px layout geometry. Google Fonts is stubbed only in these tests to avoid external-network navigation timeouts.
-- Storybook rendered the production island. Browser checks covered search, no-results, keyboard focus, list retry, create retry, both themes, titleless cards, and 393px/320px overflow and action geometry.
-- Owner confirmation of the current-only visual evidence is pending; the captured images remain temporary and are not yet part of the Spec.
+- The responsive Playwright case passed after the mobile-stream change at 1280px, 393px, and 320px. It checked full-width stream rows, 16px/12px content insets, flat mobile row corners with separators, desktop card framing, below-content mobile actions, touch targets, editor size, and horizontal overflow.
+- Storybook browser inspection produced eight candidates from source-bound 1440x1000, 393x852, and 320x780 viewports. Page trim-only normalization left the six light/mobile images unchanged and removed 54px of uniform side margin from each desktop dark image. The destinations were current-only against the locked base, were confirmed by the owner, and are now stored in the Spec assets.
+- `impeccable detect --json` reported no deterministic findings for the changed UI components.
+- Current-candidate Tier 3 review and PR/required-CI convergence remain open.
 
 ## Remaining Gaps
 
-- Current-candidate Tier 3 review and PR/required-CI convergence remain open. Visual evidence must be confirmed before formal review and publication.
+- The approved visual evidence is present in the Spec. Current-candidate Tier 3 review and PR/required-CI convergence remain open.
 
 ## References
 

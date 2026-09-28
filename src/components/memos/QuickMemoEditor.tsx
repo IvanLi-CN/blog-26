@@ -298,7 +298,7 @@ export function QuickMemoEditor({
             <div className="space-y-2">
               <div
                 ref={containerRef}
-                className="overflow-hidden rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
+                className="quick-memo-editor-surface overflow-hidden rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
                 data-testid="quick-memo-editor-surface"
                 style={{
                   minHeight: `${minHeight}px`,
@@ -330,8 +330,8 @@ export function QuickMemoEditor({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <div className="flex shrink-0 items-center gap-3">
                 <label
                   className={cn(
                     "flex items-center gap-3",
@@ -358,7 +358,10 @@ export function QuickMemoEditor({
                   </span>
                   <span className="text-sm">
                     {isPublic ? (
-                      <span className="flex items-center space-x-1 text-[color:var(--nature-accent-strong)]">
+                      <span
+                        className="flex items-center space-x-1 whitespace-nowrap text-[color:var(--nature-accent-strong)]"
+                        data-testid="quick-memo-visibility-label"
+                      >
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -377,7 +380,10 @@ export function QuickMemoEditor({
                         <span>公开发布</span>
                       </span>
                     ) : (
-                      <span className="flex items-center space-x-1 text-[color:var(--nature-text-soft)]">
+                      <span
+                        className="flex items-center space-x-1 whitespace-nowrap text-[color:var(--nature-text-soft)]"
+                        data-testid="quick-memo-visibility-label"
+                      >
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -403,7 +409,7 @@ export function QuickMemoEditor({
               <button
                 type="submit"
                 disabled={!(content.trim().length > 0 || hasEditorContent) || isSaving}
-                className="nature-button nature-button-primary min-h-11 gap-2 px-4 py-2 text-sm sm:min-h-10"
+                className="nature-button nature-button-primary ml-auto min-h-11 shrink-0 gap-2 whitespace-nowrap px-3 py-2 text-sm sm:min-h-10 sm:px-4"
                 aria-label={
                   isSaving
                     ? isPublic

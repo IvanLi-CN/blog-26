@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
 import { PublicStoryHeader } from "@/components/common/PublicStoryHeader";
+import { IconifyProvider } from "@/components/providers/IconifyProvider";
+import Icon from "@/components/ui/Icon";
 import { PublicMemoComposerIsland } from "../../../site/components/PublicMemoAuthoring";
 import { QuickMemoEditModal } from "./QuickMemoEditModal";
 import { QuickMemoEditor } from "./QuickMemoEditor";
@@ -345,20 +347,14 @@ function AdminPageFallback({
         if (scenario === "list-error") {
           return json({ error: "Storybook 模拟列表读取失败" }, 503);
         }
-        const search = url.searchParams.get("search")?.toLowerCase() ?? "";
-        const filtered = memos.filter((memo) =>
-          `${memo.title ?? ""} ${memo.excerpt ?? ""} ${memo.content} ${memo.tags.join(" ")}`
-            .toLowerCase()
-            .includes(search)
-        );
         const start = Number(url.searchParams.get("cursor")?.replace("cursor-", "") ?? 0);
         const limit = Number(url.searchParams.get("limit") ?? 10);
-        const page = filtered.slice(start, start + limit);
+        const page = memos.slice(start, start + limit);
         const next = start + page.length;
         return json({
           memos: page,
-          hasMore: next < filtered.length,
-          nextCursor: next < filtered.length ? `cursor-${next}` : null,
+          hasMore: next < memos.length,
+          nextCursor: next < memos.length ? `cursor-${next}` : null,
         });
       }
 
@@ -421,6 +417,7 @@ function AdminPageFallback({
       className="nature-app-shell flex min-h-screen flex-col bg-[color:var(--nature-bg)] text-[color:var(--nature-text)]"
       data-testid="memo-admin-page-story"
     >
+      <IconifyProvider />
       <PublicStoryHeader activeHref="/memos" />
       <main className="nature-main flex-1">
         <div className="nature-container px-1 py-8 sm:px-6 sm:py-12 lg:py-16">
@@ -434,15 +431,24 @@ function AdminPageFallback({
 
           <PublicMemoComposerIsland localSourceEnabled={false} />
 
-          <section className="memos-list nature-timeline" data-testid="memos-timeline">
-            <article className="nature-panel px-5 py-4">
-              <span className="nature-chip gap-1">Memo</span>
-              <h2 className="mt-3 text-lg font-semibold text-[color:var(--nature-text)]">
-                {timelineMemo.title}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-[color:var(--nature-text-soft)]">
-                {timelineMemo.excerpt}
-              </p>
+          <section
+            className="memos-list nature-timeline nature-mobile-reading-stream"
+            data-testid="memos-timeline"
+          >
+            <article className="nature-timeline-item nature-mobile-reading-row" data-is-last="true">
+              <div className="nature-timeline-rail" aria-hidden="true" />
+              <div className="nature-timeline-content">
+                <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
+                  <div className="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+                    <span className="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]">
+                      <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+                    </span>
+                    <time dateTime="2026-09-29">2026年9月29日</time>
+                  </div>
+                  <h2 className="nature-title text-xl font-semibold">{timelineMemo.title}</h2>
+                  <p className="nature-muted mt-3 text-base leading-7">{timelineMemo.excerpt}</p>
+                </div>
+              </div>
             </article>
           </section>
         </div>
@@ -521,39 +527,54 @@ export const AdminPageFallbackStory: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Memos", exact: true })).toBeVisible();
-    await expect(canvas.getByTestId("quick-memo-editor")).toBeVisible();
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
     await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
-    await expect(canvas.getByTestId("admin-live-memo-card")).toHaveCount(10);
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10));
+    await expect(
+      canvas.queryByRole("searchbox", { name: "搜索实时 Memo" })
+    ).not.toBeInTheDocument();
 
     const titlelessMemo = canvasElement.querySelector<HTMLElement>(
       '[data-slug="admin-story-memo-2"]'
     );
     if (!titlelessMemo) throw new Error("Titleless memo did not render");
-    await expect(within(titlelessMemo).getByRole("heading")).toHaveCount(0);
+    await expect(within(titlelessMemo).queryByRole("heading")).not.toBeInTheDocument();
     await expect(canvas.getByTestId("private-indicator")).toHaveTextContent("Draft / Private");
 
-    const editor = canvas.getByTestId("quick-memo-editor").locator(".ProseMirror");
+    const quickEditor = canvas.getByTestId("quick-memo-editor");
+    const editor = quickEditor.querySelector<HTMLElement>(".ProseMirror");
+    if (!editor) throw new Error("Quick memo editor surface did not render");
     const visibility = canvas.getByTestId("quick-memo-visibility-input");
-    await editor.focus();
-    await userEvent.keyboard("Tab");
-    await expect(visibility).toBeFocused();
-    await userEvent.keyboard("Shift+Tab");
-    await expect(editor).toBeFocused();
+    editor.focus();
+    await userEvent.keyboard("{Tab}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(visibility);
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(editor);
 
     await userEvent.click(canvas.getByRole("button", { name: "加载更多" }));
-    await expect(canvas.getByTestId("admin-live-memo-card")).toHaveCount(12);
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(12));
 
-    const firstCard = canvas.getByTestId("admin-live-memo-card").first();
-    const editTrigger = firstCard.getByTestId("admin-live-memo-edit");
+    const firstCard = canvas.getAllByTestId("admin-live-memo-card")[0];
+    if (!firstCard) throw new Error("First admin memo card did not render");
+    const editTrigger = within(firstCard).getByTestId("admin-live-memo-edit");
     await userEvent.click(editTrigger);
     const dialog = await canvas.findByRole("dialog", { name: "快速编辑 Memo" });
-    const dialogEditor = within(dialog).locator(".ProseMirror");
+    const dialogEditor = dialog.querySelector<HTMLElement>(".ProseMirror");
+    if (!dialogEditor) throw new Error("Quick memo edit dialog surface did not render");
     await expect(dialogEditor).toBeVisible();
-    await expect(dialogEditor).toBeFocused();
+    await waitFor(() => expect(canvasElement.ownerDocument.activeElement).toBe(dialogEditor));
     await userEvent.click(within(dialog).getByRole("button", { name: "保存更改" }));
-    await expect(dialog).toHaveCount(0);
-    await expect(editTrigger).toBeFocused();
+    await waitFor(() =>
+      expect(canvas.queryByRole("dialog", { name: "快速编辑 Memo" })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(canvasElement.ownerDocument.activeElement).toBe(editTrigger));
   },
+};
+
+export const AdminPageFallbackVisualLight: Story = {
+  name: "管理员闪念页（桌面浅色视觉证据）",
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
+  render: () => <AdminPageFallback />,
 };
 
 export const AdminPageFallbackDark: Story = {
@@ -561,7 +582,7 @@ export const AdminPageFallbackDark: Story = {
   globals: { viewport: { value: "memoDesktop", isRotated: false } },
   render: () => <AdminPageFallback theme="dark" />,
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByTestId("quick-memo-editor")).toBeVisible();
+    await expect(await within(canvasElement).findByTestId("quick-memo-editor")).toBeVisible();
     await expect(within(canvasElement).getByTestId("memos-timeline")).toBeVisible();
   },
 };
@@ -571,6 +592,8 @@ export const AdminPageFallback393: Story = {
   globals: { viewport: { value: "memo393", isRotated: false } },
   render: () => <AdminPageFallback />,
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
     const view = canvasElement.ownerDocument.defaultView;
     expect(view?.innerWidth).toBe(393);
     const shell = canvasElement.querySelector<HTMLElement>("[data-testid='memo-admin-page-story']");
@@ -580,7 +603,21 @@ export const AdminPageFallback393: Story = {
     if (!shell || !quickEditor) throw new Error("Memo admin page or editor did not render");
     expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth);
     expect(quickEditor.scrollWidth).toBeLessThanOrEqual(quickEditor.clientWidth);
-    await expect(within(canvasElement).getByTestId("admin-live-memo-card")).toHaveCount(10);
+    const editorSurface = quickEditor.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-editor-surface']"
+    );
+    if (!editorSurface) throw new Error("Quick memo editor surface did not render");
+    expect(editorSurface.scrollWidth).toBeLessThanOrEqual(editorSurface.clientWidth);
+    const visibilityLabel = quickEditor.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-visibility-label']"
+    );
+    const submit = quickEditor.querySelector<HTMLElement>('button[type="submit"]');
+    if (!visibilityLabel || !submit) throw new Error("Quick editor controls did not render");
+    expect(visibilityLabel.getBoundingClientRect().height).toBeLessThanOrEqual(20);
+    expect(submit.getBoundingClientRect().height).toBeLessThanOrEqual(52);
+    await waitFor(() =>
+      expect(within(canvasElement).getAllByTestId("admin-live-memo-card")).toHaveLength(10)
+    );
   },
 };
 
@@ -589,12 +626,32 @@ export const AdminPageFallback320: Story = {
   globals: { viewport: { value: "memo320", isRotated: false } },
   render: () => <AdminPageFallback />,
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
     const view = canvasElement.ownerDocument.defaultView;
     expect(view?.innerWidth).toBe(320);
     const shell = canvasElement.querySelector<HTMLElement>("[data-testid='memo-admin-page-story']");
     if (!shell) throw new Error("Memo admin page did not render");
     expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth);
-    await expect(within(canvasElement).getByTestId("admin-live-memo-card")).toHaveCount(10);
+    const quickEditor = canvasElement.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-editor']"
+    );
+    const editorSurface = quickEditor?.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-editor-surface']"
+    );
+    const visibilityLabel = quickEditor?.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-visibility-label']"
+    );
+    const submit = quickEditor?.querySelector<HTMLElement>('button[type="submit"]');
+    if (!editorSurface || !visibilityLabel || !submit) {
+      throw new Error("Quick editor controls did not render");
+    }
+    expect(editorSurface.scrollWidth).toBeLessThanOrEqual(editorSurface.clientWidth);
+    expect(visibilityLabel.getBoundingClientRect().height).toBeLessThanOrEqual(20);
+    expect(submit.getBoundingClientRect().height).toBeLessThanOrEqual(52);
+    await waitFor(() =>
+      expect(within(canvasElement).getAllByTestId("admin-live-memo-card")).toHaveLength(10)
+    );
   },
 };
 
@@ -604,9 +661,10 @@ export const AdminPageListError: Story = {
   render: () => <AdminPageFallback scenario="list-error" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("alert")).toContainText("Storybook 模拟列表读取失败");
+    const alert = await canvas.findByRole("alert");
+    await expect(alert).toContainText("Storybook 模拟列表读取失败");
     await expect(canvas.getByRole("button", { name: "重试" })).toBeVisible();
-    await expect(canvas.getByTestId("quick-memo-editor")).toBeVisible();
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
     await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
   },
 };
@@ -617,7 +675,9 @@ export const AdminPageCreateError: Story = {
   render: () => <AdminPageFallback scenario="create-error" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const editor = canvas.getByTestId("quick-memo-editor").locator(".ProseMirror");
+    const quickEditor = await canvas.findByTestId("quick-memo-editor");
+    const editor = quickEditor.querySelector<HTMLElement>(".ProseMirror");
+    if (!editor) throw new Error("Quick memo editor surface did not render");
     const content = "Storybook 创建失败后仍保留输入并允许重试";
     await userEvent.click(editor);
     await userEvent.keyboard(content);
@@ -645,6 +705,7 @@ export const AdminPageGuest: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Memos", exact: true })).toBeVisible();
+    await waitFor(() => expect(canvas.queryByText("正在打开页面")).not.toBeInTheDocument());
     await expect(canvas.queryByTestId("quick-memo-editor")).not.toBeInTheDocument();
     await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
   },

@@ -147,11 +147,11 @@ function PublicMemoList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="nature-mobile-reading-stream space-y-0 sm:space-y-4">
       {memos.map((memo) => (
         <article
           key={memo.id || memo.slug}
-          className="nature-panel flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-start sm:justify-between"
+          className="nature-panel nature-mobile-reading-row flex flex-col gap-4 px-4 py-4 max-[374px]:px-3 max-[374px]:py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-4"
           data-testid="admin-live-memo-card"
           data-id={memo.id}
           data-slug={memo.slug}
@@ -232,8 +232,6 @@ export function PublicMemoComposerIsland({
   const [listError, setListError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [creationFeedback, setCreationFeedback] = useState<string | null>(null);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editingMemo, setEditingMemo] = useState<PublicMemoRecord | null>(null);
@@ -242,18 +240,9 @@ export function PublicMemoComposerIsland({
   const [editError, setEditError] = useState<string | null>(null);
   const listRequestId = useRef(0);
   const editRequestId = useRef(0);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const requestMemoPage = useCallback(
-    async ({
-      query,
-      cursor,
-      append = false,
-    }: {
-      query: string;
-      cursor?: string;
-      append?: boolean;
-    }) => {
+    async ({ cursor, append = false }: { cursor?: string; append?: boolean }) => {
       const requestId = ++listRequestId.current;
       setListError(null);
       setIsListLoading(!append);
@@ -263,7 +252,6 @@ export function PublicMemoComposerIsland({
         publicOnly: "false",
         limit: String(LIVE_MEMO_PAGE_SIZE),
       });
-      if (query) params.set("search", query);
       if (cursor) params.set("cursor", cursor);
 
       try {
@@ -301,51 +289,17 @@ export function PublicMemoComposerIsland({
 
   useEffect(() => {
     if (!isAdmin) return;
-    void requestMemoPage({ query: searchQuery });
+    void requestMemoPage({});
     return () => {
       listRequestId.current += 1;
     };
-  }, [isAdmin, requestMemoPage, searchQuery]);
-
-  useEffect(
-    () => () => {
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-    },
-    []
-  );
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-      searchTimer.current = setTimeout(() => {
-        const query = value.trim();
-        if (query === searchQuery) return;
-        setHasMore(false);
-        setNextCursor(null);
-        setSearchQuery(query);
-      }, 300);
-    },
-    [searchQuery]
-  );
-
-  const submitSearch = useCallback(() => {
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    const query = searchInput.trim();
-    setHasMore(false);
-    setNextCursor(null);
-    setSearchQuery(query);
-    if (query === searchQuery) void requestMemoPage({ query });
-  }, [requestMemoPage, searchInput, searchQuery]);
+  }, [isAdmin, requestMemoPage]);
 
   const refreshList = useCallback(() => {
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    const query = searchInput.trim();
-    setSearchQuery(query);
     setHasMore(false);
     setNextCursor(null);
-    if (query === searchQuery) void requestMemoPage({ query });
-  }, [requestMemoPage, searchInput, searchQuery]);
+    void requestMemoPage({});
+  }, [requestMemoPage]);
 
   const handleSave = useCallback(
     async (data: QuickMemoData) => {
@@ -360,9 +314,6 @@ export function PublicMemoComposerIsland({
           ? "公开 Memo 已保存；公开时间线将在下次发布后更新。"
           : "私有 Memo 已保存，仅管理员可见。"
       );
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-      setSearchInput("");
-      setSearchQuery("");
       setHasMore(false);
       setMemos((current) =>
         [
@@ -371,9 +322,9 @@ export function PublicMemoComposerIsland({
         ].slice(0, LIVE_MEMO_PAGE_SIZE)
       );
       setNextCursor(null);
-      if (!searchQuery) void requestMemoPage({ query: "" });
+      void requestMemoPage({});
     },
-    [requestMemoPage, searchQuery]
+    [requestMemoPage]
   );
 
   const handleEdit = useCallback(async (memo: PublicMemoRecord) => {
@@ -446,16 +397,17 @@ export function PublicMemoComposerIsland({
     ? "正在加载实时 Memo 列表…"
     : listError
       ? "暂时无法加载实时 Memo。"
-      : searchQuery
-        ? "没有匹配的 Memo。"
-        : "当前没有可管理的 Memo。";
+      : "当前没有可管理的 Memo。";
 
   if (isLoading || !isAdmin) {
     return null;
   }
 
   return (
-    <section className="mb-8 space-y-4" data-testid="public-memo-composer">
+    <section
+      className="mb-8 space-y-4 max-[374px]:mb-6 max-[374px]:space-y-3"
+      data-testid="public-memo-composer"
+    >
       <div className="flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
         <Icon
           name="tabler:shield-check"
@@ -476,9 +428,13 @@ export function PublicMemoComposerIsland({
         </div>
       ) : null}
 
-      <section aria-labelledby="admin-live-memos-heading" data-testid="admin-live-memo-list">
-        <header className="mb-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      <section
+        aria-labelledby="admin-live-memos-heading"
+        className="mt-8 max-[374px]:mt-6"
+        data-testid="admin-live-memo-list"
+      >
+        <header className="mb-4 max-[374px]:mb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <h2
                 id="admin-live-memos-heading"
@@ -490,60 +446,20 @@ export function PublicMemoComposerIsland({
                 当前已保存内容；公开时间线仍展示上次发布的快照。
               </p>
             </div>
-            <button
-              type="button"
-              className="nature-button nature-button-outline min-h-11 gap-2 px-3 sm:min-h-9"
-              onClick={refreshList}
-              disabled={isListBusy}
-            >
-              <Icon name="tabler:refresh" className="h-4 w-4" />
-              刷新列表
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <search aria-label="搜索实时 Memo" className="w-full sm:max-w-md">
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  submitSearch();
-                }}
+            <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+              <p className="text-sm text-[color:var(--nature-text-soft)]" aria-live="polite">
+                {isListLoading ? "正在更新列表…" : `${memos.length} 条已显示`}
+              </p>
+              <button
+                type="button"
+                className="nature-button nature-button-outline min-h-11 gap-2 px-3 sm:min-h-9"
+                onClick={refreshList}
+                disabled={isListBusy}
               >
-                <label className="nature-input-shell nature-search-input-shell">
-                  <Icon
-                    name="tabler:search"
-                    className="h-4 w-4 shrink-0 text-[color:var(--nature-text-faint)]"
-                  />
-                  <input
-                    type="search"
-                    className="nature-input min-w-0 appearance-none"
-                    aria-label="搜索实时 Memo"
-                    placeholder="搜索已保存的 Memo"
-                    value={searchInput}
-                    onChange={(event) => handleSearchChange(event.target.value)}
-                  />
-                  {searchInput ? (
-                    <button
-                      type="button"
-                      className="nature-icon-button h-11 w-11 shrink-0"
-                      aria-label="清除搜索"
-                      onClick={() => {
-                        if (searchTimer.current) clearTimeout(searchTimer.current);
-                        setSearchInput("");
-                        setHasMore(false);
-                        setNextCursor(null);
-                        setSearchQuery("");
-                      }}
-                    >
-                      <Icon name="tabler:x" className="h-4 w-4" />
-                    </button>
-                  ) : null}
-                </label>
-              </form>
-            </search>
-            <p className="text-sm text-[color:var(--nature-text-soft)]" aria-live="polite">
-              {isListLoading ? "正在更新列表…" : `${memos.length} 条已显示`}
-            </p>
+                <Icon name="tabler:refresh" className="h-4 w-4" />
+                刷新列表
+              </button>
+            </div>
           </div>
         </header>
 
@@ -577,7 +493,7 @@ export function PublicMemoComposerIsland({
               className="nature-button nature-button-outline min-h-11 gap-2 sm:min-h-9"
               onClick={() => {
                 if (nextCursor) {
-                  void requestMemoPage({ query: searchQuery, cursor: nextCursor, append: true });
+                  void requestMemoPage({ cursor: nextCursor, append: true });
                 }
               }}
               disabled={!nextCursor || isListBusy}
