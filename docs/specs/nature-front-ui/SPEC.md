@@ -347,6 +347,19 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![Ambient renderer mobile dark reduced motion](./assets/ambient-svg-final-mobile-dark-reduced.png)
 
+### Mobile reading type metadata
+
+- Evidence bound to implementation commit `e219d0a90a9fa16d06ab9b4a3ffbc2fab820dfb5`; owner confirmation received.
+- Tag detail: source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; requested viewport `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`.
+- Search results: source type `storybook_canvas`; target program `mock-only`; capture scope `iframe element`; requested viewport `393px × 852px`; viewport strategy `storybook-viewport`; margin policy `trim_only`; evidence surface `page`.
+- Tag and search streams use compact inline content-type icons on mobile while keeping accessible type names. Search results retain the same treatment in light and dark themes.
+
+![Mobile tag detail type metadata light](./assets/mobile-tag-detail-type-metadata-light.png)
+
+![Mobile search type metadata light](./assets/mobile-search-type-metadata-light.png)
+
+![Mobile search type metadata dark](./assets/mobile-search-type-metadata-dark.png)
+
 ## Context and Scope
 
 This topic owns the public Nature frontend shell and its visitor-facing page surfaces. The project index, project detail routes, semantic public-entry shortcuts, project-specific MDX bodies, responsive reading layout, and their visual evidence are in scope. Memo title resolution is owned by the [memo-title-semantics Spec](../memo-title-semantics/SPEC.md); this topic owns its visible treatment. Backend APIs, admin surfaces, and the poster/social-preview generation pipelines remain outside this topic's project-detail content contract.
