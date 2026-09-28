@@ -210,14 +210,15 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 - The public project index is captured at desktop (`1780px × 1071px`) and mobile (`393px × 852px`) sizes in light and dark themes after the grouped-panel refinement.
 - Source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; the owner confirmed that these images accurately show the current page.
+- The mobile reading-surface refinement is captured at a `393px × 852px` CSS viewport in light and dark themes. The in-app browser screenshots are `378px × 819px` raster images. The category list reaches both viewport edges while its heading and poster rail retain their internal inset; the owner confirmed both images.
 
 ![Project index desktop light](./assets/projects-index-grouped-desktop-light.png)
 
 ![Project index desktop dark](./assets/projects-index-grouped-desktop-dark.png)
 
-![Project index mobile light](./assets/projects-index-grouped-mobile-light.png)
+![Project index mobile light](./assets/projects-index-mobile-reading-surface-light.jpg)
 
-![Project index mobile dark](./assets/projects-index-grouped-mobile-dark.png)
+![Project index mobile dark](./assets/projects-index-mobile-reading-surface-dark.jpg)
 
 ### Project media showcase
 
