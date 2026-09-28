@@ -1,7 +1,7 @@
 # SPEC: Nature Frontend Redesign Without DaisyUI
 
 - Spec ID: `n8ure`
-- Status: `done`
+- Status: `active`
 - Owner: `main-agent`
 
 ## Related ADRs
@@ -48,6 +48,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ### 4.3 Visual language
 
 - The public shell uses soft gradients, translucent surfaces, organic radii, and low-frequency ambient motion.
+- The 环境背景层 provides atmosphere. Primary reading content uses a theme-aware 阅读承载层 so text remains readable over the moving background: translucent white in light mode and an equivalently legible dark surface in dark mode. Normal-sized reading text maintains at least a 4.5:1 contrast ratio against the composited surface.
 - Reading-heavy pages keep motion density lower than index/list pages.
 - Reduced-motion users receive the same layout and hierarchy with heavily reduced animation and particle effects.
 - The ambient public scene uses a transparent native-DPR WebGPU Canvas for normal-motion pages. The page's themed CSS background remains below the canvas; WebGPU draws three wind paths and the responsive leaf count with premultiplied alpha, pauses while the document is hidden, and uses requestAnimationFrame as a clock for approximately 30Hz visible submissions. Adapter limits are checked against the native-DPR backing and fixed seed buffer before the first resize; an internal `performanceScore` of 2 keeps the complete WebGPU scene, while score 1 keeps WebGPU and omits only the non-essential leaf outline. A score of 0 or an actual initialization/device failure uses SVG rather than lowering DPR. Queue completion timing, frame timing, private browser fields, vendor tables, and hardware heuristics never select a renderer or detail tier. Reduced-motion users and environments without a usable WebGPU adapter receive one complete deterministic SVG scene with three wind paths and the responsive leaf count. WebGPU initialization or device loss must fall back to SVG without leaving an animation scheduler running.
@@ -59,8 +60,9 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - At `min-width: 1024px` with a fine pointer, public text actions use a `36px` target; navigation, icon controls, and link-style badges use a `32px` target.
 - Outside that desktop condition, interactive public controls use a minimum `44px` target. Static status badges remain compact and do not imply an interactive hit area.
 - `MarkdownRenderer` owns the public Markdown code surface. Dark code blocks use a low-brightness green surface, AA-readable foreground and syntax tokens, `12px` vertical by `14px` horizontal padding, and a `12px` radius. Horizontal overflow and code folding remain available.
-- Below `640px`, public page containers keep `12px` viewport gutters by default, content panels use `16px` horizontal padding, and surface radii step down to `16px`, `14px`, and `12px`. Continuous homepage, article-list, Memo, tag-detail, and search-result streams flatten their card shells and align text to a `16px` viewport inset at `393px`, using separators to distinguish entries. Article and Memo detail content, plus project-detail headers, use the same reading inset and flatten their primary reading surface to the page background; article cover media may extend to the viewport edges without cropping. Structural wrappers may flatten to the page background when a nested surface adds no scanning or interaction value. Distinct modules such as project sections, search states, tag tiles, poster cards, and profile blocks may retain their own surfaces. Touch targets remain at least `44px`; the reduced spacing must not be achieved by shrinking interactive controls.
-- Below `640px`, the homepage and Memos use a 移动内容流: chronological order, dates, and content-type metadata remain, while the decorative timeline rail, nodes, and connectors are removed. The homepage event entry follows the compact Memos item pattern, with only the article/Memo type icon immediately before the date; the desktop-only type text chip is not rendered visually in the narrow flow, but its text remains available to assistive technology.
+- Below `640px`, public shell elements keep their `12px` viewport gutters by default, while a primary continuous reading region uses one 阅读承载层 reaching both viewport edges. Homepage, article-list, Memo, tag-detail, and search-result streams share a continuous translucent surface with separators between entries instead of separate card shells. The grouped project index uses one theme-aware surface across its category rails, with category headings and descriptions inset and subtle separators between groups; poster cards retain their own 4:5 frames and horizontal browsing behavior without an extra card wrapper. Reading content and any row-level press or focus feedback span the full region; text, dates, tags, and actions remain inset, beginning `16px` from the viewport edge at `393px` and `12px` below `375px`. Feedback must not imply that a non-interactive row is clickable or shift its layout.
+- The homepage introduction, Article and Memo detail titles and bodies, project-detail introductions and prose, and primary prose on the About page receive a theme-aware 阅读承载层. A continuous primary reading surface reaches the mobile viewport edges and keeps its content inset. Article cover media may reach both edges without cropping. Standalone project-detail sections, search states, tag tiles, individual poster cards, profile modules, and controls retain the framing appropriate to their own content; they do not leave prose directly on the 环境背景层. Surface radii step down to `16px`, `14px`, and `12px`. Touch targets remain at least `44px`; compact spacing does not shrink interactive controls.
+- Below `640px`, the homepage and Memos use a 移动内容流: chronological order, dates, and content-type metadata remain, while the decorative timeline rail, nodes, and connectors are removed. The homepage event entry follows the compact Memos item pattern, with only the article/Memo type icon immediately before the date; the desktop-only type text chip is not rendered visually in the narrow flow, but its text remains available to assistive technology. Tag and search content-type indicators likewise retain an accessible type name when the visible chip is reduced to an icon.
 - Below `375px`, mobile content-flow gaps, shell gutters, and section spacing compact further so the reading column gains width; below `360px`, navigation labels may collapse to their already-labelled icons.
 
 ### 4.5 Static search deep links
@@ -156,10 +158,10 @@ We need a frontend-owned design system that keeps routes and content behavior st
 9. At a `438x852` mobile viewport with a non-empty query, the first result surface begins at or before `y=426`, leaving at least half of the first viewport for search results.
 10. Public desktop and touch control density follow the `36px` / `32px` and `44px` contracts respectively without enlarging static status badges.
 11. Public Markdown rendering never depends on a light highlighter stylesheet; dark code blocks retain readable syntax colors, horizontal overflow, and folding behavior.
-12. Public pages at `393px` and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density. At `393px`, homepage, article-list, Memo, tag-detail, and search-result stream text begins at a `16px` viewport inset; article detail cover media spans the viewport without cropping while article and Memo detail titles and bodies plus project-detail headers keep the reading inset without a nested primary card shell.
+12. Public pages at `393px`, `375px`, `360px`, and `320px` do not overflow horizontally, keep `44px` touch targets, and use the compact mobile spacing and radius contract without changing desktop density. Primary continuous reading surfaces and their row-level feedback reach both viewport edges; at `393px`, text in homepage, article-list, Memo, tag-detail, and search-result streams begins at a `16px` viewport inset. The homepage introduction, Article and Memo details, project-detail introductions and prose, and primary About prose remain readable on theme-aware surfaces; article cover media spans the viewport without cropping.
 13. Project posters render in 4:5 frames with a continuously readable image or placeholder state, responsive AVIF/WebP candidates, explicit dimensions, priority behavior, and reduced-motion-safe reveal behavior. Available social previews render in a stable intrinsic 2:1 frame with responsive AVIF/WebP candidates, and complete light/dark asset pairs follow the resolved public theme on first load and changes.
 14. Poster asset generation and production builds fail when a raw public PNG, a missing generated variant, an oversized variant, or an oversized first-row transfer is detected.
-15. The project catalog contains 15 entries across the six groups above; `/projects/spoti-bind` renders SpotiBind, and the homepage presents six featured projects derived from those groups. The project index shows both catalog totals, presents its groups in one shared desktop surface and an unframed mobile layout, and keeps all poster titles and shortcuts usable at narrow widths and enlarged text. Mobile posters occupy approximately `85vw` while the next card remains visible at the rail edge.
+15. The project catalog contains 15 entries across the six groups above; `/projects/spoti-bind` renders SpotiBind, and the homepage presents six featured projects derived from those groups. The project index shows both catalog totals, presents its groups in one shared desktop surface and one theme-aware mobile reading surface, and keeps all poster titles and shortcuts usable at narrow widths and enlarged text. Mobile posters occupy approximately `85vw` while the next card remains visible at the rail edge.
 16. On mobile public routes, the header follows the documented scroll, speed,
     release-settling, focus-order, resize, router, and reduced-motion contracts;
     desktop public behavior remains unchanged.
@@ -168,6 +170,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 19. Public memo surfaces omit an absent resolved title without substituting a slug, while preserving available date, type, tags, excerpt or body, and detail navigation; cross-layer resolution and protocol metadata follow the memo-title-semantics Spec.
 20. The homepage's six featured-project cards keep available official logos beside titles, omit the LoadLynx logo slot, and use non-interactive theme-aware watermarks without obscuring card content. Card footer links show short labels when space allows and switch to accessible 44px-or-larger icon targets when needed. The section-level browse-all action keeps its icon and label at `393px` and becomes an accessible 44px icon target at `320px`; the page has no horizontal overflow at either width.
+21. Light, dark, and system themes keep primary reading text legible over ambient motion. Touch press, keyboard focus, long unbroken text, and theme changes preserve row feedback width, text insets, and usable links without layout jumps.
 
 ## 6. Validation
 
@@ -207,14 +210,15 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 - The public project index is captured at desktop (`1780px × 1071px`) and mobile (`393px × 852px`) sizes in light and dark themes after the grouped-panel refinement.
 - Source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; the owner confirmed that these images accurately show the current page.
+- The mobile reading-surface refinement is captured at a `393px × 852px` CSS viewport in light and dark themes. The in-app browser screenshots are `378px × 819px` raster images. The category list reaches both viewport edges while its heading and poster rail retain their internal inset; the owner confirmed both images.
 
 ![Project index desktop light](./assets/projects-index-grouped-desktop-light.png)
 
 ![Project index desktop dark](./assets/projects-index-grouped-desktop-dark.png)
 
-![Project index mobile light](./assets/projects-index-grouped-mobile-light.png)
+![Project index mobile light](./assets/projects-index-mobile-reading-surface-light.jpg)
 
-![Project index mobile dark](./assets/projects-index-grouped-mobile-dark.png)
+![Project index mobile dark](./assets/projects-index-mobile-reading-surface-dark.jpg)
 
 ### Project media showcase
 
@@ -302,17 +306,17 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![Public dark code mobile](./assets/public-dark-code-mobile.png)
 
-### Current mobile density refresh
+### Mobile density baseline
 
 - Evidence binding `7b2e49e54b241941b30c5350351d3a1392336471`; source type `storybook_canvas`, target program `mock-only`, capture scope `iframe-element`, requested viewport `393px × 852px`, sensitive exclusion `N/A`.
-- The current mobile canvas keeps the public search controls and result cards aligned to the 12px shell gutter while retaining touch-sized actions.
+- This canvas records search controls and result cards aligned to the 12px shell gutter while retaining touch-sized actions. It does not verify the edge-to-edge reading-surface contract.
 
 ![Public mobile density current](./assets/public-mobile-density-current.png)
 
 ### Mobile content surface coverage
 
 - Evidence bound to candidate `e0321396`; source type `ui_demo`, target program `Ego Browser`, capture scope `browser-viewport`, requested viewports `393px × 852px` and `320px × 852px`, viewport strategy `devtools-emulate`, margin policy `trim_only`, evidence surface `page`, sensitive exclusion `N/A`.
-- The mobile content audit covers homepage, article list and detail, Memo list and detail, tag detail, search results, project index and project detail. Continuous reading content uses unframed rows with separators; distinct modules such as posters, profile blocks, search states, project sections, and navigation panels retain their own surfaces. Both mobile widths keep `document.body.scrollWidth` equal to the viewport width, while desktop detail pages retain their card framing.
+- These captures cover homepage, article list and detail, Memo list and detail, tag detail, search results, project index and project detail. They record transparent reading rows with separators and verify that both mobile widths keep `document.body.scrollWidth` equal to the viewport width. They do not verify `REQ-NATURE-MOBILE-READING-SURFACE`; distinct modules such as posters, profile blocks, search states, project sections, and navigation panels retain their own surfaces.
 
 ![Mobile tag detail final](./assets/mobile-tag-detail-final.png)
 
@@ -343,11 +347,26 @@ We need a frontend-owned design system that keeps routes and content behavior st
 
 ![Ambient renderer mobile dark reduced motion](./assets/ambient-svg-final-mobile-dark-reduced.png)
 
+### Mobile reading type metadata
+
+- Evidence bound to implementation commit `e219d0a90a9fa16d06ab9b4a3ffbc2fab820dfb5`; owner confirmation received.
+- Tag detail: source type `ui_demo`; target program `Ego Browser`; capture scope `browser-viewport`; requested viewport `393px × 852px`; viewport strategy `devtools-emulate`; margin policy `trim_only`; evidence surface `page`.
+- Search results: source type `storybook_canvas`; target program `mock-only`; capture scope `iframe element`; requested viewport `393px × 852px`; viewport strategy `storybook-viewport`; margin policy `trim_only`; evidence surface `page`.
+- Tag and search streams use compact inline content-type icons on mobile while keeping accessible type names. Search results retain the same treatment in light and dark themes.
+
+![Mobile tag detail type metadata light](./assets/mobile-tag-detail-type-metadata-light.png)
+
+![Mobile search type metadata light](./assets/mobile-search-type-metadata-light.png)
+
+![Mobile search type metadata dark](./assets/mobile-search-type-metadata-dark.png)
+
 ## Context and Scope
 
 This topic owns the public Nature frontend shell and its visitor-facing page surfaces. The project index, project detail routes, semantic public-entry shortcuts, project-specific MDX bodies, responsive reading layout, and their visual evidence are in scope. Memo title resolution is owned by the [memo-title-semantics Spec](../memo-title-semantics/SPEC.md); this topic owns its visible treatment. Backend APIs, admin surfaces, and the poster/social-preview generation pipelines remain outside this topic's project-detail content contract.
 
 ## Requirements
+
+- `REQ-NATURE-MOBILE-READING-SURFACE`: Below `640px`, primary public reading content MUST use a theme-aware 阅读承载层 instead of placing prose directly on the 环境背景层. Normal-sized text MUST maintain at least 4.5:1 contrast against its composited surface. Continuous streams MUST share one edge-to-edge translucent surface with inset content and separators; the grouped project index MUST use one such surface around its categories while preserving horizontal poster browsing and individual poster frames. Touch and focus feedback MUST preserve content insets and match the actual interactive region's width. The homepage introduction and Article, Memo, project-detail, and About prose MUST have an equivalent readable surface. Media and distinct standalone modules MAY keep their own framing.
 
 - `REQ-NATURE-MEMO-TITLE`: Public memo surfaces MUST omit an absent resolved title without substituting a slug, while preserving the date, type, tags, available excerpt or body, and detail navigation; resolution and protocol metadata rules are owned by the [memo-title-semantics Spec](../memo-title-semantics/SPEC.md).
 
@@ -357,6 +376,8 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - `REQ-NATURE-PROJECT-INTERACTION`: Project-wall summaries MUST remain one-line and ellipsized at rest, expose their full text on keyboard focus, and keep icon-only external shortcuts weak at rest but usable on hover, focus, and touch.
 
 ## Verification
+
+- `VER-NATURE-MOBILE-READING-SURFACE`: covers: `REQ-NATURE-MOBILE-READING-SURFACE`; browser checks at `393px`, `375px`, `360px`, and `320px` MUST cover the homepage introduction and timeline, Article and Memo lists and details, tag detail, search results, the grouped project index, project-detail prose, and About prose in light and dark themes. Inspect composited text contrast over ambient motion, exact surface and feedback edges, content insets, long text, touch press, keyboard focus, theme changes, desktop framing, and horizontal overflow.
 
 - `VER-NATURE-MEMO-TITLE`: covers: `REQ-NATURE-MEMO-TITLE`; public list and detail rendering checks verify title omission, retained content metadata, and working detail navigation for titleless memos.
 

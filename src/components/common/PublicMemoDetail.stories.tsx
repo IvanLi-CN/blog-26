@@ -97,7 +97,10 @@ function MemoDetailArticle({
 }) {
   return (
     <article data-testid="public-memo-detail">
-      <div className="nature-panel px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">
+      <div
+        className="nature-panel nature-mobile-reading-surface px-4 py-5 sm:px-8 sm:py-7"
+        data-testid="public-memo-detail-card"
+      >
         <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
           <span className="nature-chip nature-chip-info gap-1">
             <Icon name="tabler:clock" className="h-3.5 w-3.5" />
@@ -172,9 +175,10 @@ export const MobileMemoDensity: Story = {
     const card = canvas.getByTestId("public-memo-detail-card");
     const viewportWidth = canvasElement.ownerDocument.defaultView?.innerWidth ?? 0;
 
-    expect(getComputedStyle(card).borderRadius).toBe("16px");
+    expect(getComputedStyle(card).borderRadius).toBe("0px");
     expect(getComputedStyle(card).paddingLeft).toBe("16px");
-    expect(card.getBoundingClientRect().width).toBeGreaterThanOrEqual(viewportWidth - 40);
+    expect(Math.abs(card.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(card.getBoundingClientRect().right - viewportWidth)).toBeLessThanOrEqual(1);
   },
 };
 
@@ -208,8 +212,10 @@ export const NarrowMobileMemoDensity: Story = {
     const navLinks = Array.from(canvasElement.querySelectorAll<HTMLElement>(".nature-nav-link"));
 
     expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
-    expect(getComputedStyle(card).borderRadius).toBe("16px");
-    expect(getComputedStyle(card).paddingLeft).toBe("16px");
+    expect(getComputedStyle(card).borderRadius).toBe("0px");
+    expect(getComputedStyle(card).paddingLeft).toBe("12px");
+    expect(Math.abs(card.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(card.getBoundingClientRect().right - 320)).toBeLessThanOrEqual(1);
     for (const link of navLinks) {
       expect(link.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
       expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);

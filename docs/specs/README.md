@@ -28,7 +28,7 @@
 | Local content source uses real directory layout | active | in progress | `local-real-content-layout/SPEC.md` | - | Configured real roots drive scanning, classification, and admin browsing. |
 | Memo title semantics | active | implemented | `memo-title-semantics/SPEC.md` | - | Optional memo titles resolve from approved metadata/headings and stay nullable in the public model. |
 | Memos Markdown theme contrast | archived | implemented | `memos-content-contrast/SPEC.md` | - | Semantic theme colors keep Memo Markdown readable across supported themes. |
-| Nature frontend redesign without DaisyUI | active | implemented | `nature-front-ui/SPEC.md` | - | Public styling uses the Nature design system with responsive and visual evidence contracts. |
+| Nature frontend redesign without DaisyUI | active | in progress | `nature-front-ui/SPEC.md` | - | Public styling uses the Nature design system; mobile reading surfaces remain to be implemented and verified. |
 | Next runtime reduction after admin SPA migration | superseded | implemented | `next-runtime-reduction/SPEC.md` | `zero-next-cleanup/SPEC.md` | Production runtime reduction completed; repository-wide removal moved to the successor. |
 | Posts cover fallback | active | implemented | `posts-cover-fallback/SPEC.md` | - | Post cards fall back to the first supported body image. |
 | Posts list title contrast | archived | implemented | `posts-list-title-contrast/SPEC.md` | - | Semantic title colors preserve hierarchy across themes. |

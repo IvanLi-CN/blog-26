@@ -53,7 +53,7 @@ const structuredData = {
   <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
   <section class="nature-detail-container project-detail-page px-2 py-8 sm:px-6 lg:py-12">
     <div class="space-y-8">
-      <header class="nature-surface project-detail-header overflow-hidden px-4 py-5 sm:px-8 sm:py-8">
+      <header class="nature-surface nature-mobile-reading-surface project-detail-header overflow-hidden px-4 py-5 sm:px-8 sm:py-8">
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-start lg:gap-8">
           <div>
             <div class="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
@@ -73,7 +73,7 @@ const structuredData = {
           {detailBody.kind === "mdx" ? (
             <article class="project-mdx-content"><div class="nature-prose"><Body /></div></article>
           ) : (
-            <article class="project-mdx-content project-catalog-fallback">
+            <article class="nature-mobile-reading-surface project-mdx-content project-catalog-fallback">
               <div class="nature-prose">
                 <p>{detailBody.description}</p>
                 <ul>{detailBody.highlights.map((item) => <li>{item}</li>)}</ul>
@@ -115,16 +115,11 @@ const structuredData = {
       padding-inline: 0;
     }
 
-    .project-detail-header {
-      padding-inline: 0.25rem;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-      backdrop-filter: none;
-    }
-
     .project-mdx-content > .nature-prose { gap: 1rem; }
-    .project-mdx-content :global(.project-mdx-section) { padding: 1.25rem 1rem; border-radius: 0.95rem; }
+    .project-mdx-content :global(.project-mdx-section) {
+      padding: 1.25rem 1rem;
+      border-radius: 0.95rem;
+      background: var(--nature-surface-strong);
+    }
   }
 </style>

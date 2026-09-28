@@ -139,7 +139,7 @@ function PublicDocumentShell({
           >
             <article className="space-y-8">
               <header
-                className="nature-surface px-4 py-5 sm:px-8 sm:py-7"
+                className="nature-surface nature-mobile-reading-surface px-4 py-5 sm:px-8 sm:py-7"
                 data-testid="public-document-header"
               >
                 <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--nature-text-soft)]">
@@ -155,7 +155,7 @@ function PublicDocumentShell({
                 </p>
               </header>
               <div
-                className="nature-panel px-4 py-5 sm:px-8 sm:py-7"
+                className="nature-panel nature-mobile-reading-surface px-4 py-5 sm:px-8 sm:py-7"
                 data-testid="public-document-body"
               >
                 {children}
@@ -374,10 +374,14 @@ export const MobileArticle: Story = {
     const mobileRss = canvas.getByRole("link", { name: "RSS Feed" });
     const viewportWidth = canvasElement.ownerDocument.defaultView?.innerWidth ?? 0;
     await expect(codeBlock).not.toBeNull();
-    expect(getComputedStyle(header).borderRadius).toBe("16px");
+    expect(getComputedStyle(header).borderRadius).toBe("0px");
     expect(getComputedStyle(header).paddingLeft).toBe("16px");
-    expect(getComputedStyle(body).borderRadius).toBe("16px");
+    expect(getComputedStyle(body).borderRadius).toBe("0px");
     expect(getComputedStyle(body).paddingLeft).toBe("16px");
+    expect(Math.abs(header.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(header.getBoundingClientRect().right - viewportWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(body.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(body.getBoundingClientRect().right - viewportWidth)).toBeLessThanOrEqual(1);
     expect(container).not.toBeNull();
     expect(container?.getBoundingClientRect().width).toBeGreaterThanOrEqual(viewportWidth - 24);
     expect(mobileSearch.getBoundingClientRect().height).toBe(44);

@@ -1,3 +1,4 @@
+import Icon from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import {
   getSearchResultHref,
@@ -144,7 +145,12 @@ export default function SearchResultsList({
   resolveHref?: (result: SearchResultItem) => string;
 }) {
   return (
-    <ul className={cn("flex w-full flex-col gap-3 sm:gap-4", containerClassName)}>
+    <ul
+      className={cn(
+        "nature-mobile-reading-stream flex w-full flex-col gap-3 sm:gap-4",
+        containerClassName
+      )}
+    >
       {results.map((r) => {
         const type = getSearchResultType(r);
         const href = resolveHref(r);
@@ -160,10 +166,10 @@ export default function SearchResultsList({
           type === "memo" ? r.title?.trim() || "无标题闪念" : r.title || r.slug;
 
         return (
-          <li key={`${type}-${r.slug}`} className="list-none">
+          <li key={`${type}-${r.slug}`} className="nature-mobile-reading-row list-none">
             <a
               href={href}
-              aria-label={`打开 ${accessibleTitle}`}
+              aria-label={`打开${getSearchResultTypeLabel(type)}：${accessibleTitle}`}
               className="nature-hover-hitbox group block"
               data-search-result-card
             >
@@ -176,14 +182,28 @@ export default function SearchResultsList({
                 <div className="px-4 py-3.5 sm:px-5 sm:py-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                      <span className="nature-chip">{getSearchResultTypeLabel(type)}</span>
+                      <span className="nature-chip nature-content-type-chip gap-1">
+                        <Icon
+                          name={type === "memo" ? "tabler:bulb" : "tabler:article"}
+                          className="nature-content-type-icon inline h-3.5 w-3.5 sm:hidden"
+                        />
+                        <span className="sr-only sm:not-sr-only">
+                          {getSearchResultTypeLabel(type)}
+                        </span>
+                      </span>
                       {query && (
-                        <span className="text-xs text-[color:var(--nature-text-faint)]">
+                        <span
+                          className="text-xs text-[color:var(--nature-text-faint)]"
+                          data-search-match-meta
+                        >
                           匹配 {query}
                         </span>
                       )}
                       {score !== null && Number.isFinite(score) && (
-                        <span className="text-xs text-[color:var(--nature-text-faint)] opacity-75">
+                        <span
+                          className="text-xs text-[color:var(--nature-text-faint)] opacity-75"
+                          data-search-relevance-meta
+                        >
                           相关度 {formatScore(score)}%
                         </span>
                       )}

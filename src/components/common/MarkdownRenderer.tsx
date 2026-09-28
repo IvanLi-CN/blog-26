@@ -342,11 +342,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
 
     // 如果没有内容，显示占位符
     if (!processedContent.trim()) {
-      return (
-        <div className="py-8 text-center italic text-[color:var(--nature-text-faint)]">
-          暂无内容
-        </div>
-      );
+      return <div className="nature-faint py-8 text-center italic">暂无内容</div>;
     }
 
     return (

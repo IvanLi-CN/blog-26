@@ -116,6 +116,10 @@ _Avoid_: 强调色按钮
 A full-viewport visual layer that gives the public shell its quiet wind-and-leaf atmosphere while remaining separate from page content.
 _Avoid_: 背景动画, 装饰层
 
+**阅读承载层**:
+A theme-aware surface beneath the public site's primary reading content. It separates text from the 环境背景层 while allowing a continuous content stream to read as one unit.
+_Avoid_: 页面背景, 单条卡片
+
 **模拟前景层**:
 A deterministic benchmark surface that approximates the visible project-wall content placed above the 环境背景层 so renderer cost can be compared with realistic page density.
 _Avoid_: Mock 内容, 测试卡片

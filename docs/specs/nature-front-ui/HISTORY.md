@@ -1,6 +1,7 @@
 # History
 
 - Memo title visibility now delegates to memo-title-semantics; titleless public entries retain their date, metadata, content, and detail route.
+- The mobile reading-surface contract replaces transparent primary reading rows and prose with a continuous, theme-aware surface while retaining the compact content-flow structure.
 
 - 2026-04-05: The Nature redesign topic was created.
 - 2026-04-06 through 2026-06-19: Visual, responsive, search, timeline, hydration, and memo-detail decisions were added under the same public design contract.
