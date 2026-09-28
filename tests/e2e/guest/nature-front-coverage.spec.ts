@@ -763,7 +763,6 @@ test.describe("Nature frontend public coverage", () => {
       await expect(card.locator(".runtime-panel-atmosphere")).toHaveCount(1);
       await expect(card.locator(".runtime-panel-art-stage")).toHaveCount(1);
       await expect(card.locator("img[data-runtime-background]")).toHaveCount(1);
-      await expect(card.locator("[data-runtime-project-logo] img")).toHaveCount(2);
       await expect(card.locator(".runtime-panel-art-stage svg")).toHaveCount(0);
       await expect(card.locator(".project-poster")).toHaveCount(0);
       await expect(
@@ -842,14 +841,18 @@ test.describe("Nature frontend public coverage", () => {
         .toBe(true);
     }
 
+    await expect(cards.cvm.locator("[data-runtime-project-logo] img")).toHaveCount(1);
+    await expect(cards.cvm.locator(".runtime-project-logo-name")).toHaveText("Codex Vibe Monitor");
     await expect(cards.cvm.locator("[data-runtime-project-logo] img").first()).toHaveAttribute(
       "src",
-      /codex-vibe-monitor-wordmark-/
+      /codex-vibe-monitor-product-mark/
     );
+    await expect(cards.hikari.locator("[data-runtime-project-logo] img")).toHaveCount(2);
     await expect(cards.hikari.locator("[data-runtime-project-logo] img").first()).toHaveAttribute(
       "src",
       /tavily-hikari-lockup-/
     );
+    await expect(cards.octo.locator("[data-runtime-project-logo] img")).toHaveCount(2);
     await expect(cards.octo.locator("[data-runtime-project-logo] img").first()).toHaveAttribute(
       "src",
       /octo-rill-wordmark-/
