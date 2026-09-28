@@ -665,6 +665,14 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     font-size: inherit;
   }
 
+  .nature-mobile-reading-stream .search-result-card mark,
+  .nature-mobile-reading-stream .search-result-card pre,
+  .nature-mobile-reading-stream [data-search-match-meta],
+  .nature-mobile-reading-stream [data-search-relevance-meta] {
+    color: var(--nature-text) !important;
+    opacity: 1;
+  }
+
   .nature-mobile-reading-stream > .nature-mobile-reading-row {
     margin-block: 0 !important;
     border: 0 !important;

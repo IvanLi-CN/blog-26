@@ -351,6 +351,11 @@ test.describe("mobile public reading surfaces", () => {
               await expect(typeChip.locator(".sr-only")).toBeHidden();
               await expect(typeChip).toHaveCSS("border-width", "0px");
               await expect(typeChip).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+              if (route.path.startsWith("/search/")) {
+                await expect(row.locator("a[data-search-result-card]")).toHaveAccessibleName(
+                  /打开(?:文章|闪念)：/
+                );
+              }
             }
           }
 
@@ -395,6 +400,11 @@ test.describe("mobile public reading surfaces", () => {
       const desktopTypeChip = page.locator(".nature-content-type-chip").first();
       await expect(desktopTypeChip.locator(".sr-only")).toBeVisible();
       await expect(desktopTypeChip).toHaveCSS("border-width", "1px");
+
+      await gotoWithTheme(page, "/search/?q=Hello", "light");
+      const desktopSearchTypeChip = page.locator(".nature-content-type-chip").first();
+      await expect(desktopSearchTypeChip.locator(".nature-content-type-icon")).toBeHidden();
+      await expect(desktopSearchTypeChip.locator(".sr-only")).toBeVisible();
     }
   });
 
@@ -602,6 +612,23 @@ test.describe("mobile public reading surfaces", () => {
         )
       )
       .toBe(`${viewportWidth}px`);
+    await page.setViewportSize({ width: 392, height: 852 });
+    const resizedViewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue("--nature-reading-viewport-width")
+        )
+      )
+      .toBe(`${resizedViewportWidth}px`);
+    await page.setViewportSize({ width: 393, height: 852 });
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue("--nature-reading-viewport-width")
+        )
+      )
+      .toBe("393px");
     await page.addStyleTag({
       content: ".nature-app-shell { width: calc(100% - 16px) !important; }",
     });

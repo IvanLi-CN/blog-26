@@ -41,7 +41,7 @@ function renderHighlightedText(text: string, query?: string, keyPrefix = "highli
     parts.push(
       <mark
         key={`${keyPrefix}-${index}-${value}`}
-        className="rounded-[0.35em] bg-[rgba(var(--nature-accent-rgb),0.2)] px-1 py-0.5 font-semibold text-[color:var(--nature-text)]"
+        className="rounded-[0.35em] bg-[rgba(var(--nature-accent-rgb),0.2)] px-1 py-0.5 font-semibold text-[color:var(--nature-accent-strong)]"
       >
         {value}
       </mark>
@@ -104,7 +104,7 @@ function renderSnippet(snippet: string, query?: string) {
       return (
         <pre
           key={block.key}
-          className="my-1.5 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-3 py-1.5 font-mono text-[0.82rem] leading-5 text-[color:var(--nature-text)]"
+          className="my-1.5 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-3 py-1.5 font-mono text-[0.82rem] leading-5 text-[color:var(--nature-text-soft)]"
         >
           <code>{renderHighlightedText(code, query, block.key)}</code>
         </pre>
@@ -169,7 +169,7 @@ export default function SearchResultsList({
           <li key={`${type}-${r.slug}`} className="nature-mobile-reading-row list-none">
             <a
               href={href}
-              aria-label={`打开 ${accessibleTitle}`}
+              aria-label={`打开${getSearchResultTypeLabel(type)}：${accessibleTitle}`}
               className="nature-hover-hitbox group block"
               data-search-result-card
             >
@@ -185,7 +185,7 @@ export default function SearchResultsList({
                       <span className="nature-chip nature-content-type-chip gap-1">
                         <Icon
                           name={type === "memo" ? "tabler:bulb" : "tabler:article"}
-                          className="nature-content-type-icon h-3.5 w-3.5"
+                          className="nature-content-type-icon inline h-3.5 w-3.5 sm:hidden"
                         />
                         <span className="sr-only sm:not-sr-only">
                           {getSearchResultTypeLabel(type)}
@@ -193,7 +193,7 @@ export default function SearchResultsList({
                       </span>
                       {query && (
                         <span
-                          className="text-xs text-[color:var(--nature-text)]"
+                          className="text-xs text-[color:var(--nature-text-faint)]"
                           data-search-match-meta
                         >
                           匹配 {query}
@@ -201,7 +201,7 @@ export default function SearchResultsList({
                       )}
                       {score !== null && Number.isFinite(score) && (
                         <span
-                          className="text-xs text-[color:var(--nature-text)]"
+                          className="text-xs text-[color:var(--nature-text-faint)] opacity-75"
                           data-search-relevance-meta
                         >
                           相关度 {formatScore(score)}%

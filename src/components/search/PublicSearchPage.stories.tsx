@@ -221,7 +221,7 @@ export const UntitledMemoResult: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("link", { name: "打开 无标题闪念" })).toHaveAttribute(
+    await expect(canvas.getByRole("link", { name: "打开闪念：无标题闪念" })).toHaveAttribute(
       "href",
       "/memos/killport"
     );
