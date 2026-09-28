@@ -65,4 +65,23 @@ const background = backgroundByKind[kind];
     filter: saturate(0.86) contrast(1.02) brightness(1.38);
     transform: translateY(-4%);
   }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere {
+    opacity: 0.14;
+    filter: saturate(0.7) contrast(0.92) brightness(1.16);
+    mix-blend-mode: multiply;
+  }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere--codex-vibe-monitor {
+    opacity: 0.15;
+  }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere--tavily-hikari {
+    opacity: 0.12;
+  }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere--octo-rill {
+    opacity: 0.16;
+    filter: saturate(0.72) contrast(0.94) brightness(1.08);
+  }
 </style>

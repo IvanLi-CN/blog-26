@@ -22,9 +22,10 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
   data-runtime-point-count={stat.trend.points.length}
   data-runtime-future-count={futurePointCount}
   data-runtime-chart-variant={variant}
+  data-runtime-chart-mode={variant === "bars" ? "bars" : "area"}
   data-runtime-chart-placement={placement}
   role="img"
-  aria-label={`${label}${variant === "bars" ? "柱状趋势图" : "趋势图"}，${stat.trend.range === "today" ? "今日" : "最近几小时"}`}
+  aria-label={`${label}${variant === "bars" ? "柱状趋势图" : "面积趋势图"}，${stat.trend.range === "today" ? "今日" : "最近几小时"}`}
 ></div>
 
 <script>
@@ -41,6 +42,9 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
 
   const getColor = (element: HTMLElement) => {
     const styles = getComputedStyle(element);
+    if (element.classList.contains("runtime-sparkline--bars")) {
+      return styles.getPropertyValue("--runtime-bar").trim();
+    }
     if (element.classList.contains("runtime-sparkline--secondary")) {
       return styles.getPropertyValue("--runtime-secondary").trim();
     }
@@ -48,6 +52,13 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
       return styles.getPropertyValue("--runtime-warm").trim();
     }
     return styles.getPropertyValue("--runtime-accent").trim();
+  };
+
+  const withAlpha = (color: string, alpha: number) => {
+    const match = color.match(/^rgba?\(([^)]+)\)$/);
+    if (!match) return color;
+    const channels = match[1].split(",").slice(0, 3).map((channel) => channel.trim());
+    return `rgba(${channels.join(", ")}, ${alpha})`;
   };
 
   const bindSparklines = () => {
@@ -59,8 +70,8 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
       const xValues = trend.points.map((point) => Math.floor(Date.parse(point.timestamp) / 1000));
       const yValues = trend.points.map((point) => point.value);
       const numericYValues = yValues.filter((value): value is number => value !== null);
-      const minY = Math.min(...numericYValues);
-      const maxY = Math.max(...numericYValues);
+      const minY = numericYValues.length ? Math.min(...numericYValues) : 0;
+      const maxY = numericYValues.length ? Math.max(...numericYValues) : 0;
       const variant = element.dataset.runtimeChartVariant === "bars" ? "bars" : "line";
       const placement = element.dataset.runtimeChartPlacement === "right" ? "right" : "full";
       const rangeSpan = Math.max(maxY - minY, Math.abs(maxY) * 0.08, 1);
@@ -68,21 +79,26 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
       const isFlatZero = minY === 0 && maxY === 0;
       const yMin = variant === "bars" ? 0 : isFlatZero ? -1 : Math.max(0, minY - rangePadding);
       const yMax = isFlatZero ? 1 : variant === "bars" ? maxY * 1.14 : maxY + rangePadding;
+      const xStart = xValues[0] ?? 0;
+      const xEnd = xValues[xValues.length - 1] ?? xStart;
+      const xStep = xValues.length > 1 ? (xEnd - xStart) / (xValues.length - 1) : 60;
+      const xRange = variant === "bars" ? ([xStart - xStep / 2, xEnd + xStep / 2] as [number, number]) : undefined;
       const color = getColor(element) || "currentColor";
       const getSize = () => ({
         width: Math.max(Math.floor(element.getBoundingClientRect().width), 8),
         height: Math.max(Math.floor(element.getBoundingClientRect().height), 24),
       });
       const getChartPadding = () => {
-        const size = getSize();
-        return variant === "bars"
-          ? ([48, 0, 8, Math.floor(size.width * 0.52)] as const)
-          : placement === "right"
-            ? ([16, 0, 8, Math.floor(size.width * 0.43)] as const)
-          : ([48, 0, 8, 0] as const);
+        const topPadding = variant === "bars" ? 4 : placement === "full" ? 48 : 16;
+        const bottomPadding = variant === "bars" ? 5 : 8;
+        return [topPadding, 0, bottomPadding, 0] as const;
       };
+      const styles = getComputedStyle(element);
+      const areaOpacity = Number.parseFloat(styles.getPropertyValue("--runtime-area-opacity")) || 0.16;
+      const barOpacity = Number.parseFloat(styles.getPropertyValue("--runtime-bar-opacity")) || 0.86;
       const lineSeries = {
         stroke: color,
+        fill: withAlpha(color, areaOpacity),
         width: 1.5,
         paths: uPlot.paths.spline(),
         points: { show: false },
@@ -90,18 +106,18 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
       };
       const barSeries = {
         stroke: color,
-        fill: color,
+        fill: withAlpha(color, barOpacity),
         width: 0,
         paths: uPlot.paths.bars({
-          size: [0.58, 8, 2],
-          gap: 1.5,
+          size: [0.72, 14, 1],
+          gap: 1,
           radius: [0, 0],
         }),
         points: { show: false },
         spanGaps: false,
       };
-      const chartSeries = variant === "bars" ? [barSeries, lineSeries] : [lineSeries];
-      const chartData = variant === "bars" ? [xValues, yValues, yValues] : [xValues, yValues];
+      const chartSeries = variant === "bars" ? [barSeries] : [lineSeries];
+      const chartData = [xValues, yValues];
 
       const plot = new uPlot(
         {
@@ -109,7 +125,10 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
           height: getSize().height,
           padding: getChartPadding(),
           scales: {
-            x: { time: true },
+            x: {
+              time: true,
+              ...(xRange ? { range: xRange } : {}),
+            },
             y: {
               range: [yMin, yMax],
             },
@@ -145,7 +164,10 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
   .runtime-sparkline {
     --runtime-accent: rgb(var(--runtime-accent-rgb));
     --runtime-secondary: rgb(var(--runtime-secondary-rgb));
+    --runtime-bar: rgb(var(--runtime-bar-rgb));
     --runtime-warm: rgb(var(--runtime-warm-rgb));
+    --runtime-area-opacity: 0.16;
+    --runtime-bar-opacity: 0.86;
     position: absolute;
     inset: 0;
     z-index: 1;
@@ -154,16 +176,20 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
     height: auto;
     min-height: 0;
     margin: 0;
-    opacity: 0.9;
+    opacity: 0.96;
     overflow: hidden;
     pointer-events: none;
   }
 
   .runtime-sparkline--bars {
     position: absolute;
+    top: 3rem;
+    right: 0;
+    bottom: 0;
+    left: 0;
     height: auto;
     min-height: 0;
-    opacity: 0.78;
+    opacity: 0.92;
   }
 
   .runtime-sparkline--bars::after {
@@ -173,7 +199,7 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
     left: 0;
     height: 1px;
     content: "";
-    background: rgba(var(--nature-highlight-rgb), 0.2);
+    background: rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.2);
     pointer-events: none;
   }
 

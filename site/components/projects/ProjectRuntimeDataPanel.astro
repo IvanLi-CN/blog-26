@@ -1,16 +1,17 @@
 ---
 import RuntimeActivityChart from "./RuntimeActivityChart.astro";
+import RuntimeMetricValue from "./RuntimeMetricValue.astro";
 import RuntimePanelAtmosphere from "./RuntimePanelAtmosphere.astro";
+import RuntimeProjectLogo from "./RuntimeProjectLogo.astro";
 import RuntimeSparkline from "./RuntimeSparkline.astro";
 import type { ProjectRuntimeMetrics } from "../../lib/project-runtime-metrics";
+import { formatRuntimeValue } from "../../lib/runtime-format";
 
 interface Props {
   metrics: ProjectRuntimeMetrics;
 }
 
 const { metrics } = Astro.props as Props;
-const numberFormatter = new Intl.NumberFormat("zh-CN");
-const formatNumber = (value: number) => numberFormatter.format(value);
 const freshnessStatusClasses = [
   "within-4-hours",
   "4-to-12-hours",
@@ -32,23 +33,24 @@ const freshnessCells =
     <div class="runtime-panel-art-stage">
       <RuntimePanelAtmosphere kind={metrics.kind} />
     </div>
+    <RuntimeProjectLogo kind={metrics.kind} />
 
     {metrics.kind === "codex-vibe-monitor" && (
       <>
         <div class="runtime-metric-grid runtime-metric-grid--cvm">
           <div class="runtime-metric runtime-metric--accent">
             <span class="runtime-metric-label">实时 Token/分钟</span>
-            <strong class="runtime-metric-value">{formatNumber(metrics.tokensPerMinute.value)}</strong>
+            <RuntimeMetricValue value={metrics.tokensPerMinute.value} />
             <RuntimeSparkline label="实时 Token/分钟" stat={metrics.tokensPerMinute} />
           </div>
           <div class="runtime-metric">
             <span class="runtime-metric-label">并行调用数</span>
-            <strong class="runtime-metric-value">{formatNumber(metrics.parallelCalls.value)}</strong>
+            <RuntimeMetricValue value={metrics.parallelCalls.value} />
             <RuntimeSparkline label="并行调用数" stat={metrics.parallelCalls} tone="secondary" />
           </div>
           <div class="runtime-metric">
             <span class="runtime-metric-label">今日 Token 消耗量</span>
-            <strong class="runtime-metric-value runtime-metric-value--compact">{formatNumber(metrics.todayTokens.value)}</strong>
+            <RuntimeMetricValue value={metrics.todayTokens.value} className="runtime-metric-value--compact" />
             <RuntimeSparkline label="今日 Token 消耗量" stat={metrics.todayTokens} placement="right" />
           </div>
         </div>
@@ -65,22 +67,22 @@ const freshnessCells =
         <div class="runtime-metric-grid runtime-metric-grid--hikari">
           <div class="runtime-metric runtime-metric--accent">
             <span class="runtime-metric-label">今日请求次数</span>
-            <strong class="runtime-metric-value">{formatNumber(metrics.todayRequests.value)}</strong>
+            <RuntimeMetricValue value={metrics.todayRequests.value} />
             <RuntimeSparkline label="今日请求次数" stat={metrics.todayRequests} />
           </div>
           <div class="runtime-metric">
             <span class="runtime-metric-label">今日积分消耗量</span>
-            <strong class="runtime-metric-value">{formatNumber(metrics.todayCredits.value)}</strong>
+            <RuntimeMetricValue value={metrics.todayCredits.value} />
             <RuntimeSparkline label="今日积分消耗量" stat={metrics.todayCredits} tone="secondary" />
           </div>
           <div class="runtime-metric">
             <span class="runtime-metric-label">本月积分消耗量</span>
-            <strong class="runtime-metric-value">{formatNumber(metrics.monthCredits.value)}</strong>
+            <RuntimeMetricValue value={metrics.monthCredits.value} className="runtime-metric-value--hikari-lower" />
             <RuntimeSparkline label="本月积分消耗量" stat={metrics.monthCredits} tone="secondary" variant="bars" />
           </div>
           <div class="runtime-metric runtime-metric--quiet">
             <span class="runtime-metric-label">积分总量</span>
-            <strong class="runtime-metric-value">{formatNumber(metrics.totalCredits.value)}</strong>
+            <RuntimeMetricValue value={metrics.totalCredits.value} className="runtime-metric-value--hikari-lower" />
             <RuntimeSparkline label="积分总量" stat={metrics.totalCredits} tone="secondary" variant="bars" />
           </div>
         </div>
@@ -97,12 +99,12 @@ const freshnessCells =
         <div class="runtime-metric-grid runtime-metric-grid--octo">
           <div class="runtime-metric runtime-metric--accent">
             <span class="runtime-metric-label">去重仓库数</span>
-            <strong class="runtime-metric-value">{formatNumber(metrics.deduplicatedRepositories.value)}</strong>
+            <RuntimeMetricValue value={metrics.deduplicatedRepositories.value} />
             <RuntimeSparkline label="去重仓库数" stat={metrics.deduplicatedRepositories} />
           </div>
           <div class="runtime-metric">
             <span class="runtime-metric-label">压力值</span>
-            <strong class="runtime-metric-value">{metrics.pressure.value.toFixed(2)}</strong>
+            <RuntimeMetricValue value={metrics.pressure.value} format="fixed-2" />
             <RuntimeSparkline label="压力值" stat={metrics.pressure} tone="warm" />
           </div>
         </div>
@@ -111,7 +113,7 @@ const freshnessCells =
           <div
             class="runtime-freshness-grid"
             role="img"
-            aria-label={`仓库刷新新鲜度热点图，共 ${formatNumber(metrics.deduplicatedRepositories.value)} 个仓库`}
+            aria-label={`仓库刷新新鲜度热点图，共 ${formatRuntimeValue(metrics.deduplicatedRepositories.value)} 个仓库`}
           >
             {freshnessCells.map((statusCode) => (
               <span
@@ -132,27 +134,32 @@ const freshnessCells =
     --runtime-panel-rgb: 20, 44, 40;
     --runtime-accent-rgb: 102, 214, 163;
     --runtime-secondary-rgb: 89, 181, 214;
+    --runtime-bar-rgb: 94, 204, 185;
     --runtime-warm-rgb: 236, 181, 87;
+    --runtime-highlight-rgb: 247, 255, 250;
     --runtime-text-rgb: 235, 245, 239;
     --runtime-text: rgb(var(--runtime-text-rgb));
     --runtime-text-soft: rgba(var(--runtime-text-rgb), 0.72);
     --runtime-text-faint: rgba(var(--runtime-text-rgb), 0.5);
+    --runtime-freshness-late-rgb: 238, 126, 92;
+    --runtime-freshness-overdue-rgb: 207, 102, 134;
+    --runtime-freshness-empty-rgb: 111, 116, 128;
     display: grid;
     position: relative;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 0.8rem;
     width: 100%;
     aspect-ratio: 4 / 5;
     min-width: 0;
     overflow: hidden;
     padding: clamp(0.85rem, 3.5%, 1.2rem);
-    border: 1px solid rgba(var(--nature-highlight-rgb), 0.17);
+    border: 1px solid rgba(var(--runtime-highlight-rgb), 0.17);
     border-radius: 0.65rem;
     color: var(--runtime-text);
     background:
       radial-gradient(circle at 86% 12%, rgba(var(--runtime-accent-rgb), 0.08), transparent 30%),
       linear-gradient(180deg, rgba(var(--runtime-panel-rgb), 0.98), rgba(var(--runtime-panel-rgb), 0.93));
-    box-shadow: inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.08);
+    box-shadow: inset 0 1px 0 rgba(var(--runtime-highlight-rgb), 0.08);
   }
 
   .runtime-panel-body {
@@ -171,6 +178,7 @@ const freshnessCells =
     --runtime-panel-rgb: 18, 38, 58;
     --runtime-accent-rgb: 109, 187, 239;
     --runtime-secondary-rgb: 119, 215, 188;
+    --runtime-bar-rgb: 94, 204, 185;
   }
 
   .project-runtime-panel--octo-rill {
@@ -180,9 +188,39 @@ const freshnessCells =
     --runtime-warm-rgb: 241, 180, 80;
   }
 
+  :global(html[data-ui-theme="light"]) .project-runtime-panel {
+    --runtime-panel-rgb: 230, 242, 235;
+    --runtime-accent-rgb: 39, 143, 103;
+    --runtime-secondary-rgb: 48, 119, 148;
+    --runtime-bar-rgb: 42, 145, 130;
+    --runtime-warm-rgb: 177, 116, 28;
+    --runtime-highlight-rgb: 35, 78, 59;
+    --runtime-text-rgb: 27, 55, 42;
+    --runtime-text-soft: rgba(var(--runtime-text-rgb), 0.7);
+    --runtime-text-faint: rgba(var(--runtime-text-rgb), 0.54);
+    --runtime-freshness-late-rgb: 201, 94, 61;
+    --runtime-freshness-overdue-rgb: 177, 72, 105;
+    --runtime-freshness-empty-rgb: 133, 139, 144;
+  }
+
+  :global(html[data-ui-theme="light"]) .project-runtime-panel--tavily-hikari {
+    --runtime-panel-rgb: 230, 240, 249;
+    --runtime-accent-rgb: 42, 119, 183;
+    --runtime-secondary-rgb: 43, 145, 133;
+    --runtime-bar-rgb: 42, 145, 133;
+  }
+
+  :global(html[data-ui-theme="light"]) .project-runtime-panel--octo-rill {
+    --runtime-panel-rgb: 229, 242, 235;
+    --runtime-accent-rgb: 35, 143, 100;
+    --runtime-secondary-rgb: 55, 123, 151;
+    --runtime-bar-rgb: 42, 145, 125;
+    --runtime-warm-rgb: 171, 110, 23;
+  }
+
   .runtime-metric-grid {
     position: relative;
-    grid-row: 1;
+    grid-row: 2;
     z-index: 1;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -192,7 +230,7 @@ const freshnessCells =
 
   .runtime-metric-grid--cvm .runtime-metric:last-child {
     grid-column: 1 / -1;
-    border-top: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    border-top: 1px solid rgba(var(--runtime-highlight-rgb), 0.14);
     padding-top: 0.95rem;
   }
 
@@ -222,12 +260,12 @@ const freshnessCells =
   }
 
   .runtime-metric-grid > .runtime-metric:nth-child(even) {
-    border-left: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    border-left: 1px solid rgba(var(--runtime-highlight-rgb), 0.14);
     padding-left: 0.72rem;
   }
 
   .runtime-metric-grid--hikari > .runtime-metric:nth-child(n + 3) {
-    border-top: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    border-top: 1px solid rgba(var(--runtime-highlight-rgb), 0.14);
     padding-top: 0.95rem;
   }
 
@@ -274,14 +312,14 @@ const freshnessCells =
 
   .runtime-freshness {
     position: relative;
-    grid-row: 2;
+    grid-row: 3;
     z-index: 1;
     display: grid;
     align-content: end;
     gap: 0.55rem;
     min-height: 0;
     padding-top: 0.7rem;
-    border-top: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    border-top: 1px solid rgba(var(--runtime-highlight-rgb), 0.14);
   }
 
   .runtime-chart-title {
@@ -317,14 +355,14 @@ const freshnessCells =
   }
 
   .runtime-freshness-cell--12-to-24-hours {
-    background: rgb(238, 126, 92);
+    background: rgb(var(--runtime-freshness-late-rgb));
   }
 
   .runtime-freshness-cell--over-24-hours {
-    background: rgb(207, 102, 134);
+    background: rgb(var(--runtime-freshness-overdue-rgb));
   }
 
   .runtime-freshness-cell--no-success {
-    background: rgb(111, 116, 128);
+    background: rgb(var(--runtime-freshness-empty-rgb));
   }
 </style>

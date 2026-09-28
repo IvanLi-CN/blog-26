@@ -744,14 +744,31 @@ test.describe("Nature frontend public coverage", () => {
       octo: page.locator('.projects-poster-card:has(a[href="/projects/octo-rill/"])'),
     } as const;
 
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "light");
+    await expect
+      .poll(() =>
+        page
+          .locator(".project-runtime-panel")
+          .evaluateAll((panels) =>
+            panels.map((panel) =>
+              getComputedStyle(panel).getPropertyValue("--runtime-panel-rgb").trim()
+            )
+          )
+      )
+      .toEqual(["230, 242, 235", "230, 240, 249", "229, 242, 235"]);
+
     for (const card of Object.values(cards)) {
       await expect(card.locator(".project-runtime-panel")).toHaveCount(1);
+      await expect(card.locator("[data-runtime-project-logo]")).toHaveCount(1);
       await expect(card.locator(".runtime-panel-atmosphere")).toHaveCount(1);
       await expect(card.locator(".runtime-panel-art-stage")).toHaveCount(1);
       await expect(card.locator("img[data-runtime-background]")).toHaveCount(1);
+      await expect(card.locator("[data-runtime-project-logo] img")).toHaveCount(2);
       await expect(card.locator(".runtime-panel-art-stage svg")).toHaveCount(0);
       await expect(card.locator(".project-poster")).toHaveCount(0);
-      await expect(card.locator("img:not([data-runtime-background])")).toHaveCount(0);
+      await expect(
+        card.locator(".runtime-panel-art-stage img:not([data-runtime-background])")
+      ).toHaveCount(0);
       const cardText = await card.innerText();
       for (const label of forbiddenLabels) expect(cardText).not.toContain(label);
       await expect(card.locator(".project-runtime-panel")).toHaveCSS("aspect-ratio", "4 / 5");
@@ -805,14 +822,18 @@ test.describe("Nature frontend public coverage", () => {
               const labelStyle = getComputedStyle(label);
               const valueStyle = getComputedStyle(value);
               const anchor = unit ?? value;
+              const isBarChart = chart.classList.contains("runtime-sparkline--bars");
               return (
                 chartStyle.position === "absolute" &&
                 Number(chartStyle.zIndex) < Number(labelStyle.zIndex) &&
                 Number(chartStyle.zIndex) < Number(valueStyle.zIndex) &&
                 chartBounds.left <= metricBounds.left + 1.5 &&
-                chartBounds.top <= metricBounds.top + 1.5 &&
+                (isBarChart
+                  ? chartBounds.top >= metricBounds.top + 35 &&
+                    chartBounds.top < metricBounds.bottom &&
+                    chartBounds.bottom >= metricBounds.bottom - 0.5
+                  : chartBounds.top <= metricBounds.top + 1.5) &&
                 chartBounds.right >= metricBounds.right - 0.5 &&
-                chartBounds.bottom >= metricBounds.bottom - 0.5 &&
                 anchor.getBoundingClientRect().bottom <= metricBounds.bottom + 0.5
               );
             })
@@ -820,6 +841,19 @@ test.describe("Nature frontend public coverage", () => {
         )
         .toBe(true);
     }
+
+    await expect(cards.cvm.locator("[data-runtime-project-logo] img").first()).toHaveAttribute(
+      "src",
+      /codex-vibe-monitor-wordmark-/
+    );
+    await expect(cards.hikari.locator("[data-runtime-project-logo] img").first()).toHaveAttribute(
+      "src",
+      /tavily-hikari-lockup-/
+    );
+    await expect(cards.octo.locator("[data-runtime-project-logo] img").first()).toHaveAttribute(
+      "src",
+      /octo-rill-wordmark-/
+    );
 
     await expect
       .poll(() =>
@@ -839,6 +873,10 @@ test.describe("Nature frontend public coverage", () => {
     await expect(cards.cvm.locator(".runtime-metric-unit")).toHaveCount(0);
     await expect(cards.cvm.locator(".runtime-sparkline")).toHaveCount(3);
     await expect(cards.cvm.locator(".runtime-sparkline .uplot")).toHaveCount(3);
+    await expect(cards.cvm.locator('[data-runtime-chart-mode="area"]')).toHaveCount(3);
+    await expect(cards.cvm.locator('[aria-label*="面积趋势图"]')).toHaveCount(3);
+    await expect(cards.cvm.locator(".runtime-metric-value").nth(0)).toHaveText("793.758K");
+    await expect(cards.cvm.locator(".runtime-metric-value").nth(2)).toHaveText("2.111B");
     await expect(
       cards.cvm.locator('.runtime-sparkline[aria-label^="今日 Token 消耗量"]')
     ).toHaveAttribute("data-runtime-chart-placement", "right");
@@ -859,6 +897,8 @@ test.describe("Nature frontend public coverage", () => {
     await expect(cards.hikari.locator(".runtime-sparkline .uplot")).toHaveCount(4);
     await expect(cards.hikari.locator('[data-runtime-chart-variant="bars"]')).toHaveCount(2);
     await expect(cards.hikari.locator('[data-runtime-chart-variant="bars"] .uplot')).toHaveCount(2);
+    await expect(cards.hikari.locator('[data-runtime-chart-mode="bars"]')).toHaveCount(2);
+    await expect(cards.hikari.locator('[data-runtime-chart-mode="area"]')).toHaveCount(2);
     await expect(
       cards.hikari.locator('[data-runtime-chart-variant="bars"][aria-label^="本月积分消耗量"]')
     ).toHaveCount(1);
@@ -866,6 +906,8 @@ test.describe("Nature frontend public coverage", () => {
       cards.hikari.locator('[data-runtime-chart-variant="bars"][aria-label^="积分总量"]')
     ).toHaveCount(1);
     await expect(cards.hikari.locator('[data-runtime-chart-variant="line"]')).toHaveCount(2);
+    await expect(cards.hikari.locator(".runtime-metric-value").nth(2)).toHaveText("1.587K");
+    await expect(cards.hikari.locator(".runtime-metric-value").nth(3)).toHaveText("21K");
     await expect
       .poll(() =>
         cards.hikari.locator(".runtime-metric").evaluateAll((metrics) => {
@@ -934,12 +976,49 @@ test.describe("Nature frontend public coverage", () => {
       .toEqual(["1", "0", "2", "1", "0", "0", "0", "0"]);
 
     const lastCvmPoint = cards.cvm.locator(".runtime-activity-cell").last();
+    const activityGridHeightBeforeTooltip = await cards.cvm
+      .locator(".runtime-activity-grid")
+      .evaluate((grid) => grid.getBoundingClientRect().height);
     await lastCvmPoint.focus();
     await expect(lastCvmPoint).toBeFocused();
+    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toBeVisible();
+    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toHaveCSS("position", "absolute");
     await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("2026-09-27");
     await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("Token");
+    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("2.121B");
+    await expect
+      .poll(() =>
+        cards.cvm
+          .locator(".runtime-activity-grid")
+          .evaluate((grid) => grid.getBoundingClientRect().height)
+      )
+      .toBe(activityGridHeightBeforeTooltip);
     await lastCvmPoint.click();
     await expect(page).toHaveURL(/\/projects\/$/);
+
+    await page.setViewportSize({ width: 1048, height: 933 });
+    await gotoWithTheme(page, "/projects", "dark");
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "dark");
+    await expect
+      .poll(() =>
+        page
+          .locator(".project-runtime-panel")
+          .evaluateAll((panels) =>
+            panels.map((panel) =>
+              getComputedStyle(panel).getPropertyValue("--runtime-panel-rgb").trim()
+            )
+          )
+      )
+      .toEqual(["20, 44, 40", "18, 38, 58", "18, 43, 43"]);
+    const narrowCvmValue = cards.cvm.locator("[data-runtime-value]").first();
+    await expect(narrowCvmValue).toHaveText("793.76K");
+    await expect(narrowCvmValue).toHaveAttribute("data-runtime-value-truncated", "true");
+    await expect(narrowCvmValue).not.toContainText("...");
+    await narrowCvmValue.hover();
+    const narrowValueTooltip = cards.cvm.locator("[data-runtime-value-tooltip]").first();
+    await expect(narrowValueTooltip).toBeVisible();
+    await expect(narrowValueTooltip).toHaveText("793.758K");
+    await expect(narrowValueTooltip).toHaveCSS("position", "absolute");
 
     await page.setViewportSize({ width: 393, height: 852 });
     await gotoWithTheme(page, "/projects", "dark");

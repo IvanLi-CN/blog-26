@@ -1,0 +1,95 @@
+---
+import type { ImageMetadata } from "astro";
+import codexVibeMonitorLight from "../../assets/projects/logos/codex-vibe-monitor-wordmark-light.png";
+import codexVibeMonitorDark from "../../assets/projects/logos/codex-vibe-monitor-wordmark-dark.png";
+import tavilyHikariLight from "../../assets/projects/logos/tavily-hikari-lockup-light.svg";
+import tavilyHikariDark from "../../assets/projects/logos/tavily-hikari-lockup-dark.svg";
+import octoRillLight from "../../assets/projects/logos/octo-rill-wordmark-light.svg";
+import octoRillDark from "../../assets/projects/logos/octo-rill-wordmark-dark.svg";
+
+type PanelKind = "codex-vibe-monitor" | "tavily-hikari" | "octo-rill";
+
+interface Props {
+  kind: PanelKind;
+}
+
+interface LogoPair {
+  label: string;
+  light: ImageMetadata;
+  dark: ImageMetadata;
+}
+
+const logos: Record<PanelKind, LogoPair> = {
+  "codex-vibe-monitor": {
+    label: "Codex Vibe Monitor Logo",
+    light: codexVibeMonitorLight,
+    dark: codexVibeMonitorDark,
+  },
+  "tavily-hikari": {
+    label: "Tavily Hikari Logo",
+    light: tavilyHikariLight,
+    dark: tavilyHikariDark,
+  },
+  "octo-rill": {
+    label: "OctoRill Logo",
+    light: octoRillLight,
+    dark: octoRillDark,
+  },
+};
+
+const { kind } = Astro.props as Props;
+const logo = logos[kind];
+---
+
+<div
+  class:list={["runtime-project-logo", `runtime-project-logo--${kind}`, "runtime-project-logo-has-dark"]}
+  data-runtime-project-logo
+  role="img"
+  aria-label={logo.label}
+>
+  <img class="runtime-project-logo-image runtime-project-logo-image--light" src={logo.light.src} alt="" />
+  <img class="runtime-project-logo-image runtime-project-logo-image--dark" src={logo.dark.src} alt="" />
+</div>
+
+<style>
+  .runtime-project-logo {
+    display: flex;
+    grid-row: 1;
+    align-items: center;
+    justify-content: flex-start;
+    width: min(100%, 12rem);
+    min-width: 0;
+    min-height: 2.6rem;
+    color: var(--runtime-text);
+  }
+
+  .runtime-project-logo-image {
+    display: block;
+    width: 100%;
+    height: 2.6rem;
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  .runtime-project-logo-image--dark {
+    display: none;
+  }
+
+  :global(html[data-ui-theme="dark"]) .runtime-project-logo-has-dark .runtime-project-logo-image--light {
+    display: none;
+  }
+
+  :global(html[data-ui-theme="dark"]) .runtime-project-logo-has-dark .runtime-project-logo-image--dark {
+    display: block;
+  }
+
+  @media (max-width: 690px) {
+    .runtime-project-logo {
+      width: min(100%, 10.5rem);
+    }
+
+    .runtime-project-logo-image {
+      height: 2.35rem;
+    }
+  }
+</style>

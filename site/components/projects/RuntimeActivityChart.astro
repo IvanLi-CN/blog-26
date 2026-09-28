@@ -1,5 +1,6 @@
 ---
 import type { RuntimeActivityPoint } from "../../lib/project-runtime-metrics";
+import { formatRuntimeValue } from "../../lib/runtime-format";
 
 interface Props {
   points: RuntimeActivityPoint[];
@@ -10,7 +11,6 @@ interface Props {
 const { points, label, kind } = Astro.props as Props;
 const maxValue = Math.max(...points.map((point) => point.value), 1);
 const valueLabel = kind === "tokens" ? "Token" : "请求";
-const numberFormatter = new Intl.NumberFormat("zh-CN");
 const dayMilliseconds = 24 * 60 * 60 * 1000;
 const parseDate = (date: string) => {
   const [year, month, day] = date.split("-").map(Number);
@@ -49,12 +49,12 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
           class="runtime-activity-cell"
           data-runtime-point
           data-date={cell.point.date}
-          data-value={numberFormatter.format(cell.point.value)}
+          data-value={formatRuntimeValue(cell.point.value)}
           data-label={valueLabel}
           style={`--runtime-week:${cell.week};--runtime-weekday:${cell.weekday};--runtime-intensity:${Math.min(cell.point.value / maxValue, 1)}`}
           role="img"
           tabindex="0"
-          aria-label={`${cell.point.date} ${valueLabel} ${numberFormatter.format(cell.point.value)}`}
+          aria-label={`${cell.point.date} ${valueLabel} ${formatRuntimeValue(cell.point.value)}`}
         ></span>
       ) : (
         <span
@@ -65,7 +65,7 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
       )
     )}
   </div>
-  <div class="runtime-chart-tooltip" data-runtime-tooltip role="status" aria-live="polite" hidden></div>
+  <div class="runtime-chart-tooltip" data-runtime-tooltip role="tooltip" hidden></div>
 </section>
 
 <script is:inline>
@@ -79,10 +79,31 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
       const hideTooltip = () => {
         tooltip.hidden = true;
         tooltip.textContent = "";
+        tooltip.style.removeProperty("left");
+        tooltip.style.removeProperty("top");
+      };
+
+      const positionTooltip = (point) => {
+        const chartBounds = chart.getBoundingClientRect();
+        const pointBounds = point.getBoundingClientRect();
+        const tooltipBounds = tooltip.getBoundingClientRect();
+        const gap = 0.45 * parseFloat(getComputedStyle(chart).fontSize || "16");
+        const edge = 0.35 * parseFloat(getComputedStyle(chart).fontSize || "16");
+        const maxLeft = Math.max(edge, chartBounds.width - tooltipBounds.width - edge);
+        const maxTop = Math.max(edge, chartBounds.height - tooltipBounds.height - edge);
+        let left = pointBounds.left - chartBounds.left + pointBounds.width / 2 - tooltipBounds.width / 2;
+        let top = pointBounds.top - chartBounds.top - tooltipBounds.height - gap;
+
+        if (top < edge) top = pointBounds.bottom - chartBounds.top + gap;
+        left = Math.min(Math.max(left, edge), maxLeft);
+        top = Math.min(Math.max(top, edge), maxTop);
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
       };
       const showTooltip = (point) => {
         tooltip.textContent = `${point.dataset.date} · ${point.dataset.label}: ${point.dataset.value}`;
         tooltip.hidden = false;
+        positionTooltip(point);
       };
 
       chart.querySelectorAll("[data-runtime-point]").forEach((point) => {
@@ -112,14 +133,15 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
 <style>
   .runtime-activity {
     position: relative;
-    grid-row: 2;
+    grid-row: 3;
     z-index: 1;
     display: grid;
     align-content: end;
     gap: 0.55rem;
     min-height: 0;
+    overflow: visible;
     padding-top: 0.7rem;
-    border-top: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    border-top: 1px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.14);
   }
 
   .runtime-chart-title {
@@ -151,7 +173,7 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
   .runtime-activity-cell {
     outline: none;
     background: rgba(var(--runtime-accent-rgb), calc(0.12 + var(--runtime-intensity) * 0.78));
-    box-shadow: inset 0 0 0 1px rgba(var(--nature-highlight-rgb), 0.04);
+    box-shadow: inset 0 0 0 1px rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.04);
     cursor: help;
   }
 
@@ -163,30 +185,38 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
   }
 
   .runtime-activity-cell[data-value="0"] {
-    background: rgba(var(--nature-highlight-rgb), 0.08);
+    background: rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.08);
   }
 
   .runtime-activity-cell:hover,
   .runtime-activity-cell:focus-visible {
     z-index: 1;
-    outline: 2px solid rgba(var(--nature-highlight-rgb), 0.9);
+    outline: 2px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.9);
     outline-offset: 1px;
     background: rgba(var(--runtime-warm-rgb), 0.92);
   }
 
   .runtime-chart-tooltip {
-    min-height: 1.15rem;
+    position: absolute;
+    z-index: 4;
+    max-width: calc(100% - 0.7rem);
     overflow: hidden;
+    padding: 0.3rem 0.48rem;
+    border: 1px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.3);
+    border-radius: 0.35rem;
+    background: rgba(var(--runtime-panel-rgb), 0.96);
+    box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.22);
     color: var(--runtime-text-soft);
     font-size: 0.66rem;
     line-height: 1.2;
+    pointer-events: none;
     text-align: right;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .runtime-chart-tooltip[hidden] {
-    visibility: hidden;
+    display: none;
   }
 
   @media (max-width: 767px) {
