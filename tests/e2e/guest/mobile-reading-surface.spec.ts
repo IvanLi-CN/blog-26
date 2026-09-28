@@ -1,24 +1,57 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import sharp from "sharp";
 
-type Theme = "light" | "dark";
+type Theme = "light" | "dark" | "system";
+const pagesWithReadingSurfaceInit = new WeakSet<Page>();
 
 async function gotoWithTheme(page: Page, route: string, theme: Theme) {
-  await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
-  await page.addInitScript(() => {
-    const scopedWindow = window as Window & { __naturePageLoadReady?: boolean };
-    if (scopedWindow.__naturePageLoadReady) return;
-    scopedWindow.__naturePageLoadReady = false;
-    document.addEventListener("astro:page-load", () => {
-      scopedWindow.__naturePageLoadReady = true;
+  if (!pagesWithReadingSurfaceInit.has(page)) {
+    await page.addInitScript(() => {
+      const scopedWindow = window as Window & { __naturePageLoadReady?: boolean };
+      const requestedTheme = new URL(window.location.href).searchParams.get("__e2e_theme");
+      if (requestedTheme === "light" || requestedTheme === "dark" || requestedTheme === "system") {
+        localStorage.setItem("theme", requestedTheme);
+      }
+      scopedWindow.__naturePageLoadReady = false;
+      document.addEventListener("astro:page-load", () => {
+        scopedWindow.__naturePageLoadReady = true;
+      });
     });
-  });
-  await page.goto(route, { waitUntil: "domcontentloaded" });
+    pagesWithReadingSurfaceInit.add(page);
+  }
+  const separator = route.includes("?") ? "&" : "?";
+  await page.goto(`${route}${separator}__e2e_theme=${theme}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => {
     const scopedWindow = window as Window & { __naturePageLoadReady?: boolean };
     return scopedWindow.__naturePageLoadReady === true;
   });
-  await expect(page.locator("html")).toHaveAttribute("data-ui-theme", theme);
+  if (theme === "system") {
+    const resolvedTheme = await page.evaluate(() =>
+      window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+    );
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", resolvedTheme);
+    await expect(page.locator("html")).toHaveAttribute("data-ui-preference", "system");
+  } else {
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", theme);
+  }
+}
+
+async function addLongReadingFixture(surface: Locator) {
+  await surface.evaluate((element) => {
+    const title = document.createElement("h2");
+    title.className = "nature-title text-lg font-semibold";
+    title.textContent = "NarrowViewport".repeat(12);
+    title.dataset.testid = "e2e-long-reading-title";
+
+    const url = document.createElement("p");
+    url.className = "nature-muted";
+    url.textContent = `https://${"segment".repeat(28)}.example/path`;
+    url.dataset.testid = "e2e-long-reading-url";
+
+    element.prepend(url, title);
+    const code = element.querySelector("pre code");
+    code?.append(document.createTextNode(`\nconst longIdentifier = ${"unbroken".repeat(24)};`));
+  });
 }
 
 async function expectEdgeToEdge(locator: Locator, page: Page) {
@@ -64,9 +97,38 @@ async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator
   await expect(text).toBeVisible();
   await page.waitForTimeout(450);
 
-  const textColor = parseCssColor(
-    await text.evaluate((element) => getComputedStyle(element).color)
-  );
+  const samplePoints = await text.evaluate((element) => {
+    const range = document.createRange();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const points: Array<{ x: number; y: number; color: string; opacity: number }> = [];
+
+    while (walker.nextNode()) {
+      const textNode = walker.currentNode;
+      if (!textNode.textContent?.trim()) continue;
+      range.selectNodeContents(textNode);
+      const owner = textNode.parentElement ?? element;
+      const color = getComputedStyle(owner).color;
+      let opacity = 1;
+      let ancestor: HTMLElement | null = owner;
+      while (ancestor) {
+        opacity *= Number(getComputedStyle(ancestor).opacity);
+        ancestor = ancestor.parentElement;
+      }
+
+      for (const rect of range.getClientRects()) {
+        if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
+        points.push({
+          x: Math.min(rect.right + 5, window.innerWidth - 3),
+          y: Math.min(window.innerHeight - 2, Math.max(2, rect.top + rect.height / 2)),
+          color,
+          opacity,
+        });
+      }
+    }
+
+    return points;
+  });
+  expect(samplePoints.length, "visible text line fragments to sample").toBeGreaterThan(0);
   const ratios: number[] = [];
 
   for (let frame = 0; frame < frames; frame += 1) {
@@ -78,31 +140,48 @@ async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator
         dpr: window.devicePixelRatio,
       };
     });
-    const textBounds = await text.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return { y: rect.top + rect.height / 2 };
-    });
     const screenshot = await page.screenshot({ animations: "allow" });
     const { data, info } = await sharp(screenshot)
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const sampleX = [
-      surfaceBounds.left + 4,
-      surfaceBounds.left + 8,
-      surfaceBounds.right - 5,
-      surfaceBounds.right - 9,
-    ];
-    const sampleY = [textBounds.y - 2, textBounds.y, textBounds.y + 2];
 
-    for (const x of sampleX) {
-      for (const y of sampleY) {
-        const px = Math.min(info.width - 1, Math.max(0, Math.round(x * surfaceBounds.dpr)));
-        const py = Math.min(info.height - 1, Math.max(0, Math.round(y * surfaceBounds.dpr)));
-        const offset = (py * info.width + px) * info.channels;
-        const background = [data[offset], data[offset + 1], data[offset + 2]] as number[];
-        ratios.push(contrastRatio(composite(textColor, background), background));
+    for (const point of samplePoints) {
+      const color = parseCssColor(point.color);
+      color.alpha *= point.opacity;
+      const colorChannels = [color.red, color.green, color.blue];
+      const x = Math.min(surfaceBounds.right - 2, Math.max(surfaceBounds.left + 2, point.x));
+      const centerX = Math.min(info.width - 1, Math.max(0, Math.round(x * surfaceBounds.dpr)));
+      const centerY = Math.min(
+        info.height - 1,
+        Math.max(0, Math.round(point.y * surfaceBounds.dpr))
+      );
+      let background: number[] | null = null;
+      let greatestColorDistance = -1;
+
+      for (let dy = -4; dy <= 4; dy += 1) {
+        for (let dx = -6; dx <= 6; dx += 1) {
+          const px = Math.min(info.width - 1, Math.max(0, centerX + dx));
+          const py = Math.min(info.height - 1, Math.max(0, centerY + dy));
+          const candidateX = px / surfaceBounds.dpr;
+          if (candidateX < surfaceBounds.left + 1 || candidateX > surfaceBounds.right - 1) {
+            continue;
+          }
+          const offset = (py * info.width + px) * info.channels;
+          const candidate = [data[offset], data[offset + 1], data[offset + 2]] as number[];
+          const colorDistance = candidate.reduce(
+            (total, channel, index) => total + (channel - (colorChannels[index] ?? 0)) ** 2,
+            0
+          );
+          if (colorDistance > greatestColorDistance) {
+            greatestColorDistance = colorDistance;
+            background = candidate;
+          }
+        }
       }
+
+      if (!background) throw new Error("No background pixels found beside visible text");
+      ratios.push(contrastRatio(composite(color, background), background));
     }
 
     await page.waitForTimeout(180);
@@ -302,9 +381,27 @@ test.describe("mobile public reading surfaces", () => {
   }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/tags", "light");
+    const tagRoute = await page.locator('main a[href^="/tags/"]').first().getAttribute("href");
+    expect(tagRoute).toBeTruthy();
 
     const cases = [
       { path: "/", surface: ".nature-mobile-reading-surface", text: "p" },
+      {
+        path: "/posts",
+        surface: ".nature-mobile-reading-stream",
+        text: ".post-list-copy, h2, time",
+      },
+      {
+        path: "/memos",
+        surface: ".nature-mobile-reading-stream",
+        text: ".nature-timeline-content p, time",
+      },
+      {
+        path: tagRoute ?? "/tags",
+        surface: ".nature-mobile-reading-stream",
+        text: ".tag-detail-entry h2, .tag-detail-entry p, time",
+      },
       {
         path: "/posts/code-block-fixture",
         surface: ".post-detail-body",
@@ -318,6 +415,11 @@ test.describe("mobile public reading surfaces", () => {
         text: ".projects-domain-framing",
       },
       {
+        path: "/search/?q=Hello",
+        surface: ".nature-mobile-reading-stream",
+        text: "[data-search-match-meta], [data-search-relevance-meta], .search-result-card h2, .search-result-card .nature-muted",
+      },
+      {
         path: "/about",
         surface: ".nature-mobile-reading-surface",
         index: 1,
@@ -329,23 +431,29 @@ test.describe("mobile public reading surfaces", () => {
       for (const item of cases) {
         await gotoWithTheme(page, item.path, theme);
         const surface = page.locator(item.surface).nth(item.index ?? 0);
-        const text = surface.locator(item.text).first();
-        await expect(text).toBeVisible();
-        const ratio = await sampleSurfaceContrast(page, surface, text, 3);
-        expect(ratio, `${theme} ${item.path} minimum sampled contrast`).toBeGreaterThanOrEqual(4.5);
+        const texts = surface.locator(item.text);
+        await expect(texts.first()).toBeVisible();
+        for (let index = 0; index < (await texts.count()); index += 1) {
+          const text = texts.nth(index);
+          if (!(await text.isVisible())) continue;
+          const ratio = await sampleSurfaceContrast(page, surface, text, 3);
+          expect(
+            ratio,
+            `${theme} ${item.path} ${item.text} item ${index} minimum sampled contrast`
+          ).toBeGreaterThanOrEqual(4.5);
+        }
       }
     }
 
-    await gotoWithTheme(page, "/", "light");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await gotoWithTheme(page, "/", "system");
     const homeSurface = page.locator(".nature-mobile-reading-surface").first();
-    const lightBackground = await homeSurface.evaluate(
+    const darkBackground = await homeSurface.evaluate(
       (element) => getComputedStyle(element).backgroundColor
     );
-    await page.evaluate(() => {
-      document.documentElement.dataset.uiTheme = "dark";
-      document.documentElement.dataset.theme = "dark";
-    });
-    const darkBackground = await homeSurface.evaluate(
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("html")).toHaveAttribute("data-ui-theme", "light");
+    const lightBackground = await homeSurface.evaluate(
       (element) => getComputedStyle(element).backgroundColor
     );
     expect(darkBackground).not.toBe(lightBackground);
@@ -406,5 +514,43 @@ test.describe("mobile public reading surfaces", () => {
     expect(parseCssColor(staticBackground).alpha).toBe(0);
     await page.mouse.up();
     await expect(page).toHaveURL(beforeUrl);
+  });
+
+  test("long unbroken text stays inside the reading surface while code scrolls locally", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await gotoWithTheme(page, "/posts/code-block-fixture", "light");
+    await addLongReadingFixture(page.locator(".post-detail-body"));
+
+    for (const theme of ["light", "dark"] as const) {
+      if (theme === "dark") await gotoWithTheme(page, "/posts/code-block-fixture", theme);
+      const surface = page.locator(".post-detail-body");
+      if (theme === "dark") await addLongReadingFixture(surface);
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+          )
+        )
+        .toBe(true);
+      for (const locator of [
+        page.getByTestId("e2e-long-reading-title"),
+        page.getByTestId("e2e-long-reading-url"),
+      ]) {
+        const dimensions = await locator.evaluate((element) => ({
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+        }));
+        expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+      }
+      const code = page.locator(".post-detail-body pre").first();
+      await expect(code).toBeVisible();
+      const codeDimensions = await code.evaluate((element) => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }));
+      expect(codeDimensions.scrollWidth).toBeGreaterThan(codeDimensions.clientWidth);
+    }
   });
 });

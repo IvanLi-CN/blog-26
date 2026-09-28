@@ -646,6 +646,13 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     background: var(--nature-surface-strong);
   }
 
+  .nature-mobile-reading-surface .nature-muted,
+  .nature-mobile-reading-surface .nature-faint,
+  .nature-mobile-reading-stream .nature-muted,
+  .nature-mobile-reading-stream .nature-faint {
+    color: var(--nature-text) !important;
+  }
+
   .nature-mobile-reading-stream > .nature-mobile-reading-row {
     margin-block: 0 !important;
     border: 0 !important;

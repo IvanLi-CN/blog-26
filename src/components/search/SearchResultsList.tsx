@@ -40,7 +40,7 @@ function renderHighlightedText(text: string, query?: string, keyPrefix = "highli
     parts.push(
       <mark
         key={`${keyPrefix}-${index}-${value}`}
-        className="rounded-[0.35em] bg-[rgba(var(--nature-accent-rgb),0.2)] px-1 py-0.5 font-semibold text-[color:var(--nature-accent-strong)]"
+        className="rounded-[0.35em] bg-[rgba(var(--nature-accent-rgb),0.2)] px-1 py-0.5 font-semibold text-[color:var(--nature-text)]"
       >
         {value}
       </mark>
@@ -103,7 +103,7 @@ function renderSnippet(snippet: string, query?: string) {
       return (
         <pre
           key={block.key}
-          className="my-1.5 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-3 py-1.5 font-mono text-[0.82rem] leading-5 text-[color:var(--nature-text-soft)]"
+          className="my-1.5 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border border-[rgba(var(--nature-accent-rgb),0.18)] bg-[rgba(var(--nature-accent-rgb),0.08)] px-3 py-1.5 font-mono text-[0.82rem] leading-5 text-[color:var(--nature-text)]"
         >
           <code>{renderHighlightedText(code, query, block.key)}</code>
         </pre>
@@ -183,12 +183,18 @@ export default function SearchResultsList({
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                       <span className="nature-chip">{getSearchResultTypeLabel(type)}</span>
                       {query && (
-                        <span className="text-xs text-[color:var(--nature-text-faint)]">
+                        <span
+                          className="text-xs text-[color:var(--nature-text)]"
+                          data-search-match-meta
+                        >
                           匹配 {query}
                         </span>
                       )}
                       {score !== null && Number.isFinite(score) && (
-                        <span className="text-xs text-[color:var(--nature-text-faint)] opacity-75">
+                        <span
+                          className="text-xs text-[color:var(--nature-text)]"
+                          data-search-relevance-meta
+                        >
                           相关度 {formatScore(score)}%
                         </span>
                       )}
