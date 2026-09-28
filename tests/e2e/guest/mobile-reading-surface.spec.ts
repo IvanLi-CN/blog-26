@@ -92,7 +92,13 @@ function contrastRatio(first: number[], second: number[]) {
   return ((values[0] ?? 0) + 0.05) / ((values[1] ?? 0) + 0.05);
 }
 
-async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator, frames: number) {
+async function sampleSurfaceContrast(
+  page: Page,
+  surface: Locator,
+  text: Locator,
+  frames: number,
+  context: string
+) {
   await text.evaluate((element) => element.scrollIntoView({ block: "center" }));
   await expect(text).toBeVisible();
   await page.waitForTimeout(450);
@@ -129,26 +135,28 @@ async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator
 
       for (const rect of range.getClientRects()) {
         if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
-        const x = [6, 8, 10, 12]
-          .map((offset) =>
-            rect.right + offset < surface.getBoundingClientRect().right - 2
-              ? rect.right + offset
-              : rect.left - offset
-          )
-          .find((candidate) => {
-            const bounds = surface.getBoundingClientRect();
-            return (
-              candidate > bounds.left + 2 &&
-              candidate < bounds.right - 2 &&
-              !textRects.some(
-                (textRect) =>
-                  candidate >= textRect.left - 2 &&
-                  candidate <= textRect.right + 2 &&
-                  rect.top + rect.height / 2 >= textRect.top - 2 &&
-                  rect.top + rect.height / 2 <= textRect.bottom + 2
-              )
-            );
-          });
+        const bounds = surface.getBoundingClientRect();
+        const x = [
+          ...[6, 8, 10, 12].map((offset) =>
+            rect.right + offset < bounds.right - 2 ? rect.right + offset : rect.left - offset
+          ),
+          bounds.left + 4,
+          bounds.left + 8,
+          bounds.right - 4,
+          bounds.right - 8,
+        ].find((candidate) => {
+          return (
+            candidate > bounds.left + 2 &&
+            candidate < bounds.right - 2 &&
+            !textRects.some(
+              (textRect) =>
+                candidate >= textRect.left - 2 &&
+                candidate <= textRect.right + 2 &&
+                rect.top + rect.height / 2 >= textRect.top - 2 &&
+                rect.top + rect.height / 2 <= textRect.bottom + 2
+            )
+          );
+        });
         if (x === undefined) continue;
         points.push({
           x,
@@ -161,7 +169,9 @@ async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator
 
     return points;
   });
-  expect(samplePoints.length, "visible text line fragments to sample").toBeGreaterThan(0);
+  expect(samplePoints.length, `${context}: visible text line fragments to sample`).toBeGreaterThan(
+    0
+  );
   const ratios: number[] = [];
 
   for (let frame = 0; frame < frames; frame += 1) {
@@ -347,8 +357,12 @@ test.describe("mobile public reading surfaces", () => {
 
             if (route.path === tagRoute || route.path.startsWith("/search/")) {
               const typeChip = row.locator(".nature-chip").first();
+              const accessibleType = typeChip.locator(".sr-only");
               await expect(typeChip.locator(".nature-content-type-icon")).toBeVisible();
-              await expect(typeChip.locator(".sr-only")).toBeHidden();
+              await expect(accessibleType).toHaveCSS("position", "absolute");
+              await expect(accessibleType).toHaveCSS("width", "1px");
+              await expect(accessibleType).toHaveCSS("height", "1px");
+              await expect(accessibleType).toHaveCSS("overflow", "hidden");
               await expect(typeChip).toHaveCSS("border-width", "0px");
               await expect(typeChip).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
               if (route.path.startsWith("/search/")) {
@@ -493,7 +507,13 @@ test.describe("mobile public reading surfaces", () => {
         for (let index = 0; index < (await texts.count()); index += 1) {
           const text = texts.nth(index);
           if (!(await text.isVisible())) continue;
-          const ratio = await sampleSurfaceContrast(page, surface, text, 3);
+          const ratio = await sampleSurfaceContrast(
+            page,
+            surface,
+            text,
+            3,
+            `${theme} ${item.path} ${item.text} item ${index}`
+          );
           expect(
             ratio,
             `${theme} ${item.path} ${item.text} item ${index} minimum sampled contrast`
@@ -512,7 +532,13 @@ test.describe("mobile public reading surfaces", () => {
         element.append(placeholder);
       });
       const placeholder = body.getByText("暂无内容");
-      const ratio = await sampleSurfaceContrast(page, body, placeholder, 3);
+      const ratio = await sampleSurfaceContrast(
+        page,
+        body,
+        placeholder,
+        3,
+        `${theme} empty Markdown placeholder`
+      );
       expect(ratio, `${theme} empty Markdown placeholder contrast`).toBeGreaterThanOrEqual(4.5);
     }
 
@@ -526,7 +552,8 @@ test.describe("mobile public reading surfaces", () => {
       page,
       homeSurface,
       homeSurface.locator("p").first(),
-      3
+      3,
+      "dark system theme homepage introduction"
     );
     expect(darkSystemContrast).toBeGreaterThanOrEqual(4.5);
     await page.emulateMedia({ colorScheme: "light" });
@@ -539,7 +566,8 @@ test.describe("mobile public reading surfaces", () => {
       page,
       homeSurface,
       homeSurface.locator("p").first(),
-      3
+      3,
+      "light system theme homepage introduction"
     );
     expect(lightSystemContrast).toBeGreaterThanOrEqual(4.5);
   });
