@@ -101,6 +101,12 @@ We need a frontend-owned design system that keeps routes and content behavior st
 - Available logos may repeat as a decorative, non-interactive upper-right watermark. Watermarks stay behind the card content, use the documented native/monochrome light and dark opacity values, scale from 148px to 112px, and are hidden at viewport widths of 420px or less.
 - Homepage external entries opt into an adaptive mode: short visible labels remain beside icons when their footer fits, then switch to icon-only links when it does not. The complete title and accessible name stay available, mobile targets remain at least 44px, and the shared component's default mode remains unchanged. The section-level browse-all action follows the same icon-and-label pattern, becoming an accessible icon-only 44px target at `360px` and below.
 - The `/projects` page uses the title `项目` and shows the public-project and product-domain totals in its introduction. On desktop, all domain groups share one surface, with subtle horizontal separators between sections and a horizontal poster rail in each group. Below `640px`, the shared surface flattens, group headings align to the reading inset, and each rail uses approximately `85vw` poster cards with the next card visibly peeking into the viewport.
+- In the 开发工具 group, the Codex Vibe Monitor, Tavily Hikari, and OctoRill cards replace only their 4:5 poster media with a static runtime-data panel. Codex Vibe Monitor shows 实时 Token/分钟、并行调用数、今日 Token 消耗量 and a 90-day daily Token activity grid; Tavily Hikari shows 今日请求次数、今日积分消耗量、本月积分消耗量、积分总量 and a 90-day daily request activity grid; OctoRill shows 去重仓库数、压力值 and a per-repository freshness heatmap. No other runtime or operations field is rendered, and the OctoRill panel has no legend.
+- Runtime panels keep the 4:5 media contract. CVM and Hikari activity grids contain exactly 90 date-ordered daily points placed in calendar order with seven vertical rows from Sunday through Saturday and horizontal week columns; boundary gaps are empty, and no axis labels or ticks are shown. OctoRill consumes a `Uint8Array` with one status byte per deduplicated repository and renders cells in exactly the interface-provided order without sorting, grouping, or omission. Activity points expose their date and value through hover, keyboard focus, and touch activation without changing the project detail navigation target.
+- Runtime panel interiors are continuous data surfaces rather than nested cards: metric groups have no individual border, radius, or fill, and use typography plus hairline separators; activity grids sit directly on the panel background without a secondary frame.
+- The three runtime panels use project-specific generated raster atmosphere assets inside their 4:5 bounds. These assets are decorative material only: they contain no metrics, chart marks, axes, data points, text, or symbols. The existing global ambient scene remains responsible for the page background.
+- Every approved Stat also carries a compact trend series rendered by the lightweight `uPlot` Canvas library as a full-bounds background layer inside that Stat. The chart element covers the Stat's complete content box, while chart padding keeps the actual line or bar marks in the lower visual area and the label, value, and optional unit remain above it; it must not become a sibling row or panel-wide chart region. Stat height is content-sized: only the label, value, optional unit, and design-derived inner padding participate in layout, while the absolute chart canvas and decorative atmosphere do not. The long today-Token trend is visually inset toward the lower-right while retaining its full-day domain and trailing future gap. Hikari's two metric rows use compact content-sized rows so the activity grid retains the visual weight shown in the design; Hikari's month and total credit trends use real uPlot bars with a smooth trend line overlaid, while the remaining trends use smooth lines. Recent-hours trends contain 12 ordered points; today trends contain 25 hourly points from `00:00` through the next `00:00`, with future values represented by trailing `null` points so the line or bar chart stops at the current snapshot instead of filling the rest of the day. Chart axes, ticks, legends, and tooltips are hidden; the current numeric value remains the primary reading.
+- The current runtime panels are static, build-time Mock data stored in `site/lib/project-runtime-metrics.ts`. The public page must not fetch, open `EventSource`, poll, long-poll, connect to an instance, or expose raw records, prompts, search content, repository names, account identifiers, keys, IPs, URLs, or error details. A later live-data phase must use a new dedicated public interface implemented independently by each project; existing interfaces must not be reused or proxied by the blog.
 - Project title and shortcut links reflow when narrow space or enlarged text requires it; they must remain visible and must not create horizontal page overflow.
 
 ### 4.8 Mobile public header motion
@@ -171,6 +177,7 @@ We need a frontend-owned design system that keeps routes and content behavior st
 19. Public memo surfaces omit an absent resolved title without substituting a slug, while preserving available date, type, tags, excerpt or body, and detail navigation; cross-layer resolution and protocol metadata follow the memo-title-semantics Spec.
 20. The homepage's six featured-project cards keep available official logos beside titles, omit the LoadLynx logo slot, and use non-interactive theme-aware watermarks without obscuring card content. Card footer links show short labels when space allows and switch to accessible 44px-or-larger icon targets when needed. The section-level browse-all action keeps its icon and label at `393px` and becomes an accessible 44px icon target at `320px`; the page has no horizontal overflow at either width.
 21. Light, dark, and system themes keep primary reading text legible over ambient motion. Touch press, keyboard focus, long unbroken text, and theme changes preserve row feedback width, text insets, and usable links without layout jumps.
+22. The three selected 开发工具 cards use 4:5 runtime-data panels with exactly the approved per-project fields and no poster image. CVM and Hikari each expose 90 daily activity points in seven Sunday-to-Saturday rows across week columns, with no axis labels or ticks; OctoRill exposes the two approved statistics and renders every byte of its freshness `Uint8Array` in order without a legend. The static Mock page makes no runtime metrics network requests and preserves project detail and external shortcut navigation.
 
 ## 6. Validation
 
@@ -219,6 +226,18 @@ We need a frontend-owned design system that keeps routes and content behavior st
 ![Project index mobile light](./assets/projects-index-mobile-reading-surface-light.jpg)
 
 ![Project index mobile dark](./assets/projects-index-mobile-reading-surface-dark.jpg)
+
+### Project runtime panels
+
+- The deterministic Mock project wall is captured at `1780px × 1071px` and `393px × 852px` in both themes. The evidence includes the generated panel atmosphere assets, real uPlot Stat charts, the Sunday-to-Saturday activity grids, and the unchanged project card links.
+
+![Runtime panels desktop light](./assets/project-runtime-panels-desktop-light-1780x1071.png)
+
+![Runtime panels desktop dark](./assets/project-runtime-panels-desktop-dark-1780x1071.png)
+
+![Runtime panels mobile light](./assets/project-runtime-panels-mobile-light-393x852.png)
+
+![Runtime panels mobile dark](./assets/project-runtime-panels-mobile-dark-393x852.png)
 
 ### Project media showcase
 
@@ -385,6 +404,7 @@ This topic owns the public Nature frontend shell and its visitor-facing page sur
 - `VER-NATURE-PROJECT-DETAIL-MDX`: covers: `REQ-NATURE-PROJECT-DETAIL-MDX`; MDX loader/TOC tests, the migrated detail routes, the static build, and the detail-route fallback branch verify slug validation, reviewed block rendering, compiled bodies, and safe catalog-only fallback behavior for projects without a body.
 - `VER-NATURE-PROJECT-READING`: covers: `REQ-NATURE-PROJECT-READING`; focused guest Playwright coverage and the desktop/mobile light/dark page evidence verify sidebar order, TOC behavior, spacing, and responsive stacking.
 - `VER-NATURE-PROJECT-INTERACTION`: covers: `REQ-NATURE-PROJECT-INTERACTION`; focused guest Playwright coverage verifies rest-state truncation, focus-visible expansion, shortcut names/targets, and hover/focus contrast behavior.
+- `VER-NATURE-PROJECT-RUNTIME-MOCK`: covers the runtime-data panel contract; `tests/lib/project-runtime-metrics.test.ts`, the focused guest Playwright project-wall test, `bun run check`, and the static Astro build verify the field whitelist, 90-day shape, non-negative values, OctoRill count conservation, 4:5 panels, interaction tooltips, preserved links, and the absence of runtime metrics requests.
 
 ### Desktop header search width
 

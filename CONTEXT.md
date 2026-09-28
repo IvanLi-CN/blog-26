@@ -84,6 +84,26 @@ _Avoid_: 固定相关实践卡
 A vertical project identity visual used to make a project recognizable during discovery and at the start of its focused view.
 _Avoid_: 项目封面
 
+**项目运行数据面板**:
+A 4:5 data surface inside a selected 项目索引卡. It replaces the 项目海报 in the project wall's visual slot and presents only the approved public runtime metrics for that project; it is not an overlay on the poster and does not add status, latency, success-rate, or synchronization fields.
+_Avoid_: 海报数据浮层, 运行状态卡
+
+**运行数据 Mock**:
+A development-only static dataset extracted from actual aggregate runtime values and sanitized before it is used to validate the 项目运行数据面板. It represents the normal loaded state, preserves the approved metric relationships, and is not connected to live project instances; it is not a product-facing concept.
+_Avoid_: 模拟前景层, 假实时数据
+
+**脱敏运行数据样本**:
+A 运行数据 Mock source containing only the approved aggregate metrics. It excludes raw requests, prompts, search content, repository names, account or user identifiers, API keys, IP addresses, URLs, error details, and other identifying records.
+_Avoid_: 生产数据副本, 原始运行日志
+
+**仓库刷新新鲜度活动图**:
+The OctoRill activity graph from the approved visual reference. It shows the count of visible repositories in five refresh-age categories: within 4 hours, 4-12 hours, 12-24 hours, over 24 hours, and no successful record.
+_Avoid_: 五段活动分桶图
+
+**积分总量**:
+The aggregate quota limit currently available from the eligible Tavily Hikari key pool. It is displayed separately from today's and this month's consumed credits and does not mean historical cumulative consumption.
+_Avoid_: 累计消耗积分, 剩余积分
+
 **社交预览图**:
 A horizontal project visual that gives readers a quick view of the project's interface and capabilities.
 _Avoid_: 社交图

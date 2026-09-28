@@ -401,9 +401,8 @@ test.describe("Nature frontend public coverage", () => {
     }
 
     const projectImages = page.locator(".projects-poster-card img");
-    await expect(projectImages.first()).toHaveAttribute("loading", "eager");
-    await expect(projectImages.first()).toHaveAttribute("fetchpriority", "high");
-    await expect(projectImages.nth(1)).toHaveAttribute("loading", "lazy");
+    await expect(projectImages).toHaveCount(11);
+    await expect(projectImages.first()).toHaveAttribute("loading", "lazy");
 
     await gotoWithTheme(page, "/", "light");
     await expect(page.getByRole("heading", { name: "精选项目 (6)", exact: true })).toBeVisible();
@@ -689,24 +688,19 @@ test.describe("Nature frontend public coverage", () => {
       .toMatch(/octo-rill-light-640\.(avif|webp)$/);
   });
 
-  test("project posters provide progressive media and prioritize only the first poster", async ({
-    page,
-  }) => {
+  test("remaining project posters preserve progressive media delivery", async ({ page }) => {
     await gotoWithTheme(page, "/projects", "light");
 
     const posters = page.locator(".project-poster");
     const posterImages = page.locator("img[data-project-poster-image]");
-    const eagerPosters = page.locator('img[data-project-poster-image][loading="eager"]');
     const lazyPosters = page.locator('img[data-project-poster-image][loading="lazy"]');
     const kaisouPoster = posters
       .filter({ has: page.getByRole("img", { name: "KaisouMail 项目海报" }) })
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
 
-    await expect(posterImages).toHaveCount(14);
-    await expect(eagerPosters).toHaveCount(1);
-    await expect(eagerPosters.first()).toHaveAttribute("fetchpriority", "high");
-    await expect(lazyPosters).toHaveCount(13);
+    await expect(posterImages).toHaveCount(11);
+    await expect(lazyPosters).toHaveCount(11);
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
@@ -729,6 +723,234 @@ test.describe("Nature frontend public coverage", () => {
       .locator(".project-poster");
     await expect(themedPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(themedPoster.locator(".project-poster-scrim")).toHaveCount(0);
+  });
+
+  test("runtime panels replace only the three selected project posters", async ({ page }) => {
+    await page.setViewportSize({ width: 1780, height: 1071 });
+    await gotoWithTheme(page, "/projects", "light");
+
+    const forbiddenLabels = [
+      "成功率",
+      "P95",
+      "代理状态",
+      "实例状态",
+      "最近同步",
+      "上次全量",
+      "Mock",
+    ];
+    const cards = {
+      cvm: page.locator('.projects-poster-card:has(a[href="/projects/codex-vibe-monitor/"])'),
+      hikari: page.locator('.projects-poster-card:has(a[href="/projects/tavily-hikari/"])'),
+      octo: page.locator('.projects-poster-card:has(a[href="/projects/octo-rill/"])'),
+    } as const;
+
+    for (const card of Object.values(cards)) {
+      await expect(card.locator(".project-runtime-panel")).toHaveCount(1);
+      await expect(card.locator(".runtime-panel-atmosphere")).toHaveCount(1);
+      await expect(card.locator(".runtime-panel-art-stage")).toHaveCount(1);
+      await expect(card.locator("img[data-runtime-background]")).toHaveCount(1);
+      await expect(card.locator(".runtime-panel-art-stage svg")).toHaveCount(0);
+      await expect(card.locator(".project-poster")).toHaveCount(0);
+      await expect(card.locator("img:not([data-runtime-background])")).toHaveCount(0);
+      const cardText = await card.innerText();
+      for (const label of forbiddenLabels) expect(cardText).not.toContain(label);
+      await expect(card.locator(".project-runtime-panel")).toHaveCSS("aspect-ratio", "4 / 5");
+      await expect
+        .poll(() =>
+          card.locator(".project-runtime-panel").evaluate((panel) => {
+            const panelBounds = panel.getBoundingClientRect();
+            const art = panel.querySelector(".runtime-panel-art-stage");
+            const artBounds = art?.getBoundingClientRect();
+            if (!art || !artBounds) return false;
+            return (
+              getComputedStyle(art).position === "absolute" &&
+              artBounds.left >= panelBounds.left - 0.5 &&
+              artBounds.top >= panelBounds.top - 0.5 &&
+              artBounds.right <= panelBounds.right + 0.5 &&
+              artBounds.bottom <= panelBounds.bottom + 0.5
+            );
+          })
+        )
+        .toBe(true);
+      await expect
+        .poll(() =>
+          card.locator(".runtime-sparkline").evaluateAll((sparklines) =>
+            sparklines.every((sparkline) => {
+              const sparklineBounds = sparkline.getBoundingClientRect();
+              const canvas = sparkline.querySelector("canvas");
+              if (!canvas) return false;
+              const canvasBounds = canvas.getBoundingClientRect();
+              return (
+                canvasBounds.left >= sparklineBounds.left - 0.5 &&
+                canvasBounds.top >= sparklineBounds.top - 0.5 &&
+                canvasBounds.right <= sparklineBounds.right + 0.5 &&
+                canvasBounds.bottom <= sparklineBounds.bottom + 0.5
+              );
+            })
+          )
+        )
+        .toBe(true);
+      await expect
+        .poll(() =>
+          card.locator(".runtime-metric").evaluateAll((metrics) =>
+            metrics.every((metric) => {
+              const value = metric.querySelector<HTMLElement>(".runtime-metric-value");
+              const unit = metric.querySelector<HTMLElement>(".runtime-metric-unit");
+              const chart = metric.querySelector<HTMLElement>(".runtime-sparkline");
+              const label = metric.querySelector<HTMLElement>(".runtime-metric-label");
+              if (!value || !chart || !label) return false;
+              const metricBounds = metric.getBoundingClientRect();
+              const chartBounds = chart.getBoundingClientRect();
+              const chartStyle = getComputedStyle(chart);
+              const labelStyle = getComputedStyle(label);
+              const valueStyle = getComputedStyle(value);
+              const anchor = unit ?? value;
+              return (
+                chartStyle.position === "absolute" &&
+                Number(chartStyle.zIndex) < Number(labelStyle.zIndex) &&
+                Number(chartStyle.zIndex) < Number(valueStyle.zIndex) &&
+                chartBounds.left <= metricBounds.left + 1.5 &&
+                chartBounds.top <= metricBounds.top + 1.5 &&
+                chartBounds.right >= metricBounds.right - 0.5 &&
+                chartBounds.bottom >= metricBounds.bottom - 0.5 &&
+                anchor.getBoundingClientRect().bottom <= metricBounds.bottom + 0.5
+              );
+            })
+          )
+        )
+        .toBe(true);
+    }
+
+    await expect
+      .poll(() =>
+        cards.cvm.locator(".runtime-metric").evaluateAll((metrics) => {
+          const heights = metrics.map((metric) => metric.getBoundingClientRect().height);
+          return (
+            metrics.every((metric) => getComputedStyle(metric).minHeight === "0px") &&
+            heights.every((height) => height > 0 && height <= 80)
+          );
+        })
+      )
+      .toBe(true);
+
+    await expect(cards.cvm).toContainText("实时 Token/分钟");
+    await expect(cards.cvm).toContainText("并行调用数");
+    await expect(cards.cvm).toContainText("今日 Token 消耗量");
+    await expect(cards.cvm.locator(".runtime-metric-unit")).toHaveCount(0);
+    await expect(cards.cvm.locator(".runtime-sparkline")).toHaveCount(3);
+    await expect(cards.cvm.locator(".runtime-sparkline .uplot")).toHaveCount(3);
+    await expect(
+      cards.cvm.locator('.runtime-sparkline[aria-label^="今日 Token 消耗量"]')
+    ).toHaveAttribute("data-runtime-chart-placement", "right");
+    await expect(
+      cards.cvm.locator('.runtime-sparkline[data-runtime-range="today"]')
+    ).toHaveAttribute("data-runtime-point-count", "25");
+    await expect(
+      cards.cvm.locator('.runtime-sparkline[data-runtime-range="today"]')
+    ).toHaveAttribute("data-runtime-future-count", "8");
+    await expect(cards.cvm.locator(".runtime-activity-cell")).toHaveCount(90);
+    await expect(cards.cvm.locator(".runtime-activity-slot--empty")).toHaveCount(8);
+    await expect(cards.cvm.locator(".runtime-chart-axis")).toHaveCount(0);
+    await expect(cards.hikari).toContainText("今日请求次数");
+    await expect(cards.hikari).toContainText("今日积分消耗量");
+    await expect(cards.hikari).toContainText("本月积分消耗量");
+    await expect(cards.hikari).toContainText("积分总量");
+    await expect(cards.hikari.locator(".runtime-sparkline")).toHaveCount(4);
+    await expect(cards.hikari.locator(".runtime-sparkline .uplot")).toHaveCount(4);
+    await expect(cards.hikari.locator('[data-runtime-chart-variant="bars"]')).toHaveCount(2);
+    await expect(cards.hikari.locator('[data-runtime-chart-variant="bars"] .uplot')).toHaveCount(2);
+    await expect(
+      cards.hikari.locator('[data-runtime-chart-variant="bars"][aria-label^="本月积分消耗量"]')
+    ).toHaveCount(1);
+    await expect(
+      cards.hikari.locator('[data-runtime-chart-variant="bars"][aria-label^="积分总量"]')
+    ).toHaveCount(1);
+    await expect(cards.hikari.locator('[data-runtime-chart-variant="line"]')).toHaveCount(2);
+    await expect
+      .poll(() =>
+        cards.hikari.locator(".runtime-metric").evaluateAll((metrics) => {
+          const heights = metrics.map((metric) => metric.getBoundingClientRect().height);
+          return (
+            metrics.every((metric) => getComputedStyle(metric).minHeight === "0px") &&
+            heights[2] > heights[0] &&
+            Math.max(...heights) <= 85
+          );
+        })
+      )
+      .toBe(true);
+    await expect(
+      cards.hikari.locator('.runtime-sparkline[data-runtime-range="today"]')
+    ).toHaveCount(2);
+    await expect(
+      cards.hikari.locator('.runtime-sparkline[data-runtime-range="today"]').first()
+    ).toHaveAttribute("data-runtime-future-count", "8");
+    await expect(cards.hikari.locator(".runtime-activity-cell")).toHaveCount(90);
+    await expect(cards.hikari.locator(".runtime-activity-slot--empty")).toHaveCount(8);
+    await expect(cards.hikari.locator(".runtime-chart-axis")).toHaveCount(0);
+    for (const card of [cards.cvm, cards.hikari]) {
+      await expect
+        .poll(() =>
+          card.locator(".runtime-activity-grid").evaluate((grid) => {
+            const cells = Array.from(grid.children) as HTMLElement[];
+            return {
+              weekCount: grid.getAttribute("data-week-count"),
+              weekdayCount: grid.getAttribute("data-weekday-count"),
+              maxWeek: Math.max(
+                ...cells.map((cell) => Number(cell.style.getPropertyValue("--runtime-week")))
+              ),
+              weekdayCountFromCells: new Set(
+                cells.map((cell) => cell.style.getPropertyValue("--runtime-weekday"))
+              ).size,
+            };
+          })
+        )
+        .toEqual({
+          weekCount: "14",
+          weekdayCount: "7",
+          maxWeek: 14,
+          weekdayCountFromCells: 7,
+        });
+    }
+    await expect(cards.octo).toContainText("去重仓库数");
+    await expect(cards.octo).toContainText("压力值");
+    await expect(cards.octo.locator(".runtime-sparkline")).toHaveCount(2);
+    await expect(cards.octo.locator(".runtime-sparkline .uplot")).toHaveCount(2);
+    await expect(cards.octo.locator(".runtime-freshness-grid")).toHaveCount(1);
+    await expect(cards.octo.locator(".runtime-freshness-cell")).toHaveCount(501);
+    await expect(cards.octo.locator(".runtime-freshness-list")).toHaveCount(0);
+    await expect
+      .poll(() =>
+        cards.octo
+          .locator(".runtime-freshness-cell")
+          .evaluateAll((cells) => cells.slice(0, 8).map((cell) => cell.dataset.statusCode))
+      )
+      .toEqual(["0", "1", "1", "0", "0", "0", "1", "0"]);
+    await expect
+      .poll(() =>
+        cards.octo
+          .locator(".runtime-freshness-cell")
+          .evaluateAll((cells) => cells.slice(-8).map((cell) => cell.dataset.statusCode))
+      )
+      .toEqual(["1", "0", "2", "1", "0", "0", "0", "0"]);
+
+    const lastCvmPoint = cards.cvm.locator(".runtime-activity-cell").last();
+    await lastCvmPoint.focus();
+    await expect(lastCvmPoint).toBeFocused();
+    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("2026-09-27");
+    await expect(cards.cvm.locator("[data-runtime-tooltip]")).toContainText("Token");
+    await lastCvmPoint.click();
+    await expect(page).toHaveURL(/\/projects\/$/);
+
+    await page.setViewportSize({ width: 393, height: 852 });
+    await gotoWithTheme(page, "/projects", "dark");
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+        )
+      )
+      .toBe(true);
+    await expect(page.locator(".project-runtime-panel")).toHaveCount(3);
   });
 
   test("project poster preserves its fallback when image delivery fails", async ({ page }) => {

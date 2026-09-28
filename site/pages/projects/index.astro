@@ -1,8 +1,10 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import ProjectPoster from "../../components/projects/ProjectPoster.astro";
+import ProjectRuntimeDataPanel from "../../components/projects/ProjectRuntimeDataPanel.astro";
 import ProjectExternalLinks from "../../components/projects/ProjectExternalLinks.astro";
 import { getGroupedProjectCatalog, getProjectCardEntries, getProjectDetailPath, projectCatalog } from "../../lib/projects";
+import { getProjectRuntimeMetrics } from "../../lib/project-runtime-metrics";
 import { getSnapshot } from "../../lib/public-site";
 import { toPublicSitePath } from "../../lib/runtime-urls";
 
@@ -51,12 +53,16 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
                     aria-label={`查看 ${project.title} 项目案例`}
                   >
                     <div class="projects-poster-visual">
-                      <ProjectPoster
-                        project={project}
-                        compact={true}
-                        priority={project.slug === firstProjectSlug}
-                        fetchPriority={project.slug === firstProjectSlug ? "high" : "auto"}
-                      />
+                      {getProjectRuntimeMetrics(project.slug) ? (
+                        <ProjectRuntimeDataPanel metrics={getProjectRuntimeMetrics(project.slug)!} />
+                      ) : (
+                        <ProjectPoster
+                          project={project}
+                          compact={true}
+                          priority={project.slug === firstProjectSlug}
+                          fetchPriority={project.slug === firstProjectSlug ? "high" : "auto"}
+                        />
+                      )}
                     </div>
                   </a>
                   <div class="projects-poster-copy">

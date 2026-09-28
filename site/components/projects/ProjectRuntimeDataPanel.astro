@@ -1,0 +1,330 @@
+---
+import RuntimeActivityChart from "./RuntimeActivityChart.astro";
+import RuntimePanelAtmosphere from "./RuntimePanelAtmosphere.astro";
+import RuntimeSparkline from "./RuntimeSparkline.astro";
+import type { ProjectRuntimeMetrics } from "../../lib/project-runtime-metrics";
+
+interface Props {
+  metrics: ProjectRuntimeMetrics;
+}
+
+const { metrics } = Astro.props as Props;
+const numberFormatter = new Intl.NumberFormat("zh-CN");
+const formatNumber = (value: number) => numberFormatter.format(value);
+const freshnessStatusClasses = [
+  "within-4-hours",
+  "4-to-12-hours",
+  "12-to-24-hours",
+  "over-24-hours",
+  "no-success",
+] as const;
+const freshnessCells =
+  metrics.kind === "octo-rill"
+    ? Array.from(metrics.freshness)
+    : [];
+---
+<div
+  class={`project-runtime-panel project-runtime-panel--${metrics.kind}`}
+  data-project-runtime-panel
+  data-runtime-kind={metrics.kind}
+>
+  <div class="runtime-panel-body">
+    <div class="runtime-panel-art-stage">
+      <RuntimePanelAtmosphere kind={metrics.kind} />
+    </div>
+
+    {metrics.kind === "codex-vibe-monitor" && (
+      <>
+        <div class="runtime-metric-grid runtime-metric-grid--cvm">
+          <div class="runtime-metric runtime-metric--accent">
+            <span class="runtime-metric-label">实时 Token/分钟</span>
+            <strong class="runtime-metric-value">{formatNumber(metrics.tokensPerMinute.value)}</strong>
+            <RuntimeSparkline label="实时 Token/分钟" stat={metrics.tokensPerMinute} />
+          </div>
+          <div class="runtime-metric">
+            <span class="runtime-metric-label">并行调用数</span>
+            <strong class="runtime-metric-value">{formatNumber(metrics.parallelCalls.value)}</strong>
+            <RuntimeSparkline label="并行调用数" stat={metrics.parallelCalls} tone="secondary" />
+          </div>
+          <div class="runtime-metric">
+            <span class="runtime-metric-label">今日 Token 消耗量</span>
+            <strong class="runtime-metric-value runtime-metric-value--compact">{formatNumber(metrics.todayTokens.value)}</strong>
+            <RuntimeSparkline label="今日 Token 消耗量" stat={metrics.todayTokens} placement="right" />
+          </div>
+        </div>
+        <RuntimeActivityChart
+          points={metrics.tokenActivity90d}
+          label="最近 90 天 Token 消耗量活动图"
+          kind="tokens"
+        />
+      </>
+    )}
+
+    {metrics.kind === "tavily-hikari" && (
+      <>
+        <div class="runtime-metric-grid runtime-metric-grid--hikari">
+          <div class="runtime-metric runtime-metric--accent">
+            <span class="runtime-metric-label">今日请求次数</span>
+            <strong class="runtime-metric-value">{formatNumber(metrics.todayRequests.value)}</strong>
+            <RuntimeSparkline label="今日请求次数" stat={metrics.todayRequests} />
+          </div>
+          <div class="runtime-metric">
+            <span class="runtime-metric-label">今日积分消耗量</span>
+            <strong class="runtime-metric-value">{formatNumber(metrics.todayCredits.value)}</strong>
+            <RuntimeSparkline label="今日积分消耗量" stat={metrics.todayCredits} tone="secondary" />
+          </div>
+          <div class="runtime-metric">
+            <span class="runtime-metric-label">本月积分消耗量</span>
+            <strong class="runtime-metric-value">{formatNumber(metrics.monthCredits.value)}</strong>
+            <RuntimeSparkline label="本月积分消耗量" stat={metrics.monthCredits} tone="secondary" variant="bars" />
+          </div>
+          <div class="runtime-metric runtime-metric--quiet">
+            <span class="runtime-metric-label">积分总量</span>
+            <strong class="runtime-metric-value">{formatNumber(metrics.totalCredits.value)}</strong>
+            <RuntimeSparkline label="积分总量" stat={metrics.totalCredits} tone="secondary" variant="bars" />
+          </div>
+        </div>
+        <RuntimeActivityChart
+          points={metrics.requestActivity90d}
+          label="最近 90 天每日请求数活动图"
+          kind="requests"
+        />
+      </>
+    )}
+
+    {metrics.kind === "octo-rill" && (
+      <>
+        <div class="runtime-metric-grid runtime-metric-grid--octo">
+          <div class="runtime-metric runtime-metric--accent">
+            <span class="runtime-metric-label">去重仓库数</span>
+            <strong class="runtime-metric-value">{formatNumber(metrics.deduplicatedRepositories.value)}</strong>
+            <RuntimeSparkline label="去重仓库数" stat={metrics.deduplicatedRepositories} />
+          </div>
+          <div class="runtime-metric">
+            <span class="runtime-metric-label">压力值</span>
+            <strong class="runtime-metric-value">{metrics.pressure.value.toFixed(2)}</strong>
+            <RuntimeSparkline label="压力值" stat={metrics.pressure} tone="warm" />
+          </div>
+        </div>
+        <section class="runtime-freshness" aria-label="仓库刷新新鲜度活动图">
+          <h3 class="runtime-chart-title">刷新新鲜度</h3>
+          <div
+            class="runtime-freshness-grid"
+            role="img"
+            aria-label={`仓库刷新新鲜度热点图，共 ${formatNumber(metrics.deduplicatedRepositories.value)} 个仓库`}
+          >
+            {freshnessCells.map((statusCode) => (
+              <span
+                class={`runtime-freshness-cell runtime-freshness-cell--${freshnessStatusClasses[statusCode] ?? "unknown"}`}
+                data-status-code={statusCode}
+                aria-hidden="true"
+              ></span>
+            ))}
+          </div>
+        </section>
+      </>
+    )}
+  </div>
+</div>
+
+<style>
+  .project-runtime-panel {
+    --runtime-panel-rgb: 20, 44, 40;
+    --runtime-accent-rgb: 102, 214, 163;
+    --runtime-secondary-rgb: 89, 181, 214;
+    --runtime-warm-rgb: 236, 181, 87;
+    --runtime-text-rgb: 235, 245, 239;
+    --runtime-text: rgb(var(--runtime-text-rgb));
+    --runtime-text-soft: rgba(var(--runtime-text-rgb), 0.72);
+    --runtime-text-faint: rgba(var(--runtime-text-rgb), 0.5);
+    display: grid;
+    position: relative;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.8rem;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    min-width: 0;
+    overflow: hidden;
+    padding: clamp(0.85rem, 3.5%, 1.2rem);
+    border: 1px solid rgba(var(--nature-highlight-rgb), 0.17);
+    border-radius: 0.65rem;
+    color: var(--runtime-text);
+    background:
+      radial-gradient(circle at 86% 12%, rgba(var(--runtime-accent-rgb), 0.08), transparent 30%),
+      linear-gradient(180deg, rgba(var(--runtime-panel-rgb), 0.98), rgba(var(--runtime-panel-rgb), 0.93));
+    box-shadow: inset 0 1px 0 rgba(var(--nature-highlight-rgb), 0.08);
+  }
+
+  .runtime-panel-body {
+    display: contents;
+  }
+
+  .runtime-panel-art-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .project-runtime-panel--tavily-hikari {
+    --runtime-panel-rgb: 18, 38, 58;
+    --runtime-accent-rgb: 109, 187, 239;
+    --runtime-secondary-rgb: 119, 215, 188;
+  }
+
+  .project-runtime-panel--octo-rill {
+    --runtime-panel-rgb: 18, 43, 43;
+    --runtime-accent-rgb: 104, 221, 176;
+    --runtime-secondary-rgb: 102, 181, 219;
+    --runtime-warm-rgb: 241, 180, 80;
+  }
+
+  .runtime-metric-grid {
+    position: relative;
+    grid-row: 1;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    min-width: 0;
+  }
+
+  .runtime-metric-grid--cvm .runtime-metric:last-child {
+    grid-column: 1 / -1;
+    border-top: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    padding-top: 0.95rem;
+  }
+
+  .runtime-metric {
+    position: relative;
+    display: block;
+    isolation: isolate;
+    min-width: 0;
+    min-height: 0;
+    padding: 0.35rem 0.72rem 1rem 0;
+  }
+
+  .runtime-metric-label,
+  .runtime-metric-value,
+  .runtime-metric-unit {
+    position: relative;
+    z-index: 2;
+    display: block;
+  }
+
+  .runtime-metric-value {
+    margin-top: 0.42rem;
+  }
+
+  .runtime-metric-unit {
+    margin-top: 0.2rem;
+  }
+
+  .runtime-metric-grid > .runtime-metric:nth-child(even) {
+    border-left: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    padding-left: 0.72rem;
+  }
+
+  .runtime-metric-grid--hikari > .runtime-metric:nth-child(n + 3) {
+    border-top: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+    padding-top: 0.95rem;
+  }
+
+  .runtime-metric-grid--hikari > .runtime-metric:nth-child(n + 3) > .runtime-metric-value {
+    font-size: clamp(1rem, 2.7vw, 1.52rem);
+  }
+
+  .runtime-metric--accent {
+    color: rgb(var(--runtime-accent-rgb));
+  }
+
+  .runtime-metric--accent .runtime-metric-label {
+    color: rgba(var(--runtime-accent-rgb), 0.82);
+  }
+
+  .runtime-metric-label,
+  .runtime-metric-unit {
+    color: var(--runtime-text-faint);
+    font-size: clamp(0.56rem, 1.35vw, 0.66rem);
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .runtime-metric-value {
+    min-width: 0;
+    overflow: hidden;
+    font-family: var(--font-display), "Noto Serif SC", serif;
+    font-size: clamp(1.12rem, 3vw, 1.66rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--runtime-text);
+  }
+
+  .runtime-metric--accent .runtime-metric-value {
+    color: rgb(var(--runtime-accent-rgb));
+  }
+
+  .runtime-metric-value--compact {
+    font-size: clamp(0.9rem, 2.25vw, 1.28rem);
+  }
+
+  .runtime-freshness {
+    position: relative;
+    grid-row: 2;
+    z-index: 1;
+    display: grid;
+    align-content: end;
+    gap: 0.55rem;
+    min-height: 0;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(var(--nature-highlight-rgb), 0.14);
+  }
+
+  .runtime-chart-title {
+    margin: 0;
+    color: var(--runtime-text-soft);
+    font-size: 0.71rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  .runtime-freshness-grid {
+    display: grid;
+    grid-template-columns: repeat(30, minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 0.18rem;
+    min-height: 7.25rem;
+    padding: 0.08rem 0;
+  }
+
+  .runtime-freshness-cell {
+    min-width: 0;
+    min-height: 0.24rem;
+    border-radius: 0.12rem;
+    background: rgb(var(--runtime-secondary-rgb));
+  }
+
+  .runtime-freshness-cell--within-4-hours {
+    background: rgb(var(--runtime-accent-rgb));
+  }
+
+  .runtime-freshness-cell--4-to-12-hours {
+    background: rgb(var(--runtime-warm-rgb));
+  }
+
+  .runtime-freshness-cell--12-to-24-hours {
+    background: rgb(238, 126, 92);
+  }
+
+  .runtime-freshness-cell--over-24-hours {
+    background: rgb(207, 102, 134);
+  }
+
+  .runtime-freshness-cell--no-success {
+    background: rgb(111, 116, 128);
+  }
+</style>
