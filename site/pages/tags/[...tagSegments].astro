@@ -71,9 +71,9 @@ const { iconId, iconSvg } = pickTagIconSvg(summary.name, snapshot.tags.tagIconMa
           return (
             <article class="nature-panel nature-panel-soft nature-mobile-reading-row tag-detail-entry px-4 py-4 sm:px-6 sm:py-5">
               <div class="flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-                <span class="nature-chip gap-1">
-                  <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="h-3.5 w-3.5" />
-                  {item.type === "memo" ? "闪念" : "文章"}
+                <span class="nature-chip nature-content-type-chip gap-1">
+                  <Icon name={item.type === "memo" ? "tabler:bulb" : "tabler:article"} className="nature-content-type-icon h-3.5 w-3.5" />
+                  <span class="sr-only sm:not-sr-only">{item.type === "memo" ? "闪念" : "文章"}</span>
                 </span>
                 <time dateTime={item.publishDate}>{formatAbsoluteDate(item.publishDate)}</time>
               </div>

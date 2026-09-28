@@ -1,3 +1,4 @@
+import Icon from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import {
   getSearchResultHref,
@@ -181,7 +182,15 @@ export default function SearchResultsList({
                 <div className="px-4 py-3.5 sm:px-5 sm:py-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                      <span className="nature-chip">{getSearchResultTypeLabel(type)}</span>
+                      <span className="nature-chip nature-content-type-chip gap-1">
+                        <Icon
+                          name={type === "memo" ? "tabler:bulb" : "tabler:article"}
+                          className="nature-content-type-icon h-3.5 w-3.5"
+                        />
+                        <span className="sr-only sm:not-sr-only">
+                          {getSearchResultTypeLabel(type)}
+                        </span>
+                      </span>
                       {query && (
                         <span
                           className="text-xs text-[color:var(--nature-text)]"

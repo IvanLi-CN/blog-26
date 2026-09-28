@@ -3,7 +3,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { cleanup, render } from "@testing-library/react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
-GlobalRegistrator.register();
+if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 afterEach(() => {
   cleanup();

@@ -98,8 +98,20 @@ async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator
   await page.waitForTimeout(450);
 
   const samplePoints = await text.evaluate((element) => {
+    const surface = element.closest(
+      ".nature-mobile-reading-surface, .nature-mobile-reading-stream, .post-detail-header, .post-detail-body, .memo-detail-card, .project-detail-header, .project-mdx-section, .projects-domain-stack"
+    );
+    if (!surface) throw new Error("Reading text is not inside a known reading surface");
     const range = document.createRange();
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const surfaceWalker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT);
+    const textRects: DOMRect[] = [];
+    while (surfaceWalker.nextNode()) {
+      const textNode = surfaceWalker.currentNode;
+      if (!textNode.textContent?.trim()) continue;
+      range.selectNodeContents(textNode);
+      textRects.push(...Array.from(range.getClientRects()));
+    }
     const points: Array<{ x: number; y: number; color: string; opacity: number }> = [];
 
     while (walker.nextNode()) {
@@ -117,8 +129,29 @@ async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator
 
       for (const rect of range.getClientRects()) {
         if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
+        const x = [6, 8, 10, 12]
+          .map((offset) =>
+            rect.right + offset < surface.getBoundingClientRect().right - 2
+              ? rect.right + offset
+              : rect.left - offset
+          )
+          .find((candidate) => {
+            const bounds = surface.getBoundingClientRect();
+            return (
+              candidate > bounds.left + 2 &&
+              candidate < bounds.right - 2 &&
+              !textRects.some(
+                (textRect) =>
+                  candidate >= textRect.left - 2 &&
+                  candidate <= textRect.right + 2 &&
+                  rect.top + rect.height / 2 >= textRect.top - 2 &&
+                  rect.top + rect.height / 2 <= textRect.bottom + 2
+              )
+            );
+          });
+        if (x === undefined) continue;
         points.push({
-          x: Math.min(rect.right + 5, window.innerWidth - 3),
+          x,
           y: Math.min(window.innerHeight - 2, Math.max(2, rect.top + rect.height / 2)),
           color,
           opacity,
@@ -149,38 +182,14 @@ async function sampleSurfaceContrast(page: Page, surface: Locator, text: Locator
     for (const point of samplePoints) {
       const color = parseCssColor(point.color);
       color.alpha *= point.opacity;
-      const colorChannels = [color.red, color.green, color.blue];
       const x = Math.min(surfaceBounds.right - 2, Math.max(surfaceBounds.left + 2, point.x));
       const centerX = Math.min(info.width - 1, Math.max(0, Math.round(x * surfaceBounds.dpr)));
       const centerY = Math.min(
         info.height - 1,
         Math.max(0, Math.round(point.y * surfaceBounds.dpr))
       );
-      let background: number[] | null = null;
-      let greatestColorDistance = -1;
-
-      for (let dy = -4; dy <= 4; dy += 1) {
-        for (let dx = -6; dx <= 6; dx += 1) {
-          const px = Math.min(info.width - 1, Math.max(0, centerX + dx));
-          const py = Math.min(info.height - 1, Math.max(0, centerY + dy));
-          const candidateX = px / surfaceBounds.dpr;
-          if (candidateX < surfaceBounds.left + 1 || candidateX > surfaceBounds.right - 1) {
-            continue;
-          }
-          const offset = (py * info.width + px) * info.channels;
-          const candidate = [data[offset], data[offset + 1], data[offset + 2]] as number[];
-          const colorDistance = candidate.reduce(
-            (total, channel, index) => total + (channel - (colorChannels[index] ?? 0)) ** 2,
-            0
-          );
-          if (colorDistance > greatestColorDistance) {
-            greatestColorDistance = colorDistance;
-            background = candidate;
-          }
-        }
-      }
-
-      if (!background) throw new Error("No background pixels found beside visible text");
+      const offset = (centerY * info.width + centerX) * info.channels;
+      const background = [data[offset], data[offset + 1], data[offset + 2]] as number[];
       ratios.push(contrastRatio(composite(color, background), background));
     }
 
@@ -335,6 +344,14 @@ test.describe("mobile public reading surfaces", () => {
             );
             await expect(row).toHaveCSS("border-bottom-width", expectedDividerWidth);
             await expect(row).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+
+            if (route.path === tagRoute || route.path.startsWith("/search/")) {
+              const typeChip = row.locator(".nature-chip").first();
+              await expect(typeChip.locator(".nature-content-type-icon")).toBeVisible();
+              await expect(typeChip.locator(".sr-only")).toBeHidden();
+              await expect(typeChip).toHaveCSS("border-width", "0px");
+              await expect(typeChip).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+            }
           }
 
           for (const surfaceSpec of route.surfaces) {
@@ -373,6 +390,11 @@ test.describe("mobile public reading surfaces", () => {
       expect(projectSurfaceBounds).not.toBeNull();
       expect(projectSurfaceBounds?.x ?? 0).toBeGreaterThan(0);
       expect(projectSurfaceBounds?.width ?? width).toBeLessThan(width);
+
+      await gotoWithTheme(page, tagRoute ?? "/tags", "light");
+      const desktopTypeChip = page.locator(".nature-content-type-chip").first();
+      await expect(desktopTypeChip.locator(".sr-only")).toBeVisible();
+      await expect(desktopTypeChip).toHaveCSS("border-width", "1px");
     }
   });
 

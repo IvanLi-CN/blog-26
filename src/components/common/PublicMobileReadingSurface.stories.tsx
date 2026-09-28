@@ -150,6 +150,7 @@ function assertMobileReadingGeometry(canvasElement: HTMLElement, expectedInset: 
   const longUrl = canvasElement.querySelector<HTMLElement>('[data-testid="long-reading-url"]');
   const longTitle = canvasElement.querySelector<HTMLElement>('[data-testid="long-reading-title"]');
   const code = canvasElement.querySelector<HTMLElement>('[data-testid="long-reading-code"]');
+  const codeBlock = code?.closest<HTMLElement>("pre");
 
   expect(surface).not.toBeNull();
   expect(stream).not.toBeNull();
@@ -162,6 +163,7 @@ function assertMobileReadingGeometry(canvasElement: HTMLElement, expectedInset: 
   expect(longUrl).not.toBeNull();
   expect(longTitle).not.toBeNull();
   expect(code).not.toBeNull();
+  expect(codeBlock).not.toBeNull();
   expect(Math.abs(surface?.getBoundingClientRect().left ?? 0)).toBeLessThanOrEqual(1);
   expect(
     Math.abs((surface?.getBoundingClientRect().right ?? 0) - viewportWidth)
@@ -187,10 +189,10 @@ function assertMobileReadingGeometry(canvasElement: HTMLElement, expectedInset: 
   ).toBeLessThanOrEqual(1);
   expect(longUrl?.scrollWidth).toBeLessThanOrEqual(longUrl?.clientWidth ?? 0);
   expect(longTitle?.scrollWidth).toBeLessThanOrEqual(longTitle?.clientWidth ?? 0);
-  expect(code?.getBoundingClientRect().width ?? 0).toBeLessThanOrEqual(
+  expect(codeBlock?.getBoundingClientRect().width ?? 0).toBeLessThanOrEqual(
     viewportWidth - expectedInset * 2 + 1
   );
-  expect(code?.scrollWidth ?? 0).toBeGreaterThan(code?.clientWidth ?? 0);
+  expect(codeBlock?.scrollWidth ?? 0).toBeGreaterThan(codeBlock?.clientWidth ?? 0);
   expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
 }
 

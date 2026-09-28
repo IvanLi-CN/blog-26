@@ -29,6 +29,9 @@ describe("SearchResultsList titles", () => {
     );
     expect(getByText("闪念正文仍然出现在搜索结果中。")).toBeTruthy();
     expect(container.querySelector("h2")).toBeNull();
+    const typeChip = container.querySelector(".nature-content-type-chip");
+    expect(typeChip).not.toBeNull();
+    expect(typeChip?.querySelector(".sr-only")?.textContent).toBe("闪念");
   });
 
   test("keeps the existing slug fallback for a post without a title", () => {

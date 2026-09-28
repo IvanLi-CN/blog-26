@@ -190,7 +190,7 @@ export const Results: Story = {
     await expect(canvas.getByRole("button", { name: "搜索" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
     await expect(canvasElement.querySelectorAll("mark").length).toBeGreaterThan(0);
-    await expect(canvas.getAllByText(/相关度/)[0]).toHaveClass(/opacity-75/);
+    await expect(canvas.getAllByText(/相关度/)[0]).toHaveClass(/text-xs/);
     await expect(canvas.queryByText("打开内容")).not.toBeInTheDocument();
   },
 };
@@ -530,6 +530,15 @@ export const MobileResults: Story = {
     const stream = canvasElement.querySelector<HTMLElement>(".nature-mobile-reading-stream");
     const resultLink = canvasElement.querySelector<HTMLElement>("a[data-search-result-card]");
     const resultContent = canvasElement.querySelector<HTMLElement>(".search-result-card h2");
+    const typeChips = Array.from(
+      canvasElement.querySelectorAll<HTMLElement>(".nature-content-type-chip")
+    );
+    expect(typeChips).toHaveLength(results.length);
+    for (const typeChip of typeChips) {
+      expect(typeChip.querySelector(".sr-only")).not.toBeNull();
+      expect(getComputedStyle(typeChip).borderWidth).toBe("0px");
+      expect(getComputedStyle(typeChip).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    }
     expect(stream).not.toBeNull();
     expect(resultLink).not.toBeNull();
     expect(resultContent).not.toBeNull();
