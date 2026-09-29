@@ -214,6 +214,7 @@ test.describe("Inline memo admin view", () => {
     await editArea.click();
     await page.keyboard.press("Control+End");
     await page.keyboard.insertText("\n\nPATCH race must retain this fresh edit marker.");
+    await expect(editArea).toContainText("PATCH race must retain this fresh edit marker.");
 
     const patchResponse = page.waitForResponse(
       (response) =>
@@ -394,7 +395,7 @@ test.describe("Inline memo admin view", () => {
       resolveSecondStalePage = resolve;
     });
     const staleTitle = `旧列表响应 ${Date.now()}`;
-    const sharedSummary = "相同摘要前缀。".repeat(20);
+    const sharedSummary = "shared-prefix-".repeat(12);
     const staleTail = "旧正文尾部";
 
     await page.route("**/api/public/memos**", async (route) => {

@@ -63,7 +63,7 @@ test.describe("Memos 管理员权限", () => {
     const publicToggle = quickEditor.locator('input[type="checkbox"]');
     await expect(publicToggle).toBeVisible();
     await expect(publicToggle).toBeChecked();
-    await expect(quickEditor.getByText("公开发布")).toBeVisible();
+    await expect(quickEditor.getByTestId("quick-memo-visibility-label")).toHaveText("公开发布");
     await publicToggle.click();
     await expect(publicToggle).not.toBeChecked();
     await expect(quickEditor.getByText("私有保存")).toBeVisible();
