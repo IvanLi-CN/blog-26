@@ -318,6 +318,8 @@ test.describe("Inline memo admin view", () => {
     await expect(page.getByRole("status")).toHaveText(
       "公开 Memo 已保存；公开时间线将在下次发布后更新。"
     );
+    await expect(editor).toHaveText("");
+    await expect(page.getByText("0 字符", { exact: true })).toBeVisible();
 
     const replayedCallbackCount = await page.evaluate(() => {
       const testWindow = window as Window & {
