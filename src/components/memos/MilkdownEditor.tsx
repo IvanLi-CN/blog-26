@@ -195,6 +195,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const onChangeRef = useRef(onChange);
     const accessibilityObserverRef = useRef<MutationObserver | null>(null);
     const isUpdatingRef = useRef<boolean>(false); // 防止循环更新的标志
+    const markdownUpdateVersionRef = useRef(0);
     const isEditorReadyRef = useRef(false);
 
     // 处理内联图片上传 - 与 UniversalEditor 相同的逻辑
@@ -230,6 +231,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     };
 
     const setMarkdown = (nextContent: string) => {
+      const updateVersion = ++markdownUpdateVersionRef.current;
       const crepe = crepeRef.current;
       if (!crepe) {
         lastContentRef.current = nextContent;
@@ -277,7 +279,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         lastContentRef.current = nextContent;
       }
       setTimeout(() => {
-        isUpdatingRef.current = false;
+        if (markdownUpdateVersionRef.current === updateVersion) {
+          isUpdatingRef.current = false;
+        }
       }, 100);
     };
 
@@ -443,6 +447,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 更新最后内容引用，防止后续循环
               lastContentRef.current = persistedMarkdown;
+              const updateVersion = ++markdownUpdateVersionRef.current;
               const changeMeta =
                 isEditorReadyRef.current && !readOnly
                   ? USER_EDITOR_CHANGE
@@ -452,6 +457,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 异步调用 onChange，然后重置标志
               setTimeout(() => {
+                if (markdownUpdateVersionRef.current !== updateVersion) return;
                 onChangeRef.current(persistedMarkdown, changeMeta);
                 isUpdatingRef.current = false;
               }, 0);
@@ -500,6 +506,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
       return () => {
         cancelled = true;
+        markdownUpdateVersionRef.current += 1;
         initializingEditors.delete(editorId);
         accessibilityObserverRef.current?.disconnect();
         accessibilityObserverRef.current = null;

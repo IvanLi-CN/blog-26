@@ -3,6 +3,7 @@ import { adminTest as test } from "../fixtures";
 import { waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
+const END_OF_DOCUMENT_KEY = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
 
 async function loginAsAdmin(page: Page) {
   await page.request.post("/api/dev/login", {
@@ -134,7 +135,7 @@ test.describe("Inline memo admin view", () => {
     const editArea = modal.locator(".ProseMirror");
     await expect(editArea).toBeFocused();
     await editArea.click();
-    await page.keyboard.press("Control+End");
+    await page.keyboard.press(END_OF_DOCUMENT_KEY);
     await page.keyboard.insertText("\n\n编辑后摘要仍应显示在原卡片上。");
     await modal.getByTestId("quick-memo-visibility-input").uncheck();
 
@@ -212,7 +213,7 @@ test.describe("Inline memo admin view", () => {
     const editArea = modal.locator(".ProseMirror");
     await expect(editArea).toBeFocused();
     await editArea.click();
-    await page.keyboard.press("Control+End");
+    await page.keyboard.press(END_OF_DOCUMENT_KEY);
     await page.keyboard.insertText("\n\nPATCH race must retain this fresh edit marker.");
     await expect(editArea).toContainText("PATCH race must retain this fresh edit marker.");
 
@@ -233,6 +234,88 @@ test.describe("Inline memo admin view", () => {
     expect((await staleListResponse).ok()).toBeTruthy();
     await expect(page.getByText("正在更新列表…")).toHaveCount(0);
     await expect(card).toContainText("PATCH race must retain this fresh edit marker.");
+  });
+
+  test("saves shorter live content and discards delayed updates after reset", async ({ page }) => {
+    await page.addInitScript(() => {
+      const testWindow = window as Window & {
+        __holdMemoMarkdownUpdate?: boolean;
+        __heldMemoMarkdownUpdates?: Array<() => void>;
+      };
+      const originalSetTimeout = window.setTimeout.bind(window);
+      testWindow.__holdMemoMarkdownUpdate = false;
+      testWindow.__heldMemoMarkdownUpdates = [];
+      window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+        if (testWindow.__holdMemoMarkdownUpdate && timeout === 0 && typeof handler === "function") {
+          testWindow.__heldMemoMarkdownUpdates?.push(() => handler(...args));
+          return 0;
+        }
+        return Reflect.apply(originalSetTimeout, window, [handler, timeout, ...args]) as number;
+      }) as typeof window.setTimeout;
+    });
+
+    await loginAsAdmin(page);
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
+    const previousContent = "This previous Memo is longer than the replacement.";
+    const replacementContent = "Short replacement.";
+    const characterCount = page.getByText(`${previousContent.length} 字符`, { exact: true });
+
+    await editor.click();
+    await page.keyboard.insertText(previousContent);
+    await expect(editor).toContainText(previousContent);
+    await expect(characterCount).toBeVisible();
+
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/api/public/memos"
+    );
+    await editor.evaluate((node, replacement) => {
+      const testWindow = window as Window & {
+        __holdMemoMarkdownUpdate?: boolean;
+      };
+      const target = node as HTMLElement;
+      target.focus();
+      testWindow.__holdMemoMarkdownUpdate = true;
+
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      document.execCommand("insertText", false, replacement);
+
+      const form = target.closest("form");
+      if (!(form instanceof HTMLFormElement)) {
+        throw new Error("Quick Memo editor form was not found");
+      }
+      form.requestSubmit();
+      testWindow.__holdMemoMarkdownUpdate = false;
+    }, replacementContent);
+
+    const savedResponse = await createResponse;
+    expect(savedResponse.ok()).toBeTruthy();
+    const submittedMemo = savedResponse.request().postDataJSON() as { content: string };
+    expect(submittedMemo.content).toContain(replacementContent);
+    expect(submittedMemo.content).not.toContain(previousContent);
+    await expect(page.getByRole("status")).toHaveText(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。"
+    );
+
+    await page.evaluate(() => {
+      const testWindow = window as Window & {
+        __heldMemoMarkdownUpdates?: Array<() => void>;
+      };
+      for (const callback of testWindow.__heldMemoMarkdownUpdates ?? []) {
+        callback();
+      }
+      testWindow.__heldMemoMarkdownUpdates = [];
+    });
+
+    await expect(editor).toHaveText("");
+    await expect(page.getByText("0 字符", { exact: true })).toBeVisible();
+    await expect(container.getByRole("button", { name: "公开发布 Memo" })).toBeDisabled();
   });
 
   test("saves private creation and shows the private-only message", async ({ page }) => {
