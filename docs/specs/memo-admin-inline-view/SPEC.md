@@ -83,7 +83,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ## Visual Evidence
 
-The approved captures below were rendered from the Storybook page fallback using mock API data. They were re-rendered against the repaired candidate at the same source-bound viewports; comparison found no visible layout change, so the approved assets remain canonical. List captures show the administrator management area; top captures show the full-size editor and page hierarchy.
+The owner-approved captures below were rendered from the Storybook page fallback using mock API data. Desktop captures show the full-size editor, the repaired spacing before recent management, and the existing desktop card layout. The narrow-screen list captures show the continuous Nature stream with the sticky header collapsed above the first row, all existing Memo fields, and actions below each item's content. Top captures show the full-size editor and page hierarchy.
 
 source_type=storybook_canvas; target_program=mock-only; capture_scope=element; viewport_strategy=storybook-viewport; evidence_surface=page; sensitive_exclusion=N/A; submission_gate=approved
 - Story: `public-memo-authoring--admin-page-fallback-visual-light`; viewport: `memoDesktop` (1440x1000); state: light theme, page top.
@@ -117,7 +117,7 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=element; v
 - Story: `public-memo-authoring--admin-page-fallback-320`; viewport: `memo320` (320x780); state: light theme, management list.
 ![Memo administrator 320px management list](./assets/admin-memo-mobile-320-list.png)
 
-Normalization used `trim_only`: the six light/mobile captures were unchanged; the two desktop dark captures each had 54px of uniform side margin removed. The owner approved these eight current-only destinations for persistence. No PR screenshot or screenshot commit exists yet.
+Normalization used `trim_only`: seven captures were unchanged; the desktop dark page-top capture had 54px of uniform side margin removed from each side. The locked development base does not contain this topic or its assets, so all eight exact-path comparisons were `current-only`. The owner approved this set for persistence. No PR screenshot exists yet.
 
 ## Related ADRs
 

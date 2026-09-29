@@ -5,7 +5,7 @@ import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
-import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
+import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 type PublicMemoRecord = {
@@ -28,6 +28,35 @@ type PublicMemoListResponse = {
 };
 
 const LIVE_MEMO_PAGE_SIZE = 10;
+
+function withMemoExcerpt(memo: PublicMemoRecord): PublicMemoRecord {
+  return {
+    ...memo,
+    excerpt: memo.excerpt ?? extractTextSummary(memo.content),
+  };
+}
+
+function sameMemo(left: PublicMemoRecord, right: PublicMemoRecord) {
+  return left.id === right.id || left.slug === right.slug;
+}
+
+function sameMemoSnapshot(left: PublicMemoRecord, right: PublicMemoRecord) {
+  return (
+    left.isPublic === right.isPublic &&
+    left.tags.join("\u0000") === right.tags.join("\u0000") &&
+    extractTextSummary(left.content) === extractTextSummary(right.content)
+  );
+}
+
+function uniqueMemos(memos: PublicMemoRecord[]) {
+  const seen = new Set<string>();
+  return memos.filter((memo) => {
+    const key = memo.id || memo.slug;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 type PublicAuthUser = {
   id: string;
@@ -239,19 +268,15 @@ export function PublicMemoComposerIsland({
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const listRequestId = useRef(0);
+  const listMutationVersion = useRef(0);
+  const recentCreatedMemos = useRef(new Map<string, PublicMemoRecord>());
+  const deferredMemos = useRef<PublicMemoRecord[]>([]);
   const editRequestId = useRef(0);
 
   const requestMemoPage = useCallback(
-    async ({
-      cursor,
-      append = false,
-      preserveMemo,
-    }: {
-      cursor?: string;
-      append?: boolean;
-      preserveMemo?: PublicMemoRecord;
-    }) => {
+    async ({ cursor, append = false }: { cursor?: string; append?: boolean }) => {
       const requestId = ++listRequestId.current;
+      const mutationVersion = listMutationVersion.current;
       setListError(null);
       setIsListLoading(!append);
       setIsLoadingMore(append);
@@ -267,30 +292,44 @@ export function PublicMemoComposerIsland({
           toPublicApiUrl(`/api/public/memos?${params.toString()}`)
         );
         if (requestId !== listRequestId.current) return;
+        if (mutationVersion !== listMutationVersion.current) return;
         const page = normalizeMemoPage(result);
-        setMemos((current) => {
-          if (!append) {
-            if (!preserveMemo) return page.memos;
-            return [
-              preserveMemo,
-              ...page.memos.filter(
-                (memo) => memo.id !== preserveMemo.id && memo.slug !== preserveMemo.slug
-              ),
-            ].slice(0, LIVE_MEMO_PAGE_SIZE);
+        const serverMemos = page.memos.map((memo) => {
+          const createdEntry = Array.from(recentCreatedMemos.current.entries()).find(
+            ([, created]) => sameMemo(created, memo)
+          );
+          if (!createdEntry) return withMemoExcerpt(memo);
+          if (sameMemoSnapshot(createdEntry[1], memo)) {
+            recentCreatedMemos.current.delete(createdEntry[0]);
+            return withMemoExcerpt(memo);
           }
-          const existing = new Set(current.map((memo) => memo.id || memo.slug));
-          const additions = page.memos.filter((memo) => {
-            const key = memo.id || memo.slug;
-            if (existing.has(key)) return false;
-            existing.add(key);
-            return true;
-          });
-          return [...current, ...additions];
+          return createdEntry[1];
         });
-        setHasMore(page.hasMore);
+
+        if (!append) {
+          const missingCreated = Array.from(recentCreatedMemos.current.values()).reverse();
+          const combined = uniqueMemos([
+            ...missingCreated,
+            ...serverMemos.filter(
+              (memo) => !missingCreated.some((created) => sameMemo(created, memo))
+            ),
+          ]);
+          const visible = combined.slice(0, LIVE_MEMO_PAGE_SIZE);
+          deferredMemos.current = combined.slice(LIVE_MEMO_PAGE_SIZE);
+          setMemos(visible);
+          setHasMore(page.hasMore || deferredMemos.current.length > 0);
+        } else {
+          const continuation = [...deferredMemos.current, ...serverMemos];
+          deferredMemos.current = [];
+          setMemos((current) => uniqueMemos([...current, ...continuation]));
+          setHasMore(page.hasMore);
+        }
         setNextCursor(page.nextCursor);
       } catch (error) {
-        if (requestId === listRequestId.current) {
+        if (
+          requestId === listRequestId.current &&
+          mutationVersion === listMutationVersion.current
+        ) {
           setListError(error instanceof Error ? error.message : String(error));
         }
       } finally {
@@ -312,8 +351,6 @@ export function PublicMemoComposerIsland({
   }, [isAdmin, requestMemoPage]);
 
   const refreshList = useCallback(() => {
-    setHasMore(false);
-    setNextCursor(null);
     void requestMemoPage({});
   }, [requestMemoPage]);
 
@@ -325,20 +362,24 @@ export function PublicMemoComposerIsland({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(data),
       });
+      const createdMemo = withMemoExcerpt(result);
+      recentCreatedMemos.current.set(createdMemo.id || createdMemo.slug, createdMemo);
+      listMutationVersion.current += 1;
       setCreationFeedback(
         data.isPublic
           ? "公开 Memo 已保存；公开时间线将在下次发布后更新。"
           : "私有 Memo 已保存，仅管理员可见。"
       );
       setHasMore(false);
+      deferredMemos.current = [];
       setMemos((current) =>
-        [
-          result,
-          ...current.filter((memo) => memo.id !== result.id && memo.slug !== result.slug),
-        ].slice(0, LIVE_MEMO_PAGE_SIZE)
+        [createdMemo, ...current.filter((memo) => !sameMemo(memo, createdMemo))].slice(
+          0,
+          LIVE_MEMO_PAGE_SIZE
+        )
       );
       setNextCursor(null);
-      void requestMemoPage({ preserveMemo: result });
+      void requestMemoPage({});
     },
     [requestMemoPage]
   );
@@ -391,11 +432,15 @@ export function PublicMemoComposerIsland({
             }),
           }
         );
-        setEditingMemo(updated);
+        const updatedMemo = withMemoExcerpt({
+          ...editingMemo,
+          ...updated,
+          excerpt: extractTextSummary(updated.content),
+        });
+        listMutationVersion.current += 1;
+        setEditingMemo(updatedMemo);
         setMemos((current) =>
-          current.map((memo) =>
-            memo.id === updated.id || memo.slug === updated.slug ? updated : memo
-          )
+          current.map((memo) => (sameMemo(memo, updatedMemo) ? { ...memo, ...updatedMemo } : memo))
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -510,9 +555,13 @@ export function PublicMemoComposerIsland({
               onClick={() => {
                 if (nextCursor) {
                   void requestMemoPage({ cursor: nextCursor, append: true });
+                } else if (deferredMemos.current.length > 0) {
+                  setMemos((current) => uniqueMemos([...current, ...deferredMemos.current]));
+                  deferredMemos.current = [];
+                  setHasMore(false);
                 }
               }}
-              disabled={!nextCursor || isListBusy}
+              disabled={(!nextCursor && deferredMemos.current.length === 0) || isListBusy}
             >
               {isLoadingMore ? <span className="nature-spinner h-4 w-4" /> : null}
               {isLoadingMore ? "正在加载…" : "加载更多"}

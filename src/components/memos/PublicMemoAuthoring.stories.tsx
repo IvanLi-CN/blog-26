@@ -354,6 +354,9 @@ function AdminPageFallback({
         const limit = Number(url.searchParams.get("limit") ?? 10);
         const page = memos.slice(start, start + limit);
         const next = start + page.length;
+        root.dataset.storyListSuccessCount = String(
+          Number(root.dataset.storyListSuccessCount ?? "0") + 1
+        );
         return json({
           memos: page,
           hasMore: next < memos.length,
@@ -553,12 +556,16 @@ export const AdminPageFallbackStory: Story = {
     await userEvent.click(editor);
     await userEvent.keyboard("键盘路径测试");
     const visibility = canvas.getByTestId("quick-memo-visibility-input");
-    editor.focus();
+    const submit = canvas.getByRole("button", { name: "公开发布 Memo" });
+    await userEvent.keyboard("{Tab}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(visibility);
+    expect(visibility.matches(":focus-visible")).toBe(true);
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(editor);
     await userEvent.keyboard("{Tab}");
     expect(canvasElement.ownerDocument.activeElement).toBe(visibility);
     expect(visibility.matches(":focus-visible")).toBe(true);
     await userEvent.keyboard("{Tab}");
-    const submit = canvas.getByRole("button", { name: "公开发布 Memo" });
     expect(canvasElement.ownerDocument.activeElement).toBe(submit);
     expect(submit.matches(":focus-visible")).toBe(true);
     await userEvent.keyboard("{Tab}");
@@ -660,6 +667,18 @@ export const AdminPageFallback393: Story = {
     await waitFor(() =>
       expect(within(canvasElement).getAllByTestId("admin-live-memo-card")).toHaveLength(10)
     );
+    const publicHeader = canvasElement.querySelector<HTMLElement>("[data-public-header]");
+    const managementHeading = canvasElement.querySelector<HTMLElement>("#admin-live-memos-heading");
+    if (!publicHeader || !managementHeading) {
+      throw new Error("Public header or management heading did not render");
+    }
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderOffset).toMatch(/\d+/));
+    const collapseScroll = Math.ceil(publicHeader.getBoundingClientRect().height * 1.2);
+    view?.scrollTo(0, collapseScroll);
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderState).toBe("collapsed"));
+    await waitFor(() => expect(publicHeader.getBoundingClientRect().bottom).toBeLessThanOrEqual(0));
+    const headingTop = managementHeading.getBoundingClientRect().top;
+    expect(headingTop).toBeGreaterThanOrEqual(0);
   },
 };
 
@@ -694,6 +713,20 @@ export const AdminPageFallback320: Story = {
     await waitFor(() =>
       expect(within(canvasElement).getAllByTestId("admin-live-memo-card")).toHaveLength(10)
     );
+    const publicHeader = canvasElement.querySelector<HTMLElement>("[data-public-header]");
+    const managementHeading = canvasElement.querySelector<HTMLElement>("#admin-live-memos-heading");
+    if (!publicHeader || !managementHeading) {
+      throw new Error("Public header or management heading did not render");
+    }
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderOffset).toMatch(/\d+/));
+    const maxScroll = (view?.document.documentElement.scrollHeight ?? 0) - (view?.innerHeight ?? 0);
+    view?.scrollTo(
+      0,
+      Math.max(0, Math.min(Math.ceil(publicHeader.getBoundingClientRect().height * 1.2), maxScroll))
+    );
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderState).toBe("collapsed"));
+    await waitFor(() => expect(publicHeader.getBoundingClientRect().bottom).toBeLessThanOrEqual(0));
+    expect(managementHeading.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
   },
 };
 
@@ -714,7 +747,15 @@ export const AdminPageListError: Story = {
     await expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10);
     await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
     await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
+    const successCount = Number(
+      canvasElement.ownerDocument.documentElement.dataset.storyListSuccessCount
+    );
     await userEvent.click(retry);
+    await waitFor(() =>
+      expect(
+        Number(canvasElement.ownerDocument.documentElement.dataset.storyListSuccessCount)
+      ).toBeGreaterThan(successCount)
+    );
     await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10));
     await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
   },
@@ -727,8 +768,11 @@ export const AdminPageCreateError: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const quickEditor = await canvas.findByTestId("quick-memo-editor");
-    const editor = quickEditor.querySelector<HTMLElement>(".ProseMirror");
-    if (!editor) throw new Error("Quick memo editor surface did not render");
+    const editor = await waitFor(() => {
+      const surface = quickEditor.querySelector<HTMLElement>(".ProseMirror");
+      if (!surface) throw new Error("Quick memo editor surface did not render");
+      return surface;
+    });
     const content = "Storybook 创建失败后仍保留输入并允许重试";
     await userEvent.click(editor);
     await userEvent.keyboard(content);
@@ -742,10 +786,10 @@ export const AdminPageCreateError: Story = {
     await expect(submit).toBeEnabled();
 
     await userEvent.click(submit);
-    await expect(canvas.getByRole("status")).toHaveText(
+    await expect(canvas.getByRole("status")).toHaveTextContent(
       "公开 Memo 已保存；公开时间线将在下次发布后更新。"
     );
-    await expect(editor).not.toHaveTextContent(content);
+    await waitFor(() => expect(editor).not.toHaveTextContent(content));
   },
 };
 

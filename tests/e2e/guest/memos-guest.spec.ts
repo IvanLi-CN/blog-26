@@ -31,6 +31,7 @@ test.describe("Memos 游客访问", () => {
     await expect(page.getByRole("heading", { name: "Memos" })).toBeVisible();
     await expect(page.getByText("记录想法、灵感和日常思考的快速笔记")).toBeVisible();
     await expect(page.getByRole("region", { name: "快速发布区域" })).not.toBeVisible();
+    await expect(page.getByTestId("admin-live-memo-list")).toHaveCount(0);
     await expect(
       page.getByTestId("memos-timeline").or(page.getByText("暂无公开 Memos", { exact: true }))
     ).toBeVisible();

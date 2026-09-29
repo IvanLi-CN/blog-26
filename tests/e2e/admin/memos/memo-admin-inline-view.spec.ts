@@ -48,7 +48,19 @@ test.describe("Inline memo admin view", () => {
         await createMemo(page, `${marker}-${String(index).padStart(2, "0")}`, index % 2 === 0)
       );
     }
-    const expectedLatestIds = [...createdMemos].reverse().map((memo) => memo.id);
+    const firstPageResponse = await page.request.get("/api/public/memos?publicOnly=false&limit=10");
+    expect(firstPageResponse.ok()).toBeTruthy();
+    const firstPage = (await firstPageResponse.json()) as {
+      memos: Array<{ id: string }>;
+      nextCursor: string | null;
+    };
+    expect(firstPage.nextCursor).toBeTruthy();
+    const secondPageResponse = await page.request.get(
+      `/api/public/memos?publicOnly=false&limit=10&cursor=${encodeURIComponent(firstPage.nextCursor ?? "")}`
+    );
+    expect(secondPageResponse.ok()).toBeTruthy();
+    const secondPage = (await secondPageResponse.json()) as { memos: Array<{ id: string }> };
+    const expectedServiceOrder = [...firstPage.memos, ...secondPage.memos].map((memo) => memo.id);
 
     const requests: string[] = [];
     page.on("request", (request) => {
@@ -61,7 +73,7 @@ test.describe("Inline memo admin view", () => {
     const initialIds = await cards.evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-id"))
     );
-    expect(initialIds).toEqual(expectedLatestIds.slice(0, 10));
+    expect(initialIds).toEqual(expectedServiceOrder.slice(0, 10));
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
       .find((url) => !url.searchParams.has("cursor"));
@@ -82,7 +94,7 @@ test.describe("Inline memo admin view", () => {
         (element) => element.getAttribute("data-id") ?? element.getAttribute("data-slug")
       )
     );
-    expect(ids.slice(0, expectedLatestIds.length)).toEqual(expectedLatestIds);
+    expect(ids).toEqual(expectedServiceOrder);
     expect(new Set(ids).size).toBe(ids.length);
 
     const refreshRequest = page.waitForRequest(
@@ -121,6 +133,9 @@ test.describe("Inline memo admin view", () => {
     await expect(modal).toBeVisible();
     const editArea = modal.locator(".ProseMirror");
     await expect(editArea).toBeFocused();
+    await editArea.click();
+    await page.keyboard.press("Control+End");
+    await page.keyboard.insertText("\n\n编辑后摘要仍应显示在原卡片上。");
     await modal.getByTestId("quick-memo-visibility-input").uncheck();
 
     const patchResponse = page.waitForResponse(
@@ -140,12 +155,81 @@ test.describe("Inline memo admin view", () => {
     expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThanOrEqual(1);
     const savedMemo = (await savedResponse.json()) as { content: string; isPublic: boolean };
     expect(savedMemo.content).toContain("Memo admin inline view test content.");
+    expect(savedMemo.content).toContain("编辑后摘要仍应显示在原卡片上。");
     expect(savedMemo.isPublic).toBe(false);
+    await expect(card).toContainText("编辑后摘要仍应显示在原卡片上。");
 
     await card.getByRole("link", { name: "预览" }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/preview/memos/${memo.slug}$`));
     await expect(page.getByTestId("admin-preview-memo-body")).toBeVisible();
     await expect(page.getByTestId("public-memo-detail-controls")).toHaveCount(0);
+  });
+
+  test("does not let a list response started before PATCH overwrite the saved card", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    const title = `inline-patch-race-${Date.now()}`;
+    const memo = await createMemo(page, title);
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const card = await waitForAdminLiveMemoCard(page, title);
+    let shouldHoldListResponse = false;
+    let resolveListCaptured: (() => void) | undefined;
+    let releaseListResponse: (() => void) | undefined;
+    const listCaptured = new Promise<void>((resolve) => {
+      resolveListCaptured = resolve;
+    });
+    const listRelease = new Promise<void>((resolve) => {
+      releaseListResponse = resolve;
+    });
+
+    await page.route("**/api/public/memos**", async (route) => {
+      if (isMemoListRequest(route.request()) && shouldHoldListResponse) {
+        shouldHoldListResponse = false;
+        const response = await route.fetch();
+        const payload = await response.json();
+        resolveListCaptured?.();
+        await listRelease;
+        await route.fulfill({ response, json: payload });
+        return;
+      }
+      await route.continue();
+    });
+
+    shouldHoldListResponse = true;
+    const staleListRequest = page.waitForRequest((request) => isMemoListRequest(request));
+    await page.getByRole("button", { name: "刷新列表" }).click();
+    await staleListRequest;
+    await listCaptured;
+    const staleListResponse = page.waitForResponse(
+      (response) => isMemoListRequest(response.request()),
+      { timeout: 45_000 }
+    );
+
+    const editButton = card.getByTestId("admin-live-memo-edit");
+    await editButton.click();
+    const modal = page.getByTestId("quick-memo-edit-modal");
+    const editArea = modal.locator(".ProseMirror");
+    await expect(editArea).toBeFocused();
+    await editArea.click();
+    await page.keyboard.press("Control+End");
+    await page.keyboard.insertText("\n\nPATCH race must retain this fresh edit marker.");
+
+    const patchResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "PATCH" &&
+        new URL(response.url()).pathname.endsWith(`/api/public/memos/${memo.slug}`)
+    );
+    await modal.getByRole("button", { name: "保存更改" }).click();
+    const savedResponse = await patchResponse;
+    expect(savedResponse.ok()).toBeTruthy();
+    const savedMemo = (await savedResponse.json()) as { content: string };
+    expect(savedMemo.content).toContain("PATCH race must retain this fresh edit marker.");
+    await expect(card).toContainText("PATCH race must retain this fresh edit marker.");
+    releaseListResponse?.();
+    expect((await staleListResponse).ok()).toBeTruthy();
+    await expect(page.getByText("正在更新列表…")).toHaveCount(0);
+    await expect(card).toContainText("PATCH race must retain this fresh edit marker.");
   });
 
   test("saves private creation and shows the private-only message", async ({ page }) => {
@@ -156,7 +240,7 @@ test.describe("Inline memo admin view", () => {
 
     const title = `私有闪念 ${Date.now()}`;
     await editor.click();
-    await page.keyboard.insertText(`# ${title}`);
+    await page.keyboard.insertText(`# ${title}\n\n私有 Memo 摘要应在创建后保留。`);
     const visibility = container.getByTestId("quick-memo-visibility-input");
     await visibility.uncheck();
     const save = container.getByRole("button", { name: "保存私有 Memo" });
@@ -166,6 +250,7 @@ test.describe("Inline memo admin view", () => {
     await expect(page.getByRole("status")).toHaveText("私有 Memo 已保存，仅管理员可见。");
     const card = await waitForAdminLiveMemoCard(page, title);
     await expect(card.getByTestId("private-indicator")).toBeVisible();
+    await expect(card).toContainText("私有 Memo 摘要应在创建后保留。");
   });
 
   test("keeps failed public creation in place and succeeds on retry", async ({ page }) => {
@@ -207,14 +292,32 @@ test.describe("Inline memo admin view", () => {
     expect(postAttempts).toBe(2);
   });
 
-  test("keeps a new memo visible when the first refreshed page is briefly stale", async ({
+  test("keeps created memos across stale refreshes and carries the displaced row into pagination", async ({
     page,
   }) => {
     await loginAsAdmin(page);
+    const marker = `inline-stale-page-${Date.now()}`;
+    const seededMemos = [];
+    for (let index = 0; index < 12; index += 1) {
+      seededMemos.push(await createMemo(page, `${marker}-${index}`));
+    }
+    const stalePageResponse = await page.request.get("/api/public/memos?publicOnly=false&limit=10");
+    expect(stalePageResponse.ok()).toBeTruthy();
+    const stalePage = await stalePageResponse.json();
+    const seededIds = new Set(seededMemos.map((memo) => memo.id));
+
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
     const { container, editor } = await waitForQuickMemoEditor(page);
     let createdId: string | undefined;
-    let stalePageReturned = false;
+    let stalePageResponses = 0;
+    let resolveFirstStalePage: (() => void) | undefined;
+    let resolveSecondStalePage: (() => void) | undefined;
+    const firstStalePageCompleted = new Promise<void>((resolve) => {
+      resolveFirstStalePage = resolve;
+    });
+    const secondStalePageCompleted = new Promise<void>((resolve) => {
+      resolveSecondStalePage = resolve;
+    });
 
     await page.route("**/api/public/memos**", async (route) => {
       if (route.request().method() === "POST") {
@@ -225,16 +328,15 @@ test.describe("Inline memo admin view", () => {
         return;
       }
 
-      if (isMemoListRequest(route.request()) && createdId && !stalePageReturned) {
-        stalePageReturned = true;
-        const response = await route.fetch();
-        const payload = (await response.json()) as {
-          memos?: Array<{ id: string }>;
-          items?: Array<{ id: string }>;
-        };
-        if (payload.memos) payload.memos = payload.memos.filter((memo) => memo.id !== createdId);
-        if (payload.items) payload.items = payload.items.filter((memo) => memo.id !== createdId);
-        await route.fulfill({ response, json: payload });
+      if (isMemoListRequest(route.request()) && createdId && stalePageResponses < 2) {
+        stalePageResponses += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(stalePage),
+        });
+        if (stalePageResponses === 1) resolveFirstStalePage?.();
+        else resolveSecondStalePage?.();
         return;
       }
 
@@ -249,8 +351,30 @@ test.describe("Inline memo admin view", () => {
     await expect(page.getByRole("status")).toHaveText(
       "公开 Memo 已保存；公开时间线将在下次发布后更新。"
     );
-    expect(stalePageReturned).toBe(true);
+    await firstStalePageCompleted;
+    await expect(page.getByText("正在更新列表…")).toHaveCount(0);
+    const createdCard = await waitForAdminLiveMemoCard(page, title);
+    await expect(createdCard).toBeVisible();
+
+    await page.getByRole("button", { name: "刷新列表" }).click();
+    await secondStalePageCompleted;
+    await expect(page.getByText("正在更新列表…")).toHaveCount(0);
     await expect(await waitForAdminLiveMemoCard(page, title)).toBeVisible();
+
+    const loadMoreResponse = page.waitForResponse(
+      (response) =>
+        isMemoListRequest(response.request()) && new URL(response.url()).searchParams.has("cursor")
+    );
+    await page.getByRole("button", { name: "加载更多" }).click();
+    await expect((await loadMoreResponse).ok()).toBeTruthy();
+    await expect.poll(() => page.getByTestId("admin-live-memo-card").count()).toBeGreaterThan(10);
+    await expect(page.getByText("正在更新列表…")).toHaveCount(0);
+    const loadedIds = await page
+      .getByTestId("admin-live-memo-card")
+      .evaluateAll((elements) => elements.map((element) => element.getAttribute("data-id") ?? ""));
+    expect([...seededIds].every((id) => loadedIds.includes(id))).toBe(true);
+    expect(new Set(loadedIds).size).toBe(loadedIds.length);
+    expect(createdId).toBeTruthy();
   });
 
   test("keeps the successful create response when refresh returns the same ID with stale content", async ({
@@ -261,6 +385,10 @@ test.describe("Inline memo admin view", () => {
     const { container, editor } = await waitForQuickMemoEditor(page);
     let created: Record<string, unknown> | undefined;
     let stalePageReturned = false;
+    let resolveStalePage: (() => void) | undefined;
+    const stalePageCompleted = new Promise<void>((resolve) => {
+      resolveStalePage = resolve;
+    });
     const staleTitle = `旧列表响应 ${Date.now()}`;
 
     await page.route("**/api/public/memos**", async (route) => {
@@ -272,7 +400,6 @@ test.describe("Inline memo admin view", () => {
       }
 
       if (isMemoListRequest(route.request()) && created && !stalePageReturned) {
-        stalePageReturned = true;
         const response = await route.fetch();
         const payload = (await response.json()) as {
           memos?: Array<Record<string, unknown>>;
@@ -297,6 +424,8 @@ test.describe("Inline memo admin view", () => {
           );
         }
         await route.fulfill({ response, json: payload });
+        stalePageReturned = true;
+        resolveStalePage?.();
         return;
       }
 
@@ -311,7 +440,9 @@ test.describe("Inline memo admin view", () => {
     await expect(page.getByRole("status")).toHaveText(
       "公开 Memo 已保存；公开时间线将在下次发布后更新。"
     );
+    await stalePageCompleted;
     expect(stalePageReturned).toBe(true);
+    await expect(page.getByText("正在更新列表…")).toHaveCount(0);
     const card = await waitForAdminLiveMemoCard(page, title);
     await expect(card.getByRole("heading", { name: title })).toBeVisible();
     await expect(card).not.toContainText(staleTitle);
@@ -333,6 +464,31 @@ test.describe("Inline memo admin view", () => {
       await page.setViewportSize(viewport);
       await page.goto("/memos", { waitUntil: "domcontentloaded" });
       const { container } = await waitForQuickMemoEditor(page);
+      if (viewport.width < 640) {
+        const header = page.locator("[data-public-header]");
+        await expect(header).toHaveAttribute("data-public-header-offset", /\d+/);
+        if (viewport.width === 320) {
+          expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+        } else {
+          const collapseScroll = await page.evaluate(() => {
+            const headerHeight =
+              document.querySelector("[data-public-header]")?.getBoundingClientRect().height ?? 0;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight - 1;
+            return Math.max(0, Math.min(Math.ceil(headerHeight * 1.2), maxScroll));
+          });
+          await page.evaluate((scrollY) => window.scrollTo(0, scrollY), collapseScroll);
+          await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(collapseScroll);
+        }
+        await expect(header).toHaveAttribute("data-public-header-state", "collapsed");
+        const positions = await page.evaluate(() => ({
+          headerBottom: document.querySelector("[data-public-header]")?.getBoundingClientRect()
+            .bottom,
+          headingTop: document.querySelector("#admin-live-memos-heading")?.getBoundingClientRect()
+            .top,
+        }));
+        expect(positions.headerBottom).toBeLessThanOrEqual(0);
+        expect(positions.headingTop).toBeGreaterThanOrEqual(0);
+      }
       const editorSurface = container.getByTestId("quick-memo-editor-surface");
       const editorBox = await editorSurface.boundingBox();
       expect(editorBox?.height).toBeGreaterThanOrEqual(120);
@@ -344,12 +500,16 @@ test.describe("Inline memo admin view", () => {
       const editor = container.locator(".ProseMirror");
       await editor.click();
       await page.keyboard.insertText("键盘路径测试");
-      await page.keyboard.press("Tab");
       const visibility = container.getByTestId("quick-memo-visibility-input");
+      const submit = container.getByRole("button", { name: "公开发布 Memo" });
+      await page.keyboard.press("Tab");
       await expect(visibility).toBeFocused();
       expect(await visibility.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+      await page.keyboard.press("Shift+Tab");
+      await expect(editor).toBeFocused();
       await page.keyboard.press("Tab");
-      const submit = container.getByRole("button", { name: "公开发布 Memo" });
+      await expect(visibility).toBeFocused();
+      await page.keyboard.press("Tab");
       await expect(submit).toBeFocused();
       expect(await submit.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
 

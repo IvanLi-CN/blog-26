@@ -521,7 +521,7 @@ function attachController(header: HTMLElement) {
   const height = header.getBoundingClientRect().height;
   const controller = {} as RuntimeHeaderController;
   controller.header = header;
-  controller.state = createHeaderScrollState(height, window.scrollY, performance.now());
+  controller.state = createHeaderScrollState(height, 0, performance.now());
   controller.suppressedTabIndexes = new Map();
   controller.settleTimer = null;
   controller.transitionTimer = null;

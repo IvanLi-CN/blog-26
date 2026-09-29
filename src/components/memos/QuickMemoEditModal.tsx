@@ -122,14 +122,20 @@ export function QuickMemoEditModal({
   const handleSubmit = useCallback(
     async (event?: React.FormEvent) => {
       event?.preventDefault();
-      if (!onSave || isSaving || isSubmitting || !content.trim()) {
-        return;
+      if (!onSave || isSaving || isSubmitting) return;
+
+      let latestContent = content;
+      try {
+        latestContent = editorRef.current?.getMarkdown() ?? content;
+      } catch {
+        // The editor ref may not be ready while the loading state is changing.
       }
+      if (!latestContent.trim()) return;
 
       let didSaveSucceed = false;
       setIsSubmitting(true);
       try {
-        let processedContent = content.trim();
+        let processedContent = latestContent.trim();
 
         if (editorRef.current) {
           processedContent = await editorRef.current.processInlineImages(processedContent);

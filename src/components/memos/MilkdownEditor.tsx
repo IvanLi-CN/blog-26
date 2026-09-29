@@ -86,6 +86,7 @@ type FrontmatterHandlingMode = "document" | "body-only";
 export interface MilkdownEditorRef {
   processInlineImages: (content: string) => Promise<string>;
   getMarkdown: () => string;
+  setMarkdown: (content: string) => void;
 }
 
 interface MilkdownEditorProps {
@@ -193,10 +194,63 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       );
     };
 
+    const setMarkdown = (nextContent: string) => {
+      const crepe = crepeRef.current;
+      if (!crepe) {
+        lastContentRef.current = nextContent;
+        return;
+      }
+
+      const frontmatterProcessed =
+        frontmatterHandling === "document"
+          ? preprocessFrontmatterForEditor(nextContent)
+          : nextContent;
+      const processedContent = preprocessContentForEditor(
+        frontmatterProcessed,
+        articlePath,
+        contentSource
+      );
+
+      isUpdatingRef.current = true;
+      let didUpdateContent = false;
+      try {
+        crepe.editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const parser = ctx.get(parserCtx);
+          const doc = parser(processedContent);
+          if (!doc) return;
+
+          const { state } = view;
+          const tr = state.tr.replace(0, state.doc.content.size, new Slice(doc.content, 0, 0));
+          const docSize = tr.doc.content.size;
+          const clampPosition = (position: number) => Math.max(0, Math.min(position, docSize));
+          tr.setSelection(
+            TextSelection.create(
+              tr.doc,
+              clampPosition(state.selection.from),
+              clampPosition(state.selection.to)
+            )
+          );
+          view.dispatch(tr);
+          didUpdateContent = true;
+        });
+      } catch (error) {
+        console.error("❌ [MilkdownEditor] 内容更新失败:", error);
+      }
+
+      if (didUpdateContent) {
+        lastContentRef.current = nextContent;
+      }
+      setTimeout(() => {
+        isUpdatingRef.current = false;
+      }, 100);
+    };
+
     // 暴露给外部的方法
     useImperativeHandle(ref, () => ({
       processInlineImages,
       getMarkdown: () => lastContentRef.current,
+      setMarkdown,
     }));
 
     // 更新 onImageUpload 引用

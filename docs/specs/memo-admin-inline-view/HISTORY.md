@@ -11,6 +11,7 @@
 - The editor and recent management section use an explicit separation so their distinct tasks are immediately apparent.
 - The latest mainline Nature contract requires continuous reading surfaces below 640px. The administrator list now keeps desktop cards while rendering narrow-screen rows on one edge-to-edge surface with separators and the existing 16px/12px reading insets.
 - Review hardening keeps a just-created Memo visible while the first refreshed page is stale, and preserves a titleless Memo through the admin-aware list/detail and PATCH paths.
+- The Storybook page fallback now follows the production Nature mobile header offset; its 393px and 320px checks confirm the collapsed header does not cover the management heading or introduce horizontal overflow.
 
 ## References
 

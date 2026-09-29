@@ -65,6 +65,7 @@ export function QuickMemoEditor({
   const memoContentSource = getMemoEditorContentSource(localSourceEnabled);
   const editorRef = useRef<MilkdownEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const visibilityInputRef = useRef<HTMLInputElement>(null);
   const helpId = useId();
   const [hasEditorContent, setHasEditorContent] = useState(false);
   const [shortcutKey, setShortcutKey] = useState<"Ctrl" | "⌘">("Ctrl");
@@ -196,6 +197,7 @@ export function QuickMemoEditor({
           tags: [],
         });
 
+        editorRef.current?.setMarkdown("");
         setContent("");
         setIsPublic(true);
 
@@ -224,6 +226,16 @@ export function QuickMemoEditor({
   // 处理键盘快捷键
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (
+        e.key === "Tab" &&
+        !e.shiftKey &&
+        e.target instanceof HTMLElement &&
+        e.target.matches(".ProseMirror")
+      ) {
+        e.preventDefault();
+        visibilityInputRef.current?.focus();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         handleSubmit();
@@ -256,21 +268,6 @@ export function QuickMemoEditor({
       className={cn("mb-6 sm:mb-8", className)}
       data-testid="quick-memo-editor"
       onKeyDown={handleKeyDown}
-      onKeyDownCapture={(event) => {
-        const visibilityInput =
-          event.currentTarget.querySelector<HTMLInputElement>('input[type="checkbox"]');
-        if (
-          event.key === "Tab" &&
-          !event.shiftKey &&
-          containerRef.current?.contains(event.target as Node)
-        ) {
-          event.preventDefault();
-          visibilityInput?.focus();
-        } else if (event.key === "Tab" && event.shiftKey && event.target === visibilityInput) {
-          event.preventDefault();
-          containerRef.current?.querySelector<HTMLElement>(".ProseMirror")?.focus();
-        }
-      }}
       aria-label="快速发布区域"
     >
       <div className="nature-panel overflow-hidden">
@@ -340,6 +337,7 @@ export function QuickMemoEditor({
                 >
                   <span className="relative inline-flex h-11 w-[3.1rem] flex-shrink-0 items-center justify-center">
                     <input
+                      ref={visibilityInputRef}
                       type="checkbox"
                       data-testid="quick-memo-visibility-input"
                       checked={isPublic}
