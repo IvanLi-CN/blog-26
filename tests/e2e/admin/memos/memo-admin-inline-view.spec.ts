@@ -4,6 +4,7 @@ import { waitForAdminLiveMemoCard, waitForQuickMemoEditor } from "./helpers";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com";
 const END_OF_DOCUMENT_KEY = process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End";
+const SELECT_ALL_KEY = process.platform === "darwin" ? "Meta+A" : "Control+A";
 
 async function loginAsAdmin(page: Page) {
   await page.request.post("/api/dev/login", {
@@ -259,40 +260,55 @@ test.describe("Inline memo admin view", () => {
     const { container, editor } = await waitForQuickMemoEditor(page);
     const previousContent = "This previous Memo is longer than the replacement.";
     const replacementContent = "Short replacement.";
-    const characterCount = page.getByText(`${previousContent.length} 字符`, { exact: true });
+    const characterCount = container.getByText(/^\d+ 字符$/);
+    const readCharacterCount = async () =>
+      Number((await characterCount.textContent())?.match(/^\d+/)?.[0] ?? 0);
 
     await editor.click();
     await page.keyboard.insertText(previousContent);
     await expect(editor).toContainText(previousContent);
-    await expect(characterCount).toBeVisible();
+    await expect.poll(readCharacterCount).toBeGreaterThan(replacementContent.length);
+
+    await page.evaluate(() => {
+      const testWindow = window as Window & {
+        __holdMemoMarkdownUpdate?: boolean;
+      };
+      testWindow.__holdMemoMarkdownUpdate = true;
+    });
+    await editor.click();
+    await page.keyboard.press(SELECT_ALL_KEY);
+    await page.keyboard.insertText(replacementContent);
+    await expect(editor).toContainText(replacementContent);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const testWindow = window as Window & {
+            __heldMemoMarkdownUpdates?: Array<() => void>;
+          };
+          return testWindow.__heldMemoMarkdownUpdates?.length ?? 0;
+        })
+      )
+      .toBeGreaterThan(0);
+
+    await expect.poll(readCharacterCount).toBeGreaterThan(replacementContent.length);
 
     const createResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
         new URL(response.url()).pathname === "/api/public/memos"
     );
-    await editor.evaluate((node, replacement) => {
+    await editor.evaluate((node) => {
       const testWindow = window as Window & {
         __holdMemoMarkdownUpdate?: boolean;
       };
       const target = node as HTMLElement;
-      target.focus();
-      testWindow.__holdMemoMarkdownUpdate = true;
-
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(target);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      document.execCommand("insertText", false, replacement);
-
       const form = target.closest("form");
       if (!(form instanceof HTMLFormElement)) {
         throw new Error("Quick Memo editor form was not found");
       }
       form.requestSubmit();
       testWindow.__holdMemoMarkdownUpdate = false;
-    }, replacementContent);
+    });
 
     const savedResponse = await createResponse;
     expect(savedResponse.ok()).toBeTruthy();
@@ -303,15 +319,18 @@ test.describe("Inline memo admin view", () => {
       "公开 Memo 已保存；公开时间线将在下次发布后更新。"
     );
 
-    await page.evaluate(() => {
+    const replayedCallbackCount = await page.evaluate(() => {
       const testWindow = window as Window & {
         __heldMemoMarkdownUpdates?: Array<() => void>;
       };
-      for (const callback of testWindow.__heldMemoMarkdownUpdates ?? []) {
+      const callbacks = testWindow.__heldMemoMarkdownUpdates ?? [];
+      for (const callback of callbacks) {
         callback();
       }
       testWindow.__heldMemoMarkdownUpdates = [];
+      return callbacks.length;
     });
+    expect(replayedCallbackCount).toBeGreaterThan(0);
 
     await expect(editor).toHaveText("");
     await expect(page.getByText("0 字符", { exact: true })).toBeVisible();

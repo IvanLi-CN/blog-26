@@ -507,6 +507,8 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       return () => {
         cancelled = true;
         markdownUpdateVersionRef.current += 1;
+        // A new effect instance must not inherit a gate from an invalidated callback.
+        isUpdatingRef.current = false;
         initializingEditors.delete(editorId);
         accessibilityObserverRef.current?.disconnect();
         accessibilityObserverRef.current = null;
