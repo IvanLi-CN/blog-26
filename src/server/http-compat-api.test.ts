@@ -1838,7 +1838,7 @@ public: false
     );
   });
 
-  it("normalizes legacy memo titles in public search using local Markdown only", async () => {
+  it("normalizes legacy memo titles across search, list, detail, and snapshot reads", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
     fs.writeFileSync(
       path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_xayc4b0t.md"),
@@ -1913,6 +1913,39 @@ public: false
         }),
       ])
     );
+
+    const listResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos?publicOnly=false&limit=20", {}, ADMIN_EMAIL),
+      "/memos"
+    );
+    expect(listResponse.status).toBe(200);
+    const listPayload = await readJson(listResponse);
+    expect(listPayload.memos).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slug: "legacy-title-with-source",
+          title: "Source-derived memo title",
+        }),
+        expect.objectContaining({ slug: "legacy-title-without-heading", title: null }),
+        expect.objectContaining({
+          slug: "legacy-title-without-source",
+          title: "20260615 missin12",
+        }),
+      ])
+    );
+
+    for (const [slug, title] of [
+      ["legacy-title-with-source", "Source-derived memo title"],
+      ["legacy-title-without-heading", null],
+      ["legacy-title-without-source", "20260615 missin12"],
+    ] as const) {
+      const detailResponse = await handlePublicApiRequest(
+        buildRequest(`/api/public/memos/${slug}`, {}, ADMIN_EMAIL),
+        `/memos/${slug}`
+      );
+      expect(detailResponse.status).toBe(200);
+      expect(await readJson(detailResponse)).toEqual(expect.objectContaining({ title }));
+    }
   });
 
   it("returns a controlled bad request for an over-budget public search query", async () => {

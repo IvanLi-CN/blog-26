@@ -6,7 +6,10 @@ import "@/styles/nature-restored.css";
 import { PublicStoryHeader } from "@/components/common/PublicStoryHeader";
 import { IconifyProvider } from "@/components/providers/IconifyProvider";
 import Icon from "@/components/ui/Icon";
-import { PublicMemoComposerIsland } from "../../../site/components/PublicMemoAuthoring";
+import {
+  PublicMemoComposerIsland,
+  PublicMemoDetailControlsIsland,
+} from "../../../site/components/PublicMemoAuthoring";
 import { QuickMemoEditModal } from "./QuickMemoEditModal";
 import { QuickMemoEditor } from "./QuickMemoEditor";
 
@@ -178,6 +181,56 @@ function LiveMemoDetailStory() {
           </div>
         </article>
       </section>
+    </PublicShell>
+  );
+}
+
+function TitlelessLiveMemoDetailStory() {
+  useLayoutEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const rawUrl =
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = new URL(rawUrl, window.location.origin);
+      const method = init?.method?.toUpperCase() ?? "GET";
+      const json = (body: unknown) =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+
+      if (url.pathname === "/api/public/auth/me") {
+        return json({
+          id: "storybook-admin",
+          nickname: "Admin",
+          email: "admin@example.test",
+          avatarUrl: "",
+          isAdmin: true,
+        });
+      }
+      if (url.pathname === "/api/public/memos/titleless-detail-story" && method === "GET") {
+        return json({
+          id: "memos/titleless-detail-story.md",
+          slug: "titleless-detail-story",
+          title: null,
+          content: "A titleless live memo body remains visible without a display title.",
+          excerpt: "A titleless live memo body remains visible without a display title.",
+          isPublic: true,
+          tags: ["titleless"],
+          filePath: "memos/titleless-detail-story.md",
+        });
+      }
+      return originalFetch(input, init);
+    }) as typeof window.fetch;
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
+  return (
+    <PublicShell>
+      <PublicMemoDetailControlsIsland slug="titleless-detail-story" />
     </PublicShell>
   );
 }
@@ -479,6 +532,26 @@ export const LiveDetailControls: Story = {
     await expect(canvas.getByTestId("public-memo-detail-body")).toHaveTextContent(
       "Keeps the public memo reading shell intact."
     );
+  },
+};
+
+export const TitlelessLiveDetailControls: Story = {
+  name: "无标题详情不显示 slug",
+  render: () => <TitlelessLiveMemoDetailStory />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const controls = await canvas.findByTestId("public-memo-detail-controls");
+    await expect(controls).toBeVisible();
+    const card = canvas.getByTestId("public-memo-detail-card");
+    await expect(within(card).queryByRole("heading")).not.toBeInTheDocument();
+    await expect(canvas.getByTestId("public-memo-detail-body")).toHaveTextContent(
+      "A titleless live memo body remains visible without a display title."
+    );
+    await expect(canvas.queryByText("titleless-detail-story")).not.toBeInTheDocument();
+
+    await userEvent.click(within(controls).getByRole("button", { name: "编辑 Memo" }));
+    const dialog = await canvas.findByRole("dialog", { name: "快速编辑 Memo" });
+    await expect(dialog).not.toHaveTextContent("titleless-detail-story");
   },
 };
 

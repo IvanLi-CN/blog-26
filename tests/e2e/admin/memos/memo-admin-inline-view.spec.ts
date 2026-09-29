@@ -384,12 +384,18 @@ test.describe("Inline memo admin view", () => {
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
     const { container, editor } = await waitForQuickMemoEditor(page);
     let created: Record<string, unknown> | undefined;
-    let stalePageReturned = false;
-    let resolveStalePage: (() => void) | undefined;
-    const stalePageCompleted = new Promise<void>((resolve) => {
-      resolveStalePage = resolve;
+    let stalePageResponses = 0;
+    let resolveFirstStalePage: (() => void) | undefined;
+    let resolveSecondStalePage: (() => void) | undefined;
+    const firstStalePageCompleted = new Promise<void>((resolve) => {
+      resolveFirstStalePage = resolve;
+    });
+    const secondStalePageCompleted = new Promise<void>((resolve) => {
+      resolveSecondStalePage = resolve;
     });
     const staleTitle = `旧列表响应 ${Date.now()}`;
+    const sharedSummary = "相同摘要前缀。".repeat(20);
+    const staleTail = "旧正文尾部";
 
     await page.route("**/api/public/memos**", async (route) => {
       if (route.request().method() === "POST") {
@@ -399,19 +405,20 @@ test.describe("Inline memo admin view", () => {
         return;
       }
 
-      if (isMemoListRequest(route.request()) && created && !stalePageReturned) {
+      if (isMemoListRequest(route.request()) && created && stalePageResponses < 2) {
+        const responseNumber = ++stalePageResponses;
         const response = await route.fetch();
         const payload = (await response.json()) as {
           memos?: Array<Record<string, unknown>>;
           items?: Array<Record<string, unknown>>;
         };
         if (payload.memos) {
-          const staleMemo = {
-            ...created,
-            title: staleTitle,
-            content: "# 旧列表内容",
-            excerpt: "旧列表内容",
-          };
+          const staleMemo = { ...created };
+          if (responseNumber === 1) {
+            staleMemo.content = `# ${title}\n\n${sharedSummary}${staleTail}`;
+          } else {
+            staleMemo.title = staleTitle;
+          }
           const index = payload.memos.findIndex((memo) => memo.id === created?.id);
           if (index >= 0) payload.memos[index] = staleMemo;
           else payload.memos.unshift(staleMemo);
@@ -419,13 +426,15 @@ test.describe("Inline memo admin view", () => {
         if (payload.items) {
           payload.items = payload.items.map((memo) =>
             memo.id === created?.id
-              ? { ...created, title: staleTitle, content: "# 旧列表内容", excerpt: "旧列表内容" }
+              ? responseNumber === 1
+                ? { ...created, content: `# ${title}\n\n${sharedSummary}${staleTail}` }
+                : { ...created, title: staleTitle }
               : memo
           );
         }
         await route.fulfill({ response, json: payload });
-        stalePageReturned = true;
-        resolveStalePage?.();
+        if (responseNumber === 1) resolveFirstStalePage?.();
+        else resolveSecondStalePage?.();
         return;
       }
 
@@ -433,19 +442,41 @@ test.describe("Inline memo admin view", () => {
     });
 
     const title = `列表旧内容闪念 ${Date.now()}`;
+    const freshTail = "成功响应中的新正文尾部";
     await editor.click();
-    await page.keyboard.insertText(`# ${title}\n\n成功响应应优先于旧列表内容。`);
+    await page.keyboard.insertText(`# ${title}\n\n${sharedSummary}${freshTail}`);
     await container.getByRole("button", { name: "公开发布 Memo" }).click();
 
     await expect(page.getByRole("status")).toHaveText(
       "公开 Memo 已保存；公开时间线将在下次发布后更新。"
     );
-    await stalePageCompleted;
-    expect(stalePageReturned).toBe(true);
+    await firstStalePageCompleted;
+    await expect(page.getByText("正在更新列表…")).toHaveCount(0);
+    await page.getByRole("button", { name: "刷新列表" }).click();
+    await secondStalePageCompleted;
     await expect(page.getByText("正在更新列表…")).toHaveCount(0);
     const card = await waitForAdminLiveMemoCard(page, title);
     await expect(card.getByRole("heading", { name: title })).toBeVisible();
     await expect(card).not.toContainText(staleTitle);
+  });
+
+  test("follows the system theme and disables header transitions for reduced motion", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+    await page.addInitScript(() => localStorage.setItem("theme", "system"));
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    await waitForQuickMemoEditor(page);
+
+    const root = page.locator("html");
+    await expect(root).toHaveAttribute("data-ui-preference", "system");
+    await expect(root).toHaveAttribute("data-ui-theme", "dark");
+    await expect(page.locator("[data-public-header]")).toHaveCSS("transition-property", "none");
+
+    await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+    await expect(root).toHaveAttribute("data-ui-preference", "system");
+    await expect(root).toHaveAttribute("data-ui-theme", "light");
   });
 
   test("keeps the full editor and long card actions usable at desktop, 393px, and 320px", async ({

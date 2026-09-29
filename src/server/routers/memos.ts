@@ -13,6 +13,7 @@ import {
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
+import { resolvePublicMemoTitle } from "@/public-site/snapshot";
 import {
   buildPublicMediaCollection,
   pickLegacyPublicImage,
@@ -541,45 +542,48 @@ export const memosRouter = router({
       );
 
       // 转换为 API 响应格式
-      const formattedMemos = memosWithVectorStatus.map((memo) => {
-        const media = buildPublicMediaCollection("memo", memo as MemoRow);
-        const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
-        const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-        const publicMediaContext = {
-          kind: "memo" as const,
-          slug: memo.slug,
-          filePath: memo.filePath || memo.id,
-        };
+      const formattedMemos = await Promise.all(
+        memosWithVectorStatus.map(async (memo) => {
+          const media = buildPublicMediaCollection("memo", memo as MemoRow);
+          const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
+          const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+          const title = await resolvePublicMemoTitle(memo as MemoRow);
+          const publicMediaContext = {
+            kind: "memo" as const,
+            slug: memo.slug,
+            filePath: memo.filePath || memo.id,
+          };
 
-        return {
-          id: memo.id,
-          slug: memo.slug,
-          title: memo.title || null,
-          excerpt: memo.excerpt,
-          content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
-          isPublic: memo.public,
-          tags: memo.tags ? JSON.parse(memo.tags) : [],
-          attachments,
-          image:
-            pickLegacyPublicImage(media, "content") ??
-            buildLegacyPublicMediaUrl({
-              mediaPath: memo.image,
-              dataSource: memo.dataSource,
-              filePath: memo.filePath,
-            }),
-          media,
-          author: memo.author || undefined,
-          filePath: memo.filePath,
-          source: memo.source,
-          dataSource: memo.dataSource || "local",
-          createdAt: displayTime,
-          publishedAt,
-          updatedAt,
-          timeDisplaySource: source,
-          // 新增：向量化标记
-          isVectorized: (memo as any).isVectorized === true,
-        };
-      });
+          return {
+            id: memo.id,
+            slug: memo.slug,
+            title,
+            excerpt: memo.excerpt,
+            content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
+            isPublic: memo.public,
+            tags: memo.tags ? JSON.parse(memo.tags) : [],
+            attachments,
+            image:
+              pickLegacyPublicImage(media, "content") ??
+              buildLegacyPublicMediaUrl({
+                mediaPath: memo.image,
+                dataSource: memo.dataSource,
+                filePath: memo.filePath,
+              }),
+            media,
+            author: memo.author || undefined,
+            filePath: memo.filePath,
+            source: memo.source,
+            dataSource: memo.dataSource || "local",
+            createdAt: displayTime,
+            publishedAt,
+            updatedAt,
+            timeDisplaySource: source,
+            // 新增：向量化标记
+            isVectorized: (memo as any).isVectorized === true,
+          };
+        })
+      );
 
       // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
       // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
@@ -669,11 +673,12 @@ export const memosRouter = router({
       };
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+      const title = await resolvePublicMemoTitle(memo);
 
       const base = {
         id: memo.id,
         slug: memo.slug,
-        title: memo.title || null,
+        title,
         excerpt: memo.excerpt,
         content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
         isPublic: memo.public,

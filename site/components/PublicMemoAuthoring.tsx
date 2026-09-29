@@ -42,9 +42,10 @@ function sameMemo(left: PublicMemoRecord, right: PublicMemoRecord) {
 
 function sameMemoSnapshot(left: PublicMemoRecord, right: PublicMemoRecord) {
   return (
+    (left.title?.trim() || null) === (right.title?.trim() || null) &&
     left.isPublic === right.isPublic &&
     left.tags.join("\u0000") === right.tags.join("\u0000") &&
-    extractTextSummary(left.content) === extractTextSummary(right.content)
+    left.content === right.content
   );
 }
 
@@ -669,9 +670,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
     }
   }, [isDeleting, memo, slug]);
 
-  const detailBody = memo
-    ? stripMatchingLeadingTitleHeading(memo.content, memo.title || memo.slug)
-    : "";
+  const detailBody = memo ? stripMatchingLeadingTitleHeading(memo.content, memo.title) : "";
 
   if (isLoading || !isAdmin) {
     return null;
@@ -738,9 +737,11 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
                 Memo
               </span>
             </div>
-            <h1 className="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
-              {memo.title || memo.slug}
-            </h1>
+            {memo.title?.trim() ? (
+              <h1 className="nature-title mt-5 text-4xl font-semibold leading-tight tracking-[-0.04em]">
+                {memo.title}
+              </h1>
+            ) : null}
             {memo.tags.length > 0 ? (
               <div className="mt-5 flex flex-wrap gap-2">
                 {memo.tags.map((tag) => (
@@ -778,7 +779,7 @@ export function PublicMemoDetailControlsIsland({ slug }: { slug: string }) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
-        memoTitle={memo?.title || memo?.slug}
+        memoTitle={memo?.title ?? undefined}
         initialContent={memo?.content}
         initialIsPublic={memo?.isPublic}
         articlePath={memo?.filePath ?? ""}
