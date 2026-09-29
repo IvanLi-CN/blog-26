@@ -481,9 +481,11 @@ export const memosRouter = router({
         try {
           // 解码 URL 编码的 cursor
           const decodedCursor = decodeURIComponent(cursor);
-          const [cursorDate, cursorId] = decodedCursor.split("_");
+          const separatorIndex = decodedCursor.indexOf("_");
+          const cursorDate = decodedCursor.slice(0, separatorIndex);
+          const cursorId = decodedCursor.slice(separatorIndex + 1);
 
-          if (cursorDate && cursorId) {
+          if (separatorIndex > 0 && cursorDate && cursorId) {
             // 将日期字符串转换为时间戳进行比较
             const cursorTimestamp = new Date(cursorDate).getTime();
             if (!Number.isNaN(cursorTimestamp)) {

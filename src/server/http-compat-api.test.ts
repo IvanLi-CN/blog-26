@@ -1948,6 +1948,50 @@ public: false
     }
   });
 
+  it("paginates memo IDs containing underscores without repeating the first page", async () => {
+    await seedPost({
+      id: "Memos/20260616_recent_memo.md",
+      filePath: "Memos/20260616_recent_memo.md",
+      slug: "recent-underscore-memo",
+      type: "memo",
+      title: "Recent",
+      publishDate: Date.UTC(2026, 5, 16),
+    });
+    await seedPost({
+      id: "Memos/20260615_older_memo.md",
+      filePath: "Memos/20260615_older_memo.md",
+      slug: "older-underscore-memo",
+      type: "memo",
+      title: "Older",
+      publishDate: Date.UTC(2026, 5, 15),
+    });
+
+    const firstResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos?publicOnly=false&limit=1", {}, ADMIN_EMAIL),
+      "/memos"
+    );
+    const firstPage = await readJson(firstResponse);
+    expect(firstPage.memos.map((memo: { slug: string }) => memo.slug)).toEqual([
+      "recent-underscore-memo",
+    ]);
+    expect(firstPage.hasMore).toBe(true);
+    expect(firstPage.nextCursor).toContain("Memos/20260616_recent_memo.md");
+
+    const nextResponse = await handlePublicApiRequest(
+      buildRequest(
+        `/api/public/memos?publicOnly=false&limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`,
+        {},
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+    const nextPage = await readJson(nextResponse);
+    expect(nextPage.memos.map((memo: { slug: string }) => memo.slug)).toEqual([
+      "older-underscore-memo",
+    ]);
+    expect(nextPage.hasMore).toBe(false);
+  });
+
   it("returns a controlled bad request for an over-budget public search query", async () => {
     const query = "x".repeat(SEARCH_QUERY_LIMITS.maxCodePoints + 1);
     const response = await handlePublicApiRequest(
@@ -2313,7 +2357,7 @@ public: false
     );
     expect(patchResponse.status).toBe(200);
     const updated = await readJson(patchResponse);
-    expect(updated.title).toBeNull();
+    expect(updated.title).toBe("");
     expect(updated.isPublic).toBe(false);
 
     const stored = await db
