@@ -1838,7 +1838,7 @@ public: false
     );
   });
 
-  it("normalizes legacy memo titles in public search using local Markdown only", async () => {
+  it("normalizes legacy memo titles across search, list, detail, and snapshot reads", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos"), { recursive: true });
     fs.writeFileSync(
       path.join(LOCAL_CONTENT_BASE_PATH, "Memos", "20260615_xayc4b0t.md"),
@@ -1913,6 +1913,83 @@ public: false
         }),
       ])
     );
+
+    const listResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos?publicOnly=false&limit=20", {}, ADMIN_EMAIL),
+      "/memos"
+    );
+    expect(listResponse.status).toBe(200);
+    const listPayload = await readJson(listResponse);
+    expect(listPayload.memos).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slug: "legacy-title-with-source",
+          title: "Source-derived memo title",
+        }),
+        expect.objectContaining({ slug: "legacy-title-without-heading", title: null }),
+        expect.objectContaining({
+          slug: "legacy-title-without-source",
+          title: "20260615 missin12",
+        }),
+      ])
+    );
+
+    for (const [slug, title] of [
+      ["legacy-title-with-source", "Source-derived memo title"],
+      ["legacy-title-without-heading", null],
+      ["legacy-title-without-source", "20260615 missin12"],
+    ] as const) {
+      const detailResponse = await handlePublicApiRequest(
+        buildRequest(`/api/public/memos/${slug}`, {}, ADMIN_EMAIL),
+        `/memos/${slug}`
+      );
+      expect(detailResponse.status).toBe(200);
+      expect(await readJson(detailResponse)).toEqual(expect.objectContaining({ title }));
+    }
+  });
+
+  it("paginates memo IDs containing underscores without repeating the first page", async () => {
+    await seedPost({
+      id: "Memos/20260616_recent_memo.md",
+      filePath: "Memos/20260616_recent_memo.md",
+      slug: "recent-underscore-memo",
+      type: "memo",
+      title: "Recent",
+      publishDate: Date.UTC(2026, 5, 16),
+    });
+    await seedPost({
+      id: "Memos/20260615_older_memo.md",
+      filePath: "Memos/20260615_older_memo.md",
+      slug: "older-underscore-memo",
+      type: "memo",
+      title: "Older",
+      publishDate: Date.UTC(2026, 5, 15),
+    });
+
+    const firstResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos?publicOnly=false&limit=1", {}, ADMIN_EMAIL),
+      "/memos"
+    );
+    const firstPage = await readJson(firstResponse);
+    expect(firstPage.memos.map((memo: { slug: string }) => memo.slug)).toEqual([
+      "recent-underscore-memo",
+    ]);
+    expect(firstPage.hasMore).toBe(true);
+    expect(firstPage.nextCursor).toContain("Memos/20260616_recent_memo.md");
+
+    const nextResponse = await handlePublicApiRequest(
+      buildRequest(
+        `/api/public/memos?publicOnly=false&limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`,
+        {},
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+    const nextPage = await readJson(nextResponse);
+    expect(nextPage.memos.map((memo: { slug: string }) => memo.slug)).toEqual([
+      "older-underscore-memo",
+    ]);
+    expect(nextPage.hasMore).toBe(false);
   });
 
   it("returns a controlled bad request for an over-budget public search query", async () => {
@@ -2227,6 +2304,70 @@ public: false
     const preview = await readJson(previewResponse);
     expect(preview.slug).toBe(created.slug);
     expect(preview.content).toContain("inline image marker");
+  });
+
+  it("keeps titleless memos nullable through the admin-aware API and preserves them on PATCH", async () => {
+    const id = "Memos/titleless-admin-roundtrip.md";
+    await seedPost({
+      id,
+      filePath: id,
+      slug: "titleless-admin-roundtrip",
+      type: "memo",
+      title: "",
+      body: "A memo without a title.",
+      public: true,
+      tags: JSON.stringify(["titleless"]),
+    });
+
+    const listResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos?publicOnly=false&limit=20", {}, ADMIN_EMAIL),
+      "/memos"
+    );
+    expect(listResponse.status).toBe(200);
+    const listPayload = await readJson(listResponse);
+    const listedMemo = listPayload.memos.find(
+      (memo: { slug: string }) => memo.slug === "titleless-admin-roundtrip"
+    );
+    expect(listedMemo?.title).toBeNull();
+
+    const detailResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/titleless-admin-roundtrip", {}, ADMIN_EMAIL),
+      "/memos/titleless-admin-roundtrip"
+    );
+    expect(detailResponse.status).toBe(200);
+    expect((await readJson(detailResponse)).title).toBeNull();
+
+    const patchResponse = await handlePublicApiRequest(
+      buildRequest(
+        "/api/public/memos/titleless-admin-roundtrip",
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            content: "Updated memo body without a title.",
+            title: "",
+            isPublic: false,
+            tags: ["titleless", "updated"],
+            attachments: [],
+          }),
+        },
+        ADMIN_EMAIL
+      ),
+      "/memos/titleless-admin-roundtrip"
+    );
+    expect(patchResponse.status).toBe(200);
+    const updated = await readJson(patchResponse);
+    expect(updated.title).toBe("");
+    expect(updated.isPublic).toBe(false);
+
+    const stored = await db
+      .select({ title: posts.title, body: posts.body })
+      .from(posts)
+      .where(eq(posts.id, id))
+      .limit(1)
+      .then((rows) => rows[0]);
+    expect(stored?.title).toBe("");
+    expect(stored?.body).toBe("Updated memo body without a title.");
   });
 
   it("keeps the path slug authoritative when patching /api/public/memos/:slug", async () => {

@@ -57,6 +57,7 @@ export function QuickMemoEditor({
   const [content, setContent] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const clientMemoRoot = resolveClientMemoRootPath({
     localSourceEnabled,
     memoRoot: localMemoRootPath,
@@ -64,6 +65,7 @@ export function QuickMemoEditor({
   const memoContentSource = getMemoEditorContentSource(localSourceEnabled);
   const editorRef = useRef<MilkdownEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const visibilityInputRef = useRef<HTMLInputElement>(null);
   const helpId = useId();
   const [hasEditorContent, setHasEditorContent] = useState(false);
   const [shortcutKey, setShortcutKey] = useState<"Ctrl" | "⌘">("Ctrl");
@@ -107,6 +109,7 @@ export function QuickMemoEditor({
       if (!hasAnyContent || isSaving) return;
 
       setIsSaving(true);
+      setSaveError(null);
       try {
         // 处理内联图片转换
         // 优先从编辑器实例读取最新 Markdown，避免 setState 未及时同步导致内容丢失
@@ -194,6 +197,7 @@ export function QuickMemoEditor({
           tags: [],
         });
 
+        editorRef.current?.setMarkdown("");
         setContent("");
         setIsPublic(true);
 
@@ -201,11 +205,8 @@ export function QuickMemoEditor({
         setTimeout(() => {
           resetEditorHeight();
         }, 100);
-
-        // 显示成功提示（可选）
-        // 这里可以添加 toast 通知
       } catch (error) {
-        console.error("保存快速 memo 失败:", error);
+        setSaveError(error instanceof Error ? error.message : String(error));
       } finally {
         setIsSaving(false);
       }
@@ -225,6 +226,16 @@ export function QuickMemoEditor({
   // 处理键盘快捷键
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (
+        e.key === "Tab" &&
+        !e.shiftKey &&
+        e.target instanceof HTMLElement &&
+        e.target.matches(".ProseMirror")
+      ) {
+        e.preventDefault();
+        visibilityInputRef.current?.focus();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         handleSubmit();
@@ -284,7 +295,8 @@ export function QuickMemoEditor({
             <div className="space-y-2">
               <div
                 ref={containerRef}
-                className="overflow-hidden rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
+                className="quick-memo-editor-surface overflow-hidden rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.8)]"
+                data-testid="quick-memo-editor-surface"
                 style={{
                   minHeight: `${minHeight}px`,
                   maxHeight: `${maxHeight}px`,
@@ -294,7 +306,10 @@ export function QuickMemoEditor({
                 <MilkdownEditor
                   ref={editorRef}
                   content={content}
-                  onChange={setContent}
+                  onChange={(nextContent) => {
+                    setContent(nextContent);
+                    setSaveError(null);
+                  }}
                   placeholder={placeholder}
                   articlePath={getMemoDraftPath(clientMemoRoot)}
                   contentSource={memoContentSource}
@@ -312,19 +327,24 @@ export function QuickMemoEditor({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <div className="flex shrink-0 items-center gap-3">
                 <label
                   className={cn(
                     "flex items-center gap-3",
                     isSaving ? "cursor-not-allowed" : "cursor-pointer"
                   )}
                 >
-                  <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
+                  <span className="relative inline-flex h-11 w-[3.1rem] flex-shrink-0 items-center justify-center">
                     <input
+                      ref={visibilityInputRef}
                       type="checkbox"
+                      data-testid="quick-memo-visibility-input"
                       checked={isPublic}
-                      onChange={(e) => setIsPublic(e.target.checked)}
+                      onChange={(e) => {
+                        setIsPublic(e.target.checked);
+                        setSaveError(null);
+                      }}
                       className="nature-switch-input peer absolute inset-0 m-0 cursor-inherit opacity-0"
                       disabled={isSaving}
                     />
@@ -336,7 +356,10 @@ export function QuickMemoEditor({
                   </span>
                   <span className="text-sm">
                     {isPublic ? (
-                      <span className="flex items-center space-x-1 text-[color:var(--nature-accent-strong)]">
+                      <span
+                        className="flex items-center space-x-1 whitespace-nowrap text-[color:var(--nature-accent-strong)]"
+                        data-testid="quick-memo-visibility-label"
+                      >
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -355,7 +378,10 @@ export function QuickMemoEditor({
                         <span>公开发布</span>
                       </span>
                     ) : (
-                      <span className="flex items-center space-x-1 text-[color:var(--nature-text-soft)]">
+                      <span
+                        className="flex items-center space-x-1 whitespace-nowrap text-[color:var(--nature-text-soft)]"
+                        data-testid="quick-memo-visibility-label"
+                      >
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -381,9 +407,17 @@ export function QuickMemoEditor({
               <button
                 type="submit"
                 disabled={!(content.trim().length > 0 || hasEditorContent) || isSaving}
-                className="nature-button nature-button-primary min-h-10 gap-2 px-4 py-2 text-sm"
-                aria-label={isSaving ? "正在发布 Memo..." : "发布 Memo"}
-                aria-describedby={helpId}
+                className="nature-button nature-button-primary ml-auto min-h-11 shrink-0 gap-2 whitespace-nowrap px-3 py-2 text-sm sm:min-h-10 sm:px-4"
+                aria-label={
+                  isSaving
+                    ? isPublic
+                      ? "正在公开发布 Memo..."
+                      : "正在保存私有 Memo..."
+                    : isPublic
+                      ? "公开发布 Memo"
+                      : "保存私有 Memo"
+                }
+                aria-describedby={saveError ? `${helpId} quick-memo-save-error` : helpId}
               >
                 {isSaving ? (
                   <span className="nature-spinner h-4 w-4" />
@@ -404,9 +438,26 @@ export function QuickMemoEditor({
                     />
                   </svg>
                 )}
-                {isSaving ? "发布中..." : "发布 Memo"}
+                {isSaving
+                  ? isPublic
+                    ? "公开发布中..."
+                    : "保存中..."
+                  : isPublic
+                    ? "公开发布 Memo"
+                    : "保存私有 Memo"}
               </button>
             </div>
+            {saveError ? (
+              <div
+                id="quick-memo-save-error"
+                className="nature-alert nature-alert-error"
+                role="alert"
+                aria-live="assertive"
+              >
+                <span>{saveError}</span>
+                <span className="text-sm">请检查内容后重试；编辑内容已保留。</span>
+              </div>
+            ) : null}
           </form>
         </div>
       </div>

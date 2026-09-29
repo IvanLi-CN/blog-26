@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { processInlineImagesCompat } from "@/lib/image-processing";
 import { cn } from "../../lib/utils";
 import { MilkdownEditor, type MilkdownEditorRef } from "./MilkdownEditor";
@@ -39,6 +39,8 @@ export function QuickMemoEditModal({
 }: QuickMemoEditModalProps) {
   const editorRef = useRef<MilkdownEditorRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dialogPanelRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const [content, setContent] = useState(initialContent ?? "");
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,17 +84,58 @@ export function QuickMemoEditModal({
     return () => window.removeEventListener("keydown", handleEsc);
   }, [open, handleClose]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => {
+      returnFocusRef.current?.focus({ preventScroll: true });
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (isLoading) {
+      dialogPanelRef.current?.focus({ preventScroll: true });
+      return;
+    }
+
+    let attempts = 0;
+    let frame = 0;
+    const focusEditor = () => {
+      const editor = containerRef.current?.querySelector<HTMLElement>(".ProseMirror");
+      if (editor) {
+        editor.focus({ preventScroll: true });
+        return;
+      }
+      attempts += 1;
+      if (attempts < 40) {
+        frame = requestAnimationFrame(focusEditor);
+      } else {
+        dialogPanelRef.current?.focus({ preventScroll: true });
+      }
+    };
+    frame = requestAnimationFrame(focusEditor);
+    return () => cancelAnimationFrame(frame);
+  }, [open, isLoading]);
+
   const handleSubmit = useCallback(
     async (event?: React.FormEvent) => {
       event?.preventDefault();
-      if (!onSave || isSaving || isSubmitting || !content.trim()) {
-        return;
+      if (!onSave || isSaving || isSubmitting) return;
+
+      let latestContent = content;
+      try {
+        latestContent = editorRef.current?.getMarkdown() ?? content;
+      } catch {
+        // The editor ref may not be ready while the loading state is changing.
       }
+      if (!latestContent.trim()) return;
 
       let didSaveSucceed = false;
       setIsSubmitting(true);
       try {
-        let processedContent = content.trim();
+        let processedContent = latestContent.trim();
 
         if (editorRef.current) {
           processedContent = await editorRef.current.processInlineImages(processedContent);
@@ -143,6 +186,33 @@ export function QuickMemoEditModal({
     [handleSubmit]
   );
 
+  const handleDialogKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const panel = dialogPanelRef.current;
+    if (!panel) return;
+    const focusable = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((element) => element.getClientRects().length > 0);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      panel.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !panel.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, []);
+
   const saving = isSaving || isSubmitting;
   const disableActions = saving || isLoading;
   const showSkeleton = isLoading && !content;
@@ -156,7 +226,9 @@ export function QuickMemoEditModal({
       className="nature-modal z-50"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="quick-memo-edit-title"
       data-testid="quick-memo-edit-modal"
+      onKeyDown={handleDialogKeyDown}
     >
       <button
         type="button"
@@ -164,20 +236,29 @@ export function QuickMemoEditModal({
         aria-label="关闭快速编辑"
         onClick={handleClose}
       />
-      <div className="nature-modal-panel flex max-h-[85vh] w-11/12 max-w-4xl flex-col overflow-hidden p-0">
+      <div
+        ref={dialogPanelRef}
+        className="nature-modal-panel flex max-h-[85vh] w-11/12 max-w-4xl flex-col overflow-hidden p-0"
+        tabIndex={-1}
+      >
         <div
           className="sticky top-0 z-10 flex items-center justify-between border-b border-[rgba(var(--nature-border-rgb),0.62)] bg-[rgba(var(--nature-surface-rgb),0.92)] px-6 py-4"
           data-testid="quick-memo-edit-header"
         >
           <div>
-            <h3 className="text-lg font-semibold text-[color:var(--nature-text)]">快速编辑 Memo</h3>
+            <h3
+              id="quick-memo-edit-title"
+              className="text-lg font-semibold text-[color:var(--nature-text)]"
+            >
+              快速编辑 Memo
+            </h3>
             <p className="line-clamp-1 text-sm text-[color:var(--nature-text-soft)]">
               {memoTitle ? `正在编辑：${memoTitle}` : "使用富文本快速调整闪念内容"}
             </p>
           </div>
           <button
             type="button"
-            className="nature-icon-button inline-flex"
+            className="nature-icon-button inline-flex min-h-11 min-w-11"
             aria-label="关闭快速编辑"
             onClick={handleClose}
             disabled={saving}
@@ -223,7 +304,7 @@ export function QuickMemoEditModal({
             </section>
 
             {errorMessage && (
-              <div className="nature-alert nature-alert-error shadow-sm">
+              <div className="nature-alert nature-alert-error shadow-sm" role="alert">
                 <span className="text-lg">!</span>
                 <span>{errorMessage}</span>
               </div>
@@ -241,7 +322,7 @@ export function QuickMemoEditModal({
                 <span className="text-sm text-[color:var(--nature-text-soft)]">
                   {isPublic ? "公开发布" : "私有保存"}
                 </span>
-                <span className="relative inline-flex h-[1.7rem] w-[3.1rem] flex-shrink-0">
+                <span className="relative inline-flex h-11 w-[3.1rem] flex-shrink-0 items-center justify-center">
                   <input
                     type="checkbox"
                     data-testid="quick-memo-visibility-input"
@@ -262,7 +343,7 @@ export function QuickMemoEditModal({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="nature-button nature-button-ghost min-h-10 px-4 py-2 text-sm"
+                  className="nature-button nature-button-ghost min-h-11 px-4 py-2 text-sm sm:min-h-10"
                   onClick={handleClose}
                   disabled={saving}
                 >
@@ -270,7 +351,7 @@ export function QuickMemoEditModal({
                 </button>
                 <button
                   type="submit"
-                  className="nature-button nature-button-primary min-h-10 gap-2 px-4 py-2 text-sm"
+                  className="nature-button nature-button-primary min-h-11 gap-2 px-4 py-2 text-sm sm:min-h-10"
                   disabled={disableActions || !content.trim()}
                 >
                   {saving && <span className="nature-spinner h-4 w-4" />}

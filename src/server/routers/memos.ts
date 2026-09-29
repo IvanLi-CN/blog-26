@@ -13,6 +13,7 @@ import {
   rewriteApiFilesUrlsToRelative,
 } from "@/lib/persisted-paths";
 import { buildLegacyPublicMediaUrl, rewritePublicContentMediaUrls } from "@/lib/public-media";
+import { resolvePublicMemoTitle } from "@/public-site/snapshot";
 import {
   buildPublicMediaCollection,
   pickLegacyPublicImage,
@@ -480,9 +481,11 @@ export const memosRouter = router({
         try {
           // 解码 URL 编码的 cursor
           const decodedCursor = decodeURIComponent(cursor);
-          const [cursorDate, cursorId] = decodedCursor.split("_");
+          const separatorIndex = decodedCursor.indexOf("_");
+          const cursorDate = decodedCursor.slice(0, separatorIndex);
+          const cursorId = decodedCursor.slice(separatorIndex + 1);
 
-          if (cursorDate && cursorId) {
+          if (separatorIndex > 0 && cursorDate && cursorId) {
             // 将日期字符串转换为时间戳进行比较
             const cursorTimestamp = new Date(cursorDate).getTime();
             if (!Number.isNaN(cursorTimestamp)) {
@@ -541,45 +544,48 @@ export const memosRouter = router({
       );
 
       // 转换为 API 响应格式
-      const formattedMemos = memosWithVectorStatus.map((memo) => {
-        const media = buildPublicMediaCollection("memo", memo as MemoRow);
-        const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
-        const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
-        const publicMediaContext = {
-          kind: "memo" as const,
-          slug: memo.slug,
-          filePath: memo.filePath || memo.id,
-        };
+      const formattedMemos = await Promise.all(
+        memosWithVectorStatus.map(async (memo) => {
+          const media = buildPublicMediaCollection("memo", memo as MemoRow);
+          const attachments = rewritePublicMemoAttachments(memo as MemoRow, media);
+          const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+          const title = await resolvePublicMemoTitle(memo as MemoRow);
+          const publicMediaContext = {
+            kind: "memo" as const,
+            slug: memo.slug,
+            filePath: memo.filePath || memo.id,
+          };
 
-        return {
-          id: memo.id,
-          slug: memo.slug,
-          title: memo.title || "无标题 Memo",
-          excerpt: memo.excerpt,
-          content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
-          isPublic: memo.public,
-          tags: memo.tags ? JSON.parse(memo.tags) : [],
-          attachments,
-          image:
-            pickLegacyPublicImage(media, "content") ??
-            buildLegacyPublicMediaUrl({
-              mediaPath: memo.image,
-              dataSource: memo.dataSource,
-              filePath: memo.filePath,
-            }),
-          media,
-          author: memo.author || undefined,
-          filePath: memo.filePath,
-          source: memo.source,
-          dataSource: memo.dataSource || "local",
-          createdAt: displayTime,
-          publishedAt,
-          updatedAt,
-          timeDisplaySource: source,
-          // 新增：向量化标记
-          isVectorized: (memo as any).isVectorized === true,
-        };
-      });
+          return {
+            id: memo.id,
+            slug: memo.slug,
+            title,
+            excerpt: memo.excerpt,
+            content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
+            isPublic: memo.public,
+            tags: memo.tags ? JSON.parse(memo.tags) : [],
+            attachments,
+            image:
+              pickLegacyPublicImage(media, "content") ??
+              buildLegacyPublicMediaUrl({
+                mediaPath: memo.image,
+                dataSource: memo.dataSource,
+                filePath: memo.filePath,
+              }),
+            media,
+            author: memo.author || undefined,
+            filePath: memo.filePath,
+            source: memo.source,
+            dataSource: memo.dataSource || "local",
+            createdAt: displayTime,
+            publishedAt,
+            updatedAt,
+            timeDisplaySource: source,
+            // 新增：向量化标记
+            isVectorized: (memo as any).isVectorized === true,
+          };
+        })
+      );
 
       // 为非管理员移除不在界面展示的敏感/内部字段，避免接口信息泄露
       // 对非管理员进行字段最小化（但保留 UI 必需字段：attachments、author、filePath、source）
@@ -669,11 +675,12 @@ export const memosRouter = router({
       };
 
       const { publishedAt, displayTime, updatedAt, source } = resolveMemoTimestamps(memo);
+      const title = await resolvePublicMemoTitle(memo);
 
       const base = {
         id: memo.id,
         slug: memo.slug,
-        title: memo.title || "无标题 Memo",
+        title,
         excerpt: memo.excerpt,
         content: rewritePublicContentMediaUrls(memo.body, publicMediaContext),
         isPublic: memo.public,
@@ -929,11 +936,12 @@ export const memosRouter = router({
         attachments: Array.isArray(attachments) ? attachments : [],
         markdownFilePath,
       });
+      const resolvedTitle = title ?? extractTitleFromContent(normalized.content);
 
       // 构建 markdown 内容
       const nowIso = new Date().toISOString();
       const frontmatter: Record<string, unknown> = {
-        title: title || extractTitleFromContent(normalized.content),
+        title: resolvedTitle,
         public: isPublic,
         tags,
         attachments: normalized.attachments,
@@ -966,7 +974,7 @@ export const memosRouter = router({
       meta.attachments = normalized.attachments;
 
       const updateData = {
-        title: title || extractTitleFromContent(normalized.content),
+        title: resolvedTitle,
         excerpt: generateExcerptFromContent(normalized.content),
         body: normalized.content, // 使用 body 字段匹配实际数据库结构
         public: isPublic,

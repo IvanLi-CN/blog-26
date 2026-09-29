@@ -29,13 +29,15 @@ test.describe("Quick memo publish feedback (admin)", () => {
     await expect(editor).toContainText(marker);
     await page.waitForTimeout(200);
 
-    const publish = container.getByRole("button", { name: "发布 Memo" });
+    const publish = container.getByRole("button", { name: "公开发布 Memo" });
     await expect(publish).toBeEnabled();
 
     await publish.click();
 
-    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator(".nature-alert-success strong")).toContainText(marker);
+    await expect(page.getByRole("status")).toHaveText(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。",
+      { timeout: 10_000 }
+    );
 
     await expect
       .poll(async () => ((await editor.textContent()) || "").trim().length, {
@@ -58,7 +60,7 @@ test.describe("Quick memo publish feedback (admin)", () => {
     await expect(editor).toContainText("force-fail");
     await page.waitForTimeout(200);
 
-    const publish = container.getByRole("button", { name: "发布 Memo" });
+    const publish = container.getByRole("button", { name: "公开发布 Memo" });
     await expect(publish).toBeEnabled();
 
     await publish.click();
@@ -89,13 +91,15 @@ test.describe("Quick memo publish feedback (admin)", () => {
     await expect(editor).toContainText("降级返回");
     await page.waitForTimeout(200);
 
-    const publish = container.getByRole("button", { name: "发布 Memo" });
+    const publish = container.getByRole("button", { name: "公开发布 Memo" });
     await expect(publish).toBeEnabled();
 
     await publish.click();
 
-    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator(".nature-alert-success strong")).toContainText("E2E 降级返回");
+    await expect(page.getByRole("status")).toHaveText(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。",
+      { timeout: 10_000 }
+    );
 
     await waitForAdminLiveMemoCard(page, "E2E 降级返回", 30_000);
   });

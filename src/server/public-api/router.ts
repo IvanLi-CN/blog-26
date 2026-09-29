@@ -229,7 +229,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
         const result = await caller.memos.update({
           id: existing.id,
           content: typeof body.content === "string" ? body.content : rawExisting.body,
-          title: body.title ?? existing.title,
+          title: body.title ?? existing.title ?? "",
           isPublic: body.isPublic ?? existing.isPublic,
           tags: Array.isArray(body.tags) ? body.tags : (existing.tags ?? []),
           attachments: Array.isArray(body.attachments)

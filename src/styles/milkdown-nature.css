@@ -20,3 +20,9 @@
   --crepe-shadow-1: var(--nature-shadow);
   --crepe-shadow-2: var(--nature-shadow-strong);
 }
+
+@media (max-width: 639px) {
+  .quick-memo-editor-surface .milkdown .ProseMirror {
+    padding-inline: 1rem;
+  }
+}

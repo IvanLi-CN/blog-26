@@ -60,7 +60,10 @@ test.describe("Inline image upload (Milkdown/Memos)", () => {
     await expect(publishButton).toBeEnabled();
     await publishButton.click();
 
-    await expect(page.getByText("Memo 已创建：")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("status")).toHaveText(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。",
+      { timeout: 30_000 }
+    );
 
     let createdCardId = "";
     await expect

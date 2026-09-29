@@ -1,31 +1,26 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { type ReactNode, useEffect, useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import "@/styles/globals.css";
 import "@/styles/nature-restored.css";
+import { PublicStoryHeader } from "@/components/common/PublicStoryHeader";
+import { IconifyProvider } from "@/components/providers/IconifyProvider";
+import Icon from "@/components/ui/Icon";
+import {
+  PublicMemoComposerIsland,
+  PublicMemoDetailControlsIsland,
+} from "../../../site/components/PublicMemoAuthoring";
 import { QuickMemoEditModal } from "./QuickMemoEditModal";
 import { QuickMemoEditor } from "./QuickMemoEditor";
 
 type MemoRecord = {
   id: string;
   slug: string;
-  title?: string;
+  title?: string | null;
   content: string;
   excerpt?: string;
   isPublic: boolean;
   tags: string[];
-};
-
-const composerMemo: MemoRecord = {
-  id: "memo-live-1",
-  slug: "memo-live-1",
-  title: "Realtime memo preview",
-  excerpt:
-    "Live admin memo list mirrors `/api/public/memos/*` without waiting for a full site rebuild.",
-  content:
-    "# Realtime memo preview\n\nUse the live admin controls to preview, edit, and delete a memo from the same page shell.",
-  isPublic: true,
-  tags: ["memos", "admin", "live"],
 };
 
 const detailMemo: MemoRecord = {
@@ -76,16 +71,28 @@ function PublicShell({
   wide?: boolean;
 }) {
   useEffect(() => {
-    document.documentElement.dataset.uiTheme = theme;
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    const root = document.documentElement;
+    const previousPreference = root.dataset.uiPreference;
+    const previousTheme = root.dataset.uiTheme;
+    const previousDataTheme = root.dataset.theme;
+    const previousColorScheme = root.style.colorScheme;
+    const previousDark = root.classList.contains("dark");
+
+    root.dataset.uiPreference = theme;
+    root.dataset.uiTheme = theme;
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+    root.classList.toggle("dark", theme === "dark");
 
     return () => {
-      document.documentElement.dataset.uiTheme = "light";
-      document.documentElement.dataset.theme = "light";
-      document.documentElement.style.colorScheme = "light";
-      document.documentElement.classList.remove("dark");
+      if (previousPreference) root.dataset.uiPreference = previousPreference;
+      else delete root.dataset.uiPreference;
+      if (previousTheme) root.dataset.uiTheme = previousTheme;
+      else delete root.dataset.uiTheme;
+      if (previousDataTheme) root.dataset.theme = previousDataTheme;
+      else delete root.dataset.theme;
+      root.style.colorScheme = previousColorScheme;
+      root.classList.toggle("dark", previousDark);
     };
   }, [theme]);
 
@@ -103,130 +110,6 @@ function PublicShell({
         </div>
       </main>
     </div>
-  );
-}
-
-function RealtimeMemoListStory() {
-  const [memos, setMemos] = useState<MemoRecord[]>([composerMemo]);
-
-  return (
-    <PublicShell>
-      <section className="space-y-4" data-testid="public-memo-composer">
-        <div className="nature-panel px-5 py-4">
-          <div className="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-            <span className="nature-chip nature-chip-info">Admin view</span>
-            <span>Live composer now writes straight to `/api/public/memos/*`.</span>
-          </div>
-          <div className="rounded-[var(--nature-radius-md)] border border-[rgba(var(--nature-border-rgb),0.72)] bg-[rgba(var(--nature-surface-rgb),0.82)] p-4">
-            <p className="text-sm text-[color:var(--nature-text-soft)]">
-              Quick memo editor is rendered inline on the page shell for fast local publishing.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <span className="text-sm font-medium text-[color:var(--nature-text)]">
-                快速发布 Memo
-              </span>
-              <button type="button" className="nature-button">
-                发布 Memo
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="nature-alert nature-alert-success flex flex-wrap items-center justify-between gap-3">
-          <span>
-            Memo 已创建：<strong>{composerMemo.title}</strong>。公开静态页会在下一次站点构建后刷新。
-          </span>
-          <a
-            className="nature-button nature-button-outline"
-            href={`/admin/preview/memos/${composerMemo.slug}`}
-          >
-            打开专用预览
-          </a>
-        </div>
-
-        <div className="nature-panel px-5 py-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-[color:var(--nature-text-strong)]">
-                管理员实时 Memo 视图
-              </p>
-              <p className="text-sm text-[color:var(--nature-text-soft)]">
-                Live list reflects the latest API response and keeps preview actions close at hand.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="nature-button nature-button-outline"
-              onClick={() =>
-                setMemos((current) =>
-                  current.map((memo) =>
-                    memo.id === composerMemo.id ? { ...memo, isPublic: !memo.isPublic } : memo
-                  )
-                )
-              }
-            >
-              刷新列表
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {memos.map((memo) => (
-              <article
-                key={memo.id}
-                className="nature-panel flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-start sm:justify-between"
-                data-testid="admin-live-memo-card"
-                data-id={memo.id}
-                data-slug={memo.slug}
-                data-source="local"
-              >
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
-                    <span className="nature-chip gap-1">Memo</span>
-                    <span
-                      className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warn"}`}
-                      data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
-                    >
-                      {memo.isPublic ? "Public" : "Draft / Private"}
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-[color:var(--nature-text-strong)]">
-                      {memo.title}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-[color:var(--nature-text-soft)]">
-                      {memo.excerpt}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {memo.tags.map((tag) => (
-                      <span key={tag} className="nature-chip">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    className="nature-button nature-button-outline"
-                    href={`/admin/preview/memos/${memo.slug}`}
-                  >
-                    预览
-                  </a>
-                  <button
-                    type="button"
-                    className="nature-button nature-button-outline"
-                    data-testid="admin-live-memo-edit"
-                  >
-                    编辑 Memo
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-    </PublicShell>
   );
 }
 
@@ -302,6 +185,56 @@ function LiveMemoDetailStory() {
   );
 }
 
+function TitlelessLiveMemoDetailStory() {
+  useLayoutEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const rawUrl =
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = new URL(rawUrl, window.location.origin);
+      const method = init?.method?.toUpperCase() ?? "GET";
+      const json = (body: unknown) =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+
+      if (url.pathname === "/api/public/auth/me") {
+        return json({
+          id: "storybook-admin",
+          nickname: "Admin",
+          email: "admin@example.test",
+          avatarUrl: "",
+          isAdmin: true,
+        });
+      }
+      if (url.pathname === "/api/public/memos/titleless-detail-story" && method === "GET") {
+        return json({
+          id: "memos/titleless-detail-story.md",
+          slug: "titleless-detail-story",
+          title: null,
+          content: "A titleless live memo body remains visible without a display title.",
+          excerpt: "A titleless live memo body remains visible without a display title.",
+          isPublic: true,
+          tags: ["titleless"],
+          filePath: "memos/titleless-detail-story.md",
+        });
+      }
+      return originalFetch(input, init);
+    }) as typeof window.fetch;
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
+  return (
+    <PublicShell>
+      <PublicMemoDetailControlsIsland slug="titleless-detail-story" />
+    </PublicShell>
+  );
+}
+
 function QuickEditModalStory({
   theme = "light",
   compact = true,
@@ -370,30 +303,221 @@ function QuickPublishStory({ theme = "light" }: { theme?: "light" | "dark" }) {
           </p>
         </div>
 
-        <div className="nature-panel px-5 py-4">
-          <div className="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-            <span aria-hidden="true">◈</span>
-            <span>当前为管理员视角：这里会直接调用 `/api/public/memos/*`。</span>
-          </div>
-          <QuickMemoEditor onSave={async () => undefined} localSourceEnabled={true} />
+        <div className="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+          <span className="nature-chip nature-chip-info">管理员模式</span>
         </div>
+        <QuickMemoEditor
+          onSave={async () => undefined}
+          localSourceEnabled={true}
+          className="mb-0 sm:mb-0"
+        />
       </section>
     </PublicShell>
   );
 }
 
-export const RealtimeList: Story = {
-  name: "实时列表",
-  render: () => <RealtimeMemoListStory />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByTestId("admin-live-memo-card")).toBeVisible();
-    await expect(canvas.getByRole("link", { name: "预览" })).toBeVisible();
-    await expect(canvas.getByTestId("public-indicator")).toHaveTextContent("Public");
-    await userEvent.click(canvas.getByRole("button", { name: "刷新列表" }));
-    await expect(canvas.getByTestId("private-indicator")).toHaveTextContent("Draft / Private");
-  },
-};
+type AdminPageScenario = "default" | "list-error" | "create-error" | "guest";
+
+function createAdminPageMemos(): MemoRecord[] {
+  return Array.from({ length: 12 }, (_, index) => {
+    const id = `admin-story-memo-${index + 1}`;
+    const isTitleless = index === 1;
+    const isLongTitle = index === 0;
+    const title = isTitleless
+      ? null
+      : isLongTitle
+        ? "在响应式页面中协调编辑器状态、服务端游标与公开快照的完整记录"
+        : `管理员实时 Memo ${String(index + 1).padStart(2, "0")}`;
+    return {
+      id,
+      slug: `admin-story-memo-${index + 1}`,
+      title,
+      excerpt: isTitleless
+        ? "没有标题时继续展示摘要、标签和操作，不用 slug 代替标题。"
+        : `这是一条用于检查卡片信息层级和操作位置的 Memo 摘要 ${index + 1}。`,
+      content: `${title ? `# ${title}\n\n` : ""}用于验证管理员原位编辑与预览行为。\n\n当前内容编号：${index + 1}。`,
+      isPublic: index !== 2,
+      tags: index === 0 ? ["前端/React", "状态管理", "公开快照"] : ["闪念", `主题-${index + 1}`],
+    };
+  });
+}
+
+function AdminPageFallback({
+  theme = "light",
+  scenario = "default",
+}: {
+  theme?: "light" | "dark";
+  scenario?: AdminPageScenario;
+}) {
+  const [timelineMemo] = useState({
+    title: "公开时间线示例",
+    excerpt: "公开时间线仍显示上次发布的快照。",
+  });
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const previousPreference = root.dataset.uiPreference;
+    const previousTheme = root.dataset.uiTheme;
+    const previousDataTheme = root.dataset.theme;
+    const previousColorScheme = root.style.colorScheme;
+    const previousDark = root.classList.contains("dark");
+    const originalFetch = window.fetch.bind(window);
+    const memos = createAdminPageMemos();
+    let failNextCreation = scenario === "create-error";
+
+    root.dataset.uiPreference = theme;
+    root.dataset.uiTheme = theme;
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+    root.classList.toggle("dark", theme === "dark");
+
+    window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const rawUrl =
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const url = new URL(rawUrl, window.location.origin);
+      const method = init?.method?.toUpperCase() ?? "GET";
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { "content-type": "application/json" },
+        });
+
+      if (url.pathname === "/api/public/auth/me") {
+        return json(
+          scenario === "guest"
+            ? null
+            : {
+                id: "storybook-admin",
+                nickname: "Admin",
+                email: "admin@example.test",
+                avatarUrl: "",
+                isAdmin: true,
+              }
+        );
+      }
+
+      if (url.pathname === "/api/public/memos" && method === "GET") {
+        const shouldFailListRequest =
+          scenario === "list-error" && root.dataset.storyListFailure === "armed";
+        if (shouldFailListRequest) {
+          delete root.dataset.storyListFailure;
+          return json({ error: "Storybook 模拟列表读取失败" }, 503);
+        }
+        const start = Number(url.searchParams.get("cursor")?.replace("cursor-", "") ?? 0);
+        const limit = Number(url.searchParams.get("limit") ?? 10);
+        const page = memos.slice(start, start + limit);
+        const next = start + page.length;
+        root.dataset.storyListSuccessCount = String(
+          Number(root.dataset.storyListSuccessCount ?? "0") + 1
+        );
+        return json({
+          memos: page,
+          hasMore: next < memos.length,
+          nextCursor: next < memos.length ? `cursor-${next}` : null,
+        });
+      }
+
+      const memoMatch = url.pathname.match(/^\/api\/public\/memos\/([^/]+)$/);
+      if (memoMatch && method === "GET") {
+        const slug = decodeURIComponent(memoMatch[1]);
+        const memo = memos.find((item) => item.slug === slug);
+        return memo ? json(memo) : json({ error: "Memo not found" }, 404);
+      }
+      if (url.pathname === "/api/public/memos" && method === "POST") {
+        if (failNextCreation) {
+          failNextCreation = false;
+          return json({ error: "Storybook 模拟发布失败" }, 503);
+        }
+        const data = JSON.parse(String(init?.body ?? "{}")) as {
+          content: string;
+          isPublic: boolean;
+          tags: string[];
+        };
+        const title = data.content.match(/^#\s+(.+)$/m)?.[1] ?? undefined;
+        const created = {
+          id: "admin-story-created-memo",
+          slug: "admin-story-created-memo",
+          title,
+          content: data.content,
+          excerpt: data.content.slice(0, 110),
+          isPublic: data.isPublic,
+          tags: data.tags,
+        } satisfies MemoRecord;
+        memos.unshift(created);
+        return json(created, 201);
+      }
+      if (memoMatch && method === "PATCH") {
+        const slug = decodeURIComponent(memoMatch[1]);
+        const data = JSON.parse(String(init?.body ?? "{}")) as Partial<MemoRecord>;
+        const index = memos.findIndex((memo) => memo.slug === slug);
+        if (index < 0) return json({ error: "Memo not found" }, 404);
+        if (memos[index]?.title === null && data.title !== "") {
+          return json({ error: "Titleless memos must keep an empty title" }, 400);
+        }
+        memos[index] = { ...memos[index], ...data };
+        return json(memos[index]);
+      }
+
+      return originalFetch(input, init);
+    }) as typeof window.fetch;
+
+    return () => {
+      window.fetch = originalFetch;
+      if (previousPreference) root.dataset.uiPreference = previousPreference;
+      else delete root.dataset.uiPreference;
+      if (previousTheme) root.dataset.uiTheme = previousTheme;
+      else delete root.dataset.uiTheme;
+      if (previousDataTheme) root.dataset.theme = previousDataTheme;
+      else delete root.dataset.theme;
+      root.style.colorScheme = previousColorScheme;
+      root.classList.toggle("dark", previousDark);
+    };
+  }, [scenario, theme]);
+
+  return (
+    <div
+      className="nature-app-shell flex min-h-screen flex-col bg-[color:var(--nature-bg)] text-[color:var(--nature-text)]"
+      data-testid="memo-admin-page-story"
+    >
+      <IconifyProvider />
+      <PublicStoryHeader activeHref="/memos" />
+      <main className="nature-main flex-1">
+        <div className="nature-container px-1 py-8 sm:px-6 sm:py-12 lg:py-16">
+          <header className="mb-8 text-center sm:mb-12">
+            <span className="nature-kicker justify-center">Flow Notes</span>
+            <h1 className="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">Memos</h1>
+            <p className="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">
+              记录想法、灵感和日常思考的快速笔记
+            </p>
+          </header>
+
+          <PublicMemoComposerIsland localSourceEnabled={false} />
+
+          <section
+            className="memos-list nature-timeline nature-mobile-reading-stream"
+            data-testid="memos-timeline"
+          >
+            <article className="nature-timeline-item nature-mobile-reading-row" data-is-last="true">
+              <div className="nature-timeline-rail" aria-hidden="true" />
+              <div className="nature-timeline-content">
+                <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
+                  <div className="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+                    <span className="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]">
+                      <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+                    </span>
+                    <time dateTime="2026-09-29">2026年9月29日</time>
+                  </div>
+                  <h2 className="nature-title text-xl font-semibold">{timelineMemo.title}</h2>
+                  <p className="nature-muted mt-3 text-base leading-7">{timelineMemo.excerpt}</p>
+                </div>
+              </div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 export const LiveDetailControls: Story = {
   name: "详情控制",
@@ -405,9 +529,29 @@ export const LiveDetailControls: Story = {
     for (const action of canvasElement.querySelectorAll(".nature-button")) {
       expect(action.getBoundingClientRect().height).toBe(36);
     }
-    await expect(canvas.getByTestId("public-memo-detail-body")).toContainText(
+    await expect(canvas.getByTestId("public-memo-detail-body")).toHaveTextContent(
       "Keeps the public memo reading shell intact."
     );
+  },
+};
+
+export const TitlelessLiveDetailControls: Story = {
+  name: "无标题详情不显示 slug",
+  render: () => <TitlelessLiveMemoDetailStory />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const controls = await canvas.findByTestId("public-memo-detail-controls");
+    await expect(controls).toBeVisible();
+    const card = canvas.getByTestId("public-memo-detail-card");
+    await expect(within(card).queryByRole("heading")).not.toBeInTheDocument();
+    await expect(canvas.getByTestId("public-memo-detail-body")).toHaveTextContent(
+      "A titleless live memo body remains visible without a display title."
+    );
+    await expect(canvas.queryByText("titleless-detail-story")).not.toBeInTheDocument();
+
+    await userEvent.click(within(controls).getByRole("button", { name: "编辑 Memo" }));
+    const dialog = await canvas.findByRole("dialog", { name: "快速编辑 Memo" });
+    await expect(dialog).not.toHaveTextContent("titleless-detail-story");
   },
 };
 
@@ -447,5 +591,290 @@ export const QuickPublishDark: Story = {
     await expect(editor).toBeVisible();
     expect(editor.querySelector(".milkdown")).not.toBeNull();
     expect(editor.querySelector(".ProseMirror")).not.toBeNull();
+  },
+};
+
+export const AdminPageFallbackStory: Story = {
+  name: "管理员闪念页（桌面浅色）",
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "完整公共 Memos 页面壳，管理员岛直接使用生产组件；Storybook fetch mock 提供 10 条首屏、长标题、无标题、私有态和游标续载。",
+      },
+    },
+  },
+  render: () => <AdminPageFallback />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Memos", exact: true })).toBeVisible();
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
+    await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10));
+    await expect(
+      canvas.queryByRole("searchbox", { name: "搜索实时 Memo" })
+    ).not.toBeInTheDocument();
+
+    const titlelessMemo = canvasElement.querySelector<HTMLElement>(
+      '[data-slug="admin-story-memo-2"]'
+    );
+    if (!titlelessMemo) throw new Error("Titleless memo did not render");
+    await expect(within(titlelessMemo).queryByRole("heading")).not.toBeInTheDocument();
+    await expect(canvas.getByTestId("private-indicator")).toHaveTextContent("Draft / Private");
+
+    const quickEditor = canvas.getByTestId("quick-memo-editor");
+    const editor = quickEditor.querySelector<HTMLElement>(".ProseMirror");
+    if (!editor) throw new Error("Quick memo editor surface did not render");
+    await userEvent.click(editor);
+    await userEvent.keyboard("键盘路径测试");
+    const visibility = canvas.getByTestId("quick-memo-visibility-input");
+    const submit = canvas.getByRole("button", { name: "公开发布 Memo" });
+    await userEvent.keyboard("{Tab}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(visibility);
+    expect(visibility.matches(":focus-visible")).toBe(true);
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(editor);
+    await userEvent.keyboard("{Tab}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(visibility);
+    expect(visibility.matches(":focus-visible")).toBe(true);
+    await userEvent.keyboard("{Tab}");
+    expect(canvasElement.ownerDocument.activeElement).toBe(submit);
+    expect(submit.matches(":focus-visible")).toBe(true);
+    await userEvent.keyboard("{Tab}");
+    const refresh = canvas.getByRole("button", { name: "刷新列表" });
+    expect(canvasElement.ownerDocument.activeElement).toBe(refresh);
+    await userEvent.keyboard("{Tab}");
+
+    const initialCards = canvas.getAllByTestId("admin-live-memo-card");
+    for (const card of initialCards) {
+      const preview = within(card).getByRole("link", { name: "预览" });
+      expect(canvasElement.ownerDocument.activeElement).toBe(preview);
+      expect(preview.matches(":focus-visible")).toBe(true);
+      await userEvent.keyboard("{Tab}");
+      const edit = within(card).getByTestId("admin-live-memo-edit");
+      expect(canvasElement.ownerDocument.activeElement).toBe(edit);
+      expect(edit.matches(":focus-visible")).toBe(true);
+      await userEvent.keyboard("{Tab}");
+    }
+    const loadMore = canvas.getByRole("button", { name: "加载更多" });
+    expect(canvasElement.ownerDocument.activeElement).toBe(loadMore);
+    expect(loadMore.matches(":focus-visible")).toBe(true);
+
+    await userEvent.click(loadMore);
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(12));
+
+    const firstCard = canvas.getAllByTestId("admin-live-memo-card")[0];
+    if (!firstCard) throw new Error("First admin memo card did not render");
+    const editTrigger = within(firstCard).getByTestId("admin-live-memo-edit");
+    await userEvent.click(editTrigger);
+    const dialog = await canvas.findByRole("dialog", { name: "快速编辑 Memo" });
+    const dialogEditor = dialog.querySelector<HTMLElement>(".ProseMirror");
+    if (!dialogEditor) throw new Error("Quick memo edit dialog surface did not render");
+    await expect(dialogEditor).toBeVisible();
+    await waitFor(() => expect(canvasElement.ownerDocument.activeElement).toBe(dialogEditor));
+    await userEvent.click(within(dialog).getByRole("button", { name: "保存更改" }));
+    await waitFor(() =>
+      expect(canvas.queryByRole("dialog", { name: "快速编辑 Memo" })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(canvasElement.ownerDocument.activeElement).toBe(editTrigger));
+
+    const titlelessCard = canvasElement.querySelector<HTMLElement>(
+      '[data-slug="admin-story-memo-2"]'
+    );
+    if (!titlelessCard) throw new Error("Titleless memo did not render");
+    await userEvent.click(within(titlelessCard).getByTestId("admin-live-memo-edit"));
+    const titlelessDialog = await canvas.findByRole("dialog", { name: "快速编辑 Memo" });
+    await userEvent.click(within(titlelessDialog).getByRole("button", { name: "保存更改" }));
+    await waitFor(() =>
+      expect(canvas.queryByRole("dialog", { name: "快速编辑 Memo" })).not.toBeInTheDocument()
+    );
+    await expect(within(titlelessCard).queryByRole("heading")).not.toBeInTheDocument();
+  },
+};
+
+export const AdminPageFallbackVisualLight: Story = {
+  name: "管理员闪念页（桌面浅色视觉证据）",
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
+  render: () => <AdminPageFallback />,
+};
+
+export const AdminPageFallbackDark: Story = {
+  name: "管理员闪念页（桌面暗色）",
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
+  render: () => <AdminPageFallback theme="dark" />,
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByTestId("quick-memo-editor")).toBeVisible();
+    await expect(within(canvasElement).getByTestId("memos-timeline")).toBeVisible();
+  },
+};
+
+export const AdminPageFallback393: Story = {
+  name: "管理员闪念页（393px）",
+  globals: { viewport: { value: "memo393", isRotated: false } },
+  render: () => <AdminPageFallback />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
+    const view = canvasElement.ownerDocument.defaultView;
+    expect(view?.innerWidth).toBe(393);
+    const shell = canvasElement.querySelector<HTMLElement>("[data-testid='memo-admin-page-story']");
+    const quickEditor = canvasElement.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-editor']"
+    );
+    if (!shell || !quickEditor) throw new Error("Memo admin page or editor did not render");
+    expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth);
+    expect(quickEditor.scrollWidth).toBeLessThanOrEqual(quickEditor.clientWidth);
+    const editorSurface = quickEditor.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-editor-surface']"
+    );
+    if (!editorSurface) throw new Error("Quick memo editor surface did not render");
+    expect(editorSurface.scrollWidth).toBeLessThanOrEqual(editorSurface.clientWidth);
+    const visibilityLabel = quickEditor.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-visibility-label']"
+    );
+    const submit = quickEditor.querySelector<HTMLElement>('button[type="submit"]');
+    if (!visibilityLabel || !submit) throw new Error("Quick editor controls did not render");
+    expect(visibilityLabel.getBoundingClientRect().height).toBeLessThanOrEqual(20);
+    expect(submit.getBoundingClientRect().height).toBeLessThanOrEqual(52);
+    await waitFor(() =>
+      expect(within(canvasElement).getAllByTestId("admin-live-memo-card")).toHaveLength(10)
+    );
+    const publicHeader = canvasElement.querySelector<HTMLElement>("[data-public-header]");
+    const managementHeading = canvasElement.querySelector<HTMLElement>("#admin-live-memos-heading");
+    if (!publicHeader || !managementHeading) {
+      throw new Error("Public header or management heading did not render");
+    }
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderOffset).toMatch(/\d+/));
+    const collapseScroll = Math.ceil(publicHeader.getBoundingClientRect().height * 1.2);
+    view?.scrollTo(0, collapseScroll);
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderState).toBe("collapsed"));
+    await waitFor(() => expect(publicHeader.getBoundingClientRect().bottom).toBeLessThanOrEqual(0));
+    const headingTop = managementHeading.getBoundingClientRect().top;
+    expect(headingTop).toBeGreaterThanOrEqual(0);
+  },
+};
+
+export const AdminPageFallback320: Story = {
+  name: "管理员闪念页（320px）",
+  globals: { viewport: { value: "memo320", isRotated: false } },
+  render: () => <AdminPageFallback />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
+    const view = canvasElement.ownerDocument.defaultView;
+    expect(view?.innerWidth).toBe(320);
+    const shell = canvasElement.querySelector<HTMLElement>("[data-testid='memo-admin-page-story']");
+    if (!shell) throw new Error("Memo admin page did not render");
+    expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth);
+    const quickEditor = canvasElement.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-editor']"
+    );
+    const editorSurface = quickEditor?.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-editor-surface']"
+    );
+    const visibilityLabel = quickEditor?.querySelector<HTMLElement>(
+      "[data-testid='quick-memo-visibility-label']"
+    );
+    const submit = quickEditor?.querySelector<HTMLElement>('button[type="submit"]');
+    if (!editorSurface || !visibilityLabel || !submit) {
+      throw new Error("Quick editor controls did not render");
+    }
+    expect(editorSurface.scrollWidth).toBeLessThanOrEqual(editorSurface.clientWidth);
+    expect(visibilityLabel.getBoundingClientRect().height).toBeLessThanOrEqual(20);
+    expect(submit.getBoundingClientRect().height).toBeLessThanOrEqual(52);
+    await waitFor(() =>
+      expect(within(canvasElement).getAllByTestId("admin-live-memo-card")).toHaveLength(10)
+    );
+    const publicHeader = canvasElement.querySelector<HTMLElement>("[data-public-header]");
+    const managementHeading = canvasElement.querySelector<HTMLElement>("#admin-live-memos-heading");
+    if (!publicHeader || !managementHeading) {
+      throw new Error("Public header or management heading did not render");
+    }
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderOffset).toMatch(/\d+/));
+    const maxScroll = (view?.document.documentElement.scrollHeight ?? 0) - (view?.innerHeight ?? 0);
+    view?.scrollTo(
+      0,
+      Math.max(0, Math.min(Math.ceil(publicHeader.getBoundingClientRect().height * 1.2), maxScroll))
+    );
+    await waitFor(() => expect(publicHeader.dataset.publicHeaderState).toBe("collapsed"));
+    await waitFor(() => expect(publicHeader.getBoundingClientRect().bottom).toBeLessThanOrEqual(0));
+    expect(managementHeading.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+  },
+};
+
+export const AdminPageListError: Story = {
+  name: "管理员闪念页（刷新错误恢复）",
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
+  render: () => <AdminPageFallback scenario="list-error" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10));
+    canvasElement.ownerDocument.documentElement.dataset.storyListFailure = "armed";
+    await userEvent.click(canvas.getByRole("button", { name: "刷新列表" }));
+    const alert = await canvas.findByRole("alert");
+    await expect(alert).toHaveTextContent("Storybook 模拟列表读取失败");
+    const retry = canvas.getByRole("button", { name: "重试" });
+    await expect(retry).toBeVisible();
+    await expect(retry).toBeEnabled();
+    await expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10);
+    await expect(await canvas.findByTestId("quick-memo-editor")).toBeVisible();
+    await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
+    const successCount = Number(
+      canvasElement.ownerDocument.documentElement.dataset.storyListSuccessCount
+    );
+    await userEvent.click(retry);
+    await waitFor(() =>
+      expect(
+        Number(canvasElement.ownerDocument.documentElement.dataset.storyListSuccessCount)
+      ).toBeGreaterThan(successCount)
+    );
+    await waitFor(() => expect(canvas.getAllByTestId("admin-live-memo-card")).toHaveLength(10));
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+  },
+};
+
+export const AdminPageCreateError: Story = {
+  name: "管理员闪念页（发布重试）",
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
+  render: () => <AdminPageFallback scenario="create-error" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const quickEditor = await canvas.findByTestId("quick-memo-editor");
+    const editor = await waitFor(() => {
+      const surface = quickEditor.querySelector<HTMLElement>(".ProseMirror");
+      if (!surface) throw new Error("Quick memo editor surface did not render");
+      return surface;
+    });
+    const content = "Storybook 创建失败后仍保留输入并允许重试";
+    await userEvent.click(editor);
+    await userEvent.keyboard(content);
+
+    const submit = canvas.getByRole("button", { name: "公开发布 Memo" });
+    await userEvent.click(submit);
+    const error = await canvas.findByRole("alert");
+    await expect(error).toHaveTextContent("Storybook 模拟发布失败");
+    await expect(error).toHaveTextContent("请检查内容后重试");
+    await expect(editor).toHaveTextContent(content);
+    await expect(submit).toBeEnabled();
+
+    await userEvent.click(submit);
+    await expect(canvas.getByRole("status")).toHaveTextContent(
+      "公开 Memo 已保存；公开时间线将在下次发布后更新。"
+    );
+    await waitFor(() => expect(editor).not.toHaveTextContent(content));
+  },
+};
+
+export const AdminPageGuest: Story = {
+  name: "访客公共页面",
+  globals: { viewport: { value: "memoDesktop", isRotated: false } },
+  render: () => <AdminPageFallback scenario="guest" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Memos", exact: true })).toBeVisible();
+    await waitFor(() => expect(canvas.queryByText("正在打开页面")).not.toBeInTheDocument());
+    await expect(canvas.queryByTestId("quick-memo-editor")).not.toBeInTheDocument();
+    await expect(canvas.getByTestId("memos-timeline")).toBeVisible();
   },
 };

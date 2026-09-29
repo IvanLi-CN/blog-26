@@ -1,5 +1,7 @@
+import { useLayoutEffect } from "react";
 import Icon from "../ui/Icon";
 import ThemeToggle from "./ThemeToggle";
+import "@/lib/public-header-scroll";
 
 const navLinks = [
   { icon: "tabler:notes", text: "闪念", href: "/memos" },
@@ -15,8 +17,16 @@ export function PublicStoryHeader({
   activeHref: string;
   pending?: boolean;
 }) {
+  useLayoutEffect(() => {
+    window.dispatchEvent(new Event("resize"));
+  }, []);
+
   return (
-    <header className="nature-site-header sticky top-0 z-40 w-full flex-none pt-3">
+    <header
+      className="nature-site-header sticky z-40 w-full flex-none pt-3"
+      data-public-header
+      data-public-header-state="expanded"
+    >
       <div className="nature-container nature-site-header-frame">
         <div className="nature-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:flex sm:flex-wrap sm:gap-3 sm:px-5">
           <a

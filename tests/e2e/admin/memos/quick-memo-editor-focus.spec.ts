@@ -30,7 +30,7 @@ test.describe("Quick Memo Editor focus (admin)", () => {
     await expect(editor).toContainText("测试");
 
     // Publish button should become enabled after typing
-    const publishButton = container.getByRole("button", { name: "发布 Memo" });
+    const publishButton = container.getByRole("button", { name: "公开发布 Memo" });
     await expect(publishButton).toBeEnabled();
   });
 });

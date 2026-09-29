@@ -43,7 +43,7 @@ test.describe("Memo 详情不重复标题", () => {
     await page.keyboard.insertText(initialContent);
     await page.waitForTimeout(150);
 
-    const publish = quickEditor.getByRole("button", { name: "发布 Memo" });
+    const publish = quickEditor.getByRole("button", { name: "公开发布 Memo" });
     await expect(publish).toBeEnabled();
     await publish.click();
 
