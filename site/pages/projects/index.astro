@@ -5,6 +5,7 @@ import ProjectRuntimeDataPanel from "../../components/projects/ProjectRuntimeDat
 import ProjectExternalLinks from "../../components/projects/ProjectExternalLinks.astro";
 import { getGroupedProjectCatalog, getProjectCardEntries, getProjectDetailPath, projectCatalog } from "../../lib/projects";
 import { getProjectRuntimeMetrics } from "../../lib/project-runtime-metrics";
+import { getProjectRuntimeEndpoint } from "../../lib/project-runtime-sources";
 import { getSnapshot } from "../../lib/public-site";
 import { toPublicSitePath } from "../../lib/runtime-urls";
 
@@ -45,7 +46,12 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
               style={`--showcase-cards:3;--showcase-cards-tablet:${Math.min(group.projects.length, 2)};`}
               aria-label={`${group.title} 项目展架`}
             >
-              {group.projects.map((project) => (
+              {group.projects.map((project) => {
+                const runtimeMetrics = getProjectRuntimeMetrics(project.slug);
+                const runtimeSourceUrl = getProjectRuntimeEndpoint(project.slug);
+                const runtimePanelEnabled = Boolean(runtimeMetrics && runtimeSourceUrl);
+
+                return (
                 <article class="projects-poster-card nature-hover-hitbox">
                   <a
                     href={toPublicSitePath(getProjectDetailPath(project.slug))}
@@ -53,8 +59,21 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
                     aria-label={`查看 ${project.title} 项目案例`}
                   >
                     <div class="projects-poster-visual">
-                      {getProjectRuntimeMetrics(project.slug) ? (
-                        <ProjectRuntimeDataPanel metrics={getProjectRuntimeMetrics(project.slug)!} />
+                      {runtimePanelEnabled ? (
+                        <>
+                          <div data-runtime-fallback-poster>
+                            <ProjectPoster
+                              project={project}
+                              compact={true}
+                              priority={project.slug === firstProjectSlug}
+                              fetchPriority={project.slug === firstProjectSlug ? "high" : "auto"}
+                            />
+                          </div>
+                          <ProjectRuntimeDataPanel
+                            metrics={runtimeMetrics!}
+                            sourceUrl={runtimeSourceUrl}
+                          />
+                        </>
                       ) : (
                         <ProjectPoster
                           project={project}
@@ -89,7 +108,8 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
                     </a>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
 
             <div class="projects-domain-scrollbar" data-scrollbar-overlay aria-hidden="true">
@@ -288,6 +308,10 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
     .projects-poster-visual {
       display: block;
       transition: transform 240ms var(--nature-ease);
+    }
+
+    [data-runtime-fallback-poster][hidden] {
+      display: none;
     }
 
     .projects-poster-visual:hover {
@@ -498,3 +522,10 @@ const firstProjectSlug = groupedProjects[0]?.projects[0]?.slug;
     }
   </style>
 </BaseLayout>
+
+<script>
+  import { initializeProjectRuntimeLiveData } from "../../lib/project-runtime-live";
+
+  initializeProjectRuntimeLiveData();
+  document.addEventListener("astro:page-load", initializeProjectRuntimeLiveData);
+</script>

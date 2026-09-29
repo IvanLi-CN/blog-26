@@ -9,9 +9,10 @@ import { formatRuntimeValue } from "../../lib/runtime-format";
 
 interface Props {
   metrics: ProjectRuntimeMetrics;
+  sourceUrl?: string;
 }
 
-const { metrics } = Astro.props as Props;
+const { metrics, sourceUrl = "" } = Astro.props as Props;
 const freshnessStatusClasses = [
   "within-4-hours",
   "4-to-12-hours",
@@ -28,6 +29,8 @@ const freshnessCells =
   class={`project-runtime-panel project-runtime-panel--${metrics.kind}`}
   data-project-runtime-panel
   data-runtime-kind={metrics.kind}
+  data-runtime-source-url={sourceUrl || undefined}
+  data-runtime-state={sourceUrl ? "pending" : "ready"}
 >
   <div class="runtime-panel-body">
     <div class="runtime-panel-art-stage">
@@ -38,17 +41,17 @@ const freshnessCells =
     {metrics.kind === "codex-vibe-monitor" && (
       <>
         <div class="runtime-metric-grid runtime-metric-grid--cvm">
-          <div class="runtime-metric runtime-metric--accent">
+          <div class="runtime-metric runtime-metric--accent" data-runtime-stat-key="tokensPerMinute">
             <span class="runtime-metric-label">实时 Token/分钟</span>
             <RuntimeMetricValue value={metrics.tokensPerMinute.value} />
             <RuntimeSparkline label="实时 Token/分钟" stat={metrics.tokensPerMinute} />
           </div>
-          <div class="runtime-metric">
+          <div class="runtime-metric" data-runtime-stat-key="parallelCalls">
             <span class="runtime-metric-label">并行调用数</span>
             <RuntimeMetricValue value={metrics.parallelCalls.value} />
             <RuntimeSparkline label="并行调用数" stat={metrics.parallelCalls} tone="secondary" />
           </div>
-          <div class="runtime-metric">
+          <div class="runtime-metric" data-runtime-stat-key="todayTokens">
             <span class="runtime-metric-label">今日 Token 消耗量</span>
             <RuntimeMetricValue value={metrics.todayTokens.value} className="runtime-metric-value--compact" />
             <RuntimeSparkline label="今日 Token 消耗量" stat={metrics.todayTokens} placement="right" />
@@ -65,22 +68,22 @@ const freshnessCells =
     {metrics.kind === "tavily-hikari" && (
       <>
         <div class="runtime-metric-grid runtime-metric-grid--hikari">
-          <div class="runtime-metric runtime-metric--accent">
+          <div class="runtime-metric runtime-metric--accent" data-runtime-stat-key="todayRequests">
             <span class="runtime-metric-label">今日请求次数</span>
             <RuntimeMetricValue value={metrics.todayRequests.value} />
             <RuntimeSparkline label="今日请求次数" stat={metrics.todayRequests} />
           </div>
-          <div class="runtime-metric">
+          <div class="runtime-metric" data-runtime-stat-key="todayCredits">
             <span class="runtime-metric-label">今日积分消耗量</span>
             <RuntimeMetricValue value={metrics.todayCredits.value} />
             <RuntimeSparkline label="今日积分消耗量" stat={metrics.todayCredits} tone="secondary" />
           </div>
-          <div class="runtime-metric">
+          <div class="runtime-metric" data-runtime-stat-key="monthCredits">
             <span class="runtime-metric-label">本月积分消耗量</span>
             <RuntimeMetricValue value={metrics.monthCredits.value} className="runtime-metric-value--hikari-lower" />
             <RuntimeSparkline label="本月积分消耗量" stat={metrics.monthCredits} tone="secondary" variant="bars" />
           </div>
-          <div class="runtime-metric runtime-metric--quiet">
+          <div class="runtime-metric runtime-metric--quiet" data-runtime-stat-key="totalCredits">
             <span class="runtime-metric-label">积分总量</span>
             <RuntimeMetricValue value={metrics.totalCredits.value} className="runtime-metric-value--hikari-lower" />
             <RuntimeSparkline label="积分总量" stat={metrics.totalCredits} tone="secondary" variant="bars" />
@@ -97,12 +100,12 @@ const freshnessCells =
     {metrics.kind === "octo-rill" && (
       <>
         <div class="runtime-metric-grid runtime-metric-grid--octo">
-          <div class="runtime-metric runtime-metric--accent">
+          <div class="runtime-metric runtime-metric--accent" data-runtime-stat-key="deduplicatedRepositories">
             <span class="runtime-metric-label">去重仓库数</span>
             <RuntimeMetricValue value={metrics.deduplicatedRepositories.value} />
             <RuntimeSparkline label="去重仓库数" stat={metrics.deduplicatedRepositories} />
           </div>
-          <div class="runtime-metric">
+          <div class="runtime-metric" data-runtime-stat-key="pressure">
             <span class="runtime-metric-label">压力值</span>
             <RuntimeMetricValue value={metrics.pressure.value} format="fixed-2" />
             <RuntimeSparkline label="压力值" stat={metrics.pressure} tone="warm" />
@@ -160,6 +163,10 @@ const freshnessCells =
       radial-gradient(circle at 86% 12%, rgba(var(--runtime-accent-rgb), 0.08), transparent 30%),
       linear-gradient(180deg, rgba(var(--runtime-panel-rgb), 0.98), rgba(var(--runtime-panel-rgb), 0.93));
     box-shadow: inset 0 1px 0 rgba(var(--runtime-highlight-rgb), 0.08);
+  }
+
+  .project-runtime-panel[data-runtime-state="pending"] {
+    display: none;
   }
 
   .runtime-panel-body {
@@ -340,30 +347,30 @@ const freshnessCells =
     padding: 0.08rem 0;
   }
 
-  .runtime-freshness-cell {
+  :global(.runtime-freshness-cell) {
     min-width: 0;
     min-height: 0.24rem;
     border-radius: 0.12rem;
     background: rgb(var(--runtime-secondary-rgb));
   }
 
-  .runtime-freshness-cell--within-4-hours {
+  :global(.runtime-freshness-cell--within-4-hours) {
     background: rgb(var(--runtime-accent-rgb));
   }
 
-  .runtime-freshness-cell--4-to-12-hours {
+  :global(.runtime-freshness-cell--4-to-12-hours) {
     background: rgb(var(--runtime-warm-rgb));
   }
 
-  .runtime-freshness-cell--12-to-24-hours {
+  :global(.runtime-freshness-cell--12-to-24-hours) {
     background: rgb(var(--runtime-freshness-late-rgb));
   }
 
-  .runtime-freshness-cell--over-24-hours {
+  :global(.runtime-freshness-cell--over-24-hours) {
     background: rgb(var(--runtime-freshness-overdue-rgb));
   }
 
-  .runtime-freshness-cell--no-success {
+  :global(.runtime-freshness-cell--no-success) {
     background: rgb(var(--runtime-freshness-empty-rgb));
   }
 </style>

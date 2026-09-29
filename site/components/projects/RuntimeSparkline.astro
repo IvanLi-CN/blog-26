@@ -61,9 +61,18 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
     return `rgba(${channels.join(", ")}, ${alpha})`;
   };
 
-  const bindSparklines = () => {
+  const sparklineInstances = new WeakMap<HTMLElement, { plot: uPlot; resizeObserver: ResizeObserver }>();
+
+  const bindSparklines = (force = false) => {
     document.querySelectorAll<HTMLElement>("[data-runtime-sparkline]").forEach((element) => {
-      if (element.dataset.runtimeSparklineBound === "true") return;
+      if (element.dataset.runtimeSparklineBound === "true") {
+        if (!force) return;
+        const previous = sparklineInstances.get(element);
+        previous?.resizeObserver.disconnect();
+        previous?.plot.destroy();
+        sparklineInstances.delete(element);
+        element.dataset.runtimeSparklineBound = "false";
+      }
       const trend = JSON.parse(element.dataset.runtimeTrend ?? "{}") as TrendData;
       if (!trend.points?.length) return;
 
@@ -147,6 +156,7 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
         plot.setSize(getSize());
       });
       resizeObserver.observe(element);
+      sparklineInstances.set(element, { plot, resizeObserver });
       element.dataset.runtimeSparklineBound = "true";
     });
   };
@@ -158,6 +168,7 @@ const futurePointCount = stat.trend.points.filter((point) => point.value === nul
     scheduleBind();
   }
   document.addEventListener("astro:page-load", scheduleBind);
+  window.addEventListener("project-runtime-metrics-updated", () => window.requestAnimationFrame(() => bindSparklines(true)));
 </script>
 
 <style>

@@ -725,9 +725,28 @@ test.describe("Nature frontend public coverage", () => {
     await expect(themedPoster.locator(".project-poster-scrim")).toHaveCount(0);
   });
 
-  test("runtime panels replace only the three selected project posters", async ({ page }) => {
+  test("empty runtime BaseURLs keep the three selected project posters", async ({ page }) => {
     await page.setViewportSize({ width: 1780, height: 1071 });
+    const runtimeRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/public/metrics/v1/")) runtimeRequests.push(request.url());
+    });
     await gotoWithTheme(page, "/projects", "light");
+
+    const runtimeEnabled = [
+      process.env.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL,
+      process.env.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL,
+      process.env.PUBLIC_OCTO_RILL_METRICS_BASE_URL,
+    ].every(Boolean);
+    if (!runtimeEnabled) {
+      await expect(page.locator(".project-runtime-panel")).toHaveCount(0);
+      for (const slug of ["codex-vibe-monitor", "tavily-hikari", "octo-rill"]) {
+        const card = page.locator(`.projects-poster-card:has(a[href="/projects/${slug}/"])`);
+        await expect(card.locator(".project-poster")).toHaveCount(1);
+      }
+      expect(runtimeRequests).toEqual([]);
+      return;
+    }
 
     const forbiddenLabels = [
       "成功率",
@@ -946,6 +965,8 @@ test.describe("Nature frontend public coverage", () => {
               weekdayCountFromCells: new Set(
                 cells.map((cell) => cell.style.getPropertyValue("--runtime-weekday"))
               ).size,
+              gridColumnCount: new Set(cells.map((cell) => getComputedStyle(cell).gridColumn)).size,
+              gridRowCount: new Set(cells.map((cell) => getComputedStyle(cell).gridRow)).size,
             };
           })
         )
@@ -954,6 +975,8 @@ test.describe("Nature frontend public coverage", () => {
           weekdayCount: "7",
           maxWeek: 14,
           weekdayCountFromCells: 7,
+          gridColumnCount: 14,
+          gridRowCount: 7,
         });
     }
     await expect(cards.octo).toContainText("去重仓库数");

@@ -6,14 +6,14 @@ import {
 
 const pointKeys = ["date", "value"];
 
-function assertDailyActivity(points: Array<{ date: string; value: number }>) {
+function assertDailyActivity(points: Array<{ date: string; value: number | null }>) {
   expect(points).toHaveLength(90);
   expect(points.map((point) => Object.keys(point))).toEqual(
     Array.from({ length: points.length }, () => pointKeys)
   );
   expect(points.map((point) => point.date)).toEqual([...points].map((point) => point.date).sort());
   expect(new Set(points.map((point) => point.date)).size).toBe(90);
-  expect(points.every((point) => point.value >= 0)).toBe(true);
+  expect(points.every((point) => point.value === null || point.value >= 0)).toBe(true);
 }
 
 function assertStat(stat: RuntimeStat) {

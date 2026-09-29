@@ -9,7 +9,7 @@ interface Props {
 }
 
 const { points, label, kind } = Astro.props as Props;
-const maxValue = Math.max(...points.map((point) => point.value), 1);
+const maxValue = Math.max(...points.flatMap((point) => (point.value === null ? [] : [point.value])), 1);
 const valueLabel = kind === "tokens" ? "Token" : "请求";
 const dayMilliseconds = 24 * 60 * 60 * 1000;
 const parseDate = (date: string) => {
@@ -44,7 +44,7 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
     style={`--runtime-week-count:${weekCount}`}
   >
     {calendarCells.map((cell) =>
-      cell.point ? (
+      cell.point && cell.point.value !== null ? (
         <span
           class="runtime-activity-cell"
           data-runtime-point
@@ -105,26 +105,44 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
         tooltip.hidden = false;
         positionTooltip(point);
       };
+      const pointFromTarget = (target) => {
+        if (!(target instanceof Element)) return null;
+        const point = target.closest("[data-runtime-point]");
+        return point && chart.contains(point) ? point : null;
+      };
 
-      chart.querySelectorAll("[data-runtime-point]").forEach((point) => {
-        point.addEventListener("pointerenter", () => showTooltip(point));
-        point.addEventListener("pointerleave", hideTooltip);
-        point.addEventListener("focus", () => showTooltip(point));
-        point.addEventListener("blur", hideTooltip);
-        point.addEventListener("click", (event) => {
+      chart.addEventListener("pointerover", (event) => {
+        const point = pointFromTarget(event.target);
+        if (point) showTooltip(point);
+      });
+      chart.addEventListener("pointerout", (event) => {
+        const nextPoint = pointFromTarget(event.relatedTarget);
+        if (!nextPoint) hideTooltip();
+      });
+      chart.addEventListener("focusin", (event) => {
+        const point = pointFromTarget(event.target);
+        if (point) showTooltip(point);
+      });
+      chart.addEventListener("focusout", (event) => {
+        if (!pointFromTarget(event.relatedTarget)) hideTooltip();
+      });
+      chart.addEventListener("click", (event) => {
+        const point = pointFromTarget(event.target);
+        if (!point) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (tooltip.hidden) showTooltip(point);
+        else hideTooltip();
+      });
+      chart.addEventListener("keydown", (event) => {
+        const point = pointFromTarget(event.target);
+        if (!point) return;
+        if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           event.stopPropagation();
-          if (tooltip.hidden) showTooltip(point);
-          else hideTooltip();
-        });
-        point.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            event.stopPropagation();
-            showTooltip(point);
-          }
-          if (event.key === "Escape") hideTooltip();
-        });
+          showTooltip(point);
+        }
+        if (event.key === "Escape") hideTooltip();
       });
     });
   })();
@@ -161,7 +179,8 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
     padding: 0.08rem 0;
   }
 
-  .runtime-activity-slot {
+  :global(.runtime-activity-cell),
+  :global(.runtime-activity-slot) {
     display: block;
     grid-column: var(--runtime-week);
     grid-row: var(--runtime-weekday);
@@ -170,7 +189,7 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
     border-radius: 0.13rem;
   }
 
-  .runtime-activity-cell {
+  :global(.runtime-activity-cell) {
     outline: none;
     background: rgba(var(--runtime-accent-rgb), calc(0.12 + var(--runtime-intensity) * 0.78));
     box-shadow: inset 0 0 0 1px rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.04);
@@ -184,12 +203,12 @@ const calendarCells = Array.from({ length: weekCount * 7 }, (_, index) => {
     pointer-events: none;
   }
 
-  .runtime-activity-cell[data-value="0"] {
+  :global(.runtime-activity-cell[data-value="0"]) {
     background: rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.08);
   }
 
-  .runtime-activity-cell:hover,
-  .runtime-activity-cell:focus-visible {
+  :global(.runtime-activity-cell:hover),
+  :global(.runtime-activity-cell:focus-visible) {
     z-index: 1;
     outline: 2px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.9);
     outline-offset: 1px;

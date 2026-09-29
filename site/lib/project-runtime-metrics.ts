@@ -1,6 +1,6 @@
 export interface RuntimeActivityPoint {
   date: string;
-  value: number;
+  value: number | null;
 }
 
 export type RuntimeTrendRange = "recent-hours" | "today";
