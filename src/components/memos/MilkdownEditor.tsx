@@ -6,7 +6,7 @@
  * 完全按照旧项目的方式实现，使用 @milkdown/crepe
  */
 
-import { editorViewCtx, parserCtx } from "@milkdown/core";
+import { editorViewCtx, parserCtx, serializerCtx } from "@milkdown/core";
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import { Slice } from "@milkdown/prose/model";
 import { TextSelection } from "@milkdown/prose/state";
@@ -81,6 +81,19 @@ function postprocessContentFromEditor(content: string): string {
 }
 
 type FrontmatterHandlingMode = "document" | "body-only";
+
+function normalizeEditorMarkdown(
+  markdown: string,
+  articlePath: string,
+  frontmatterHandling: FrontmatterHandlingMode
+) {
+  const processedMarkdown =
+    frontmatterHandling === "document" ? postprocessContentFromEditor(markdown) : markdown;
+  const persistedMarkdownFilePath =
+    articlePath.length > 0 ? articlePath.replace(/^\/+/, "") : "__unknown__.md";
+
+  return rewriteApiFilesUrlsToRelative(processedMarkdown, persistedMarkdownFilePath).content;
+}
 
 // 编辑器实例接口
 export interface MilkdownEditorRef {
@@ -194,6 +207,28 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       );
     };
 
+    const getMarkdown = () => {
+      const crepe = crepeRef.current;
+      if (!crepe) return lastContentRef.current;
+
+      let markdown = lastContentRef.current;
+      try {
+        crepe.editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const serialize = ctx.get(serializerCtx);
+          markdown = normalizeEditorMarkdown(
+            serialize(view.state.doc),
+            articlePath,
+            frontmatterHandling
+          );
+        });
+      } catch {
+        return lastContentRef.current;
+      }
+
+      return markdown;
+    };
+
     const setMarkdown = (nextContent: string) => {
       const crepe = crepeRef.current;
       if (!crepe) {
@@ -249,7 +284,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     // 暴露给外部的方法
     useImperativeHandle(ref, () => ({
       processInlineImages,
-      getMarkdown: () => lastContentRef.current,
+      getMarkdown,
       setMarkdown,
     }));
 

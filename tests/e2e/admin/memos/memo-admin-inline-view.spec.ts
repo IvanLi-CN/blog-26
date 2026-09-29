@@ -224,6 +224,8 @@ test.describe("Inline memo admin view", () => {
     await modal.getByRole("button", { name: "保存更改" }).click();
     const savedResponse = await patchResponse;
     expect(savedResponse.ok()).toBeTruthy();
+    const submittedMemo = savedResponse.request().postDataJSON() as { content: string };
+    expect(submittedMemo.content).toContain("PATCH race must retain this fresh edit marker.");
     const savedMemo = (await savedResponse.json()) as { content: string };
     expect(savedMemo.content).toContain("PATCH race must retain this fresh edit marker.");
     await expect(card).toContainText("PATCH race must retain this fresh edit marker.");
