@@ -6,7 +6,7 @@
  * 完全按照旧项目的方式实现，使用 @milkdown/crepe
  */
 
-import { editorViewCtx, parserCtx } from "@milkdown/core";
+import { editorViewCtx, parserCtx, serializerCtx } from "@milkdown/core";
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import { Slice } from "@milkdown/prose/model";
 import { TextSelection } from "@milkdown/prose/state";
@@ -81,6 +81,19 @@ function postprocessContentFromEditor(content: string): string {
 }
 
 type FrontmatterHandlingMode = "document" | "body-only";
+
+function normalizeEditorMarkdown(
+  markdown: string,
+  articlePath: string,
+  frontmatterHandling: FrontmatterHandlingMode
+) {
+  const processedMarkdown =
+    frontmatterHandling === "document" ? postprocessContentFromEditor(markdown) : markdown;
+  const persistedMarkdownFilePath =
+    articlePath.length > 0 ? articlePath.replace(/^\/+/, "") : "__unknown__.md";
+
+  return rewriteApiFilesUrlsToRelative(processedMarkdown, persistedMarkdownFilePath).content;
+}
 
 // 编辑器实例接口
 export interface MilkdownEditorRef {
@@ -182,6 +195,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const onChangeRef = useRef(onChange);
     const accessibilityObserverRef = useRef<MutationObserver | null>(null);
     const isUpdatingRef = useRef<boolean>(false); // 防止循环更新的标志
+    const markdownUpdateVersionRef = useRef(0);
     const isEditorReadyRef = useRef(false);
 
     // 处理内联图片上传 - 与 UniversalEditor 相同的逻辑
@@ -194,7 +208,30 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
       );
     };
 
+    const getMarkdown = () => {
+      const crepe = crepeRef.current;
+      if (!crepe) return lastContentRef.current;
+
+      let markdown = lastContentRef.current;
+      try {
+        crepe.editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const serialize = ctx.get(serializerCtx);
+          markdown = normalizeEditorMarkdown(
+            serialize(view.state.doc),
+            articlePath,
+            frontmatterHandling
+          );
+        });
+      } catch {
+        return lastContentRef.current;
+      }
+
+      return markdown;
+    };
+
     const setMarkdown = (nextContent: string) => {
+      const updateVersion = ++markdownUpdateVersionRef.current;
       const crepe = crepeRef.current;
       if (!crepe) {
         lastContentRef.current = nextContent;
@@ -242,14 +279,16 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
         lastContentRef.current = nextContent;
       }
       setTimeout(() => {
-        isUpdatingRef.current = false;
+        if (markdownUpdateVersionRef.current === updateVersion) {
+          isUpdatingRef.current = false;
+        }
       }, 100);
     };
 
     // 暴露给外部的方法
     useImperativeHandle(ref, () => ({
       processInlineImages,
-      getMarkdown: () => lastContentRef.current,
+      getMarkdown,
       setMarkdown,
     }));
 
@@ -408,6 +447,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 更新最后内容引用，防止后续循环
               lastContentRef.current = persistedMarkdown;
+              const updateVersion = ++markdownUpdateVersionRef.current;
               const changeMeta =
                 isEditorReadyRef.current && !readOnly
                   ? USER_EDITOR_CHANGE
@@ -417,6 +457,7 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
               // 异步调用 onChange，然后重置标志
               setTimeout(() => {
+                if (markdownUpdateVersionRef.current !== updateVersion) return;
                 onChangeRef.current(persistedMarkdown, changeMeta);
                 isUpdatingRef.current = false;
               }, 0);
@@ -465,6 +506,9 @@ export const MilkdownEditor = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
 
       return () => {
         cancelled = true;
+        markdownUpdateVersionRef.current += 1;
+        // A new effect instance must not inherit a gate from an invalidated callback.
+        isUpdatingRef.current = false;
         initializingEditors.delete(editorId);
         accessibilityObserverRef.current?.disconnect();
         accessibilityObserverRef.current = null;

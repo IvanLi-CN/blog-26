@@ -105,41 +105,30 @@ export function QuickMemoEditor({
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
-      const hasAnyContent = content.trim().length > 0 || hasEditorContent;
-      if (!hasAnyContent || isSaving) return;
+      if (isSaving) return;
+
+      // Read the live document before validating or processing the React state snapshot.
+      let processedContent = content.trim();
+      if (editorRef.current) {
+        try {
+          processedContent = editorRef.current.getMarkdown().trim();
+        } catch {
+          // Keep the state snapshot if the editor is not ready.
+        }
+      }
+
+      if (!processedContent && hasEditorContent && containerRef.current) {
+        const prose = containerRef.current.querySelector(".ProseMirror") as HTMLElement | null;
+        processedContent = (prose?.textContent || "").trim();
+      }
+      if (!processedContent) return;
 
       setIsSaving(true);
       setSaveError(null);
       try {
         // 处理内联图片转换
-        // 优先从编辑器实例读取最新 Markdown，避免 setState 未及时同步导致内容丢失
-        let processedContent = content.trim();
         if (editorRef.current) {
-          try {
-            const latest = editorRef.current.getMarkdown();
-            if (latest && latest.trim().length >= processedContent.length) {
-              processedContent = latest.trim();
-            }
-          } catch {
-            // ignore: getMarkdown may not be available during early mount
-          }
-        }
-        // removed verbose editor debug logs
-
-        // 兜底：Milkdown 的内容更新是异步的；当 state/ref 还没跟上但按钮已可点时，
-        // 避免提交空内容（会导致 memos.create 400）。
-        if (!processedContent && hasEditorContent && containerRef.current) {
-          const prose = containerRef.current.querySelector(".ProseMirror") as HTMLElement | null;
-          const text = (prose?.textContent || "").trim();
-          if (text) {
-            processedContent = text;
-          }
-        }
-
-        if (editorRef.current) {
-          // removed verbose editor debug logs
           processedContent = await editorRef.current.processInlineImages(processedContent);
-          // removed verbose editor debug logs
         }
 
         processedContent = await processInlineImagesCompat(
@@ -199,6 +188,7 @@ export function QuickMemoEditor({
 
         editorRef.current?.setMarkdown("");
         setContent("");
+        setHasEditorContent(false);
         setIsPublic(true);
 
         // 重置编辑器高度
