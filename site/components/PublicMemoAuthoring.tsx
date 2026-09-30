@@ -219,8 +219,11 @@ function PublicMemoList({
               {memo.excerpt ? (
                 <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
               ) : null}
-              <div className="mt-4 flex items-end justify-between gap-3">
-                <div className="min-w-0 flex flex-1 flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+                <div
+                  className="min-w-0 flex flex-1 flex-wrap gap-2"
+                  data-testid="admin-live-memo-content"
+                >
                   {memo.tags.map((tag) => (
                     <span key={`${memo.id}-${tag}`} className="nature-chip">
                       #{tag}
@@ -228,7 +231,7 @@ function PublicMemoList({
                   ))}
                 </div>
                 <div
-                  className="flex shrink-0 items-center gap-2"
+                  className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto"
                   data-testid="admin-live-memo-actions"
                 >
                   <a

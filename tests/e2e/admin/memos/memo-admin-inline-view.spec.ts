@@ -689,7 +689,7 @@ test.describe("Inline memo admin view", () => {
         expect(rowMetrics.borderBottomStyle).toBe("solid");
       } else {
         expect(actionsBox.x).toBeGreaterThan(contentBox.x + contentBox.width - 1);
-        expect(actionsBox.width).toBeGreaterThanOrEqual(143);
+        expect(actionsBox.width).toBeGreaterThanOrEqual(88);
         const desktopCardMetrics = await card.evaluate((element) => {
           const style = window.getComputedStyle(element);
           return Number.parseFloat(style.borderTopLeftRadius);

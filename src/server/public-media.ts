@@ -620,6 +620,10 @@ function appendInternalSourceSecret(url: string) {
   return `${url}${separator}${INTERNAL_SOURCE_TOKEN_PARAM}=${encodeURIComponent(secret)}`;
 }
 
+function encodeImagorSourceUrl(url: string) {
+  return url.includes("?") ? `b64:${Buffer.from(url).toString("base64url")}` : url;
+}
+
 function redactInternalSourceSecret(value: string) {
   return value.replace(/([?&]source-token=)[^&/]+/gu, "$1[redacted]");
 }
@@ -700,13 +704,15 @@ async function buildImagorPath(params: {
   const format =
     normalizePublicMediaExt(params.ext) ||
     pickPublicMediaExt(params.ref.kind, params.ref.sourcePath, params.variant);
-  const sourceUrl = appendInternalSourceSecret(
-    `${getInternalSourceBaseUrl(params.request)}${buildInternalAssetSourcePath({
-      kind: params.context.kind,
-      slug: params.context.slug,
-      mediaHash: params.ref.hash,
-      scope: params.context.assetScope,
-    })}`
+  const sourceUrl = encodeImagorSourceUrl(
+    appendInternalSourceSecret(
+      `${getInternalSourceBaseUrl(params.request)}${buildInternalAssetSourcePath({
+        kind: params.context.kind,
+        slug: params.context.slug,
+        mediaHash: params.ref.hash,
+        scope: params.context.assetScope,
+      })}`
+    )
   );
 
   const filters: string[] = [];

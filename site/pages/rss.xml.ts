@@ -1,14 +1,11 @@
 import type { APIRoute } from "astro";
-import { buildSiteFeed } from "../lib/feeds";
-import { getSnapshot } from "../lib/public-site";
 
 export const GET: APIRoute = async () => {
-  const snapshot = await getSnapshot();
-  const built = buildSiteFeed(snapshot, "rss");
-  return new Response(built.rss, {
+  return new Response(null, {
+    status: 301,
     headers: {
-      "content-type": "application/xml; charset=utf-8",
-      "cache-control": "public, max-age=3600, s-maxage=3600",
+      location: "/feed.xml",
+      "cache-control": "public, max-age=86400",
     },
   });
 };

@@ -23,7 +23,7 @@ if (isConsoleRuntime) {
   const { handlePublicApiRequest } = await import("@/server/public-api/router");
   const auth = await extractAuthFromRequest(Astro.request);
   initialIsAdmin = auth.isAdmin;
-  const memoRequest = new Request(new URL("/api/public/memos?publicOnly=false&limit=20", Astro.request.url), {
+  const memoRequest = new Request(new URL("/api/public/memos?publicOnly=false&limit=10", Astro.request.url), {
     headers: Astro.request.headers,
   });
   const memoResponse = await handlePublicApiRequest(memoRequest, "/memos");

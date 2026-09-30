@@ -895,10 +895,11 @@ image: ./assets/cover.png
       if (url.startsWith("http://imagor.example.test/")) {
         expect(init?.method).toBe("GET");
         expect(url).toContain("/fit-in/1600x900/");
-        expect(url).toContain(
-          "http://blog:25090/_internal/assets/source/post/preview-contaminated-assets/"
+        const sourceSegment = new URL(url).pathname.split("/").at(-1) || "";
+        expect(sourceSegment.startsWith("b64:")).toBe(true);
+        expect(Buffer.from(sourceSegment.slice(4), "base64url").toString()).toBe(
+          `http://blog:25090/_internal/assets/source/post/preview-contaminated-assets/${coverHash}?scope=admin-preview`
         );
-        expect(url).toContain("scope=admin-preview");
         return new Response("admin-preview-image", {
           status: 200,
           headers: {
@@ -1446,6 +1447,7 @@ public: false
     const originalFetch = globalThis.fetch;
     process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
     process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET = "test-source-secret";
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -1453,7 +1455,11 @@ public: false
         expect(init?.method).toBe("GET");
         expect(url).toContain("/fit-in/1600x900/");
         expect(url).toContain("filters:");
-        expect(url).toContain("http://blog:25090/_internal/assets/source/post/facade-post/");
+        const sourceSegment = new URL(url).pathname.split("/").at(-1) || "";
+        expect(sourceSegment.startsWith("b64:")).toBe(true);
+        expect(Buffer.from(sourceSegment.slice(4), "base64url").toString()).toBe(
+          `http://blog:25090/_internal/assets/source/post/facade-post/${buildPublicMediaHash("blog/assets/facade-cover.png", "cover")}?source-token=test-source-secret`
+        );
         expect(url).toContain(
           `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli.svg").toString("base64url")},-24,-24,18,22,22)`
         );
@@ -1483,6 +1489,7 @@ public: false
     } finally {
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET;
       globalThis.fetch = originalFetch;
     }
   });
