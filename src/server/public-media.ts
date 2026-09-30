@@ -934,7 +934,7 @@ async function loadContentRows(
   if (internalOnly || includePrivate) return rows;
   if (!rows.length) return [];
 
-  return rows.filter((row) => row.public && (kind !== "post" || !row.draft));
+  return rows.filter((row) => row.public && !row.draft);
 }
 
 async function resolveMediaReferenceFromRequest(

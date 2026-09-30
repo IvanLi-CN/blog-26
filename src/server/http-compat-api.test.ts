@@ -22,6 +22,7 @@ const USER_EMAIL = "user-test@test.local";
 let handleAdminApiRequest: typeof import("@/server/admin-api/router").handleAdminApiRequest;
 let handlePublicApiRequest: typeof import("@/server/public-api/router").handlePublicApiRequest;
 let handleFilesApiRequest: typeof import("@/server/files-api/router").handleFilesApiRequest;
+let handlePublicAssetFacadeRequest: typeof import("@/server/public-media").handlePublicAssetFacadeRequest;
 let handleInternalAssetSourceRequest: typeof import("@/server/public-media").handleInternalAssetSourceRequest;
 
 function resetHttpCompatEnv() {
@@ -183,7 +184,9 @@ describe("HTTP compatibility APIs", () => {
     ({ handleAdminApiRequest } = await import("@/server/admin-api/router"));
     ({ handlePublicApiRequest } = await import("@/server/public-api/router"));
     ({ handleFilesApiRequest } = await import("@/server/files-api/router"));
-    ({ handleInternalAssetSourceRequest } = await import("@/server/public-media"));
+    ({ handlePublicAssetFacadeRequest, handleInternalAssetSourceRequest } = await import(
+      "@/server/public-media"
+    ));
 
     await initializeDB(true);
   }, 20_000);
@@ -1525,6 +1528,36 @@ public: false
       );
       expect(response.status).toBe(404);
     }
+  });
+
+  it("never serves draft memos through the public asset facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets/draft-cover.png"), "cover");
+
+    await seedPost({
+      id: "Memos/draft-public-facade.md",
+      filePath: "Memos/draft-public-facade.md",
+      slug: "draft-public-facade",
+      type: "memo",
+      title: "Draft Public Facade",
+      image: "./assets/draft-cover.png",
+      body: "Body",
+      public: true,
+      draft: true,
+    });
+
+    const mediaHash = buildPublicMediaHash("Memos/assets/draft-cover.png", "cover");
+    const response = await handlePublicAssetFacadeRequest(
+      buildRequest(`/api/public/assets/memo/draft-public-facade/${mediaHash}/cover.webp`),
+      {
+        kind: "memo",
+        slug: "draft-public-facade",
+        mediaHash,
+        variant: "cover",
+        ext: "webp",
+      }
+    );
+    expect(response.status).toBe(404);
   });
 
   it("falls back to the original admin preview asset on imagor HTTP failures", async () => {
