@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { ALL } from "./api/[...path]";
+import { ALL } from "../../site/pages/api/[...path]";
 
 const CONTENT_PATH = "Memos/20260930_gong1-kai1-ce4-shi4.md";
 
