@@ -127,6 +127,10 @@ test.describe("Inline memo admin view", () => {
     const card = await waitForAdminLiveMemoCard(page, title);
     const editButton = card.getByTestId("admin-live-memo-edit");
     await expect(editButton).toBeVisible();
+    await editButton.scrollIntoViewIfNeeded();
+    await page.evaluate(
+      () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+    );
     const scrollBefore = await page.evaluate(() => window.scrollY);
 
     const detailRequest = page.waitForRequest(
