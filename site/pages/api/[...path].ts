@@ -14,6 +14,20 @@ function decodePathSegment(value: string) {
   }
 }
 
+function fileRouteParams(request: Request, fallbackPath: string) {
+  const rawPathname = new URL(request.url).pathname;
+  const marker = "/api/files/";
+  const markerIndex = rawPathname.indexOf(marker);
+  const rawFilePath =
+    markerIndex >= 0 ? rawPathname.slice(markerIndex + marker.length) : fallbackPath;
+  const [rawSource, ...rawSegments] = rawFilePath.split("/");
+
+  return {
+    source: decodePathSegment(rawSource || ""),
+    path: rawSegments.filter(Boolean).map(decodePathSegment),
+  };
+}
+
 export function withoutIdentity(request: Request) {
   const headers = new Headers(request.headers);
   const identityHeaders = ["authorization", "cookie", "remote-email", "x-forwarded-email"];
@@ -100,11 +114,9 @@ export async function ALL({ request, params }: { request: Request; params: { pat
     }
 
     const tail = filesMatch[2] || "";
+    const fileParams = fileRouteParams(request, `${filesMatch[1]}/${tail}`);
     const { handleFilesApiRequest } = await import("@/server/files-api/router");
-    return handleFilesApiRequest(runtimeRequest, {
-      source: decodePathSegment(filesMatch[1]),
-      path: tail ? tail.split("/").filter(Boolean).map(decodePathSegment) : [],
-    });
+    return handleFilesApiRequest(runtimeRequest, fileParams);
   }
 
   return notFound();

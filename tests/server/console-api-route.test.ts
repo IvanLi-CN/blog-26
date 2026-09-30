@@ -65,4 +65,22 @@ describe("console file API route", () => {
 
     expect(response.status).toBe(404);
   });
+
+  test("decodes encoded percent sequences in file names exactly once", async () => {
+    process.env.CONSOLE_RUNTIME = "true";
+    process.env.DB_PATH = "./dev-data/sqlite.db";
+    process.env.LOCAL_CONTENT_BASE_PATH = CONTENT_ROOT;
+    process.env.ADMIN_EMAIL = "admin-test@test.local";
+    writeFileSync(resolve(CONTENT_ROOT, "Memos/a%2Fb.md"), "# Encoded file name\n", "utf8");
+
+    const response = await ALL({
+      request: new Request("https://console.ivanli.cc/api/files/local/Memos/a%252Fb.md", {
+        headers: { "Remote-Email": "admin-test@test.local" },
+      }),
+      params: { path: "files/local/Memos/a%2Fb.md" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Encoded file name");
+  });
 });
