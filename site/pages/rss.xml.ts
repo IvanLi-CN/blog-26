@@ -20,8 +20,6 @@ export const GET: APIRoute = async () => {
     headers: {
       "content-type": "application/xml; charset=utf-8",
       "cache-control": "public, max-age=3600, s-maxage=3600",
-      etag: built.etag,
-      "last-modified": built.lastModified.toUTCString(),
     },
   });
 };
