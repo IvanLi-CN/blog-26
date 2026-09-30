@@ -611,9 +611,14 @@ test.describe("Inline memo admin view", () => {
         const header = page.locator("[data-public-header]");
         await expect(header).toHaveAttribute("data-public-header-offset", /\d+/);
         if (viewport.width === 320) {
-          await page.evaluate(() => window.scrollTo(0, 1));
-          await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-          expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+          const collapseScroll = await page.evaluate(() => {
+            const headerHeight =
+              document.querySelector("[data-public-header]")?.getBoundingClientRect().height ?? 0;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight - 1;
+            return Math.max(1, Math.min(Math.ceil(headerHeight * 1.2), maxScroll));
+          });
+          await page.evaluate((scrollY) => window.scrollTo(0, scrollY), collapseScroll);
+          await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(collapseScroll);
         } else {
           const collapseScroll = await page.evaluate(() => {
             const headerHeight =
