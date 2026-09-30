@@ -223,6 +223,7 @@ function runProject(projectRuntime: ProjectRuntime, extraArgs: string[]) {
       PUBLIC_API_BASE_URL: `http://localhost:${projectRuntime.port}`,
       PUBLIC_MEDIA_IMAGOR_BASE_URL: `http://127.0.0.1:${projectRuntime.publicMediaPort}`,
       PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL: `http://host.docker.internal:${projectRuntime.port}`,
+      PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET: "e2e-media-source-secret",
       ENABLE_DEV_ENDPOINTS: "true",
       LLM_MODEL_CATALOG_SKIP_REFRESH: "1",
       PLAYWRIGHT_DISABLE_WEBSERVER: "0",

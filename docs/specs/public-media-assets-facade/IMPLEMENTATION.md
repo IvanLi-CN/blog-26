@@ -45,13 +45,13 @@
 1. 新增 `src/lib/public-media.ts` 统一公开媒体类型、稳定 hash、公开 facade path 与内部 source path builder。
 2. 新增 `src/server/public-media.ts` 统一解析文章封面、正文图片、正文视频、Memo 附件，并提供：
    - facade 代理路由处理
-   - internal source 原文件回源（仅在 `PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL` 已配置时启用）
+   - internal source 原文件回源（生产环境同时要求 `PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL` 与 `PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET`）
    - imagor URL 构造与签名
    - 视频 `play` 透传与 `Range` 支持
 3. `PublicPostRecord`、`PublicMemoRecord`、`PublicTagTimelineItem` 均升级为带 `media` 结构的公开合同；`local` 内容的旧 `image` / 附件兼容字段已重写为 facade URL，非 `local` 内容继续保留既有公开 URL 语义。
 4. 公开 Markdown 渲染链路在 public mode 下改写相对媒体路径，只输出 `/api/public/assets/...`。
 5. 公开前台详情页、列表页、feeds、snapshot、JSON-LD、OG/Twitter、tag timeline、`/admin/preview/*` 均已切到 facade 语义。
-6. 生产容器启动现在会在 `SERVE_PUBLIC_SITE=true` 时强校验 `PUBLIC_API_BASE_URL`、`PUBLIC_MEDIA_IMAGOR_BASE_URL`、`PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL`，避免把“静态页面正常、公开媒体全挂”的配置发布上线。
+6. 生产容器启动现在会在 `SERVE_PUBLIC_SITE=true` 时强校验 `PUBLIC_API_BASE_URL`、`PUBLIC_MEDIA_IMAGOR_BASE_URL`、`PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL` 与 `PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET`，避免把“静态页面正常、公开媒体全挂”的配置发布上线。
 7. CI / release frontend build 校验现在显式要求：
    - 静态发布使用 `PUBLIC_API_BASE_URL=https://console.ivanli.cc`，并由 console CORS 接受 `https://ivanli.cc`
    - `site-dist` 中真实包含 `/api/public/assets/*` facade 引用
@@ -81,7 +81,7 @@
 ## 本地开发与故障语义
 
 - 生产模型仍是 `blog -> imagorvideo -> /_internal/assets/source/...`。
-- `/_internal/assets/source/...` 只有在 `PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL` 明确指向 blog 内部地址时才会接受请求；未配置时默认返回 `404`，避免误把公开入口当作 internal source。
+- `/_internal/assets/source/...` 只有在 `PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL` 明确指向 blog 内部地址且带有 `PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET` 时才会接受生产请求；未配置时默认返回 `404`，避免误把公开入口当作 internal source。
 - 不再提供 dev/prod 运行时 fallback。imagor 链路失败时统一返回 `502 Public media processor unavailable`，由测试、CI 与发布验证显式暴露问题。
 - 唯一例外是后台作者态预览资产门面：若 imagor 链路失败，但管理员已通过 `/api/admin/preview/assets/...` 访问本地媒体，则允许回退原始媒体字节，避免预览页出现“正文可读但图片全空白”的作者态故障。
 
@@ -91,6 +91,7 @@
 
 - `PUBLIC_MEDIA_IMAGOR_BASE_URL=http://imagorvideo:8000`
 - `PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL=http://blog:25090`
+- `PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET=<random-secret-shared-with-console-and-imagor-source-url-builder>`
 - 如需签名：
   - `PUBLIC_MEDIA_IMAGOR_SECRET=<same-secret-as-imagor>`
   - `PUBLIC_MEDIA_IMAGOR_SIGNER_TYPE=sha1|sha256|sha512`

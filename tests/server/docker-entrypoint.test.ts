@@ -55,6 +55,7 @@ describe("docker-entrypoint runtime config validation", () => {
       PUBLIC_API_BASE_URL: "https://ivanli.cc",
       PUBLIC_MEDIA_IMAGOR_BASE_URL: "http://imagorvideo:8000",
       PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL: "http://blog:25090",
+      PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET: "test-media-source-secret",
     });
 
     expect(result.stdout).toContain("Public media runtime configuration validated");

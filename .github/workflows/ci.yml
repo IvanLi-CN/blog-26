@@ -254,7 +254,7 @@ jobs:
             REPOSITORY_URL=${{ steps.git-info.outputs.repository_url }}
             BRANCH_NAME=${{ steps.git-info.outputs.branch_name }}
             BRANCH_URL=${{ steps.git-info.outputs.branch_url }}
-            PUBLIC_API_BASE_URL=https://ivanli.cc
+            PUBLIC_API_BASE_URL=https://console.ivanli.cc
             PUBLIC_SITE_URL=https://ivanli.cc
             PUBLIC_SITE_BASE_PATH=/
             PUBLIC_CONTENT_BUNDLE_URL=preloaded
@@ -360,6 +360,7 @@ jobs:
             -e PUBLIC_API_BASE_URL=http://127.0.0.1:25090 \
             -e PUBLIC_MEDIA_IMAGOR_BASE_URL=http://imagorvideo-ci-smoke:8000 \
             -e PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL=http://blog-ci-smoke:25090 \
+            -e PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET=ci-smoke-media-source-secret \
             -e LLM_SETTINGS_MASTER_KEY=ci-smoke-llm-settings-master-key \
             -v "$PWD/test-data:/app/data" \
             blog:ci-smoke

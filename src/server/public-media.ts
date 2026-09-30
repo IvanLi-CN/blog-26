@@ -607,13 +607,35 @@ function getConfiguredInternalSourceHost() {
   }
 }
 
+const INTERNAL_SOURCE_TOKEN_PARAM = "source-token";
+
+function getInternalSourceSecret() {
+  return process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET?.trim() || null;
+}
+
+function appendInternalSourceSecret(url: string) {
+  const secret = getInternalSourceSecret();
+  if (!secret) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${INTERNAL_SOURCE_TOKEN_PARAM}=${encodeURIComponent(secret)}`;
+}
+
 function isAllowedInternalSourceRequest(request: Request) {
   const requestUrl = new URL(request.url);
   const configuredHost = getConfiguredInternalSourceHost();
   if (!configuredHost) {
     return false;
   }
-  return requestUrl.host.toLowerCase() === configuredHost;
+  if (requestUrl.host.toLowerCase() !== configuredHost) {
+    return false;
+  }
+
+  const secret = getInternalSourceSecret();
+  if (secret) {
+    return requestUrl.searchParams.get(INTERNAL_SOURCE_TOKEN_PARAM) === secret;
+  }
+
+  return process.env.NODE_ENV !== "production";
 }
 
 function getImagorSignerType() {
@@ -674,12 +696,14 @@ async function buildImagorPath(params: {
   const format =
     normalizePublicMediaExt(params.ext) ||
     pickPublicMediaExt(params.ref.kind, params.ref.sourcePath, params.variant);
-  const sourceUrl = `${getInternalSourceBaseUrl(params.request)}${buildInternalAssetSourcePath({
-    kind: params.context.kind,
-    slug: params.context.slug,
-    mediaHash: params.ref.hash,
-    scope: params.context.assetScope,
-  })}`;
+  const sourceUrl = appendInternalSourceSecret(
+    `${getInternalSourceBaseUrl(params.request)}${buildInternalAssetSourcePath({
+      kind: params.context.kind,
+      slug: params.context.slug,
+      mediaHash: params.ref.hash,
+      scope: params.context.assetScope,
+    })}`
+  );
 
   const filters: string[] = [];
   if (params.ref.kind === "video") {

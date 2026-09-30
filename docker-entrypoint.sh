@@ -74,6 +74,7 @@ validate_public_media_runtime() {
     PUBLIC_API_BASE_URL
     PUBLIC_MEDIA_IMAGOR_BASE_URL
     PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL
+    PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET
   )
 
   local name=""

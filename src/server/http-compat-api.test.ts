@@ -1748,6 +1748,47 @@ public: false
     }
   });
 
+  it("requires the internal source secret in production", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/secret-cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/secret-host-check.md",
+      filePath: "blog/secret-host-check.md",
+      slug: "secret-host-check",
+      type: "post",
+      title: "Secret Host Check",
+      image: "./assets/secret-cover.png",
+      public: true,
+      draft: false,
+    });
+
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET = "test-source-secret";
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/secret-cover.png", "cover");
+      const path = `/_internal/assets/source/post/secret-host-check/${mediaHash}`;
+      const missingSecret = await handleInternalAssetSourceRequest(buildRequest(path), {
+        kind: "post",
+        slug: "secret-host-check",
+        mediaHash,
+      });
+      expect(missingSecret.status).toBe(404);
+
+      const authorized = await handleInternalAssetSourceRequest(
+        new Request(`http://blog:25090${path}?source-token=test-source-secret`),
+        { kind: "post", slug: "secret-host-check", mediaHash }
+      );
+      expect(authorized.status).toBe(200);
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET;
+    }
+  });
+
   it("serves facade media whose persisted source path contains encoded spaces", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Hardware/assets"), { recursive: true });
     const assetName = "SW2303+INA138 实现高侧检流的原理图_test.png";
