@@ -297,6 +297,7 @@ export function PublicMemoComposerIsland({
   const recentCreatedMemos = useRef(new Map<string, PublicMemoRecord>());
   const deferredMemos = useRef<PublicMemoRecord[]>([]);
   const editRequestId = useRef(0);
+  const editReturnScrollY = useRef<number | null>(null);
 
   const requestMemoPage = useCallback(
     async ({ cursor, append = false }: { cursor?: string; append?: boolean }) => {
@@ -412,6 +413,7 @@ export function PublicMemoComposerIsland({
 
   const handleEdit = useCallback(async (memo: PublicMemoRecord) => {
     const requestId = ++editRequestId.current;
+    editReturnScrollY.current = window.scrollY;
     setEditingSlug(memo.slug);
     setEditingMemo(null);
     setIsEditLoading(true);
@@ -431,11 +433,19 @@ export function PublicMemoComposerIsland({
   }, []);
 
   const closeEdit = useCallback(() => {
+    const returnScrollY = editReturnScrollY.current;
     editRequestId.current += 1;
+    editReturnScrollY.current = null;
     setEditingSlug(null);
     setEditingMemo(null);
     setIsEditLoading(false);
     setEditError(null);
+    if (returnScrollY !== null) {
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, returnScrollY);
+        window.requestAnimationFrame(() => window.scrollTo(0, returnScrollY));
+      });
+    }
   }, []);
 
   const saveEditedMemo = useCallback(

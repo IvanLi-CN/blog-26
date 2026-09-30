@@ -158,8 +158,9 @@ test.describe("Inline memo admin view", () => {
     await expect(editButton).toBeFocused();
     await expect(page).toHaveURL(/\/memos\/?$/);
 
-    const scrollAfter = await page.evaluate(() => window.scrollY);
-    expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThanOrEqual(1);
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY), { timeout: 2_000 })
+      .toBe(scrollBefore);
     const savedMemo = (await savedResponse.json()) as { content: string; isPublic: boolean };
     expect(savedMemo.content).toContain("Memo admin inline view test content.");
     expect(savedMemo.content).toContain("编辑后摘要仍应显示在原卡片上。");
