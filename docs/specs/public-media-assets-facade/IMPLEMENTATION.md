@@ -53,7 +53,7 @@
 5. 公开前台详情页、列表页、feeds、snapshot、JSON-LD、OG/Twitter、tag timeline、`/admin/preview/*` 均已切到 facade 语义。
 6. 生产容器启动现在会在 `SERVE_PUBLIC_SITE=true` 时强校验 `PUBLIC_API_BASE_URL`、`PUBLIC_MEDIA_IMAGOR_BASE_URL`、`PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL`，避免把“静态页面正常、公开媒体全挂”的配置发布上线。
 7. CI / release frontend build 校验现在显式要求：
-   - `PUBLIC_SITE_URL` 与 `PUBLIC_API_BASE_URL` 同源
+   - 静态发布使用 `PUBLIC_API_BASE_URL=https://console.ivanli.cc`，并由 console CORS 接受 `https://ivanli.cc`
    - `site-dist` 中真实包含 `/api/public/assets/*` facade 引用
    - release 校验从真实 `site-dist` 自动发现可用的 post/tag/detail/feed 样本，不再把 fixture slug 当成生产 bundle 前提
    - 每个已生成的 feed 文件都必须继续包含公开 post URL 与同源 facade 资源 URL，不允许只校验“任意一个 feed 仍然正确”
@@ -112,7 +112,7 @@
 2. `curl -I http://blog:25090/api/public/assets/post/<slug>/<mediaHash>/cover.webp`
 3. `curl -I http://imagorvideo:8000/`
 4. `rg -n '/api/files/|/home/|LOCAL_CONTENT_BASE_PATH' site-dist admin-dist site/generated/public-snapshot.json`
-5. `curl -I https://ivanli.cc/api/public/assets/post/<slug>/<mediaHash>/cover.webp`
+5. `curl -I https://console.ivanli.cc/api/public/assets/post/<slug>/<mediaHash>/cover.webp`
 6. `curl -I https://ivanli.cc/watermark-ivanli.svg`
 
 ### 回退口径

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Ivan's Blog is a personal content system built around an Astro public site, a Vite React admin SPA, and a Bun gateway/backend. The repository uses SQLite with Drizzle ORM, local Markdown content roots, tRPC-compatible routers, public/admin HTTP APIs, MCP, and AI-assisted workflows.
+Ivan's Blog is a personal content system built around an EdgeOne static public site, a self-contained Astro SSR console, and a Vite React admin SPA. The repository uses SQLite with Drizzle ORM, local Markdown content roots, tRPC-compatible routers, public/admin HTTP APIs, MCP, and AI-assisted workflows.
 
 ## Essential Commands
 
@@ -28,7 +28,8 @@ bun run start
 
 - Public site: `site/`
 - Admin SPA: `apps/admin/`
-- Gateway/backend: `scripts/start-gateway.ts`
+- Console runtime: `scripts/start-console.ts`
+- Development-only gateway runtime: `scripts/start-gateway.ts`
 - Content source: local filesystem only, configured by `LOCAL_CONTENT_BASE_PATH`
 - Database: SQLite, configured by `DB_PATH`
 

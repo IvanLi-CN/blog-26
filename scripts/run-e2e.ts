@@ -258,6 +258,7 @@ async function runFull(extraArgs: string[]) {
     LOCAL_CONTENT_BASE_PATH: E2E_DEFAULT_LOCAL_CONTENT_PATH,
     CONTENT_SOURCES: "local",
     PUBLIC_SITE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
+    PUBLIC_CONSOLE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
     PUBLIC_API_BASE_URL: `http://localhost:${E2E_DEFAULT_WEB_PORT}`,
     LLM_MODEL_CATALOG_SKIP_REFRESH: "1",
   };
@@ -267,6 +268,7 @@ async function runFull(extraArgs: string[]) {
   await runStep("Reset test environment", ["bun", "run", "test-env:reset-fs-only"], sharedEnv);
   await runStep("Prebuild metadata", ["bun", "run", "prebuild"], sharedEnv);
   await rm(path.resolve(process.cwd(), "site-dist"), { recursive: true, force: true });
+  await rm(path.resolve(process.cwd(), "console-dist"), { recursive: true, force: true });
   await rm(path.resolve(process.cwd(), "admin-dist"), { recursive: true, force: true });
   await rm(path.resolve(process.cwd(), "backend-dist"), { recursive: true, force: true });
   await runStep("Build compiled artifacts", ["bun", "run", "build:compiled"], sharedEnv);

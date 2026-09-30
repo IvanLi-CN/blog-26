@@ -384,7 +384,7 @@ jobs:
       - name: Fetch content bundle
         env:
           PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
-          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
 
@@ -394,7 +394,11 @@ jobs:
           PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL }}
         run: |
           set -euo pipefail
-          api_base="${PUBLIC_API_BASE_URL:-}"
+          console_origin="${PUBLIC_CONSOLE_URL:-https://console.ivanli.cc}"
+          api_base="${PUBLIC_API_BASE_URL:-${console_origin}}"
+          case "${api_base%/}" in
+            https://ivanli.cc|https://api.ivanli.cc) api_base="${console_origin}" ;;
+          esac
           if [[ -z "${api_base}" ]]; then
             echo "PUBLIC_API_BASE_URL is required for frontend releases" >&2
             exit 1
@@ -466,7 +470,7 @@ jobs:
       - name: Package referenced public media
         id: package-public-media
         env:
-          PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}
+          PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ env.PUBLIC_SITE_URL }}
           PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
           PUBLIC_STATIC_MEDIA_MAX_BYTES: 20971520
@@ -501,7 +505,7 @@ jobs:
       - name: Verify EdgeOne deployment artifact
         id: verify-public-media
         env:
-          PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}
+          PUBLIC_STATIC_MEDIA_ORIGIN: ${{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}
           PUBLIC_SITE_URL: ${{ env.PUBLIC_SITE_URL }}
           PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
           PUBLIC_EDGEONE_ARTIFACT_DIR: ./edgeone-dist
@@ -613,8 +617,13 @@ jobs:
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
           EDGEONE_PROJECT_NAME: ${{ vars.EDGEONE_PROJECT_NAME }}
+          EDGEONE_PUBLIC_FALLBACK_SECRET: ${{ secrets.EDGEONE_PUBLIC_FALLBACK_SECRET }}
         run: |
           set -euo pipefail
+          if [[ -z "${EDGEONE_PUBLIC_FALLBACK_SECRET:-}" ]]; then
+            echo "EDGEONE_PUBLIC_FALLBACK_SECRET is required for trusted public fallback routing" >&2
+            exit 1
+          fi
           environment_log="$RUNNER_TEMP/edgeone-environment.log"
           environment_dir="$(mktemp -d "$RUNNER_TEMP/edgeone-environment.XXXXXX")"
           if ! (
@@ -634,7 +643,10 @@ jobs:
             process.stdout.write(JSON.stringify({
               Action: "ModifyPagesProjectEnvs",
               ProjectId: projectId,
-              EnvVars: [{ Key: "BLOG_BACKEND_ORIGIN", Value: "https://api.ivanli.cc" }],
+              EnvVars: [
+                { Key: "BLOG_BACKEND_ORIGIN", Value: "https://console.ivanli.cc" },
+                { Key: "EDGEONE_PUBLIC_FALLBACK_SECRET", Value: process.env.EDGEONE_PUBLIC_FALLBACK_SECRET },
+              ],
             }));
           NODE
             if ! http_status="$(curl --silent --show-error --output "$set_response" --write-out '%{http_code}' \
@@ -689,15 +701,19 @@ jobs:
               const body = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
               const response = body?.Data?.Response ?? body?.Response ?? body;
               const envVars = response?.EnvVars ?? body?.EnvVars ?? [];
-              process.exit(envVars.some((entry) => entry?.Key === "BLOG_BACKEND_ORIGIN" && entry?.Value === "https://api.ivanli.cc") ? 0 : 1);
+              const expected = new Map([
+                ["BLOG_BACKEND_ORIGIN", "https://console.ivanli.cc"],
+                ["EDGEONE_PUBLIC_FALLBACK_SECRET", process.env.EDGEONE_PUBLIC_FALLBACK_SECRET],
+              ]);
+              process.exit([...expected].every(([key, value]) => envVars.some((entry) => entry?.Key === key && entry?.Value === value)) ? 0 : 1);
           NODE
               then
-                echo "BLOG_BACKEND_ORIGIN=https://api.ivanli.cc verified"
+                echo "EdgeOne backend origin and trusted fallback secret verified"
                 exit 0
               fi
               sleep 2
             done
-            echo "Makers environment did not contain the expected BLOG_BACKEND_ORIGIN after 10 attempts" >&2
+            echo "Makers environment did not contain the expected console origin and fallback secret after 10 attempts" >&2
             exit 1
           ) >"$environment_log" 2>&1; then
             sed -E '/Deploy URL:/d; s/(eo_token=)[^&[:space:]]+/\1[REDACTED]/g; s/(eo_time=)[^&[:space:]]+/\1[REDACTED]/g' "$environment_log"
@@ -760,7 +776,7 @@ jobs:
       - name: Fetch content bundle
         env:
           PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
-          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}
           PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
         run: bash ./scripts/fetch-public-content-bundle.sh
 
@@ -778,7 +794,11 @@ jobs:
             printf '%s' "${value}" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
           }
 
-          api_base="$(trim "${PUBLIC_API_BASE_URL:-}")"
+          console_origin="$(trim "${PUBLIC_CONSOLE_URL:-https://console.ivanli.cc}")"
+          api_base="$(trim "${PUBLIC_API_BASE_URL:-${console_origin}}")"
+          case "${api_base%/}" in
+            https://ivanli.cc|https://api.ivanli.cc) api_base="${console_origin}" ;;
+          esac
           if [[ -z "${api_base}" ]]; then
             echo "PUBLIC_API_BASE_URL is required for Docker image releases" >&2
             exit 1

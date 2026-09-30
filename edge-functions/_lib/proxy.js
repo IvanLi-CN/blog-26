@@ -39,7 +39,7 @@ function resolveUpstreamOrigin(value) {
   }
 }
 
-function buildUpstreamRequest(request, upstream) {
+function buildUpstreamRequest(request, upstream, env) {
   const incoming = new URL(request.url);
   const target = new URL(request.url);
   target.protocol = upstream.protocol;
@@ -51,6 +51,20 @@ function buildUpstreamRequest(request, upstream) {
   }
   headers.set("x-forwarded-host", incoming.host);
   headers.set("x-forwarded-proto", incoming.protocol.slice(0, -1));
+
+  const publicHost = String(request.headers.get("host") || incoming.host)
+    .split(":", 1)[0]
+    .toLowerCase();
+  if (publicHost === "ivanli.cc") {
+    for (const header of ["authorization", "cookie", "remote-email", "x-forwarded-email"]) {
+      headers.delete(header);
+    }
+    const fallbackSecret =
+      typeof env?.EDGEONE_PUBLIC_FALLBACK_SECRET === "string"
+        ? env.EDGEONE_PUBLIC_FALLBACK_SECRET.trim()
+        : "";
+    if (fallbackSecret) headers.set("x-edgeone-public-fallback", fallbackSecret);
+  }
 
   const init = {
     method: request.method,
@@ -70,7 +84,7 @@ export function createProxyHandler(envKey = "BLOG_BACKEND_ORIGIN") {
     if (!upstream) return unavailableResponse();
 
     try {
-      return await fetch(buildUpstreamRequest(context.request, upstream));
+      return await fetch(buildUpstreamRequest(context.request, upstream, context.env));
     } catch {
       return unavailableResponse();
     }

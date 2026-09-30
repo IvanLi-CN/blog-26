@@ -116,3 +116,4 @@ site/generated/
 site-dist/
 admin-dist/
 backend-dist/
+console-dist/

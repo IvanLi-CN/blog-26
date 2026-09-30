@@ -104,6 +104,30 @@ _Avoid_: 已发布 Memo, 公开时间线
 The reader-facing sequence of Memo snapshots in the published public site. It may lag behind 实时 Memo until the next publication.
 _Avoid_: 实时 Memo 列表, 管理列表
 
+**控制台公开 Memo 列表**:
+The public-only Memo sequence rendered by `console.ivanli.cc` from the live database. It is an operational view and may be newer than the published 公开 Memo 时间线 on `ivanli.cc`.
+_Avoid_: 公开 Memo 时间线, 静态快照列表
+
+**公开静态站点**:
+The visitor-facing `ivanli.cc` deployment. It serves a build-time public snapshot from EdgeOne Makers and never exposes administrator-only controls or unpublished Memos.
+_Avoid_: 公开服务端页面, 管理前台
+
+**管理控制台**:
+The `console.ivanli.cc` deployment as one self-contained application containing the visitor frontend, administrator frontend, and server runtime. Its first document request is server-rendered with the current authorization and content; later same-origin navigation may use the client navigation layer. Visitors without administrator privileges receive the public view, while administrators receive the management view. The same application owns its page, authentication, content operation, and persistence boundaries.
+_Avoid_: 静态管理页, 管理员列表页
+
+**客户端页面交换**:
+The management console's post-entry navigation model: the browser keeps the shared shell and uses the client navigation layer to request and swap the next server-rendered page, while each response still applies the current authorization boundary.
+_Avoid_: 完整 SPA, 客户端拼装页面
+
+**管理 Memo 列表**:
+The single Memo reading surface shown to an administrator. It uses the public Memo card presentation, adds preview and edit actions, and includes current unpublished Memos without rendering a second public timeline beside it.
+_Avoid_: 实时 Memo 列表 + 公开时间线, 管理卡片列表
+
+**Memo 创作区**:
+The administrator-only authoring surface on the console Memos page. It remains separate from the 管理 Memo 列表 and does not count as another list.
+_Avoid_: 编辑器列表, 管理列表
+
 **移动内容流**:
 The narrow-screen presentation of 内容时间线. It keeps chronological order and item metadata while removing the decorative rail, nodes, and connectors so each event reads like a compact content entry.
 _Avoid_: 移动时间轴

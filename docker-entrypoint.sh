@@ -8,7 +8,7 @@ RUN_GID=${RUN_GID:-${APP_GID:-1000}}
 if [ "$#" -gt 0 ]; then
   APP_CMD=("$@")
 else
-  APP_CMD=(bun run gateway:start)
+  APP_CMD=(bun run console:start)
 fi
 
 RUNTIME_ENV_FILE="${RUNTIME_ENV_FILE:-/run/secrets/blog_env}"
@@ -24,6 +24,7 @@ export DB_PATH="${DB_PATH:-/app/data/sqlite.db}"
 export PORT="${PORT:-25090}"
 export SITE_PORT="${SITE_PORT:-$((PORT + 3))}"
 export ADMIN_DIST_DIR="${ADMIN_DIST_DIR:-/app/admin-dist}"
+export CONSOLE_DIST_DIR="${CONSOLE_DIST_DIR:-/app/console-dist}"
 export SITE_DIST_DIR="${SITE_DIST_DIR:-/app/site-dist}"
 export PUBLIC_SNAPSHOT_PATH="${PUBLIC_SNAPSHOT_PATH:-/app/site/generated/public-snapshot.json}"
 export ASTRO_TYPES_DIR="${ASTRO_TYPES_DIR:-/app/.astro}"
@@ -52,7 +53,7 @@ is_truthy() {
 }
 
 requires_public_media_runtime() {
-  if ! is_truthy "${SERVE_PUBLIC_SITE:-false}"; then
+  if ! is_truthy "${SERVE_PUBLIC_SITE:-false}" && [ "${CONSOLE_RUNTIME:-false}" != "true" ]; then
     return 1
   fi
 
@@ -83,8 +84,8 @@ validate_public_media_runtime() {
   done
 
   if [ "${#missing[@]}" -gt 0 ]; then
-    echo "❌ Config validation failed: same-origin public media facade requires ${missing[*]} when SERVE_PUBLIC_SITE=true in production"
-    echo "❌ Public pages are static, but /api/public/assets/* must still be served by the live backend/gateway."
+    echo "❌ Config validation failed: public media facade requires ${missing[*]} when the console serves public assets in production"
+    echo "❌ Static pages and console SSR both depend on /api/public/assets/* being available from the live console."
     exit 1
   fi
 
@@ -107,7 +108,7 @@ fi
 DB_DIR="$(dirname "$DB_PATH")"
 echo "📁 Database path: $DB_PATH"
 echo "🌿 Public snapshot path: $PUBLIC_SNAPSHOT_PATH"
-echo "🌐 Gateway port: $PORT | serve public site: $SERVE_PUBLIC_SITE | Admin build dir: $ADMIN_DIST_DIR"
+echo "🌐 Console port: $PORT | serve public site: $SERVE_PUBLIC_SITE | Admin build dir: $ADMIN_DIST_DIR"
 echo "🧩 Astro types dir: $ASTRO_TYPES_DIR"
 echo "🪐 Astro cache dir: $ASTRO_CACHE_DIR"
 echo "⚡ Vite cache dir: $VITE_CACHE_DIR"
@@ -119,7 +120,7 @@ requires_llm_settings_master_key() {
 
   local command_text="${APP_CMD[*]}"
   case "$command_text" in
-    *gateway:start*|*start-gateway.ts*)
+    *gateway:start*|*start-gateway.ts*|*console:start*|*start-console.ts*)
       return 0
       ;;
     *)
@@ -144,7 +145,13 @@ validate_prebuilt_assets() {
     exit 1
   fi
 
-  echo "✅ Prebuilt admin SPA assets detected"
+  if [ ! -f "${CONSOLE_DIST_DIR}/server/entry.mjs" ]; then
+    echo "❌ Missing console SSR asset: ${CONSOLE_DIST_DIR}/server/entry.mjs"
+    echo "❌ The production console image must include the Astro server output."
+    exit 1
+  fi
+
+  echo "✅ Prebuilt admin SPA and console SSR assets detected"
 }
 
 validate_public_site_assets() {
@@ -180,10 +187,10 @@ if [ "$(id -u)" = "0" ]; then
     : > "$DB_PATH" || true
   fi
 
-  chmod 2775 "$DB_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" || true
+  chmod 2775 "$DB_DIR" "$ADMIN_DIST_DIR" "$CONSOLE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" || true
   chmod 664 "$DB_PATH" 2>/dev/null || true
 
-  if chown -R "${RUN_UID}:${RUN_GID}" "$DB_DIR" "$ADMIN_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" 2>/dev/null; then
+  if chown -R "${RUN_UID}:${RUN_GID}" "$DB_DIR" "$ADMIN_DIST_DIR" "$CONSOLE_DIST_DIR" "$(dirname "$PUBLIC_SNAPSHOT_PATH")" "$ASTRO_TYPES_DIR" "$ASTRO_CACHE_DIR" "$VITE_CACHE_DIR" 2>/dev/null; then
     echo "✅ Owned runtime directories by ${RUN_UID}:${RUN_GID}"
   else
     echo "⚠️  Could not chown runtime directories (likely bind mount without perms); continuing"
@@ -219,6 +226,8 @@ if [ "$(id -u)" = "0" ] && { [ "$RUN_UID" != "$(id -u)" ] || [ "$RUN_GID" != "$(
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
+    CONSOLE_DIST_DIR="$CONSOLE_DIST_DIR" \
+    CONSOLE_RUNTIME="${CONSOLE_RUNTIME:-true}" \
     SERVE_PUBLIC_SITE="$SERVE_PUBLIC_SITE" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \
@@ -232,6 +241,8 @@ else
     SITE_PORT="$SITE_PORT" \
     SITE_DIST_DIR="$SITE_DIST_DIR" \
     ADMIN_DIST_DIR="$ADMIN_DIST_DIR" \
+    CONSOLE_DIST_DIR="$CONSOLE_DIST_DIR" \
+    CONSOLE_RUNTIME="${CONSOLE_RUNTIME:-true}" \
     SERVE_PUBLIC_SITE="$SERVE_PUBLIC_SITE" \
     PUBLIC_SNAPSHOT_PATH="$PUBLIC_SNAPSHOT_PATH" \
     ASTRO_CACHE_DIR="$ASTRO_CACHE_DIR" \

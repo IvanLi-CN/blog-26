@@ -44,7 +44,7 @@
 ## 2026-09-06
 
 - 前台稳定发布开始按 `site-dist` 实际引用打包公开派生媒体：处理后的文件进入 `/_content/assets/`，并由 `_content/media-manifest.json` 记录来源、大小与超限例外。
-- 20 MiB 及以上媒体保留为 `api.ivanli.cc` 直连；媒体源不可达或 EdgeOne artifact 达到 20,000 文件 / 5 GiB 限额时，发布在 EdgeOne 部署前失败。
+- 20 MiB 及以上媒体保留为 `console.ivanli.cc` 直连；媒体源不可达或 EdgeOne artifact 达到 20,000 文件 / 5 GiB 限额时，发布在 EdgeOne 部署前失败。
 
 ## 2026-06-21
 

@@ -7,15 +7,15 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-function context(request: Request, backendOrigin = "https://api.ivanli.cc") {
+function context(request: Request, backendOrigin = "https://console.ivanli.cc") {
   return {
     request,
-    env: { BLOG_BACKEND_ORIGIN: backendOrigin },
+    env: { BLOG_BACKEND_ORIGIN: backendOrigin, EDGEONE_PUBLIC_FALLBACK_SECRET: "edge-secret" },
   };
 }
 
 describe("EdgeOne Makers API proxy", () => {
-  test("forwards the method, path, query, cookie, and forwarding headers", async () => {
+  test("forwards public requests without browser identity headers", async () => {
     let upstreamRequest: Request | undefined;
     globalThis.fetch = (async (input) => {
       upstreamRequest = input instanceof Request ? input : new Request(input);
@@ -31,7 +31,9 @@ describe("EdgeOne Makers API proxy", () => {
           method: "POST",
           headers: {
             "content-type": "application/json",
+            authorization: "Bearer leaked-token",
             cookie: "session=existing",
+            "remote-email": "admin@example.com",
           },
           body: '{"body":"hello"}',
         })
@@ -40,12 +42,39 @@ describe("EdgeOne Makers API proxy", () => {
 
     expect(response.status).toBe(201);
     expect(response.headers.get("set-cookie")).toContain("session=updated");
-    expect(upstreamRequest?.url).toBe("https://api.ivanli.cc/api/public/comments?slug=hello");
+    expect(upstreamRequest?.url).toBe("https://console.ivanli.cc/api/public/comments?slug=hello");
     expect(upstreamRequest?.method).toBe("POST");
-    expect(upstreamRequest?.headers.get("cookie")).toBe("session=existing");
+    expect(upstreamRequest?.headers.get("cookie")).toBeNull();
+    expect(upstreamRequest?.headers.get("authorization")).toBeNull();
+    expect(upstreamRequest?.headers.get("remote-email")).toBeNull();
+    expect(upstreamRequest?.headers.get("x-edgeone-public-fallback")).toBe("edge-secret");
     expect(upstreamRequest?.headers.get("x-forwarded-host")).toBe("ivanli.cc");
     expect(upstreamRequest?.headers.get("x-forwarded-proto")).toBe("https");
     expect(await upstreamRequest?.text()).toBe('{"body":"hello"}');
+  });
+
+  test("preserves identity headers for a non-public host", async () => {
+    let upstreamRequest: Request | undefined;
+    globalThis.fetch = (async (input) => {
+      upstreamRequest = input instanceof Request ? input : new Request(input);
+      return new Response("ok");
+    }) as typeof fetch;
+
+    await createProxyHandler()(
+      context(
+        new Request("https://console.ivanli.cc/api/health", {
+          headers: {
+            authorization: "Bearer token",
+            cookie: "session=existing",
+            "remote-email": "admin@example.com",
+          },
+        })
+      )
+    );
+
+    expect(upstreamRequest?.headers.get("cookie")).toBe("session=existing");
+    expect(upstreamRequest?.headers.get("authorization")).toBe("Bearer token");
+    expect(upstreamRequest?.headers.get("remote-email")).toBe("admin@example.com");
   });
 
   test("returns a generic gateway failure when the upstream configuration is invalid", async () => {

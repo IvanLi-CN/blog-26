@@ -14,10 +14,15 @@ export async function getStaticPaths() {
   }));
 }
 
-const { summary } = Astro.props as {
-  summary: { name: string; segments: string[]; lastSegment: string; count: number };
-};
 const snapshot = await getSnapshot();
+const summaryFromProps = (Astro.props as { summary?: typeof snapshot.tags.summaries[number] }).summary;
+const tagPath = (Astro.params.tagSegments ?? "").replace(/^\/+|\/+$/g, "");
+const summary =
+  summaryFromProps ??
+  snapshot.tags.summaries.find(
+    (candidate) => candidate.segments.join("/") === tagPath || candidate.name === tagPath
+  );
+if (!summary) return Astro.redirect("/404");
 const items = snapshot.tags.timelines[summary.name] ?? [];
 const breadcrumbs = summary.segments.map((segment, index) => ({
   label: segment,

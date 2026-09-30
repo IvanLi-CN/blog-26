@@ -42,7 +42,7 @@ describe("docker-entrypoint runtime config validation", () => {
     });
 
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("same-origin public media facade requires");
+    expect(result.stdout).toContain("public media facade requires");
     expect(result.stdout).toContain("PUBLIC_MEDIA_IMAGOR_BASE_URL");
     expect(result.stdout).toContain("PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL");
   });

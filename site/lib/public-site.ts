@@ -231,6 +231,11 @@ function getSnapshotPath() {
 }
 
 export async function getSnapshot() {
+  if (process.env.CONSOLE_RUNTIME === "true") {
+    const { buildPublicSnapshot } = await import("@/public-site/snapshot");
+    return normalizeSnapshotPaths(await buildPublicSnapshot());
+  }
+
   if (!snapshotPromise) {
     snapshotPromise = readFile(getSnapshotPath(), "utf8").then((raw) =>
       normalizeSnapshotPaths(JSON.parse(raw) as PublicSnapshot)

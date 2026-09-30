@@ -81,7 +81,7 @@ const htmlReportDir = testProject
 const shouldManageServer = process.env.PLAYWRIGHT_DISABLE_WEBSERVER !== "1";
 const resetCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local bun run test-env:reset-fs-only`;
 const buildCommand = `DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} PUBLIC_API_BASE_URL=${BASE_URL} bun run build`;
-const startCommand = `NODE_ENV=production ENABLE_DEV_ENDPOINTS=true DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} PUBLIC_API_BASE_URL=${BASE_URL} SERVE_PUBLIC_SITE=true PORT=${WEB_PORT} SITE_PORT=${SITE_PORT} ADMIN_PORT=${ADMIN_PORT} bun run gateway:start`;
+const startCommand = `NODE_ENV=production ENABLE_DEV_ENDPOINTS=true CONSOLE_RUNTIME=true DB_PATH=${ABS_TEST_DB} LOCAL_CONTENT_BASE_PATH=${ABS_LOCAL_CONTENT} CONTENT_SOURCES=local PUBLIC_SITE_URL=${BASE_URL} PUBLIC_API_BASE_URL=${BASE_URL} PORT=${WEB_PORT} bun run console:start`;
 const webServerCommand = [
   skipReset ? null : resetCommand,
   skipBuild ? null : buildCommand,

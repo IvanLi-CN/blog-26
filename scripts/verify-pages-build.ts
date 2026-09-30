@@ -61,11 +61,14 @@ function assertIncludesOneOf(content: string, needles: readonly string[], file: 
 function assertSameOriginPublicApiBaseUrl(siteUrl: string, apiBaseUrl: string) {
   const siteOrigin = new URL(siteUrl).origin;
   const apiOrigin = new URL(apiBaseUrl).origin;
-  if (siteOrigin !== apiOrigin) {
+  const configuredConsoleOrigin = process.env.PUBLIC_CONSOLE_URL
+    ? new URL(process.env.PUBLIC_CONSOLE_URL).origin
+    : "https://console.ivanli.cc";
+  if (siteOrigin !== apiOrigin && apiOrigin !== configuredConsoleOrigin) {
     throw new Error(
       [
-        `Expected PUBLIC_API_BASE_URL (${apiBaseUrl}) to share the same origin as PUBLIC_SITE_URL (${siteUrl}).`,
-        "This static build emits /api/public/assets/* facade URLs and therefore requires a same-origin live backend/gateway on the public domain.",
+        `Expected PUBLIC_API_BASE_URL (${apiBaseUrl}) to use either PUBLIC_SITE_URL (${siteUrl}) or the console origin (${configuredConsoleOrigin}).`,
+        "The static public site may use console.ivanli.cc for live API and media facade requests.",
       ].join(" ")
     );
   }

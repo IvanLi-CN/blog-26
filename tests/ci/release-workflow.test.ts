@@ -77,12 +77,12 @@ describe("release.yml", () => {
     const publishFrontend = jobBlock("publish_frontend");
     expect(publishFrontend).toContain(
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
-        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}"
+        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
     );
     expect(publishFrontend).toContain("- name: Package referenced public media");
     expect(publishFrontend).toContain(
       "PUBLIC_STATIC_MEDIA_ORIGIN: $" +
-        "{{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://api.ivanli.cc' }}"
+        "{{ vars.PUBLIC_STATIC_MEDIA_ORIGIN || 'https://console.ivanli.cc' }}"
     );
     expect(publishFrontend).toContain("PUBLIC_STATIC_MEDIA_RETRY_DELAY_MS: 1000");
     expect(publishFrontend).toContain("run: bun run frontend:package-media");
@@ -119,10 +119,10 @@ describe("release.yml", () => {
     expect(edgeone).toContain("https://pages-api.cloud.tencent.com/v1");
     expect(edgeone).not.toContain("makers env set");
     expect(edgeone).toContain("for attempt in {1..10}; do");
-    expect(edgeone).toContain("BLOG_BACKEND_ORIGIN=https://api.ivanli.cc verified");
+    expect(edgeone).toContain("EdgeOne backend origin and trusted fallback secret verified");
     expect(edgeone).toContain('npx edgeone@1.6.34 makers deploy "$EDGEONE_ARTIFACT_DIR"');
     expect(edgeone).toContain(
-      "Makers environment did not contain the expected BLOG_BACKEND_ORIGIN"
+      "Makers environment did not contain the expected console origin and fallback secret"
     );
     expect(edgeone).toContain(
       `if: \${{ steps.main-head-before-edgeone-deployment.outputs.is_current_head == 'true' }}`
@@ -136,7 +136,7 @@ describe("release.yml", () => {
     const publishImage = jobBlock("publish_image");
     expect(publishImage).toContain(
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
-        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://api.ivanli.cc/api/public/snapshot' }}"
+        "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
     );
   });
 });

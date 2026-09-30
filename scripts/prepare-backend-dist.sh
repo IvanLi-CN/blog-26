@@ -28,6 +28,7 @@ copy_file "bunfig.toml" "${DIST_DIR}"
 copy_file "tsconfig.json" "${DIST_DIR}"
 copy_file "docker-entrypoint.sh" "${DIST_DIR}"
 copy_file "scripts/start-gateway.ts" "${DIST_DIR}/scripts"
+copy_file "scripts/start-console.ts" "${DIST_DIR}/scripts"
 copy_file "scripts/migrate.ts" "${DIST_DIR}/scripts"
 
 copy_tree "${ROOT_DIR}/src" "${DIST_DIR}/src"
