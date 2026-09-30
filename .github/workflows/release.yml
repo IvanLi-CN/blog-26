@@ -1009,7 +1009,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build backend runtime + admin artifacts
+      - name: Build backend runtime + console + admin artifacts
         run: bun run backend:build
 
       - name: Package backend release assets
@@ -1019,9 +1019,11 @@ jobs:
           version="${{ needs.prepare.outputs.backend_app_version }}"
           mkdir -p release-assets/backend
           tar -C backend-dist -czf "release-assets/backend/backend-runtime-dist-${version}.tar.gz" .
+          tar -C console-dist -czf "release-assets/backend/backend-console-dist-${version}.tar.gz" .
           tar -C admin-dist -czf "release-assets/backend/backend-admin-dist-${version}.tar.gz" .
           sha256sum \
             "release-assets/backend/backend-runtime-dist-${version}.tar.gz" \
+            "release-assets/backend/backend-console-dist-${version}.tar.gz" \
             "release-assets/backend/backend-admin-dist-${version}.tar.gz" \
             > "release-assets/backend/backend-sha256-${version}.txt"
 
@@ -1056,5 +1058,6 @@ jobs:
           prerelease: ${{ needs.prepare.outputs.backend_is_prerelease }}
           artifacts: |
             release-assets/backend/backend-runtime-dist-${{ needs.prepare.outputs.backend_app_version }}.tar.gz
+            release-assets/backend/backend-console-dist-${{ needs.prepare.outputs.backend_app_version }}.tar.gz
             release-assets/backend/backend-admin-dist-${{ needs.prepare.outputs.backend_app_version }}.tar.gz
             release-assets/backend/backend-sha256-${{ needs.prepare.outputs.backend_app_version }}.txt

@@ -10,9 +10,16 @@ export async function getStaticPaths() {
   }));
 }
 
-export const GET: APIRoute = async ({ props }) => {
+export const GET: APIRoute = async ({ props, params }) => {
   const snapshot = await getSnapshot();
-  const built = buildTagFeed(snapshot, props.tagPath as string);
+  const tagPath =
+    (props.tagPath as string | undefined) ||
+    (params.tagSegments || "")
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => decodeURIComponent(segment))
+      .join("/");
+  const built = buildTagFeed(snapshot, tagPath);
   return new Response(built.rss, {
     headers: {
       "content-type": "application/xml; charset=utf-8",

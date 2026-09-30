@@ -110,6 +110,7 @@ Backend release:
 - prerelease flag mirrors the label channel
 - release assets include:
   - `backend-runtime-dist-<version>.tar.gz`
+  - `backend-console-dist-<version>.tar.gz`
   - `backend-admin-dist-<version>.tar.gz`
   - checksum manifest
 

@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, resolve } from "node:path";
+import { extractAuthFromRequest } from "@/lib/auth-utils";
 
 const port = Number(process.env.PORT || 25090);
 const hostname = process.env.BIND_HOST || "0.0.0.0";
@@ -38,6 +39,40 @@ function resolveAdminFile(pathname: string) {
   const relative = adminPathname(pathname) || "index.html";
   const candidate = resolve(adminDistDir, relative);
   return candidate.startsWith(`${adminDistDir}/`) ? candidate : null;
+}
+
+function isAdminAssetRequest(pathname: string) {
+  const relativePath = pathname.replace(/^\/admin\/?/, "/");
+  return (
+    relativePath.startsWith("/assets/") ||
+    relativePath.startsWith("/@vite/") ||
+    relativePath.startsWith("/src/") ||
+    relativePath.startsWith("/node_modules/") ||
+    relativePath.startsWith("/@fs/") ||
+    Boolean(extname(relativePath))
+  );
+}
+
+function renderHtmlStatusPage(status: number, title: string, message: string) {
+  return new Response(
+    `<!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${title}</title></head><body><main><h1>${title}</h1><p>${message}</p></main></body></html>`,
+    {
+      status,
+      headers: {
+        "cache-control": "no-store",
+        "content-type": "text/html; charset=utf-8",
+        "x-robots-tag": "noindex, nofollow",
+      },
+    }
+  );
+}
+
+function toAuthRequest(request: import("node:http").IncomingMessage, url: URL) {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (typeof value === "string") headers.set(name, value);
+  }
+  return new Request(url, { method: request.method || "GET", headers });
 }
 
 function resolveConsoleFile(pathname: string) {
@@ -78,10 +113,46 @@ async function serveConsoleStatic(
 }
 
 async function serveAdmin(
-  _request: import("node:http").IncomingMessage,
+  request: import("node:http").IncomingMessage,
   response: import("node:http").ServerResponse,
-  pathname: string
+  url: URL
 ) {
+  const pathname = url.pathname;
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
+    const status = renderHtmlStatusPage(
+      404,
+      "Admin login removed",
+      "This deployment no longer serves a standalone admin login page."
+    );
+    response.writeHead(status.status, Object.fromEntries(status.headers));
+    response.end(await status.text());
+    return true;
+  }
+
+  if (!isAdminAssetRequest(pathname)) {
+    const auth = await extractAuthFromRequest(toAuthRequest(request, url));
+    if (!auth.user) {
+      const status = renderHtmlStatusPage(
+        401,
+        "Authentication required",
+        "Open the admin area with a valid development session or SSO identity."
+      );
+      response.writeHead(status.status, Object.fromEntries(status.headers));
+      response.end(await status.text());
+      return true;
+    }
+    if (!auth.isAdmin) {
+      const status = renderHtmlStatusPage(
+        403,
+        "Admin access denied",
+        "Your current account is signed in, but it does not have administrator privileges."
+      );
+      response.writeHead(status.status, Object.fromEntries(status.headers));
+      response.end(await status.text());
+      return true;
+    }
+  }
+
   if (pathname === "/admin") {
     response.writeHead(308, { location: "/admin/" });
     response.end();
@@ -126,7 +197,7 @@ const astro = await import("../console-dist/server/entry.mjs");
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
   if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
-    await serveAdmin(request, response, url.pathname);
+    await serveAdmin(request, response, url);
     return;
   }
 

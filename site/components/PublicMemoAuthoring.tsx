@@ -264,19 +264,25 @@ export function PublicMemoComposerIsland({
   localMemoRootPath,
   initialIsAdmin = false,
   initialMemos = [],
+  initialHasMore = false,
+  initialNextCursor = null,
 }: {
   localSourceEnabled?: boolean;
   localMemoRootPath?: string;
   initialIsAdmin?: boolean;
   initialMemos?: PublicMemoRecord[];
+  initialHasMore?: boolean;
+  initialNextCursor?: string | null;
 }) {
   const { isAdmin, isLoading } = usePublicAuth(initialIsAdmin);
   const [memos, setMemos] = useState<PublicMemoRecord[]>(initialMemos);
   const [isListLoading, setIsListLoading] = useState(initialIsAdmin && initialMemos.length === 0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialIsAdmin ? initialHasMore : false);
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    initialIsAdmin ? initialNextCursor : null
+  );
   const [creationFeedback, setCreationFeedback] = useState<string | null>(null);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editingMemo, setEditingMemo] = useState<PublicMemoRecord | null>(null);
