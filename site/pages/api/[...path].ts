@@ -6,12 +6,23 @@ function notFound() {
   return Response.json({ error: "Not Found" }, { status: 404 });
 }
 
-function withoutIdentity(request: Request) {
+export function withoutIdentity(request: Request) {
   const headers = new Headers(request.headers);
-  for (const name of ["authorization", "cookie", "remote-email", "x-forwarded-email"]) {
+  const identityHeaders = ["authorization", "cookie", "remote-email", "x-forwarded-email"];
+  const configuredSsoHeader = process.env.SSO_EMAIL_HEADER_NAME?.trim();
+  if (configuredSsoHeader) identityHeaders.push(configuredSsoHeader);
+  for (const name of identityHeaders) {
     headers.delete(name);
   }
-  return new Request(request, { headers });
+
+  const init: RequestInit = {
+    method: request.method,
+    headers,
+  };
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    init.body = request.body;
+  }
+  return new Request(request.url, init);
 }
 
 export async function ALL({ request, params }: { request: Request; params: { path?: string } }) {

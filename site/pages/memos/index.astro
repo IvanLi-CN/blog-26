@@ -33,6 +33,7 @@ if (isConsoleRuntime) {
 
 const localSourceEnabled = isLocalContentEnabled();
 const localMemoRootPath = localSourceEnabled ? getServerLocalMemoRootPath() : undefined;
+const renderedMemos = isConsoleRuntime ? initialMemos : snapshot.memos;
 ---
 <BaseLayout pathname="/memos" title="Memos - Ivan's Blog" description="浏览所有公开 Memos">
   <section class="nature-container px-1 py-8 sm:px-6 sm:py-12 lg:py-16">
@@ -55,16 +56,16 @@ const localMemoRootPath = localSourceEnabled ? getServerLocalMemoRootPath() : un
     ) : null}
 
     {!isConsoleRuntime || !initialIsAdmin ? (
-      snapshot.memos.length > 0 ? (
+      renderedMemos.length > 0 ? (
         <div
           class="memos-list nature-timeline nature-mobile-reading-stream"
           data-testid="memos-timeline"
           data-public-memos-static-list
         >
-          {snapshot.memos.map((memo, index) => (
+          {renderedMemos.map((memo, index) => (
             <MemoCard
               memo={memo}
-              isLast={index === snapshot.memos.length - 1}
+              isLast={index === renderedMemos.length - 1}
               iconMap={snapshot.tags.tagIconMap}
               iconSvgMap={snapshot.tags.tagIconSvgMap}
             />

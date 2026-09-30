@@ -7,10 +7,18 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-function context(request: Request, backendOrigin = "https://console.ivanli.cc") {
+function context(
+  request: Request,
+  backendOrigin = "https://console.ivanli.cc",
+  extraEnv: Record<string, string> = {}
+) {
   return {
     request,
-    env: { BLOG_BACKEND_ORIGIN: backendOrigin, EDGEONE_PUBLIC_FALLBACK_SECRET: "edge-secret" },
+    env: {
+      BLOG_BACKEND_ORIGIN: backendOrigin,
+      EDGEONE_PUBLIC_FALLBACK_SECRET: "edge-secret",
+      ...extraEnv,
+    },
   };
 }
 
@@ -41,7 +49,7 @@ describe("EdgeOne Makers API proxy", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(response.headers.get("set-cookie")).toContain("session=updated");
+    expect(response.headers.get("set-cookie")).toBeNull();
     expect(upstreamRequest?.url).toBe("https://console.ivanli.cc/api/public/comments?slug=hello");
     expect(upstreamRequest?.method).toBe("POST");
     expect(upstreamRequest?.headers.get("cookie")).toBeNull();
@@ -51,6 +59,26 @@ describe("EdgeOne Makers API proxy", () => {
     expect(upstreamRequest?.headers.get("x-forwarded-host")).toBe("ivanli.cc");
     expect(upstreamRequest?.headers.get("x-forwarded-proto")).toBe("https");
     expect(await upstreamRequest?.text()).toBe('{"body":"hello"}');
+  });
+
+  test("strips a configured SSO identity header on public fallback requests", async () => {
+    let upstreamRequest: Request | undefined;
+    globalThis.fetch = (async (input) => {
+      upstreamRequest = input instanceof Request ? input : new Request(input);
+      return new Response("ok");
+    }) as typeof fetch;
+
+    await createProxyHandler()(
+      context(
+        new Request("https://ivanli.cc/api/health", {
+          headers: { "x-sso-email": "admin@example.com" },
+        }),
+        "https://console.ivanli.cc",
+        { SSO_EMAIL_HEADER_NAME: "X-SSO-Email" }
+      )
+    );
+
+    expect(upstreamRequest?.headers.get("x-sso-email")).toBeNull();
   });
 
   test("preserves identity headers for a non-public host", async () => {

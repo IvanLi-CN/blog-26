@@ -371,10 +371,9 @@ jobs:
           with open("/tmp/docker-health.json", "r", encoding="utf-8") as f:
               health = json.load(f)
           assert health["status"] == "ok", health
-          assert health["site"]["status"] == "ok", health
-          assert health["site"]["mode"] == "static", health
-          assert health["admin"]["status"] == "ok", health
-          assert health["gatewayApis"]["status"] == "ok", health
+          assert health["runtime"] == "console", health
+          assert health["authenticated"] is False, health
+          assert health["isAdmin"] is False, health
           PY
 
           wait_for_status \

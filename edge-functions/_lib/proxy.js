@@ -11,6 +11,8 @@ const HOP_BY_HOP_HEADERS = [
   "upgrade",
 ];
 
+const IDENTITY_HEADERS = ["authorization", "cookie", "remote-email", "x-forwarded-email"];
+
 function unavailableResponse() {
   return new Response("Bad Gateway", {
     status: 502,
@@ -39,6 +41,31 @@ function resolveUpstreamOrigin(value) {
   }
 }
 
+function isPublicHost(request) {
+  const incoming = new URL(request.url);
+  const publicHost = String(request.headers.get("host") || incoming.host)
+    .split(":", 1)[0]
+    .toLowerCase();
+  return publicHost === "ivanli.cc";
+}
+
+function resolveSsoEmailHeaderName(env) {
+  return typeof env?.SSO_EMAIL_HEADER_NAME === "string" && env.SSO_EMAIL_HEADER_NAME.trim()
+    ? env.SSO_EMAIL_HEADER_NAME.trim()
+    : "Remote-Email";
+}
+
+function stripPublicResponseIdentity(response) {
+  const headers = new Headers(response.headers);
+  headers.delete("set-cookie");
+  headers.delete("set-cookie2");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function buildUpstreamRequest(request, upstream, env) {
   const incoming = new URL(request.url);
   const target = new URL(request.url);
@@ -52,11 +79,8 @@ function buildUpstreamRequest(request, upstream, env) {
   headers.set("x-forwarded-host", incoming.host);
   headers.set("x-forwarded-proto", incoming.protocol.slice(0, -1));
 
-  const publicHost = String(request.headers.get("host") || incoming.host)
-    .split(":", 1)[0]
-    .toLowerCase();
-  if (publicHost === "ivanli.cc") {
-    for (const header of ["authorization", "cookie", "remote-email", "x-forwarded-email"]) {
+  if (isPublicHost(request)) {
+    for (const header of [...IDENTITY_HEADERS, resolveSsoEmailHeaderName(env)]) {
       headers.delete(header);
     }
     const fallbackSecret =
@@ -84,7 +108,8 @@ export function createProxyHandler(envKey = "BLOG_BACKEND_ORIGIN") {
     if (!upstream) return unavailableResponse();
 
     try {
-      return await fetch(buildUpstreamRequest(context.request, upstream, context.env));
+      const response = await fetch(buildUpstreamRequest(context.request, upstream, context.env));
+      return isPublicHost(context.request) ? stripPublicResponseIdentity(response) : response;
     } catch {
       return unavailableResponse();
     }
