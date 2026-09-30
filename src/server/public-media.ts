@@ -607,13 +607,56 @@ function getConfiguredInternalSourceHost() {
   }
 }
 
+const INTERNAL_SOURCE_TOKEN_PARAM = "source-token";
+
+function getInternalSourceSecret() {
+  return process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET?.trim() || null;
+}
+
+function appendInternalSourceSecret(url: string) {
+  const secret = getInternalSourceSecret();
+  if (!secret) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${INTERNAL_SOURCE_TOKEN_PARAM}=${encodeURIComponent(secret)}`;
+}
+
+function encodeImagorSourceUrl(url: string) {
+  return url.includes("?") ? `b64:${Buffer.from(url).toString("base64url")}` : url;
+}
+
+function redactInternalSourceSecret(value: string) {
+  const redactQuery = (input: string) =>
+    input.replace(/([?&]source-token=)[^&/]+/gu, "$1[redacted]");
+  const redacted = redactQuery(value);
+  return redacted.replace(/b64:([A-Za-z0-9_-]+)/gu, (segment, encoded: string) => {
+    try {
+      const decoded = Buffer.from(encoded, "base64url").toString("utf8");
+      const redactedDecoded = redactQuery(decoded);
+      return redactedDecoded === decoded
+        ? segment
+        : `b64:${Buffer.from(redactedDecoded).toString("base64url")}`;
+    } catch {
+      return segment;
+    }
+  });
+}
+
 function isAllowedInternalSourceRequest(request: Request) {
   const requestUrl = new URL(request.url);
   const configuredHost = getConfiguredInternalSourceHost();
   if (!configuredHost) {
     return false;
   }
-  return requestUrl.host.toLowerCase() === configuredHost;
+  if (requestUrl.host.toLowerCase() !== configuredHost) {
+    return false;
+  }
+
+  const secret = getInternalSourceSecret();
+  if (secret) {
+    return requestUrl.searchParams.get(INTERNAL_SOURCE_TOKEN_PARAM) === secret;
+  }
+
+  return process.env.NODE_ENV !== "production";
 }
 
 function getImagorSignerType() {
@@ -674,12 +717,16 @@ async function buildImagorPath(params: {
   const format =
     normalizePublicMediaExt(params.ext) ||
     pickPublicMediaExt(params.ref.kind, params.ref.sourcePath, params.variant);
-  const sourceUrl = `${getInternalSourceBaseUrl(params.request)}${buildInternalAssetSourcePath({
-    kind: params.context.kind,
-    slug: params.context.slug,
-    mediaHash: params.ref.hash,
-    scope: params.context.assetScope,
-  })}`;
+  const sourceUrl = encodeImagorSourceUrl(
+    appendInternalSourceSecret(
+      `${getInternalSourceBaseUrl(params.request)}${buildInternalAssetSourcePath({
+        kind: params.context.kind,
+        slug: params.context.slug,
+        mediaHash: params.ref.hash,
+        scope: params.context.assetScope,
+      })}`
+    )
+  );
 
   const filters: string[] = [];
   if (params.ref.kind === "video") {
@@ -875,8 +922,8 @@ function createMediaProcessorUnavailableResponse(request: Request) {
 async function loadContentRows(
   kind: PublicContentKind,
   slug: string,
-  request: Request,
-  internalOnly = false
+  internalOnly = false,
+  includePrivate = false
 ) {
   await initializeDB();
   const rows = await db
@@ -884,25 +931,25 @@ async function loadContentRows(
     .from(posts)
     .where(and(eq(posts.slug, slug), eq(posts.type, kind)));
 
-  if (internalOnly) return rows;
+  if (internalOnly || includePrivate) return rows;
   if (!rows.length) return [];
 
-  const auth = await extractAuthFromRequest(request);
-  return rows.filter((row) => (row.public && (kind !== "post" || !row.draft)) || auth.isAdmin);
+  return rows.filter((row) => row.public && !row.draft);
 }
 
 async function resolveMediaReferenceFromRequest(
   request: Request,
   params: { kind: PublicContentKind; slug: string; mediaHash: string },
   internalOnly = false,
-  assetScope?: PublicMediaAssetScope
+  assetScope?: PublicMediaAssetScope,
+  includePrivate = false
 ) {
   const scope =
     assetScope ??
     (new URL(request.url).searchParams.get("scope") === "admin-preview"
       ? "admin-preview"
       : "public");
-  const rows = await loadContentRows(params.kind, params.slug, request, internalOnly);
+  const rows = await loadContentRows(params.kind, params.slug, internalOnly, includePrivate);
   for (const row of rows) {
     const normalizedRow = normalizeAdminPreviewRow(params.kind, row, scope);
     const ref = buildContentMediaReferences(params.kind, normalizedRow).find(
@@ -964,13 +1011,17 @@ async function proxyResolvedMediaVariant(
     });
   } catch (error) {
     console.error("[public-media] imagor fetch failed:", {
-      imagorUrl,
+      imagorUrl: redactInternalSourceSecret(imagorUrl),
       error,
     });
     if (params.allowOriginalFallback) {
       return streamLocalMediaFile(request, resolved.ref);
     }
     return createMediaProcessorUnavailableResponse(request);
+  }
+
+  if (upstream.status >= 500 && params.allowOriginalFallback) {
+    return streamLocalMediaFile(request, resolved.ref);
   }
 
   if (upstream.status === 422) {
@@ -1053,7 +1104,8 @@ export async function handleAdminPreviewAssetRequest(
       mediaHash: params.mediaHash,
     },
     false,
-    "admin-preview"
+    "admin-preview",
+    true
   );
   return proxyResolvedMediaVariant(request, resolved, {
     ...params,

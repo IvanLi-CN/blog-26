@@ -75,7 +75,7 @@ None
 - 这个 `v` 只作为静态发布缓存版本戳，用于在 snapshot 更新后强制浏览器与边缘缓存切换到新对象；它不得改写 facade path 形状，也不得引入运行时 fallback。
 - 前台 release 必须扫描生成的公开文档，按实际引用拉取已处理的 facade 派生文件并写入静态发布包的 `/_content/assets/` 命名空间；原始内容文件不得进入发布包。
 - 媒体下载只允许停留在配置的后端 origin 内的重定向；跨域重定向必须让发布失败，不能扩大 CI runner 的请求范围。
-- 单个派生媒体文件小于 20 MiB 时必须随包发布；达到 20 MiB 时允许改写为 `https://api.ivanli.cc/api/public/assets/*` 后端直连，并在发布清单中记录。
+- 单个派生媒体文件小于 20 MiB 时必须随包发布；达到 20 MiB 时允许改写为 `https://console.ivanli.cc/api/public/assets/*` 后端直连，并在发布清单中记录。
 - 发布包必须带有 `_content/media-manifest.json`；媒体下载失败、静态 artifact 达到 20,000 文件或 5 GiB 时，发布必须失败并保持现网版本。
 
 ### 5.3 内部 source 路由

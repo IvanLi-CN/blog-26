@@ -11,7 +11,8 @@ Key project scripts live in this directory. Use Bun unless a shell script is exp
 - `generate-version.ts`: generate build version metadata
 - `migrate.ts`: run Drizzle migrations
 - `seed.ts`: seed or clear SQLite data
-- `start-gateway.ts`: start the Bun gateway runtime
+- `start-console.ts`: start the self-contained Astro SSR console runtime
+- `start-gateway.ts`: start the legacy Bun gateway runtime used by the development stack
 - `generate-test-data.ts`: create dev/test local content fixtures
 - `trigger-sync.ts`: run content sync against the configured local content root
 - `verify-test-data.ts`: validate generated fixture shape

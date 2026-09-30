@@ -83,14 +83,16 @@ ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV SERVE_PUBLIC_SITE=true
+ENV CONSOLE_RUNTIME=true
+ENV SERVE_PUBLIC_SITE=false
+ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/backend-dist/ ./
 COPY --from=builder /app/admin-dist ./admin-dist
-COPY --from=builder /app/site-dist ./site-dist
+COPY --from=builder /app/console-dist ./console-dist
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/admin-dist /app/site-dist && \
+    mkdir -p /app/data /app/admin-dist /app/console-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
@@ -98,7 +100,7 @@ EXPOSE 25090
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["bun", "run", "gateway:start"]
+CMD ["bun", "run", "console:start"]
 
 # Prebuilt target: use prebuilt backend/admin artifacts from build outputs
 FROM oven/bun:1-slim AS app-image-prebuilt
@@ -117,14 +119,16 @@ ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
 ENV PORT=25090
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV SERVE_PUBLIC_SITE=true
+ENV CONSOLE_RUNTIME=true
+ENV SERVE_PUBLIC_SITE=false
+ENV PUBLIC_CORS_ALLOWED_ORIGINS=https://ivanli.cc
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend-dist/ ./
 COPY admin-dist ./admin-dist
-COPY site-dist ./site-dist
+COPY console-dist ./console-dist
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && \
-    mkdir -p /app/data /app/admin-dist /app/site-dist && \
+    mkdir -p /app/data /app/admin-dist /app/console-dist && \
     chmod -R a+rX /app && \
     chown -R 0:0 /app && \
     chmod 2775 /app/data
@@ -132,4 +136,4 @@ EXPOSE 25090
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD sh -c "curl -fsSL http://127.0.0.1:${PORT:-25090}/api/health || exit 1"
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["bun", "run", "gateway:start"]
+CMD ["bun", "run", "console:start"]

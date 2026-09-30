@@ -88,9 +88,13 @@ async function readJson<T>(input: RequestInfo | URL, init?: RequestInit): Promis
   return payload as T;
 }
 
-function usePublicAuth() {
-  const [user, setUser] = useState<PublicAuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+function usePublicAuth(initialIsAdmin = false) {
+  const [user, setUser] = useState<PublicAuthUser | null>(
+    initialIsAdmin
+      ? { id: "ssr-admin", nickname: "admin", email: "", avatarUrl: "", isAdmin: true }
+      : null
+  );
+  const [isLoading, setIsLoading] = useState(!initialIsAdmin);
 
   const refetch = useCallback(() => {
     setIsLoading(true);
@@ -177,70 +181,80 @@ function PublicMemoList({
   }
 
   return (
-    <div className="nature-mobile-reading-stream space-y-0 sm:space-y-4">
-      {memos.map((memo) => (
+    <div
+      className="memos-list nature-timeline nature-mobile-reading-stream"
+      data-testid="memos-timeline"
+    >
+      {memos.map((memo, index) => (
         <article
           key={memo.id || memo.slug}
-          className="nature-panel nature-mobile-reading-row flex flex-col gap-4 px-4 py-4 max-[374px]:px-3 max-[374px]:py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-4"
+          className="nature-timeline-item nature-mobile-reading-row"
           data-testid="admin-live-memo-card"
           data-id={memo.id}
           data-slug={memo.slug}
           data-source={memo.source ?? "local"}
         >
-          <div className="min-w-0 flex-1 space-y-3" data-testid="admin-live-memo-content">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--nature-text-soft)]">
-              <span className="nature-chip gap-1">
-                <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
-                Memo
-              </span>
-              <span
-                className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warning"}`}
-                data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
-              >
-                {memo.isPublic ? "Public" : "Draft / Private"}
-              </span>
+          <div className="nature-timeline-rail" aria-hidden="true">
+            <div className="nature-timeline-node text-[color:var(--nature-secondary)]">
+              <Icon name="tabler:bulb" className="h-5 w-5" />
             </div>
-            <div>
+            {index < memos.length - 1 ? <div className="nature-timeline-connector" /> : null}
+          </div>
+          <div className="nature-timeline-content">
+            <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+                <span className="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]">
+                  <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+                </span>
+                <span
+                  className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warning"}`}
+                  data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
+                >
+                  {memo.isPublic ? "Public" : "Draft / Private"}
+                </span>
+              </div>
               {memo.title?.trim() ? (
-                <h2 className="break-words text-lg font-semibold text-[color:var(--nature-text)]">
-                  {memo.title}
-                </h2>
+                <h2 className="nature-title text-xl font-semibold">{memo.title}</h2>
               ) : null}
               {memo.excerpt ? (
-                <p className="mt-2 text-sm leading-6 text-[color:var(--nature-text-soft)]">
-                  {memo.excerpt}
-                </p>
+                <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
               ) : null}
-            </div>
-            {memo.tags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {memo.tags.map((tag) => (
-                  <span key={`${memo.id}-${tag}`} className="nature-chip">
-                    #{tag}
-                  </span>
-                ))}
+              <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+                <div
+                  className="min-w-0 flex flex-1 flex-wrap gap-2"
+                  data-testid="admin-live-memo-content"
+                >
+                  {memo.tags.map((tag) => (
+                    <span key={`${memo.id}-${tag}`} className="nature-chip">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+                <div
+                  className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto"
+                  data-testid="admin-live-memo-actions"
+                >
+                  <a
+                    className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
+                    href={buildPreviewHref(memo.slug)}
+                    aria-label="预览"
+                    title="预览 Memo"
+                  >
+                    <Icon name="tabler:eye" className="h-5 w-5" />
+                  </a>
+                  <button
+                    type="button"
+                    className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
+                    data-testid="admin-live-memo-edit"
+                    aria-label="编辑 Memo"
+                    title="编辑 Memo"
+                    onClick={() => onEdit(memo)}
+                  >
+                    <Icon name="tabler:edit" className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
-            ) : null}
-          </div>
-
-          <div
-            className="flex w-full flex-wrap gap-2 sm:w-36 sm:shrink-0 sm:flex-col sm:items-stretch"
-            data-testid="admin-live-memo-actions"
-          >
-            <a
-              className="nature-button nature-button-outline min-h-11 flex-1 justify-center sm:min-h-9 sm:flex-none"
-              href={buildPreviewHref(memo.slug)}
-            >
-              预览
-            </a>
-            <button
-              type="button"
-              className="nature-button nature-button-outline min-h-11 flex-1 justify-center sm:min-h-9 sm:flex-none"
-              data-testid="admin-live-memo-edit"
-              onClick={() => onEdit(memo)}
-            >
-              编辑 Memo
-            </button>
+            </div>
           </div>
         </article>
       ))}
@@ -251,17 +265,27 @@ function PublicMemoList({
 export function PublicMemoComposerIsland({
   localSourceEnabled = true,
   localMemoRootPath,
+  initialIsAdmin = false,
+  initialMemos = [],
+  initialHasMore = false,
+  initialNextCursor = null,
 }: {
   localSourceEnabled?: boolean;
   localMemoRootPath?: string;
+  initialIsAdmin?: boolean;
+  initialMemos?: PublicMemoRecord[];
+  initialHasMore?: boolean;
+  initialNextCursor?: string | null;
 }) {
-  const { isAdmin, isLoading } = usePublicAuth();
-  const [memos, setMemos] = useState<PublicMemoRecord[]>([]);
-  const [isListLoading, setIsListLoading] = useState(true);
+  const { isAdmin, isLoading } = usePublicAuth(initialIsAdmin);
+  const [memos, setMemos] = useState<PublicMemoRecord[]>(initialMemos);
+  const [isListLoading, setIsListLoading] = useState(initialIsAdmin && initialMemos.length === 0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialIsAdmin ? initialHasMore : false);
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    initialIsAdmin ? initialNextCursor : null
+  );
   const [creationFeedback, setCreationFeedback] = useState<string | null>(null);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editingMemo, setEditingMemo] = useState<PublicMemoRecord | null>(null);
@@ -273,6 +297,7 @@ export function PublicMemoComposerIsland({
   const recentCreatedMemos = useRef(new Map<string, PublicMemoRecord>());
   const deferredMemos = useRef<PublicMemoRecord[]>([]);
   const editRequestId = useRef(0);
+  const editReturnScrollY = useRef<number | null>(null);
 
   const requestMemoPage = useCallback(
     async ({ cursor, append = false }: { cursor?: string; append?: boolean }) => {
@@ -345,11 +370,12 @@ export function PublicMemoComposerIsland({
 
   useEffect(() => {
     if (!isAdmin) return;
+    if (initialIsAdmin && initialMemos.length > 0) return;
     void requestMemoPage({});
     return () => {
       listRequestId.current += 1;
     };
-  }, [isAdmin, requestMemoPage]);
+  }, [initialIsAdmin, initialMemos.length, isAdmin, requestMemoPage]);
 
   const refreshList = useCallback(() => {
     void requestMemoPage({});
@@ -387,6 +413,7 @@ export function PublicMemoComposerIsland({
 
   const handleEdit = useCallback(async (memo: PublicMemoRecord) => {
     const requestId = ++editRequestId.current;
+    editReturnScrollY.current = window.scrollY;
     setEditingSlug(memo.slug);
     setEditingMemo(null);
     setIsEditLoading(true);
@@ -406,11 +433,19 @@ export function PublicMemoComposerIsland({
   }, []);
 
   const closeEdit = useCallback(() => {
+    const returnScrollY = editReturnScrollY.current;
     editRequestId.current += 1;
+    editReturnScrollY.current = null;
     setEditingSlug(null);
     setEditingMemo(null);
     setIsEditLoading(false);
     setEditError(null);
+    if (returnScrollY !== null) {
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, returnScrollY);
+        window.requestAnimationFrame(() => window.scrollTo(0, returnScrollY));
+      });
+    }
   }, []);
 
   const saveEditedMemo = useCallback(

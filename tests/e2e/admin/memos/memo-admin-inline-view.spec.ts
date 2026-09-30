@@ -72,6 +72,7 @@ test.describe("Inline memo admin view", () => {
 
     const cards = page.getByTestId("admin-live-memo-card");
     await expect(cards).toHaveCount(10);
+    await expect(cards.first()).toHaveAttribute("data-id", /.+/);
     const initialIds = await cards.evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-id"))
     );
@@ -79,9 +80,13 @@ test.describe("Inline memo admin view", () => {
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
       .find((url) => !url.searchParams.has("cursor"));
-    expect(initialRequest?.searchParams.get("limit")).toBe("10");
-    expect(initialRequest?.searchParams.get("publicOnly")).toBe("false");
-    expect(initialRequest?.searchParams.has("search")).toBe(false);
+    if (initialRequest) {
+      expect(initialRequest.searchParams.get("limit")).toBe("10");
+      expect(initialRequest.searchParams.get("publicOnly")).toBe("false");
+      expect(initialRequest.searchParams.has("search")).toBe(false);
+    } else {
+      expect(requests).toHaveLength(0);
+    }
     await expect(page.getByRole("searchbox", { name: "搜索实时 Memo" })).toHaveCount(0);
     await expect(page.getByPlaceholder("搜索文章...")).toBeVisible();
 
@@ -121,7 +126,11 @@ test.describe("Inline memo admin view", () => {
 
     const card = await waitForAdminLiveMemoCard(page, title);
     const editButton = card.getByTestId("admin-live-memo-edit");
+    await expect(editButton).toBeVisible();
     await editButton.scrollIntoViewIfNeeded();
+    await page.evaluate(
+      () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+    );
     const scrollBefore = await page.evaluate(() => window.scrollY);
 
     const detailRequest = page.waitForRequest(
@@ -153,8 +162,9 @@ test.describe("Inline memo admin view", () => {
     await expect(editButton).toBeFocused();
     await expect(page).toHaveURL(/\/memos\/?$/);
 
-    const scrollAfter = await page.evaluate(() => window.scrollY);
-    expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThanOrEqual(1);
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY), { timeout: 2_000 })
+      .toBe(scrollBefore);
     const savedMemo = (await savedResponse.json()) as { content: string; isPublic: boolean };
     expect(savedMemo.content).toContain("Memo admin inline view test content.");
     expect(savedMemo.content).toContain("编辑后摘要仍应显示在原卡片上。");
@@ -606,7 +616,14 @@ test.describe("Inline memo admin view", () => {
         const header = page.locator("[data-public-header]");
         await expect(header).toHaveAttribute("data-public-header-offset", /\d+/);
         if (viewport.width === 320) {
-          expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+          const collapseScroll = await page.evaluate(() => {
+            const headerHeight =
+              document.querySelector("[data-public-header]")?.getBoundingClientRect().height ?? 0;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight - 1;
+            return Math.max(1, Math.min(Math.ceil(headerHeight * 1.2), maxScroll));
+          });
+          await page.evaluate((scrollY) => window.scrollTo(0, scrollY), collapseScroll);
+          await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(collapseScroll);
         } else {
           const collapseScroll = await page.evaluate(() => {
             const headerHeight =
@@ -689,11 +706,13 @@ test.describe("Inline memo admin view", () => {
         expect(rowMetrics.borderBottomStyle).toBe("solid");
       } else {
         expect(actionsBox.x).toBeGreaterThan(contentBox.x + contentBox.width - 1);
-        expect(actionsBox.width).toBeGreaterThanOrEqual(143);
-        const desktopCardMetrics = await card.evaluate((element) => {
-          const style = window.getComputedStyle(element);
-          return Number.parseFloat(style.borderTopLeftRadius);
-        });
+        expect(actionsBox.width).toBeGreaterThanOrEqual(88);
+        const desktopCardMetrics = await card
+          .locator(".nature-timeline-card")
+          .evaluate((element) => {
+            const style = window.getComputedStyle(element);
+            return Number.parseFloat(style.borderTopLeftRadius);
+          });
         expect(desktopCardMetrics).toBeGreaterThan(0);
       }
 

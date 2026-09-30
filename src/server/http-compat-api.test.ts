@@ -22,6 +22,7 @@ const USER_EMAIL = "user-test@test.local";
 let handleAdminApiRequest: typeof import("@/server/admin-api/router").handleAdminApiRequest;
 let handlePublicApiRequest: typeof import("@/server/public-api/router").handlePublicApiRequest;
 let handleFilesApiRequest: typeof import("@/server/files-api/router").handleFilesApiRequest;
+let handlePublicAssetFacadeRequest: typeof import("@/server/public-media").handlePublicAssetFacadeRequest;
 let handleInternalAssetSourceRequest: typeof import("@/server/public-media").handleInternalAssetSourceRequest;
 
 function resetHttpCompatEnv() {
@@ -183,7 +184,9 @@ describe("HTTP compatibility APIs", () => {
     ({ handleAdminApiRequest } = await import("@/server/admin-api/router"));
     ({ handlePublicApiRequest } = await import("@/server/public-api/router"));
     ({ handleFilesApiRequest } = await import("@/server/files-api/router"));
-    ({ handleInternalAssetSourceRequest } = await import("@/server/public-media"));
+    ({ handlePublicAssetFacadeRequest, handleInternalAssetSourceRequest } = await import(
+      "@/server/public-media"
+    ));
 
     await initializeDB(true);
   }, 20_000);
@@ -895,10 +898,11 @@ image: ./assets/cover.png
       if (url.startsWith("http://imagor.example.test/")) {
         expect(init?.method).toBe("GET");
         expect(url).toContain("/fit-in/1600x900/");
-        expect(url).toContain(
-          "http://blog:25090/_internal/assets/source/post/preview-contaminated-assets/"
+        const sourceSegment = new URL(url).pathname.split("/").at(-1) || "";
+        expect(sourceSegment.startsWith("b64:")).toBe(true);
+        expect(Buffer.from(sourceSegment.slice(4), "base64url").toString()).toBe(
+          `http://blog:25090/_internal/assets/source/post/preview-contaminated-assets/${coverHash}?scope=admin-preview`
         );
-        expect(url).toContain("scope=admin-preview");
         return new Response("admin-preview-image", {
           status: 200,
           headers: {
@@ -1446,6 +1450,7 @@ public: false
     const originalFetch = globalThis.fetch;
     process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
     process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET = "test-source-secret";
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -1453,7 +1458,11 @@ public: false
         expect(init?.method).toBe("GET");
         expect(url).toContain("/fit-in/1600x900/");
         expect(url).toContain("filters:");
-        expect(url).toContain("http://blog:25090/_internal/assets/source/post/facade-post/");
+        const sourceSegment = new URL(url).pathname.split("/").at(-1) || "";
+        expect(sourceSegment.startsWith("b64:")).toBe(true);
+        expect(Buffer.from(sourceSegment.slice(4), "base64url").toString()).toBe(
+          `http://blog:25090/_internal/assets/source/post/facade-post/${buildPublicMediaHash("blog/assets/facade-cover.png", "cover")}?source-token=test-source-secret`
+        );
         expect(url).toContain(
           `watermark(b64:${Buffer.from("http://blog:25090/watermark-ivanli.svg").toString("base64url")},-24,-24,18,22,22)`
         );
@@ -1483,6 +1492,120 @@ public: false
     } finally {
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("never serves private rows through the public asset facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/private-public-cover.png"),
+      "cover"
+    );
+
+    await seedPost({
+      id: "blog/private-public-facade.md",
+      filePath: "blog/private-public-facade.md",
+      slug: "private-public-facade",
+      type: "post",
+      title: "Private Public Facade",
+      image: "./assets/private-public-cover.png",
+      body: "Body",
+      public: false,
+      draft: true,
+    });
+
+    const mediaHash = buildPublicMediaHash("blog/assets/private-public-cover.png", "cover");
+    for (const email of [undefined, ADMIN_EMAIL]) {
+      const response = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/assets/post/private-public-facade/${mediaHash}/cover.webp`,
+          {},
+          email
+        ),
+        `/assets/post/private-public-facade/${mediaHash}/cover.webp`
+      );
+      expect(response.status).toBe(404);
+    }
+  });
+
+  it("never serves draft memos through the public asset facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "Memos/assets/draft-cover.png"), "cover");
+
+    await seedPost({
+      id: "Memos/draft-public-facade.md",
+      filePath: "Memos/draft-public-facade.md",
+      slug: "draft-public-facade",
+      type: "memo",
+      title: "Draft Public Facade",
+      image: "./assets/draft-cover.png",
+      body: "Body",
+      public: true,
+      draft: true,
+    });
+
+    const mediaHash = buildPublicMediaHash("Memos/assets/draft-cover.png", "cover");
+    const response = await handlePublicAssetFacadeRequest(
+      buildRequest(`/api/public/assets/memo/draft-public-facade/${mediaHash}/cover.webp`),
+      {
+        kind: "memo",
+        slug: "draft-public-facade",
+        mediaHash,
+        variant: "cover",
+        ext: "webp",
+      }
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("falls back to the original admin preview asset on imagor HTTP failures", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/admin-fallback-cover.png"),
+      "cover"
+    );
+
+    await seedPost({
+      id: "blog/admin-fallback-cover.md",
+      filePath: "blog/admin-fallback-cover.md",
+      slug: "admin-fallback-cover",
+      type: "post",
+      title: "Admin Fallback Cover",
+      image: "./assets/admin-fallback-cover.png",
+      body: "Body",
+      public: false,
+      draft: true,
+    });
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        expect(init?.method).toBe("GET");
+        return new Response("imagor unavailable", { status: 503 });
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/admin-fallback-cover.png", "cover");
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          `/api/admin/preview/assets/post/admin-fallback-cover/${mediaHash}/cover.webp`,
+          {},
+          ADMIN_EMAIL
+        ),
+        `/preview/assets/post/admin-fallback-cover/${mediaHash}/cover.webp`
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(await response.text()).toBe("cover");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
       globalThis.fetch = originalFetch;
     }
   });
@@ -1648,9 +1771,16 @@ public: false
     });
 
     const originalFetch = globalThis.fetch;
+    const originalConsoleError = console.error;
+    let loggedError: unknown[] = [];
     const originalNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET = "test-source-secret";
+    console.error = (...args: unknown[]) => {
+      loggedError = args;
+    };
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -1673,9 +1803,13 @@ public: false
       expect(await response.json()).toEqual({
         error: "Public media processor unavailable",
       });
+      expect(JSON.stringify(loggedError)).not.toContain("test-source-secret");
     } finally {
       process.env.NODE_ENV = originalNodeEnv;
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET;
+      console.error = originalConsoleError;
       globalThis.fetch = originalFetch;
     }
   });
@@ -1745,6 +1879,47 @@ public: false
       expect(response.status).toBe(404);
     } finally {
       delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+    }
+  });
+
+  it("requires the internal source secret in production", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/secret-cover.png"), "cover");
+
+    await seedPost({
+      id: "blog/secret-host-check.md",
+      filePath: "blog/secret-host-check.md",
+      slug: "secret-host-check",
+      type: "post",
+      title: "Secret Host Check",
+      image: "./assets/secret-cover.png",
+      public: true,
+      draft: false,
+    });
+
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET = "test-source-secret";
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/secret-cover.png", "cover");
+      const path = `/_internal/assets/source/post/secret-host-check/${mediaHash}`;
+      const missingSecret = await handleInternalAssetSourceRequest(buildRequest(path), {
+        kind: "post",
+        slug: "secret-host-check",
+        mediaHash,
+      });
+      expect(missingSecret.status).toBe(404);
+
+      const authorized = await handleInternalAssetSourceRequest(
+        new Request(`http://blog:25090${path}?source-token=test-source-secret`),
+        { kind: "post", slug: "secret-host-check", mediaHash }
+      );
+      expect(authorized.status).toBe(200);
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET;
     }
   });
 

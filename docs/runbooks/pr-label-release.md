@@ -67,7 +67,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
    - uploads backend release assets
 8. If either release target is present, the workflow:
    - downloads `PUBLIC_CONTENT_BUNDLE_URL`
-   - builds a unified Docker image containing `site-dist`, `backend-dist`, and `admin-dist`
+   - builds the console Docker image containing `console-dist`, `backend-dist`, and `admin-dist`; `site-dist` is published separately to EdgeOne
    - pushes the image to GHCR with the plain `v*` tag, and `latest` for current-head stable releases
 9. The prepare and publish job summaries contain the actual release outcomes. The release-owning agent reports successful publication to the owner, and the workflow does not write a result comment to the source PR.
 
@@ -78,32 +78,32 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 ## Frontend content bundle
 
 - Store the bundle URL in GitHub secrets as `PUBLIC_CONTENT_BUNDLE_URL`.
-- Preferred value: `https://ivanli.cc/api/public/snapshot`.
+- Preferred value: `https://console.ivanli.cc/api/public/snapshot`.
 - If the live snapshot endpoint is not wired to the public mirror yet, use the repo-hosted fallback bundle instead: `https://raw.githubusercontent.com/IvanLi-CN/blog-26/public-content-bundle/public-bundles/live/public-snapshot.json`.
 - The URL may contain an embedded token; do not expose it in `PUBLIC_*` client config.
 - Configure these repository variables for frontend releases:
   - `PUBLIC_SITE_URL=https://ivanli.cc`
   - `PUBLIC_SITE_BASE_PATH=/`
-  - `PUBLIC_API_BASE_URL=https://ivanli.cc`
-  - `PUBLIC_STATIC_MEDIA_ORIGIN=https://api.ivanli.cc`
+  - `PUBLIC_API_BASE_URL=https://console.ivanli.cc`
+  - `PUBLIC_STATIC_MEDIA_ORIGIN=https://console.ivanli.cc`
 - Configure the EdgeOne Makers CI inputs before the next stable frontend release:
   - repository secret `EDGEONE_API_TOKEN`
   - repository variable `EDGEONE_PROJECT_NAME`
-- The stable EdgeOne deployment reconciles the Makers production environment variable `BLOG_BACKEND_ORIGIN=https://api.ivanli.cc` through the official CLI in a runner-local temporary directory. The deployed functions proxy only `/api/public/*`, `/api/health`, and `/mcp` to this upstream, preserving the public site's same-origin contract.
+- The stable EdgeOne deployment reconciles the Makers production environment variable `BLOG_BACKEND_ORIGIN=https://console.ivanli.cc` through the official CLI in a runner-local temporary directory. The deployed functions proxy public fallback requests for `/api/public/*`, `/api/health`, and `/mcp` to this upstream, while the static bundle uses the console origin for API and media requests.
 - The release workflow deploys EdgeOne only from the verified `site-dist` output plus `edge-functions`, and only for `channel:stable`. Its first eligible deployment creates the named direct-upload project if it does not yet exist; it does not bind a custom domain, alter DNS, or perform a manual upload.
-- `PUBLIC_API_BASE_URL=https://ivanli.cc` is only valid when the public domain already routes same-origin anonymous backend traffic, including `/api/public/assets/*`, to the live gateway.
+- `PUBLIC_API_BASE_URL=https://console.ivanli.cc` is required for the static bundle; `console.ivanli.cc` must allow the public site's CORS origin for anonymous `/api/public/*` and `/api/public/assets/*` traffic.
 - The frontend release remains a static `site-dist` build. Its build step scans generated HTML, feeds, JSON and scripts for facade references, downloads referenced processed media from `PUBLIC_STATIC_MEDIA_ORIGIN`, writes qualifying files below `/_content/assets/`, and records `_content/media-manifest.json`.
 - Media downloads allow only redirects that remain on the configured backend origin; a cross-origin redirect fails the release rather than expanding the runner's fetch scope.
-- A processed media file at or above 20 MiB is deliberately excluded from the artifact and rewritten to an absolute `https://api.ivanli.cc/api/public/assets/*` URL so it does not pass through the Edge Function response path. Missing media, invalid responses, or an artifact reaching 20,000 files or 5 GiB fail the release before publication.
+- A processed media file at or above 20 MiB is deliberately excluded from the artifact and rewritten to an absolute `https://console.ivanli.cc/api/public/assets/*` URL so it does not pass through the Edge Function response path. Missing media, invalid responses, or an artifact reaching 20,000 files or 5 GiB fail the release before publication.
 - Raw content files are never copied into the frontend artifact. The public media facade remains the source for oversized media and runtime interactions continue to use the live `/api/public/*` API.
 - The generated public HTML must also carry the stable build-time cache-bust query on facade card/cover URLs: `?v=<public-snapshot.generatedAt>`. This is part of the release contract for static list/detail imagery, not a runtime fallback.
 - If old project Pages variables are still present, the workflow auto-normalizes their values to the `public/CNAME` custom domain during release.
 - The workflow can consume either:
   - a raw `public-snapshot.json`, or
   - an archive containing `public-snapshot.json`
-- Browser runtime requests use the current page origin. A release is incomplete if the bound Makers domain does not proxy `/api/public/*` to `https://api.ivanli.cc`.
+- Browser runtime requests use the configured console origin. A release is incomplete if `console.ivanli.cc` does not serve `/api/public/*` and `/api/public/assets/*`, or if the EdgeOne fallback does not proxy those paths to `https://console.ivanli.cc`.
 - The primary deployment target is the `ivanli.cc` Makers custom domain. The historical GitHub Pages URL is not updated by this workflow.
-- Local unified Docker builds also require the public snapshot. `bun run docker:build` fetches it when `PUBLIC_CONTENT_BUNDLE_URL` is set, reuses `site/generated/public-snapshot.json` when present, and otherwise fails before Docker starts so the build cannot silently read an empty local DB.
+- Local console Docker builds still require the public snapshot for shared content and media validation. `bun run docker:build` fetches it when `PUBLIC_CONTENT_BUNDLE_URL` is set, reuses `site/generated/public-snapshot.json` when present, and otherwise fails before Docker starts so the build cannot silently read an empty local DB.
 
 ## Troubleshooting
 
@@ -134,7 +134,7 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is configured and downloadable from Actions.
 - Confirm the bundle contains `public-snapshot.json`.
-- Confirm `PUBLIC_API_BASE_URL` points at the live backend/gateway origin that really serves anonymous `/api/public/*` and `/api/public/assets/*` traffic.
+- Confirm `PUBLIC_API_BASE_URL=https://console.ivanli.cc` and that console CORS accepts `https://ivanli.cc` for anonymous `/api/public/*` and `/api/public/assets/*` traffic.
 - Confirm `PUBLIC_STATIC_MEDIA_ORIGIN` points at the live HTTPS backend origin and that every referenced processed media URL responds to `HEAD` or `GET` from Actions.
 - Inspect the `Public media package` and `EdgeOne artifact` workflow summaries. A media download failure, file-count/size limit, or missing `_content/media-manifest.json` blocks the release.
 - Confirm the published HTML references build-time facade card/cover URLs with `?v=<snapshot-generatedAt>` so browsers and edge caches cannot stay pinned to an older broken media object after the facade path recovers.
@@ -145,8 +145,8 @@ Unknown `type:*`, `channel:*`, or `release:*` labels fail the `PR Label Gate` ch
 ### Unified Docker image missing expected assets
 
 - Verify `PUBLIC_CONTENT_BUNDLE_URL` is set or `site/generated/public-snapshot.json` exists before running a local Docker build.
-- Verify the Docker build generated `site-dist/`, `admin-dist/`, and `backend-dist/`.
-- Verify Docker runtime health at `/api/health`; site status should be `ok` with `site.mode=static`.
-- Verify the container also serves at least one real `/api/public/assets/*` URL from the generated public content set; `/api/health` alone is not sufficient.
-- Verify the container serves `/watermark-ivanli.svg` from `site-dist`; imagor watermark fetches depend on that same-origin static file.
+- Verify the Docker build generated `console-dist/`, `admin-dist/`, and `backend-dist/`; `site-dist/` is the separate EdgeOne artifact.
+- Verify console runtime health at `/api/health`; the response must report `status=ok`.
+- Verify the console serves at least one real `/api/public/assets/*` URL from the generated public content set; `/api/health` alone is not sufficient.
+- Verify the static EdgeOne artifact serves `/watermark-ivanli.svg`; imagor watermark fetches depend on that public static file.
 - Verify the image was pushed as `vX.Y.Z` / `vX.Y.Z-rc.<sha7>` and not as any `backend-*` tag.

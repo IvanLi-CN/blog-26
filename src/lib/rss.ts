@@ -113,11 +113,12 @@ export function shouldReturnNotModified(
   lastModified: Date
 ): boolean {
   const inm = request.headers.get("if-none-match");
-  if (inm && inm === etag) return true;
+  if (inm) return inm === etag;
   const ims = request.headers.get("if-modified-since");
   if (ims) {
     const since = new Date(ims).getTime();
-    if (Number.isFinite(since) && lastModified.getTime() <= since) return true;
+    const lastModifiedSeconds = Math.floor(lastModified.getTime() / 1000) * 1000;
+    if (Number.isFinite(since) && lastModifiedSeconds <= since) return true;
   }
   return false;
 }

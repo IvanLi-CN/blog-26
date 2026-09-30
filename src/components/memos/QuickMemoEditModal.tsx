@@ -41,6 +41,7 @@ export function QuickMemoEditModal({
   const containerRef = useRef<HTMLDivElement>(null);
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const returnScrollYRef = useRef<number | null>(null);
   const [content, setContent] = useState(initialContent ?? "");
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,9 +87,15 @@ export function QuickMemoEditModal({
 
   useLayoutEffect(() => {
     if (!open) return;
+    returnScrollYRef.current = window.scrollY;
     returnFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     return () => {
+      const returnScrollY = returnScrollYRef.current;
+      if (returnScrollY !== null && window.scrollY !== returnScrollY) {
+        window.scrollTo(0, returnScrollY);
+      }
+      returnScrollYRef.current = null;
       returnFocusRef.current?.focus({ preventScroll: true });
     };
   }, [open]);

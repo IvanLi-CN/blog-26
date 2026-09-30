@@ -22,9 +22,9 @@ export async function getStaticPaths() {
   return projectCatalog.map((project) => ({ params: { slug: project.slug }, props: { slug: project.slug } }));
 }
 
-const { slug } = Astro.props as { slug: string };
+const slug = (Astro.props as { slug?: string }).slug ?? Astro.params.slug ?? "";
 const project = getProjectBySlug(slug);
-if (!project) throw new Error(`Unknown project slug: ${slug}`);
+if (!project) return new Response("Not Found", { status: 404 });
 
 const snapshot = await getSnapshot();
 const domain = getProjectDomainDefinition(project.domain);

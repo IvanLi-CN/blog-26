@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import mdx from "@astrojs/mdx";
+import node from "@astrojs/node";
 import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
@@ -10,6 +11,7 @@ const astroCacheDir = process.env.ASTRO_CACHE_DIR || "./.astro";
 const viteCacheDir = process.env.VITE_CACHE_DIR || "./node_modules/.vite";
 const configuredSiteUrl = process.env.PUBLIC_SITE_URL ?? "";
 const configuredSiteBasePath = process.env.PUBLIC_SITE_BASE_PATH ?? "";
+const consoleRuntime = process.env.CONSOLE_RUNTIME === "true";
 
 function normalizeBasePath(raw) {
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -51,13 +53,17 @@ function resolveAstroSite(rawSiteUrl, rawBasePath) {
 const astroBasePath =
   normalizeBasePath(configuredSiteBasePath) || deriveBasePathFromSiteUrl(configuredSiteUrl);
 const astroSiteUrl = resolveAstroSite(configuredSiteUrl, astroBasePath);
+const memoAuthoringModule = "@console-memo-authoring";
+const memoAuthoringImplementation = resolve("./site/components/PublicMemoAuthoring.tsx");
+const memoAuthoringPublicStub = resolve("./site/components/PublicMemoAuthoring.public.tsx");
 
 export default defineConfig({
   integrations: [react(), mdx()],
-  output: "static",
-  trailingSlash: "always",
+  adapter: consoleRuntime ? node({ mode: "middleware" }) : undefined,
+  output: consoleRuntime ? "server" : "static",
+  trailingSlash: consoleRuntime ? "ignore" : "always",
   srcDir: "./site",
-  outDir: "./site-dist",
+  outDir: consoleRuntime ? "./console-dist" : "./site-dist",
   site: astroSiteUrl,
   base: astroBasePath || undefined,
   cacheDir: astroCacheDir,
@@ -78,6 +84,9 @@ export default defineConfig({
     resolve: {
       alias: {
         "@": resolve("./src"),
+        [memoAuthoringModule]: consoleRuntime
+          ? memoAuthoringImplementation
+          : memoAuthoringPublicStub,
       },
     },
     define: {
@@ -85,6 +94,7 @@ export default defineConfig({
         process.env.PUBLIC_LUOSIMAO_SITE_KEY ?? ""
       ),
       "process.env.PUBLIC_API_BASE_URL": JSON.stringify(process.env.PUBLIC_API_BASE_URL ?? ""),
+      "process.env.CONSOLE_RUNTIME": JSON.stringify(process.env.CONSOLE_RUNTIME ?? ""),
       "process.env.PUBLIC_SITE_URL": JSON.stringify(process.env.PUBLIC_SITE_URL ?? ""),
       "process.env.PUBLIC_SITE_BASE_PATH": JSON.stringify(process.env.PUBLIC_SITE_BASE_PATH ?? ""),
     },

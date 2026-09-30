@@ -5,10 +5,10 @@ import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { PublicMemoDetailControlsIsland } from "../../components/PublicMemoAuthoring";
+import { PublicMemoDetailControlsIsland } from "@console-memo-authoring";
 import TagBadge from "../../components/TagBadge.astro";
 import { formatAbsoluteDate, formatDateTime } from "../../lib/format";
-import { getCanonicalUrl, getMemoMetadataTitle, getSnapshot } from "../../lib/public-site";
+import { getCanonicalUrl, getMemoBySlug, getMemoMetadataTitle, getSnapshot } from "../../lib/public-site";
 
 export async function getStaticPaths() {
   const snapshot = await getSnapshot();
@@ -18,8 +18,10 @@ export async function getStaticPaths() {
   }));
 }
 
-const { memo } = Astro.props as { memo: PublicMemoRecord };
 const snapshot = await getSnapshot();
+const memoFromProps = (Astro.props as { memo?: PublicMemoRecord }).memo;
+const memo = memoFromProps ?? getMemoBySlug(snapshot, Astro.params.slug ?? "");
+if (!memo) return new Response("Not Found", { status: 404 });
 const displayDate = memo.publishedAt ?? memo.createdAt;
 const metadataTitle = getMemoMetadataTitle(memo.title, displayDate);
 const contentSource = "local" as const;
@@ -52,7 +54,9 @@ const structuredData = {
 
   <section class="nature-detail-container memo-detail-layout px-2 py-8 sm:px-6 sm:py-10">
     <article class="nature-reading-measure space-y-8">
-      <PublicMemoDetailControlsIsland client:load slug={memo.slug} />
+      {process.env.CONSOLE_RUNTIME === "true" ? (
+        <PublicMemoDetailControlsIsland client:load slug={memo.slug} />
+      ) : null}
 
       <div data-public-memo-static-shell>
         <div class="nature-panel nature-mobile-reading-surface memo-detail-card px-4 py-5 sm:px-8 sm:py-7" data-testid="public-memo-detail-card">

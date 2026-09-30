@@ -28,6 +28,7 @@ copy_file "bunfig.toml" "${DIST_DIR}"
 copy_file "tsconfig.json" "${DIST_DIR}"
 copy_file "docker-entrypoint.sh" "${DIST_DIR}"
 copy_file "scripts/start-gateway.ts" "${DIST_DIR}/scripts"
+copy_file "scripts/start-console.ts" "${DIST_DIR}/scripts"
 copy_file "scripts/migrate.ts" "${DIST_DIR}/scripts"
 
 copy_tree "${ROOT_DIR}/src" "${DIST_DIR}/src"
@@ -36,6 +37,7 @@ find "${DIST_DIR}/src" -type f \( -name "*.test.ts" -o -name "*.test.tsx" \) -de
 
 copy_tree "${ROOT_DIR}/drizzle" "${DIST_DIR}/drizzle"
 copy_tree "${ROOT_DIR}/public" "${DIST_DIR}/public"
+copy_tree "${ROOT_DIR}/site/assets/brand/source" "${DIST_DIR}/site/assets/brand/source"
 
 chmod +x "${DIST_DIR}/docker-entrypoint.sh"
 

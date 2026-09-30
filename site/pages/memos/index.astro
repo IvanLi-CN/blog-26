@@ -1,14 +1,52 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import MemoCard from "../../components/MemoCard.astro";
-import { PublicMemoComposerIsland } from "../../components/PublicMemoAuthoring";
+import { PublicMemoComposerIsland } from "@console-memo-authoring";
 import { getSnapshot } from "../../lib/public-site";
 import { isLocalContentEnabled } from "@/config/paths";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
+import { resolveRuntimeContext } from "@/lib/runtime-context";
 
 const snapshot = await getSnapshot();
+const isConsoleBuild = process.env.CONSOLE_RUNTIME === "true";
+const runtimeContext = isConsoleBuild
+  ? resolveRuntimeContext(Astro.request)
+  : { mode: "public" as const };
+const isConsoleRuntime = isConsoleBuild && runtimeContext.mode === "console";
+let initialIsAdmin = false;
+let initialMemos = snapshot.memos;
+let initialMemosHasMore = false;
+let initialMemosNextCursor: string | null = null;
+
+if (isConsoleRuntime) {
+  const { extractAuthFromRequest } = await import("@/lib/auth-utils");
+  const { handlePublicApiRequest } = await import("@/server/public-api/router");
+  const auth = await extractAuthFromRequest(Astro.request);
+  initialIsAdmin = auth.isAdmin;
+  const memoRequest = new Request(new URL("/api/public/memos?publicOnly=false&limit=10", Astro.request.url), {
+    headers: Astro.request.headers,
+  });
+  const memoResponse = await handlePublicApiRequest(memoRequest, "/memos");
+  if (memoResponse.ok) {
+    const payload = (await memoResponse.json()) as {
+      memos?: typeof snapshot.memos;
+      items?: typeof snapshot.memos;
+      hasMore?: boolean;
+      nextCursor?: string | null;
+    };
+    const liveMemos = Array.isArray(payload.memos) ? payload.memos : payload.items;
+    if (Array.isArray(liveMemos)) initialMemos = liveMemos;
+    else if (initialIsAdmin) initialMemos = [];
+    initialMemosHasMore = payload.hasMore === true;
+    initialMemosNextCursor = payload.nextCursor ?? null;
+  } else if (initialIsAdmin) {
+    initialMemos = [];
+  }
+}
+
 const localSourceEnabled = isLocalContentEnabled();
 const localMemoRootPath = localSourceEnabled ? getServerLocalMemoRootPath() : undefined;
+const renderedMemos = isConsoleRuntime ? initialMemos : snapshot.memos;
 ---
 <BaseLayout pathname="/memos" title="Memos - Ivan's Blog" description="浏览所有公开 Memos">
   <section class="nature-container px-1 py-8 sm:px-6 sm:py-12 lg:py-16">
@@ -20,31 +58,39 @@ const localMemoRootPath = localSourceEnabled ? getServerLocalMemoRootPath() : un
       </p>
     </div>
 
-    <PublicMemoComposerIsland
-      client:load
-      localSourceEnabled={localSourceEnabled}
-      localMemoRootPath={localMemoRootPath}
-    />
+    {isConsoleRuntime ? (
+      <PublicMemoComposerIsland
+        client:load
+        initialIsAdmin={initialIsAdmin}
+        initialMemos={initialMemos}
+        initialHasMore={initialMemosHasMore}
+        initialNextCursor={initialMemosNextCursor}
+        localSourceEnabled={localSourceEnabled}
+        localMemoRootPath={localMemoRootPath}
+      />
+    ) : null}
 
-    {snapshot.memos.length > 0 ? (
-      <div
-        class="memos-list nature-timeline nature-mobile-reading-stream"
-        data-testid="memos-timeline"
-        data-public-memos-static-list
-      >
-        {snapshot.memos.map((memo, index) => (
-          <MemoCard
-            memo={memo}
-            isLast={index === snapshot.memos.length - 1}
-            iconMap={snapshot.tags.tagIconMap}
-            iconSvgMap={snapshot.tags.tagIconSvgMap}
-          />
-        ))}
-      </div>
-    ) : (
-      <div class="nature-empty">
-        <p>暂无公开 Memos</p>
-      </div>
-    )}
+    {!isConsoleRuntime || !initialIsAdmin ? (
+      renderedMemos.length > 0 ? (
+        <div
+          class="memos-list nature-timeline nature-mobile-reading-stream"
+          data-testid="memos-timeline"
+          data-public-memos-static-list
+        >
+          {renderedMemos.map((memo, index) => (
+            <MemoCard
+              memo={memo}
+              isLast={index === renderedMemos.length - 1}
+              iconMap={snapshot.tags.tagIconMap}
+              iconSvgMap={snapshot.tags.tagIconSvgMap}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="nature-empty">
+          <p>暂无公开 Memos</p>
+        </div>
+      )
+    ) : null}
   </section>
 </BaseLayout>

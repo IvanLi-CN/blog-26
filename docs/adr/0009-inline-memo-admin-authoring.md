@@ -1,7 +1,7 @@
-# Keep Memo Authoring on the Public Memos Page
+# Keep Memo Authoring Before the Memo List
 
-Status: accepted
+Status: superseded by ADR-0010 for deployment and public/admin list composition
 
-The author uses the public Memos page both to capture a thought quickly and to see the published reading context. Keep administrator-only authoring and recent management tools inline on `/memos`, between the existing page introduction and public timeline, rather than moving them to a dedicated `/admin/memos` page or replacing the reader-facing page. The author's first task is quick creation, so the full-size editor leads the admin area; a bounded recent list follows it, while the public timeline remains in place for readers and administrators.
+The author uses the Memos page to capture a thought quickly and manage saved entries. Keep administrator-only authoring inline on `/memos`, before the Memo list, rather than making the editor part of the list or requiring a separate authoring workflow. The author's first task is quick creation, so the full-size editor leads the admin area and a single management list follows it. ADR 0010 supersedes the shared public-route deployment decision and the requirement to render a second public timeline for administrators.
 
-This preserves the current entry path and writing context. The trade-off is that current saved Memos and the published public snapshot coexist on one page; their labels, feedback, and ordering must keep that distinction clear. The list's existing Nature card form and information density remain part of the public-page design language.
+This preserves the quick-entry path and keeps the editor visually separate from list reading. The management list continues to use the public Memo card language while adding the administrator actions required by the console.

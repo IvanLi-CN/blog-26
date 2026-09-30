@@ -310,7 +310,7 @@ export const projectCatalog: ProjectCatalog = [
     title: "Ivan's Blog",
     domain: "web-products",
     summary:
-      "当前公开博客的开源镜像版本：Astro 前台、Admin SPA、Bun gateway 和内容快照导出都在同一仓里协作。",
+      "当前公开博客的开源镜像版本：Astro 前台、Admin SPA、Console SSR 和内容快照导出都在同一仓里协作。",
     description:
       "这个站本身也是项目之一。重点不只是博客界面，而是公开前台、内容管线、后台编辑和部署边界如何被打磨成一套可公开维护的系统。",
     poster: {

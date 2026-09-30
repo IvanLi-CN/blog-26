@@ -26,7 +26,7 @@ describe("public-runtime-url", () => {
     );
   });
 
-  it("prefers the current browser origin when the browser is already running", () => {
+  it("keeps the configured console API origin in the browser", () => {
     (globalThis as typeof globalThis & { window?: Window }).window = {
       location: {
         origin: "http://127.0.0.1:25110",
@@ -34,10 +34,10 @@ describe("public-runtime-url", () => {
     } as Window;
     process.env.PUBLIC_API_BASE_URL = "https://api.example.test/";
 
-    expect(getPublicApiBaseUrl()).toBe("http://127.0.0.1:25110");
-    expect(toPublicApiUrl("/api/public/posts")).toBe("http://127.0.0.1:25110/api/public/posts");
+    expect(getPublicApiBaseUrl()).toBe("https://api.example.test");
+    expect(toPublicApiUrl("/api/public/posts")).toBe("https://api.example.test/api/public/posts");
     expect(toPublicAssetUrl("/api/files/local/foo.png")).toBe(
-      "http://127.0.0.1:25110/api/files/local/foo.png"
+      "https://api.example.test/api/files/local/foo.png"
     );
   });
 

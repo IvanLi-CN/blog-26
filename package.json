@@ -1,7 +1,7 @@
 {
   "name": "@ivanli-cn/blog",
   "version": "1.0.0",
-  "description": "Ivan's Blog - Astro public site, admin SPA, and Bun gateway",
+  "description": "Ivan's Blog - EdgeOne static site and self-contained Astro console",
   "type": "module",
   "private": true,
   "author": {
@@ -52,9 +52,9 @@
     "storybook": "storybook dev -p ${STORYBOOK_PORT:-6006}",
     "build-storybook": "storybook build -o storybook-static",
     "build": "bun run prebuild && bun run build:compiled",
-    "build:compiled": "bun run site:build && bun run admin:build:compiled && bun run backend:dist",
+    "build:compiled": "bun run site:build && bun run admin:build:compiled && bun run console:build && bun run backend:dist",
     "prebuild": "bun scripts/generate-version.ts && bun scripts/update-llm-model-catalog.ts",
-    "start": "bun run gateway:start",
+    "start": "bun run console:start",
     "check": "biome check",
     "check:public-no-daisy": "bun ./scripts/check-public-no-daisy.ts",
     "lint": "bun run check",
@@ -121,6 +121,8 @@
     "verify:project-social-previews": "bun ./scripts/verify-project-social-preview-assets.ts",
     "site:dev": "sh -c 'SITE_PORT=${SITE_PORT:-$(bun ./scripts/resolve-worktree-port.ts site)}; export SITE_PORT; bun run generate:public-pwa && bun run generate:project-posters && bun run generate:project-social-previews && bun run public:export && bunx astro dev --host 127.0.0.1 --port \"$SITE_PORT\"'",
     "site:build": "bun run generate:public-pwa && bun run generate:project-posters && bun run generate:project-social-previews && bun run public:export && bunx astro build && bun run verify:public-pwa && PROJECT_POSTER_REQUIRE_DIST=1 bun run verify:project-posters && PROJECT_SOCIAL_PREVIEW_REQUIRE_DIST=1 bun run verify:project-social-previews",
+    "console:build": "CONSOLE_RUNTIME=true PUBLIC_SITE_URL=${PUBLIC_CONSOLE_URL:-https://console.ivanli.cc} PUBLIC_SITE_BASE_PATH= bunx astro build",
+    "console:start": "NODE_ENV=production CONSOLE_RUNTIME=true bun scripts/start-console.ts",
     "gateway:dev": "bun ./scripts/start-gateway.ts",
     "gateway:start": "NODE_ENV=production bun ./scripts/start-gateway.ts",
     "admin:dev": "sh -c 'ADMIN_PORT=${ADMIN_PORT:-$(bun ./scripts/resolve-worktree-port.ts admin)}; export ADMIN_PORT; bunx vite --config apps/admin/vite.config.ts --configLoader runner --host 127.0.0.1 --port \"$ADMIN_PORT\"'",
@@ -130,11 +132,12 @@
     "frontend:fetch-content": "bash ./scripts/fetch-public-content-bundle.sh",
     "frontend:build": "bun run prebuild && bun run site:build",
     "backend:dist": "bash ./scripts/prepare-backend-dist.sh",
-    "backend:build": "bun run prebuild && bun run admin:build:compiled && bun run backend:dist"
+    "backend:build": "bun run prebuild && bun run admin:build:compiled && bun run console:build && bun run backend:dist"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.3.1",
     "@astrojs/mdx": "8.0.2",
+    "@astrojs/node": "^11.1.6",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-yaml": "^6.1.3",

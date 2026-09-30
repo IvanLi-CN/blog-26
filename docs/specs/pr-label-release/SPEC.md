@@ -101,7 +101,7 @@ Frontend release:
 - release assets include `frontend-site-dist-<version>.tar.gz` and checksum
 - the verified `site-dist` output plus `edge-functions` is deployed to EdgeOne Makers for `channel:stable`
 - `channel:rc` frontend releases publish release assets but do not replace the production frontend host
-- the EdgeOne release job consumes only repository secret `EDGEONE_API_TOKEN` and repository variable `EDGEONE_PROJECT_NAME`; the Makers project's production environment provides `BLOG_BACKEND_ORIGIN=https://api.ivanli.cc` for same-origin `/api/public/*`, `/api/health`, and `/mcp` proxy routes
+- the EdgeOne release job consumes only repository secret `EDGEONE_API_TOKEN` and repository variable `EDGEONE_PROJECT_NAME`; the Makers project's production environment provides `BLOG_BACKEND_ORIGIN=https://console.ivanli.cc` for public fallback proxy routes `/api/public/*`, `/api/health`, and `/mcp`
 - custom-domain binding, certificate issuance, and DNS traffic switching remain outside CI, while a bound production domain follows the latest successful Makers production deployment
 
 Backend release:
@@ -110,6 +110,7 @@ Backend release:
 - prerelease flag mirrors the label channel
 - release assets include:
   - `backend-runtime-dist-<version>.tar.gz`
+  - `backend-console-dist-<version>.tar.gz`
   - `backend-admin-dist-<version>.tar.gz`
   - checksum manifest
 
@@ -132,10 +133,10 @@ Unified Docker image release:
 
 ### 4.6 Docker runtime contract
 
-- The unified Docker image contains `site-dist`, backend runtime bundle, and `admin-dist`
+- The console Docker image contains `console-dist`, backend runtime bundle, and `admin-dist`; the public `site-dist` artifact is deployed separately to EdgeOne
 - The Docker container must not run public-site SSG at startup
-- Production health reports public-site status as `ok` with `site.mode=static`
-- Public-page routes such as `/` and `/posts` are served by the Docker image from `site-dist`
+- Production health reports console status as `ok` and identifies the `console` runtime
+- Console page routes such as `/` and `/posts` are served by Astro SSR; `ivanli.cc` page routes are served from the EdgeOne `site-dist` artifact
 
 ### 4.7 Publication reporting contract
 
@@ -159,11 +160,11 @@ Unified Docker image release:
    - `publish_backend`
    - `publish_image`
 4. Add CI-time content-bundle download for frontend SSG via `PUBLIC_CONTENT_BUNDLE_URL`.
-5. Produce a dedicated `backend-dist` runtime bundle and package it with `admin-dist` plus prebuilt `site-dist` in the unified Docker image.
+5. Produce a dedicated `backend-dist` runtime bundle and package it with `admin-dist` plus prebuilt `console-dist` in the console Docker image.
 6. Update CI smoke coverage so the Docker image proves:
-   - `/api/health` reports `site.status=ok` and `site.mode=static`
+   - `/api/health` reports `status=ok` and `runtime=console`
    - `/api/public/*` stays available
-   - `/posts` is served by the unified Docker image
+   - `/posts` is rendered by the console SSR runtime
 7. Report publication outcomes from release job summaries through the release-owning agent rather than writing to the source PR.
 8. Require the release source SHA to equal the current `main` head before resolving release intent or publishing any output.
 
