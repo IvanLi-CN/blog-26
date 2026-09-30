@@ -24,7 +24,7 @@ export async function getStaticPaths() {
 
 const slug = (Astro.props as { slug?: string }).slug ?? Astro.params.slug ?? "";
 const project = getProjectBySlug(slug);
-if (!project) return Astro.redirect("/404");
+if (!project) return new Response("Not Found", { status: 404 });
 
 const snapshot = await getSnapshot();
 const domain = getProjectDomainDefinition(project.domain);

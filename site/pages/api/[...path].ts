@@ -6,6 +6,14 @@ function notFound() {
   return Response.json({ error: "Not Found" }, { status: 404 });
 }
 
+function decodePathSegment(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function withoutIdentity(request: Request) {
   const headers = new Headers(request.headers);
   const identityHeaders = ["authorization", "cookie", "remote-email", "x-forwarded-email"];
@@ -94,8 +102,8 @@ export async function ALL({ request, params }: { request: Request; params: { pat
     const tail = filesMatch[2] || "";
     const { handleFilesApiRequest } = await import("@/server/files-api/router");
     return handleFilesApiRequest(runtimeRequest, {
-      source: decodeURIComponent(filesMatch[1]),
-      path: tail ? tail.split("/").filter(Boolean).map(decodeURIComponent) : [],
+      source: decodePathSegment(filesMatch[1]),
+      path: tail ? tail.split("/").filter(Boolean).map(decodePathSegment) : [],
     });
   }
 

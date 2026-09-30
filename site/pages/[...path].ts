@@ -1,5 +1,13 @@
 import type { APIRoute } from "astro";
 
+function decodePathSegment(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export const prerender = process.env.CONSOLE_RUNTIME !== "true";
 
 export function getStaticPaths() {
@@ -15,7 +23,7 @@ export const ALL: APIRoute = async ({ request, params }) => {
     const { handleInternalAssetSourceRequest } = await import("@/server/public-media");
     return handleInternalAssetSourceRequest(request, {
       kind: match[1],
-      slug: decodeURIComponent(match[2]),
+      slug: decodePathSegment(match[2]),
       mediaHash: match[3],
     });
   } catch {

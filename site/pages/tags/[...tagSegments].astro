@@ -22,7 +22,7 @@ const summary =
   snapshot.tags.summaries.find(
     (candidate) => candidate.segments.join("/") === tagPath || candidate.name === tagPath
   );
-if (!summary) return Astro.redirect("/404");
+if (!summary) return new Response("Not Found", { status: 404 });
 const items = snapshot.tags.timelines[summary.name] ?? [];
 const breadcrumbs = summary.segments.map((segment, index) => ({
   label: segment,

@@ -21,7 +21,7 @@ export async function getStaticPaths() {
 const snapshot = await getSnapshot();
 const memoFromProps = (Astro.props as { memo?: PublicMemoRecord }).memo;
 const memo = memoFromProps ?? getMemoBySlug(snapshot, Astro.params.slug ?? "");
-if (!memo) return Astro.redirect("/404");
+if (!memo) return new Response("Not Found", { status: 404 });
 const displayDate = memo.publishedAt ?? memo.createdAt;
 const metadataTitle = getMemoMetadataTitle(memo.title, displayDate);
 const contentSource = "local" as const;

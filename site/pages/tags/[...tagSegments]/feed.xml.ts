@@ -14,11 +14,11 @@ export const GET: APIRoute = async ({ props, params }) => {
   const snapshot = await getSnapshot();
   const tagPath =
     (props.tagPath as string | undefined) ||
-    (params.tagSegments || "")
-      .split("/")
-      .filter(Boolean)
-      .map((segment) => decodeURIComponent(segment))
-      .join("/");
+    (params.tagSegments || "").split("/").filter(Boolean).join("/");
+  const summary = snapshot.tags.summaries.find(
+    (candidate) => candidate.segments.join("/") === tagPath || candidate.name === tagPath
+  );
+  if (!summary) return new Response("Not Found", { status: 404 });
   const built = buildTagFeed(snapshot, tagPath);
   return new Response(built.rss, {
     headers: {

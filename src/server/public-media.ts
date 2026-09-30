@@ -620,6 +620,10 @@ function appendInternalSourceSecret(url: string) {
   return `${url}${separator}${INTERNAL_SOURCE_TOKEN_PARAM}=${encodeURIComponent(secret)}`;
 }
 
+function redactInternalSourceSecret(value: string) {
+  return value.replace(/([?&]source-token=)[^&/]+/gu, "$1[redacted]");
+}
+
 function isAllowedInternalSourceRequest(request: Request) {
   const requestUrl = new URL(request.url);
   const configuredHost = getConfiguredInternalSourceHost();
@@ -988,7 +992,7 @@ async function proxyResolvedMediaVariant(
     });
   } catch (error) {
     console.error("[public-media] imagor fetch failed:", {
-      imagorUrl,
+      imagorUrl: redactInternalSourceSecret(imagorUrl),
       error,
     });
     if (params.allowOriginalFallback) {
