@@ -72,6 +72,7 @@ test.describe("Inline memo admin view", () => {
 
     const cards = page.getByTestId("admin-live-memo-card");
     await expect(cards).toHaveCount(10);
+    await expect(cards.first()).toHaveAttribute("data-id", /.+/);
     const initialIds = await cards.evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-id"))
     );
@@ -610,6 +611,8 @@ test.describe("Inline memo admin view", () => {
         const header = page.locator("[data-public-header]");
         await expect(header).toHaveAttribute("data-public-header-offset", /\d+/);
         if (viewport.width === 320) {
+          await page.evaluate(() => window.scrollTo(0, 1));
+          await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
           expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
         } else {
           const collapseScroll = await page.evaluate(() => {
