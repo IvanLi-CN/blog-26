@@ -46,4 +46,15 @@ describe("console response cache policy", () => {
 
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
+
+  test("does not make dynamic feeds immutable", async () => {
+    process.env.CONSOLE_RUNTIME = "true";
+    const response = await onRequest(
+      { request: new Request("https://console.ivanli.cc/feed.xml") },
+      async () => new Response("<rss />", { headers: { "cache-control": "public, max-age=3600" } })
+    );
+
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+  });
 });

@@ -40,4 +40,20 @@ describe("console file API route", () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("公开测试");
   });
+
+  test("does not allow anonymous raw file writes through the console route", async () => {
+    process.env.CONSOLE_RUNTIME = "true";
+    process.env.DB_PATH = "./dev-data/sqlite.db";
+    process.env.LOCAL_CONTENT_BASE_PATH = "./dev-data/local";
+
+    const response = await ALL({
+      request: new Request("https://console.ivanli.cc/api/files/local/Memos/blocked.txt", {
+        method: "POST",
+        body: "blocked",
+      }),
+      params: { path: "files/local/Memos/blocked.txt" },
+    });
+
+    expect(response.status).toBe(404);
+  });
 });

@@ -36,8 +36,11 @@ if (isConsoleRuntime) {
     };
     const liveMemos = Array.isArray(payload.memos) ? payload.memos : payload.items;
     if (Array.isArray(liveMemos)) initialMemos = liveMemos;
+    else if (initialIsAdmin) initialMemos = [];
     initialMemosHasMore = payload.hasMore === true;
     initialMemosNextCursor = payload.nextCursor ?? null;
+  } else if (initialIsAdmin) {
+    initialMemos = [];
   }
 }
 

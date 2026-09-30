@@ -1,4 +1,4 @@
-const IMMUTABLE_ASSET_PATH = /\.(?:avif|css|gif|ico|jpeg|jpg|js|map|png|svg|webp|woff2?|xml)$/i;
+const IMMUTABLE_ASSET_PATH = /\.(?:avif|css|gif|ico|jpeg|jpg|js|map|png|svg|webp|woff2?)$/i;
 
 export async function onRequest({ request }, next) {
   const response = await next();

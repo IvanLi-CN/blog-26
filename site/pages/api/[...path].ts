@@ -83,7 +83,7 @@ export async function ALL({ request, params }: { request: Request; params: { pat
 
   const filesMatch = path.match(/^\/files\/([^/]+)\/?(.*)$/);
   if (filesMatch) {
-    if (request.method === "GET" || request.method === "HEAD") {
+    if (request.method !== "OPTIONS") {
       const { extractAuthFromRequest } = await import("@/lib/auth-utils");
       const auth = await extractAuthFromRequest(runtimeRequest);
       if (!auth.isAdmin) {
