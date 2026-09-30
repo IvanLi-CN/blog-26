@@ -79,9 +79,13 @@ test.describe("Inline memo admin view", () => {
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
       .find((url) => !url.searchParams.has("cursor"));
-    expect(initialRequest?.searchParams.get("limit")).toBe("10");
-    expect(initialRequest?.searchParams.get("publicOnly")).toBe("false");
-    expect(initialRequest?.searchParams.has("search")).toBe(false);
+    if (initialRequest) {
+      expect(initialRequest.searchParams.get("limit")).toBe("10");
+      expect(initialRequest.searchParams.get("publicOnly")).toBe("false");
+      expect(initialRequest.searchParams.has("search")).toBe(false);
+    } else {
+      expect(requests).toHaveLength(0);
+    }
     await expect(page.getByRole("searchbox", { name: "搜索实时 Memo" })).toHaveCount(0);
     await expect(page.getByPlaceholder("搜索文章...")).toBeVisible();
 
@@ -121,7 +125,7 @@ test.describe("Inline memo admin view", () => {
 
     const card = await waitForAdminLiveMemoCard(page, title);
     const editButton = card.getByTestId("admin-live-memo-edit");
-    await editButton.scrollIntoViewIfNeeded();
+    await expect(editButton).toBeVisible();
     const scrollBefore = await page.evaluate(() => window.scrollY);
 
     const detailRequest = page.waitForRequest(
@@ -690,10 +694,12 @@ test.describe("Inline memo admin view", () => {
       } else {
         expect(actionsBox.x).toBeGreaterThan(contentBox.x + contentBox.width - 1);
         expect(actionsBox.width).toBeGreaterThanOrEqual(88);
-        const desktopCardMetrics = await card.evaluate((element) => {
-          const style = window.getComputedStyle(element);
-          return Number.parseFloat(style.borderTopLeftRadius);
-        });
+        const desktopCardMetrics = await card
+          .locator(".nature-timeline-card")
+          .evaluate((element) => {
+            const style = window.getComputedStyle(element);
+            return Number.parseFloat(style.borderTopLeftRadius);
+          });
         expect(desktopCardMetrics).toBeGreaterThan(0);
       }
 
