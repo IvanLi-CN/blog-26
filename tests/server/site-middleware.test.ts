@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { onRequest } from "./middleware";
+import { onRequest } from "../../site/middleware";
 
 afterEach(() => {
   delete process.env.CONSOLE_RUNTIME;
