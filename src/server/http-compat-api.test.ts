@@ -1494,6 +1494,89 @@ public: false
     }
   });
 
+  it("never serves private rows through the public asset facade", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/private-public-cover.png"),
+      "cover"
+    );
+
+    await seedPost({
+      id: "blog/private-public-facade.md",
+      filePath: "blog/private-public-facade.md",
+      slug: "private-public-facade",
+      type: "post",
+      title: "Private Public Facade",
+      image: "./assets/private-public-cover.png",
+      body: "Body",
+      public: false,
+      draft: true,
+    });
+
+    const mediaHash = buildPublicMediaHash("blog/assets/private-public-cover.png", "cover");
+    for (const email of [undefined, ADMIN_EMAIL]) {
+      const response = await handlePublicApiRequest(
+        buildRequest(
+          `/api/public/assets/post/private-public-facade/${mediaHash}/cover.webp`,
+          {},
+          email
+        ),
+        `/assets/post/private-public-facade/${mediaHash}/cover.webp`
+      );
+      expect(response.status).toBe(404);
+    }
+  });
+
+  it("falls back to the original admin preview asset on imagor HTTP failures", async () => {
+    fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/admin-fallback-cover.png"),
+      "cover"
+    );
+
+    await seedPost({
+      id: "blog/admin-fallback-cover.md",
+      filePath: "blog/admin-fallback-cover.md",
+      slug: "admin-fallback-cover",
+      type: "post",
+      title: "Admin Fallback Cover",
+      image: "./assets/admin-fallback-cover.png",
+      body: "Body",
+      public: false,
+      draft: true,
+    });
+
+    const originalFetch = globalThis.fetch;
+    process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("http://imagor.example.test/")) {
+        expect(init?.method).toBe("GET");
+        return new Response("imagor unavailable", { status: 503 });
+      }
+      return originalFetch(input as never, init);
+    }) as typeof fetch;
+
+    try {
+      const mediaHash = buildPublicMediaHash("blog/assets/admin-fallback-cover.png", "cover");
+      const response = await handleAdminApiRequest(
+        buildRequest(
+          `/api/admin/preview/assets/post/admin-fallback-cover/${mediaHash}/cover.webp`,
+          {},
+          ADMIN_EMAIL
+        ),
+        `/preview/assets/post/admin-fallback-cover/${mediaHash}/cover.webp`
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(await response.text()).toBe("cover");
+    } finally {
+      delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("resolves duplicate public slugs by the requested media hash", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/duplicate-old.png"), "old");
@@ -1655,9 +1738,16 @@ public: false
     });
 
     const originalFetch = globalThis.fetch;
+    const originalConsoleError = console.error;
+    let loggedError: unknown[] = [];
     const originalNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL = "http://imagor.example.test";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL = "http://blog:25090";
+    process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET = "test-source-secret";
+    console.error = (...args: unknown[]) => {
+      loggedError = args;
+    };
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -1680,9 +1770,13 @@ public: false
       expect(await response.json()).toEqual({
         error: "Public media processor unavailable",
       });
+      expect(JSON.stringify(loggedError)).not.toContain("test-source-secret");
     } finally {
       process.env.NODE_ENV = originalNodeEnv;
       delete process.env.PUBLIC_MEDIA_IMAGOR_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_BASE_URL;
+      delete process.env.PUBLIC_MEDIA_INTERNAL_SOURCE_SECRET;
+      console.error = originalConsoleError;
       globalThis.fetch = originalFetch;
     }
   });
