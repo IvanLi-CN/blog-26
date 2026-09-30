@@ -83,6 +83,14 @@ export async function ALL({ request, params }: { request: Request; params: { pat
 
   const filesMatch = path.match(/^\/files\/([^/]+)\/?(.*)$/);
   if (filesMatch) {
+    if (request.method === "GET" || request.method === "HEAD") {
+      const { extractAuthFromRequest } = await import("@/lib/auth-utils");
+      const auth = await extractAuthFromRequest(runtimeRequest);
+      if (!auth.isAdmin) {
+        return notFound();
+      }
+    }
+
     const tail = filesMatch[2] || "";
     const { handleFilesApiRequest } = await import("@/server/files-api/router");
     return handleFilesApiRequest(runtimeRequest, {
