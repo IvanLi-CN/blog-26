@@ -139,4 +139,13 @@ describe("release.yml", () => {
         "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
     );
   });
+
+  test("publishes the console SSR artifact with backend releases", () => {
+    const publishBackend = jobBlock("publish_backend");
+    expect(publishBackend).toContain("Build backend runtime + console + admin artifacts");
+    expect(publishBackend).toContain(`backend-console-dist-\${version}.tar.gz`);
+    expect(publishBackend).toContain(
+      `backend-console-dist-\${{ needs.prepare.outputs.backend_app_version }}.tar.gz`
+    );
+  });
 });
