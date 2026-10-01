@@ -97,6 +97,15 @@ export default defineConfig({
       "process.env.CONSOLE_RUNTIME": JSON.stringify(process.env.CONSOLE_RUNTIME ?? ""),
       "process.env.PUBLIC_SITE_URL": JSON.stringify(process.env.PUBLIC_SITE_URL ?? ""),
       "process.env.PUBLIC_SITE_BASE_PATH": JSON.stringify(process.env.PUBLIC_SITE_BASE_PATH ?? ""),
+      "process.env.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL": JSON.stringify(
+        process.env.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL ?? ""
+      ),
+      "process.env.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL": JSON.stringify(
+        process.env.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL ?? ""
+      ),
+      "process.env.PUBLIC_OCTO_RILL_METRICS_BASE_URL": JSON.stringify(
+        process.env.PUBLIC_OCTO_RILL_METRICS_BASE_URL ?? ""
+      ),
     },
   },
 });

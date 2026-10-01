@@ -1,0 +1,206 @@
+---
+import { formatRuntimeValue, getRuntimeValueCandidates } from "../../lib/runtime-format";
+
+interface Props {
+  value: number;
+  className?: string;
+  format?: "compact" | "fixed-2";
+}
+
+const { value, className = "", format = "compact" } = Astro.props as Props;
+const fullValue = format === "fixed-2" ? value.toFixed(2) : formatRuntimeValue(value);
+const candidates = format === "fixed-2" ? [fullValue] : getRuntimeValueCandidates(value);
+const initialValue = candidates[0] ?? fullValue;
+---
+<strong
+  class={`runtime-metric-value ${className}`.trim()}
+  data-runtime-value
+  data-runtime-value-full={fullValue}
+  data-runtime-value-options={JSON.stringify(candidates)}
+  data-runtime-value-truncated="false"
+  aria-label={fullValue}
+  tabindex="-1"
+>{initialValue}</strong>
+<span class="runtime-value-tooltip" data-runtime-value-tooltip role="tooltip" hidden></span>
+
+<script>
+  let measureNode: HTMLSpanElement | null = null;
+  const runtimeValueRefreshers = new WeakMap<HTMLElement, () => void>();
+
+  const getMeasureNode = () => {
+    if (measureNode) return measureNode;
+    if (!document.body) return null;
+    measureNode = document.createElement("span");
+    measureNode.style.position = "absolute";
+    measureNode.style.visibility = "hidden";
+    measureNode.style.pointerEvents = "none";
+    measureNode.style.whiteSpace = "nowrap";
+    measureNode.style.inset = "-9999px auto auto -9999px";
+    document.body.appendChild(measureNode);
+    return measureNode;
+  };
+
+  const readOptions = (value: HTMLElement) => {
+    try {
+      const options = JSON.parse(value.dataset.runtimeValueOptions ?? "[]");
+      return Array.isArray(options) ? options.filter((option): option is string => typeof option === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const setMeasureStyle = (value: HTMLElement) => {
+    const node = getMeasureNode();
+    if (!node) return;
+    const styles = getComputedStyle(value);
+    node.style.font = styles.font;
+    node.style.letterSpacing = styles.letterSpacing;
+    node.style.fontKerning = styles.fontKerning;
+    node.style.fontFeatureSettings = styles.fontFeatureSettings;
+  };
+
+  const measuredWidth = (candidate: string) => {
+    const node = getMeasureNode();
+    if (!node) return Number.POSITIVE_INFINITY;
+    node.textContent = candidate;
+    return node.getBoundingClientRect().width;
+  };
+
+  const hideTooltip = (tooltip: HTMLElement) => {
+    tooltip.hidden = true;
+    tooltip.textContent = "";
+    tooltip.style.removeProperty("left");
+    tooltip.style.removeProperty("top");
+  };
+
+  const positionTooltip = (value: HTMLElement, tooltip: HTMLElement) => {
+    const metric = value.closest<HTMLElement>(".runtime-metric");
+    const panel = value.closest<HTMLElement>("[data-project-runtime-panel]");
+    if (!metric || !panel) return;
+
+    const metricBounds = metric.getBoundingClientRect();
+    const panelBounds = panel.getBoundingClientRect();
+    const valueBounds = value.getBoundingClientRect();
+    const tooltipBounds = tooltip.getBoundingClientRect();
+    const gap = 6;
+    const edge = 6;
+    const maxLeft = Math.max(edge, panelBounds.right - metricBounds.left - tooltipBounds.width - edge);
+    let left = valueBounds.left - metricBounds.left;
+    let top = valueBounds.bottom - metricBounds.top + gap;
+
+    if (metricBounds.top + top + tooltipBounds.height > panelBounds.bottom - edge) {
+      top = valueBounds.top - metricBounds.top - tooltipBounds.height - gap;
+    }
+    left = Math.min(Math.max(left, panelBounds.left - metricBounds.left + edge), maxLeft);
+    top = Math.max(top, panelBounds.top - metricBounds.top + edge);
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  };
+
+  const bindRuntimeValues = () => {
+    document.querySelectorAll<HTMLElement>("[data-runtime-value]").forEach((value) => {
+      if (value.dataset.runtimeValueBound === "true") return;
+      const tooltip = value.parentElement?.querySelector<HTMLElement>("[data-runtime-value-tooltip]");
+      if (!tooltip) return;
+
+      const applyValue = () => {
+        const options = readOptions(value);
+        const fullValue = value.dataset.runtimeValueFull ?? options[0] ?? "0";
+        setMeasureStyle(value);
+        const availableWidth = value.getBoundingClientRect().width;
+        const selectedValue = options.find((option) => measuredWidth(option) <= availableWidth + 0.5) ?? options.at(-1) ?? fullValue;
+        const isTruncated = selectedValue !== fullValue || measuredWidth(fullValue) > availableWidth + 0.5;
+        value.textContent = selectedValue;
+        value.dataset.runtimeValueTruncated = String(isTruncated);
+        value.tabIndex = isTruncated ? 0 : -1;
+        if (!isTruncated) hideTooltip(tooltip);
+      };
+      const showTooltip = () => {
+        if (value.dataset.runtimeValueTruncated !== "true") return;
+        const fullValue = value.dataset.runtimeValueFull ?? readOptions(value)[0] ?? "0";
+        tooltip.textContent = fullValue;
+        tooltip.hidden = false;
+        positionTooltip(value, tooltip);
+      };
+
+      value.dataset.runtimeValueBound = "true";
+      value.addEventListener("pointerenter", showTooltip);
+      value.addEventListener("pointerleave", () => hideTooltip(tooltip));
+      value.addEventListener("focus", showTooltip);
+      value.addEventListener("blur", () => hideTooltip(tooltip));
+      value.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") hideTooltip(tooltip);
+      });
+
+      const resizeObserver = new ResizeObserver(applyValue);
+      resizeObserver.observe(value);
+      runtimeValueRefreshers.set(value, applyValue);
+      applyValue();
+    });
+  };
+
+  const refreshRuntimeValues = () => {
+    document.querySelectorAll<HTMLElement>("[data-runtime-value]").forEach((value) => {
+      runtimeValueRefreshers.get(value)?.();
+    });
+  };
+
+  const scheduleBind = () => window.requestAnimationFrame(bindRuntimeValues);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scheduleBind, { once: true });
+  } else {
+    scheduleBind();
+  }
+  document.addEventListener("astro:page-load", scheduleBind);
+  document.fonts?.ready.then(scheduleBind);
+  window.addEventListener("project-runtime-metrics-updated", refreshRuntimeValues);
+</script>
+
+<style>
+  .runtime-metric-value {
+    position: relative;
+    z-index: 2;
+    display: block;
+    min-width: 0;
+    margin-top: 0.42rem;
+    overflow: hidden;
+    font-family: var(--font-display), "Noto Serif SC", serif;
+    font-size: clamp(1.12rem, 3vw, 1.66rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+  }
+
+  .runtime-metric-value--compact {
+    font-size: clamp(0.9rem, 2.25vw, 1.28rem);
+  }
+
+  .runtime-metric-value--hikari-lower {
+    font-size: clamp(1rem, 2.7vw, 1.52rem);
+  }
+
+  .runtime-value-tooltip {
+    position: absolute;
+    z-index: 5;
+    max-width: min(15rem, calc(100vw - 2rem));
+    overflow: hidden;
+    padding: 0.32rem 0.5rem;
+    border: 1px solid rgba(var(--runtime-highlight-rgb, var(--nature-highlight-rgb)), 0.32);
+    border-radius: 0.35rem;
+    background: rgba(var(--runtime-panel-rgb), 0.97);
+    box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.24);
+    color: var(--runtime-text-soft);
+    font-size: 0.66rem;
+    line-height: 1.2;
+    pointer-events: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .runtime-value-tooltip[hidden] {
+    display: none;
+  }
+</style>

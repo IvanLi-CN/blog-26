@@ -208,6 +208,7 @@
     "remark-rehype": "^11.1.2",
     "remark-stringify": "^11.0.0",
     "unified": "^11.0.5",
+    "uplot": "^1.6.32",
     "uuid": "^14.0.2",
     "vaul": "^1.1.2",
     "web-vitals": "^6.2.2",

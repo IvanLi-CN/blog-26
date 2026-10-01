@@ -1,0 +1,87 @@
+---
+import cvmBackground from "../../assets/projects/runtime-backgrounds/codex-vibe-monitor-art.webp";
+import hikariBackground from "../../assets/projects/runtime-backgrounds/tavily-hikari-art.webp";
+import octoBackground from "../../assets/projects/runtime-backgrounds/octo-rill-art.webp";
+
+type PanelKind = "codex-vibe-monitor" | "tavily-hikari" | "octo-rill";
+
+interface Props {
+  kind: PanelKind;
+}
+
+const { kind } = Astro.props as Props;
+const backgroundByKind = {
+  "codex-vibe-monitor": cvmBackground,
+  "tavily-hikari": hikariBackground,
+  "octo-rill": octoBackground,
+} as const;
+const background = backgroundByKind[kind];
+---
+<img
+  class={`runtime-panel-atmosphere runtime-panel-atmosphere--${kind}`}
+  src={background.src}
+  width={background.width}
+  height={background.height}
+  alt=""
+  aria-hidden="true"
+  data-runtime-background
+  data-runtime-background-kind={kind}
+  loading="eager"
+  decoding="async"
+/>
+
+<style>
+  .runtime-panel-atmosphere {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: cover;
+    object-position: center;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.3;
+    filter: saturate(0.78) contrast(0.95) brightness(1.12);
+    mix-blend-mode: screen;
+  }
+
+  .runtime-panel-atmosphere--codex-vibe-monitor {
+    object-position: 50% 64%;
+    transform: translateY(-24%);
+  }
+
+  .runtime-panel-atmosphere--tavily-hikari {
+    object-position: 50% 42%;
+    opacity: 0.3;
+    transform: translateY(-8%);
+  }
+
+  .runtime-panel-atmosphere--octo-rill {
+    object-position: 50% 52%;
+    opacity: 0.38;
+    filter: saturate(0.86) contrast(1.02) brightness(1.38);
+    transform: translateY(-4%);
+  }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere {
+    opacity: 0.14;
+    filter: saturate(0.7) contrast(0.92) brightness(1.16);
+    mix-blend-mode: multiply;
+  }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere--codex-vibe-monitor {
+    opacity: 0.15;
+  }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere--tavily-hikari {
+    opacity: 0.12;
+  }
+
+  :global(html[data-ui-theme="light"]) .runtime-panel-atmosphere--octo-rill {
+    opacity: 0.16;
+    filter: saturate(0.72) contrast(0.94) brightness(1.08);
+  }
+</style>
