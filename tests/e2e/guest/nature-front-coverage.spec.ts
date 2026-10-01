@@ -401,8 +401,10 @@ test.describe("Nature frontend public coverage", () => {
     }
 
     const projectImages = page.locator(".projects-poster-card img");
-    await expect(projectImages).toHaveCount(11);
-    await expect(projectImages.first()).toHaveAttribute("loading", "lazy");
+    await expect(projectImages).toHaveCount(14);
+    await expect(projectImages.first()).toHaveAttribute("loading", "eager");
+    await expect(projectImages.first()).toHaveAttribute("fetchpriority", "high");
+    await expect(projectImages.nth(1)).toHaveAttribute("loading", "lazy");
 
     await gotoWithTheme(page, "/", "light");
     await expect(page.getByRole("heading", { name: "精选项目 (6)", exact: true })).toBeVisible();
@@ -691,16 +693,24 @@ test.describe("Nature frontend public coverage", () => {
   test("remaining project posters preserve progressive media delivery", async ({ page }) => {
     await gotoWithTheme(page, "/projects", "light");
 
-    const posters = page.locator(".project-poster");
-    const posterImages = page.locator("img[data-project-poster-image]");
-    const lazyPosters = page.locator('img[data-project-poster-image][loading="lazy"]');
+    const remainingCards = page.locator(".projects-poster-card:not(:has(.project-runtime-panel))");
+    const posters = remainingCards.locator(".project-poster");
+    const posterImages = remainingCards.locator("img[data-project-poster-image]");
+    const lazyPosters = remainingCards.locator('img[data-project-poster-image][loading="lazy"]');
     const kaisouPoster = posters
       .filter({ has: page.getByRole("img", { name: "KaisouMail 项目海报" }) })
       .first();
     const kaisouImage = kaisouPoster.locator("img[data-project-poster-image]");
+    const remainingCardCount = await remainingCards.count();
+    const firstCardUsesRuntimePanel =
+      (await page
+        .locator(".projects-poster-card")
+        .first()
+        .locator(".project-runtime-panel")
+        .count()) > 0;
 
-    await expect(posterImages).toHaveCount(11);
-    await expect(lazyPosters).toHaveCount(11);
+    await expect(posterImages).toHaveCount(remainingCardCount);
+    await expect(lazyPosters).toHaveCount(remainingCardCount - (firstCardUsesRuntimePanel ? 0 : 1));
     await expect(kaisouPoster.locator(".project-poster-preview")).toBeVisible();
     await expect(kaisouPoster.locator(".project-poster-copy")).toHaveCount(0);
     await expect(kaisouPoster.locator(".project-poster-scrim")).toHaveCount(0);
