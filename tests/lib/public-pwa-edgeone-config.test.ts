@@ -93,9 +93,9 @@ describe("EdgeOne public PWA cache config", () => {
     expect(
       findEdgeoneCacheRule(config, "/blog-26/projects/posters/blog-26.webp")?.headers[0]?.value
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
-    expect(
-      config.headers.some(({ source }) => source === "/blog-26/projects/:projectDir1/*.webp")
-    ).toBe(true);
+    expect(config.headers.some(({ source }) => source === "/blog-26/projects/:projectDir1/*")).toBe(
+      true
+    );
     expect(findEdgeoneCacheRule(config, "/api/health")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/api/public/assets/post/a/cover.webp")).toBeUndefined();
     expect(findEdgeoneCacheRule(config, "/api/v1/feed.xml")).toBeUndefined();
@@ -190,7 +190,7 @@ describe("EdgeOne public PWA cache config", () => {
     ).toBe(EDGEONE_PUBLIC_CACHE_CONTROL.revalidate);
     expect(config.headers.some(({ source }) => source === "/memos/*")).toBe(false);
     expect(
-      config.headers.some(({ source }) => source === "/projects/:projectDir1/:projectDir2/*.webp")
+      config.headers.some(({ source }) => source === "/projects/:projectDir1/:projectDir2/*")
     ).toBe(true);
     expect(config.headers.some(({ source }) => source === "/projects/*")).toBe(false);
     expect(config.headers.some(({ source }) => source === "/_content/assets/*")).toBe(false);
