@@ -79,6 +79,17 @@ describe("release.yml", () => {
       "PUBLIC_CONTENT_SNAPSHOT_URL: $" +
         "{{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}"
     );
+    expect(publishFrontend).toContain(
+      "PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL: $" +
+        "{{ vars.PUBLIC_CODEX_VIBE_MONITOR_METRICS_BASE_URL }}"
+    );
+    expect(publishFrontend).toContain(
+      "PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL: $" +
+        "{{ vars.PUBLIC_TAVILY_HIKARI_METRICS_BASE_URL }}"
+    );
+    expect(publishFrontend).toContain(
+      "PUBLIC_OCTO_RILL_METRICS_BASE_URL: $" + "{{ vars.PUBLIC_OCTO_RILL_METRICS_BASE_URL }}"
+    );
     expect(publishFrontend).toContain("- name: Package referenced public media");
     expect(publishFrontend).toContain(
       "PUBLIC_STATIC_MEDIA_ORIGIN: $" +
