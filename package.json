@@ -134,7 +134,7 @@
     "frontend:fetch-content": "bash ./scripts/fetch-public-content-bundle.sh",
     "frontend:build": "bun run prebuild && bun run site:build",
     "backend:dist": "bash ./scripts/prepare-backend-dist.sh",
-    "backend:build": "bun run prebuild && bun run admin:build:compiled && bun run console:build && bun run backend:dist",
+    "backend:build": "bun run prebuild && bun run generate:project-posters && bun run generate:project-social-previews && bun run admin:build:compiled && bun run console:build && bun run backend:dist",
     "playbook:prepare": "bun scripts/prepare-playbook-edition.ts"
   },
   "dependencies": {
