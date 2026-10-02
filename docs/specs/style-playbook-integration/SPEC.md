@@ -167,3 +167,14 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 - [Release 触发契约](./contracts/release-trigger.md)
 - [应用发布契约](../pr-label-release/SPEC.md)
 - [既有搜索契约](../search-full-text-fallback/SPEC.md)
+
+
+## Visual Evidence
+
+以下页面使用 Storybook 的公开受控样例，导航与栏目标题为“执念”，项目分类为“项目实践”。阅读场景覆盖 390 × 844 与 1280 × 900 CSS px、浅色与深色主题；搜索场景覆盖来源分组后的 Policy 类型筛选。源页面绑定视口，按 iframe 的页面区域捕获，无登录、真实来源访问或桌面截图。六个场景的页面滚动宽度均等于可用宽度，截图已由 owner 确认。
+
+| 场景 | 浅色 | 深色 |
+| --- | --- | --- |
+| 移动端阅读，390 × 844 | ![移动端浅色阅读](./assets/playbook-mobile-light.png) | ![移动端深色 Policy 阅读](./assets/playbook-mobile-dark.png) |
+| 桌面端阅读，1280 × 900 | ![桌面端浅色阅读](./assets/playbook-desktop-light.png) | ![桌面端深色阅读](./assets/playbook-desktop-dark.png) |
+| 搜索，390 × 844 / 1280 × 900 | ![移动端 Policy 筛选](./assets/playbook-search-mobile.png) | ![桌面端 Policy 筛选](./assets/playbook-search-desktop.png) |

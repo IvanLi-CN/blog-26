@@ -19,9 +19,9 @@
 
 ## Validation Evidence
 
-共享测试机执行静态站、console 与 Storybook 构建；实际静态 HTML 和 console 首次 HTTP 响应包含Playbook正文、anchor 及同一 edition，指定搜索 edition 可读取，未知 edition 返回 409。全量仓库测试首次验证为 691 项通过；后续代码修复使用相关测试及受影响构建重新验证。`bun run check` 保留仓库既有告警，不引入新的检查失败。
+共享测试机执行静态站、console 与 Storybook 构建；实际静态 HTML 和 console 首次 HTTP 响应包含Playbook正文、anchor 及同一 edition，指定搜索 edition 可读取，未知 edition 返回 409。仓库测试与提交门禁测试均通过，受影响的静态站、console、Storybook 构建与 HTTP SSR 已重新验证。`bun run check` 保留仓库既有告警，不引入新的检查失败。
 
-视觉证据覆盖 390/1280 宽度及明暗主题，使用公开控制样例，无登录或来源仓库访问。截图确认、当前 Candidate 的正式审查和 live PR 状态属于交付门禁；尚未通过的门禁不计为已完成验收。
+视觉证据覆盖 390/1280 宽度及明暗主题，使用公开控制样例，无登录或来源仓库访问。当前截图已确认并保存在 Spec 中；当前 Candidate 的正式审查和 live PR 状态仍属于交付门禁，尚未通过的门禁不计为已完成验收。
 
 ## Remaining Gaps
 
