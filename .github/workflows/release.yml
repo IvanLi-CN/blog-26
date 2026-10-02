@@ -570,6 +570,14 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
 
+      - name: Upload Playbook public snapshot for backend build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playbook-public-snapshot
+          path: ./site/generated/public-snapshot.json
+          if-no-files-found: error
+
       - name: Recheck current main head before frontend GitHub Release
         id: main-head-before-frontend-release
         uses: actions/github-script@v9
@@ -1090,8 +1098,11 @@ jobs:
   publish_backend:
     name: Publish backend release artifacts
     runs-on: ubuntu-latest
-    needs: [prepare]
-    if: ${{ needs.prepare.outputs.should_release == 'true' && needs.prepare.outputs.backend_release == 'true' }}
+    needs: [prepare, publish_frontend]
+    if: >-
+      ${{ always() && needs.prepare.outputs.should_release == 'true' &&
+      needs.prepare.outputs.backend_release == 'true' &&
+      (needs.publish_frontend.result == 'success' || needs.publish_frontend.result == 'skipped') }}
     permissions:
       contents: write
     timeout-minutes: 60
@@ -1123,6 +1134,21 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Download Playbook public snapshot from frontend build
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'success' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: playbook-public-snapshot
+          path: ./site/generated
+
+      - name: Fetch public content snapshot for backend-only release
+        if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && needs.publish_frontend.result == 'skipped' }}
+        env:
+          PUBLIC_CONTENT_BUNDLE_URL: ${{ secrets.PUBLIC_CONTENT_BUNDLE_URL }}
+          PUBLIC_CONTENT_SNAPSHOT_URL: ${{ vars.PUBLIC_CONTENT_SNAPSHOT_URL || 'https://console.ivanli.cc/api/public/snapshot' }}
+          PUBLIC_SNAPSHOT_PATH: ./site/generated/public-snapshot.json
+        run: bash ./scripts/fetch-public-content-bundle.sh
 
       - name: Mint source-read token for an explicit initial Playbook release
         if: ${{ vars.PLAYBOOK_INTEGRATION_ENABLED == 'true' && vars.PLAYBOOK_INITIAL_RELEASE_ID != '' }}

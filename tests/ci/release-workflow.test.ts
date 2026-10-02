@@ -110,6 +110,9 @@ describe("release.yml", () => {
     expect(publishFrontend).toContain("name: frontend-edgeone-site");
     expect(publishFrontend).toContain("path: ./edgeone-dist");
     expect(workflow).not.toContain("\n  deploy_frontend_pages:\n");
+    expect(publishFrontend).toContain("- name: Upload Playbook public snapshot for backend build");
+    expect(publishFrontend).toContain("name: playbook-public-snapshot");
+    expect(publishFrontend).toContain("path: ./site/generated/public-snapshot.json");
     expect(workflow).not.toContain("actions/upload-pages-artifact");
     expect(workflow).not.toContain("actions/deploy-pages");
     expect(workflow).not.toContain("pages: write");
@@ -153,6 +156,14 @@ describe("release.yml", () => {
 
   test("publishes the console SSR artifact with backend releases", () => {
     const publishBackend = jobBlock("publish_backend");
+    expect(publishBackend).toContain("needs: [prepare, publish_frontend]");
+    expect(publishBackend).toContain("always()");
+    expect(publishBackend).toContain("needs.publish_frontend.result == 'success'");
+    expect(publishBackend).toContain("needs.publish_frontend.result == 'skipped'");
+    expect(publishBackend).toContain("Download Playbook public snapshot from frontend build");
+    expect(publishBackend).toContain("name: playbook-public-snapshot");
+    expect(publishBackend).toContain("Fetch public content snapshot for backend-only release");
+    expect(publishBackend).toContain("bash ./scripts/fetch-public-content-bundle.sh");
     expect(publishBackend).toContain("Build backend runtime + console + admin artifacts");
     expect(publishBackend).toContain(`backend-console-dist-\${version}.tar.gz`);
     expect(publishBackend).toContain(
