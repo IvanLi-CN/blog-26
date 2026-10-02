@@ -4,7 +4,7 @@
 
 - Context: The static public Memos page renders the published snapshot. The Console Memos view serves live public Memos to visitors and exposes quick authoring plus one management list to authenticated administrators.
 - In scope: administrator-only layout and interaction in the Console Memos view, quick creation, the recent management list, preview and edit actions, bidirectional public Memo pagination on the published site and Console guest view, loading feedback, and responsive accessibility.
-- Out of scope: changing published snapshot content or timing, Console deployment boundaries, Memo storage and publication timing, API contract changes, Memo detail redesign, and changes to the established Memo title contract.
+- Out of scope: changing published snapshot content or timing, Console deployment boundaries, Memo storage and publication timing, API wire-shape changes, Memo detail redesign, and changes to the established Memo title contract.
 
 ## Terms and Interfaces
 
@@ -24,6 +24,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 - The static public Memos page MUST render the published snapshot. Console visitors MUST receive live public Memos, while only administrators may see authoring and management controls. The administrator view MUST contain one Memo management list and MUST NOT add a second published snapshot timeline.
 - The authoring and management area MUST remain within the Console Memos view and MUST NOT introduce a separate Memo-specific admin route.
+- Guest Memo detail reads MUST reject private and draft records, including records whose public flag is true while the draft flag is also true. Administrators MUST retain access to those records.
 
 ### REQ-MAIV-002
 
@@ -32,8 +33,8 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ### REQ-MAIV-003
 
-- The management section MUST follow the editor and show the first 10 Memos in the existing administrative list order by default. When a newer or older cursor exists, approaching that edge MUST automatically load its adjacent page within a 900px vertical prefetch threshold. Newer pages MUST prepend and older pages MUST append in service order without duplicates; prepending MUST preserve the currently read Memo's viewport position. It MUST NOT show a normal visible load-more button. A visible manual fallback MUST remain when IntersectionObserver is unavailable. Refresh MUST return to the latest page.
-- The public Memo timeline MUST show the first 10 published records and load adjacent pages in either direction when the corresponding cursor exists. The published static site MUST read older pages from files generated from the public snapshot; Console guests MUST read public-only pages from the database. Private or draft Memos MUST never appear in either guest source. The administrator list MUST read all visibility states from the database.
+- The management section MUST follow the editor and show the first 10 Memos in the existing administrative list order by default. When a newer or older cursor exists, approaching that edge MUST automatically load its adjacent page within a 900px vertical prefetch threshold. Each load MUST add one adjacent page to the existing list. Remaining inside the prefetch zone without further scroll movement MUST NOT trigger repeated page loads; further pages require additional movement toward that edge. If the user reaches the opposite edge while a page request is in flight, that edge's page MUST load after the active request completes, without losing or duplicating records. Newer pages MUST prepend and older pages MUST append in service order without duplicates; prepending MUST preserve the currently read Memo's viewport position. It MUST NOT show a normal visible load-more button. A visible manual fallback MUST remain when IntersectionObserver is unavailable. Refresh MUST return to the latest page.
+- The public Memo timeline MUST show the first 10 published records and load adjacent pages in either direction when the corresponding cursor exists. The published static site MUST read older pages from files generated from the public snapshot; Console guests MUST read public-only pages from the database. Private or draft Memos MUST never appear in either guest source or guest detail reads. The administrator list MUST read all visibility states from the database.
 - The public and administrator Memo lists MUST use variable-height virtualization with stable Memo keys. The number of mounted cards MUST stay bounded as loaded records grow, while loaded records remain available for scrolling in either direction.
 - Loading feedback MUST use the compact three-dot wave indicator at the active edge and respect reduced-motion preferences. A failed page MUST replace that indicator with a same-position retry action; exhausting older records MUST show the total count. Refresh remains associated with the administrator list.
 - The management heading MUST distinguish current saved Memos from the published public timeline. The list MUST NOT introduce a local search control that duplicates site-wide search.
@@ -56,7 +57,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ### REQ-MAIV-007
 
-- The view MUST preserve the established Memo title, visibility, public snapshot, storage, and API semantics. This design contract MUST NOT introduce a new title fallback, publication step, content source, or administrator permission shortcut.
+- The view MUST preserve the established Memo title, visibility, public snapshot, storage, and API wire shape. This design contract MUST NOT introduce a new title fallback, publication step, content source, or administrator permission shortcut.
 
 ## Verification
 
@@ -70,13 +71,13 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 - Method: list interaction checks using more than 10 Memos with different title, excerpt, tag, and visibility lengths.
 - covers: `REQ-MAIV-003`, `REQ-MAIV-004`
-- Pass condition: the production lists start at the latest 10 records; whenever a newer or older cursor exists, approaching that edge loads its adjacent page in order without duplicates; prepending keeps the current Memo at the same viewport position; a visible load-more control appears only when IntersectionObserver is unavailable; admin refresh returns to the latest page; guest console requests remain public-only; static pages read published snapshot chunks; loading retry, reduced-motion feedback, and the older-end count work; mounted card count stays bounded as loaded count grows; no local search box appears in the management list; card fields, alignment, edit, and preview remain unchanged.
+- Pass condition: the production lists start at the latest 10 records; whenever a newer or older cursor exists, approaching that edge loads its adjacent page in order without duplicates; idle time inside the prefetch zone does not trigger another page; further pages load after further edge-directed scrolling; an opposite-edge request made during an in-flight page is not lost; prepending keeps the current Memo at the same viewport position; a visible load-more control appears only when IntersectionObserver is unavailable; admin refresh returns to the latest page; guest console list and detail requests reject private and draft records; static pages read published snapshot chunks; loading retry, reduced-motion feedback, and the older-end count work; mounted card count stays bounded as loaded count grows; no local search box appears in the management list; card fields, alignment, edit, and preview remain unchanged.
 
 ### VER-MAIV-005
 
 - Method: run `bun run demo:memo-list` and inspect the shipped Astro `/memos/?demo=true` route with a mock-only 2,400-record fixture, scrolling toward both edges. The Web Demo must reuse the real site route and production list; it must not be implemented as a Storybook page or a standalone demo route.
 - covers: `REQ-MAIV-003`
-- Pass condition: newer and older pages both load on scroll, the reading anchor remains stable when prepending, and rendered DOM rows remain bounded while the loaded count increases.
+- Pass condition: the 2,400-record fixture loads one page for each edge-directed scroll and does not continue loading during idle time; continued scrolling loads further adjacent pages; the reading anchor remains stable when prepending; rendered DOM rows remain bounded while loaded count increases. The admin E2E suite also delays one edge request and verifies that an opposite-edge request completes afterward.
 
 ### VER-MAIV-003
 
@@ -97,7 +98,7 @@ The eight page-level captures below were rendered from the former Storybook page
 The bidirectional virtual-list capture comes from the production Astro `/memos/?demo=true` Web Demo, using the shared production timeline, cards, pagination, and virtualized list with local mock data. The image records a rendered list state; browser and E2E checks provide the behavioral proof for loading in both directions, preserving order, stopping at the finite edges, and keeping mounted rows bounded.
 
 source_type=ui_demo; target_program=mock-only; capture_scope=page; sensitive_exclusion=N/A; submission_gate=approved
-- Route: `/memos/?demo=true`; state: themed 2,400-record fixture after scrolling.
+- Route: `/memos/?demo=true`; state: 130 of 2,400 records loaded after traversing both edges, 22 virtual rows mounted, viewport 2320x1329.
 ![Memo bidirectional virtual-list Web Demo](./assets/memo-list-web-demo-scroll.png)
 
 source_type=storybook_canvas; target_program=mock-only; capture_scope=element; viewport_strategy=storybook-viewport; evidence_surface=page; sensitive_exclusion=N/A; submission_gate=approved
