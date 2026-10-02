@@ -51,6 +51,7 @@
     "dev": "bun scripts/generate-version.ts && concurrently --names \"Astro,Admin,Gateway\" --prefix-colors \"yellow,blue,green\" \"bun run site:dev\" \"bun run admin:dev\" \"bun run gateway:dev\"",
     "storybook": "storybook dev -p ${STORYBOOK_PORT:-6006}",
     "build-storybook": "storybook build -o storybook-static",
+    "test:storybook-interactions": "bun tests/storybook/playbook-interactions.ts",
     "demo:memo-list": "sh -c 'SITE_PORT=${SITE_PORT:-$(bun ./scripts/resolve-worktree-port.ts site)}; export SITE_PORT CONSOLE_RUNTIME=true PUBLIC_API_BASE_URL= ASTRO_DEV_BACKGROUND=0; exec bunx astro dev --host 127.0.0.1 --port \"$SITE_PORT\"'",
     "build": "bun run prebuild && bun run build:compiled",
     "build:compiled": "bun run site:build && bun run admin:build:compiled && bun run console:build && bun run backend:dist",

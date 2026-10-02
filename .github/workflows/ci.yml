@@ -163,6 +163,12 @@ jobs:
       - name: Build Storybook
         run: bun run build-storybook
 
+      - name: Install Playwright Chromium for Storybook interactions
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Verify Storybook interactions
+        run: bun run test:storybook-interactions
+
       - name: Prepare deterministic Playbook fixture
         run: bun tests/lib/playbook-fixture.ts .tmp/playbook-fixture
 
