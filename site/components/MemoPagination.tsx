@@ -21,7 +21,7 @@ function useEdgeSentinel({
   const [observerSupported, setObserverSupported] = useState(true);
   const lastScrollY = useRef<number | null>(null);
   const currentDirection = useRef<"up" | "down" | null>(null);
-  const lastLoadScrollY = useRef<number | null>(null);
+  const scrollDistanceSinceLoad = useRef(Number.POSITIVE_INFINITY);
   const onLoadRef = useRef(onLoad);
   const canLoadRef = useRef(false);
   onLoadRef.current = onLoad;
@@ -35,12 +35,9 @@ function useEdgeSentinel({
       return;
     }
 
-    const currentY = window.scrollY;
-    const movedSinceLastLoad =
-      lastLoadScrollY.current === null || Math.abs(currentY - lastLoadScrollY.current) >= 80;
-    if (!movedSinceLastLoad) return;
+    if (scrollDistanceSinceLoad.current < 80) return;
 
-    lastLoadScrollY.current = currentY;
+    scrollDistanceSinceLoad.current = 0;
     void onLoadRef.current();
   }, [scrollDirection, sentinel]);
 
@@ -56,6 +53,9 @@ function useEdgeSentinel({
       const previousY = lastScrollY.current;
       if (previousY !== null && nextY !== previousY) {
         currentDirection.current = nextY < previousY ? "up" : "down";
+        if (currentDirection.current === scrollDirection) {
+          scrollDistanceSinceLoad.current += Math.abs(nextY - previousY);
+        }
         tryLoad();
       }
       lastScrollY.current = nextY;
@@ -63,7 +63,7 @@ function useEdgeSentinel({
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [enabled, tryLoad]);
+  }, [enabled, scrollDirection, tryLoad]);
 
   useEffect(() => {
     if (!enabled || isLoading || hasError || !sentinel) return;
