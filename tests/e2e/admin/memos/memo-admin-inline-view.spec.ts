@@ -132,6 +132,95 @@ test.describe("Inline memo admin view", () => {
     for (const row of refreshedRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
   });
 
+  test("refreshes pagination when a quick save races an older-page request", async ({ page }) => {
+    await loginAsAdmin(page);
+    const marker = `inline-save-page-race-${Date.now()}`;
+    for (let index = 0; index < 12; index += 1) {
+      await createMemo(page, `${marker}-seed-${index}`);
+    }
+
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
+    const memoList = page.getByTestId("admin-live-memo-list-items");
+    await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+
+    let resolveCapturedPage: (() => void) | undefined;
+    let releaseCapturedPage: (() => void) | undefined;
+    let didHoldPageResponse = false;
+    const capturedPage = new Promise<void>((resolve) => {
+      resolveCapturedPage = resolve;
+    });
+    const releasePage = new Promise<void>((resolve) => {
+      releaseCapturedPage = resolve;
+    });
+
+    await page.route("**/api/public/memos**", async (route) => {
+      const url = new URL(route.request().url());
+      if (
+        isMemoListRequest(route.request()) &&
+        url.searchParams.has("cursor") &&
+        !didHoldPageResponse
+      ) {
+        didHoldPageResponse = true;
+        const response = await route.fetch();
+        resolveCapturedPage?.();
+        await releasePage;
+        await route.fulfill({ response });
+        return;
+      }
+      await route.continue();
+    });
+
+    try {
+      const olderRequest = page.waitForRequest(
+        (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
+      );
+      await page.getByTestId("admin-memo-pagination-sentinel").scrollIntoViewIfNeeded();
+      await olderRequest;
+      await capturedPage;
+
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const title = `${marker}-created`;
+      await editor.click();
+      await page.keyboard.insertText(`# ${title}\n\nThe saved memo remains pageable.`);
+      await container.getByRole("button", { name: "公开发布 Memo" }).click();
+      await expect(
+        page.getByRole("status").filter({
+          hasText: "公开 Memo 已保存；公开时间线将在下次发布后更新。",
+        })
+      ).toHaveText("公开 Memo 已保存；公开时间线将在下次发布后更新。");
+
+      const latestRefresh = page.waitForRequest(
+        (request) =>
+          isMemoListRequest(request) && !new URL(request.url()).searchParams.has("cursor"),
+        { timeout: 15_000 }
+      );
+      const staleAppend = page.waitForResponse(
+        (response) =>
+          isMemoListRequest(response.request()) &&
+          new URL(response.url()).searchParams.has("cursor")
+      );
+      releaseCapturedPage?.();
+      await staleAppend;
+      await latestRefresh;
+
+      await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+      await expect(page.getByTestId("admin-memo-pagination-sentinel")).toBeAttached();
+      await expect(await waitForAdminLiveMemoCard(page, title)).toBeVisible();
+
+      const nextOlderRequest = page.waitForRequest(
+        (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
+      );
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await nextOlderRequest;
+      await expect
+        .poll(async () => Number(await memoList.getAttribute("data-loaded-memos")))
+        .toBeGreaterThan(10);
+    } finally {
+      releaseCapturedPage?.();
+    }
+  });
+
   test("edits in the current list, saves through PATCH, restores focus, and previews read-only", async ({
     page,
   }) => {

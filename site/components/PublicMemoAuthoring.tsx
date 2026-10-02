@@ -305,6 +305,15 @@ export function PublicMemoComposerIsland({
   const editReturnScrollY = useRef<number | null>(null);
   const loadingAppendCursor = useRef<string | null>(null);
   const pageRequestInFlight = useRef(false);
+  const refreshQueuedAfterPage = useRef(false);
+  const requestMemoPageRef = useRef<
+    | ((request: {
+        cursor?: string;
+        direction?: "newer" | "older";
+        append?: boolean;
+      }) => Promise<void>)
+    | null
+  >(null);
   const [listErrorPhase, setListErrorPhase] = useState<"initial" | "append" | null>(null);
 
   const requestMemoPage = useCallback(
@@ -317,7 +326,12 @@ export function PublicMemoComposerIsland({
       direction?: "newer" | "older";
       append?: boolean;
     }) => {
-      if (pageRequestInFlight.current) return;
+      if (pageRequestInFlight.current) {
+        if (!cursor && direction === "older" && !append) {
+          refreshQueuedAfterPage.current = true;
+        }
+        return;
+      }
       pageRequestInFlight.current = true;
       const appendCursor = cursor ?? null;
       if (append && appendCursor && loadingAppendCursor.current === appendCursor) {
@@ -405,15 +419,19 @@ export function PublicMemoComposerIsland({
         if (append && appendCursor && loadingAppendCursor.current === appendCursor) {
           loadingAppendCursor.current = null;
         }
+        const shouldRefresh = requestId === listRequestId.current && refreshQueuedAfterPage.current;
+        refreshQueuedAfterPage.current = false;
         if (requestId === listRequestId.current) {
           setIsListLoading(false);
           setIsLoadingMore(false);
           setIsLoadingNewer(false);
         }
+        if (shouldRefresh) void requestMemoPageRef.current?.({});
       }
     },
     []
   );
+  requestMemoPageRef.current = requestMemoPage;
 
   useEffect(() => {
     if (!isAdmin) return;

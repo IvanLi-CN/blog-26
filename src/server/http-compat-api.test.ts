@@ -12,6 +12,7 @@ import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
+import { buildPublicMemoStaticPages } from "../../site/lib/memo-pagination";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -1186,6 +1187,52 @@ public: false
 
     expect(snapshotPost?.filePath).toBe("blog/http-snapshot-post.md");
     expect(snapshotMemo?.filePath).toBe("Memos/http-snapshot-memo.md");
+  }, 60_000);
+
+  it("keeps public draft memos out of the published snapshot and static pages", async () => {
+    const publishedAt = Date.UTC(2026, 0, 10);
+    for (let index = 0; index < 10; index += 1) {
+      await seedPost({
+        id: `Memos/published-snapshot-${index}.md`,
+        filePath: `Memos/published-snapshot-${index}.md`,
+        slug: `published-snapshot-${index}`,
+        type: "memo",
+        title: `Published snapshot ${index}`,
+        body: `Published body ${index}`,
+        publishDate: publishedAt - index,
+        public: true,
+        draft: false,
+        tags: JSON.stringify([]),
+      });
+    }
+    await seedPost({
+      id: "Memos/public-draft-snapshot.md",
+      filePath: "Memos/public-draft-snapshot.md",
+      slug: "public-draft-snapshot",
+      type: "memo",
+      title: "SECRET DRAFT TITLE",
+      body: "SECRET DRAFT BODY",
+      publishDate: publishedAt - 100,
+      public: true,
+      draft: true,
+      tags: JSON.stringify([]),
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(response.status).toBe(200);
+    const snapshot = await readJson(response);
+    const pages = buildPublicMemoStaticPages(snapshot.memos);
+    const generatedPageJson = JSON.stringify(pages);
+
+    expect(generatedPageJson).not.toContain("SECRET DRAFT TITLE");
+    expect(generatedPageJson).not.toContain("SECRET DRAFT BODY");
+    expect(snapshot.memos.map((memo: { slug: string }) => memo.slug)).not.toContain(
+      "public-draft-snapshot"
+    );
+    expect(pages).toEqual([]);
   }, 60_000);
 
   it("rewrites public snapshot media fields to assets facade urls", async () => {
