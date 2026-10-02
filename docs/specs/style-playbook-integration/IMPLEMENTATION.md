@@ -1,10 +1,10 @@
-# Style Playbook 经验库集成实现状态
+# Style Playbook集成实现状态
 
 ## Current Status
 
 - Lifecycle: active
 - Implementation: 博客消费端已实现，正在完成交付验证与独立审查；上游公开资产与通知由独立任务实现。
-- Catalog note: 原生经验库、内容 workflow 和 console 持久快照已落地，生产接入及自动更新默认关闭。
+- Catalog note: 原生Playbook、内容 workflow 和 console 持久快照已落地，生产接入及自动更新默认关闭。
 
 ## Implementation Coverage
 
@@ -19,7 +19,7 @@
 
 ## Validation Evidence
 
-共享测试机执行静态站、console 与 Storybook 构建；实际静态 HTML 和 console 首次 HTTP 响应包含经验库正文、anchor 及同一 edition，指定搜索 edition 可读取，未知 edition 返回 409。全量仓库测试首次验证为 691 项通过；后续代码修复使用相关测试及受影响构建重新验证。`bun run check` 保留仓库既有告警，不引入新的检查失败。
+共享测试机执行静态站、console 与 Storybook 构建；实际静态 HTML 和 console 首次 HTTP 响应包含Playbook正文、anchor 及同一 edition，指定搜索 edition 可读取，未知 edition 返回 409。全量仓库测试首次验证为 691 项通过；后续代码修复使用相关测试及受影响构建重新验证。`bun run check` 保留仓库既有告警，不引入新的检查失败。
 
 视觉证据覆盖 390/1280 宽度及明暗主题，使用公开控制样例，无登录或来源仓库访问。截图确认、当前 Candidate 的正式审查和 live PR 状态属于交付门禁；尚未通过的门禁不计为已完成验收。
 

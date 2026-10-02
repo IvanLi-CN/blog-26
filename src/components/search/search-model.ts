@@ -19,7 +19,7 @@ export const searchFilters: Array<{ key: SearchFilter; label: string }> = [
   { key: "post", label: "文章" },
   { key: "memo", label: "闪念" },
   { key: "topic", label: "Topic" },
-  { key: "experience", label: "项目经验" },
+  { key: "experience", label: "项目实践" },
   { key: "policy", label: "Policy Skill" },
 ];
 
@@ -38,7 +38,7 @@ export function getSearchResultTypeLabel(type: SearchResultType) {
     post: "文章",
     memo: "闪念",
     topic: "Topic",
-    experience: "项目经验",
+    experience: "项目实践",
     policy: "Policy Skill",
   }[type];
 }

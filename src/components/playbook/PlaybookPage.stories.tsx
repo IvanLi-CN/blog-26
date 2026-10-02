@@ -88,7 +88,7 @@ type Story = StoryObj<typeof meta>;
 export const Index: Story = {
   play: async ({ canvasElement }) => {
     await expect(
-      within(canvasElement).getByRole("heading", { name: "经验库", level: 1 })
+      within(canvasElement).getByRole("heading", { name: "执念", level: 1 })
     ).toBeVisible();
   },
 };
@@ -111,7 +111,7 @@ export const Policy: Story = {
 export const Unavailable: Story = {
   args: { edition: undefined },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole("status")).toHaveTextContent("经验库暂不可用");
+    await expect(within(canvasElement).getByRole("status")).toHaveTextContent("执念暂不可用");
   },
 };
 export const MobileTopic: Story = {

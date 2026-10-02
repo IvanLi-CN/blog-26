@@ -35,7 +35,7 @@ export const headerData = {
       icon: "tabler:hash",
     },
     {
-      text: "经验库",
+      text: "执念",
       href: "/playbook",
       icon: "tabler:book",
     },

@@ -436,7 +436,7 @@ export default function PublicSearchPage({
             icon="tabler:sparkles"
             eyebrow="开始探索"
             title="输入关键词开始搜索"
-            description="可搜索文章、公开闪念，以及经验库中的 Topic、项目经验和 Policy Skill。"
+            description="可搜索文章、公开闪念，以及执念中的 Topic、项目实践和 Policy Skill。"
             watermark="GO"
           />
         )}
@@ -507,7 +507,7 @@ export default function PublicSearchPage({
           <div className="grid gap-7">
             {[
               { key: "blog", title: "文章与闪念" },
-              { key: "playbook", title: "经验库" },
+              { key: "playbook", title: "执念" },
             ].map((group) => {
               const items = filteredResults.filter(
                 (result) => (result.source === "playbook" ? "playbook" : "blog") === group.key

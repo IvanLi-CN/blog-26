@@ -208,7 +208,7 @@ const playbookResults: SearchResultItem[] = [
   },
   {
     slug: "sample-project",
-    title: "Sample Project 发布经验",
+    title: "Sample Project 发布实践",
     type: "experience",
     source: "playbook",
     href: "/playbook/projects/sample-project/",
@@ -224,14 +224,14 @@ const playbookResults: SearchResultItem[] = [
   },
 ];
 export const PlaybookResults: Story = {
-  name: "经验库 / 来源分组与类型筛选",
+  name: "执念 / 来源分组与类型筛选",
   render: () => (
     <SearchStory initialQuery="发布" items={[...results.slice(0, 2), ...playbookResults]} />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("region", { name: "文章与闪念" })).toBeInTheDocument();
-    await expect(canvas.getByRole("region", { name: "经验库" })).toBeInTheDocument();
+    await expect(canvas.getByRole("region", { name: "执念" })).toBeInTheDocument();
     await userEvent.click(canvas.getByRole("button", { name: /Policy Skill/ }));
     await expect(canvas.getByRole("link", { name: /Safe Release Policy/ })).toHaveAttribute(
       "href",
@@ -242,11 +242,11 @@ export const PlaybookResults: Story = {
   },
 };
 export const PlaybookStaleEdition: Story = {
-  name: "经验库 / 旧版本要求刷新",
-  render: () => <SearchStory items={results} error="经验库版本已更新，请刷新页面" />,
+  name: "执念 / 旧版本要求刷新",
+  render: () => <SearchStory items={results} error="执念版本已更新，请刷新页面" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("alert")).toHaveTextContent("经验库版本已更新，请刷新页面");
+    await expect(canvas.getByRole("alert")).toHaveTextContent("执念版本已更新，请刷新页面");
     await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
   },
 };

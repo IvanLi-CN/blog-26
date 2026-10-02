@@ -27,12 +27,12 @@ async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
       .then(async (response) => {
         if (!response.ok)
           throw new Error(
-            response.status === 409 ? "经验库版本已更新，请刷新页面" : "经验库搜索暂不可用"
+            response.status === 409 ? "执念版本已更新，请刷新页面" : "执念搜索暂不可用"
           );
         const raw = await response.text();
         const payload = JSON.parse(raw) as PlaybookSearchPayload & { edition?: string };
         if (payload.edition && payload.edition !== source.edition)
-          throw new Error("经验库搜索版本不一致");
+          throw new Error("执念搜索版本不一致");
         const data = { generated_at: payload.generated_at, documents: payload.documents };
         const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
         if (
@@ -40,7 +40,7 @@ async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
             ""
           ) !== source.sha256
         )
-          throw new Error("经验库搜索数据校验失败");
+          throw new Error("执念搜索数据校验失败");
         return buildPlaybookIndex(data);
       })
       .catch((error) => {
@@ -243,7 +243,7 @@ export default function SearchPageIsland({ playbook }: { playbook?: PlaybookSear
             setError(
               playbookSource.reason instanceof Error
                 ? playbookSource.reason.message
-                : "经验库搜索暂不可用"
+                : "执念搜索暂不可用"
             );
           if (sources.every((source) => source.status === "fulfilled"))
             writeCachedSearchResults(current.trim(), nextResults, playbook?.edition);

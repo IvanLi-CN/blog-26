@@ -8,7 +8,7 @@
 | --- | --- |
 | `IvanLi-CN/style-playbook-skills` Release workflow | 生成并发布固定版本公开数据，再通知博客 |
 | `IvanLi-CN/blog-26` 的 `playbook-content-update.yml` | 接收通知或补漏检查，校验来源，构建并部署静态站 |
-| `ivanli.cc` 已部署 manifest | 记录实际已生效的经验库身份，供去重、版本判断和 console 同步 |
+| `ivanli.cc` 已部署 manifest | 记录实际已生效的Playbook身份，供去重、版本判断和 console 同步 |
 | `console.ivanli.cc` | 在博客部署后读取公开指针，独立执行缓存同步 |
 
 博客不能通过监听自身 `release: published` 自动收到另一个仓库的 Release。主要触发为上游主动跨仓 `workflow_dispatch`；补漏为博客自身 `schedule`；人工重试使用同一个 `workflow_dispatch`。

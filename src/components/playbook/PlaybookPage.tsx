@@ -9,13 +9,13 @@ import MarkdownRenderer from "../common/MarkdownRenderer";
 
 const groups = [
   { key: "topics", title: "Topics", description: "技术选型与工程习惯的主题指南。" },
-  { key: "projects", title: "项目经验", description: "从实际项目中提炼的结构、取舍与经验。" },
+  { key: "projects", title: "项目实践", description: "从实际项目中提炼的结构、取舍与实践。" },
   { key: "policies", title: "Policy Skills", description: "可阅读、复制和手动安装的工程规则。" },
 ];
 const href = (path: string) => toPublicSitePath(path) ?? path;
 
 export function resolvePlaybookTitle(edition: PlaybookEdition | undefined, path: string) {
-  if (!path) return "经验库";
+  if (!path) return "执念";
   const [group, slug, extra] = path.replace(/\/$/u, "").split("/");
   if (extra || !groups.some((item) => item.key === group)) return undefined;
   if (!slug) return groups.find((item) => item.key === group)?.title;
@@ -144,7 +144,7 @@ export default function PlaybookPage({
     topic?.item.description ??
     project?.item.description ??
     policy?.summary.description ??
-    "把技术选型、实际项目经验与可复用规则放在一起阅读。";
+    "把技术选型、实际项目实践与可复用规则放在一起阅读。";
   const items = edition
     ? group === "topics"
       ? edition.catalog.snapshot.topics.map((item) => ({
@@ -168,204 +168,206 @@ export default function PlaybookPage({
           }))
     : [];
   return (
-    <section
-      className="nature-container min-w-0 px-1 py-10 sm:px-6 sm:py-16"
-      data-playbook-page
-      data-playbook-edition={edition?.edition.editionDigest}
-    >
-      <header className="mb-8">
-        <a className="nature-kicker" href={href("/playbook/")}>
-          Style Playbook
-        </a>
-        <h1 className="nature-title mt-4 break-words text-4xl leading-tight sm:text-5xl">
-          {title ?? "内容未找到"}
-        </h1>
-        <p className="nature-muted mt-4 max-w-3xl leading-8">{description}</p>
-        {edition && (
-          <p className="nature-muted mt-3 text-sm">
-            内容版本{" "}
-            <strong className="text-[color:var(--nature-text)]">
-              {edition.edition.source.tag}
-            </strong>
-            <span className="ml-3">{edition.edition.source.publishedAt.slice(0, 10)}</span>
-          </p>
-        )}
-      </header>
-      <nav className="mb-8 flex flex-wrap gap-2" aria-label="经验库导航">
-        {groups.map((item) => (
-          <a
-            key={item.key}
-            href={href(`/playbook/${item.key}/`)}
-            aria-current={group === item.key ? "page" : undefined}
-            className={`nature-chip ${group === item.key ? "font-semibold text-[color:var(--nature-accent-strong)]" : ""}`}
-          >
-            {item.title}
+    <div className="[container-type:inline-size] [--nature-reading-viewport-width:100cqw] [--nature-reading-viewport-half-width:50cqw]">
+      <section
+        className="nature-container min-w-0 px-1 py-10 sm:px-6 sm:py-16"
+        data-playbook-page
+        data-playbook-edition={edition?.edition.editionDigest}
+      >
+        <header className="mb-8">
+          <a className="nature-kicker" href={href("/playbook/")}>
+            Style Playbook
           </a>
-        ))}
-      </nav>
-      {!edition ? (
-        <div className="nature-panel p-6" role="status">
-          <h2 className="font-heading text-xl font-semibold">经验库暂不可用</h2>
-          <p className="nature-muted mt-3">公开内容版本就绪后会在这里提供完整目录。</p>
-        </div>
-      ) : !title ? (
-        <p role="status">未找到这篇公开经验库内容。</p>
-      ) : !group ? (
-        <div className="grid gap-5 md:grid-cols-3">
+          <h1 className="nature-title mt-4 break-words text-4xl leading-tight sm:text-5xl">
+            {title ?? "内容未找到"}
+          </h1>
+          <p className="nature-muted mt-4 max-w-3xl leading-8">{description}</p>
+          {edition && (
+            <p className="nature-muted mt-3 text-sm">
+              内容版本{" "}
+              <strong className="text-[color:var(--nature-text)]">
+                {edition.edition.source.tag}
+              </strong>
+              <span className="ml-3">{edition.edition.source.publishedAt.slice(0, 10)}</span>
+            </p>
+          )}
+        </header>
+        <nav className="mb-8 flex flex-wrap gap-2" aria-label="执念导航">
           {groups.map((item) => (
             <a
               key={item.key}
               href={href(`/playbook/${item.key}/`)}
-              className="nature-panel nature-hover-surface p-6"
+              aria-current={group === item.key ? "page" : undefined}
+              className={`nature-chip ${group === item.key ? "font-semibold text-[color:var(--nature-accent-strong)]" : ""}`}
             >
-              <h2 className="font-heading text-2xl font-semibold">{item.title}</h2>
-              <p className="nature-muted mt-3 leading-7">{item.description}</p>
-              <p className="mt-5 text-[color:var(--nature-accent-strong)]">
-                {item.key === "topics"
-                  ? edition.catalog.snapshot.topics.length
-                  : item.key === "projects"
-                    ? edition.catalog.snapshot.projects.length
-                    : getPlaybookPolicies(edition.catalog).length}{" "}
-                项 →
-              </p>
+              {item.title}
             </a>
           ))}
-        </div>
-      ) : !slug ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {items.map((item) => (
-            <a
-              key={item.slug}
-              href={href(`/playbook/${group}/${item.slug}/`)}
-              className="nature-panel nature-hover-surface min-w-0 p-5 sm:p-6"
-            >
-              <h2 className="font-heading break-words text-2xl font-semibold">{item.title}</h2>
-              <p className="nature-muted mt-3 leading-7">{item.description}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {item.labels.map((label) => (
-                  <span key={label} className="nature-chip text-xs">
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
-          <article className="nature-surface nature-mobile-reading-surface min-w-0 p-5 sm:p-8">
-            {metadata.length > 0 && (
-              <dl className="nature-muted mb-8 grid gap-3 text-sm">
-                {metadata.map((field) => (
-                  <div key={field.key} className="flex flex-wrap gap-2">
-                    <dt className="font-semibold">{field.key}</dt>
-                    <dd className="break-all">{field.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-            {project && project.stack != null && (
-              <details className="mb-8">
-                <summary className="cursor-pointer font-semibold">技术栈</summary>
-                <pre className="mt-3 max-w-full overflow-x-auto whitespace-pre-wrap break-all text-sm">
-                  {typeof project.stack === "string"
-                    ? project.stack
-                    : JSON.stringify(project.stack, null, 2)}
-                </pre>
-              </details>
-            )}
-            {policy ? (
-              <PolicyContent policy={policy} edition={edition} />
-            ) : (
-              <Sections sections={sections} />
-            )}
-          </article>
-          <aside className="grid gap-6 lg:sticky lg:top-28">
-            <nav className="nature-panel p-5" aria-label="本页内容">
-              <h2 className="font-heading text-lg font-semibold">本页内容</h2>
-              <ul className="mt-4 grid gap-3">
-                {sections.map((section) => (
-                  <li key={section.id}>
-                    <a
-                      className="nature-muted text-sm leading-6 hover:text-[color:var(--nature-accent-strong)]"
-                      href={`#${encodeURIComponent(section.id)}`}
-                    >
-                      {section.title}
-                    </a>
-                  </li>
-                ))}
-                {policy && (
-                  <>
-                    <li>
-                      <a href="#installation">手动安装</a>
-                    </li>
-                    {policy.resources.length > 0 && (
-                      <li>
-                        <a href="#resources">公开资源</a>
-                      </li>
-                    )}
-                  </>
-                )}
-              </ul>
-            </nav>
-            {topic && (
-              <section className="nature-panel p-5">
-                <h2 className="font-heading text-lg font-semibold">相关项目经验</h2>
+        </nav>
+        {!edition ? (
+          <div className="nature-panel p-6" role="status">
+            <h2 className="font-heading text-xl font-semibold">执念暂不可用</h2>
+            <p className="nature-muted mt-3">公开内容版本就绪后会在这里提供完整目录。</p>
+          </div>
+        ) : !title ? (
+          <p role="status">未找到这篇公开内容。</p>
+        ) : !group ? (
+          <div className="grid gap-5 md:grid-cols-3">
+            {groups.map((item) => (
+              <a
+                key={item.key}
+                href={href(`/playbook/${item.key}/`)}
+                className="nature-panel nature-hover-surface p-6"
+              >
+                <h2 className="font-heading text-2xl font-semibold">{item.title}</h2>
+                <p className="nature-muted mt-3 leading-7">{item.description}</p>
+                <p className="mt-5 text-[color:var(--nature-accent-strong)]">
+                  {item.key === "topics"
+                    ? edition.catalog.snapshot.topics.length
+                    : item.key === "projects"
+                      ? edition.catalog.snapshot.projects.length
+                      : getPlaybookPolicies(edition.catalog).length}{" "}
+                  项 →
+                </p>
+              </a>
+            ))}
+          </div>
+        ) : !slug ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {items.map((item) => (
+              <a
+                key={item.slug}
+                href={href(`/playbook/${group}/${item.slug}/`)}
+                className="nature-panel nature-hover-surface min-w-0 p-5 sm:p-6"
+              >
+                <h2 className="font-heading break-words text-2xl font-semibold">{item.title}</h2>
+                <p className="nature-muted mt-3 leading-7">{item.description}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {item.labels.map((label) => (
+                    <span key={label} className="nature-chip text-xs">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <article className="nature-surface nature-mobile-reading-surface min-w-0 p-5 sm:p-8">
+              {metadata.length > 0 && (
+                <dl className="nature-muted mb-8 grid gap-3 text-sm">
+                  {metadata.map((field) => (
+                    <div key={field.key} className="flex flex-wrap gap-2">
+                      <dt className="font-semibold">{field.key}</dt>
+                      <dd className="break-all">{field.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {project && project.stack != null && (
+                <details className="mb-8">
+                  <summary className="cursor-pointer font-semibold">技术栈</summary>
+                  <pre className="mt-3 max-w-full overflow-x-auto whitespace-pre-wrap break-all text-sm">
+                    {typeof project.stack === "string"
+                      ? project.stack
+                      : JSON.stringify(project.stack, null, 2)}
+                  </pre>
+                </details>
+              )}
+              {policy ? (
+                <PolicyContent policy={policy} edition={edition} />
+              ) : (
+                <Sections sections={sections} />
+              )}
+            </article>
+            <aside className="grid gap-6 lg:sticky lg:top-28">
+              <nav className="nature-panel p-5" aria-label="本页内容">
+                <h2 className="font-heading text-lg font-semibold">本页内容</h2>
                 <ul className="mt-4 grid gap-3">
-                  {topic.item.related_projects.map((item) => (
-                    <li key={item.slug}>
+                  {sections.map((section) => (
+                    <li key={section.id}>
                       <a
-                        className="text-sm text-[color:var(--nature-accent-strong)]"
-                        href={href(`/playbook/projects/${item.slug}/`)}
+                        className="nature-muted text-sm leading-6 hover:text-[color:var(--nature-accent-strong)]"
+                        href={`#${encodeURIComponent(section.id)}`}
                       >
-                        {item.name}
+                        {section.title}
                       </a>
                     </li>
                   ))}
-                </ul>
-                {topic.policy_skills.length > 0 && (
-                  <>
-                    <h3 className="mt-6 font-semibold">Policy Skills</h3>
-                    <ul className="mt-3 grid gap-3">
-                      {topic.policy_skills.map((item) => (
-                        <li key={item.summary.slug}>
-                          <a
-                            className="text-sm text-[color:var(--nature-accent-strong)]"
-                            href={href(`/playbook/policies/${item.summary.slug}/`)}
-                          >
-                            {item.summary.name}
-                          </a>
+                  {policy && (
+                    <>
+                      <li>
+                        <a href="#installation">手动安装</a>
+                      </li>
+                      {policy.resources.length > 0 && (
+                        <li>
+                          <a href="#resources">公开资源</a>
                         </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </section>
-            )}
-            {project && (
-              <section className="nature-panel p-5">
-                <h2 className="font-heading text-lg font-semibold">相关 Topics</h2>
-                <ul className="mt-4 grid gap-3">
-                  {edition.catalog.snapshot.topics
-                    .filter((item) =>
-                      item.related_projects.some((ref) => ref.slug === project.item.slug)
-                    )
-                    .map((item) => (
+                      )}
+                    </>
+                  )}
+                </ul>
+              </nav>
+              {topic && (
+                <section className="nature-panel p-5">
+                  <h2 className="font-heading text-lg font-semibold">相关项目实践</h2>
+                  <ul className="mt-4 grid gap-3">
+                    {topic.item.related_projects.map((item) => (
                       <li key={item.slug}>
                         <a
                           className="text-sm text-[color:var(--nature-accent-strong)]"
-                          href={href(`/playbook/topics/${item.slug}/`)}
+                          href={href(`/playbook/projects/${item.slug}/`)}
                         >
-                          {item.token}
+                          {item.name}
                         </a>
                       </li>
                     ))}
-                </ul>
-              </section>
-            )}
-          </aside>
-        </div>
-      )}
-    </section>
+                  </ul>
+                  {topic.policy_skills.length > 0 && (
+                    <>
+                      <h3 className="mt-6 font-semibold">Policy Skills</h3>
+                      <ul className="mt-3 grid gap-3">
+                        {topic.policy_skills.map((item) => (
+                          <li key={item.summary.slug}>
+                            <a
+                              className="text-sm text-[color:var(--nature-accent-strong)]"
+                              href={href(`/playbook/policies/${item.summary.slug}/`)}
+                            >
+                              {item.summary.name}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </section>
+              )}
+              {project && (
+                <section className="nature-panel p-5">
+                  <h2 className="font-heading text-lg font-semibold">相关 Topics</h2>
+                  <ul className="mt-4 grid gap-3">
+                    {edition.catalog.snapshot.topics
+                      .filter((item) =>
+                        item.related_projects.some((ref) => ref.slug === project.item.slug)
+                      )
+                      .map((item) => (
+                        <li key={item.slug}>
+                          <a
+                            className="text-sm text-[color:var(--nature-accent-strong)]"
+                            href={href(`/playbook/topics/${item.slug}/`)}
+                          >
+                            {item.token}
+                          </a>
+                        </li>
+                      ))}
+                  </ul>
+                </section>
+              )}
+            </aside>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

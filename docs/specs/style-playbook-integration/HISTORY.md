@@ -1,4 +1,4 @@
-# Style Playbook 经验库集成主题历史
+# Style Playbook集成主题历史
 
 ## Lifecycle / Compatibility
 
@@ -28,7 +28,7 @@
 
 [models.rs](https://github.com/IvanLi-CN/style-playbook-skills/blob/9156e9f68e5659927b1c5960a3f1ce783b7d7f44/src/models.rs#L118) 定义 `PublicProjectListItem` / `PublicProjectDetail`、`PublicTopicListItem` / `PublicTopicDetail`、`PublicPolicySkillDetail` 与 `PublicCatalog`；公开结构移除了生成历史、thread ID、仓库本机路径及选中参考项目等内部字段。目录不含独立的六组 Skill/读写 Skill 文档集合。
 
-设计影响：博客复用公开目录，避免重新扫描原始 Markdown 或复制内部 API 数据。现有目录可支撑 Topic、项目经验和 Policy Skill 的原生页；浏览全部技能主文档需要新增上游公开契约。
+设计影响：博客复用公开目录，避免重新扫描原始 Markdown 或复制内部 API 数据。现有目录可支撑 Topic、项目实践和 Policy Skill 的原生页；浏览全部技能主文档需要新增上游公开契约。
 
 ## 上游 SSG 与 Release 的差距
 
@@ -51,19 +51,19 @@
 
 [astro.config.mjs](../../../astro.config.mjs) 在 `CONSOLE_RUNTIME=true` 时输出 Astro server 到 `console-dist`，否则输出 static 到 `site-dist`。[site/lib/public-site.ts](../../../site/lib/public-site.ts) 的 `getSnapshot` 在 console 中执行 `buildPublicSnapshot`，静态构建则读快照文件。[export-public-site-data.ts](../../../scripts/export-public-site-data.ts) 创建或复用该文件。
 
-[ADR 0010](../../adr/0010-self-contained-console-runtime.md) 明确 console 是自包含 SSR 应用；公开静态站与 console 的实时 Memo 可以有不同新鲜度。该实时边界不自动适用于尚未接入的经验库。
+[ADR 0010](../../adr/0010-self-contained-console-runtime.md) 明确 console 是自包含 SSR 应用；公开静态站与 console 的实时 Memo 可以有不同新鲜度。该实时边界不自动适用于尚未接入的Playbook。
 
 [Release workflow](../../../.github/workflows/release.yml) 的前端构建下载内容 bundle，并默认从 `https://console.ivanli.cc/api/public/snapshot` 刷新文章/Memo 快照，校验后打包 `site-dist`、附加 Edge Functions，并在稳定发布时部署 EdgeOne Makers。发布源必须是当前 `main`；前端或后端发布还会触发统一 Docker 镜像发布。参见 [release contract](../pr-label-release/SPEC.md)。
 
 [fetch-public-content-bundle.sh](../../../scripts/fetch-public-content-bundle.sh) 即使设置 snapshot URL 仍要求 bundle URL；刷新后用 console 返回的 posts/memos/tags 覆盖下载快照。它不能直接承接 Playbook 数据。
 
-设计影响：新增独立的经验库数据输入与内容更新入口，复用静态构建/校验/部署步骤。避免把经验库塞进依赖 console 的现有快照，以及避免每次内容更新都发布应用版本和镜像。
+设计影响：新增独立的Playbook数据输入与内容更新入口，复用静态构建/校验/部署步骤。避免把Playbook塞进依赖 console 的现有快照，以及避免每次内容更新都发布应用版本和镜像。
 
 ## 搜索边界
 
 [search-model.ts](../../../src/components/search/search-model.ts) 当前只定义 `post` / `memo` 结果和 `/posts/<slug>` / `/memos/<slug>` 目标。[SearchPageIsland.tsx](../../../site/components/SearchPageIsland.tsx) 调用 console 公共搜索 API。
 
-设计影响：统一搜索需要新增经验库结果类型及显式 URL；上游搜索文档中的 `/projects`、`/topics` 与 section anchor 必须映射到经验库命名空间。目录/详情/搜索应绑定同一个版本，不能伪装成文章来复用 posts 表。
+设计影响：统一搜索需要新增Playbook结果类型及显式 URL；上游搜索文档中的 `/projects`、`/topics` 与 section anchor 必须映射到Playbook命名空间。目录/详情/搜索应绑定同一个版本，不能伪装成文章来复用 posts 表。
 
 ## GitHub 自动触发约束
 

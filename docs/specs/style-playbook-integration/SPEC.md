@@ -1,25 +1,27 @@
-# Style Playbook 经验库集成
+# Style Playbook集成
 
 ## Context and Scope
 
-本主题定义博客原生展示 Style Playbook、上游稳定发布后自动更新静态站，以及 console 跟随已发布经验库快照的长期契约。
+本主题定义博客原生展示 Style Playbook、上游稳定发布后自动更新静态站，以及 console 跟随已发布Playbook快照的长期契约。
 
-范围包括上游公开目录中的 Topic、项目经验快照和 Policy Skill、它们的正文与关系、博客导航及搜索、版本化数据发布、console 缓存与失败处理。上游知识内容的管理与写入、私有内容和未进入公开目录的分组/读写 Skill 主文档由上游负责；文章与 Memo 的实时读取边界由既有主题负责。
+范围包括上游公开目录中的 Topic、项目实践快照和 Policy Skill、它们的正文与关系、博客导航及搜索、版本化数据发布、console 缓存与失败处理。上游知识内容的管理与写入、私有内容和未进入公开目录的分组/读写 Skill 主文档由上游负责；文章与 Memo 的实时读取边界由既有主题负责。
+
+博客主导航与栏目标题均使用两字名称“执念”，项目集合与搜索类型显示为“项目实践”。
 
 ## Terms and Interfaces
 
-领域术语见 [CONTEXT.md](../../../CONTEXT.md)。上游知识源为 `IvanLi-CN/style-playbook-skills`；博客成功部署决定 console 跟随的已发布经验库快照。
+领域术语见 [CONTEXT.md](../../../CONTEXT.md)。上游知识源为 `IvanLi-CN/style-playbook-skills`；博客成功部署决定 console 跟随的已发布Playbook快照。
 
 | 路径 | 阅读内容 |
 | --- | --- |
-| `/playbook/` | 经验库入口、目录概览与内容版本 |
+| `/playbook/` | Playbook入口、目录概览与内容版本 |
 | `/playbook/topics/` | Topic 索引与分类 |
-| `/playbook/topics/<slug>/` | Topic 正文、关联项目经验与 Policy Skill |
-| `/playbook/projects/` | 公开项目经验索引 |
-| `/playbook/projects/<slug>/` | 项目经验正文与关联 Topic |
+| `/playbook/topics/<slug>/` | Topic 正文、关联项目实践与 Policy Skill |
+| `/playbook/projects/` | 公开项目实践索引 |
+| `/playbook/projects/<slug>/` | 项目实践正文与关联 Topic |
 | `/playbook/policies/` | 公开 Policy Skill 索引 |
 | `/playbook/policies/<slug>/` | Policy Skill 指令、公开资源与安装指南 |
-| `/search` | 文章、Memo 和经验库的统一搜索入口 |
+| `/search` | 文章、Memo 和Playbook的统一搜索入口 |
 
 数据接口包括上游固定 Release 的公开数据包、博客部署指针、不可变版本数据和 console 本地缓存。指针建议位于 `/_content/playbook/manifest.json`，版本文件建议位于 `/_content/playbook/<release-tag>/<digest>/`；具体文件布局必须遵循下述身份与缓存契约。
 
@@ -36,14 +38,14 @@ flowchart LR
   S --> D[EdgeOne 静态页面与 JSON]
   D --> C[console 后台同步]
   C --> L[本地最后成功快照]
-  L --> R[console SSR 与经验库搜索]
+  L --> R[console SSR 与Playbook搜索]
 ```
 
 ## Requirements
 
 ### REQ-PBI-001 — 原生阅读集合
 
-博客必须复用自身布局、导航、阅读样式、目录、移动布局和深色主题，完整展示公开目录中的 Topic、项目经验快照和 Policy Skill。每个对象必须能从索引进入正文，保留关联与 section anchor，并展示采用的内容版本。经验库身份与文章、Memo、博客标签和现有项目案例必须独立；Policy Skill 阅读或复制命令不得自动执行安装。公开静态页禁用 JavaScript 时必须仍有完整正文和导航，console 首次响应必须提供 SSR 正文。
+博客必须复用自身布局、导航、阅读样式、目录、移动布局和深色主题，完整展示公开目录中的 Topic、项目实践快照和 Policy Skill。每个对象必须能从索引进入正文，保留关联与 section anchor，并展示采用的内容版本。Playbook身份与文章、Memo、博客标签和现有项目案例必须独立；Policy Skill 阅读或复制命令不得自动执行安装。公开静态页禁用 JavaScript 时必须仍有完整正文和导航，console 首次响应必须提供 SSR 正文。
 
 ### REQ-PBI-002 — 公开数据边界
 
@@ -55,11 +57,11 @@ flowchart LR
 
 ### REQ-PBI-004 — 稳定发布自动更新
 
-上游稳定 Release 的数据包及就绪 manifest 成功发布后，必须在该发布流程尾部显式调用博客内容 workflow 的 `workflow_dispatch`。博客使用已发布的稳定前端渲染器、固定经验库包和明确身份的文章/Memo 公开快照执行静态构建、校验与部署。未经应用发布门禁的最新 `main` 不得自动作为渲染器。触发必须符合 [Release 触发契约](./contracts/release-trigger.md)，并提供定时补漏与手动重试，复用相同的输入校验和部署入口；通知成功与实际部署成功必须分别记录。
+上游稳定 Release 的数据包及就绪 manifest 成功发布后，必须在该发布流程尾部显式调用博客内容 workflow 的 `workflow_dispatch`。博客使用已发布的稳定前端渲染器、固定Playbook包和明确身份的文章/Memo 公开快照执行静态构建、校验与部署。未经应用发布门禁的最新 `main` 不得自动作为渲染器。触发必须符合 [Release 触发契约](./contracts/release-trigger.md)，并提供定时补漏与手动重试，复用相同的输入校验和部署入口；通知成功与实际部署成功必须分别记录。
 
 ### REQ-PBI-005 — 内容与应用发布分离
 
-纯经验库内容刷新必须独立于应用 SemVer、应用 GitHub Release 和 console 镜像构建。经验库输入必须独立于依赖 console 的 posts/memos `public-snapshot.json`，经验库构建不得反过来依赖 console 的经验库缓存。普通前端代码发布必须保留当前采用的经验库版本并检查兼容性；首次路由和缓存能力上线通过正常应用发布完成。
+纯Playbook内容刷新必须独立于应用 SemVer、应用 GitHub Release 和 console 镜像构建。Playbook输入必须独立于依赖 console 的 posts/memos `public-snapshot.json`，Playbook构建不得反过来依赖 console 的Playbook缓存。普通前端代码发布必须保留当前采用的Playbook版本并检查兼容性；首次路由和缓存能力上线通过正常应用发布完成。
 
 ### REQ-PBI-006 — 并发与乱序
 
@@ -67,7 +69,7 @@ flowchart LR
 
 ### REQ-PBI-007 — 同批发布与版本资产
 
-经验库页面、目录、详情、搜索数据和当前指针必须来自同一次成功部署，记录上游版本、包 digest、博客渲染器 commit 与文章/Memo 快照身份。版本文件必须使用不可变缓存，当前指针必须使用短缓存或重新验证。部署必须保留尚可被上一批指针引用的版本文件，并保留原始发布包供回滚；不得假定替换整站后旧目录仍可访问。
+Playbook页面、目录、详情、搜索数据和当前指针必须来自同一次成功部署，记录上游版本、包 digest、博客渲染器 commit 与文章/Memo 快照身份。版本文件必须使用不可变缓存，当前指针必须使用短缓存或重新验证。部署必须保留尚可被上一批指针引用的版本文件，并保留原始发布包供回滚；不得假定替换整站后旧目录仍可访问。
 
 ### REQ-PBI-008 — console 跟随已部署版本
 
@@ -75,11 +77,11 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 
 ### REQ-PBI-009 — 最后成功版本与首次启动
 
-上游或博客的下载、构建、校验和部署失败时，静态站必须继续提供之前成功发布的版本。console 必须持久化最后成功快照，网络故障、重启或新 schema 不兼容时继续使用最后兼容版本。没有持久缓存时可使用兼容的初始公开快照；有可用缓存时不得被初始快照覆盖。没有任何可用快照时，经验库必须显示暂不可用，不得以空目录冒充成功，也不得阻止其他 console 功能启动。
+上游或博客的下载、构建、校验和部署失败时，静态站必须继续提供之前成功发布的版本。console 必须持久化最后成功快照，网络故障、重启或新 schema 不兼容时继续使用最后兼容版本。没有持久缓存时可使用兼容的初始公开快照；有可用缓存时不得被初始快照覆盖。没有任何可用快照时，Playbook必须显示暂不可用，不得以空目录冒充成功，也不得阻止其他 console 功能启动。
 
 ### REQ-PBI-010 — 统一搜索与版本一致性
 
-统一搜索必须明确区分 Topic、项目经验、Policy Skill、文章和 Memo，提供正确的目标 URL 与类型过滤。经验库搜索必须使用确定性全文索引，向量化不得成为发布前置条件；不同来源的分数不得直接混排，结果应按来源分组。静态站使用本批构建的经验库索引，console 使用已采用缓存中的同批索引；上游路由与 section anchor 必须映射至经验库命名空间，文章/Memo 原有检索与授权规则必须保留。
+统一搜索必须明确区分 Topic、项目实践、Policy Skill、文章和 Memo，提供正确的目标 URL 与类型过滤。Playbook搜索必须使用确定性全文索引，向量化不得成为发布前置条件；不同来源的分数不得直接混排，结果应按来源分组。静态站使用本批构建的Playbook索引，console 使用已采用缓存中的同批索引；上游路由与 section anchor 必须映射至Playbook命名空间，文章/Memo 原有检索与授权规则必须保留。
 
 ### REQ-PBI-011 — 发布可追溯与回滚
 
@@ -115,7 +117,7 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 
 - Method: 对比内容刷新与正常代码发布的副作用和依赖图。
 - covers: `REQ-PBI-005`
-- Pass condition: 内容刷新不发布应用版本或镜像，经验库输入无循环依赖；代码发布保留已采用内容并校验兼容性。
+- Pass condition: 内容刷新不发布应用版本或镜像，Playbook输入无循环依赖；代码发布保留已采用内容并校验兼容性。
 
 ### VER-PBI-006
 
@@ -139,13 +141,13 @@ console 必须后台同步博客的公开 JSON，在网络健康且 schema 兼�
 
 - Method: 模拟上游/博客各阶段失败、console 重启、断网、不兼容 schema、有旧缓存和无任何快照的首次启动。
 - covers: `REQ-PBI-009`
-- Pass condition: 已发布静态站与最后兼容缓存持续可用；初始快照不覆盖缓存；无快照时仅经验库暂不可用。
+- Pass condition: 已发布静态站与最后兼容缓存持续可用；初始快照不覆盖缓存；无快照时仅Playbook暂不可用。
 
 ### VER-PBI-010
 
-- Method: 检查每种经验库对象与 anchor 的搜索结果、类型过滤、来源分组、刷新期间的索引身份和文章/Memo 授权样例。
+- Method: 检查每种Playbook对象与 anchor 的搜索结果、类型过滤、来源分组、刷新期间的索引身份和文章/Memo 授权样例。
 - covers: `REQ-PBI-010`
-- Pass condition: 两站经验库检索对应各自采用版本，URL 正确且不碰撞项目案例，已有授权边界保留，无向量服务仍可检索。
+- Pass condition: 两站Playbook检索对应各自采用版本，URL 正确且不碰撞项目案例，已有授权边界保留，无向量服务仍可检索。
 
 ### VER-PBI-011
 

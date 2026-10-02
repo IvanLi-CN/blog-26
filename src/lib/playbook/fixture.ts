@@ -4,7 +4,7 @@ import type { PlaybookPublicCatalog, PlaybookSearchPayload } from "./types";
 const project = {
   slug: "sample-project",
   name: "Sample Project",
-  description: "公开的项目经验快照。",
+  description: "公开的项目实践快照。",
   source: "https://github.com/example/public-project",
   tags: ["astro", "交付"],
   snapshot_exists: true,
@@ -29,7 +29,7 @@ export const publicFixtureCatalog: PlaybookPublicCatalog = {
   project_details: [
     {
       item: project,
-      title: "Sample Project 经验快照",
+      title: "Sample Project 实践快照",
       doc_metadata: [{ key: "范围", value: "公开样例" }],
       stack: { framework: "Astro" },
       sections: [
@@ -51,7 +51,7 @@ export const publicFixtureCatalog: PlaybookPublicCatalog = {
           id: "release",
           title: "稳定发布",
           markdown:
-            "发布前校验内容摘要；部署失败时保留最后可用版本。\n\n```yaml\nconcurrency:\n  cancel-in-progress: false\n```\n\n[项目经验](/projects/sample-project#architecture)与规则共同构成经验库。",
+            "发布前校验内容摘要；部署失败时保留最后可用版本。\n\n```yaml\nconcurrency:\n  cancel-in-progress: false\n```\n\n[项目实践](/projects/sample-project#architecture)与规则共同帮助形成稳定的交付方式。",
         },
         {
           id: "recovery",
@@ -106,7 +106,7 @@ export const publicFixtureSearch: PlaybookSearchPayload = {
       id: "project:sample",
       kind: "page",
       title: "Sample Project",
-      subtitle: "项目经验",
+      subtitle: "项目实践",
       body: "Astro static snapshot engineering",
       route: "/projects/sample-project",
       section_id: null,

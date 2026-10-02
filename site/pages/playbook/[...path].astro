@@ -9,6 +9,6 @@ const path = Astro.params.path || "";
 const title = resolvePlaybookTitle(edition, path);
 if (!title) Astro.response.status = 404;
 ---
-<BaseLayout pathname={`/playbook/${path}`} title={`${title || "内容未找到"} - 经验库 - Ivan's Blog`}>
+<BaseLayout pathname={`/playbook/${path}`} title={`${title || "内容未找到"} - 执念 - Ivan's Blog`}>
   <PlaybookPage edition={edition} path={path} />
 </BaseLayout>
