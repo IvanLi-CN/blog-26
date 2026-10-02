@@ -29,14 +29,17 @@ export function fileRecord(path: string, content: Uint8Array | string): Playbook
   };
 }
 
+function assertSortedFilePaths(files: PlaybookManifestFile[], expected: string, label: string) {
+  const paths = files.map((file) => file.path);
+  const sorted = [...paths].sort((a, b) => a.localeCompare(b));
+  if (paths.join("\0") !== sorted.join("\0") || paths.join(",") !== expected)
+    throw new Error(`${label} file records must be sorted by path`);
+}
+
 export function parseManifest(value: unknown): PlaybookManifest {
   const manifest = manifestSchema.parse(value);
-  if (
-    manifest.files
-      .map((file) => file.path)
-      .sort()
-      .join(",") !== "catalog.json,search-documents.json"
-  )
+  assertSortedFilePaths(manifest.files, "catalog.json,search-documents.json", "Public bundle");
+  if (manifest.files.map((file) => file.path).join(",") !== "catalog.json,search-documents.json")
     throw new Error("Public bundle must contain catalog.json and search-documents.json");
   return manifest;
 }
@@ -59,13 +62,11 @@ export function parseEditionIdentity(value: unknown) {
   const edition = editionSchema.parse(value);
   if (computeEditionDigest(edition) !== edition.editionDigest)
     throw new Error("Edition identity digest mismatch");
-  if (
-    edition.files
-      .map((file) => file.path)
-      .sort()
-      .join(",") !== "catalog.json,public-snapshot.json,search-documents.json"
-  )
-    throw new Error("Edition file set mismatch");
+  assertSortedFilePaths(
+    edition.files,
+    "catalog.json,public-snapshot.json,search-documents.json",
+    "Edition"
+  );
   if (
     edition.files.find((file) => file.path === "public-snapshot.json")?.sha256 !==
     edition.contentSnapshotIdentity

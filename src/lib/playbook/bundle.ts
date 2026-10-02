@@ -30,6 +30,10 @@ export function readPublicArchive(archive: Uint8Array, manifest: PlaybookManifes
         throw new Error("Unexpected archive data after terminator");
       break;
     }
+    const magic = header.subarray(257, 263).toString("utf8");
+    const version = header.subarray(263, 265).toString("utf8");
+    if (magic !== "ustar\0" || version !== "00")
+      throw new Error("Unsupported archive format; expected ustar");
     const field = (start: number, size: number) =>
       header
         .subarray(start, start + size)
@@ -83,8 +87,8 @@ export function createPlaybookEdition(
   );
   const records = [
     fileRecord("catalog.json", encodeJson(catalog)),
-    fileRecord("search-documents.json", encodeJson(search)),
     fileRecord("public-snapshot.json", publicSnapshot),
+    fileRecord("search-documents.json", encodeJson(search)),
   ];
   const edition = {
     schemaVersion: 1 as const,

@@ -151,7 +151,8 @@ export interface DeploymentAdapter {
 function matchesBuildIdentity(
   edition: PlaybookEditionIdentity,
   manifest: PlaybookManifest,
-  rendererCommit: string
+  rendererCommit: string,
+  current: PlaybookEditionIdentity
 ) {
   try {
     parseEditionIdentity(edition);
@@ -160,6 +161,8 @@ function matchesBuildIdentity(
   }
   return (
     edition.rendererCommit === rendererCommit &&
+    edition.contentSnapshotIdentity === current.contentSnapshotIdentity &&
+    edition.generatedAt === manifest.source.publishedAt &&
     encodeJson(edition.bundle) === encodeJson(manifest.bundle) &&
     encodeJson(edition.source) === encodeJson(manifest.source)
   );
@@ -183,7 +186,7 @@ export async function deployContent(
   // Also supports adapters where preparation can outlive a renderer publication.
   for (let attempt = 0; attempt < 3; attempt++) {
     const edition = await adapter.build(manifest, current.rendererCommit, current);
-    if (!matchesBuildIdentity(edition, manifest, current.rendererCommit))
+    if (!matchesBuildIdentity(edition, manifest, current.rendererCommit, current))
       throw new Error("Build identity does not match the fixed inputs");
     const latest = await adapter.current();
     if (!latest) throw new Error("Deployed renderer identity disappeared");

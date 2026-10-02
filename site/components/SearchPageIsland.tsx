@@ -16,11 +16,17 @@ const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v4:";
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v3:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-export type PlaybookSearchSource = { edition: string; url: string; sha256: string };
+export type PlaybookSearchSource = {
+  edition: string;
+  sourceReleaseId: string;
+  sourceTag: string;
+  url: string;
+  sha256: string;
+};
 const playbookIndexes = new Map<string, Promise<ReturnType<typeof buildPlaybookIndex>>>();
 async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
   if (!source) return [];
-  const key = `${source.url}:${source.edition}`;
+  const key = `${source.url}:${source.edition}:${source.sourceReleaseId}:${source.sourceTag}`;
   let pending = playbookIndexes.get(key);
   if (!pending) {
     pending = fetch(source.url, { signal: AbortSignal.timeout(30_000) })
@@ -33,6 +39,14 @@ async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
         const payload = JSON.parse(raw) as PlaybookSearchPayload & { edition?: string };
         if (payload.edition && payload.edition !== source.edition)
           throw new Error("执念搜索版本不一致");
+        const responseSourceReleaseId = response.headers.get("x-playbook-source-release-id");
+        const responseSourceTag = response.headers.get("x-playbook-source-tag");
+        if (
+          (responseSourceReleaseId || responseSourceTag) &&
+          (responseSourceReleaseId !== source.sourceReleaseId ||
+            responseSourceTag !== source.sourceTag)
+        )
+          throw new Error("执念搜索来源版本不一致");
         const data = { generated_at: payload.generated_at, documents: payload.documents };
         const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
         if (

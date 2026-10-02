@@ -20,6 +20,7 @@ export function makeArchive(files: { path: string; content: string; kind?: strin
     header.fill(32, 148, 156);
     header.write(file.kind || "0", 156);
     header.write("ustar\0", 257);
+    header.write("00", 263);
     const checksum = header.reduce((sum, byte) => sum + byte, 0);
     header.write(`${checksum.toString(8).padStart(6, "0")}\0 `, 148);
     parts.push(header, body, Buffer.alloc((512 - (body.length % 512)) % 512));

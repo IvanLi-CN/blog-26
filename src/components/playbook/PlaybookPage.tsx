@@ -60,7 +60,7 @@ function PolicyContent({
   const consoleRuntime = typeof process !== "undefined" && process.env?.CONSOLE_RUNTIME === "true";
   const resourceHref = (path: string) =>
     consoleRuntime
-      ? `/api/public/playbook/resource?edition=${edition.edition.editionDigest}&policy=${policy.summary.slug}&path=${encodeURIComponent(path)}`
+      ? `/api/public/playbook/resource?edition=${edition.edition.editionDigest}&sourceReleaseId=${encodeURIComponent(edition.edition.source.releaseId)}&sourceTag=${encodeURIComponent(edition.edition.source.tag)}&policy=${policy.summary.slug}&path=${encodeURIComponent(path)}`
       : href(`${base}${path.split("/").map(encodeURIComponent).join("/")}`);
   return (
     <div className="grid gap-8">

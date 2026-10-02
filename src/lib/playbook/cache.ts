@@ -67,9 +67,12 @@ export class PlaybookStore {
   get current() {
     return this.state.current;
   }
-  getEdition(digest: string) {
+  getEdition(digest: string, sourceReleaseId: string, sourceTag: string) {
     return [this.state.current, this.state.previous].find(
-      (entry) => entry?.edition.editionDigest === digest
+      (entry) =>
+        entry?.edition.editionDigest === digest &&
+        entry.edition.source.releaseId === sourceReleaseId &&
+        entry.edition.source.tag === sourceTag
     );
   }
 

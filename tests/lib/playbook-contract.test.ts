@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PlaybookPage from "../../src/components/playbook/PlaybookPage";
@@ -57,6 +58,18 @@ describe("playbook-public-contract", () => {
       validatePlaybookEdition(bundle.edition).catalog.topic_details[0].policy_skills[0].resources
     ).toHaveLength(1);
     expect(() => parseManifest({ ...bundle.manifest, schemaVersion: 2 })).toThrow();
+    expect(() =>
+      parseManifest({ ...bundle.manifest, files: [...bundle.manifest.files].reverse() })
+    ).toThrow("sorted");
+    expect(() =>
+      validatePlaybookEdition({
+        ...bundle.edition,
+        edition: {
+          ...bundle.edition.edition,
+          files: [...bundle.edition.edition.files].reverse(),
+        },
+      })
+    ).toThrow();
     const privateCatalog = structuredClone(publicFixtureCatalog);
     privateCatalog.snapshot.projects[0].visibility = "private";
     expect(() => assertPublicCatalog(privateCatalog)).toThrow();
@@ -97,6 +110,19 @@ describe("playbook-public-contract", () => {
         bundle: { ...bundle.manifest.bundle, size: archive.length, sha256: sha256(archive) },
       })
     ).toThrow("Unsafe");
+    const nonUstarTar = gunzipSync(bundle.archive);
+    nonUstarTar[257] = 0x78;
+    const nonUstarArchive = gzipSync(nonUstarTar);
+    expect(() =>
+      readPublicArchive(nonUstarArchive, {
+        ...bundle.manifest,
+        bundle: {
+          ...bundle.manifest.bundle,
+          size: nonUstarArchive.length,
+          sha256: sha256(nonUstarArchive),
+        },
+      })
+    ).toThrow("ustar");
   });
   test("rejects nested internal key variants without excluding ordinary public fields", () => {
     for (const key of [
@@ -450,6 +476,23 @@ describe("playbook-build-deploy-adapter", () => {
           file.path === "catalog.json" ? { ...file, sha256: "0".repeat(64) } : file
         ),
       }),
+      (edition: typeof next.edition.edition) => {
+        const mutated = {
+          ...edition,
+          contentSnapshotIdentity: sha256('{"posts":[] }\n'),
+          files: edition.files.map((file) =>
+            file.path === "public-snapshot.json"
+              ? { ...file, sha256: sha256('{"posts":[] }\n') }
+              : file
+          ),
+        };
+        mutated.editionDigest = computeEditionDigest(mutated);
+        return mutated;
+      },
+      (edition: typeof next.edition.edition) => ({
+        ...edition,
+        generatedAt: "2026-09-02T00:00:00Z",
+      }),
     ];
     for (const mutate of mutations) {
       let deployed = false;
@@ -568,7 +611,7 @@ describe("playbook-cache-http-ssr", () => {
     expect(restored.current?.edition.source.tag).toBe("v3.1.0");
     const response = await handlePlaybookRequest(
       new Request(
-        `https://console.test/api/public/playbook/search-index?edition=${current.edition.edition.editionDigest}`
+        `https://console.test/api/public/playbook/search-index?edition=${current.edition.edition.editionDigest}&sourceReleaseId=${current.edition.edition.source.releaseId}&sourceTag=${current.edition.edition.source.tag}`
       ),
       "/playbook/search-index",
       restored
@@ -581,7 +624,7 @@ describe("playbook-cache-http-ssr", () => {
       (
         await handlePlaybookRequest(
           new Request(
-            `https://console.test/api/public/playbook/search-index?edition=${"0".repeat(64)}`
+            `https://console.test/api/public/playbook/search-index?edition=${"0".repeat(64)}&sourceReleaseId=${current.edition.edition.source.releaseId}&sourceTag=${current.edition.edition.source.tag}`
           ),
           "/playbook/search-index",
           restored
@@ -590,7 +633,7 @@ describe("playbook-cache-http-ssr", () => {
     ).toBe(409);
     const resource = await handlePlaybookRequest(
       new Request(
-        `https://console.test/api/public/playbook/resource?edition=${current.edition.edition.editionDigest}&policy=safe-release&path=scripts%2Fverify.sh`
+        `https://console.test/api/public/playbook/resource?edition=${current.edition.edition.editionDigest}&sourceReleaseId=${current.edition.edition.source.releaseId}&sourceTag=${current.edition.edition.source.tag}&policy=safe-release&path=scripts%2Fverify.sh`
       ),
       "/playbook/resource",
       restored
@@ -616,7 +659,13 @@ describe("playbook-cache-http-ssr", () => {
     await Promise.all([store.sync(), store.sync()]);
     expect(requests).toBe(3);
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
-    expect(store.getEdition(current.edition.edition.editionDigest)).toBeDefined();
+    expect(
+      store.getEdition(
+        current.edition.edition.editionDigest,
+        current.edition.edition.source.releaseId,
+        current.edition.edition.source.tag
+      )
+    ).toBeDefined();
     fail = true;
     await expect(store.sync()).rejects.toThrow();
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
@@ -649,9 +698,13 @@ describe("playbook-cache-http-ssr", () => {
     const restored = new PlaybookStore(root);
     await restored.load(join(root, "missing-seed.json"));
     expect(restored.current?.edition).toEqual(rollback.edition.edition);
-    expect(restored.getEdition(newer.edition.edition.editionDigest)?.edition).toEqual(
-      newer.edition.edition
-    );
+    expect(
+      restored.getEdition(
+        newer.edition.edition.editionDigest,
+        newer.edition.edition.source.releaseId,
+        newer.edition.edition.source.tag
+      )?.edition
+    ).toEqual(newer.edition.edition);
   });
 });
 test("retains distinct source identities when two Releases have identical data digests", async () => {
@@ -671,13 +724,50 @@ test("retains distinct source identities when two Releases have identical data d
   expect(restored.current?.edition.source).toEqual(next.manifest.source);
   const response = await handlePlaybookRequest(
     new Request(
-      `https://console.test/api/public/playbook/search-index?edition=${old.edition.edition.editionDigest}`
+      `https://console.test/api/public/playbook/search-index?edition=${old.edition.edition.editionDigest}&sourceReleaseId=${old.edition.edition.source.releaseId}&sourceTag=${old.edition.edition.source.tag}`
     ),
     "/playbook/search-index",
     restored
   );
   expect(response.status).toBe(200);
   expect(await response.text()).toBe(encodeJson(old.edition.search));
+  expect(response.headers.get("x-playbook-source-release-id")).toBe(
+    old.edition.edition.source.releaseId
+  );
+  expect(response.headers.get("x-playbook-source-tag")).toBe(old.edition.edition.source.tag);
+  expect(
+    (
+      await handlePlaybookRequest(
+        new Request(
+          `https://console.test/api/public/playbook/search-index?edition=${old.edition.edition.editionDigest}&sourceReleaseId=${next.edition.edition.source.releaseId}&sourceTag=${next.edition.edition.source.tag}`
+        ),
+        "/playbook/search-index",
+        restored
+      )
+    ).status
+  ).toBe(200);
+  expect(
+    (
+      await handlePlaybookRequest(
+        new Request(
+          `https://console.test/api/public/playbook/search-index?edition=${old.edition.edition.editionDigest}`
+        ),
+        "/playbook/search-index",
+        restored
+      )
+    ).status
+  ).toBe(400);
+  expect(
+    (
+      await handlePlaybookRequest(
+        new Request(
+          `https://console.test/api/public/playbook/search-index?edition=${old.edition.edition.editionDigest}&sourceReleaseId=999&sourceTag=v9.0.0`
+        ),
+        "/playbook/search-index",
+        restored
+      )
+    ).status
+  ).toBe(409);
   await restored.adopt(next.edition);
   expect(
     JSON.parse(await readFile(join(root, "state.json"), "utf8")).previous.edition.source

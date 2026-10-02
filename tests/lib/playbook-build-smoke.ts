@@ -51,12 +51,12 @@ try {
   )
     throw new Error("Console first response is missing Playbook SSR content");
   const search = await fetch(
-    `http://127.0.0.1:${port}/api/public/playbook/search-index?edition=${identity.editionDigest}`
+    `http://127.0.0.1:${port}/api/public/playbook/search-index?edition=${identity.editionDigest}&sourceReleaseId=${identity.source.releaseId}&sourceTag=${identity.source.tag}`
   );
   if (!search.ok || !(await search.text()).includes("Safe Release"))
     throw new Error("Console has no matching search edition");
   const conflict = await fetch(
-    `http://127.0.0.1:${port}/api/public/playbook/search-index?edition=${"0".repeat(64)}`
+    `http://127.0.0.1:${port}/api/public/playbook/search-index?edition=${"0".repeat(64)}&sourceReleaseId=${identity.source.releaseId}&sourceTag=${identity.source.tag}`
   );
   if (conflict.status !== 409) throw new Error("Unknown search edition did not require a refresh");
   console.log("Verified static HTML, first-response console SSR and edition-bound HTTP search");
