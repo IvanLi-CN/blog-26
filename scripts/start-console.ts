@@ -227,5 +227,7 @@ process.once("SIGTERM", shutdown);
 process.once("SIGINT", shutdown);
 
 server.listen(port, hostname, () => {
-  console.log(`[console] listening on http://${hostname}:${port}`);
+  const address = server.address();
+  const listeningPort = address && typeof address !== "string" ? address.port : port;
+  console.log(`[console] listening on http://${hostname}:${listeningPort}`);
 });

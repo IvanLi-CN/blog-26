@@ -31,6 +31,19 @@ type StoryFinished = {
   reporters?: unknown[];
 };
 
+type Viewport = { width: number; height: number };
+
+const defaultViewport: Viewport = { width: 1280, height: 900 };
+const storyViewports = new Map<string, Viewport>([
+  ["public-playbook-page--mobile-topic", { width: 390, height: 844 }],
+  ["public-playbook-page--mobile-dark-policy", { width: 390, height: 844 }],
+  ["public-search-page--mobile-playbook-results", { width: 390, height: 844 }],
+  ["public-search-page--mobile-loading", { width: 393, height: 852 }],
+  ["public-search-page--narrow-mobile-recommendations", { width: 320, height: 700 }],
+  ["public-search-page--mobile-empty", { width: 393, height: 852 }],
+  ["public-search-page--mobile-results", { width: 393, height: 852 }],
+]);
+
 const staticRoot = resolve(process.env.STORYBOOK_STATIC_DIR || "storybook-static");
 const storyFiles = new Set([
   "./src/components/playbook/PlaybookPage.stories.tsx",
@@ -104,7 +117,9 @@ async function createStaticServer() {
 
 async function runStory(baseUrl: string, storyId: string) {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const page = await browser.newPage({
+    viewport: storyViewports.get(storyId) || defaultViewport,
+  });
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   try {

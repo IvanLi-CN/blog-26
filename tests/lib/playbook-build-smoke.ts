@@ -1,5 +1,4 @@
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { parseEditionIdentity, sha256 } from "../../src/lib/playbook/manifest";
 
@@ -39,18 +38,6 @@ for (const route of pageRoutes) {
 const searchBytes = await readFile(resolve(editionRoot, "search-documents.json"));
 const searchPayload = JSON.parse(searchBytes.toString("utf8")) as { documents?: unknown[] };
 if (!Array.isArray(searchPayload.documents)) throw new Error("Static search output is invalid");
-const portProbe = createServer();
-await new Promise<void>((resolvePromise, reject) => {
-  portProbe.once("error", reject);
-  portProbe.listen(0, "127.0.0.1", () => resolvePromise());
-});
-const portAddress = portProbe.address();
-if (!portAddress || typeof portAddress === "string") {
-  await new Promise<void>((resolvePromise) => portProbe.close(() => resolvePromise()));
-  throw new Error("Playbook smoke test could not reserve a port");
-}
-const port = String(portAddress.port);
-await new Promise<void>((resolvePromise) => portProbe.close(() => resolvePromise()));
 await mkdir(".tmp", { recursive: true });
 const cacheRoot = await mkdtemp(resolve(".tmp/smoke-playbook-"));
 const child = Bun.spawn(["bun", "scripts/start-console.ts"], {
@@ -58,14 +45,36 @@ const child = Bun.spawn(["bun", "scripts/start-console.ts"], {
     ...process.env,
     NODE_ENV: "test",
     CONSOLE_RUNTIME: "true",
-    PORT: port,
+    PORT: "0",
     BIND_HOST: "127.0.0.1",
     PLAYBOOK_SYNC_ENABLED: "false",
     PLAYBOOK_CACHE_DIR: cacheRoot,
   },
-  stdout: "inherit",
+  stdout: "pipe",
   stderr: "inherit",
 });
+const stdout = child.stdout;
+if (!stdout) throw new Error("Console smoke test did not expose child stdout");
+const reader = stdout.getReader();
+const decoder = new TextDecoder();
+let output = "";
+let port: string | undefined;
+while (!port) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  const chunk = decoder.decode(value, { stream: true });
+  output += chunk;
+  process.stdout.write(chunk);
+  const match = output.match(/\[console\] listening on http:\/\/127\.0\.0\.1:(\d+)/);
+  if (match) port = match[1];
+}
+reader.releaseLock();
+if (!port) {
+  child.kill("SIGTERM");
+  await child.exited;
+  await rm(cacheRoot, { recursive: true, force: true });
+  throw new Error(`Console did not expose a listening port: ${output}`);
+}
 let shutdownStatus = 0;
 try {
   let response: Response | undefined;

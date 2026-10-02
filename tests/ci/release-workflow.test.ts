@@ -135,6 +135,9 @@ describe("release.yml", () => {
     expect(edgeone).toContain("for attempt in {1..10}; do");
     expect(edgeone).toContain("EdgeOne backend origin and trusted fallback secret verified");
     expect(edgeone).toContain('npx edgeone@1.6.34 makers deploy "$EDGEONE_ARTIFACT_DIR"');
+    expect(edgeone).toContain("- name: Upload deployed Playbook console seed for backend build");
+    expect(edgeone).toContain("name: playbook-console-seed-deployed");
+    expect(edgeone).toContain("path: ./site/generated/playbook-edition.json");
     expect(edgeone).toContain(
       "Makers environment did not contain the expected console origin and fallback secret"
     );
@@ -156,10 +159,14 @@ describe("release.yml", () => {
 
   test("publishes the console SSR artifact with backend releases", () => {
     const publishBackend = jobBlock("publish_backend");
-    expect(publishBackend).toContain("needs: [prepare, publish_frontend]");
+    expect(publishBackend).toContain("needs: [prepare, publish_frontend, deploy_frontend_edgeone]");
     expect(publishBackend).toContain("always()");
     expect(publishBackend).toContain("needs.publish_frontend.result == 'success'");
     expect(publishBackend).toContain("needs.publish_frontend.result == 'skipped'");
+    expect(publishBackend).toContain("needs.deploy_frontend_edgeone.result == 'success'");
+    expect(publishBackend).toContain("needs.deploy_frontend_edgeone.result == 'skipped'");
+    expect(publishBackend).toContain("Download Playbook console seed from deployed frontend");
+    expect(publishBackend).toContain("name: playbook-console-seed-deployed");
     expect(publishBackend).toContain("Download Playbook console seed from frontend build");
     expect(publishBackend).toContain("name: playbook-console-seed");
     expect(publishBackend).toContain("PLAYBOOK_SEED_INPUT_PATH");
