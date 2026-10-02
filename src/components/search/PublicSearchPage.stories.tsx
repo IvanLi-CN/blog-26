@@ -142,6 +142,8 @@ function SearchStory({
       data-ui-theme={theme}
       data-ui-preference="system"
       data-theme={theme}
+      data-visual-evidence-surface="page"
+      data-visual-evidence-target="page"
     >
       <PublicSearchPage
         query={query}
@@ -193,6 +195,98 @@ export const Results: Story = {
     await expect(canvas.getAllByText(/相关度/)[0]).toHaveClass(/text-xs/);
     await expect(canvas.queryByText("打开内容")).not.toBeInTheDocument();
   },
+};
+
+const playbookResults: SearchResultItem[] = [
+  {
+    slug: "delivery",
+    title: "稳定发布 Topic",
+    type: "topic",
+    source: "playbook",
+    href: "/playbook/topics/delivery/",
+    snippet: "发布、回滚与质量门禁。",
+  },
+  {
+    slug: "sample-project",
+    title: "Sample Project 发布经验",
+    type: "experience",
+    source: "playbook",
+    href: "/playbook/projects/sample-project/",
+    snippet: "公开项目的工程取舍。",
+  },
+  {
+    slug: "safe-release",
+    title: "Safe Release Policy",
+    type: "policy",
+    source: "playbook",
+    href: "/playbook/policies/safe-release/",
+    snippet: "可手动安装的稳定发布规则。",
+  },
+];
+export const PlaybookResults: Story = {
+  name: "经验库 / 来源分组与类型筛选",
+  render: () => (
+    <SearchStory initialQuery="发布" items={[...results.slice(0, 2), ...playbookResults]} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("region", { name: "文章与闪念" })).toBeInTheDocument();
+    await expect(canvas.getByRole("region", { name: "经验库" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: /Policy Skill/ }));
+    await expect(canvas.getByRole("link", { name: /Safe Release Policy/ })).toHaveAttribute(
+      "href",
+      "/playbook/policies/safe-release/"
+    );
+    await expect(canvas.queryByRole("link", { name: /Sample Project/ })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("region", { name: "文章与闪念" })).not.toBeInTheDocument();
+  },
+};
+export const PlaybookStaleEdition: Story = {
+  name: "经验库 / 旧版本要求刷新",
+  render: () => <SearchStory items={results} error="经验库版本已更新，请刷新页面" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("alert")).toHaveTextContent("经验库版本已更新，请刷新页面");
+    await expect(canvas.getByRole("link", { name: /Arch Linux on Apple Silicon/ })).toBeVisible();
+  },
+};
+
+export const MobilePlaybookResults: Story = {
+  ...PlaybookResults,
+  ...searchMobileViewport,
+  parameters: {
+    viewport: {
+      options: {
+        searchMobile: {
+          name: "Playbook search 390 × 844",
+          styles: { width: "390px", height: "844px" },
+          type: "mobile",
+        },
+      },
+    },
+  },
+};
+export const DesktopPlaybookResults: Story = {
+  ...PlaybookResults,
+  render: () => (
+    <SearchStory
+      initialQuery="发布"
+      items={[...results.slice(0, 2), ...playbookResults]}
+      theme="dark"
+    />
+  ),
+  parameters: {
+    viewport: {
+      options: {
+        searchDesktop: {
+          name: "Playbook search 1280 × 900",
+          styles: { width: "1280px", height: "900px" },
+          type: "desktop",
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: "searchDesktop", isRotated: false } },
 };
 
 export const UntitledMemoResult: Story = {

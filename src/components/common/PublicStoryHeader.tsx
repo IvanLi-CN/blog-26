@@ -2,13 +2,9 @@ import { useLayoutEffect } from "react";
 import Icon from "../ui/Icon";
 import ThemeToggle from "./ThemeToggle";
 import "@/lib/public-header-scroll";
+import { headerData } from "@/config/navigation";
 
-const navLinks = [
-  { icon: "tabler:notes", text: "闪念", href: "/memos" },
-  { icon: "tabler:article", text: "文章", href: "/posts" },
-  { icon: "tabler:code", text: "项目", href: "/projects" },
-  { icon: "tabler:hash", text: "标签", href: "/tags" },
-];
+const navLinks = headerData.links;
 
 export function PublicStoryHeader({
   activeHref,
@@ -47,13 +43,13 @@ export function PublicStoryHeader({
                   <a
                     href={link.href}
                     aria-label={link.text}
-                    className={`nature-nav-link gap-1.5 rounded-full px-2.5 transition sm:gap-2 sm:px-4 ${
+                    className={`nature-nav-link whitespace-nowrap gap-1.5 rounded-full px-1.5 transition sm:gap-2 sm:px-4 ${
                       link.href === activeHref
                         ? "aw-link-active"
                         : "text-[color:var(--nature-text-soft)] hover:bg-[rgba(var(--nature-accent-rgb),0.1)] hover:text-[color:var(--nature-accent-strong)]"
                     }`}
                   >
-                    <Icon name={link.icon} className="h-4 w-4" />
+                    <Icon name={link.icon} className="hidden h-4 w-4 sm:block" />
                     <span className="nature-nav-link-label">{link.text}</span>
                   </a>
                 </li>

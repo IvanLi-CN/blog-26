@@ -121,7 +121,7 @@
     "generate:project-social-previews": "bun ./scripts/generate-project-social-preview-assets.ts",
     "verify:project-social-previews": "bun ./scripts/verify-project-social-preview-assets.ts",
     "site:dev": "sh -c 'SITE_PORT=${SITE_PORT:-$(bun ./scripts/resolve-worktree-port.ts site)}; export SITE_PORT; bun run generate:public-pwa && bun run generate:project-posters && bun run generate:project-social-previews && bun run public:export && bunx astro dev --host 127.0.0.1 --port \"$SITE_PORT\"'",
-    "site:build": "bun run generate:public-pwa && bun run generate:project-posters && bun run generate:project-social-previews && bun run public:export && bunx astro build && bun run verify:public-pwa && PROJECT_POSTER_REQUIRE_DIST=1 bun run verify:project-posters && PROJECT_SOCIAL_PREVIEW_REQUIRE_DIST=1 bun run verify:project-social-previews",
+    "site:build": "bun run generate:public-pwa && bun run generate:project-posters && bun run generate:project-social-previews && bun run public:export && bun run playbook:prepare && bunx astro build && bun run verify:public-pwa && PROJECT_POSTER_REQUIRE_DIST=1 bun run verify:project-posters && PROJECT_SOCIAL_PREVIEW_REQUIRE_DIST=1 bun run verify:project-social-previews",
     "console:build": "CONSOLE_RUNTIME=true PUBLIC_SITE_URL=${PUBLIC_CONSOLE_URL:-https://console.ivanli.cc} PUBLIC_SITE_BASE_PATH= bunx astro build",
     "console:start": "NODE_ENV=production CONSOLE_RUNTIME=true bun scripts/start-console.ts",
     "gateway:dev": "bun ./scripts/start-gateway.ts",
@@ -133,7 +133,8 @@
     "frontend:fetch-content": "bash ./scripts/fetch-public-content-bundle.sh",
     "frontend:build": "bun run prebuild && bun run site:build",
     "backend:dist": "bash ./scripts/prepare-backend-dist.sh",
-    "backend:build": "bun run prebuild && bun run admin:build:compiled && bun run console:build && bun run backend:dist"
+    "backend:build": "bun run prebuild && bun run admin:build:compiled && bun run console:build && bun run backend:dist",
+    "playbook:prepare": "bun scripts/prepare-playbook-edition.ts"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.3.1",
@@ -191,6 +192,7 @@
     "limax": "4.2.3",
     "lucide-react": "^1.48.0",
     "mermaid": "^12.0.0",
+    "minisearch": "7.2.0",
     "nanoid": "^6.0.1",
     "nodemailer": "^10.0.10",
     "openai": "^7.23.0",

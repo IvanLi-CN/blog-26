@@ -2,6 +2,7 @@ import Icon from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import {
   getSearchResultHref,
+  getSearchResultIcon,
   getSearchResultType,
   getSearchResultTypeLabel,
   type SearchResultItem,
@@ -184,7 +185,7 @@ export default function SearchResultsList({
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                       <span className="nature-chip nature-content-type-chip gap-1">
                         <Icon
-                          name={type === "memo" ? "tabler:bulb" : "tabler:article"}
+                          name={getSearchResultIcon(type)}
                           className="nature-content-type-icon inline h-3.5 w-3.5 sm:hidden"
                         />
                         <span className="sr-only sm:not-sr-only">
@@ -199,7 +200,7 @@ export default function SearchResultsList({
                           匹配 {query}
                         </span>
                       )}
-                      {score !== null && Number.isFinite(score) && (
+                      {r.source !== "playbook" && score !== null && Number.isFinite(score) && (
                         <span
                           className="text-xs text-[color:var(--nature-text-faint)] opacity-75"
                           data-search-relevance-meta

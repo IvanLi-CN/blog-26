@@ -1,14 +1,56 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import PublicSearchPage from "@/components/search/PublicSearchPage";
-import type { SearchFilter, SearchResultItem } from "@/components/search/search-model";
+import {
+  getSearchResultHref,
+  type SearchFilter,
+  type SearchResultItem,
+} from "@/components/search/search-model";
 import { buildSearchHref, shouldPushSearchHref } from "@/components/search/search-navigation";
 import type { SearchSuggestionItem, SearchSuggestionReason } from "@/lib/ai/search-suggestions";
+import { buildPlaybookIndex, queryPlaybookSearch } from "@/lib/playbook/search";
+import type { PlaybookSearchPayload } from "@/lib/playbook/types";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 
 const SEARCH_RESULTS_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_RESULTS_CACHE_PREFIX = "blog25:public-search:v4:";
 const SEARCH_SUGGESTIONS_CACHE_PREFIX = "blog25:public-search-suggestions:v3:";
 const useSafeLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+export type PlaybookSearchSource = { edition: string; url: string; sha256: string };
+const playbookIndexes = new Map<string, Promise<ReturnType<typeof buildPlaybookIndex>>>();
+async function searchPlaybook(query: string, source?: PlaybookSearchSource) {
+  if (!source) return [];
+  const key = `${source.url}:${source.edition}`;
+  let pending = playbookIndexes.get(key);
+  if (!pending) {
+    pending = fetch(source.url, { signal: AbortSignal.timeout(30_000) })
+      .then(async (response) => {
+        if (!response.ok)
+          throw new Error(
+            response.status === 409 ? "经验库版本已更新，请刷新页面" : "经验库搜索暂不可用"
+          );
+        const raw = await response.text();
+        const payload = JSON.parse(raw) as PlaybookSearchPayload & { edition?: string };
+        if (payload.edition && payload.edition !== source.edition)
+          throw new Error("经验库搜索版本不一致");
+        const data = { generated_at: payload.generated_at, documents: payload.documents };
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+        if (
+          Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
+            ""
+          ) !== source.sha256
+        )
+          throw new Error("经验库搜索数据校验失败");
+        return buildPlaybookIndex(data);
+      })
+      .catch((error) => {
+        playbookIndexes.delete(key);
+        throw error;
+      });
+    playbookIndexes.set(key, pending);
+  }
+  return queryPlaybookSearch(await pending, query);
+}
 
 type CachedSearchResults = {
   expiresAt: number;
@@ -20,21 +62,21 @@ type CachedSearchSuggestions = {
   suggestions: SearchSuggestionItem[];
 };
 
-function getSearchResultsCacheKey(query: string) {
-  return `${SEARCH_RESULTS_CACHE_PREFIX}${encodeURIComponent(query.trim().toLowerCase())}:50`;
+function getSearchResultsCacheKey(query: string, edition = "none") {
+  return `${SEARCH_RESULTS_CACHE_PREFIX}${edition}:${encodeURIComponent(query.trim().toLowerCase())}:50`;
 }
 
 function getSearchSuggestionsCacheKey(query: string, reason: SearchSuggestionReason) {
   return `${SEARCH_SUGGESTIONS_CACHE_PREFIX}${reason}:${encodeURIComponent(query.trim().toLowerCase())}:5`;
 }
 
-function readCachedSearchResults(query: string) {
+function readCachedSearchResults(query: string, edition?: string) {
   try {
-    const raw = window.sessionStorage.getItem(getSearchResultsCacheKey(query));
+    const raw = window.sessionStorage.getItem(getSearchResultsCacheKey(query, edition));
     if (!raw) return null;
     const cached = JSON.parse(raw) as CachedSearchResults;
     if (!Array.isArray(cached.results) || cached.expiresAt <= Date.now()) {
-      window.sessionStorage.removeItem(getSearchResultsCacheKey(query));
+      window.sessionStorage.removeItem(getSearchResultsCacheKey(query, edition));
       return null;
     }
     return cached.results;
@@ -65,10 +107,10 @@ function readCachedSearchSuggestions(query: string, reason: SearchSuggestionReas
   }
 }
 
-function writeCachedSearchResults(query: string, results: SearchResultItem[]) {
+function writeCachedSearchResults(query: string, results: SearchResultItem[], edition?: string) {
   try {
     window.sessionStorage.setItem(
-      getSearchResultsCacheKey(query),
+      getSearchResultsCacheKey(query, edition),
       JSON.stringify({
         expiresAt: Date.now() + SEARCH_RESULTS_CACHE_TTL_MS,
         results,
@@ -144,7 +186,7 @@ async function loadSearchSuggestions(
     : [];
 }
 
-export default function SearchPageIsland() {
+export default function SearchPageIsland({ playbook }: { playbook?: PlaybookSearchSource }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const suggestionsAbortRef = useRef<AbortController | null>(null);
@@ -173,7 +215,7 @@ export default function SearchPageIsland() {
       setIsLoading(false);
       return;
     }
-    const cachedResults = readCachedSearchResults(current.trim());
+    const cachedResults = readCachedSearchResults(current.trim(), playbook?.edition);
     if (cachedResults) {
       setResults(cachedResults);
       setError(null);
@@ -184,11 +226,27 @@ export default function SearchPageIsland() {
     abortRef.current = controller;
     setIsLoading(true);
     setError(null);
-    void search(current.trim(), controller.signal)
-      .then((nextResults) => {
+    void Promise.allSettled([
+      search(current.trim(), controller.signal),
+      searchPlaybook(current.trim(), playbook),
+    ])
+      .then((sources) => {
+        const nextResults = sources.flatMap((source) =>
+          source.status === "fulfilled" ? source.value : []
+        );
+        if (sources.every((source) => source.status === "rejected"))
+          throw new Error("搜索暂不可用，请重试");
         if (requestIdRef.current === requestId) {
           setResults(nextResults);
-          writeCachedSearchResults(current.trim(), nextResults);
+          const playbookSource = sources[1];
+          if (playbookSource.status === "rejected")
+            setError(
+              playbookSource.reason instanceof Error
+                ? playbookSource.reason.message
+                : "经验库搜索暂不可用"
+            );
+          if (sources.every((source) => source.status === "fulfilled"))
+            writeCachedSearchResults(current.trim(), nextResults, playbook?.edition);
         }
       })
       .catch((err: unknown) => {
@@ -200,7 +258,7 @@ export default function SearchPageIsland() {
       .finally(() => {
         if (requestIdRef.current === requestId) setIsLoading(false);
       });
-  }, []);
+  }, [playbook]);
 
   useSafeLayoutEffect(() => {
     syncFromLocation();
@@ -328,11 +386,7 @@ export default function SearchPageIsland() {
       recommendedSearchTerms={recommendedSearchTerms}
       isLoadingRecommendations={isLoadingRecommendations}
       inputRef={inputRef}
-      resolveHref={(result) =>
-        toPublicSitePath(
-          result.type === "memo" ? `/memos/${result.slug}` : `/posts/${result.slug}`
-        ) ?? "#"
-      }
+      resolveHref={(result) => toPublicSitePath(getSearchResultHref(result)) ?? "#"}
     />
   );
 }

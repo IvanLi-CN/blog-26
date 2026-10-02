@@ -102,7 +102,12 @@ function shouldBypassSitePathPrefix(pathname: string) {
 }
 
 function shouldPreserveSitePath(pathname: string) {
-  return pathname === "/" || pathname.endsWith("/") || PUBLIC_FILE_PATH_RE.test(pathname);
+  return (
+    pathname === "/" ||
+    pathname.endsWith("/") ||
+    pathname.startsWith("/_content/playbook/") ||
+    PUBLIC_FILE_PATH_RE.test(pathname)
+  );
 }
 
 function withTrailingSlash(pathname: string) {

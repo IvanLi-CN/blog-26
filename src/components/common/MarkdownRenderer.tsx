@@ -109,6 +109,7 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
     publicMediaContext,
     removeTags = false,
     rewritePublicSitePaths = false,
+    mapContentUrl,
   }) => {
     // 获取变体配置
     const variantConfig = useMemo(() => getVariantConfig(variant), [variant]);
@@ -204,10 +205,10 @@ export const MarkdownRenderer = memo<MarkdownRendererProps>(
       return plugins;
     }, [config, articlePath, contentSource, publicMediaContext]);
 
-    const urlTransform = useMemo(
-      () => (rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform),
-      [rewritePublicSitePaths]
-    );
+    const urlTransform = useMemo(() => {
+      const safeTransform = rewritePublicSitePaths ? publicSiteUrlTransform : defaultUrlTransform;
+      return (url: string) => safeTransform(mapContentUrl ? mapContentUrl(url) : url);
+    }, [rewritePublicSitePaths, mapContentUrl]);
 
     // 自定义组件映射
     const components = useMemo<Components>(

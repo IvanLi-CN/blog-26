@@ -109,6 +109,7 @@ Thumbs.db
 /tmp/
 
 site/generated/
+/public/_content/playbook/
 
 # Generated project poster delivery variants. Source PNGs live under site/assets/.
 /public/projects/posters/*.avif
