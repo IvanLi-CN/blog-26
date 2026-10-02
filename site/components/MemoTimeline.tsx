@@ -15,6 +15,7 @@ export type MemoPageResponse = {
   memos?: MemoCardRecord[];
   items?: MemoCardRecord[];
   hasMore?: boolean;
+  hasPrevious?: boolean;
   nextCursor?: string | null;
   previousCursor?: string | null;
 };
