@@ -348,6 +348,62 @@ describe("packagePublicMedia", () => {
     );
   });
 
+  test("adds the media URL when Bun returns a native timeout error", async () => {
+    const cwd = await fixture();
+    const mediaPath = "/api/public/assets/post/native-timeout/hash/card.webp";
+    const mediaUrl = `https://api.example${mediaPath}`;
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${mediaPath}">`);
+
+    let getAttempts = 0;
+    await expect(
+      packagePublicMedia({
+        cwd,
+        mediaOrigin: "https://api.example",
+        siteUrl: "https://site.example",
+        downloadAttempts: 2,
+        retryDelayMs: 0,
+        fetchImpl: async (_input, init) => {
+          if (init?.method === "HEAD") return response("", { "content-length": "4" });
+          getAttempts += 1;
+          throw new DOMException("The operation timed out.", "TimeoutError");
+        },
+      })
+    ).rejects.toThrow(`Media origin request failed after 2 attempts: ${mediaUrl}`);
+
+    expect(getAttempts).toBe(2);
+  });
+
+  test("retries a transient Bun timeout error before packaging the media", async () => {
+    const cwd = await fixture();
+    const mediaPath = "/api/public/assets/post/transient-timeout/hash/card.webp";
+    await writeFile(join(cwd, "site-dist", "index.html"), `<img src="${mediaPath}">`);
+
+    let getAttempts = 0;
+    await packagePublicMedia({
+      cwd,
+      mediaOrigin: "https://api.example",
+      siteUrl: "https://site.example",
+      downloadAttempts: 5,
+      retryDelayMs: 0,
+      fetchImpl: async (_input, init) => {
+        if (init?.method === "HEAD") return response("", { "content-length": "4" });
+        getAttempts += 1;
+        if (getAttempts < 5) {
+          throw new DOMException("The operation timed out.", "TimeoutError");
+        }
+        return response("four", { "content-length": "4" });
+      },
+    });
+
+    expect(getAttempts).toBe(5);
+    expect(
+      await readFile(
+        join(cwd, "site-dist", "_content/assets/post/transient-timeout/hash/card.webp"),
+        "utf8"
+      )
+    ).toBe("four");
+  });
+
   test("fails when a media response body exceeds its timeout", async () => {
     const cwd = await fixture();
     const mediaPath = "/api/public/assets/post/timeout-body/hash/card.webp";

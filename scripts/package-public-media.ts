@@ -205,6 +205,14 @@ function readContentLength(response: Response) {
   return Number(value);
 }
 
+function mediaDownloadError(url: string, attempts: number, cause: unknown) {
+  const details = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
+  return new Error(
+    `Media origin request failed after ${attempts} attempts: ${url}; last error: ${details}`,
+    { cause }
+  );
+}
+
 async function readResponseWithinLimit(
   response: Response,
   maxBytes: number,
@@ -354,7 +362,7 @@ async function downloadMedia(
       );
     } catch (error) {
       lastError = error;
-      if (attempt === downloadAttempts) throw error;
+      if (attempt === downloadAttempts) throw mediaDownloadError(url, downloadAttempts, error);
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
       continue;
     }
@@ -390,7 +398,7 @@ async function downloadMedia(
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
     }
   }
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  throw mediaDownloadError(url, downloadAttempts, lastError);
 }
 
 function fetchKey(reference: AssetReference) {
