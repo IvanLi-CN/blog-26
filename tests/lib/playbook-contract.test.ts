@@ -110,6 +110,29 @@ describe("playbook-public-contract", () => {
         bundle: { ...bundle.manifest.bundle, size: archive.length, sha256: sha256(archive) },
       })
     ).toThrow("Unsafe");
+    const oneBlockTerminator = gunzipSync(bundle.archive).subarray(0, -512);
+    const oneBlockArchive = gzipSync(oneBlockTerminator);
+    expect(() =>
+      readPublicArchive(oneBlockArchive, {
+        ...bundle.manifest,
+        bundle: {
+          ...bundle.manifest.bundle,
+          size: oneBlockArchive.length,
+          sha256: sha256(oneBlockArchive),
+        },
+      })
+    ).toThrow("two zero blocks");
+    const concatenatedArchive = Buffer.concat([bundle.archive, bundle.archive]);
+    expect(() =>
+      readPublicArchive(concatenatedArchive, {
+        ...bundle.manifest,
+        bundle: {
+          ...bundle.manifest.bundle,
+          size: concatenatedArchive.length,
+          sha256: sha256(concatenatedArchive),
+        },
+      })
+    ).toThrow("one gzip member");
     const nonUstarTar = gunzipSync(bundle.archive);
     nonUstarTar[257] = 0x78;
     const nonUstarArchive = gzipSync(nonUstarTar);
@@ -577,9 +600,11 @@ describe("playbook-cache-http-ssr", () => {
       async (url) =>
         url.endsWith("manifest.json")
           ? Response.json(next.edition.edition)
-          : new Response(
-              encodeJson(url.endsWith("catalog.json") ? next.edition.catalog : next.edition.search)
-            ),
+          : url.endsWith("catalog.json")
+            ? new Response(encodeJson(next.edition.catalog))
+            : url.endsWith("search-documents.json")
+              ? new Response(encodeJson(next.edition.search))
+              : new Response("{}\n"),
       (run, ms) => {
         tick = run;
         interval = ms;
@@ -651,13 +676,14 @@ describe("playbook-cache-http-ssr", () => {
       requests++;
       if (fail) return Response.json({ schemaVersion: 2 });
       if (url.endsWith("manifest.json")) return Response.json(next.edition.edition);
-      return new Response(
-        encodeJson(url.endsWith("catalog.json") ? next.edition.catalog : next.edition.search)
-      );
+      if (url.endsWith("catalog.json")) return new Response(encodeJson(next.edition.catalog));
+      if (url.endsWith("search-documents.json"))
+        return new Response(encodeJson(next.edition.search));
+      return new Response("{}\n");
     });
     await store.adopt(current.edition);
     await Promise.all([store.sync(), store.sync()]);
-    expect(requests).toBe(3);
+    expect(requests).toBe(4);
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(
       store.getEdition(
@@ -671,6 +697,21 @@ describe("playbook-cache-http-ssr", () => {
     expect(store.current?.edition.source.tag).toBe("v3.1.0");
     expect(PLAYBOOK_POLL_INTERVAL_MS).toBe(300_000);
   });
+  test("keeps the current edition when the published article snapshot fails integrity", async () => {
+    const root = await temp();
+    const current = makePublicBundle("v3.0.0", "100");
+    const next = makePublicBundle("v3.1.0", "101");
+    const store = new PlaybookStore(root, async (url) => {
+      if (url.endsWith("manifest.json")) return Response.json(next.edition.edition);
+      if (url.endsWith("catalog.json")) return new Response(encodeJson(next.edition.catalog));
+      if (url.endsWith("search-documents.json"))
+        return new Response(encodeJson(next.edition.search));
+      return new Response("x}\n");
+    });
+    await store.adopt(current.edition);
+    await expect(store.sync()).rejects.toThrow("integrity");
+    expect(store.current?.edition.source.tag).toBe("v3.0.0");
+  });
   test("console follows a verified published rollback pointer and persists both editions", async () => {
     const root = await temp();
     const oldCatalog = structuredClone(publicFixtureCatalog);
@@ -681,11 +722,10 @@ describe("playbook-cache-http-ssr", () => {
     const store = new PlaybookStore(root, async (url) => {
       requests++;
       if (url.endsWith("manifest.json")) return Response.json(rollback.edition.edition);
-      return new Response(
-        encodeJson(
-          url.endsWith("catalog.json") ? rollback.edition.catalog : rollback.edition.search
-        )
-      );
+      if (url.endsWith("catalog.json")) return new Response(encodeJson(rollback.edition.catalog));
+      if (url.endsWith("search-documents.json"))
+        return new Response(encodeJson(rollback.edition.search));
+      return new Response("{}\n");
     });
     await store.adopt(newer.edition);
     await store.sync();
@@ -694,7 +734,7 @@ describe("playbook-cache-http-ssr", () => {
       createElement(PlaybookPage, { edition: store.current, path: "topics/delivery" })
     );
     expect(html).toContain("Restored stable content");
-    expect(requests).toBe(3);
+    expect(requests).toBe(4);
     const restored = new PlaybookStore(root);
     await restored.load(join(root, "missing-seed.json"));
     expect(restored.current?.edition).toEqual(rollback.edition.edition);

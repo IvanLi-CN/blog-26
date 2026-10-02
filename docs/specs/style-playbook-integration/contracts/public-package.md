@@ -4,7 +4,7 @@ This contract is shared by the two repositories. It covers `REQ-PBI-002`, `REQ-P
 
 ## Release assets
 
-`playbook-public.tar.gz` is a deterministic gzip/ustar archive with exactly two regular files at its root: `catalog.json` (complete upstream `PublicCatalog`) and `search-documents.json` (upstream public `SearchPayload`). No directory, link, PAX header, duplicate entry, absolute path, traversal, extra file or nonzero trailing data is accepted. The uncompressed archive is limited to 64 MiB. The reader parses bytes in memory; it never extracts or executes package content.
+`playbook-public.tar.gz` is a deterministic single-member gzip/ustar archive with exactly two regular files at its root: `catalog.json` (complete upstream `PublicCatalog`) and `search-documents.json` (upstream public `SearchPayload`). The gzip header has no optional fields; the ustar stream uses version `00` and ends with at least two complete zero blocks. No directory, link, PAX header, duplicate entry, absolute path, traversal, extra file or nonzero trailing data is accepted. The uncompressed archive is limited to 64 MiB. The reader parses bytes in memory; it never extracts or executes package content.
 
 Publish `playbook-public-manifest.json` **last**, after checking the uploaded archive's digest and size. Repeating a release must verify existing assets; a different digest at the same release identity is an error. Archive metadata and payload timestamps must come from the source commit, not the export clock. Release metadata belongs to the separate readiness manifest, so the archive does not contain its own digest.
 

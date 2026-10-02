@@ -491,6 +491,14 @@ jobs:
           PUBLIC_SITE_BASE_PATH: ${{ env.PUBLIC_SITE_BASE_PATH }}
         run: bun ./scripts/verify-pages-build.ts
 
+      - name: Build console SSR for Playbook smoke
+        run: bun run console:build
+
+      - name: Verify Playbook static and console SSR output
+        env:
+          PLAYBOOK_SYNC_ENABLED: 'false'
+        run: bun run verify:playbook-build
+
       - name: Package referenced public media
         id: package-public-media
         env:

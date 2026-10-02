@@ -123,6 +123,7 @@
     "site:dev": "sh -c 'SITE_PORT=${SITE_PORT:-$(bun ./scripts/resolve-worktree-port.ts site)}; export SITE_PORT; bun run generate:public-pwa && bun run generate:project-posters && bun run generate:project-social-previews && bun run public:export && bunx astro dev --host 127.0.0.1 --port \"$SITE_PORT\"'",
     "site:build": "bun run generate:public-pwa && bun run generate:project-posters && bun run generate:project-social-previews && bun run public:export && bun run playbook:prepare && bunx astro build && bun run verify:public-pwa && PROJECT_POSTER_REQUIRE_DIST=1 bun run verify:project-posters && PROJECT_SOCIAL_PREVIEW_REQUIRE_DIST=1 bun run verify:project-social-previews",
     "console:build": "CONSOLE_RUNTIME=true PUBLIC_SITE_URL=${PUBLIC_CONSOLE_URL:-https://console.ivanli.cc} PUBLIC_SITE_BASE_PATH= bunx astro build",
+    "verify:playbook-build": "bun tests/lib/playbook-build-smoke.ts",
     "console:start": "NODE_ENV=production CONSOLE_RUNTIME=true bun scripts/start-console.ts",
     "gateway:dev": "bun ./scripts/start-gateway.ts",
     "gateway:start": "NODE_ENV=production bun ./scripts/start-gateway.ts",

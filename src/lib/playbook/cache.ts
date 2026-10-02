@@ -37,6 +37,13 @@ export function validatePlaybookEdition(value: unknown): PlaybookEdition {
   }
   for (const file of edition.files.filter((entry) => entry.path !== "public-snapshot.json"))
     verifyFile(encodeJson(file.path === "catalog.json" ? catalog : search), file);
+  if (input.publicSnapshot !== undefined) {
+    if (typeof input.publicSnapshot !== "string" && !(input.publicSnapshot instanceof Uint8Array))
+      throw new Error("Invalid article/Memo snapshot");
+    const snapshot = edition.files.find((file) => file.path === "public-snapshot.json");
+    if (!snapshot) throw new Error("Article/Memo snapshot record is missing");
+    verifyFile(input.publicSnapshot, snapshot);
+  }
   return { edition, catalog, search };
 }
 
@@ -166,6 +173,20 @@ export class PlaybookStore {
           return [file.path, JSON.parse(Buffer.from(bytes).toString("utf8"))] as const;
         })
     );
+    const snapshot = pointer.files.find((file) => file.path === "public-snapshot.json");
+    if (!snapshot) throw new Error("Article/Memo snapshot record is missing");
+    const publicSnapshot = await fetchBounded(
+      this.fetcher,
+      new URL(snapshot.path, base).toString(),
+      snapshot.size,
+      signal
+    );
+    validatePlaybookEdition({
+      edition: pointer,
+      catalog: new Map(results).get("catalog.json"),
+      search: new Map(results).get("search-documents.json"),
+      publicSnapshot,
+    });
     if (this.stopped) return;
     const files = new Map(results);
     await this.adopt({

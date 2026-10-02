@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { gunzipSync } from "node:zlib";
+import { gunzipSync, inflateRawSync } from "node:zlib";
 import {
   computeEditionDigest,
   encodeJson,
@@ -20,14 +20,36 @@ const FILES = ["catalog.json", "search-documents.json"];
 export function readPublicArchive(archive: Uint8Array, manifest: PlaybookManifest) {
   if (archive.byteLength !== manifest.bundle.size || sha256(archive) !== manifest.bundle.sha256)
     throw new Error("Playbook bundle integrity mismatch");
+  if (
+    archive.byteLength < 18 ||
+    archive[0] !== 0x1f ||
+    archive[1] !== 0x8b ||
+    archive[2] !== 0x08 ||
+    archive[3] !== 0
+  )
+    throw new Error("Unsupported gzip format; expected one deterministic member");
+  const raw = inflateRawSync(archive.subarray(10), {
+    info: true,
+    maxOutputLength: 64 * 1024 * 1024,
+  }) as {
+    engine: { bytesWritten: number };
+  };
+  if (10 + raw.engine.bytesWritten + 8 !== archive.byteLength)
+    throw new Error("Archive must contain one gzip member");
   const tar = gunzipSync(archive, { maxOutputLength: 64 * 1024 * 1024 });
   const files = new Map<string, Buffer>();
   let offset = 0;
+  let terminated = false;
   while (offset + 512 <= tar.length) {
     const header = tar.subarray(offset, offset + 512);
     if (header.every((byte) => byte === 0)) {
-      if (tar.subarray(offset).some((byte) => byte !== 0))
-        throw new Error("Unexpected archive data after terminator");
+      if (
+        offset + 1024 > tar.length ||
+        tar.subarray(offset, offset + 1024).some((byte) => byte !== 0) ||
+        tar.subarray(offset + 1024).some((byte) => byte !== 0)
+      )
+        throw new Error("Archive must end with two zero blocks");
+      terminated = true;
       break;
     }
     const magic = header.subarray(257, 263).toString("utf8");
@@ -62,8 +84,7 @@ export function readPublicArchive(archive: Uint8Array, manifest: PlaybookManifes
     offset += 512 + Math.ceil(size / 512) * 512;
   }
   if (files.size !== FILES.length) throw new Error("Archive data files are incomplete");
-  if (offset >= tar.length || tar.length % 512 !== 0)
-    throw new Error("Archive has no complete terminator");
+  if (!terminated || tar.length % 512 !== 0) throw new Error("Archive has no complete terminator");
   return files;
 }
 
