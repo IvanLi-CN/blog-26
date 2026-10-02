@@ -305,6 +305,12 @@ export function PublicMemoComposerIsland({
   const editReturnScrollY = useRef<number | null>(null);
   const loadingAppendCursor = useRef<string | null>(null);
   const pageRequestInFlight = useRef(false);
+  const inFlightPageDirection = useRef<"newer" | "older" | null>(null);
+  const queuedOppositePage = useRef<{
+    cursor: string;
+    direction: "newer" | "older";
+    append?: boolean;
+  } | null>(null);
   const refreshQueuedAfterPage = useRef(false);
   const requestMemoPageRef = useRef<
     | ((request: {
@@ -329,13 +335,17 @@ export function PublicMemoComposerIsland({
       if (pageRequestInFlight.current) {
         if (!cursor && direction === "older" && !append) {
           refreshQueuedAfterPage.current = true;
+        } else if (cursor && direction !== inFlightPageDirection.current) {
+          queuedOppositePage.current = { cursor, direction, append };
         }
         return;
       }
       pageRequestInFlight.current = true;
+      inFlightPageDirection.current = direction;
       const appendCursor = cursor ?? null;
       if (append && appendCursor && loadingAppendCursor.current === appendCursor) {
         pageRequestInFlight.current = false;
+        inFlightPageDirection.current = null;
         return;
       }
       if (append && appendCursor) loadingAppendCursor.current = appendCursor;
@@ -400,6 +410,8 @@ export function PublicMemoComposerIsland({
           deferredMemos.current = [];
           setMemos((current) => uniqueMemos([...current, ...continuation]));
           setHasMore(page.hasMore);
+          setHasNewer(page.hasPrevious);
+          setPreviousCursor(page.previousCursor);
         }
         if (direction === "older") setNextCursor(page.nextCursor);
       } catch (error) {
@@ -416,17 +428,24 @@ export function PublicMemoComposerIsland({
         }
       } finally {
         pageRequestInFlight.current = false;
+        inFlightPageDirection.current = null;
         if (append && appendCursor && loadingAppendCursor.current === appendCursor) {
           loadingAppendCursor.current = null;
         }
-        const shouldRefresh = requestId === listRequestId.current && refreshQueuedAfterPage.current;
+        const isCurrentRequest = requestId === listRequestId.current;
+        const shouldRefresh = isCurrentRequest && refreshQueuedAfterPage.current;
         refreshQueuedAfterPage.current = false;
-        if (requestId === listRequestId.current) {
+        const queuedPage = isCurrentRequest ? queuedOppositePage.current : null;
+        queuedOppositePage.current = null;
+        if (isCurrentRequest) {
           setIsListLoading(false);
           setIsLoadingMore(false);
           setIsLoadingNewer(false);
         }
         if (shouldRefresh) void requestMemoPageRef.current?.({});
+        else if (isCurrentRequest && queuedPage) {
+          void requestMemoPageRef.current?.(queuedPage);
+        }
       }
     },
     []

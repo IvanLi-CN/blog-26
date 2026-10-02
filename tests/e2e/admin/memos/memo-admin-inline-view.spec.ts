@@ -39,6 +39,113 @@ test.describe("Inline memo admin view", () => {
     );
   });
 
+  for (const activeDirection of ["older", "newer"] as const) {
+    const queuedDirection = activeDirection === "older" ? "newer" : "older";
+
+    test(`loads the ${queuedDirection} page after an in-flight ${activeDirection} page`, async ({
+      page,
+    }) => {
+      await loginAsAdmin(page);
+      const marker = `inline-${activeDirection}-edge-race-${Date.now()}`;
+      for (let index = 0; index < 30; index += 1) {
+        await createMemo(page, `${marker}-${String(index).padStart(2, "0")}`);
+      }
+
+      let olderCursorRequests = 0;
+      let didHoldActivePage = false;
+      let resolveActivePageCaptured: (() => void) | undefined;
+      let releaseActivePage: (() => void) | undefined;
+      const activePageCaptured = new Promise<void>((resolve) => {
+        resolveActivePageCaptured = resolve;
+      });
+      const activePageReleased = new Promise<void>((resolve) => {
+        releaseActivePage = resolve;
+      });
+
+      await page.route("**/api/public/memos**", async (route) => {
+        const url = new URL(route.request().url());
+        if (!isMemoListRequest(route.request()) || !url.searchParams.has("cursor")) {
+          await route.continue();
+          return;
+        }
+
+        const direction = url.searchParams.get("direction") ?? "older";
+        if (direction === "older") olderCursorRequests += 1;
+        const isTargetPage =
+          direction === activeDirection &&
+          (activeDirection !== "older" || olderCursorRequests > 1) &&
+          !didHoldActivePage;
+        if (!isTargetPage) {
+          await route.continue();
+          return;
+        }
+
+        didHoldActivePage = true;
+        const response = await route.fetch();
+        resolveActivePageCaptured?.();
+        await activePageReleased;
+        await route.fulfill({ response });
+      });
+
+      try {
+        await page.goto("/memos", { waitUntil: "domcontentloaded" });
+        const memoList = page.getByTestId("admin-live-memo-list-items");
+        await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+        await expect
+          .poll(async () => memoList.locator(":scope > .virtualized-memo-row").count())
+          .toBeGreaterThan(0);
+
+        const firstOlderRequest = page.waitForRequest(
+          (request) =>
+            isMemoListRequest(request) &&
+            new URL(request.url()).searchParams.get("direction") === "older" &&
+            new URL(request.url()).searchParams.has("cursor")
+        );
+        const olderSentinel = page.getByTestId("admin-memo-pagination-sentinel");
+        await expect(olderSentinel).toBeAttached();
+        await olderSentinel.scrollIntoViewIfNeeded();
+        await firstOlderRequest;
+        await expect(memoList).toHaveAttribute("data-loaded-memos", "20");
+        await expect(page.getByTestId("admin-memo-pagination-sentinel-newer")).toBeAttached();
+
+        const activePageRequest = page.waitForRequest(
+          (request) =>
+            isMemoListRequest(request) &&
+            new URL(request.url()).searchParams.get("direction") === activeDirection &&
+            new URL(request.url()).searchParams.has("cursor"),
+          { timeout: 15_000 }
+        );
+        await page.evaluate((direction) => {
+          const top = direction === "newer" ? 0 : document.documentElement.scrollHeight;
+          window.scrollTo({ top, behavior: "instant" });
+        }, activeDirection);
+        await activePageRequest;
+        await activePageCaptured;
+
+        const queuedPageRequest = page.waitForRequest(
+          (request) =>
+            isMemoListRequest(request) &&
+            new URL(request.url()).searchParams.get("direction") === queuedDirection &&
+            new URL(request.url()).searchParams.has("cursor"),
+          { timeout: 15_000 }
+        );
+        await page.evaluate((direction) => {
+          const top = direction === "newer" ? 0 : document.documentElement.scrollHeight;
+          window.scrollTo({ top, behavior: "instant" });
+        }, queuedDirection);
+        releaseActivePage?.();
+        await queuedPageRequest;
+        await expect(memoList).toHaveAttribute("data-loaded-memos", "30");
+        const mountedKeys = await memoList
+          .locator(":scope > .virtualized-memo-row")
+          .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-memo-virtual-key")));
+        expect(new Set(mountedKeys).size).toBe(mountedKeys.length);
+      } finally {
+        releaseActivePage?.();
+      }
+    });
+  }
+
   test("auto-loads ten-item server pages and refreshes from the first cursor", async ({ page }) => {
     await loginAsAdmin(page);
     const marker = `inline-page-${Date.now()}`;

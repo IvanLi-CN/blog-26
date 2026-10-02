@@ -1235,6 +1235,35 @@ public: false
     expect(pages).toEqual([]);
   }, 60_000);
 
+  it("does not serve a public draft memo through the guest detail API", async () => {
+    await seedPost({
+      id: "Memos/public-draft-detail.md",
+      filePath: "Memos/public-draft-detail.md",
+      slug: "public-draft-detail",
+      type: "memo",
+      title: "SECRET DRAFT TITLE",
+      body: "SECRET DRAFT BODY",
+      public: true,
+      draft: true,
+      tags: JSON.stringify([]),
+    });
+
+    const guestResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/public-draft-detail"),
+      "/memos/public-draft-detail"
+    );
+
+    expect(guestResponse.status).toBe(403);
+    expect(await guestResponse.text()).not.toContain("SECRET DRAFT BODY");
+
+    const adminResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/public-draft-detail", {}, ADMIN_EMAIL),
+      "/memos/public-draft-detail"
+    );
+    expect(adminResponse.status).toBe(200);
+    expect(await adminResponse.text()).toContain("SECRET DRAFT BODY");
+  });
+
   it("rewrites public snapshot media fields to assets facade urls", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/public-cover.png"), "cover");
