@@ -117,6 +117,7 @@ export default function MemoTimeline({
             `/memos/data/${cursor}.json${snapshotVersion ? `?v=${encodeURIComponent(snapshotVersion)}` : ""}`
           );
           const response = await fetch(url ?? "");
+          if (!response.ok) throw new Error(`请求失败（${response.status}）`);
           payload = (await response.json()) as MemoPageResponse;
         } else {
           const params = new URLSearchParams({
