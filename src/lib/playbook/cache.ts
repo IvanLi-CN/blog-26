@@ -111,7 +111,7 @@ export class PlaybookStore {
     const next = {
       current: edition,
       previous:
-        this.state.current?.edition.editionDigest === edition.edition.editionDigest
+        this.state.current && samePlaybookEdition(this.state.current.edition, edition.edition)
           ? this.state.previous
           : this.state.current,
     };

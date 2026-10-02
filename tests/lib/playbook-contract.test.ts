@@ -560,6 +560,36 @@ describe("playbook-cache-http-ssr", () => {
     );
   });
 });
+test("retains distinct source identities when two Releases have identical data digests", async () => {
+  const root = await temp();
+  const old = makePublicBundle("v3.0.0", "100");
+  const next = makePublicBundle("v3.1.0", "101");
+  expect(next.edition.edition.editionDigest).toBe(old.edition.edition.editionDigest);
+  const store = new PlaybookStore(root);
+  await store.adopt(old.edition);
+  await store.adopt(next.edition);
+  await store.adopt(next.edition);
+  const persisted = JSON.parse(await readFile(join(root, "state.json"), "utf8"));
+  expect(persisted.current.edition.source).toEqual(next.manifest.source);
+  expect(persisted.previous.edition.source).toEqual(old.manifest.source);
+  const restored = new PlaybookStore(root);
+  await restored.load(join(root, "missing-seed.json"));
+  expect(restored.current?.edition.source).toEqual(next.manifest.source);
+  const response = await handlePlaybookRequest(
+    new Request(
+      `https://console.test/api/public/playbook/search-index?edition=${old.edition.edition.editionDigest}`
+    ),
+    "/playbook/search-index",
+    restored
+  );
+  expect(response.status).toBe(200);
+  expect(await response.text()).toBe(encodeJson(old.edition.search));
+  await restored.adopt(next.edition);
+  expect(
+    JSON.parse(await readFile(join(root, "state.json"), "utf8")).previous.edition.source
+  ).toEqual(old.manifest.source);
+});
+
 test("Chinese, English and independent Policy documents use the upstream tokenization strategy", () => {
   const { edition } = makePublicBundle();
   const index = buildPlaybookIndex(edition.search);
