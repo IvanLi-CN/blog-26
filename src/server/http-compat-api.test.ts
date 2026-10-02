@@ -2165,6 +2165,22 @@ public: false
       "older-underscore-memo",
     ]);
     expect(nextPage.hasMore).toBe(false);
+    expect(nextPage.hasPrevious).toBe(true);
+    expect(nextPage.previousCursor).toContain("Memos/20260615_older_memo.md");
+
+    const previousResponse = await handlePublicApiRequest(
+      buildRequest(
+        `/api/public/memos?publicOnly=false&limit=1&direction=newer&cursor=${encodeURIComponent(nextPage.previousCursor)}`,
+        {},
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+    const previousPage = await readJson(previousResponse);
+    expect(previousPage.memos.map((memo: { slug: string }) => memo.slug)).toEqual([
+      "recent-underscore-memo",
+    ]);
+    expect(previousPage.hasMore).toBe(false);
   });
 
   it("returns a controlled bad request for an over-budget public search query", async () => {

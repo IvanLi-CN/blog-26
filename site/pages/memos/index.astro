@@ -1,24 +1,37 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import MemoCard from "../../components/MemoCard.astro";
+import MemoTimeline, { toMemoCardRecord } from "../../components/MemoTimeline";
+import { getMemoListWebDemoInitialPage } from "../../lib/memo-list-web-demo";
 import { PublicMemoComposerIsland } from "@console-memo-authoring";
 import { getSnapshot } from "../../lib/public-site";
 import { isLocalContentEnabled } from "@/config/paths";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
 
-const snapshot = await getSnapshot();
-const isConsoleBuild = process.env.CONSOLE_RUNTIME === "true";
+const isMemoListWebDemo =
+  import.meta.env.DEV && Astro.url.searchParams.get("demo") === "true";
+const snapshot = isMemoListWebDemo ? null : await getSnapshot();
+const isConsoleBuild = !isMemoListWebDemo && process.env.CONSOLE_RUNTIME === "true";
 const runtimeContext = isConsoleBuild
   ? resolveRuntimeContext(Astro.request)
   : { mode: "public" as const };
 const isConsoleRuntime = isConsoleBuild && runtimeContext.mode === "console";
 let initialIsAdmin = false;
-let initialMemos = snapshot.memos;
+let initialMemos = snapshot?.memos.slice(0, 10) ?? [];
 let initialMemosHasMore = false;
 let initialMemosNextCursor: string | null = null;
+let initialMemosHasNewer = false;
+let initialMemosPreviousCursor: string | null = null;
+let initialMemosError: string | null = null;
 
-if (isConsoleRuntime) {
+if (isMemoListWebDemo) {
+  const demoPage = getMemoListWebDemoInitialPage();
+  initialMemos = demoPage.memos;
+  initialMemosHasMore = demoPage.hasMore;
+  initialMemosNextCursor = demoPage.nextCursor;
+  initialMemosHasNewer = demoPage.hasPrevious;
+  initialMemosPreviousCursor = demoPage.previousCursor;
+} else if (isConsoleRuntime) {
   const { extractAuthFromRequest } = await import("@/lib/auth-utils");
   const { handlePublicApiRequest } = await import("@/server/public-api/router");
   const auth = await extractAuthFromRequest(Astro.request);
@@ -27,70 +40,87 @@ if (isConsoleRuntime) {
     headers: Astro.request.headers,
   });
   const memoResponse = await handlePublicApiRequest(memoRequest, "/memos");
-  if (memoResponse.ok) {
+  try {
+    if (!memoResponse.ok) throw new Error("Memo request failed");
     const payload = (await memoResponse.json()) as {
       memos?: typeof snapshot.memos;
       items?: typeof snapshot.memos;
       hasMore?: boolean;
       nextCursor?: string | null;
+      hasPrevious?: boolean;
+      previousCursor?: string | null;
     };
     const liveMemos = Array.isArray(payload.memos) ? payload.memos : payload.items;
-    if (Array.isArray(liveMemos)) initialMemos = liveMemos;
-    else if (initialIsAdmin) initialMemos = [];
+    if (!Array.isArray(liveMemos)) throw new Error("Memo response was invalid");
+    initialMemos = liveMemos;
     initialMemosHasMore = payload.hasMore === true;
     initialMemosNextCursor = payload.nextCursor ?? null;
-  } else if (initialIsAdmin) {
+    initialMemosHasNewer = payload.hasPrevious === true;
+    initialMemosPreviousCursor = payload.previousCursor ?? null;
+  } catch {
     initialMemos = [];
+    initialMemosError = "公开 Memo 数据暂时不可用。";
   }
 }
 
-const localSourceEnabled = isLocalContentEnabled();
+const localSourceEnabled = !isMemoListWebDemo && isLocalContentEnabled();
 const localMemoRootPath = localSourceEnabled ? getServerLocalMemoRootPath() : undefined;
-const renderedMemos = isConsoleRuntime ? initialMemos : snapshot.memos;
+const renderedMemos = isConsoleRuntime || isMemoListWebDemo
+  ? initialMemos
+  : (snapshot?.memos.slice(0, 10) ?? initialMemos);
+const renderedMemosHasMore = isConsoleRuntime || isMemoListWebDemo
+  ? initialMemosHasMore
+  : (snapshot?.memos.length ?? renderedMemos.length) > renderedMemos.length;
+const renderedMemosNextCursor = isConsoleRuntime || isMemoListWebDemo
+  ? initialMemosNextCursor
+  : renderedMemosHasMore
+    ? "2"
+    : null;
 ---
 <BaseLayout pathname="/memos" title="Memos - Ivan's Blog" description="浏览所有公开 Memos">
-  <section class="nature-container px-1 py-8 sm:px-6 sm:py-12 lg:py-16">
+  <section class="nature-container memo-stream-page px-1 py-8 sm:px-6 sm:py-12 lg:py-16">
     <div class="mb-8 text-center sm:mb-12">
-      <span class="nature-kicker justify-center">Flow Notes</span>
+      <span class="nature-kicker justify-center">
+        {isMemoListWebDemo ? "Interactive Web Demo" : "Flow Notes"}
+      </span>
       <h1 class="nature-title mt-4 text-4xl sm:text-5xl lg:text-6xl">Memos</h1>
       <p class="nature-muted mx-auto mt-4 max-w-2xl text-base sm:text-lg">
-        记录想法、灵感和日常思考的快速笔记
+        {isMemoListWebDemo
+          ? "本地模拟数据从中间位置开始，向上或向下滚动以测试连续加载与卡片定位。"
+          : "记录想法、灵感和日常思考的快速笔记"}
       </p>
     </div>
 
-    {isConsoleRuntime ? (
+    {isConsoleRuntime && initialIsAdmin ? (
       <PublicMemoComposerIsland
         client:load
         initialIsAdmin={initialIsAdmin}
         initialMemos={initialMemos}
         initialHasMore={initialMemosHasMore}
         initialNextCursor={initialMemosNextCursor}
+        initialHasNewer={initialMemosHasNewer}
+        initialPreviousCursor={initialMemosPreviousCursor}
         localSourceEnabled={localSourceEnabled}
         localMemoRootPath={localMemoRootPath}
       />
     ) : null}
 
     {!isConsoleRuntime || !initialIsAdmin ? (
-      renderedMemos.length > 0 ? (
-        <div
-          class="memos-list nature-timeline nature-mobile-reading-stream"
-          data-testid="memos-timeline"
-          data-public-memos-static-list
-        >
-          {renderedMemos.map((memo, index) => (
-            <MemoCard
-              memo={memo}
-              isLast={index === renderedMemos.length - 1}
-              iconMap={snapshot.tags.tagIconMap}
-              iconSvgMap={snapshot.tags.tagIconSvgMap}
-            />
-          ))}
-        </div>
-      ) : (
-        <div class="nature-empty">
-          <p>暂无公开 Memos</p>
-        </div>
-      )
+      <MemoTimeline
+        client:load
+        source={isMemoListWebDemo ? "demo" : isConsoleRuntime ? "database" : "snapshot"}
+        initialMemos={renderedMemos.map(toMemoCardRecord)}
+        initialHasMore={renderedMemosHasMore}
+        initialNextCursor={renderedMemosNextCursor}
+        initialHasNewer={isConsoleRuntime || isMemoListWebDemo ? initialMemosHasNewer : false}
+        initialPreviousCursor={
+          isConsoleRuntime || isMemoListWebDemo ? initialMemosPreviousCursor : null
+        }
+        initialError={initialMemosError}
+        snapshotVersion={isConsoleRuntime ? undefined : snapshot?.generatedAt}
+        iconMap={snapshot?.tags.tagIconMap ?? {}}
+        iconSvgMap={snapshot?.tags.tagIconSvgMap ?? {}}
+      />
     ) : null}
   </section>
 </BaseLayout>

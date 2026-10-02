@@ -39,9 +39,7 @@ test.describe("Inline memo admin view", () => {
     );
   });
 
-  test("uses ten-item server pages, load more, and refreshes from the first cursor", async ({
-    page,
-  }) => {
+  test("auto-loads ten-item server pages and refreshes from the first cursor", async ({ page }) => {
     await loginAsAdmin(page);
     const marker = `inline-page-${Date.now()}`;
     const createdMemos: Array<{ id: string }> = [];
@@ -70,13 +68,18 @@ test.describe("Inline memo admin view", () => {
     });
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
 
-    const cards = page.getByTestId("admin-live-memo-card");
-    await expect(cards).toHaveCount(10);
-    await expect(cards.first()).toHaveAttribute("data-id", /.+/);
-    const initialIds = await cards.evaluateAll((elements) =>
-      elements.map((element) => element.getAttribute("data-id"))
-    );
-    expect(initialIds).toEqual(expectedServiceOrder.slice(0, 10));
+    const memoList = page.getByTestId("admin-live-memo-list-items");
+    const readMountedRows = () =>
+      memoList.locator(":scope > .virtualized-memo-row").evaluateAll((rows) =>
+        rows.map((row) => ({
+          index: Number(row.getAttribute("data-index")),
+          id: row.querySelector("[data-testid='admin-live-memo-card']")?.getAttribute("data-id"),
+        }))
+      );
+    await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+    await expect.poll(async () => (await readMountedRows()).length).toBeGreaterThan(0);
+    const initialRows = await readMountedRows();
+    for (const row of initialRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
       .find((url) => !url.searchParams.has("cursor"));
@@ -93,27 +96,32 @@ test.describe("Inline memo admin view", () => {
     const loadMoreRequest = page.waitForRequest(
       (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
     );
-    await page.getByRole("button", { name: "加载更多" }).click();
+    const sentinel = page.getByTestId("admin-memo-pagination-sentinel");
+    await expect(sentinel).toBeAttached();
+    await expect(page.locator(".memo-pagination-fallback")).toHaveCount(0);
+    const accessibleFallback = page.getByTestId("memo-pagination-accessible");
+    await expect(accessibleFallback).toBeAttached();
+    const fallbackBounds = await accessibleFallback.boundingBox();
+    expect(fallbackBounds?.width).toBeLessThan(2);
+    expect(fallbackBounds?.height).toBeLessThan(2);
+    await sentinel.scrollIntoViewIfNeeded();
     await loadMoreRequest;
-    await expect.poll(() => cards.count()).toBeGreaterThan(10);
-    const ids = await cards.evaluateAll((elements) =>
-      elements.map(
-        (element) => element.getAttribute("data-id") ?? element.getAttribute("data-slug")
-      )
+    await expect(memoList).toHaveAttribute(
+      "data-loaded-memos",
+      String(expectedServiceOrder.length)
     );
-    expect(ids).toEqual(expectedServiceOrder);
-    expect(new Set(ids).size).toBe(ids.length);
+    const appendedRows = await readMountedRows();
+    for (const row of appendedRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
+    expect(new Set(appendedRows.map((row) => row.index)).size).toBe(appendedRows.length);
 
     const refreshRequest = page.waitForRequest(
       (request) => isMemoListRequest(request) && !new URL(request.url()).searchParams.has("cursor")
     );
     await page.getByRole("button", { name: "刷新列表" }).click();
     await refreshRequest;
-    await expect(cards).toHaveCount(10);
-    const refreshedIds = await cards.evaluateAll((elements) =>
-      elements.map((element) => element.getAttribute("data-id"))
-    );
-    expect(refreshedIds).toEqual(initialIds);
+    await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+    const refreshedRows = await readMountedRows();
+    for (const row of refreshedRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
   });
 
   test("edits in the current list, saves through PATCH, restores focus, and previews read-only", async ({
@@ -482,7 +490,7 @@ test.describe("Inline memo admin view", () => {
       (response) =>
         isMemoListRequest(response.request()) && new URL(response.url()).searchParams.has("cursor")
     );
-    await page.getByRole("button", { name: "加载更多" }).click();
+    await page.getByTestId("admin-memo-pagination-sentinel").scrollIntoViewIfNeeded();
     await expect((await loadMoreResponse).ok()).toBeTruthy();
     await expect.poll(() => page.getByTestId("admin-live-memo-card").count()).toBeGreaterThan(10);
     await expect(page.getByText("正在更新列表…")).toHaveCount(0);

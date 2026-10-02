@@ -176,6 +176,146 @@ h6 {
   margin: 0 auto;
 }
 
+.memo-stream-page {
+  overflow-anchor: none;
+}
+
+.memo-pagination-feedback {
+  position: relative;
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  padding-block: 0.5rem;
+}
+
+.memo-pagination-loading,
+.memo-pagination-error {
+  display: inline-flex;
+  box-sizing: border-box;
+  width: 4rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--nature-line);
+  border-radius: 999px;
+  background: var(--nature-surface-muted);
+  color: var(--nature-text-soft);
+}
+
+.memo-pagination-loading {
+  width: 3.5rem;
+  height: 1.5rem;
+}
+
+.memo-pagination-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.memo-pagination-wave-dot {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: var(--nature-accent-strong);
+  animation: memo-pagination-wave 900ms ease-in-out infinite;
+}
+
+.memo-pagination-wave-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.memo-pagination-wave-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+.memo-pagination-error {
+  gap: 0.25rem;
+  color: var(--nature-danger);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.memo-pagination-error:hover {
+  border-color: var(--nature-danger);
+  background: rgba(var(--nature-highlight-rgb), 0.5);
+}
+
+.memo-pagination-fallback {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--nature-line);
+  border-radius: 999px;
+  background: var(--nature-surface-muted);
+  color: var(--nature-text-soft);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.memo-pagination-fallback:hover {
+  border-color: var(--nature-line-strong);
+  color: var(--nature-text);
+}
+
+.memo-pagination-end {
+  color: var(--nature-text-faint);
+  font-size: 0.75rem;
+}
+
+.memo-pagination-accessible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.memo-pagination-accessible:focus-visible {
+  z-index: 1;
+  width: auto;
+  height: auto;
+  padding: 0.55rem 0.85rem;
+  overflow: visible;
+  clip-path: none;
+  border: 1px solid var(--nature-line-strong);
+  border-radius: 999px;
+  background: var(--nature-surface-strong);
+  box-shadow: var(--nature-shadow);
+  color: var(--nature-text);
+  outline: 2px solid var(--nature-accent-strong);
+  outline-offset: 2px;
+}
+
+@keyframes memo-pagination-wave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memo-pagination-wave-dot {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
 .nature-detail-container {
   width: var(--nature-content-width);
   margin: 0 auto;
@@ -348,6 +488,21 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
   display: flex;
   flex-direction: column;
   gap: var(--nature-timeline-gap);
+}
+
+.virtualized-memo-list {
+  display: block;
+  gap: 0;
+  overflow-anchor: none;
+}
+
+.virtualized-memo-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: 100%;
+  padding-bottom: var(--nature-timeline-gap);
 }
 
 .nature-timeline-type-icon {
@@ -673,7 +828,7 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     opacity: 1;
   }
 
-  .nature-mobile-reading-stream > .nature-mobile-reading-row {
+  .nature-mobile-reading-stream > .virtualized-memo-row > .nature-mobile-reading-row {
     margin-block: 0 !important;
     border: 0 !important;
     border-bottom: 1px solid var(--nature-line) !important;
@@ -683,7 +838,9 @@ html[data-ui-preference="system"] .theme-toggle-option[data-theme-option="system
     backdrop-filter: none;
   }
 
-  .nature-mobile-reading-stream > .nature-mobile-reading-row:last-child {
+  .nature-mobile-reading-stream
+    > .virtualized-memo-row
+    > .nature-mobile-reading-row[data-is-last="true"] {
     border-bottom: 0 !important;
   }
 

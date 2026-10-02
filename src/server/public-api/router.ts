@@ -172,6 +172,7 @@ export async function handlePublicApiRequest(request: Request, subPath: string) 
       if (request.method === "GET") {
         const result = await caller.memos.list({
           cursor: url.searchParams.get("cursor") || undefined,
+          direction: url.searchParams.get("direction") === "newer" ? "newer" : "older",
           limit: Number(url.searchParams.get("limit") || 20),
           search: url.searchParams.get("search") || undefined,
           tag: url.searchParams.get("tag") || undefined,

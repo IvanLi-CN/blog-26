@@ -1,11 +1,13 @@
+import type { MiddlewareHandler } from "astro";
+
 const IMMUTABLE_ASSET_PATH = /\.(?:avif|css|gif|ico|jpeg|jpg|js|map|png|svg|webp|woff2?)$/i;
 
-export async function onRequest({ request }, next) {
+export const onRequest: MiddlewareHandler = async ({ url }, next) => {
   const response = await next();
   if (process.env.CONSOLE_RUNTIME !== "true") return response;
 
   const headers = new Headers(response.headers);
-  const pathname = new URL(request.url).pathname;
+  const pathname = url.pathname;
   const isPrivateAssetPath =
     (pathname.startsWith("/api/") && !pathname.startsWith("/api/public/assets/")) ||
     pathname.startsWith("/_internal/");
@@ -29,4 +31,4 @@ export async function onRequest({ request }, next) {
     statusText: response.statusText,
     headers,
   });
-}
+};
