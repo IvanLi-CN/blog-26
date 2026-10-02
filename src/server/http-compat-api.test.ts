@@ -2226,7 +2226,9 @@ public: false
       "recent-underscore-memo",
     ]);
     expect(firstPage.hasMore).toBe(true);
+    expect(firstPage.hasPrevious).toBe(false);
     expect(firstPage.nextCursor).toContain("Memos/20260616_recent_memo.md");
+    expect(firstPage).not.toHaveProperty("previousCursor");
 
     const nextResponse = await handlePublicApiRequest(
       buildRequest(

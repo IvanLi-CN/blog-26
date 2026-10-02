@@ -4,7 +4,7 @@
 
 - Context: The static public Memos page renders the published snapshot. The Console Memos view serves live public Memos to visitors and exposes quick authoring plus one management list to authenticated administrators.
 - In scope: administrator-only layout and interaction in the Console Memos view, quick creation, the recent management list, preview and edit actions, bidirectional public Memo pagination on the published site and Console guest view, loading feedback, and responsive accessibility.
-- Out of scope: changing published snapshot content or timing, Console deployment boundaries, Memo storage and publication timing, API wire-shape changes, Memo detail redesign, and changes to the established Memo title contract.
+- Out of scope: changing published snapshot content or timing, Console deployment boundaries, Memo storage and publication timing, breaking changes to the established Memo API fields or semantics, Memo detail redesign, and changes to the established Memo title contract. Bidirectional pagination may use the backward-compatible API extension defined in REQ-MAIV-007.
 
 ## Terms and Interfaces
 
@@ -57,7 +57,7 @@ On wide screens, each card reserves a stable area for actions beside its content
 
 ### REQ-MAIV-007
 
-- The view MUST preserve the established Memo title, visibility, public snapshot, storage, and API wire shape. This design contract MUST NOT introduce a new title fallback, publication step, content source, or administrator permission shortcut.
+- The view MUST preserve the established Memo title, visibility, public snapshot, storage, and existing Memo API field meanings. The list API MAY add the optional `direction` request parameter (`older` or `newer`), which defaults to `older` when omitted, and the additive `previousCursor` and `hasPrevious` response fields needed for bidirectional pagination. Existing callers that omit `direction` MUST retain the established older-page ordering, cursor progression, `nextCursor`, `hasMore`, and Memo item fields; clients MUST tolerate the additive response fields. This contract MUST NOT introduce a new title fallback, publication step, content source, or administrator permission shortcut.
 
 ## Verification
 

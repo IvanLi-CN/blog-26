@@ -20,6 +20,7 @@
 - The page-level administrator and guest Storybook fallback has been removed. Component stories remain for focused editor and detail states. Administrator interactions remain covered by E2E checks for keyboard focus, titleless edit preservation, editor sizing, one-line labels, stream geometry, touch targets, and horizontal overflow. The public timeline fixture uses the same mobile-stream structure as production.
 - The bidirectional list Web Demo runs on the shipped Astro `/memos/?demo=true` route, reusing the real site shell, `MemoTimeline`, `MemoCard`, pagination, and virtualized-list components. It provides 2,400 deterministic, variable-height local records, starts around a middle cursor, loads adjacent pages at either edge, and shows loaded-versus-mounted counts. The delay makes loading feedback observable. This Demo is not a Storybook story or a standalone demo route.
 - Administrator pagination queues a request for the opposite edge while a page request is active, then drains it only for the current list request. Appending an older page also updates the newer-edge cursor. Guest detail reads reject draft records even when `public=true`; administrators retain access.
+- The Memo list API keeps older-page behavior when `direction` is omitted. Bidirectional loading uses the optional `direction=newer` parameter and additive `previousCursor`/`hasPrevious` response metadata, while existing item fields and older-page cursor semantics remain intact.
 
 ## Verification
 

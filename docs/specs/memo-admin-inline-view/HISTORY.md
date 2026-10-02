@@ -14,6 +14,7 @@
 - The Memo list/detail API now resolves legacy filename-derived titles through the shared public title contract. Titleless admin detail omits slug display, and create/list reconciliation compares complete title and Markdown content rather than only its excerpt.
 - Browser acceptance now checks system-theme changes and reduced-motion behavior alongside the existing desktop and narrow-screen keyboard paths.
 - The Storybook page fallback now follows the production Nature mobile header offset; its 393px and 320px checks confirm the collapsed header does not cover the management heading or introduce horizontal overflow.
+- The owner approved a backward-compatible Memo pagination API extension for the bidirectional timeline. Omitting `direction` keeps the established older-page behavior and existing field semantics; reverse traversal uses the optional direction parameter and additive `previousCursor` and `hasPrevious` response fields. Breaking changes to existing API fields and semantics remain out of scope.
 
 ## References
 
