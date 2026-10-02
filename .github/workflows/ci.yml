@@ -146,6 +146,12 @@ jobs:
           PUBLIC_API_BASE_URL: https://ivanli.cc
           PUBLIC_SITE_URL: https://ivanli.cc
           PUBLIC_SITE_BASE_PATH: /
+      - name: Build backend release artifacts
+        run: bun run backend:build
+        env:
+          DB_PATH: ./test-data/sqlite.db
+          LOCAL_CONTENT_BASE_PATH: ./test-data/local
+          CONTENT_SOURCES: local
 
       - name: Verify GitHub Pages custom-domain output
         run: bun ./scripts/verify-pages-build.ts
