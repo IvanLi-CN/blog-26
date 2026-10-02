@@ -47,6 +47,132 @@ test.describe("Memos 游客访问", () => {
     expect(payload.memos.every((memo) => memo.isPublic)).toBe(true);
   });
 
+  test("console 游客从数据库自动续载公开 Memo，且不返回私有项", async ({ page }) => {
+    await page.request.post("/api/dev/login", { data: { email: ADMIN_EMAIL } });
+    const marker = `guest-infinite-${Date.now()}`;
+    const createdSlugs: string[] = [];
+    for (let index = 0; index < 12; index += 1) {
+      createdSlugs.push((await createMemo(page, `${marker}-${index}`, true)).slug);
+    }
+    const privateTitle = `${marker}-private`;
+    await createMemo(page, privateTitle, false);
+    await page.context().clearCookies();
+
+    const firstResponse = await page.request.get("/api/public/memos?publicOnly=true&limit=10");
+    expect(firstResponse.ok()).toBeTruthy();
+    const firstPage = (await firstResponse.json()) as {
+      memos: Array<{ slug: string }>;
+      nextCursor: string | null;
+    };
+    expect(firstPage.nextCursor).toBeTruthy();
+    const secondResponse = await page.request.get(
+      `/api/public/memos?publicOnly=true&limit=10&cursor=${encodeURIComponent(firstPage.nextCursor ?? "")}`
+    );
+    expect(secondResponse.ok()).toBeTruthy();
+    const secondPage = (await secondResponse.json()) as { memos: Array<{ slug: string }> };
+    const expectedSlugs = [...firstPage.memos, ...secondPage.memos].map((memo) => memo.slug);
+
+    const response = await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    expect(response).not.toBeNull();
+    const initialHtml = await response?.text();
+    expect(initialHtml).toContain(marker);
+    expect(initialHtml).not.toContain(privateTitle);
+
+    const timeline = page.getByTestId("memos-timeline");
+    await expect(timeline).not.toHaveAttribute("data-public-memos-static-list", "true");
+    const cards = timeline.getByTestId("memo-card");
+    await expect(cards).toHaveCount(10);
+    const initialSlugs = await cards.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("data-slug"))
+    );
+    expect(initialSlugs).toEqual(expectedSlugs.slice(0, 10));
+
+    const appendRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === "GET" &&
+        url.pathname === "/api/public/memos" &&
+        url.searchParams.get("publicOnly") === "true" &&
+        url.searchParams.has("cursor")
+      );
+    });
+    await page.getByTestId("memo-pagination-sentinel").scrollIntoViewIfNeeded();
+    await appendRequest;
+    await expect(cards).toHaveCount(expectedSlugs.length);
+    await expect(timeline).toHaveAttribute("data-loaded-memos", String(expectedSlugs.length));
+    const loadedSlugs = await cards.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("data-slug"))
+    );
+    expect(loadedSlugs).toEqual(expectedSlugs);
+    await expect(page.getByTestId("memo-pagination-sentinel-newer")).toHaveCount(0);
+    await expect(timeline).toHaveAttribute("data-loaded-memos", String(expectedSlugs.length));
+    const mountedRows = await timeline
+      .locator(":scope > .virtualized-memo-row")
+      .evaluateAll((rows) =>
+        rows.map((row) => ({
+          index: Number(row.getAttribute("data-index")),
+          slug: row.querySelector("[data-testid='memo-card']")?.getAttribute("data-slug"),
+        }))
+      );
+    expect(mountedRows.length).toBeGreaterThan(0);
+    for (const row of mountedRows) {
+      expect(row.slug).toBeTruthy();
+      expect(row.slug).toBe(expectedSlugs[row.index]);
+    }
+    await page.waitForTimeout(1800);
+    await expect(timeline).toHaveAttribute("data-loaded-memos", String(expectedSlugs.length));
+    expect(
+      await page.evaluate(
+        () =>
+          performance
+            .getEntriesByType("resource")
+            .map((entry) => new URL(entry.name))
+            .filter(
+              (url) =>
+                url.pathname === "/api/public/memos" &&
+                url.searchParams.get("direction") === "newer"
+            ).length
+      )
+    ).toBe(0);
+    await expect(page.getByText(privateTitle, { exact: false })).toHaveCount(0);
+  });
+
+  test("滚到底部后只续载一页并将新 Memo 接在列表后面", async ({ page }) => {
+    await page.request.post("/api/dev/login", { data: { email: ADMIN_EMAIL } });
+    const marker = `guest-scroll-append-${Date.now()}`;
+    for (let index = 0; index < 35; index += 1) {
+      await createMemo(page, `${marker}-${index}`, true);
+    }
+    await page.context().clearCookies();
+
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const timeline = page.getByTestId("memos-timeline");
+    await expect(timeline).toHaveAttribute("data-loaded-memos", "10");
+    const initialCount = Number(await timeline.getAttribute("data-loaded-memos"));
+
+    const firstAppend = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === "GET" &&
+        url.pathname === "/api/public/memos" &&
+        url.searchParams.get("publicOnly") === "true" &&
+        url.searchParams.has("cursor")
+      );
+    });
+    await page.mouse.move(640, 400);
+    await page.mouse.wheel(0, 9000);
+    await firstAppend;
+    await expect(timeline).toHaveAttribute("data-loaded-memos", String(initialCount + 10));
+    await page.waitForTimeout(1800);
+
+    expect(Number(await timeline.getAttribute("data-loaded-memos"))).toBe(initialCount + 10);
+    const scrollPosition = await page.evaluate(() => ({
+      y: window.scrollY,
+      maxY: document.documentElement.scrollHeight - window.innerHeight,
+    }));
+    expect(scrollPosition.maxY - scrollPosition.y).toBeGreaterThan(100);
+  });
+
   test("权限检查加载状态", async ({ page }) => {
     await page.route("/api/trpc/auth.me*", async (route) => {
       await new Promise((r) => setTimeout(r, 500));

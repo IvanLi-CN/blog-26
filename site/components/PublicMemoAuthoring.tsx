@@ -6,14 +6,17 @@ import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
+import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
+import { MEMO_PAGE_SIZE } from "./MemoPagination";
+import VirtualizedMemoList from "./VirtualizedMemoList";
 
 type PublicMemoRecord = {
   id: string;
   slug: string;
   title?: string | null;
   content: string;
-  excerpt?: string;
+  excerpt?: string | null;
   isPublic: boolean;
   tags: string[];
   filePath?: string;
@@ -25,9 +28,9 @@ type PublicMemoListResponse = {
   memos?: PublicMemoRecord[];
   hasMore?: boolean;
   nextCursor?: string | null;
+  hasPrevious?: boolean;
+  previousCursor?: string | null;
 };
-
-const LIVE_MEMO_PAGE_SIZE = 10;
 
 function withMemoExcerpt(memo: PublicMemoRecord): PublicMemoRecord {
   return {
@@ -145,120 +148,91 @@ function useHideStaticSnapshot(selector: string, active: boolean) {
   }, [active, selector]);
 }
 
-function normalizeMemoPage(
-  payload: PublicMemoListResponse | PublicMemoRecord[] | null | undefined
-) {
-  if (Array.isArray(payload)) {
-    return { memos: payload, hasMore: false, nextCursor: null };
-  }
-  const memos = Array.isArray(payload?.memos)
-    ? payload.memos
-    : Array.isArray(payload?.items)
-      ? payload.items
-      : [];
-  return {
-    memos,
-    hasMore: Boolean(payload?.hasMore),
-    nextCursor: payload?.nextCursor ?? null,
-  };
+function normalizeMemoPage(payload: unknown, direction: "newer" | "older") {
+  return parseMemoPage(payload, direction, adminMemoRecordSchema, true);
 }
 
-function PublicMemoList({
-  memos,
-  emptyMessage,
+function PublicMemoCard({
+  memo,
+  isLast,
   onEdit,
 }: {
-  memos: PublicMemoRecord[];
-  emptyMessage: string;
+  memo: PublicMemoRecord;
+  isLast: boolean;
   onEdit: (memo: PublicMemoRecord) => void;
 }) {
-  if (memos.length === 0) {
-    return (
-      <div className="nature-empty">
-        <p>{emptyMessage}</p>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="memos-list nature-timeline nature-mobile-reading-stream"
-      data-testid="memos-timeline"
+    <article
+      className="nature-timeline-item nature-mobile-reading-row"
+      data-is-last={isLast}
+      data-testid="admin-live-memo-card"
+      data-id={memo.id}
+      data-slug={memo.slug}
+      data-source={memo.source ?? "local"}
     >
-      {memos.map((memo, index) => (
-        <article
-          key={memo.id || memo.slug}
-          className="nature-timeline-item nature-mobile-reading-row"
-          data-testid="admin-live-memo-card"
-          data-id={memo.id}
-          data-slug={memo.slug}
-          data-source={memo.source ?? "local"}
-        >
-          <div className="nature-timeline-rail" aria-hidden="true">
-            <div className="nature-timeline-node text-[color:var(--nature-secondary)]">
-              <Icon name="tabler:bulb" className="h-5 w-5" />
-            </div>
-            {index < memos.length - 1 ? <div className="nature-timeline-connector" /> : null}
+      <div className="nature-timeline-rail" aria-hidden="true">
+        <div className="nature-timeline-node text-[color:var(--nature-secondary)]">
+          <Icon name="tabler:bulb" className="h-5 w-5" />
+        </div>
+        {!isLast ? <div className="nature-timeline-connector" /> : null}
+      </div>
+      <div className="nature-timeline-content">
+        <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
+            <span className="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]">
+              <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+            </span>
+            <span
+              className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warning"}`}
+              data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
+            >
+              {memo.isPublic ? "Public" : "Draft / Private"}
+            </span>
           </div>
-          <div className="nature-timeline-content">
-            <div className="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
-              <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-                <span className="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]">
-                  <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
+          {memo.title?.trim() ? (
+            <h2 className="nature-title text-xl font-semibold">{memo.title}</h2>
+          ) : null}
+          {memo.excerpt ? (
+            <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
+          ) : null}
+          <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+            <div
+              className="min-w-0 flex flex-1 flex-wrap gap-2"
+              data-testid="admin-live-memo-content"
+            >
+              {memo.tags.map((tag) => (
+                <span key={`${memo.id}-${tag}`} className="nature-chip">
+                  #{tag}
                 </span>
-                <span
-                  className={`nature-chip ${memo.isPublic ? "nature-chip-info" : "nature-chip-warning"}`}
-                  data-testid={memo.isPublic ? "public-indicator" : "private-indicator"}
-                >
-                  {memo.isPublic ? "Public" : "Draft / Private"}
-                </span>
-              </div>
-              {memo.title?.trim() ? (
-                <h2 className="nature-title text-xl font-semibold">{memo.title}</h2>
-              ) : null}
-              {memo.excerpt ? (
-                <p className="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>
-              ) : null}
-              <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-                <div
-                  className="min-w-0 flex flex-1 flex-wrap gap-2"
-                  data-testid="admin-live-memo-content"
-                >
-                  {memo.tags.map((tag) => (
-                    <span key={`${memo.id}-${tag}`} className="nature-chip">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-                <div
-                  className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto"
-                  data-testid="admin-live-memo-actions"
-                >
-                  <a
-                    className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
-                    href={buildPreviewHref(memo.slug)}
-                    aria-label="预览"
-                    title="预览 Memo"
-                  >
-                    <Icon name="tabler:eye" className="h-5 w-5" />
-                  </a>
-                  <button
-                    type="button"
-                    className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
-                    data-testid="admin-live-memo-edit"
-                    aria-label="编辑 Memo"
-                    title="编辑 Memo"
-                    onClick={() => onEdit(memo)}
-                  >
-                    <Icon name="tabler:edit" className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
+              ))}
+            </div>
+            <div
+              className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto"
+              data-testid="admin-live-memo-actions"
+            >
+              <a
+                className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
+                href={buildPreviewHref(memo.slug)}
+                aria-label="预览"
+                title="预览 Memo"
+              >
+                <Icon name="tabler:eye" className="h-5 w-5" />
+              </a>
+              <button
+                type="button"
+                className="nature-icon-button inline-flex min-h-11 min-w-11 shrink-0 p-0"
+                data-testid="admin-live-memo-edit"
+                aria-label="编辑 Memo"
+                title="编辑 Memo"
+                onClick={() => onEdit(memo)}
+              >
+                <Icon name="tabler:edit" className="h-5 w-5" />
+              </button>
             </div>
           </div>
-        </article>
-      ))}
-    </div>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -269,6 +243,8 @@ export function PublicMemoComposerIsland({
   initialMemos = [],
   initialHasMore = false,
   initialNextCursor = null,
+  initialHasNewer = false,
+  initialPreviousCursor = null,
 }: {
   localSourceEnabled?: boolean;
   localMemoRootPath?: string;
@@ -276,15 +252,23 @@ export function PublicMemoComposerIsland({
   initialMemos?: PublicMemoRecord[];
   initialHasMore?: boolean;
   initialNextCursor?: string | null;
+  initialHasNewer?: boolean;
+  initialPreviousCursor?: string | null;
 }) {
   const { isAdmin, isLoading } = usePublicAuth(initialIsAdmin);
   const [memos, setMemos] = useState<PublicMemoRecord[]>(initialMemos);
   const [isListLoading, setIsListLoading] = useState(initialIsAdmin && initialMemos.length === 0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingNewer, setIsLoadingNewer] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [newerError, setNewerError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(initialIsAdmin ? initialHasMore : false);
+  const [hasNewer, setHasNewer] = useState(initialIsAdmin ? initialHasNewer : false);
   const [nextCursor, setNextCursor] = useState<string | null>(
     initialIsAdmin ? initialNextCursor : null
+  );
+  const [previousCursor, setPreviousCursor] = useState<string | null>(
+    initialIsAdmin ? initialPreviousCursor : null
   );
   const [creationFeedback, setCreationFeedback] = useState<string | null>(null);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
@@ -298,18 +282,68 @@ export function PublicMemoComposerIsland({
   const deferredMemos = useRef<PublicMemoRecord[]>([]);
   const editRequestId = useRef(0);
   const editReturnScrollY = useRef<number | null>(null);
+  const loadingAppendCursor = useRef<string | null>(null);
+  const pageRequestInFlight = useRef(false);
+  const inFlightPageDirection = useRef<"newer" | "older" | null>(null);
+  const queuedOppositePage = useRef<{
+    cursor: string;
+    direction: "newer" | "older";
+    append?: boolean;
+  } | null>(null);
+  const refreshQueuedAfterPage = useRef(false);
+  const requestMemoPageRef = useRef<
+    | ((request: {
+        cursor?: string;
+        direction?: "newer" | "older";
+        append?: boolean;
+      }) => Promise<void>)
+    | null
+  >(null);
+  const [listErrorPhase, setListErrorPhase] = useState<"initial" | "append" | null>(null);
 
   const requestMemoPage = useCallback(
-    async ({ cursor, append = false }: { cursor?: string; append?: boolean }) => {
+    async ({
+      cursor,
+      direction = "older",
+      append = false,
+    }: {
+      cursor?: string;
+      direction?: "newer" | "older";
+      append?: boolean;
+    }) => {
+      if (pageRequestInFlight.current) {
+        if (!cursor && direction === "older" && !append) {
+          refreshQueuedAfterPage.current = true;
+        } else if (cursor && direction !== inFlightPageDirection.current) {
+          queuedOppositePage.current = { cursor, direction, append };
+        }
+        return;
+      }
+      pageRequestInFlight.current = true;
+      inFlightPageDirection.current = direction;
+      const appendCursor = cursor ?? null;
+      if (append && appendCursor && loadingAppendCursor.current === appendCursor) {
+        pageRequestInFlight.current = false;
+        inFlightPageDirection.current = null;
+        return;
+      }
+      if (append && appendCursor) loadingAppendCursor.current = appendCursor;
+      if (!append) loadingAppendCursor.current = null;
       const requestId = ++listRequestId.current;
       const mutationVersion = listMutationVersion.current;
-      setListError(null);
-      setIsListLoading(!append);
-      setIsLoadingMore(append);
+      if (direction === "newer") setNewerError(null);
+      else {
+        setListError(null);
+        setListErrorPhase(null);
+      }
+      setIsListLoading(direction === "older" && !append);
+      setIsLoadingMore(direction === "older" && append);
+      setIsLoadingNewer(direction === "newer");
 
       const params = new URLSearchParams({
         publicOnly: "false",
-        limit: String(LIVE_MEMO_PAGE_SIZE),
+        limit: String(MEMO_PAGE_SIZE),
+        direction,
       });
       if (cursor) params.set("cursor", cursor);
 
@@ -319,7 +353,7 @@ export function PublicMemoComposerIsland({
         );
         if (requestId !== listRequestId.current) return;
         if (mutationVersion !== listMutationVersion.current) return;
-        const page = normalizeMemoPage(result);
+        const page = normalizeMemoPage(result, direction);
         const serverMemos = page.memos.map((memo) => {
           const createdEntry = Array.from(recentCreatedMemos.current.entries()).find(
             ([, created]) => sameMemo(created, memo)
@@ -332,7 +366,11 @@ export function PublicMemoComposerIsland({
           return createdEntry[1];
         });
 
-        if (!append) {
+        if (direction === "newer") {
+          setMemos((current) => uniqueMemos([...serverMemos, ...current]));
+          setHasNewer(page.hasMore);
+          setPreviousCursor(page.previousCursor);
+        } else if (!append) {
           const missingCreated = Array.from(recentCreatedMemos.current.values()).reverse();
           const combined = uniqueMemos([
             ...missingCreated,
@@ -340,33 +378,56 @@ export function PublicMemoComposerIsland({
               (memo) => !missingCreated.some((created) => sameMemo(created, memo))
             ),
           ]);
-          const visible = combined.slice(0, LIVE_MEMO_PAGE_SIZE);
-          deferredMemos.current = combined.slice(LIVE_MEMO_PAGE_SIZE);
+          const visible = combined.slice(0, MEMO_PAGE_SIZE);
+          deferredMemos.current = combined.slice(MEMO_PAGE_SIZE);
           setMemos(visible);
           setHasMore(page.hasMore || deferredMemos.current.length > 0);
+          setHasNewer(page.hasPrevious);
+          setPreviousCursor(page.previousCursor);
         } else {
           const continuation = [...deferredMemos.current, ...serverMemos];
           deferredMemos.current = [];
           setMemos((current) => uniqueMemos([...current, ...continuation]));
           setHasMore(page.hasMore);
         }
-        setNextCursor(page.nextCursor);
+        if (direction === "older") setNextCursor(page.nextCursor);
       } catch (error) {
         if (
           requestId === listRequestId.current &&
           mutationVersion === listMutationVersion.current
         ) {
-          setListError(error instanceof Error ? error.message : String(error));
+          const message = error instanceof Error ? error.message : String(error);
+          if (direction === "newer") setNewerError(message);
+          else {
+            setListError(message);
+            setListErrorPhase(append ? "append" : "initial");
+          }
         }
       } finally {
-        if (requestId === listRequestId.current) {
+        pageRequestInFlight.current = false;
+        inFlightPageDirection.current = null;
+        if (append && appendCursor && loadingAppendCursor.current === appendCursor) {
+          loadingAppendCursor.current = null;
+        }
+        const isCurrentRequest = requestId === listRequestId.current;
+        const shouldRefresh = isCurrentRequest && refreshQueuedAfterPage.current;
+        refreshQueuedAfterPage.current = false;
+        const queuedPage = isCurrentRequest ? queuedOppositePage.current : null;
+        queuedOppositePage.current = null;
+        if (isCurrentRequest) {
           setIsListLoading(false);
           setIsLoadingMore(false);
+          setIsLoadingNewer(false);
+        }
+        if (shouldRefresh) void requestMemoPageRef.current?.({});
+        else if (isCurrentRequest && queuedPage) {
+          void requestMemoPageRef.current?.(queuedPage);
         }
       }
     },
     []
   );
+  requestMemoPageRef.current = requestMemoPage;
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -398,14 +459,16 @@ export function PublicMemoComposerIsland({
           : "私有 Memo 已保存，仅管理员可见。"
       );
       setHasMore(false);
+      setHasNewer(false);
       deferredMemos.current = [];
       setMemos((current) =>
         [createdMemo, ...current.filter((memo) => !sameMemo(memo, createdMemo))].slice(
           0,
-          LIVE_MEMO_PAGE_SIZE
+          MEMO_PAGE_SIZE
         )
       );
       setNextCursor(null);
+      setPreviousCursor(null);
       void requestMemoPage({});
     },
     [requestMemoPage]
@@ -489,12 +552,42 @@ export function PublicMemoComposerIsland({
     [editingMemo, editingSlug]
   );
 
-  const isListBusy = isListLoading || isLoadingMore;
+  const isListBusy = isListLoading || isLoadingMore || isLoadingNewer;
   const emptyMessage = isListLoading
     ? "正在加载实时 Memo 列表…"
     : listError
       ? "暂时无法加载实时 Memo。"
       : "当前没有可管理的 Memo。";
+
+  const loadNewerMemoPage = useCallback(() => {
+    if (previousCursor) {
+      return requestMemoPage({ cursor: previousCursor, direction: "newer" });
+    }
+  }, [previousCursor, requestMemoPage]);
+
+  const loadNextMemoPage = useCallback(async () => {
+    if (nextCursor) {
+      await requestMemoPage({ cursor: nextCursor, append: true });
+      return;
+    }
+    if (deferredMemos.current.length > 0) {
+      setMemos((current) => uniqueMemos([...current, ...deferredMemos.current]));
+      deferredMemos.current = [];
+      setHasMore(false);
+    }
+  }, [nextCursor, requestMemoPage]);
+
+  const retryMemoPage = useCallback(() => {
+    if (listErrorPhase === "append" && nextCursor) {
+      return requestMemoPage({ cursor: nextCursor, append: true });
+    }
+    return requestMemoPage({});
+  }, [listErrorPhase, nextCursor, requestMemoPage]);
+  const retryNewerMemoPage = useCallback(() => {
+    if (previousCursor) {
+      return requestMemoPage({ cursor: previousCursor, direction: "newer" });
+    }
+  }, [previousCursor, requestMemoPage]);
 
   if (isLoading || !isAdmin) {
     return null;
@@ -545,7 +638,7 @@ export function PublicMemoComposerIsland({
             </div>
             <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
               <p className="text-sm text-[color:var(--nature-text-soft)]" aria-live="polite">
-                {isListLoading ? "正在更新列表…" : `${memos.length} 条已显示`}
+                {isListBusy ? "正在更新列表…" : `${memos.length} 条已显示`}
               </p>
               <button
                 type="button"
@@ -560,50 +653,37 @@ export function PublicMemoComposerIsland({
           </div>
         </header>
 
-        {listError ? (
-          <div
-            className="nature-alert nature-alert-error mb-4 flex flex-wrap items-center justify-between gap-3"
-            role="alert"
-          >
-            <span>实时 Memo 列表加载失败：{listError}</span>
-            <button
-              type="button"
-              className="nature-button nature-button-outline min-h-11 sm:min-h-9"
-              onClick={refreshList}
-              disabled={isListBusy}
-            >
-              重试
-            </button>
+        {memos.length === 0 ? (
+          <div className="nature-empty">
+            <p>{emptyMessage}</p>
           </div>
         ) : null}
-
-        <PublicMemoList
-          memos={memos}
-          emptyMessage={emptyMessage}
-          onEdit={(memo) => void handleEdit(memo)}
+        <VirtualizedMemoList
+          items={memos}
+          getKey={(memo) => memo.id || memo.slug}
+          testId="admin-live-memo-list-items"
+          renderItem={(memo, _index, isLast) => (
+            <PublicMemoCard memo={memo} isLast={isLast} onEdit={(item) => void handleEdit(item)} />
+          )}
+          newer={{
+            hasMore: hasNewer,
+            isLoading: isLoadingNewer,
+            error: newerError,
+            onLoad: loadNewerMemoPage,
+            onRetry: retryNewerMemoPage,
+          }}
+          older={{
+            hasMore,
+            isLoading: isLoadingMore,
+            error: listError,
+            onLoad: loadNextMemoPage,
+            onRetry: retryMemoPage,
+          }}
+          sentinelTestIds={{
+            newer: "admin-memo-pagination-sentinel-newer",
+            older: "admin-memo-pagination-sentinel",
+          }}
         />
-
-        {hasMore ? (
-          <div className="flex justify-center pt-4">
-            <button
-              type="button"
-              className="nature-button nature-button-outline min-h-11 gap-2 sm:min-h-9"
-              onClick={() => {
-                if (nextCursor) {
-                  void requestMemoPage({ cursor: nextCursor, append: true });
-                } else if (deferredMemos.current.length > 0) {
-                  setMemos((current) => uniqueMemos([...current, ...deferredMemos.current]));
-                  deferredMemos.current = [];
-                  setHasMore(false);
-                }
-              }}
-              disabled={(!nextCursor && deferredMemos.current.length === 0) || isListBusy}
-            >
-              {isLoadingMore ? <span className="nature-spinner h-4 w-4" /> : null}
-              {isLoadingMore ? "正在加载…" : "加载更多"}
-            </button>
-          </div>
-        ) : null}
       </section>
 
       <QuickMemoEditModal

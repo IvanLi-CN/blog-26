@@ -12,6 +12,7 @@ import { computePostContentHash } from "@/lib/post-body-contract-server";
 import { buildPublicMediaHash } from "@/lib/public-media";
 import { llmSettings, postEmbeddings, posts, sessions, users, vectorizedFiles } from "@/lib/schema";
 import { SEARCH_QUERY_LIMITS } from "@/lib/search/query";
+import { buildPublicMemoStaticPages } from "../../site/lib/memo-pagination";
 
 const TEST_DB_PATH = path.join(process.cwd(), "tmp/http-compat-api-test.sqlite");
 const MIGRATIONS_PATH = path.join(process.cwd(), "drizzle");
@@ -1188,6 +1189,81 @@ public: false
     expect(snapshotMemo?.filePath).toBe("Memos/http-snapshot-memo.md");
   }, 60_000);
 
+  it("keeps public draft memos out of the published snapshot and static pages", async () => {
+    const publishedAt = Date.UTC(2026, 0, 10);
+    for (let index = 0; index < 10; index += 1) {
+      await seedPost({
+        id: `Memos/published-snapshot-${index}.md`,
+        filePath: `Memos/published-snapshot-${index}.md`,
+        slug: `published-snapshot-${index}`,
+        type: "memo",
+        title: `Published snapshot ${index}`,
+        body: `Published body ${index}`,
+        publishDate: publishedAt - index,
+        public: true,
+        draft: false,
+        tags: JSON.stringify([]),
+      });
+    }
+    await seedPost({
+      id: "Memos/public-draft-snapshot.md",
+      filePath: "Memos/public-draft-snapshot.md",
+      slug: "public-draft-snapshot",
+      type: "memo",
+      title: "SECRET DRAFT TITLE",
+      body: "SECRET DRAFT BODY",
+      publishDate: publishedAt - 100,
+      public: true,
+      draft: true,
+      tags: JSON.stringify([]),
+    });
+
+    const response = await handlePublicApiRequest(
+      buildRequest("/api/public/snapshot"),
+      "/snapshot"
+    );
+    expect(response.status).toBe(200);
+    const snapshot = await readJson(response);
+    const pages = buildPublicMemoStaticPages(snapshot.memos);
+    const generatedPageJson = JSON.stringify(pages);
+
+    expect(generatedPageJson).not.toContain("SECRET DRAFT TITLE");
+    expect(generatedPageJson).not.toContain("SECRET DRAFT BODY");
+    expect(snapshot.memos.map((memo: { slug: string }) => memo.slug)).not.toContain(
+      "public-draft-snapshot"
+    );
+    expect(pages).toEqual([]);
+  }, 60_000);
+
+  it("does not serve a public draft memo through the guest detail API", async () => {
+    await seedPost({
+      id: "Memos/public-draft-detail.md",
+      filePath: "Memos/public-draft-detail.md",
+      slug: "public-draft-detail",
+      type: "memo",
+      title: "SECRET DRAFT TITLE",
+      body: "SECRET DRAFT BODY",
+      public: true,
+      draft: true,
+      tags: JSON.stringify([]),
+    });
+
+    const guestResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/public-draft-detail"),
+      "/memos/public-draft-detail"
+    );
+
+    expect(guestResponse.status).toBe(403);
+    expect(await guestResponse.text()).not.toContain("SECRET DRAFT BODY");
+
+    const adminResponse = await handlePublicApiRequest(
+      buildRequest("/api/public/memos/public-draft-detail", {}, ADMIN_EMAIL),
+      "/memos/public-draft-detail"
+    );
+    expect(adminResponse.status).toBe(200);
+    expect(await adminResponse.text()).toContain("SECRET DRAFT BODY");
+  });
+
   it("rewrites public snapshot media fields to assets facade urls", async () => {
     fs.mkdirSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets"), { recursive: true });
     fs.writeFileSync(path.join(LOCAL_CONTENT_BASE_PATH, "blog/assets/public-cover.png"), "cover");
@@ -2150,7 +2226,9 @@ public: false
       "recent-underscore-memo",
     ]);
     expect(firstPage.hasMore).toBe(true);
+    expect(firstPage.hasPrevious).toBe(false);
     expect(firstPage.nextCursor).toContain("Memos/20260616_recent_memo.md");
+    expect(firstPage).not.toHaveProperty("previousCursor");
 
     const nextResponse = await handlePublicApiRequest(
       buildRequest(
@@ -2165,6 +2243,36 @@ public: false
       "older-underscore-memo",
     ]);
     expect(nextPage.hasMore).toBe(false);
+    expect(nextPage.hasPrevious).toBe(true);
+    expect(nextPage.previousCursor).toContain("Memos/20260615_older_memo.md");
+
+    const previousResponse = await handlePublicApiRequest(
+      buildRequest(
+        `/api/public/memos?publicOnly=false&limit=1&direction=newer&cursor=${encodeURIComponent(nextPage.previousCursor)}`,
+        {},
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+    const previousPage = await readJson(previousResponse);
+    expect(previousPage.memos.map((memo: { slug: string }) => memo.slug)).toEqual([
+      "recent-underscore-memo",
+    ]);
+    expect(previousPage.hasMore).toBe(false);
+
+    const emptyResponse = await handlePublicApiRequest(
+      buildRequest(
+        `/api/public/memos?publicOnly=false&limit=1&cursor=${encodeURIComponent(nextPage.previousCursor)}`,
+        {},
+        ADMIN_EMAIL
+      ),
+      "/memos"
+    );
+    const emptyPage = await readJson(emptyResponse);
+    expect(emptyPage.memos).toEqual([]);
+    expect(emptyPage.hasMore).toBe(false);
+    expect(emptyPage.hasPrevious).toBe(false);
+    expect(emptyPage).not.toHaveProperty("previousCursor");
   });
 
   it("returns a controlled bad request for an over-budget public search query", async () => {

@@ -39,9 +39,10 @@ test.describe("Inline memo admin view", () => {
     );
   });
 
-  test("uses ten-item server pages, load more, and refreshes from the first cursor", async ({
-    page,
-  }) => {
+  // A latest-page SSR visit has no unloaded newer edge. Both-edge request races
+  // are exercised with a middle-window fixture at the real component boundary.
+
+  test("auto-loads ten-item server pages and refreshes from the first cursor", async ({ page }) => {
     await loginAsAdmin(page);
     const marker = `inline-page-${Date.now()}`;
     const createdMemos: Array<{ id: string }> = [];
@@ -70,13 +71,18 @@ test.describe("Inline memo admin view", () => {
     });
     await page.goto("/memos", { waitUntil: "domcontentloaded" });
 
-    const cards = page.getByTestId("admin-live-memo-card");
-    await expect(cards).toHaveCount(10);
-    await expect(cards.first()).toHaveAttribute("data-id", /.+/);
-    const initialIds = await cards.evaluateAll((elements) =>
-      elements.map((element) => element.getAttribute("data-id"))
-    );
-    expect(initialIds).toEqual(expectedServiceOrder.slice(0, 10));
+    const memoList = page.getByTestId("admin-live-memo-list-items");
+    const readMountedRows = () =>
+      memoList.locator(":scope > .virtualized-memo-row").evaluateAll((rows) =>
+        rows.map((row) => ({
+          index: Number(row.getAttribute("data-index")),
+          id: row.querySelector("[data-testid='admin-live-memo-card']")?.getAttribute("data-id"),
+        }))
+      );
+    await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+    await expect.poll(async () => (await readMountedRows()).length).toBeGreaterThan(0);
+    const initialRows = await readMountedRows();
+    for (const row of initialRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
     const initialRequest = requests
       .map((requestUrl) => new URL(requestUrl))
       .find((url) => !url.searchParams.has("cursor"));
@@ -93,27 +99,129 @@ test.describe("Inline memo admin view", () => {
     const loadMoreRequest = page.waitForRequest(
       (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
     );
-    await page.getByRole("button", { name: "加载更多" }).click();
+    const sentinel = page.getByTestId("admin-memo-pagination-sentinel");
+    await expect(sentinel).toBeAttached();
+    await expect(page.locator(".memo-pagination-fallback")).toHaveCount(0);
+    const accessibleFallback = page.getByTestId("memo-pagination-accessible");
+    await expect(accessibleFallback).toBeAttached();
+    const fallbackBounds = await accessibleFallback.boundingBox();
+    expect(fallbackBounds?.width).toBeLessThan(2);
+    expect(fallbackBounds?.height).toBeLessThan(2);
+    await sentinel.scrollIntoViewIfNeeded();
     await loadMoreRequest;
-    await expect.poll(() => cards.count()).toBeGreaterThan(10);
-    const ids = await cards.evaluateAll((elements) =>
-      elements.map(
-        (element) => element.getAttribute("data-id") ?? element.getAttribute("data-slug")
-      )
+    await expect(memoList).toHaveAttribute(
+      "data-loaded-memos",
+      String(expectedServiceOrder.length)
     );
-    expect(ids).toEqual(expectedServiceOrder);
-    expect(new Set(ids).size).toBe(ids.length);
+    const appendedRows = await readMountedRows();
+    for (const row of appendedRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
+    expect(new Set(appendedRows.map((row) => row.index)).size).toBe(appendedRows.length);
+
+    await expect(page.getByTestId("admin-memo-pagination-sentinel-newer")).toHaveCount(0);
+    await expect(memoList).toHaveAttribute(
+      "data-loaded-memos",
+      String(expectedServiceOrder.length)
+    );
+    const rowsAfterNewerLoad = await readMountedRows();
+    for (const row of rowsAfterNewerLoad) expect(row.id).toBe(expectedServiceOrder[row.index]);
 
     const refreshRequest = page.waitForRequest(
       (request) => isMemoListRequest(request) && !new URL(request.url()).searchParams.has("cursor")
     );
     await page.getByRole("button", { name: "刷新列表" }).click();
     await refreshRequest;
-    await expect(cards).toHaveCount(10);
-    const refreshedIds = await cards.evaluateAll((elements) =>
-      elements.map((element) => element.getAttribute("data-id"))
-    );
-    expect(refreshedIds).toEqual(initialIds);
+    await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+    const refreshedRows = await readMountedRows();
+    for (const row of refreshedRows) expect(row.id).toBe(expectedServiceOrder[row.index]);
+  });
+
+  test("refreshes pagination when a quick save races an older-page request", async ({ page }) => {
+    await loginAsAdmin(page);
+    const marker = `inline-save-page-race-${Date.now()}`;
+    for (let index = 0; index < 12; index += 1) {
+      await createMemo(page, `${marker}-seed-${index}`);
+    }
+
+    await page.goto("/memos", { waitUntil: "domcontentloaded" });
+    const { container, editor } = await waitForQuickMemoEditor(page);
+    const memoList = page.getByTestId("admin-live-memo-list-items");
+    await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+
+    let resolveCapturedPage: (() => void) | undefined;
+    let releaseCapturedPage: (() => void) | undefined;
+    let didHoldPageResponse = false;
+    const capturedPage = new Promise<void>((resolve) => {
+      resolveCapturedPage = resolve;
+    });
+    const releasePage = new Promise<void>((resolve) => {
+      releaseCapturedPage = resolve;
+    });
+
+    await page.route("**/api/public/memos**", async (route) => {
+      const url = new URL(route.request().url());
+      if (
+        isMemoListRequest(route.request()) &&
+        url.searchParams.has("cursor") &&
+        !didHoldPageResponse
+      ) {
+        didHoldPageResponse = true;
+        const response = await route.fetch();
+        resolveCapturedPage?.();
+        await releasePage;
+        await route.fulfill({ response });
+        return;
+      }
+      await route.continue();
+    });
+
+    try {
+      const olderRequest = page.waitForRequest(
+        (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
+      );
+      await page.getByTestId("admin-memo-pagination-sentinel").scrollIntoViewIfNeeded();
+      await olderRequest;
+      await capturedPage;
+
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const title = `${marker}-created`;
+      await editor.click();
+      await page.keyboard.insertText(`# ${title}\n\nThe saved memo remains pageable.`);
+      await container.getByRole("button", { name: "公开发布 Memo" }).click();
+      await expect(
+        page.getByRole("status").filter({
+          hasText: "公开 Memo 已保存；公开时间线将在下次发布后更新。",
+        })
+      ).toHaveText("公开 Memo 已保存；公开时间线将在下次发布后更新。");
+
+      const latestRefresh = page.waitForRequest(
+        (request) =>
+          isMemoListRequest(request) && !new URL(request.url()).searchParams.has("cursor"),
+        { timeout: 15_000 }
+      );
+      const staleAppend = page.waitForResponse(
+        (response) =>
+          isMemoListRequest(response.request()) &&
+          new URL(response.url()).searchParams.has("cursor")
+      );
+      releaseCapturedPage?.();
+      await staleAppend;
+      await latestRefresh;
+
+      await expect(memoList).toHaveAttribute("data-loaded-memos", "10");
+      await expect(page.getByTestId("admin-memo-pagination-sentinel")).toBeAttached();
+      await expect(await waitForAdminLiveMemoCard(page, title)).toBeVisible();
+
+      const nextOlderRequest = page.waitForRequest(
+        (request) => isMemoListRequest(request) && new URL(request.url()).searchParams.has("cursor")
+      );
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await nextOlderRequest;
+      await expect
+        .poll(async () => Number(await memoList.getAttribute("data-loaded-memos")))
+        .toBeGreaterThan(10);
+    } finally {
+      releaseCapturedPage?.();
+    }
   });
 
   test("edits in the current list, saves through PATCH, restores focus, and previews read-only", async ({
@@ -482,7 +590,7 @@ test.describe("Inline memo admin view", () => {
       (response) =>
         isMemoListRequest(response.request()) && new URL(response.url()).searchParams.has("cursor")
     );
-    await page.getByRole("button", { name: "加载更多" }).click();
+    await page.getByTestId("admin-memo-pagination-sentinel").scrollIntoViewIfNeeded();
     await expect((await loadMoreResponse).ok()).toBeTruthy();
     await expect.poll(() => page.getByTestId("admin-live-memo-card").count()).toBeGreaterThan(10);
     await expect(page.getByText("正在更新列表…")).toHaveCount(0);

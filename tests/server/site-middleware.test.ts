@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { onRequest } from "../../site/middleware";
 
+function applyMiddleware(url: string, next: () => Promise<Response>) {
+  return onRequest({ url: new URL(url) } as Parameters<typeof onRequest>[0], next);
+}
+
 afterEach(() => {
   delete process.env.CONSOLE_RUNTIME;
 });
@@ -8,12 +12,8 @@ afterEach(() => {
 describe("console response cache policy", () => {
   test("keeps admin preview assets private", async () => {
     process.env.CONSOLE_RUNTIME = "true";
-    const response = await onRequest(
-      {
-        request: new Request(
-          "https://console.ivanli.cc/api/admin/preview/assets/post/draft/abc123/cover.webp"
-        ),
-      },
+    const response = await applyMiddleware(
+      "https://console.ivanli.cc/api/admin/preview/assets/post/draft/abc123/cover.webp",
       async () => new Response("private asset")
     );
 
@@ -23,12 +23,8 @@ describe("console response cache policy", () => {
 
   test("keeps public media assets cacheable", async () => {
     process.env.CONSOLE_RUNTIME = "true";
-    const response = await onRequest(
-      {
-        request: new Request(
-          "https://console.ivanli.cc/api/public/assets/post/public/abc123/cover.webp"
-        ),
-      },
+    const response = await applyMiddleware(
+      "https://console.ivanli.cc/api/public/assets/post/public/abc123/cover.webp",
       async () => new Response("public asset")
     );
 
@@ -37,10 +33,8 @@ describe("console response cache policy", () => {
 
   test("keeps file API assets private", async () => {
     process.env.CONSOLE_RUNTIME = "true";
-    const response = await onRequest(
-      {
-        request: new Request("https://console.ivanli.cc/api/files/local/drafts/private.webp"),
-      },
+    const response = await applyMiddleware(
+      "https://console.ivanli.cc/api/files/local/drafts/private.webp",
       async () => new Response("private file")
     );
 
@@ -49,8 +43,8 @@ describe("console response cache policy", () => {
 
   test("does not make dynamic feeds immutable", async () => {
     process.env.CONSOLE_RUNTIME = "true";
-    const response = await onRequest(
-      { request: new Request("https://console.ivanli.cc/feed.xml") },
+    const response = await applyMiddleware(
+      "https://console.ivanli.cc/feed.xml",
       async () => new Response("<rss />", { headers: { "cache-control": "public, max-age=3600" } })
     );
 

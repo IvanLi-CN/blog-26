@@ -1,7 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 import { z } from "zod";
 import { buildEmbeddingInput, hashEmbeddingInput } from "@/lib/ai/embeddings";
 import { EmbeddingsRepository } from "@/lib/ai/embeddings-repo";
@@ -390,6 +390,7 @@ export function buildSafeMemoResponse(
 const listMemosSchema = z.object({
   limit: z.number().min(1).max(50).default(10),
   cursor: z.string().optional(), // cursor format: "publishDate_id"
+  direction: z.enum(["older", "newer"]).default("older"),
   search: z.string().refine(isSearchQueryWithinBudget).optional(),
   tag: z.string().optional(),
   publicOnly: z.boolean().default(true),
@@ -453,7 +454,7 @@ const uploadAttachmentSchema = z.object({
 export const memosRouter = router({
   // 获取 memo 列表（无限滚动）
   list: publicProcedure.input(listMemosSchema).query(async ({ input, ctx }) => {
-    const { cursor, limit, search, tag } = input;
+    const { cursor, direction, limit, search, tag } = input;
 
     try {
       // 构建查询条件
@@ -489,11 +490,10 @@ export const memosRouter = router({
             // 将日期字符串转换为时间戳进行比较
             const cursorTimestamp = new Date(cursorDate).getTime();
             if (!Number.isNaN(cursorTimestamp)) {
-              // 使用 (publishDate, id) 组合进行严格的“游标之后”判断：
-              // - publishDate 更小的记录
-              // - 或者 publishDate 相同但 id 更小的记录
               conditions.push(
-                sql`(${posts.publishDate} < ${cursorTimestamp} OR (${posts.publishDate} = ${cursorTimestamp} AND ${posts.id} < ${cursorId}))`
+                direction === "older"
+                  ? sql`(${posts.publishDate} < ${cursorTimestamp} OR (${posts.publishDate} = ${cursorTimestamp} AND ${posts.id} < ${cursorId}))`
+                  : sql`(${posts.publishDate} > ${cursorTimestamp} OR (${posts.publishDate} = ${cursorTimestamp} AND ${posts.id} > ${cursorId}))`
               );
             }
           }
@@ -509,12 +509,16 @@ export const memosRouter = router({
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         // 重要：严格按发布/创建时间倒序排序，而非更新时间
-        .orderBy(desc(posts.publishDate), desc(posts.id)) // 添加 id 作为辅助排序确保稳定性
+        .orderBy(
+          direction === "older" ? desc(posts.publishDate) : asc(posts.publishDate),
+          direction === "older" ? desc(posts.id) : asc(posts.id)
+        )
         .limit(limit + 1); // 多取一条用于判断 hasMore
 
       // 判断是否有更多数据
       const hasMore = memoList.length > limit;
-      const actualMemos = hasMore ? memoList.slice(0, limit) : memoList;
+      const selectedMemos = hasMore ? memoList.slice(0, limit) : memoList;
+      const actualMemos = direction === "newer" ? selectedMemos.reverse() : selectedMemos;
 
       // 计算向量化状态（与 /posts 相同口径：当前模型名 + 输入拼接哈希一致且存在向量）
       const resolved = await getResolvedLlmConfig();
@@ -611,17 +615,32 @@ export const memosRouter = router({
             timeDisplaySource: m.timeDisplaySource,
           }));
 
-      // 生成下一页的 cursor
+      // Newer pages are queried in ascending order, then reversed for the display order.
       let nextCursor: string | undefined;
-      if (hasMore && actualMemos.length > 0) {
-        const lastMemo = actualMemos[actualMemos.length - 1];
-        const lastDate = new Date(toMsTimestamp(lastMemo.publishDate)).toISOString();
-        nextCursor = `${lastDate}_${lastMemo.id}`;
+      let previousCursor: string | undefined;
+      if (actualMemos.length > 0) {
+        if (direction === "older") {
+          const firstMemo = actualMemos[0];
+          const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
+          if (cursor) previousCursor = `${firstDate}_${firstMemo.id}`;
+
+          if (hasMore) {
+            const lastMemo = actualMemos[actualMemos.length - 1];
+            const lastDate = new Date(toMsTimestamp(lastMemo.publishDate)).toISOString();
+            nextCursor = `${lastDate}_${lastMemo.id}`;
+          }
+        } else {
+          const firstMemo = actualMemos[0];
+          const firstDate = new Date(toMsTimestamp(firstMemo.publishDate)).toISOString();
+          if (hasMore) previousCursor = `${firstDate}_${firstMemo.id}`;
+        }
       }
 
       return {
         memos: sanitizedMemos,
         nextCursor,
+        previousCursor,
+        hasPrevious: direction === "newer" ? hasMore : actualMemos.length > 0 && Boolean(cursor),
         hasMore,
       };
     } catch (error) {
@@ -653,8 +672,8 @@ export const memosRouter = router({
         });
       }
 
-      // 权限检查：非管理员只能查看公开的 memo
-      if (!memo.public && !ctx.isAdmin) {
+      // 权限检查：非管理员只能查看已公开且非草稿的 memo
+      if ((!memo.public || memo.draft) && !ctx.isAdmin) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "无权访问此 memo",

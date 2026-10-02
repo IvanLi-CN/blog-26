@@ -58,6 +58,9 @@ sqlite.db-journal
 *.db.backup
 docker-data/
 data/
+# This source directory defines Astro's public Memo pagination routes.
+!site/pages/memos/data/
+!site/pages/memos/data/**
 
 # test data and development data
 test-data/

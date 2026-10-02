@@ -314,7 +314,7 @@ export async function buildPublicSnapshot(): Promise<PublicSnapshot> {
   const rawMemos = await db
     .select()
     .from(posts)
-    .where(and(eq(posts.type, "memo"), eq(posts.public, true)))
+    .where(and(eq(posts.type, "memo"), eq(posts.draft, false), eq(posts.public, true)))
     .orderBy(desc(posts.publishDate), desc(posts.id));
 
   const postList: PublicPostRecord[] = rawPosts

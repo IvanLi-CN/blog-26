@@ -1,9 +1,6 @@
 ---
-import Icon from "@/components/ui/Icon";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
-import { formatAbsoluteDate } from "../lib/format";
-import { toPublicSitePath } from "../lib/runtime-urls";
-import TagBadge from "./TagBadge.astro";
+import MemoCardView from "./MemoCard";
 
 interface Props {
   memo: PublicMemoRecord;
@@ -13,89 +10,5 @@ interface Props {
 }
 
 const { memo, isLast = true, iconMap = {}, iconSvgMap = {} } = Astro.props;
-const displayDate = memo.publishedAt ?? memo.createdAt;
-const showMobileDetailLink = !memo.title;
-const detailLabel = memo.title || `无标题闪念 · ${formatAbsoluteDate(displayDate)}`;
 ---
-<article
-  class="nature-timeline-item nature-mobile-reading-row"
-  data-is-last={isLast}
-  data-testid="memo-card"
-  data-slug={memo.slug}
->
-  <div class="nature-timeline-rail" aria-hidden="true">
-    <div class="nature-timeline-node text-[color:var(--nature-secondary)]" data-testid="timeline-node" data-timeline-kind="memo">
-      <Icon name="tabler:bulb" className="h-5 w-5 sm:h-6 sm:w-6" />
-    </div>
-    {!isLast && <div class="nature-timeline-connector" data-testid="timeline-connector"></div>}
-  </div>
-
-  <div class="nature-timeline-content">
-    <div class="nature-panel nature-timeline-card px-4 py-4 sm:px-6 sm:py-5">
-      <div class="mb-3 flex items-center gap-2 text-sm text-[color:var(--nature-text-soft)]">
-        <span
-          class="nature-timeline-type-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(var(--nature-secondary-rgb),0.16)] text-[color:var(--nature-secondary)]"
-          data-testid="timeline-type-icon"
-          aria-hidden="true"
-        >
-          <Icon name="tabler:bulb" className="h-3.5 w-3.5" />
-        </span>
-        <span class="sr-only sm:hidden" data-testid="timeline-accessible-type">闪念</span>
-        <span
-          class="nature-timeline-date-icon inline-flex h-4 w-4 items-center justify-center text-[color:var(--nature-accent-strong)]"
-          aria-hidden="true"
-          data-testid="timeline-date-icon"
-        >
-          <Icon name="tabler:clock" className="h-4 w-4" />
-        </span>
-        <time dateTime={displayDate}>{formatAbsoluteDate(displayDate)}</time>
-      </div>
-
-      {memo.title && (
-        <h2 class="nature-title text-xl font-semibold">
-          <a
-            href={toPublicSitePath(`/memos/${memo.slug}`)}
-            class="transition-colors hover:text-[color:var(--nature-accent-strong)]"
-          >
-            {memo.title}
-          </a>
-        </h2>
-      )}
-
-      {memo.excerpt && <p class="nature-muted mt-3 text-base leading-7">{memo.excerpt}</p>}
-
-      <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3">
-          {memo.tags.length > 0 ? (
-            <div class="flex flex-wrap gap-2">
-              {memo.tags.map((tag) => (
-                <TagBadge tag={tag} iconMap={iconMap} iconSvgMap={iconSvgMap} />
-              ))}
-            </div>
-          ) : null}
-
-          {showMobileDetailLink && (
-            <a
-              href={toPublicSitePath(`/memos/${memo.slug}`)}
-              class="nature-link-inline inline-flex min-h-11 min-w-11 items-center justify-center gap-1 self-start px-2 text-sm sm:hidden"
-              aria-label="查看详情"
-              title="查看详情"
-            >
-              <span>查看详情</span>
-              <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
-            </a>
-          )}
-        </div>
-
-        <a
-          href={toPublicSitePath(`/memos/${memo.slug}`)}
-          class="nature-icon-button hidden shrink-0 self-start border-0 bg-[rgba(var(--nature-accent-rgb),0.9)] text-white shadow-[0_14px_28px_rgba(var(--nature-accent-rgb),0.28)] transition-transform duration-200 hover:translate-x-0.5 sm:inline-flex sm:self-end"
-          aria-label={`查看详情: ${detailLabel}`}
-          title={`查看详情: ${detailLabel}`}
-        >
-          <Icon name="tabler:arrow-up-right" className="h-4 w-4" />
-        </a>
-      </div>
-    </div>
-  </div>
-</article>
+<MemoCardView memo={memo} isLast={isLast} iconMap={iconMap} iconSvgMap={iconSvgMap} />

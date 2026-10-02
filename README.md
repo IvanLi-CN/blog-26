@@ -47,6 +47,8 @@ http://127.0.0.1:${ADMIN_PORT}/admin/posts/editor?demo=true&slug=react-hooks-dee
 
 Storybook remains useful for component state galleries and visual evidence, but it is not the Web Demo surface.
 
+The public Memo list Web Demo uses the shipped Astro `/memos/` route with `?demo=true`. Start it with `bun run demo:memo-list` and open `/memos/?demo=true` on the printed local site port. In development, the route renders deterministic local records and pages them in the browser; it does not read or write the database.
+
 ## Environment
 
 Required for normal local development:
