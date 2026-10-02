@@ -233,7 +233,7 @@ h6 {
 
 .memo-pagination-error {
   gap: 0.25rem;
-  color: var(--nature-danger);
+  color: var(--nature-accent-strong);
   cursor: pointer;
   font-size: 0.75rem;
   transition:
@@ -242,7 +242,7 @@ h6 {
 }
 
 .memo-pagination-error:hover {
-  border-color: var(--nature-danger);
+  border-color: var(--nature-line-strong);
   background: rgba(var(--nature-highlight-rgb), 0.5);
 }
 
