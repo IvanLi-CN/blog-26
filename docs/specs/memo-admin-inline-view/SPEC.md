@@ -141,6 +141,10 @@ source_type=storybook_canvas; target_program=mock-only; capture_scope=element; r
 - Story: `public-memo-authoring--quick-publish-empty-dark`; state: dark theme, pointer over the empty editor paragraph after render.
 ![Quick memo editor hover without layout shift](./assets/quick-editor-hover-dark.png)
 
+source_type=ui_demo; target_program=mock-only; capture_scope=page; requested_viewport=1366x1100; viewport_strategy=devtools-emulate; margin_policy=trim_only; evidence_surface=page; sensitive_exclusion=N/A; submission_gate=approved
+- Route: `/memos/`; deterministic 21-record public snapshot fixture, with the next chunk returning HTTP 503. Dark theme; the 10 already loaded records remain and the same-position retry control uses the Nature accent palette.
+![Memo static pagination retry in the dark Nature theme](./assets/memo-pagination-retry-dark.png)
+
 ## Related ADRs
 
 - [Use a Self-Contained SSR Console Beside the Static Public Site](../../adr/0010-self-contained-console-runtime.md)
