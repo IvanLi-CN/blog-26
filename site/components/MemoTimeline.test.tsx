@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { parseConsoleInitialMemoPage } from "../lib/memo-pagination";
 import MemoTimeline from "./MemoTimeline";
 
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
@@ -106,6 +107,45 @@ describe("MemoTimeline console guest recovery", () => {
     expect(requests).toHaveLength(1);
     await waitFor(() => expect(getByText("Next Memo")).toBeTruthy());
     expect(requests[0]).not.toContain("cursor=");
+  });
+});
+
+describe("Console SSR Memo page validation", () => {
+  test("rejects malformed public records before they reach the guest timeline", () => {
+    expect(() =>
+      parseConsoleInitialMemoPage(
+        { memos: [{ ...initialMemo, tags: "private" }], hasMore: false },
+        false
+      )
+    ).toThrow("Memo 分页响应格式无效。");
+  });
+
+  test("rejects an initial page that advertises more records without a cursor", () => {
+    expect(() =>
+      parseConsoleInitialMemoPage({ memos: [initialMemo], hasMore: true }, false)
+    ).toThrow("Memo 分页响应格式无效。");
+  });
+
+  test("allows complete administrator records, including private visibility", () => {
+    const page = parseConsoleInitialMemoPage(
+      {
+        items: [
+          {
+            id: "private-admin-memo",
+            slug: "private-admin-memo",
+            title: "Private Memo",
+            content: "private content",
+            excerpt: "private content",
+            isPublic: false,
+            tags: [],
+          },
+        ],
+        hasMore: false,
+      },
+      true
+    );
+
+    expect(page.memos[0]?.isPublic).toBe(false);
   });
 });
 

@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { z } from "zod";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { QuickMemoEditModal } from "@/components/memos/QuickMemoEditModal";
 import { type QuickMemoData, QuickMemoEditor } from "@/components/memos/QuickMemoEditor";
 import Icon from "@/components/ui/Icon";
 import { extractTextSummary, stripMatchingLeadingTitleHeading } from "@/lib/markdown-utils";
-import { parseMemoPage } from "../lib/memo-pagination";
+import { adminMemoRecordSchema, parseMemoPage } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
 import VirtualizedMemoList from "./VirtualizedMemoList";
@@ -148,20 +147,6 @@ function useHideStaticSnapshot(selector: string, active: boolean) {
     };
   }, [active, selector]);
 }
-
-const adminMemoRecordSchema = z
-  .object({
-    id: z.string().min(1),
-    slug: z.string().min(1),
-    title: z.string().nullable().optional(),
-    content: z.string(),
-    excerpt: z.string().nullable().optional(),
-    isPublic: z.boolean(),
-    tags: z.array(z.string()),
-    filePath: z.string().optional(),
-    source: z.string().optional(),
-  })
-  .passthrough();
 
 function normalizeMemoPage(payload: unknown, direction: "newer" | "older") {
   return parseMemoPage(payload, direction, adminMemoRecordSchema, true);

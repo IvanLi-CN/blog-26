@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { z } from "zod";
 import type { PublicMemoRecord } from "@/public-site/snapshot";
 import {
   getMemoListWebDemoCursorPage,
   MEMO_LIST_WEB_DEMO_DELAY_MS,
 } from "../lib/memo-list-web-demo";
-import { parseMemoPage } from "../lib/memo-pagination";
+import { parseMemoPage, publicMemoCardSchema } from "../lib/memo-pagination";
 import { toPublicApiUrl, toPublicSitePath } from "../lib/runtime-urls";
 import MemoCard, { type MemoCardRecord } from "./MemoCard";
 import { MEMO_PAGE_SIZE } from "./MemoPagination";
@@ -26,19 +25,6 @@ export type MemoPageLoader = (input: {
   cursor: string | null;
   direction: MemoPageDirection;
 }) => Promise<MemoPageResponse>;
-
-const publicMemoCardSchema = z
-  .object({
-    id: z.string().min(1),
-    slug: z.string().min(1),
-    title: z.string().nullable(),
-    excerpt: z.string().nullable(),
-    tags: z.array(z.string()),
-    isPublic: z.literal(true),
-    createdAt: z.string().min(1),
-    publishedAt: z.string().nullable(),
-  })
-  .passthrough();
 
 function uniqueMemos(memos: MemoCardRecord[]) {
   const seen = new Set<string>();

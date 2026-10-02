@@ -5,6 +5,33 @@ export const MEMO_PAGE_SIZE = 10;
 
 export type MemoPaginationDirection = "newer" | "older";
 
+export const publicMemoCardSchema = z
+  .object({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    title: z.string().nullable(),
+    excerpt: z.string().nullable(),
+    tags: z.array(z.string()),
+    isPublic: z.literal(true),
+    createdAt: z.string().min(1),
+    publishedAt: z.string().nullable(),
+  })
+  .passthrough();
+
+export const adminMemoRecordSchema = z
+  .object({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    title: z.string().nullable().optional(),
+    content: z.string(),
+    excerpt: z.string().nullable().optional(),
+    isPublic: z.boolean(),
+    tags: z.array(z.string()),
+    filePath: z.string().optional(),
+    source: z.string().optional(),
+  })
+  .passthrough();
+
 const memoPageEnvelopeSchema = z
   .object({
     memos: z.array(z.unknown()).optional(),
@@ -55,6 +82,10 @@ export function parseMemoPage<T>(
   }
 
   return { memos, hasMore, hasPrevious, nextCursor, previousCursor };
+}
+
+export function parseConsoleInitialMemoPage(value: unknown, isAdmin: boolean) {
+  return parseMemoPage(value, "older", isAdmin ? adminMemoRecordSchema : publicMemoCardSchema);
 }
 
 export type PublicMemoStaticPage = {

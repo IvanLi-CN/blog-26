@@ -7,6 +7,7 @@ import { getSnapshot } from "../../lib/public-site";
 import { isLocalContentEnabled } from "@/config/paths";
 import { getServerLocalMemoRootPath } from "@/lib/memo-paths";
 import { resolveRuntimeContext } from "@/lib/runtime-context";
+import { parseConsoleInitialMemoPage } from "../../lib/memo-pagination";
 
 const isMemoListWebDemo =
   import.meta.env.DEV && Astro.url.searchParams.get("demo") === "true";
@@ -42,27 +43,12 @@ if (isMemoListWebDemo) {
   const memoResponse = await handlePublicApiRequest(memoRequest, "/memos");
   try {
     if (!memoResponse.ok) throw new Error("Memo request failed");
-    const payload = (await memoResponse.json()) as {
-      memos?: typeof initialMemos;
-      items?: typeof initialMemos;
-      hasMore?: boolean;
-      nextCursor?: string | null;
-      hasPrevious?: boolean;
-      previousCursor?: string | null;
-    };
-    const liveMemos = Array.isArray(payload.memos) ? payload.memos : payload.items;
-    if (!Array.isArray(liveMemos)) throw new Error("Memo response was invalid");
-    if (liveMemos.some((memo) => typeof memo.isPublic !== "boolean")) {
-      throw new Error("Memo visibility was invalid");
-    }
-    if (!initialIsAdmin && liveMemos.some((memo) => !memo.isPublic)) {
-      throw new Error("Guest Memo response included a private record");
-    }
-    initialMemos = liveMemos;
-    initialMemosHasMore = payload.hasMore === true;
-    initialMemosNextCursor = payload.nextCursor ?? null;
-    initialMemosHasNewer = payload.hasPrevious === true;
-    initialMemosPreviousCursor = payload.previousCursor ?? null;
+    const page = parseConsoleInitialMemoPage(await memoResponse.json(), initialIsAdmin);
+    initialMemos = page.memos as typeof initialMemos;
+    initialMemosHasMore = page.hasMore;
+    initialMemosNextCursor = page.nextCursor;
+    initialMemosHasNewer = page.hasPrevious;
+    initialMemosPreviousCursor = page.previousCursor;
   } catch {
     initialMemos = [];
     initialMemosError = "公开 Memo 数据暂时不可用。";
