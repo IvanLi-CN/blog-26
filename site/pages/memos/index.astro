@@ -43,8 +43,8 @@ if (isMemoListWebDemo) {
   try {
     if (!memoResponse.ok) throw new Error("Memo request failed");
     const payload = (await memoResponse.json()) as {
-      memos?: typeof snapshot.memos;
-      items?: typeof snapshot.memos;
+      memos?: typeof initialMemos;
+      items?: typeof initialMemos;
       hasMore?: boolean;
       nextCursor?: string | null;
       hasPrevious?: boolean;

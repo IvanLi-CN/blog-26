@@ -104,6 +104,33 @@ test.describe("Memos 游客访问", () => {
       elements.map((element) => element.getAttribute("data-slug"))
     );
     expect(loadedSlugs).toEqual(expectedSlugs);
+    const newerSentinel = page.getByTestId("memo-pagination-sentinel-newer");
+    await expect(newerSentinel).toBeAttached();
+    const newerRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === "GET" &&
+        url.pathname === "/api/public/memos" &&
+        url.searchParams.get("publicOnly") === "true" &&
+        url.searchParams.get("direction") === "newer"
+      );
+    });
+    await newerSentinel.scrollIntoViewIfNeeded();
+    await newerRequest;
+    await expect(timeline).toHaveAttribute("data-loaded-memos", String(expectedSlugs.length));
+    const mountedRows = await timeline
+      .locator(":scope > .virtualized-memo-row")
+      .evaluateAll((rows) =>
+        rows.map((row) => ({
+          index: Number(row.getAttribute("data-index")),
+          slug: row.querySelector("[data-testid='memo-card']")?.getAttribute("data-slug"),
+        }))
+      );
+    expect(mountedRows.length).toBeGreaterThan(0);
+    for (const row of mountedRows) {
+      expect(row.slug).toBeTruthy();
+      expect(row.slug).toBe(expectedSlugs[row.index]);
+    }
     await page.waitForTimeout(1800);
     await expect(timeline).toHaveAttribute("data-loaded-memos", String(expectedSlugs.length));
     await expect(page.getByText(privateTitle, { exact: false })).toHaveCount(0);

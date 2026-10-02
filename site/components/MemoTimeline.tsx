@@ -148,6 +148,10 @@ export default function MemoTimeline({
           setMemos((current) => uniqueMemos([...current, ...pageMemos]));
           setHasOlder(payload.hasMore === true);
           setOlderCursor(payload.nextCursor ?? null);
+          if (payload.hasPrevious !== undefined) {
+            setHasNewer(payload.hasPrevious);
+            setNewerCursor(payload.previousCursor ?? null);
+          }
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
