@@ -157,7 +157,7 @@ const freshnessCells =
     overflow: hidden;
     padding: clamp(0.85rem, 3.5%, 1.2rem);
     border: 1px solid rgba(var(--runtime-highlight-rgb), 0.17);
-    border-radius: 0.65rem;
+    border-radius: 1.6rem;
     color: var(--runtime-text);
     background:
       radial-gradient(circle at 86% 12%, rgba(var(--runtime-accent-rgb), 0.08), transparent 30%),
@@ -223,6 +223,12 @@ const freshnessCells =
     --runtime-secondary-rgb: 55, 123, 151;
     --runtime-bar-rgb: 42, 145, 125;
     --runtime-warm-rgb: 171, 110, 23;
+  }
+
+  @media (max-width: 767px) {
+    .project-runtime-panel {
+      border-radius: var(--nature-radius-md);
+    }
   }
 
   .runtime-metric-grid {

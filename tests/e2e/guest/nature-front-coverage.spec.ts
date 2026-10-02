@@ -785,13 +785,15 @@ test.describe("Nature frontend public coverage", () => {
       await expect(card.locator(".runtime-panel-art-stage")).toHaveCount(1);
       await expect(card.locator("img[data-runtime-background]")).toHaveCount(1);
       await expect(card.locator(".runtime-panel-art-stage svg")).toHaveCount(0);
-      await expect(card.locator(".project-poster")).toHaveCount(0);
+      await expect(card.locator("[data-runtime-fallback-poster]")).toHaveCount(1);
+      await expect(card.locator("[data-runtime-fallback-poster]")).toBeHidden();
       await expect(
         card.locator(".runtime-panel-art-stage img:not([data-runtime-background])")
       ).toHaveCount(0);
       const cardText = await card.innerText();
       for (const label of forbiddenLabels) expect(cardText).not.toContain(label);
       await expect(card.locator(".project-runtime-panel")).toHaveCSS("aspect-ratio", "4 / 5");
+      await expect(card.locator(".project-runtime-panel")).toHaveCSS("border-radius", "25.6px");
       await expect
         .poll(() =>
           card.locator(".project-runtime-panel").evaluate((panel) => {
@@ -1040,7 +1042,7 @@ test.describe("Nature frontend public coverage", () => {
       )
       .toBe(activityGridHeightBeforeTooltip);
     await lastCvmPoint.click();
-    await expect(page).toHaveURL(/\/projects\/$/);
+    await expect(page).toHaveURL(/\/projects\/?$/);
 
     await page.setViewportSize({ width: 1048, height: 933 });
     await gotoWithTheme(page, "/projects", "dark");
@@ -1076,6 +1078,7 @@ test.describe("Nature frontend public coverage", () => {
       )
       .toBe(true);
     await expect(page.locator(".project-runtime-panel")).toHaveCount(3);
+    await expect(page.locator(".project-runtime-panel").first()).toHaveCSS("border-radius", "14px");
   });
 
   test("project poster preserves its fallback when image delivery fails", async ({ page }) => {
